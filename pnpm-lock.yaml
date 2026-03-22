@@ -259,21 +259,6 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(yaml@2.8.3)
 
-  apps/worker:
-    dependencies:
-      '@agent/agent-core':
-        specifier: workspace:*
-        version: link:../../packages/agent-core
-      '@agent/memory':
-        specifier: workspace:*
-        version: link:../../packages/memory
-      '@agent/skills':
-        specifier: workspace:*
-        version: link:../../packages/skills
-      '@agent/tools':
-        specifier: workspace:*
-        version: link:../../packages/tools
-
   packages/agent-core:
     dependencies:
       '@agent/config':

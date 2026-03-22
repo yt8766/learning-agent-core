@@ -34,6 +34,74 @@
 - 单元测试：`pnpm test`
 - 测试监听：`pnpm test:watch`
 
+## CI 说明
+
+仓库当前使用两套 GitHub Actions 工作流：
+
+- `PR 检查`：对应 [`.github/workflows/pr-check.yml`](./.github/workflows/pr-check.yml)
+- `main 检查`：对应 [`.github/workflows/main-check.yml`](./.github/workflows/main-check.yml)
+
+### PR 检查
+
+`pull_request -> main` 时会触发 `PR 检查`，并拆成 4 个独立状态：
+
+- `Lint`
+- `Typecheck`
+- `Test`
+- `Build`
+
+这套检查会结合 `changed-files` 做路径过滤：
+
+- 只改前端目录时：
+  - 优先跑前端类型检查
+  - 只跑前端构建
+- 改到后端、worker、packages 或根级工程配置时：
+  - 跑后端与共享包类型检查
+  - 跑测试
+  - 跑后端和共享库构建
+- 只改文档时：
+  - 不强制跑整套代码检查
+
+这样可以减少 monorepo 中无关目录改动带来的重复校验时间。
+
+### main 检查
+
+`push -> main` 时会触发 `main 检查`，执行完整校验：
+
+- `ESLint`
+- `Prettier --check`
+- `TypeScript typecheck`
+- `Vitest`
+- `build`
+
+同时会启用这几层缓存来提升速度：
+
+- `pnpm` 依赖缓存
+- `Turbo` 缓存：`.turbo/cache`
+- 构建产物缓存：
+  - `apps/**/dist`
+  - `packages/**/build`
+
+## 分支保护建议
+
+建议在 GitHub 仓库设置里为 `main` 分支开启以下规则：
+
+- 禁止直接推送到 `main`
+- 必须通过 Pull Request 合并
+- 必须等待状态检查通过后才能合并
+- 必须通过以下 4 个 PR 检查：
+  - `Lint`
+  - `Typecheck`
+  - `Test`
+  - `Build`
+- 建议开启“需要分支为最新状态后才能合并”
+- 建议开启“新提交后自动失效旧审批”
+
+如果团队后续还会继续扩大规模，建议再补两条：
+
+- 限制谁可以直接修改分支保护规则
+- 对 `main` 启用合并队列或 squash merge 策略，保持提交历史整洁
+
 ## 规范入口
 
 - [后端规范](./docs/backend-conventions.md)
