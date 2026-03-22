@@ -1,0 +1,20 @@
+{
+  "name": "@agent/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "node dist/main.js",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "@agent/agent-core": "workspace:*",
+    "@agent/memory": "workspace:*",
+    "@agent/skills": "workspace:*",
+    "@agent/tools": "workspace:*"
+  }
+}

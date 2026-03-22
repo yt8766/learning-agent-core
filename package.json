@@ -1,0 +1,49 @@
+{
+  "name": "agent-brain-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.6.0",
+  "type": "module",
+  "scripts": {
+    "build:watch": "turbo build:watch",
+    "build:lib": "node ./scripts/build.js && turbo build:lib",
+    "build:server": "turbo build:server",
+    "build:frontend": "turbo build --filter=agent-admin --filter=agent-chat",
+    "build:chat": "turbo build --filter=agent-chat",
+    "start:dev": "turbo start:dev",
+    "start:frontend": "turbo start:dev --filter=agent-admin",
+    "start:chat": "turbo start:dev --filter=agent-chat",
+    "dev": "turbo dev",
+    "build": "pnpm build:server && pnpm build:lib && pnpm build:frontend",
+    "lint:tsc": "node scripts/typecheck.js",
+    "lint:prettier": "prettier --write \"**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md}\"",
+    "lint:eslint": "eslint --fix --ext .js,.ts,.tsx,.mjs,.cjs .",
+    "prepare": "husky",
+    "test": "vitest run --config vitest.config.js",
+    "test:watch": "vitest --config vitest.config.js",
+    "commit": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc",
+    "check": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^9.22.0",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.22.0",
+    "eslint-config-prettier": "^10.1.1",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.5.3",
+    "tsup": "^8.4.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1",
+    "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.1.35",
+    "@langchain/langgraph": "^1.2.5",
+    "@langchain/openai": "^1.3.0",
+    "zod": "^4.3.6"
+  }
+}

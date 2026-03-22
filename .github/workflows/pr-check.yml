@@ -1,0 +1,237 @@
+name: PR 检查
+
+# 触发规则：
+# 1. 仅在指向 main 的拉取请求上执行。
+on:
+  pull_request:
+    branches:
+      - main
+
+# 避免同一个 PR 在短时间内重复堆积执行。
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    # 先识别本次 PR 改动范围，供后续任务按需执行。
+    name: Detect Changes
+    runs-on: ubuntu-latest
+
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      packages: ${{ steps.filter.outputs.packages }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+      any_code: ${{ steps.filter.outputs.any_code }}
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：根据路径判断前端、后端、共享包和工作流是否发生变化。
+      - name: 识别改动范围
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'apps/frontend/**'
+            backend:
+              - 'apps/backend/**'
+              - 'apps/worker/**'
+            packages:
+              - 'packages/**'
+            workflow:
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'scripts/**'
+              - 'tsconfig*.json'
+              - 'eslint.config.mjs'
+              - 'prettier.config.js'
+              - 'vitest.config.*'
+            docs_only:
+              - 'docs/**'
+              - '*.md'
+            any_code:
+              - 'apps/**'
+              - 'packages/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'scripts/**'
+              - 'tsconfig*.json'
+              - 'eslint.config.mjs'
+              - 'prettier.config.js'
+              - 'vitest.config.*'
+
+  lint:
+    # 代码风格检查：
+    # 1. 只有在代码、配置、工作流相关文件变化时才执行。
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_code == 'true'
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装固定版本的 pnpm。
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      # 第三步：安装 Node.js，并启用 pnpm 缓存。
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 第四步：安装项目依赖。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 第五步：执行 ESLint 检查。
+      - name: 运行 ESLint
+        run: pnpm exec eslint --max-warnings=0 --ext .js,.ts,.tsx,.mjs,.cjs .
+
+      # 第六步：执行 Prettier 检查。
+      - name: 运行 Prettier 检查
+        run: pnpm exec prettier --check "**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md,yml,yaml}"
+
+  typecheck:
+    # 类型检查：
+    # 1. 前端改动时仅检查前端项目。
+    # 2. 后端或 packages 改动时仅检查后端与共享包。
+    # 3. 工作流或根配置变动时两边都检查。
+    name: Typecheck
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_code == 'true'
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装固定版本的 pnpm。
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      # 第三步：安装 Node.js，并启用 pnpm 缓存。
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 第四步：安装项目依赖。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 第五步：当前端或全局配置变化时，检查前端类型。
+      - name: 检查前端类型
+        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.workflow == 'true'
+        run: |
+          pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.json --noEmit
+          pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit
+
+      # 第六步：当后端、共享包或全局配置变化时，检查后端与包类型。
+      - name: 检查后端与共享包类型
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
+        run: |
+          pnpm exec tsc -p packages/shared/tsconfig.types.json --noEmit
+          pnpm exec tsc -p packages/agent-core/tsconfig.types.json --noEmit
+          pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
+          pnpm exec tsc -p apps/worker/tsconfig.json --noEmit
+
+  test:
+    # 测试检查：
+    # 1. 仅在后端、共享包或全局配置变化时执行。
+    # 2. 当前测试范围主要覆盖 packages 和后端。
+    name: Test
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装固定版本的 pnpm。
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      # 第三步：安装 Node.js，并启用 pnpm 缓存。
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 第四步：安装项目依赖。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 第五步：运行 Vitest。
+      - name: 运行测试
+        run: pnpm test
+
+  build:
+    # 构建检查：
+    # 1. 当前端目录变化时，仅执行前端构建。
+    # 2. 当后端、共享包或全局配置变化时，执行后端与库构建。
+    name: Build
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_code == 'true'
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装固定版本的 pnpm。
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      # 第三步：安装 Node.js，并启用 pnpm 缓存。
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 第四步：安装项目依赖。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 第五步：前端有变化时，只构建前端。
+      - name: 构建前端
+        if: needs.detect-changes.outputs.frontend == 'true'
+        run: pnpm build:frontend
+
+      # 第六步：后端、共享包或全局配置有变化时，构建后端与库。
+      - name: 构建后端与共享库
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
+        run: |
+          pnpm build:server
+          pnpm build:lib

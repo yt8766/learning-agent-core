@@ -1,0 +1,13 @@
+.turbo
+dist
+coverage
+node_modules
+.pnpm-store
+.idea
+.vscode
+.env
+.env.*
+data
+data/**/*.tmp
+build
+logs

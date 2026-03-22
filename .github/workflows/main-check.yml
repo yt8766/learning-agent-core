@@ -1,0 +1,81 @@
+name: Main 检查
+
+# 触发规则：
+# 1. 仅在推送到 main 时执行。
+on:
+  push:
+    branches:
+      - main
+
+# 避免同一个 main 提交重复堆积执行。
+concurrency:
+  group: main-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-build:
+    # main 分支执行完整校验，并开启更多缓存以提升速度。
+    name: Validate And Build Main
+    runs-on: ubuntu-latest
+
+    steps:
+      # 第一步：拉取仓库代码。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装固定版本的 pnpm。
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.0
+
+      # 第三步：安装 Node.js，并启用 pnpm 缓存。
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 第四步：恢复 Turbo 缓存，加快多项目构建。
+      - name: 恢复 Turbo 缓存
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'apps/**/package.json', 'packages/**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      # 第五步：恢复构建产物缓存，加快重复构建。
+      - name: 恢复构建产物缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/**/dist
+            packages/**/build
+          key: ${{ runner.os }}-artifacts-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'apps/**/package.json', 'packages/**/package.json', 'scripts/**', 'apps/**/src/**', 'packages/**/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-artifacts-
+
+      # 第六步：安装项目依赖。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 第七步：执行 ESLint 检查。
+      - name: 运行 ESLint
+        run: pnpm exec eslint --max-warnings=0 --ext .js,.ts,.tsx,.mjs,.cjs .
+
+      # 第八步：执行 Prettier 检查。
+      - name: 运行 Prettier 检查
+        run: pnpm exec prettier --check "**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md,yml,yaml}"
+
+      # 第九步：执行完整类型检查。
+      - name: 运行类型检查
+        run: pnpm lint:tsc
+
+      # 第十步：执行完整测试。
+      - name: 运行测试
+        run: pnpm test
+
+      # 第十一步：执行完整构建。
+      - name: 运行构建
+        run: pnpm build

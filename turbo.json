@@ -1,0 +1,42 @@
+{
+  "$schema": "https://turbo.net.cn/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**/*", "build/**/*"]
+    },
+    "build:watch": {
+      "persistent": true,
+      "cache": false
+    },
+    "build:lib": {
+      "dependsOn": ["^build:lib"],
+      "outputs": ["build/**/*"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "build:server": {
+      "outputs": ["dist/**/*"]
+    },
+    "start:dev": {
+      "persistent": true,
+      "cache": false,
+      "dependsOn": ["^start:dev"],
+      "outputs": ["dist/**/*"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**/*"]
+    }
+  },
+  "ui": "tui",
+  "cacheDir": ".turbo/cache"
+}
