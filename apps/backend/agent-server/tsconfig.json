@@ -2,7 +2,16 @@
   "extends": "../../../tsconfig.node.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": "./"
+    "baseUrl": "../../../",
+    "paths": {
+      "@agent/shared": ["packages/shared/src"],
+      "@agent/config": ["packages/config/src"],
+      "@agent/tools": ["packages/tools/src"],
+      "@agent/memory": ["packages/memory/src"],
+      "@agent/skills": ["packages/skills/src"],
+      "@agent/evals": ["packages/evals/src"],
+      "@agent/agent-core": ["packages/agent-core/src"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "logs"]
