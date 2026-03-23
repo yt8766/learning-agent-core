@@ -6,8 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build -p tsconfig.build.json",
-    "build:server": "nest build -p tsconfig.build.json",
+    "build": "nest build -p tsconfig.json",
+    "build:server": "nest build -p tsconfig.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prestart": "pnpm --dir ../../.. build:lib",
     "start": "nest start",

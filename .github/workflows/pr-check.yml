@@ -214,9 +214,8 @@ jobs:
         if: needs.detect-changes.outputs.frontend == 'true'
         run: pnpm build:frontend
 
-      # 第六步：后端、共享包或全局配置有变化时，构建后端与库。
+      # 第六步：后端、共享包或全局配置有变化时，先构建共享库再构建后端（@agent/* 的 types 在 build/types）。
       - name: 构建后端与共享库
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
         run: |
-          pnpm build:server
-          pnpm build:lib
+          pnpm build:lib && pnpm build:server
