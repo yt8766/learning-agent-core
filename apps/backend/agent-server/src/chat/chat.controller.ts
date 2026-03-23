@@ -2,9 +2,11 @@
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   MessageEvent,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -14,7 +16,14 @@
 import type { Request, Response } from 'express';
 import { Observable } from 'rxjs';
 
-import { AppendChatMessageDto, CreateChatSessionDto, LearningConfirmationDto, SessionApprovalDto } from '@agent/shared';
+import {
+  AppendChatMessageDto,
+  CreateChatSessionDto,
+  LearningConfirmationDto,
+  SessionApprovalDto,
+  SessionCancelDto,
+  UpdateChatSessionDto
+} from '@agent/shared';
 
 import { ChatService } from './chat.service';
 
@@ -36,6 +45,16 @@ export class ChatController {
     const session = await this.chatService.createSession(dto);
     this.setSessionCookie(response, session.id);
     return session;
+  }
+
+  @Delete('sessions/:id')
+  deleteSession(@Param('id') id: string) {
+    return this.chatService.deleteSession(id);
+  }
+
+  @Patch('sessions/:id')
+  updateSession(@Param('id') id: string, @Body() dto: UpdateChatSessionDto) {
+    return this.chatService.updateSession(id, dto);
   }
 
   @Get('sessions/:id')
@@ -126,6 +145,17 @@ export class ChatController {
     const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
     this.setSessionCookie(response, resolvedSessionId);
     return this.chatService.recover(resolvedSessionId);
+  }
+
+  @Post('cancel')
+  cancel(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Body() dto: Omit<SessionCancelDto, 'sessionId'> & SessionBody = {}
+  ) {
+    const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
+    this.setSessionCookie(response, resolvedSessionId);
+    return this.chatService.cancel(resolvedSessionId, { ...dto, sessionId: resolvedSessionId });
   }
 
   @Sse('stream')

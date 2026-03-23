@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 
-import { AgentOrchestrator, SessionCoordinator } from '@agent/agent-core';
-import { FileMemoryRepository, FileRuntimeStateRepository } from '@agent/memory';
+import { AgentOrchestrator, SessionCoordinator, ZhipuLlmProvider } from '@agent/agent-core';
+import { FileMemoryRepository, FileRuleRepository, FileRuntimeStateRepository } from '@agent/memory';
 import {
   AppendChatMessageDto,
   ApprovalActionDto,
@@ -16,31 +16,64 @@ import {
   LearningConfirmationDto,
   MemoryRecord,
   SearchMemoryDto,
+  SessionCancelDto,
   SessionApprovalDto,
   SkillCard,
-  SkillStatus
+  SkillStatus,
+  UpdateChatSessionDto
 } from '@agent/shared';
 import { SkillRegistry } from '@agent/skills';
-import { ApprovalService } from '@agent/tools';
+import {
+  ApprovalService,
+  McpCapabilityRegistry,
+  McpClientManager,
+  McpServerRegistry,
+  StubSandboxExecutor,
+  createDefaultToolRegistry
+} from '@agent/tools';
 
 @Injectable()
 export class RuntimeService implements OnModuleInit {
   private readonly memoryRepository = new FileMemoryRepository();
+  private readonly ruleRepository = new FileRuleRepository();
   private readonly skillRegistry = new SkillRegistry();
   private readonly approvalService = new ApprovalService();
   private readonly runtimeStateRepository = new FileRuntimeStateRepository();
-  private readonly orchestrator = new AgentOrchestrator(
-    this.memoryRepository,
-    this.skillRegistry,
-    this.approvalService,
-    this.runtimeStateRepository
-  );
-  private readonly sessionCoordinator = new SessionCoordinator(
-    this.orchestrator,
-    this.runtimeStateRepository,
-    this.memoryRepository,
-    this.skillRegistry
-  );
+  private readonly llmProvider = new ZhipuLlmProvider();
+  private readonly sandboxExecutor = new StubSandboxExecutor();
+  private readonly toolRegistry = createDefaultToolRegistry();
+  private readonly mcpServerRegistry = new McpServerRegistry();
+  private readonly mcpCapabilityRegistry = new McpCapabilityRegistry();
+  private readonly mcpClientManager: McpClientManager;
+  private readonly orchestrator: AgentOrchestrator;
+  private readonly sessionCoordinator: SessionCoordinator;
+
+  constructor() {
+    this.mcpServerRegistry.register({
+      id: 'local-workspace',
+      displayName: '本地工作区 MCP 兼容适配器',
+      transport: 'local-adapter',
+      enabled: true
+    });
+    this.mcpCapabilityRegistry.registerFromTools('local-workspace', this.toolRegistry.list());
+    this.mcpClientManager = new McpClientManager(
+      this.mcpServerRegistry,
+      this.mcpCapabilityRegistry,
+      this.sandboxExecutor
+    );
+    this.orchestrator = new AgentOrchestrator({
+      memoryRepository: this.memoryRepository,
+      skillRegistry: this.skillRegistry,
+      approvalService: this.approvalService,
+      runtimeStateRepository: this.runtimeStateRepository,
+      llmProvider: this.llmProvider,
+      ruleRepository: this.ruleRepository,
+      sandboxExecutor: this.sandboxExecutor,
+      toolRegistry: this.toolRegistry,
+      mcpClientManager: this.mcpClientManager
+    });
+    this.sessionCoordinator = new SessionCoordinator(this.orchestrator, this.runtimeStateRepository, this.llmProvider);
+  }
 
   async onModuleInit() {
     await this.sessionCoordinator.initialize();
@@ -135,6 +168,16 @@ export class RuntimeService implements OnModuleInit {
     return this.sessionCoordinator.createSession(dto);
   }
 
+  async deleteSession(sessionId: string): Promise<void> {
+    this.getSession(sessionId);
+    await this.sessionCoordinator.deleteSession(sessionId);
+  }
+
+  updateSession(sessionId: string, dto: UpdateChatSessionDto): Promise<ChatSessionRecord> {
+    this.getSession(sessionId);
+    return this.sessionCoordinator.updateSession(sessionId, dto);
+  }
+
   getSession(sessionId: string): ChatSessionRecord {
     const session = this.sessionCoordinator.getSession(sessionId);
     if (!session) {
@@ -181,6 +224,11 @@ export class RuntimeService implements OnModuleInit {
   recoverSession(sessionId: string): Promise<ChatSessionRecord> {
     this.getSession(sessionId);
     return this.sessionCoordinator.recover(sessionId);
+  }
+
+  cancelSession(sessionId: string, dto: SessionCancelDto): Promise<ChatSessionRecord> {
+    this.getSession(sessionId);
+    return this.sessionCoordinator.cancel(sessionId, dto);
   }
 
   subscribeSession(sessionId: string, listener: (event: ChatEventRecord) => void): () => void {

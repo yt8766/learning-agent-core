@@ -93,6 +93,29 @@ export class LocalSandboxExecutor implements SandboxExecutor {
           rawOutput: { goal, researchSummary }
         };
       }
+      case 'browse_page': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const url = typeof request.input.url === 'string' ? request.input.url : 'http://localhost:3000';
+        return {
+          outputSummary: `Browser automation simulated visit to ${url} for "${goal}"`,
+          rawOutput: { url, goal, simulated: true }
+        };
+      }
+      case 'run_terminal': {
+        const command = typeof request.input.command === 'string' ? request.input.command : 'pnpm test -- --help';
+        return {
+          outputSummary: `Terminal MCP simulated command: ${command}`,
+          rawOutput: { command, simulated: true }
+        };
+      }
+      case 'ship_release': {
+        const target = typeof request.input.target === 'string' ? request.input.target : 'main';
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown release goal';
+        return {
+          outputSummary: `Release MCP simulated shipping target "${target}" for "${goal}"`,
+          rawOutput: { target, goal, simulated: true }
+        };
+      }
       default: {
         return {
           outputSummary: `Sandbox stub executed ${request.toolName}`,

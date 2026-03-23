@@ -33,18 +33,36 @@ process.on('unhandledRejection', reason => {
 
 async function bootstrap(): Promise<void> {
   const port = Number(process.env.PORT ?? 3000);
+  const host = process.env.HOST ?? '127.0.0.1';
 
   writeBootstrapLine('LOG', 'NestFactory', 'Starting Nest application...');
   try {
     const app = await NestFactory.create(AppModule, {
-      logger: false
+      logger: false,
+      abortOnError: false
     });
 
     const logger = app.get(AppLoggerService);
     app.useLogger(logger);
     app.setGlobalPrefix(GLOBAL_PREFIX);
     app.enableCors({
-      origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'],
+      origin: (origin, callback) => {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        try {
+          const parsed = new URL(origin);
+          const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+          const isLocalDevProtocol = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+          callback(null, isLocalhost && isLocalDevProtocol);
+          return;
+        } catch {
+          callback(null, false);
+          return;
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
@@ -55,8 +73,8 @@ async function bootstrap(): Promise<void> {
     logInitializedModules(modules, logger);
     logMappedRoutes(modules, logger);
 
-    await app.listen(port);
-    writeBootstrapLine('LOG', 'NestFactory', 'HTTP 服务已就绪', `Application is running on: http://localhost:${port}`);
+    await app.listen(port, host);
+    writeBootstrapLine('LOG', 'NestFactory', 'HTTP 服务已就绪', `Application is running on: http://${host}:${port}`);
   } catch (error) {
     const stack = error instanceof Error ? (error.stack ?? error.message) : String(error);
     console.error(error);

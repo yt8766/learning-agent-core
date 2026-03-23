@@ -1,19 +1,23 @@
-﻿import { MemoryRepository } from '@agent/memory';
+import { AgentExecutionState, WorkflowPresetDefinition } from '@agent/shared';
+import { MemoryRepository, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 import { SkillRegistry } from '@agent/skills';
-import { ApprovalService, StubSandboxExecutor, ToolRegistry } from '@agent/tools';
-
-import { AgentExecutionState } from '@agent/shared';
+import { ApprovalService, McpClientManager, SandboxExecutor, ToolRegistry } from '@agent/tools';
 
 import { AgentModelRole, LlmProvider } from '../adapters/llm/llm-provider';
 
 export interface AgentRuntimeContext {
   taskId: string;
   goal: string;
+  flow: 'chat' | 'approval' | 'learning';
   memoryRepository: MemoryRepository;
+  ruleRepository?: RuleRepository;
+  runtimeStateRepository?: RuntimeStateRepository;
   skillRegistry: SkillRegistry;
   approvalService: ApprovalService;
   toolRegistry: ToolRegistry;
-  sandbox: StubSandboxExecutor;
+  workflowPreset?: WorkflowPresetDefinition;
+  mcpClientManager?: McpClientManager;
+  sandbox: SandboxExecutor;
   llm: LlmProvider;
   thinking: {
     manager: boolean;
