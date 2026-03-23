@@ -3,6 +3,7 @@
   | 'running'
   | 'waiting_approval'
   | 'waiting_learning_confirmation'
+  | 'cancelled'
   | 'completed'
   | 'failed';
 
@@ -43,6 +44,19 @@ export interface ChatMessageRecord {
   role: 'user' | 'assistant' | 'system';
   content: string;
   linkedAgent?: string;
+  card?:
+    | {
+        type: 'approval_request';
+        intent: string;
+        toolName?: string;
+        reason?: string;
+        riskLevel?: string;
+        requestedBy?: string;
+      }
+    | {
+        type: 'run_cancelled';
+        reason?: string;
+      };
   createdAt: string;
 }
 
@@ -54,9 +68,67 @@ export interface ChatEventRecord {
   payload: Record<string, unknown>;
 }
 
+export interface ChatThoughtChainItem {
+  key: string;
+  title: string;
+  description?: string;
+  content?: string;
+  footer?: string;
+  status?: 'loading' | 'success' | 'error' | 'abort';
+  collapsible?: boolean;
+  blink?: boolean;
+}
+
+export interface ChatThinkState {
+  title: string;
+  content: string;
+  loading?: boolean;
+  blink?: boolean;
+}
+
 export interface ChatCheckpointRecord {
   sessionId: string;
   taskId: string;
+  runId?: string;
+  skillId?: string;
+  skillStage?: string;
+  resolvedWorkflow?: {
+    id: string;
+    displayName: string;
+    command?: string;
+    requiredMinistries: string[];
+    allowedCapabilities: string[];
+    approvalPolicy: string;
+    outputContract: {
+      type: string;
+      requiredSections: string[];
+    };
+  };
+  currentNode?: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  pendingAction?: {
+    toolName: string;
+    intent: string;
+    riskLevel?: string;
+    requestedBy: string;
+  };
+  pendingApproval?: {
+    toolName: string;
+    intent: string;
+    riskLevel?: string;
+    requestedBy: string;
+    reason?: string;
+    feedback?: string;
+  };
+  approvalFeedback?: string;
+  modelRoute?: Array<{
+    ministry: string;
+    workerId: string;
+    defaultModel: string;
+    selectedModel: string;
+    reason: string;
+  }>;
   traceCursor: number;
   messageCursor: number;
   approvalCursor: number;
@@ -69,6 +141,8 @@ export interface ChatCheckpointRecord {
   };
   pendingApprovals: ApprovalRecord[];
   agentStates: AgentStateRecord[];
+  thoughtChain?: ChatThoughtChainItem[];
+  thinkState?: ChatThinkState;
   createdAt: string;
   updatedAt: string;
 }

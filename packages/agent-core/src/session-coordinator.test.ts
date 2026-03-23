@@ -45,8 +45,8 @@ describe('SessionCoordinator', () => {
   const createOrchestrator = () => {
     const listeners = new Set<(task: any) => void>();
     const tokenListeners = new Set<(event: any) => void>();
-
-    return {
+    const tasks = new Map<string, any>();
+    const api = {
       initialize: vi.fn(async () => undefined),
       subscribe: vi.fn((listener: (task: any) => void) => {
         listeners.add(listener);
@@ -99,13 +99,41 @@ describe('SessionCoordinator', () => {
           maxRetries: 1
         };
 
+        tasks.set(task.id, task);
         listeners.forEach(listener => listener(task));
         return task;
       }),
-      getTask: vi.fn(),
+      getTask: vi.fn((taskId: string) => tasks.get(taskId)),
+      ensureLearningCandidates: vi.fn((task: any) => task.learningCandidates ?? []),
+      confirmLearning: vi.fn(async (taskId: string, candidateIds?: string[]) => {
+        const task = api.getTask(taskId) ?? tasks.get(taskId);
+        if (!task) {
+          return undefined;
+        }
+
+        if (task.learningCandidates?.length) {
+          const selected = new Set(candidateIds ?? task.learningCandidates.map((candidate: any) => candidate.id));
+          task.learningCandidates = task.learningCandidates.map((candidate: any) =>
+            selected.has(candidate.id)
+              ? { ...candidate, status: 'confirmed', confirmedAt: '2026-03-22T00:00:00.000Z' }
+              : candidate
+          );
+        }
+
+        return task;
+      }),
       applyApproval: vi.fn()
     };
+
+    return api;
   };
+
+  const createLlmProvider = () => ({
+    isConfigured: vi.fn(() => false),
+    generateText: vi.fn(async () => ''),
+    streamText: vi.fn(async () => ''),
+    generateObject: vi.fn()
+  });
 
   it('创建会话后会写入初始消息、事件和 checkpoint', async () => {
     const runtimeRepository = createRuntimeRepository();
@@ -113,8 +141,7 @@ describe('SessionCoordinator', () => {
     const coordinator = new SessionCoordinator(
       orchestrator as never,
       runtimeRepository as never,
-      { append: vi.fn() } as never,
-      { publishToLab: vi.fn() } as never
+      createLlmProvider() as never
     );
 
     const session = await coordinator.createSession({ title: '测试会话', message: '你好，Agent' });
@@ -173,14 +200,30 @@ describe('SessionCoordinator', () => {
     expect(runtimeRepository.save).toHaveBeenCalled();
   });
 
+  it('创建空会话时只写入 session_started，不自动触发任务', async () => {
+    const runtimeRepository = createRuntimeRepository();
+    const orchestrator = createOrchestrator();
+    const coordinator = new SessionCoordinator(
+      orchestrator as never,
+      runtimeRepository as never,
+      createLlmProvider() as never
+    );
+
+    const session = await coordinator.createSession({ title: '空会话' });
+
+    expect(session.title).toBe('空会话');
+    expect(coordinator.getMessages(session.id)).toEqual([]);
+    expect(coordinator.getEvents(session.id)).toEqual([expect.objectContaining({ type: 'session_started' })]);
+    expect(orchestrator.createTask).not.toHaveBeenCalled();
+  });
+
   it('订阅者可以收到新增事件', async () => {
     const runtimeRepository = createRuntimeRepository();
     const orchestrator = createOrchestrator();
     const coordinator = new SessionCoordinator(
       orchestrator as never,
       runtimeRepository as never,
-      { append: vi.fn() } as never,
-      { publishToLab: vi.fn() } as never
+      createLlmProvider() as never
     );
     const session = await coordinator.createSession({ title: '事件订阅', message: '第一条消息' });
     const listener = vi.fn();
@@ -207,8 +250,7 @@ describe('SessionCoordinator', () => {
     const coordinator = new SessionCoordinator(
       orchestrator as never,
       runtimeRepository as never,
-      { append: vi.fn() } as never,
-      { publishToLab: vi.fn() } as never
+      createLlmProvider() as never
     );
 
     const session = await coordinator.createSession({ title: '自动压缩', message: '第一条消息：请记住我是中文用户。' });
@@ -242,16 +284,11 @@ describe('SessionCoordinator', () => {
   it('学习确认会把选中的候选写入 memory、rule 和 skill lab', async () => {
     const runtimeRepository = createRuntimeRepository();
     const orchestrator = createOrchestrator();
-    const memoryRepository = { append: vi.fn(async () => undefined) };
-    const skillRegistry = { publishToLab: vi.fn(async () => undefined) };
     const coordinator = new SessionCoordinator(
       orchestrator as never,
       runtimeRepository as never,
-      memoryRepository as never,
-      skillRegistry as never
+      createLlmProvider() as never
     );
-    const ruleRepository = { append: vi.fn(async () => undefined) };
-    (coordinator as any).ruleRepository = ruleRepository;
     const session = await coordinator.createSession({ title: '学习确认', message: '请学习本轮经验' });
 
     await flushAsyncWork();
@@ -298,9 +335,7 @@ describe('SessionCoordinator', () => {
     });
 
     expect(result.status).toBe('completed');
-    expect(memoryRepository.append).toHaveBeenCalledWith({ id: 'memory-record' });
-    expect(ruleRepository.append).toHaveBeenCalledWith({ id: 'rule-record' });
-    expect(skillRegistry.publishToLab).toHaveBeenCalledWith({ id: 'skill-record' });
+    expect(orchestrator.confirmLearning).toHaveBeenCalledWith('task-1', ['memory-1', 'rule-1', 'skill-1']);
     expect(coordinator.getEvents(session.id)).toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'learning_confirmed' })])
     );
@@ -313,8 +348,7 @@ describe('SessionCoordinator', () => {
     const coordinator = new SessionCoordinator(
       orchestrator as never,
       runtimeRepository as never,
-      { append: vi.fn() } as never,
-      { publishToLab: vi.fn() } as never
+      createLlmProvider() as never
     );
     const session = await coordinator.createSession({ title: '审批恢复', message: '请执行高风险动作' });
 

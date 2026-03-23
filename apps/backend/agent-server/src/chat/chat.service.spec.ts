@@ -39,10 +39,9 @@ describe('ChatService', () => {
     const runtimeService = createRuntimeService();
     const service = new ChatService(runtimeService as never);
 
-    expect(service.createSession({ title: '测试会话', message: '你好' })).toEqual({
+    expect(service.createSession({ title: '测试会话' })).toEqual({
       id: 'session-1',
-      title: '测试会话',
-      message: '你好'
+      title: '测试会话'
     });
     expect(service.appendMessage('session-1', { content: '继续' })).toEqual({
       sessionId: 'session-1',
@@ -71,7 +70,7 @@ describe('ChatService', () => {
     });
     expect(service.recover('session-1')).toEqual({ sessionId: 'session-1', recovered: true });
 
-    expect(runtimeService.createSession).toHaveBeenCalledWith({ title: '测试会话', message: '你好' });
+    expect(runtimeService.createSession).toHaveBeenCalledWith({ title: '测试会话' });
     expect(runtimeService.appendSessionMessage).toHaveBeenCalledWith('session-1', { content: '继续' });
     expect(runtimeService.approveSessionAction).toHaveBeenCalledWith('session-1', {
       actor: 'tester',

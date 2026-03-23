@@ -105,10 +105,9 @@ describe('RuntimeService', () => {
     service.sessionCoordinator.subscribe.mockReturnValue(unsubscribe);
 
     expect(await service.createTask({ goal: 'demo' })).toEqual({ id: 'task-1', goal: 'demo' });
-    expect(await service.createSession({ title: '测试会话', message: '你好' })).toEqual({
+    expect(await service.createSession({ title: '测试会话' })).toEqual({
       id: 'session-1',
-      title: '测试会话',
-      message: '你好'
+      title: '测试会话'
     });
     expect(await service.appendSessionMessage('session-1', { message: '继续' })).toEqual({
       sessionId: 'session-1',

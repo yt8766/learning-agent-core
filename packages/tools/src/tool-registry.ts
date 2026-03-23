@@ -60,6 +60,36 @@ const DEFAULT_TOOLS: ToolDefinition[] = [
     timeoutMs: 5000,
     sandboxProfile: 'workspace-readonly',
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, researchSummary: { type: 'string' } } }
+  },
+  {
+    name: 'browse_page',
+    description: 'Open and inspect a target page through a browser automation MCP capability.',
+    category: 'action',
+    riskLevel: 'high',
+    requiresApproval: true,
+    timeoutMs: 15000,
+    sandboxProfile: 'browser-automation',
+    inputSchema: { type: 'object', properties: { url: { type: 'string' }, goal: { type: 'string' } } }
+  },
+  {
+    name: 'run_terminal',
+    description: 'Execute a controlled terminal command inside the sandboxed environment.',
+    category: 'action',
+    riskLevel: 'high',
+    requiresApproval: true,
+    timeoutMs: 15000,
+    sandboxProfile: 'workspace-write',
+    inputSchema: { type: 'object', properties: { command: { type: 'string' }, goal: { type: 'string' } } }
+  },
+  {
+    name: 'ship_release',
+    description: 'Prepare or simulate a release workflow through the release MCP capability.',
+    category: 'action',
+    riskLevel: 'critical',
+    requiresApproval: true,
+    timeoutMs: 20000,
+    sandboxProfile: 'release-ops',
+    inputSchema: { type: 'object', properties: { target: { type: 'string' }, goal: { type: 'string' } } }
   }
 ];
 

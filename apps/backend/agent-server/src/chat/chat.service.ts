@@ -1,6 +1,13 @@
 ﻿import { Injectable } from '@nestjs/common';
 
-import { AppendChatMessageDto, CreateChatSessionDto, LearningConfirmationDto, SessionApprovalDto } from '@agent/shared';
+import {
+  AppendChatMessageDto,
+  CreateChatSessionDto,
+  LearningConfirmationDto,
+  SessionApprovalDto,
+  SessionCancelDto,
+  UpdateChatSessionDto
+} from '@agent/shared';
 
 import { RuntimeService } from '../runtime/runtime.service';
 
@@ -14,6 +21,14 @@ export class ChatService {
 
   createSession(dto: CreateChatSessionDto) {
     return this.runtimeService.createSession(dto);
+  }
+
+  deleteSession(sessionId: string) {
+    return this.runtimeService.deleteSession(sessionId);
+  }
+
+  updateSession(sessionId: string, dto: UpdateChatSessionDto) {
+    return this.runtimeService.updateSession(sessionId, dto);
   }
 
   getSession(sessionId: string) {
@@ -50,6 +65,10 @@ export class ChatService {
 
   recover(sessionId: string) {
     return this.runtimeService.recoverSession(sessionId);
+  }
+
+  cancel(sessionId: string, dto: SessionCancelDto) {
+    return this.runtimeService.cancelSession(sessionId, dto);
   }
 
   subscribe(sessionId: string, listener: Parameters<RuntimeService['subscribeSession']>[1]) {
