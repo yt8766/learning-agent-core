@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 const DEFAULT_DATA_PATHS = {
@@ -68,8 +68,16 @@ function resolveRuntimeEnv(env: NodeJS.ProcessEnv, workspaceRoot: string): NodeJ
   };
 }
 
-function resolveFromWorkspaceRoot(pathValue: string, workspaceRoot: string): string {
+/** 在 POSIX 上 path.isAbsolute 不认为 D:/foo 为绝对路径，但配置里常见 Windows 盘符路径，CI（Linux）也需按绝对路径处理 */
+function isAbsolutePathCrossPlatform(pathValue: string): boolean {
   if (isAbsolute(pathValue)) {
+    return true;
+  }
+  return /^[A-Za-z]:[/\\]/.test(pathValue);
+}
+
+function resolveFromWorkspaceRoot(pathValue: string, workspaceRoot: string): string {
+  if (isAbsolutePathCrossPlatform(pathValue)) {
     return pathValue;
   }
 

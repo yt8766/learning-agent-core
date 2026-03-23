@@ -3,6 +3,7 @@
 请优先查看以下文档：
 
 - [README](./README.md)
+- [GitHub Flow 规范](./docs/github-flow.md)
 - [后端规范](./docs/backend-conventions.md)
 - [前端规范](./docs/frontend-conventions.md)
 - [模板示例](./docs/project-templates.md)

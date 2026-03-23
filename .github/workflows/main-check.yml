@@ -60,15 +60,15 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
-      # 第七步：执行 ESLint 检查。
+      # 第七步：执行 ESLint（与 package.json 中 lint:eslint 一致）。
       - name: 运行 ESLint
-        run: pnpm exec eslint --max-warnings=0 --ext .js,.ts,.tsx,.mjs,.cjs .
+        run: pnpm lint:eslint
 
-      # 第八步：执行 Prettier 检查。
-      - name: 运行 Prettier 检查
-        run: pnpm exec prettier --check "**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md,yml,yaml}"
+      # 第八步：执行 Prettier（与 package.json 中 lint:prettier 一致）。
+      - name: 运行 Prettier
+        run: pnpm lint:prettier
 
-      # 第九步：执行完整类型检查。
+      # 第九步：执行完整类型检查（与 package.json 中 lint:tsc 一致）。
       - name: 运行类型检查
         run: pnpm lint:tsc
 

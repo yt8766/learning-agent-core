@@ -106,6 +106,7 @@
 
 - [后端规范](./docs/backend-conventions.md)
 - [前端规范](./docs/frontend-conventions.md)
+- [GitHub Flow 规范](./docs/github-flow.md)
 - [模板示例](./docs/project-templates.md)
 - [测试规范](./docs/test-conventions.md)
 - [agent-core 结构报告](./docs/agent-core-structure-report.md)
