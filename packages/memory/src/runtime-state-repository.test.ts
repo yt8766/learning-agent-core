@@ -1,4 +1,4 @@
-﻿import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -41,7 +41,10 @@ describe('FileRuntimeStateRepository', () => {
       chatSessions: [],
       chatMessages: [],
       chatEvents: [],
-      chatCheckpoints: []
+      chatCheckpoints: [],
+      usageHistory: [],
+      evalHistory: [],
+      usageAudit: []
     });
   });
 
@@ -67,7 +70,10 @@ describe('FileRuntimeStateRepository', () => {
       chatSessions: [],
       chatMessages: [],
       chatEvents: [],
-      chatCheckpoints: []
+      chatCheckpoints: [],
+      usageHistory: [],
+      evalHistory: [],
+      usageAudit: []
     };
 
     await repository.save(snapshot as any);

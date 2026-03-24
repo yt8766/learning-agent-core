@@ -63,7 +63,7 @@ describe('ChatController', () => {
       sessionId: 'session-1'
     });
     controller.appendMessage(request as never, response as never, { sessionId: 'session-1', message: '继续执行' });
-    controller.createSession({ title: '新会话', message: '你好' }, response as never);
+    controller.createSession({ title: '新会话' }, response as never);
     controller.recover(request as never, response as never, { sessionId: 'session-1' });
 
     expect(chatService.approve).toHaveBeenCalledWith('session-1', {

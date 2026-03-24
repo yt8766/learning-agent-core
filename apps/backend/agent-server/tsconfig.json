@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.node.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": "../../..",
+    "baseUrl": "../../../",
     "paths": {
       "@agent/shared": ["packages/shared/src"],
       "@agent/config": ["packages/config/src"],

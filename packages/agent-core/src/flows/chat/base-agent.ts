@@ -55,7 +55,13 @@ export abstract class BaseAgent {
       return await this.context.llm.generateObject(messages, schema, {
         role: options.role,
         thinking: options.thinking,
-        temperature: 0.1
+        temperature: 0.1,
+        onUsage: usage => {
+          this.context.onUsage?.({
+            usage,
+            role: options.role
+          });
+        }
       });
     } catch (error) {
       this.remember(`LLM object generation fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -75,7 +81,13 @@ export abstract class BaseAgent {
       return await this.context.llm.generateText(messages, {
         role: options.role,
         thinking: options.thinking,
-        temperature: 0.2
+        temperature: 0.2,
+        onUsage: usage => {
+          this.context.onUsage?.({
+            usage,
+            role: options.role
+          });
+        }
       });
     } catch (error) {
       this.remember(`LLM text generation fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -97,7 +109,13 @@ export abstract class BaseAgent {
         {
           role: options.role,
           thinking: options.thinking,
-          temperature: 0.2
+          temperature: 0.2,
+          onUsage: usage => {
+            this.context.onUsage?.({
+              usage,
+              role: options.role
+            });
+          }
         },
         (token, metadata) => {
           this.context.onToken?.({

@@ -40,14 +40,48 @@ export class SkillRegistry {
     return target;
   }
 
-  async disable(id: string): Promise<SkillCard> {
+  async disable(id: string, reason?: string): Promise<SkillCard> {
     const skills = await this.readRegistry();
     const target = skills.find(skill => skill.id === id);
     if (!target) {
       throw new Error(`Skill ${id} not found`);
     }
 
+    target.previousStatus = target.status;
     target.status = 'disabled';
+    target.disabledReason = reason;
+    target.updatedAt = new Date().toISOString();
+    await this.persist(target);
+    return target;
+  }
+
+  async restore(id: string): Promise<SkillCard> {
+    const skills = await this.readRegistry();
+    const target = skills.find(skill => skill.id === id);
+    if (!target) {
+      throw new Error(`Skill ${id} not found`);
+    }
+
+    target.status = target.previousStatus ?? 'lab';
+    target.previousStatus = undefined;
+    target.disabledReason = undefined;
+    target.restoredAt = new Date().toISOString();
+    target.updatedAt = new Date().toISOString();
+    await this.persist(target);
+    return target;
+  }
+
+  async retire(id: string, reason?: string): Promise<SkillCard> {
+    const skills = await this.readRegistry();
+    const target = skills.find(skill => skill.id === id);
+    if (!target) {
+      throw new Error(`Skill ${id} not found`);
+    }
+
+    target.previousStatus = target.status;
+    target.status = 'disabled';
+    target.disabledReason = reason ?? 'retired_from_admin';
+    target.retiredAt = new Date().toISOString();
     target.updatedAt = new Date().toISOString();
     await this.persist(target);
     return target;

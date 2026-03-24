@@ -9,6 +9,7 @@ export enum TaskStatus {
   RUNNING = 'running',
   WAITING_APPROVAL = 'waiting_approval',
   BLOCKED = 'blocked',
+  CANCELLED = 'cancelled',
   COMPLETED = 'completed',
   FAILED = 'failed'
 }
@@ -38,19 +39,29 @@ export enum AgentRole {
 }
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type LearningSourceType = 'execution' | 'document';
+export type LearningSourceType = 'execution' | 'document' | 'research';
 export type ReviewDecision = 'approved' | 'retry' | 'blocked';
+export type TrustClass = 'official' | 'curated' | 'community' | 'unverified' | 'internal';
 export type ChatRole = 'user' | 'assistant' | 'system';
 export type ChatSessionStatus =
   | 'idle'
   | 'running'
   | 'waiting_approval'
   | 'waiting_learning_confirmation'
+  | 'cancelled'
   | 'completed'
   | 'failed';
 export type ChatEventType =
+  | 'decree_received'
   | 'session_started'
   | 'user_message'
+  | 'supervisor_planned'
+  | 'libu_routed'
+  | 'ministry_started'
+  | 'ministry_reported'
+  | 'skill_resolved'
+  | 'skill_stage_started'
+  | 'skill_stage_completed'
   | 'manager_planned'
   | 'subtask_dispatched'
   | 'research_progress'
@@ -58,15 +69,83 @@ export type ChatEventType =
   | 'tool_called'
   | 'approval_required'
   | 'approval_resolved'
+  | 'approval_rejected_with_feedback'
   | 'review_completed'
   | 'learning_pending_confirmation'
   | 'learning_confirmed'
   | 'conversation_compacted'
   | 'assistant_token'
   | 'assistant_message'
+  | 'run_resumed'
+  | 'run_cancelled'
+  | 'budget_exhausted'
+  | 'final_response_delta'
+  | 'final_response_completed'
   | 'session_finished'
   | 'session_failed';
 export type LearningCandidateType = 'memory' | 'rule' | 'skill';
+export type MinistryId = 'libu-router' | 'hubu-search' | 'libu-docs' | 'bingbu-ops' | 'xingbu-review' | 'gongbu-code';
+export type WorkflowApprovalPolicy = 'none' | 'high-risk-only' | 'all-actions';
+export type ModelRole = 'supervisor' | 'libu' | 'hubu' | 'libu-docs' | 'bingbu' | 'xingbu' | 'gongbu';
+export type WorkerDomain = MinistryId;
+export type SourcePolicyMode = 'internal-only' | 'controlled-first' | 'open-web-allowed';
+
+export interface WorkerDefinition {
+  id: string;
+  ministry: WorkerDomain;
+  displayName: string;
+  defaultModel: string;
+  supportedCapabilities: string[];
+  reviewPolicy: 'none' | 'self-check' | 'mandatory-xingbu';
+}
+
+export interface ModelRouteDecision {
+  ministry: WorkerDomain;
+  workerId: string;
+  defaultModel: string;
+  selectedModel: string;
+  reason: string;
+}
+
+export interface PendingActionRecord {
+  toolName: string;
+  intent: ActionIntent;
+  riskLevel?: RiskLevel;
+  requestedBy: WorkerDomain;
+}
+
+export interface PendingApprovalRecord extends PendingActionRecord {
+  reason?: string;
+  feedback?: string;
+}
+
+export interface WorkflowPresetDefinition {
+  id: string;
+  displayName: string;
+  command?: string;
+  intentPatterns: string[];
+  requiredMinistries: MinistryId[];
+  allowedCapabilities: string[];
+  approvalPolicy: WorkflowApprovalPolicy;
+  webLearningPolicy?: {
+    enabled: boolean;
+    preferredSourceTypes: string[];
+    acceptedTrustClasses: TrustClass[];
+  };
+  sourcePolicy?: {
+    mode: SourcePolicyMode;
+    preferredUrls?: string[];
+  };
+  autoPersistPolicy?: {
+    memory: 'manual' | 'high-confidence';
+    rule: 'manual' | 'suggest';
+    skill: 'manual' | 'suggest';
+  };
+  outputContract: {
+    type: string;
+    requiredSections: string[];
+  };
+}
 
 export interface CreateTaskDto {
   goal: string;
@@ -76,8 +155,12 @@ export interface CreateTaskDto {
 }
 
 export interface CreateChatSessionDto {
-  message: string;
+  message?: string;
   title?: string;
+}
+
+export interface UpdateChatSessionDto {
+  title: string;
 }
 
 export interface AppendChatMessageDto {
@@ -89,19 +172,68 @@ export interface SearchMemoryDto {
   limit?: number;
 }
 
+export interface InvalidateKnowledgeDto {
+  reason: string;
+}
+
+export interface SupersedeKnowledgeDto {
+  replacementId: string;
+  reason: string;
+}
+
+export interface RetireKnowledgeDto {
+  reason: string;
+}
+
+export interface LlmUsageModelRecord {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUsd?: number;
+  costCny?: number;
+  pricingSource?: 'provider' | 'estimated';
+  callCount: number;
+}
+
+export interface LlmUsageRecord {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimated: boolean;
+  measuredCallCount: number;
+  estimatedCallCount: number;
+  models: LlmUsageModelRecord[];
+  updatedAt: string;
+}
+
 export interface CreateDocumentLearningJobDto {
   documentUri: string;
   title?: string;
+}
+
+export interface CreateResearchLearningJobDto {
+  goal: string;
+  title?: string;
+  workflowId?: string;
+  preferredUrls?: string[];
 }
 
 export interface ApprovalActionDto {
   intent: ActionIntent;
   reason?: string;
   actor?: string;
+  feedback?: string;
 }
 
 export interface SessionApprovalDto extends ApprovalActionDto {
   sessionId: string;
+}
+
+export interface SessionCancelDto {
+  sessionId: string;
+  actor?: string;
+  reason?: string;
 }
 
 export interface LearningConfirmationDto {
@@ -163,6 +295,14 @@ export interface MemoryRecord {
   tags: string[];
   embeddingRef?: string;
   qualityScore?: number;
+  status?: 'active' | 'invalidated' | 'superseded' | 'retired';
+  invalidatedAt?: string;
+  invalidationReason?: string;
+  conflictWithIds?: string[];
+  supersededAt?: string;
+  supersededById?: string;
+  retiredAt?: string;
+  restoredAt?: string;
   createdAt: string;
 }
 
@@ -173,6 +313,13 @@ export interface RuleRecord {
   conditions: string[];
   action: string;
   sourceTaskId?: string;
+  status?: 'active' | 'invalidated' | 'superseded' | 'retired';
+  invalidatedAt?: string;
+  invalidationReason?: string;
+  supersededAt?: string;
+  supersededById?: string;
+  retiredAt?: string;
+  restoredAt?: string;
   createdAt: string;
 }
 
@@ -194,6 +341,10 @@ export interface SkillCard {
   riskLevel: RiskLevel;
   source: LearningSourceType;
   status: SkillStatus;
+  previousStatus?: SkillStatus;
+  disabledReason?: string;
+  retiredAt?: string;
+  restoredAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -237,6 +388,43 @@ export interface EvaluationResult {
   notes: string[];
 }
 
+export interface BudgetState {
+  stepBudget: number;
+  stepsConsumed: number;
+  retryBudget: number;
+  retriesConsumed: number;
+  sourceBudget: number;
+  sourcesConsumed: number;
+}
+
+export interface EvidenceRecord {
+  id: string;
+  taskId: string;
+  sourceType: string;
+  sourceUrl?: string;
+  trustClass: TrustClass;
+  summary: string;
+  detail?: Record<string, unknown>;
+  linkedRunId?: string;
+  createdAt: string;
+}
+
+export interface LearningEvaluationRecord {
+  score: number;
+  confidence: 'low' | 'medium' | 'high';
+  notes: string[];
+  governanceWarnings?: string[];
+  recommendedCandidateIds: string[];
+  autoConfirmCandidateIds: string[];
+  sourceSummary: {
+    externalSourceCount: number;
+    internalSourceCount: number;
+    reusedMemoryCount: number;
+    reusedRuleCount: number;
+    reusedSkillCount: number;
+  };
+}
+
 export interface ReflectionResult {
   failureReason?: string;
   rootCause?: string;
@@ -251,7 +439,16 @@ export interface LearningJob {
   sourceType: LearningSourceType;
   status: 'queued' | 'running' | 'completed' | 'failed';
   documentUri: string;
+  goal?: string;
+  workflowId?: string;
   summary?: string;
+  sources?: EvidenceRecord[];
+  trustSummary?: Partial<Record<TrustClass, number>>;
+  learningEvaluation?: LearningEvaluationRecord;
+  autoPersistEligible?: boolean;
+  persistedMemoryIds?: string[];
+  conflictDetected?: boolean;
+  conflictNotes?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -347,6 +544,9 @@ export interface LearningCandidateRecord {
   summary: string;
   status: 'pending_confirmation' | 'confirmed';
   payload: MemoryRecord | RuleRecord | SkillCard;
+  confidenceScore?: number;
+  provenance?: EvidenceRecord[];
+  autoConfirmEligible?: boolean;
   createdAt: string;
   confirmedAt?: string;
 }
@@ -356,6 +556,17 @@ export interface TaskRecord {
   goal: string;
   status: TaskStatus;
   sessionId?: string;
+  runId?: string;
+  skillId?: string;
+  skillStage?: string;
+  resolvedWorkflow?: WorkflowPresetDefinition;
+  currentNode?: string;
+  currentMinistry?: WorkerDomain;
+  currentWorker?: string;
+  pendingAction?: PendingActionRecord;
+  pendingApproval?: PendingApprovalRecord;
+  approvalFeedback?: string;
+  modelRoute?: ModelRouteDecision[];
   currentStep?: string;
   retryCount?: number;
   maxRetries?: number;
@@ -367,6 +578,13 @@ export interface TaskRecord {
   messages: AgentMessage[];
   review?: ReviewRecord;
   learningCandidates?: LearningCandidateRecord[];
+  externalSources?: EvidenceRecord[];
+  reusedMemories?: string[];
+  reusedRules?: string[];
+  reusedSkills?: string[];
+  learningEvaluation?: LearningEvaluationRecord;
+  budgetState?: BudgetState;
+  llmUsage?: LlmUsageRecord;
   createdAt: string;
   updatedAt: string;
 }
@@ -401,6 +619,19 @@ export interface ChatMessageRecord {
   role: ChatRole;
   content: string;
   linkedAgent?: AgentRole;
+  card?:
+    | {
+        type: 'approval_request';
+        intent: string;
+        toolName?: string;
+        reason?: string;
+        riskLevel?: RiskLevel;
+        requestedBy?: string;
+      }
+    | {
+        type: 'run_cancelled';
+        reason?: string;
+      };
   createdAt: string;
 }
 
@@ -412,9 +643,45 @@ export interface ChatEventRecord {
   payload: Record<string, unknown>;
 }
 
+export interface ChatThoughtChainItem {
+  key: string;
+  title: string;
+  description?: string;
+  content?: string;
+  footer?: string;
+  status?: 'loading' | 'success' | 'error' | 'abort';
+  collapsible?: boolean;
+  blink?: boolean;
+}
+
+export interface ChatThinkState {
+  title: string;
+  content: string;
+  loading?: boolean;
+  blink?: boolean;
+}
+
 export interface ChatCheckpointRecord {
   sessionId: string;
   taskId: string;
+  runId?: string;
+  skillId?: string;
+  skillStage?: string;
+  resolvedWorkflow?: WorkflowPresetDefinition;
+  currentNode?: string;
+  currentMinistry?: WorkerDomain;
+  currentWorker?: string;
+  pendingAction?: PendingActionRecord;
+  pendingApproval?: PendingApprovalRecord;
+  approvalFeedback?: string;
+  modelRoute?: ModelRouteDecision[];
+  externalSources?: EvidenceRecord[];
+  reusedMemories?: string[];
+  reusedRules?: string[];
+  reusedSkills?: string[];
+  learningEvaluation?: LearningEvaluationRecord;
+  budgetState?: BudgetState;
+  llmUsage?: LlmUsageRecord;
   traceCursor: number;
   messageCursor: number;
   approvalCursor: number;
@@ -427,6 +694,8 @@ export interface ChatCheckpointRecord {
   };
   pendingApprovals: ApprovalRecord[];
   agentStates: AgentExecutionState[];
+  thoughtChain?: ChatThoughtChainItem[];
+  thinkState?: ChatThinkState;
   createdAt: string;
   updatedAt: string;
 }

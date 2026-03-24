@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "server",
   "version": "0.0.1",
   "description": "",
@@ -6,10 +6,12 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
-    "build:server": "nest build",
+    "build": "tsc -p tsconfig.build.json",
+    "build:server": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "prestart": "pnpm --dir ../../.. build:lib",
     "start": "nest start",
+    "prestart:dev": "pnpm --dir ../../.. build:lib",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
@@ -22,6 +24,8 @@
   },
   "dependencies": {
     "@agent/agent-core": "workspace:*",
+    "@agent/config": "workspace:*",
+    "@agent/evals": "workspace:*",
     "@agent/memory": "workspace:*",
     "@agent/shared": "workspace:*",
     "@agent/skills": "workspace:*",

@@ -84,6 +84,54 @@ function resolveFromWorkspaceRoot(pathValue: string, workspaceRoot: string): str
   return resolve(workspaceRoot, pathValue);
 }
 
+function buildProviderAuditAdapters(runtimeEnv: NodeJS.ProcessEnv) {
+  const adapters: Array<{
+    provider: string;
+    endpoint: string;
+    apiKey: string;
+    source: string;
+  }> = [];
+
+  const pushAdapter = (provider: string, endpoint: string | undefined, apiKey: string | undefined, source: string) => {
+    if (!endpoint) {
+      return;
+    }
+    adapters.push({
+      provider,
+      endpoint,
+      apiKey: apiKey ?? '',
+      source
+    });
+  };
+
+  pushAdapter(
+    'zhipu',
+    runtimeEnv.ZHIPU_USAGE_AUDIT_HTTP_ENDPOINT,
+    runtimeEnv.ZHIPU_USAGE_AUDIT_HTTP_API_KEY ?? runtimeEnv.ZHIPU_API_KEY,
+    'zhipu-http'
+  );
+  pushAdapter(
+    'openai',
+    runtimeEnv.OPENAI_USAGE_AUDIT_HTTP_ENDPOINT,
+    runtimeEnv.OPENAI_USAGE_AUDIT_HTTP_API_KEY ?? runtimeEnv.OPENAI_API_KEY,
+    'openai-http'
+  );
+  pushAdapter(
+    'anthropic',
+    runtimeEnv.ANTHROPIC_USAGE_AUDIT_HTTP_ENDPOINT,
+    runtimeEnv.ANTHROPIC_USAGE_AUDIT_HTTP_API_KEY ?? runtimeEnv.ANTHROPIC_API_KEY,
+    'anthropic-http'
+  );
+  pushAdapter(
+    runtimeEnv.CUSTOM_PROVIDER_AUDIT_NAME ?? 'custom',
+    runtimeEnv.CUSTOM_PROVIDER_AUDIT_HTTP_ENDPOINT,
+    runtimeEnv.CUSTOM_PROVIDER_AUDIT_HTTP_API_KEY,
+    'custom-http'
+  );
+
+  return adapters;
+}
+
 export interface RuntimeSettings {
   workspaceRoot: string;
   memoryFilePath: string;
@@ -107,6 +155,26 @@ export interface RuntimeSettings {
     research: boolean;
     executor: boolean;
     reviewer: boolean;
+  };
+  mcp: {
+    bigmodelApiKey: string;
+    webSearchEndpoint: string;
+    webReaderEndpoint: string;
+    zreadEndpoint: string;
+    researchHttpEndpoint: string;
+    researchHttpApiKey: string;
+    visionMode: 'ZHIPU' | 'ZAI';
+    stdioSessionIdleTtlMs: number;
+    stdioSessionMaxCount: number;
+  };
+  providerAudit: {
+    primaryProvider: string;
+    adapters: Array<{
+      provider: string;
+      endpoint: string;
+      apiKey: string;
+      source: string;
+    }>;
   };
 }
 
@@ -152,6 +220,23 @@ export function loadSettings(env: NodeJS.ProcessEnv = process.env): RuntimeSetti
       research: runtimeEnv.ZHIPU_RESEARCH_THINKING === 'true',
       executor: runtimeEnv.ZHIPU_EXECUTOR_THINKING === 'true',
       reviewer: runtimeEnv.ZHIPU_REVIEWER_THINKING === 'false' ? false : true
+    },
+    mcp: {
+      bigmodelApiKey: runtimeEnv.MCP_BIGMODEL_API_KEY ?? runtimeEnv.ZHIPU_API_KEY ?? '',
+      webSearchEndpoint:
+        runtimeEnv.MCP_BIGMODEL_WEB_SEARCH_ENDPOINT ?? 'https://open.bigmodel.cn/api/mcp/web_search_prime/mcp',
+      webReaderEndpoint:
+        runtimeEnv.MCP_BIGMODEL_WEB_READER_ENDPOINT ?? 'https://open.bigmodel.cn/api/mcp/web_reader/mcp',
+      zreadEndpoint: runtimeEnv.MCP_BIGMODEL_ZREAD_ENDPOINT ?? 'https://open.bigmodel.cn/api/mcp/zread/mcp',
+      researchHttpEndpoint: runtimeEnv.MCP_RESEARCH_HTTP_ENDPOINT ?? '',
+      researchHttpApiKey: runtimeEnv.MCP_RESEARCH_HTTP_API_KEY ?? '',
+      visionMode: runtimeEnv.MCP_BIGMODEL_VISION_MODE === 'ZAI' ? 'ZAI' : 'ZHIPU',
+      stdioSessionIdleTtlMs: Number(runtimeEnv.MCP_STDIO_SESSION_IDLE_TTL_MS ?? 300000),
+      stdioSessionMaxCount: Number(runtimeEnv.MCP_STDIO_SESSION_MAX_COUNT ?? 4)
+    },
+    providerAudit: {
+      primaryProvider: runtimeEnv.PROVIDER_AUDIT_PRIMARY ?? 'zhipu',
+      adapters: buildProviderAuditAdapters(runtimeEnv)
     }
   };
 }

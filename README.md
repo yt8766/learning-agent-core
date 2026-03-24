@@ -14,12 +14,13 @@
 - `apps/worker`：异步执行、恢复与学习任务 worker
 - `apps/frontend/agent-chat`：聊天入口前端
 - `apps/frontend/agent-admin`：观测与运维控制台
+- `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
 - `packages/agent-core`：Agent 运行时核心，内部拆为 `models / agents / session / graph / runtime / types`
 - `packages/shared`：共享 DTO、领域类型、事件模型
 - `packages/config`：运行时配置与路径解析
 - `packages/memory`：memory、rules、runtime state 本地存储
 - `packages/tools`：工具注册、审批规则、执行器
-- `packages/skills`：技能实验区与稳定区
+- `packages/skills`：运行时技能注册与技能卡领域包
 - `packages/evals`：评估与复盘
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
 - `docs/*`：项目规范与模板文档
@@ -104,14 +105,32 @@
 
 ## 规范入口
 
+- [给 Codex / Agents 的规范](./AGENTS.md)
 - [后端规范](./docs/backend-conventions.md)
 - [前端规范](./docs/frontend-conventions.md)
 - [GitHub Flow 规范](./docs/github-flow.md)
 - [模板示例](./docs/project-templates.md)
 - [测试规范](./docs/test-conventions.md)
 - [agent-core 结构报告](./docs/agent-core-structure-report.md)
+- [架构总览](./docs/ARCHITECTURE.md)
 - [前后端对接文档](./docs/frontend-backend-integration.md)
 - [规范总览](./PROJECT_CONVENTIONS.md)
+
+## For Codex / Agents
+
+如果你是进入本仓库工作的代码代理，请先阅读：
+
+1. [AGENTS.md](./AGENTS.md)
+2. [架构总览](./docs/ARCHITECTURE.md)
+3. [前后端对接文档](./docs/frontend-backend-integration.md)
+
+最重要的当前约束：
+
+- `agent-chat` 采用 OpenClaw 模态，作为前线作战面
+- `agent-admin` 做平台控制台，作为后台指挥面
+- 审批、Evidence、Learning、Think、ThoughtChain 不要从消息主链移出去
+- 共享包改动后，优先执行 `pnpm build:lib`
+- 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skills` 混用
 
 ## 工程原则
 

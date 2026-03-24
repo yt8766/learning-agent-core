@@ -1,304 +1,34 @@
-﻿import { useMemo, useState } from 'react';
+import { AlertCircle, BrainCircuit, Cable, ClipboardCheck, Database, Radar } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 
 import { AdminNavigation } from '../../components/admin-navigation';
+import { ArchiveCenterPanel } from '../../features/archive-center/archive-center-panel';
 import { ApprovalsPanel } from '../../features/approvals-center/approvals-panel';
-import { RulesPanel } from '../../features/rules-browser/rules-panel';
+import { ConnectorsCenterPanel } from '../../features/connectors-center/connectors-center-panel';
+import { EvidenceCenterPanel } from '../../features/evidence-center/evidence-center-panel';
+import { EvalsCenterPanel } from '../../features/evals-center/evals-center-panel';
+import { LearningCenterPanel } from '../../features/learning-center/learning-center-panel';
+import { RuntimeOverviewPanel } from '../../features/runtime-overview/runtime-overview-panel';
 import { SkillLabPanel } from '../../features/skill-lab/skill-lab-panel';
-import { TaskDetailPanel } from '../../features/task-traces/task-detail-panel';
 import { PAGE_TITLES, useAdminDashboard } from '../../hooks/use-admin-dashboard';
 
-const RANGE_OPTIONS = ['Last 3 months', 'Last 30 days', 'Last 7 days'] as const;
-const TAB_OPTIONS = ['Overview', 'Past Performance', 'Key Personnel', 'Focus Documents'] as const;
-const SORT_OPTIONS = ['最近更新', '状态优先', '重试次数'] as const;
-
-function statusBadgeVariant(status: string) {
-  switch (status) {
-    case 'completed':
-      return 'success' as const;
-    case 'failed':
-      return 'destructive' as const;
-    case 'waiting_approval':
-      return 'warning' as const;
-    case 'running':
-      return 'default' as const;
-    default:
-      return 'secondary' as const;
-  }
-}
-
-function buildSeries(seed: number, count: number, scale: number) {
-  return Array.from({ length: count }, (_, index) => {
-    const wave = Math.sin((index + seed) * 0.65) * 0.28 + Math.cos((index + seed * 2) * 0.21) * 0.18;
-    const pulse = (Math.sin((index + seed) * 1.6) + 1) * 0.16;
-    return Math.max(0.08, Math.min(0.95, 0.28 + wave + pulse + scale));
-  });
-}
-
-function toLinePath(values: number[], width: number, height: number) {
-  if (values.length === 0) {
-    return '';
-  }
-
-  const step = width / (values.length - 1);
-  return values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - value * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
-}
-
-function toAreaPath(values: number[], width: number, height: number) {
-  if (values.length === 0) {
-    return '';
-  }
-
-  const step = width / (values.length - 1);
-  const top = values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - value * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
-
-  return `${top} L ${width} ${height} L 0 ${height} Z`;
-}
-
-function MetricCard({ label, value, detail }: { label: string; value: string | number; detail: string }) {
+function HeaderCard(props: { title: string; description: string; badges: string[] }) {
   return (
-    <Card className="min-h-[170px] rounded-[30px] border border-stone-100 bg-stone-50/70 shadow-none">
-      <CardContent className="flex h-full flex-col justify-between p-8">
+    <Card className="rounded-[32px] border-stone-200 bg-white shadow-sm">
+      <CardContent className="flex flex-col gap-4 p-8">
         <div>
-          <p className="text-sm font-medium text-stone-500">{label}</p>
-          <p className="mt-4 text-4xl font-semibold tracking-tight text-stone-950">{value}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-400">Agent Admin</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">{props.title}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-500">{props.description}</p>
         </div>
-        <p className="text-sm leading-6 text-stone-400">{detail}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActivityPanel({
-  taskCount,
-  traceCount,
-  pendingCount,
-  messageCount,
-  activeRange,
-  onRangeChange,
-  activeTab,
-  onTabChange,
-  searchValue,
-  onSearchChange,
-  sortBy,
-  onSortChange,
-  rows,
-  onOpenTask
-}: {
-  taskCount: number;
-  traceCount: number;
-  pendingCount: number;
-  messageCount: number;
-  activeRange: (typeof RANGE_OPTIONS)[number];
-  onRangeChange: (value: (typeof RANGE_OPTIONS)[number]) => void;
-  activeTab: (typeof TAB_OPTIONS)[number];
-  onTabChange: (value: (typeof TAB_OPTIONS)[number]) => void;
-  searchValue: string;
-  onSearchChange: (value: string) => void;
-  sortBy: (typeof SORT_OPTIONS)[number];
-  onSortChange: (value: (typeof SORT_OPTIONS)[number]) => void;
-  rows: Array<{
-    id: string;
-    title: string;
-    type: string;
-    status: string;
-    owner: string;
-    limit: number;
-    target: number;
-  }>;
-  onOpenTask: (taskId: string) => void;
-}) {
-  const width = 1160;
-  const height = 220;
-  const primary = buildSeries(
-    taskCount + messageCount + 3,
-    42,
-    Math.min(0.18, taskCount * 0.012 + messageCount * 0.003)
-  );
-  const secondary = buildSeries(
-    traceCount + pendingCount + 7,
-    42,
-    Math.min(0.12, pendingCount * 0.02 + traceCount * 0.01)
-  );
-
-  return (
-    <Card className="rounded-[30px] border border-stone-100 bg-white shadow-none">
-      <CardContent className="p-6 md:p-8">
-        <div className="rounded-[28px] border border-stone-100 bg-stone-50/60 p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-3xl font-semibold tracking-tight text-stone-950">Overview</h2>
-              <p className="mt-2 text-sm text-stone-500">
-                Agent tasks, approvals, traces and skill activity in one place.
-              </p>
-            </div>
-            <div className="inline-flex rounded-2xl border border-stone-200 bg-white p-1 shadow-sm">
-              {RANGE_OPTIONS.map(label => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => onRangeChange(label)}
-                  className={[
-                    'rounded-[14px] px-5 py-2.5 text-sm font-medium transition',
-                    activeRange === label ? 'bg-stone-100 text-stone-950' : 'text-stone-500 hover:text-stone-900'
-                  ].join(' ')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8 overflow-hidden rounded-[24px] bg-white px-4 pb-2 pt-6">
-            <svg viewBox={`0 0 ${width} ${height}`} className="h-[200px] w-full">
-              <defs>
-                <linearGradient id="admin-overview-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a8a29e" stopOpacity="0.45" />
-                  <stop offset="100%" stopColor="#a8a29e" stopOpacity="0.06" />
-                </linearGradient>
-              </defs>
-              {[0.2, 0.45, 0.7].map(ratio => (
-                <line
-                  key={ratio}
-                  x1="0"
-                  x2={width}
-                  y1={height - ratio * height}
-                  y2={height - ratio * height}
-                  stroke="#ece7e1"
-                  strokeWidth="1"
-                />
-              ))}
-              <path d={toAreaPath(primary, width, height)} fill="url(#admin-overview-fill)" />
-              <path
-                d={toLinePath(primary, width, height)}
-                fill="none"
-                stroke="#57534e"
-                strokeWidth="2.1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d={toLinePath(secondary, width, height)}
-                fill="none"
-                stroke="#78716c"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="inline-flex w-fit rounded-2xl border border-stone-200 bg-stone-50 p-1">
-            {TAB_OPTIONS.map(tab => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => onTabChange(tab)}
-                className={[
-                  'rounded-xl px-4 py-2.5 text-sm font-medium transition',
-                  activeTab === tab ? 'bg-white text-stone-950 shadow-sm' : 'text-stone-500 hover:text-stone-900'
-                ].join(' ')}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Input
-              value={searchValue}
-              onChange={event => onSearchChange(event.target.value)}
-              placeholder="Search tasks or owners"
-              className="min-w-[240px] bg-white"
-            />
-            <div className="inline-flex rounded-2xl border border-stone-200 bg-stone-50 p-1">
-              {SORT_OPTIONS.map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => onSortChange(option)}
-                  className={[
-                    'rounded-xl px-3 py-2 text-sm transition',
-                    sortBy === option ? 'bg-white text-stone-950 shadow-sm' : 'text-stone-500'
-                  ].join(' ')}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 overflow-hidden rounded-[24px] border border-stone-200 bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-stone-50 text-stone-500">
-              <tr>
-                <th className="px-6 py-4 font-medium">Header</th>
-                <th className="px-6 py-4 font-medium">Section Type</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Target</th>
-                <th className="px-6 py-4 font-medium">Limit</th>
-                <th className="px-6 py-4 font-medium">Reviewer</th>
-                <th className="px-6 py-4 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr key={row.id} className="border-t border-stone-200/80 hover:bg-stone-50/60">
-                  <td className="px-6 py-5">
-                    <div className="flex items-start gap-3">
-                      <span className="mt-1 text-stone-300">⋮</span>
-                      <div>
-                        <p className="font-medium text-stone-950">{row.title}</p>
-                        <p className="mt-1 text-xs text-stone-400">{row.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-600">
-                      {row.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <Badge variant={statusBadgeVariant(row.status)}>{row.status}</Badge>
-                  </td>
-                  <td className="px-6 py-5 text-lg font-semibold text-stone-900">{row.target}</td>
-                  <td className="px-6 py-5 text-lg font-semibold text-stone-900">{row.limit}</td>
-                  <td className="px-6 py-5 text-stone-700">{row.owner}</td>
-                  <td className="px-6 py-5">
-                    <Button variant="ghost" className="rounded-2xl text-stone-700" onClick={() => onOpenTask(row.id)}>
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 ? (
-                <tr>
-                  <td className="px-6 py-10 text-center text-stone-500" colSpan={7}>
-                    No tasks match the current filter.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap gap-2">
+          {props.badges.map(badge => (
+            <span key={badge}>
+              <Badge variant="secondary">{badge}</Badge>
+            </span>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -307,160 +37,204 @@ function ActivityPanel({
 
 export function DashboardPage() {
   const dashboard = useAdminDashboard();
-  const [activeTab, setActiveTab] = useState<(typeof TAB_OPTIONS)[number]>('Overview');
-  const [activeRange, setActiveRange] = useState<(typeof RANGE_OPTIONS)[number]>('Last 3 months');
-  const [searchValue, setSearchValue] = useState('');
-  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]>('最近更新');
 
-  const summaryCards = [
-    {
-      label: 'Active Tasks',
-      value: dashboard.tasks.length,
-      detail: dashboard.bundle?.task.currentStep ?? 'Graph is waiting for the next transition.'
+  const consoleData = dashboard.consoleData;
+
+  const headerConfig = {
+    runtime: {
+      icon: <Radar className="h-4 w-4" />,
+      description: '观察运行态、队列深度、活跃尚书与当前任务的执行轨迹。',
+      badges: [
+        `活跃任务 ${consoleData?.runtime.activeTaskCount ?? 0}`,
+        `待审批 ${dashboard.pendingApprovals.length}`,
+        `活跃尚书 ${consoleData?.runtime.activeMinistries.length ?? 0}`
+      ]
     },
-    {
-      label: 'Pending Approvals',
-      value: dashboard.pendingApprovals.length,
-      detail: dashboard.pendingApprovals[0]?.intent ?? 'No approval bottleneck right now.'
+    approvals: {
+      icon: <ClipboardCheck className="h-4 w-4" />,
+      description: '集中处理高风险动作、审批阻塞与人工反馈。',
+      badges: [`待审批 ${dashboard.pendingApprovals.length}`, `轮询 ${dashboard.polling ? '开启' : '关闭'}`]
     },
-    {
-      label: 'Skill Drafts',
-      value: dashboard.skills.length,
-      detail: dashboard.skills[0]?.name ?? 'Skill lab is ready for the next extraction.'
+    learning: {
+      icon: <BrainCircuit className="h-4 w-4" />,
+      description: '查看本轮学到了什么、哪些候选待确认、哪些已进入长期沉淀。',
+      badges: [
+        `总候选 ${consoleData?.learning.totalCandidates ?? 0}`,
+        `待确认 ${consoleData?.learning.pendingCandidates ?? 0}`
+      ]
+    },
+    evals: {
+      icon: <Radar className="h-4 w-4" />,
+      description: '持续 benchmark、关键链路通过率与回归健康基线。',
+      badges: [`场景 ${consoleData?.evals.scenarioCount ?? 0}`, `通过率 ${consoleData?.evals.overallPassRate ?? 0}%`]
+    },
+    archives: {
+      icon: <Database className="h-4 w-4" />,
+      description: '查看长期归档的 runtime/evals 历史，并执行数据导出。',
+      badges: [
+        `runtime ${consoleData?.runtime.usageAnalytics.historyDays ?? 0}d`,
+        `evals ${consoleData?.evals.historyDays ?? 0}d`
+      ]
+    },
+    skills: {
+      icon: <Database className="h-4 w-4" />,
+      description: '管理 Skill Lab 中的技能版本、成功率、晋升与禁用。',
+      badges: [`技能 ${consoleData?.skills.length ?? 0}`, `规则 ${consoleData?.rules.length ?? 0}`]
+    },
+    evidence: {
+      icon: <AlertCircle className="h-4 w-4" />,
+      description: '查看 trace、来源与证据链，确认系统为什么得出当前结论。',
+      badges: [`证据 ${consoleData?.evidence.length ?? 0}`, `会话 ${consoleData?.sessions.length ?? 0}`]
+    },
+    connectors: {
+      icon: <Cable className="h-4 w-4" />,
+      description: '治理 MCP connectors、capabilities、审批策略与 transport 健康。',
+      badges: [`连接器 ${consoleData?.connectors.length ?? 0}`]
     }
-  ];
-
-  const tableRows = useMemo(() => {
-    const ownerCount = Math.max(dashboard.bundle?.agents.length ?? 0, 1);
-    const focusedRows = dashboard.tasks.map((task, index) => ({
-      id: task.id,
-      title: task.goal,
-      type: task.currentStep ?? 'Graph node',
-      status: task.status,
-      target: index % 2 === 0 ? (dashboard.bundle?.messages.length ?? 0) : dashboard.pendingApprovals.length,
-      limit: (task.maxRetries ?? 1) + index,
-      owner: dashboard.bundle?.agents[index % ownerCount]?.role ?? 'Manager Agent',
-      updatedAt: task.updatedAt,
-      retryCount: task.retryCount ?? 0
-    }));
-
-    const tabFiltered = focusedRows.filter(row => {
-      if (activeTab === 'Past Performance') {
-        return row.status === 'completed' || row.status === 'failed';
-      }
-      if (activeTab === 'Key Personnel') {
-        return row.owner !== 'Manager Agent';
-      }
-      if (activeTab === 'Focus Documents') {
-        return row.type !== 'Graph node';
-      }
-      return true;
-    });
-
-    const searched = tabFiltered.filter(row => {
-      const keyword = searchValue.trim().toLowerCase();
-      if (!keyword) {
-        return true;
-      }
-      return (
-        row.title.toLowerCase().includes(keyword) ||
-        row.owner.toLowerCase().includes(keyword) ||
-        row.type.toLowerCase().includes(keyword)
-      );
-    });
-
-    return [...searched].sort((left, right) => {
-      if (sortBy === '状态优先') {
-        return left.status.localeCompare(right.status);
-      }
-      if (sortBy === '重试次数') {
-        return right.retryCount - left.retryCount;
-      }
-      return right.updatedAt - left.updatedAt;
-    });
-  }, [
-    activeTab,
-    dashboard.bundle?.agents,
-    dashboard.bundle?.messages.length,
-    dashboard.pendingApprovals.length,
-    dashboard.tasks,
-    searchValue,
-    sortBy
-  ]);
+  }[dashboard.page];
 
   return (
-    <main className="min-h-screen bg-white text-stone-900">
-      <div className="mx-auto grid min-h-screen max-w-[1900px] xl:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="min-h-screen bg-[#f6f5f1] text-stone-900">
+      <div className="grid min-h-screen grid-cols-[320px_minmax(0,1fr)]">
         <AdminNavigation
           page={dashboard.page}
-          title={PAGE_TITLES[dashboard.page]}
+          health={dashboard.health}
           loading={dashboard.loading}
-          error={dashboard.error}
-          tasksCount={dashboard.tasks.length}
-          activeTaskId={dashboard.bundle?.task.id}
-          tasks={dashboard.tasks}
-          onNavigate={page => {
-            window.location.hash = `/${page}`;
-            dashboard.setPage(page);
-          }}
-          onRefresh={() => void dashboard.refreshAll()}
-          onQuickCreate={() => void dashboard.handleQuickCreate()}
-          onSelectTask={taskId => void dashboard.selectTask(taskId)}
+          pendingApprovals={dashboard.pendingApprovals.length}
+          tasks={consoleData?.runtime.recentRuns ?? []}
+          activeTaskId={dashboard.activeTaskId}
+          onNavigate={dashboard.setPage}
+          onRefresh={dashboard.refreshAll}
+          onQuickCreate={dashboard.handleQuickCreate}
+          onSelectTask={dashboard.selectTask}
         />
 
-        <section className="space-y-6 px-6 py-5 md:px-8">
-          {dashboard.page === 'overview' ? (
-            <>
-              <div className="grid gap-5 xl:grid-cols-3">
-                {summaryCards.map(card => (
-                  <div key={card.label}>
-                    <MetricCard label={card.label} value={card.value} detail={card.detail} />
-                  </div>
-                ))}
-              </div>
+        <main className="space-y-6 p-8">
+          <HeaderCard
+            title={PAGE_TITLES[dashboard.page]}
+            description={headerConfig.description}
+            badges={headerConfig.badges}
+          />
 
-              <ActivityPanel
-                taskCount={dashboard.tasks.length}
-                traceCount={dashboard.latestTraces.length}
-                pendingCount={dashboard.pendingApprovals.length}
-                messageCount={dashboard.bundle?.messages.length ?? 0}
-                activeRange={activeRange}
-                onRangeChange={setActiveRange}
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                searchValue={searchValue}
-                onSearchChange={setSearchValue}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                rows={tableRows}
-                onOpenTask={taskId => void dashboard.selectTask(taskId)}
-              />
-            </>
+          {dashboard.error ? (
+            <Card className="rounded-3xl border-red-200 bg-red-50 shadow-sm">
+              <CardContent className="flex items-start gap-3 p-5 text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <div>
+                  <p className="text-sm font-semibold">平台控制台加载失败</p>
+                  <p className="mt-1 text-sm">{dashboard.error}</p>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
 
-          {dashboard.page === 'tasks' ? <TaskDetailPanel bundle={dashboard.bundle} /> : null}
+          {!consoleData ? (
+            <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+              <CardContent className="p-8 text-sm text-stone-500">正在加载平台控制台数据…</CardContent>
+            </Card>
+          ) : null}
 
-          {dashboard.page === 'approvals' ? (
-            <ApprovalsPanel
-              approvals={dashboard.pendingApprovals}
-              loading={dashboard.loading}
-              onDecision={(decision, taskId, intent) => void dashboard.updateApproval(decision, taskId, intent)}
+          {consoleData && dashboard.page === 'runtime' ? (
+            <RuntimeOverviewPanel
+              runtime={consoleData.runtime}
+              bundle={dashboard.bundle}
+              historyDays={dashboard.runtimeHistoryDays}
+              statusFilter={dashboard.runtimeStatusFilter}
+              onStatusFilterChange={dashboard.setRuntimeStatusFilter}
+              modelFilter={dashboard.runtimeModelFilter}
+              onModelFilterChange={dashboard.setRuntimeModelFilter}
+              pricingSourceFilter={dashboard.runtimePricingSourceFilter}
+              onPricingSourceFilterChange={dashboard.setRuntimePricingSourceFilter}
+              onHistoryDaysChange={days => {
+                dashboard.setRuntimeHistoryDays(days);
+                void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
+              }}
+              onExport={dashboard.downloadRuntimeExport}
             />
           ) : null}
 
-          {dashboard.page === 'skills' ? (
-            <div className="grid gap-6">
-              <SkillLabPanel
-                skills={dashboard.skills}
-                loading={dashboard.loading}
-                onPromote={skillId => void dashboard.handlePromoteSkill(skillId)}
-                onDisable={skillId => void dashboard.handleDisableSkill(skillId)}
-              />
-              <RulesPanel rules={dashboard.rules} />
-            </div>
+          {consoleData && dashboard.page === 'approvals' ? (
+            <ApprovalsPanel
+              approvals={dashboard.pendingApprovals}
+              loading={dashboard.loading}
+              onDecision={dashboard.updateApproval}
+            />
           ) : null}
-        </section>
+
+          {consoleData && dashboard.page === 'learning' ? (
+            <LearningCenterPanel
+              learning={consoleData.learning}
+              loading={dashboard.loading}
+              onInvalidateMemory={dashboard.handleInvalidateMemory}
+              onSupersedeMemory={dashboard.handleSupersedeMemory}
+              onRestoreMemory={dashboard.handleRestoreMemory}
+              onRetireMemory={dashboard.handleRetireMemory}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'evals' ? (
+            <EvalsCenterPanel
+              evals={consoleData.evals}
+              historyDays={dashboard.evalsHistoryDays}
+              scenarioFilter={dashboard.evalScenarioFilter}
+              onScenarioFilterChange={dashboard.setEvalScenarioFilter}
+              outcomeFilter={dashboard.evalOutcomeFilter}
+              onOutcomeFilterChange={dashboard.setEvalOutcomeFilter}
+              onHistoryDaysChange={days => {
+                dashboard.setEvalsHistoryDays(days);
+                void dashboard.refreshPageCenter('evals', { evalsDays: days });
+              }}
+              onExport={dashboard.downloadEvalsExport}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'archives' ? (
+            <ArchiveCenterPanel
+              runtime={consoleData.runtime}
+              evals={consoleData.evals}
+              runtimeHistoryDays={dashboard.runtimeHistoryDays}
+              evalsHistoryDays={dashboard.evalsHistoryDays}
+              onRuntimeHistoryDaysChange={days => {
+                dashboard.setRuntimeHistoryDays(days);
+                void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
+              }}
+              onEvalsHistoryDaysChange={days => {
+                dashboard.setEvalsHistoryDays(days);
+                void dashboard.refreshPageCenter('evals', { evalsDays: days });
+              }}
+              onExportRuntime={dashboard.downloadRuntimeExport}
+              onExportEvals={dashboard.downloadEvalsExport}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'skills' ? (
+            <SkillLabPanel
+              skills={consoleData.skills}
+              rules={consoleData.rules}
+              loading={dashboard.loading}
+              onPromote={dashboard.handlePromoteSkill}
+              onDisable={dashboard.handleDisableSkill}
+              onRestoreSkill={dashboard.handleRestoreSkill}
+              onRetireSkill={dashboard.handleRetireSkill}
+              onInvalidateRule={dashboard.handleInvalidateRule}
+              onSupersedeRule={dashboard.handleSupersedeRule}
+              onRestoreRule={dashboard.handleRestoreRule}
+              onRetireRule={dashboard.handleRetireRule}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'evidence' ? (
+            <EvidenceCenterPanel evidence={consoleData.evidence} />
+          ) : null}
+
+          {consoleData && dashboard.page === 'connectors' ? (
+            <ConnectorsCenterPanel
+              connectors={consoleData.connectors}
+              onCloseSession={dashboard.handleCloseConnectorSession}
+            />
+          ) : null}
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

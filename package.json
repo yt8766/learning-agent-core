@@ -2,7 +2,7 @@
   "name": "agent-brain-monorepo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.6.0",
+  "packageManager": "pnpm@10.32.1",
   "type": "module",
   "scripts": {
     "build:watch": "turbo build:watch",
@@ -14,7 +14,7 @@
     "start:frontend": "turbo start:dev --filter=agent-admin",
     "start:chat": "turbo start:dev --filter=agent-chat",
     "dev": "turbo dev",
-    "build": "pnpm build:server && pnpm build:lib && pnpm build:frontend",
+    "build": "pnpm build:lib && pnpm build:server && pnpm build:frontend",
     "lint:tsc": "node scripts/typecheck.js",
     "lint:prettier": "prettier --write \"**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md}\"",
     "lint:eslint": "eslint --fix --ext .js,.ts,.tsx,.mjs,.cjs .",

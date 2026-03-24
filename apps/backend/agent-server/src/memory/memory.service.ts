@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { SearchMemoryDto } from '@agent/shared';
+import { InvalidateKnowledgeDto, RetireKnowledgeDto, SearchMemoryDto, SupersedeKnowledgeDto } from '@agent/shared';
 
 import { RuntimeService } from '../runtime/runtime.service';
 
@@ -14,5 +14,21 @@ export class MemoryService {
 
   getById(id: string) {
     return this.runtimeService.getMemory(id);
+  }
+
+  invalidate(id: string, dto: InvalidateKnowledgeDto) {
+    return this.runtimeService.invalidateMemory(id, dto);
+  }
+
+  supersede(id: string, dto: SupersedeKnowledgeDto) {
+    return this.runtimeService.supersedeMemory(id, dto);
+  }
+
+  restore(id: string) {
+    return this.runtimeService.restoreMemory(id);
+  }
+
+  retire(id: string, dto: RetireKnowledgeDto) {
+    return this.runtimeService.retireMemory(id, dto);
   }
 }

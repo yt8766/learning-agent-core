@@ -1,10 +1,9 @@
 import {
   AgentMessageRecord,
   AgentStateRecord,
+  PlatformConsoleRecord,
   ReviewRecord,
-  RuleRecord,
   SkillRecord,
-  TaskApprovalRecord,
   TaskBundle,
   TaskPlan,
   TaskRecord,
@@ -33,18 +32,94 @@ export async function getHealth() {
   return request<{ status: string; now: string }>('/health');
 }
 
-export async function listTasks() {
-  return request<TaskRecord[]>('/tasks');
+export async function getPlatformConsole(days = 30) {
+  return request<PlatformConsoleRecord>(`/platform/console?days=${days}`);
 }
 
-export async function listPendingApprovals() {
-  return request<Array<TaskRecord & { approvals: TaskApprovalRecord[] }>>('/approvals/pending');
+export async function getRuntimeCenter(days = 30) {
+  return request<PlatformConsoleRecord['runtime']>(`/platform/runtime-center?days=${days}`);
 }
-export async function createTask(goal: string) {
-  return request<TaskRecord>('/tasks', {
-    method: 'POST',
-    body: JSON.stringify({ goal })
+
+export async function getRuntimeCenterFiltered(params: {
+  days?: number;
+  status?: string;
+  model?: string;
+  pricingSource?: string;
+}) {
+  const search = new URLSearchParams();
+  search.set('days', String(params.days ?? 30));
+  if (params.status) search.set('status', params.status);
+  if (params.model) search.set('model', params.model);
+  if (params.pricingSource) search.set('pricingSource', params.pricingSource);
+  return request<PlatformConsoleRecord['runtime']>(`/platform/runtime-center?${search.toString()}`);
+}
+
+export async function getApprovalsCenter() {
+  return request<PlatformConsoleRecord['approvals']>('/platform/approvals-center');
+}
+
+export async function getLearningCenter() {
+  return request<PlatformConsoleRecord['learning']>('/learning/center');
+}
+
+export async function getEvidenceCenter() {
+  return request<PlatformConsoleRecord['evidence']>('/evidence/center');
+}
+
+export async function getConnectorsCenter() {
+  return request<PlatformConsoleRecord['connectors']>('/platform/connectors-center');
+}
+
+export async function closeConnectorSession(connectorId: string) {
+  return request<{ connectorId: string; closed: boolean }>(`/platform/connectors-center/${connectorId}/close-session`, {
+    method: 'POST'
   });
+}
+
+export async function getEvalsCenter(days = 30) {
+  return request<PlatformConsoleRecord['evals']>(`/platform/evals-center?days=${days}`);
+}
+
+export async function getEvalsCenterFiltered(params: { days?: number; scenarioId?: string; outcome?: string }) {
+  const search = new URLSearchParams();
+  search.set('days', String(params.days ?? 30));
+  if (params.scenarioId) search.set('scenarioId', params.scenarioId);
+  if (params.outcome) search.set('outcome', params.outcome);
+  return request<PlatformConsoleRecord['evals']>(`/platform/evals-center?${search.toString()}`);
+}
+
+export async function exportRuntimeCenter(params: {
+  days?: number;
+  status?: string;
+  model?: string;
+  pricingSource?: string;
+  format?: 'csv' | 'json';
+}) {
+  const search = new URLSearchParams();
+  search.set('days', String(params.days ?? 30));
+  if (params.status) search.set('status', params.status);
+  if (params.model) search.set('model', params.model);
+  if (params.pricingSource) search.set('pricingSource', params.pricingSource);
+  search.set('format', params.format ?? 'csv');
+  return request<{ filename: string; mimeType: string; content: string }>(
+    `/platform/runtime-center/export?${search.toString()}`
+  );
+}
+
+export async function exportEvalsCenter(params: {
+  days?: number;
+  scenarioId?: string;
+  outcome?: string;
+  format?: 'csv' | 'json';
+}) {
+  const search = new URLSearchParams();
+  search.set('days', String(params.days ?? 30));
+  if (params.scenarioId) search.set('scenarioId', params.scenarioId);
+  if (params.outcome) search.set('outcome', params.outcome);
+  search.set('format', params.format ?? 'csv');
+  return request<{ filename: string; mimeType: string; content: string }>(
+    `/platform/evals-center/export?${search.toString()}`
+  );
 }
 
 export async function getTaskBundle(taskId: string): Promise<TaskBundle> {
@@ -60,8 +135,11 @@ export async function getTaskBundle(taskId: string): Promise<TaskBundle> {
   return { task, plan, agents, messages, review, traces };
 }
 
-export async function retryTask(taskId: string) {
-  return request<TaskRecord>(`/tasks/${taskId}/retry`, { method: 'POST' });
+export async function createTask(goal: string) {
+  return request<TaskRecord>('/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ goal })
+  });
 }
 
 export async function approveTask(taskId: string, intent: string) {
@@ -78,10 +156,6 @@ export async function rejectTask(taskId: string, intent: string) {
   });
 }
 
-export async function listLabSkills() {
-  return request<SkillRecord[]>('/skills/lab');
-}
-
 export async function promoteSkill(skillId: string) {
   return request<SkillRecord>(`/skills/${skillId}/promote`, { method: 'POST' });
 }
@@ -90,13 +164,64 @@ export async function disableSkill(skillId: string) {
   return request<SkillRecord>(`/skills/${skillId}/disable`, { method: 'POST' });
 }
 
-export async function listRules() {
-  return request<RuleRecord[]>('/rules');
+export async function invalidateMemory(memoryId: string, reason: string) {
+  return request(`/memory/${memoryId}/invalidate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
 }
 
-export async function createLearningJob(documentUri: string) {
-  return request<{ id: string; status: string; summary?: string }>('/learning/documents', {
+export async function supersedeMemory(memoryId: string, replacementId: string, reason: string) {
+  return request(`/memory/${memoryId}/supersede`, {
     method: 'POST',
-    body: JSON.stringify({ documentUri })
+    body: JSON.stringify({ replacementId, reason })
   });
+}
+
+export async function restoreMemory(memoryId: string) {
+  return request(`/memory/${memoryId}/restore`, {
+    method: 'POST'
+  });
+}
+
+export async function retireMemory(memoryId: string, reason: string) {
+  return request(`/memory/${memoryId}/retire`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
+}
+
+export async function invalidateRule(ruleId: string, reason: string) {
+  return request(`/rules/${ruleId}/invalidate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
+}
+
+export async function supersedeRule(ruleId: string, replacementId: string, reason: string) {
+  return request(`/rules/${ruleId}/supersede`, {
+    method: 'POST',
+    body: JSON.stringify({ replacementId, reason })
+  });
+}
+
+export async function restoreRule(ruleId: string) {
+  return request(`/rules/${ruleId}/restore`, {
+    method: 'POST'
+  });
+}
+
+export async function retireRule(ruleId: string, reason: string) {
+  return request(`/rules/${ruleId}/retire`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  });
+}
+
+export async function restoreSkill(skillId: string) {
+  return request<SkillRecord>(`/skills/${skillId}/restore`, { method: 'POST' });
+}
+
+export async function retireSkill(skillId: string) {
+  return request<SkillRecord>(`/skills/${skillId}/retire`, { method: 'POST' });
 }

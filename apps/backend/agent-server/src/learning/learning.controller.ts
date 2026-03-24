@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { CreateDocumentLearningJobDto } from '@agent/shared';
+import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
 
 import { LearningService } from './learning.service';
 
@@ -8,9 +8,19 @@ import { LearningService } from './learning.service';
 export class LearningController {
   constructor(private readonly learningService: LearningService) {}
 
+  @Get('center')
+  getCenter() {
+    return this.learningService.getCenter();
+  }
+
   @Post('documents')
   createDocumentLearningJob(@Body() dto: CreateDocumentLearningJobDto) {
     return this.learningService.createDocumentLearningJob(dto);
+  }
+
+  @Post('research')
+  createResearchLearningJob(@Body() dto: CreateResearchLearningJobDto) {
+    return this.learningService.createResearchLearningJob(dto);
   }
 
   @Get('jobs/:id')

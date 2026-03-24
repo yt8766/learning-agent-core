@@ -40,6 +40,8 @@ export class ResearchAgent extends BaseAgent {
     const skills = await this.context.skillRegistry.list();
     const chatGoal = isChatPersonaGoal(this.context.goal);
     const matchedChatSkills = chatGoal ? skills.filter(isChatSkill) : [];
+    const researchMemories = memories.filter(memory => memory.tags.includes('research-job'));
+    const autoPersistedResearchMemories = researchMemories.filter(memory => memory.tags.includes('auto-persist'));
     this.state.longTermMemoryRefs = memories.map(item => item.id);
     this.state.plan = ['检索共享长期记忆', '检查可用技能', '输出中文研究结论'];
 
@@ -80,6 +82,14 @@ export class ResearchAgent extends BaseAgent {
 
     const observations = llmResearch?.observations ?? [
       `检索到 ${memories.length} 条记忆`,
+      ...(researchMemories.length > 0
+        ? [
+            `其中 ${researchMemories.length} 条来自此前主动研究沉淀的记忆`,
+            autoPersistedResearchMemories.length > 0
+              ? `${autoPersistedResearchMemories.length} 条为高置信自动沉淀结果，可优先复用`
+              : '当前主动研究记忆还没有高置信自动沉淀结果'
+          ]
+        : []),
       `检索到 ${skills.length} 个技能`,
       ...(chatGoal
         ? [
@@ -98,7 +108,9 @@ export class ResearchAgent extends BaseAgent {
       ? matchedChatSkills.length > 0
         ? `研究完成：已找到 ${matchedChatSkills.length} 个与聊天/角色设定相关的技能，可优先复用这些技能来响应“你是……”这类目标。`
         : '研究完成：当前还没有现成的聊天技能可复用，建议本轮先以中文完成对话任务，并在结束后生成聊天技能候选进入学习确认。'
-      : `研究完成：检索到 ${memories.length} 条记忆和 ${skills.length} 个可复用技能。`;
+      : researchMemories.length > 0
+        ? `研究完成：检索到 ${memories.length} 条记忆，其中 ${researchMemories.length} 条来自主动研究沉淀，可优先复用历史资料。`
+        : `研究完成：检索到 ${memories.length} 条记忆和 ${skills.length} 个可复用技能。`;
 
     const summary = llmResearch?.summary ?? fallbackSummary;
     this.state.finalOutput = summary;

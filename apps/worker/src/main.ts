@@ -1,15 +1,18 @@
-﻿import { AgentOrchestrator, createAgentGraph, createInitialState } from '@agent/agent-core';
-import { FileMemoryRepository, FileRuntimeStateRepository } from '@agent/memory';
+﻿import { AgentOrchestrator, ZhipuLlmProvider, createAgentGraph, createInitialState } from '@agent/agent-core';
+import { FileMemoryRepository, FileRuleRepository, FileRuntimeStateRepository } from '@agent/memory';
 import { SkillRegistry } from '@agent/skills';
-import { ApprovalService, createDefaultToolRegistry } from '@agent/tools';
+import { ApprovalService, StubSandboxExecutor, createDefaultToolRegistry } from '@agent/tools';
 
 async function main(): Promise<void> {
-  const orchestrator = new AgentOrchestrator(
-    new FileMemoryRepository(),
-    new SkillRegistry(),
-    new ApprovalService(),
-    new FileRuntimeStateRepository()
-  );
+  const orchestrator = new AgentOrchestrator({
+    memoryRepository: new FileMemoryRepository(),
+    skillRegistry: new SkillRegistry(),
+    approvalService: new ApprovalService(),
+    runtimeStateRepository: new FileRuntimeStateRepository(),
+    llmProvider: new ZhipuLlmProvider(),
+    ruleRepository: new FileRuleRepository(),
+    sandboxExecutor: new StubSandboxExecutor()
+  });
   await orchestrator.initialize();
 
   const toolRegistry = createDefaultToolRegistry();

@@ -5,7 +5,7 @@
 当前聊天主链路采用：
 
 1. 前端发送用户消息
-2. 后端创建或续接 chat session
+2. 前端先创建或续接 chat session
 3. `SessionCoordinator` 调用 `AgentOrchestrator`
 4. `Manager / Research / Executor / Reviewer` 依次执行
 5. 后端通过 SSE 持续返回事件
@@ -13,12 +13,17 @@
 
 当前不是“`POST /messages` 直接流式返回正文”，而是：
 
-- `POST /api/chat/sessions/:id/messages`
+- `POST /api/chat/messages`
   - 负责提交消息
-- `GET /api/chat/sessions/:id/stream`
+- `GET /api/chat/stream?sessionId=...`
   - 负责流式返回事件与 token
 
 这是网页聊天场景更稳定的实现方式。
+
+补充说明：
+
+- 首条消息现在也统一通过 `POST /api/chat/messages` 提交
+- `POST /api/chat/sessions` 只负责创建空会话并返回 `sessionId`
 
 ---
 
@@ -33,32 +38,32 @@
 - `GET /api/chat/sessions`
   - 获取会话列表
 - `POST /api/chat/sessions`
-  - 创建新会话并提交首条消息
+  - 创建新会话
 - `GET /api/chat/sessions/:id`
   - 获取会话详情
-- `GET /api/chat/sessions/:id/messages`
+- `GET /api/chat/messages?sessionId=...`
   - 获取消息列表
-- `GET /api/chat/sessions/:id/events`
+- `GET /api/chat/events?sessionId=...`
   - 获取事件列表
-- `GET /api/chat/sessions/:id/checkpoint`
+- `GET /api/chat/checkpoint?sessionId=...`
   - 获取当前运行态快照
 
 会话动作：
 
-- `POST /api/chat/sessions/:id/messages`
+- `POST /api/chat/messages`
   - 在已有会话中继续发消息
-- `POST /api/chat/sessions/:id/approve`
+- `POST /api/chat/approve`
   - 审批通过
-- `POST /api/chat/sessions/:id/reject`
+- `POST /api/chat/reject`
   - 审批拒绝
-- `POST /api/chat/sessions/:id/learning/confirm`
+- `POST /api/chat/learning/confirm`
   - 确认学习候选
-- `POST /api/chat/sessions/:id/recover`
+- `POST /api/chat/recover`
   - 从 checkpoint 恢复
 
 流式接口：
 
-- `GET /api/chat/sessions/:id/stream`
+- `GET /api/chat/stream?sessionId=...`
   - `Content-Type: text/event-stream`
   - 返回标准 SSE `MessageEvent`
 
@@ -207,7 +212,7 @@ SSE 实现位置：
 前端调用：
 
 ```ts
-createSession(message, title?)
+createSession(undefined, title?)
 ```
 
 对应后端：
@@ -220,6 +225,11 @@ POST /api/chat/sessions
 
 - `ChatSessionRecord`
 
+注意：
+
+- 该接口现在只负责创建空会话
+- 首条消息与后续消息统一都通过 `POST /api/chat/messages` 提交
+
 ### 5.2 续聊
 
 前端调用：
@@ -231,7 +241,7 @@ appendMessage(sessionId, message);
 对应后端：
 
 ```http
-POST /api/chat/sessions/:id/messages
+POST /api/chat/messages
 ```
 
 返回：
@@ -242,6 +252,8 @@ POST /api/chat/sessions/:id/messages
 
 - 这个接口本身不是流式返回
 - 真正的流式更新来自 `/stream`
+- `sessionId` 通过 body 显式传递，不再建议只依赖 cookie
+- 首条消息和后续消息都走这个接口
 
 ### 5.3 建立 SSE
 
@@ -254,8 +266,16 @@ createSessionStream(sessionId);
 底层是：
 
 ```ts
-new EventSource(`${API_BASE}/chat/sessions/${sessionId}/stream`);
+new EventSource(`${API_BASE}/chat/stream?sessionId=${sessionId}`);
 ```
+
+推荐所有客户端都显式传 `sessionId`：
+
+- 查询接口通过 query 传递
+- 写接口通过 body 传递
+- SSE 通过 query 传递
+
+当前后端仍兼容从 `agent_session_id` cookie 中推断 `sessionId`，但这只是兼容层，不建议作为新接入默认方案。
 
 ### 5.4 前端收到 SSE 后怎么做
 
@@ -408,7 +428,7 @@ pnpm --dir apps/frontend/agent-chat dev
 - `POST /messages` 负责提交输入
 - `GET /stream` 负责持续输出
 
-这是浏览器端最稳的模式。
+这是浏览器端最稳的模式，也是当前项目中 Agent 会话、审批、学习确认统一走一条事件流的基础。
 
 ### 为什么以前会重复请求 `/messages`？
 

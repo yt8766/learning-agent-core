@@ -26,7 +26,11 @@ export class ExecutorAgent extends BaseAgent {
     this.state.plan = ['选择动作意图', '从工具注册表解析工具', '在受控环境中执行'];
     this.remember(researchSummary);
 
-    const availableTools = this.context.toolRegistry.list().map(tool => ({
+    const allowedCapabilities = this.context.workflowPreset?.allowedCapabilities;
+    const candidateTools = this.context.toolRegistry
+      .list()
+      .filter(tool => !allowedCapabilities || allowedCapabilities.includes(tool.name));
+    const availableTools = candidateTools.map(tool => ({
       name: tool.name,
       description: tool.description,
       riskLevel: tool.riskLevel,
@@ -65,13 +69,28 @@ export class ExecutorAgent extends BaseAgent {
 
     const fallbackIntent = this.selectIntent(this.context.goal);
     const intent = llmSelection?.intent ?? fallbackIntent;
-    const preferredTool = llmSelection?.toolName ? this.context.toolRegistry.get(llmSelection.toolName) : undefined;
+    const presetPreferredToolName = this.selectPreferredToolNameByWorkflow();
+    const preferredTool =
+      llmSelection?.toolName && (!allowedCapabilities || allowedCapabilities.includes(llmSelection.toolName))
+        ? this.context.toolRegistry.get(llmSelection.toolName)
+        : undefined;
+    const presetTool =
+      presetPreferredToolName && (!allowedCapabilities || allowedCapabilities.includes(presetPreferredToolName))
+        ? this.context.toolRegistry.get(presetPreferredToolName)
+        : undefined;
     const mappedTool = this.context.toolRegistry.getForIntent(intent);
-    const tool = preferredTool ?? mappedTool ?? this.context.toolRegistry.get('local-analysis');
+    const fallbackTool = candidateTools.find(tool => tool.name === 'local-analysis') ?? candidateTools[0];
+    const tool =
+      preferredTool ??
+      presetTool ??
+      (mappedTool && (!allowedCapabilities || allowedCapabilities.includes(mappedTool.name))
+        ? mappedTool
+        : undefined) ??
+      fallbackTool;
 
     if (!tool) {
       this.setStatus('failed');
-      const summary = '执行 Agent 无法从工具注册表中解析出可用工具。';
+      const summary = '执行 Agent 无法在当前 Skill 的能力白名单内解析出可用工具。';
       this.state.finalOutput = summary;
       return {
         intent,
@@ -83,7 +102,10 @@ export class ExecutorAgent extends BaseAgent {
 
     const actionPrompt = llmSelection?.actionPrompt ?? `目标：${this.context.goal}；研究摘要：${researchSummary}`;
     this.state.toolCalls.push(`intent:${intent}`, `tool:${tool.name}`);
-    this.remember(llmSelection?.rationale ?? `已选择 ${intent}，对应工具 ${tool.name}。`);
+    this.remember(
+      llmSelection?.rationale ??
+        `已选择 ${intent}，对应工具 ${tool.name}。${this.context.workflowPreset ? `当前 Skill：${this.context.workflowPreset.displayName}` : ''}`
+    );
 
     const requiresApproval = this.context.approvalService.requiresApproval(intent, tool);
     if (requiresApproval) {
@@ -99,13 +121,17 @@ export class ExecutorAgent extends BaseAgent {
       };
     }
 
-    const executionResult = await this.context.sandbox.execute({
+    const request = {
       taskId: this.context.taskId,
       toolName: tool.name,
       intent,
       input: this.buildToolInput(tool.name, actionPrompt, researchSummary),
-      requestedBy: 'agent'
-    });
+      requestedBy: 'agent' as const
+    };
+
+    const executionResult = this.context.mcpClientManager
+      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
+      : await this.context.sandbox.execute(request);
 
     this.remember(executionResult.outputSummary);
     this.state.finalOutput = executionResult.outputSummary;
@@ -144,8 +170,27 @@ export class ExecutorAgent extends BaseAgent {
         };
       case 'http_request':
         return { url: 'https://example.com', method: 'GET', goal: this.context.goal, researchSummary, actionPrompt };
+      case 'browse_page':
+        return { url: 'http://localhost:3000', goal: this.context.goal, researchSummary, actionPrompt };
+      case 'run_terminal':
+        return { command: 'pnpm exec vitest --help', goal: this.context.goal, researchSummary, actionPrompt };
+      case 'ship_release':
+        return { target: 'main', goal: this.context.goal, researchSummary, actionPrompt };
       default:
         return { goal: this.context.goal, researchSummary, actionPrompt };
+    }
+  }
+
+  private selectPreferredToolNameByWorkflow(): string | undefined {
+    switch (this.context.workflowPreset?.id) {
+      case 'browse':
+        return 'browse_page';
+      case 'ship':
+        return 'ship_release';
+      case 'qa':
+        return 'run_terminal';
+      default:
+        return undefined;
     }
   }
 }
