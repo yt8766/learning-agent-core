@@ -182,12 +182,29 @@ jobs:
       - typecheck
       - test
       - build
-    # job 级 if 不能使用 secrets；改为 always()，在 step 里判断密钥是否齐全
+    # job/step 的 if 表达式不能使用 secrets；用 run + env 注入后再写 outputs，供后续 if 使用
     if: always()
 
     steps:
+      - name: Check SMTP secrets are configured
+        id: smtp
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        run: |
+          if [ -n "$SMTP_SERVER" ] && [ -n "$SMTP_PORT" ] && [ -n "$SMTP_USERNAME" ] && \
+             [ -n "$SMTP_PASSWORD" ] && [ -n "$SMTP_TO" ] && [ -n "$SMTP_FROM" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Send Success Email
-        if: ${{ secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' && needs.detect-changes.result == 'success' && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -209,7 +226,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Send Failure Email
-        if: ${{ secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lint.result == 'failure' || needs.lint.result == 'cancelled' || needs.typecheck.result == 'failure' || needs.typecheck.result == 'cancelled' || needs.test.result == 'failure' || needs.test.result == 'cancelled' || needs.build.result == 'failure' || needs.build.result == 'cancelled') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lint.result == 'failure' || needs.lint.result == 'cancelled' || needs.typecheck.result == 'failure' || needs.typecheck.result == 'cancelled' || needs.test.result == 'failure' || needs.test.result == 'cancelled' || needs.build.result == 'failure' || needs.build.result == 'cancelled') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
