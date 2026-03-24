@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 
 import { loadSettings } from '@agent/config';
 import { AgentOrchestrator, SessionCoordinator, ZhipuLlmProvider } from '@agent/agent-core';
@@ -86,7 +86,7 @@ export class RuntimeService implements OnModuleInit {
       };
       this.mcpServerRegistry.register({
         id: 'bigmodel-web-search',
-        displayName: '鏅鸿氨鑱旂綉鎼滅储 MCP',
+        displayName: '閺呴缚姘ㄩ懕鏃傜秹閹兼粎鍌?MCP',
         transport: 'http',
         endpoint: this.settings.mcp.webSearchEndpoint,
         headers: authHeaders,
@@ -94,7 +94,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-web-reader',
-        displayName: '鏅鸿氨缃戦〉璇诲彇 MCP',
+        displayName: '閺呴缚姘ㄧ純鎴︺€夌拠璇插絿 MCP',
         transport: 'http',
         endpoint: this.settings.mcp.webReaderEndpoint,
         headers: authHeaders,
@@ -102,7 +102,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-zread',
-        displayName: '鏅鸿氨寮€婧愪粨搴?MCP',
+        displayName: '閺呴缚姘ㄥ鈧┃鎰波鎼?MCP',
         transport: 'http',
         endpoint: this.settings.mcp.zreadEndpoint,
         headers: authHeaders,
@@ -110,7 +110,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-vision',
-        displayName: '鏅鸿氨瑙嗚鐞嗚В MCP',
+        displayName: '閺呴缚姘ㄧ憴鍡氼潕閻炲棜袙 MCP',
         transport: 'stdio',
         command: 'npx',
         args: ['-y', '@z_ai/mcp-server@latest'],
@@ -196,7 +196,7 @@ export class RuntimeService implements OnModuleInit {
     if (this.settings.mcp.researchHttpEndpoint) {
       this.mcpServerRegistry.register({
         id: 'remote-research',
-        displayName: '杩滅鐮旂┒ MCP',
+        displayName: '鏉╂粎顏惍鏃傗敀 MCP',
         transport: 'http',
         endpoint: this.settings.mcp.researchHttpEndpoint,
         headers: this.settings.mcp.researchHttpApiKey
@@ -1015,14 +1015,14 @@ function summarizeUsageAnalytics(tasks: TaskRecord[]) {
         models.set(normalizedModel, modelBucket);
       }
     } else {
-      const taskModels = Array.from(
+      const taskModels: string[] = Array.from(
         new Set(
           (task.modelRoute ?? [])
             .map(route => route.selectedModel)
             .filter((m): m is string => typeof m === 'string' && m.length > 0)
         )
       );
-      const allocatedModels = taskModels.length > 0 ? taskModels : ['default'];
+      const allocatedModels: string[] = taskModels.length > 0 ? taskModels : ['default'];
       const tokenShare = taskTokens / allocatedModels.length;
 
       for (const model of allocatedModels) {
