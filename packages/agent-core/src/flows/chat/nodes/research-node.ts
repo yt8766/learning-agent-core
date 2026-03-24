@@ -1,8 +1,8 @@
-﻿import { z } from 'zod/v4';
-
-import { AgentRole, MemoryRecord, SkillCard } from '@agent/shared';
+﻿import { AgentRole, MemoryRecord, SkillCard } from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import { HUBU_RESEARCH_SYSTEM_PROMPT } from '../../ministries/hubu-search/prompts/research-prompts';
+import { ResearchEvidenceSchema } from '../../ministries/hubu-search/schemas/research-evidence-schema';
 import { BaseAgent } from '../base-agent';
 
 function isChatPersonaGoal(goal: string) {
@@ -45,17 +45,11 @@ export class ResearchAgent extends BaseAgent {
     this.state.longTermMemoryRefs = memories.map(item => item.id);
     this.state.plan = ['检索共享长期记忆', '检查可用技能', '输出中文研究结论'];
 
-    const researchSchema = z.object({
-      summary: z.string(),
-      observations: z.array(z.string()).max(5).default([])
-    });
-
     const llmResearch = await this.generateObject(
       [
         {
           role: 'system',
-          content:
-            '你是研究 Agent。请始终使用中文，把记忆、规则和技能上下文整理成对执行 Agent 有帮助的行动建议。如果用户在定义“你是……”这类聊天角色，也要明确说明是否已经存在可复用的聊天技能。'
+          content: HUBU_RESEARCH_SYSTEM_PROMPT
         },
         {
           role: 'user',
@@ -73,7 +67,7 @@ export class ResearchAgent extends BaseAgent {
           })
         }
       ],
-      researchSchema,
+      ResearchEvidenceSchema,
       {
         role: 'research',
         thinking: this.context.thinking.research

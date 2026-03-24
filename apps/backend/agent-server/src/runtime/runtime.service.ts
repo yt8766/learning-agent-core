@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 
 import { loadSettings } from '@agent/config';
 import { AgentOrchestrator, SessionCoordinator, ZhipuLlmProvider } from '@agent/agent-core';
 import { evaluateBenchmarks } from '@agent/evals';
-import { FileMemoryRepository, FileRuleRepository, FileRuntimeStateRepository } from '@agent/memory';
+import {
+  FileMemoryRepository,
+  FileRuleRepository,
+  FileRuntimeStateRepository,
+  RuntimeStateSnapshot
+} from '@agent/memory';
 import {
   AppendChatMessageDto,
   ApprovalActionDto,
@@ -46,6 +51,10 @@ import {
   summarizeProviderBilling
 } from './provider-audit';
 
+type UsageHistoryPoint = NonNullable<RuntimeStateSnapshot['usageHistory']>[number];
+type EvalHistoryPoint = NonNullable<RuntimeStateSnapshot['evalHistory']>[number];
+type UsageAuditRecord = NonNullable<RuntimeStateSnapshot['usageAudit']>[number];
+
 @Injectable()
 export class RuntimeService implements OnModuleInit {
   private readonly settings = loadSettings();
@@ -77,7 +86,7 @@ export class RuntimeService implements OnModuleInit {
       };
       this.mcpServerRegistry.register({
         id: 'bigmodel-web-search',
-        displayName: '智谱联网搜索 MCP',
+        displayName: '閺呴缚姘ㄩ懕鏃傜秹閹兼粎鍌?MCP',
         transport: 'http',
         endpoint: this.settings.mcp.webSearchEndpoint,
         headers: authHeaders,
@@ -85,7 +94,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-web-reader',
-        displayName: '智谱网页读取 MCP',
+        displayName: '閺呴缚姘ㄧ純鎴︺€夌拠璇插絿 MCP',
         transport: 'http',
         endpoint: this.settings.mcp.webReaderEndpoint,
         headers: authHeaders,
@@ -93,7 +102,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-zread',
-        displayName: '智谱开源仓库 MCP',
+        displayName: '閺呴缚姘ㄥ鈧┃鎰波鎼?MCP',
         transport: 'http',
         endpoint: this.settings.mcp.zreadEndpoint,
         headers: authHeaders,
@@ -101,7 +110,7 @@ export class RuntimeService implements OnModuleInit {
       });
       this.mcpServerRegistry.register({
         id: 'bigmodel-vision',
-        displayName: '智谱视觉理解 MCP',
+        displayName: '閺呴缚姘ㄧ憴鍡氼潕閻炲棜袙 MCP',
         transport: 'stdio',
         command: 'npx',
         args: ['-y', '@z_ai/mcp-server@latest'],
@@ -187,7 +196,7 @@ export class RuntimeService implements OnModuleInit {
     if (this.settings.mcp.researchHttpEndpoint) {
       this.mcpServerRegistry.register({
         id: 'remote-research',
-        displayName: '远端研究 MCP',
+        displayName: '鏉╂粎顏惍鏃傗敀 MCP',
         transport: 'http',
         endpoint: this.settings.mcp.researchHttpEndpoint,
         headers: this.settings.mcp.researchHttpApiKey
@@ -779,7 +788,9 @@ export class RuntimeService implements OnModuleInit {
     const analytics = summarizeUsageAnalytics(tasks);
     const providerBillingStatus = await this.fetchProviderUsageAudit(days);
     const snapshot = await this.runtimeStateRepository.load();
-    const currentByDay = new Map((snapshot.usageHistory ?? []).map(item => [item.day, item] as const));
+    const currentByDay = new Map<string, UsageHistoryPoint>(
+      (snapshot.usageHistory ?? []).map(item => [item.day, item] as const)
+    );
     for (const point of analytics.daily) {
       currentByDay.set(point.day, {
         ...point,
@@ -788,10 +799,12 @@ export class RuntimeService implements OnModuleInit {
         updatedAt: new Date().toISOString()
       });
     }
-    const mergedHistory = Array.from(currentByDay.values())
+    const mergedHistory: UsageHistoryPoint[] = Array.from(currentByDay.values())
       .sort((left, right) => left.day.localeCompare(right.day))
       .slice(-30);
-    const currentAuditByTask = new Map((snapshot.usageAudit ?? []).map(item => [item.taskId, item] as const));
+    const currentAuditByTask = new Map<string, UsageAuditRecord>(
+      (snapshot.usageAudit ?? []).map(item => [item.taskId, item] as const)
+    );
     for (const task of tasks) {
       if (!task.llmUsage) {
         continue;
@@ -815,7 +828,7 @@ export class RuntimeService implements OnModuleInit {
         updatedAt: task.llmUsage.updatedAt
       });
     }
-    const mergedAudit = Array.from(currentAuditByTask.values())
+    const mergedAudit: UsageAuditRecord[] = Array.from(currentAuditByTask.values())
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(0, 50);
     await this.runtimeStateRepository.save({
@@ -869,7 +882,9 @@ export class RuntimeService implements OnModuleInit {
   ) {
     const evals = evaluateBenchmarks(tasks);
     const snapshot = await this.runtimeStateRepository.load();
-    const currentByDay = new Map((snapshot.evalHistory ?? []).map(item => [item.day, item] as const));
+    const currentByDay = new Map<string, EvalHistoryPoint>(
+      (snapshot.evalHistory ?? []).map(item => [item.day, item] as const)
+    );
     for (const point of evals.dailyTrend) {
       currentByDay.set(point.day, {
         ...point,
@@ -878,7 +893,7 @@ export class RuntimeService implements OnModuleInit {
         updatedAt: new Date().toISOString()
       });
     }
-    const mergedHistory = Array.from(currentByDay.values())
+    const mergedHistory: EvalHistoryPoint[] = Array.from(currentByDay.values())
       .sort((left, right) => left.day.localeCompare(right.day))
       .slice(-30);
     await this.runtimeStateRepository.save({
@@ -1000,10 +1015,14 @@ function summarizeUsageAnalytics(tasks: TaskRecord[]) {
         models.set(normalizedModel, modelBucket);
       }
     } else {
-      const taskModels = Array.from(
-        new Set((task.modelRoute ?? []).map((route: { selectedModel?: string }) => route.selectedModel).filter(Boolean))
+      const taskModels: string[] = Array.from(
+        new Set(
+          (task.modelRoute ?? [])
+            .map(route => route.selectedModel)
+            .filter((m): m is string => typeof m === 'string' && m.length > 0)
+        )
       );
-      const allocatedModels = taskModels.length > 0 ? taskModels : ['default'];
+      const allocatedModels: string[] = taskModels.length > 0 ? taskModels : ['default'];
       const tokenShare = taskTokens / allocatedModels.length;
 
       for (const model of allocatedModels) {
@@ -1118,15 +1137,15 @@ function buildUsageAlerts(input: {
     if (day.tokens >= USAGE_BUDGET_POLICY.dailyTokenWarning) {
       alerts.push({
         level: 'warning',
-        title: `日 token 超阈值：${day.day}`,
-        description: `当日使用 ${day.tokens.toLocaleString()} tokens，超过阈值 ${USAGE_BUDGET_POLICY.dailyTokenWarning.toLocaleString()}。`
+        title: `Daily token budget warning: ${day.day}`,
+        description: `Used ${day.tokens.toLocaleString()} tokens on ${day.day}, exceeding ${USAGE_BUDGET_POLICY.dailyTokenWarning.toLocaleString()}.`
       });
     }
     if (day.costCny >= USAGE_BUDGET_POLICY.dailyCostCnyWarning) {
       alerts.push({
         level: 'warning',
-        title: `日费用超阈值：${day.day}`,
-        description: `当日估算费用 ¥${day.costCny.toFixed(2)}，超过阈值 ¥${USAGE_BUDGET_POLICY.dailyCostCnyWarning.toFixed(2)}。`
+        title: `Daily cost budget warning: ${day.day}`,
+        description: `Estimated cost on ${day.day} is RMB ${day.costCny.toFixed(2)}, exceeding RMB ${USAGE_BUDGET_POLICY.dailyCostCnyWarning.toFixed(2)}.`
       });
     }
   }
@@ -1134,16 +1153,16 @@ function buildUsageAlerts(input: {
   if (input.totalCostCny >= USAGE_BUDGET_POLICY.totalCostCnyWarning) {
     alerts.push({
       level: 'critical',
-      title: '累计费用接近平台上限',
-      description: `当前累计估算费用 ¥${input.totalCostCny.toFixed(2)}，超过总阈值 ¥${USAGE_BUDGET_POLICY.totalCostCnyWarning.toFixed(2)}。`
+      title: 'Total cost approaching budget limit',
+      description: `Current estimated total cost is RMB ${input.totalCostCny.toFixed(2)}, exceeding RMB ${USAGE_BUDGET_POLICY.totalCostCnyWarning.toFixed(2)}.`
     });
   }
 
   if (alerts.length === 0) {
     alerts.push({
       level: 'info',
-      title: '预算运行正常',
-      description: `当前累计 ${input.totalTokens.toLocaleString()} tokens，未触发平台预算阈值。`
+      title: 'Budget status normal',
+      description: `Current cumulative usage is ${input.totalTokens.toLocaleString()} tokens and no budget threshold has been triggered.`
     });
   }
 

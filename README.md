@@ -1,21 +1,21 @@
-﻿# AI 自主学习代理系统
+# AI 开发自治多 Agent 系统
 
-这是一个基于 `NestJS + TypeScript + LangGraph + LangChain` 的多 Agent monorepo，用于承载：
+这是一个基于 `NestJS + TypeScript + LangGraph + LangChain` 的多 Agent monorepo，面向“开发自治”场景，而不是普通聊天应用。当前系统按“Human / Supervisor / 六部”方向演进，用于承载：
 
-- 聊天式 Agent 会话
-- 主 Agent / 子 Agent 协作
+- Supervisor / Ministry 协同执行
 - 工具调用与审批
-- 记忆、规则、技能实验区
-- 运行观测与管理台
+- Think / ThoughtChain / Evidence 主链路呈现
+- 记忆、规则、技能学习闭环
+- Runtime、Approvals、Learning、Skill Lab、Evidence、Connector & Policy 治理台
 
 ## 目录说明
 
 - `apps/backend/agent-server`：后端主服务，提供 `/api` 接口
 - `apps/worker`：异步执行、恢复与学习任务 worker
-- `apps/frontend/agent-chat`：聊天入口前端
-- `apps/frontend/agent-admin`：观测与运维控制台
+- `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
+- `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
-- `packages/agent-core`：Agent 运行时核心，内部拆为 `models / agents / session / graph / runtime / types`
+- `packages/agent-core`：Agent 运行时核心，内部优先按 `adapters / flows / governance / graphs / runtime / session / shared / workflows / types` 分层
 - `packages/shared`：共享 DTO、领域类型、事件模型
 - `packages/config`：运行时配置与路径解析
 - `packages/memory`：memory、rules、runtime state 本地存储
@@ -121,13 +121,15 @@
 如果你是进入本仓库工作的代码代理，请先阅读：
 
 1. [AGENTS.md](./AGENTS.md)
-2. [架构总览](./docs/ARCHITECTURE.md)
-3. [前后端对接文档](./docs/frontend-backend-integration.md)
+2. [README.md](./README.md)
+3. [架构总览](./docs/ARCHITECTURE.md)
+4. [前后端对接文档](./docs/frontend-backend-integration.md)
 
 最重要的当前约束：
 
 - `agent-chat` 采用 OpenClaw 模态，作为前线作战面
 - `agent-admin` 做平台控制台，作为后台指挥面
+- 当前系统按“皇帝-首辅-六部”方向收敛，新增实现优先使用 `supervisor / ministry / workflow` 语义
 - 审批、Evidence、Learning、Think、ThoughtChain 不要从消息主链移出去
 - 共享包改动后，优先执行 `pnpm build:lib`
 - 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skills` 混用
@@ -140,3 +142,11 @@
 - 共享包输出使用 `build/cjs`、`build/esm`、`build/types`
 - 本地运行数据统一进入仓库根级 `data/`
 - 规范以文档为主，配少量根级检查，不为每个子项目重复堆配置
+
+## 最低检查
+
+- shared：`pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
+- agent-core：`pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit`
+- backend：`pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`
+- agent-chat：`pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit`
+- agent-admin：`pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit`

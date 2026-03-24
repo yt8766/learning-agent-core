@@ -1,8 +1,8 @@
-import { z } from 'zod/v4';
-
-import { AgentExecutionState, AgentRole, MemoryRecord, SkillCard } from '@agent/shared';
+﻿import { AgentExecutionState, AgentRole, MemoryRecord, SkillCard } from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { HUBU_RESEARCH_SYSTEM_PROMPT } from './hubu-search/prompts/research-prompts';
+import { ResearchEvidenceSchema } from './hubu-search/schemas/research-evidence-schema';
 
 function isChatPersonaGoal(goal: string) {
   const normalized = goal.toLowerCase();
@@ -56,20 +56,14 @@ export class HubuSearchMinistry {
     this.state.longTermMemoryRefs = memories.map(item => item.id);
     this.state.plan = ['检索共享长期记忆', '检查可用技能', '输出中文研究结论'];
 
-    const researchSchema = z.object({
-      summary: z.string(),
-      observations: z.array(z.string()).max(5).default([])
-    });
-
-    let llmResearch: z.infer<typeof researchSchema> | null = null;
+    let llmResearch: { summary: string; observations: string[] } | null = null;
     if (this.context.llm.isConfigured()) {
       try {
         llmResearch = await this.context.llm.generateObject(
           [
             {
               role: 'system',
-              content:
-                '你是户部尚书。请始终使用中文，把记忆、规则和技能上下文整理成对后续执行最有帮助的研究结论，并明确哪些历史经验值得优先复用。'
+              content: HUBU_RESEARCH_SYSTEM_PROMPT
             },
             {
               role: 'user',
@@ -88,7 +82,7 @@ export class HubuSearchMinistry {
               })
             }
           ],
-          researchSchema,
+          ResearchEvidenceSchema,
           {
             role: 'research',
             thinking: this.context.thinking.research,

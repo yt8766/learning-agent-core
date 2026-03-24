@@ -66,8 +66,8 @@
 
 ### 当前现实状态
 
-- 仓库已经有六部 registry / route / checkpoint 语义
-- 仍在从旧 `manager/research/executor/reviewer` 路径过渡到正式六部执行主体
+- 仓库已经有六部 registry / route / checkpoint / workflow 语义
+- 共享类型与部分接口仍保留旧 `manager/research/executor/reviewer` 兼容字段
 - 新实现应优先继续朝“六部真实执行主体”收敛，而不是回退到单一聊天机器人模型
 
 ## 3. 运行闭环
@@ -172,14 +172,14 @@
 ### `TaskRecord`
 
 - `budgetState`
-- `queueState`
-- `retryPolicy`
-- `evidenceRefs`
 - `externalSources`
 - `reusedMemories`
 - `reusedRules`
 - `reusedSkills`
 - `learningEvaluation`
+- `currentMinistry`
+- `currentWorker`
+- `resolvedWorkflow`
 
 ### `ChatCheckpointRecord`
 
@@ -187,13 +187,18 @@
 - `learningEvaluation`
 - `budgetState`
 - `reusedSkills`
+- `currentMinistry`
+- `currentWorker`
+- `thoughtChain`
+- `thinkState`
 
 ### `SkillCard`
 
-- `version`
-- `successRate`
-- `promotionState`
-- `sourceRuns`
+- `status`
+- `source`
+- `riskLevel`
+- `requiredTools`
+- `successSignals`
 
 ### `EvidenceRecord`
 
@@ -238,6 +243,32 @@ pnpm build:lib
 ```
 
 再执行需要的应用构建或类型检查。
+
+### `agent-core` 当前推荐分层
+
+当前 `packages/agent-core/src` 已经按下列方向展开，后续优先沿这个结构收敛，而不是回退到旧的 `models / agents / graph` 粗分层：
+
+```text
+src/
+├─ adapters/
+├─ flows/
+├─ governance/
+├─ graphs/
+├─ runtime/
+├─ session/
+├─ shared/
+├─ workflows/
+└─ types/
+```
+
+约束：
+
+- `flows/` 负责按聊天、审批、学习等流程组织节点与协议
+- `governance/` 负责 worker registry、路由策略、预算与治理决策
+- `graphs/` 只放图定义与编排入口
+- `session/` 负责会话、checkpoint、事件流持久化
+- `shared/` 放跨流程复用的事件映射、schema、prompt 与工具
+- `workflows/` 负责预设工作流和能力组合，不与底层 graph 定义混放
 
 ## 10. Skills 目录分层
 
@@ -301,3 +332,15 @@ skills/
 3. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/frontend-backend-integration.md)
 4. [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
 5. [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
+
+## 13. 最低检查
+
+当前最低检查命令如下，文档、代码和 CI 都应以此为基线保持一致：
+
+```bash
+pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
+pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit
+pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
+pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit
+pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit
+```

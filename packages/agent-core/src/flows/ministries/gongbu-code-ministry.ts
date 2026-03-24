@@ -1,9 +1,9 @@
-import { z } from 'zod/v4';
-
-import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
+﻿import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { PendingExecutionContext } from '../approval';
+import { GONGBU_EXECUTION_SYSTEM_PROMPT } from './gongbu-code/prompts/execution-prompts';
+import { ExecutionActionSchema } from './gongbu-code/schemas/execution-action-schema';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;
@@ -50,22 +50,19 @@ export class GongbuCodeMinistry {
       requiresApproval: tool.requiresApproval
     }));
 
-    const executionSchema = z.object({
-      intent: z.enum([ActionIntent.READ_FILE, ActionIntent.WRITE_FILE, ActionIntent.CALL_EXTERNAL_API]),
-      toolName: z.string(),
-      rationale: z.string(),
-      actionPrompt: z.string()
-    });
-
-    let llmSelection: z.infer<typeof executionSchema> | null = null;
+    let llmSelection: {
+      intent: ActionIntent;
+      toolName: string;
+      rationale: string;
+      actionPrompt: string;
+    } | null = null;
     if (this.context.llm.isConfigured()) {
       try {
         llmSelection = await this.context.llm.generateObject(
           [
             {
               role: 'system',
-              content:
-                '你是工部尚书。请始终使用中文，优先选择安全、与目标最贴近的工具；只能从给定注册表中选工具。若目标偏聊天或角色设定，也应先偏向无副作用方案。'
+              content: GONGBU_EXECUTION_SYSTEM_PROMPT
             },
             {
               role: 'user',
@@ -76,7 +73,7 @@ export class GongbuCodeMinistry {
               })
             }
           ],
-          executionSchema,
+          ExecutionActionSchema,
           {
             role: 'executor',
             thinking: this.context.thinking.executor,

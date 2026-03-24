@@ -18,69 +18,23 @@ import {
   updateSession
 } from '../api/chat-api';
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '../types/chat';
+import {
+  CHECKPOINT_REFRESH_EVENT_TYPES,
+  formatSessionTime,
+  getMessageRoleLabel,
+  getSessionStatusLabel,
+  mergeEvent,
+  mergeOrAppendMessage,
+  PENDING_ASSISTANT_PREFIX,
+  PENDING_USER_PREFIX,
+  removePendingMessages,
+  STARTER_PROMPT,
+  syncMessageFromEvent,
+  syncProcessMessageFromEvent,
+  syncSessionFromEvent
+} from './chat-session/chat-session-helpers';
 
-const STARTER_PROMPT = '';
-const PENDING_ASSISTANT_PREFIX = 'pending_assistant_';
-const PENDING_USER_PREFIX = 'pending_user_';
-const CHECKPOINT_REFRESH_EVENT_TYPES = new Set<ChatEventRecord['type']>([
-  'skill_resolved',
-  'skill_stage_started',
-  'skill_stage_completed',
-  'approval_required',
-  'approval_resolved',
-  'approval_rejected_with_feedback',
-  'run_cancelled',
-  'learning_pending_confirmation',
-  'learning_confirmed',
-  'session_finished',
-  'session_failed'
-]);
-const MESSAGE_VISIBLE_EVENT_TYPES = new Set<ChatEventRecord['type']>([
-  'approval_required',
-  'approval_resolved',
-  'approval_rejected_with_feedback',
-  'run_cancelled',
-  'session_failed',
-  'session_finished'
-]);
-
-export function formatSessionTime(value?: string) {
-  if (!value) {
-    return '--';
-  }
-
-  return new Date(value).toLocaleString();
-}
-
-export function getSessionStatusLabel(status?: string) {
-  switch (status) {
-    case 'running':
-      return '执行中';
-    case 'waiting_approval':
-      return '等待审批';
-    case 'waiting_learning_confirmation':
-      return '等待学习确认';
-    case 'cancelled':
-      return '已终止';
-    case 'completed':
-      return '已完成';
-    case 'failed':
-      return '失败';
-    default:
-      return '空闲';
-  }
-}
-
-export function getMessageRoleLabel(role: ChatMessageRecord['role']) {
-  switch (role) {
-    case 'user':
-      return '你';
-    case 'assistant':
-      return 'Agent';
-    default:
-      return '系统';
-  }
-}
+export { formatSessionTime, getMessageRoleLabel, getSessionStatusLabel };
 
 export function useChatSession() {
   const [sessions, setSessions] = useState<ChatSessionRecord[]>([]);
@@ -101,7 +55,6 @@ export function useChatSession() {
     () => sessions.find(session => session.id === activeSessionId),
     [sessions, activeSessionId]
   );
-
   const pendingApprovals = checkpoint?.pendingApprovals ?? [];
   const hasMessages = messages.length > 0;
 
@@ -125,30 +78,28 @@ export function useChatSession() {
     void (async () => {
       try {
         await selectSession(activeSessionId);
-        if (disposed) {
-          return;
-        }
-
+        if (disposed) return;
         await refreshSessionDetail(activeSessionId, true);
-        if (disposed) {
-          return;
-        }
+        if (disposed) return;
 
         if (shouldOpenStream) {
           stream = createSessionStream(activeSessionId);
-          stream.onmessage = (event: MessageEvent<string>) => {
-            const nextEvent = JSON.parse(event.data) as ChatEventRecord;
+          stream.onmessage = (raw: MessageEvent<string>) => {
+            const nextEvent = JSON.parse(raw.data) as ChatEventRecord;
+            if (nextEvent.type === 'assistant_message' || nextEvent.type === 'assistant_token') {
+              clearPendingAssistant(nextEvent.sessionId);
+            }
+            if (nextEvent.type === 'user_message') {
+              clearPendingUser(nextEvent.sessionId);
+            }
             setEvents(current => mergeEvent(current, nextEvent));
-            syncMessageFromEvent(nextEvent);
-            syncProcessMessageFromEvent(nextEvent);
+            setMessages(current => syncProcessMessageFromEvent(syncMessageFromEvent(current, nextEvent), nextEvent));
+            setSessions(current => syncSessionFromEvent(current, nextEvent));
             if (CHECKPOINT_REFRESH_EVENT_TYPES.has(nextEvent.type)) {
               scheduleCheckpointRefresh();
             }
-            syncSessionFromEvent(nextEvent);
           };
-          stream.onerror = () => {
-            stream?.close();
-          };
+          stream.onerror = () => stream?.close();
         }
 
         const pending = pendingInitialMessage.current;
@@ -157,24 +108,14 @@ export function useChatSession() {
           insertPendingUserMessage(activeSessionId, pending.content);
           insertPendingAssistantMessage(activeSessionId);
           const nextUserMessage = await appendMessage(activeSessionId, pending.content);
-          if (disposed) {
-            return;
-          }
+          if (disposed) return;
           clearPendingUser(activeSessionId);
           setMessages(current => mergeOrAppendMessage(current, nextUserMessage));
-          setSessions(current =>
-            current.map(session =>
-              session.id === activeSessionId
-                ? { ...session, status: 'running', updatedAt: new Date().toISOString() }
-                : session
-            )
-          );
+          markSessionRunning(activeSessionId);
         }
       } catch (nextError) {
         if (!disposed) {
-          if (activeSessionId) {
-            clearPendingSessionMessages(activeSessionId);
-          }
+          clearPendingSessionMessages(activeSessionId);
           setError(nextError instanceof Error ? nextError.message : '激活会话失败');
         }
       }
@@ -190,58 +131,55 @@ export function useChatSession() {
     };
   }, [activeSessionId, activeSession?.status]);
 
-  async function refreshSessions() {
+  async function runLoading<T>(task: () => Promise<T>, fallbackMessage: string, withLoading = true) {
     try {
-      const nextSessions = await listSessions();
-      setSessions(nextSessions);
-      if (activeSessionId && !nextSessions.some(session => session.id === activeSessionId)) {
-        setActiveSessionId('');
-        setMessages([]);
-        setEvents([]);
-        setCheckpoint(undefined);
-      }
+      if (withLoading) setLoading(true);
+      setError('');
+      return await task();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '加载会话失败');
+      setError(nextError instanceof Error ? nextError.message : fallbackMessage);
+      return undefined;
+    } finally {
+      if (withLoading) setLoading(false);
+    }
+  }
+
+  async function refreshSessions() {
+    const nextSessions = await runLoading(() => listSessions(), '加载会话失败', false);
+    if (!nextSessions) return;
+    setSessions(nextSessions);
+    if (activeSessionId && !nextSessions.some(session => session.id === activeSessionId)) {
+      setActiveSessionId('');
+      setMessages([]);
+      setEvents([]);
+      setCheckpoint(undefined);
     }
   }
 
   async function refreshSessionDetail(sessionId = activeSessionId, showLoading = true) {
-    if (!sessionId) {
-      return;
-    }
-
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      setError('');
-      const [nextMessages, nextEvents, nextCheckpoint] = await Promise.all([
-        listMessages(sessionId),
-        listEvents(sessionId),
-        getCheckpoint(sessionId).catch(() => undefined)
-      ]);
-      setMessages(nextMessages);
-      setEvents(nextEvents);
-      setCheckpoint(nextCheckpoint);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '加载会话详情失败');
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-    }
+    if (!sessionId) return;
+    const result = await runLoading(
+      () =>
+        Promise.all([listMessages(sessionId), listEvents(sessionId), getCheckpoint(sessionId).catch(() => undefined)]),
+      '加载会话详情失败',
+      showLoading
+    );
+    if (!result) return;
+    const [nextMessages, nextEvents, nextCheckpoint] = result;
+    setMessages(nextMessages);
+    setEvents(nextEvents);
+    setCheckpoint(nextCheckpoint);
   }
 
   async function refreshCheckpointOnly() {
-    if (!activeSessionId) {
-      return;
-    }
-
-    try {
-      const nextCheckpoint = await getCheckpoint(activeSessionId).catch(() => undefined);
+    if (!activeSessionId) return;
+    const nextCheckpoint = await runLoading(
+      () => getCheckpoint(activeSessionId).catch(() => undefined),
+      '同步会话运行态失败',
+      false
+    );
+    if (nextCheckpoint !== undefined) {
       setCheckpoint(nextCheckpoint);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '同步会话运行态失败');
     }
   }
 
@@ -249,7 +187,6 @@ export function useChatSession() {
     if (checkpointRefreshTimer.current) {
       clearTimeout(checkpointRefreshTimer.current);
     }
-
     checkpointRefreshTimer.current = setTimeout(() => {
       checkpointRefreshTimer.current = null;
       void refreshCheckpointOnly();
@@ -258,319 +195,123 @@ export function useChatSession() {
 
   async function createNewSession(initialMessage?: string) {
     const content = (initialMessage ?? draft).trim();
+    const session = await runLoading(() => createSession(), '创建会话失败');
+    if (!session) return;
 
-    try {
-      setLoading(true);
-      setError('');
-      const session = await createSession();
-      if (content) {
-        pendingInitialMessage.current = { sessionId: session.id, content };
-        setDraft(STARTER_PROMPT);
-      }
-      setSessions(current => [session, ...current.filter(item => item.id !== session.id)]);
-      setMessages([]);
-      setEvents([]);
-      setCheckpoint(undefined);
-      setActiveSessionId(session.id);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '创建会话失败');
-    } finally {
-      setLoading(false);
+    if (content) {
+      pendingInitialMessage.current = { sessionId: session.id, content };
+      setDraft(STARTER_PROMPT);
     }
+    setSessions(current => [session, ...current.filter(item => item.id !== session.id)]);
+    setMessages([]);
+    setEvents([]);
+    setCheckpoint(undefined);
+    setActiveSessionId(session.id);
   }
 
   async function sendMessage(nextMessage?: string) {
     const content = (nextMessage ?? draft).trim();
-    if (!content) {
-      return;
-    }
-
+    if (!content) return;
     if (!activeSessionId) {
       await createNewSession(content);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError('');
+    const nextUserMessage = await runLoading(async () => {
       insertPendingUserMessage(activeSessionId, content);
       insertPendingAssistantMessage(activeSessionId);
-      const nextUserMessage = await appendMessage(activeSessionId, content);
-      clearPendingUser(activeSessionId);
-      setMessages(current => mergeOrAppendMessage(current, nextUserMessage));
-      setSessions(current =>
-        current.map(session =>
-          session.id === activeSessionId
-            ? { ...session, status: 'running', updatedAt: new Date().toISOString() }
-            : session
-        )
-      );
-      setDraft(STARTER_PROMPT);
-    } catch (nextError) {
+      return appendMessage(activeSessionId, content);
+    }, '发送消息失败');
+
+    if (!nextUserMessage) {
       clearPendingSessionMessages(activeSessionId);
-      setError(nextError instanceof Error ? nextError.message : '发送消息失败');
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    clearPendingUser(activeSessionId);
+    setMessages(current => mergeOrAppendMessage(current, nextUserMessage));
+    markSessionRunning(activeSessionId);
+    setDraft(STARTER_PROMPT);
   }
 
   async function updateApproval(intent: string, approved: boolean, feedback?: string) {
-    if (!activeSessionId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      if (approved) {
-        await approveSession(activeSessionId, intent, feedback);
-      } else {
-        await rejectSession(activeSessionId, intent, feedback);
-      }
-      await refreshSessionDetail(activeSessionId, false);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '更新审批失败');
-    } finally {
-      setLoading(false);
-    }
+    if (!activeSessionId) return;
+    const task = approved
+      ? () => approveSession(activeSessionId, intent, feedback)
+      : () => rejectSession(activeSessionId, intent, feedback);
+    const updated = await runLoading(task, '更新审批失败');
+    if (updated) await refreshSessionDetail(activeSessionId, false);
   }
 
   async function submitLearningConfirmation() {
-    if (!activeSessionId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      await confirmLearning(activeSessionId);
-      await refreshSessionDetail(activeSessionId, false);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '确认学习失败');
-    } finally {
-      setLoading(false);
-    }
+    if (!activeSessionId) return;
+    const updated = await runLoading(() => confirmLearning(activeSessionId), '确认学习失败');
+    if (updated) await refreshSessionDetail(activeSessionId, false);
   }
 
   async function recoverActiveSession() {
-    if (!activeSessionId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      await recoverSession(activeSessionId);
-      await refreshSessionDetail(activeSessionId, false);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '恢复会话失败');
-    } finally {
-      setLoading(false);
-    }
+    if (!activeSessionId) return;
+    const updated = await runLoading(() => recoverSession(activeSessionId), '恢复会话失败');
+    if (updated) await refreshSessionDetail(activeSessionId, false);
   }
 
   async function cancelActiveSession(reason?: string) {
-    if (!activeSessionId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      await cancelSession(activeSessionId, reason);
-      await refreshSessionDetail(activeSessionId, false);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '终止会话失败');
-    } finally {
-      setLoading(false);
-    }
+    if (!activeSessionId) return;
+    const updated = await runLoading(() => cancelSession(activeSessionId, reason), '终止会话失败');
+    if (updated) await refreshSessionDetail(activeSessionId, false);
   }
 
   async function deleteSessionById(sessionId: string) {
-    if (!sessionId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      await deleteSession(sessionId);
-      pendingInitialMessage.current = null;
-      clearPendingSessionMessages(sessionId);
-      setSessions(current => current.filter(session => session.id !== sessionId));
-      if (activeSessionId === sessionId) {
-        setMessages([]);
-        setEvents([]);
-        setCheckpoint(undefined);
-        setActiveSessionId('');
-      }
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '删除会话失败');
-    } finally {
-      setLoading(false);
+    if (!sessionId) return;
+    const done = await runLoading(() => deleteSession(sessionId), '删除会话失败');
+    if (done === undefined) return;
+    pendingInitialMessage.current = null;
+    clearPendingSessionMessages(sessionId);
+    setSessions(current => current.filter(session => session.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      setMessages([]);
+      setEvents([]);
+      setCheckpoint(undefined);
+      setActiveSessionId('');
     }
   }
 
   async function deleteActiveSession() {
-    if (!activeSessionId) {
-      return;
+    if (activeSessionId) {
+      await deleteSessionById(activeSessionId);
     }
-
-    await deleteSessionById(activeSessionId);
   }
 
   async function renameSessionById(sessionId: string, title: string) {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      const updatedSession = await updateSession(sessionId, trimmedTitle);
-      setSessions(current => current.map(session => (session.id === sessionId ? updatedSession : session)));
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '重命名会话失败');
-    } finally {
-      setLoading(false);
+    if (!trimmedTitle) return;
+    const updatedSession = await runLoading(() => updateSession(sessionId, trimmedTitle), '重命名会话失败');
+    if (updatedSession) {
+      setSessions(current =>
+        current.map(session =>
+          session.id === sessionId
+            ? {
+                ...updatedSession,
+                compression: updatedSession.compression
+                  ? {
+                      ...updatedSession.compression,
+                      trigger:
+                        updatedSession.compression.trigger === 'character_count' ? 'character_count' : 'message_count',
+                      source: updatedSession.compression.source === 'llm' ? 'llm' : 'heuristic'
+                    }
+                  : undefined
+              }
+            : session
+        )
+      );
     }
   }
 
-  function syncSessionFromEvent(event: ChatEventRecord) {
+  function markSessionRunning(sessionId: string) {
     setSessions(current =>
-      current.map(session => {
-        if (session.id !== event.sessionId) {
-          return session;
-        }
-
-        let nextStatus = session.status;
-        if (event.type === 'approval_required') {
-          nextStatus = 'waiting_approval';
-        } else if (event.type === 'approval_resolved') {
-          nextStatus = 'running';
-        } else if (event.type === 'approval_rejected_with_feedback') {
-          nextStatus = 'failed';
-        } else if (event.type === 'learning_pending_confirmation') {
-          nextStatus = 'waiting_learning_confirmation';
-        } else if (
-          event.type === 'learning_confirmed' ||
-          event.type === 'session_finished' ||
-          event.type === 'assistant_message'
-        ) {
-          nextStatus = 'completed';
-        } else if (event.type === 'run_cancelled') {
-          nextStatus = 'cancelled';
-        } else if (event.type === 'session_failed') {
-          nextStatus = 'failed';
-        } else if (
-          event.type === 'skill_resolved' ||
-          event.type === 'skill_stage_started' ||
-          event.type === 'skill_stage_completed' ||
-          event.type === 'manager_planned' ||
-          event.type === 'subtask_dispatched' ||
-          event.type === 'research_progress' ||
-          event.type === 'tool_called' ||
-          event.type === 'review_completed' ||
-          event.type === 'assistant_token'
-        ) {
-          nextStatus = 'running';
-        }
-
-        const taskId =
-          typeof event.payload?.taskId === 'string' ? (event.payload.taskId as string) : session.currentTaskId;
-
-        return {
-          ...session,
-          currentTaskId: taskId,
-          status: nextStatus,
-          updatedAt: event.at,
-          compression:
-            event.type === 'conversation_compacted'
-              ? {
-                  summary:
-                    typeof event.payload?.summary === 'string'
-                      ? event.payload.summary
-                      : (session.compression?.summary ?? ''),
-                  condensedMessageCount:
-                    typeof event.payload?.condensedMessageCount === 'number'
-                      ? event.payload.condensedMessageCount
-                      : (session.compression?.condensedMessageCount ?? 0),
-                  condensedCharacterCount:
-                    typeof event.payload?.condensedCharacterCount === 'number'
-                      ? event.payload.condensedCharacterCount
-                      : (session.compression?.condensedCharacterCount ?? 0),
-                  totalCharacterCount:
-                    typeof event.payload?.totalCharacterCount === 'number'
-                      ? event.payload.totalCharacterCount
-                      : (session.compression?.totalCharacterCount ?? 0),
-                  trigger: event.payload?.trigger === 'character_count' ? 'character_count' : 'message_count',
-                  source: event.payload?.source === 'llm' ? 'llm' : 'heuristic',
-                  updatedAt: event.at
-                }
-              : session.compression
-        };
-      })
-    );
-  }
-
-  function syncMessageFromEvent(event: ChatEventRecord) {
-    const payload = event.payload ?? {};
-    if (event.type !== 'assistant_message' && event.type !== 'user_message' && event.type !== 'assistant_token') {
-      return;
-    }
-
-    const messageId = typeof payload.messageId === 'string' ? payload.messageId : '';
-    const content = typeof payload.content === 'string' ? payload.content : '';
-
-    if (!messageId || !content) {
-      return;
-    }
-
-    const role: ChatMessageRecord['role'] = event.type === 'user_message' ? 'user' : 'assistant';
-    const linkedAgent = typeof payload.from === 'string' ? payload.from : undefined;
-
-    if (role === 'assistant') {
-      clearPendingAssistant(event.sessionId);
-    } else {
-      clearPendingUser(event.sessionId);
-    }
-
-    setMessages(current =>
-      mergeOrAppendMessage(
-        current,
-        {
-          id: messageId,
-          sessionId: event.sessionId,
-          role,
-          content,
-          linkedAgent,
-          createdAt: event.at
-        },
-        event.type === 'assistant_token'
+      current.map(session =>
+        session.id === sessionId ? { ...session, status: 'running', updatedAt: new Date().toISOString() } : session
       )
-    );
-  }
-
-  function syncProcessMessageFromEvent(event: ChatEventRecord) {
-    if (!MESSAGE_VISIBLE_EVENT_TYPES.has(event.type)) {
-      return;
-    }
-
-    const content = buildVisibleEventMessage(event);
-    if (!content) {
-      return;
-    }
-
-    setMessages(current =>
-      mergeMessage(current, {
-        id: `event_${event.id}`,
-        sessionId: event.sessionId,
-        role: 'system',
-        content,
-        card: buildEventCard(event),
-        createdAt: event.at
-      })
     );
   }
 
@@ -578,7 +319,7 @@ export function useChatSession() {
     const pendingId = `${PENDING_ASSISTANT_PREFIX}${sessionId}`;
     pendingAssistantIds.current[sessionId] = pendingId;
     setMessages(current =>
-      mergeMessage(current, {
+      mergeOrAppendMessage(current, {
         id: pendingId,
         sessionId,
         role: 'assistant',
@@ -587,10 +328,6 @@ export function useChatSession() {
         createdAt: new Date().toISOString()
       })
     );
-  }
-
-  function clearPendingAssistant(sessionId: string) {
-    delete pendingAssistantIds.current[sessionId];
   }
 
   function insertPendingUserMessage(sessionId: string, content: string) {
@@ -607,6 +344,10 @@ export function useChatSession() {
     );
   }
 
+  function clearPendingAssistant(sessionId: string) {
+    delete pendingAssistantIds.current[sessionId];
+  }
+
   function clearPendingUser(sessionId: string) {
     delete pendingUserIds.current[sessionId];
   }
@@ -616,13 +357,7 @@ export function useChatSession() {
     const pendingUserId = pendingUserIds.current[sessionId];
     clearPendingAssistant(sessionId);
     clearPendingUser(sessionId);
-    if (!pendingAssistantId && !pendingUserId) {
-      return;
-    }
-
-    setMessages(current =>
-      current.filter(message => message.id !== pendingAssistantId && message.id !== pendingUserId)
-    );
+    setMessages(current => removePendingMessages(current, pendingAssistantId, pendingUserId));
   }
 
   return {
@@ -652,162 +387,4 @@ export function useChatSession() {
     deleteSessionById,
     deleteActiveSession
   };
-}
-
-function mergeEvent(current: ChatEventRecord[], nextEvent: ChatEventRecord) {
-  if (current.some(event => event.id === nextEvent.id)) {
-    return current;
-  }
-
-  return [...current, nextEvent];
-}
-
-function mergeMessage(current: ChatMessageRecord[], nextMessage: ChatMessageRecord) {
-  if (current.some(message => message.id === nextMessage.id)) {
-    return current;
-  }
-
-  return [...current, nextMessage];
-}
-
-function mergeOrAppendMessage(current: ChatMessageRecord[], nextMessage: ChatMessageRecord, appendContent = false) {
-  const target = current.find(message => message.id === nextMessage.id);
-  if (!target) {
-    const pendingPlaceholder = current.find(
-      message =>
-        (message.id.startsWith(PENDING_ASSISTANT_PREFIX) || message.id.startsWith(PENDING_USER_PREFIX)) &&
-        message.sessionId === nextMessage.sessionId &&
-        message.role === nextMessage.role
-    );
-
-    if (pendingPlaceholder) {
-      return current.map(message =>
-        message.id === pendingPlaceholder.id
-          ? {
-              ...message,
-              id: nextMessage.id,
-              content: nextMessage.content,
-              linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
-              card: nextMessage.card ?? message.card,
-              createdAt: nextMessage.createdAt
-            }
-          : message
-      );
-    }
-
-    return [...current, nextMessage];
-  }
-
-  if (!appendContent) {
-    return current;
-  }
-
-  return current.map(message =>
-    message.id === nextMessage.id
-      ? {
-          ...message,
-          content: `${message.content}${nextMessage.content}`,
-          linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
-          card: nextMessage.card ?? message.card
-        }
-      : message
-  );
-}
-
-function buildEventCard(event: ChatEventRecord): ChatMessageRecord['card'] | undefined {
-  const payload = event.payload ?? {};
-  if (event.type === 'approval_required') {
-    return {
-      type: 'approval_request',
-      intent: typeof payload.intent === 'string' ? payload.intent : 'unknown',
-      toolName: typeof payload.toolName === 'string' ? payload.toolName : undefined,
-      reason: typeof payload.reason === 'string' ? payload.reason : undefined,
-      riskLevel: typeof payload.riskLevel === 'string' ? payload.riskLevel : undefined,
-      requestedBy: typeof payload.requestedBy === 'string' ? payload.requestedBy : undefined
-    };
-  }
-  if (event.type === 'run_cancelled') {
-    return {
-      type: 'run_cancelled',
-      reason: typeof payload.reason === 'string' ? payload.reason : undefined
-    };
-  }
-  return undefined;
-}
-
-function buildVisibleEventMessage(event: ChatEventRecord) {
-  const payload = event.payload ?? {};
-
-  switch (event.type) {
-    case 'decree_received':
-      return '已接收你的任务，首辅正在判断本轮应该走哪条协作流程。';
-    case 'skill_resolved':
-      return typeof payload.skillId === 'string' ? `已解析流程模板：${payload.skillId}` : '已解析本轮流程模板。';
-    case 'skill_stage_started':
-    case 'skill_stage_completed':
-      return typeof payload.skillStage === 'string' ? `流程阶段更新：${payload.skillStage}` : '流程阶段已更新。';
-    case 'supervisor_planned':
-    case 'manager_planned':
-      return typeof payload.summary === 'string' && payload.summary ? payload.summary : '首辅已完成本轮规划。';
-    case 'libu_routed':
-      return typeof payload.summary === 'string' && payload.summary ? payload.summary : '吏部已完成路由分派。';
-    case 'ministry_started':
-      return typeof payload.summary === 'string' && payload.summary ? payload.summary : '某位尚书已开始执行。';
-    case 'ministry_reported':
-    case 'research_progress':
-    case 'tool_called':
-    case 'review_completed':
-      return typeof payload.summary === 'string' && payload.summary ? payload.summary : '收到新的阶段战报。';
-    case 'subtask_dispatched':
-      return typeof payload.content === 'string' && payload.content ? payload.content : '子任务已分派。';
-    case 'approval_required':
-      return buildApprovalRequiredCopy(payload);
-    case 'approval_resolved':
-      return '审批已通过，系统继续执行。';
-    case 'approval_rejected_with_feedback':
-      return typeof payload.feedback === 'string' && payload.feedback
-        ? `你已打回并附批注：${payload.feedback}`
-        : '你已打回当前奏折。';
-    case 'run_resumed':
-      return '系统已根据你的决定恢复执行。';
-    case 'run_cancelled':
-      return typeof payload.reason === 'string' && payload.reason
-        ? `已终止当前执行：${payload.reason}`
-        : '已终止当前执行。';
-    case 'session_failed':
-      return typeof payload.error === 'string' && payload.error ? payload.error : '当前会话执行失败。';
-    case 'session_finished':
-      return '本轮协作已完成，正在整理最终回复。';
-    default:
-      return '';
-  }
-}
-
-function buildApprovalRequiredCopy(payload: Record<string, unknown>) {
-  const intent = typeof payload.intent === 'string' ? payload.intent : 'unknown';
-  const toolName = typeof payload.toolName === 'string' ? payload.toolName : '';
-  const requestedBy = typeof payload.requestedBy === 'string' ? payload.requestedBy : '';
-  const reason = typeof payload.reason === 'string' ? payload.reason : '';
-  const intentLabel = getIntentLabel(intent);
-  const toolSuffix = toolName ? `，工具为 ${toolName}` : '';
-  const actorSuffix = requestedBy ? `，由 ${requestedBy} 发起` : '';
-
-  if (reason) {
-    return `等待审批：准备执行${intentLabel}${toolSuffix}${actorSuffix}。${reason}`;
-  }
-
-  return `等待审批：准备执行${intentLabel}${toolSuffix}${actorSuffix}。该动作具有风险，需要你明确拍板后才能继续。`;
-}
-
-function getIntentLabel(intent: string) {
-  switch (intent) {
-    case 'write_file':
-      return '文件写入';
-    case 'call_external_api':
-      return '外部请求';
-    case 'read_file':
-      return '文件读取';
-    default:
-      return intent;
-  }
 }
