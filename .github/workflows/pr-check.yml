@@ -182,11 +182,12 @@ jobs:
       - typecheck
       - test
       - build
-    if: ${{ always() && secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' }}
+    # job 级 if 不能使用 secrets；改为 always()，在 step 里判断密钥是否齐全
+    if: always()
 
     steps:
       - name: Send Success Email
-        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        if: ${{ secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' && needs.detect-changes.result == 'success' && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -208,7 +209,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Send Failure Email
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        if: ${{ secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lint.result == 'failure' || needs.lint.result == 'cancelled' || needs.typecheck.result == 'failure' || needs.typecheck.result == 'cancelled' || needs.test.result == 'failure' || needs.test.result == 'cancelled' || needs.build.result == 'failure' || needs.build.result == 'cancelled') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
