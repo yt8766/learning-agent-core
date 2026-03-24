@@ -13,6 +13,17 @@ export interface GenerateTextOptions {
   temperature?: number;
   maxTokens?: number;
   thinking?: boolean;
+  onUsage?: (usage: LlmUsageMetadata) => void;
+}
+
+export interface LlmUsageMetadata {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  model?: string;
+  estimated?: boolean;
+  costUsd?: number;
+  costCny?: number;
 }
 
 export interface LlmProvider {

@@ -240,16 +240,35 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig([
   {
-    entry: ['src'],
+    entry: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.test.ts'],
     format: ['cjs'],
     outDir: 'build/cjs',
     treeshake: true
   },
   {
-    entry: ['src'],
+    entry: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.test.ts'],
     format: ['esm'],
     outDir: 'build/esm',
     treeshake: true
   }
 ]);
 ```
+
+## 5. 仓库级代理 Skill 模板
+
+```text
+skills/
+└─ code-review/
+   ├─ SKILL.md
+   ├─ references/
+   ├─ scripts/
+   └─ assets/
+```
+
+说明：
+
+- `SKILL.md` 是代理技能入口
+- `references/` 放规范和样例
+- `scripts/` 放代理可执行脚本
+- `assets/` 放模板或静态资源
+- 运行时 skill registry 仍放在 `packages/skills`

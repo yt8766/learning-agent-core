@@ -58,4 +58,41 @@ describe('loadSettings', () => {
     expect(settings.tasksStateFilePath.replace(/\\/g, '/')).toBe('D:/custom/runtime/tasks.json');
     expect(settings.memoryFilePath.replace(/\\/g, '/')).toBe('D:/custom/memory/records.jsonl');
   });
+
+  it('支持 research MCP 的 HTTP 配置', () => {
+    const settings = loadSettings({
+      ZHIPU_API_KEY: 'platform-token',
+      MCP_RESEARCH_HTTP_ENDPOINT: 'https://mcp.example.com/research',
+      MCP_RESEARCH_HTTP_API_KEY: 'secret-token',
+      MCP_STDIO_SESSION_IDLE_TTL_MS: '60000',
+      MCP_STDIO_SESSION_MAX_COUNT: '6',
+      PROVIDER_AUDIT_PRIMARY: 'zhipu',
+      ZHIPU_USAGE_AUDIT_HTTP_ENDPOINT: 'https://audit.example.com/zhipu',
+      OPENAI_USAGE_AUDIT_HTTP_ENDPOINT: 'https://audit.example.com/openai'
+    } as NodeJS.ProcessEnv);
+
+    expect(settings.mcp.bigmodelApiKey).toBe('platform-token');
+    expect(settings.mcp.webSearchEndpoint).toBe('https://open.bigmodel.cn/api/mcp/web_search_prime/mcp');
+    expect(settings.mcp.webReaderEndpoint).toBe('https://open.bigmodel.cn/api/mcp/web_reader/mcp');
+    expect(settings.mcp.zreadEndpoint).toBe('https://open.bigmodel.cn/api/mcp/zread/mcp');
+    expect(settings.mcp.researchHttpEndpoint).toBe('https://mcp.example.com/research');
+    expect(settings.mcp.researchHttpApiKey).toBe('secret-token');
+    expect(settings.mcp.stdioSessionIdleTtlMs).toBe(60000);
+    expect(settings.mcp.stdioSessionMaxCount).toBe(6);
+    expect(settings.providerAudit.primaryProvider).toBe('zhipu');
+    expect(settings.providerAudit.adapters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider: 'zhipu',
+          endpoint: 'https://audit.example.com/zhipu',
+          source: 'zhipu-http'
+        }),
+        expect.objectContaining({
+          provider: 'openai',
+          endpoint: 'https://audit.example.com/openai',
+          source: 'openai-http'
+        })
+      ])
+    );
+  });
 });

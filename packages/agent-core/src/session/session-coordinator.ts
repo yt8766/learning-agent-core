@@ -417,6 +417,13 @@ export class SessionCoordinator {
     checkpoint.pendingApproval = task.pendingApproval;
     checkpoint.approvalFeedback = task.approvalFeedback;
     checkpoint.modelRoute = task.modelRoute;
+    checkpoint.externalSources = task.externalSources;
+    checkpoint.reusedMemories = task.reusedMemories;
+    checkpoint.reusedRules = task.reusedRules;
+    checkpoint.reusedSkills = task.reusedSkills;
+    checkpoint.learningEvaluation = task.learningEvaluation;
+    checkpoint.budgetState = task.budgetState;
+    checkpoint.llmUsage = task.llmUsage;
     checkpoint.traceCursor = task.trace.length;
     checkpoint.messageCursor = task.messages.length;
     checkpoint.approvalCursor = task.approvals.length;
@@ -989,16 +996,20 @@ export class SessionCoordinator {
   }
 
   private async autoConfirmLearningIfNeeded(sessionId: string, task: TaskRecord): Promise<void> {
+    const preferredCandidateIds = task.learningEvaluation?.autoConfirmCandidateIds;
     const pendingCandidateIds =
       task.learningCandidates
         ?.filter(candidate => candidate.status === 'pending_confirmation')
         .map(candidate => candidate.id) ?? [];
 
-    if (!pendingCandidateIds.length) {
+    const selectedCandidateIds =
+      preferredCandidateIds?.filter(candidateId => pendingCandidateIds.includes(candidateId)) ?? pendingCandidateIds;
+
+    if (!selectedCandidateIds.length) {
       return;
     }
 
-    await this.runLearningConfirmation(sessionId, task, pendingCandidateIds, true);
+    await this.runLearningConfirmation(sessionId, task, selectedCandidateIds, true);
   }
 
   private async runLearningConfirmation(

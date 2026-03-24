@@ -33,4 +33,14 @@ export class SkillsController {
   disable(@Param('id') id: string) {
     return this.skillsService.disable(id);
   }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string) {
+    return this.skillsService.restore(id);
+  }
+
+  @Post(':id/retire')
+  retire(@Param('id') id: string) {
+    return this.skillsService.retire(id);
+  }
 }

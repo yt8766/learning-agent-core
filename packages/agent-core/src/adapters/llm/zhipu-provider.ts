@@ -5,6 +5,7 @@ import {
   extractJsonObject,
   GenerateTextOptions,
   jsonObjectInstruction,
+  LlmUsageMetadata,
   LlmProvider
 } from './llm-provider';
 import { ZhipuChatModelFactory } from './chat-model-factory';
@@ -46,6 +47,78 @@ function readContent(content: unknown): string {
   return '';
 }
 
+function readUsage(payload: unknown): LlmUsageMetadata | undefined {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const usageMetadata =
+    'usage_metadata' in payload ? (payload as { usage_metadata?: unknown }).usage_metadata : undefined;
+  const responseMetadata =
+    'response_metadata' in payload ? (payload as { response_metadata?: unknown }).response_metadata : undefined;
+
+  const direct = normalizeUsageLike(usageMetadata);
+  if (direct) {
+    return direct;
+  }
+
+  if (responseMetadata && typeof responseMetadata === 'object') {
+    const tokenUsage =
+      'tokenUsage' in responseMetadata
+        ? (responseMetadata as { tokenUsage?: unknown }).tokenUsage
+        : 'usage' in responseMetadata
+          ? (responseMetadata as { usage?: unknown }).usage
+          : undefined;
+    const fromResponse = normalizeUsageLike(tokenUsage);
+    if (fromResponse) {
+      const modelName =
+        'model_name' in responseMetadata ? (responseMetadata as { model_name?: unknown }).model_name : undefined;
+      return {
+        ...fromResponse,
+        model: typeof modelName === 'string' ? modelName : fromResponse.model
+      };
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeUsageLike(payload: unknown): LlmUsageMetadata | undefined {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const promptTokens = readNumber(candidate.promptTokens ?? candidate.prompt_tokens ?? candidate.input_tokens);
+  const completionTokens = readNumber(
+    candidate.completionTokens ?? candidate.completion_tokens ?? candidate.output_tokens
+  );
+  const totalTokens =
+    readNumber(candidate.totalTokens ?? candidate.total_tokens) ??
+    (promptTokens != null || completionTokens != null ? (promptTokens ?? 0) + (completionTokens ?? 0) : undefined);
+
+  if (promptTokens == null && completionTokens == null && totalTokens == null) {
+    return undefined;
+  }
+
+  const model = typeof candidate.model === 'string' ? candidate.model : undefined;
+  const costUsd = readNumber(candidate.costUsd ?? candidate.cost_usd ?? candidate.total_cost_usd);
+  const costCny = readNumber(candidate.costCny ?? candidate.cost_cny ?? candidate.total_cost_cny);
+
+  return {
+    promptTokens: promptTokens ?? 0,
+    completionTokens: completionTokens ?? 0,
+    totalTokens: totalTokens ?? 0,
+    model,
+    costUsd,
+    costCny
+  };
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 export class ZhipuLlmProvider implements LlmProvider {
   private readonly factory = new ZhipuChatModelFactory();
 
@@ -64,6 +137,10 @@ export class ZhipuLlmProvider implements LlmProvider {
       thinking: options.thinking
     });
     const response = await model.invoke(messages.map(toLangChainMessage));
+    const usage = readUsage(response);
+    if (usage) {
+      options.onUsage?.(usage);
+    }
     return readContent(response.content);
   }
 
@@ -84,8 +161,13 @@ export class ZhipuLlmProvider implements LlmProvider {
 
     const stream = await model.stream(messages.map(toLangChainMessage));
     let finalText = '';
+    let lastUsage: LlmUsageMetadata | undefined;
 
     for await (const chunk of stream) {
+      const usage = readUsage(chunk);
+      if (usage) {
+        lastUsage = usage;
+      }
       const token = readContent(chunk.content);
       if (!token) {
         continue;
@@ -96,6 +178,10 @@ export class ZhipuLlmProvider implements LlmProvider {
       onToken(token, {
         model: typeof modelName === 'string' ? modelName : undefined
       });
+    }
+
+    if (lastUsage) {
+      options.onUsage?.(lastUsage);
     }
 
     return finalText;

@@ -93,6 +93,27 @@ export class LocalSandboxExecutor implements SandboxExecutor {
           rawOutput: { goal, researchSummary }
         };
       }
+      case 'collect_research_source': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const url = typeof request.input.url === 'string' ? request.input.url : 'https://example.com/';
+        const trustClass = typeof request.input.trustClass === 'string' ? request.input.trustClass : 'official';
+        const sourceType =
+          typeof request.input.sourceType === 'string' ? request.input.sourceType : 'web_research_plan';
+        const host = new URL(url).host;
+        return {
+          outputSummary: `Collected research summary from ${host} for "${goal}"`,
+          rawOutput: {
+            url,
+            host,
+            goal,
+            trustClass,
+            sourceType,
+            fetchedAt: new Date().toISOString(),
+            summary: `已从 ${host} 抓取与“${goal}”相关的结构化摘要，适合作为后续研究与学习沉淀的依据。`,
+            simulated: true
+          }
+        };
+      }
       case 'browse_page': {
         const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
         const url = typeof request.input.url === 'string' ? request.input.url : 'http://localhost:3000';

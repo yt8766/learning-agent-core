@@ -6,8 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build -p tsconfig.build.json",
-    "build:server": "nest build -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json",
+    "build:server": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prestart": "pnpm --dir ../../.. build:lib",
     "start": "nest start",
@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@agent/agent-core": "workspace:*",
+    "@agent/config": "workspace:*",
+    "@agent/evals": "workspace:*",
     "@agent/memory": "workspace:*",
     "@agent/shared": "workspace:*",
     "@agent/skills": "workspace:*",

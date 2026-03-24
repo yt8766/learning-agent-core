@@ -3,7 +3,7 @@ import { MemoryRepository, RuleRepository, RuntimeStateRepository } from '@agent
 import { SkillRegistry } from '@agent/skills';
 import { ApprovalService, McpClientManager, SandboxExecutor, ToolRegistry } from '@agent/tools';
 
-import { AgentModelRole, LlmProvider } from '../adapters/llm/llm-provider';
+import { AgentModelRole, LlmProvider, LlmUsageMetadata } from '../adapters/llm/llm-provider';
 
 export interface AgentRuntimeContext {
   taskId: string;
@@ -26,6 +26,7 @@ export interface AgentRuntimeContext {
     reviewer: boolean;
   };
   onToken?: (payload: { token: string; role: AgentModelRole; messageId: string; model?: string }) => void;
+  onUsage?: (payload: { usage: LlmUsageMetadata; role: AgentModelRole }) => void;
 }
 
 export interface AgentLike {

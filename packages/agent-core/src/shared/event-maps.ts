@@ -17,6 +17,7 @@ export const TRACE_EVENT_MAP: Record<string, ChatEventRecord['type']> = {
   review: 'review_completed',
   approval_gate: 'approval_required',
   approval_rejected_with_feedback: 'approval_rejected_with_feedback',
+  budget_exhausted: 'budget_exhausted',
   run_resumed: 'run_resumed',
   run_cancelled: 'run_cancelled',
   final_response_completed: 'final_response_completed',

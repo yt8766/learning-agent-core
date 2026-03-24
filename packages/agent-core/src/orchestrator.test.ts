@@ -28,9 +28,13 @@ describe('AgentOrchestrator', () => {
     generateObject: vi.fn()
   });
 
-  const createOrchestrator = (snapshot?: any) => {
+  const createOrchestrator = (snapshot?: any, options?: { memorySearchResults?: any[] }) => {
     return new AgentOrchestrator({
-      memoryRepository: { append: vi.fn(), search: vi.fn(async () => []), getById: vi.fn() } as never,
+      memoryRepository: {
+        append: vi.fn(),
+        search: vi.fn(async () => options?.memorySearchResults ?? []),
+        getById: vi.fn()
+      } as never,
       skillRegistry: {
         publishToLab: vi.fn(),
         list: vi.fn(async () => []),
@@ -335,5 +339,84 @@ describe('AgentOrchestrator', () => {
         toolName: 'run_terminal'
       })
     );
+  });
+
+  it('后续任务会优先命中已沉淀的 research memory', async () => {
+    const orchestrator = createOrchestrator(undefined, {
+      memorySearchResults: [
+        {
+          id: 'mem_research_existing',
+          type: 'fact',
+          taskId: 'learn_job_1',
+          summary: 'React 官方文档关于流式渲染的研究结论',
+          content: '优先复用此前主动研究沉淀的结论。',
+          tags: ['research-job', 'auto-persist', 'react'],
+          qualityScore: 92,
+          createdAt: '2026-03-23T00:00:00.000Z'
+        }
+      ]
+    });
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '/review 请审查 React 聊天页的流式渲染体验',
+      constraints: []
+    });
+
+    expect(task.reusedMemories).toEqual(['mem_research_existing']);
+    expect(task.externalSources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceType: 'memory_reuse',
+          trustClass: 'internal',
+          detail: expect.objectContaining({
+            memoryId: 'mem_research_existing'
+          })
+        })
+      ])
+    );
+    expect(task.trace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          node: 'research',
+          summary: expect.stringContaining('优先命中 1 条历史记忆')
+        })
+      ])
+    );
+  });
+
+  it('step budget 超限时会进入预算阻断态', async () => {
+    const orchestrator = createOrchestrator();
+
+    await orchestrator.initialize();
+
+    const task = {
+      id: 'task-budget',
+      goal: '预算治理测试',
+      status: TaskStatus.QUEUED,
+      trace: [],
+      approvals: [],
+      agentStates: [],
+      messages: [],
+      createdAt: '2026-03-24T00:00:00.000Z',
+      updatedAt: '2026-03-24T00:00:00.000Z',
+      budgetState: {
+        stepBudget: 1,
+        stepsConsumed: 0,
+        retryBudget: 1,
+        retriesConsumed: 0,
+        sourceBudget: 2,
+        sourcesConsumed: 0
+      }
+    } as any;
+
+    expect(() =>
+      orchestrator.syncTaskRuntime(task, {
+        currentStep: 'review',
+        retryCount: 0,
+        maxRetries: 1
+      })
+    ).toThrow('step budget');
   });
 });

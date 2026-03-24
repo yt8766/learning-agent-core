@@ -7,6 +7,19 @@ const GENERAL_PRESET: WorkflowPresetDefinition = {
   requiredMinistries: ['libu-router', 'hubu-search', 'gongbu-code', 'xingbu-review'],
   allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'write_local_file'],
   approvalPolicy: 'high-risk-only',
+  webLearningPolicy: {
+    enabled: true,
+    preferredSourceTypes: ['memory', 'official-docs', 'repo'],
+    acceptedTrustClasses: ['official', 'curated', 'internal']
+  },
+  sourcePolicy: {
+    mode: 'controlled-first'
+  },
+  autoPersistPolicy: {
+    memory: 'high-confidence',
+    rule: 'suggest',
+    skill: 'suggest'
+  },
   outputContract: {
     type: 'general_delivery',
     requiredSections: ['summary', 'execution', 'review']
@@ -23,6 +36,19 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'hubu-search', 'libu-docs'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
     approvalPolicy: 'none',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['official-docs', 'market', 'repo'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first'
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'manual'
+    },
     outputContract: {
       type: 'ceo_review',
       requiredSections: ['user_value', 'business_risk', 'recommendation']
@@ -36,6 +62,19 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'gongbu-code', 'libu-docs'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'write_local_file'],
     approvalPolicy: 'high-risk-only',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['official-docs', 'repo', 'community'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first'
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'suggest'
+    },
     outputContract: {
       type: 'engineering_review',
       requiredSections: ['architecture', 'risks', 'implementation_plan']
@@ -49,6 +88,19 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'xingbu-review', 'gongbu-code'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
     approvalPolicy: 'none',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['memory', 'repo', 'official-docs'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first'
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'manual'
+    },
     outputContract: {
       type: 'code_review',
       requiredSections: ['findings', 'risks', 'followups']
@@ -62,6 +114,20 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'bingbu-ops', 'hubu-search', 'libu-docs'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'run_terminal', 'local-analysis'],
     approvalPolicy: 'high-risk-only',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['official-docs', 'repo', 'community'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first',
+      preferredUrls: ['https://vitest.dev/', 'https://playwright.dev/']
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'suggest'
+    },
     outputContract: {
       type: 'qa_report',
       requiredSections: ['coverage', 'results', 'regressions']
@@ -75,6 +141,20 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'bingbu-ops', 'libu-docs'],
     allowedCapabilities: ['browse_page', 'http_request', 'read_local_file', 'list_directory', 'local-analysis'],
     approvalPolicy: 'all-actions',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['official-docs', 'web', 'community'],
+      acceptedTrustClasses: ['official', 'curated', 'community', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'open-web-allowed',
+      preferredUrls: ['https://playwright.dev/']
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'suggest'
+    },
     outputContract: {
       type: 'browser_report',
       requiredSections: ['journey', 'screenshots', 'issues']
@@ -96,6 +176,20 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
       'local-analysis'
     ],
     approvalPolicy: 'all-actions',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['official-docs', 'repo', 'community'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first',
+      preferredUrls: ['https://docs.github.com/', 'https://docs.npmjs.com/']
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'suggest'
+    },
     outputContract: {
       type: 'release_report',
       requiredSections: ['checks', 'artifacts', 'release_notes']
@@ -109,6 +203,19 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     requiredMinistries: ['libu-router', 'libu-docs', 'xingbu-review', 'gongbu-code'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
     approvalPolicy: 'none',
+    webLearningPolicy: {
+      enabled: true,
+      preferredSourceTypes: ['memory', 'repo', 'official-docs'],
+      acceptedTrustClasses: ['official', 'curated', 'internal']
+    },
+    sourcePolicy: {
+      mode: 'controlled-first'
+    },
+    autoPersistPolicy: {
+      memory: 'high-confidence',
+      rule: 'suggest',
+      skill: 'suggest'
+    },
     outputContract: {
       type: 'retro_report',
       requiredSections: ['wins', 'issues', 'next_actions']

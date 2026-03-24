@@ -8,9 +8,12 @@ import {
   ApprovalActionDto,
   ApprovalDecision,
   CreateDocumentLearningJobDto,
+  CreateResearchLearningJobDto,
   CreateTaskDto,
   EvaluationResult,
+  EvidenceRecord,
   ExecutionTrace,
+  LlmUsageRecord,
   LearningJob,
   LearningCandidateRecord,
   ManagerPlan,
@@ -35,8 +38,16 @@ import {
 } from '@agent/tools';
 
 import { createApprovalRecoveryGraph } from './recovery.graph';
-import { executeApprovedAction, PendingExecutionContext, syncApprovedExecutorState } from '../flows/approval';
-import { ExecutorAgent, ManagerAgent, ResearchAgent, ReviewerAgent } from '../flows/chat';
+import { executeApprovedAction, PendingExecutionContext } from '../flows/approval';
+import {
+  BingbuOpsMinistry,
+  GongbuCodeMinistry,
+  HubuSearchMinistry,
+  LibuDocsMinistry,
+  LibuRouterMinistry,
+  XingbuReviewMinistry
+} from '../flows/ministries';
+import { buildResearchSourcePlan, mergeEvidence } from '../workflows/research-source-planner';
 import { LearningFlow } from '../flows/learning';
 import { createAgentGraph, createInitialState, RuntimeAgentGraphState } from './chat.graph';
 import { LlmProvider } from '../adapters/llm/llm-provider';
@@ -129,11 +140,32 @@ export class AgentOrchestrator {
   async createTask(dto: CreateTaskDto): Promise<TaskRecord> {
     await this.initialize();
     const now = new Date().toISOString();
+    const taskId = `task_${Date.now()}`;
+    const runId = `run_${Date.now()}`;
     const sessionId = (dto as CreateTaskDto & { sessionId?: string }).sessionId;
     const workflowResolution = resolveWorkflowPreset(dto.goal);
+    const reusableMemories = await this.dependencies.memoryRepository.search(workflowResolution.normalizedGoal, 5);
+    const reusedMemoryIds = reusableMemories.map(memory => memory.id);
+    const reusedMemoryEvidence = reusableMemories.map(
+      (memory, index): EvidenceRecord => ({
+        id: `memory_reuse_${taskId}_${index + 1}`,
+        taskId,
+        sourceType: 'memory_reuse',
+        trustClass: 'internal',
+        summary: `已命中历史记忆：${memory.summary}`,
+        detail: {
+          memoryId: memory.id,
+          memoryType: memory.type,
+          tags: memory.tags,
+          qualityScore: memory.qualityScore
+        },
+        linkedRunId: runId,
+        createdAt: now
+      })
+    );
     const task: TaskRecord = {
-      id: `task_${Date.now()}`,
-      runId: `run_${Date.now()}`,
+      id: taskId,
+      runId,
       goal: workflowResolution.normalizedGoal,
       sessionId,
       status: TaskStatus.QUEUED,
@@ -149,7 +181,29 @@ export class AgentOrchestrator {
       currentNode: 'receive_decree',
       currentStep: 'queued',
       retryCount: 0,
-      maxRetries: 1
+      maxRetries: 1,
+      reusedMemories: reusedMemoryIds,
+      reusedRules: [],
+      reusedSkills: [],
+      externalSources: reusedMemoryEvidence,
+      budgetState: {
+        stepBudget: 8,
+        stepsConsumed: 0,
+        retryBudget: 1,
+        retriesConsumed: 0,
+        sourceBudget: 8,
+        sourcesConsumed: 0
+      },
+      llmUsage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        estimated: false,
+        measuredCallCount: 0,
+        estimatedCallCount: 0,
+        models: [],
+        updatedAt: now
+      }
     };
 
     this.addTrace(task.trace, 'decree_received', `已接收圣旨：${workflowResolution.normalizedGoal}`, {
@@ -164,6 +218,24 @@ export class AgentOrchestrator {
       allowedCapabilities: workflowResolution.preset.allowedCapabilities
     });
     this.addProgressDelta(task, `本轮已切换到 ${workflowResolution.preset.displayName} 流程。`);
+    if (reusableMemories.length > 0) {
+      const autoPersistedCount = reusableMemories.filter(memory => memory.tags.includes('auto-persist')).length;
+      const researchMemoryCount = reusableMemories.filter(memory => memory.tags.includes('research-job')).length;
+      this.addTrace(
+        task.trace,
+        'research',
+        `首辅已优先命中 ${reusableMemories.length} 条历史记忆，本轮将优先复用已有经验。`,
+        {
+          reusedMemoryIds,
+          autoPersistedCount,
+          researchMemoryCount
+        }
+      );
+      this.addProgressDelta(
+        task,
+        `首辅先从历史经验中命中了 ${reusableMemories.length} 条可复用记忆，本轮会优先基于这些经验继续规划。`
+      );
+    }
     this.tasks.set(task.id, task);
     await this.persistAndEmitTask(task);
     await this.runTaskPipeline(task, { ...dto, goal: workflowResolution.normalizedGoal }, { mode: 'initial' });
@@ -380,8 +452,142 @@ export class AgentOrchestrator {
     return job;
   }
 
+  async createResearchLearningJob(dto: CreateResearchLearningJobDto): Promise<LearningJob> {
+    await this.initialize();
+    const now = new Date().toISOString();
+    const jobId = `learn_${Date.now()}`;
+    const workflowResolution = resolveWorkflowPreset(
+      dto.workflowId ? `${dto.workflowId} ${dto.goal}`.trim() : dto.goal
+    );
+    const sources = buildResearchSourcePlan({
+      taskId: jobId,
+      runId: undefined,
+      goal: workflowResolution.normalizedGoal,
+      workflow: workflowResolution.preset,
+      preferredUrls: dto.preferredUrls,
+      createdAt: now
+    });
+    const collectedSources = await Promise.all(
+      sources.map(async source => {
+        const capabilityId = this.selectResearchCapability(source);
+        const result = capabilityId
+          ? await this.dependencies.mcpClientManager?.invokeCapability(capabilityId, {
+              taskId: jobId,
+              toolName: capabilityId,
+              intent: ActionIntent.CALL_EXTERNAL_API,
+              requestedBy: 'agent',
+              input: this.buildResearchCapabilityInput(capabilityId, source, workflowResolution.normalizedGoal)
+            })
+          : undefined;
+        return {
+          ...source,
+          detail:
+            result?.ok && result.rawOutput && typeof result.rawOutput === 'object'
+              ? {
+                  capabilityId,
+                  ...(result.rawOutput as Record<string, unknown>)
+                }
+              : {
+                  capabilityId,
+                  error: result?.errorMessage ?? 'mcp_collect_failed',
+                  outputSummary: result?.outputSummary
+                }
+        };
+      })
+    );
+    const trustSummary = sources.reduce<Partial<Record<EvidenceRecord['trustClass'], number>>>((summary, source) => {
+      summary[source.trustClass] = (summary[source.trustClass] ?? 0) + 1;
+      return summary;
+    }, {});
+    const learningEvaluation = this.learningFlow.evaluateResearchJob({
+      id: jobId,
+      sourceType: 'research',
+      status: 'completed',
+      documentUri: dto.goal,
+      goal: workflowResolution.normalizedGoal,
+      workflowId: workflowResolution.preset.id,
+      sources: collectedSources,
+      trustSummary,
+      createdAt: now,
+      updatedAt: now
+    });
+    const job: LearningJob = {
+      id: jobId,
+      sourceType: 'research',
+      status: 'completed',
+      documentUri: dto.goal,
+      goal: workflowResolution.normalizedGoal,
+      workflowId: workflowResolution.preset.id,
+      summary:
+        dto.title ??
+        `户部已为“${workflowResolution.normalizedGoal}”整理并抓取 ${collectedSources.length} 个优先研究来源，默认按 ${workflowResolution.preset.sourcePolicy?.mode ?? 'controlled-first'} 策略执行。`,
+      sources: collectedSources,
+      trustSummary,
+      learningEvaluation,
+      createdAt: now,
+      updatedAt: now
+    };
+    await this.learningFlow.autoPersistResearchMemory(
+      job,
+      workflowResolution.preset.autoPersistPolicy?.memory ?? 'manual'
+    );
+    this.learningJobs.set(job.id, job);
+    await this.persistRuntimeState();
+    return job;
+  }
+
+  private selectResearchCapability(source: EvidenceRecord): string {
+    const manager = this.dependencies.mcpClientManager;
+    const sourceUrl = source.sourceUrl?.toLowerCase();
+
+    if (sourceUrl?.includes('github.com') && manager?.hasCapability('search_doc')) {
+      return 'search_doc';
+    }
+    if (sourceUrl && manager?.hasCapability('webReader')) {
+      return 'webReader';
+    }
+    if (manager?.hasCapability('webSearchPrime')) {
+      return 'webSearchPrime';
+    }
+    return 'collect_research_source';
+  }
+
+  private buildResearchCapabilityInput(
+    capabilityId: string,
+    source: EvidenceRecord,
+    goal: string
+  ): Record<string, unknown> {
+    switch (capabilityId) {
+      case 'search_doc':
+        return {
+          repoUrl: source.sourceUrl,
+          query: goal
+        };
+      case 'webReader':
+        return {
+          url: source.sourceUrl,
+          goal
+        };
+      case 'webSearchPrime':
+        return {
+          query: source.sourceUrl ? `${goal} site:${new URL(source.sourceUrl).hostname}` : goal
+        };
+      default:
+        return {
+          url: source.sourceUrl,
+          goal,
+          trustClass: source.trustClass,
+          sourceType: source.sourceType
+        };
+    }
+  }
+
   getLearningJob(jobId: string): LearningJob | undefined {
     return this.learningJobs.get(jobId);
+  }
+
+  listLearningJobs(): LearningJob[] {
+    return [...this.learningJobs.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   private async hydrateRuntimeState(): Promise<void> {
@@ -467,15 +673,17 @@ export class AgentOrchestrator {
     task.result = undefined;
     await this.persistAndEmitTask(task);
 
-    const manager = new ManagerAgent(this.createAgentContext(task.id, dto.goal, 'chat'));
-    const research = new ResearchAgent(this.createAgentContext(task.id, dto.goal, 'chat'));
-    const executor = new ExecutorAgent(this.createAgentContext(task.id, dto.goal, 'chat'));
-    const reviewer = new ReviewerAgent(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const libu = new LibuRouterMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const hubu = new HubuSearchMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const gongbu = new GongbuCodeMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const bingbu = new BingbuOpsMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const xingbu = new XingbuReviewMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
+    const libuDocs = new LibuDocsMinistry(this.createAgentContext(task.id, dto.goal, 'chat'));
 
     try {
       this.ensureTaskNotCancelled(task);
       if (this.shouldHandleAsDirectReply(dto.goal, options.mode)) {
-        await this.runDirectReplyTask(task, manager);
+        await this.runDirectReplyTask(task, libu);
         return;
       }
 
@@ -530,7 +738,7 @@ export class AgentOrchestrator {
           this.ensureTaskNotCancelled(task);
           const plan = task.resolvedWorkflow
             ? buildWorkflowPresetPlan(task.id, dto.goal, task.resolvedWorkflow)
-            : await manager.plan();
+            : await libu.plan();
           task.plan = plan;
           task.review = undefined;
           task.skillStage = 'ministry_execution';
@@ -540,7 +748,7 @@ export class AgentOrchestrator {
             retryCount: state.retryCount,
             maxRetries: state.maxRetries
           });
-          this.upsertAgentState(task, manager.getState());
+          this.upsertAgentState(task, libu.getState());
           this.addTrace(
             task.trace,
             state.retryCount > 0 ? 'manager_replan' : 'supervisor_planned',
@@ -562,7 +770,7 @@ export class AgentOrchestrator {
             ...state,
             currentStep: 'manager_plan',
             currentPlan: plan.steps,
-            dispatches: manager.dispatch(plan),
+            dispatches: libu.dispatch(plan),
             shouldRetry: false,
             approvalRequired: false,
             approvalStatus: undefined,
@@ -597,6 +805,44 @@ export class AgentOrchestrator {
           const researchMinistry = this.resolveResearchMinistry(task.resolvedWorkflow);
           task.currentMinistry = researchMinistry;
           task.currentWorker = task.modelRoute?.find(item => item.ministry === researchMinistry)?.workerId;
+          const researchSources = buildResearchSourcePlan({
+            taskId: task.id,
+            runId: task.runId,
+            goal: task.goal,
+            workflow: task.resolvedWorkflow
+          });
+          const remainingSourceBudget = Math.max(
+            0,
+            (task.budgetState?.sourceBudget ?? 0) - (task.budgetState?.sourcesConsumed ?? 0)
+          );
+          const budgetedResearchSources = researchSources.slice(0, remainingSourceBudget);
+          if (researchSources.length > budgetedResearchSources.length) {
+            this.addTrace(task.trace, 'budget_exhausted', '户部研究来源已按 source budget 裁剪。', {
+              sourceBudget: task.budgetState?.sourceBudget,
+              sourcesConsumed: task.budgetState?.sourcesConsumed,
+              requestedSources: researchSources.length,
+              allowedSources: budgetedResearchSources.length
+            });
+          }
+          task.budgetState = {
+            stepBudget: task.budgetState?.stepBudget ?? 8,
+            stepsConsumed: task.budgetState?.stepsConsumed ?? 0,
+            retryBudget: task.budgetState?.retryBudget ?? 1,
+            retriesConsumed: task.budgetState?.retriesConsumed ?? 0,
+            sourceBudget: task.budgetState?.sourceBudget ?? 8,
+            sourcesConsumed: (task.budgetState?.sourcesConsumed ?? 0) + budgetedResearchSources.length
+          };
+          if (budgetedResearchSources.length) {
+            task.externalSources = mergeEvidence(task.externalSources ?? [], budgetedResearchSources);
+            for (const source of budgetedResearchSources) {
+              this.addTrace(task.trace, 'research', `户部已锁定研究来源：${source.summary}`, {
+                ministry: researchMinistry,
+                sourceUrl: source.sourceUrl,
+                sourceType: source.sourceType,
+                trustClass: source.trustClass
+              });
+            }
+          }
           this.addTrace(task.trace, 'ministry_started', '户部开始检索上下文与资料。', {
             ministry: task.currentMinistry,
             workerId: task.currentWorker
@@ -605,10 +851,10 @@ export class AgentOrchestrator {
           this.setSubTaskStatus(task, AgentRole.RESEARCH, 'running');
           const researchResult =
             researchMinistry === 'libu-docs'
-              ? await this.runLibuDocsResearch(task)
-              : await research.run(state.dispatches[0]?.objective ?? 'Research shared memory and skills');
+              ? await libuDocs.research(task)
+              : await hubu.research(state.dispatches[0]?.objective ?? 'Research shared memory and skills');
           this.ensureTaskNotCancelled(task);
-          this.upsertAgentState(task, research.getState());
+          this.upsertAgentState(task, researchMinistry === 'libu-docs' ? libuDocs.getState() : hubu.getState());
           this.addMessage(task, 'research_result', researchResult.summary, AgentRole.RESEARCH);
           this.addTrace(task.trace, 'research', researchResult.summary, {
             ministry: task.currentMinistry,
@@ -654,6 +900,8 @@ export class AgentOrchestrator {
           );
           this.setSubTaskStatus(task, AgentRole.EXECUTOR, 'running');
 
+          const executionMinistryRunner = executionMinistry === 'bingbu-ops' ? bingbu : gongbu;
+
           if (state.resumeFromApproval && state.toolIntent && state.toolName) {
             const approvedResult = await executeApprovedAction(this.createAgentContext(task.id, dto.goal, 'approval'), {
               taskId: task.id,
@@ -664,7 +912,7 @@ export class AgentOrchestrator {
             this.ensureTaskNotCancelled(task);
             this.upsertAgentState(
               task,
-              syncApprovedExecutorState(executor, approvedResult, {
+              gongbu.buildApprovedState(approvedResult, {
                 taskId: task.id,
                 intent: state.toolIntent,
                 toolName: state.toolName,
@@ -701,8 +949,8 @@ export class AgentOrchestrator {
 
           const execution =
             executionMinistry === 'libu-docs'
-              ? await this.runLibuDocsExecution(task, state.executionSummary ?? state.researchSummary ?? '')
-              : await executor.run(
+              ? await libuDocs.execute(task, state.executionSummary ?? state.researchSummary ?? '')
+              : await executionMinistryRunner.execute(
                   state.dispatches[1]?.objective ??
                     (executionMinistry === 'bingbu-ops'
                       ? 'Run controlled ops and validation tasks'
@@ -710,7 +958,10 @@ export class AgentOrchestrator {
                   state.researchSummary ?? 'No research summary available.'
                 );
           this.ensureTaskNotCancelled(task);
-          this.upsertAgentState(task, executor.getState());
+          this.upsertAgentState(
+            task,
+            executionMinistry === 'libu-docs' ? libuDocs.getState() : executionMinistryRunner.getState()
+          );
           this.addMessage(task, 'execution_result', execution.summary, AgentRole.EXECUTOR);
           this.addTrace(task.trace, 'execute', execution.summary, {
             ministry: task.currentMinistry,
@@ -808,10 +1059,10 @@ export class AgentOrchestrator {
           );
           const reviewed =
             reviewMinistry === 'libu-docs'
-              ? this.createDocsReview(task, state.executionSummary ?? task.result ?? 'No execution summary available.')
+              ? libuDocs.review(task, state.executionSummary ?? task.result ?? 'No execution summary available.')
               : await this.reviewExecution(
                   task,
-                  reviewer,
+                  xingbu,
                   state.executionResult,
                   state.executionSummary ?? task.result ?? 'No execution summary available.'
                 );
@@ -864,10 +1115,7 @@ export class AgentOrchestrator {
             }
           );
           const docsSummary = this.shouldRunLibuDocsDelivery(task.resolvedWorkflow)
-            ? this.buildLibuDocsDelivery(
-                task,
-                state.executionSummary ?? task.result ?? 'No execution summary available.'
-              )
+            ? libuDocs.buildDelivery(task, state.executionSummary ?? task.result ?? 'No execution summary available.')
             : undefined;
           if (docsSummary) {
             this.addTrace(task.trace, 'ministry_reported', docsSummary, {
@@ -876,14 +1124,14 @@ export class AgentOrchestrator {
             this.addMessage(task, 'review_result', docsSummary, AgentRole.REVIEWER);
             this.addProgressDelta(task, docsSummary, AgentRole.REVIEWER);
           }
-          const finalAnswer = await manager.finalize(
+          const finalAnswer = await libu.finalize(
             reviewed.review,
             docsSummary
               ? `${state.executionSummary ?? task.result ?? ''}\n${docsSummary}`
               : (state.executionSummary ?? task.result ?? 'No execution summary available.')
           );
           this.ensureTaskNotCancelled(task);
-          this.upsertAgentState(task, manager.getState());
+          this.upsertAgentState(task, libu.getState());
           this.addMessage(task, 'summary', finalAnswer, AgentRole.MANAGER);
           this.addTrace(task.trace, 'finish', finalAnswer);
 
@@ -938,10 +1186,21 @@ export class AgentOrchestrator {
         }
       }).compile();
 
-      await graph.invoke(this.createGraphStartState(task, dto, manager, options));
+      await graph.invoke(this.createGraphStartState(task, dto, libu, options));
       await this.persistAndEmitTask(task);
     } catch (error) {
       if (error instanceof TaskCancelledError) {
+        await this.persistAndEmitTask(task);
+        return;
+      }
+      if (error instanceof TaskBudgetExceededError) {
+        task.status = TaskStatus.BLOCKED;
+        task.currentNode = 'budget_governance';
+        task.currentStep = 'budget_exhausted';
+        task.result = error.message;
+        task.updatedAt = new Date().toISOString();
+        this.addTrace(task.trace, 'budget_exhausted', error.message, error.detail);
+        this.addProgressDelta(task, error.message);
         await this.persistAndEmitTask(task);
         return;
       }
@@ -962,7 +1221,7 @@ export class AgentOrchestrator {
     });
     await this.persistAndEmitTask(task);
 
-    const executor = new ExecutorAgent(this.createAgentContext(task.id, dto.goal, 'approval'));
+    const gongbu = new GongbuCodeMinistry(this.createAgentContext(task.id, dto.goal, 'approval'));
     try {
       const graph = createApprovalRecoveryGraph({
         executeApproved: async state => {
@@ -978,7 +1237,7 @@ export class AgentOrchestrator {
             state.pending
           );
           this.ensureTaskNotCancelled(task);
-          this.upsertAgentState(task, syncApprovedExecutorState(executor, executionResult, state.pending));
+          this.upsertAgentState(task, gongbu.buildApprovedState(executionResult, state.pending));
           this.addMessage(task, 'execution_result', executionResult.outputSummary, AgentRole.EXECUTOR);
           this.addTrace(task.trace, 'execute', executionResult.outputSummary, {
             ministry: 'gongbu-code',
@@ -1021,7 +1280,7 @@ export class AgentOrchestrator {
   private createGraphStartState(
     task: TaskRecord,
     dto: CreateTaskDto,
-    manager: ManagerAgent,
+    libu: LibuRouterMinistry,
     options: { mode: 'initial' | 'retry' | 'approval_resume'; pending?: PendingExecutionContext }
   ): RuntimeAgentGraphState {
     const base = createInitialState(task.id, dto.goal, dto.context);
@@ -1033,7 +1292,7 @@ export class AgentOrchestrator {
     return {
       ...base,
       currentPlan: task.plan?.steps ?? [],
-      dispatches: task.plan ? manager.dispatch(task.plan) : [],
+      dispatches: task.plan ? libu.dispatch(task.plan) : [],
       researchSummary: options.pending.researchSummary,
       toolIntent: options.pending.intent,
       toolName: options.pending.toolName,
@@ -1045,14 +1304,14 @@ export class AgentOrchestrator {
 
   private async reviewExecution(
     task: TaskRecord,
-    reviewer: ReviewerAgent,
+    xingbu: XingbuReviewMinistry,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ): Promise<{ review: ReviewRecord; evaluation: EvaluationResult }> {
     this.setSubTaskStatus(task, AgentRole.REVIEWER, 'running');
-    const reviewed = await reviewer.review(executionResult, executionSummary);
+    const reviewed = await xingbu.review(executionResult, executionSummary);
     task.review = reviewed.review;
-    this.upsertAgentState(task, reviewer.getState());
+    this.upsertAgentState(task, xingbu.getState());
     this.addMessage(task, 'review_result', reviewed.review.notes.join(' '), AgentRole.REVIEWER);
     this.addTrace(task.trace, 'review', `Reviewer decision: ${reviewed.review.decision}`);
     this.setSubTaskStatus(task, AgentRole.REVIEWER, 'completed');
@@ -1102,76 +1361,8 @@ export class AgentOrchestrator {
     }
   }
 
-  private async runLibuDocsResearch(
-    task: TaskRecord
-  ): Promise<{ summary: string; memories: MemoryRecord[]; skills: SkillCard[] }> {
-    const summary = `礼部已整理目标所需的交付规范：${task.resolvedWorkflow?.outputContract.requiredSections.join('、') ?? 'summary'}。`;
-    return {
-      summary,
-      memories: [],
-      skills: []
-    };
-  }
-
-  private async runLibuDocsExecution(
-    task: TaskRecord,
-    executionSummary: string
-  ): Promise<{
-    intent: ActionIntent;
-    toolName: string;
-    requiresApproval: boolean;
-    tool?: never;
-    executionResult?: ToolExecutionResult;
-    summary: string;
-  }> {
-    const summary = this.buildLibuDocsDelivery(task, executionSummary);
-    return {
-      intent: ActionIntent.READ_FILE,
-      toolName: 'documentation',
-      requiresApproval: false,
-      executionResult: {
-        ok: true,
-        outputSummary: summary,
-        rawOutput: {
-          outputType: task.resolvedWorkflow?.outputContract.type
-        },
-        durationMs: 1,
-        exitCode: 0
-      },
-      summary
-    };
-  }
-
-  private createDocsReview(
-    task: TaskRecord,
-    executionSummary: string
-  ): { review: ReviewRecord; evaluation: EvaluationResult } {
-    return {
-      review: {
-        taskId: task.id,
-        decision: 'approved',
-        notes: ['礼部已确认当前产出可整理为正式交付文档。'],
-        createdAt: new Date().toISOString()
-      },
-      evaluation: {
-        success: true,
-        quality: 'high',
-        shouldRetry: false,
-        shouldWriteMemory: false,
-        shouldCreateRule: false,
-        shouldExtractSkill: false,
-        notes: [`礼部复核通过：${executionSummary}`]
-      }
-    };
-  }
-
   private shouldRunLibuDocsDelivery(workflow?: WorkflowPresetDefinition): boolean {
     return Boolean(workflow?.requiredMinistries.includes('libu-docs'));
-  }
-
-  private buildLibuDocsDelivery(task: TaskRecord, executionSummary: string): string {
-    const sections = task.resolvedWorkflow?.outputContract.requiredSections.join('、') ?? 'summary';
-    return `礼部已整理 ${task.resolvedWorkflow?.displayName ?? '当前流程'} 的交付说明，重点覆盖：${sections}。当前执行摘要：${executionSummary}`;
   }
 
   private shouldHandleAsDirectReply(goal: string, mode: 'initial' | 'retry' | 'approval_resume'): boolean {
@@ -1189,7 +1380,7 @@ export class AgentOrchestrator {
     );
   }
 
-  private async runDirectReplyTask(task: TaskRecord, manager: ManagerAgent): Promise<void> {
+  private async runDirectReplyTask(task: TaskRecord, libu: LibuRouterMinistry): Promise<void> {
     this.syncTaskRuntime(task, {
       currentStep: 'direct_reply',
       retryCount: task.retryCount ?? 0,
@@ -1203,8 +1394,8 @@ export class AgentOrchestrator {
       undefined,
       task
     );
-    const answer = await manager.replyDirectly();
-    this.upsertAgentState(task, manager.getState());
+    const answer = await libu.replyDirectly();
+    this.upsertAgentState(task, libu.getState());
     task.result = answer;
     task.status = TaskStatus.COMPLETED;
     task.skillStage = 'completed';
@@ -1278,8 +1469,84 @@ export class AgentOrchestrator {
           model: payload.model,
           createdAt: new Date().toISOString()
         });
+      },
+      onUsage: (payload: {
+        usage: {
+          promptTokens: number;
+          completionTokens: number;
+          totalTokens: number;
+          model?: string;
+          estimated?: boolean;
+        };
+        role: 'manager' | 'research' | 'executor' | 'reviewer';
+      }) => {
+        this.recordTaskUsage(taskId, payload.usage);
       }
     };
+  }
+
+  private recordTaskUsage(
+    taskId: string,
+    usage: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      model?: string;
+      estimated?: boolean;
+      costUsd?: number;
+      costCny?: number;
+    }
+  ): void {
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      return;
+    }
+
+    const current = task.llmUsage ?? createEmptyUsageRecord(new Date().toISOString());
+    const model = usage.model ?? 'unknown';
+    const costUsd = usage.costUsd ?? estimateModelCostUsd(model, usage.totalTokens);
+    const costCny = usage.costCny ?? costUsd * 7.2;
+    const pricingSource = usage.costUsd != null || usage.costCny != null ? 'provider' : 'estimated';
+    const modelEntry = current.models.find(item => item.model === model);
+
+    current.promptTokens += usage.promptTokens;
+    current.completionTokens += usage.completionTokens;
+    current.totalTokens += usage.totalTokens;
+    if (usage.estimated) {
+      current.estimatedCallCount += 1;
+    } else {
+      current.measuredCallCount += 1;
+    }
+    current.estimated = current.measuredCallCount === 0;
+    current.updatedAt = new Date().toISOString();
+
+    if (modelEntry) {
+      modelEntry.promptTokens += usage.promptTokens;
+      modelEntry.completionTokens += usage.completionTokens;
+      modelEntry.totalTokens += usage.totalTokens;
+      modelEntry.callCount += 1;
+      modelEntry.costUsd = roundUsageCost((modelEntry.costUsd ?? 0) + costUsd);
+      modelEntry.costCny = roundUsageCost((modelEntry.costCny ?? 0) + costCny);
+      modelEntry.pricingSource =
+        pricingSource === 'provider' || modelEntry.pricingSource === 'provider' ? 'provider' : 'estimated';
+    } else {
+      current.models.push({
+        model,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        costUsd: roundUsageCost(costUsd),
+        costCny: roundUsageCost(costCny),
+        pricingSource,
+        callCount: 1
+      });
+    }
+
+    task.llmUsage = {
+      ...current,
+      models: current.models.sort((left, right) => right.totalTokens - left.totalTokens)
+    };
+    void this.persistAndEmitTask(task);
   }
 
   private resolveWorkflowRoutes(workflow?: WorkflowPresetDefinition): ModelRouteDecision[] {
@@ -1427,8 +1694,42 @@ export class AgentOrchestrator {
     task.currentStep = state.currentStep;
     task.retryCount = state.retryCount;
     task.maxRetries = state.maxRetries;
+    const stepsConsumed = Math.max(task.budgetState?.stepsConsumed ?? 0, this.estimateStepsConsumed(state.currentStep));
+    task.budgetState = {
+      stepBudget: task.budgetState?.stepBudget ?? 8,
+      stepsConsumed,
+      retryBudget: task.budgetState?.retryBudget ?? state.maxRetries,
+      retriesConsumed: state.retryCount,
+      sourceBudget: task.budgetState?.sourceBudget ?? 8,
+      sourcesConsumed: task.budgetState?.sourcesConsumed ?? 0
+    };
+    if (stepsConsumed > (task.budgetState.stepBudget ?? 8)) {
+      throw new TaskBudgetExceededError(
+        `当前任务已耗尽 step budget，已在 ${state.currentStep ?? 'unknown'} 阶段暂停。`,
+        {
+          stepBudget: task.budgetState.stepBudget,
+          stepsConsumed,
+          currentStep: state.currentStep
+        }
+      );
+    }
     task.updatedAt = new Date().toISOString();
     this.emitTaskUpdate(task);
+  }
+
+  private estimateStepsConsumed(currentStep?: string): number {
+    switch (currentStep) {
+      case 'manager_plan':
+        return 1;
+      case 'research':
+        return 2;
+      case 'execute':
+        return 3;
+      case 'review':
+        return 4;
+      default:
+        return 0;
+    }
   }
 
   private addMessage(
@@ -1519,4 +1820,44 @@ class TaskCancelledError extends Error {
   constructor(taskId: string) {
     super(`Task ${taskId} was cancelled.`);
   }
+}
+
+class TaskBudgetExceededError extends Error {
+  constructor(
+    message: string,
+    public readonly detail?: Record<string, unknown>
+  ) {
+    super(message);
+  }
+}
+
+function createEmptyUsageRecord(now: string): LlmUsageRecord {
+  return {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    estimated: false,
+    measuredCallCount: 0,
+    estimatedCallCount: 0,
+    models: [],
+    updatedAt: now
+  };
+}
+
+function estimateModelCostUsd(model: string, totalTokens: number): number {
+  const normalized = model.toLowerCase();
+  const rate = normalized.includes('glm-5')
+    ? 0.002
+    : normalized.includes('glm-4.7-flash')
+      ? 0.0005
+      : normalized.includes('glm-4.7')
+        ? 0.001
+        : normalized.includes('glm-4.6')
+          ? 0.0012
+          : 0.001;
+  return (Math.max(totalTokens, 0) / 1000) * rate;
+}
+
+function roundUsageCost(value: number): number {
+  return Math.round(value * 10000) / 10000;
 }

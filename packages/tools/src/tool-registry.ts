@@ -62,6 +62,24 @@ const DEFAULT_TOOLS: ToolDefinition[] = [
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, researchSummary: { type: 'string' } } }
   },
   {
+    name: 'collect_research_source',
+    description: 'Collect a structured summary from an approved research source.',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'research-readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' },
+        goal: { type: 'string' },
+        trustClass: { type: 'string' },
+        sourceType: { type: 'string' }
+      }
+    }
+  },
+  {
     name: 'browse_page',
     description: 'Open and inspect a target page through a browser automation MCP capability.',
     category: 'action',

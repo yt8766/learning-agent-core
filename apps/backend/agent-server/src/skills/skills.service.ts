@@ -27,4 +27,12 @@ export class SkillsService {
   disable(id: string) {
     return this.runtimeService.disableSkill(id);
   }
+
+  restore(id: string) {
+    return this.runtimeService.restoreSkill(id);
+  }
+
+  retire(id: string) {
+    return this.runtimeService.retireSkill(id);
+  }
 }

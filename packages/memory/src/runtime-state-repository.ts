@@ -27,6 +27,44 @@ export interface RuntimeStateSnapshot {
   chatMessages: ChatMessageRecord[];
   chatEvents: ChatEventRecord[];
   chatCheckpoints: ChatCheckpointRecord[];
+  usageHistory?: Array<{
+    day: string;
+    tokens: number;
+    costUsd: number;
+    costCny: number;
+    runs: number;
+    overBudget?: boolean;
+    measuredRunCount?: number;
+    estimatedRunCount?: number;
+    updatedAt: string;
+  }>;
+  evalHistory?: Array<{
+    day: string;
+    runCount: number;
+    passCount: number;
+    passRate: number;
+    scenarioCount: number;
+    overallPassRate: number;
+    updatedAt: string;
+  }>;
+  usageAudit?: Array<{
+    taskId: string;
+    day: string;
+    modelBreakdown: Array<{
+      model: string;
+      totalTokens: number;
+      costUsd: number;
+      costCny: number;
+      pricingSource?: 'provider' | 'estimated';
+      callCount: number;
+    }>;
+    totalTokens: number;
+    totalCostUsd: number;
+    totalCostCny: number;
+    measuredCallCount: number;
+    estimatedCallCount: number;
+    updatedAt: string;
+  }>;
 }
 
 export interface RuntimeStateRepository {
@@ -48,7 +86,10 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatSessions: Array.isArray(parsed.chatSessions) ? parsed.chatSessions : [],
         chatMessages: Array.isArray(parsed.chatMessages) ? parsed.chatMessages : [],
         chatEvents: Array.isArray(parsed.chatEvents) ? parsed.chatEvents : [],
-        chatCheckpoints: Array.isArray(parsed.chatCheckpoints) ? parsed.chatCheckpoints : []
+        chatCheckpoints: Array.isArray(parsed.chatCheckpoints) ? parsed.chatCheckpoints : [],
+        usageHistory: Array.isArray(parsed.usageHistory) ? parsed.usageHistory : [],
+        evalHistory: Array.isArray(parsed.evalHistory) ? parsed.evalHistory : [],
+        usageAudit: Array.isArray(parsed.usageAudit) ? parsed.usageAudit : []
       };
     } catch {
       return {
@@ -58,7 +99,10 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatSessions: [],
         chatMessages: [],
         chatEvents: [],
-        chatCheckpoints: []
+        chatCheckpoints: [],
+        usageHistory: [],
+        evalHistory: [],
+        usageAudit: []
       };
     }
   }
