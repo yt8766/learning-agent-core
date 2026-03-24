@@ -89,7 +89,7 @@ jobs:
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.6.0
+          version: 10.32.1
 
       # 第三步：安装 Node.js，并启用 pnpm 缓存。
       - name: 安装 Node.js
