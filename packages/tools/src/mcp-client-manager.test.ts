@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+﻿import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,8 +8,13 @@ import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpClientManager } from './mcp-client-manager';
 import { McpServerRegistry } from './mcp-server-registry';
 
+function expectDefined<T>(value: T | undefined, label: string): T {
+  expect(value, `${label} should be defined`).toBeDefined();
+  return value as T;
+}
+
 describe('McpClientManager', () => {
-  it('本地适配器可回退到 sandbox executor', async () => {
+  it('鏈湴閫傞厤鍣ㄥ彲鍥為€€鍒?sandbox executor', async () => {
     const servers = new McpServerRegistry();
     const capabilities = new McpCapabilityRegistry();
     const sandboxExecutor = {
@@ -162,7 +167,7 @@ describe('McpClientManager', () => {
     const manager = new McpClientManager(servers, capabilities, { execute: vi.fn() } as never);
     await manager.refreshAllServerDiscovery();
 
-    const [server] = manager.describeServers();
+    const server = expectDefined(manager.describeServers()[0], 'remote-browser server');
     expect(server.sessionState).toBe('connected');
     expect(server.discoveryMode).toBe('remote');
     expect(server.discoveredCapabilities).toEqual(['browse_page', 'page_snapshot']);
@@ -196,7 +201,8 @@ describe('McpClientManager', () => {
     });
 
     const manager = new McpClientManager(servers, capabilities, { execute: vi.fn() } as never);
-    const [remote, stdio] = manager.describeServers();
+    const remote = expectDefined(manager.describeServers()[0], 'remote-browser server');
+    const stdio = expectDefined(manager.describeServers()[1], 'stdio-runner server');
 
     expect(remote.healthState).toBe('healthy');
     expect(remote.implementedCapabilityCount).toBe(1);
@@ -261,7 +267,7 @@ process.stdin.on('data', chunk => {
     expect(result.ok).toBe(true);
     expect(result.outputSummary).toContain('vision tool executed');
 
-    const [server] = manager.describeServers();
+    const server = expectDefined(manager.describeServers()[0], 'vision-stdio server');
     expect(server.healthState).toBe('healthy');
     expect(server.healthReason).toBe('stdio_transport_ready');
   });
@@ -314,7 +320,7 @@ process.stdin.on('data', chunk => {
     const manager = new McpClientManager(servers, capabilities, { execute: vi.fn() } as never);
     await manager.refreshAllServerDiscovery({ includeStdio: true });
 
-    const [server] = manager.describeServers();
+    const server = expectDefined(manager.describeServers()[0], 'remote-browser server');
     expect(server.sessionState).toBe('connected');
     expect(server.discoveryMode).toBe('remote');
     expect(server.discoveredCapabilities).toEqual(['image_analysis', 'ui_diff_check']);
@@ -436,7 +442,7 @@ process.stdin.on('data', chunk => {
 
     const manager = new McpClientManager(servers, capabilities, { execute: vi.fn() } as never);
     await manager.refreshServerDiscovery('vision-stdio-sweep');
-    const before = manager.describeServers()[0];
+    const before = expectDefined(manager.describeServers()[0], 'vision-stdio-sweep server');
     expect(before.sessionState).toBe('connected');
 
     const closed = await manager.sweepIdleSessions(0);

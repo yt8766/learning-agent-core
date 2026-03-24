@@ -1,4 +1,4 @@
-﻿# 前后端对接文档
+# 前后端对接文档
 
 ## 1. 总体链路
 
@@ -7,9 +7,15 @@
 1. 前端发送用户消息
 2. 前端先创建或续接 chat session
 3. `SessionCoordinator` 调用 `AgentOrchestrator`
-4. `Manager / Research / Executor / Reviewer` 依次执行
+4. `Supervisor / Workflow / Ministry workers` 按规划执行
 5. 后端通过 SSE 持续返回事件
 6. 前端按事件增量更新消息区、事件流、运行态和审批状态
+
+说明：
+
+- 当前实现仍兼容部分旧 `manager / research / executor / reviewer` 事件与类型
+- 新增前后端实现应优先以 `supervisor / ministry / workflow / evidence / learning` 语义为准
+- 文档中的旧命名如有出现，应理解为过渡兼容层，而不是目标架构
 
 当前不是“`POST /messages` 直接流式返回正文”，而是：
 
@@ -81,8 +87,24 @@
 interface ChatSessionRecord {
   id: string;
   title: string;
-  status: 'idle' | 'running' | 'waiting_approval' | 'waiting_learning_confirmation' | 'completed' | 'failed';
+  status:
+    | 'idle'
+    | 'running'
+    | 'waiting_approval'
+    | 'waiting_learning_confirmation'
+    | 'cancelled'
+    | 'completed'
+    | 'failed';
   currentTaskId?: string;
+  compression?: {
+    summary: string;
+    condensedMessageCount: number;
+    condensedCharacterCount: number;
+    totalCharacterCount: number;
+    trigger: 'message_count' | 'character_count';
+    source: 'heuristic' | 'llm';
+    updatedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -97,9 +119,27 @@ interface ChatMessageRecord {
   role: 'user' | 'assistant' | 'system';
   content: string;
   linkedAgent?: 'manager' | 'research' | 'executor' | 'reviewer';
+  card?:
+    | {
+        type: 'approval_request';
+        intent: string;
+        toolName?: string;
+        reason?: string;
+        riskLevel?: RiskLevel;
+        requestedBy?: string;
+      }
+    | {
+        type: 'run_cancelled';
+        reason?: string;
+      };
   createdAt: string;
 }
 ```
+
+补充说明：
+
+- `linkedAgent` 当前仍使用旧枚举做兼容
+- 面向新能力设计时，应更关注 `currentMinistry`、`currentWorker`、`resolvedWorkflow`、`thoughtChain`、`thinkState` 等运行态字段
 
 ### 3.3 ChatEventRecord
 
@@ -108,8 +148,16 @@ interface ChatEventRecord {
   id: string;
   sessionId: string;
   type:
+    | 'decree_received'
     | 'session_started'
     | 'user_message'
+    | 'supervisor_planned'
+    | 'libu_routed'
+    | 'ministry_started'
+    | 'ministry_reported'
+    | 'skill_resolved'
+    | 'skill_stage_started'
+    | 'skill_stage_completed'
     | 'manager_planned'
     | 'subtask_dispatched'
     | 'research_progress'
@@ -117,11 +165,18 @@ interface ChatEventRecord {
     | 'tool_called'
     | 'approval_required'
     | 'approval_resolved'
+    | 'approval_rejected_with_feedback'
     | 'review_completed'
     | 'learning_pending_confirmation'
     | 'learning_confirmed'
+    | 'conversation_compacted'
     | 'assistant_token'
     | 'assistant_message'
+    | 'run_resumed'
+    | 'run_cancelled'
+    | 'budget_exhausted'
+    | 'final_response_delta'
+    | 'final_response_completed'
     | 'session_finished'
     | 'session_failed';
   at: string;
@@ -135,6 +190,24 @@ interface ChatEventRecord {
 interface ChatCheckpointRecord {
   sessionId: string;
   taskId: string;
+  runId?: string;
+  skillId?: string;
+  skillStage?: string;
+  resolvedWorkflow?: WorkflowPresetDefinition;
+  currentNode?: string;
+  currentMinistry?: WorkerDomain;
+  currentWorker?: string;
+  pendingAction?: PendingActionRecord;
+  pendingApproval?: PendingApprovalRecord;
+  approvalFeedback?: string;
+  modelRoute?: ModelRouteDecision[];
+  externalSources?: EvidenceRecord[];
+  reusedMemories?: string[];
+  reusedRules?: string[];
+  reusedSkills?: string[];
+  learningEvaluation?: LearningEvaluationRecord;
+  budgetState?: BudgetState;
+  llmUsage?: LlmUsageRecord;
   traceCursor: number;
   messageCursor: number;
   approvalCursor: number;
@@ -147,6 +220,8 @@ interface ChatCheckpointRecord {
   };
   pendingApprovals: ApprovalRecord[];
   agentStates: AgentExecutionState[];
+  thoughtChain?: ChatThoughtChainItem[];
+  thinkState?: ChatThinkState;
   createdAt: string;
   updatedAt: string;
 }
@@ -177,6 +252,14 @@ SSE 实现位置：
 
 后端会持续推送这些事件：
 
+- `decree_received`
+- `supervisor_planned`
+- `libu_routed`
+- `ministry_started`
+- `ministry_reported`
+- `skill_resolved`
+- `skill_stage_started`
+- `skill_stage_completed`
 - `manager_planned`
 - `subtask_dispatched`
 - `research_progress`
@@ -194,6 +277,10 @@ SSE 实现位置：
   - 用于前端逐 token 拼接回答
 - `assistant_message`
   - 用于最终完整回答落盘和兜底展示
+- `supervisor_planned / ministry_*`
+  - 是当前主线推荐消费事件，适合驱动 Think、ThoughtChain、Evidence、运行态面板
+- `manager_planned / research_progress`
+  - 仍可能出现，但主要用于兼容旧流程
 
 ---
 
@@ -335,22 +422,18 @@ if (event.type === 'assistant_token') {
 
 ## 7. 当前 agent-core 推荐结构
 
-参考目录：
-
-- `D:\渡一资料\前端架构课\coding-agent\完整代码\duyi-figma-make\server\agents`
-
 建议 `packages/agent-core/src` 后续按这套结构继续整理：
 
 ```text
 src/
 ├─ adapters/
 ├─ flows/
+├─ governance/
 ├─ graphs/
-├─ shared/
 ├─ runtime/
-├─ utils/
 ├─ session/
-├─ tests/
+├─ shared/
+├─ workflows/
 └─ types/
 ```
 
@@ -360,25 +443,20 @@ src/
   - 对接 LLM、tools、memory、session 等外部能力
 - `flows/`
   - 按聊天流、审批流、学习流组织 `nodes/prompts/schemas/utils`
+- `governance/`
+  - 管理 worker registry、model routing policy、预算与治理策略
 - `graphs/`
   - 只放图定义与编排入口
 - `shared/`
   - 多 flow 共用的 prompt、schema、事件映射
 - `runtime/`
   - Agent 运行时上下文
-- `utils/`
-  - 纯工具函数
 - `session/`
   - 会话、checkpoint、事件持久化
+- `workflows/`
+  - 负责工作流预设、领域动作组合与策略化编排
 
-这样比单纯的：
-
-- `models/`
-- `agents/`
-- `graph/`
-- `session/`
-
-更接近成熟 Agent 工程结构。
+这样可以和当前 `workflow + governance + graph + session` 的拆分保持一致。
 
 ---
 
@@ -403,10 +481,11 @@ pnpm --dir apps/frontend/agent-chat dev
 3. 前端立刻建立 `/stream`
 4. 前端发送消息或后端自动启动首轮任务
 5. 后端通过 SSE 推送：
-   - 规划
-   - 子任务
+   - supervisor 规划
+   - ministry 路由与执行
    - 工具调用
    - 审批
+   - learning 建议
    - token
    - 完整回答
 6. 前端更新：
@@ -416,6 +495,7 @@ pnpm --dir apps/frontend/agent-chat dev
    - checkpoint
    - 审批区
    - 学习确认区
+   - Think / ThoughtChain / Evidence 区
 
 ---
 
@@ -451,9 +531,19 @@ pnpm --dir apps/frontend/agent-chat dev
 
 ---
 
-## 10. 建议的后续工作
+## 10. 当前对接约束
 
-1. 继续把 `agent-core` 从当前结构迁到 `adapters / flows / graphs / shared / utils / session`
+1. `agent-chat` 必须把审批、恢复、Think、ThoughtChain、Evidence、Learning suggestions 视为主链能力，而不是边栏附属能力
+2. `agent-admin` 负责 Runtime、Approvals、Learning、Skill Lab、Evidence、Connector & Policy 六大中心，不与 `agent-chat` 重叠造轮子
+3. 前后端共享领域字段时，优先扩展 `TaskRecord`、`ChatCheckpointRecord`、`SkillCard`、`EvidenceRecord`、`McpCapability`
+4. 新增 SSE 事件优先按 `supervisor / ministry / workflow / learning / evidence` 语义命名
+5. 保留旧事件名时，应同时写明兼容计划，避免接口层长期停留在旧模型
+
+---
+
+## 11. 建议的后续工作
+
+1. 继续把 `agent-core` 内剩余旧命名迁到 `supervisor / ministry / workflow`
 2. 给前端消息区补真正的“最后一条 assistant 流式打字效果”
 3. 给后端补一个专门的流式调试接口，便于只测 token 输出
 4. 在 `agent-admin` 中增加 chat session 观测页，方便从运维视角排查多 Agent 流程

@@ -1,41 +1,33 @@
-name: Main 检查
+name: Main Full Validation
 
-# 触发规则：
-# 1. 仅在推送到 main 时执行。
 on:
   push:
     branches:
       - main
 
-# 避免同一个 main 提交重复堆积执行。
 concurrency:
   group: main-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   validate-and-build:
-    # main 分支执行完整校验，并开启更多缓存以提升速度。
     name: Validate And Build Main
     runs-on: ubuntu-latest
 
     steps:
-      # 第一步：拉取仓库代码。
-      - name: 检出代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 第二步：安装 pnpm（版本由根目录 package.json 的 packageManager 字段决定）。
-      - name: 安装 pnpm
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      # 第三步：安装 Node.js，并启用 pnpm 缓存。
-      - name: 安装 Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      # 第四步：恢复 Turbo 缓存，加快多项目构建。
-      - name: 恢复 Turbo 缓存
+      - name: Restore Turbo Cache
         uses: actions/cache@v4
         with:
           path: .turbo/cache
@@ -43,8 +35,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      # 第五步：恢复构建产物缓存，加快重复构建。
-      - name: 恢复构建产物缓存
+      - name: Restore Build Artifacts Cache
         uses: actions/cache@v4
         with:
           path: |
@@ -54,26 +45,71 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-artifacts-
 
-      # 第六步：安装项目依赖。
-      - name: 安装依赖
+      - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # 第七步：执行 ESLint（与 package.json 中 lint:eslint 一致）。
-      - name: 运行 ESLint
+      - name: Run ESLint
         run: pnpm lint:eslint
 
-      # 第八步：执行 Prettier（与 package.json 中 lint:prettier 一致）。
-      - name: 运行 Prettier
+      - name: Run Prettier
         run: pnpm lint:prettier
 
-      # 第九步：执行完整类型检查（与 package.json 中 lint:tsc 一致）。
-      - name: 运行类型检查
+      - name: Run TypeScript Checks
         run: pnpm lint:tsc
 
-      # 第十步：执行完整测试。
-      - name: 运行测试
+      - name: Run Tests
         run: pnpm test
 
-      # 第十一步：执行完整构建。
-      - name: 运行构建
+      - name: Run Full Build
         run: pnpm build
+
+  notify:
+    name: Send Email Notification
+    runs-on: ubuntu-latest
+    needs:
+      - validate-and-build
+    if: ${{ always() && secrets.SMTP_SERVER != '' && secrets.SMTP_PORT != '' && secrets.SMTP_USERNAME != '' && secrets.SMTP_PASSWORD != '' && secrets.SMTP_TO != '' && secrets.SMTP_FROM != '' }}
+
+    steps:
+      - name: Send Success Email
+        if: ${{ needs.validate-and-build.result == 'success' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: '[Main Success] ${{ github.repository }} @ ${{ github.ref_name }}'
+          to: ${{ secrets.SMTP_TO }}
+          from: ${{ secrets.SMTP_FROM }}
+          secure: ${{ secrets.SMTP_SECURE == 'true' }}
+          body: |
+            Main branch full validation succeeded.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Send Failure Email
+        if: ${{ needs.validate-and-build.result == 'failure' || needs.validate-and-build.result == 'cancelled' }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: '[Main Failure] ${{ github.repository }} @ ${{ github.ref_name }}'
+          to: ${{ secrets.SMTP_TO }}
+          from: ${{ secrets.SMTP_FROM }}
+          secure: ${{ secrets.SMTP_SECURE == 'true' }}
+          body: |
+            Main branch full validation failed or was cancelled.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Job result: ${{ needs.validate-and-build.result }}

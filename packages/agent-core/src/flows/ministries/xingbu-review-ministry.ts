@@ -1,6 +1,4 @@
-import { z } from 'zod/v4';
-
-import {
+﻿import {
   AgentExecutionState,
   AgentRole,
   EvaluationResult,
@@ -11,6 +9,8 @@ import {
 import { evaluateExecution } from '@agent/evals';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { XINGBU_REVIEW_SYSTEM_PROMPT } from './xingbu-review/prompts/review-prompts';
+import { ReviewDecisionSchema } from './xingbu-review/schemas/review-decision-schema';
 
 export class XingbuReviewMinistry {
   private readonly state: AgentExecutionState;
@@ -47,25 +47,22 @@ export class XingbuReviewMinistry {
           notes: ['执行尚未真正发生，因为当前动作需要人工审批。']
         };
 
-    const reviewSchema = z.object({
-      decision: z.enum(['approved', 'retry', 'blocked']),
-      quality: z.enum(['low', 'medium', 'high']),
-      shouldRetry: z.boolean(),
-      shouldWriteMemory: z.boolean(),
-      shouldCreateRule: z.boolean(),
-      shouldExtractSkill: z.boolean(),
-      notes: z.array(z.string()).min(1)
-    });
-
-    let llmReview: z.infer<typeof reviewSchema> | null = null;
+    let llmReview: {
+      decision: ReviewDecision;
+      quality: 'low' | 'medium' | 'high';
+      shouldRetry: boolean;
+      shouldWriteMemory: boolean;
+      shouldCreateRule: boolean;
+      shouldExtractSkill: boolean;
+      notes: string[];
+    } | null = null;
     if (executionResult && this.context.llm.isConfigured()) {
       try {
         llmReview = await this.context.llm.generateObject(
           [
             {
               role: 'system',
-              content:
-                '你是刑部尚书。请始终使用中文，判断执行结果应通过、重试还是阻断，并决定是否写入记忆、规则或技能候选。'
+              content: XINGBU_REVIEW_SYSTEM_PROMPT
             },
             {
               role: 'user',
@@ -76,7 +73,7 @@ export class XingbuReviewMinistry {
               })
             }
           ],
-          reviewSchema,
+          ReviewDecisionSchema,
           {
             role: 'reviewer',
             thinking: this.context.thinking.reviewer,

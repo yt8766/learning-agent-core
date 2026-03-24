@@ -1,4 +1,4 @@
-import { ManagerPlan, AgentRole, WorkflowPresetDefinition } from '@agent/shared';
+﻿import { AgentRole, ManagerPlan, WorkflowPresetDefinition } from '@agent/shared';
 
 const GENERAL_PRESET: WorkflowPresetDefinition = {
   id: 'general',
@@ -238,7 +238,7 @@ export function resolveWorkflowPreset(goal: string): WorkflowResolution {
   const normalizedGoal = goal.trim();
   const explicit = normalizedGoal.match(/^(\/[a-z-]+)\b\s*(.*)$/i);
   if (explicit) {
-    const command = explicit[1].toLowerCase();
+    const command = (explicit[1] ?? '').toLowerCase();
     const preset = WORKFLOW_PRESETS.find(item => item.command === command) ?? GENERAL_PRESET;
     return {
       normalizedGoal: explicit[2]?.trim() || normalizedGoal,
@@ -251,7 +251,7 @@ export function resolveWorkflowPreset(goal: string): WorkflowResolution {
   const lowered = normalizedGoal.toLowerCase();
   const inferred =
     WORKFLOW_PRESETS.find(
-      item => item.command && item.intentPatterns.some(pattern => lowered.includes(pattern.toLowerCase()))
+      item => Boolean(item.command) && item.intentPatterns.some(pattern => lowered.includes(pattern.toLowerCase()))
     ) ?? GENERAL_PRESET;
 
   return {
@@ -262,7 +262,9 @@ export function resolveWorkflowPreset(goal: string): WorkflowResolution {
 }
 
 export function buildWorkflowPresetPlan(taskId: string, goal: string, preset: WorkflowPresetDefinition): ManagerPlan {
-  const summary = `${preset.displayName}已生效，系统将优先联动 ${preset.requiredMinistries.join('、')} 处理目标。`;
+  const ministrySummary =
+    preset.requiredMinistries.length > 0 ? preset.requiredMinistries.join('、') : '当前无需额外尚书';
+  const summary = `${preset.displayName}已生效，系统将优先联动 ${ministrySummary} 处理目标。`;
   const researchObjective =
     preset.requiredMinistries.includes('hubu-search') || preset.requiredMinistries.includes('libu-docs')
       ? `收集与目标相关的上下文、文档与规范：${goal}`
