@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 
 import { loadSettings } from '@agent/config';
 import { AgentOrchestrator, SessionCoordinator, ZhipuLlmProvider } from '@agent/agent-core';
@@ -1016,7 +1016,11 @@ function summarizeUsageAnalytics(tasks: TaskRecord[]) {
       }
     } else {
       const taskModels = Array.from(
-        new Set((task.modelRoute ?? []).map((route: { selectedModel?: string }) => route.selectedModel).filter(Boolean))
+        new Set(
+          (task.modelRoute ?? [])
+            .map(route => route.selectedModel)
+            .filter((m): m is string => typeof m === 'string' && m.length > 0)
+        )
       );
       const allocatedModels = taskModels.length > 0 ? taskModels : ['default'];
       const tokenShare = taskTokens / allocatedModels.length;
