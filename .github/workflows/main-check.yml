@@ -23,11 +23,9 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      # 第二步：安装固定版本的 pnpm。
+      # 第二步：安装 pnpm（版本由根目录 package.json 的 packageManager 字段决定）。
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
 
       # 第三步：安装 Node.js，并启用 pnpm 缓存。
       - name: 安装 Node.js
