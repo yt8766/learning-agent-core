@@ -45,10 +45,18 @@ export class LocalAdapterTransportHandler implements McpTransportHandler {
     capability: McpCapabilityDefinition,
     request: ToolExecutionRequest
   ): Promise<ToolExecutionResult> {
-    return this.fallbackExecutor.execute({
-      ...request,
-      toolName: capability.toolName
-    });
+    return this.fallbackExecutor
+      .execute({
+        ...request,
+        toolName: capability.toolName
+      })
+      .then(result => ({
+        ...result,
+        serverId: _server.id,
+        capabilityId: capability.id,
+        transportUsed: 'local-adapter' as const,
+        fallbackUsed: true
+      }));
   }
 
   getHealth(server: McpServerDefinition, capabilities: McpCapabilityDefinition[]): McpTransportHealth {
@@ -93,7 +101,11 @@ export class HttpTransportHandler implements McpTransportHandler {
         outputSummary: `MCP server ${server.id} is missing an HTTP endpoint`,
         errorMessage: 'missing_endpoint',
         durationMs: 0,
-        exitCode: 1
+        exitCode: 1,
+        serverId: server.id,
+        capabilityId: capability.id,
+        transportUsed: 'http',
+        fallbackUsed: false
       };
     }
 
@@ -119,7 +131,11 @@ export class HttpTransportHandler implements McpTransportHandler {
           outputSummary: `HTTP MCP server ${server.id} returned ${response.status}`,
           errorMessage: `http_${response.status}`,
           durationMs: Date.now() - startedAt,
-          exitCode: 1
+          exitCode: 1,
+          serverId: server.id,
+          capabilityId: capability.id,
+          transportUsed: 'http',
+          fallbackUsed: false
         };
       }
 
@@ -130,7 +146,11 @@ export class HttpTransportHandler implements McpTransportHandler {
         rawOutput: payload.rawOutput,
         exitCode: payload.exitCode ?? (payload.ok ? 0 : 1),
         errorMessage: payload.errorMessage,
-        durationMs: payload.durationMs ?? Date.now() - startedAt
+        durationMs: payload.durationMs ?? Date.now() - startedAt,
+        serverId: payload.serverId ?? server.id,
+        capabilityId: payload.capabilityId ?? capability.id,
+        transportUsed: 'http',
+        fallbackUsed: false
       };
     } catch (error) {
       return {
@@ -138,7 +158,11 @@ export class HttpTransportHandler implements McpTransportHandler {
         outputSummary: `HTTP MCP server ${server.id} request failed`,
         errorMessage: error instanceof Error ? error.message : 'http_request_failed',
         durationMs: Date.now() - startedAt,
-        exitCode: 1
+        exitCode: 1,
+        serverId: server.id,
+        capabilityId: capability.id,
+        transportUsed: 'http',
+        fallbackUsed: false
       };
     }
   }
@@ -467,7 +491,11 @@ export class StdioTransportHandler implements McpTransportHandler {
         outputSummary: `MCP server ${server.id} is missing a stdio command`,
         errorMessage: 'missing_stdio_command',
         durationMs: 0,
-        exitCode: 1
+        exitCode: 1,
+        serverId: server.id,
+        capabilityId: capability.id,
+        transportUsed: 'stdio',
+        fallbackUsed: false
       };
     }
 
@@ -509,7 +537,11 @@ export class StdioTransportHandler implements McpTransportHandler {
         rawOutput: result,
         exitCode: result?.isError ? 1 : 0,
         durationMs: Date.now() - startedAt,
-        errorMessage: result?.isError ? contentText || 'stdio_tool_error' : undefined
+        errorMessage: result?.isError ? contentText || 'stdio_tool_error' : undefined,
+        serverId: server.id,
+        capabilityId: capability.id,
+        transportUsed: 'stdio',
+        fallbackUsed: false
       };
     } catch (error) {
       return {
@@ -517,7 +549,11 @@ export class StdioTransportHandler implements McpTransportHandler {
         outputSummary: `STDIO MCP server ${server.id} request failed`,
         errorMessage: error instanceof Error ? error.message : 'stdio_request_failed',
         durationMs: Date.now() - startedAt,
-        exitCode: 1
+        exitCode: 1,
+        serverId: server.id,
+        capabilityId: capability.id,
+        transportUsed: 'stdio',
+        fallbackUsed: false
       };
     }
   }

@@ -89,14 +89,214 @@ export type WorkflowApprovalPolicy = 'none' | 'high-risk-only' | 'all-actions';
 export type ModelRole = 'supervisor' | 'libu' | 'hubu' | 'libu-docs' | 'bingbu' | 'xingbu' | 'gongbu';
 export type WorkerDomain = MinistryId;
 export type SourcePolicyMode = 'internal-only' | 'controlled-first' | 'open-web-allowed';
+export type RuntimeProfile = 'platform' | 'company' | 'personal' | 'cli';
+export type WorkerKind = 'core' | 'company' | 'installed-skill';
+export type SkillSourceKind = 'marketplace' | 'internal' | 'git' | 'http-manifest';
+export type SkillSourcePriority = 'workspace/internal' | 'managed/local' | 'bundled/marketplace';
+export type SkillInstallStatus = 'pending' | 'approved' | 'rejected' | 'installed' | 'failed';
+export type SubgraphId = 'research' | 'execution' | 'review' | 'skill-install' | 'background-runner';
+export type SkillSourceDiscoveryMode = 'local-dir' | 'remote-index' | 'git-registry' | 'http-manifest';
+export type SkillSourceSyncStrategy = 'manual' | 'scheduled' | 'on-demand';
+export type SkillSuggestionKind = 'installed' | 'manifest' | 'connector-template';
+export type SkillSuggestionAvailability =
+  | 'ready'
+  | 'installable'
+  | 'installable-local'
+  | 'installable-remote'
+  | 'approval-required'
+  | 'blocked';
+export type SkillInstallPhase =
+  | 'requested'
+  | 'approved'
+  | 'downloading'
+  | 'verifying'
+  | 'installing'
+  | 'installed'
+  | 'failed';
 
 export interface WorkerDefinition {
   id: string;
   ministry: WorkerDomain;
+  kind?: WorkerKind;
   displayName: string;
   defaultModel: string;
   supportedCapabilities: string[];
   reviewPolicy: 'none' | 'self-check' | 'mandatory-xingbu';
+  sourceId?: string;
+  owner?: string;
+  tags?: string[];
+  requiredConnectors?: string[];
+  preferredContexts?: string[];
+  allowedSourcePolicies?: SourcePolicyMode[];
+}
+
+export interface SkillSourceRecord {
+  id: string;
+  name: string;
+  kind: SkillSourceKind;
+  baseUrl: string;
+  discoveryMode?: SkillSourceDiscoveryMode;
+  indexUrl?: string;
+  packageBaseUrl?: string;
+  authRef?: string;
+  syncStrategy?: SkillSourceSyncStrategy;
+  allowedProfiles?: RuntimeProfile[];
+  trustClass: TrustClass;
+  priority: SkillSourcePriority;
+  enabled: boolean;
+  authMode?: 'none' | 'token' | 'oauth' | 'header';
+  lastSyncedAt?: string;
+  healthState?: 'healthy' | 'degraded' | 'error' | 'unknown' | 'disabled';
+  healthReason?: string;
+  profilePolicy?: ProfilePolicyHintRecord;
+}
+
+export interface ProfilePolicyHintRecord {
+  enabledByProfile: boolean;
+  recommendedForProfiles: RuntimeProfile[];
+  reason: string;
+}
+
+export interface SkillSafetyEvaluationRecord {
+  verdict: 'allow' | 'needs-approval' | 'blocked';
+  trustScore: number;
+  sourceTrustClass?: TrustClass;
+  profileCompatible?: boolean;
+  maxRiskLevel: RiskLevel;
+  reasons: string[];
+  riskyTools: string[];
+  missingDeclarations: string[];
+}
+
+export interface SkillManifestRecord {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  publisher: string;
+  sourceId: string;
+  requiredCapabilities: string[];
+  requiredConnectors?: string[];
+  allowedTools?: string[];
+  sourcePolicy?: {
+    mode: SourcePolicyMode;
+    preferredUrls?: string[];
+  };
+  approvalPolicy: WorkflowApprovalPolicy;
+  riskLevel: RiskLevel;
+  entry: string;
+  artifactUrl?: string;
+  readmeUrl?: string;
+  homepageUrl?: string;
+  integrity?: string;
+  integrityAlgorithm?: string;
+  publishedAt?: string;
+  sourceRef?: string;
+  sizeBytes?: number;
+  summary?: string;
+  license?: string;
+  compatibility?: string;
+  installHints?: {
+    requiresApproval?: boolean;
+    requiredEnv?: string[];
+    postInstallSteps?: string[];
+  };
+  metadata?: Record<string, string>;
+  safety?: SkillSafetyEvaluationRecord;
+}
+
+export interface InstalledSkillRecord {
+  skillId: string;
+  version: string;
+  sourceId: string;
+  installLocation: string;
+  installedAt: string;
+  status: SkillInstallStatus;
+  receiptId: string;
+}
+
+export interface SkillInstallReceipt {
+  id: string;
+  skillId: string;
+  version: string;
+  sourceId: string;
+  phase?: SkillInstallPhase;
+  integrity?: string;
+  approvedBy?: string;
+  rejectedBy?: string;
+  reason?: string;
+  downloadRef?: string;
+  failureCode?: string;
+  failureDetail?: string;
+  installedAt?: string;
+  status: SkillInstallStatus;
+  result?: string;
+}
+
+export interface LocalSkillSuggestionRecord {
+  id: string;
+  kind: SkillSuggestionKind;
+  displayName: string;
+  summary: string;
+  sourceId?: string;
+  score: number;
+  availability: SkillSuggestionAvailability;
+  reason: string;
+  requiredCapabilities: string[];
+  requiredConnectors?: string[];
+  version?: string;
+  sourceLabel?: string;
+  sourceTrustClass?: TrustClass;
+  installationMode?: 'builtin' | 'configured' | 'marketplace-managed';
+  successRate?: number;
+  governanceRecommendation?: 'promote' | 'keep-lab' | 'disable' | 'retire';
+  safety?: SkillSafetyEvaluationRecord;
+}
+
+export type SkillSearchStatus = 'not-needed' | 'suggested' | 'auto-installed' | 'blocked';
+
+export interface SkillSearchStateRecord {
+  capabilityGapDetected: boolean;
+  status: SkillSearchStatus;
+  suggestions: LocalSkillSuggestionRecord[];
+  safetyNotes: string[];
+}
+
+export interface InstallSkillDto {
+  manifestId: string;
+  sourceId?: string;
+  actor?: string;
+}
+
+export interface ResolveSkillInstallDto {
+  actor?: string;
+  reason?: string;
+}
+
+export interface ConfigureConnectorDto {
+  templateId: 'github-mcp-template' | 'browser-mcp-template';
+  transport: 'stdio' | 'http';
+  displayName?: string;
+  endpoint?: string;
+  command?: string;
+  args?: string[];
+  apiKey?: string;
+  actor?: string;
+  enabled?: boolean;
+}
+
+export interface ConfiguredConnectorRecord extends ConfigureConnectorDto {
+  connectorId: string;
+  configuredAt: string;
+}
+
+export interface ConnectorDiscoveryHistoryRecord {
+  connectorId: string;
+  discoveredAt: string;
+  discoveryMode: 'registered' | 'remote';
+  sessionState: 'stateless' | 'disconnected' | 'connected' | 'error';
+  discoveredCapabilities: string[];
+  error?: string;
 }
 
 export interface ModelRouteDecision {
@@ -105,6 +305,20 @@ export interface ModelRouteDecision {
   defaultModel: string;
   selectedModel: string;
   reason: string;
+}
+
+export interface QueueStateRecord {
+  mode: 'foreground' | 'background';
+  backgroundRun: boolean;
+  status: 'queued' | 'running' | 'waiting_approval' | 'blocked' | 'completed' | 'failed' | 'cancelled';
+  enqueuedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  lastTransitionAt: string;
+  attempt: number;
+  leaseOwner?: string;
+  leaseExpiresAt?: string;
+  lastHeartbeatAt?: string;
 }
 
 export interface PendingActionRecord {
@@ -123,6 +337,7 @@ export interface WorkflowPresetDefinition {
   id: string;
   displayName: string;
   command?: string;
+  version?: string;
   intentPatterns: string[];
   requiredMinistries: MinistryId[];
   allowedCapabilities: string[];
@@ -145,6 +360,29 @@ export interface WorkflowPresetDefinition {
     type: string;
     requiredSections: string[];
   };
+}
+
+export interface WorkflowVersionRecord {
+  workflowId: string;
+  version: string;
+  status: 'draft' | 'published' | 'active';
+  updatedAt: string;
+  changelog: string[];
+}
+
+export interface ChatRouteRecord {
+  graph: 'workflow' | 'approval-recovery' | 'learning';
+  flow: 'supervisor' | 'approval' | 'learning' | 'direct-reply';
+  reason: string;
+  adapter:
+    | 'workflow-command'
+    | 'approval-recovery'
+    | 'identity-capability'
+    | 'figma-design'
+    | 'modification-intent'
+    | 'general-prompt'
+    | 'fallback';
+  priority: number;
 }
 
 export interface CreateTaskDto {
@@ -268,6 +506,10 @@ export interface ToolExecutionResult {
   exitCode?: number;
   errorMessage?: string;
   durationMs: number;
+  serverId?: string;
+  capabilityId?: string;
+  transportUsed?: 'local-adapter' | 'stdio' | 'http';
+  fallbackUsed?: boolean;
 }
 
 export interface ApprovalRecord {
@@ -345,6 +587,17 @@ export interface SkillCard {
   disabledReason?: string;
   retiredAt?: string;
   restoredAt?: string;
+  version?: string;
+  successRate?: number;
+  promotionState?: string;
+  governanceRecommendation?: 'promote' | 'keep-lab' | 'disable' | 'retire';
+  sourceRuns?: string[];
+  sourceId?: string;
+  installReceiptId?: string;
+  requiredCapabilities?: string[];
+  requiredConnectors?: string[];
+  allowedTools?: string[];
+  compatibility?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -395,11 +648,17 @@ export interface BudgetState {
   retriesConsumed: number;
   sourceBudget: number;
   sourcesConsumed: number;
+  costBudgetUsd?: number;
+  costConsumedUsd?: number;
+  costConsumedCny?: number;
+  fallbackModelId?: string;
+  overBudget?: boolean;
 }
 
 export interface EvidenceRecord {
   id: string;
   taskId: string;
+  sourceId?: string;
   sourceType: string;
   sourceUrl?: string;
   trustClass: TrustClass;
@@ -407,6 +666,24 @@ export interface EvidenceRecord {
   detail?: Record<string, unknown>;
   linkedRunId?: string;
   createdAt: string;
+  fetchedAt?: string;
+  replay?: {
+    sessionId?: string;
+    url?: string;
+    snapshotSummary?: string;
+    screenshotRef?: string;
+    artifactRef?: string;
+    snapshotRef?: string;
+    stepTrace?: string[];
+    steps?: Array<{
+      id: string;
+      title: string;
+      status: 'completed' | 'failed' | 'running';
+      at: string;
+      summary?: string;
+      artifactRef?: string;
+    }>;
+  };
 }
 
 export interface LearningEvaluationRecord {
@@ -414,6 +691,12 @@ export interface LearningEvaluationRecord {
   confidence: 'low' | 'medium' | 'high';
   notes: string[];
   governanceWarnings?: string[];
+  skillGovernanceRecommendations?: Array<{
+    skillId: string;
+    recommendation: 'promote' | 'keep-lab' | 'disable' | 'retire';
+    successRate?: number;
+    promotionState?: string;
+  }>;
   recommendedCandidateIds: string[];
   autoConfirmCandidateIds: string[];
   sourceSummary: {
@@ -554,15 +837,19 @@ export interface LearningCandidateRecord {
 export interface TaskRecord {
   id: string;
   goal: string;
+  context?: string;
   status: TaskStatus;
   sessionId?: string;
   runId?: string;
   skillId?: string;
   skillStage?: string;
   resolvedWorkflow?: WorkflowPresetDefinition;
+  subgraphTrail?: SubgraphId[];
   currentNode?: string;
   currentMinistry?: WorkerDomain;
   currentWorker?: string;
+  chatRoute?: ChatRouteRecord;
+  queueState?: QueueStateRecord;
   pendingAction?: PendingActionRecord;
   pendingApproval?: PendingApprovalRecord;
   approvalFeedback?: string;
@@ -582,7 +869,11 @@ export interface TaskRecord {
   reusedMemories?: string[];
   reusedRules?: string[];
   reusedSkills?: string[];
+  usedInstalledSkills?: string[];
+  usedCompanyWorkers?: string[];
+  connectorRefs?: string[];
   learningEvaluation?: LearningEvaluationRecord;
+  skillSearch?: SkillSearchStateRecord;
   budgetState?: BudgetState;
   llmUsage?: LlmUsageRecord;
   createdAt: string;
@@ -664,13 +955,17 @@ export interface ChatThinkState {
 export interface ChatCheckpointRecord {
   sessionId: string;
   taskId: string;
+  context?: string;
   runId?: string;
   skillId?: string;
   skillStage?: string;
   resolvedWorkflow?: WorkflowPresetDefinition;
+  subgraphTrail?: SubgraphId[];
   currentNode?: string;
   currentMinistry?: WorkerDomain;
   currentWorker?: string;
+  chatRoute?: ChatRouteRecord;
+  queueState?: QueueStateRecord;
   pendingAction?: PendingActionRecord;
   pendingApproval?: PendingApprovalRecord;
   approvalFeedback?: string;
@@ -679,7 +974,10 @@ export interface ChatCheckpointRecord {
   reusedMemories?: string[];
   reusedRules?: string[];
   reusedSkills?: string[];
+  usedInstalledSkills?: string[];
+  usedCompanyWorkers?: string[];
   learningEvaluation?: LearningEvaluationRecord;
+  skillSearch?: SkillSearchStateRecord;
   budgetState?: BudgetState;
   llmUsage?: LlmUsageRecord;
   traceCursor: number;
@@ -698,4 +996,48 @@ export interface ChatCheckpointRecord {
   thinkState?: ChatThinkState;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface McpCapability {
+  id: string;
+  toolName: string;
+  serverId: string;
+  displayName: string;
+  riskLevel: RiskLevel;
+  requiresApproval: boolean;
+  category: ToolDefinition['category'];
+  transport?: string;
+  trustClass?: TrustClass;
+  approvalPolicy?: WorkflowApprovalPolicy;
+  healthState?: 'healthy' | 'degraded' | 'error' | 'unknown';
+  argsSchema?: Record<string, unknown>;
+  resultSchema?: Record<string, unknown>;
+  isPrimaryForTool?: boolean;
+  fallbackAvailable?: boolean;
+  dataScope?: string;
+  writeScope?: string;
+}
+
+export interface ConnectorHealthRecord {
+  connectorId: string;
+  healthState: 'healthy' | 'degraded' | 'error' | 'unknown' | 'disabled';
+  reason?: string;
+  checkedAt: string;
+  transport?: string;
+  implementedCapabilityCount?: number;
+  discoveredCapabilityCount?: number;
+}
+
+export interface ApprovalPolicyRecord {
+  id: string;
+  scope: 'connector' | 'worker' | 'skill-source' | 'capability';
+  targetId: string;
+  mode: WorkflowApprovalPolicy | 'allow' | 'deny' | 'require-approval' | 'observe';
+  reason: string;
+  effect?: 'allow' | 'deny' | 'require-approval' | 'observe';
+  connectorId?: string;
+  workerId?: string;
+  sourceId?: string;
+  capabilityId?: string;
+  matchedCount?: number;
 }

@@ -4,6 +4,7 @@ export interface BenchmarkScenarioDefinition {
   id: string;
   label: string;
   description: string;
+  category: 'coding' | 'research' | 'ops' | 'learning';
   matcher: {
     skillId?: string;
     traceNodes?: string[];
@@ -57,6 +58,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
     id: 'review',
     label: '/review',
     description: '代码审查链路应形成 review 完成结果。',
+    category: 'coding',
     matcher: {
       skillId: 'review',
       traceNodes: ['review']
@@ -66,6 +68,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
     id: 'qa',
     label: '/qa',
     description: 'QA 链路应走到终端能力执行。',
+    category: 'ops',
     matcher: {
       skillId: 'qa',
       traceNodes: ['execute']
@@ -75,6 +78,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
     id: 'browse',
     label: '/browse',
     description: 'Browse 链路应进入审批或浏览器执行阶段。',
+    category: 'ops',
     matcher: {
       skillId: 'browse',
       requiresApproval: true
@@ -84,6 +88,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
     id: 'ship',
     label: '/ship',
     description: 'Ship 链路应进入审批并具备恢复能力。',
+    category: 'ops',
     matcher: {
       skillId: 'ship',
       requiresApproval: true
@@ -93,6 +98,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
     id: 'research-reuse',
     label: 'research reuse',
     description: '主动研究沉淀结果应能在后续任务中复用。',
+    category: 'learning',
     matcher: {
       requiresEvidence: true
     }

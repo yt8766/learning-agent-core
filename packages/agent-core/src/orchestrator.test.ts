@@ -28,12 +28,18 @@ describe('AgentOrchestrator', () => {
     generateObject: vi.fn()
   });
 
-  const createOrchestrator = (snapshot?: any, options?: { memorySearchResults?: any[] }) => {
+  const createOrchestrator = (snapshot?: any, options?: { memorySearchResults?: any[]; ruleSearchResults?: any[] }) => {
     return new AgentOrchestrator({
       memoryRepository: {
         append: vi.fn(),
         search: vi.fn(async () => options?.memorySearchResults ?? []),
         getById: vi.fn()
+      } as never,
+      memorySearchService: {
+        search: vi.fn(async () => ({
+          memories: options?.memorySearchResults ?? [],
+          rules: options?.ruleSearchResults ?? []
+        }))
       } as never,
       skillRegistry: {
         publishToLab: vi.fn(),
@@ -190,7 +196,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '你是谁',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-direct-reply'
     });
 
     expect(task.status).toBe(TaskStatus.COMPLETED);
@@ -205,6 +212,56 @@ describe('AgentOrchestrator', () => {
     );
   });
 
+  it('普通对话消息默认走 direct reply 快路径，便于前端流式返回', async () => {
+    const orchestrator = createOrchestrator();
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '解释一下这个系统能做什么',
+      constraints: [],
+      sessionId: 'session-general-chat'
+    });
+
+    expect(task.status).toBe(TaskStatus.COMPLETED);
+    expect(task.trace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          node: 'direct_reply'
+        })
+      ])
+    );
+    expect(task.trace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          node: 'route',
+          summary: expect.stringContaining('direct-reply')
+        })
+      ])
+    );
+  });
+
+  it('修改类请求继续走完整多 Agent 工作流', async () => {
+    const orchestrator = createOrchestrator();
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '帮我重构这个仓库的技能路由',
+      constraints: [],
+      sessionId: 'session-modification'
+    });
+
+    expect(task.currentStep).not.toBe('direct_reply');
+    expect(task.trace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          node: 'supervisor_planned'
+        })
+      ])
+    );
+  });
+
   it('显式 Skill 命令会解析成流程模板并写入任务状态', async () => {
     const orchestrator = createOrchestrator();
 
@@ -212,7 +269,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '/review 请审查这个仓库的潜在风险',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-review'
     });
 
     expect(task.goal).toBe('请审查这个仓库的潜在风险');
@@ -229,6 +287,117 @@ describe('AgentOrchestrator', () => {
         expect.objectContaining({ node: 'skill_resolved' }),
         expect.objectContaining({ node: 'skill_stage_started' }),
         expect.objectContaining({ node: 'skill_stage_completed' })
+      ])
+    );
+  });
+
+  it('创建任务时会把 memory search 命中的规则也写入复用状态与证据', async () => {
+    const orchestrator = createOrchestrator(undefined, {
+      memorySearchResults: [
+        {
+          id: 'mem_release_check',
+          type: 'success_case',
+          summary: '发布前先跑 build',
+          content: 'Run build first.',
+          tags: ['release'],
+          createdAt: '2026-03-22T00:00:00.000Z',
+          status: 'active'
+        }
+      ],
+      ruleSearchResults: [
+        {
+          id: 'rule_release_gate',
+          name: 'release_gate',
+          summary: '发布前必须通过 build',
+          conditions: ['before release'],
+          action: 'run build',
+          createdAt: '2026-03-22T00:00:00.000Z',
+          status: 'active'
+        }
+      ]
+    });
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '/ship 帮我整理发布前检查',
+      constraints: [],
+      sessionId: 'session-ship'
+    });
+
+    expect(task.reusedMemories).toContain('mem_release_check');
+    expect(task.reusedRules).toContain('rule_release_gate');
+    expect(task.externalSources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceType: 'memory_reuse' }),
+        expect.objectContaining({ sourceType: 'rule_reuse' })
+      ])
+    );
+  });
+
+  it('创建任务时会把本地 skill search 结果写入 task.skillSearch', async () => {
+    const orchestrator = createOrchestrator();
+
+    orchestrator.setLocalSkillSuggestionResolver(async () => ({
+      capabilityGapDetected: true,
+      status: 'suggested',
+      safetyNotes: ['Release Check：installable，不依赖额外连接器。'],
+      suggestions: [
+        {
+          id: 'release_check',
+          kind: 'manifest',
+          displayName: 'Release Check',
+          summary: '执行发布前检查',
+          sourceId: 'workspace-skills',
+          score: 0.9,
+          availability: 'installable',
+          reason: '当前 profile 可从本地来源安装。',
+          requiredCapabilities: ['release-ops'],
+          requiredConnectors: ['ci'],
+          version: '0.1.0'
+        }
+      ]
+    }));
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '/ship 帮我做发布前检查',
+      constraints: [],
+      sessionId: 'session-ship-skill-search'
+    });
+
+    expect(task.skillSearch).toEqual(
+      expect.objectContaining({
+        capabilityGapDetected: true,
+        status: 'suggested',
+        suggestions: [expect.objectContaining({ id: 'release_check' })]
+      })
+    );
+  });
+
+  it('创建 freshness-sensitive 任务时会写入 freshness 元证据', async () => {
+    const orchestrator = createOrchestrator();
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '最近 AI 有没有什么新的技术进展',
+      constraints: [],
+      sessionId: 'session-freshness'
+    });
+
+    expect(task.externalSources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceType: 'freshness_meta',
+          trustClass: 'internal',
+          summary: expect.stringContaining('信息基准日期：'),
+          detail: expect.objectContaining({
+            freshnessSensitive: true,
+            sourceCount: expect.any(Number)
+          })
+        })
       ])
     );
   });
@@ -288,7 +457,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '/ship 请整理本次发布前检查',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-ship'
     });
 
     expect(task.skillId).toBe('ship');
@@ -311,7 +481,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '/browse 帮我打开首页并检查按钮',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-browse'
     });
 
     expect(task.skillId).toBe('browse');
@@ -330,7 +501,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '/qa 帮我回归测试聊天主链路',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-qa'
     });
 
     expect(task.skillId).toBe('qa');
@@ -361,7 +533,8 @@ describe('AgentOrchestrator', () => {
 
     const task = await orchestrator.createTask({
       goal: '/review 请审查 React 聊天页的流式渲染体验',
-      constraints: []
+      constraints: [],
+      sessionId: 'session-memory'
     });
 
     expect(task.reusedMemories).toEqual(['mem_research_existing']);
@@ -418,5 +591,167 @@ describe('AgentOrchestrator', () => {
         maxRetries: 1
       })
     ).toThrow('step budget');
+  });
+
+  it('无 sessionId 的任务只入队后台执行，不会在 createTask 时同步推进', async () => {
+    const orchestrator = createOrchestrator();
+    orchestrator.runTaskPipeline = vi.fn(async () => undefined);
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.createTask({
+      goal: '后台批量整理发布清单',
+      constraints: []
+    });
+
+    expect(task.queueState).toEqual(
+      expect.objectContaining({
+        backgroundRun: true,
+        mode: 'background',
+        status: 'queued'
+      })
+    );
+    expect(task.status).toBe(TaskStatus.QUEUED);
+    expect(orchestrator.runTaskPipeline).not.toHaveBeenCalled();
+    expect(task.trace).toEqual(expect.arrayContaining([expect.objectContaining({ node: 'background_queued' })]));
+  });
+
+  it('后台 lease 过期后会在 retry budget 内重新入队', async () => {
+    const now = new Date('2026-03-25T00:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const orchestrator = createOrchestrator({
+      tasks: [
+        {
+          id: 'task-bg-requeue',
+          runId: 'run-bg-requeue',
+          goal: '后台执行重试',
+          status: TaskStatus.RUNNING,
+          trace: [],
+          approvals: [],
+          agentStates: [],
+          messages: [],
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          retryCount: 0,
+          maxRetries: 1,
+          budgetState: {
+            stepBudget: 8,
+            stepsConsumed: 1,
+            retryBudget: 1,
+            retriesConsumed: 0,
+            sourceBudget: 8,
+            sourcesConsumed: 0
+          },
+          queueState: {
+            mode: 'background',
+            backgroundRun: true,
+            status: 'running',
+            enqueuedAt: now.toISOString(),
+            startedAt: now.toISOString(),
+            lastTransitionAt: now.toISOString(),
+            attempt: 1,
+            leaseOwner: 'runtime-1',
+            leaseExpiresAt: new Date(now.getTime() - 1_000).toISOString(),
+            lastHeartbeatAt: now.toISOString()
+          }
+        }
+      ],
+      learningJobs: [],
+      pendingExecutions: [],
+      chatSessions: [],
+      chatMessages: [],
+      chatEvents: [],
+      chatCheckpoints: []
+    });
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.reclaimExpiredBackgroundLease('task-bg-requeue', 'runtime-1');
+
+    expect(task).toEqual(
+      expect.objectContaining({
+        status: TaskStatus.QUEUED,
+        currentNode: 'background_requeued',
+        queueState: expect.objectContaining({
+          status: 'queued',
+          attempt: 2,
+          leaseOwner: undefined
+        }),
+        retryCount: 1,
+        budgetState: expect.objectContaining({
+          retriesConsumed: 1
+        })
+      })
+    );
+    vi.useRealTimers();
+  });
+
+  it('后台 lease 过期且耗尽 retry budget 时会终止任务', async () => {
+    const now = new Date('2026-03-25T00:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const orchestrator = createOrchestrator({
+      tasks: [
+        {
+          id: 'task-bg-fail',
+          runId: 'run-bg-fail',
+          goal: '后台执行终止',
+          status: TaskStatus.RUNNING,
+          trace: [],
+          approvals: [],
+          agentStates: [],
+          messages: [],
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          retryCount: 1,
+          maxRetries: 1,
+          budgetState: {
+            stepBudget: 8,
+            stepsConsumed: 1,
+            retryBudget: 1,
+            retriesConsumed: 1,
+            sourceBudget: 8,
+            sourcesConsumed: 0
+          },
+          queueState: {
+            mode: 'background',
+            backgroundRun: true,
+            status: 'running',
+            enqueuedAt: now.toISOString(),
+            startedAt: now.toISOString(),
+            lastTransitionAt: now.toISOString(),
+            attempt: 2,
+            leaseOwner: 'runtime-1',
+            leaseExpiresAt: new Date(now.getTime() - 1_000).toISOString(),
+            lastHeartbeatAt: now.toISOString()
+          }
+        }
+      ],
+      learningJobs: [],
+      pendingExecutions: [],
+      chatSessions: [],
+      chatMessages: [],
+      chatEvents: [],
+      chatCheckpoints: []
+    });
+
+    await orchestrator.initialize();
+
+    const task = await orchestrator.reclaimExpiredBackgroundLease('task-bg-fail', 'runtime-1');
+
+    expect(task).toEqual(
+      expect.objectContaining({
+        status: TaskStatus.FAILED,
+        currentNode: 'background_reclaim_failed',
+        currentStep: 'background_runner_failed',
+        queueState: expect.objectContaining({
+          status: 'failed',
+          leaseOwner: undefined
+        }),
+        result: expect.stringContaining('retry budget')
+      })
+    );
+    vi.useRealTimers();
   });
 });

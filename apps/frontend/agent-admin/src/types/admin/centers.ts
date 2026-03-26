@@ -1,10 +1,15 @@
-﻿import type {
+import type {
   ApprovalDecisionRecord,
+  CompanyAgentRecord,
   ConnectorRecord,
   EvidenceRecord,
+  InstalledSkillRecord,
   RuleRecord,
   SessionRecord,
+  SkillInstallReceipt,
+  SkillManifestRecord,
   SkillRecord,
+  SkillSourceRecord,
   TaskRecord
 } from './core';
 import type { RuntimeCenterRecord } from './runtime';
@@ -57,6 +62,15 @@ export interface LearningCenterRecord {
   conflictingResearchJobs?: number;
   invalidatedMemories?: number;
   invalidatedRules?: number;
+  recentSkillGovernance?: Array<{
+    taskId: string;
+    goal: string;
+    skillId: string;
+    recommendation: string;
+    successRate?: number;
+    promotionState?: string;
+    updatedAt: string;
+  }>;
   candidates: LearningCandidateItem[];
   recentJobs?: LearningJobRecord[];
 }
@@ -135,6 +149,13 @@ export interface PlatformConsoleRecord {
   skills: SkillRecord[];
   evidence: EvidenceRecord[];
   connectors: ConnectorRecord[];
+  skillSources: {
+    sources: SkillSourceRecord[];
+    manifests: SkillManifestRecord[];
+    installed: InstalledSkillRecord[];
+    receipts: SkillInstallReceipt[];
+  };
+  companyAgents: CompanyAgentRecord[];
   rules: RuleRecord[];
   tasks: TaskRecord[];
   sessions: SessionRecord[];

@@ -1,3 +1,21 @@
+---
+name: openclaw_workspace_audit
+description: Use this skill to audit whether agent-chat and agent-admin still match the OpenClaw-style workspace and governance-console product direction.
+version: '1.0.0'
+publisher: workspace
+license: Proprietary
+compatibility: Requires repository access and is best used when chat workspace, admin console, evidence, or approval UX changed.
+metadata:
+  author: learning-agent-core
+  ministry: libu-docs
+allowed-tools:
+  - read_local_file
+  - list_directory
+  - local-analysis
+approval-policy: none
+risk-level: low
+---
+
 # OpenClaw Workspace Audit
 
 本 skill 用于审计 `agent-chat` 和 `agent-admin` 是否仍符合当前仓库约定的 OpenClaw 产品方向。

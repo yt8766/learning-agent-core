@@ -44,34 +44,34 @@ export function getConversationGroup(status?: string) {
     case 'running':
     case 'waiting_approval':
     case 'waiting_learning_confirmation':
-      return '进行中';
+      return '最近处理中';
     case 'completed':
-      return '已完成';
+      return '最近完成';
     case 'cancelled':
-      return '已终止';
+      return '已停止';
     case 'failed':
-      return '失败';
+      return '异常';
     default:
-      return '空闲';
+      return '其他';
   }
 }
 
 export function getStatusPill(status?: string) {
   switch (status) {
     case 'running':
-      return '运行中';
+      return '回复中';
     case 'waiting_approval':
-      return '待审批';
+      return '待确认';
     case 'waiting_learning_confirmation':
-      return '待学习';
+      return '待写入';
     case 'completed':
       return '已完成';
     case 'cancelled':
-      return '已终止';
+      return '已停止';
     case 'failed':
-      return '失败';
+      return '异常';
     default:
-      return '空闲';
+      return '其他';
   }
 }
 
@@ -92,13 +92,13 @@ export function matchesFilter(status: string | undefined, filter: SessionFilter)
 
 export function getRunningHint(status?: string, currentStep?: string) {
   if (status === 'waiting_approval') {
-    return '系统已执行到高风险动作，正在等待人工审批。';
+    return '有一个高风险动作需要你确认后才能继续。';
   }
   if (status === 'waiting_learning_confirmation') {
-    return '本轮结果已完成，正在等待学习确认后写入长期知识。';
+    return '这轮已经完成，正在等待你确认是否写入长期知识。';
   }
   if (status === 'running') {
-    return `正在执行 ${currentStep || '当前节点'}，稍后会继续推送 Agent 消息。`;
+    return currentStep ? `正在处理：${currentStep}` : '正在生成回复...';
   }
   return '';
 }
@@ -110,7 +110,7 @@ export function getCompressionHint(session?: { compression?: { condensedMessageC
 
 export function getWorkflowSummary(requiredMinistries?: string[]) {
   if (!requiredMinistries?.length) {
-    return '首辅将按通用流程自行调度各部。';
+    return '系统会按通用流程继续处理。';
   }
   return requiredMinistries.map(ministry => getMinistryLabel(ministry)).join(' -> ');
 }
@@ -156,7 +156,7 @@ export function getErrorCopy(error: string) {
   }
 
   return {
-    title: '工作台诊断',
+    title: '运行提示',
     description: error
   };
 }

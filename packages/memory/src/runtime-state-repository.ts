@@ -8,6 +8,8 @@ import {
   ChatEventRecord,
   ChatMessageRecord,
   ChatSessionRecord,
+  ConfiguredConnectorRecord,
+  ConnectorDiscoveryHistoryRecord,
   LearningJob,
   TaskRecord
 } from '@agent/shared';
@@ -27,6 +29,38 @@ export interface RuntimeStateSnapshot {
   chatMessages: ChatMessageRecord[];
   chatEvents: ChatEventRecord[];
   chatCheckpoints: ChatCheckpointRecord[];
+  governance?: {
+    disabledSkillSourceIds?: string[];
+    disabledCompanyWorkerIds?: string[];
+    disabledConnectorIds?: string[];
+    configuredConnectors?: ConfiguredConnectorRecord[];
+    connectorDiscoveryHistory?: ConnectorDiscoveryHistoryRecord[];
+    connectorPolicyOverrides?: Array<{
+      connectorId: string;
+      effect: 'allow' | 'deny' | 'require-approval' | 'observe';
+      reason?: string;
+      updatedAt: string;
+      updatedBy?: string;
+    }>;
+    capabilityPolicyOverrides?: Array<{
+      capabilityId: string;
+      connectorId: string;
+      effect: 'allow' | 'deny' | 'require-approval' | 'observe';
+      reason?: string;
+      updatedAt: string;
+      updatedBy?: string;
+    }>;
+  };
+  governanceAudit?: Array<{
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    scope: 'skill-source' | 'company-worker' | 'skill-install' | 'connector';
+    targetId: string;
+    outcome: 'success' | 'rejected' | 'pending';
+    reason?: string;
+  }>;
   usageHistory?: Array<{
     day: string;
     tokens: number;
@@ -73,7 +107,11 @@ export interface RuntimeStateRepository {
 }
 
 export class FileRuntimeStateRepository implements RuntimeStateRepository {
-  private readonly filePath = resolve(loadSettings().tasksStateFilePath);
+  private readonly filePath: string;
+
+  constructor(filePath = loadSettings().tasksStateFilePath) {
+    this.filePath = resolve(filePath);
+  }
 
   async load(): Promise<RuntimeStateSnapshot> {
     try {
@@ -87,6 +125,30 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatMessages: Array.isArray(parsed.chatMessages) ? parsed.chatMessages : [],
         chatEvents: Array.isArray(parsed.chatEvents) ? parsed.chatEvents : [],
         chatCheckpoints: Array.isArray(parsed.chatCheckpoints) ? parsed.chatCheckpoints : [],
+        governance: {
+          disabledSkillSourceIds: Array.isArray(parsed.governance?.disabledSkillSourceIds)
+            ? parsed.governance?.disabledSkillSourceIds
+            : [],
+          disabledCompanyWorkerIds: Array.isArray(parsed.governance?.disabledCompanyWorkerIds)
+            ? parsed.governance?.disabledCompanyWorkerIds
+            : [],
+          disabledConnectorIds: Array.isArray(parsed.governance?.disabledConnectorIds)
+            ? parsed.governance?.disabledConnectorIds
+            : [],
+          configuredConnectors: Array.isArray(parsed.governance?.configuredConnectors)
+            ? parsed.governance?.configuredConnectors
+            : [],
+          connectorDiscoveryHistory: Array.isArray(parsed.governance?.connectorDiscoveryHistory)
+            ? parsed.governance?.connectorDiscoveryHistory
+            : [],
+          connectorPolicyOverrides: Array.isArray(parsed.governance?.connectorPolicyOverrides)
+            ? parsed.governance?.connectorPolicyOverrides
+            : [],
+          capabilityPolicyOverrides: Array.isArray(parsed.governance?.capabilityPolicyOverrides)
+            ? parsed.governance?.capabilityPolicyOverrides
+            : []
+        },
+        governanceAudit: Array.isArray(parsed.governanceAudit) ? parsed.governanceAudit : [],
         usageHistory: Array.isArray(parsed.usageHistory) ? parsed.usageHistory : [],
         evalHistory: Array.isArray(parsed.evalHistory) ? parsed.evalHistory : [],
         usageAudit: Array.isArray(parsed.usageAudit) ? parsed.usageAudit : []
@@ -100,6 +162,16 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatMessages: [],
         chatEvents: [],
         chatCheckpoints: [],
+        governance: {
+          disabledSkillSourceIds: [],
+          disabledCompanyWorkerIds: [],
+          disabledConnectorIds: [],
+          configuredConnectors: [],
+          connectorDiscoveryHistory: [],
+          connectorPolicyOverrides: [],
+          capabilityPolicyOverrides: []
+        },
+        governanceAudit: [],
         usageHistory: [],
         evalHistory: [],
         usageAudit: []

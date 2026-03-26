@@ -76,8 +76,11 @@ export class GongbuCodeMinistry {
           ExecutionActionSchema,
           {
             role: 'executor',
+            modelId: this.context.currentWorker?.defaultModel,
+            taskId: this.context.taskId,
             thinking: this.context.thinking.executor,
             temperature: 0.1,
+            budgetState: this.context.budgetState,
             onUsage: usage => {
               this.context.onUsage?.({
                 usage,

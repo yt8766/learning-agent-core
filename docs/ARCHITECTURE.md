@@ -86,6 +86,22 @@
 
 对于高风险动作，流程必须经过审批门，不能默认跳过。
 
+### 当前聊天入口路由
+
+`agent-chat` 不再把所有文本消息一律送进完整多 Agent 工作流。
+
+当前默认采用“first-match”入口分流：
+
+1. 显式 workflow 命令或非通用 preset：进入多 Agent 工作流
+2. 修改类请求：进入多 Agent 工作流
+3. Figma / 设计稿类请求：进入多 Agent 工作流
+4. 普通文本 prompt：优先走 direct-reply 流式聊天
+
+这条规则的目的不是弱化六部，而是保证：
+
+- 普通聊天先像聊天一样快速返回
+- 复杂任务再升级为完整自治执行链
+
 ## 4. 学习系统方向
 
 项目主线是开发自治，不是普通聊天问答。
@@ -114,6 +130,90 @@
 - reused skill / evidence / checkpoint 语义
 
 但还没有完全进入“主动研究 -> 评估 -> 沉淀 -> 复用”的成熟闭环，所以相关改动应继续补强这一点。
+
+## 4.1 Context Strategy
+
+长对话和跨轮自治任务不能直接把全部消息原样塞回模型。
+
+当前上下文切片至少应包含：
+
+- conversation summary
+- recent turns
+- top-K reused memory / rule / skill
+- top-K evidence
+- 上一轮 learning evaluation 摘要
+
+这层策略先由运行时本地实现，后续再逐步升级为向量检索、语义缓存和更细粒度的 worker-specific context slice。
+
+在 skill 搜索链路上，当前默认先走本地闭环：
+
+- 已安装 skill
+- 本地 manifests
+- profile/source policy 过滤
+
+也就是先完成“本地 capability gap -> 本地 skill suggestion”，后续再把远程 marketplace 接上。
+
+检索层默认继续收敛到两个抽象：
+
+- `MemorySearchService`
+  - 统一聚合 memory / rule 检索
+  - session、research、learning、task route 等链路优先复用这一层
+  - task 创建时会把命中结果映射为 `reusedMemories / reusedRules`
+  - LearningFlow 在正式评分前也会先做 reuse enrichment
+- `VectorIndexRepository`
+  - 作为后续向量检索后端的接入点
+  - 当前默认先由 `LocalVectorIndexRepository` 提供本地轻量排序
+  - 后续可替换为真正的 embedding / vector database 后端
+
+### 4.1.1 Skills / Deep Agents 规范
+
+仓库级代理 skills 当前默认按 `SKILL.md + frontmatter` 规范组织，并由本地 loader 直接转成运行时 manifest。
+
+本地 skill 闭环当前至少应支持：
+
+- capability gap detection
+- local skill suggestions
+- safety evaluation
+- low-risk auto install
+- successRate / governanceRecommendation 回写
+
+本地安全评估优先读取这些字段：
+
+- `allowed-tools`
+- `approval-policy`
+- `risk-level`
+- `compatibility`
+- `license`
+
+当前评估结果会统一收敛到：
+
+- `SkillManifestRecord.safety`
+- `LocalSkillSuggestionRecord.safety`
+
+至少包含：
+
+- `verdict`
+- `trustScore`
+- `sourceTrustClass`
+- `profileCompatible`
+- `maxRiskLevel`
+- `riskyTools`
+- `missingDeclarations`
+
+## 4.2 Budget Guard 与 Semantic Cache
+
+为了避免长流程自治在成本和重复调用上失控，运行时默认继续收敛到两条基础机制：
+
+- `BudgetGuard`
+  - 每轮任务都维护 `budgetState`
+  - 除 step/retry/source 预算外，继续维护成本预算
+  - 当 `costConsumedUsd >= costBudgetUsd` 时，模型路由优先降级到 `fallbackModelId`
+- `Semantic Cache`
+  - 当前先采用精确 prompt 指纹缓存
+  - 命中后可直接复用同 role + 同 model + 同 prompt 的文本结果
+  - 后续再升级到 embedding / vector 语义缓存
+
+这两层都属于 runtime 基础设施，不应在具体 app 或单一 ministry 内重复实现。
 
 ## 5. Think / ThoughtChain / Evidence
 
@@ -163,6 +263,25 @@
 
 在 `agent-admin` 中，connector / capability / policy 是一等治理对象，而不是调试信息。
 
+## 7.1 Subgraph Registry
+
+当前主图仍未完全拆开，但已建立正式 subgraph descriptor registry，至少包含：
+
+- `research`
+- `execution`
+- `review`
+- `skill-install`
+- `background-runner`
+
+后续拆图和控制台展示应优先复用这层 registry。
+
+当前运行时还应把实际命中的子图持久化到任务与 checkpoint：
+
+- `TaskRecord.subgraphTrail`
+- `ChatCheckpointRecord.subgraphTrail`
+
+这样 admin 与审计回放可以区分“注册表里有哪些子图”和“某次 run 实际走了哪些子图”。
+
 ## 8. 共享领域模型
 
 前后端必须共享同一套领域模型，不要各自发明平行字段。
@@ -180,6 +299,7 @@
 - `currentMinistry`
 - `currentWorker`
 - `resolvedWorkflow`
+- `subgraphTrail`
 
 ### `ChatCheckpointRecord`
 
@@ -189,6 +309,7 @@
 - `reusedSkills`
 - `currentMinistry`
 - `currentWorker`
+- `subgraphTrail`
 - `thoughtChain`
 - `thinkState`
 
@@ -216,6 +337,36 @@
 - `healthState`
 
 ## 9. 工程与构建约束
+
+## 9.1 Runtime Profile
+
+当前运行时按 profile 区分默认治理策略，而不是所有入口共用一套默认值。
+
+- `platform`
+  - 面向平台宿主
+  - `controlled-first` 来源策略
+- `company`
+  - 面向公司 Agent
+  - `internal-only` 来源策略
+  - 优先内部 skill source 与企业 connector
+- `personal`
+  - 面向个人 Agent
+  - `open-web-allowed` 来源策略
+  - 允许 marketplace 与个人 connector 作为默认来源
+- `cli`
+  - 面向轻量终端入口
+  - 默认采取中等保守策略
+
+profile 影响范围至少包括：
+
+- data root
+- budget policy
+- skill source preset
+- connector preset
+- source governance
+- worker routing / company specialist availability
+- budget guard / fallback model policy
+- semantic cache 路径与启用策略
 
 ### 包依赖规则
 

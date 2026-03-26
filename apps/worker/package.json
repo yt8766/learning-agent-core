@@ -2,11 +2,10 @@
   "name": "@agent/worker",
   "version": "0.1.0",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "scripts": {
-    "build": "tsup",
-    "dev": "node dist/main.js",
+    "build": "tsup src/main.ts --format cjs --dts --out-dir dist",
     "lint": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test dist/**/*.test.js"

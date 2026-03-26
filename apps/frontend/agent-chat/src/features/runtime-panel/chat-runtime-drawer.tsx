@@ -39,10 +39,10 @@ export function ChatRuntimeDrawer({
   const [feedbackIntent, setFeedbackIntent] = useState('');
   const [feedbackDraft, setFeedbackDraft] = useState('');
 
-  const latestRoute = checkpoint?.modelRoute?.[checkpoint.modelRoute.length - 1];
+  const latestRoute = checkpoint?.modelRoute?.[(checkpoint?.modelRoute?.length ?? 1) - 1];
 
   return (
-    <Drawer title="运行态面板" placement="right" size="large" open={open} onClose={onClose}>
+    <Drawer title="工作台" placement="right" size="large" open={open} onClose={onClose}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card title="会话概览" variant="borderless">
           <Descriptions
@@ -52,28 +52,28 @@ export function ChatRuntimeDrawer({
               { key: 'session', label: '会话', children: activeSession?.title ?? '未命名会话' },
               { key: 'status', label: '状态', children: getSessionStatusLabel(activeSession?.status) },
               { key: 'task', label: '任务', children: checkpoint?.taskId ?? '--' },
-              { key: 'step', label: '节点', children: checkpoint?.graphState.currentStep ?? '--' }
+              { key: 'step', label: '节点', children: checkpoint?.graphState?.currentStep ?? '--' }
             ]}
           />
         </Card>
 
-        <Card title="思考过程" variant="borderless">
+        <Card title="处理过程" variant="borderless">
           {thinkState ? (
             <Think title={thinkState.title} loading={thinkState.loading} blink={thinkState.blink} defaultExpanded>
               <Text>{thinkState.content}</Text>
             </Think>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的思考过程。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的处理过程。" />
           )}
         </Card>
 
-        <Card title="上下文压缩" variant="borderless">
+        <Card title="历史上下文" variant="borderless">
           {activeSession?.compression ? (
             <Space direction="vertical" size={10} style={{ width: '100%' }}>
               <Alert
                 type="info"
                 showIcon
-                title="检测到历史上下文已压缩"
+                title="检测到历史消息已压缩"
                 description={`系统已压缩 ${activeSession.compression.condensedMessageCount} 条较早消息，用于控制上下文长度。`}
               />
               <Descriptions
@@ -119,11 +119,11 @@ export function ChatRuntimeDrawer({
               />
             </Space>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有发生上下文压缩。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有发生历史压缩。" />
           )}
         </Card>
 
-        <Card title="Agent 状态" variant="borderless">
+        <Card title="执行状态" variant="borderless">
           {checkpoint?.agentStates?.length ? (
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               {checkpoint.agentStates.map(state => (
@@ -151,11 +151,11 @@ export function ChatRuntimeDrawer({
               ))}
             </Space>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无 Agent 状态。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无执行状态。" />
           )}
         </Card>
 
-        <Card title="审批动作" variant="borderless">
+        <Card title="待确认操作" variant="borderless">
           {pendingApprovals.length ? (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               {pendingApprovals.map(approval => (
@@ -165,7 +165,7 @@ export function ChatRuntimeDrawer({
                       type="warning"
                       showIcon
                       title={approval.intent}
-                      description={approval.reason || '该动作需要皇帝批阅后才能继续执行。'}
+                      description={approval.reason || '该动作需要你确认后才能继续执行。'}
                     />
                     <Space>
                       <Button type="primary" onClick={() => onApprove(approval.intent, true)}>
@@ -187,22 +187,22 @@ export function ChatRuntimeDrawer({
               ))}
             </Space>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前没有待审批动作。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前没有待确认操作。" />
           )}
         </Card>
 
-        <Card title="内阁与尚书" variant="borderless">
+        <Card title="流程与角色" variant="borderless">
           <Descriptions
             column={1}
             size="small"
             items={[
               { key: 'workflow', label: '流程模板', children: checkpoint?.resolvedWorkflow?.displayName ?? '通用流程' },
-              { key: 'ministry', label: '当前尚书', children: checkpoint?.currentMinistry ?? '--' },
-              { key: 'worker', label: '当前执行官', children: checkpoint?.currentWorker ?? '--' },
+              { key: 'ministry', label: '当前角色组', children: checkpoint?.currentMinistry ?? '--' },
+              { key: 'worker', label: '当前执行角色', children: checkpoint?.currentWorker ?? '--' },
               { key: 'pending', label: '待处理动作', children: checkpoint?.pendingAction?.intent ?? '--' },
               {
                 key: 'approval',
-                label: '待批奏折',
+                label: '待确认动作',
                 children: checkpoint?.pendingApproval
                   ? `${checkpoint.pendingApproval.intent} (${checkpoint.pendingApproval.riskLevel ?? 'unknown'})`
                   : '--'
@@ -214,37 +214,37 @@ export function ChatRuntimeDrawer({
               style={{ marginTop: 12 }}
               type="error"
               showIcon
-              title="最近一次皇帝批注"
+              title="最近一次批注"
               description={checkpoint.approvalFeedback}
             />
           ) : null}
         </Card>
 
-        <Card title="吏部路由" variant="borderless">
+        <Card title="模型与路由" variant="borderless">
           {latestRoute ? (
             <Descriptions
               column={1}
               size="small"
               items={[
-                { key: 'ministry', label: '分派部门', children: latestRoute.ministry },
-                { key: 'worker', label: '分派执行官', children: latestRoute.workerId },
+                { key: 'ministry', label: '角色组', children: latestRoute.ministry },
+                { key: 'worker', label: '执行角色', children: latestRoute.workerId },
                 { key: 'default', label: '默认模型', children: latestRoute.defaultModel },
                 { key: 'selected', label: '实际模型', children: latestRoute.selectedModel },
                 { key: 'reason', label: '调整原因', children: latestRoute.reason }
               ]}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有模型路由决策。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有模型或路由记录。" />
           )}
         </Card>
 
-        <Card title="学习与恢复" variant="borderless" extra={<Button onClick={onRecover}>恢复会话</Button>}>
+        <Card title="学习与恢复" variant="borderless" extra={<Button onClick={onRecover}>继续会话</Button>}>
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Alert
               type={activeSession?.status === 'waiting_learning_confirmation' ? 'success' : 'info'}
               showIcon
-              title="学习候选确认"
-              description="当会话产生 memory、rule、skill 候选时，可以在这里统一确认沉淀。"
+              title="学习记录确认"
+              description="当会话产出可沉淀的信息时，可以在这里统一确认是否写入长期记录。"
             />
             <Button
               type="primary"
@@ -252,24 +252,24 @@ export function ChatRuntimeDrawer({
               disabled={activeSession?.status !== 'waiting_learning_confirmation'}
               onClick={onConfirmLearning}
             >
-              确认写入学习结果
+              确认写入
             </Button>
           </Space>
         </Card>
 
-        <Card title="事件时间线" variant="borderless">
+        <Card title="过程时间线" variant="borderless">
           {thoughtItems.length ? (
             <ThoughtChain
               items={thoughtItems}
               defaultExpandedKeys={thoughtItems.slice(0, 3).map(item => item.key as string)}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的事件。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的过程记录。" />
           )}
         </Card>
       </Space>
       <Modal
-        title="打回奏折并附批注"
+        title="打回并附批注"
         open={Boolean(feedbackIntent)}
         okText="提交打回意见"
         cancelText="取消"
@@ -287,7 +287,7 @@ export function ChatRuntimeDrawer({
         }}
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Text type="secondary">批注意见会回注到当前流程，供首辅或相关尚书重新处理。</Text>
+          <Text type="secondary">批注意见会回注到当前流程，供系统重新处理这一轮任务。</Text>
           <Input.TextArea
             rows={5}
             value={feedbackDraft}

@@ -1,3 +1,21 @@
+---
+name: release_check
+description: Use this skill for pre-release checks, build verification, approval-sensitive release readiness review, and publish-risk analysis in learning-agent-core.
+version: '1.0.0'
+publisher: workspace
+license: Proprietary
+compatibility: Requires repository and CI context. Release or write actions still follow runtime approval policy.
+metadata:
+  author: learning-agent-core
+  ministry: bingbu-ops
+allowed-tools:
+  - read_local_file
+  - list_directory
+  - run_terminal
+approval-policy: high-risk-only
+risk-level: medium
+---
+
 # Release Check
 
 本 skill 用于在本仓库里执行发布前检查，确保构建、类型、关键链路和高风险变更状态可被确认。

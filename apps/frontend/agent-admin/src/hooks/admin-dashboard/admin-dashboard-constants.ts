@@ -8,7 +8,9 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'archives',
   'skills',
   'evidence',
-  'connectors'
+  'connectors',
+  'skillSources',
+  'companyAgents'
 ];
 
 export const PAGE_TITLES: Record<DashboardPageKey, string> = {
@@ -19,7 +21,9 @@ export const PAGE_TITLES: Record<DashboardPageKey, string> = {
   archives: 'Archive Center',
   skills: 'Skill Lab',
   evidence: 'Evidence Center',
-  connectors: 'Connector & Policy Center'
+  connectors: 'Connector & Policy Center',
+  skillSources: 'Skill Sources / Marketplace',
+  companyAgents: 'Company Agents'
 };
 
 export function readPageFromHash(): DashboardPageKey {

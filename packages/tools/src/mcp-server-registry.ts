@@ -3,6 +3,12 @@ export interface McpServerDefinition {
   displayName: string;
   transport: 'local-adapter' | 'stdio' | 'http';
   enabled: boolean;
+  source?: string;
+  trustClass?: 'official' | 'curated' | 'community' | 'unverified' | 'internal';
+  dataScope?: string;
+  writeScope?: string;
+  installationMode?: 'builtin' | 'configured' | 'marketplace-managed';
+  allowedProfiles?: Array<'platform' | 'company' | 'personal' | 'cli'>;
   endpoint?: string;
   discoveryEndpoint?: string;
   headers?: Record<string, string>;
@@ -20,6 +26,19 @@ export class McpServerRegistry {
 
   get(serverId: string): McpServerDefinition | undefined {
     return this.servers.get(serverId);
+  }
+
+  setEnabled(serverId: string, enabled: boolean): McpServerDefinition | undefined {
+    const server = this.servers.get(serverId);
+    if (!server) {
+      return undefined;
+    }
+    const updated = {
+      ...server,
+      enabled
+    };
+    this.servers.set(serverId, updated);
+    return updated;
   }
 
   list(): McpServerDefinition[] {

@@ -1,21 +1,39 @@
 ﻿import {
   approveTask,
   closeConnectorSession,
+  configureConnector,
+  clearConnectorPolicy,
+  clearCapabilityPolicy,
   createTask,
+  disableConnector,
+  refreshConnectorDiscovery,
   disableSkill,
   exportEvalsCenter,
   exportRuntimeCenter,
   getApprovalsCenter,
+  getCompanyAgentsCenter,
   getConnectorsCenter,
   getEvidenceCenter,
   getEvalsCenterFiltered,
   getLearningCenter,
   getPlatformConsole,
   getRuntimeCenterFiltered,
+  getSkillSourcesCenter,
   getTaskBundle,
+  installSkill,
   invalidateMemory,
   invalidateRule,
   promoteSkill,
+  approveSkillInstall,
+  rejectSkillInstall,
+  enableSkillSource,
+  setConnectorPolicy,
+  setCapabilityPolicy,
+  disableSkillSource,
+  syncSkillSource,
+  enableCompanyAgent,
+  enableConnector,
+  disableCompanyAgent,
   rejectTask,
   restoreMemory,
   restoreRule,
@@ -131,6 +149,16 @@ export function createAdminDashboardActions(context: AdminDashboardActionContext
         case 'connectors': {
           const connectors = await getConnectorsCenter();
           context.setConsoleData(current => (current ? { ...current, connectors } : current));
+          break;
+        }
+        case 'skillSources': {
+          const skillSources = await getSkillSourcesCenter();
+          context.setConsoleData(current => (current ? { ...current, skillSources } : current));
+          break;
+        }
+        case 'companyAgents': {
+          const companyAgents = await getCompanyAgentsCenter();
+          context.setConsoleData(current => (current ? { ...current, companyAgents } : current));
           break;
         }
         default:
@@ -313,6 +341,122 @@ export function createAdminDashboardActions(context: AdminDashboardActionContext
       await refreshPageCenter('connectors');
     }, '关闭 connector session 失败');
 
+  const handleRefreshConnectorDiscovery = async (connectorId: string) =>
+    runMutation(async () => {
+      await refreshConnectorDiscovery(connectorId);
+      await refreshPageCenter('connectors');
+    }, '刷新 connector discovery 失败');
+
+  const handleEnableConnector = async (connectorId: string) =>
+    runMutation(async () => {
+      await enableConnector(connectorId);
+      await refreshPageCenter('connectors');
+    }, '启用 connector 失败');
+
+  const handleDisableConnector = async (connectorId: string) =>
+    runMutation(async () => {
+      await disableConnector(connectorId);
+      await refreshPageCenter('connectors');
+    }, '停用 connector 失败');
+
+  const handleSetConnectorPolicy = async (
+    connectorId: string,
+    effect: 'allow' | 'deny' | 'require-approval' | 'observe'
+  ) =>
+    runMutation(async () => {
+      await setConnectorPolicy(connectorId, effect);
+      await refreshPageCenter('connectors');
+    }, '更新 connector policy 失败');
+
+  const handleClearConnectorPolicy = async (connectorId: string) =>
+    runMutation(async () => {
+      await clearConnectorPolicy(connectorId);
+      await refreshPageCenter('connectors');
+    }, '清除 connector policy 失败');
+
+  const handleSetCapabilityPolicy = async (
+    connectorId: string,
+    capabilityId: string,
+    effect: 'allow' | 'deny' | 'require-approval' | 'observe'
+  ) =>
+    runMutation(async () => {
+      await setCapabilityPolicy(connectorId, capabilityId, effect);
+      await refreshPageCenter('connectors');
+    }, '更新 capability policy 失败');
+
+  const handleClearCapabilityPolicy = async (connectorId: string, capabilityId: string) =>
+    runMutation(async () => {
+      await clearCapabilityPolicy(connectorId, capabilityId);
+      await refreshPageCenter('connectors');
+    }, '清除 capability policy 失败');
+
+  const handleConfigureConnector = async (params: {
+    templateId: 'github-mcp-template' | 'browser-mcp-template';
+    transport: 'stdio' | 'http';
+    displayName?: string;
+    endpoint?: string;
+    command?: string;
+    args?: string[];
+    apiKey?: string;
+  }) => {
+    await runMutation(async () => {
+      await configureConnector(params);
+      await refreshPageCenter('connectors');
+    }, '配置 connector 失败');
+  };
+
+  const handleInstallSkill = async (manifestId: string, sourceId?: string) =>
+    runMutation(async () => {
+      await installSkill(manifestId, sourceId);
+      await refreshPageCenter('skillSources');
+      await refreshPageCenter('skills');
+    }, '安装 skill 失败');
+
+  const handleApproveSkillInstall = async (receiptId: string) =>
+    runMutation(async () => {
+      await approveSkillInstall(receiptId);
+      await refreshPageCenter('skillSources');
+      await refreshPageCenter('skills');
+    }, '批准 skill 安装失败');
+
+  const handleRejectSkillInstall = async (receiptId: string) => {
+    const reason = window.prompt('输入拒绝安装的原因');
+    await runMutation(async () => {
+      await rejectSkillInstall(receiptId, reason ?? undefined);
+      await refreshPageCenter('skillSources');
+    }, '拒绝 skill 安装失败');
+  };
+
+  const handleEnableSkillSource = async (sourceId: string) =>
+    runMutation(async () => {
+      await enableSkillSource(sourceId);
+      await refreshPageCenter('skillSources');
+    }, '启用 skill source 失败');
+
+  const handleDisableSkillSource = async (sourceId: string) =>
+    runMutation(async () => {
+      await disableSkillSource(sourceId);
+      await refreshPageCenter('skillSources');
+    }, '停用 skill source 失败');
+
+  const handleSyncSkillSource = async (sourceId: string) =>
+    runMutation(async () => {
+      await syncSkillSource(sourceId);
+      await refreshPageCenter('skillSources');
+    }, '同步 skill source 失败');
+
+  const handleEnableCompanyAgent = async (workerId: string) =>
+    runMutation(async () => {
+      await enableCompanyAgent(workerId);
+      await refreshPageCenter('companyAgents');
+    }, '启用 company agent 失败');
+
+  const handleDisableCompanyAgent = async (workerId: string) =>
+    runMutation(async () => {
+      await disableCompanyAgent(workerId);
+      await refreshPageCenter('companyAgents');
+    }, '停用 company agent 失败');
+
   return {
     refreshAll,
     refreshPageCenter,
@@ -334,6 +478,22 @@ export function createAdminDashboardActions(context: AdminDashboardActionContext
     handleQuickCreate,
     downloadRuntimeExport,
     downloadEvalsExport,
-    handleCloseConnectorSession
+    handleCloseConnectorSession,
+    handleRefreshConnectorDiscovery,
+    handleEnableConnector,
+    handleDisableConnector,
+    handleSetConnectorPolicy,
+    handleClearConnectorPolicy,
+    handleSetCapabilityPolicy,
+    handleClearCapabilityPolicy,
+    handleConfigureConnector,
+    handleInstallSkill,
+    handleApproveSkillInstall,
+    handleRejectSkillInstall,
+    handleEnableSkillSource,
+    handleDisableSkillSource,
+    handleSyncSkillSource,
+    handleEnableCompanyAgent,
+    handleDisableCompanyAgent
   };
 }

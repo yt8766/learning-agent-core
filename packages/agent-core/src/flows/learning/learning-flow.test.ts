@@ -20,6 +20,12 @@ describe('LearningFlow knowledge governance', () => {
         getById: vi.fn(),
         invalidate: vi.fn()
       } as never,
+      memorySearchService: {
+        search: vi.fn(async () => ({
+          memories: [],
+          rules: []
+        }))
+      } as never,
       ruleRepository: {
         append: vi.fn(),
         list: vi.fn(async () => []),
@@ -61,5 +67,101 @@ describe('LearningFlow knowledge governance', () => {
     expect(job.learningEvaluation?.governanceWarnings).toEqual(
       expect.arrayContaining([expect.stringContaining('mem_existing')])
     );
+  });
+
+  it('persist review 前会补充相似 memory / rule 到 learning reuse', async () => {
+    const flow = new LearningFlow({
+      memoryRepository: {
+        append: vi.fn(),
+        list: vi.fn(async () => []),
+        search: vi.fn(async () => []),
+        getById: vi.fn(),
+        invalidate: vi.fn()
+      } as never,
+      memorySearchService: {
+        search: vi.fn(async () => ({
+          memories: [
+            {
+              id: 'mem_reuse_build',
+              type: 'success_case',
+              summary: '发布前先跑构建',
+              content: 'Run build before release.',
+              tags: ['release'],
+              createdAt: '2026-03-24T00:00:00.000Z',
+              status: 'active'
+            }
+          ],
+          rules: [
+            {
+              id: 'rule_release_gate',
+              name: 'release_gate',
+              summary: '上线前必须通过构建',
+              conditions: ['before release'],
+              action: 'run build',
+              createdAt: '2026-03-24T00:00:00.000Z',
+              status: 'active'
+            }
+          ]
+        }))
+      } as never,
+      ruleRepository: {
+        append: vi.fn(),
+        list: vi.fn(async () => []),
+        search: vi.fn(async () => []),
+        getById: vi.fn(),
+        invalidate: vi.fn()
+      } as never,
+      skillRegistry: {
+        publishToLab: vi.fn(),
+        recordExecutionResult: vi.fn()
+      } as never
+    });
+
+    const task: any = {
+      id: 'task_1',
+      runId: 'run_1',
+      goal: '发布前检查',
+      status: 'completed',
+      updatedAt: '2026-03-24T00:00:00.000Z',
+      trace: [],
+      externalSources: [],
+      agentStates: [],
+      usedInstalledSkills: [],
+      usedCompanyWorkers: [],
+      reusedMemories: [],
+      reusedRules: []
+    };
+
+    await flow.persistReviewArtifacts(
+      task,
+      task.goal,
+      {
+        success: true,
+        quality: 'high',
+        shouldRetry: false,
+        shouldWriteMemory: false,
+        shouldCreateRule: false,
+        shouldExtractSkill: false,
+        notes: []
+      },
+      {
+        taskId: task.id,
+        decision: 'approved',
+        notes: [],
+        createdAt: '2026-03-24T00:00:00.000Z'
+      },
+      'release check passed',
+      {
+        buildMemoryRecord: vi.fn(),
+        buildRuleRecord: vi.fn(),
+        buildSkillDraft: vi.fn(),
+        addTrace: vi.fn()
+      }
+    );
+
+    expect(task.reusedMemories).toEqual(expect.arrayContaining(['mem_reuse_build']));
+    expect(task.reusedRules).toEqual(expect.arrayContaining(['rule_release_gate']));
+    expect(task.learningEvaluation?.sourceSummary.reusedMemoryCount).toBeGreaterThan(0);
+    expect(task.learningEvaluation?.sourceSummary.reusedRuleCount).toBeGreaterThan(0);
   });
 });

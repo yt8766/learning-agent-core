@@ -1,22 +1,36 @@
-import { EvidenceRecord, TrustClass, WorkflowPresetDefinition } from '@agent/shared';
+import { EvidenceRecord, SourcePolicyMode, TrustClass, WorkflowPresetDefinition } from '@agent/shared';
+import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../shared/prompts/temporal-context';
 
 interface ResearchSourcePlanInput {
   taskId: string;
   runId?: string;
   goal: string;
   workflow?: WorkflowPresetDefinition;
+  runtimeSourcePolicyMode?: SourcePolicyMode;
   preferredUrls?: string[];
   createdAt?: string;
 }
 
 export function buildResearchSourcePlan(input: ResearchSourcePlanInput): EvidenceRecord[] {
-  const { taskId, runId, goal, workflow, preferredUrls = [], createdAt = new Date().toISOString() } = input;
+  const {
+    taskId,
+    runId,
+    goal,
+    workflow,
+    runtimeSourcePolicyMode,
+    preferredUrls = [],
+    createdAt = new Date().toISOString()
+  } = input;
   if (!workflow?.webLearningPolicy?.enabled) {
     return [];
   }
 
+  const effectiveSourcePolicyMode = resolveEffectiveSourcePolicyMode(
+    workflow.sourcePolicy?.mode,
+    runtimeSourcePolicyMode
+  );
   const sources: EvidenceRecord[] = [];
-  const pushSource = (sourceUrl: string, summary: string, trustClass: TrustClass = 'official') => {
+  const pushSource = (sourceUrl: string | undefined, summary: string, trustClass: TrustClass = 'official') => {
     sources.push({
       id: `source_${taskId}_${sources.length + 1}`,
       taskId,
@@ -33,7 +47,25 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
     pushSource(preferredUrl, `来自研究策略的优先来源：${preferredUrl}`);
   }
 
+  if (effectiveSourcePolicyMode === 'internal-only') {
+    return mergeEvidence([], sources).slice(0, 8);
+  }
+
   const loweredGoal = goal.toLowerCase();
+  const freshnessSensitive = isFreshnessSensitiveGoal(goal);
+
+  if (freshnessSensitive) {
+    pushSource(
+      undefined,
+      `这是一条时效性问题，先基于当前日期做最新信息检索。\n${buildTemporalContextBlock(new Date(createdAt))}`,
+      'official'
+    );
+    pushSource('https://openai.com/news/', 'OpenAI 官方新闻与发布页，优先核对最新模型与能力更新。');
+    pushSource('https://deepmind.google/discover/blog/', 'Google DeepMind 官方博客，优先核对近期模型与研究进展。');
+    pushSource('https://www.anthropic.com/news', 'Anthropic 官方新闻页，优先核对近期模型与安全研究更新。');
+    pushSource('https://huggingface.co/blog', 'Hugging Face 博客，优先核对开源模型、推理与工具链更新。', 'curated');
+  }
+
   if (loweredGoal.includes('react') || loweredGoal.includes('vite')) {
     pushSource('https://react.dev/', 'React 官方文档，优先核对框架能力与最新用法。');
     pushSource('https://vite.dev/', 'Vite 官方文档，优先核对构建与开发环境配置。');
@@ -63,6 +95,22 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
   }
 
   return mergeEvidence([], sources).slice(0, 8);
+}
+
+function resolveEffectiveSourcePolicyMode(
+  workflowMode: SourcePolicyMode | undefined,
+  runtimeMode: SourcePolicyMode | undefined
+): SourcePolicyMode {
+  const priority: Record<SourcePolicyMode, number> = {
+    'internal-only': 0,
+    'controlled-first': 1,
+    'open-web-allowed': 2
+  };
+  const resolvedWorkflowMode = workflowMode ?? 'controlled-first';
+  if (!runtimeMode) {
+    return resolvedWorkflowMode;
+  }
+  return priority[resolvedWorkflowMode] <= priority[runtimeMode] ? resolvedWorkflowMode : runtimeMode;
 }
 
 export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {

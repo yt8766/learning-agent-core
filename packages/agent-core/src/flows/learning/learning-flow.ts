@@ -1,4 +1,4 @@
-import { MemoryRepository, RuleRepository } from '@agent/memory';
+import { MemoryRepository, MemorySearchService, RuleRepository } from '@agent/memory';
 import {
   EvidenceRecord,
   EvaluationResult,
@@ -16,12 +16,26 @@ import { SkillRegistry } from '@agent/skills';
 
 interface LearningFlowDependencies {
   memoryRepository: MemoryRepository;
+  memorySearchService?: MemorySearchService;
   ruleRepository: RuleRepository;
   skillRegistry: SkillRegistry;
 }
 
 export class LearningFlow {
   constructor(private readonly dependencies: LearningFlowDependencies) {}
+
+  async hydrateTaskKnowledge(task: TaskRecord, limit = 5): Promise<void> {
+    const query = task.goal?.trim() || task.result?.trim();
+    if (!query || !this.dependencies.memorySearchService) {
+      return;
+    }
+
+    const related = await this.dependencies.memorySearchService.search(query, limit);
+    task.reusedMemories = Array.from(
+      new Set([...(task.reusedMemories ?? []), ...related.memories.map(memory => memory.id)])
+    );
+    task.reusedRules = Array.from(new Set([...(task.reusedRules ?? []), ...related.rules.map(rule => rule.id)]));
+  }
 
   evaluateResearchJob(job: LearningJob): LearningEvaluationRecord {
     const sources = job.sources ?? [];
@@ -120,21 +134,20 @@ export class LearningFlow {
       ])
     );
     const reusedSkills = Array.from(
-      new Set(
-        task.trace
-          .flatMap(trace => {
-            const data = trace.data ?? {};
-            const ids = data.skillIds;
-            if (Array.isArray(ids)) {
-              return ids.filter((id): id is string => typeof id === 'string');
-            }
-            if (typeof data.skillId === 'string') {
-              return [data.skillId];
-            }
-            return [];
-          })
-          .filter(Boolean)
-      )
+      new Set([
+        ...task.trace.flatMap(trace => {
+          const data = trace.data ?? {};
+          const ids = data.skillIds;
+          if (Array.isArray(ids)) {
+            return ids.filter((id): id is string => typeof id === 'string');
+          }
+          if (typeof data.skillId === 'string') {
+            return [data.skillId];
+          }
+          return [];
+        }),
+        ...(task.usedInstalledSkills ?? []).map(workerId => this.normalizeInstalledSkillId(workerId)).filter(Boolean)
+      ])
     );
     const reusedRules = task.reusedRules ?? [];
     const sourceSummary = {
@@ -162,7 +175,16 @@ export class LearningFlow {
         : '本轮主要依赖内部执行痕迹与已有经验。',
       sourceSummary.reusedMemoryCount + sourceSummary.reusedSkillCount > 0
         ? `复用了 ${sourceSummary.reusedMemoryCount} 条记忆与 ${sourceSummary.reusedSkillCount} 个技能。`
-        : '本轮没有明显复用既有技能或记忆。'
+        : '本轮没有明显复用既有技能或记忆。',
+      (task.usedInstalledSkills?.length ?? 0) > 0
+        ? `本轮命中了 ${(task.usedInstalledSkills ?? []).length} 个已安装技能。`
+        : '本轮未命中已安装技能。',
+      (task.usedCompanyWorkers?.length ?? 0) > 0
+        ? `本轮调用了 ${(task.usedCompanyWorkers ?? []).length} 个公司专员。`
+        : '本轮未调用公司专员。',
+      task.skillSearch?.capabilityGapDetected
+        ? `任务开始时检测到能力缺口，当前本地技能候选 ${task.skillSearch.suggestions.length} 个。`
+        : '任务开始时未检测到明显能力缺口。'
     ];
 
     task.externalSources = externalSources;
@@ -173,6 +195,7 @@ export class LearningFlow {
       score,
       confidence,
       notes,
+      skillGovernanceRecommendations: [],
       recommendedCandidateIds: task.learningCandidates?.map(candidate => candidate.id) ?? [],
       autoConfirmCandidateIds: [],
       sourceSummary
@@ -324,7 +347,14 @@ export class LearningFlow {
       addTrace: (node: string, summary: string) => void;
     }
   ): Promise<void> {
+    await this.hydrateTaskKnowledge(task);
     this.prepareTaskLearning(task, evaluation, review);
+
+    const installedSkillIds = Array.from(
+      new Set(
+        (task.usedInstalledSkills ?? []).map(workerId => this.normalizeInstalledSkillId(workerId)).filter(Boolean)
+      )
+    );
 
     if (evaluation.shouldWriteMemory) {
       const memory = builders.buildMemoryRecord(task.id, goal, evaluation, review, executionSummary);
@@ -342,6 +372,62 @@ export class LearningFlow {
       const skill = builders.buildSkillDraft(goal, 'execution');
       await this.dependencies.skillRegistry.publishToLab(skill);
       builders.addTrace('skill_extract', `Published skill ${skill.id} to lab`);
+    }
+
+    for (const skillId of installedSkillIds) {
+      const updated = await this.dependencies.skillRegistry.recordExecutionResult(
+        skillId,
+        task.runId ?? task.id,
+        evaluation.success
+      );
+      if (updated) {
+        const recommendation = updated.governanceRecommendation ?? 'keep-lab';
+        const recommendationNote = `已安装技能 ${updated.name} 建议 ${recommendation}，当前成功率 ${(
+          updated.successRate ?? 0
+        ).toFixed(2)}。`;
+        const nextLearningEvaluation = task.learningEvaluation ?? this.prepareTaskLearning(task, evaluation, review);
+        if (!nextLearningEvaluation) {
+          continue;
+        }
+        task.learningEvaluation = {
+          ...nextLearningEvaluation,
+          notes: Array.from(new Set([...(nextLearningEvaluation.notes ?? []), recommendationNote])),
+          skillGovernanceRecommendations: [
+            ...(nextLearningEvaluation.skillGovernanceRecommendations ?? []).filter(
+              item => item.skillId !== updated.id
+            ),
+            {
+              skillId: updated.id,
+              recommendation,
+              successRate: updated.successRate,
+              promotionState: updated.promotionState
+            }
+          ]
+        };
+        task.externalSources = this.mergeEvidence(task.externalSources ?? [], [
+          {
+            id: `${task.id}:skill-governance:${updated.id}`,
+            taskId: task.id,
+            sourceId: updated.id,
+            sourceType: 'skill_governance',
+            trustClass: 'internal',
+            summary: recommendationNote,
+            detail: {
+              recommendation,
+              successRate: updated.successRate,
+              promotionState: updated.promotionState
+            },
+            linkedRunId: task.runId,
+            createdAt: updated.updatedAt ?? new Date().toISOString()
+          }
+        ]);
+        builders.addTrace(
+          'skill_usage_recorded',
+          `Updated installed skill ${updated.id} with success rate ${(updated.successRate ?? 0).toFixed(
+            2
+          )}, recommendation ${recommendation}`
+        );
+      }
     }
   }
 
@@ -373,7 +459,35 @@ export class LearningFlow {
         );
       });
 
-    return sources.slice(-12);
+    const installedSkillEvidence = (task.usedInstalledSkills ?? []).map((workerId, index) => ({
+      id: `${task.id}:installed-skill:${index}`,
+      taskId: task.id,
+      sourceId: this.normalizeInstalledSkillId(workerId),
+      sourceType: 'installed_skill',
+      trustClass: 'internal' as const,
+      summary: `本轮执行命中了已安装技能 ${this.normalizeInstalledSkillId(workerId)}。`,
+      detail: {
+        workerId
+      },
+      linkedRunId: task.runId,
+      createdAt: task.updatedAt
+    }));
+
+    const companyWorkerEvidence = (task.usedCompanyWorkers ?? []).map((workerId, index) => ({
+      id: `${task.id}:company-worker:${index}`,
+      taskId: task.id,
+      sourceId: workerId,
+      sourceType: 'company_worker',
+      trustClass: 'internal' as const,
+      summary: `本轮执行调用了公司专员 ${workerId}。`,
+      detail: {
+        workerId
+      },
+      linkedRunId: task.runId,
+      createdAt: task.updatedAt
+    }));
+
+    return [...sources, ...installedSkillEvidence, ...companyWorkerEvidence].slice(-12);
   }
 
   private mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {
@@ -408,5 +522,9 @@ export class LearningFlow {
     } catch {
       return 'unverified';
     }
+  }
+
+  private normalizeInstalledSkillId(workerId: string): string {
+    return workerId.startsWith('installed-skill:') ? workerId.replace('installed-skill:', '') : workerId;
   }
 }

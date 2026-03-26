@@ -1,24 +1,24 @@
 ﻿export type SessionFilter = 'all' | 'running' | 'approval' | 'failed' | 'completed';
 
 export const AGENT_LABELS: Record<string, string> = {
-  manager: '主 Agent',
-  research: 'Research Agent',
-  executor: 'Executor Agent',
-  reviewer: 'Reviewer Agent'
+  manager: 'AI',
+  research: 'Research',
+  executor: 'Executor',
+  reviewer: 'Reviewer'
 };
 
 export const EVENT_LABELS: Record<string, string> = {
-  decree_received: '圣旨已接收',
+  decree_received: '请求已接收',
   session_started: '会话启动',
   user_message: '用户消息',
-  supervisor_planned: '首辅已规划',
-  libu_routed: '吏部已路由',
-  ministry_started: '尚书开始执行',
-  ministry_reported: '尚书提交战报',
+  supervisor_planned: '流程已规划',
+  libu_routed: '已完成路由',
+  ministry_started: '开始执行',
+  ministry_reported: '阶段结果已更新',
   skill_resolved: '流程模板已解析',
   skill_stage_started: '流程阶段开始',
   skill_stage_completed: '流程阶段完成',
-  manager_planned: '主 Agent 规划',
+  manager_planned: 'AI 已规划',
   subtask_dispatched: '任务分派',
   research_progress: 'Research 进展',
   tool_selected: '工具选择',
@@ -42,17 +42,17 @@ export const EVENT_LABELS: Record<string, string> = {
 
 export const FILTER_OPTIONS: Array<{ label: string; value: SessionFilter }> = [
   { label: '全部', value: 'all' },
-  { label: '进行中', value: 'running' },
-  { label: '待审批', value: 'approval' },
-  { label: '失败', value: 'failed' },
+  { label: '回复中', value: 'running' },
+  { label: '待确认', value: 'approval' },
+  { label: '异常', value: 'failed' },
   { label: '已完成', value: 'completed' }
 ];
 
 export const MINISTRY_LABELS: Record<string, string> = {
-  libu: '吏部',
-  hubu: '户部',
-  libu_docs: '礼部',
-  bingbu: '兵部',
-  xingbu: '刑部',
-  gongbu: '工部'
+  libu: '路由',
+  hubu: '检索',
+  libu_docs: '整理',
+  bingbu: '执行',
+  xingbu: '审查',
+  gongbu: '开发'
 };

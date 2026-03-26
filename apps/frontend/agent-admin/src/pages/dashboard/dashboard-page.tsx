@@ -1,4 +1,4 @@
-import { AlertCircle, BrainCircuit, Cable, ClipboardCheck, Database, Radar } from 'lucide-react';
+import { AlertCircle, BrainCircuit, Cable, ClipboardCheck, Database, Radar, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,12 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AdminNavigation } from '../../components/admin-navigation';
 import { ArchiveCenterPanel } from '../../features/archive-center/archive-center-panel';
 import { ApprovalsPanel } from '../../features/approvals-center/approvals-panel';
+import { CompanyAgentsPanel } from '../../features/company-agents/company-agents-panel';
 import { ConnectorsCenterPanel } from '../../features/connectors-center/connectors-center-panel';
 import { EvidenceCenterPanel } from '../../features/evidence-center/evidence-center-panel';
 import { EvalsCenterPanel } from '../../features/evals-center/evals-center-panel';
 import { LearningCenterPanel } from '../../features/learning-center/learning-center-panel';
 import { RuntimeOverviewPanel } from '../../features/runtime-overview/runtime-overview-panel';
 import { SkillLabPanel } from '../../features/skill-lab/skill-lab-panel';
+import { SkillSourcesCenterPanel } from '../../features/skill-sources-center/skill-sources-center-panel';
 import { PAGE_TITLES, useAdminDashboard } from '../../hooks/use-admin-dashboard';
 
 function HeaderCard(props: { title: string; description: string; badges: string[] }) {
@@ -90,6 +92,19 @@ export function DashboardPage() {
       icon: <Cable className="h-4 w-4" />,
       description: '治理 MCP connectors、capabilities、审批策略与 transport 健康。',
       badges: [`连接器 ${consoleData?.connectors.length ?? 0}`]
+    },
+    skillSources: {
+      icon: <Database className="h-4 w-4" />,
+      description: '管理 Skill 来源优先级、manifest、安装回执与本地落库状态。',
+      badges: [
+        `来源 ${consoleData?.skillSources.sources.length ?? 0}`,
+        `manifest ${consoleData?.skillSources.manifests.length ?? 0}`
+      ]
+    },
+    companyAgents: {
+      icon: <Users className="h-4 w-4" />,
+      description: '查看公司专员、归属六部、连接器依赖和当前治理状态。',
+      badges: [`专员 ${consoleData?.companyAgents.length ?? 0}`]
     }
   }[dashboard.page];
 
@@ -230,7 +245,37 @@ export function DashboardPage() {
           {consoleData && dashboard.page === 'connectors' ? (
             <ConnectorsCenterPanel
               connectors={consoleData.connectors}
+              onSelectTask={dashboard.selectTask}
               onCloseSession={dashboard.handleCloseConnectorSession}
+              onRefreshConnectorDiscovery={dashboard.handleRefreshConnectorDiscovery}
+              onEnableConnector={dashboard.handleEnableConnector}
+              onDisableConnector={dashboard.handleDisableConnector}
+              onSetConnectorPolicy={dashboard.handleSetConnectorPolicy}
+              onClearConnectorPolicy={dashboard.handleClearConnectorPolicy}
+              onSetCapabilityPolicy={dashboard.handleSetCapabilityPolicy}
+              onClearCapabilityPolicy={dashboard.handleClearCapabilityPolicy}
+              onConfigureConnector={dashboard.handleConfigureConnector}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'skillSources' ? (
+            <SkillSourcesCenterPanel
+              skillSources={consoleData.skillSources}
+              onSelectTask={dashboard.selectTask}
+              onInstallSkill={dashboard.handleInstallSkill}
+              onApproveInstall={dashboard.handleApproveSkillInstall}
+              onRejectInstall={dashboard.handleRejectSkillInstall}
+              onEnableSource={dashboard.handleEnableSkillSource}
+              onDisableSource={dashboard.handleDisableSkillSource}
+              onSyncSource={dashboard.handleSyncSkillSource}
+            />
+          ) : null}
+
+          {consoleData && dashboard.page === 'companyAgents' ? (
+            <CompanyAgentsPanel
+              agents={consoleData.companyAgents}
+              onEnableAgent={dashboard.handleEnableCompanyAgent}
+              onDisableAgent={dashboard.handleDisableCompanyAgent}
             />
           ) : null}
         </main>

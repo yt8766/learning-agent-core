@@ -1,8 +1,32 @@
 ﻿import type { TaskRecord } from './core';
 
 export interface RuntimeCenterRecord {
+  runtimeProfile?: 'platform' | 'company' | 'personal' | 'cli';
+  policy?: {
+    approvalMode: 'strict' | 'balanced' | 'auto';
+    skillInstallMode: 'manual' | 'low-risk-auto';
+    learningMode: 'controlled' | 'aggressive';
+    sourcePolicyMode: 'internal-only' | 'controlled-first' | 'open-web-allowed';
+    budget: {
+      stepBudget: number;
+      retryBudget: number;
+      sourceBudget: number;
+    };
+  };
   taskCount: number;
   activeTaskCount: number;
+  backgroundRunCount?: number;
+  foregroundRunCount?: number;
+  leasedBackgroundRunCount?: number;
+  staleLeaseCount?: number;
+  workerPoolSize?: number;
+  activeWorkerSlotCount?: number;
+  availableWorkerSlotCount?: number;
+  activeWorkerSlots?: Array<{
+    slotId: string;
+    taskId: string;
+    startedAt: string;
+  }>;
   queueDepth: number;
   blockedRunCount: number;
   budgetExceededCount?: number;
@@ -11,6 +35,20 @@ export interface RuntimeCenterRecord {
   activeSessionCount: number;
   activeMinistries: string[];
   activeWorkers: string[];
+  subgraphs?: Array<{
+    id: 'research' | 'execution' | 'review' | 'skill-install' | 'background-runner';
+    displayName: string;
+    description: string;
+    owner: string;
+    entryNodes: string[];
+  }>;
+  workflowVersions?: Array<{
+    workflowId: string;
+    version: string;
+    status: 'draft' | 'published' | 'active' | 'deprecated';
+    updatedAt: string;
+    changelog?: string[];
+  }>;
   appliedFilters?: {
     status?: string;
     model?: string;
@@ -112,5 +150,15 @@ export interface RuntimeCenterRecord {
       description: string;
     }>;
   };
+  recentGovernanceAudit?: Array<{
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    scope: 'skill-source' | 'company-worker' | 'skill-install' | 'connector';
+    targetId: string;
+    outcome: 'success' | 'rejected' | 'pending';
+    reason?: string;
+  }>;
   recentRuns: TaskRecord[];
 }

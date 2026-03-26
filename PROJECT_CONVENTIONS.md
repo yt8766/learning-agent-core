@@ -32,3 +32,9 @@
 - 涉及 `packages/*` 的改动，优先执行 `pnpm build:lib`，再验证应用层
 - 最低类型检查以 `AGENTS.md` 中列出的五条 `tsc --noEmit` 为准
 - 前端 `apps/frontend/*/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分组件、hooks、adapters、constants 或 types
+- 如果需要清理磁盘空间，默认只允许清理仓库内可重建内容，例如构建产物、临时缓存、日志和测试生成文件
+- 禁止为了释放磁盘空间删除用户的 Google Chrome 登录状态、浏览器 profile、Cookie、Local Storage 或会话数据
+- 特别是不要触碰以下目录：
+  - `~/Library/Application Support/Google/Chrome`
+  - `~/Library/Caches/Google/Chrome`
+- 根级清理脚本如果涉及文件删除，必须内置这两条路径的显式保护，不允许通过参数绕过

@@ -61,6 +61,18 @@ export function TaskDetailPanel({ bundle }: TaskDetailPanelProps) {
               <span>{bundle?.task.currentStep ?? '暂无'}</span>
             </li>
             <li className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <strong className="text-stone-900">Workflow</strong>
+              <span>
+                {bundle?.task.resolvedWorkflow
+                  ? `${bundle.task.resolvedWorkflow.id} v${bundle.task.resolvedWorkflow.version ?? '1.0.0'}`
+                  : '暂无'}
+              </span>
+            </li>
+            <li className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <strong className="text-stone-900">Subgraphs</strong>
+              <span>{bundle?.task.subgraphTrail?.join(' / ') ?? '暂无'}</span>
+            </li>
+            <li className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
               <strong className="text-stone-900">重试次数</strong>
               <span>{bundle ? `${bundle.task.retryCount ?? 0}/${bundle.task.maxRetries ?? 1}` : '暂无'}</span>
             </li>
@@ -124,6 +136,28 @@ export function TaskDetailPanel({ bundle }: TaskDetailPanelProps) {
           ))}
         </CardContent>
       </Card>
+
+      {bundle?.audit ? (
+        <Card className="col-span-12 border-stone-200 bg-white/90 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-lg font-semibold text-stone-900">审计回放</CardTitle>
+            <Badge variant="outline">{bundle.audit.entries.length}</Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {bundle.audit.entries.map(entry => (
+              <article key={entry.id} className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                <header className="flex items-center justify-between gap-3">
+                  <strong className="text-sm font-semibold text-stone-900">
+                    {entry.type} / {entry.title}
+                  </strong>
+                  <small className="text-xs text-stone-500">{entry.at}</small>
+                </header>
+                <p className="mt-2 text-sm leading-6 text-stone-700">{entry.summary}</p>
+              </article>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <AgentStateGrid agents={bundle?.agents ?? []} />
     </>

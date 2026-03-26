@@ -47,7 +47,14 @@ export class HubuSearchMinistry {
   async research(subTask: string): Promise<{ summary: string; memories: MemoryRecord[]; skills: SkillCard[] }> {
     this.state.status = 'running';
     this.state.subTask = subTask;
-    const memories = await this.context.memoryRepository.search(this.context.goal, 5);
+    const retrieved = this.context.memorySearchService
+      ? await this.context.memorySearchService.search(this.context.goal, 5)
+      : {
+          memories: await this.context.memoryRepository.search(this.context.goal, 5),
+          rules: []
+        };
+    const memories = retrieved.memories;
+    const rules = retrieved.rules;
     const skills = await this.context.skillRegistry.list();
     const chatGoal = isChatPersonaGoal(this.context.goal);
     const matchedChatSkills = chatGoal ? skills.filter(isChatSkill) : [];
@@ -85,6 +92,9 @@ export class HubuSearchMinistry {
           ResearchEvidenceSchema,
           {
             role: 'research',
+            taskId: this.context.taskId,
+            modelId: this.context.currentWorker?.defaultModel,
+            budgetState: this.context.budgetState,
             thinking: this.context.thinking.research,
             temperature: 0.1,
             onUsage: usage => {
@@ -102,6 +112,7 @@ export class HubuSearchMinistry {
 
     const observations = llmResearch?.observations ?? [
       `检索到 ${memories.length} 条记忆`,
+      ...(rules.length > 0 ? [`同时命中 ${rules.length} 条规则，可作为本轮执行约束`] : []),
       ...(researchMemories.length > 0
         ? [
             `其中 ${researchMemories.length} 条来自此前主动研究沉淀的记忆`,

@@ -3,7 +3,7 @@
 import { createMainRouteGraph } from './main-route.graph';
 
 describe('createMainRouteGraph', () => {
-  it('routes standard goals to workflow/supervisor', async () => {
+  it('routes modification goals to workflow/supervisor', async () => {
     const graph = createMainRouteGraph().compile();
 
     const result = await graph.invoke({
@@ -12,7 +12,7 @@ describe('createMainRouteGraph', () => {
 
     expect(result.selectedGraph).toBe('workflow');
     expect(result.selectedFlow).toBe('supervisor');
-    expect(result.routeReason).toBe('default_workflow');
+    expect(result.routeReason).toBe('modification_intent');
   });
 
   it('routes identity questions to direct reply', async () => {
@@ -25,5 +25,17 @@ describe('createMainRouteGraph', () => {
     expect(result.selectedGraph).toBe('workflow');
     expect(result.selectedFlow).toBe('direct-reply');
     expect(result.routeReason).toBe('identity_or_capability_question');
+  });
+
+  it('routes ordinary chat prompts to direct reply', async () => {
+    const graph = createMainRouteGraph().compile();
+
+    const result = await graph.invoke({
+      goal: '解释一下这个系统现在能做什么'
+    });
+
+    expect(result.selectedGraph).toBe('workflow');
+    expect(result.selectedFlow).toBe('direct-reply');
+    expect(result.routeReason).toBe('general_prompt');
   });
 });

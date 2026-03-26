@@ -7,6 +7,7 @@ import { RuleRecord } from '@agent/shared';
 export interface RuleRepository {
   append(record: RuleRecord): Promise<void>;
   list(): Promise<RuleRecord[]>;
+  search(query: string, limit: number): Promise<RuleRecord[]>;
   getById(id: string): Promise<RuleRecord | undefined>;
   invalidate(id: string, reason: string): Promise<RuleRecord | undefined>;
   supersede(id: string, replacementId: string, reason: string): Promise<RuleRecord | undefined>;
@@ -15,7 +16,11 @@ export interface RuleRepository {
 }
 
 export class FileRuleRepository implements RuleRepository {
-  private readonly filePath = resolve(loadSettings().rulesFilePath);
+  private readonly filePath: string;
+
+  constructor(filePath = loadSettings().rulesFilePath) {
+    this.filePath = resolve(filePath);
+  }
 
   async append(record: RuleRecord): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
@@ -41,6 +46,21 @@ export class FileRuleRepository implements RuleRepository {
     } catch {
       return [];
     }
+  }
+
+  async search(query: string, limit: number): Promise<RuleRecord[]> {
+    const lowerQuery = query.toLowerCase();
+    const items = await this.list();
+
+    return items
+      .filter(item => {
+        if (item.status === 'invalidated' || item.status === 'superseded' || item.status === 'retired') {
+          return false;
+        }
+        const haystack = `${item.name} ${item.summary} ${item.conditions.join(' ')} ${item.action}`.toLowerCase();
+        return haystack.includes(lowerQuery);
+      })
+      .slice(0, limit);
   }
 
   async getById(id: string): Promise<RuleRecord | undefined> {

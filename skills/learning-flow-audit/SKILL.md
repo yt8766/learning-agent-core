@@ -1,3 +1,21 @@
+---
+name: learning_flow_audit
+description: Use this skill to audit the learning loop, evidence provenance, candidate generation, and reuse behavior across learning-agent-core.
+version: '1.0.0'
+publisher: workspace
+license: Proprietary
+compatibility: Requires repository access and should be used when learning, evidence, or skill evolution flows are under review.
+metadata:
+  author: learning-agent-core
+  ministry: libu-docs
+allowed-tools:
+  - read_local_file
+  - list_directory
+  - local-analysis
+approval-policy: none
+risk-level: low
+---
+
 # Learning Flow Audit
 
 本 skill 用于审计 LearningFlow 是否仍沿着“主动研究 -> 评估 -> 沉淀 -> 复用”的方向演进，而不是回退成静态候选展示。

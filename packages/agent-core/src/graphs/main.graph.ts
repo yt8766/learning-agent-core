@@ -25,9 +25,19 @@ import {
   TaskStatus,
   ToolExecutionResult,
   WorkflowPresetDefinition,
-  ModelRouteDecision
+  ModelRouteDecision,
+  SkillSearchStateRecord,
+  QueueStateRecord,
+  SubgraphId,
+  WorkerDefinition
 } from '@agent/shared';
-import { MemoryRepository, PendingExecutionRecord, RuleRepository, RuntimeStateRepository } from '@agent/memory';
+import {
+  MemoryRepository,
+  MemorySearchService,
+  PendingExecutionRecord,
+  RuleRepository,
+  RuntimeStateRepository
+} from '@agent/memory';
 import { SkillRegistry } from '@agent/skills';
 import {
   ApprovalService,
@@ -52,8 +62,11 @@ import { LearningFlow } from '../flows/learning';
 import { createAgentGraph, createInitialState, RuntimeAgentGraphState } from './chat.graph';
 import { LlmProvider } from '../adapters/llm/llm-provider';
 import { buildWorkflowPresetPlan, resolveWorkflowPreset } from '../workflows/workflow-preset-registry';
-import { createDefaultWorkerRegistry, WorkerRegistry } from '../governance/worker-registry';
+import { resolveWorkflowRoute } from '../workflows/workflow-route-registry';
+import { createDefaultWorkerRegistry, WorkerRegistry, WorkerSelectionConstraints } from '../governance/worker-registry';
 import { ModelRoutingPolicy } from '../governance/model-routing-policy';
+import { describeConnectorProfilePolicy } from '../governance/profile-policy';
+import { isFreshnessSensitiveGoal } from '../shared/prompts/temporal-context';
 
 interface AgentRuntimeSettings {
   zhipuModels: {
@@ -72,6 +85,7 @@ interface AgentRuntimeSettings {
 
 export interface AgentOrchestratorDependencies {
   memoryRepository: MemoryRepository;
+  memorySearchService?: MemorySearchService;
   skillRegistry: SkillRegistry;
   approvalService: ApprovalService;
   runtimeStateRepository: RuntimeStateRepository;
@@ -84,6 +98,11 @@ export interface AgentOrchestratorDependencies {
   settings?: ReturnType<typeof loadSettings> & AgentRuntimeSettings;
 }
 
+type LocalSkillSuggestionResolver = (params: {
+  goal: string;
+  usedInstalledSkills?: string[];
+}) => Promise<SkillSearchStateRecord>;
+
 export class AgentOrchestrator {
   private readonly tasks = new Map<string, TaskRecord>();
   private readonly learningJobs = new Map<string, LearningJob>();
@@ -94,6 +113,7 @@ export class AgentOrchestrator {
   private readonly workerRegistry: WorkerRegistry;
   private readonly modelRoutingPolicy: ModelRoutingPolicy;
   private readonly learningFlow: LearningFlow;
+  private localSkillSuggestionResolver?: LocalSkillSuggestionResolver;
   private readonly taskSubscribers = new Set<(task: TaskRecord) => void>();
   private readonly tokenSubscribers = new Set<(event: AgentTokenEvent) => void>();
   private readonly cancelledTasks = new Set<string>();
@@ -107,6 +127,7 @@ export class AgentOrchestrator {
     this.modelRoutingPolicy = new ModelRoutingPolicy(this.workerRegistry);
     this.learningFlow = new LearningFlow({
       memoryRepository: dependencies.memoryRepository,
+      memorySearchService: dependencies.memorySearchService,
       ruleRepository: dependencies.ruleRepository,
       skillRegistry: dependencies.skillRegistry
     });
@@ -137,6 +158,65 @@ export class AgentOrchestrator {
     return ['Main Graph Router', 'Chat Graph', 'Approval Recovery Graph', 'Learning Graph'];
   }
 
+  setLocalSkillSuggestionResolver(resolver?: LocalSkillSuggestionResolver) {
+    this.localSkillSuggestionResolver = resolver;
+  }
+
+  private async resolveKnowledgeReuse(taskId: string, runId: string, goal: string, createdAt: string) {
+    const searchResult = this.dependencies.memorySearchService
+      ? await this.dependencies.memorySearchService.search(goal, 5)
+      : {
+          memories: await this.dependencies.memoryRepository.search(goal, 5),
+          rules: []
+        };
+
+    const reusedMemoryIds = searchResult.memories.map(memory => memory.id);
+    const reusedRuleIds = searchResult.rules.map(rule => rule.id);
+    const evidence: EvidenceRecord[] = [
+      ...searchResult.memories.map(
+        (memory, index): EvidenceRecord => ({
+          id: `memory_reuse_${taskId}_${index + 1}`,
+          taskId,
+          sourceType: 'memory_reuse',
+          trustClass: 'internal',
+          summary: `已命中历史记忆：${memory.summary}`,
+          detail: {
+            memoryId: memory.id,
+            memoryType: memory.type,
+            tags: memory.tags,
+            qualityScore: memory.qualityScore
+          },
+          linkedRunId: runId,
+          createdAt
+        })
+      ),
+      ...searchResult.rules.map(
+        (rule, index): EvidenceRecord => ({
+          id: `rule_reuse_${taskId}_${index + 1}`,
+          taskId,
+          sourceType: 'rule_reuse',
+          trustClass: 'internal',
+          summary: `已命中历史规则：${rule.summary}`,
+          detail: {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            conditions: rule.conditions
+          },
+          linkedRunId: runId,
+          createdAt
+        })
+      )
+    ];
+
+    return {
+      memories: searchResult.memories,
+      rules: searchResult.rules,
+      reusedMemoryIds,
+      reusedRuleIds,
+      evidence
+    };
+  }
+
   async createTask(dto: CreateTaskDto): Promise<TaskRecord> {
     await this.initialize();
     const now = new Date().toISOString();
@@ -144,29 +224,12 @@ export class AgentOrchestrator {
     const runId = `run_${Date.now()}`;
     const sessionId = (dto as CreateTaskDto & { sessionId?: string }).sessionId;
     const workflowResolution = resolveWorkflowPreset(dto.goal);
-    const reusableMemories = await this.dependencies.memoryRepository.search(workflowResolution.normalizedGoal, 5);
-    const reusedMemoryIds = reusableMemories.map(memory => memory.id);
-    const reusedMemoryEvidence = reusableMemories.map(
-      (memory, index): EvidenceRecord => ({
-        id: `memory_reuse_${taskId}_${index + 1}`,
-        taskId,
-        sourceType: 'memory_reuse',
-        trustClass: 'internal',
-        summary: `已命中历史记忆：${memory.summary}`,
-        detail: {
-          memoryId: memory.id,
-          memoryType: memory.type,
-          tags: memory.tags,
-          qualityScore: memory.qualityScore
-        },
-        linkedRunId: runId,
-        createdAt: now
-      })
-    );
+    const knowledgeReuse = await this.resolveKnowledgeReuse(taskId, runId, workflowResolution.normalizedGoal, now);
     const task: TaskRecord = {
       id: taskId,
       runId,
       goal: workflowResolution.normalizedGoal,
+      context: dto.context,
       sessionId,
       status: TaskStatus.QUEUED,
       skillId: workflowResolution.preset.id,
@@ -180,19 +243,28 @@ export class AgentOrchestrator {
       updatedAt: now,
       currentNode: 'receive_decree',
       currentStep: 'queued',
+      queueState: this.createQueueState(sessionId, now),
       retryCount: 0,
       maxRetries: 1,
-      reusedMemories: reusedMemoryIds,
-      reusedRules: [],
+      reusedMemories: knowledgeReuse.reusedMemoryIds,
+      reusedRules: knowledgeReuse.reusedRuleIds,
       reusedSkills: [],
-      externalSources: reusedMemoryEvidence,
+      externalSources: knowledgeReuse.evidence,
+      usedInstalledSkills: [],
+      usedCompanyWorkers: [],
+      connectorRefs: [],
       budgetState: {
-        stepBudget: 8,
+        stepBudget: this.settings.policy?.budget.stepBudget ?? 8,
         stepsConsumed: 0,
-        retryBudget: 1,
+        retryBudget: this.settings.policy?.budget.retryBudget ?? 1,
         retriesConsumed: 0,
-        sourceBudget: 8,
-        sourcesConsumed: 0
+        sourceBudget: this.settings.policy?.budget.sourceBudget ?? 8,
+        sourcesConsumed: 0,
+        costBudgetUsd: this.settings.policy?.budget.maxCostPerTaskUsd ?? 0,
+        costConsumedUsd: 0,
+        costConsumedCny: 0,
+        fallbackModelId: this.settings.policy?.budget.fallbackModelId,
+        overBudget: false
       },
       llmUsage: {
         promptTokens: 0,
@@ -206,6 +278,68 @@ export class AgentOrchestrator {
       }
     };
 
+    if (this.localSkillSuggestionResolver) {
+      const skillSearch = await this.localSkillSuggestionResolver({
+        goal: workflowResolution.normalizedGoal,
+        usedInstalledSkills: task.usedInstalledSkills
+      });
+      task.skillSearch = skillSearch;
+      if (skillSearch.suggestions.length > 0) {
+        task.externalSources = [
+          ...(task.externalSources ?? []),
+          ...skillSearch.suggestions.slice(0, 5).map(
+            (suggestion, index): EvidenceRecord => ({
+              id: `skill_search_${taskId}_${index + 1}`,
+              taskId,
+              sourceId: suggestion.sourceId,
+              sourceType: 'skill_search',
+              trustClass: suggestion.availability === 'blocked' ? 'community' : 'internal',
+              summary: `本地技能候选：${suggestion.displayName}（${suggestion.availability}）`,
+              detail: {
+                kind: suggestion.kind,
+                suggestionId: suggestion.id,
+                availability: suggestion.availability,
+                requiredCapabilities: suggestion.requiredCapabilities,
+                requiredConnectors: suggestion.requiredConnectors,
+                score: suggestion.score,
+                reason: suggestion.reason
+              },
+              linkedRunId: runId,
+              createdAt: now
+            })
+          )
+        ];
+      }
+      if (skillSearch.capabilityGapDetected && skillSearch.suggestions.length > 0) {
+        this.addTrace(
+          task.trace,
+          'research',
+          `检测到能力缺口，已在本地技能库中找到 ${skillSearch.suggestions.length} 个候选。`,
+          {
+            skillSearchStatus: skillSearch.status,
+            suggestionIds: skillSearch.suggestions.map(item => item.id),
+            availability: skillSearch.suggestions.map(item => `${item.id}:${item.availability}`)
+          }
+        );
+        this.addProgressDelta(
+          task,
+          `首辅已识别出能力缺口，并在本地技能库中找到 ${skillSearch.suggestions.length} 个候选。`
+        );
+      } else if (skillSearch.suggestions.length > 0) {
+        this.addTrace(
+          task.trace,
+          'research',
+          `本地技能库已命中 ${skillSearch.suggestions.length} 个可直接参考的候选。`,
+          {
+            skillSearchStatus: skillSearch.status,
+            suggestionIds: skillSearch.suggestions.map(item => item.id),
+            availability: skillSearch.suggestions.map(item => `${item.id}:${item.availability}`)
+          }
+        );
+        this.addProgressDelta(task, `首辅已在本地技能库中命中 ${skillSearch.suggestions.length} 个可复用候选。`);
+      }
+    }
+
     this.addTrace(task.trace, 'decree_received', `已接收圣旨：${workflowResolution.normalizedGoal}`, {
       runId: task.runId
     });
@@ -217,28 +351,42 @@ export class AgentOrchestrator {
       requiredMinistries: workflowResolution.preset.requiredMinistries,
       allowedCapabilities: workflowResolution.preset.allowedCapabilities
     });
+    this.markSubgraph(task, 'skill-install');
     this.addProgressDelta(task, `本轮已切换到 ${workflowResolution.preset.displayName} 流程。`);
-    if (reusableMemories.length > 0) {
-      const autoPersistedCount = reusableMemories.filter(memory => memory.tags.includes('auto-persist')).length;
-      const researchMemoryCount = reusableMemories.filter(memory => memory.tags.includes('research-job')).length;
+    if (knowledgeReuse.reusedMemoryIds.length > 0 || knowledgeReuse.reusedRuleIds.length > 0) {
+      const autoPersistedCount = knowledgeReuse.memories.filter(memory => memory.tags.includes('auto-persist')).length;
+      const researchMemoryCount = knowledgeReuse.memories.filter(memory => memory.tags.includes('research-job')).length;
       this.addTrace(
         task.trace,
         'research',
-        `首辅已优先命中 ${reusableMemories.length} 条历史记忆，本轮将优先复用已有经验。`,
+        `首辅已优先命中 ${knowledgeReuse.reusedMemoryIds.length} 条历史记忆与 ${knowledgeReuse.reusedRuleIds.length} 条历史规则，本轮将优先复用已有经验。`,
         {
-          reusedMemoryIds,
+          reusedMemoryIds: knowledgeReuse.reusedMemoryIds,
+          reusedRuleIds: knowledgeReuse.reusedRuleIds,
           autoPersistedCount,
           researchMemoryCount
         }
       );
       this.addProgressDelta(
         task,
-        `首辅先从历史经验中命中了 ${reusableMemories.length} 条可复用记忆，本轮会优先基于这些经验继续规划。`
+        `首辅先从历史经验中命中了 ${knowledgeReuse.reusedMemoryIds.length} 条记忆和 ${knowledgeReuse.reusedRuleIds.length} 条规则，本轮会优先基于这些经验继续规划。`
       );
     }
+    this.upsertFreshnessEvidence(task);
     this.tasks.set(task.id, task);
     await this.persistAndEmitTask(task);
-    await this.runTaskPipeline(task, { ...dto, goal: workflowResolution.normalizedGoal }, { mode: 'initial' });
+    if (sessionId) {
+      await this.runTaskPipeline(task, { ...dto, goal: workflowResolution.normalizedGoal }, { mode: 'initial' });
+      return task;
+    }
+
+    this.addTrace(task.trace, 'background_queued', '后台任务已入队，等待后台 runner 消费执行。', {
+      mode: 'background',
+      runId: task.runId
+    });
+    this.markSubgraph(task, 'background-runner');
+    this.addProgressDelta(task, '后台任务已入队，等待后台执行器调度。');
+    await this.persistAndEmitTask(task);
     return task;
   }
 
@@ -254,6 +402,224 @@ export class AgentOrchestrator {
 
   listPendingApprovals(): TaskRecord[] {
     return this.listTasks().filter(task => task.approvals.some(approval => approval.decision === 'pending'));
+  }
+
+  listWorkers() {
+    return this.workerRegistry.list();
+  }
+
+  registerWorker(worker: WorkerDefinition) {
+    this.workerRegistry.register(worker);
+  }
+
+  setWorkerEnabled(workerId: string, enabled: boolean) {
+    this.workerRegistry.setEnabled(workerId, enabled);
+  }
+
+  isWorkerEnabled(workerId: string) {
+    return this.workerRegistry.isEnabled(workerId);
+  }
+
+  listQueuedBackgroundTasks(): TaskRecord[] {
+    const now = Date.now();
+    return this.listTasks().filter(task => {
+      const queueState = task.queueState;
+      if (!queueState?.backgroundRun || queueState.status !== 'queued') {
+        return false;
+      }
+      if (!queueState.leaseExpiresAt) {
+        return true;
+      }
+      return new Date(queueState.leaseExpiresAt).getTime() <= now;
+    });
+  }
+
+  async acquireBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun || task.queueState.status !== 'queued') {
+      return undefined;
+    }
+
+    const now = new Date();
+    if (task.queueState.leaseExpiresAt && new Date(task.queueState.leaseExpiresAt).getTime() > now.getTime()) {
+      return undefined;
+    }
+
+    task.queueState = {
+      ...task.queueState,
+      leaseOwner: owner,
+      leaseExpiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+      lastHeartbeatAt: now.toISOString()
+    };
+    task.updatedAt = now.toISOString();
+    this.addTrace(task.trace, 'background_lease_acquired', `后台 runner 已为任务获取 lease：${owner}`, {
+      owner,
+      ttlMs
+    });
+    this.markSubgraph(task, 'background-runner');
+    await this.persistAndEmitTask(task);
+    return task;
+  }
+
+  async heartbeatBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun || task.queueState.leaseOwner !== owner) {
+      return undefined;
+    }
+
+    const now = new Date();
+    task.queueState = {
+      ...task.queueState,
+      leaseExpiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+      lastHeartbeatAt: now.toISOString()
+    };
+    task.updatedAt = now.toISOString();
+    await this.persistAndEmitTask(task);
+    return task;
+  }
+
+  async releaseBackgroundLease(taskId: string, owner: string): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun || task.queueState.leaseOwner !== owner) {
+      return undefined;
+    }
+
+    task.queueState = {
+      ...task.queueState,
+      leaseOwner: undefined,
+      leaseExpiresAt: undefined,
+      lastHeartbeatAt: undefined
+    };
+    task.updatedAt = new Date().toISOString();
+    await this.persistAndEmitTask(task);
+    return task;
+  }
+
+  listExpiredBackgroundLeases(): TaskRecord[] {
+    const now = Date.now();
+    return this.listTasks().filter(task => {
+      const queueState = task.queueState;
+      return Boolean(
+        queueState?.backgroundRun &&
+        queueState.status === 'running' &&
+        queueState.leaseOwner &&
+        queueState.leaseExpiresAt &&
+        new Date(queueState.leaseExpiresAt).getTime() <= now
+      );
+    });
+  }
+
+  async reclaimExpiredBackgroundLease(taskId: string, owner: string): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun || task.queueState.status !== 'running') {
+      return undefined;
+    }
+
+    const now = new Date();
+    if (!task.queueState.leaseExpiresAt || new Date(task.queueState.leaseExpiresAt).getTime() > now.getTime()) {
+      return undefined;
+    }
+
+    const retryBudget = task.budgetState?.retryBudget ?? task.maxRetries ?? 1;
+    const retriesConsumed = task.budgetState?.retriesConsumed ?? task.retryCount ?? 0;
+    const nextRetriesConsumed = retriesConsumed + 1;
+
+    if (nextRetriesConsumed <= retryBudget) {
+      task.status = TaskStatus.QUEUED;
+      task.currentNode = 'background_requeued';
+      task.currentStep = 'queued';
+      task.retryCount = nextRetriesConsumed;
+      task.maxRetries = Math.max(task.maxRetries ?? retryBudget, retryBudget);
+      task.budgetState = this.updateBudgetState(task, {
+        retryBudget,
+        retriesConsumed: nextRetriesConsumed
+      });
+      task.queueState = {
+        mode: task.queueState.mode,
+        backgroundRun: true,
+        status: 'queued',
+        enqueuedAt: now.toISOString(),
+        startedAt: undefined,
+        finishedAt: undefined,
+        lastTransitionAt: now.toISOString(),
+        attempt: (task.queueState.attempt ?? 1) + 1,
+        leaseOwner: undefined,
+        leaseExpiresAt: undefined,
+        lastHeartbeatAt: undefined
+      };
+      task.updatedAt = now.toISOString();
+      this.addTrace(task.trace, 'background_lease_reclaimed', `后台 lease 已过期，任务重新入队（owner: ${owner}）。`, {
+        owner,
+        retriesConsumed: nextRetriesConsumed,
+        retryBudget
+      });
+      this.markSubgraph(task, 'background-runner');
+      this.addProgressDelta(task, '后台执行 lease 已过期，任务已重新入队等待重试。');
+      await this.persistAndEmitTask(task);
+      return task;
+    }
+
+    task.status = TaskStatus.FAILED;
+    task.currentNode = 'background_reclaim_failed';
+    task.currentStep = 'background_runner_failed';
+    task.result = '后台 lease 多次过期且已耗尽 retry budget，任务已终止。';
+    task.retryCount = nextRetriesConsumed;
+    task.budgetState = this.updateBudgetState(task, {
+      retryBudget,
+      retriesConsumed: nextRetriesConsumed
+    });
+    this.transitionQueueState(task, 'failed');
+    task.updatedAt = now.toISOString();
+    this.addTrace(
+      task.trace,
+      'background_lease_reclaimed',
+      `后台 lease 已过期且 retry budget 已耗尽，任务终止（owner: ${owner}）。`,
+      {
+        owner,
+        retriesConsumed: nextRetriesConsumed,
+        retryBudget,
+        exhausted: true
+      }
+    );
+    this.markSubgraph(task, 'background-runner');
+    this.addProgressDelta(task, '后台执行 lease 已过期，且已耗尽重试预算，任务终止。');
+    await this.persistAndEmitTask(task);
+    return task;
+  }
+
+  async runBackgroundTask(taskId: string): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun || task.queueState.status !== 'queued') {
+      return undefined;
+    }
+
+    await this.runTaskPipeline(task, { goal: task.goal, constraints: [] }, { mode: 'initial' });
+    return task;
+  }
+
+  async markBackgroundTaskRunnerFailure(taskId: string, reason: string): Promise<TaskRecord | undefined> {
+    await this.initialize();
+    const task = this.tasks.get(taskId);
+    if (!task?.queueState?.backgroundRun) {
+      return undefined;
+    }
+
+    task.status = TaskStatus.FAILED;
+    task.currentNode = 'background_runner_failed';
+    task.currentStep = 'background_runner_failed';
+    task.result = reason;
+    this.transitionQueueState(task, 'failed');
+    task.updatedAt = new Date().toISOString();
+    this.addTrace(task.trace, 'background_runner_failed', reason);
+    this.markSubgraph(task, 'background-runner');
+    this.addProgressDelta(task, reason);
+    await this.persistAndEmitTask(task);
+    return task;
   }
 
   listTaskTraces(taskId: string): ExecutionTrace[] {
@@ -288,6 +654,16 @@ export class AgentOrchestrator {
     task.review = undefined;
     task.result = undefined;
     task.currentStep = 'queued';
+    task.queueState = {
+      mode: task.queueState?.mode ?? (task.sessionId ? 'foreground' : 'background'),
+      backgroundRun: task.queueState?.backgroundRun ?? !task.sessionId,
+      status: 'queued',
+      enqueuedAt: new Date().toISOString(),
+      startedAt: undefined,
+      finishedAt: undefined,
+      lastTransitionAt: new Date().toISOString(),
+      attempt: (task.queueState?.attempt ?? 1) + 1
+    };
     task.retryCount = 0;
     task.maxRetries = 1;
     task.updatedAt = new Date().toISOString();
@@ -310,6 +686,7 @@ export class AgentOrchestrator {
     task.status = TaskStatus.CANCELLED;
     task.currentNode = 'run_cancelled';
     task.currentStep = 'cancelled';
+    this.transitionQueueState(task, 'cancelled');
     task.result = reason ? `已终止当前执行：${reason}` : '已手动终止当前执行。';
     task.updatedAt = new Date().toISOString();
     task.pendingAction = undefined;
@@ -358,6 +735,7 @@ export class AgentOrchestrator {
 
     if (decision === ApprovalDecision.REJECTED) {
       task.status = TaskStatus.BLOCKED;
+      this.transitionQueueState(task, 'blocked');
       task.result = 'Approval rejected. Task is blocked.';
       task.approvalFeedback = dto.feedback;
       task.pendingApproval = task.pendingApproval
@@ -393,6 +771,7 @@ export class AgentOrchestrator {
     const pending = this.pendingExecutions.get(taskId);
     if (!pending) {
       task.status = TaskStatus.RUNNING;
+      this.transitionQueueState(task, 'running');
       task.result = '已收到审批结果，但当前没有找到待恢复的执行上下文。';
       await this.persistAndEmitTask(task);
       return task;
@@ -464,6 +843,7 @@ export class AgentOrchestrator {
       runId: undefined,
       goal: workflowResolution.normalizedGoal,
       workflow: workflowResolution.preset,
+      runtimeSourcePolicyMode: this.settings.policy?.sourcePolicyMode,
       preferredUrls: dto.preferredUrls,
       createdAt: now
     });
@@ -485,10 +865,18 @@ export class AgentOrchestrator {
             result?.ok && result.rawOutput && typeof result.rawOutput === 'object'
               ? {
                   capabilityId,
+                  selectedCapabilityId: result.capabilityId,
+                  serverId: result.serverId,
+                  transportUsed: result.transportUsed,
+                  fallbackUsed: result.fallbackUsed,
                   ...(result.rawOutput as Record<string, unknown>)
                 }
               : {
                   capabilityId,
+                  selectedCapabilityId: result?.capabilityId,
+                  serverId: result?.serverId,
+                  transportUsed: result?.transportUsed,
+                  fallbackUsed: result?.fallbackUsed,
                   error: result?.errorMessage ?? 'mcp_collect_failed',
                   outputSummary: result?.outputSummary
                 }
@@ -520,7 +908,9 @@ export class AgentOrchestrator {
       workflowId: workflowResolution.preset.id,
       summary:
         dto.title ??
-        `户部已为“${workflowResolution.normalizedGoal}”整理并抓取 ${collectedSources.length} 个优先研究来源，默认按 ${workflowResolution.preset.sourcePolicy?.mode ?? 'controlled-first'} 策略执行。`,
+        `户部已为“${workflowResolution.normalizedGoal}”整理并抓取 ${collectedSources.length} 个优先研究来源，默认按 ${
+          this.settings.policy?.sourcePolicyMode ?? workflowResolution.preset.sourcePolicy?.mode ?? 'controlled-first'
+        } 策略执行。`,
       sources: collectedSources,
       trustSummary,
       learningEvaluation,
@@ -580,6 +970,68 @@ export class AgentOrchestrator {
           sourceType: source.sourceType
         };
     }
+  }
+
+  private buildFreshnessSourceSummary(task: TaskRecord): string | undefined {
+    if (!isFreshnessSensitiveGoal(task.goal)) {
+      return undefined;
+    }
+    const sources = (task.externalSources ?? []).filter(source => source.sourceType !== 'freshness_meta');
+    if (!sources.length) {
+      return '本轮未记录到可用来源，请在答复中明确说明时效性信息仍需进一步检索确认。';
+    }
+    const officialCount = sources.filter(source => source.trustClass === 'official').length;
+    const curatedCount = sources.filter(source => source.trustClass === 'curated').length;
+    const sourceTypes = Array.from(new Set(sources.map(source => source.sourceType))).slice(0, 4);
+    return [
+      `本轮共参考 ${sources.length} 条来源`,
+      `官方来源 ${officialCount} 条`,
+      curatedCount > 0 ? `策展来源 ${curatedCount} 条` : '',
+      sourceTypes.length ? `来源类型：${sourceTypes.join('、')}` : ''
+    ]
+      .filter(Boolean)
+      .join('；');
+  }
+
+  private upsertFreshnessEvidence(task: TaskRecord): void {
+    const sources = (task.externalSources ?? []).filter(source => source.sourceType !== 'freshness_meta');
+    if (!isFreshnessSensitiveGoal(task.goal)) {
+      task.externalSources = sources;
+      return;
+    }
+
+    const referenceTime = task.updatedAt ?? task.createdAt ?? new Date().toISOString();
+    const referenceDate = referenceTime.slice(0, 10);
+    const officialCount = sources.filter(source => source.trustClass === 'official').length;
+    const curatedCount = sources.filter(source => source.trustClass === 'curated').length;
+    const sourceTypes = Array.from(new Set(sources.map(source => source.sourceType))).slice(0, 6);
+    const sourceSummary = this.buildFreshnessSourceSummary({
+      ...task,
+      externalSources: sources
+    });
+
+    task.externalSources = [
+      ...sources,
+      {
+        id: `${task.id}:freshness_meta`,
+        taskId: task.id,
+        sourceType: 'freshness_meta',
+        trustClass: 'internal',
+        summary: [`信息基准日期：${referenceDate}`, sourceSummary].filter(Boolean).join('；'),
+        detail: {
+          freshnessSensitive: true,
+          referenceDate,
+          referenceTime,
+          sourceCount: sources.length,
+          officialCount,
+          curatedCount,
+          sourceTypes
+        },
+        linkedRunId: task.runId,
+        createdAt: task.createdAt,
+        fetchedAt: referenceTime
+      }
+    ];
   }
 
   getLearningJob(jobId: string): LearningJob | undefined {
@@ -648,6 +1100,7 @@ export class AgentOrchestrator {
   }
 
   private async persistAndEmitTask(task: TaskRecord): Promise<void> {
+    this.upsertFreshnessEvidence(task);
     await this.persistRuntimeState();
     this.emitTaskUpdate(task);
   }
@@ -658,6 +1111,7 @@ export class AgentOrchestrator {
     options: { mode: 'initial' | 'retry' | 'approval_resume'; pending?: PendingExecutionContext }
   ): Promise<void> {
     task.status = TaskStatus.RUNNING;
+    this.transitionQueueState(task, 'running');
     task.skillStage = 'preset_plan_expansion';
     task.currentNode = 'supervisor_plan';
     task.updatedAt = new Date().toISOString();
@@ -682,7 +1136,18 @@ export class AgentOrchestrator {
 
     try {
       this.ensureTaskNotCancelled(task);
-      if (this.shouldHandleAsDirectReply(dto.goal, options.mode)) {
+      const workflowRoute = this.resolveTaskFlow(task, dto.goal, options.mode);
+      task.chatRoute = workflowRoute;
+      this.addTrace(task.trace, 'route', `聊天入口已选择 ${workflowRoute.flow} 流程。`, {
+        adapter: workflowRoute.adapter,
+        priority: workflowRoute.priority,
+        reason: workflowRoute.reason,
+        flow: workflowRoute.flow,
+        graph: workflowRoute.graph
+      });
+      await this.persistAndEmitTask(task);
+
+      if (workflowRoute.flow === 'direct-reply') {
         await this.runDirectReplyTask(task, libu);
         return;
       }
@@ -722,6 +1187,7 @@ export class AgentOrchestrator {
           task.modelRoute = modelRoute;
           task.currentMinistry = 'libu-router';
           task.currentWorker = modelRoute.find(item => item.ministry === 'libu-router')?.workerId;
+          this.markWorkerUsage(task, task.currentWorker);
           this.addTrace(task.trace, 'libu_routed', '吏部已完成流程路由与选模。', {
             modelRoute
           });
@@ -802,14 +1268,17 @@ export class AgentOrchestrator {
             retryCount: state.retryCount,
             maxRetries: state.maxRetries
           });
+          this.markSubgraph(task, 'research');
           const researchMinistry = this.resolveResearchMinistry(task.resolvedWorkflow);
           task.currentMinistry = researchMinistry;
           task.currentWorker = task.modelRoute?.find(item => item.ministry === researchMinistry)?.workerId;
+          this.markWorkerUsage(task, task.currentWorker);
           const researchSources = buildResearchSourcePlan({
             taskId: task.id,
             runId: task.runId,
             goal: task.goal,
-            workflow: task.resolvedWorkflow
+            workflow: task.resolvedWorkflow,
+            runtimeSourcePolicyMode: this.settings.policy?.sourcePolicyMode
           });
           const remainingSourceBudget = Math.max(
             0,
@@ -824,14 +1293,9 @@ export class AgentOrchestrator {
               allowedSources: budgetedResearchSources.length
             });
           }
-          task.budgetState = {
-            stepBudget: task.budgetState?.stepBudget ?? 8,
-            stepsConsumed: task.budgetState?.stepsConsumed ?? 0,
-            retryBudget: task.budgetState?.retryBudget ?? 1,
-            retriesConsumed: task.budgetState?.retriesConsumed ?? 0,
-            sourceBudget: task.budgetState?.sourceBudget ?? 8,
+          task.budgetState = this.updateBudgetState(task, {
             sourcesConsumed: (task.budgetState?.sourcesConsumed ?? 0) + budgetedResearchSources.length
-          };
+          });
           if (budgetedResearchSources.length) {
             task.externalSources = mergeEvidence(task.externalSources ?? [], budgetedResearchSources);
             for (const source of budgetedResearchSources) {
@@ -886,9 +1350,11 @@ export class AgentOrchestrator {
             retryCount: state.retryCount,
             maxRetries: state.maxRetries
           });
+          this.markSubgraph(task, 'execution');
           const executionMinistry = this.resolveExecutionMinistry(task.resolvedWorkflow);
           task.currentMinistry = executionMinistry;
           task.currentWorker = task.modelRoute?.find(item => item.ministry === executionMinistry)?.workerId;
+          this.markWorkerUsage(task, task.currentWorker);
           this.addTrace(task.trace, 'ministry_started', `${this.getMinistryLabel(executionMinistry)}开始执行方案。`, {
             ministry: task.currentMinistry,
             workerId: task.currentWorker
@@ -925,7 +1391,14 @@ export class AgentOrchestrator {
               intent: state.toolIntent,
               toolName: state.toolName,
               approved: true,
-              exitCode: approvedResult.exitCode
+              serverId: approvedResult.serverId,
+              capabilityId: approvedResult.capabilityId,
+              transportUsed: approvedResult.transportUsed,
+              fallbackUsed: approvedResult.fallbackUsed,
+              exitCode: approvedResult.exitCode,
+              ...(approvedResult.rawOutput && typeof approvedResult.rawOutput === 'object'
+                ? (approvedResult.rawOutput as Record<string, unknown>)
+                : {})
             });
             this.setSubTaskStatus(task, AgentRole.EXECUTOR, 'completed');
             this.addTrace(task.trace, 'ministry_reported', '工部已提交执行结果。', {
@@ -969,13 +1442,21 @@ export class AgentOrchestrator {
             toolName: execution.toolName,
             requiresApproval: execution.requiresApproval,
             llmConfigured: this.llm.isConfigured(),
-            retryCount: state.retryCount
+            retryCount: state.retryCount,
+            serverId: execution.executionResult?.serverId,
+            capabilityId: execution.executionResult?.capabilityId,
+            transportUsed: execution.executionResult?.transportUsed,
+            fallbackUsed: execution.executionResult?.fallbackUsed,
+            ...(execution.executionResult?.rawOutput && typeof execution.executionResult.rawOutput === 'object'
+              ? (execution.executionResult.rawOutput as Record<string, unknown>)
+              : {})
           });
           this.addProgressDelta(task, `执行进展：${execution.summary}`, AgentRole.EXECUTOR);
 
           if (execution.requiresApproval) {
             const approvalReason = `准备使用 ${execution.toolName} 执行 ${this.describeActionIntent(execution.intent)}，该动作会影响外部环境，因此需要人工审批。`;
             task.status = TaskStatus.WAITING_APPROVAL;
+            this.transitionQueueState(task, 'waiting_approval');
             task.currentNode = 'approval_gate';
             task.result = execution.summary;
             task.pendingAction = {
@@ -1039,10 +1520,12 @@ export class AgentOrchestrator {
             retryCount: state.retryCount,
             maxRetries: state.maxRetries
           });
+          this.markSubgraph(task, 'review');
           task.currentNode = 'review_and_govern';
           const reviewMinistry = this.resolveReviewMinistry(task.resolvedWorkflow);
           task.currentMinistry = reviewMinistry;
           task.currentWorker = task.modelRoute?.find(item => item.ministry === reviewMinistry)?.workerId;
+          this.markWorkerUsage(task, task.currentWorker);
           this.addTrace(
             task.trace,
             'ministry_started',
@@ -1070,6 +1553,7 @@ export class AgentOrchestrator {
 
           if (reviewed.evaluation.shouldRetry && state.retryCount < state.maxRetries) {
             task.status = TaskStatus.RUNNING;
+            this.transitionQueueState(task, 'running');
             task.result = undefined;
             this.syncTaskRuntime(task, {
               currentStep: 'manager_plan',
@@ -1128,7 +1612,8 @@ export class AgentOrchestrator {
             reviewed.review,
             docsSummary
               ? `${state.executionSummary ?? task.result ?? ''}\n${docsSummary}`
-              : (state.executionSummary ?? task.result ?? 'No execution summary available.')
+              : (state.executionSummary ?? task.result ?? 'No execution summary available.'),
+            this.buildFreshnessSourceSummary(task)
           );
           this.ensureTaskNotCancelled(task);
           this.upsertAgentState(task, libu.getState());
@@ -1137,6 +1622,7 @@ export class AgentOrchestrator {
 
           task.result = finalAnswer;
           task.status = reviewed.review.decision === 'approved' ? TaskStatus.COMPLETED : TaskStatus.FAILED;
+          this.transitionQueueState(task, reviewed.review.decision === 'approved' ? 'completed' : 'failed');
           task.skillStage = 'completed';
           task.currentNode = 'finalize_response';
           task.updatedAt = new Date().toISOString();
@@ -1195,6 +1681,7 @@ export class AgentOrchestrator {
       }
       if (error instanceof TaskBudgetExceededError) {
         task.status = TaskStatus.BLOCKED;
+        this.transitionQueueState(task, 'blocked');
         task.currentNode = 'budget_governance';
         task.currentStep = 'budget_exhausted';
         task.result = error.message;
@@ -1214,6 +1701,7 @@ export class AgentOrchestrator {
     pending: PendingExecutionContext
   ): Promise<void> {
     task.status = TaskStatus.RUNNING;
+    this.transitionQueueState(task, 'running');
     task.currentNode = 'resume_after_approval';
     task.updatedAt = new Date().toISOString();
     this.addTrace(task.trace, 'run_resumed', '皇帝已批准高风险动作，流程恢复执行。', {
@@ -1244,7 +1732,14 @@ export class AgentOrchestrator {
             intent: state.pending.intent,
             toolName: state.pending.toolName,
             approved: true,
-            exitCode: executionResult.exitCode
+            serverId: executionResult.serverId,
+            capabilityId: executionResult.capabilityId,
+            transportUsed: executionResult.transportUsed,
+            fallbackUsed: executionResult.fallbackUsed,
+            exitCode: executionResult.exitCode,
+            ...(executionResult.rawOutput && typeof executionResult.rawOutput === 'object'
+              ? (executionResult.rawOutput as Record<string, unknown>)
+              : {})
           });
           this.setSubTaskStatus(task, AgentRole.EXECUTOR, 'completed');
           await this.persistAndEmitTask(task);
@@ -1361,23 +1856,48 @@ export class AgentOrchestrator {
     }
   }
 
+  private markWorkerUsage(task: TaskRecord, workerId?: string) {
+    if (!workerId) {
+      return;
+    }
+
+    const worker = this.workerRegistry.get(workerId);
+    if (!worker) {
+      return;
+    }
+
+    task.connectorRefs = Array.from(new Set([...(task.connectorRefs ?? []), ...(worker.requiredConnectors ?? [])]));
+    if (worker.kind === 'company') {
+      task.usedCompanyWorkers = Array.from(new Set([...(task.usedCompanyWorkers ?? []), workerId]));
+    }
+    if (worker.kind === 'installed-skill') {
+      task.usedInstalledSkills = Array.from(new Set([...(task.usedInstalledSkills ?? []), workerId]));
+    }
+  }
+
+  private markSubgraph(task: TaskRecord, subgraphId: SubgraphId) {
+    task.subgraphTrail = Array.from(new Set([...(task.subgraphTrail ?? []), subgraphId]));
+  }
+
   private shouldRunLibuDocsDelivery(workflow?: WorkflowPresetDefinition): boolean {
     return Boolean(workflow?.requiredMinistries.includes('libu-docs'));
   }
 
-  private shouldHandleAsDirectReply(goal: string, mode: 'initial' | 'retry' | 'approval_resume'): boolean {
+  private resolveTaskFlow(task: TaskRecord, goal: string, mode: 'initial' | 'retry' | 'approval_resume') {
     if (mode === 'approval_resume') {
-      return false;
+      return {
+        graph: 'approval-recovery' as const,
+        flow: 'approval' as const,
+        reason: 'approval_resume',
+        adapter: 'approval-recovery' as const,
+        priority: 95
+      };
     }
 
-    const normalized = goal.trim().toLowerCase();
-    if (!normalized || normalized.length > 32) {
-      return false;
-    }
-
-    return ['你是谁', '你是誰', '介绍一下你自己', '介绍你自己', '你能做什么', '你会什么', 'who are you'].some(pattern =>
-      normalized.includes(pattern)
-    );
+    return resolveWorkflowRoute({
+      goal,
+      workflow: task.resolvedWorkflow
+    });
   }
 
   private async runDirectReplyTask(task: TaskRecord, libu: LibuRouterMinistry): Promise<void> {
@@ -1396,8 +1916,24 @@ export class AgentOrchestrator {
     );
     const answer = await libu.replyDirectly();
     this.upsertAgentState(task, libu.getState());
+    const directReplyFallbackNotes = libu
+      .getState()
+      .observations.filter(note => note.startsWith('LLM '))
+      .slice(-3);
+    if (directReplyFallbackNotes.length > 0) {
+      this.addTrace(
+        task.trace,
+        'direct_reply_fallback',
+        '首辅直答未获得模型正常输出，已回退到本地兜底回复。',
+        {
+          notes: directReplyFallbackNotes
+        },
+        task
+      );
+    }
     task.result = answer;
     task.status = TaskStatus.COMPLETED;
+    this.transitionQueueState(task, 'completed');
     task.skillStage = 'completed';
     task.updatedAt = new Date().toISOString();
     task.review = {
@@ -1432,8 +1968,9 @@ export class AgentOrchestrator {
   }
 
   private createAgentContext(taskId: string, goal: string, flow: 'chat' | 'approval' | 'learning') {
-    const task = this.tasks.get(taskId);
-    return {
+    const resolveTask = () => this.tasks.get(taskId);
+    const workerRegistry = this.workerRegistry;
+    const context = {
       taskId,
       goal,
       flow,
@@ -1443,7 +1980,6 @@ export class AgentOrchestrator {
       skillRegistry: this.dependencies.skillRegistry,
       approvalService: this.dependencies.approvalService,
       toolRegistry: this.toolRegistry,
-      workflowPreset: task?.resolvedWorkflow,
       mcpClientManager: this.dependencies.mcpClientManager,
       sandbox: this.dependencies.sandboxExecutor,
       llm: this.llm,
@@ -1481,6 +2017,24 @@ export class AgentOrchestrator {
         role: 'manager' | 'research' | 'executor' | 'reviewer';
       }) => {
         this.recordTaskUsage(taskId, payload.usage);
+      }
+    };
+    return {
+      ...context,
+      memorySearchService: this.dependencies.memorySearchService,
+      get workflowPreset() {
+        return resolveTask()?.resolvedWorkflow;
+      },
+      get taskContext() {
+        return resolveTask()?.context;
+      },
+      get budgetState() {
+        return resolveTask()?.budgetState;
+      },
+      contextStrategy: this.settings.contextStrategy,
+      get currentWorker() {
+        const workerId = resolveTask()?.currentWorker;
+        return workerId ? workerRegistry.get(workerId) : undefined;
       }
     };
   }
@@ -1546,26 +2100,55 @@ export class AgentOrchestrator {
       ...current,
       models: current.models.sort((left, right) => right.totalTokens - left.totalTokens)
     };
+    task.budgetState = this.updateBudgetState(task, {
+      costConsumedUsd: roundUsageCost((task.budgetState?.costConsumedUsd ?? 0) + costUsd),
+      costConsumedCny: roundUsageCost((task.budgetState?.costConsumedCny ?? 0) + costCny)
+    });
     void this.persistAndEmitTask(task);
   }
 
   private resolveWorkflowRoutes(workflow?: WorkflowPresetDefinition): ModelRouteDecision[] {
     const ministries = workflow?.requiredMinistries ?? ['libu-router', 'hubu-search', 'gongbu-code', 'xingbu-review'];
+    const selectionConstraints = this.buildWorkerSelectionConstraints();
     const routes = ministries
-      .map(ministry => this.modelRoutingPolicy.resolveRoute(ministry, workflow?.displayName ?? 'general workflow'))
+      .map(ministry =>
+        this.modelRoutingPolicy.resolveRoute(
+          ministry,
+          workflow?.displayName ?? 'general workflow',
+          selectionConstraints
+        )
+      )
       .filter((item): item is ModelRouteDecision => Boolean(item));
 
     const hasRouter = routes.some(item => item.ministry === 'libu-router');
     if (!hasRouter) {
       const routerRoute = this.modelRoutingPolicy.resolveRoute(
         'libu-router',
-        workflow?.displayName ?? 'general workflow'
+        workflow?.displayName ?? 'general workflow',
+        selectionConstraints
       );
       if (routerRoute) {
         routes.unshift(routerRoute);
       }
     }
     return routes;
+  }
+
+  private buildWorkerSelectionConstraints(): WorkerSelectionConstraints {
+    const disallowedConnectorIds = this.dependencies.mcpClientManager
+      ? this.dependencies.mcpClientManager
+          .describeServers()
+          .filter(
+            (server: { id: string }) =>
+              !describeConnectorProfilePolicy(server.id, this.settings.profile).enabledByProfile
+          )
+          .map((server: { id: string }) => server.id)
+      : [];
+
+    return {
+      profile: this.settings.profile,
+      disallowedConnectorIds
+    };
   }
 
   private buildMemoryRecord(
@@ -1695,14 +2278,11 @@ export class AgentOrchestrator {
     task.retryCount = state.retryCount;
     task.maxRetries = state.maxRetries;
     const stepsConsumed = Math.max(task.budgetState?.stepsConsumed ?? 0, this.estimateStepsConsumed(state.currentStep));
-    task.budgetState = {
-      stepBudget: task.budgetState?.stepBudget ?? 8,
+    task.budgetState = this.updateBudgetState(task, {
       stepsConsumed,
       retryBudget: task.budgetState?.retryBudget ?? state.maxRetries,
-      retriesConsumed: state.retryCount,
-      sourceBudget: task.budgetState?.sourceBudget ?? 8,
-      sourcesConsumed: task.budgetState?.sourcesConsumed ?? 0
-    };
+      retriesConsumed: state.retryCount
+    });
     if (stepsConsumed > (task.budgetState.stepBudget ?? 8)) {
       throw new TaskBudgetExceededError(
         `当前任务已耗尽 step budget，已在 ${state.currentStep ?? 'unknown'} 阶段暂停。`,
@@ -1715,6 +2295,57 @@ export class AgentOrchestrator {
     }
     task.updatedAt = new Date().toISOString();
     this.emitTaskUpdate(task);
+  }
+
+  private updateBudgetState(
+    task: TaskRecord,
+    overrides: Partial<NonNullable<TaskRecord['budgetState']>>
+  ): NonNullable<TaskRecord['budgetState']> {
+    const nextBudget = {
+      stepBudget: task.budgetState?.stepBudget ?? this.settings.policy?.budget.stepBudget ?? 8,
+      stepsConsumed: task.budgetState?.stepsConsumed ?? 0,
+      retryBudget: task.budgetState?.retryBudget ?? this.settings.policy?.budget.retryBudget ?? 1,
+      retriesConsumed: task.budgetState?.retriesConsumed ?? 0,
+      sourceBudget: task.budgetState?.sourceBudget ?? this.settings.policy?.budget.sourceBudget ?? 8,
+      sourcesConsumed: task.budgetState?.sourcesConsumed ?? 0,
+      costBudgetUsd: task.budgetState?.costBudgetUsd ?? this.settings.policy?.budget.maxCostPerTaskUsd ?? 0,
+      costConsumedUsd: task.budgetState?.costConsumedUsd ?? 0,
+      costConsumedCny: task.budgetState?.costConsumedCny ?? 0,
+      fallbackModelId: task.budgetState?.fallbackModelId ?? this.settings.policy?.budget.fallbackModelId,
+      overBudget: task.budgetState?.overBudget ?? false,
+      ...overrides
+    };
+    nextBudget.overBudget =
+      nextBudget.overBudget ||
+      (nextBudget.costConsumedUsd ?? 0) >= (nextBudget.costBudgetUsd ?? Number.POSITIVE_INFINITY);
+    return nextBudget;
+  }
+
+  private createQueueState(sessionId: string | undefined, now: string): QueueStateRecord {
+    return {
+      mode: sessionId ? 'foreground' : 'background',
+      backgroundRun: !sessionId,
+      status: 'queued',
+      enqueuedAt: now,
+      lastTransitionAt: now,
+      attempt: 1
+    };
+  }
+
+  private transitionQueueState(task: TaskRecord, status: QueueStateRecord['status']): void {
+    const now = new Date().toISOString();
+    const previous = task.queueState ?? this.createQueueState(task.sessionId, now);
+    const shouldReleaseLease = status !== 'queued' && status !== 'running';
+    task.queueState = {
+      ...previous,
+      status,
+      lastTransitionAt: now,
+      startedAt: status === 'running' ? (previous.startedAt ?? now) : previous.startedAt,
+      finishedAt: ['completed', 'failed', 'cancelled'].includes(status) ? now : previous.finishedAt,
+      leaseOwner: shouldReleaseLease ? undefined : previous.leaseOwner,
+      leaseExpiresAt: shouldReleaseLease ? undefined : previous.leaseExpiresAt,
+      lastHeartbeatAt: shouldReleaseLease ? undefined : previous.lastHeartbeatAt
+    };
   }
 
   private estimateStepsConsumed(currentStep?: string): number {

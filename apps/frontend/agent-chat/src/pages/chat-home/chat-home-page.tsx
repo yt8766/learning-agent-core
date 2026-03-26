@@ -1,4 +1,4 @@
-﻿import { Alert, App as AntApp, Button, ConfigProvider, Input, Layout, Modal, Space, Tag, Typography } from 'antd';
+import { Alert, App as AntApp, Button, ConfigProvider, Layout, Modal, Space, Tag, Typography } from 'antd';
 import { XProvider } from '@ant-design/x';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -12,7 +12,6 @@ import { ChatHomeSidebar } from './chat-home-sidebar';
 import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
 
 const { Header, Sider, Content } = Layout;
-const { TextArea } = Input;
 const { Text, Title } = Typography;
 
 export function ChatHomePage() {
@@ -31,17 +30,18 @@ export function ChatHomePage() {
     }
   }, [chat.error, dismissedError]);
 
-  const runningHint =
-    chat.activeSession?.status === 'running'
-      ? `正在执行 ${chat.checkpoint?.graphState.currentStep || '当前节点'}，稍后会继续推送 Agent 消息。`
-      : '';
+  const agentThinking = Boolean(chat.checkpoint?.thinkState?.loading);
+  const thoughtItems = useMemo(() => buildThoughtItems(chat), [chat]);
+
   const bubbleItems = useMemo(
     () =>
       buildBubbleItems({
         messages: chat.messages,
         activeStatus: chat.activeSession?.status,
+        agentThinking,
         copiedMessageId,
-        runningHint,
+        thinkState: chat.checkpoint?.thinkState,
+        thoughtItems,
         getAgentLabel,
         onApprovalAction: (intent, approved) => void chat.updateApproval(intent, approved),
         onApprovalFeedback: (intent, reason) => {
@@ -54,10 +54,15 @@ export function ChatHomePage() {
           window.setTimeout(() => setCopiedMessageId(current => (current === message.id ? '' : current)), 1800);
         }
       }),
-    [chat.messages, chat.activeSession?.status, copiedMessageId, runningHint]
+    [
+      chat.messages,
+      chat.activeSession?.status,
+      agentThinking,
+      copiedMessageId,
+      chat.checkpoint?.thinkState,
+      thoughtItems
+    ]
   );
-
-  const thoughtItems = useMemo(() => buildThoughtItems(chat), [chat]);
   const streamEvents = useMemo(
     () =>
       chat.events
@@ -92,12 +97,9 @@ export function ChatHomePage() {
             <Layout>
               <Header className="chatx-header">
                 <div className="chatx-header__copy">
-                  <Text className="chatx-header__eyebrow">Agent Workspace</Text>
-                  <Title level={4}>{chat.activeSession?.title ?? '欢迎来到 Agent Chat'}</Title>
+                  <Text className="chatx-header__eyebrow">AI Chat</Text>
+                  <Title level={4}>{chat.activeSession?.title ?? '开始新对话'}</Title>
                   <Space wrap size={8} className="chatx-header__tags">
-                    <Tag color="blue">实时回答</Tag>
-                    <Tag color="geekblue">GLM 协作推理</Tag>
-                    <Tag color="purple">事件可观测</Tag>
                     {chat.checkpoint?.resolvedWorkflow ? (
                       <Tag color="gold">{chat.checkpoint.resolvedWorkflow.displayName}</Tag>
                     ) : null}
@@ -134,10 +136,10 @@ export function ChatHomePage() {
                     </Button>
                   ) : null}
                   <Button htmlType="button" onClick={() => setShowWorkbench(current => !current)}>
-                    {showWorkbench ? '关闭工作台' : '打开工作台'}
+                    {showWorkbench ? '隐藏侧边详情' : '显示侧边详情'}
                   </Button>
                   <Button htmlType="button" type="primary" onClick={() => chat.setShowRightPanel(true)}>
-                    运行态
+                    打开详情面板
                   </Button>
                 </Space>
               </Header>
@@ -160,7 +162,6 @@ export function ChatHomePage() {
                     chat={chat}
                     showWorkbench={showWorkbench}
                     bubbleItems={bubbleItems}
-                    thoughtItems={thoughtItems}
                     streamEvents={streamEvents}
                   />
                 </div>
@@ -198,12 +199,13 @@ export function ChatHomePage() {
               }}
             >
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Text type="secondary">批注意见会回注到当前 Skill 流程，首辅会据此重新规划或结束执行。</Text>
-                <TextArea
+                <Text type="secondary">你的批注会用于调整这一步的后续处理。</Text>
+                <textarea
+                  className="chatx-feedback-textarea"
                   rows={5}
                   value={feedbackDraft}
                   onChange={event => setFeedbackDraft(event.target.value)}
-                  placeholder="例如：重写，这里的动画不够丝滑；或者：先不要发布，补充回归测试报告。"
+                  placeholder="例如：先不要继续发布，先补一轮回归测试。"
                 />
               </Space>
             </Modal>

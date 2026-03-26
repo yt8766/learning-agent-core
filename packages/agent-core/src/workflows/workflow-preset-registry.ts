@@ -1,11 +1,19 @@
-﻿import { AgentRole, ManagerPlan, WorkflowPresetDefinition } from '@agent/shared';
+﻿import { AgentRole, ManagerPlan, WorkflowPresetDefinition, WorkflowVersionRecord } from '@agent/shared';
 
 const GENERAL_PRESET: WorkflowPresetDefinition = {
   id: 'general',
   displayName: '通用协作流程',
+  version: '1.0.0',
   intentPatterns: ['默认', '通用', 'general'],
   requiredMinistries: ['libu-router', 'hubu-search', 'gongbu-code', 'xingbu-review'],
-  allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'write_local_file'],
+  allowedCapabilities: [
+    'search_memory',
+    'read_local_file',
+    'list_directory',
+    'local-analysis',
+    'find-skills',
+    'write_local_file'
+  ],
   approvalPolicy: 'high-risk-only',
   webLearningPolicy: {
     enabled: true,
@@ -32,9 +40,10 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'plan-ceo-review',
     command: '/plan-ceo-review',
     displayName: 'CEO 评审流程',
+    version: '1.0.0',
     intentPatterns: ['商业价值', '用户价值', '产品方向', 'ceo'],
     requiredMinistries: ['libu-router', 'hubu-search', 'libu-docs'],
-    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
+    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
       enabled: true,
@@ -58,9 +67,17 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'plan-eng-review',
     command: '/plan-eng-review',
     displayName: '工程方案评审',
+    version: '1.0.0',
     intentPatterns: ['架构设计', '工程评审', 'eng review', 'architecture'],
     requiredMinistries: ['libu-router', 'gongbu-code', 'libu-docs'],
-    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'write_local_file'],
+    allowedCapabilities: [
+      'search_memory',
+      'read_local_file',
+      'list_directory',
+      'local-analysis',
+      'find-skills',
+      'write_local_file'
+    ],
     approvalPolicy: 'high-risk-only',
     webLearningPolicy: {
       enabled: true,
@@ -84,9 +101,10 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'review',
     command: '/review',
     displayName: '代码审查流程',
+    version: '1.0.0',
     intentPatterns: ['代码审查', 'review', '安全审计', '漏洞'],
     requiredMinistries: ['libu-router', 'xingbu-review', 'gongbu-code'],
-    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
+    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
       enabled: true,
@@ -110,9 +128,17 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'qa',
     command: '/qa',
     displayName: 'QA 测试流程',
+    version: '1.0.0',
     intentPatterns: ['qa', '测试', '回归', '验收'],
     requiredMinistries: ['libu-router', 'bingbu-ops', 'hubu-search', 'libu-docs'],
-    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'run_terminal', 'local-analysis'],
+    allowedCapabilities: [
+      'search_memory',
+      'read_local_file',
+      'list_directory',
+      'run_terminal',
+      'local-analysis',
+      'find-skills'
+    ],
     approvalPolicy: 'high-risk-only',
     webLearningPolicy: {
       enabled: true,
@@ -137,9 +163,17 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'browse',
     command: '/browse',
     displayName: '浏览器自动化流程',
+    version: '1.0.0',
     intentPatterns: ['浏览器', '截图', '页面测试', 'browse'],
     requiredMinistries: ['libu-router', 'bingbu-ops', 'libu-docs'],
-    allowedCapabilities: ['browse_page', 'http_request', 'read_local_file', 'list_directory', 'local-analysis'],
+    allowedCapabilities: [
+      'browse_page',
+      'http_request',
+      'read_local_file',
+      'list_directory',
+      'local-analysis',
+      'find-skills'
+    ],
     approvalPolicy: 'all-actions',
     webLearningPolicy: {
       enabled: true,
@@ -164,6 +198,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'ship',
     command: '/ship',
     displayName: '发布流程',
+    version: '1.0.0',
     intentPatterns: ['发布', '上线', 'ship', 'merge', 'deploy'],
     requiredMinistries: ['libu-router', 'bingbu-ops', 'libu-docs', 'xingbu-review'],
     allowedCapabilities: [
@@ -173,7 +208,8 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
       'http_request',
       'read_local_file',
       'list_directory',
-      'local-analysis'
+      'local-analysis',
+      'find-skills'
     ],
     approvalPolicy: 'all-actions',
     webLearningPolicy: {
@@ -199,9 +235,10 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     id: 'retro',
     command: '/retro',
     displayName: '复盘流程',
+    version: '1.0.0',
     intentPatterns: ['复盘', 'retro', '总结经验', '回顾'],
     requiredMinistries: ['libu-router', 'libu-docs', 'xingbu-review', 'gongbu-code'],
-    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis'],
+    allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
       enabled: true,
@@ -232,6 +269,17 @@ export interface WorkflowResolution {
 
 export function listWorkflowPresets(): WorkflowPresetDefinition[] {
   return WORKFLOW_PRESETS;
+}
+
+export function listWorkflowVersions(): WorkflowVersionRecord[] {
+  const updatedAt = new Date().toISOString();
+  return WORKFLOW_PRESETS.map(preset => ({
+    workflowId: preset.id,
+    version: preset.version ?? '1.0.0',
+    status: 'active',
+    updatedAt,
+    changelog: ['initial-registry-baseline']
+  }));
 }
 
 export function resolveWorkflowPreset(goal: string): WorkflowResolution {

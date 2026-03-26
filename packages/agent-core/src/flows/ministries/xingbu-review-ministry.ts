@@ -76,8 +76,11 @@ export class XingbuReviewMinistry {
           ReviewDecisionSchema,
           {
             role: 'reviewer',
+            modelId: this.context.currentWorker?.defaultModel,
+            taskId: this.context.taskId,
             thinking: this.context.thinking.reviewer,
             temperature: 0.1,
+            budgetState: this.context.budgetState,
             onUsage: usage => {
               this.context.onUsage?.({
                 usage,

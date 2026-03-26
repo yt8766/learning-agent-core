@@ -1,21 +1,27 @@
 import { ModelRouteDecision, WorkerDomain } from '@agent/shared';
 
-import { WorkerRegistry } from './worker-registry';
+import { isFreshnessSensitiveGoal } from '../shared/prompts/temporal-context';
+import { WorkerRegistry, WorkerSelectionConstraints } from './worker-registry';
 
 export class ModelRoutingPolicy {
   constructor(private readonly workerRegistry: WorkerRegistry) {}
 
-  resolveRoute(ministry: WorkerDomain, goal: string): ModelRouteDecision | undefined {
-    const worker = this.workerRegistry.getPrimaryWorker(ministry);
+  resolveRoute(
+    ministry: WorkerDomain,
+    goal: string,
+    constraints?: WorkerSelectionConstraints
+  ): ModelRouteDecision | undefined {
+    const worker = this.workerRegistry.getPrimaryWorker(ministry, goal, constraints);
     if (!worker) {
       return undefined;
     }
 
     const lowered = goal.toLowerCase();
+    const freshnessSensitive = isFreshnessSensitiveGoal(goal);
     const selectedModel =
       ministry === 'xingbu-review'
         ? 'glm-4.7'
-        : ministry === 'hubu-search' && (lowered.includes('latest') || lowered.includes('文档'))
+        : ministry === 'hubu-search' && (freshnessSensitive || lowered.includes('文档'))
           ? 'glm-4.7-flashx'
           : ministry === 'bingbu-ops' && (lowered.includes('发布') || lowered.includes('deploy'))
             ? 'glm-5'

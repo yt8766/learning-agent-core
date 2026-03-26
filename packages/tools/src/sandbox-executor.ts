@@ -20,6 +20,61 @@ function toWorkspacePath(inputPath: unknown): string {
   return resolved;
 }
 
+async function collectFiles(rootPath: string, matcher: (path: string) => boolean): Promise<string[]> {
+  const results: string[] = [];
+  const stack = [rootPath];
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current) {
+      continue;
+    }
+    let entries;
+    try {
+      entries = await readdir(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const nextPath = resolve(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(nextPath);
+        continue;
+      }
+      if (matcher(nextPath)) {
+        results.push(nextPath);
+      }
+    }
+  }
+  return results;
+}
+
+function tokenize(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}_-]+/u)
+        .map(token => token.trim())
+        .filter(token => token.length >= 2)
+    )
+  );
+}
+
+function scoreMatch(goal: string, text: string): number {
+  const queryTokens = tokenize(goal);
+  const documentTokens = new Set(tokenize(text));
+  if (!queryTokens.length || !documentTokens.size) {
+    return 0;
+  }
+  let matches = 0;
+  for (const token of queryTokens) {
+    if (documentTokens.has(token)) {
+      matches += 1;
+    }
+  }
+  return matches / queryTokens.length;
+}
+
 export class LocalSandboxExecutor implements SandboxExecutor {
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
     const startedAt = Date.now();
@@ -93,6 +148,136 @@ export class LocalSandboxExecutor implements SandboxExecutor {
           rawOutput: { goal, researchSummary }
         };
       }
+      case 'find-skills': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const limit = typeof request.input.limit === 'number' ? request.input.limit : 8;
+        const workspaceRoot = process.cwd();
+        const installedMetadataFiles = await collectFiles(
+          resolve(workspaceRoot, 'data', 'skills', 'installed'),
+          filePath => filePath.endsWith('.json')
+        );
+        const localSkillFiles = await collectFiles(resolve(workspaceRoot, 'skills'), filePath =>
+          filePath.endsWith('SKILL.md')
+        );
+        const remoteIndexFiles = await collectFiles(
+          resolve(workspaceRoot, 'data', 'skills', 'remote-sources'),
+          filePath => filePath.endsWith('index.json')
+        );
+
+        const installed = [];
+        for (const filePath of installedMetadataFiles) {
+          try {
+            const raw = await readFile(filePath, 'utf8');
+            const payload = JSON.parse(raw) as {
+              manifest?: {
+                id?: string;
+                name?: string;
+                description?: string;
+                summary?: string;
+                version?: string;
+                sourceId?: string;
+              };
+            };
+            const manifest = payload.manifest;
+            if (!manifest?.id) {
+              continue;
+            }
+            installed.push({
+              id: manifest.id,
+              displayName: manifest.name ?? manifest.id,
+              kind: 'installed',
+              version: manifest.version,
+              sourceId: manifest.sourceId,
+              path: relative(workspaceRoot, filePath),
+              score: scoreMatch(
+                goal,
+                [manifest.id, manifest.name, manifest.description, manifest.summary].filter(Boolean).join(' ')
+              )
+            });
+          } catch {
+            continue;
+          }
+        }
+
+        const local = [];
+        for (const filePath of localSkillFiles) {
+          try {
+            const raw = await readFile(filePath, 'utf8');
+            const firstHeading = raw
+              .split('\n')
+              .find(line => line.trim().startsWith('#'))
+              ?.replace(/^#+\s*/, '')
+              .trim();
+            local.push({
+              id: relative(resolve(workspaceRoot, 'skills'), dirname(filePath)),
+              displayName: firstHeading || relative(workspaceRoot, dirname(filePath)),
+              kind: 'local-manifest',
+              path: relative(workspaceRoot, filePath),
+              score: scoreMatch(goal, `${firstHeading ?? ''} ${raw.slice(0, 400)}`)
+            });
+          } catch {
+            continue;
+          }
+        }
+
+        const remote = [];
+        for (const filePath of remoteIndexFiles) {
+          try {
+            const raw = await readFile(filePath, 'utf8');
+            const payload = JSON.parse(raw) as {
+              manifests?: Array<{
+                id?: string;
+                name?: string;
+                description?: string;
+                summary?: string;
+                version?: string;
+                sourceId?: string;
+                artifactUrl?: string;
+              }>;
+            };
+            for (const manifest of payload.manifests ?? []) {
+              if (!manifest.id) {
+                continue;
+              }
+              remote.push({
+                id: manifest.id,
+                displayName: manifest.name ?? manifest.id,
+                kind: 'remote-manifest',
+                version: manifest.version,
+                sourceId: manifest.sourceId,
+                artifactUrl: manifest.artifactUrl,
+                path: relative(workspaceRoot, filePath),
+                score: scoreMatch(
+                  goal,
+                  [manifest.id, manifest.name, manifest.description, manifest.summary].filter(Boolean).join(' ')
+                )
+              });
+            }
+          } catch {
+            continue;
+          }
+        }
+
+        const suggestions = [...installed, ...local, ...remote]
+          .filter(item => item.score > 0)
+          .sort((left, right) => right.score - left.score || left.displayName.localeCompare(right.displayName))
+          .slice(0, limit);
+
+        return {
+          outputSummary: suggestions.length
+            ? `Found ${suggestions.length} local skill matches for "${goal}"`
+            : `No local skill matches found for "${goal}"`,
+          rawOutput: {
+            goal,
+            suggestions,
+            scanned: {
+              installedMetadataFiles: installedMetadataFiles.length,
+              localSkillFiles: localSkillFiles.length,
+              remoteIndexFiles: remoteIndexFiles.length
+            }
+          }
+        };
+      }
       case 'collect_research_source': {
         const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
         const url = typeof request.input.url === 'string' ? request.input.url : 'https://example.com/';
@@ -117,9 +302,80 @@ export class LocalSandboxExecutor implements SandboxExecutor {
       case 'browse_page': {
         const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
         const url = typeof request.input.url === 'string' ? request.input.url : 'http://localhost:3000';
+        const createdAt = new Date().toISOString();
+        const sessionId = `browser_${Date.now()}`;
+        const replayDir = toWorkspacePath(`data/browser-replays/${sessionId}`);
+        const artifactPath = resolve(replayDir, 'replay.json');
+        const snapshotPath = resolve(replayDir, 'snapshot.html');
+        const screenshotPath = resolve(replayDir, 'screenshot.txt');
+        const steps = [
+          {
+            id: 'open_page',
+            title: 'Open page',
+            status: 'completed' as const,
+            at: createdAt,
+            summary: `Opened ${url}`,
+            artifactRef: snapshotPath
+          },
+          {
+            id: 'wait_for_ready',
+            title: 'Wait for ready',
+            status: 'completed' as const,
+            at: createdAt,
+            summary: 'Document readyState reached complete'
+          },
+          {
+            id: 'capture_snapshot',
+            title: 'Capture snapshot',
+            status: 'completed' as const,
+            at: createdAt,
+            summary: 'Captured DOM snapshot and screenshot placeholder',
+            artifactRef: screenshotPath
+          },
+          {
+            id: 'collect_dom_summary',
+            title: 'Collect DOM summary',
+            status: 'completed' as const,
+            at: createdAt,
+            summary: `Prepared page summary for "${goal}"`
+          }
+        ];
+        const replayArtifact = {
+          sessionId,
+          url,
+          goal,
+          createdAt,
+          simulated: true,
+          snapshotSummary: `已完成对 ${url} 的模拟浏览，并生成页面快照摘要。`,
+          snapshotRef: snapshotPath,
+          screenshotRef: screenshotPath,
+          stepTrace: steps.map(step => step.id),
+          steps
+        };
+        await mkdir(replayDir, { recursive: true });
+        await writeFile(
+          snapshotPath,
+          `<!doctype html><html><body><h1>Replay Snapshot</h1><p>URL: ${url}</p><p>Goal: ${goal}</p></body></html>`
+        );
+        await writeFile(
+          screenshotPath,
+          `Replay screenshot placeholder for ${url}\nGenerated at ${createdAt}\nGoal: ${goal}\n`
+        );
+        await writeFile(artifactPath, JSON.stringify(replayArtifact, null, 2));
         return {
           outputSummary: `Browser automation simulated visit to ${url} for "${goal}"`,
-          rawOutput: { url, goal, simulated: true }
+          rawOutput: {
+            url,
+            goal,
+            simulated: true,
+            sessionId,
+            snapshotSummary: replayArtifact.snapshotSummary,
+            artifactRef: artifactPath,
+            snapshotRef: snapshotPath,
+            screenshotRef: screenshotPath,
+            stepTrace: replayArtifact.stepTrace,
+            steps
+          }
         };
       }
       case 'run_terminal': {

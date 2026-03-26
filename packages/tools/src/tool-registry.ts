@@ -62,6 +62,16 @@ const DEFAULT_TOOLS: ToolDefinition[] = [
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, researchSummary: { type: 'string' } } }
   },
   {
+    name: 'find-skills',
+    description: 'Discover installed, local, and cached remote skills that match the current goal.',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    inputSchema: { type: 'object', properties: { goal: { type: 'string' }, limit: { type: 'number' } } }
+  },
+  {
     name: 'collect_research_source',
     description: 'Collect a structured summary from an approved research source.',
     category: 'knowledge',

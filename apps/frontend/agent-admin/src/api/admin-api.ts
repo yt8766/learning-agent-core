@@ -66,13 +66,172 @@ export async function getEvidenceCenter() {
   return request<PlatformConsoleRecord['evidence']>('/evidence/center');
 }
 
+export async function getBrowserReplay(sessionId: string) {
+  return request<Record<string, unknown>>(`/platform/browser-replays/${sessionId}`);
+}
+
 export async function getConnectorsCenter() {
   return request<PlatformConsoleRecord['connectors']>('/platform/connectors-center');
+}
+
+export async function getSkillSourcesCenter() {
+  return request<PlatformConsoleRecord['skillSources']>('/platform/skill-sources-center');
+}
+
+export async function installSkill(manifestId: string, sourceId?: string) {
+  return request<PlatformConsoleRecord['skillSources']['receipts'][number]>('/platform/skill-sources-center/install', {
+    method: 'POST',
+    body: JSON.stringify({
+      manifestId,
+      sourceId,
+      actor: 'agent-admin-user'
+    })
+  });
+}
+
+export async function approveSkillInstall(receiptId: string) {
+  return request<PlatformConsoleRecord['skillSources']['receipts'][number]>(
+    `/platform/skill-sources-center/receipts/${receiptId}/approve`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ actor: 'agent-admin-user' })
+    }
+  );
+}
+
+export async function enableSkillSource(sourceId: string) {
+  return request<PlatformConsoleRecord['skillSources']['sources'][number]>(
+    `/platform/skill-sources-center/${sourceId}/enable`,
+    { method: 'POST' }
+  );
+}
+
+export async function disableSkillSource(sourceId: string) {
+  return request<PlatformConsoleRecord['skillSources']['sources'][number]>(
+    `/platform/skill-sources-center/${sourceId}/disable`,
+    { method: 'POST' }
+  );
+}
+
+export async function syncSkillSource(sourceId: string) {
+  return request<PlatformConsoleRecord['skillSources']['sources'][number]>(
+    `/platform/skill-sources-center/${sourceId}/sync`,
+    { method: 'POST' }
+  );
+}
+
+export async function rejectSkillInstall(receiptId: string, reason?: string) {
+  return request<PlatformConsoleRecord['skillSources']['receipts'][number]>(
+    `/platform/skill-sources-center/receipts/${receiptId}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ actor: 'agent-admin-user', reason })
+    }
+  );
+}
+
+export async function getCompanyAgentsCenter() {
+  return request<PlatformConsoleRecord['companyAgents']>('/platform/company-agents-center');
+}
+
+export async function enableCompanyAgent(workerId: string) {
+  return request<PlatformConsoleRecord['companyAgents'][number]>(`/platform/company-agents-center/${workerId}/enable`, {
+    method: 'POST'
+  });
+}
+
+export async function disableCompanyAgent(workerId: string) {
+  return request<PlatformConsoleRecord['companyAgents'][number]>(
+    `/platform/company-agents-center/${workerId}/disable`,
+    {
+      method: 'POST'
+    }
+  );
 }
 
 export async function closeConnectorSession(connectorId: string) {
   return request<{ connectorId: string; closed: boolean }>(`/platform/connectors-center/${connectorId}/close-session`, {
     method: 'POST'
+  });
+}
+
+export async function refreshConnectorDiscovery(connectorId: string) {
+  return request<PlatformConsoleRecord['connectors'][number]>(`/platform/connectors-center/${connectorId}/refresh`, {
+    method: 'POST'
+  });
+}
+
+export async function enableConnector(connectorId: string) {
+  return request<PlatformConsoleRecord['connectors'][number]>(`/platform/connectors-center/${connectorId}/enable`, {
+    method: 'POST'
+  });
+}
+
+export async function disableConnector(connectorId: string) {
+  return request<PlatformConsoleRecord['connectors'][number]>(`/platform/connectors-center/${connectorId}/disable`, {
+    method: 'POST'
+  });
+}
+
+export async function setConnectorPolicy(
+  connectorId: string,
+  effect: 'allow' | 'deny' | 'require-approval' | 'observe'
+) {
+  return request<PlatformConsoleRecord['connectors'][number]>(
+    `/platform/connectors-center/${connectorId}/policy/${effect}`,
+    {
+      method: 'POST'
+    }
+  );
+}
+
+export async function clearConnectorPolicy(connectorId: string) {
+  return request<PlatformConsoleRecord['connectors'][number]>(
+    `/platform/connectors-center/${connectorId}/policy/reset`,
+    {
+      method: 'POST'
+    }
+  );
+}
+
+export async function setCapabilityPolicy(
+  connectorId: string,
+  capabilityId: string,
+  effect: 'allow' | 'deny' | 'require-approval' | 'observe'
+) {
+  return request<PlatformConsoleRecord['connectors'][number]>(
+    `/platform/connectors-center/${connectorId}/capabilities/${encodeURIComponent(capabilityId)}/policy/${effect}`,
+    {
+      method: 'POST'
+    }
+  );
+}
+
+export async function clearCapabilityPolicy(connectorId: string, capabilityId: string) {
+  return request<PlatformConsoleRecord['connectors'][number]>(
+    `/platform/connectors-center/${connectorId}/capabilities/${encodeURIComponent(capabilityId)}/policy/reset`,
+    {
+      method: 'POST'
+    }
+  );
+}
+
+export async function configureConnector(params: {
+  templateId: 'github-mcp-template' | 'browser-mcp-template';
+  transport: 'stdio' | 'http';
+  displayName?: string;
+  endpoint?: string;
+  command?: string;
+  args?: string[];
+  apiKey?: string;
+}) {
+  return request<PlatformConsoleRecord['connectors'][number]>(`/platform/connectors-center/configure`, {
+    method: 'POST',
+    body: JSON.stringify({
+      ...params,
+      actor: 'agent-admin-user',
+      enabled: true
+    })
   });
 }
 
@@ -123,16 +282,17 @@ export async function exportEvalsCenter(params: {
 }
 
 export async function getTaskBundle(taskId: string): Promise<TaskBundle> {
-  const [task, plan, agents, messages, review, traces] = await Promise.all([
+  const [task, plan, agents, messages, review, traces, audit] = await Promise.all([
     request<TaskRecord>(`/tasks/${taskId}`),
     request<TaskPlan>(`/tasks/${taskId}/plan`).catch(() => undefined),
     request<AgentStateRecord[]>(`/tasks/${taskId}/agents`).catch(() => []),
     request<AgentMessageRecord[]>(`/tasks/${taskId}/messages`).catch(() => []),
     request<ReviewRecord>(`/tasks/${taskId}/review`).catch(() => undefined),
-    request<TraceRecord[]>(`/tasks/${taskId}/traces`).catch(() => [])
+    request<TraceRecord[]>(`/tasks/${taskId}/traces`).catch(() => []),
+    request<TaskBundle['audit']>(`/tasks/${taskId}/audit`).catch(() => undefined)
   ]);
 
-  return { task, plan, agents, messages, review, traces };
+  return { task, plan, agents, messages, review, traces, audit };
 }
 
 export async function createTask(goal: string) {

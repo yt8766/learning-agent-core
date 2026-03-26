@@ -16,7 +16,8 @@ import {
   TaskStatus,
   UpdateChatSessionDto
 } from '@agent/shared';
-import { RuntimeStateRepository } from '@agent/memory';
+import { ContextStrategy } from '@agent/config';
+import { MemorySearchService, RuntimeStateRepository } from '@agent/memory';
 
 import { LlmProvider } from '../adapters/llm/llm-provider';
 import { createLearningGraph } from '../graphs/learning.graph';
@@ -44,7 +45,9 @@ export class SessionCoordinator {
   constructor(
     private readonly orchestrator: AgentOrchestrator,
     private readonly runtimeStateRepository: RuntimeStateRepository,
-    llmProvider: LlmProvider
+    llmProvider: LlmProvider,
+    private readonly contextStrategy?: ContextStrategy,
+    private readonly memorySearchService?: MemorySearchService
   ) {
     this.llm = llmProvider;
   }
@@ -290,7 +293,7 @@ export class SessionCoordinator {
       await this.compressConversationIfNeeded(sessionId);
       const task = await this.orchestrator.createTask({
         goal: input,
-        context: this.buildConversationContext(sessionId),
+        context: await this.buildConversationContext(sessionId, input),
         constraints: [],
         sessionId
       });
@@ -316,6 +319,12 @@ export class SessionCoordinator {
     session.updatedAt = new Date().toISOString();
 
     const checkpoint = this.checkpoints.get(sessionId) ?? this.createCheckpoint(sessionId, task.id);
+    if (checkpoint.taskId && checkpoint.taskId !== task.id) {
+      checkpoint.traceCursor = 0;
+      checkpoint.messageCursor = 0;
+      checkpoint.approvalCursor = 0;
+      checkpoint.learningCursor = 0;
+    }
     const sessionMessages = this.messages.get(sessionId) ?? [];
 
     for (const trace of task.trace.slice(checkpoint.traceCursor)) {
@@ -364,13 +373,7 @@ export class SessionCoordinator {
         continue;
       }
 
-      const hasExistingSummary = sessionMessages.some(
-        message => message.role === 'assistant' && message.content === taskMessage.content
-      );
-
-      if (!hasExistingSummary) {
-        this.addMessage(sessionId, 'assistant', taskMessage.content, taskMessage.from);
-      }
+      this.addMessage(sessionId, 'assistant', taskMessage.content, taskMessage.from);
     }
 
     for (const approval of task.approvals.slice(checkpoint.approvalCursor)) {
@@ -406,13 +409,17 @@ export class SessionCoordinator {
     }
 
     checkpoint.taskId = task.id;
+    checkpoint.context = task.context;
     checkpoint.runId = task.runId;
     checkpoint.skillId = task.skillId;
     checkpoint.skillStage = task.skillStage;
     checkpoint.resolvedWorkflow = task.resolvedWorkflow;
+    checkpoint.subgraphTrail = task.subgraphTrail;
     checkpoint.currentNode = task.currentNode;
     checkpoint.currentMinistry = task.currentMinistry;
     checkpoint.currentWorker = task.currentWorker;
+    checkpoint.chatRoute = task.chatRoute;
+    checkpoint.queueState = task.queueState;
     checkpoint.pendingAction = task.pendingAction;
     checkpoint.pendingApproval = task.pendingApproval;
     checkpoint.approvalFeedback = task.approvalFeedback;
@@ -421,7 +428,10 @@ export class SessionCoordinator {
     checkpoint.reusedMemories = task.reusedMemories;
     checkpoint.reusedRules = task.reusedRules;
     checkpoint.reusedSkills = task.reusedSkills;
+    checkpoint.usedInstalledSkills = task.usedInstalledSkills;
+    checkpoint.usedCompanyWorkers = task.usedCompanyWorkers;
     checkpoint.learningEvaluation = task.learningEvaluation;
+    checkpoint.skillSearch = task.skillSearch;
     checkpoint.budgetState = task.budgetState;
     checkpoint.llmUsage = task.llmUsage;
     checkpoint.traceCursor = task.trace.length;
@@ -539,6 +549,7 @@ export class SessionCoordinator {
     const checkpoint: ChatCheckpointRecord = {
       sessionId,
       taskId,
+      context: undefined,
       traceCursor: 0,
       messageCursor: 0,
       approvalCursor: 0,
@@ -548,6 +559,12 @@ export class SessionCoordinator {
       },
       pendingApprovals: [],
       agentStates: [],
+      externalSources: [],
+      reusedMemories: [],
+      reusedRules: [],
+      reusedSkills: [],
+      usedInstalledSkills: [],
+      usedCompanyWorkers: [],
       createdAt: now,
       updatedAt: now
     };
@@ -555,10 +572,13 @@ export class SessionCoordinator {
     return checkpoint;
   }
 
-  private buildConversationContext(sessionId: string): string {
+  private async buildConversationContext(sessionId: string, query: string): Promise<string> {
     const session = this.requireSession(sessionId);
+    const checkpoint = this.getCheckpoint(sessionId);
     const messages = this.getMessages(sessionId);
-    const recentMessages = messages.slice(-CONTEXT_MESSAGE_WINDOW);
+    const recentTurns = this.contextStrategy?.recentTurns ?? CONTEXT_MESSAGE_WINDOW;
+    const ragTopK = this.contextStrategy?.ragTopK ?? 4;
+    const recentMessages = messages.slice(-recentTurns);
     const summaryBlock = session.compression?.summary
       ? [
           '\u4ee5\u4e0b\u662f\u8f83\u65e9\u804a\u5929\u8bb0\u5f55\u7684\u538b\u7f29\u6458\u8981\uff1a',
@@ -566,8 +586,99 @@ export class SessionCoordinator {
           '\u4ee5\u4e0b\u662f\u6700\u8fd1\u7684\u539f\u59cb\u6d88\u606f\uff1a'
         ].join('\n')
       : '';
+    const taskContextBlock = checkpoint?.context
+      ? [
+          '\u4ee5\u4e0b\u662f\u4e0a\u4e00\u8f6e\u4efb\u52a1\u7559\u4e0b\u7684\u7ed3\u6784\u5316\u4e0a\u4e0b\u6587\uff1a',
+          checkpoint.context
+        ].join('\n')
+      : '';
+    const memoryBlock =
+      checkpoint?.reusedMemories && checkpoint.reusedMemories.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u53ef\u76f4\u63a5\u590d\u7528\u7684\u5386\u53f2 memory \u7d22\u5f15\uff1a',
+            checkpoint.reusedMemories
+              .slice(0, ragTopK)
+              .map(item => `- ${item}`)
+              .join('\n')
+          ].join('\n')
+        : '';
+    const ruleBlock =
+      checkpoint?.reusedRules && checkpoint.reusedRules.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u4e0a\u4e00\u8f6e\u547d\u4e2d\u7684\u89c4\u5219\uff1a',
+            checkpoint.reusedRules
+              .slice(0, ragTopK)
+              .map(item => `- ${item}`)
+              .join('\n')
+          ].join('\n')
+        : '';
+    const skillBlock =
+      checkpoint?.reusedSkills && checkpoint.reusedSkills.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u4e0a\u4e00\u8f6e\u547d\u4e2d\u7684\u6280\u80fd\uff1a',
+            checkpoint.reusedSkills
+              .slice(0, ragTopK)
+              .map(item => `- ${item}`)
+              .join('\n')
+          ].join('\n')
+        : '';
+    const evidenceBlock =
+      checkpoint?.externalSources && checkpoint.externalSources.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u53ef\u53c2\u8003\u7684\u5386\u53f2\u8bc1\u636e\uff1a',
+            checkpoint.externalSources
+              .slice(0, ragTopK)
+              .map(
+                source =>
+                  `- [${source.trustClass}] ${source.summary}${source.sourceUrl ? ` (${source.sourceUrl})` : ''}`
+              )
+              .join('\n')
+          ].join('\n')
+        : '';
+    const learningBlock = checkpoint?.learningEvaluation
+      ? [
+          '\u4ee5\u4e0b\u662f\u4e0a\u4e00\u8f6e learning \u8bc4\u4f30\uff1a',
+          `- score: ${checkpoint.learningEvaluation.score}`,
+          `- confidence: ${checkpoint.learningEvaluation.confidence}`,
+          ...(checkpoint.learningEvaluation.notes ?? []).slice(0, ragTopK).map(note => `- ${note}`)
+        ].join('\n')
+      : '';
+    const retrieved = this.memorySearchService ? await this.memorySearchService.search(query, ragTopK) : undefined;
+    const retrievedMemoryBlock =
+      retrieved?.memories && retrieved.memories.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u672c\u8f6e\u6309\u5f53\u524d\u76ee\u6807\u518d\u68c0\u7d22\u51fa\u7684\u5386\u53f2 memory\uff1a',
+            retrieved.memories
+              .slice(0, ragTopK)
+              .map(item => `- ${item.summary}`)
+              .join('\n')
+          ].join('\n')
+        : '';
+    const retrievedRuleBlock =
+      retrieved?.rules && retrieved.rules.length > 0
+        ? [
+            '\u4ee5\u4e0b\u662f\u672c\u8f6e\u6309\u5f53\u524d\u76ee\u6807\u518d\u68c0\u7d22\u51fa\u7684\u89c4\u5219\uff1a',
+            retrieved.rules
+              .slice(0, ragTopK)
+              .map(item => `- ${item.summary}`)
+              .join('\n')
+          ].join('\n')
+        : '';
     const messageBlock = recentMessages.map(message => `${message.role}: ${message.content}`).join('\n');
-    return [summaryBlock, messageBlock].filter(Boolean).join('\n');
+    return [
+      taskContextBlock,
+      memoryBlock,
+      ruleBlock,
+      skillBlock,
+      evidenceBlock,
+      learningBlock,
+      retrievedMemoryBlock,
+      retrievedRuleBlock,
+      summaryBlock,
+      messageBlock
+    ]
+      .filter(Boolean)
+      .join('\n\n');
   }
 
   private buildThoughtChain(task: TaskRecord): ChatThoughtChainItem[] {

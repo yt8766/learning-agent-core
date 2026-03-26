@@ -25,15 +25,136 @@
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
 - `docs/*`：项目规范与模板文档
 
+## Runtime Profiles
+
+当前运行时支持 4 个 profile，用于区分平台、公司、个人和 CLI 的默认策略：
+
+- `platform`
+  - 平台宿主默认 profile
+  - 默认 `balanced approval + controlled-first source policy`
+- `company`
+  - 公司 Agent 默认 profile
+  - 默认 `strict approval + internal-only source policy`
+- `personal`
+  - 个人 Agent 默认 profile
+  - 默认 `auto approval + open-web-allowed source policy`
+- `cli`
+  - 命令行/REPL 默认 profile
+  - 默认 `balanced approval + controlled-first source policy`
+
+这些 profile 不只影响数据目录，还会影响：
+
+- budget policy
+- source policy
+- skill source preset
+- connector preset
+- worker routing / company specialist selection
+
+## Context Strategy
+
+当前运行时已引入基础 `ContextStrategy`，用于统一长对话和跨轮任务的上下文切片策略。
+
+- 会话压缩摘要
+- 最近若干轮原始消息
+- top-K 历史 evidence
+- top-K reused memory / rule / skill
+- 上一轮 learning 评估摘要
+
+这层策略先以本地启发式实现为主，后续再接入向量检索与语义缓存。
+
+## Skills / Deep Agents 规范
+
+仓库级代理 skill 现在默认按 `SKILL.md + frontmatter` 规范组织，并由本地后端 loader 直接解析：
+
+- `skills/*/SKILL.md`
+  - 顶部必须带 frontmatter
+  - 最少声明 `name`、`description`
+  - 推荐声明 `version`、`publisher`、`license`、`compatibility`、`metadata`、`allowed-tools`
+- 本地能力不足检测会直接读取这些 skill 文档，形成：
+  - local skill suggestions
+  - 本地安全评估
+  - 低风险自动安装判定
+  - 安装后治理建议
+
+当前检索层约定继续收敛到统一抽象：
+
+- `MemorySearchService`
+  - 面向 runtime / session / ministries 提供统一 memory/rule 检索入口
+  - 同时参与 task 创建阶段的 `reusedMemories / reusedRules` 复用判定
+  - 也会在 learning 评分前做 reuse enrichment
+- `LocalSkillSearch`
+  - 当前后端先提供本地版 skill 搜索候选
+  - 基于 `SkillRegistry + 本地 manifests + profile/source policy`
+  - 先服务于 capability gap 分析与 admin/task 视图，不依赖远程 marketplace
+- `VectorIndexRepository`
+  - 作为后续向量库接入点
+  - 当前默认先接本地 `LocalVectorIndexRepository`
+  - 通过 token overlap 做轻量排序，再为后续向量库留出替换位
+
+本地 skill 安装前的安全评估当前已经结构化，至少会产出：
+
+- `verdict`
+- `trustScore`
+- `maxRiskLevel`
+- `riskyTools`
+- `missingDeclarations`
+
+并同时考虑：
+
+- source trust class
+- 当前 runtime profile 是否允许该来源
+- `allowed-tools`
+- `requiredConnectors`
+- `license`
+- `compatibility`
+
+## Budget Guard 与 Semantic Cache
+
+当前 runtime 已补上两条默认约束，用于支撑后续的成本治理和上下文优化：
+
+- `BudgetGuard`
+  - 每个任务都带 `costBudgetUsd`
+  - 会持续累计 `costConsumedUsd / costConsumedCny`
+  - 超预算后优先切到 `fallbackModelId`
+- `Semantic Cache`
+  - 当前先做精确 prompt 指纹缓存
+  - 命中后直接复用文本结果
+  - 默认缓存文件落在仓库根级 `data/runtime/semantic-cache.json`
+
+约束：
+
+- 预算状态优先写入 `TaskRecord.budgetState`
+- 精确 prompt 缓存只作为第一层，不替代后续向量语义缓存
+- 运行时入口应复用统一的 `BudgetPolicy` 和 `semanticCacheFilePath`，不要各自发明路径和字段
+
 ## 开发入口
 
 - 后端开发：`pnpm --dir apps/backend/agent-server start:dev`
 - 后端生产：`pnpm --dir apps/backend/agent-server start:prod`
-- 聊天前端：`pnpm --dir apps/frontend/agent-chat dev`
-- 管理前端：`pnpm --dir apps/frontend/agent-admin dev`
+- 聊天前端：`pnpm --dir apps/frontend/agent-chat dev`（默认 `127.0.0.1:5173`）
+- 管理前端：`pnpm --dir apps/frontend/agent-admin dev`（默认 `127.0.0.1:5174`）
 - 库构建：`pnpm build:lib`
 - 单元测试：`pnpm test`
 - 测试监听：`pnpm test:watch`
+
+## 磁盘清理约束
+
+如果本地磁盘空间不足，默认只清理仓库内可重建内容：
+
+- 构建产物
+- 临时缓存
+- 日志
+- 测试生成文件
+
+不要为了释放空间删除用户浏览器登录态或 profile 数据。特别是禁止触碰：
+
+- `~/Library/Application Support/Google/Chrome`
+- `~/Library/Caches/Google/Chrome`
+
+根级清理脚本 `pnpm clean:lib` 现在也内置了这层保护：
+
+- 只清理仓库内构建产物
+- 如果目标路径命中上述 Chrome 目录，会直接拒绝执行
 
 ## CI 说明
 
@@ -130,7 +251,12 @@
 - `agent-chat` 采用 OpenClaw 模态，作为前线作战面
 - `agent-admin` 做平台控制台，作为后台指挥面
 - 当前系统按“皇帝-首辅-六部”方向收敛，新增实现优先使用 `supervisor / ministry / workflow` 语义
-- 审批、Evidence、Learning、Think、ThoughtChain 不要从消息主链移出去
+- `agent-chat` 的消息入口默认采用当前项目版 first-match 路由：
+  - 显式 workflow 命令、非通用 preset、修改类请求、Figma 类请求走多 Agent 工作流
+  - 普通文本 prompt 默认优先走 direct-reply 流式聊天
+- `agent-chat` 的主聊天区优先保持顺滑对话体验：
+  - 默认只展示用户消息、Agent 最终回复、必要审批/终止卡
+  - Think、ThoughtChain、Evidence、Learning、Skill、Route 等运行态信息优先收纳到 workbench / runtime panel
 - 共享包改动后，优先执行 `pnpm build:lib`
 - 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skills` 混用
 

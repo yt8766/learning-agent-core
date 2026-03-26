@@ -95,4 +95,56 @@ describe('loadSettings', () => {
       ])
     );
   });
+
+  it('支持显式 workspaceRoot 和 overrides 注入', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        PORT: '4000'
+      } as NodeJS.ProcessEnv,
+      overrides: {
+        memoryFilePath: 'tmp/personal-memory.jsonl',
+        skillsRoot: 'tmp/personal-skills'
+      }
+    });
+
+    expect(settings.port).toBe(4000);
+    expect(toPosixPath(settings.memoryFilePath)).toBe(toPosixPath(join(REPO_ROOT, 'tmp', 'personal-memory.jsonl')));
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'tmp', 'personal-skills')));
+  });
+
+  it('显式传入后端子目录作为 workspaceRoot 时，仍会自动提升到 monorepo 根并读取根 .env', () => {
+    const settings = loadSettings({
+      workspaceRoot: BACKEND_AGENT_SERVER_CWD,
+      env: {
+        PORT: '4100'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(toPosixPath(settings.workspaceRoot)).toBe(toPosixPath(REPO_ROOT));
+    expect(settings.zhipuApiKey).toBeTruthy();
+    expect(toPosixPath(settings.tasksStateFilePath)).toBe(
+      toPosixPath(join(REPO_ROOT, 'data', 'runtime', 'tasks-state.json'))
+    );
+  });
+
+  it('personal profile applies isolated data paths and relaxed policy defaults', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      profile: 'personal',
+      env: {} as NodeJS.ProcessEnv
+    });
+
+    expect(settings.profile).toBe('personal');
+    expect(toPosixPath(settings.memoryFilePath)).toBe(
+      toPosixPath(join(REPO_ROOT, 'data', 'agent-personal', 'memory', 'records.jsonl'))
+    );
+    expect(settings.policy.approvalMode).toBe('auto');
+    expect(settings.policy.sourcePolicyMode).toBe('open-web-allowed');
+    expect(settings.policy.budget.stepBudget).toBe(12);
+    expect(settings.policy.budget.maxCostPerTaskUsd).toBe(1);
+    expect(settings.policy.budget.fallbackModelId).toBe('glm-4.7-flash');
+    expect(settings.contextStrategy.ragTopK).toBe(4);
+    expect(settings.contextStrategy.recentTurns).toBe(10);
+  });
 });

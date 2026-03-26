@@ -24,6 +24,10 @@ export class TasksService {
     return this.runtimeService.listTaskTraces(taskId);
   }
 
+  getTaskAudit(taskId: string) {
+    return this.runtimeService.getTaskAudit(taskId);
+  }
+
   listTaskAgents(taskId: string) {
     return this.runtimeService.listTaskAgents(taskId);
   }
@@ -38,6 +42,10 @@ export class TasksService {
 
   getTaskReview(taskId: string) {
     return this.runtimeService.getTaskReview(taskId);
+  }
+
+  getTaskLocalSkillSuggestions(taskId: string) {
+    return this.runtimeService.getTaskLocalSkillSuggestions(taskId);
   }
 
   retryTask(taskId: string) {

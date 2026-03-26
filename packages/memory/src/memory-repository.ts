@@ -16,7 +16,11 @@ export interface MemoryRepository {
 }
 
 export class FileMemoryRepository implements MemoryRepository {
-  private readonly filePath = resolve(loadSettings().memoryFilePath);
+  private readonly filePath: string;
+
+  constructor(filePath = loadSettings().memoryFilePath) {
+    this.filePath = resolve(filePath);
+  }
 
   async append(record: MemoryRecord): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });

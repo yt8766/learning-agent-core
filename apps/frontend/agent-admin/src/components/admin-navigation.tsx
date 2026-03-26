@@ -24,7 +24,9 @@ const NAV_ITEMS: Array<{ key: DashboardPageKey; label: string; description: stri
   { key: 'archives', label: 'Archive Center', description: '长期归档、趋势窗口与导出管理' },
   { key: 'skills', label: 'Skill Lab', description: '技能版本、成功率、晋升与禁用' },
   { key: 'evidence', label: 'Evidence Center', description: '来源、证据链、trace 与可信度' },
-  { key: 'connectors', label: 'Connector & Policy', description: 'MCP transport、capability 与策略健康' }
+  { key: 'connectors', label: 'Connector & Policy', description: 'MCP transport、capability 与策略健康' },
+  { key: 'skillSources', label: 'Skill Sources', description: '市场、来源优先级、安装回执与本地落库' },
+  { key: 'companyAgents', label: 'Company Agents', description: '公司专员、归属六部、连接器依赖与治理状态' }
 ];
 
 function statusVariant(status: string) {

@@ -200,6 +200,127 @@ describe('SessionCoordinator', () => {
     expect(runtimeRepository.save).toHaveBeenCalled();
   });
 
+  it('创建任务时会把 memory search 结果注入 context', async () => {
+    const runtimeRepository = createRuntimeRepository();
+    const orchestrator = createOrchestrator();
+    const coordinator = new SessionCoordinator(
+      orchestrator as never,
+      runtimeRepository as never,
+      createLlmProvider() as never,
+      undefined,
+      {
+        search: vi.fn(async () => ({
+          memories: [
+            {
+              id: 'mem_build_policy',
+              type: 'success_case',
+              taskId: 'task_prev',
+              summary: '构建前先做类型检查',
+              content: 'Run tsc before build.',
+              tags: ['build'],
+              qualityScore: 0.9,
+              createdAt: '2026-03-22T00:00:00.000Z',
+              status: 'active'
+            }
+          ],
+          rules: [
+            {
+              id: 'rule_build_gate',
+              summary: '发布前必须通过构建',
+              ruleText: 'Build must pass before release.',
+              tags: ['release'],
+              createdAt: '2026-03-22T00:00:00.000Z',
+              status: 'active'
+            }
+          ]
+        }))
+      } as never
+    );
+
+    const session = await coordinator.createSession({ title: '检索注入', message: '帮我构建并检查发布风险' });
+
+    await flushAsyncWork();
+
+    const createTaskArg = (orchestrator.createTask as any).mock.calls[0][0];
+    expect(createTaskArg.goal).toBe('帮我构建并检查发布风险');
+    expect(createTaskArg.sessionId).toBe(session.id);
+    expect(createTaskArg.constraints).toEqual([]);
+    expect(createTaskArg.context).toContain('本轮按当前目标再检索出的历史 memory');
+    expect(createTaskArg.context).toContain('构建前先做类型检查');
+    expect(createTaskArg.context).toContain('发布前必须通过构建');
+  });
+
+  it('会保留不同轮次中内容相同的 assistant 最终回复', async () => {
+    const runtimeRepository = createRuntimeRepository();
+    const listeners = new Set<(task: any) => void>();
+    const tokenListeners = new Set<(event: any) => void>();
+    let taskCount = 0;
+    const orchestrator = {
+      initialize: vi.fn(async () => undefined),
+      subscribe: vi.fn((listener: (task: any) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      }),
+      subscribeTokens: vi.fn((listener: (event: any) => void) => {
+        tokenListeners.add(listener);
+        return () => tokenListeners.delete(listener);
+      }),
+      createTask: vi.fn(async (dto: any) => {
+        taskCount += 1;
+        const task = {
+          id: `task-${taskCount}`,
+          goal: dto.goal,
+          sessionId: dto.sessionId,
+          status: TaskStatus.COMPLETED,
+          trace: [],
+          approvals: [],
+          agentStates: [],
+          messages: [
+            {
+              id: `task-msg-${taskCount}`,
+              taskId: `task-${taskCount}`,
+              from: 'manager',
+              to: 'manager',
+              type: 'summary',
+              content: '我是一个多 Agent 协作助手。',
+              createdAt: `2026-03-22T00:00:0${taskCount}.000Z`
+            }
+          ],
+          result: '我是一个多 Agent 协作助手。',
+          createdAt: `2026-03-22T00:00:0${taskCount}.000Z`,
+          updatedAt: `2026-03-22T00:00:0${taskCount}.000Z`,
+          currentStep: 'finish',
+          retryCount: 0,
+          maxRetries: 1
+        };
+
+        listeners.forEach(listener => listener(task));
+        return task;
+      }),
+      getTask: vi.fn(() => undefined),
+      ensureLearningCandidates: vi.fn((task: any) => task.learningCandidates ?? []),
+      confirmLearning: vi.fn(),
+      applyApproval: vi.fn()
+    };
+
+    const coordinator = new SessionCoordinator(
+      orchestrator as never,
+      runtimeRepository as never,
+      createLlmProvider() as never
+    );
+
+    const session = await coordinator.createSession({ title: '重复回复测试' });
+    await coordinator.appendMessage(session.id, { message: '你是谁' });
+    await flushAsyncWork();
+    await coordinator.appendMessage(session.id, { message: '你是谁啊' });
+    await flushAsyncWork();
+
+    const assistantMessages = coordinator.getMessages(session.id).filter(message => message.role === 'assistant');
+    expect(assistantMessages).toHaveLength(2);
+    expect(assistantMessages[0]?.content).toBe('我是一个多 Agent 协作助手。');
+    expect(assistantMessages[1]?.content).toBe('我是一个多 Agent 协作助手。');
+  });
+
   it('创建空会话时只写入 session_started，不自动触发任务', async () => {
     const runtimeRepository = createRuntimeRepository();
     const orchestrator = createOrchestrator();
@@ -276,9 +397,62 @@ describe('SessionCoordinator', () => {
       expect.arrayContaining([expect.objectContaining({ type: 'conversation_compacted' })])
     );
 
-    const compactedContext = (coordinator as any).buildConversationContext(session.id);
+    const compactedContext = await (coordinator as any).buildConversationContext(session.id, '继续总结当前会话');
     expect(compactedContext).toContain('以下是较早聊天记录的压缩摘要：');
     expect(compactedContext).toContain('以下是最近的原始消息：');
+  });
+
+  it('buildConversationContext 会注入 checkpoint 中的 evidence、memory、learning 和上轮上下文', async () => {
+    const runtimeRepository = createRuntimeRepository();
+    const orchestrator = createOrchestrator();
+    const coordinator = new SessionCoordinator(
+      orchestrator as never,
+      runtimeRepository as never,
+      createLlmProvider() as never
+    );
+
+    const session = await coordinator.createSession({ title: 'context-slice', message: '请继续刚才的研究' });
+    await flushAsyncWork();
+
+    const checkpoint = coordinator.getCheckpoint(session.id)!;
+    checkpoint.context = '上轮已经确认要优先参考内部文档，再补充官方资料。';
+    checkpoint.reusedMemories = ['mem_internal_guideline'];
+    checkpoint.reusedRules = ['rule_safe_release'];
+    checkpoint.reusedSkills = ['skill_release_check'];
+    checkpoint.externalSources = [
+      {
+        id: 'ev-1',
+        taskId: 'task-1',
+        sourceType: 'web',
+        trustClass: 'official',
+        summary: 'React 官方文档对流式渲染的说明',
+        sourceUrl: 'https://react.dev',
+        linkedRunId: 'run-1',
+        createdAt: '2026-03-25T00:00:00.000Z'
+      }
+    ];
+    checkpoint.learningEvaluation = {
+      score: 0.92,
+      confidence: 'high',
+      notes: ['上轮内部资料命中率较高，应优先复用。'],
+      recommendedCandidateIds: [],
+      autoConfirmCandidateIds: [],
+      sourceSummary: {
+        externalSourceCount: 1,
+        internalSourceCount: 1,
+        reusedMemoryCount: 1,
+        reusedRuleCount: 1,
+        reusedSkillCount: 1
+      }
+    };
+
+    const builtContext = await (coordinator as any).buildConversationContext(session.id, '请继续刚才的研究');
+    expect(builtContext).toContain('以下是上一轮任务留下的结构化上下文：');
+    expect(builtContext).toContain('mem_internal_guideline');
+    expect(builtContext).toContain('rule_safe_release');
+    expect(builtContext).toContain('skill_release_check');
+    expect(builtContext).toContain('React 官方文档对流式渲染的说明');
+    expect(builtContext).toContain('learning 评估');
   });
 
   it('学习确认会把选中的候选写入 memory、rule 和 skill lab', async () => {

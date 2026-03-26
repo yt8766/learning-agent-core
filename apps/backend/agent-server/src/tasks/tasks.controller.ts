@@ -28,6 +28,11 @@ export class TasksController {
     return this.tasksService.listTaskTraces(id);
   }
 
+  @Get(':id/audit')
+  getTaskAudit(@Param('id') id: string) {
+    return this.tasksService.getTaskAudit(id);
+  }
+
   @Get(':id/agents')
   getTaskAgents(@Param('id') id: string) {
     return this.tasksService.listTaskAgents(id);
@@ -46,6 +51,11 @@ export class TasksController {
   @Get(':id/review')
   getTaskReview(@Param('id') id: string) {
     return this.tasksService.getTaskReview(id);
+  }
+
+  @Get(':id/local-skill-suggestions')
+  getTaskLocalSkillSuggestions(@Param('id') id: string) {
+    return this.tasksService.getTaskLocalSkillSuggestions(id);
   }
 
   @Post(':id/retry')

@@ -3,6 +3,7 @@
 import { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import {
   buildFallbackSupervisorPlan,
+  buildSupervisorDirectReplyUserPrompt,
   buildSupervisorPlanUserPrompt,
   SUPERVISOR_DIRECT_REPLY_PROMPT,
   SUPERVISOR_PLAN_SYSTEM_PROMPT,
@@ -11,6 +12,13 @@ import {
 } from '../../supervisor';
 import { buildDeliverySummaryUserPrompt, DELIVERY_SUMMARY_SYSTEM_PROMPT } from '../../delivery';
 import { BaseAgent } from '../base-agent';
+
+function appendTaskContext(content: string, taskContext?: string): string {
+  if (!taskContext) {
+    return content;
+  }
+  return [content, '以下是当前任务上下文：', taskContext].join('\n\n');
+}
 
 export class ManagerAgent extends BaseAgent {
   constructor(context: AgentRuntimeContext) {
@@ -28,7 +36,7 @@ export class ManagerAgent extends BaseAgent {
         },
         {
           role: 'user',
-          content: buildSupervisorPlanUserPrompt(this.context.goal)
+          content: appendTaskContext(buildSupervisorPlanUserPrompt(this.context.goal), this.context.taskContext)
         }
       ],
       SupervisorPlanSchema,
@@ -71,7 +79,7 @@ export class ManagerAgent extends BaseAgent {
       },
       {
         role: 'user' as const,
-        content: this.context.goal
+        content: appendTaskContext(buildSupervisorDirectReplyUserPrompt(this.context.goal), this.context.taskContext)
       }
     ];
 
@@ -93,7 +101,7 @@ export class ManagerAgent extends BaseAgent {
     return this.state.finalOutput;
   }
 
-  async finalize(review: ReviewRecord, executionSummary: string): Promise<string> {
+  async finalize(review: ReviewRecord, executionSummary: string, freshnessSourceSummary?: string): Promise<string> {
     const messageId = `summary_stream_${this.context.taskId}`;
     const promptMessages = [
       {
@@ -102,7 +110,16 @@ export class ManagerAgent extends BaseAgent {
       },
       {
         role: 'user' as const,
-        content: buildDeliverySummaryUserPrompt(this.context.goal, executionSummary, review.decision, review.notes)
+        content: appendTaskContext(
+          buildDeliverySummaryUserPrompt(
+            this.context.goal,
+            executionSummary,
+            review.decision,
+            review.notes,
+            freshnessSourceSummary
+          ),
+          this.context.taskContext
+        )
       }
     ];
 

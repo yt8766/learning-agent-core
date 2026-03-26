@@ -5,7 +5,11 @@ import { loadSettings } from '@agent/config';
 import { PluginDraft, SkillCard, SkillStatus } from '@agent/shared';
 
 export class SkillRegistry {
-  private readonly root = resolve(loadSettings().skillsRoot);
+  private readonly root: string;
+
+  constructor(root = loadSettings().skillsRoot) {
+    this.root = resolve(root);
+  }
 
   async list(status?: SkillStatus): Promise<SkillCard[]> {
     const skills = await this.readRegistry();
@@ -92,6 +96,36 @@ export class SkillRegistry {
     await mkdir(dirname(filePath), { recursive: true });
     await writeFile(filePath, JSON.stringify(draft, null, 2));
     return draft;
+  }
+
+  async recordExecutionResult(id: string, runId: string, success: boolean): Promise<SkillCard | undefined> {
+    const skills = await this.readRegistry();
+    const target = skills.find(skill => skill.id === id);
+    if (!target) {
+      return undefined;
+    }
+
+    const sourceRuns = Array.from(new Set([...(target.sourceRuns ?? []), runId]));
+    const previousRuns = target.sourceRuns?.length ?? 0;
+    const previousSuccesses = Math.round((target.successRate ?? 0) * previousRuns);
+    const nextRuns = sourceRuns.length;
+    const nextSuccesses = previousSuccesses + (success ? 1 : 0);
+
+    target.sourceRuns = sourceRuns;
+    target.successRate = nextRuns > 0 ? nextSuccesses / nextRuns : 0;
+    target.promotionState =
+      target.successRate >= 0.8 ? 'validated' : target.successRate >= 0.5 ? 'warming' : 'needs-review';
+    target.governanceRecommendation =
+      nextRuns >= 3 && (target.successRate ?? 0) >= 0.85
+        ? 'promote'
+        : nextRuns >= 5 && (target.successRate ?? 0) < 0.35
+          ? 'retire'
+          : nextRuns >= 3 && (target.successRate ?? 0) < 0.5
+            ? 'disable'
+            : 'keep-lab';
+    target.updatedAt = new Date().toISOString();
+    await this.persist(target);
+    return target;
   }
 
   private async persist(skill: SkillCard): Promise<void> {

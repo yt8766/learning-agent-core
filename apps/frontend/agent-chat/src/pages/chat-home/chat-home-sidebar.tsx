@@ -90,17 +90,11 @@ export function ChatHomeSidebar(props: ChatHomeSidebarProps) {
     <>
       <div className="chatx-brand">
         <Avatar size={46} className="chatx-brand__avatar">
-          AC
+          AI
         </Avatar>
         <div className="chatx-brand__copy">
-          <Title level={4}>Agent Core</Title>
+          <Title level={4}>AI Chat</Title>
         </div>
-      </div>
-
-      <div className="chatx-sidebar-note">
-        <Tag color="blue">SSE 实时事件</Tag>
-        <Tag color="cyan">多 Agent 调度</Tag>
-        <Tag color="gold">审批与学习</Tag>
       </div>
 
       <Button
@@ -146,7 +140,7 @@ export function ChatHomeSidebar(props: ChatHomeSidebarProps) {
                     label: (
                       <span className="chatx-conversation-menu__item">
                         <RenameGlyph />
-                        <span>Rename</span>
+                        <span>重命名</span>
                       </span>
                     )
                   },
@@ -155,7 +149,7 @@ export function ChatHomeSidebar(props: ChatHomeSidebarProps) {
                     label: (
                       <span className="chatx-conversation-menu__item">
                         <ShareGlyph />
-                        <span>Share</span>
+                        <span>复制链接</span>
                       </span>
                     )
                   },
@@ -166,7 +160,7 @@ export function ChatHomeSidebar(props: ChatHomeSidebarProps) {
                     label: (
                       <span className="chatx-conversation-menu__item is-disabled">
                         <ArchiveGlyph />
-                        <span>Archive</span>
+                        <span>归档</span>
                       </span>
                     )
                   },
@@ -176,7 +170,7 @@ export function ChatHomeSidebar(props: ChatHomeSidebarProps) {
                     label: (
                       <span className="chatx-conversation-menu__item is-danger">
                         <DeleteGlyph />
-                        <span>Delete Chat</span>
+                        <span>删除对话</span>
                       </span>
                     )
                   }

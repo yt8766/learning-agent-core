@@ -4,17 +4,14 @@
   Controller,
   Delete,
   Get,
-  MessageEvent,
   Param,
   Patch,
   Post,
   Query,
   Req,
-  Res,
-  Sse
+  Res
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { Observable } from 'rxjs';
 
 import {
   AppendChatMessageDto,
@@ -30,6 +27,7 @@ import { ChatService } from './chat.service';
 const SESSION_COOKIE_NAME = 'agent_session_id';
 
 type SessionBody = { sessionId?: string };
+type SseResponse = Response & { flush?: () => void; flushHeaders?: () => void };
 
 @Controller('chat')
 export class ChatController {
@@ -158,25 +156,43 @@ export class ChatController {
     return this.chatService.cancel(resolvedSessionId, { ...dto, sessionId: resolvedSessionId });
   }
 
-  @Sse('stream')
-  stream(@Req() request: Request, @Query('sessionId') sessionId?: string): Observable<MessageEvent> {
+  @Get('stream')
+  stream(@Req() request: Request, @Res() response: Response, @Query('sessionId') sessionId?: string): void {
+    const sseResponse = response as SseResponse;
     const resolvedSessionId = this.resolveSessionId(request, sessionId);
-    return new Observable<MessageEvent>(subscriber => {
-      this.chatService.listEvents(resolvedSessionId).forEach(event => {
-        if (event.type === 'assistant_token') {
-          return;
-        }
-        subscriber.next({ data: event });
-      });
+    this.setSessionCookie(sseResponse, resolvedSessionId);
+    sseResponse.setHeader('Content-Type', 'text/event-stream');
+    sseResponse.setHeader('Cache-Control', 'no-cache, no-transform');
+    sseResponse.setHeader('Connection', 'keep-alive');
+    sseResponse.setHeader('X-Accel-Buffering', 'no');
+    sseResponse.flushHeaders?.();
+    sseResponse.write(': stream-open\n\n');
 
-      const unsubscribe = this.chatService.subscribe(resolvedSessionId, event => {
-        subscriber.next({ data: event });
-      });
+    for (const event of this.chatService.listEvents(resolvedSessionId)) {
+      if (event.type === 'assistant_token') {
+        continue;
+      }
+      sseResponse.write(`data: ${JSON.stringify(event)}\n\n`);
+    }
+    sseResponse.flush?.();
 
-      return () => {
-        unsubscribe();
-      };
+    const keepAliveTimer = setInterval(() => {
+      sseResponse.write(': keep-alive\n\n');
+      sseResponse.flush?.();
+    }, 15_000);
+
+    const unsubscribe = this.chatService.subscribe(resolvedSessionId, event => {
+      sseResponse.write(`data: ${JSON.stringify(event)}\n\n`);
+      sseResponse.flush?.();
     });
+
+    const closeStream = () => {
+      clearInterval(keepAliveTimer);
+      unsubscribe();
+      sseResponse.end();
+    };
+
+    request.on('close', closeStream);
   }
 
   private resolveSessionId(request: Request, explicitSessionId?: string): string {

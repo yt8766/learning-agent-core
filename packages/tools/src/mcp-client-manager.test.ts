@@ -116,6 +116,79 @@ describe('McpClientManager', () => {
         })
       })
     );
+    expect(result.transportUsed).toBe('http');
+    expect(result.fallbackUsed).toBe(false);
+  });
+
+  it('invokeTool prefers a remote transport over local-adapter for the same toolName', async () => {
+    const servers = new McpServerRegistry();
+    const capabilities = new McpCapabilityRegistry();
+    const sandboxExecutor = {
+      execute: vi.fn(async () => ({
+        ok: true,
+        outputSummary: 'local fallback executed',
+        durationMs: 1,
+        exitCode: 0
+      }))
+    };
+
+    servers.register({
+      id: 'local-workspace',
+      displayName: 'local',
+      transport: 'local-adapter',
+      enabled: true
+    });
+    servers.register({
+      id: 'remote-browser',
+      displayName: 'browser',
+      transport: 'http',
+      endpoint: 'http://mcp.local/invoke',
+      enabled: true
+    });
+    capabilities.register({
+      id: 'browse_page_local',
+      toolName: 'browse_page',
+      serverId: 'local-workspace',
+      displayName: 'Browse local',
+      riskLevel: 'high',
+      requiresApproval: true,
+      category: 'action'
+    });
+    capabilities.register({
+      id: 'browse_page_remote',
+      toolName: 'browse_page',
+      serverId: 'remote-browser',
+      displayName: 'Browse remote',
+      riskLevel: 'high',
+      requiresApproval: true,
+      category: 'action'
+    });
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        outputSummary: 'remote browser executed',
+        durationMs: 8,
+        exitCode: 0
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const manager = new McpClientManager(servers, capabilities, sandboxExecutor as never);
+    const result = await manager.invokeTool('browse_page', {
+      taskId: 'task-pref-1',
+      toolName: 'ignored',
+      intent: 'call_external_api' as never,
+      input: { url: 'https://example.com' },
+      requestedBy: 'agent'
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.transportUsed).toBe('http');
+    expect(result.serverId).toBe('remote-browser');
+    expect(result.capabilityId).toBe('browse_page_remote');
+    expect(sandboxExecutor.execute).not.toHaveBeenCalled();
   });
 
   it('HTTP transport can discover remote capabilities when tools/list is supported', async () => {

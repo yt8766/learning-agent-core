@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 
 import {
   appendMessage,
@@ -20,15 +21,17 @@ import {
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '../types/chat';
 import {
   CHECKPOINT_REFRESH_EVENT_TYPES,
+  deriveSessionStatusFromCheckpoint,
   formatSessionTime,
   getMessageRoleLabel,
   getSessionStatusLabel,
   mergeEvent,
   mergeOrAppendMessage,
-  PENDING_ASSISTANT_PREFIX,
   PENDING_USER_PREFIX,
   removePendingMessages,
   STARTER_PROMPT,
+  syncCheckpointMessages,
+  syncSessionFromCheckpoint,
   syncMessageFromEvent,
   syncProcessMessageFromEvent,
   syncSessionFromEvent
@@ -47,8 +50,10 @@ export function useChatSession() {
   const [loading, setLoading] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const checkpointRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionDetailPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingSessionRef = useRef<string>('');
+  const pollingModeRef = useRef<'checkpoint' | 'detail' | ''>('');
   const pendingInitialMessage = useRef<{ sessionId: string; content: string } | null>(null);
-  const pendingAssistantIds = useRef<Record<string, string>>({});
   const pendingUserIds = useRef<Record<string, string>>({});
 
   const activeSession = useMemo(
@@ -83,12 +88,15 @@ export function useChatSession() {
         if (disposed) return;
 
         if (shouldOpenStream) {
+          startSessionPolling(activeSessionId, 'checkpoint');
           stream = createSessionStream(activeSessionId);
+          stream.onopen = () => {
+            setError('');
+            scheduleCheckpointRefresh();
+            startSessionPolling(activeSessionId, 'checkpoint');
+          };
           stream.onmessage = (raw: MessageEvent<string>) => {
             const nextEvent = JSON.parse(raw.data) as ChatEventRecord;
-            if (nextEvent.type === 'assistant_message' || nextEvent.type === 'assistant_token') {
-              clearPendingAssistant(nextEvent.sessionId);
-            }
             if (nextEvent.type === 'user_message') {
               clearPendingUser(nextEvent.sessionId);
             }
@@ -98,15 +106,29 @@ export function useChatSession() {
             if (CHECKPOINT_REFRESH_EVENT_TYPES.has(nextEvent.type)) {
               scheduleCheckpointRefresh();
             }
+            if (
+              nextEvent.type === 'final_response_completed' ||
+              nextEvent.type === 'session_finished' ||
+              nextEvent.type === 'session_failed'
+            ) {
+              void refreshSessionDetail(nextEvent.sessionId, false);
+            }
           };
-          stream.onerror = () => stream?.close();
+          stream.onerror = () => {
+            stream?.close();
+            startSessionPolling(activeSessionId, 'detail');
+            scheduleCheckpointRefresh();
+            setError('聊天流已断开，当前改用详情轮询兜底。请确认后端 /api/chat/stream 可达。');
+            void refreshSessionDetail(activeSessionId, false);
+          };
+        } else {
+          stopSessionPolling(activeSessionId);
         }
 
         const pending = pendingInitialMessage.current;
         if (pending?.sessionId === activeSessionId) {
           pendingInitialMessage.current = null;
           insertPendingUserMessage(activeSessionId, pending.content);
-          insertPendingAssistantMessage(activeSessionId);
           const nextUserMessage = await appendMessage(activeSessionId, pending.content);
           if (disposed) return;
           clearPendingUser(activeSessionId);
@@ -116,6 +138,7 @@ export function useChatSession() {
       } catch (nextError) {
         if (!disposed) {
           clearPendingSessionMessages(activeSessionId);
+          markSessionIdle(activeSessionId);
           setError(nextError instanceof Error ? nextError.message : '激活会话失败');
         }
       }
@@ -128,6 +151,7 @@ export function useChatSession() {
         clearTimeout(checkpointRefreshTimer.current);
         checkpointRefreshTimer.current = null;
       }
+      stopSessionPolling(activeSessionId);
     };
   }, [activeSessionId, activeSession?.status]);
 
@@ -137,11 +161,28 @@ export function useChatSession() {
       setError('');
       return await task();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : fallbackMessage);
+      setError(formatChatError(nextError, fallbackMessage));
       return undefined;
     } finally {
       if (withLoading) setLoading(false);
     }
+  }
+
+  function formatChatError(nextError: unknown, fallbackMessage: string) {
+    if (axios.isAxiosError(nextError)) {
+      if (!nextError.response) {
+        return `${fallbackMessage}：当前无法连接后端 API，请确认 server 已启动且 ${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api'} 可达。`;
+      }
+      const detail =
+        typeof nextError.response.data === 'string'
+          ? nextError.response.data
+          : typeof nextError.response.data?.message === 'string'
+            ? nextError.response.data.message
+            : nextError.message;
+      return `${fallbackMessage}：${detail}`;
+    }
+
+    return nextError instanceof Error ? nextError.message : fallbackMessage;
   }
 
   async function refreshSessions() {
@@ -166,20 +207,50 @@ export function useChatSession() {
     );
     if (!result) return;
     const [nextMessages, nextEvents, nextCheckpoint] = result;
-    setMessages(nextMessages);
+    const nextStatus = deriveSessionStatusFromCheckpoint(nextCheckpoint);
+    const hasPersistedUser = nextMessages.some(message => message.sessionId === sessionId && message.role === 'user');
+    const hasPersistedAssistant = nextMessages.some(
+      message => message.sessionId === sessionId && message.role === 'assistant'
+    );
+    const pendingUserId = pendingUserIds.current[sessionId];
+    const shouldClearPending =
+      hasPersistedUser ||
+      hasPersistedAssistant ||
+      nextStatus === 'completed' ||
+      nextStatus === 'failed' ||
+      nextStatus === 'cancelled';
+
+    if (shouldClearPending) {
+      clearPendingUser(sessionId);
+    }
+
+    const nextThreadMessages = shouldClearPending
+      ? removePendingMessages(syncCheckpointMessages(nextMessages, nextCheckpoint, sessionId), undefined, pendingUserId)
+      : syncCheckpointMessages(nextMessages, nextCheckpoint, sessionId);
+
+    setMessages(nextThreadMessages);
     setEvents(nextEvents);
     setCheckpoint(nextCheckpoint);
+    setSessions(current => syncSessionFromCheckpoint(current, nextCheckpoint));
   }
 
-  async function refreshCheckpointOnly() {
-    if (!activeSessionId) return;
+  async function refreshCheckpointOnly(sessionId = activeSessionId) {
+    if (!sessionId) return;
     const nextCheckpoint = await runLoading(
-      () => getCheckpoint(activeSessionId).catch(() => undefined),
+      () => getCheckpoint(sessionId).catch(() => undefined),
       '同步会话运行态失败',
       false
     );
     if (nextCheckpoint !== undefined) {
+      setMessages(current => syncCheckpointMessages(current, nextCheckpoint, sessionId));
       setCheckpoint(nextCheckpoint);
+      setSessions(current => syncSessionFromCheckpoint(current, nextCheckpoint));
+
+      const nextStatus = deriveSessionStatusFromCheckpoint(nextCheckpoint);
+      if (nextStatus === 'completed' || nextStatus === 'failed' || nextStatus === 'cancelled') {
+        stopSessionPolling(sessionId);
+        void refreshSessionDetail(sessionId, false);
+      }
     }
   }
 
@@ -193,16 +264,68 @@ export function useChatSession() {
     }, 220);
   }
 
+  function startSessionPolling(sessionId: string, mode: 'checkpoint' | 'detail') {
+    if (!sessionId) {
+      return;
+    }
+
+    if (pollingSessionRef.current === sessionId && pollingModeRef.current === mode && sessionDetailPollTimer.current) {
+      return;
+    }
+
+    stopSessionPolling();
+    pollingSessionRef.current = sessionId;
+    pollingModeRef.current = mode;
+    sessionDetailPollTimer.current = setInterval(
+      () => {
+        if (mode === 'detail') {
+          void refreshSessionDetail(sessionId, false);
+          return;
+        }
+        void refreshCheckpointOnly(sessionId);
+      },
+      mode === 'detail' ? 1500 : 2500
+    );
+  }
+
+  function stopSessionPolling(sessionId?: string) {
+    if (sessionId && pollingSessionRef.current && pollingSessionRef.current !== sessionId) {
+      return;
+    }
+
+    if (sessionDetailPollTimer.current) {
+      clearInterval(sessionDetailPollTimer.current);
+      sessionDetailPollTimer.current = null;
+    }
+    if (!sessionId || pollingSessionRef.current === sessionId) {
+      pollingSessionRef.current = '';
+      pollingModeRef.current = '';
+    }
+  }
+
   async function createNewSession(initialMessage?: string) {
     const content = (initialMessage ?? draft).trim();
+    const previousDraft = draft;
+    if (content) {
+      setDraft(STARTER_PROMPT);
+    }
     const session = await runLoading(() => createSession(), '创建会话失败');
-    if (!session) return;
+    if (!session) {
+      if (content) {
+        setDraft(previousDraft);
+      }
+      return;
+    }
 
     if (content) {
       pendingInitialMessage.current = { sessionId: session.id, content };
-      setDraft(STARTER_PROMPT);
+      setSessions(current => [
+        { ...session, status: 'running', updatedAt: new Date().toISOString() },
+        ...current.filter(item => item.id !== session.id)
+      ]);
+    } else {
+      setSessions(current => [session, ...current.filter(item => item.id !== session.id)]);
     }
-    setSessions(current => [session, ...current.filter(item => item.id !== session.id)]);
     setMessages([]);
     setEvents([]);
     setCheckpoint(undefined);
@@ -217,21 +340,23 @@ export function useChatSession() {
       return;
     }
 
+    const previousDraft = draft;
+    setDraft(STARTER_PROMPT);
+    markSessionRunning(activeSessionId);
     const nextUserMessage = await runLoading(async () => {
       insertPendingUserMessage(activeSessionId, content);
-      insertPendingAssistantMessage(activeSessionId);
       return appendMessage(activeSessionId, content);
     }, '发送消息失败');
 
     if (!nextUserMessage) {
+      setDraft(previousDraft);
       clearPendingSessionMessages(activeSessionId);
+      markSessionIdle(activeSessionId);
       return;
     }
 
     clearPendingUser(activeSessionId);
     setMessages(current => mergeOrAppendMessage(current, nextUserMessage));
-    markSessionRunning(activeSessionId);
-    setDraft(STARTER_PROMPT);
   }
 
   async function updateApproval(intent: string, approved: boolean, feedback?: string) {
@@ -315,18 +440,12 @@ export function useChatSession() {
     );
   }
 
-  function insertPendingAssistantMessage(sessionId: string) {
-    const pendingId = `${PENDING_ASSISTANT_PREFIX}${sessionId}`;
-    pendingAssistantIds.current[sessionId] = pendingId;
-    setMessages(current =>
-      mergeOrAppendMessage(current, {
-        id: pendingId,
-        sessionId,
-        role: 'assistant',
-        content: '首辅正在规划，过程战报和流式回复会先从这里开始。',
-        linkedAgent: 'manager',
-        createdAt: new Date().toISOString()
-      })
+  function markSessionIdle(sessionId: string) {
+    if (!sessionId) return;
+    setSessions(current =>
+      current.map(session =>
+        session.id === sessionId ? { ...session, status: 'idle', updatedAt: new Date().toISOString() } : session
+      )
     );
   }
 
@@ -344,20 +463,14 @@ export function useChatSession() {
     );
   }
 
-  function clearPendingAssistant(sessionId: string) {
-    delete pendingAssistantIds.current[sessionId];
-  }
-
   function clearPendingUser(sessionId: string) {
     delete pendingUserIds.current[sessionId];
   }
 
   function clearPendingSessionMessages(sessionId: string) {
-    const pendingAssistantId = pendingAssistantIds.current[sessionId];
     const pendingUserId = pendingUserIds.current[sessionId];
-    clearPendingAssistant(sessionId);
     clearPendingUser(sessionId);
-    setMessages(current => removePendingMessages(current, pendingAssistantId, pendingUserId));
+    setMessages(current => removePendingMessages(current, undefined, pendingUserId));
   }
 
   return {

@@ -3,6 +3,7 @@
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import {
   buildFallbackSupervisorPlan,
+  buildSupervisorDirectReplyUserPrompt,
   buildSupervisorPlanUserPrompt,
   SUPERVISOR_DIRECT_REPLY_PROMPT,
   SUPERVISOR_PLAN_SYSTEM_PROMPT,
@@ -28,6 +29,11 @@ export class LibuRouterMinistry {
     };
   }
 
+  private rememberIssue(note: string) {
+    this.state.observations = [...this.state.observations, note];
+    this.state.shortTermMemory = [...this.state.shortTermMemory, note];
+  }
+
   async plan(): Promise<ManagerPlan> {
     this.state.status = 'running';
 
@@ -48,6 +54,9 @@ export class LibuRouterMinistry {
           SupervisorPlanSchema,
           {
             role: 'manager',
+            taskId: this.context.taskId,
+            modelId: this.context.currentWorker?.defaultModel,
+            budgetState: this.context.budgetState,
             thinking: this.context.thinking.manager,
             temperature: 0.1,
             onUsage: usage => {
@@ -62,9 +71,12 @@ export class LibuRouterMinistry {
           { taskId: this.context.taskId, goal: this.context.goal },
           output ?? buildFallbackSupervisorPlan({ taskId: this.context.taskId, goal: this.context.goal })
         );
-      } catch {
+      } catch (error) {
+        this.rememberIssue(`LLM plan fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
         llmPlan = null;
       }
+    } else {
+      this.rememberIssue('LLM unavailable: no configured provider in current runtime');
     }
 
     const plan =
@@ -103,7 +115,7 @@ export class LibuRouterMinistry {
       },
       {
         role: 'user' as const,
-        content: this.context.goal
+        content: buildSupervisorDirectReplyUserPrompt(this.context.goal)
       }
     ];
 
@@ -114,6 +126,9 @@ export class LibuRouterMinistry {
           promptMessages,
           {
             role: 'manager',
+            taskId: this.context.taskId,
+            modelId: this.context.currentWorker?.defaultModel,
+            budgetState: this.context.budgetState,
             thinking: this.context.thinking.manager,
             temperature: 0.2,
             onUsage: usage => {
@@ -132,9 +147,12 @@ export class LibuRouterMinistry {
             });
           }
         );
-      } catch {
+      } catch (error) {
+        this.rememberIssue(`LLM streaming fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
         streamed = null;
       }
+    } else {
+      this.rememberIssue('LLM unavailable: no configured provider in current runtime');
     }
 
     let fallback: string | null = null;
@@ -142,6 +160,9 @@ export class LibuRouterMinistry {
       try {
         fallback = await this.context.llm.generateText(promptMessages, {
           role: 'manager',
+          taskId: this.context.taskId,
+          modelId: this.context.currentWorker?.defaultModel,
+          budgetState: this.context.budgetState,
           thinking: this.context.thinking.manager,
           temperature: 0.2,
           onUsage: usage => {
@@ -151,7 +172,8 @@ export class LibuRouterMinistry {
             });
           }
         });
-      } catch {
+      } catch (error) {
+        this.rememberIssue(`LLM text fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
         fallback = null;
       }
     }
@@ -162,7 +184,7 @@ export class LibuRouterMinistry {
     return this.state.finalOutput;
   }
 
-  async finalize(review: ReviewRecord, executionSummary: string): Promise<string> {
+  async finalize(review: ReviewRecord, executionSummary: string, freshnessSourceSummary?: string): Promise<string> {
     const messageId = `summary_stream_${this.context.taskId}`;
     const promptMessages = [
       {
@@ -171,7 +193,13 @@ export class LibuRouterMinistry {
       },
       {
         role: 'user' as const,
-        content: buildDeliverySummaryUserPrompt(this.context.goal, executionSummary, review.decision, review.notes)
+        content: buildDeliverySummaryUserPrompt(
+          this.context.goal,
+          executionSummary,
+          review.decision,
+          review.notes,
+          freshnessSourceSummary
+        )
       }
     ];
 
@@ -182,6 +210,9 @@ export class LibuRouterMinistry {
           promptMessages,
           {
             role: 'manager',
+            taskId: this.context.taskId,
+            modelId: this.context.currentWorker?.defaultModel,
+            budgetState: this.context.budgetState,
             thinking: this.context.thinking.manager,
             temperature: 0.2,
             onUsage: usage => {
@@ -200,9 +231,12 @@ export class LibuRouterMinistry {
             });
           }
         );
-      } catch {
+      } catch (error) {
+        this.rememberIssue(`LLM finalize stream fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
         llmSummary = null;
       }
+    } else {
+      this.rememberIssue('LLM unavailable: no configured provider in current runtime');
     }
 
     let fallbackSummary: string | null = null;
@@ -210,6 +244,9 @@ export class LibuRouterMinistry {
       try {
         fallbackSummary = await this.context.llm.generateText(promptMessages, {
           role: 'manager',
+          taskId: this.context.taskId,
+          modelId: this.context.currentWorker?.defaultModel,
+          budgetState: this.context.budgetState,
           thinking: this.context.thinking.manager,
           temperature: 0.2,
           onUsage: usage => {
@@ -219,7 +256,8 @@ export class LibuRouterMinistry {
             });
           }
         });
-      } catch {
+      } catch (error) {
+        this.rememberIssue(`LLM finalize text fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
         fallbackSummary = null;
       }
     }

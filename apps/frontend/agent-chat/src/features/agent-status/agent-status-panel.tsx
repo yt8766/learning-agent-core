@@ -1,4 +1,4 @@
-﻿import type { ChatCheckpointRecord, ChatSessionRecord } from '../../types/chat';
+import type { ChatCheckpointRecord, ChatSessionRecord } from '../../types/chat';
 import { formatSessionTime, getSessionStatusLabel } from '../../hooks/use-chat-session';
 
 interface AgentStatusPanelProps {
@@ -21,12 +21,12 @@ export function AgentStatusPanel(props: AgentStatusPanelProps) {
       </div>
       <div className="panel-section">
         <strong>执行节点</strong>
-        <p>{checkpoint?.graphState.currentStep ?? '尚未开始'}</p>
+        <p>{checkpoint?.graphState?.currentStep ?? '尚未开始'}</p>
       </div>
       <div className="panel-section two-column">
         <div>
           <strong>重试次数</strong>
-          <p>{`${checkpoint?.graphState.retryCount ?? 0}/${checkpoint?.graphState.maxRetries ?? 0}`}</p>
+          <p>{`${checkpoint?.graphState?.retryCount ?? 0}/${checkpoint?.graphState?.maxRetries ?? 0}`}</p>
         </div>
         <div>
           <strong>更新时间</strong>

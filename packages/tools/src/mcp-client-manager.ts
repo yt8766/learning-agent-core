@@ -19,9 +19,21 @@ interface McpServerDiscoveryRecord {
   lastError?: string;
 }
 
+interface PreferredToolRoute {
+  capabilityId: string;
+  serverId: string;
+  transport: 'http' | 'stdio' | 'local-adapter';
+  requiresApproval: boolean;
+}
+
 export class McpClientManager {
   private readonly handlers = new Map<string, McpTransportHandler>();
   private readonly discoveryCache = new Map<string, McpServerDiscoveryRecord>();
+  private readonly transportPriority: Record<'http' | 'stdio' | 'local-adapter', number> = {
+    http: 3,
+    stdio: 2,
+    'local-adapter': 1
+  };
 
   constructor(
     private readonly serverRegistry: McpServerRegistry,
@@ -135,6 +147,26 @@ export class McpClientManager {
       };
     }
 
+    if (this.capabilityRegistry.isServerDenied(capability.serverId)) {
+      return {
+        ok: false,
+        outputSummary: `MCP server ${capability.serverId} is blocked by policy override`,
+        errorMessage: 'server_blocked_by_policy',
+        durationMs: 0,
+        exitCode: 1
+      };
+    }
+
+    if (this.capabilityRegistry.isCapabilityDenied(capability.id)) {
+      return {
+        ok: false,
+        outputSummary: `MCP capability ${capability.id} is blocked by policy override`,
+        errorMessage: 'capability_blocked_by_policy',
+        durationMs: 0,
+        exitCode: 1
+      };
+    }
+
     const server = this.serverRegistry.get(capability.serverId);
     if (!server?.enabled) {
       return {
@@ -160,6 +192,64 @@ export class McpClientManager {
     return handler.invoke(server, capability, request);
   }
 
+  async invokeTool(toolName: string, request: ToolExecutionRequest): Promise<ToolExecutionResult> {
+    const capability = this.resolvePreferredCapabilityForTool(toolName);
+    if (!capability) {
+      return {
+        ok: false,
+        outputSummary: `MCP tool ${toolName} has no registered capability`,
+        errorMessage: 'missing_tool_capability',
+        durationMs: 0,
+        exitCode: 1
+      };
+    }
+
+    return this.invokeCapability(capability.id, request);
+  }
+
+  describeToolRoute(toolName: string): PreferredToolRoute | undefined {
+    const capability = this.resolvePreferredCapabilityForTool(toolName);
+    if (!capability) {
+      return undefined;
+    }
+    const server = this.serverRegistry.get(capability.serverId);
+    if (!server) {
+      return undefined;
+    }
+    return {
+      capabilityId: capability.id,
+      serverId: capability.serverId,
+      transport: server.transport,
+      requiresApproval: capability.requiresApproval
+    };
+  }
+
+  private resolvePreferredCapabilityForTool(toolName: string) {
+    const candidates = this.capabilityRegistry
+      .list()
+      .filter(capability => capability.toolName === toolName)
+      .filter(capability => !this.capabilityRegistry.isServerDenied(capability.serverId))
+      .filter(capability => this.serverRegistry.get(capability.serverId)?.enabled);
+
+    if (!candidates.length) {
+      return undefined;
+    }
+
+    return candidates.slice().sort((left, right) => {
+      const leftServer = this.serverRegistry.get(left.serverId);
+      const rightServer = this.serverRegistry.get(right.serverId);
+      const leftPriority = leftServer ? this.transportPriority[leftServer.transport] : 0;
+      const rightPriority = rightServer ? this.transportPriority[rightServer.transport] : 0;
+      if (leftPriority !== rightPriority) {
+        return rightPriority - leftPriority;
+      }
+      if (left.requiresApproval !== right.requiresApproval) {
+        return Number(left.requiresApproval) - Number(right.requiresApproval);
+      }
+      return left.id.localeCompare(right.id);
+    })[0];
+  }
+
   describeServers() {
     return this.serverRegistry.list().map(server => {
       const capabilities = this.capabilityRegistry.listByServer(server.id);
@@ -173,6 +263,17 @@ export class McpClientManager {
             healthReason: 'missing_transport_handler',
             implementedCapabilityCount: 0
           };
+
+      const enrichedCapabilities = capabilities.map(capability => {
+        const preferred = this.resolvePreferredCapabilityForTool(capability.toolName);
+        return {
+          ...capability,
+          isPrimaryForTool: preferred?.id === capability.id,
+          fallbackAvailable: this.capabilityRegistry
+            .list()
+            .some(item => item.toolName === capability.toolName && item.id !== capability.id)
+        };
+      });
 
       return {
         ...server,
@@ -197,7 +298,7 @@ export class McpClientManager {
         highRiskCount: capabilities.filter(
           capability => capability.riskLevel === 'high' || capability.riskLevel === 'critical'
         ).length,
-        capabilities
+        capabilities: enrichedCapabilities
       };
     });
   }

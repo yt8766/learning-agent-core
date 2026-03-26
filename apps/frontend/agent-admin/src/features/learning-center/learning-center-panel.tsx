@@ -46,6 +46,39 @@ export function LearningCenterPanel({
       </div>
       <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-stone-950">Skill Governance</CardTitle>
+          <Badge variant="outline">{learning.recentSkillGovernance?.length ?? 0}</Badge>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {!learning.recentSkillGovernance?.length ? (
+            <p className="text-sm text-stone-500">当前还没有技能治理建议。</p>
+          ) : (
+            learning.recentSkillGovernance.map(item => (
+              <article
+                key={`${item.taskId}-${item.skillId}`}
+                className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-950">{item.skillId}</p>
+                    <p className="mt-1 text-xs text-stone-500">{item.goal}</p>
+                  </div>
+                  <Badge variant="secondary">{item.recommendation}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {typeof item.successRate === 'number' ? (
+                    <Badge variant="secondary">success {(item.successRate * 100).toFixed(0)}%</Badge>
+                  ) : null}
+                  {item.promotionState ? <Badge variant="secondary">{item.promotionState}</Badge> : null}
+                </div>
+                <p className="mt-3 text-xs text-stone-500">{item.updatedAt}</p>
+              </article>
+            ))
+          )}
+        </CardContent>
+      </Card>
+      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-semibold text-stone-950">Learning Candidates</CardTitle>
           <Badge variant="outline">{learning.candidates.length}</Badge>
         </CardHeader>

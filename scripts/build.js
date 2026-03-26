@@ -6,6 +6,10 @@ import { rm } from 'node:fs/promises';
 const rootDir = process.cwd();
 const packagesDir = path.join(rootDir, 'packages');
 const args = process.argv.slice(2);
+const forbiddenCleanupTargets = [
+  path.join(process.env.HOME ?? '', 'Library', 'Application Support', 'Google', 'Chrome'),
+  path.join(process.env.HOME ?? '', 'Library', 'Caches', 'Google', 'Chrome')
+].filter(Boolean);
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''));
@@ -140,6 +144,14 @@ async function removeIfExists(targetPath, dryRun) {
     return false;
   }
 
+  const normalizedTarget = path.resolve(targetPath);
+  for (const forbiddenTarget of forbiddenCleanupTargets) {
+    const normalizedForbidden = path.resolve(forbiddenTarget);
+    if (normalizedTarget === normalizedForbidden || normalizedTarget.startsWith(`${normalizedForbidden}${path.sep}`)) {
+      throw new Error(`refusing to clean protected path: ${normalizedTarget}`);
+    }
+  }
+
   if (dryRun) {
     return true;
   }
@@ -180,6 +192,12 @@ async function main() {
   if (targets.length === 0) {
     console.log('[build.js] no matching buildable packages');
     return;
+  }
+
+  if (forbiddenCleanupTargets.length > 0) {
+    console.log(
+      `[build.js] protected cleanup paths: ${forbiddenCleanupTargets.map(target => path.relative(rootDir, target) || target).join(', ')}`
+    );
   }
 
   const results = await Promise.all(

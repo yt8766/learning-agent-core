@@ -71,7 +71,33 @@
 
 - `GET /api/chat/stream?sessionId=...`
   - `Content-Type: text/event-stream`
-  - 返回标准 SSE `MessageEvent`
+  - 返回标准 SSE 数据帧
+  - 连接建立后会先发送注释包 `: stream-open`
+  - 运行期间会周期性发送 `: keep-alive` 防止代理或浏览器误断流
+
+流式可靠性约定：
+
+- `agent-chat` 优先消费 `/api/chat/stream` 的 SSE 事件。
+- 当前前端同时具备轮询兜底：
+  - 当 SSE 正常连接时
+    - 仅轻量补拉 `checkpoint`
+  - 当 SSE 断流或异常时
+    - 自动切换为 `messages / events / checkpoint` 全量轮询
+- 当前前端还要求：
+  - 如果 `checkpoint` 已经进入 `completed / failed / cancelled`
+  - 即使终态 SSE 事件漏到前端
+  - 也必须立刻把 `session.status` 收口到终态
+  - 并补拉一次 `messages / events / checkpoint`，避免同一会话第二轮一直 loading
+- 目的：
+  - 避免浏览器 `EventSource` 丢包
+  - 避免跨域凭证或网络抖动导致“界面看起来没有返回”
+- 约定：
+  - SSE 是首选实时通道
+  - detail/checkpoint 轮询是可靠性兜底
+  - 如果普通聊天命中 `direct-reply` 但模型调用失败，后端必须把失败摘要写入：
+    - `agentStates[].observations`
+    - `trace.direct_reply_fallback`
+  - 前端必须把这类失败显示为可见的 Runtime Issue，不能只展示兜底回复。
 
 ---
 
@@ -533,7 +559,9 @@ pnpm --dir apps/frontend/agent-chat dev
 
 ## 10. 当前对接约束
 
-1. `agent-chat` 必须把审批、恢复、Think、ThoughtChain、Evidence、Learning suggestions 视为主链能力，而不是边栏附属能力
+1. `agent-chat` 必须保留审批、恢复、Think、ThoughtChain、Evidence、Learning suggestions 这些主链能力，但默认呈现应优先顺滑对话：
+   - 主聊天区默认只展示用户消息、Agent 最终回复、必要审批/终止卡
+   - Think、ThoughtChain、Evidence、Learning、Skill、Route 等运行态信息优先收纳到 workbench / runtime panel
 2. `agent-admin` 负责 Runtime、Approvals、Learning、Skill Lab、Evidence、Connector & Policy 六大中心，不与 `agent-chat` 重叠造轮子
 3. 前后端共享领域字段时，优先扩展 `TaskRecord`、`ChatCheckpointRecord`、`SkillCard`、`EvidenceRecord`、`McpCapability`
 4. 新增 SSE 事件优先按 `supervisor / ministry / workflow / learning / evidence` 语义命名

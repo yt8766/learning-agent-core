@@ -1,3 +1,21 @@
+---
+name: code_review
+description: Use this skill for repository code review, regression risk analysis, approval-flow impact checks, and release-safety review in learning-agent-core.
+version: '1.0.0'
+publisher: workspace
+license: Proprietary
+compatibility: Requires repository access. Use build or test tooling only when verification is needed.
+metadata:
+  author: learning-agent-core
+  ministry: xingbu-review
+allowed-tools:
+  - read_local_file
+  - list_directory
+  - local-analysis
+approval-policy: none
+risk-level: low
+---
+
 # Code Review
 
 本 skill 用于在本仓库里执行“资深工程师式”的代码审查。

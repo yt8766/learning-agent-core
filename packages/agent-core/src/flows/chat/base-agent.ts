@@ -54,6 +54,9 @@ export abstract class BaseAgent {
     try {
       return await this.context.llm.generateObject(messages, schema, {
         role: options.role,
+        taskId: this.context.taskId,
+        modelId: this.context.currentWorker?.defaultModel,
+        budgetState: this.context.budgetState,
         thinking: options.thinking,
         temperature: 0.1,
         onUsage: usage => {
@@ -80,6 +83,9 @@ export abstract class BaseAgent {
     try {
       return await this.context.llm.generateText(messages, {
         role: options.role,
+        taskId: this.context.taskId,
+        modelId: this.context.currentWorker?.defaultModel,
+        budgetState: this.context.budgetState,
         thinking: options.thinking,
         temperature: 0.2,
         onUsage: usage => {
@@ -108,6 +114,9 @@ export abstract class BaseAgent {
         messages,
         {
           role: options.role,
+          taskId: this.context.taskId,
+          modelId: this.context.currentWorker?.defaultModel,
+          budgetState: this.context.budgetState,
           thinking: options.thinking,
           temperature: 0.2,
           onUsage: usage => {

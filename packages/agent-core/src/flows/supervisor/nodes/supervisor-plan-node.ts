@@ -12,12 +12,17 @@ export async function executeSupervisorPlan(context: AgentRuntimeContext) {
       },
       {
         role: 'user',
-        content: buildSupervisorPlanUserPrompt(context.goal)
+        content: context.taskContext
+          ? [buildSupervisorPlanUserPrompt(context.goal), '以下是当前任务上下文：', context.taskContext].join('\n\n')
+          : buildSupervisorPlanUserPrompt(context.goal)
       }
     ],
     SupervisorPlanSchema,
     {
       role: 'manager',
+      taskId: context.taskId,
+      modelId: context.currentWorker?.defaultModel,
+      budgetState: context.budgetState,
       thinking: context.thinking.manager,
       temperature: 0.1,
       onUsage: usage => {

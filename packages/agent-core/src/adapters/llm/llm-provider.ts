@@ -2,17 +2,50 @@
 
 export type ChatRole = 'system' | 'user' | 'assistant';
 export type AgentModelRole = 'manager' | 'research' | 'executor' | 'reviewer';
+export type ModelCapability =
+  | 'text'
+  | 'vision'
+  | 'audio'
+  | 'image-gen'
+  | 'video-gen'
+  | 'tts'
+  | 'asr'
+  | 'realtime'
+  | 'tool-call'
+  | 'thinking';
 
 export interface ChatMessage {
   role: ChatRole;
   content: string;
 }
 
+export interface ModelInfo {
+  id: string;
+  displayName: string;
+  providerId: string;
+  contextWindow: number;
+  maxOutput: number;
+  capabilities: ModelCapability[];
+  pricing?: {
+    inputPer1k: number;
+    outputPer1k: number;
+    currency: string;
+  };
+}
+
 export interface GenerateTextOptions {
   role: AgentModelRole;
+  modelId?: string;
+  taskId?: string;
   temperature?: number;
   maxTokens?: number;
   thinking?: boolean;
+  budgetState?: {
+    costConsumedUsd?: number;
+    costBudgetUsd?: number;
+    fallbackModelId?: string;
+    overBudget?: boolean;
+  };
   onUsage?: (usage: LlmUsageMetadata) => void;
 }
 
@@ -27,6 +60,9 @@ export interface LlmUsageMetadata {
 }
 
 export interface LlmProvider {
+  readonly providerId: string;
+  readonly displayName: string;
+  supportedModels(): ModelInfo[];
   isConfigured(): boolean;
   generateText(messages: ChatMessage[], options: GenerateTextOptions): Promise<string>;
   streamText(
