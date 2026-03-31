@@ -18,36 +18,49 @@ export class LoggerMiddleware implements NestMiddleware {
 
     res.on('finish', () => {
       const durationMs = Date.now() - startedAt;
-      const logFormat = [
-        '################################################',
-        `Request original url: ${request.originalUrl}`,
-        `Method: ${request.method}`,
-        `IP: ${request.ip}`,
-        `Status code: ${res.statusCode}`,
-        `Duration: ${durationMs}ms`,
-        `RequestId: ${context.requestId}`,
-        `TraceId: ${context.traceId}`,
-        `Params: ${JSON.stringify(sanitizeForLogging(request.params))}`,
-        `Query: ${JSON.stringify(sanitizeForLogging(request.query))}`,
-        `Headers: ${JSON.stringify(sanitizeForLogging({ authorization: request.headers.authorization, referer: request.headers.referer, userAgent: request.headers['user-agent'] }))}`,
-        `Body: ${JSON.stringify(sanitizeForLogging(request.body))}`,
-        '################################################'
-      ].join('\n');
+      const route = request.route?.path ? `${request.baseUrl ?? ''}${String(request.route.path)}` : undefined;
+      const payload = {
+        event: 'request.completed',
+        method: request.method,
+        url: request.originalUrl,
+        route,
+        ip: request.ip,
+        statusCode: res.statusCode,
+        durationMs,
+        requestId: context.requestId,
+        traceId: context.traceId,
+        params: sanitizeForLogging(request.params),
+        query: sanitizeForLogging(request.query),
+        headers: sanitizeForLogging({
+          authorization: request.headers.authorization,
+          referer: request.headers.referer,
+          userAgent: request.headers['user-agent']
+        }),
+        body: request.method === 'GET' ? undefined : sanitizeForLogging(request.body)
+      };
 
       if (res.statusCode >= 500) {
-        this.logger.error(logFormat, {
+        if (context.errorLogged) {
+          this.logger.warn(payload, {
+            context: 'Request LoggerMiddleware',
+            requestId: context.requestId,
+            traceId: context.traceId
+          });
+          return;
+        }
+        this.logger.error(payload, {
           context: 'Request LoggerMiddleware',
           requestId: context.requestId,
           traceId: context.traceId
         });
       } else if (res.statusCode >= 400) {
-        this.logger.warn(logFormat, {
+        this.logger.warn(payload, {
           context: 'Request LoggerMiddleware',
           requestId: context.requestId,
           traceId: context.traceId
         });
       } else {
-        this.logger.log(logFormat, {
+        this.logger.log(payload, {
           context: 'Request LoggerMiddleware',
           requestId: context.requestId,
           traceId: context.traceId

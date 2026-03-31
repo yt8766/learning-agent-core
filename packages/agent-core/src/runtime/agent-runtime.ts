@@ -73,7 +73,7 @@ export class AgentRuntime {
       this.vectorIndexRepository
     );
     this.skillRegistry = new SkillRegistry(this.settings.skillsRoot);
-    this.approvalService = new ApprovalService();
+    this.approvalService = new ApprovalService(this.settings);
     this.runtimeStateRepository = new FileRuntimeStateRepository(this.settings.tasksStateFilePath);
     this.semanticCacheRepository = new FileSemanticCacheRepository(this.settings.semanticCacheFilePath);
     this.toolRegistry = createDefaultToolRegistry();

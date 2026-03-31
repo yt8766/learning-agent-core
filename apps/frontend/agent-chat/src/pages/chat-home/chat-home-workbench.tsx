@@ -1,334 +1,146 @@
-import { Alert, Button, Collapse, Space, Tag, Typography } from 'antd';
-import { Bubble, Sender, Welcome } from '@ant-design/x';
+import { Alert, Button, Collapse, Dropdown, Flex, Space, Switch, Tag, Typography, type MenuProps } from 'antd';
+import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType, ThoughtChainItemType } from '@ant-design/x';
-import type { CollapseProps } from 'antd';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import type { useChatSession } from '../../hooks/use-chat-session';
+import type { useChatSession } from '@/hooks/use-chat-session';
 import {
   CHAT_ROLE_CONFIG,
   EVENT_LABELS,
   buildEventSummary,
-  getCompressionHint,
-  getMinistryLabel,
-  getMinistryTone,
-  getRiskColor,
-  getRunningHint,
-  getWorkflowSummary
+  buildProjectContextSnapshot,
+  humanizeOperationalCopy
 } from './chat-home-helpers';
-
-const { Text, Title } = Typography;
+import { SessionMissionControl } from './chat-home-mission-control';
+import { buildSubmitMessage, stripLeadingWorkflowCommand } from './chat-home-submit';
+import {
+  buildWorkbenchSectionState,
+  ChatHomeApprovalActions,
+  type StreamEventRecord
+} from './chat-home-workbench-sections';
 
 interface ChatHomeWorkbenchProps {
   chat: ReturnType<typeof useChatSession>;
   showWorkbench: boolean;
   bubbleItems: BubbleItemType[];
-  streamEvents: Array<{ id: string; type: string; summary: string; at: string; raw: string }>;
+  streamEvents: StreamEventRecord[];
+}
+
+interface QuickActionChip {
+  label: string;
+  value: string;
+  icon: ReactNode;
+  tone?: 'primary' | 'secondary';
+}
+
+const SenderSwitch = Sender.Switch;
+const { Text } = Typography;
+
+const QUICK_SUGGESTIONS: QuickActionChip[] = [
+  {
+    label: '普通聊天',
+    value: '请直接回答我接下来的问题，并在必要时给出简短依据',
+    icon: <span>·</span>,
+    tone: 'secondary'
+  },
+  {
+    label: '代码修改',
+    value: '/browse 请帮我分析当前代码并给出修改方案',
+    icon: <span>{`{}`}</span>,
+    tone: 'secondary'
+  },
+  { label: '审查风险', value: '/review 请审查我当前会话里的改动和风险', icon: <span>!</span>, tone: 'secondary' },
+  { label: '研究整理', value: '/qa 请帮我调研这个问题并整理关键结论', icon: <span>#</span>, tone: 'secondary' }
+];
+
+export function resolveSuggestedDraftSubmission(input: string, suggestedPayload: string | null) {
+  const normalizedValue = input.trim();
+  if (suggestedPayload && normalizedValue === stripLeadingWorkflowCommand(suggestedPayload)) {
+    return {
+      display: normalizedValue,
+      payload: suggestedPayload
+    };
+  }
+
+  return buildSubmitMessage(input);
 }
 
 export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
-  const runningHint = getRunningHint(props.chat.activeSession?.status, props.chat.checkpoint?.graphState?.currentStep);
-  const compressionHint = getCompressionHint(props.chat.activeSession);
-  const routeSummary = props.chat.checkpoint?.modelRoute?.[(props.chat.checkpoint?.modelRoute?.length ?? 1) - 1];
-  const llmFallbackNotes = (props.chat.checkpoint?.agentStates ?? [])
-    .flatMap(state => state.observations ?? [])
-    .filter(note => note.startsWith('LLM '));
-  const workbenchItemsRaw = [
-    props.chat.checkpoint
-      ? {
-          key: 'cabinet',
-          label: (
-            <div className="chatx-workbench-section__label">
-              <Text strong>当前进度</Text>
-              <Text type="secondary">流程、执行角色、入口路由</Text>
-            </div>
-          ),
-          children: (
-            <section className="chatx-war-room chatx-war-room--nested">
-              <div className="chatx-war-room__grid">
-                <article className="chatx-war-card">
-                  <Text className="chatx-war-card__label">当前流程</Text>
-                  <Title level={5}>{props.chat.checkpoint.resolvedWorkflow?.displayName ?? '通用调度流程'}</Title>
-                  <Text type="secondary">
-                    {getWorkflowSummary(props.chat.checkpoint.resolvedWorkflow?.requiredMinistries)}
-                  </Text>
-                  <div className="chatx-war-card__meta">
-                    <Tag color="purple">{props.chat.checkpoint.graphState?.currentStep ?? '等待继续处理'}</Tag>
-                    {props.chat.checkpoint.skillStage ? <Tag>{props.chat.checkpoint.skillStage}</Tag> : null}
-                  </div>
-                </article>
-
-                <article className="chatx-war-card">
-                  <Text className="chatx-war-card__label">当前角色</Text>
-                  <Title level={5}>{getMinistryLabel(props.chat.checkpoint.currentMinistry)}</Title>
-                  <Text type="secondary">
-                    {props.chat.checkpoint.currentWorker
-                      ? `当前执行角色：${props.chat.checkpoint.currentWorker}`
-                      : '尚未选定具体执行角色'}
-                  </Text>
-                  <div className="chatx-war-card__meta">
-                    <Tag color={getMinistryTone(props.chat.checkpoint.currentMinistry)}>
-                      {props.chat.checkpoint.currentNode ?? '等待进入节点'}
-                    </Tag>
-                    {routeSummary ? <Tag color="blue">{routeSummary.selectedModel}</Tag> : null}
-                  </div>
-                </article>
-
-                <article className="chatx-war-card">
-                  <Text className="chatx-war-card__label">消息入口</Text>
-                  <Title level={5}>
-                    {props.chat.checkpoint.chatRoute?.adapter ?? routeSummary?.selectedModel ?? '待决策'}
-                  </Title>
-                  <Text type="secondary">
-                    {props.chat.checkpoint.chatRoute
-                      ? `本轮消息先命中 ${props.chat.checkpoint.chatRoute.adapter}，按 ${props.chat.checkpoint.chatRoute.flow} 路径处理。`
-                      : routeSummary
-                        ? `${getMinistryLabel(routeSummary.ministry)} 默认 ${routeSummary.defaultModel}。`
-                        : '当前还没有聊天入口或模型路由决策记录。'}
-                  </Text>
-                  <div className="chatx-war-card__meta">
-                    {props.chat.checkpoint.chatRoute ? (
-                      <>
-                        <Tag color="geekblue">{props.chat.checkpoint.chatRoute.flow}</Tag>
-                        <Tag>priority {props.chat.checkpoint.chatRoute.priority}</Tag>
-                      </>
-                    ) : routeSummary ? (
-                      <Tag>{routeSummary.workerId}</Tag>
-                    ) : (
-                      <Tag>等待路由</Tag>
-                    )}
-                  </div>
-                </article>
-              </div>
-
-              {props.chat.checkpoint.approvalFeedback ? (
-                <article className="chatx-decree-note">
-                  <div className="chatx-decree-note__header">
-                    <Tag color="red">最近批注</Tag>
-                    <Text type="secondary">上一轮处理已被打回</Text>
-                  </div>
-                  <Text>{props.chat.checkpoint.approvalFeedback}</Text>
-                </article>
-              ) : null}
-
-              {props.chat.checkpoint.pendingApproval ? (
-                <article className="chatx-decree-note is-pending">
-                  <div className="chatx-decree-note__header">
-                    <Tag color="orange">待确认</Tag>
-                    <Tag color={getRiskColor(props.chat.checkpoint.pendingApproval.riskLevel)}>
-                      风险 {props.chat.checkpoint.pendingApproval.riskLevel ?? 'unknown'}
-                    </Tag>
-                  </div>
-                  <Text strong>{props.chat.checkpoint.pendingApproval.intent}</Text>
-                  <Text type="secondary">
-                    {props.chat.checkpoint.pendingApproval.reason ?? '该动作需要你拍板后才会继续执行。'}
-                  </Text>
-                  <Space size={8} wrap>
-                    <Tag>{props.chat.checkpoint.pendingApproval.toolName}</Tag>
-                    <Tag>{props.chat.checkpoint.pendingApproval.requestedBy}</Tag>
-                  </Space>
-                </article>
-              ) : null}
-            </section>
-          )
-        }
-      : null,
-    props.chat.checkpoint?.externalSources?.length
-      ? {
-          key: 'evidence',
-          label: (
-            <div className="chatx-workbench-section__label">
-              <Text strong>参考内容</Text>
-              <Text type="secondary">{props.chat.checkpoint.externalSources.length} 条记录</Text>
-            </div>
-          ),
-          children: (
-            <section className="chatx-stream-panel chatx-stream-panel--nested">
-              <div className="chatx-stream-panel__list">
-                {props.chat.checkpoint.externalSources.slice(0, 6).map(source => (
-                  <article key={source.id} className="chatx-war-card">
-                    <Text className="chatx-war-card__label">
-                      {source.sourceType === 'freshness_meta' ? 'freshness' : source.sourceType}
-                    </Text>
-                    <Title level={5}>{source.summary}</Title>
-                    <Text type="secondary">
-                      {source.sourceType === 'freshness_meta'
-                        ? typeof source.detail?.referenceTime === 'string'
-                          ? source.detail.referenceTime
-                          : (source.fetchedAt ?? 'internal-evidence')
-                        : (source.sourceUrl ?? source.sourceId ?? 'internal-evidence')}
-                    </Text>
-                    <div className="chatx-war-card__meta">
-                      <Tag color={source.sourceType === 'freshness_meta' ? 'orange' : 'blue'}>{source.trustClass}</Tag>
-                      {source.sourceType === 'freshness_meta' && typeof source.detail?.sourceCount === 'number' ? (
-                        <Tag>{source.detail.sourceCount} 条来源</Tag>
-                      ) : null}
-                      {source.fetchedAt ? <Tag>{source.fetchedAt}</Tag> : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )
-        }
-      : null,
-    props.chat.checkpoint?.learningEvaluation
-      ? {
-          key: 'learning',
-          label: (
-            <div className="chatx-workbench-section__label">
-              <Text strong>学习结果</Text>
-              <Text type="secondary">score {props.chat.checkpoint.learningEvaluation.score}</Text>
-            </div>
-          ),
-          children: (
-            <section className="chatx-stream-panel chatx-stream-panel--nested">
-              <div className="chatx-stream-panel__list">
-                <article className="chatx-war-card">
-                  <Text className="chatx-war-card__label">学习置信度</Text>
-                  <Title level={5}>{props.chat.checkpoint.learningEvaluation.confidence}</Title>
-                  <Text type="secondary">
-                    {props.chat.checkpoint.learningEvaluation.notes.join('；') || '当前尚无附加说明。'}
-                  </Text>
-                  <div className="chatx-war-card__meta">
-                    <Tag color="purple">
-                      推荐 {props.chat.checkpoint.learningEvaluation.recommendedCandidateIds.length}
-                    </Tag>
-                    <Tag color="green">
-                      自动确认 {props.chat.checkpoint.learningEvaluation.autoConfirmCandidateIds.length}
-                    </Tag>
-                  </div>
-                </article>
-              </div>
-            </section>
-          )
-        }
-      : null,
-    props.chat.checkpoint &&
-    (props.chat.checkpoint.reusedSkills?.length || props.chat.checkpoint.usedCompanyWorkers?.length)
-      ? {
-          key: 'reuse',
-          label: (
-            <div className="chatx-workbench-section__label">
-              <Text strong>复用记录</Text>
-              <Text type="secondary">技能与执行角色复用</Text>
-            </div>
-          ),
-          children: (
-            <section className="chatx-stream-panel chatx-stream-panel--nested">
-              <div className="chatx-stream-panel__list">
-                {props.chat.checkpoint.reusedSkills?.length ? (
-                  <article className="chatx-war-card">
-                    <Text className="chatx-war-card__label">复用技能</Text>
-                    <div className="chatx-war-card__meta">
-                      {props.chat.checkpoint.reusedSkills.map(item => (
-                        <Tag key={item} color="gold">
-                          {item}
-                        </Tag>
-                      ))}
-                    </div>
-                  </article>
-                ) : null}
-                {props.chat.checkpoint.usedCompanyWorkers?.length ? (
-                  <article className="chatx-war-card">
-                    <Text className="chatx-war-card__label">公司专员</Text>
-                    <div className="chatx-war-card__meta">
-                      {props.chat.checkpoint.usedCompanyWorkers.map(item => (
-                        <Tag key={item} color="cyan">
-                          {item}
-                        </Tag>
-                      ))}
-                    </div>
-                  </article>
-                ) : null}
-              </div>
-            </section>
-          )
-        }
-      : null,
-    props.streamEvents.length
-      ? {
-          key: 'events',
-          label: (
-            <div className="chatx-workbench-section__label">
-              <Text strong>过程记录</Text>
-              <Text type="secondary">{props.streamEvents.length} 条事件</Text>
-            </div>
-          ),
-          children: (
-            <section className="chatx-stream-panel chatx-stream-panel--nested">
-              <div className="chatx-stream-panel__list">
-                <Collapse
-                  ghost
-                  size="small"
-                  className="chatx-stream-collapse"
-                  items={props.streamEvents.map(eventItem => ({
-                    key: eventItem.id,
-                    label: (
-                      <div className="chatx-stream-event__label">
-                        <div className="chatx-stream-event__label-main">
-                          <Tag bordered={false} color="processing">
-                            {eventItem.type}
-                          </Tag>
-                          <Text className="chatx-stream-event__summary">{eventItem.summary}</Text>
-                        </div>
-                        <Text type="secondary">{eventItem.at}</Text>
-                      </div>
-                    ),
-                    children: (
-                      <article className="chatx-stream-event">
-                        <pre className="chatx-stream-event__raw">{eventItem.raw}</pre>
-                      </article>
-                    )
-                  }))}
-                />
-              </div>
-            </section>
-          )
-        }
-      : null
-  ];
-  const workbenchItems = workbenchItemsRaw.filter(Boolean) as NonNullable<CollapseProps['items']>;
+  const { runningHint, compressionHint, llmFallbackNotes, workbenchItems } = buildWorkbenchSectionState(
+    props.chat,
+    props.streamEvents
+  );
+  const showMissionControl = shouldShowMissionControl(props.chat);
+  const quickActionChips = useMemo(() => buildQuickActionChips(props.chat), [props.chat]);
+  const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
+  const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
 
   return (
     <div className={`chatx-workbench ${props.showWorkbench ? 'is-workbench-open' : 'is-workbench-closed'}`}>
       <section className="chatx-chat-column">
         <div className="chatx-chat-surface">
-          {!props.chat.hasMessages ? (
-            <div className="chatx-welcome-wrap">
-              <Welcome
-                variant="borderless"
-                title="开始对话"
-                description="直接提问或继续追问。需要时再打开右侧详情，查看过程、参考内容和学习结果。"
-                extra={
-                  <Space size={8} wrap>
-                    <Tag color="blue">自然对话</Tag>
-                    <Tag color="purple">按需展开详情</Tag>
-                  </Space>
-                }
-              />
-            </div>
-          ) : null}
+          {props.chat.activeSession && showMissionControl ? <SessionMissionControl chat={props.chat} /> : null}
+          {!props.chat.hasMessages ? <EmptyFrontlineEntry /> : null}
 
           <Bubble.List items={props.bubbleItems} autoScroll role={CHAT_ROLE_CONFIG} className="chatx-bubble-list" />
         </div>
 
-        <div className="chatx-composer-shell">
-          <Sender
-            value={props.chat.draft}
-            onChange={value => props.chat.setDraft(value)}
-            onSubmit={value => void props.chat.sendMessage(value)}
-            loading={
-              props.chat.activeSession?.status === 'running' || Boolean(props.chat.checkpoint?.thinkState?.loading)
-            }
-            onCancel={() => void props.chat.cancelActiveSession()}
-            placeholder="输入问题，继续追问，或使用 /review /qa /browse /ship"
-            autoSize={{ minRows: 1, maxRows: 6 }}
-          />
+        <div className={`chatx-composer-shell ${props.chat.hasMessages ? 'is-thread-active' : 'is-empty-thread'}`}>
+          <ChatComposer chat={props.chat} quickActionChips={quickActionChips} />
         </div>
       </section>
 
       {props.showWorkbench ? (
         <aside className="chatx-side-column">
+          <section className="chatx-workspace-shell">
+            <div className="chatx-workspace-shell__header">
+              <div>
+                <Text className="chatx-workspace-shell__eyebrow">Current Workspace</Text>
+                <Text strong>围绕当前任务的上下文与结论</Text>
+              </div>
+              <Tag>{props.chat.activeSession?.status ?? 'idle'}</Tag>
+            </div>
+            <div className="chatx-workspace-shell__body">
+              <article className="chatx-workspace-shell__card">
+                <Text className="chatx-workspace-shell__label">当前目标</Text>
+                <Text>{workspaceSnapshot.objective}</Text>
+              </article>
+              <article className="chatx-workspace-shell__card">
+                <Text className="chatx-workspace-shell__label">最新结论</Text>
+                <Text>{workspaceSnapshot.latestOutcome}</Text>
+              </article>
+              <div className="chatx-workspace-shell__meta">
+                <Tag color="blue">{workspaceSnapshot.evidenceCount} 条来源</Tag>
+                <Tag color="purple">{workspaceSnapshot.skillCount} 个技能</Tag>
+                <Tag color="cyan">{workspaceSnapshot.connectorCount} 个连接器</Tag>
+                {workspaceSnapshot.currentWorker ? <Tag>{workspaceSnapshot.currentWorker}</Tag> : null}
+              </div>
+              <div className="chatx-workspace-shell__actions">
+                {workspaceFollowUps.map(action => (
+                  <Button
+                    key={action.label}
+                    size="small"
+                    onClick={() =>
+                      void props.chat.sendMessage({
+                        display: stripLeadingWorkflowCommand(action.value),
+                        payload: action.value
+                      })
+                    }
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+                <Button
+                  size="small"
+                  type="default"
+                  onClick={() => void navigator.clipboard.writeText(buildWorkspaceShareText(props.chat))}
+                >
+                  复制工作区摘要
+                </Button>
+              </div>
+            </div>
+          </section>
           {runningHint ? <Alert type="info" showIcon title={runningHint} className="chatx-running-alert" /> : null}
           {compressionHint ? (
             <Alert type="success" showIcon title={compressionHint} className="chatx-running-alert" />
@@ -337,7 +149,7 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
             <Alert
               type="warning"
               showIcon
-              title="本轮普通聊天没有拿到模型正常输出，当前展示的是兜底回复。"
+              title="当前轮次未取得模型正常输出，正在展示兜底响应。"
               description={llmFallbackNotes.join('；')}
               className="chatx-running-alert"
             />
@@ -354,72 +166,282 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
             </section>
           ) : null}
 
-          {props.chat.activeSession?.status === 'waiting_approval' && props.chat.pendingApprovals.length ? (
-            <div className="chatx-inline-actions">
-              {props.chat.pendingApprovals.map(approval => (
-                <Alert
-                  key={approval.intent}
-                  type="warning"
-                  showIcon
-                  className="chatx-running-alert"
-                  title={`检测到高风险动作：${approval.intent}`}
-                  description={
-                    <Space wrap>
-                      <Text type="secondary">{approval.reason || '该动作需要你确认后才能继续执行。'}</Text>
-                      <Button
-                        type="primary"
-                        size="small"
-                        onClick={() => void props.chat.updateApproval(approval.intent, true)}
-                      >
-                        继续执行
-                      </Button>
-                      <Button size="small" onClick={() => void props.chat.updateApproval(approval.intent, false)}>
-                        拒绝执行
-                      </Button>
-                    </Space>
-                  }
-                />
-              ))}
-            </div>
-          ) : null}
-
-          {props.chat.activeSession?.status === 'failed' ? (
-            <Alert
-              type="error"
-              showIcon
-              className="chatx-running-alert"
-              title="系统执行被中断"
-              description={
-                <Space wrap>
-                  <Text type="secondary">你可以恢复当前会话，让系统基于现有上下文继续下一步。</Text>
-                  <Button type="primary" size="small" onClick={() => void props.chat.recoverActiveSession()}>
-                    继续下一步
-                  </Button>
-                </Space>
-              }
-            />
-          ) : null}
+          <ChatHomeApprovalActions chat={props.chat} />
         </aside>
       ) : null}
     </div>
   );
 }
 
+// checkpoint.activeInterrupt is the persisted 司礼监 / InterruptController projection used by the frontline workbench.
+function EmptyFrontlineEntry() {
+  return (
+    <div className="chatx-empty-entry">
+      <div className="chatx-empty-entry__copy">
+        <Text className="chatx-empty-entry__eyebrow">Frontline Workspace</Text>
+        <Typography.Title level={1}>直接输入你的目标</Typography.Title>
+        <Typography.Paragraph>普通问题直接回答，复杂任务自动升级为首辅调度、技能补强与审批闭环。</Typography.Paragraph>
+        <Space size={8} wrap>
+          <Tag color="blue">Direct Reply</Tag>
+          <Tag color="purple">Supervisor</Tag>
+          <Tag color="gold">Skill Aware</Tag>
+        </Space>
+      </div>
+    </div>
+  );
+}
+
+export function shouldShowMissionControl(chat: ReturnType<typeof useChatSession>) {
+  const hasDialogue = chat.messages.some(message => message.role === 'user' || message.role === 'assistant');
+  if (hasDialogue) {
+    return false;
+  }
+
+  if (chat.pendingApprovals.length) {
+    return true;
+  }
+
+  const status = chat.activeSession?.status;
+  if (status && status !== 'idle') {
+    return true;
+  }
+
+  return Boolean(
+    chat.checkpoint?.currentMinistry ||
+    chat.checkpoint?.currentWorker ||
+    chat.checkpoint?.chatRoute ||
+    chat.checkpoint?.thinkState?.content
+  );
+}
+
+function ChatComposer({
+  chat,
+  quickActionChips
+}: {
+  chat: ReturnType<typeof useChatSession>;
+  quickActionChips: QuickActionChip[];
+}) {
+  const [draft, setDraft] = useState('');
+  const [suggestedPayload, setSuggestedPayload] = useState<string | null>(null);
+  const [planModeEnabled, setPlanModeEnabled] = useState(false);
+  const secondaryMenuItems = quickActionChips.map(item => ({
+    key: item.label,
+    icon: item.icon,
+    label: item.label
+  })) satisfies MenuProps['items'];
+
+  useEffect(() => {
+    setDraft('');
+    setSuggestedPayload(null);
+    setPlanModeEnabled(false);
+  }, [chat.activeSessionId]);
+
+  return (
+    <>
+      <Sender
+        className="chatx-sender"
+        value={draft}
+        onChange={value => {
+          setDraft(value);
+          setSuggestedPayload(null);
+        }}
+        onSubmit={value => {
+          setDraft('');
+          const outbound =
+            suggestedPayload && !planModeEnabled
+              ? resolveSuggestedDraftSubmission(value, suggestedPayload)
+              : buildSubmitMessage(value, planModeEnabled ? ['plan'] : []);
+          setSuggestedPayload(null);
+          void chat.sendMessage(outbound);
+        }}
+        loading={chat.activeSession?.status === 'running' || Boolean(chat.checkpoint?.thinkState?.loading)}
+        onCancel={() => void chat.cancelActiveSession()}
+        placeholder="输入内容"
+        autoSize={{ minRows: 3, maxRows: 6 }}
+        suffix={false}
+        footer={actionNode => (
+          <Flex justify="space-between" align="center" className="chatx-sender-footer">
+            <Flex gap="small" align="center" className="chatx-sender-footer__left">
+              {quickActionChips.length ? (
+                <Dropdown
+                  menu={{
+                    items: secondaryMenuItems,
+                    onClick: info => {
+                      const matched = quickActionChips.find(item => item.label === info.key);
+                      if (!matched) {
+                        return;
+                      }
+                      setDraft(stripLeadingWorkflowCommand(matched.value));
+                      setSuggestedPayload(matched.value);
+                    }
+                  }}
+                  placement="topLeft"
+                >
+                  <SenderSwitch
+                    value={false}
+                    icon={<span>+</span>}
+                    checkedChildren={<span className="chatx-quick-switch__label">更多建议</span>}
+                    unCheckedChildren={<span className="chatx-quick-switch__label">更多建议</span>}
+                    className="chatx-quick-switch"
+                  />
+                </Dropdown>
+              ) : null}
+            </Flex>
+            <Flex align="center" className="chatx-sender-footer__right">
+              <div className={`chatx-plan-mode-inline ${planModeEnabled ? 'is-active' : ''}`}>
+                <span className="chatx-plan-mode-inline__label">计划模式</span>
+                <Switch
+                  size="small"
+                  checked={planModeEnabled}
+                  onChange={checked => {
+                    setPlanModeEnabled(checked);
+                    setSuggestedPayload(null);
+                  }}
+                />
+              </div>
+              {actionNode}
+            </Flex>
+          </Flex>
+        )}
+      />
+    </>
+  );
+}
+
+export function buildQuickActionChips(chat: ReturnType<typeof useChatSession>): QuickActionChip[] {
+  const currentStep = chat.checkpoint?.graphState?.currentStep;
+  const status = chat.activeSession?.status;
+  const hasSettledAssistantReply = chat.messages.some(
+    message => message.role === 'assistant' && message.content.trim() && !message.id.startsWith('pending_assistant_')
+  );
+  const resultFollowUps: QuickActionChip[] = hasSettledAssistantReply
+    ? [
+        {
+          label: '继续深挖',
+          value: '/qa 请基于刚才的结论继续深挖最关键的风险、假设和下一步',
+          icon: <span>+</span>,
+          tone: 'secondary'
+        },
+        {
+          label: '改成计划',
+          value: '/plan-eng-review 请把刚才的结论改写成一个可执行计划',
+          icon: <span>^</span>,
+          tone: 'secondary'
+        },
+        {
+          label: '生成执行任务',
+          value: '/browse 请基于刚才的结论生成下一步执行任务并继续推进',
+          icon: <span>{`{}`}</span>,
+          tone: 'secondary'
+        },
+        {
+          label: '输出检查单',
+          value: '/qa 请基于刚才的结论生成检查单和验收标准',
+          icon: <span>@</span>,
+          tone: 'secondary'
+        }
+      ]
+    : [];
+  const contextChildren: QuickActionChip[] =
+    currentStep === 'review'
+      ? [
+          {
+            label: '列出风险与回归点',
+            value: '/review 请按严重程度列出风险、回归点和缺失测试',
+            icon: <span>!</span>,
+            tone: 'secondary'
+          },
+          { label: '给出发布前检查单', value: '/qa 请给我一份发布前检查单', icon: <span>@</span>, tone: 'secondary' }
+        ]
+      : currentStep === 'execute'
+        ? [
+            {
+              label: '给出下一步改动',
+              value: '/browse 请基于当前进度给我下一步最小改动方案',
+              icon: <span>^</span>,
+              tone: 'secondary'
+            },
+            { label: '先补测试再继续', value: '/qa 请先列出本轮最该补的测试', icon: <span>#</span>, tone: 'secondary' }
+          ]
+        : [
+            {
+              label: '审查改动',
+              value: '/review 请审查我当前会话里的改动和风险',
+              icon: <span>!</span>,
+              tone: 'secondary'
+            },
+            {
+              label: '列测试点',
+              value: '/qa 请帮我列出这个需求的测试点和验收标准',
+              icon: <span>#</span>,
+              tone: 'secondary'
+            }
+          ];
+
+  const chips = [
+    ...resultFollowUps,
+    ...QUICK_SUGGESTIONS,
+    ...(status === 'running' ? contextChildren : contextChildren.slice(0, 2))
+  ];
+
+  const deduped = chips.filter(
+    (item, index, list) => list.findIndex(candidate => candidate.label === item.label) === index
+  );
+
+  return deduped.slice(0, 5);
+}
+
+export function buildWorkspaceFollowUpActions(chat: ReturnType<typeof useChatSession>) {
+  const chips = buildQuickActionChips(chat);
+  return chips.filter(item => ['继续深挖', '改成计划', '生成执行任务', '输出检查单'].includes(item.label));
+}
+
+export function buildWorkspaceShareText(chat: ReturnType<typeof useChatSession>) {
+  const snapshot = buildProjectContextSnapshot(chat);
+  const lines = [
+    `当前目标：${snapshot.objective}`,
+    `最新结论：${snapshot.latestOutcome}`,
+    `来源数：${snapshot.evidenceCount}`,
+    `技能数：${snapshot.skillCount}`,
+    `连接器数：${snapshot.connectorCount}`,
+    snapshot.currentWorker ? `当前执行者：${snapshot.currentWorker}` : '',
+    snapshot.currentMinistry ? `当前执行线：${snapshot.currentMinistry}` : ''
+  ].filter(Boolean);
+
+  return lines.join('\n');
+}
+
 export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
+  const capabilityThought = buildCapabilityThoughtItem(chat);
+  const optimisticThought = buildOptimisticThoughtItem(chat);
+
+  if (optimisticThought) {
+    return capabilityThought ? [capabilityThought, optimisticThought] : [optimisticThought];
+  }
+
   if (chat.checkpoint?.thoughtChain?.length) {
-    return chat.checkpoint.thoughtChain.map(item => ({
+    const activeMessageId = chat.checkpoint.thinkState?.messageId;
+    const scopedThoughtChain =
+      activeMessageId && chat.checkpoint.thoughtChain.some(item => item.messageId === activeMessageId)
+        ? chat.checkpoint.thoughtChain.filter(item => !item.messageId || item.messageId === activeMessageId)
+        : chat.checkpoint.thoughtChain;
+    const items = scopedThoughtChain.map(item => ({
       key: item.key,
-      title: item.title,
-      description: item.description,
-      content: item.content ? <pre className="chatx-thought-raw">{item.content}</pre> : undefined,
+      title: humanizeOperationalCopy(item.title),
+      description: humanizeOperationalCopy(item.description),
+      content: item.content ? (
+        <pre className="chatx-thought-raw">{humanizeOperationalCopy(item.content)}</pre>
+      ) : undefined,
       footer: item.footer,
       status: item.status,
       collapsible: item.collapsible,
       blink: item.blink
     }));
+
+    return capabilityThought ? [capabilityThought, ...items] : items;
   }
 
-  return chat.events
+  const items = chat.events
     .slice()
     .reverse()
     .map(eventItem => {
@@ -435,12 +457,109 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
 
       return {
         key: eventItem.id,
-        title: EVENT_LABELS[eventItem.type] ?? eventItem.type,
+        title: humanizeOperationalCopy(EVENT_LABELS[eventItem.type] ?? eventItem.type),
         description: buildEventSummary(eventItem),
         footer: meta || eventItem.at,
         status:
-          eventItem.type === 'session_failed' ? 'error' : eventItem.type === 'session_finished' ? 'success' : 'loading',
+          eventItem.type === 'session_failed'
+            ? ('error' as const)
+            : eventItem.type === 'session_finished'
+              ? ('success' as const)
+              : ('loading' as const),
         collapsible: Boolean(meta)
       };
     });
+
+  return capabilityThought ? [capabilityThought, ...items] : items;
+}
+
+function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
+  const checkpoint = chat.checkpoint;
+  if (!checkpoint?.thinkState?.loading || !checkpoint.taskId.startsWith('optimistic_')) {
+    return undefined;
+  }
+
+  return {
+    key: `optimistic-think-${checkpoint.taskId}`,
+    title: humanizeOperationalCopy(checkpoint.thinkState.title),
+    description: humanizeOperationalCopy(checkpoint.thinkState.content),
+    footer: '正在准备这轮回复',
+    status: 'loading',
+    collapsible: false,
+    blink: true
+  };
+}
+
+function buildCapabilityThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
+  const checkpoint = chat.checkpoint;
+  if (!checkpoint) {
+    return undefined;
+  }
+
+  const usedSkills = checkpoint.usedInstalledSkills ?? [];
+  const workers = checkpoint.usedCompanyWorkers ?? [];
+  const connectors = checkpoint.connectorRefs ?? [];
+  const pendingSkill =
+    checkpoint.pendingApproval?.intent === 'install_skill'
+      ? checkpoint.pendingApproval.preview?.find(item => item.label === 'Skill')?.value
+      : checkpoint.activeInterrupt?.kind === 'skill-install'
+        ? checkpoint.activeInterrupt.preview?.find(item => item.label === 'Skill')?.value
+        : undefined;
+  const missingConnector =
+    checkpoint.skillSearch?.mcpRecommendation?.kind === 'connector' &&
+    !connectors.length &&
+    checkpoint.skillSearch.mcpRecommendation.connectorTemplateId
+      ? formatConnectorLabel(checkpoint.skillSearch.mcpRecommendation.connectorTemplateId)
+      : undefined;
+
+  const summaryParts = [
+    usedSkills.length ? `已复用 ${usedSkills.slice(0, 3).join('、')}` : '',
+    workers.length ? `已调用 ${workers.slice(0, 2).join('、')}` : '',
+    connectors.length ? `已接入 ${connectors.slice(0, 2).join('、')}` : '',
+    pendingSkill ? `等待安装 ${pendingSkill}` : '',
+    missingConnector ? `未接入 ${missingConnector}，按现有能力继续` : '',
+    checkpoint.currentWorker ? `当前由 ${checkpoint.currentWorker} 推进` : ''
+  ].filter(Boolean);
+
+  if (!summaryParts.length) {
+    return undefined;
+  }
+
+  const details = [
+    usedSkills.length ? `Skills: ${usedSkills.join(', ')}` : '',
+    workers.length ? `Workers: ${workers.join(', ')}` : '',
+    connectors.length ? `MCP / Connectors: ${connectors.join(', ')}` : '',
+    pendingSkill ? `Pending install: ${pendingSkill}` : '',
+    missingConnector ? `Capability gap: ${missingConnector}` : ''
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    key: `capability-${checkpoint.taskId}`,
+    title: '能力链路',
+    description: summaryParts.join(' · '),
+    content: details ? <pre className="chatx-thought-raw">{details}</pre> : undefined,
+    footer: checkpoint.updatedAt,
+    status:
+      pendingSkill || checkpoint.graphState?.status === 'running'
+        ? 'loading'
+        : checkpoint.graphState?.status === 'failed'
+          ? 'error'
+          : 'success',
+    collapsible: Boolean(details)
+  };
+}
+
+function formatConnectorLabel(templateId: 'github-mcp-template' | 'browser-mcp-template' | 'lark-mcp-template') {
+  switch (templateId) {
+    case 'github-mcp-template':
+      return 'GitHub MCP';
+    case 'browser-mcp-template':
+      return 'Browser MCP';
+    case 'lark-mcp-template':
+      return 'Lark MCP';
+    default:
+      return templateId;
+  }
 }

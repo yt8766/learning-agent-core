@@ -1,6 +1,6 @@
-﻿import type { ChatSessionRecord } from '../../types/chat';
-import { formatSessionTime, getSessionStatusLabel } from '../../hooks/use-chat-session';
-import { SearchIcon } from '../../components/icons';
+﻿import type { ChatSessionRecord } from '@/types/chat';
+import { formatSessionTime, getSessionStatusLabel } from '@/hooks/use-chat-session';
+import { SearchIcon } from '@/components/icons';
 
 const SIDEBAR_ITEMS = [
   { key: 'images', icon: '▧', label: '图片', active: true },

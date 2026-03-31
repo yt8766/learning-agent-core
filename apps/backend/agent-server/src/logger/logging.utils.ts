@@ -18,6 +18,7 @@ const SENSITIVE_KEYS = new Set([
 export interface RequestLogContext {
   requestId: string;
   traceId: string;
+  errorLogged?: boolean;
 }
 
 export interface RequestWithLogContext extends Request {
@@ -34,6 +35,11 @@ export function ensureRequestContext(req: RequestWithLogContext): RequestLogCont
 
 export function getRequestContext(req: RequestWithLogContext): RequestLogContext {
   return req.logContext ?? ensureRequestContext(req);
+}
+
+export function markRequestErrorLogged(req: RequestWithLogContext): void {
+  const context = getRequestContext(req);
+  context.errorLogged = true;
 }
 
 export function sanitizeForLogging<T>(value: T): T {

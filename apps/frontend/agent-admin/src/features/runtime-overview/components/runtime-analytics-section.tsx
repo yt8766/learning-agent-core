@@ -1,4 +1,5 @@
 ﻿import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import type { RuntimeOverviewPanelProps } from './runtime-overview-types';
@@ -16,13 +17,13 @@ export function RuntimeAnalyticsSection({
 
   return (
     <>
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-950">Provider Billing Audit</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Provider Billing Audit</CardTitle>
           <Badge variant="outline">{runtime.usageAnalytics.providerBillingStatus?.status ?? 'disabled'}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-muted-foreground">
             Provider {runtime.usageAnalytics.providerBillingStatus?.provider ?? 'unknown'} / 来源{' '}
             {runtime.usageAnalytics.providerBillingStatus?.source ?? 'unconfigured'} /
             {runtime.usageAnalytics.providerBillingStatus?.syncedAt
@@ -30,7 +31,7 @@ export function RuntimeAnalyticsSection({
               : ' 尚未同步'}
           </p>
           {runtime.usageAnalytics.providerBillingStatus?.message ? (
-            <p className="text-sm text-stone-500">{runtime.usageAnalytics.providerBillingStatus.message}</p>
+            <p className="text-sm text-muted-foreground">{runtime.usageAnalytics.providerBillingStatus.message}</p>
           ) : null}
           {runtime.usageAnalytics.providerBillingTotals ? (
             <div className="flex flex-wrap gap-2">
@@ -45,19 +46,19 @@ export function RuntimeAnalyticsSection({
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-stone-950">Daily Token / Cost</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">Daily Token / Cost</CardTitle>
             <div className="flex items-center gap-2">
               {[7, 30, 90].map(option => (
-                <button
+                <Button
                   key={option}
-                  type="button"
+                  size="sm"
+                  variant={historyDays === option ? 'default' : 'outline'}
                   onClick={() => onHistoryDaysChange(option)}
-                  className={`rounded-full px-3 py-1 text-xs ${historyDays === option ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'}`}
                 >
                   {option}d
-                </button>
+                </Button>
               ))}
               <Badge variant="outline">
                 当前 {runtime.usageAnalytics.daily.length} 天 / 持久化{' '}
@@ -66,29 +67,29 @@ export function RuntimeAnalyticsSection({
             </div>
           </CardHeader>
           {runtime.usageAnalytics.historyRange ? (
-            <p className="px-6 text-xs text-stone-500">
+            <p className="px-6 text-xs text-muted-foreground">
               归档范围 {runtime.usageAnalytics.historyRange.earliestDay} -{' '}
               {runtime.usageAnalytics.historyRange.latestDay}
             </p>
           ) : null}
           <CardContent className="grid gap-3">
             {usageHistory.length === 0 ? (
-              <p className="text-sm text-stone-500">当前没有可用的 usage 历史。</p>
+              <p className="text-sm text-muted-foreground">当前没有可用的 usage 历史。</p>
             ) : (
               usageHistory.map(item => (
-                <article key={item.day} className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                <article key={item.day} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-stone-950">{item.day}</p>
-                      <p className="mt-1 text-xs text-stone-500">
+                      <p className="text-sm font-semibold text-foreground">{item.day}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {item.runs} runs / {item.tokens.toLocaleString()} tokens / ¥{item.costCny.toFixed(2)}
                       </p>
                     </div>
                     <Badge variant={item.overBudget ? 'warning' : 'outline'}>{item.tokens.toLocaleString()}</Badge>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-stone-900"
+                      className="h-full rounded-full bg-foreground"
                       style={{ width: `${Math.max(6, Math.round((item.tokens / maxDailyTokens) * 100))}%` }}
                     />
                   </div>
@@ -98,27 +99,27 @@ export function RuntimeAnalyticsSection({
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-stone-950">Model Cost Distribution</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">Model Cost Distribution</CardTitle>
             <Badge variant="outline">{runtime.usageAnalytics.models.length} models</Badge>
           </CardHeader>
           <CardContent className="grid gap-3">
             {runtime.usageAnalytics.models.length === 0 ? (
-              <p className="text-sm text-stone-500">当前还没有模型用量记录。</p>
+              <p className="text-sm text-muted-foreground">当前还没有模型用量记录。</p>
             ) : (
               runtime.usageAnalytics.models.map(item => (
-                <article key={item.model} className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+                <article key={item.model} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-stone-950">{item.model}</p>
-                      <p className="mt-1 text-xs text-stone-500">
+                      <p className="text-sm font-semibold text-foreground">{item.model}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {item.runCount} allocations / {item.tokens.toLocaleString()} tokens / ¥{item.costCny.toFixed(2)}
                       </p>
                     </div>
                     <Badge variant="outline">${item.costUsd.toFixed(4)}</Badge>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-stone-200">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-emerald-600"
                       style={{ width: `${Math.max(6, Math.round((item.tokens / maxModelTokens) * 100))}%` }}
@@ -131,9 +132,9 @@ export function RuntimeAnalyticsSection({
         </Card>
       </div>
 
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-950">Usage Audit</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Usage Audit</CardTitle>
           <Badge variant="outline">{runtime.usageAnalytics.recentUsageAudit?.length ?? 0}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -141,12 +142,12 @@ export function RuntimeAnalyticsSection({
             runtime.usageAnalytics.recentUsageAudit.map(item => (
               <article
                 key={`${item.taskId}-${item.updatedAt}`}
-                className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4"
+                className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-stone-950">{item.taskId}</p>
-                    <p className="mt-1 text-xs text-stone-500">
+                    <p className="text-sm font-semibold text-foreground">{item.taskId}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {item.day} / {item.updatedAt}
                     </p>
                   </div>
@@ -166,7 +167,7 @@ export function RuntimeAnalyticsSection({
               </article>
             ))
           ) : (
-            <p className="text-sm text-stone-500">当前还没有可用的 usage 审计记录。</p>
+            <p className="text-sm text-muted-foreground">当前还没有可用的 usage 审计记录。</p>
           )}
         </CardContent>
       </Card>

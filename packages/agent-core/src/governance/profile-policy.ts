@@ -28,6 +28,7 @@ export function describeConnectorProfilePolicy(connectorId: string, profile: Run
   const companyOnly =
     normalizedId.includes('internal') ||
     normalizedId.includes('feishu') ||
+    normalizedId.includes('lark') ||
     normalizedId.includes('security') ||
     normalizedId.includes('jira') ||
     normalizedId.includes('repo') ||

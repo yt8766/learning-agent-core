@@ -2,12 +2,13 @@ import { RuntimeProfile, WorkerDefinition } from '@agent/shared';
 
 import { describeWorkerProfilePolicy } from './profile-policy';
 
+// executionPlan.mode is the canonical runtime mode; "standards" in source ids below are team naming only.
 const DEFAULT_WORKERS: WorkerDefinition[] = [
   {
-    id: 'libu-router-core',
-    ministry: 'libu-router',
+    id: 'libu-governance-core',
+    ministry: 'libu-governance',
     kind: 'core',
-    displayName: '吏部路由中枢',
+    displayName: '吏部治理中枢',
     defaultModel: 'glm-5',
     supportedCapabilities: ['workflow-routing', 'context-budgeting', 'model-selection'],
     reviewPolicy: 'none',
@@ -24,10 +25,10 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     tags: ['research', 'memory', 'knowledge']
   },
   {
-    id: 'libu-docs-core',
-    ministry: 'libu-docs',
+    id: 'libu-delivery-core',
+    ministry: 'libu-delivery',
     kind: 'core',
-    displayName: '礼部文书官',
+    displayName: '礼部交付官',
     defaultModel: 'glm-5',
     supportedCapabilities: ['read_local_file', 'list_directory', 'documentation', 'ui-spec'],
     reviewPolicy: 'self-check',
@@ -39,7 +40,7 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'core',
     displayName: '兵部沙盒官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['terminal', 'sandbox', 'http_request', 'release-ops'],
+    supportedCapabilities: ['terminal', 'sandbox', 'http_request', 'release-ops', 'schedule_task'],
     reviewPolicy: 'mandatory-xingbu',
     tags: ['terminal', 'sandbox', 'release']
   },
@@ -59,7 +60,14 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'core',
     displayName: '工部营造官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['read_local_file', 'list_directory', 'write_local_file', 'code-generation', 'refactor'],
+    supportedCapabilities: [
+      'read_local_file',
+      'list_directory',
+      'write_local_file',
+      'delete_local_file',
+      'code-generation',
+      'refactor'
+    ],
     reviewPolicy: 'mandatory-xingbu',
     tags: ['code', 'refactor']
   },
@@ -95,7 +103,7 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'company',
     displayName: '工部前端营造官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['read_local_file', 'write_local_file', 'code-generation', 'refactor'],
+    supportedCapabilities: ['read_local_file', 'write_local_file', 'delete_local_file', 'code-generation', 'refactor'],
     reviewPolicy: 'mandatory-xingbu',
     sourceId: 'company-frontend-standards',
     owner: 'frontend-team',
@@ -108,7 +116,7 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'company',
     displayName: '工部服务端营造官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['read_local_file', 'write_local_file', 'code-generation', 'refactor'],
+    supportedCapabilities: ['read_local_file', 'write_local_file', 'delete_local_file', 'code-generation', 'refactor'],
     reviewPolicy: 'mandatory-xingbu',
     sourceId: 'company-service-standards',
     owner: 'backend-team',
@@ -121,7 +129,7 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'company',
     displayName: '兵部 CI 巡检官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['terminal', 'sandbox', 'release-ops'],
+    supportedCapabilities: ['terminal', 'sandbox', 'release-ops', 'schedule_task'],
     reviewPolicy: 'mandatory-xingbu',
     sourceId: 'company-ci',
     owner: 'platform-team',
@@ -134,7 +142,7 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     kind: 'company',
     displayName: '兵部浏览器行动官',
     defaultModel: 'glm-4.6',
-    supportedCapabilities: ['terminal', 'sandbox', 'http_request', 'release-ops'],
+    supportedCapabilities: ['terminal', 'sandbox', 'http_request', 'release-ops', 'schedule_task'],
     reviewPolicy: 'mandatory-xingbu',
     sourceId: 'company-browser',
     owner: 'platform-team',
@@ -155,10 +163,10 @@ const DEFAULT_WORKERS: WorkerDefinition[] = [
     requiredConnectors: ['security-scan']
   },
   {
-    id: 'libu-docs-openapi',
-    ministry: 'libu-docs',
+    id: 'libu-delivery-openapi',
+    ministry: 'libu-delivery',
     kind: 'company',
-    displayName: '礼部 OpenAPI 文书官',
+    displayName: '礼部 OpenAPI 交付官',
     defaultModel: 'glm-5',
     supportedCapabilities: ['documentation', 'ui-spec', 'read_local_file'],
     reviewPolicy: 'self-check',
@@ -230,7 +238,7 @@ export class WorkerRegistry {
       .filter(worker => this.isAvailable(worker, constraints))
       .map(worker => ({
         worker,
-        score: this.scoreWorker(worker, loweredGoal)
+        score: this.scoreWorker(worker, loweredGoal, constraints)
       }))
       .sort((left, right) => right.score - left.score)[0]?.worker;
   }
@@ -257,12 +265,15 @@ export class WorkerRegistry {
     return true;
   }
 
-  private scoreWorker(worker: WorkerDefinition, loweredGoal: string): number {
+  private scoreWorker(worker: WorkerDefinition, loweredGoal: string, constraints?: WorkerSelectionConstraints): number {
     let score = worker.kind === 'installed-skill' ? 40 : worker.kind === 'company' ? 25 : 10;
 
     for (const tag of worker.tags ?? []) {
       if (loweredGoal.includes(tag.toLowerCase())) {
         score += 8;
+      }
+      if ((constraints?.preferredTags ?? []).some(preferred => tag.toLowerCase().includes(preferred.toLowerCase()))) {
+        score += 14;
       }
     }
 
@@ -275,6 +286,27 @@ export class WorkerRegistry {
     for (const connector of worker.requiredConnectors ?? []) {
       if (loweredGoal.includes(connector.toLowerCase())) {
         score += 6;
+      }
+      if (
+        (constraints?.preferredConnectorTags ?? []).some(preferred =>
+          connector.toLowerCase().includes(preferred.toLowerCase())
+        )
+      ) {
+        score += 18;
+      }
+    }
+
+    if ((constraints?.preferredWorkerIds ?? []).includes(worker.id)) {
+      score += 28;
+    }
+    if ((constraints?.avoidedWorkerIds ?? []).includes(worker.id)) {
+      score -= 88;
+    }
+    if ((constraints?.avoidedTags ?? []).length) {
+      for (const tag of worker.tags ?? []) {
+        if ((constraints?.avoidedTags ?? []).some(avoided => tag.toLowerCase().includes(avoided.toLowerCase()))) {
+          score -= 16;
+        }
       }
     }
 
@@ -298,6 +330,11 @@ export class WorkerRegistry {
 export interface WorkerSelectionConstraints {
   profile?: RuntimeProfile;
   disallowedConnectorIds?: string[];
+  preferredConnectorTags?: string[];
+  preferredTags?: string[];
+  preferredWorkerIds?: string[];
+  avoidedTags?: string[];
+  avoidedWorkerIds?: string[];
 }
 
 export function createDefaultWorkerRegistry(): WorkerRegistry {

@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 import { HealthCheckResult } from '@agent/shared';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeTaskService } from '../runtime/services/runtime-task.service';
 
 @Injectable()
 export class AppService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(private readonly runtimeTaskService: RuntimeTaskService) {}
 
   health(): HealthCheckResult {
     return {
@@ -19,7 +19,7 @@ export class AppService {
   demo() {
     return {
       message: 'AI agent server is ready',
-      graph: this.runtimeService.describeGraph(),
+      graph: this.runtimeTaskService.describeGraph(),
       approvalPolicy: 'write operations and external requests require approval'
     };
   }

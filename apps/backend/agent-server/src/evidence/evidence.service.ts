@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeCentersService } from '../runtime/centers/runtime-centers.service';
 
 @Injectable()
 export class EvidenceService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(private readonly runtimeCentersService: RuntimeCentersService) {}
 
   getCenter() {
-    return this.runtimeService.getEvidenceCenter();
+    return this.runtimeCentersService.getEvidenceCenter();
   }
 }

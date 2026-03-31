@@ -157,7 +157,7 @@ function main() {
 
   if (eslintFiles.length > 0) {
     console.log('[check:staged] eslint:', eslintFiles.length, 'files');
-    run('pnpm', ['exec', 'eslint', '--fix', ...eslintFiles]);
+    run('pnpm', ['exec', 'eslint', '--fix', '--no-warn-ignored', ...eslintFiles]);
   }
 
   if (prettierFiles.length > 0 || eslintFiles.length > 0) {
@@ -171,6 +171,19 @@ function main() {
     }
   } else {
     console.log('[check:staged] no affected TypeScript projects');
+  }
+
+  if (
+    stagedFiles.some(
+      file =>
+        file.startsWith('apps/backend/agent-server/src/') ||
+        file.startsWith('apps/backend/agent-server/test/') ||
+        file.startsWith('apps/worker/src/') ||
+        file.startsWith('apps/worker/test/')
+    )
+  ) {
+    console.log('[check:staged] backend structure check');
+    run(process.execPath, [path.join(rootDir, 'scripts/check-backend-structure.js')], { shell: false });
   }
 }
 

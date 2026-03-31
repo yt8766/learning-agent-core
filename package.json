@@ -18,19 +18,28 @@
     "dev": "turbo dev",
     "build": "pnpm build:lib && pnpm build:server && pnpm build:frontend",
     "check:staged": "node ./scripts/check-staged.js",
+    "check:backend-structure": "node ./scripts/check-backend-structure.js",
+    "check:terminology": "pnpm exec tsc --pretty false --outDir /tmp/agent-terminology-check scripts/check-terminology.ts && node /tmp/agent-terminology-check/check-terminology.js",
     "lint:tsc": "node scripts/typecheck.js",
     "lint:prettier": "prettier --write \"**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md}\"",
     "lint:eslint": "eslint --fix --ext .js,.ts,.tsx,.mjs,.cjs .",
     "prepare": "husky",
     "test": "vitest run --config vitest.config.js",
+    "test:unit": "vitest run --config vitest.config.js --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "test:integration": "vitest run --config vitest.config.js int-spec",
+    "test:coverage": "vitest run --config vitest.config.js --coverage",
     "test:watch": "vitest --config vitest.config.js",
+    "eval:prompts": "node ./scripts/run-prompt-regression.js",
+    "eval:prompts:view": "pnpm dlx promptfoo@latest view",
     "check": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^9.22.0",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.13.10",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "globals": "^16.0.0",
@@ -40,12 +49,13 @@
     "turbo": "^2.5.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.2"
   },
   "dependencies": {
     "@langchain/core": "^1.1.35",
     "@langchain/langgraph": "^1.2.5",
     "@langchain/openai": "^1.3.0",
+    "fs-extra": "^11.3.4",
     "tslib": "^2.8.1",
     "zod": "^4.3.6"
   }

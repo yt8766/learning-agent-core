@@ -2,37 +2,37 @@ import { Injectable } from '@nestjs/common';
 
 import { SkillStatus } from '@agent/shared';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeSkillCatalogService } from '../runtime/services/runtime-skill-catalog.service';
 
 @Injectable()
 export class SkillsService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(private readonly runtimeSkillCatalogService: RuntimeSkillCatalogService) {}
 
   list(status?: SkillStatus) {
-    return this.runtimeService.listSkills(status);
+    return this.runtimeSkillCatalogService.listSkills(status);
   }
 
   listLab() {
-    return this.runtimeService.listLabSkills();
+    return this.runtimeSkillCatalogService.listLabSkills();
   }
 
   getById(id: string) {
-    return this.runtimeService.getSkill(id);
+    return this.runtimeSkillCatalogService.getSkill(id);
   }
 
   promote(id: string) {
-    return this.runtimeService.promoteSkill(id);
+    return this.runtimeSkillCatalogService.promoteSkill(id);
   }
 
   disable(id: string) {
-    return this.runtimeService.disableSkill(id);
+    return this.runtimeSkillCatalogService.disableSkill(id);
   }
 
   restore(id: string) {
-    return this.runtimeService.restoreSkill(id);
+    return this.runtimeSkillCatalogService.restoreSkill(id);
   }
 
   retire(id: string) {
-    return this.runtimeService.retireSkill(id);
+    return this.runtimeSkillCatalogService.retireSkill(id);
   }
 }

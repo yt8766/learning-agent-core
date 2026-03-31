@@ -1,8 +1,16 @@
-﻿import { AgentExecutionState, AgentRole, MemoryRecord, SkillCard } from '@agent/shared';
+﻿import {
+  AgentExecutionState,
+  AgentRole,
+  EvidenceRecord,
+  MemoryRecord,
+  SkillCard,
+  SpecialistFindingRecord
+} from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { safeGenerateObject, type StructuredContractMeta } from '../../shared/schemas/safe-generate-object';
 import { HUBU_RESEARCH_SYSTEM_PROMPT } from './hubu-search/prompts/research-prompts';
-import { ResearchEvidenceSchema } from './hubu-search/schemas/research-evidence-schema';
+import { ResearchEvidenceOutput, ResearchEvidenceSchema } from './hubu-search/schemas/research-evidence-schema';
 
 function isChatPersonaGoal(goal: string) {
   const normalized = goal.toLowerCase();
@@ -44,7 +52,14 @@ export class HubuSearchMinistry {
     };
   }
 
-  async research(subTask: string): Promise<{ summary: string; memories: MemoryRecord[]; skills: SkillCard[] }> {
+  async research(subTask: string): Promise<{
+    summary: string;
+    memories: MemoryRecord[];
+    knowledgeEvidence: EvidenceRecord[];
+    skills: SkillCard[];
+    specialistFinding?: SpecialistFindingRecord;
+    contractMeta: StructuredContractMeta;
+  }> {
     this.state.status = 'running';
     this.state.subTask = subTask;
     const retrieved = this.context.memorySearchService
@@ -55,18 +70,41 @@ export class HubuSearchMinistry {
         };
     const memories = retrieved.memories;
     const rules = retrieved.rules;
+    const knowledgeHits = this.context.knowledgeSearchService
+      ? await this.context.knowledgeSearchService.search(this.context.goal, 5)
+      : [];
+    const knowledgeEvidence = knowledgeHits.map(hit => ({
+      id: `knowledge:${hit.chunkId}`,
+      taskId: this.context.taskId,
+      sourceId: hit.sourceId,
+      sourceType: 'document',
+      sourceUrl: hit.uri,
+      trustClass: 'internal' as const,
+      summary: `藏经阁命中 ${hit.title}`,
+      detail: {
+        knowledgeStore: 'cangjing',
+        chunkId: hit.chunkId,
+        documentId: hit.documentId,
+        score: hit.score,
+        excerpt: hit.content.slice(0, 320)
+      },
+      createdAt: new Date().toISOString()
+    }));
     const skills = await this.context.skillRegistry.list();
     const chatGoal = isChatPersonaGoal(this.context.goal);
     const matchedChatSkills = chatGoal ? skills.filter(isChatSkill) : [];
     const researchMemories = memories.filter(memory => memory.tags.includes('research-job'));
     const autoPersistedResearchMemories = researchMemories.filter(memory => memory.tags.includes('auto-persist'));
     this.state.longTermMemoryRefs = memories.map(item => item.id);
-    this.state.plan = ['检索共享长期记忆', '检查可用技能', '输出中文研究结论'];
+    this.state.plan = ['检索文渊阁长期记忆', '检索藏经阁本地文档切片', '检查可用技能', '输出中文研究结论'];
 
-    let llmResearch: { summary: string; observations: string[] } | null = null;
-    if (this.context.llm.isConfigured()) {
-      try {
-        llmResearch = await this.context.llm.generateObject(
+    const structuredResearch = await safeGenerateObject<ResearchEvidenceOutput>({
+      contractName: 'research-evidence',
+      contractVersion: 'research-evidence.v1',
+      isConfigured: this.context.llm.isConfigured(),
+      schema: ResearchEvidenceSchema,
+      invoke: async () =>
+        this.context.llm.generateObject(
           [
             {
               role: 'system',
@@ -104,11 +142,9 @@ export class HubuSearchMinistry {
               });
             }
           }
-        );
-      } catch {
-        llmResearch = null;
-      }
-    }
+        )
+    });
+    const llmResearch = structuredResearch.object;
 
     const observations = llmResearch?.observations ?? [
       `检索到 ${memories.length} 条记忆`,
@@ -121,6 +157,9 @@ export class HubuSearchMinistry {
               : '当前主动研究记忆还没有高置信自动沉淀结果'
           ]
         : []),
+      ...(knowledgeHits.length > 0
+        ? [`同时命中 ${knowledgeHits.length} 条藏经阁文档切片，可作为受控来源文档证据`]
+        : ['当前没有命中可检索的藏经阁文档切片']),
       `检索到 ${skills.length} 个技能`,
       ...(chatGoal
         ? [
@@ -139,13 +178,22 @@ export class HubuSearchMinistry {
         ? `户部研究完成：已找到 ${matchedChatSkills.length} 个与聊天/角色设定相关的技能，可优先复用这些技能来响应“你是……”这类目标。`
         : '户部研究完成：当前还没有现成的聊天技能可复用，建议本轮先以中文完成对话任务，并在结束后生成聊天技能候选进入学习确认。'
       : researchMemories.length > 0
-        ? `户部研究完成：检索到 ${memories.length} 条记忆，其中 ${researchMemories.length} 条来自主动研究沉淀，可优先复用历史资料。`
-        : `户部研究完成：检索到 ${memories.length} 条记忆和 ${skills.length} 个可复用技能。`;
+        ? `户部研究完成：检索到 ${memories.length} 条文渊阁记忆，其中 ${researchMemories.length} 条来自主动研究沉淀；另命中 ${knowledgeHits.length} 条藏经阁文档切片。`
+        : `户部研究完成：检索到 ${memories.length} 条文渊阁记忆、${knowledgeHits.length} 条藏经阁文档切片和 ${skills.length} 个可复用技能。`;
 
     const summary = llmResearch?.summary ?? fallbackSummary;
     this.state.finalOutput = summary;
     this.state.status = 'completed';
-    return { summary, memories, skills };
+    const specialistFinding = llmResearch?.specialistFinding
+      ? ({
+          ...llmResearch.specialistFinding,
+          contractVersion: 'specialist-finding.v1',
+          source: 'research',
+          stage: 'research'
+        } satisfies SpecialistFindingRecord)
+      : undefined;
+
+    return { summary, memories, knowledgeEvidence, skills, specialistFinding, contractMeta: structuredResearch.meta };
   }
 
   getState(): AgentExecutionState {

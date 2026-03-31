@@ -1,9 +1,16 @@
 import type { ChangeEvent } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DashboardCenterShell,
+  DashboardEmptyState,
+  DashboardMetricGrid,
+  DashboardToolbar
+} from '@/components/dashboard-center-shell';
 
-import type { EvalsCenterRecord } from '../../types/admin';
+import type { EvalsCenterRecord } from '@/types/admin';
 
 interface EvalsCenterPanelProps {
   evals: EvalsCenterRecord;
@@ -29,56 +36,60 @@ export function EvalsCenterPanel({
   const trendHistory = evals.persistedDailyHistory?.length ? evals.persistedDailyHistory : evals.dailyTrend;
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { label: '场景数', value: evals.scenarioCount },
-          { label: '命中运行数', value: evals.runCount },
-          { label: '总体通过率', value: `${evals.overallPassRate}%` }
-        ].map(card => (
-          <Card key={card.label} className="rounded-3xl border-stone-200 bg-white shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-stone-500">{card.label}</p>
-              <p className="mt-4 text-4xl font-semibold tracking-tight text-stone-950">{card.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <DashboardCenterShell
+      title="Evals Center"
+      description="跟踪 benchmark、prompt regression 与最近命中运行的表现。"
+      count={evals.scenarioCount}
+      actions={
+        <Button size="sm" onClick={onExport}>
+          导出
+        </Button>
+      }
+    >
+      <DashboardMetricGrid
+        columns="md:grid-cols-3"
+        items={[
+          { label: '场景数', value: evals.scenarioCount, note: '当前 benchmark scenarios 总数' },
+          { label: '命中运行数', value: evals.runCount, note: '最近命中 benchmark 的运行数量' },
+          { label: '总体通过率', value: `${evals.overallPassRate}%`, note: '按 scenario 聚合后的总体通过率' }
+        ]}
+      />
 
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-950">Daily Trend</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Daily Trend</CardTitle>
           <div className="flex items-center gap-2">
             {[7, 30, 90].map(option => (
-              <button
+              <Button
                 key={option}
                 type="button"
+                size="sm"
+                variant={historyDays === option ? 'default' : 'secondary'}
                 onClick={() => onHistoryDaysChange(option)}
-                className={`rounded-full px-3 py-1 text-xs ${historyDays === option ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-600'}`}
               >
                 {option}d
-              </button>
+              </Button>
             ))}
             <Badge variant="outline">
               当前 {evals.dailyTrend.length} / 持久化 {evals.historyDays ?? trendHistory.length}
             </Badge>
-            <button type="button" onClick={onExport} className="rounded-full bg-stone-900 px-3 py-1 text-xs text-white">
+            <Button type="button" size="sm" variant="outline" onClick={onExport}>
               导出
-            </button>
+            </Button>
           </div>
         </CardHeader>
         {evals.historyRange ? (
-          <p className="px-6 text-xs text-stone-500">
+          <p className="px-6 text-xs text-muted-foreground">
             归档范围 {evals.historyRange.earliestDay} - {evals.historyRange.latestDay}
           </p>
         ) : null}
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {trendHistory.length === 0 ? (
-            <p className="text-sm text-stone-500">当前还没有可用趋势数据。</p>
+            <DashboardEmptyState className="md:col-span-2 xl:col-span-4" message="当前还没有可用趋势数据。" />
           ) : (
             trendHistory.map(point => (
-              <article key={point.day} className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                <p className="text-sm font-semibold text-stone-950">{point.day}</p>
+              <article key={point.day} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
+                <p className="text-sm font-semibold text-foreground">{point.day}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge variant="secondary">运行 {point.runCount}</Badge>
                   <Badge variant="secondary">通过 {point.passCount}</Badge>
@@ -92,47 +103,182 @@ export function EvalsCenterPanel({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-950">Benchmark Scenarios</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Prompt Regressions</CardTitle>
+          <Badge variant="outline">{evals.promptRegression?.promptSuiteCount ?? 0}</Badge>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {!evals.promptRegression ? (
+            <DashboardEmptyState message="当前还没有可用的 prompt 回归配置概览。" />
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">suite {evals.promptRegression.promptSuiteCount}</Badge>
+                <Badge variant="secondary">prompt {evals.promptRegression.promptCount}</Badge>
+                <Badge variant="secondary">tests {evals.promptRegression.testCount}</Badge>
+                <Badge variant="secondary">providers {evals.promptRegression.providerCount}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">{evals.promptRegression.configPath}</p>
+              {evals.promptRegression.updatedAt ? (
+                <p className="text-xs text-muted-foreground">配置更新时间 {evals.promptRegression.updatedAt}</p>
+              ) : null}
+              {evals.promptRegression.latestRun ? (
+                <article className="rounded-2xl border border-border/70 bg-background px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Latest Prompt Run</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {evals.promptRegression.latestRun.summaryPath}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        evals.promptRegression.latestRun.overallStatus === 'pass'
+                          ? 'success'
+                          : evals.promptRegression.latestRun.overallStatus === 'partial'
+                            ? 'warning'
+                            : 'destructive'
+                      }
+                    >
+                      {evals.promptRegression.latestRun.overallStatus}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant="secondary">{evals.promptRegression.latestRun.runAt}</Badge>
+                    {typeof evals.promptRegression.latestRun.passRate === 'number' ? (
+                      <Badge variant="secondary">pass {evals.promptRegression.latestRun.passRate}%</Badge>
+                    ) : null}
+                    {evals.promptRegression.latestRun.providerIds.map(providerId => (
+                      <span key={providerId}>
+                        <Badge variant="secondary">{providerId}</Badge>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {evals.promptRegression.latestRun.suiteResults.map(result => (
+                      <article
+                        key={result.suiteId}
+                        className="rounded-2xl border border-border/70 bg-muted/30 px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{result.label}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{result.suiteId}</p>
+                          </div>
+                          <Badge
+                            variant={
+                              result.status === 'pass'
+                                ? 'success'
+                                : result.status === 'partial'
+                                  ? 'warning'
+                                  : 'destructive'
+                            }
+                          >
+                            {result.status}
+                          </Badge>
+                        </div>
+                        {typeof result.passRate === 'number' ? (
+                          <p className="mt-2 text-xs text-muted-foreground">通过率 {result.passRate}%</p>
+                        ) : null}
+                        {result.notes?.length ? (
+                          <p className="mt-2 text-xs text-muted-foreground">{result.notes.join('；')}</p>
+                        ) : null}
+                        {result.promptResults.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {result.promptResults.map(prompt => (
+                              <span key={prompt.promptId}>
+                                <Badge
+                                  variant={
+                                    prompt.pass === true
+                                      ? 'success'
+                                      : prompt.pass === false
+                                        ? 'destructive'
+                                        : 'secondary'
+                                  }
+                                >
+                                  {prompt.version}{' '}
+                                  {prompt.pass === true ? 'pass' : prompt.pass === false ? 'fail' : 'n/a'}
+                                </Badge>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </article>
+              ) : (
+                <p className="text-xs text-muted-foreground">当前还没有最近一次 prompt 回归结果摘要。</p>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                {evals.promptRegression.suites.map(suite => (
+                  <article key={suite.suiteId} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{suite.label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{suite.suiteId}</p>
+                      </div>
+                      <Badge variant="outline">{suite.promptCount}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {suite.versions.map(version => (
+                        <span key={`${suite.suiteId}-${version}`}>
+                          <Badge variant="secondary">{version}</Badge>
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-foreground">Benchmark Scenarios</CardTitle>
           <Badge variant="outline">{evals.scenarios.length}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1 text-xs text-stone-500">
-              场景筛选
-              <select
-                value={scenarioFilter}
-                onChange={(event: ChangeEvent<HTMLSelectElement>) => onScenarioFilterChange(event.target.value)}
-                className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900"
-              >
-                <option value="">全部</option>
-                {evals.scenarios.map(scenario => (
-                  <option key={scenario.scenarioId} value={scenario.scenarioId}>
-                    {scenario.scenarioId}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs text-stone-500">
-              结果筛选
-              <select
-                value={outcomeFilter}
-                onChange={(event: ChangeEvent<HTMLSelectElement>) => onOutcomeFilterChange(event.target.value)}
-                className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900"
-              >
-                <option value="">全部</option>
-                <option value="pass">pass</option>
-                <option value="fail">fail</option>
-              </select>
-            </label>
-          </div>
+          <DashboardToolbar title="Benchmark Filters" description="按场景和结果筛选 benchmark 视图。">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                场景筛选
+                <select
+                  value={scenarioFilter}
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) => onScenarioFilterChange(event.target.value)}
+                  className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">全部</option>
+                  {evals.scenarios.map(scenario => (
+                    <option key={scenario.scenarioId} value={scenario.scenarioId}>
+                      {scenario.scenarioId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                结果筛选
+                <select
+                  value={outcomeFilter}
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) => onOutcomeFilterChange(event.target.value)}
+                  className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">全部</option>
+                  <option value="pass">pass</option>
+                  <option value="fail">fail</option>
+                </select>
+              </label>
+            </div>
+          </DashboardToolbar>
           {evals.scenarios.map(scenario => (
-            <article key={scenario.scenarioId} className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
+            <article key={scenario.scenarioId} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-stone-950">{scenario.label}</p>
-                  <p className="mt-1 text-sm leading-6 text-stone-500">{scenario.description}</p>
+                  <p className="text-sm font-semibold text-foreground">{scenario.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{scenario.description}</p>
                 </div>
                 <Badge
                   variant={scenario.passRate >= 70 ? 'success' : scenario.passRate >= 40 ? 'warning' : 'destructive'}
@@ -140,7 +286,7 @@ export function EvalsCenterPanel({
                   {scenario.passRate}%
                 </Badge>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-500">
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span>命中 {scenario.matchedRunCount}</span>
                 <span>通过 {scenario.passCount}</span>
                 <span>失败 {scenario.failCount}</span>
@@ -150,24 +296,24 @@ export function EvalsCenterPanel({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-stone-200 bg-white shadow-sm">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-950">Recent Benchmark Runs</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">Recent Benchmark Runs</CardTitle>
           <Badge variant="outline">{evals.recentRuns.length}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
           {evals.recentRuns.length === 0 ? (
-            <p className="text-sm text-stone-500">当前还没有命中 benchmark 的运行记录。</p>
+            <DashboardEmptyState message="当前还没有命中 benchmark 的运行记录。" />
           ) : (
             evals.recentRuns.map(run => (
               <article
                 key={`${run.taskId}-${run.createdAt}`}
-                className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4"
+                className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-stone-950">{run.taskId}</p>
-                    <p className="mt-1 text-xs text-stone-500">{run.createdAt}</p>
+                    <p className="text-sm font-semibold text-foreground">{run.taskId}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{run.createdAt}</p>
                   </div>
                   <Badge variant={run.success ? 'success' : 'destructive'}>{run.success ? 'pass' : 'fail'}</Badge>
                 </div>
@@ -183,6 +329,6 @@ export function EvalsCenterPanel({
           )}
         </CardContent>
       </Card>
-    </div>
+    </DashboardCenterShell>
   );
 }

@@ -1,5 +1,28 @@
-import type { ChatCheckpointRecord, ChatSessionRecord } from '../../types/chat';
-import { formatSessionTime, getSessionStatusLabel } from '../../hooks/use-chat-session';
+import type { ChatCheckpointRecord, ChatSessionRecord } from '@/types/chat';
+import { formatSessionTime, getSessionStatusLabel } from '@/hooks/use-chat-session';
+
+function getAgentStateLabel(status?: string) {
+  switch (status) {
+    case 'completed':
+      return '已完成';
+    case 'running':
+      return '处理中';
+    case 'failed':
+      return '异常';
+    case 'queued':
+      return '排队中';
+    case 'waiting_interrupt':
+      return '待澄清方案';
+    case 'waiting_approval':
+      return '待确认';
+    case 'cancelled':
+      return '已取消';
+    case 'blocked':
+      return '已阻塞';
+    default:
+      return '待处理';
+  }
+}
 
 interface AgentStatusPanelProps {
   activeSession?: ChatSessionRecord;
@@ -22,6 +45,14 @@ export function AgentStatusPanel(props: AgentStatusPanelProps) {
       <div className="panel-section">
         <strong>执行节点</strong>
         <p>{checkpoint?.graphState?.currentStep ?? '尚未开始'}</p>
+      </div>
+      <div className="panel-section">
+        <strong>当前 Skill 步骤</strong>
+        <p>
+          {checkpoint?.currentSkillExecution
+            ? `${checkpoint.currentSkillExecution.displayName} · ${checkpoint.currentSkillExecution.stepIndex}/${checkpoint.currentSkillExecution.totalSteps} · ${checkpoint.currentSkillExecution.title}`
+            : '当前未进入 Skill 合同步骤'}
+        </p>
       </div>
       <div className="panel-section two-column">
         <div>
@@ -60,7 +91,7 @@ export function AgentStateList({ checkpoint }: AgentStateListProps) {
       {(checkpoint?.agentStates ?? []).map(state => (
         <div key={state.role} className="agent-state-row">
           <span>{state.role}</span>
-          <span>{state.status}</span>
+          <span>{getAgentStateLabel(state.status)}</span>
         </div>
       ))}
     </div>
