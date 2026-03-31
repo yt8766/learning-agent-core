@@ -17,6 +17,7 @@ import {
   AppendChatMessageDto,
   CreateChatSessionDto,
   LearningConfirmationDto,
+  RecoverToCheckpointDto,
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto
@@ -143,6 +144,22 @@ export class ChatController {
     const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
     this.setSessionCookie(response, resolvedSessionId);
     return this.chatService.recover(resolvedSessionId);
+  }
+
+  @Post('recover-to-checkpoint')
+  recoverToCheckpoint(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Body() dto: Omit<RecoverToCheckpointDto, 'sessionId'> & SessionBody
+  ) {
+    const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
+    this.setSessionCookie(response, resolvedSessionId);
+    return this.chatService.recoverToCheckpoint({
+      sessionId: resolvedSessionId,
+      checkpointCursor: dto.checkpointCursor,
+      checkpointId: dto.checkpointId,
+      reason: dto.reason
+    });
   }
 
   @Post('cancel')

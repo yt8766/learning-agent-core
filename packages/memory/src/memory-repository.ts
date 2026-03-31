@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
@@ -9,6 +9,14 @@ export interface MemoryRepository {
   list(): Promise<MemoryRecord[]>;
   search(query: string, limit: number): Promise<MemoryRecord[]>;
   getById(id: string): Promise<MemoryRecord | undefined>;
+  quarantine(
+    id: string,
+    reason: string,
+    evidenceRefs?: string[],
+    category?: MemoryRecord['quarantineCategory'],
+    detail?: string,
+    restoreSuggestion?: string
+  ): Promise<MemoryRecord | undefined>;
   invalidate(id: string, reason: string): Promise<MemoryRecord | undefined>;
   supersede(id: string, replacementId: string, reason: string): Promise<MemoryRecord | undefined>;
   retire(id: string, reason: string): Promise<MemoryRecord | undefined>;
@@ -24,9 +32,9 @@ export class FileMemoryRepository implements MemoryRepository {
 
   async append(record: MemoryRecord): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
-    const current = await this.readAll();
-    current.push(record);
-    await writeFile(this.filePath, current.map(item => JSON.stringify(item)).join('\n'));
+    const existing = await readFile(this.filePath, 'utf8').catch(() => '');
+    const prefix = existing.trim().length > 0 ? '\n' : '';
+    await appendFile(this.filePath, `${prefix}${JSON.stringify(record)}`, 'utf8');
   }
 
   async list(): Promise<MemoryRecord[]> {
@@ -39,10 +47,19 @@ export class FileMemoryRepository implements MemoryRepository {
 
     return records
       .filter(record => {
+        if (record.quarantined) {
+          return false;
+        }
         if (record.status === 'invalidated') {
           return false;
         }
         if (record.status === 'superseded' || record.status === 'retired') {
+          return false;
+        }
+        if (record.tags.includes('chat-session')) {
+          return false;
+        }
+        if (record.type === 'task_summary' && !isTaskSummaryQuery(lowerQuery)) {
           return false;
         }
         const haystack = `${record.summary} ${record.content} ${record.tags.join(' ')}`.toLowerCase();
@@ -54,6 +71,31 @@ export class FileMemoryRepository implements MemoryRepository {
   async getById(id: string): Promise<MemoryRecord | undefined> {
     const records = await this.readAll();
     return records.find(record => record.id === id);
+  }
+
+  async quarantine(
+    id: string,
+    reason: string,
+    evidenceRefs: string[] = [],
+    category?: MemoryRecord['quarantineCategory'],
+    detail?: string,
+    restoreSuggestion?: string
+  ): Promise<MemoryRecord | undefined> {
+    const records = await this.readAll();
+    const target = records.find(record => record.id === id);
+    if (!target) {
+      return undefined;
+    }
+
+    target.quarantined = true;
+    target.quarantineReason = reason;
+    target.quarantineCategory = category;
+    target.quarantineReasonDetail = detail;
+    target.quarantineRestoreSuggestion = restoreSuggestion;
+    target.quarantineEvidenceRefs = evidenceRefs;
+    target.quarantinedAt = new Date().toISOString();
+    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    return target;
   }
 
   async invalidate(id: string, reason: string): Promise<MemoryRecord | undefined> {
@@ -113,6 +155,13 @@ export class FileMemoryRepository implements MemoryRepository {
     target.supersededAt = undefined;
     target.supersededById = undefined;
     target.retiredAt = undefined;
+    target.quarantined = false;
+    target.quarantineReason = undefined;
+    target.quarantineCategory = undefined;
+    target.quarantineReasonDetail = undefined;
+    target.quarantineRestoreSuggestion = undefined;
+    target.quarantineEvidenceRefs = undefined;
+    target.quarantinedAt = undefined;
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
     return target;
   }
@@ -135,4 +184,8 @@ export class FileMemoryRepository implements MemoryRepository {
       return [];
     }
   }
+}
+
+function isTaskSummaryQuery(query: string): boolean {
+  return ['复盘', '总结', 'summary', 'retrospective', 'postmortem', '经验'].some(token => query.includes(token));
 }

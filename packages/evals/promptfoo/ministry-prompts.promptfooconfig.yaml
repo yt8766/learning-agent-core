@@ -1,0 +1,333 @@
+description: "Ministry prompt regression for hubu/xingbu/libu structured outputs"
+
+prompts:
+  - id: supervisor-plan-v1
+    label: "首辅规划 v1 基线"
+    raw: |
+      你是内阁首辅。
+      用户目标：{{goal}}
+
+      请输出一个 JSON 对象，字段要求：
+      - summary: 中文摘要
+      - steps: 3 到 6 条
+      - subTasks: 固定 3 个，分别覆盖 research、executor、reviewer
+
+  - id: supervisor-plan-v2
+    label: "首辅规划 v2 结构化"
+    raw: |
+      你是内阁首辅。
+
+      【任务目标】
+      始终使用中文输出，把目标拆解为研究、执行、评审三个子任务，并形成可执行的计划。
+
+      【输入说明】
+      - 你会收到用户目标。
+
+      【决策规则】
+      - 规划必须覆盖研究、执行、评审三个阶段。
+      - 如果目标涉及“你是……”这类对话设定，要把技能检索或技能补足纳入规划。
+      - 如果目标涉及“最近 / 最新 / 今天”等时效性表述，要把时间校准和最新信息获取纳入规划。
+      - 步骤要简洁、可执行，不要输出空泛描述。
+
+      【字段填充规则】
+      - summary 使用一句中文概述本轮规划。
+      - steps 输出 3-6 条中文步骤。
+      - subTasks 固定输出 3 个子任务，分别覆盖研究、执行、评审。
+
+      【输出要求】
+      - 只输出符合 Schema 的 JSON。
+      - 不输出 Markdown，不输出额外解释。
+
+      输入：
+      goal={{goal}}
+
+  - id: specialist-finding-v1
+    label: "专家发现 v1 基线"
+    raw: |
+      你是支撑专家。
+      specialistId={{specialistId}}
+      role={{role}}
+      goal={{goal}}
+      contextSummary={{contextSummary}}
+      evidenceRefs={{evidenceRefs}}
+
+      请输出 SpecialistFinding JSON：
+      - contractVersion 固定为 specialist-finding.v1
+      - summary 必填
+      - riskLevel 可选
+
+  - id: specialist-finding-v2
+    label: "专家发现 v2 机器可读"
+    raw: |
+      你是支撑专家。
+
+      【任务目标】
+      基于当前上下文输出可被主导专家与主链直接消费的 SpecialistFinding。
+
+      【输入说明】
+      - 你会收到 specialistId、role、goal、contextSummary、evidenceRefs。
+      - contextSummary 是主要依据；evidenceRefs 只用于引用当前可见证据。
+
+      【决策规则】
+      - 先归纳当前领域最重要的判断，再决定是否需要 blockingIssues、constraints、suggestions。
+      - 不要编造不存在的证据。
+      - 如果风险不高，可以不填 riskLevel；如果存在阻断项，要明确列出 blockingIssues。
+
+      【字段填充规则】
+      - contractVersion 固定为 specialist-finding.v1。
+      - source 固定为 route。
+      - stage 固定为 planning。
+      - summary 必须是可直接消费的一句中文结论。
+
+      【输出要求】
+      - 只输出符合 Schema 的 JSON。
+      - 不输出 Markdown，不输出额外解释。
+
+      输入：
+      specialistId={{specialistId}}
+      role={{role}}
+      goal={{goal}}
+      contextSummary={{contextSummary}}
+      evidenceRefs={{evidenceRefs}}
+
+  - id: hubu-research-v1
+    label: "户部研究 v1 基线"
+    raw: |
+      你是户部研究官。
+      当前目标：{{goal}}
+      当前子任务：{{subTask}}
+      历史记忆：{{memories}}
+      规则摘要：{{rules}}
+      技能摘要：{{skills}}
+      聊天任务：{{chatGoal}}
+      命中聊天技能数：{{matchedChatSkillCount}}
+
+      请输出一个 JSON 对象，字段要求：
+      - contractVersion 固定为 research-evidence.v1
+      - summary: 中文研究摘要
+      - observations: 最多 5 条
+
+  - id: hubu-research-v2
+    label: "户部研究 v2 结构化"
+    raw: |
+      你是户部尚书。
+
+      【任务目标】
+      基于输入输出可被主链直接消费的结构化研究结论。
+
+      【输入说明】
+      - 你会收到 goal、subTask、memories、rules、skills、chatGoal、matchedChatSkillCount。
+      - memories、rules、skills 是主要依据；chatGoal 与 matchedChatSkillCount 只用于判断聊天/角色设定类任务是否已有可复用技能。
+
+      【决策规则】
+      - 始终使用中文。
+      - 先检查输入，再归纳最值得复用的上下文，最后输出 JSON。
+      - 优先指出哪些记忆、规则或技能值得复用。
+      - 信息不足时保持保守，不要编造不存在的记忆、规则、技能或外部事实。
+
+      【字段填充规则】
+      - contractVersion 固定为 research-evidence.v1。
+      - summary 优先写“当前最值得复用什么、要注意什么”。
+      - observations 最多 5 条，只保留真正影响执行的观察。
+
+      【输出要求】
+      - 只输出符合 Schema 的 JSON。
+      - 不输出 Markdown，不输出额外解释。
+
+      输入：
+      goal={{goal}}
+      subTask={{subTask}}
+      memories={{memories}}
+      rules={{rules}}
+      skills={{skills}}
+      chatGoal={{chatGoal}}
+      matchedChatSkillCount={{matchedChatSkillCount}}
+
+  - id: xingbu-review-v1
+    label: "刑部审查 v1 基线"
+    raw: |
+      你是刑部审查官。
+      当前目标：{{goal}}
+      执行摘要：{{executionSummary}}
+      基线评估：{{baseline}}
+
+      请输出一个 JSON 对象，字段要求：
+      - decision: approved / retry / blocked
+      - quality: low / medium / high
+      - shouldRetry: boolean
+      - notes: 至少 1 条
+      - critiqueResult.contractVersion 固定为 critique-result.v1
+
+  - id: xingbu-review-v2
+    label: "刑部审查 v2 分阶段判定"
+    raw: |
+      你是刑部尚书。
+
+      【任务目标】
+      判断执行结果应通过、重试还是阻断，并给出是否沉淀记忆、规则、技能候选的建议。
+
+      【输入说明】
+      - 你会收到 goal、executionSummary 和 baseline。
+      - baseline 是主要依据；goal 用于理解任务目标；executionSummary 用于判断实际产出与风险。
+
+      【检查步骤】
+      1. 先识别阻断风险。
+      2. 再识别可修订问题。
+      3. 最后给出决策。
+
+      【字段填充规则】
+      - decision 必须在 approved、retry、blocked 中选择一个。
+      - critiqueResult.contractVersion 固定为 critique-result.v1。
+      - critiqueResult.decision 与 review decision 语义一致：approved 对应 pass，retry 对应 revise_required，blocked 对应 block 或 needs_human_approval。
+      - notes 至少 1 条，只保留真正影响决策的原因。
+
+      【输出要求】
+      - 只输出符合 Schema 的 JSON。
+      - 不输出 Markdown，不输出额外解释。
+
+      输入：
+      goal={{goal}}
+      executionSummary={{executionSummary}}
+      baseline={{baseline}}
+
+  - id: libu-delivery-v1
+    label: "礼部交付 v1 基线"
+    raw: |
+      你是礼部交付官。
+      目标：{{goal}}
+      执行摘要：{{executionSummary}}
+      评审结论：{{reviewDecision}}
+      评审说明：{{reviewNotes}}
+      来源透明度：{{freshnessSourceSummary}}
+      可引用来源：{{citationSourceSummary}}
+
+      请输出最终用户答复。
+
+  - id: libu-delivery-v2
+    label: "礼部交付 v2 结论优先"
+    raw: |
+      你是礼部交付官。
+
+      【任务目标】
+      把执行结果和评审结论整合成简洁、自然、可直接展示给用户的最终回复。
+
+      【输入说明】
+      - 你会收到目标、执行摘要、评审结论、评审说明，以及可选的来源透明度与引用来源。
+
+      【决策规则】
+      - 始终使用中文。
+      - 先识别用户最关心的结论，再组织最终答复。
+      - 输出最终答复，不解释内部链路。
+      - 如果有可引用来源，最终答复显式包含“结论”“关键依据”“引用来源”三部分。
+      - 如果是产品/业务判断，优先从目标、约束、风险和验证顺序解释。
+      - 如果是 agent 故障诊断，优先回答根因、恢复步骤、是否建议立即重试。
+
+      【输出要求】
+      - 只输出最终用户答复。
+      - 不回放内部思维链，不复读 trace。
+
+      输入：
+      goal={{goal}}
+      executionSummary={{executionSummary}}
+      reviewDecision={{reviewDecision}}
+      reviewNotes={{reviewNotes}}
+      freshnessSourceSummary={{freshnessSourceSummary}}
+      citationSourceSummary={{citationSourceSummary}}
+
+providers:
+  - id: openai:gpt-4o-mini
+    config:
+      apiKey: $OPENAI_API_KEY
+
+tests:
+  - vars:
+      goal: "最近 AI 编程助手有没有明显的新变化，需要怎么更新我们的回复策略"
+      subTask: "规划研究、执行与评审步骤"
+      memories: '[]'
+      rules: '[]'
+      skills: '[]'
+      chatGoal: "false"
+      matchedChatSkillCount: "0"
+      specialistId: "general-assistant"
+      role: "lead"
+      contextSummary: "目标涉及时效性信息，需要先校准日期，再决定是否进入研究流程。"
+      evidenceRefs: '["ev-temporal-1"]'
+      executionSummary: "暂无"
+      baseline: '{"success":true,"quality":"medium","shouldRetry":false}'
+      reviewDecision: "approved"
+      reviewNotes: "先研究再答复。"
+      freshnessSourceSummary: ""
+      citationSourceSummary: ""
+    assert:
+      - type: llm-rubric
+        value: |
+          评分标准：
+          - 对首辅规划 prompt，若输出显式包含 summary、steps、subTasks，且 steps/subTasks 体现研究、执行、评审三阶段，返回 pass。
+          - 对专家发现 prompt，若输出包含 specialist-finding.v1 且 summary 明确，返回 pass。
+          - 否则返回 fail。
+          只返回 pass 或 fail。
+
+  - vars:
+      goal: "给出支付渠道排障建议"
+      subTask: "检索历史经验并整理研究摘要"
+      memories: '[{"id":"mem-1","summary":"优先检查通道健康度","tags":["payment","research-job"]}]'
+      rules: '[{"id":"rule-1","name":"高风险支付操作需审批","summary":"涉及生产支付通道变更时先走审批","conditions":["production-payment"],"action":"require-approval"}]'
+      skills: '[{"id":"skill-1","name":"payment-diagnosis","status":"stable","description":"支付链路排障"}]'
+      chatGoal: "false"
+      matchedChatSkillCount: "0"
+      executionSummary: "已完成支付链路排查，发现超时主要来自单一通道拥塞。"
+      baseline: '{"success":true,"quality":"medium","shouldRetry":false,"issues":["通道拥塞"]}'
+      reviewDecision: "approved"
+      reviewNotes: "建议先做通道切流，再观察恢复情况。"
+      freshnessSourceSummary: "本轮共参考 4 条来源；官方来源 3 条；来源类型：web_research_plan、research"
+      citationSourceSummary: "1. [网页|official] 支付通道运维手册（ops.example.com）"
+    assert:
+      - type: regex
+        value: '"contractVersion"\\s*:\\s*"research-evidence\\.v1"|结论'
+
+  - vars:
+      goal: "审查一个带外部接口调用的自动化方案"
+      subTask: "检索历史经验并整理研究摘要"
+      memories: '[{"id":"mem-2","summary":"高风险动作需要审批","tags":["risk","research-job"]}]'
+      rules: '[{"id":"rule-2","name":"外部写操作先审批","summary":"直接写回第三方生产数据必须人工审批","conditions":["external-write"],"action":"require-approval"}]'
+      skills: '[]'
+      chatGoal: "false"
+      matchedChatSkillCount: "0"
+      executionSummary: "方案包含直接调用第三方接口并写回生产数据。"
+      baseline: '{"success":false,"quality":"low","shouldRetry":true,"issues":["external write without approval"]}'
+      reviewDecision: "blocked"
+      reviewNotes: "必须先补审批与回滚方案。"
+      freshnessSourceSummary: ""
+      citationSourceSummary: ""
+    assert:
+      - type: llm-rubric
+        value: |
+          评分标准：
+          - 通过：输出与场景匹配，并且满足以下至少一项：
+            1）户部输出包含 contractVersion=research-evidence.v1；
+            2）刑部输出明确 approved / retry / blocked 之一，且 notes 不空；
+            3）礼部输出能直接给用户看，不暴露内部链路。
+          - 失败：偏题、漏关键结构，或输出明显不符合对应 ministry 的职责。
+          只返回 pass 或 fail。
+
+  - vars:
+      goal: "这个产品规划怎么样，后续还有什么优化空间"
+      subTask: "整理已有产品经验与验证路径"
+      memories: '[{"id":"mem-3","summary":"先收紧目标，再验证核心假设","tags":["product","research-job"]}]'
+      rules: '[]'
+      skills: '[{"id":"skill-2","name":"product-review","status":"stable","description":"产品规划与增长诊断"}]'
+      chatGoal: "false"
+      matchedChatSkillCount: "0"
+      executionSummary: "已完成产品规划评审，发现目标过散，验证顺序不清。"
+      baseline: '{"success":true,"quality":"medium","shouldRetry":false}'
+      reviewDecision: "approved"
+      reviewNotes: "建议先收紧目标与指标，再推进执行。"
+      freshnessSourceSummary: ""
+      citationSourceSummary: "1. [文档|official] 版本规划说明（docs.example.com）"
+    assert:
+      - type: llm-rubric
+        value: |
+          评分标准：
+          - 对礼部交付 prompt，若输出显式包含“结论”，并且说明“为什么这么说”或“关键依据”，得 pass。
+          - 若只做空泛表态、没有下一步方向，得 fail。
+          只返回 pass 或 fail。

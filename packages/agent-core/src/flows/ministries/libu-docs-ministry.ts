@@ -58,6 +58,12 @@ export class LibuDocsMinistry {
     tool?: never;
     executionResult?: ToolExecutionResult;
     summary: string;
+    serverId?: string;
+    capabilityId?: string;
+    approvalPreview?: Array<{
+      label: string;
+      value: string;
+    }>;
   }> {
     this.state.status = 'running';
     this.state.subTask = '整理交付说明';

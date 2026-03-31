@@ -25,6 +25,16 @@
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
 - `docs/*`：项目规范与模板文档
 
+## LangGraph 应用结构
+
+当前项目采用“Graph 入口清晰、共享能力集中、测试目录与源码分离”的结构规范：
+
+- 结构规范文档：[`docs/langgraph-app-structure.md`](./docs/langgraph-app-structure.md)
+- 主图与子图入口优先放在 `packages/agent-core/src/graphs`
+- app 层只通过 `@agent/*` 依赖 graph/runtime facade，不在应用层重新拼 graph
+- 从现在起，每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试
+- 根级 `vitest` 现在只发现 `test/` 目录中的测试
+
 ## Runtime Profiles
 
 当前运行时支持 4 个 profile，用于区分平台、公司、个人和 CLI 的默认策略：
@@ -135,7 +145,36 @@
 - 管理前端：`pnpm --dir apps/frontend/agent-admin dev`（默认 `127.0.0.1:5174`）
 - 库构建：`pnpm build:lib`
 - 单元测试：`pnpm test`
+- 原子层测试：`pnpm test:unit`
+- 协同层测试：`pnpm test:integration`
+- 覆盖率测试：`pnpm test:coverage`
 - 测试监听：`pnpm test:watch`
+- Prompt 回归：`pnpm eval:prompts`
+- Prompt 结果查看：`pnpm eval:prompts:view`
+
+## Prompt 回归
+
+仓库当前提供一套最小 `promptfoo` 回归入口，用于比较户部、刑部、礼部关键 prompt 的版本差异：
+
+- 配置文件：[`packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml`](./packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
+- 使用说明：[`packages/evals/promptfoo/README.md`](./packages/evals/promptfoo/README.md)
+
+默认命令：
+
+- `pnpm eval:prompts`
+- `pnpm eval:prompts:view`
+
+说明：
+
+- 这套回归默认是“小样本、关键链路、可比较版本”的最小集合
+- 运行前需要本地可用的 `promptfoo` 命令和对应模型 API Key
+- 当前核心阻塞套件：`supervisor-plan`、`specialist-finding`、`hubu-research`、`xingbu-review`、`libu-delivery`
+- 核心套件成功率要求 `> 90%`，低于门槛会阻塞对应 CI 任务
+
+覆盖率说明：
+
+- `pnpm test:coverage` 已提供模块级 `>= 85%` 门槛校验
+- 当前仓库覆盖率基线仍低于该目标，因此该命令目前用于显式质量检查与补测推进，不作为默认测试步骤替代 `pnpm test`
 
 ## 磁盘清理约束
 
@@ -162,6 +201,14 @@
 
 - `PR 检查`：对应 [`.github/workflows/pr-check.yml`](./.github/workflows/pr-check.yml)
 - `main 检查`：对应 [`.github/workflows/main-check.yml`](./.github/workflows/main-check.yml)
+
+## Runtime Interrupts
+
+审批、skill 安装、connector 治理和高风险工具调用，后续统一按可恢复 interrupt 主链收敛。
+
+- 规范文档：[`docs/runtime-interrupts.md`](./docs/runtime-interrupts.md)
+- 兼容期内允许同时保留 `pendingApproval`
+- 终态目标是 `interrupt(payload) -> __interrupt__ -> Command({ resume })`
 
 ### PR 检查
 
@@ -195,6 +242,7 @@
 - `TypeScript typecheck`
 - `Vitest`
 - `build`
+- `Prompt Regression`（仅在配置 `OPENAI_API_KEY` 时启用，否则自动跳过）
 
 同时会启用这几层缓存来提升速度：
 
@@ -203,6 +251,17 @@
 - 构建产物缓存：
   - `apps/**/dist`
   - `packages/**/build`
+
+### Prompt Regression CI
+
+仓库现在额外支持一个可选的 prompt 回归 CI 任务：
+
+- PR 工作流里会在改到 `packages/**`、`scripts/**`、工作流或根级工程配置时尝试运行
+- main 工作流里会在每次推送时尝试运行
+- 如果仓库 secrets 中没有配置 `OPENAI_API_KEY`，任务会显式跳过，不阻塞主检查
+- 如果配置了 `OPENAI_API_KEY`，会执行 `pnpm eval:prompts`，并上传：
+  - `packages/evals/promptfoo/latest-promptfoo-results.json`
+  - `packages/evals/promptfoo/latest-summary.json`
 
 ## 分支保护建议
 

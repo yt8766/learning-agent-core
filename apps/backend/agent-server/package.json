@@ -17,6 +17,7 @@
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
+    "test:runtime": "pnpm --dir ../../.. exec vitest run apps/backend/agent-server/src/runtime apps/backend/agent-server/test/runtime",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -37,6 +38,7 @@
     "dayjs": "^1.11.13",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "shelljs": "^0.8.5",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
@@ -49,6 +51,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/shelljs": "^0.8.17",
     "@types/supertest": "^6.0.2",
     "globals": "^16.0.0",
     "source-map-support": "^0.5.21",

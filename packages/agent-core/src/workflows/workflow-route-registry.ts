@@ -23,6 +23,25 @@ function normalizeGoal(goal: string) {
   return goal.trim().toLowerCase();
 }
 
+export function isConversationRecallGoal(goal: string) {
+  const normalized = normalizeGoal(goal);
+  if (!normalized || normalized.length > 80) {
+    return false;
+  }
+
+  return [
+    '刚刚聊了什么',
+    '刚才聊了什么',
+    '我们刚刚聊了什么',
+    '上一轮聊了什么',
+    '回顾一下刚刚',
+    '总结一下刚刚',
+    '总结一下我们刚刚聊了什么',
+    'what did we just talk',
+    'recap what we just talked'
+  ].some(pattern => normalized.includes(pattern));
+}
+
 function isIdentityOrCapabilityGoal(goal: string) {
   const normalized = normalizeGoal(goal);
   if (!normalized || normalized.length > 48) {
@@ -136,6 +155,16 @@ export function resolveWorkflowRoute(context: WorkflowRouteContext): WorkflowRou
       reason: 'freshness_sensitive_prompt',
       adapter: 'general-prompt',
       priority: 65
+    };
+  }
+
+  if (isConversationRecallGoal(context.goal)) {
+    return {
+      graph: 'workflow',
+      flow: 'direct-reply',
+      reason: 'conversation_recall_prompt',
+      adapter: 'general-prompt',
+      priority: 55
     };
   }
 

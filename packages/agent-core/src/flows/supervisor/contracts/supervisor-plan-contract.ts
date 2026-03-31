@@ -8,6 +8,21 @@ export interface SupervisorPlanContext {
   goal: string;
 }
 
+export function inferDispatchKind(subTask: {
+  title: string;
+  description: string;
+  assignedTo: AgentRole;
+}): 'strategy' | 'ministry' | 'fallback' {
+  const normalized = `${subTask.title} ${subTask.description}`.toLowerCase();
+  if (subTask.assignedTo === AgentRole.MANAGER || /兜底|保底|直接回答|整理答复|通用助理/.test(normalized)) {
+    return 'fallback';
+  }
+  if (/策略|约束|路线|风险|架构|投放|支付|产品|合规|票拟/.test(normalized)) {
+    return 'strategy';
+  }
+  return 'ministry';
+}
+
 export function buildFallbackSupervisorPlan(context: SupervisorPlanContext): SupervisorPlanOutput {
   return {
     summary: '首辅已将任务拆分为研究、执行、评审三个阶段。',

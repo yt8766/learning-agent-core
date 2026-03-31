@@ -1,25 +1,25 @@
-﻿import { AgentRuntime, createAgentGraph, createInitialState } from '@agent/agent-core';
+import { startWorkerProcess } from './runtime/worker-runtime';
 
 async function main(): Promise<void> {
-  const runtime = new AgentRuntime({
-    profile: 'company',
-    settingsOptions: {
-      workspaceRoot: process.cwd()
-    }
-  });
-  await runtime.start();
+  const handle = await startWorkerProcess();
 
-  const graph = createAgentGraph().compile();
-  const previewState = await graph.invoke(createInitialState('preview_task', 'Preview multi-agent workflow'));
+  const shutdown = async (signal: string) => {
+    console.info(`[worker] received ${signal}, shutting down background runner`);
+    await handle.stop();
+    process.exit(0);
+  };
 
-  console.info('worker ready', {
-    graph: runtime.orchestrator.describeGraph(),
-    workflowStep: previewState.currentStep,
-    providerCount: runtime.providerRegistry.getAll().length,
-    providers: runtime.providerRegistry.getAll().map(provider => provider.providerId),
-    toolCount: runtime.toolRegistry.list().length,
-    tools: runtime.toolRegistry.list().map(tool => tool.name),
-    mode: 'sandboxed'
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+  console.info('[worker] ready', {
+    profile: handle.runtime.settings.profile,
+    tasksStateFilePath: handle.runtime.settings.tasksStateFilePath,
+    runnerId: handle.context.runnerId,
+    workerPoolSize: handle.context.workerPoolSize,
+    leaseTtlMs: handle.context.leaseTtlMs,
+    heartbeatMs: handle.context.heartbeatMs,
+    pollMs: handle.context.pollMs
   });
 }
 

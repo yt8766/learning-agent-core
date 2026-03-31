@@ -34,6 +34,7 @@ export interface RuntimeAgentGraphState {
   executionResult?: ToolExecutionResult;
   reviewDecision?: ReviewDecision;
   shouldRetry: boolean;
+  terminateAfterPlanning?: boolean;
   retryCount: number;
   maxRetries: number;
   resumeFromApproval: boolean;
@@ -73,6 +74,7 @@ const AgentAnnotation = Annotation.Root({
   executionResult: Annotation<ToolExecutionResult | undefined>(),
   reviewDecision: Annotation<ReviewDecision | undefined>(),
   shouldRetry: Annotation<boolean>(),
+  terminateAfterPlanning: Annotation<boolean | undefined>(),
   retryCount: Annotation<number>(),
   maxRetries: Annotation<number>(),
   resumeFromApproval: Annotation<boolean>()
@@ -100,7 +102,8 @@ export function createAgentGraph(handlers: AgentGraphHandlers = {}) {
             ...state,
             currentStep: 'manager_plan',
             currentPlan: state.currentPlan.length > 0 ? state.currentPlan : ['research', 'execute', 'review'],
-            shouldRetry: false
+            shouldRetry: false,
+            terminateAfterPlanning: false
           }
     )
     .addNode('dispatch', async state =>
@@ -134,9 +137,11 @@ export function createAgentGraph(handlers: AgentGraphHandlers = {}) {
     .addEdge(START, 'goal_intake')
     .addEdge('goal_intake', 'route')
     .addConditionalEdges('route', state => (state.resumeFromApproval ? 'execute' : 'manager_plan'))
-    .addEdge('manager_plan', 'dispatch')
+    .addConditionalEdges('manager_plan', state => (state.terminateAfterPlanning ? 'finish' : 'dispatch'))
     .addEdge('dispatch', 'research')
-    .addEdge('research', 'execute')
+    .addConditionalEdges('research', state =>
+      state.approvalRequired && state.approvalStatus === 'pending' ? 'finish' : 'execute'
+    )
     .addConditionalEdges('execute', state =>
       state.approvalRequired && state.approvalStatus === 'pending' ? 'finish' : 'review'
     )
@@ -159,6 +164,7 @@ export function createInitialState(taskId: string, goal: string, context?: strin
     retrievedSkills: [],
     dispatches: [],
     shouldRetry: false,
+    terminateAfterPlanning: false,
     retryCount: 0,
     maxRetries: 1,
     resumeFromApproval: false

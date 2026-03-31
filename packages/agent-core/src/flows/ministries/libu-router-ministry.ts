@@ -5,12 +5,28 @@ import {
   buildFallbackSupervisorPlan,
   buildSupervisorDirectReplyUserPrompt,
   buildSupervisorPlanUserPrompt,
+  inferDispatchKind,
   SUPERVISOR_DIRECT_REPLY_PROMPT,
   SUPERVISOR_PLAN_SYSTEM_PROMPT,
   SupervisorPlanSchema,
   toManagerPlan
 } from '../supervisor';
-import { buildDeliverySummaryUserPrompt, DELIVERY_SUMMARY_SYSTEM_PROMPT } from '../delivery';
+import {
+  buildDeliverySummaryUserPrompt,
+  DELIVERY_SUMMARY_SYSTEM_PROMPT,
+  sanitizeFinalUserReply,
+  shapeFinalUserReply
+} from '../delivery';
+import { sanitizeTaskContextForModel } from '../../shared/prompts/runtime-output-sanitizer';
+
+function appendTaskContext(content: string, taskContext?: string) {
+  const sanitizedTaskContext = sanitizeTaskContextForModel(taskContext);
+  if (!sanitizedTaskContext) {
+    return content;
+  }
+
+  return [content, '以下是当前任务上下文：', sanitizedTaskContext].join('\n\n');
+}
 
 export class LibuRouterMinistry {
   private readonly state: AgentExecutionState;
@@ -48,7 +64,7 @@ export class LibuRouterMinistry {
             },
             {
               role: 'user',
-              content: buildSupervisorPlanUserPrompt(this.context.goal)
+              content: appendTaskContext(buildSupervisorPlanUserPrompt(this.context.goal), this.context.taskContext)
             }
           ],
           SupervisorPlanSchema,
@@ -100,6 +116,7 @@ export class LibuRouterMinistry {
       subTaskId: subTask.id,
       from: AgentRole.MANAGER,
       to: subTask.assignedTo,
+      kind: inferDispatchKind(subTask),
       objective: subTask.description
     }));
   }
@@ -115,7 +132,7 @@ export class LibuRouterMinistry {
       },
       {
         role: 'user' as const,
-        content: buildSupervisorDirectReplyUserPrompt(this.context.goal)
+        content: appendTaskContext(buildSupervisorDirectReplyUserPrompt(this.context.goal), this.context.taskContext)
       }
     ];
 
@@ -178,13 +195,19 @@ export class LibuRouterMinistry {
       }
     }
 
-    this.state.finalOutput =
-      streamed ?? fallback ?? '我是一个多 Agent 协作助手，负责理解你的目标、调度研究与执行能力，并用中文直接给你结果。';
+    this.state.finalOutput = sanitizeFinalUserReply(
+      streamed ?? fallback ?? '我是一个多 Agent 协作助手，负责理解你的目标、调度研究与执行能力，并用中文直接给你结果。'
+    );
     this.state.status = 'completed';
     return this.state.finalOutput;
   }
 
-  async finalize(review: ReviewRecord, executionSummary: string, freshnessSourceSummary?: string): Promise<string> {
+  async finalize(
+    review: ReviewRecord,
+    executionSummary: string,
+    freshnessSourceSummary?: string,
+    citationSourceSummary?: string
+  ): Promise<string> {
     const messageId = `summary_stream_${this.context.taskId}`;
     const promptMessages = [
       {
@@ -193,12 +216,16 @@ export class LibuRouterMinistry {
       },
       {
         role: 'user' as const,
-        content: buildDeliverySummaryUserPrompt(
-          this.context.goal,
-          executionSummary,
-          review.decision,
-          review.notes,
-          freshnessSourceSummary
+        content: appendTaskContext(
+          buildDeliverySummaryUserPrompt(
+            this.context.goal,
+            executionSummary,
+            review.decision,
+            review.notes,
+            freshnessSourceSummary,
+            citationSourceSummary
+          ),
+          this.context.taskContext
         )
       }
     ];
@@ -271,7 +298,11 @@ export class LibuRouterMinistry {
       shouldExtractSkill: review.decision === 'approved',
       notes: review.notes
     };
-    this.state.finalOutput = llmSummary ?? fallbackSummary ?? executionSummary;
+    this.state.finalOutput = shapeFinalUserReply(
+      llmSummary ?? fallbackSummary ?? executionSummary,
+      citationSourceSummary,
+      this.context.goal
+    );
     this.state.status = 'completed';
     return this.state.finalOutput;
   }

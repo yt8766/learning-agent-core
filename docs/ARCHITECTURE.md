@@ -70,6 +70,69 @@
 - 共享类型与部分接口仍保留旧 `manager/research/executor/reviewer` 兼容字段
 - 新实现应优先继续朝“六部真实执行主体”收敛，而不是回退到单一聊天机器人模型
 
+### 当前大模型架构图
+
+```mermaid
+flowchart TD
+    U["Human / 用户"]
+    A["agent-admin / 后台指挥面"]
+
+    U --> ER["通政司 / EntryRouter"]
+    ER --> MG["模式门 / ModeGate<br/>plan | execute | imperial_direct"]
+    MG --> DP["票拟调度器 / DispatchPlanner"]
+    DP --> CF["文书科 / ContextFilter"]
+    CF --> RA["汇总票拟 / ResultAggregator"]
+    RA --> IC["司礼监 / InterruptController"]
+    IC -->|"恢复派发"| DP
+
+    DP --> SP["群辅策略层"]
+    DP --> CAP["能力池 / Capability Pool<br/>shared / ministry-owned / specialist-owned / imperial-attached / temporary-assignment"]
+    CAP --> MN["六部执行层"]
+
+    SP --> GA["通才阁臣"]
+    SP --> PS["产品策略阁臣"]
+    SP --> GM["增长营销阁臣"]
+    SP --> PC["支付通道阁臣"]
+    SP --> RC["风控合规阁臣"]
+    SP --> TA["技术架构阁臣"]
+    SP --> RA
+
+    MN --> LG["吏部"]
+    MN --> HS["户部"]
+    MN --> GC["工部"]
+    MN --> BO["兵部"]
+    MN --> XR["刑部"]
+    MN --> LD["礼部"]
+
+    GC <--> BO
+    HS --> RA
+    GC --> RA
+    BO --> RA
+    XR --> RA
+
+    XR --> LD
+    XR --> IC
+
+    LD --> OUT["最终答复"]
+    OUT --> U
+
+    IC -->|"请旨 / 审批 / 提问"| U
+    U -->|"批红 / 御批 / 补充输入"| IC
+
+    RA --> LR["实录修纂 / LearningRecorder"]
+    LR --> A
+```
+
+补充说明：
+
+- `SP -> RA` 表示群辅层内部先完成策略票拟聚合，再把聚合结果交给 `ResultAggregator`，不在主图中逐阁臣展开原始输出。
+- `ModeGate` 只做轻量标注：
+  - `plan`：只读/分析/规划能力
+  - `execute`：六部全量执行能力
+  - `imperial_direct`：特旨直达执行链
+- `Capability Pool` 采用单节点总览表达，表示统一能力治理；具体五层池不在主图中拆成 5 个独立子图。
+- `LearningRecorder -> agent-admin` 表示学习沉淀默认服务后台治理，不默认回给用户。
+
 ## 3. 运行闭环
 
 当前和后续都应优先维持这个闭环：
@@ -228,6 +291,22 @@
 
 这些信息应当始终可见或可展开查看，不能被迁移到只有后台才能看到的隐藏区域。
 
+补充要求：
+
+- 大模型主链上的关键阶段不能只存在于内部实现里，至少要以 `trace / event / checkpoint summary` 之一落盘并可回放
+- 默认应覆盖：
+  - `plan`
+  - `route`
+  - `research`
+  - `execution`
+  - `review`
+  - `delivery`
+  - `interrupt`
+  - `recover`
+  - `learning`
+- `agent-chat` 至少要能在 Think / ThoughtChain / Runtime Panel 中看到这些阶段中的当前阶段与最近阶段
+- `agent-admin` 至少要能在 Runtime Center 中回放这些阶段，不允许只剩最终答案
+
 ## 6. 审批与中断
 
 高风险动作必须经过 HITL。
@@ -245,6 +324,19 @@
 - observe
 
 审批和恢复是 `agent-chat` 的主链能力，应优先以内联消息卡形式完成，而不是只依赖右侧工作台或后台页面。
+
+### 6.1 Interrupt 优先原则
+
+后续所有“等待人类确认后才能继续”的新流程，默认应优先采用可恢复 interrupt，而不是仅依赖 `pendingApproval` 状态模拟。
+
+收敛规则：
+
+- `interrupt` 是执行控制原语
+- `pendingApproval` 是兼容期投影
+- chat/admin 优先展示中断语义，再兼容旧审批字段
+- skill install approval 是第一批迁移对象
+
+在真正接入 LangGraph checkpointer 与 `Command({ resume })` 前，允许先在共享模型中维护 interrupt record，并通过现有 approval-recovery 链兼容恢复。
 
 ## 7. MCP 与工具层
 

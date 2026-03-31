@@ -1,5 +1,5 @@
-﻿import type { ChatMessageRecord } from '../../types/chat';
-import { getMessageRoleLabel, formatSessionTime } from '../../hooks/use-chat-session';
+﻿import type { ChatMessageRecord } from '@/types/chat';
+import { getMessageRoleLabel, formatSessionTime } from '@/hooks/use-chat-session';
 
 interface ChatThreadProps {
   messages: ChatMessageRecord[];
