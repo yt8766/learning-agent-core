@@ -1,5 +1,5 @@
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { ChatOpenAI } from '@langchain/openai';
+import { createChatOpenAIModel, normalizeModelBaseUrl } from '@agent/model';
 
 import { ProviderSettingsRecord } from '@agent/config';
 
@@ -88,13 +88,6 @@ function readUsage(payload: unknown): LlmUsageMetadata | undefined {
   };
 }
 
-function toBaseUrl(url?: string): string | undefined {
-  if (!url) {
-    return undefined;
-  }
-  return url.replace(/\/chat\/completions\/?$/, '');
-}
-
 function describeError(error: unknown): string {
   if (!error || typeof error !== 'object') {
     return String(error);
@@ -134,6 +127,30 @@ function describeError(error: unknown): string {
     return describeError(record.cause);
   }
   return parts.join(' | ') || 'unknown provider error';
+}
+
+function resolveStreamDelta(nextChunkText: string, accumulatedText: string): string {
+  if (!nextChunkText) {
+    return '';
+  }
+
+  if (!accumulatedText) {
+    return nextChunkText;
+  }
+
+  if (nextChunkText === accumulatedText) {
+    return '';
+  }
+
+  if (nextChunkText.startsWith(accumulatedText)) {
+    return nextChunkText.slice(accumulatedText.length);
+  }
+
+  if (accumulatedText.endsWith(nextChunkText)) {
+    return '';
+  }
+
+  return nextChunkText;
 }
 
 export class OpenAICompatibleProvider implements LlmProvider {
@@ -195,11 +212,15 @@ export class OpenAICompatibleProvider implements LlmProvider {
         if (usage) {
           lastUsage = usage;
         }
-        const token = readContent(chunk.content);
+        const chunkText = readContent(chunk.content);
+        const token = resolveStreamDelta(chunkText, finalText);
         if (!token) {
+          if (chunkText.startsWith(finalText)) {
+            finalText = chunkText;
+          }
           continue;
         }
-        finalText += token;
+        finalText = chunkText.startsWith(finalText) ? chunkText : `${finalText}${token}`;
         const metadata = chunk.response_metadata as { model_name?: unknown } | undefined;
         onToken(token, {
           model: typeof metadata?.model_name === 'string' ? metadata.model_name : options.modelId
@@ -239,29 +260,19 @@ export class OpenAICompatibleProvider implements LlmProvider {
     }
   }
 
-  private createModel(options: GenerateTextOptions): ChatOpenAI {
+  private createModel(options: GenerateTextOptions) {
     const model = this.resolveModelId(options);
     if (!model) {
       throw new Error(`Provider ${this.providerId} has no configured model.`);
     }
 
-    return new ChatOpenAI({
+    return createChatOpenAIModel({
       model,
       temperature: options.temperature ?? 0.2,
       maxTokens: options.maxTokens,
       apiKey: this.config.apiKey,
-      configuration: this.config.baseUrl
-        ? {
-            baseURL: toBaseUrl(this.config.baseUrl)
-          }
-        : undefined,
-      modelKwargs: options.thinking
-        ? {
-            thinking: {
-              type: 'enabled'
-            }
-          }
-        : undefined
+      baseUrl: this.config.baseUrl,
+      thinking: options.thinking
     });
   }
 
@@ -276,7 +287,7 @@ export class OpenAICompatibleProvider implements LlmProvider {
     error: unknown
   ) {
     const model = this.resolveModelId(options) ?? 'unknown-model';
-    const baseUrl = toBaseUrl(this.config.baseUrl) ?? 'default-openai-endpoint';
+    const baseUrl = this.config.baseUrl ? normalizeModelBaseUrl(this.config.baseUrl) : 'default-openai-endpoint';
     return new Error(
       `[provider=${this.providerId} stage=${stage} model=${model} baseUrl=${baseUrl}] ${describeError(error)}`
     );

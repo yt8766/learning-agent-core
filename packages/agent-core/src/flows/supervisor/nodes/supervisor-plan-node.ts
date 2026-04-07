@@ -1,9 +1,12 @@
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import { sanitizeTaskContextForModel } from '../../../utils/prompts/runtime-output-sanitizer';
 import { SUPERVISOR_PLAN_SYSTEM_PROMPT, buildSupervisorPlanUserPrompt } from '../prompts/supervisor-plan-prompts';
 import { buildFallbackSupervisorPlan, toManagerPlan } from '../contracts/supervisor-plan-contract';
 import { SupervisorPlanSchema } from '../schemas/supervisor-plan-schema';
 
 export async function executeSupervisorPlan(context: AgentRuntimeContext) {
+  const sanitizedTaskContext = sanitizeTaskContextForModel(context.taskContext);
+
   const result = await context.llm.generateObject(
     [
       {
@@ -12,8 +15,8 @@ export async function executeSupervisorPlan(context: AgentRuntimeContext) {
       },
       {
         role: 'user',
-        content: context.taskContext
-          ? [buildSupervisorPlanUserPrompt(context.goal), '以下是当前任务上下文：', context.taskContext].join('\n\n')
+        content: sanitizedTaskContext
+          ? [buildSupervisorPlanUserPrompt(context.goal), '以下是当前任务上下文：', sanitizedTaskContext].join('\n\n')
           : buildSupervisorPlanUserPrompt(context.goal)
       }
     ],

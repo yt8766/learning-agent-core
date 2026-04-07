@@ -1,77 +1,88 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import {
   AppendChatMessageDto,
   CreateChatSessionDto,
   LearningConfirmationDto,
+  RecoverToCheckpointDto,
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto
 } from '@agent/shared';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeSessionService } from '../runtime/services/runtime-session.service';
+import { ChatCapabilityIntentsService } from './chat-capability-intents.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(
+    private readonly runtimeSessionService: RuntimeSessionService,
+    private readonly chatCapabilityIntentsService: ChatCapabilityIntentsService
+  ) {}
 
   listSessions() {
-    return this.runtimeService.listSessions();
+    return this.runtimeSessionService.listSessions();
   }
 
   createSession(dto: CreateChatSessionDto) {
-    return this.runtimeService.createSession(dto);
+    return this.runtimeSessionService.createSession(dto);
   }
 
   deleteSession(sessionId: string) {
-    return this.runtimeService.deleteSession(sessionId);
+    return this.runtimeSessionService.deleteSession(sessionId);
   }
 
   updateSession(sessionId: string, dto: UpdateChatSessionDto) {
-    return this.runtimeService.updateSession(sessionId, dto);
+    return this.runtimeSessionService.updateSession(sessionId, dto);
   }
 
   getSession(sessionId: string) {
-    return this.runtimeService.getSession(sessionId);
+    return this.runtimeSessionService.getSession(sessionId);
   }
 
   listMessages(sessionId: string) {
-    return this.runtimeService.listSessionMessages(sessionId);
+    return this.runtimeSessionService.listSessionMessages(sessionId);
   }
 
   listEvents(sessionId: string) {
-    return this.runtimeService.listSessionEvents(sessionId);
+    return this.runtimeSessionService.listSessionEvents(sessionId);
   }
 
   getCheckpoint(sessionId: string) {
-    return this.runtimeService.getSessionCheckpoint(sessionId);
+    return this.runtimeSessionService.getSessionCheckpoint(sessionId);
   }
 
   appendMessage(sessionId: string, dto: AppendChatMessageDto) {
-    return this.runtimeService.appendSessionMessage(sessionId, dto);
+    return this.chatCapabilityIntentsService
+      .tryHandle(sessionId, dto)
+      .then(result => result ?? this.runtimeSessionService.appendSessionMessage(sessionId, dto));
   }
 
   approve(sessionId: string, dto: SessionApprovalDto) {
-    return this.runtimeService.approveSessionAction(sessionId, dto);
+    return this.runtimeSessionService.approveSessionAction(sessionId, dto);
   }
 
   reject(sessionId: string, dto: SessionApprovalDto) {
-    return this.runtimeService.rejectSessionAction(sessionId, dto);
+    return this.runtimeSessionService.rejectSessionAction(sessionId, dto);
   }
 
   confirmLearning(sessionId: string, dto: LearningConfirmationDto) {
-    return this.runtimeService.confirmLearning(sessionId, dto);
+    return this.runtimeSessionService.confirmLearning(sessionId, dto);
   }
 
   recover(sessionId: string) {
-    return this.runtimeService.recoverSession(sessionId);
+    return this.runtimeSessionService.recoverSession(sessionId);
+  }
+
+  recoverToCheckpoint(dto: RecoverToCheckpointDto) {
+    return this.runtimeSessionService.recoverSessionToCheckpoint(dto);
   }
 
   cancel(sessionId: string, dto: SessionCancelDto) {
-    return this.runtimeService.cancelSession(sessionId, dto);
+    return this.runtimeSessionService.cancelSession(sessionId, dto);
   }
 
-  subscribe(sessionId: string, listener: Parameters<RuntimeService['subscribeSession']>[1]) {
-    return this.runtimeService.subscribeSession(sessionId, listener);
+  subscribe(sessionId: string, listener: Parameters<RuntimeSessionService['subscribeSession']>[1]) {
+    return this.runtimeSessionService.subscribeSession(sessionId, listener);
   }
 }

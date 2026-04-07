@@ -1,54 +1,58 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { CreateTaskDto } from '@agent/shared';
+import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/shared';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeTaskService } from '../runtime/services/runtime-task.service';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(private readonly runtimeTaskService: RuntimeTaskService) {}
 
   createTask(dto: CreateTaskDto) {
-    return this.runtimeService.createTask(dto);
+    return this.runtimeTaskService.createTask(dto);
+  }
+
+  createAgentDiagnosisTask(dto: CreateAgentDiagnosisTaskDto) {
+    return this.runtimeTaskService.createAgentDiagnosisTask(dto);
   }
 
   listTasks() {
-    return this.runtimeService.listTasks();
+    return this.runtimeTaskService.listTasks();
   }
 
   getTask(taskId: string) {
-    return this.runtimeService.getTask(taskId);
+    return this.runtimeTaskService.getTask(taskId);
   }
 
   listTaskTraces(taskId: string) {
-    return this.runtimeService.listTaskTraces(taskId);
+    return this.runtimeTaskService.listTaskTraces(taskId);
   }
 
   getTaskAudit(taskId: string) {
-    return this.runtimeService.getTaskAudit(taskId);
+    return this.runtimeTaskService.getTaskAudit(taskId);
   }
 
   listTaskAgents(taskId: string) {
-    return this.runtimeService.listTaskAgents(taskId);
+    return this.runtimeTaskService.listTaskAgents(taskId);
   }
 
   listTaskMessages(taskId: string) {
-    return this.runtimeService.listTaskMessages(taskId);
+    return this.runtimeTaskService.listTaskMessages(taskId);
   }
 
   getTaskPlan(taskId: string) {
-    return this.runtimeService.getTaskPlan(taskId);
+    return this.runtimeTaskService.getTaskPlan(taskId);
   }
 
   getTaskReview(taskId: string) {
-    return this.runtimeService.getTaskReview(taskId);
+    return this.runtimeTaskService.getTaskReview(taskId);
   }
 
   getTaskLocalSkillSuggestions(taskId: string) {
-    return this.runtimeService.getTaskLocalSkillSuggestions(taskId);
+    return this.runtimeTaskService.getTaskLocalSkillSuggestions(taskId);
   }
 
   retryTask(taskId: string) {
-    return this.runtimeService.retryTask(taskId);
+    return this.runtimeTaskService.retryTask(taskId);
   }
 }

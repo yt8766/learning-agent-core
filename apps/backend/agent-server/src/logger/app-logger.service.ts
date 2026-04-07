@@ -13,16 +13,20 @@ export interface LogMeta {
 }
 
 type RuntimeLevel = 'error' | 'warn' | 'info' | 'debug' | 'verbose';
+type LogFormat = 'pretty' | 'json';
+const DEFAULT_MAX_STACK_LENGTH = 8000;
 
 @Injectable()
 export class AppLoggerService implements LoggerService {
   private readonly logsDir: string;
   private currentLevel: RuntimeLevel = 'debug';
   private lastTimestamp = Date.now();
+  private readonly format: LogFormat;
 
   constructor() {
     this.logsDir = join(process.cwd(), 'logs');
     mkdirSync(this.logsDir, { recursive: true });
+    this.format = this.resolveFormat();
   }
 
   log(message: unknown, contextOrMeta?: string | LogMeta): void {
@@ -72,17 +76,34 @@ export class AppLoggerService implements LoggerService {
 
     const meta =
       typeof contextOrMeta === 'string' ? { context: contextOrMeta } : (contextOrMeta ?? { context: 'Application' });
-    const normalizedMessage = typeof message === 'string' ? message : JSON.stringify(message, null, 2);
+    const normalizedMessage = typeof message === 'string' ? message : JSON.stringify(message);
     const timestamp = formatTimestamp(now);
     const context = meta.context ?? 'Application';
     const requestId = meta.requestId ? ` [requestId=${String(meta.requestId)}]` : '';
     const traceId = meta.traceId ? ` [traceId=${String(meta.traceId)}]` : '';
-    const stack = meta.stack ? `\n${String(meta.stack)}` : '';
+    const normalizedStack =
+      typeof meta.stack === 'string' ? truncateString(meta.stack, resolveMaxStackLength()) : undefined;
+    const stack = normalizedStack ? `\n${normalizedStack}` : '';
     const levelLabel = toNestLevel(level).padEnd(7, ' ');
-    const line = `[Nest] ${String(process.pid).padStart(5, ' ')}  - ${timestamp} ${levelLabel} [${context}] ${normalizedMessage}${requestId}${traceId} +${deltaMs}ms${stack}`;
+    const record = {
+      time: new Date(now).toISOString(),
+      level,
+      context,
+      message: normalizedMessage,
+      requestId: meta.requestId,
+      traceId: meta.traceId,
+      deltaMs,
+      pid: process.pid,
+      ...normalizeMetaFields(meta),
+      ...(normalizedStack ? { stack: normalizedStack } : {})
+    };
+    const line =
+      this.format === 'json'
+        ? JSON.stringify(record)
+        : `[Nest] ${String(process.pid).padStart(5, ' ')}  - ${timestamp} ${levelLabel} [${context}] ${normalizedMessage}${requestId}${traceId} +${deltaMs}ms${stack}`;
 
-    writeConsole(level, levelLabel, context, normalizedMessage, requestId, traceId, deltaMs, stack);
-    this.writeFile(level, line);
+    writeConsole(level, levelLabel, context, normalizedMessage, requestId, traceId, deltaMs, stack, line, this.format);
+    this.writeFile(level, JSON.stringify(record));
   }
 
   private writeFile(level: RuntimeLevel, line: string): void {
@@ -92,6 +113,61 @@ export class AppLoggerService implements LoggerService {
       appendFileSync(join(this.logsDir, `app-${date}.error.log`), `${line}\n`, 'utf8');
     }
   }
+
+  private resolveFormat(): LogFormat {
+    const explicit = process.env.LOG_FORMAT?.toLowerCase();
+    if (explicit === 'json' || explicit === 'pretty') {
+      return explicit;
+    }
+    return process.env.NODE_ENV === 'production' ? 'json' : 'pretty';
+  }
+}
+
+function normalizeMetaFields(meta: LogMeta): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(meta)
+      .filter(([key]) => !['context', 'requestId', 'traceId', 'stack'].includes(key))
+      .map(([key, value]) => [key, normalizeLogValue(value)])
+  );
+}
+
+function normalizeLogValue(value: unknown): unknown {
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack ? truncateString(value.stack, resolveMaxStackLength()) : undefined,
+      cause: 'cause' in value ? normalizeLogValue((value as Error & { cause?: unknown }).cause) : undefined
+    };
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => normalizeLogValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, normalizeLogValue(item)])
+    );
+  }
+
+  if (typeof value === 'string') {
+    return truncateString(value, 4000);
+  }
+
+  return value;
+}
+
+function truncateString(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength)}...<truncated ${value.length - maxLength} chars>`;
+}
+
+function resolveMaxStackLength(): number {
+  const parsed = Number(process.env.LOG_STACK_MAX ?? '');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_STACK_LENGTH;
 }
 
 function shouldWrite(level: RuntimeLevel, current: RuntimeLevel): boolean {
@@ -129,8 +205,25 @@ function writeConsole(
   requestId: string,
   traceId: string,
   deltaMs: number,
-  stack: string
+  stack: string,
+  jsonLine: string,
+  format: LogFormat
 ): void {
+  if (format === 'json') {
+    if (level === 'error') {
+      console.error(jsonLine);
+      return;
+    }
+
+    if (level === 'warn') {
+      console.warn(jsonLine);
+      return;
+    }
+
+    console.log(jsonLine);
+    return;
+  }
+
   const timestamp = formatTimestamp(Date.now());
   const appStr = chalk.green('[Nest]');
   const pidStr = chalk.green(String(process.pid).padStart(5, ' '));

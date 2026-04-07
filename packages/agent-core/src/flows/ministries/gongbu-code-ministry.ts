@@ -1,12 +1,16 @@
 ﻿import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { filterToolsForExecutionMode, isToolAllowedInExecutionMode } from '../../capabilities/execution-mode-guard';
+import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '../../runtime/streaming-execution';
+import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
 import { PendingExecutionContext } from '../approval';
 import { GONGBU_EXECUTION_SYSTEM_PROMPT } from './gongbu-code/prompts/execution-prompts';
 import { ExecutionActionSchema } from './gongbu-code/schemas/execution-action-schema';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;
+  protected readonly streamingCoordinator = new StreamingExecutionCoordinator();
 
   constructor(protected readonly context: AgentRuntimeContext) {
     this.state = {
@@ -32,6 +36,14 @@ export class GongbuCodeMinistry {
     tool?: ToolDefinition;
     executionResult?: ToolExecutionResult;
     summary: string;
+    serverId?: string;
+    capabilityId?: string;
+    approvalReason?: string;
+    approvalReasonCode?: string;
+    approvalPreview?: Array<{
+      label: string;
+      value: string;
+    }>;
   }> {
     this.state.status = 'running';
     this.state.subTask = subTask;
@@ -40,9 +52,10 @@ export class GongbuCodeMinistry {
     this.state.shortTermMemory = [researchSummary];
 
     const allowedCapabilities = this.context.workflowPreset?.allowedCapabilities;
-    const candidateTools = this.context.toolRegistry
-      .list()
-      .filter(tool => !allowedCapabilities || allowedCapabilities.includes(tool.name));
+    const candidateTools = filterToolsForExecutionMode(
+      this.context.toolRegistry.list().filter(tool => !allowedCapabilities || allowedCapabilities.includes(tool.name)),
+      this.context.executionMode
+    );
     const availableTools = candidateTools.map(tool => ({
       name: tool.name,
       description: tool.description,
@@ -58,8 +71,10 @@ export class GongbuCodeMinistry {
     } | null = null;
     if (this.context.llm.isConfigured()) {
       try {
-        llmSelection = await this.context.llm.generateObject(
-          [
+        llmSelection = await withReactiveContextRetry({
+          context: this.context,
+          trigger: 'gongbu-selection',
+          messages: [
             {
               role: 'system',
               content: GONGBU_EXECUTION_SYSTEM_PROMPT
@@ -73,22 +88,22 @@ export class GongbuCodeMinistry {
               })
             }
           ],
-          ExecutionActionSchema,
-          {
-            role: 'executor',
-            modelId: this.context.currentWorker?.defaultModel,
-            taskId: this.context.taskId,
-            thinking: this.context.thinking.executor,
-            temperature: 0.1,
-            budgetState: this.context.budgetState,
-            onUsage: usage => {
-              this.context.onUsage?.({
-                usage,
-                role: 'executor'
-              });
-            }
-          }
-        );
+          invoke: async messages =>
+            this.context.llm.generateObject(messages, ExecutionActionSchema, {
+              role: 'executor',
+              modelId: this.context.currentWorker?.defaultModel,
+              taskId: this.context.taskId,
+              thinking: this.context.thinking.executor,
+              temperature: 0.1,
+              budgetState: this.context.budgetState,
+              onUsage: usage => {
+                this.context.onUsage?.({
+                  usage,
+                  role: 'executor'
+                });
+              }
+            })
+        });
       } catch {
         llmSelection = null;
       }
@@ -97,20 +112,32 @@ export class GongbuCodeMinistry {
     const fallbackIntent = this.selectIntent(this.context.goal);
     const intent = llmSelection?.intent ?? fallbackIntent;
     const presetPreferredToolName = this.selectPreferredToolNameByWorkflow();
+    const llmSelectedTool = llmSelection?.toolName ? this.context.toolRegistry.get(llmSelection.toolName) : undefined;
+    const presetPreferredTool = presetPreferredToolName
+      ? this.context.toolRegistry.get(presetPreferredToolName)
+      : undefined;
     const preferredTool =
-      llmSelection?.toolName && (!allowedCapabilities || allowedCapabilities.includes(llmSelection.toolName))
-        ? this.context.toolRegistry.get(llmSelection.toolName)
+      llmSelection?.toolName &&
+      (!allowedCapabilities || allowedCapabilities.includes(llmSelection.toolName)) &&
+      llmSelectedTool &&
+      isToolAllowedInExecutionMode(llmSelectedTool, this.context.executionMode)
+        ? llmSelectedTool
         : undefined;
     const presetTool =
-      presetPreferredToolName && (!allowedCapabilities || allowedCapabilities.includes(presetPreferredToolName))
-        ? this.context.toolRegistry.get(presetPreferredToolName)
+      presetPreferredToolName &&
+      (!allowedCapabilities || allowedCapabilities.includes(presetPreferredToolName)) &&
+      presetPreferredTool &&
+      isToolAllowedInExecutionMode(presetPreferredTool, this.context.executionMode)
+        ? presetPreferredTool
         : undefined;
     const mappedTool = this.context.toolRegistry.getForIntent(intent);
     const fallbackTool = candidateTools.find(tool => tool.name === 'local-analysis') ?? candidateTools[0];
     const tool =
       preferredTool ??
       presetTool ??
-      (mappedTool && (!allowedCapabilities || allowedCapabilities.includes(mappedTool.name))
+      (mappedTool &&
+      (!allowedCapabilities || allowedCapabilities.includes(mappedTool.name)) &&
+      isToolAllowedInExecutionMode(mappedTool, this.context.executionMode)
         ? mappedTool
         : undefined) ??
       fallbackTool;
@@ -134,44 +161,171 @@ export class GongbuCodeMinistry {
         `已选择 ${intent}，对应工具 ${tool.name}。${this.context.workflowPreset ? `当前 Skill：${this.context.workflowPreset.displayName}` : ''}`
     );
 
-    const requiresApproval = this.context.approvalService.requiresApproval(intent, tool);
+    const toolInput = this.buildToolInput(tool.name, actionPrompt, researchSummary);
+    const approvalEvaluation = await this.context.approvalService.evaluateWithClassifier(intent, tool, {
+      ...toolInput,
+      executionMode: this.context.executionMode,
+      currentMinistry: this.context.currentWorker?.ministry,
+      currentWorker: this.context.currentWorker?.id
+    });
+    const requiresApproval = approvalEvaluation.requiresApproval;
     if (requiresApproval) {
       this.state.status = 'waiting_approval';
-      const summary = `执行已暂停：${intent} 使用 ${tool.name} 需要人工审批。`;
+      const summary = `执行已暂停：${intent} 使用 ${tool.name} 需要人工审批。${approvalEvaluation.reason}`;
       this.state.finalOutput = summary;
       return {
         intent,
         toolName: tool.name,
         tool,
         requiresApproval: true,
-        summary
+        summary,
+        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
+        approvalReason: approvalEvaluation.reason,
+        approvalReasonCode: approvalEvaluation.reasonCode
       };
     }
 
-    const request = {
-      taskId: this.context.taskId,
-      toolName: tool.name,
-      intent,
-      input: this.buildToolInput(tool.name, actionPrompt, researchSummary),
-      requestedBy: 'agent' as const
-    };
+    const executionResult = tool.isReadOnly
+      ? await this.executeReadonlyBatch(tool, candidateTools, intent, researchSummary, actionPrompt)
+      : await this.executeSingleTool(tool, intent, toolInput);
+    if (
+      executionResult.errorMessage === 'watchdog_timeout' ||
+      executionResult.errorMessage === 'watchdog_interaction_required'
+    ) {
+      this.state.status = 'waiting_approval';
+      const summary = `执行已暂停：${tool.name} 命中兵部看门狗，需要人工干预。${executionResult.outputSummary}`;
+      this.state.finalOutput = summary;
+      return {
+        intent,
+        toolName: tool.name,
+        tool,
+        requiresApproval: true,
+        summary,
+        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
+        approvalReason: executionResult.outputSummary,
+        approvalReasonCode: executionResult.errorMessage
+      };
+    }
+    const enrichedExecution = await this.maybeReadSearchResult(
+      tool.name,
+      executionResult,
+      researchSummary,
+      actionPrompt
+    );
 
-    const executionResult = this.context.mcpClientManager
-      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
-      : await this.context.sandbox.execute(request);
-
-    this.state.observations.push(executionResult.outputSummary);
-    this.state.shortTermMemory = [researchSummary, executionResult.outputSummary];
-    this.state.finalOutput = executionResult.outputSummary;
+    this.state.observations.push(enrichedExecution.outputSummary);
+    this.state.shortTermMemory = [researchSummary, enrichedExecution.outputSummary];
+    this.state.finalOutput = enrichedExecution.outputSummary;
     this.state.status = 'completed';
     return {
       intent,
       toolName: tool.name,
       tool,
       requiresApproval: false,
-      executionResult,
-      summary: executionResult.outputSummary
+      executionResult: enrichedExecution,
+      summary: enrichedExecution.outputSummary
     };
+  }
+
+  protected async executeSingleTool(
+    tool: ToolDefinition,
+    intent: ActionIntent,
+    toolInput: Record<string, unknown>
+  ): Promise<ToolExecutionResult> {
+    const request = {
+      taskId: this.context.taskId,
+      toolName: tool.name,
+      intent,
+      input: toolInput,
+      requestedBy: 'agent' as const
+    };
+
+    return this.context.mcpClientManager
+      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
+      : await this.context.sandbox.execute(request);
+  }
+
+  protected async executeReadonlyBatch(
+    selectedTool: ToolDefinition,
+    candidateTools: ToolDefinition[],
+    intent: ActionIntent,
+    researchSummary: string,
+    actionPrompt: string
+  ): Promise<ToolExecutionResult> {
+    const readonlyTools = [selectedTool]
+      .concat(
+        candidateTools.filter(
+          tool =>
+            tool.name !== selectedTool.name &&
+            tool.isReadOnly &&
+            tool.supportsStreamingDispatch &&
+            [
+              'read_local_file',
+              'list_directory',
+              'glob_workspace',
+              'search_in_files',
+              'read_json',
+              'browse_page'
+            ].includes(tool.name)
+        )
+      )
+      .slice(0, 3);
+
+    if (readonlyTools.length === 1) {
+      return this.executeSingleTool(
+        selectedTool,
+        intent,
+        this.buildToolInput(selectedTool.name, actionPrompt, researchSummary)
+      );
+    }
+
+    const { results, events } = await this.streamingCoordinator.run(
+      this.buildReadonlyExecutionSteps(readonlyTools, researchSummary, actionPrompt),
+      {
+        shouldContinue: () => !this.context.isTaskCancelled?.(),
+        allowStep: async step => !step.tool.isDestructive
+      }
+    );
+    for (const event of events) {
+      this.state.toolCalls.push(`${event.type}:${event.toolName}`);
+      if (event.type === 'tool_stream_dispatched') {
+        this.state.observations.push(`工部/兵部已流式派发 ${event.toolName}（${event.scheduling}）`);
+      }
+    }
+
+    return {
+      ok: results.every(item => item.ok),
+      outputSummary: results.map(item => item.outputSummary).join('；'),
+      rawOutput: {
+        batch: true,
+        toolNames: readonlyTools.map(item => item.name),
+        outputs: results.map(item => item.rawOutput)
+      },
+      exitCode: results.some(item => (item.exitCode ?? 0) !== 0) ? 1 : 0,
+      durationMs: results.reduce((sum, item) => sum + item.durationMs, 0),
+      errorMessage: results.find(item => item.errorMessage)?.errorMessage
+    };
+  }
+
+  protected buildReadonlyExecutionSteps(
+    readonlyTools: ToolDefinition[],
+    researchSummary: string,
+    actionPrompt: string
+  ): ExecutionStepRecord<Record<string, unknown>, ToolExecutionResult>[] {
+    return readonlyTools.map(tool => {
+      const inputPreview = this.buildToolInput(tool.name, actionPrompt, researchSummary);
+      return {
+        id: `${this.context.taskId}:${tool.name}`,
+        toolName: tool.name,
+        ministry: this.context.currentWorker?.ministry,
+        source: this.constructor.name,
+        inputPreview,
+        streamingEligible: tool.isReadOnly && tool.supportsStreamingDispatch,
+        expectedSideEffect: tool.isReadOnly ? 'none' : 'workspace-write',
+        tool,
+        run: async () => this.executeSingleTool(tool, ActionIntent.READ_FILE, inputPreview)
+      };
+    });
   }
 
   buildApprovedState(executionResult: ToolExecutionResult, pending: PendingExecutionContext): AgentExecutionState {
@@ -191,6 +345,24 @@ export class GongbuCodeMinistry {
 
   protected selectIntent(goal: string): ActionIntent {
     const normalizedGoal = goal.toLowerCase();
+    if (
+      normalizedGoal.includes('delete') ||
+      normalizedGoal.includes('remove') ||
+      normalizedGoal.includes('cleanup') ||
+      normalizedGoal.includes('清理') ||
+      normalizedGoal.includes('删除')
+    ) {
+      return ActionIntent.DELETE_FILE;
+    }
+    if (
+      normalizedGoal.includes('schedule') ||
+      normalizedGoal.includes('cron') ||
+      normalizedGoal.includes('timer') ||
+      normalizedGoal.includes('定时') ||
+      normalizedGoal.includes('提醒')
+    ) {
+      return ActionIntent.SCHEDULE_TASK;
+    }
     if (normalizedGoal.includes('write') || normalizedGoal.includes('save') || normalizedGoal.includes('file')) {
       return ActionIntent.WRITE_FILE;
     }
@@ -201,6 +373,7 @@ export class GongbuCodeMinistry {
   }
 
   protected buildToolInput(toolName: string, actionPrompt: string, researchSummary: string): Record<string, unknown> {
+    const preferredResearchSource = this.selectPreferredResearchSource();
     switch (toolName) {
       case 'read_local_file':
         return { path: 'package.json', goal: this.context.goal, researchSummary, actionPrompt };
@@ -211,10 +384,66 @@ export class GongbuCodeMinistry {
           path: 'data/generated/executor-output.txt',
           content: `目标：${this.context.goal}\n研究摘要：${researchSummary}\n动作：${actionPrompt}`
         };
+      case 'delete_local_file':
+        return {
+          path: 'data/generated/executor-output.txt',
+          recursive: false,
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt
+        };
+      case 'schedule_task':
+        return {
+          name: 'runtime-followup',
+          prompt: actionPrompt,
+          schedule: 'manual',
+          status: 'ACTIVE',
+          cwd: '.',
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt
+        };
       case 'http_request':
         return { url: 'https://example.com', method: 'GET', goal: this.context.goal, researchSummary, actionPrompt };
+      case 'webSearchPrime':
+        return {
+          query: this.context.goal,
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt,
+          freshnessHint: isLikelyFreshnessSensitive(this.context.goal) ? 'latest' : 'general'
+        };
+      case 'webReader':
+        return {
+          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt
+        };
+      case 'search_doc':
+        return {
+          repoUrl: preferredResearchSource?.sourceUrl ?? 'https://github.com/',
+          query: this.context.goal,
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt
+        };
+      case 'collect_research_source':
+        return {
+          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt,
+          trustClass: preferredResearchSource?.trustClass ?? 'official',
+          sourceType: preferredResearchSource?.sourceType ?? 'web'
+        };
       case 'browse_page':
-        return { url: 'http://localhost:3000', goal: this.context.goal, researchSummary, actionPrompt };
+        return {
+          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
+          goal: this.context.goal,
+          researchSummary,
+          actionPrompt
+        };
       case 'run_terminal':
         return { command: 'pnpm exec vitest --help', goal: this.context.goal, researchSummary, actionPrompt };
       case 'ship_release':
@@ -224,10 +453,27 @@ export class GongbuCodeMinistry {
     }
   }
 
+  protected buildApprovalPreview(toolName: string, input: Record<string, unknown>) {
+    const preview = [
+      typeof input.command === 'string' ? { label: 'Command', value: input.command } : null,
+      typeof input.path === 'string' ? { label: 'Path', value: input.path } : null,
+      typeof input.schedule === 'string' ? { label: 'Schedule', value: input.schedule } : null,
+      typeof input.url === 'string' ? { label: 'URL', value: input.url } : null,
+      typeof input.target === 'string' ? { label: 'Target', value: input.target } : null,
+      typeof input.method === 'string' ? { label: 'Method', value: input.method } : null,
+      typeof input.actionPrompt === 'string' ? { label: 'Action', value: input.actionPrompt } : null,
+      !('command' in input) && !('path' in input) && !('url' in input) && !('target' in input)
+        ? { label: 'Tool', value: toolName }
+        : null
+    ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+    return preview.slice(0, 4);
+  }
+
   protected selectPreferredToolNameByWorkflow(): string | undefined {
     switch (this.context.workflowPreset?.id) {
       case 'browse':
-        return 'browse_page';
+        return this.selectPreferredBrowseToolName();
       case 'ship':
         return 'ship_release';
       case 'qa':
@@ -236,4 +482,160 @@ export class GongbuCodeMinistry {
         return undefined;
     }
   }
+
+  protected selectPreferredResearchSource() {
+    const candidates = (this.context.externalSources ?? []).filter(source => source.sourceUrl);
+    return (
+      candidates.find(source => source.sourceType === 'web_research_plan') ??
+      candidates.find(source => source.trustClass === 'official') ??
+      candidates[0]
+    );
+  }
+
+  protected selectPreferredBrowseToolName() {
+    const preferredSource = this.selectPreferredResearchSource();
+    const sourceUrl = preferredSource?.sourceUrl?.toLowerCase();
+
+    if (sourceUrl?.includes('github.com') && this.context.mcpClientManager?.hasCapability('search_doc')) {
+      return 'search_doc';
+    }
+    if (sourceUrl && this.context.mcpClientManager?.hasCapability('webReader')) {
+      return 'webReader';
+    }
+    if (this.context.mcpClientManager?.hasCapability('webSearchPrime')) {
+      return 'webSearchPrime';
+    }
+    return this.context.toolRegistry.get('webSearchPrime') ? 'webSearchPrime' : 'collect_research_source';
+  }
+
+  protected async maybeReadSearchResult(
+    toolName: string,
+    executionResult: ToolExecutionResult,
+    researchSummary: string,
+    actionPrompt: string
+  ): Promise<ToolExecutionResult> {
+    if (toolName !== 'webSearchPrime') {
+      return executionResult;
+    }
+
+    const candidate = this.findReadableSearchCandidate(executionResult.rawOutput);
+    if (!candidate) {
+      return executionResult;
+    }
+
+    const followupToolName = this.resolveFollowupBrowseToolName(candidate.url);
+    if (!followupToolName) {
+      return executionResult;
+    }
+
+    const followupRequest = {
+      taskId: this.context.taskId,
+      toolName: followupToolName,
+      intent: ActionIntent.READ_FILE,
+      input:
+        followupToolName === 'search_doc'
+          ? {
+              repoUrl: candidate.url,
+              query: this.context.goal,
+              goal: this.context.goal,
+              researchSummary,
+              actionPrompt
+            }
+          : {
+              url: candidate.url,
+              goal: this.context.goal,
+              researchSummary,
+              actionPrompt
+            },
+      requestedBy: 'agent' as const
+    };
+
+    const followupResult = this.context.mcpClientManager
+      ? await this.context.mcpClientManager.invokeCapability(followupToolName, followupRequest)
+      : await this.context.sandbox.execute(followupRequest);
+
+    return {
+      ...followupResult,
+      outputSummary: `${executionResult.outputSummary}；${followupResult.outputSummary}`,
+      rawOutput: mergeExecutionOutputs(executionResult.rawOutput, followupResult.rawOutput, followupToolName)
+    };
+  }
+
+  protected findReadableSearchCandidate(rawOutput: unknown): { url: string } | undefined {
+    if (!rawOutput || typeof rawOutput !== 'object') {
+      return undefined;
+    }
+
+    const items = Array.isArray((rawOutput as { results?: unknown[] }).results)
+      ? (rawOutput as { results: unknown[] }).results
+      : Array.isArray((rawOutput as { items?: unknown[] }).items)
+        ? (rawOutput as { items: unknown[] }).items
+        : [];
+
+    return items.find(item => {
+      if (!item || typeof item !== 'object') {
+        return false;
+      }
+
+      const url = typeof (item as { url?: unknown }).url === 'string' ? (item as { url: string }).url : '';
+      return Boolean(url) && !isSearchResultUrl(url);
+    }) as { url: string } | undefined;
+  }
+
+  protected resolveFollowupBrowseToolName(url: string) {
+    const normalizedUrl = url.toLowerCase();
+    if (normalizedUrl.includes('github.com') && this.context.toolRegistry.get('search_doc')) {
+      return 'search_doc';
+    }
+    if (this.context.toolRegistry.get('webReader')) {
+      return 'webReader';
+    }
+    return undefined;
+  }
+}
+
+function buildSearchUrl(goal: string) {
+  return `https://www.bing.com/search?q=${encodeURIComponent(goal.trim() || '智能搜索')}`;
+}
+
+function isLikelyFreshnessSensitive(goal: string) {
+  return /(最新|最近|today|latest|recent|本周|今天|近况)/i.test(goal);
+}
+
+function isSearchResultUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.host.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    return (
+      (host.includes('bing.com') && path.startsWith('/search')) ||
+      (host.includes('google.') && path.startsWith('/search')) ||
+      (host.includes('duckduckgo.com') && path.startsWith('/')) ||
+      (host.includes('baidu.com') && path.startsWith('/s'))
+    );
+  } catch {
+    return true;
+  }
+}
+
+function mergeExecutionOutputs(primaryRawOutput: unknown, followupRawOutput: unknown, followupToolName: string) {
+  const primary =
+    primaryRawOutput && typeof primaryRawOutput === 'object' ? (primaryRawOutput as Record<string, unknown>) : {};
+  const followup =
+    followupRawOutput && typeof followupRawOutput === 'object' ? (followupRawOutput as Record<string, unknown>) : {};
+  const primaryResults = Array.isArray(primary.results)
+    ? primary.results
+    : Array.isArray(primary.items)
+      ? primary.items
+      : [];
+
+  return {
+    ...primary,
+    ...followup,
+    results: [...primaryResults, followup],
+    followedBy: {
+      toolName: followupToolName,
+      url: typeof followup.url === 'string' ? followup.url : undefined
+    }
+  };
 }

@@ -8,10 +8,11 @@
     "build": "tsup src/main.ts --format cjs --dts --out-dir dist",
     "lint": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test dist/**/*.test.js"
+    "test": "pnpm --dir ../.. exec vitest run apps/worker/test"
   },
   "dependencies": {
     "@agent/agent-core": "workspace:*",
+    "@agent/config": "workspace:*",
     "@agent/memory": "workspace:*",
     "@agent/skills": "workspace:*",
     "@agent/tools": "workspace:*"

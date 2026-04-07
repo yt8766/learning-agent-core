@@ -5,14 +5,16 @@ const GENERAL_PRESET: WorkflowPresetDefinition = {
   displayName: '通用协作流程',
   version: '1.0.0',
   intentPatterns: ['默认', '通用', 'general'],
-  requiredMinistries: ['libu-router', 'hubu-search', 'gongbu-code', 'xingbu-review'],
+  requiredMinistries: ['libu-governance', 'hubu-search', 'gongbu-code', 'xingbu-review'],
   allowedCapabilities: [
     'search_memory',
     'read_local_file',
     'list_directory',
     'local-analysis',
     'find-skills',
-    'write_local_file'
+    'write_local_file',
+    'delete_local_file',
+    'schedule_task'
   ],
   approvalPolicy: 'high-risk-only',
   webLearningPolicy: {
@@ -42,7 +44,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: 'CEO 评审流程',
     version: '1.0.0',
     intentPatterns: ['商业价值', '用户价值', '产品方向', 'ceo'],
-    requiredMinistries: ['libu-router', 'hubu-search', 'libu-docs'],
+    requiredMinistries: ['libu-governance', 'hubu-search', 'libu-delivery'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
@@ -69,14 +71,16 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: '工程方案评审',
     version: '1.0.0',
     intentPatterns: ['架构设计', '工程评审', 'eng review', 'architecture'],
-    requiredMinistries: ['libu-router', 'gongbu-code', 'libu-docs'],
+    requiredMinistries: ['libu-governance', 'gongbu-code', 'libu-delivery'],
     allowedCapabilities: [
       'search_memory',
       'read_local_file',
       'list_directory',
       'local-analysis',
       'find-skills',
-      'write_local_file'
+      'write_local_file',
+      'delete_local_file',
+      'schedule_task'
     ],
     approvalPolicy: 'high-risk-only',
     webLearningPolicy: {
@@ -103,7 +107,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: '代码审查流程',
     version: '1.0.0',
     intentPatterns: ['代码审查', 'review', '安全审计', '漏洞'],
-    requiredMinistries: ['libu-router', 'xingbu-review', 'gongbu-code'],
+    requiredMinistries: ['libu-governance', 'xingbu-review', 'gongbu-code'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
@@ -130,14 +134,15 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: 'QA 测试流程',
     version: '1.0.0',
     intentPatterns: ['qa', '测试', '回归', '验收'],
-    requiredMinistries: ['libu-router', 'bingbu-ops', 'hubu-search', 'libu-docs'],
+    requiredMinistries: ['libu-governance', 'bingbu-ops', 'hubu-search', 'libu-delivery'],
     allowedCapabilities: [
       'search_memory',
       'read_local_file',
       'list_directory',
       'run_terminal',
       'local-analysis',
-      'find-skills'
+      'find-skills',
+      'schedule_task'
     ],
     approvalPolicy: 'high-risk-only',
     webLearningPolicy: {
@@ -146,8 +151,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
       acceptedTrustClasses: ['official', 'curated', 'internal']
     },
     sourcePolicy: {
-      mode: 'controlled-first',
-      preferredUrls: ['https://vitest.dev/', 'https://playwright.dev/']
+      mode: 'controlled-first'
     },
     autoPersistPolicy: {
       memory: 'high-confidence',
@@ -165,8 +169,12 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: '浏览器自动化流程',
     version: '1.0.0',
     intentPatterns: ['浏览器', '截图', '页面测试', 'browse'],
-    requiredMinistries: ['libu-router', 'bingbu-ops', 'libu-docs'],
+    requiredMinistries: ['libu-governance', 'bingbu-ops', 'libu-delivery'],
     allowedCapabilities: [
+      'webSearchPrime',
+      'webReader',
+      'search_doc',
+      'collect_research_source',
       'browse_page',
       'http_request',
       'read_local_file',
@@ -181,8 +189,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
       acceptedTrustClasses: ['official', 'curated', 'community', 'internal']
     },
     sourcePolicy: {
-      mode: 'open-web-allowed',
-      preferredUrls: ['https://playwright.dev/']
+      mode: 'open-web-allowed'
     },
     autoPersistPolicy: {
       memory: 'high-confidence',
@@ -200,11 +207,13 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: '发布流程',
     version: '1.0.0',
     intentPatterns: ['发布', '上线', 'ship', 'merge', 'deploy'],
-    requiredMinistries: ['libu-router', 'bingbu-ops', 'libu-docs', 'xingbu-review'],
+    requiredMinistries: ['libu-governance', 'bingbu-ops', 'libu-delivery', 'xingbu-review'],
     allowedCapabilities: [
       'ship_release',
       'run_terminal',
       'write_local_file',
+      'delete_local_file',
+      'schedule_task',
       'http_request',
       'read_local_file',
       'list_directory',
@@ -237,7 +246,7 @@ const WORKFLOW_PRESETS: WorkflowPresetDefinition[] = [
     displayName: '复盘流程',
     version: '1.0.0',
     intentPatterns: ['复盘', 'retro', '总结经验', '回顾'],
-    requiredMinistries: ['libu-router', 'libu-docs', 'xingbu-review', 'gongbu-code'],
+    requiredMinistries: ['libu-governance', 'libu-delivery', 'xingbu-review', 'gongbu-code'],
     allowedCapabilities: ['search_memory', 'read_local_file', 'list_directory', 'local-analysis', 'find-skills'],
     approvalPolicy: 'none',
     webLearningPolicy: {
@@ -267,6 +276,11 @@ export interface WorkflowResolution {
   command?: string;
 }
 
+interface WorkflowResolutionOptions {
+  constraints?: string[];
+  context?: string;
+}
+
 export function listWorkflowPresets(): WorkflowPresetDefinition[] {
   return WORKFLOW_PRESETS;
 }
@@ -282,8 +296,20 @@ export function listWorkflowVersions(): WorkflowVersionRecord[] {
   }));
 }
 
-export function resolveWorkflowPreset(goal: string): WorkflowResolution {
+export function resolveWorkflowPreset(goal: string, options?: WorkflowResolutionOptions): WorkflowResolution {
   const normalizedGoal = goal.trim();
+  const constraints = options?.constraints ?? [];
+  const prefersDiagnosis =
+    constraints.includes('prefer-xingbu-diagnosis') || String(options?.context ?? '').includes('diagnosis_for:');
+  if (prefersDiagnosis) {
+    const diagnosisPreset = WORKFLOW_PRESETS.find(item => item.id === 'review') ?? GENERAL_PRESET;
+    return {
+      normalizedGoal,
+      preset: diagnosisPreset,
+      source: diagnosisPreset === GENERAL_PRESET ? 'default' : 'inferred'
+    };
+  }
+
   const explicit = normalizedGoal.match(/^(\/[a-z-]+)\b\s*(.*)$/i);
   if (explicit) {
     const command = (explicit[1] ?? '').toLowerCase();
@@ -314,7 +340,9 @@ export function buildWorkflowPresetPlan(taskId: string, goal: string, preset: Wo
     preset.requiredMinistries.length > 0 ? preset.requiredMinistries.join('、') : '当前无需额外尚书';
   const summary = `${preset.displayName}已生效，系统将优先联动 ${ministrySummary} 处理目标。`;
   const researchObjective =
-    preset.requiredMinistries.includes('hubu-search') || preset.requiredMinistries.includes('libu-docs')
+    preset.requiredMinistries.includes('hubu-search') ||
+    preset.requiredMinistries.includes('libu-delivery') ||
+    preset.requiredMinistries.includes('libu-docs')
       ? `收集与目标相关的上下文、文档与规范：${goal}`
       : `整理完成目标所需的上下文与约束：${goal}`;
   const executeObjective = preset.requiredMinistries.includes('bingbu-ops')

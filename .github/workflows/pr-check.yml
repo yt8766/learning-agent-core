@@ -118,11 +118,14 @@ jobs:
       - name: Run TypeScript Checks
         run: pnpm lint:tsc
 
+      - name: Run Terminology Check (Non-blocking)
+        run: pnpm check:terminology || true
+
   test:
-    name: Backend And Package Tests
+    name: Full Tests And Coverage
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
 
     steps:
       - name: Checkout
@@ -143,8 +146,11 @@ jobs:
       - name: Run Tests
         run: pnpm test
 
+      - name: Run Coverage
+        run: pnpm test:coverage
+
   build:
-    name: Build Changed Targets
+    name: Full Build
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.any_code == 'true'
@@ -165,13 +171,67 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Frontend
-        if: needs.detect-changes.outputs.frontend == 'true'
-        run: pnpm build:frontend
+      - name: Run Backend Structure Check
+        run: pnpm check:backend-structure
 
-      - name: Build Libraries And Backend
-        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
-        run: pnpm build:lib && pnpm build:server
+      - name: Run Full Build
+        run: pnpm build
+
+  prompt-regression:
+    name: Prompt Regression
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.workflow == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check prompt regression secrets are configured
+        id: promptfoo
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Explain skip reason
+        if: steps.promptfoo.outputs.ready != 'true'
+        run: echo "Skipping prompt regression because OPENAI_API_KEY is not configured."
+
+      - name: Setup pnpm
+        if: steps.promptfoo.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.promptfoo.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Dependencies
+        if: steps.promptfoo.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prompt Regression
+        if: steps.promptfoo.outputs.ready == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: pnpm eval:prompts
+
+      - name: Upload Prompt Regression Artifacts
+        if: steps.promptfoo.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-regression-pr-${{ github.event.pull_request.number || github.run_id }}
+          path: |
+            packages/evals/promptfoo/latest-promptfoo-results.json
+            packages/evals/promptfoo/latest-summary.json
+          if-no-files-found: error
 
   notify:
     name: Send Email Notification
@@ -182,6 +242,7 @@ jobs:
       - typecheck
       - test
       - build
+      - prompt-regression
     # job/step 的 if 表达式不能使用 secrets；用 run + env 注入后再写 outputs，供后续 if 使用
     if: always()
 
@@ -204,7 +265,7 @@ jobs:
           fi
 
       - name: Send Success Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped') && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -226,7 +287,7 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Send Failure Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lint.result == 'failure' || needs.lint.result == 'cancelled' || needs.typecheck.result == 'failure' || needs.typecheck.result == 'cancelled' || needs.test.result == 'failure' || needs.test.result == 'cancelled' || needs.build.result == 'failure' || needs.build.result == 'cancelled') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lint.result == 'failure' || needs.lint.result == 'cancelled' || needs.typecheck.result == 'failure' || needs.typecheck.result == 'cancelled' || needs.test.result == 'failure' || needs.test.result == 'cancelled' || needs.build.result == 'failure' || needs.build.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}

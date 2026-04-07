@@ -1,4 +1,5 @@
 import { loadSettings, LoadSettingsOptions, RuntimeProfile, RuntimeSettings } from '@agent/config';
+import { createRuntimeEmbeddingProvider } from '@agent/model';
 import {
   DefaultMemorySearchService,
   FileMemoryRepository,
@@ -10,6 +11,7 @@ import {
 import { SkillRegistry } from '@agent/skills';
 import {
   ApprovalService,
+  ExecutionWatchdog,
   McpCapabilityRegistry,
   McpClientManager,
   McpServerRegistry,
@@ -25,7 +27,9 @@ import { ModelRouter } from '../adapters/llm/model-router';
 import { ProviderRegistry } from '../adapters/llm/provider-registry';
 import { RoutedLlmProvider } from '../adapters/llm/routed-llm-provider';
 import { ZhipuLlmProvider } from '../adapters/llm/zhipu-provider';
-import { AgentOrchestrator } from '../graphs/main.graph';
+import { AgentOrchestrator } from '../graphs/main/main.graph';
+import { XingbuClassifier } from './xingbu-classifier';
+import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
 import { SessionCoordinator } from '../session/session-coordinator';
 
 export interface AgentRuntimeOptions {
@@ -42,6 +46,7 @@ export class AgentRuntime {
   readonly ruleRepository;
   readonly memorySearchService;
   readonly vectorIndexRepository;
+  readonly knowledgeSearchService;
   readonly skillRegistry;
   readonly approvalService;
   readonly runtimeStateRepository;
@@ -66,18 +71,38 @@ export class AgentRuntime {
       });
     this.memoryRepository = new FileMemoryRepository(this.settings.memoryFilePath);
     this.ruleRepository = new FileRuleRepository(this.settings.rulesFilePath);
-    this.vectorIndexRepository = new LocalVectorIndexRepository(this.memoryRepository, this.ruleRepository);
+    const embeddingProvider = createRuntimeEmbeddingProvider(this.settings);
+    this.vectorIndexRepository = new LocalVectorIndexRepository(
+      this.memoryRepository,
+      this.ruleRepository,
+      embeddingProvider,
+      {
+        filePath: this.settings.vectorIndexFilePath,
+        knowledgeRoot: this.settings.knowledgeRoot
+      }
+    );
+    this.memoryRepository.setVectorIndexRepository?.(this.vectorIndexRepository);
+    this.ruleRepository.setVectorIndexRepository?.(this.vectorIndexRepository);
     this.memorySearchService = new DefaultMemorySearchService(
       this.memoryRepository,
       this.ruleRepository,
       this.vectorIndexRepository
     );
+    this.knowledgeSearchService = new LocalKnowledgeSearchService(this.settings, this.vectorIndexRepository);
     this.skillRegistry = new SkillRegistry(this.settings.skillsRoot);
-    this.approvalService = new ApprovalService();
     this.runtimeStateRepository = new FileRuntimeStateRepository(this.settings.tasksStateFilePath);
     this.semanticCacheRepository = new FileSemanticCacheRepository(this.settings.semanticCacheFilePath);
     this.toolRegistry = createDefaultToolRegistry();
     this.sandboxExecutor = options.sandboxExecutor ?? new StubSandboxExecutor();
+    this.providerRegistry = this.createProviderRegistry();
+    this.modelRouter = new ModelRouter(this.providerRegistry, this.settings.routing);
+    this.llmProvider =
+      options.llmProvider ??
+      new RoutedLlmProvider(this.providerRegistry, this.modelRouter, this.semanticCacheRepository);
+    const xingbuClassifier = new XingbuClassifier(this.llmProvider);
+    this.approvalService = new ApprovalService(this.settings, {
+      classifier: input => xingbuClassifier.classify(input as never)
+    });
     this.mcpServerRegistry = new McpServerRegistry();
     this.mcpCapabilityRegistry = new McpCapabilityRegistry();
     this.registerMcpServers();
@@ -87,17 +112,14 @@ export class AgentRuntime {
       this.mcpCapabilityRegistry,
       this.sandboxExecutor,
       {
-        stdioMaxSessions: this.settings.mcp.stdioSessionMaxCount
+        stdioMaxSessions: this.settings.mcp.stdioSessionMaxCount,
+        watchdog: new ExecutionWatchdog()
       }
     );
-    this.providerRegistry = this.createProviderRegistry();
-    this.modelRouter = new ModelRouter(this.providerRegistry, this.settings.routing);
-    this.llmProvider =
-      options.llmProvider ??
-      new RoutedLlmProvider(this.providerRegistry, this.modelRouter, this.semanticCacheRepository);
     this.orchestrator = new AgentOrchestrator({
       memoryRepository: this.memoryRepository,
       memorySearchService: this.memorySearchService,
+      knowledgeSearchService: this.knowledgeSearchService,
       skillRegistry: this.skillRegistry,
       approvalService: this.approvalService,
       runtimeStateRepository: this.runtimeStateRepository,

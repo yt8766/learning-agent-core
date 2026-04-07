@@ -5,11 +5,19 @@ import { loadSettings } from '@agent/config';
 import {
   ActionIntent,
   ChatCheckpointRecord,
+  ChannelIdentity,
+  ChannelOutboundMessage,
   ChatEventRecord,
   ChatMessageRecord,
   ChatSessionRecord,
+  ApprovalScopePolicyRecord,
+  CapabilityGovernanceProfileRecord,
+  GovernanceProfileRecord,
+  CounselorSelectorConfig,
   ConfiguredConnectorRecord,
   ConnectorDiscoveryHistoryRecord,
+  LearningConflictScanResult,
+  LearningQueueItem,
   LearningJob,
   TaskRecord
 } from '@agent/shared';
@@ -21,14 +29,35 @@ export interface PendingExecutionRecord {
   researchSummary: string;
 }
 
+export interface ChannelDeliveryRecord {
+  id: string;
+  channel: ChannelIdentity['channel'];
+  channelChatId: string;
+  sessionId?: string;
+  taskId?: string;
+  segment: ChannelOutboundMessage['segment'];
+  status: 'queued' | 'sent' | 'failed';
+  attemptCount?: number;
+  queuedAt: string;
+  lastAttemptAt?: string;
+  deliveredAt?: string;
+  failureReason?: string;
+}
+
 export interface RuntimeStateSnapshot {
   tasks: TaskRecord[];
   learningJobs: LearningJob[];
+  learningQueue?: LearningQueueItem[];
   pendingExecutions: PendingExecutionRecord[];
+  channelDeliveries: ChannelDeliveryRecord[];
   chatSessions: ChatSessionRecord[];
   chatMessages: ChatMessageRecord[];
   chatEvents: ChatEventRecord[];
   chatCheckpoints: ChatCheckpointRecord[];
+  crossCheckEvidence?: Array<{
+    memoryId: string;
+    record: import('@agent/shared').EvidenceRecord;
+  }>;
   governance?: {
     disabledSkillSourceIds?: string[];
     disabledCompanyWorkerIds?: string[];
@@ -50,13 +79,27 @@ export interface RuntimeStateSnapshot {
       updatedAt: string;
       updatedBy?: string;
     }>;
+    capabilityGovernanceProfiles?: CapabilityGovernanceProfileRecord[];
+    ministryGovernanceProfiles?: GovernanceProfileRecord[];
+    workerGovernanceProfiles?: GovernanceProfileRecord[];
+    specialistGovernanceProfiles?: GovernanceProfileRecord[];
+    counselorSelectorConfigs?: CounselorSelectorConfig[];
+    approvalScopePolicies?: ApprovalScopePolicyRecord[];
+    learningConflictScan?: LearningConflictScanResult;
   };
   governanceAudit?: Array<{
     id: string;
     at: string;
     actor: string;
     action: string;
-    scope: 'skill-source' | 'company-worker' | 'skill-install' | 'connector';
+    scope:
+      | 'skill-source'
+      | 'company-worker'
+      | 'skill-install'
+      | 'connector'
+      | 'counselor-selector'
+      | 'learning-conflict'
+      | 'approval-policy';
     targetId: string;
     outcome: 'success' | 'rejected' | 'pending';
     reason?: string;
@@ -120,11 +163,14 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
       return {
         tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
         learningJobs: Array.isArray(parsed.learningJobs) ? parsed.learningJobs : [],
+        learningQueue: Array.isArray(parsed.learningQueue) ? parsed.learningQueue : [],
         pendingExecutions: Array.isArray(parsed.pendingExecutions) ? parsed.pendingExecutions : [],
+        channelDeliveries: Array.isArray(parsed.channelDeliveries) ? parsed.channelDeliveries : [],
         chatSessions: Array.isArray(parsed.chatSessions) ? parsed.chatSessions : [],
         chatMessages: Array.isArray(parsed.chatMessages) ? parsed.chatMessages : [],
         chatEvents: Array.isArray(parsed.chatEvents) ? parsed.chatEvents : [],
         chatCheckpoints: Array.isArray(parsed.chatCheckpoints) ? parsed.chatCheckpoints : [],
+        crossCheckEvidence: Array.isArray(parsed.crossCheckEvidence) ? parsed.crossCheckEvidence : [],
         governance: {
           disabledSkillSourceIds: Array.isArray(parsed.governance?.disabledSkillSourceIds)
             ? parsed.governance?.disabledSkillSourceIds
@@ -146,7 +192,34 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
             : [],
           capabilityPolicyOverrides: Array.isArray(parsed.governance?.capabilityPolicyOverrides)
             ? parsed.governance?.capabilityPolicyOverrides
-            : []
+            : [],
+          capabilityGovernanceProfiles: Array.isArray(parsed.governance?.capabilityGovernanceProfiles)
+            ? parsed.governance?.capabilityGovernanceProfiles
+            : [],
+          ministryGovernanceProfiles: Array.isArray(parsed.governance?.ministryGovernanceProfiles)
+            ? parsed.governance?.ministryGovernanceProfiles
+            : [],
+          workerGovernanceProfiles: Array.isArray(parsed.governance?.workerGovernanceProfiles)
+            ? parsed.governance?.workerGovernanceProfiles
+            : [],
+          specialistGovernanceProfiles: Array.isArray(parsed.governance?.specialistGovernanceProfiles)
+            ? parsed.governance?.specialistGovernanceProfiles
+            : [],
+          counselorSelectorConfigs: Array.isArray(parsed.governance?.counselorSelectorConfigs)
+            ? parsed.governance?.counselorSelectorConfigs
+            : [],
+          approvalScopePolicies: Array.isArray(parsed.governance?.approvalScopePolicies)
+            ? parsed.governance?.approvalScopePolicies
+            : [],
+          learningConflictScan:
+            parsed.governance?.learningConflictScan && typeof parsed.governance.learningConflictScan === 'object'
+              ? parsed.governance.learningConflictScan
+              : {
+                  scannedAt: '',
+                  conflictPairs: [],
+                  mergeSuggestions: [],
+                  manualReviewQueue: []
+                }
         },
         governanceAudit: Array.isArray(parsed.governanceAudit) ? parsed.governanceAudit : [],
         usageHistory: Array.isArray(parsed.usageHistory) ? parsed.usageHistory : [],
@@ -157,11 +230,14 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
       return {
         tasks: [],
         learningJobs: [],
+        learningQueue: [],
         pendingExecutions: [],
+        channelDeliveries: [],
         chatSessions: [],
         chatMessages: [],
         chatEvents: [],
         chatCheckpoints: [],
+        crossCheckEvidence: [],
         governance: {
           disabledSkillSourceIds: [],
           disabledCompanyWorkerIds: [],
@@ -169,7 +245,19 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
           configuredConnectors: [],
           connectorDiscoveryHistory: [],
           connectorPolicyOverrides: [],
-          capabilityPolicyOverrides: []
+          capabilityPolicyOverrides: [],
+          capabilityGovernanceProfiles: [],
+          ministryGovernanceProfiles: [],
+          workerGovernanceProfiles: [],
+          specialistGovernanceProfiles: [],
+          counselorSelectorConfigs: [],
+          approvalScopePolicies: [],
+          learningConflictScan: {
+            scannedAt: '',
+            conflictPairs: [],
+            mergeSuggestions: [],
+            manualReviewQueue: []
+          }
         },
         governanceAudit: [],
         usageHistory: [],

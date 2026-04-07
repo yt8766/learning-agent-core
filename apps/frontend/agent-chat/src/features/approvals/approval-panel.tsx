@@ -1,4 +1,4 @@
-﻿import type { ApprovalRecord } from '../../types/chat';
+﻿import type { ApprovalRecord } from '@/types/chat';
 
 interface ApprovalPanelProps {
   approvals: ApprovalRecord[];

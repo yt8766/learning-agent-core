@@ -1,4 +1,4 @@
-﻿# 后端规范
+# 后端规范
 
 适用范围：
 
@@ -15,6 +15,14 @@
 - 禁止应用层依赖其他应用的 `dist` 或 package 的 `build` 路径
 
 ## 2. 目录与模块规范
+
+本节默认对齐 NestJS 官方的 feature module 组织方式：按业务域分目录，每个模块围绕 `module / controller / service` 展开，DTO 与接口放在模块目录内，而不是全局散落。
+
+参考：
+
+- [NestJS Modules](https://docs.nestjs.com/modules)
+- [NestJS Controllers](https://docs.nestjs.com/controllers)
+- [NestJS Providers](https://docs.nestjs.com/providers)
 
 ### `apps/backend/agent-server/src`
 
@@ -41,12 +49,39 @@
 - `*.module.ts`
 - `*.controller.ts`
 - `*.service.ts`
+- `*.service.spec.ts`
 
 当规模需要时再增加：
 
 - `dto/*.ts`
-- `types/*.ts`
-- `constants/*.ts`
+- `entities/*.ts`
+- `interfaces/*.ts`
+
+推荐业务模块结构：
+
+```text
+<module>/
+├── dto/
+│   ├── create-<module>.dto.ts
+│   └── update-<module>.dto.ts
+├── entities/
+│   └── <module>.entity.ts
+├── interfaces/
+├── <module>.module.ts
+├── <module>.controller.ts
+├── <module>.service.ts
+└── <module>.service.spec.ts
+```
+
+补充约束：
+
+- 后端业务模块目录默认只允许这三类子目录：
+  - `dto/`
+  - `entities/`
+  - `interfaces/`
+- 其中 `dto/`、`interfaces/` 直接对齐 NestJS 官方 feature module 示例；`entities/` 是在实际工程中针对数据库/持久化层补充的扩展目录
+- `app/`、`logger/`、`runtime/` 作为现阶段基础设施/遗留目录，可暂不完全遵循这套业务模块模板
+- 其他新增或被修改的业务模块，应按上面的目录模板收敛，不再继续扩散 `types/`、`constants/`、`helpers/` 等随意命名子目录
 
 ### `apps/worker/src`
 
@@ -71,6 +106,48 @@
 - 在 `module` 中写业务逻辑
 - 将可复用逻辑散落在多个 Nest 模块中复制实现
 
+### Runtime 模块补充
+
+`runtime/` 目录虽然属于基础设施层，但新代码也应遵守“按稳定 provider 分边界”的原则，不再继续向单一总门面回退。
+
+当前推荐边界：
+
+- `RuntimeTaskService`
+  - task、approval、learning job
+- `RuntimeSessionService`
+  - session、message、checkpoint、recover、subscribe
+- `RuntimeKnowledgeService`
+  - memory、rule
+- `RuntimeSkillCatalogService`
+  - skill catalog 与治理
+- `RuntimeCentersService`
+  - Runtime / Learning / Evidence / Connectors / Skill Sources / Platform Console
+- `RuntimeService`
+  - 仅作为兼容 facade 与少量聚合入口
+
+约束：
+
+- 新增业务模块默认直接依赖最窄 provider，不要优先注入 `RuntimeService`
+- `RuntimeService` 的测试重点应是 facade 聚合和兼容行为，而不是替代各 provider 自测
+- `runtime/` 下如果出现再次逼近 400 行的 provider，应继续按领域边界拆分，而不是回到“大 service”
+
+## 3.1 文件长度规范
+
+- `apps/backend/agent-server/src` 与 `apps/worker/src` 下的手写源码文件，单文件默认不得超过 **400 行**
+- `apps/backend/agent-server/test` 与 `apps/worker/test` 下的测试文件，也默认不得超过 **400 行**
+- 超过 400 行必须拆分，优先拆到：
+  - `dto/`
+  - `entities/`
+  - `interfaces/`
+  - 额外 service/helper 文件（仅在确有必要时，并优先沉淀到共享包）
+- 禁止把 controller、service 持续堆成超长“万能文件”
+- 禁止把大量场景持续堆进单个超长 `*.spec.ts`；测试文件超过 400 行时，也必须按模块、场景或 helper 拆分
+
+当前仓库已增加自动检查：
+
+- `pnpm check:backend-structure`
+- `pnpm check:staged` 在有后端改动时会自动执行这条检查
+
 ## 4. API 规范
 
 - 所有外部接口统一使用 `/api` 前缀
@@ -87,6 +164,21 @@
 - 请求日志必须包含 `requestId` 与 `traceId`
 - 对 `password`、`token`、`authorization`、`secret`、`apiKey` 等字段做脱敏
 - 请求、响应、异常、启动日志风格保持一致
+
+### 异常捕获（补充）
+
+禁止：
+
+- 空 `catch`：`catch {}` 或 `catch (_e) {}` 且块内无任何有效处理
+- 无说明地吞掉异常，导致排障时无从追溯
+
+`catch` 内至少具备其一：
+
+- 使用项目 logger 记录（含 `requestId` / `traceId` 等已有上下文时一并带上），或
+- 重新抛出、包装为 `HttpException` / 领域错误后抛出，或
+- 经业务确认可忽略的降级路径，并用注释说明忽略条件与风险边界
+
+与日志规范一致：不得记录密钥类敏感字段。
 
 ## 6. Agent 与持久化规范
 

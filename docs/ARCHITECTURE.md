@@ -70,6 +70,118 @@
 - 共享类型与部分接口仍保留旧 `manager/research/executor/reviewer` 兼容字段
 - 新实现应优先继续朝“六部真实执行主体”收敛，而不是回退到单一聊天机器人模型
 
+### 当前大模型架构图
+
+```mermaid
+flowchart TD
+    U["Human / 用户"]
+    A["agent-admin / 后台指挥面"]
+
+    U --> ER["通政司 / EntryRouter"]
+    ER --> MG["模式门 / ModeGate<br/>plan | execute | imperial_direct"]
+    MG --> DP["票拟调度器 / DispatchPlanner"]
+    DP --> CF["文书科 / ContextFilter"]
+    CF --> RA["汇总票拟 / ResultAggregator"]
+    RA --> IC["司礼监 / InterruptController"]
+    IC -->|"恢复派发"| DP
+
+    DP --> SP["群辅策略层"]
+    DP --> CAP["能力池 / Capability Pool<br/>shared / ministry-owned / specialist-owned / imperial-attached / temporary-assignment"]
+    CAP --> MN["六部执行层"]
+
+    SP --> GA["通才阁臣"]
+    SP --> PS["产品策略阁臣"]
+    SP --> GM["增长营销阁臣"]
+    SP --> PC["支付通道阁臣"]
+    SP --> RC["风控合规阁臣"]
+    SP --> TA["技术架构阁臣"]
+    SP --> RA
+
+    MN --> LG["吏部"]
+    MN --> HS["户部"]
+    MN --> GC["工部"]
+    MN --> BO["兵部"]
+    MN --> XR["刑部"]
+    MN --> LD["礼部"]
+
+    GC <--> BO
+    HS --> RA
+    GC --> RA
+    BO --> RA
+    XR --> RA
+
+    XR --> LD
+    XR --> IC
+
+    LD --> OUT["最终答复"]
+    OUT --> U
+
+    IC -->|"请旨 / 审批 / 提问"| U
+    U -->|"批红 / 御批 / 补充输入"| IC
+
+    RA --> LR["实录修纂 / LearningRecorder"]
+    LR --> A
+```
+
+补充说明：
+
+- `SP -> RA` 表示群辅层内部先完成策略票拟聚合，再把聚合结果交给 `ResultAggregator`，不在主图中逐阁臣展开原始输出。
+- `ModeGate` 只做轻量标注：
+  - `plan`：只读/分析/规划能力
+  - `execute`：六部全量执行能力
+  - `imperial_direct`：特旨直达执行链
+- `Capability Pool` 采用单节点总览表达，表示统一能力治理；具体五层池不在主图中拆成 5 个独立子图。
+- `LearningRecorder -> agent-admin` 表示学习沉淀默认服务后台治理，不默认回给用户。
+
+### LangGraph 状态约束补充
+
+在 `agent-core` 的 graph 实现里，需要明确区分：
+
+- `zod`
+  - 负责输出对象、协议字段、结构化结果的“格式正确性”
+  - 重点回答：这份数据是否合法、字段对不对、枚举值对不对
+- `Annotation`
+  - 负责 LangGraph 中 state 字段“如何存储和合并”
+  - 重点回答：这个字段要不要进 state、跨节点怎么传、重入时如何累积
+
+简化理解：
+
+- `zod = 数据格式层`
+- `Annotation = 图状态层`
+
+### `agent-core` 目录收敛
+
+当前 `packages/agent-core/src` 的推荐阅读与组织方式固定为：
+
+- `graphs/`
+  - 顶层 graph 入口：`chat / learning / recovery / main-route`
+  - graph 文件默认只保留状态定义与边编排，不直接堆叠节点业务实现
+  - `main/` 只负责主编排图
+  - `main/task/`：任务创建、上下文、运行态
+  - `main/lifecycle/`：快照、审批、后台协作、学习协作
+  - `main/background/`：background lease 与 learning jobs runtime
+  - `main/knowledge/`：citation / freshness / diagnosis evidence
+  - `main/orchestration/`：bridge、execution helper
+  - `main/pipeline/`：plan / research / execute / review / interrupt
+- `flows/`
+  - 负责“谁执行、怎么执行”
+- `runtime/`
+  - 负责“怎么装配整个系统”
+- `session/`
+  - 负责“聊天会话怎么驱动任务”
+- `shared/`
+  - 只保留跨模块 prompt/schema/contract
+- `utils/`
+  - 只保留纯工具，不承载主控制流
+
+收敛原则：
+
+- `graphs` 目录优先表达状态机与编排阶段，不承载通用工具
+- graph 节点默认实现、handler fallback 与业务逻辑优先放入 `flows/*`
+- `flows` 目录优先表达六部/首辅的执行语义
+- `runtime` 与 `session` 不应回填 graph 内部细节实现
+- `src/index.ts` 只导出稳定公共入口，不继续暴露 `graphs/main/*` 内部碎片
+
 ## 3. 运行闭环
 
 当前和后续都应优先维持这个闭环：
@@ -228,6 +340,22 @@
 
 这些信息应当始终可见或可展开查看，不能被迁移到只有后台才能看到的隐藏区域。
 
+补充要求：
+
+- 大模型主链上的关键阶段不能只存在于内部实现里，至少要以 `trace / event / checkpoint summary` 之一落盘并可回放
+- 默认应覆盖：
+  - `plan`
+  - `route`
+  - `research`
+  - `execution`
+  - `review`
+  - `delivery`
+  - `interrupt`
+  - `recover`
+  - `learning`
+- `agent-chat` 至少要能在 Think / ThoughtChain / Runtime Panel 中看到这些阶段中的当前阶段与最近阶段
+- `agent-admin` 至少要能在 Runtime Center 中回放这些阶段，不允许只剩最终答案
+
 ## 6. 审批与中断
 
 高风险动作必须经过 HITL。
@@ -245,6 +373,19 @@
 - observe
 
 审批和恢复是 `agent-chat` 的主链能力，应优先以内联消息卡形式完成，而不是只依赖右侧工作台或后台页面。
+
+### 6.1 Interrupt 优先原则
+
+后续所有“等待人类确认后才能继续”的新流程，默认应优先采用可恢复 interrupt，而不是仅依赖 `pendingApproval` 状态模拟。
+
+收敛规则：
+
+- `interrupt` 是执行控制原语
+- `pendingApproval` 是兼容期投影
+- chat/admin 优先展示中断语义，再兼容旧审批字段
+- skill install approval 是第一批迁移对象
+
+在真正接入 LangGraph checkpointer 与 `Command({ resume })` 前，允许先在共享模型中维护 interrupt record，并通过现有 approval-recovery 链兼容恢复。
 
 ## 7. MCP 与工具层
 
@@ -408,6 +549,7 @@ src/
 ├─ runtime/
 ├─ session/
 ├─ shared/
+├─ utils/
 ├─ workflows/
 └─ types/
 ```
@@ -419,6 +561,7 @@ src/
 - `graphs/` 只放图定义与编排入口
 - `session/` 负责会话、checkpoint、事件流持久化
 - `shared/` 放跨流程复用的事件映射、schema、prompt 与工具
+- `utils/` 放纯函数型通用工具，例如 parser、formatter、matcher、normalizer；不承载 service 和运行时状态
 - `workflows/` 负责预设工作流和能力组合，不与底层 graph 定义混放
 
 ## 10. Skills 目录分层

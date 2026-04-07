@@ -1,12 +1,19 @@
 import { Alert, App as AntApp, Button, ConfigProvider, Layout, Modal, Space, Tag, Typography } from 'antd';
 import { XProvider } from '@ant-design/x';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildBubbleItems } from '../../features/chat/chat-message-adapter';
-import { ChatRuntimeDrawer } from '../../features/runtime-panel/chat-runtime-drawer';
-import { formatSessionTime, getSessionStatusLabel, useChatSession } from '../../hooks/use-chat-session';
-import '../../styles/chat-home-page.css';
-import { type SessionFilter } from './chat-home-constants';
+import {
+  buildApprovalsCenterExportUrl,
+  buildBrowserReplayUrl,
+  buildRuntimeCenterExportUrl,
+  exportApprovalsCenter,
+  exportRuntimeCenter,
+  getBrowserReplay
+} from '@/api/chat-api';
+import { buildBubbleItems } from '@/features/chat/chat-message-adapter';
+import { ChatRuntimeDrawer, getRuntimeDrawerExportFilters } from '@/features/runtime-panel/chat-runtime-drawer';
+import { formatSessionTime, getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
+import '@/styles/chat-home-page.scss';
 import { buildEventSummary, getAgentLabel, getErrorCopy } from './chat-home-helpers';
 import { ChatHomeSidebar } from './chat-home-sidebar';
 import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
@@ -16,13 +23,14 @@ const { Text, Title } = Typography;
 
 export function ChatHomePage() {
   const chat = useChatSession();
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [sessionFilter, setSessionFilter] = useState<SessionFilter>('all');
   const [feedbackIntent, setFeedbackIntent] = useState('');
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [showWorkbench, setShowWorkbench] = useState(false);
   const [dismissedError, setDismissedError] = useState('');
+  const [cognitionExpanded, setCognitionExpanded] = useState(false);
+  const [thinkingNow, setThinkingNow] = useState(Date.now());
+  const previousThinkingRef = useRef(false);
 
   useEffect(() => {
     if (chat.error && chat.error !== dismissedError) {
@@ -30,8 +38,69 @@ export function ChatHomePage() {
     }
   }, [chat.error, dismissedError]);
 
+  useEffect(() => {
+    if (!chat.checkpoint?.thinkState?.loading) {
+      return;
+    }
+
+    setThinkingNow(Date.now());
+    const timer = window.setInterval(() => {
+      setThinkingNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [chat.checkpoint?.thinkState?.loading, chat.checkpoint?.taskId]);
+
   const agentThinking = Boolean(chat.checkpoint?.thinkState?.loading);
   const thoughtItems = useMemo(() => buildThoughtItems(chat), [chat]);
+  const cognitionTargetMessageId = useMemo(
+    () =>
+      chat.checkpoint?.thinkState?.messageId ??
+      chat.checkpoint?.thoughtChain?.find(item => item.messageId)?.messageId ??
+      '',
+    [chat.checkpoint?.thinkState?.messageId, chat.checkpoint?.thoughtChain]
+  );
+  const cognitionDurationLabel = useMemo(() => {
+    const durationMs =
+      chat.checkpoint?.thinkState?.thinkingDurationMs ??
+      chat.checkpoint?.thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs;
+    if (typeof durationMs !== 'number') {
+      return '';
+    }
+
+    const extraMs = chat.checkpoint?.thinkState?.loading
+      ? Math.max(0, thinkingNow - new Date(chat.checkpoint.updatedAt).getTime())
+      : 0;
+    const seconds = Math.max(1, Math.round((durationMs + extraMs) / 1000));
+    return chat.checkpoint?.thinkState?.loading ? `${seconds}s` : `约 ${seconds} 秒`;
+  }, [
+    chat.checkpoint?.thinkState?.thinkingDurationMs,
+    chat.checkpoint?.thinkState?.loading,
+    chat.checkpoint?.thoughtChain,
+    chat.checkpoint?.updatedAt,
+    thinkingNow
+  ]);
+  const cognitionCountLabel = thoughtItems.length ? `${thoughtItems.length} 条推理` : '';
+  const isThinking = Boolean(chat.activeSession?.status === 'running' || chat.checkpoint?.thinkState?.loading);
+
+  useEffect(() => {
+    const wasThinking = previousThinkingRef.current;
+    previousThinkingRef.current = isThinking;
+
+    if (isThinking) {
+      setCognitionExpanded(true);
+      return;
+    }
+
+    if (wasThinking && cognitionTargetMessageId) {
+      setCognitionExpanded(false);
+      return;
+    }
+
+    if (cognitionTargetMessageId && !wasThinking) {
+      setCognitionExpanded(false);
+    }
+  }, [isThinking, cognitionTargetMessageId]);
 
   const bubbleItems = useMemo(
     () =>
@@ -42,11 +111,27 @@ export function ChatHomePage() {
         copiedMessageId,
         thinkState: chat.checkpoint?.thinkState,
         thoughtItems,
+        cognitionTargetMessageId,
+        cognitionExpanded,
+        cognitionDurationLabel,
+        cognitionCountLabel,
+        onToggleCognition: () => setCognitionExpanded(current => !current),
         getAgentLabel,
-        onApprovalAction: (intent, approved) => void chat.updateApproval(intent, approved),
+        onApprovalAction: (intent, approved, scope) => {
+          void chat.updateApproval(intent, approved, undefined, scope);
+        },
+        onApprovalAllowAlways: (intent, serverId, capabilityId) => {
+          void chat.allowApprovalAndApprove({ intent, serverId, capabilityId });
+        },
         onApprovalFeedback: (intent, reason) => {
           setFeedbackIntent(intent);
           setFeedbackDraft(reason ?? '');
+        },
+        onPlanAction: params => {
+          void chat.updatePlanInterrupt(params);
+        },
+        onSkillInstall: suggestion => {
+          void chat.installSuggestedSkill(suggestion);
         },
         onCopy: message => {
           void navigator.clipboard.writeText(message.content);
@@ -60,7 +145,13 @@ export function ChatHomePage() {
       agentThinking,
       copiedMessageId,
       chat.checkpoint?.thinkState,
-      thoughtItems
+      thoughtItems,
+      cognitionTargetMessageId,
+      cognitionExpanded,
+      cognitionDurationLabel,
+      cognitionCountLabel,
+      chat.updatePlanInterrupt,
+      chat.installSuggestedSkill
     ]
   );
   const streamEvents = useMemo(
@@ -79,26 +170,72 @@ export function ChatHomePage() {
   );
   const errorCopy = chat.error ? getErrorCopy(chat.error) : null;
 
+  const downloadText = (filename: string, mimeType: string, content: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportRuntime = async () => {
+    const exported = await exportRuntimeCenter({
+      ...getRuntimeDrawerExportFilters(chat.checkpoint),
+      format: 'json'
+    });
+    downloadText(exported.filename, exported.mimeType, exported.content);
+  };
+
+  const handleExportApprovals = async () => {
+    const exported = await exportApprovalsCenter({
+      ...getRuntimeDrawerExportFilters(chat.checkpoint),
+      format: 'json'
+    });
+    downloadText(exported.filename, exported.mimeType, exported.content);
+  };
+
+  const handleDownloadReplay = async () => {
+    if (!chat.activeSessionId) {
+      return;
+    }
+    const replay = await getBrowserReplay(chat.activeSessionId);
+    downloadText(`browser-replay-${chat.activeSessionId}.json`, 'application/json', JSON.stringify(replay, null, 2));
+  };
+
+  const handleCopyShareLinks = async () => {
+    const filters = getRuntimeDrawerExportFilters(chat.checkpoint);
+    const runtimeUrl = buildRuntimeCenterExportUrl({ ...filters, format: 'json' });
+    const approvalsUrl = buildApprovalsCenterExportUrl({ ...filters, format: 'json' });
+    const replayUrl = chat.activeSessionId ? buildBrowserReplayUrl(chat.activeSessionId) : '';
+    const content = [
+      '当前运行视角链接',
+      `runtime: ${runtimeUrl}`,
+      `approvals: ${approvalsUrl}`,
+      replayUrl ? `replay: ${replayUrl}` : undefined
+    ]
+      .filter(Boolean)
+      .join('\n');
+    await navigator.clipboard.writeText(content);
+  };
+
   return (
     <ConfigProvider>
       <XProvider>
         <AntApp>
           <Layout className="chatx-layout">
             <Sider width={312} theme="light" className="chatx-sider">
-              <ChatHomeSidebar
-                chat={chat}
-                searchKeyword={searchKeyword}
-                sessionFilter={sessionFilter}
-                onSearchKeywordChange={setSearchKeyword}
-                onSessionFilterChange={setSessionFilter}
-              />
+              <ChatHomeSidebar chat={chat} />
             </Sider>
 
             <Layout>
               <Header className="chatx-header">
                 <div className="chatx-header__copy">
-                  <Text className="chatx-header__eyebrow">AI Chat</Text>
-                  <Title level={4}>{chat.activeSession?.title ?? '开始新对话'}</Title>
+                  <Text className="chatx-header__eyebrow">Agent Chat</Text>
+                  <Title level={4}>{chat.activeSession?.title ?? '开始新会话'}</Title>
                   <Space wrap size={8} className="chatx-header__tags">
                     {chat.checkpoint?.resolvedWorkflow ? (
                       <Tag color="gold">{chat.checkpoint.resolvedWorkflow.displayName}</Tag>
@@ -109,37 +246,37 @@ export function ChatHomePage() {
                   </Space>
                 </div>
                 <Space>
-                  <Button htmlType="button" onClick={() => chat.activeSessionId && void chat.refreshSessionDetail()}>
-                    刷新
-                  </Button>
-                  {chat.activeSession?.status === 'running' ? (
-                    <Button htmlType="button" danger onClick={() => void chat.cancelActiveSession()}>
-                      停止生成
-                    </Button>
-                  ) : null}
                   {chat.activeSessionId ? (
-                    <Button
-                      htmlType="button"
-                      danger
-                      onClick={() => {
-                        Modal.confirm({
-                          title: '删除当前会话？',
-                          content: '删除后，这个会话的聊天记录、事件流和检查点都会一起移除。',
-                          okText: '删除',
-                          okButtonProps: { danger: true },
-                          cancelText: '取消',
-                          onOk: async () => chat.deleteActiveSession()
-                        });
-                      }}
-                    >
-                      删除会话
-                    </Button>
+                    <>
+                      <Button
+                        htmlType="button"
+                        onClick={() => chat.activeSessionId && void chat.refreshSessionDetail()}
+                      >
+                        刷新当前会话
+                      </Button>
+                      <Button
+                        htmlType="button"
+                        danger
+                        onClick={() => {
+                          Modal.confirm({
+                            title: '删除当前会话？',
+                            content: '删除后，这个会话的聊天记录、事件流和检查点都会一并移除。',
+                            okText: '删除',
+                            okButtonProps: { danger: true },
+                            cancelText: '取消',
+                            onOk: async () => chat.deleteActiveSession()
+                          });
+                        }}
+                      >
+                        删除会话
+                      </Button>
+                    </>
                   ) : null}
                   <Button htmlType="button" onClick={() => setShowWorkbench(current => !current)}>
-                    {showWorkbench ? '隐藏侧边详情' : '显示侧边详情'}
+                    {showWorkbench ? '收起工作区' : '打开工作区'}
                   </Button>
                   <Button htmlType="button" type="primary" onClick={() => chat.setShowRightPanel(true)}>
-                    打开详情面板
+                    打开总览面板
                   </Button>
                 </Space>
               </Header>
@@ -176,16 +313,19 @@ export function ChatHomePage() {
               pendingApprovals={chat.pendingApprovals}
               thoughtItems={thoughtItems}
               onClose={() => chat.setShowRightPanel(false)}
-              onApprove={(intent, approved, feedback) => void chat.updateApproval(intent, approved, feedback)}
               onConfirmLearning={() => void chat.submitLearningConfirmation()}
               onRecover={() => void chat.recoverActiveSession()}
+              onExportRuntime={() => void handleExportRuntime()}
+              onExportApprovals={() => void handleExportApprovals()}
+              onDownloadReplay={() => void handleDownloadReplay()}
+              onCopyShareLinks={() => void handleCopyShareLinks()}
               getAgentLabel={getAgentLabel}
               getSessionStatusLabel={getSessionStatusLabel}
             />
             <Modal
-              title="打回奏折并附批注"
+              title="拒绝并附加说明"
               open={Boolean(feedbackIntent)}
-              okText="提交打回意见"
+              okText="提交批注"
               cancelText="取消"
               onCancel={() => {
                 setFeedbackIntent('');
@@ -198,8 +338,8 @@ export function ChatHomePage() {
                 setFeedbackDraft('');
               }}
             >
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Text type="secondary">你的批注会用于调整这一步的后续处理。</Text>
+              <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                <Text type="secondary">这条反馈会直接用于调整后续处理方式。</Text>
                 <textarea
                   className="chatx-feedback-textarea"
                   rows={5}

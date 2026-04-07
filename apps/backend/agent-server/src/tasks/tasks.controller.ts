@@ -1,6 +1,6 @@
 ﻿import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { CreateTaskDto } from '@agent/shared';
+import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/shared';
 
 import { TasksService } from './tasks.service';
 
@@ -16,6 +16,11 @@ export class TasksController {
   @Post()
   createTask(@Body() dto: CreateTaskDto) {
     return this.tasksService.createTask(dto);
+  }
+
+  @Post('diagnosis')
+  createAgentDiagnosisTask(@Body() dto: CreateAgentDiagnosisTaskDto) {
+    return this.tasksService.createAgentDiagnosisTask(dto);
   }
 
   @Get(':id')

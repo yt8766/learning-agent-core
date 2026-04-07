@@ -54,14 +54,59 @@
 - `GET /api/chat/checkpoint?sessionId=...`
   - 获取当前运行态快照
 
+平台治理与导出接口补充：
+
+- `GET /platform/console?days=30&status=&model=&pricingSource=&runtimeExecutionMode=&runtimeInteractionKind=&approvalsExecutionMode=&approvalsInteractionKind=`
+  - 获取整包 Platform Console 数据
+  - 当前只会对 `runtime` 与 `approvals` 两块做过滤裁剪
+  - 其他 center 仍保持全量返回
+  - 用于让 admin 的 `refreshAll` / `refreshTask` 与分中心 refresh 保持同一组筛选语义
+- `GET /platform/runtime-center?days=30&status=&model=&pricingSource=&executionMode=&interactionKind=`
+  - 获取 Runtime Center 数据
+  - `executionMode` 的 canonical 写出始终对应 `executionPlan.mode`：
+    - `plan`
+    - `execute`
+    - `imperial_direct`
+  - 兼容读取旧别名：
+    - `standard -> execute`
+    - `planning-readonly -> plan`
+  - 新任务、新导出、新分享链接只应写出 canonical 值，不再回写旧别名
+  - `interactionKind` 当前支持：
+    - `approval`
+    - `plan-question`
+    - `supplemental-input`
+- `GET /platform/runtime-center/export?...`
+  - 导出 Runtime Center
+  - 会沿用同一组 runtime 过滤参数
+  - 前端可直接把这条 URL 作为“当前运行视角分享链接”复制给其他操作者
+  - CSV 当前额外包含：
+    - `filterExecutionMode`
+    - `filterInteractionKind`
+    - 每条 run 的 `executionMode`
+    - 每条 run 的 `interactionKind`
+- `GET /platform/approvals-center?executionMode=&interactionKind=`
+  - 获取 Approvals Center 数据
+  - 与 `agent-admin` 的审批中心筛选一致
+- `GET /platform/approvals-center/export?...`
+  - 导出 Approvals Center
+  - 当前支持：
+    - `executionMode`
+    - `interactionKind`
+  - 前端可直接把这条 URL 作为“当前审批视角分享链接”复制给其他操作者
+  - CSV 当前额外包含：
+    - `filterExecutionMode`
+    - `filterInteractionKind`
+    - 每条审批项的 `executionMode`
+    - 每条审批项的 `interactionKind`
+
 会话动作：
 
 - `POST /api/chat/messages`
   - 在已有会话中继续发消息
 - `POST /api/chat/approve`
-  - 审批通过
+  - 审批通过或恢复中断
 - `POST /api/chat/reject`
-  - 审批拒绝
+  - 审批拒绝、取消中断或打回恢复
 - `POST /api/chat/learning/confirm`
   - 确认学习候选
 - `POST /api/chat/recover`
@@ -78,11 +123,14 @@
 流式可靠性约定：
 
 - `agent-chat` 优先消费 `/api/chat/stream` 的 SSE 事件。
-- 当前前端同时具备轮询兜底：
+- 当前前端采用“stream 主通道 + snapshot 兜底”：
   - 当 SSE 正常连接时
-    - 仅轻量补拉 `checkpoint`
-  - 当 SSE 断流或异常时
-    - 自动切换为 `messages / events / checkpoint` 全量轮询
+    - 不轮询 `messages`
+    - 不轮询 `events`
+    - 仅在必要时轻量补拉 `checkpoint`
+  - 当 SSE 断流、idle close 或终态事件缺失时
+    - 优先使用 `checkpoint` 收口运行态
+    - 再按需补拉 `messages / events / checkpoint` 做一次终态校准
 - 当前前端还要求：
   - 如果 `checkpoint` 已经进入 `completed / failed / cancelled`
   - 即使终态 SSE 事件漏到前端
@@ -93,7 +141,8 @@
   - 避免跨域凭证或网络抖动导致“界面看起来没有返回”
 - 约定：
   - SSE 是首选实时通道
-  - detail/checkpoint 轮询是可靠性兜底
+  - `checkpoint` 是运行态兜底
+  - `messages / events` 是历史恢复与终态校准
   - 如果普通聊天命中 `direct-reply` 但模型调用失败，后端必须把失败摘要写入：
     - `agentStates[].observations`
     - `trace.direct_reply_fallback`
@@ -189,9 +238,12 @@ interface ChatEventRecord {
     | 'research_progress'
     | 'tool_selected'
     | 'tool_called'
-    | 'approval_required'
-    | 'approval_resolved'
-    | 'approval_rejected_with_feedback'
+    | 'interrupt_pending'
+    | 'interrupt_resumed'
+    | 'interrupt_rejected_with_feedback'
+    | 'approval_required' // legacy fallback
+    | 'approval_resolved' // legacy fallback
+    | 'approval_rejected_with_feedback' // legacy fallback
     | 'review_completed'
     | 'learning_pending_confirmation'
     | 'learning_confirmed'
@@ -210,6 +262,44 @@ interface ChatEventRecord {
 }
 ```
 
+补充说明：
+
+- 新实现默认优先发 `interrupt_*`
+- `approval_*` 仅用于兼容历史会话和旧链路
+- `interrupt_pending` 可同时承载：
+  - 操作确认：`interactionKind = 'approval'`
+  - 计划提问：`interactionKind = 'plan-question'`
+  - 补充输入：`interactionKind = 'supplemental-input'`
+
+`plan-question` 示例 payload：
+
+```ts
+{
+  taskId: "task_123",
+  intent: "plan_question",
+  interruptId: "interrupt_task_123_plan_question",
+  interactionKind: "plan-question",
+  questionSet: {
+    title: "方案确认",
+    summary: "存在几个会改变执行路径的关键未知项。"
+  },
+  questions: [
+    {
+      id: "delivery_mode",
+      question: "这一轮更希望我输出哪种方案结果？",
+      questionType: "direction",
+      options: [
+        { id: "plan_only", label: "只出方案", description: "收敛计划，不进入实现。" },
+        { id: "implement_now", label: "直接实现", description: "跳过计划，直接进入执行。" }
+      ],
+      recommendedOptionId: "plan_only",
+      allowFreeform: true,
+      defaultAssumption: "默认只出方案。"
+    }
+  ]
+}
+```
+
 ### 3.4 ChatCheckpointRecord
 
 ```ts
@@ -218,6 +308,7 @@ interface ChatCheckpointRecord {
   taskId: string;
   runId?: string;
   skillId?: string;
+  executionMode?: 'standard' | 'planning-readonly' | 'plan' | 'execute' | 'imperial_direct';
   skillStage?: string;
   resolvedWorkflow?: WorkflowPresetDefinition;
   currentNode?: string;
@@ -225,6 +316,7 @@ interface ChatCheckpointRecord {
   currentWorker?: string;
   pendingAction?: PendingActionRecord;
   pendingApproval?: PendingApprovalRecord;
+  activeInterrupt?: ApprovalInterruptRecord; // 兼容字段，运行归属为 司礼监 / InterruptController
   approvalFeedback?: string;
   modelRoute?: ModelRouteDecision[];
   externalSources?: EvidenceRecord[];
@@ -291,8 +383,9 @@ SSE 实现位置：
 - `research_progress`
 - `tool_called`
 - `review_completed`
-- `approval_required`
-- `approval_resolved`
+- `interrupt_pending`
+- `interrupt_resumed`
+- `interrupt_rejected_with_feedback`
 - `learning_pending_confirmation`
 - `assistant_token`
 - `assistant_message`

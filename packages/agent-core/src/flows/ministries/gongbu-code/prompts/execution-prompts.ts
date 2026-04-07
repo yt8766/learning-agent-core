@@ -1,4 +1,4 @@
-import { buildStructuredPrompt } from '../../../../shared/prompts/prompt-template';
+import { buildStructuredPrompt } from '../../../../utils/prompts/prompt-template';
 
 export const GONGBU_EXECUTION_SYSTEM_PROMPT = buildStructuredPrompt({
   role: '工部尚书',

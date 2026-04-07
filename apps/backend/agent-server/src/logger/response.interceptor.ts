@@ -13,25 +13,35 @@ export class ResponseInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>() as RequestWithLogContext;
     const requestContext = getRequestContext(req);
+    const controller = context.getClass().name;
+    const handler = context.getHandler().name;
 
     return next.handle().pipe(
       tap(data => {
-        const logFormat = [
-          '################################################',
-          `Request original url: ${req.originalUrl}`,
-          `Method: ${req.method}`,
-          `IP: ${req.ip}`,
-          `RequestId: ${requestContext.requestId}`,
-          `TraceId: ${requestContext.traceId}`,
-          `Response Data: ${JSON.stringify(sanitizeForLogging(data))}`,
-          '################################################'
-        ].join('\n');
+        const sanitized = sanitizeForLogging(data);
+        const responseSummary = Array.isArray(sanitized)
+          ? { kind: 'array', itemCount: sanitized.length }
+          : sanitized && typeof sanitized === 'object'
+            ? { kind: 'object', keys: Object.keys(sanitized as Record<string, unknown>).slice(0, 12) }
+            : { kind: typeof sanitized, value: sanitized };
 
-        this.logger.log(logFormat, {
-          context: 'Response LoggerInterceptor',
-          requestId: requestContext.requestId,
-          traceId: requestContext.traceId
-        });
+        this.logger.debug(
+          {
+            event: 'request.response',
+            method: req.method,
+            url: req.originalUrl,
+            controller,
+            handler,
+            requestId: requestContext.requestId,
+            traceId: requestContext.traceId,
+            responseSummary
+          },
+          {
+            context: 'Response LoggerInterceptor',
+            requestId: requestContext.requestId,
+            traceId: requestContext.traceId
+          }
+        );
       })
     );
   }

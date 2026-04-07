@@ -7,6 +7,7 @@ import { EvidenceModule } from './evidence/evidence.module';
 import { LearningModule } from './learning/learning.module';
 import { LoggerModule } from './logger/logger.module';
 import { MemoryModule } from './memory/memory.module';
+import { MessageGatewayModule } from './message-gateway/message-gateway.module';
 import { PlatformModule } from './platform/platform.module';
 import { RulesModule } from './rules/rules.module';
 import { RuntimeModule } from './runtime/runtime.module';
@@ -19,6 +20,7 @@ import { TasksModule } from './tasks/tasks.module';
     RuntimeModule,
     AppFeatureModule,
     ChatModule,
+    MessageGatewayModule,
     TasksModule,
     EvidenceModule,
     MemoryModule,

@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@agent/config": "workspace:*",
+    "@agent/model": "workspace:*",
     "@agent/shared": "workspace:*"
   }
 }

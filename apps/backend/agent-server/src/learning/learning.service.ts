@@ -2,25 +2,29 @@ import { Injectable } from '@nestjs/common';
 
 import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
 
-import { RuntimeService } from '../runtime/runtime.service';
+import { RuntimeCentersService } from '../runtime/centers/runtime-centers.service';
+import { RuntimeTaskService } from '../runtime/services/runtime-task.service';
 
 @Injectable()
 export class LearningService {
-  constructor(private readonly runtimeService: RuntimeService) {}
+  constructor(
+    private readonly runtimeCentersService: RuntimeCentersService,
+    private readonly runtimeTaskService: RuntimeTaskService
+  ) {}
 
   getCenter() {
-    return this.runtimeService.getLearningCenter();
+    return this.runtimeCentersService.getLearningCenter();
   }
 
   createDocumentLearningJob(dto: CreateDocumentLearningJobDto) {
-    return this.runtimeService.createDocumentLearningJob(dto);
+    return this.runtimeTaskService.createDocumentLearningJob(dto);
   }
 
   createResearchLearningJob(dto: CreateResearchLearningJobDto) {
-    return this.runtimeService.createResearchLearningJob(dto);
+    return this.runtimeTaskService.createResearchLearningJob(dto);
   }
 
   getLearningJob(id: string) {
-    return this.runtimeService.getLearningJob(id);
+    return this.runtimeTaskService.getLearningJob(id);
   }
 }

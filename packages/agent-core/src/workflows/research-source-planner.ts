@@ -1,12 +1,21 @@
-import { EvidenceRecord, SourcePolicyMode, TrustClass, WorkflowPresetDefinition } from '@agent/shared';
-import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../shared/prompts/temporal-context';
+import {
+  EvidenceRecord,
+  ExecutionMode,
+  SourcePolicyMode,
+  TrustClass,
+  WorkflowPresetDefinition,
+  normalizeExecutionMode
+} from '@agent/shared';
+import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../utils/prompts/temporal-context';
 
+// Legacy execution mode aliases are normalized into canonical executionPlan.mode values before source planning.
 interface ResearchSourcePlanInput {
   taskId: string;
   runId?: string;
   goal: string;
   workflow?: WorkflowPresetDefinition;
   runtimeSourcePolicyMode?: SourcePolicyMode;
+  executionMode?: ExecutionMode;
   preferredUrls?: string[];
   createdAt?: string;
 }
@@ -18,6 +27,7 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
     goal,
     workflow,
     runtimeSourcePolicyMode,
+    executionMode,
     preferredUrls = [],
     createdAt = new Date().toISOString()
   } = input;
@@ -27,7 +37,8 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
 
   const effectiveSourcePolicyMode = resolveEffectiveSourcePolicyMode(
     workflow.sourcePolicy?.mode,
-    runtimeSourcePolicyMode
+    runtimeSourcePolicyMode,
+    executionMode
   );
   const sources: EvidenceRecord[] = [];
   const pushSource = (sourceUrl: string | undefined, summary: string, trustClass: TrustClass = 'official') => {
@@ -53,6 +64,7 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
 
   const loweredGoal = goal.toLowerCase();
   const freshnessSensitive = isFreshnessSensitiveGoal(goal);
+  const isAiResearchGoal = /(ai|模型|大模型|llm|gpt|openai|anthropic|deepmind|hugging face|huggingface)/i.test(goal);
 
   if (freshnessSensitive) {
     pushSource(
@@ -60,6 +72,9 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
       `这是一条时效性问题，先基于当前日期做最新信息检索。\n${buildTemporalContextBlock(new Date(createdAt))}`,
       'official'
     );
+  }
+
+  if (isAiResearchGoal) {
     pushSource('https://openai.com/news/', 'OpenAI 官方新闻与发布页，优先核对最新模型与能力更新。');
     pushSource('https://deepmind.google/discover/blog/', 'Google DeepMind 官方博客，优先核对近期模型与研究进展。');
     pushSource('https://www.anthropic.com/news', 'Anthropic 官方新闻页，优先核对近期模型与安全研究更新。');
@@ -99,8 +114,12 @@ export function buildResearchSourcePlan(input: ResearchSourcePlanInput): Evidenc
 
 function resolveEffectiveSourcePolicyMode(
   workflowMode: SourcePolicyMode | undefined,
-  runtimeMode: SourcePolicyMode | undefined
+  runtimeMode: SourcePolicyMode | undefined,
+  executionMode?: ExecutionMode
 ): SourcePolicyMode {
+  if (normalizeExecutionMode(executionMode) === 'plan') {
+    return 'internal-only';
+  }
   const priority: Record<SourcePolicyMode, number> = {
     'internal-only': 0,
     'controlled-first': 1,

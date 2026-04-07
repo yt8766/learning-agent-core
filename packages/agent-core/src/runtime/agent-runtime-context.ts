@@ -1,4 +1,13 @@
-import { AgentExecutionState, BudgetState, WorkerDefinition, WorkflowPresetDefinition } from '@agent/shared';
+import {
+  AgentExecutionState,
+  BudgetState,
+  ContextFilterRecord,
+  type ExecutionMode,
+  EvidenceRecord,
+  SkillStep,
+  WorkerDefinition,
+  WorkflowPresetDefinition
+} from '@agent/shared';
 import { ContextStrategy } from '@agent/config';
 import { MemoryRepository, MemorySearchService, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 import { SkillRegistry } from '@agent/skills';
@@ -11,10 +20,29 @@ export interface AgentRuntimeContext {
   goal: string;
   taskContext?: string;
   budgetState?: BudgetState;
+  externalSources?: EvidenceRecord[];
   flow: 'chat' | 'approval' | 'learning';
+  executionMode?: ExecutionMode;
   contextStrategy?: ContextStrategy;
   memoryRepository: MemoryRepository;
   memorySearchService?: MemorySearchService;
+  knowledgeSearchService?: {
+    search(
+      query: string,
+      limit?: number
+    ): Promise<
+      Array<{
+        chunkId: string;
+        documentId: string;
+        sourceId: string;
+        uri: string;
+        title: string;
+        sourceType: string;
+        content: string;
+        score: number;
+      }>
+    >;
+  };
   ruleRepository?: RuleRepository;
   runtimeStateRepository?: RuntimeStateRepository;
   skillRegistry: SkillRegistry;
@@ -22,6 +50,17 @@ export interface AgentRuntimeContext {
   toolRegistry: ToolRegistry;
   workflowPreset?: WorkflowPresetDefinition;
   currentWorker?: WorkerDefinition;
+  compiledSkill?: {
+    id: string;
+    name: string;
+    description?: string;
+    steps: SkillStep[];
+    constraints?: string[];
+    successSignals?: string[];
+    requiredTools?: string[];
+    requiredConnectors?: string[];
+    approvalSensitiveTools?: string[];
+  };
   mcpClientManager?: McpClientManager;
   sandbox: SandboxExecutor;
   llm: LlmProvider;
@@ -33,6 +72,29 @@ export interface AgentRuntimeContext {
   };
   onToken?: (payload: { token: string; role: AgentModelRole; messageId: string; model?: string }) => void;
   onUsage?: (payload: { usage: LlmUsageMetadata; role: AgentModelRole }) => void;
+  onModelEvent?: (payload: {
+    role: AgentModelRole;
+    modelUsed?: string;
+    isFallback?: boolean;
+    fallbackReason?: string;
+    status: 'fallback' | 'failed';
+  }) => void;
+  isTaskCancelled?: () => boolean;
+  onContextCompaction?: (payload: {
+    trigger: string;
+    result: Pick<
+      NonNullable<ContextFilterRecord['filteredContextSlice']>,
+      | 'summary'
+      | 'compressionApplied'
+      | 'compressionSource'
+      | 'compressedMessageCount'
+      | 'artifactCount'
+      | 'originalCharacterCount'
+      | 'compactedCharacterCount'
+      | 'reactiveRetryCount'
+      | 'pipelineAudit'
+    >;
+  }) => void | Promise<void>;
 }
 
 export interface AgentLike {

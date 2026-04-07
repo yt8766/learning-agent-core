@@ -4,18 +4,18 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors shadow-none',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-stone-900 text-white',
-        secondary: 'border-transparent bg-stone-100 text-stone-700',
-        success: 'border-transparent bg-emerald-100 text-emerald-700',
-        warning: 'border-transparent bg-amber-100 text-amber-700',
-        destructive: 'border-transparent bg-red-100 text-red-700',
-        outline: 'border-stone-200 text-stone-700',
-        ghost: 'border-transparent bg-transparent text-stone-600',
-        link: 'border-transparent bg-transparent text-stone-900 underline-offset-4 hover:underline'
+        default: 'border-transparent bg-[#1f1f1d] text-white',
+        secondary: 'border-transparent bg-[#ececeb] text-[#5b5b57]',
+        success: 'border-transparent bg-[#e7f3eb] text-[#2f6b44]',
+        warning: 'border-transparent bg-[#f7edd8] text-[#966a16]',
+        destructive: 'border-transparent bg-[#fbe8e5] text-[#b3402e]',
+        outline: 'border-[#e5e5e1] bg-white text-muted-foreground',
+        ghost: 'border-transparent bg-transparent text-muted-foreground',
+        link: 'border-transparent bg-transparent text-foreground underline-offset-4 hover:underline'
       }
     },
     defaultVariants: {

@@ -1,6 +1,22 @@
 ﻿import { Avatar } from 'antd';
 
 import { EVENT_LABELS, MINISTRY_LABELS, type SessionFilter, AGENT_LABELS } from './chat-home-constants';
+import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
+
+// Legacy mode aliases are normalized to executionPlan.mode before user-facing rendering.
+const INTERNAL_TERM_REPLACEMENTS = [
+  [/direct_reply/gi, '直接回复'],
+  [/direct-reply/gi, '直接回复'],
+  [/supervisor workflow/gi, '协同处理'],
+  [/supervisor/gi, '协同处理'],
+  [/workflow/gi, '处理流程'],
+  [/planning_readonly_guard/gi, '计划只读保护'],
+  [/planning-readonly/gi, '计划模式'],
+  [/standard/gi, '执行模式'],
+  [/route reason/gi, '处理依据'],
+  [/route/gi, '处理路径'],
+  [/ministry/gi, '执行角色']
+] as const;
 
 export function getAgentLabel(role?: string) {
   if (!role) return '';
@@ -9,17 +25,77 @@ export function getAgentLabel(role?: string) {
 
 export function getMinistryLabel(ministry?: string) {
   if (!ministry) return '未分派';
-  return MINISTRY_LABELS[ministry] ?? ministry;
+  return getMinistryDisplayName(ministry) ?? MINISTRY_LABELS[ministry] ?? ministry;
+}
+
+export function getExecutionModeLabel(mode?: string) {
+  return getExecutionModeDisplayName(mode) ?? mode ?? '--';
 }
 
 export function buildEventSummary(eventItem: { type: string; payload: Record<string, unknown> }) {
   const payload = eventItem.payload;
-  if (typeof payload.content === 'string' && payload.content) return payload.content;
-  if (typeof payload.summary === 'string' && payload.summary) return payload.summary;
-  if (typeof payload.reason === 'string' && payload.reason) return payload.reason;
-  if (typeof payload.error === 'string' && payload.error) return payload.error;
+  if (typeof payload.content === 'string' && payload.content) return humanizeOperationalCopy(payload.content);
+  if (typeof payload.summary === 'string' && payload.summary) return humanizeOperationalCopy(payload.summary);
+  if (typeof payload.reason === 'string' && payload.reason) return humanizeOperationalCopy(payload.reason);
+  if (typeof payload.error === 'string' && payload.error) return humanizeOperationalCopy(payload.error);
   if (Array.isArray(payload.candidates)) return `生成 ${payload.candidates.length} 个学习候选`;
   return '事件已记录';
+}
+
+export function humanizeOperationalCopy(value?: string) {
+  if (!value) {
+    return '';
+  }
+
+  let normalized = value;
+  for (const [pattern, replacement] of INTERNAL_TERM_REPLACEMENTS) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+
+  return normalized
+    .replace(/当前阶段是\s*直接回复[。. ]*/gi, '当前正在准备直接回复。')
+    .replace(/聊天入口已选择\s*直接回复\s*流程[。. ]*/gi, '已按直接回复路径继续处理。')
+    .replace(/当前仍由首辅统一协调全局[。. ]*/g, '正在统筹这轮处理并准备回复。')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function buildProjectContextSnapshot(chat: {
+  activeSession?: { title: string; status?: string };
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  pendingApprovals: unknown[];
+  checkpoint?: {
+    externalSources?: unknown[];
+    connectorRefs?: string[];
+    usedInstalledSkills?: string[];
+    currentWorker?: string;
+    currentMinistry?: string;
+    thinkState?: { content?: string };
+  };
+}) {
+  const latestUserMessage = [...chat.messages]
+    .reverse()
+    .find(message => message.role === 'user')
+    ?.content.trim();
+  const latestAssistantMessage = [...chat.messages]
+    .reverse()
+    .find(message => message.role === 'assistant')
+    ?.content.trim();
+  const objective = latestUserMessage || chat.activeSession?.title || '等待新的任务目标';
+  const latestOutcome = humanizeOperationalCopy(
+    latestAssistantMessage || chat.checkpoint?.thinkState?.content || '当前还没有沉淀出最新结论。'
+  );
+
+  return {
+    objective,
+    latestOutcome,
+    evidenceCount: chat.checkpoint?.externalSources?.length ?? 0,
+    approvalCount: chat.pendingApprovals.length,
+    connectorCount: chat.checkpoint?.connectorRefs?.length ?? 0,
+    skillCount: chat.checkpoint?.usedInstalledSkills?.length ?? 0,
+    currentWorker: chat.checkpoint?.currentWorker,
+    currentMinistry: chat.checkpoint?.currentMinistry
+  };
 }
 
 export function getSessionBadgeStatus(status?: string): 'success' | 'error' | 'processing' | 'default' | 'warning' {
@@ -30,6 +106,7 @@ export function getSessionBadgeStatus(status?: string): 'success' | 'error' | 'p
     case 'failed':
       return 'error';
     case 'waiting_approval':
+    case 'waiting_interrupt':
     case 'waiting_learning_confirmation':
       return 'warning';
     case 'running':
@@ -42,36 +119,62 @@ export function getSessionBadgeStatus(status?: string): 'success' | 'error' | 'p
 export function getConversationGroup(status?: string) {
   switch (status) {
     case 'running':
+    case 'waiting_interrupt':
     case 'waiting_approval':
     case 'waiting_learning_confirmation':
-      return '最近处理中';
+      return '最近运行';
     case 'completed':
       return '最近完成';
     case 'cancelled':
-      return '已停止';
+      return '已取消';
     case 'failed':
-      return '异常';
+      return '失败';
     default:
       return '其他';
   }
 }
 
+export function getConversationTimeGroup(updatedAt?: string) {
+  if (!updatedAt) {
+    return '更早';
+  }
+
+  const now = new Date();
+  const target = new Date(updatedAt);
+  const diffMs = now.getTime() - target.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return '今天';
+  }
+  if (diffDays < 7) {
+    return '7 天内';
+  }
+  if (diffDays < 30) {
+    return '30 天内';
+  }
+
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function getStatusPill(status?: string) {
   switch (status) {
     case 'running':
-      return '回复中';
+      return '运行中';
+    case 'waiting_interrupt':
+      return '待澄清方案';
     case 'waiting_approval':
-      return '待确认';
+      return '待审批';
     case 'waiting_learning_confirmation':
-      return '待写入';
+      return '待确认入库';
     case 'completed':
       return '已完成';
     case 'cancelled':
-      return '已停止';
+      return '已取消';
     case 'failed':
-      return '异常';
+      return '失败';
     default:
-      return '其他';
+      return '未开始';
   }
 }
 
@@ -80,7 +183,7 @@ export function matchesFilter(status: string | undefined, filter: SessionFilter)
     case 'running':
       return status === 'running' || status === 'waiting_learning_confirmation';
     case 'approval':
-      return status === 'waiting_approval';
+      return status === 'waiting_approval' || status === 'waiting_interrupt';
     case 'failed':
       return status === 'failed' || status === 'cancelled';
     case 'completed':
@@ -92,27 +195,60 @@ export function matchesFilter(status: string | undefined, filter: SessionFilter)
 
 export function getRunningHint(status?: string, currentStep?: string) {
   if (status === 'waiting_approval') {
-    return '有一个高风险动作需要你确认后才能继续。';
+    return '检测到高风险操作，等待审批后继续。';
+  }
+  if (status === 'waiting_interrupt') {
+    return '当前正在收敛方案，等待你回答计划问题。';
   }
   if (status === 'waiting_learning_confirmation') {
-    return '这轮已经完成，正在等待你确认是否写入长期知识。';
+    return '当前轮次已完成，等待确认是否写入长期知识。';
   }
   if (status === 'running') {
-    return currentStep ? `正在处理：${currentStep}` : '正在生成回复...';
+    return currentStep ? `正在执行：${currentStep}` : '正在生成响应...';
   }
   return '';
 }
 
 export function getCompressionHint(session?: { compression?: { condensedMessageCount: number } }) {
   if (!session?.compression?.condensedMessageCount) return '';
-  return `为控制上下文长度，系统已自动压缩较早的 ${session.compression.condensedMessageCount} 条消息。`;
+  return `Earlier Context 已折叠 ${session.compression.condensedMessageCount} 条消息，背景信息已转为压缩摘要。`;
 }
 
 export function getWorkflowSummary(requiredMinistries?: string[]) {
   if (!requiredMinistries?.length) {
-    return '系统会按通用流程继续处理。';
+    return '将按通用协作流程继续执行。';
   }
   return requiredMinistries.map(ministry => getMinistryLabel(ministry)).join(' -> ');
+}
+
+export function getChatRouteFlowLabel(flow?: string) {
+  switch (flow) {
+    case 'direct-reply':
+      return 'Direct Reply';
+    case 'supervisor':
+      return 'Supervisor Workflow';
+    case 'approval':
+      return 'Approval Recovery';
+    case 'learning':
+      return 'Learning Flow';
+    default:
+      return '未决策';
+  }
+}
+
+export function getChatRouteTone(flow?: string) {
+  switch (flow) {
+    case 'direct-reply':
+      return 'blue';
+    case 'supervisor':
+      return 'purple';
+    case 'approval':
+      return 'orange';
+    case 'learning':
+      return 'gold';
+    default:
+      return 'default';
+  }
 }
 
 export function getRiskColor(riskLevel?: string) {
@@ -150,8 +286,8 @@ export function getMinistryTone(ministry?: string) {
 export function getErrorCopy(error: string) {
   if (error === 'Network Error' || error === 'Failed to fetch') {
     return {
-      title: '连接后端失败',
-      description: '当前无法访问聊天后端。请确认 agent-server 已启动，并检查 `VITE_API_BASE_URL` 是否指向正确地址。'
+      title: '后端连接失败',
+      description: '当前无法连到聊天后端。请确认 `agent-server` 已启动，并检查 `VITE_API_BASE_URL` 是否指向正确地址。'
     };
   }
 
@@ -159,34 +295,6 @@ export function getErrorCopy(error: string) {
     title: '运行提示',
     description: error
   };
-}
-
-function MenuGlyph({ path }: { path: string }) {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" className="chatx-menu-glyph">
-      <path d={path} fill="currentColor" />
-    </svg>
-  );
-}
-
-export function RenameGlyph() {
-  return (
-    <MenuGlyph path="M11.7 1.3a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4l-8.2 8.2-3.2.8.8-3.2 8.2-8.2ZM10.9 3.1 4.9 9.1l-.4 1.4 1.4-.4 6-6-1-1ZM3 13h10v1H3v-1Z" />
-  );
-}
-
-export function ShareGlyph() {
-  return (
-    <MenuGlyph path="M11.5 10a2.5 2.5 0 0 0-1.9.9L6.8 9.4a2.7 2.7 0 0 0 0-2.8l2.8-1.5a2.5 2.5 0 1 0-.5-.9L6.3 5.7a2.5 2.5 0 1 0 0 4.6l2.8 1.5a2.5 2.5 0 1 0 2.4-1.8Zm0-8a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4.5 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm7 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
-  );
-}
-
-export function ArchiveGlyph() {
-  return <MenuGlyph path="M3 2h10l1 2v1H2V4l1-2Zm0 4h10v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6Zm3 2v1h4V8H6Z" />;
-}
-
-export function DeleteGlyph() {
-  return <MenuGlyph path="M6 2h4l.5 1H13v1H3V3h2.5L6 2Zm-1 3h1v7H5V5Zm5 0h1v7h-1V5ZM7 5h1v7H7V5Z" />;
 }
 
 export const CHAT_ROLE_CONFIG = {
@@ -197,13 +305,13 @@ export const CHAT_ROLE_CONFIG = {
     shape: 'round' as const
   },
   user: {
-    avatar: <Avatar style={{ background: '#111827' }}>你</Avatar>,
+    avatar: <Avatar style={{ background: '#111827' }}>U</Avatar>,
     placement: 'end' as const,
     variant: 'shadow' as const,
     shape: 'round' as const
   },
   system: {
-    avatar: <Avatar style={{ background: '#7c3aed' }}>系</Avatar>,
+    avatar: <Avatar style={{ background: '#7c3aed' }}>SYS</Avatar>,
     placement: 'start' as const,
     variant: 'outlined' as const,
     shape: 'round' as const

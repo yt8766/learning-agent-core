@@ -25,7 +25,12 @@
   - `license`
   - `compatibility`
   - `metadata`
+  - `triggers`
+  - `recommended-ministries`
+  - `recommended-specialists`
   - `allowed-tools`
+  - `execution-hints`
+  - `compression-hints`
   - `approval-policy`
   - `risk-level`
 
@@ -41,9 +46,19 @@ license: Proprietary
 compatibility: Requires repository access.
 metadata:
   ministry: xingbu-review
+triggers:
+  - review
+recommended-ministries:
+  - xingbu-review
+recommended-specialists:
+  - risk-compliance
 allowed-tools:
   - read_local_file
   - list_directory
+execution-hints:
+  - Focus on regression risk first.
+compression-hints:
+  - Prefer summarizing long diffs before review.
 approval-policy: none
 risk-level: low
 ---

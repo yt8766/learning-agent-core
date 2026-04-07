@@ -1,0 +1,134 @@
+import { describe, expect, it } from 'vitest';
+
+import { LlmProvider, ModelInfo } from '../../../src/adapters/llm/llm-provider';
+import { ModelRouter } from '../../../src/adapters/llm/model-router';
+import { ProviderRegistry } from '../../../src/adapters/llm/provider-registry';
+
+class StubProvider implements LlmProvider {
+  constructor(
+    readonly providerId: string,
+    readonly displayName: string,
+    private readonly models: string[],
+    private readonly configured = true
+  ) {}
+
+  supportedModels(): ModelInfo[] {
+    return this.models.map(model => ({
+      id: model,
+      displayName: model,
+      providerId: this.providerId,
+      contextWindow: 128_000,
+      maxOutput: 8_192,
+      capabilities: ['text']
+    }));
+  }
+
+  isConfigured(): boolean {
+    return this.configured;
+  }
+
+  async generateText(): Promise<string> {
+    return '';
+  }
+
+  async streamText(): Promise<string> {
+    return '';
+  }
+
+  async generateObject<T>(): Promise<T> {
+    throw new Error('not implemented');
+  }
+}
+
+describe('ModelRouter', () => {
+  it('prefers explicit primary route when provider is configured', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-5']));
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o']));
+    const router = new ModelRouter(registry, {
+      manager: {
+        primary: 'openai/gpt-4o',
+        fallback: ['zhipu/glm-5']
+      }
+    });
+
+    const resolved = router.resolve({ role: 'manager' });
+
+    expect(resolved.provider.providerId).toBe('openai');
+    expect(resolved.modelId).toBe('gpt-4o');
+  });
+
+  it('falls back when primary provider is unavailable', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o'], false));
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-5']));
+    const router = new ModelRouter(registry, {
+      reviewer: {
+        primary: 'openai/gpt-4o',
+        fallback: ['zhipu/glm-5']
+      }
+    });
+
+    const resolved = router.resolve({ role: 'reviewer' });
+
+    expect(resolved.provider.providerId).toBe('zhipu');
+    expect(resolved.modelId).toBe('glm-5');
+  });
+
+  it('resolves bare preferred model ids against configured providers', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-4.6', 'glm-5']));
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o']));
+    const router = new ModelRouter(registry, {});
+
+    const resolved = router.resolve({ role: 'executor', preferredModelId: 'glm-4.6' });
+
+    expect(resolved.provider.providerId).toBe('zhipu');
+    expect(resolved.modelId).toBe('glm-4.6');
+  });
+
+  it('uses fallback model when task is over budget', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-5', 'glm-4.7-flash']));
+    const router = new ModelRouter(registry, {
+      manager: {
+        primary: 'zhipu/glm-5'
+      }
+    });
+
+    const resolved = router.resolve({
+      role: 'manager',
+      fallbackModelId: 'glm-4.7-flash',
+      overBudget: true
+    });
+
+    expect(resolved.provider.providerId).toBe('zhipu');
+    expect(resolved.modelId).toBe('glm-4.7-flash');
+    expect(resolved.reason).toContain('超预算');
+  });
+
+  it('resolves preferred provider/model pairs and falls back to the first configured provider', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o']));
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-5']));
+    const router = new ModelRouter(registry, {});
+
+    const explicit = router.resolve({ role: 'manager', preferredModelId: 'zhipu/glm-5' });
+    const fallback = router.resolve({ role: 'manager', preferredModelId: 'missing-model' });
+
+    expect(explicit.provider.providerId).toBe('zhipu');
+    expect(explicit.modelId).toBe('glm-5');
+    expect(explicit.reason).toContain('模型路由策略');
+    expect(fallback.provider.providerId).toBe('openai');
+    expect(fallback.modelId).toBe('gpt-4o');
+    expect(fallback.reason).toContain('回退到 OpenAI');
+  });
+
+  it('throws when no configured provider is available', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o'], false));
+    const router = new ModelRouter(registry, {});
+
+    expect(() => router.resolve({ role: 'manager' })).toThrow('No configured LLM provider available for role manager.');
+  });
+});
