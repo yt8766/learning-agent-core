@@ -7,6 +7,9 @@ import { collaborators, createService } from './runtime.service.test-helpers';
 describe('RuntimeService core', () => {
   const ORIGINAL_RESEARCH_ENDPOINT = process.env.MCP_RESEARCH_HTTP_ENDPOINT;
   const ORIGINAL_RESEARCH_API_KEY = process.env.MCP_RESEARCH_HTTP_API_KEY;
+  const ORIGINAL_BIGMODEL_WEB_SEARCH_ENDPOINT = process.env.MCP_BIGMODEL_WEB_SEARCH_ENDPOINT;
+  const ORIGINAL_BIGMODEL_WEB_READER_ENDPOINT = process.env.MCP_BIGMODEL_WEB_READER_ENDPOINT;
+  const ORIGINAL_BIGMODEL_ZREAD_ENDPOINT = process.env.MCP_BIGMODEL_ZREAD_ENDPOINT;
 
   afterEach(() => {
     if (ORIGINAL_RESEARCH_ENDPOINT == null) {
@@ -19,6 +22,24 @@ describe('RuntimeService core', () => {
       delete process.env.MCP_RESEARCH_HTTP_API_KEY;
     } else {
       process.env.MCP_RESEARCH_HTTP_API_KEY = ORIGINAL_RESEARCH_API_KEY;
+    }
+
+    if (ORIGINAL_BIGMODEL_WEB_SEARCH_ENDPOINT == null) {
+      delete process.env.MCP_BIGMODEL_WEB_SEARCH_ENDPOINT;
+    } else {
+      process.env.MCP_BIGMODEL_WEB_SEARCH_ENDPOINT = ORIGINAL_BIGMODEL_WEB_SEARCH_ENDPOINT;
+    }
+
+    if (ORIGINAL_BIGMODEL_WEB_READER_ENDPOINT == null) {
+      delete process.env.MCP_BIGMODEL_WEB_READER_ENDPOINT;
+    } else {
+      process.env.MCP_BIGMODEL_WEB_READER_ENDPOINT = ORIGINAL_BIGMODEL_WEB_READER_ENDPOINT;
+    }
+
+    if (ORIGINAL_BIGMODEL_ZREAD_ENDPOINT == null) {
+      delete process.env.MCP_BIGMODEL_ZREAD_ENDPOINT;
+    } else {
+      process.env.MCP_BIGMODEL_ZREAD_ENDPOINT = ORIGINAL_BIGMODEL_ZREAD_ENDPOINT;
     }
   });
 
@@ -168,6 +189,9 @@ describe('RuntimeService core', () => {
 
   it('配置 research MCP endpoint 时会暴露远端 connector', async () => {
     process.env.ZHIPU_API_KEY = 'platform-token';
+    process.env.MCP_BIGMODEL_WEB_SEARCH_ENDPOINT = 'https://mcp.example.com/web-search';
+    process.env.MCP_BIGMODEL_WEB_READER_ENDPOINT = 'https://mcp.example.com/web-reader';
+    process.env.MCP_BIGMODEL_ZREAD_ENDPOINT = 'https://mcp.example.com/zread';
     process.env.MCP_RESEARCH_HTTP_ENDPOINT = 'https://mcp.example.com/research';
     process.env.MCP_RESEARCH_HTTP_API_KEY = 'secret-token';
 
