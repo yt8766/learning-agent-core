@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -44,6 +46,9 @@ describe('loadSettings', () => {
       toPosixPath(join(REPO_ROOT, 'data', 'runtime', 'tasks-state.json'))
     );
     expect(toPosixPath(settings.memoryFilePath)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'memory', 'records.jsonl')));
+    expect(toPosixPath(settings.vectorIndexFilePath)).toBe(
+      toPosixPath(join(REPO_ROOT, 'data', 'memory', 'vector-index.json'))
+    );
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'skills')));
   });
 
@@ -62,6 +67,12 @@ describe('loadSettings', () => {
   it('支持 research MCP 的 HTTP 配置', () => {
     const settings = loadSettings({
       ZHIPU_API_KEY: 'platform-token',
+      MCP_BIGMODEL_API_KEY: 'platform-token',
+      KNOWLEDGE_EMBEDDING_API_KEY: 'embedding-token',
+      KNOWLEDGE_EMBEDDING_ENDPOINT: 'https://mcp.example.com/embeddings',
+      MCP_BIGMODEL_WEB_SEARCH_ENDPOINT: 'https://mcp.example.com/web-search',
+      MCP_BIGMODEL_WEB_READER_ENDPOINT: 'https://mcp.example.com/web-reader',
+      MCP_BIGMODEL_ZREAD_ENDPOINT: 'https://mcp.example.com/zread',
       MCP_RESEARCH_HTTP_ENDPOINT: 'https://mcp.example.com/research',
       MCP_RESEARCH_HTTP_API_KEY: 'secret-token',
       MCP_STDIO_SESSION_IDLE_TTL_MS: '60000',
@@ -72,9 +83,11 @@ describe('loadSettings', () => {
     } as NodeJS.ProcessEnv);
 
     expect(settings.mcp.bigmodelApiKey).toBe('platform-token');
-    expect(settings.mcp.webSearchEndpoint).toBe('https://open.bigmodel.cn/api/mcp/web_search_prime/mcp');
-    expect(settings.mcp.webReaderEndpoint).toBe('https://open.bigmodel.cn/api/mcp/web_reader/mcp');
-    expect(settings.mcp.zreadEndpoint).toBe('https://open.bigmodel.cn/api/mcp/zread/mcp');
+    expect(settings.embeddings.endpoint).toBe('https://mcp.example.com/embeddings');
+    expect(settings.embeddings.apiKey).toBe('embedding-token');
+    expect(settings.mcp.webSearchEndpoint).toBe('https://mcp.example.com/web-search');
+    expect(settings.mcp.webReaderEndpoint).toBe('https://mcp.example.com/web-reader');
+    expect(settings.mcp.zreadEndpoint).toBe('https://mcp.example.com/zread');
     expect(settings.mcp.researchHttpEndpoint).toBe('https://mcp.example.com/research');
     expect(settings.mcp.researchHttpApiKey).toBe('secret-token');
     expect(settings.mcp.stdioSessionIdleTtlMs).toBe(60000);
@@ -104,28 +117,45 @@ describe('loadSettings', () => {
       } as NodeJS.ProcessEnv,
       overrides: {
         memoryFilePath: 'tmp/personal-memory.jsonl',
+        vectorIndexFilePath: 'tmp/personal-vector-index.json',
         skillsRoot: 'tmp/personal-skills'
       }
     });
 
     expect(settings.port).toBe(4000);
     expect(toPosixPath(settings.memoryFilePath)).toBe(toPosixPath(join(REPO_ROOT, 'tmp', 'personal-memory.jsonl')));
+    expect(toPosixPath(settings.vectorIndexFilePath)).toBe(
+      toPosixPath(join(REPO_ROOT, 'tmp', 'personal-vector-index.json'))
+    );
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'tmp', 'personal-skills')));
   });
 
   it('显式传入后端子目录作为 workspaceRoot 时，仍会自动提升到 monorepo 根并读取根 .env', () => {
-    const settings = loadSettings({
-      workspaceRoot: BACKEND_AGENT_SERVER_CWD,
-      env: {
-        PORT: '4100'
-      } as NodeJS.ProcessEnv
-    });
+    return (async () => {
+      const workspaceRoot = await mkdtemp(join(tmpdir(), 'agent-config-root-'));
+      const backendRoot = join(workspaceRoot, 'apps', 'backend', 'agent-server');
 
-    expect(toPosixPath(settings.workspaceRoot)).toBe(toPosixPath(REPO_ROOT));
-    expect(settings.zhipuApiKey).toBeTruthy();
-    expect(toPosixPath(settings.tasksStateFilePath)).toBe(
-      toPosixPath(join(REPO_ROOT, 'data', 'runtime', 'tasks-state.json'))
-    );
+      try {
+        await mkdir(backendRoot, { recursive: true });
+        await writeFile(join(workspaceRoot, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n', 'utf8');
+        await writeFile(join(workspaceRoot, '.env'), 'ZHIPU_API_KEY=test-zhipu-key\n', 'utf8');
+
+        const settings = loadSettings({
+          workspaceRoot: backendRoot,
+          env: {
+            PORT: '4100'
+          } as NodeJS.ProcessEnv
+        });
+
+        expect(toPosixPath(settings.workspaceRoot)).toBe(toPosixPath(workspaceRoot));
+        expect(settings.zhipuApiKey).toBe('test-zhipu-key');
+        expect(toPosixPath(settings.tasksStateFilePath)).toBe(
+          toPosixPath(join(workspaceRoot, 'data', 'runtime', 'tasks-state.json'))
+        );
+      } finally {
+        await rm(workspaceRoot, { recursive: true, force: true });
+      }
+    })();
   });
 
   it('personal profile applies isolated data paths and relaxed policy defaults', () => {
@@ -173,6 +203,36 @@ describe('loadSettings', () => {
     expect(settings.policy.suggestionPolicy.autoSearchSkillsOnGap).toBe(true);
   });
 
+  it('context strategy applies conversation compression defaults and supports env overrides', () => {
+    const defaults = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {} as NodeJS.ProcessEnv
+    });
+
+    expect(defaults.contextStrategy.compressionEnabled).toBe(true);
+    expect(defaults.contextStrategy.compressionMessageThreshold).toBe(15);
+    expect(defaults.contextStrategy.compressionKeepRecentMessages).toBe(5);
+    expect(defaults.contextStrategy.compressionKeepLeadingMessages).toBe(10);
+    expect(defaults.contextStrategy.compressionMaxSummaryChars).toBe(1200);
+
+    const overridden = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        CONTEXT_COMPRESSION_ENABLED: 'false',
+        CONTEXT_COMPRESSION_MESSAGE_THRESHOLD: '22',
+        CONTEXT_COMPRESSION_KEEP_RECENT_MESSAGES: '7',
+        CONTEXT_COMPRESSION_KEEP_LEADING_MESSAGES: '4',
+        CONTEXT_COMPRESSION_MAX_SUMMARY_CHARS: '800'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(overridden.contextStrategy.compressionEnabled).toBe(false);
+    expect(overridden.contextStrategy.compressionMessageThreshold).toBe(22);
+    expect(overridden.contextStrategy.compressionKeepRecentMessages).toBe(7);
+    expect(overridden.contextStrategy.compressionKeepLeadingMessages).toBe(4);
+    expect(overridden.contextStrategy.compressionMaxSummaryChars).toBe(800);
+  });
+
   it('支持 runtime background 开关与轮询配置', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
@@ -193,6 +253,127 @@ describe('loadSettings', () => {
       heartbeatMs: 15000,
       pollMs: 5000,
       runnerIdPrefix: 'worker'
+    });
+  });
+
+  it('支持每日技术情报简报配置与 env override', () => {
+    const defaults = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {} as NodeJS.ProcessEnv
+    });
+
+    expect(defaults.dailyTechBriefing).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        sendEmptyDigest: true,
+        duplicateWindowDays: 7,
+        maxCriticalItemsPerCategory: 20,
+        maxTotalItemsPerCategory: 30,
+        sendOnlyDelta: true,
+        resendOnlyOnMaterialChange: true,
+        larkDigestMode: 'dual',
+        webhookEnvVar: 'LARK_BOT_WEBHOOK_URL',
+        translationEnabled: true,
+        translationModel: defaults.zhipuModels.research,
+        categories: expect.objectContaining({
+          frontendSecurity: expect.objectContaining({ baseIntervalHours: 4, lookbackDays: 3 }),
+          generalSecurity: expect.objectContaining({ baseIntervalHours: 4 }),
+          devtoolSecurity: expect.objectContaining({ baseIntervalHours: 4, lookbackDays: 7 }),
+          aiTech: expect.objectContaining({ baseIntervalHours: 24, lookbackDays: 7 }),
+          frontendTech: expect.objectContaining({ baseIntervalHours: 24, lookbackDays: 7 })
+        })
+      })
+    );
+
+    const overridden = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        DAILY_TECH_BRIEFING_ENABLED: 'false',
+        DAILY_TECH_BRIEFING_SCHEDULE: 'weekday 10:30',
+        DAILY_TECH_BRIEFING_SEND_EMPTY_DIGEST: 'false',
+        DAILY_TECH_BRIEFING_MAX_ITEMS_PER_CATEGORY: '3',
+        DAILY_TECH_BRIEFING_DUPLICATE_WINDOW_DAYS: '5',
+        DAILY_TECH_BRIEFING_MAX_NON_CRITICAL_ITEMS_PER_CATEGORY: '8',
+        DAILY_TECH_BRIEFING_MAX_CRITICAL_ITEMS_PER_CATEGORY: '15',
+        DAILY_TECH_BRIEFING_MAX_TOTAL_ITEMS_PER_CATEGORY: '18',
+        DAILY_TECH_BRIEFING_SEND_ONLY_DELTA: 'false',
+        DAILY_TECH_BRIEFING_RESEND_ONLY_ON_MATERIAL_CHANGE: 'false',
+        DAILY_TECH_BRIEFING_LARK_DIGEST_MODE: 'interactive-card',
+        DAILY_TECH_BRIEFING_SOURCE_POLICY: 'official-only',
+        DAILY_TECH_BRIEFING_WEBHOOK_ENV_VAR: 'CUSTOM_LARK_WEBHOOK',
+        DAILY_TECH_BRIEFING_TRANSLATION_ENABLED: 'false',
+        DAILY_TECH_BRIEFING_TRANSLATION_MODEL: 'glm-4.6',
+        DAILY_TECH_BRIEFING_AI_LOOKBACK_DAYS: '3',
+        DAILY_TECH_BRIEFING_FRONTEND_LOOKBACK_DAYS: '5',
+        DAILY_TECH_BRIEFING_SECURITY_LOOKBACK_DAYS: '21'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(overridden.dailyTechBriefing).toEqual({
+      enabled: false,
+      schedule: 'weekday 10:30',
+      sendEmptyDigest: false,
+      maxItemsPerCategory: 3,
+      duplicateWindowDays: 5,
+      maxNonCriticalItemsPerCategory: 8,
+      maxCriticalItemsPerCategory: 15,
+      maxTotalItemsPerCategory: 18,
+      sendOnlyDelta: false,
+      resendOnlyOnMaterialChange: false,
+      larkDigestMode: 'interactive-card',
+      larkDetailMode: 'detailed',
+      sourcePolicy: 'official-only',
+      webhookEnvVar: 'CUSTOM_LARK_WEBHOOK',
+      webhookUrl: undefined,
+      translationEnabled: false,
+      translationModel: 'glm-4.6',
+      aiLookbackDays: 3,
+      frontendLookbackDays: 5,
+      securityLookbackDays: 21,
+      categories: {
+        frontendSecurity: {
+          enabled: true,
+          baseIntervalHours: 4,
+          lookbackDays: 3,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [2, 4, 8] }
+        },
+        generalSecurity: {
+          enabled: true,
+          baseIntervalHours: 4,
+          lookbackDays: 21,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [2, 4, 8] }
+        },
+        devtoolSecurity: {
+          enabled: true,
+          baseIntervalHours: 4,
+          lookbackDays: 7,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [2, 4, 8] }
+        },
+        aiTech: {
+          enabled: true,
+          baseIntervalHours: 24,
+          lookbackDays: 3,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
+        },
+        frontendTech: {
+          enabled: true,
+          baseIntervalHours: 24,
+          lookbackDays: 5,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
+        },
+        backendTech: {
+          enabled: true,
+          baseIntervalHours: 24,
+          lookbackDays: 7,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
+        },
+        cloudInfraTech: {
+          enabled: true,
+          baseIntervalHours: 24,
+          lookbackDays: 7,
+          adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
+        }
+      }
     });
   });
 });

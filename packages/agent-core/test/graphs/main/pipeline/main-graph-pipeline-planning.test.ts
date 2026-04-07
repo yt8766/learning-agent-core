@@ -2,10 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AgentRole, TaskStatus, type TaskRecord } from '@agent/shared';
 
-import {
-  runDispatchStage,
-  runManagerPlanStage
-} from '../../../../src/graphs/main/pipeline/main-graph-pipeline-planning';
+import { runDispatchStage, runManagerPlanStage } from '../../../../src/flows/supervisor/pipeline-stage-nodes';
 
 describe('main-graph-pipeline-planning skill contract compilation', () => {
   it('compiles attached skill steps into the manager plan and trace', async () => {

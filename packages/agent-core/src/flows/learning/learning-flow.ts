@@ -19,7 +19,8 @@ import {
   isDiagnosisTask,
   mergeEvidence,
   normalizeInstalledSkillId,
-  prepareTaskLearning
+  prepareTaskLearning,
+  shouldExtractSkillForTask
 } from './learning-flow-task';
 
 interface LearningFlowDependencies {
@@ -270,6 +271,11 @@ export class LearningFlow {
       addTrace: (node: string, summary: string) => void;
     }
   ): Promise<void> {
+    const persistedSummary =
+      task.contextFilterState?.filteredContextSlice?.summary &&
+      task.contextFilterState.filteredContextSlice.summary.length < executionSummary.length
+        ? task.contextFilterState.filteredContextSlice.summary
+        : executionSummary;
     await this.hydrateTaskKnowledge(task);
     this.prepareTaskLearning(task, evaluation, review);
     await this.refineTaskLearning(task, evaluation, review);
@@ -279,18 +285,18 @@ export class LearningFlow {
     );
 
     if (evaluation.shouldWriteMemory) {
-      const memory = builders.buildMemoryRecord(task.id, goal, evaluation, review, executionSummary);
+      const memory = builders.buildMemoryRecord(task.id, goal, evaluation, review, persistedSummary);
       await this.dependencies.memoryRepository.append(memory);
       builders.addTrace('memory_write', `Wrote memory record ${memory.id}`);
     }
 
     if (evaluation.shouldCreateRule) {
-      const rule = builders.buildRuleRecord(task.id, executionSummary);
+      const rule = builders.buildRuleRecord(task.id, persistedSummary);
       await this.dependencies.ruleRepository.append(rule);
       builders.addTrace('rule_write', `Wrote rule record ${rule.id}`);
     }
 
-    if (evaluation.shouldExtractSkill) {
+    if (shouldExtractSkillForTask(task, evaluation)) {
       const skill = builders.buildSkillDraft(goal, 'execution');
       await this.dependencies.skillRegistry.publishToLab(skill);
       builders.addTrace('skill_extract', `Published skill ${skill.id} to lab`);

@@ -6,7 +6,12 @@ import { RuntimeCentersService } from '../runtime/centers/runtime-centers.servic
 import { RuntimeSessionService } from '../runtime/services/runtime-session.service';
 import { RuntimeSkillCatalogService } from '../runtime/services/runtime-skill-catalog.service';
 import { RuntimeToolsService } from '../runtime/services/runtime-tools.service';
-import { buildSkillCatalogSummary, groupSkillCards, resolveCapabilityIntent } from './chat-capability-intents.helpers';
+import {
+  buildSkillCatalogSummary,
+  buildToolsCatalogSummary,
+  groupSkillCards,
+  resolveCapabilityIntent
+} from './chat-capability-intents.helpers';
 import { handleUseConnectorIntent } from './chat-capability-intents.connector';
 
 @Injectable()
@@ -62,10 +67,7 @@ export class ChatCapabilityIntentsService {
       const toolsCenter = this.runtimeToolsService.getToolsCenter();
       return this.runtimeSessionService.appendInlineCapabilityResponse(sessionId, dto, {
         role: 'assistant',
-        content:
-          toolsCenter.totalTools > 0
-            ? `当前可见 ${toolsCenter.totalTools} 个 tools，分布在 ${toolsCenter.familyCount} 个 family。`
-            : '当前还没有可见 tools。',
+        content: buildToolsCatalogSummary(toolsCenter),
         card: {
           type: 'capability_catalog',
           title: '当前 Tools',
@@ -286,6 +288,56 @@ export class ChatCapabilityIntentsService {
       });
     }
 
+    if (intent.kind === 'install-skill') {
+      const receipt = await this.runtimeCentersService.installRemoteSkill({
+        repo: intent.repo,
+        skillName: intent.skillName,
+        actor: 'agent-chat-user',
+        triggerReason: 'user_requested',
+        summary: `用户通过自然语言请求安装远程 skill ${intent.skillName ?? intent.repo}`
+      });
+
+      const installName = receipt.skillName ?? intent.skillName ?? intent.repo;
+      const statusMeta = resolveRemoteSkillInstallStatusMeta(receipt.status);
+      const failureDetail =
+        typeof receipt.failureCode === 'string' && receipt.failureCode.trim() ? receipt.failureCode.trim() : undefined;
+      const summary =
+        receipt.status === 'installed'
+          ? `${installName} 已安装完成，当前会话后续可以直接复用。`
+          : receipt.status === 'failed'
+            ? `${installName} 安装失败。${failureDetail ? `失败原因：${failureDetail}` : ''}`.trim()
+            : `${installName} 已发起安装，当前状态：${statusMeta.label}。`;
+
+      return this.runtimeSessionService.appendInlineCapabilityResponse(sessionId, dto, {
+        role: 'assistant',
+        content: summary,
+        card: {
+          type: 'capability_catalog',
+          title: statusMeta.title,
+          summary,
+          groups: [
+            {
+              key: 'remote-skill-install',
+              label: 'Remote Skill Install',
+              kind: 'skill',
+              items: [
+                {
+                  id: receipt.skillId ?? intent.repo,
+                  displayName: installName,
+                  summary: receipt.repo ?? intent.repo,
+                  ownerType: 'runtime-derived',
+                  scope: 'workspace',
+                  enabled: receipt.status === 'installed',
+                  status: statusMeta.itemStatus,
+                  blockedReason: failureDetail
+                }
+              ]
+            }
+          ]
+        }
+      });
+    }
+
     if (intent.kind === 'use-connector') {
       return handleUseConnectorIntent({
         sessionId,
@@ -297,5 +349,46 @@ export class ChatCapabilityIntentsService {
     }
 
     return undefined;
+  }
+}
+
+function resolveRemoteSkillInstallStatusMeta(status?: string) {
+  switch (status) {
+    case 'installed':
+      return {
+        title: 'Skill 已安装',
+        label: 'installed',
+        itemStatus: 'active'
+      };
+    case 'failed':
+      return {
+        title: 'Skill 安装失败',
+        label: 'failed',
+        itemStatus: 'failed'
+      };
+    case 'rejected':
+      return {
+        title: 'Skill 已拒绝',
+        label: 'rejected',
+        itemStatus: 'rejected'
+      };
+    case 'pending':
+      return {
+        title: 'Skill 待审批',
+        label: 'pending',
+        itemStatus: 'approval-sensitive'
+      };
+    case 'approved':
+      return {
+        title: 'Skill 安装中',
+        label: 'approved',
+        itemStatus: 'installing'
+      };
+    default:
+      return {
+        title: 'Skill 安装中',
+        label: status ?? 'installing',
+        itemStatus: status ?? 'installing'
+      };
   }
 }

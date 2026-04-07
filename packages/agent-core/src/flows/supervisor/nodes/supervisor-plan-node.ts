@@ -1,5 +1,5 @@
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
-import { sanitizeTaskContextForModel } from '../../../shared/prompts/runtime-output-sanitizer';
+import { sanitizeTaskContextForModel } from '../../../utils/prompts/runtime-output-sanitizer';
 import { SUPERVISOR_PLAN_SYSTEM_PROMPT, buildSupervisorPlanUserPrompt } from '../prompts/supervisor-plan-prompts';
 import { buildFallbackSupervisorPlan, toManagerPlan } from '../contracts/supervisor-plan-contract';
 import { SupervisorPlanSchema } from '../schemas/supervisor-plan-schema';

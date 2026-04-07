@@ -16,6 +16,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     bootstrap: true,
     preferredMinistries: ['gongbu-code', 'hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { path: filesystemSchemaPath } }
   },
   {
@@ -31,6 +36,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     bootstrap: true,
     preferredMinistries: ['gongbu-code', 'hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { path: filesystemSchemaPath } }
   },
   {
@@ -46,6 +56,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     bootstrap: true,
     preferredMinistries: ['gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: { path: filesystemSchemaPath, content: { type: 'string' } }
@@ -64,6 +79,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     bootstrap: true,
     preferredMinistries: ['gongbu-code', 'bingbu-ops'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: { path: filesystemSchemaPath, recursive: { type: 'boolean' } }
@@ -81,6 +101,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: { fromPath: filesystemSchemaPath, toPath: filesystemSchemaPath }
@@ -98,6 +123,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: { fromPath: filesystemSchemaPath, toPath: filesystemSchemaPath }
@@ -115,6 +145,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: {
@@ -137,6 +172,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search', 'gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: {
       type: 'object',
       properties: { pattern: { type: 'string' }, basePath: filesystemSchemaPath, limit: { type: 'number' } }
@@ -154,6 +194,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search', 'gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: {
       type: 'object',
       properties: {
@@ -176,6 +221,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['gongbu-code', 'hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { path: filesystemSchemaPath } }
   },
   {
@@ -190,6 +240,11 @@ export const FILESYSTEM_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['gongbu-code'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: {
       type: 'object',
       properties: { path: filesystemSchemaPath, value: { type: 'object' }, spacing: { type: 'number' } }

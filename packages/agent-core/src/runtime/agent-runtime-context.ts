@@ -1,6 +1,7 @@
 import {
   AgentExecutionState,
   BudgetState,
+  ContextFilterRecord,
   type ExecutionMode,
   EvidenceRecord,
   SkillStep,
@@ -78,6 +79,22 @@ export interface AgentRuntimeContext {
     fallbackReason?: string;
     status: 'fallback' | 'failed';
   }) => void;
+  isTaskCancelled?: () => boolean;
+  onContextCompaction?: (payload: {
+    trigger: string;
+    result: Pick<
+      NonNullable<ContextFilterRecord['filteredContextSlice']>,
+      | 'summary'
+      | 'compressionApplied'
+      | 'compressionSource'
+      | 'compressedMessageCount'
+      | 'artifactCount'
+      | 'originalCharacterCount'
+      | 'compactedCharacterCount'
+      | 'reactiveRetryCount'
+      | 'pipelineAudit'
+    >;
+  }) => void | Promise<void>;
 }
 
 export interface AgentLike {

@@ -14,6 +14,11 @@ export const SCHEDULING_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'bingbu-ops',
     preferredMinistries: ['bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: {
       type: 'object',
       properties: {
@@ -38,6 +43,11 @@ export const SCHEDULING_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'bingbu-ops',
     preferredMinistries: ['bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -53,6 +63,11 @@ export const SCHEDULING_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'bingbu-ops',
     preferredMinistries: ['bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } } }
   }
 ];

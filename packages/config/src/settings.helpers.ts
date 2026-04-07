@@ -87,9 +87,9 @@ export function normalizeProviderBaseUrl(
 
   const trimmed = url.trim().replace(/\/+$/, '');
   if (providerType === 'zhipu') {
-    return trimmed
-      .replace('/api/coding/paas/v4/chat/completions', '/api/paas/v4/chat/completions')
-      .replace('/api/coding/paas/v4', '/api/paas/v4');
+    return trimmed;
+    // .replace('/api/coding/paas/v4/chat/completions', '/api/paas/v4/chat/completions')
+    // .replace('/api/coding/paas/v4', '/api/paas/v4');
   }
 
   return trimmed;
@@ -170,10 +170,7 @@ export function parseProvidersConfig(
       type: 'zhipu',
       displayName: 'ZhiPu',
       apiKey: runtimeEnv.ZHIPU_API_KEY,
-      baseUrl: normalizeProviderBaseUrl(
-        runtimeEnv.ZHIPU_API_BASE_URL ?? 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-        'zhipu'
-      ),
+      baseUrl: normalizeProviderBaseUrl(runtimeEnv.ZHIPU_API_BASE_URL, 'zhipu'),
       models: Array.from(new Set(Object.values(zhipuModels))),
       roleModels: zhipuModels
     });

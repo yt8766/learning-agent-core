@@ -30,6 +30,7 @@ import {
   restoreMemory,
   restoreRule,
   restoreSkill,
+  revokeApprovalScopePolicy,
   retireMemory,
   retireRule,
   retireSkill,
@@ -91,6 +92,11 @@ export function createAdminDashboardMutationActions(
         await refreshActions.refreshAll();
         await refreshCenterAfter('approvals');
       }, '更新审批状态失败'),
+    handleRevokeApprovalPolicy: async (policyId: string) =>
+      runMutation(async () => {
+        await revokeApprovalScopePolicy(policyId);
+        await refreshActions.refreshPageCenter('runtime');
+      }, '撤销审批策略失败'),
     handleRetryTask: async (taskId: string) =>
       runMutation(async () => {
         await retryTask(taskId);

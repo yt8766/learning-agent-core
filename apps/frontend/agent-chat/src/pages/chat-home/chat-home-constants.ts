@@ -34,6 +34,8 @@ export const EVENT_LABELS: Record<string, string> = {
   learning_pending_confirmation: '等待学习确认',
   learning_confirmed: '学习已确认',
   conversation_compacted: '对话已压缩',
+  node_status: '节点状态',
+  node_progress: '节点进度',
   assistant_token: '流式回复',
   assistant_message: 'Agent 回复',
   run_resumed: '流程已恢复',

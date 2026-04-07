@@ -97,6 +97,7 @@ export function prepareTaskLearning(
     ...extractedPreferences.map(item => `检测到可长期沉淀的偏好/约束：${item.summary}`)
   ].filter(Boolean);
 
+  const shouldExtractSkill = shouldExtractSkillForTask(task, evaluation);
   task.externalSources = externalSources;
   task.reusedMemories = reusedMemories;
   task.reusedRules = reusedRules;
@@ -109,7 +110,7 @@ export function prepareTaskLearning(
     suggestedCandidateTypes: [
       evaluation?.shouldWriteMemory !== false ? 'memory' : null,
       evaluation?.shouldCreateRule !== false ? 'rule' : null,
-      evaluation?.shouldExtractSkill ? 'skill' : null
+      shouldExtractSkill ? 'skill' : null
     ].filter(Boolean) as Array<'memory' | 'rule' | 'skill'>,
     rationale: task.skillSearch?.capabilityGapDetected
       ? '任务存在能力缺口，优先判断是否需要补充技能复用或沉淀新技能。'
@@ -247,6 +248,37 @@ export function ensureCandidates(task: TaskRecord): LearningCandidateRecord[] {
   return task.learningCandidates;
 }
 
+export function shouldExtractSkillForTask(
+  task: Pick<TaskRecord, 'goal' | 'context' | 'result'>,
+  evaluation?: Pick<EvaluationResult, 'shouldExtractSkill'>
+) {
+  if (!evaluation?.shouldExtractSkill) {
+    return false;
+  }
+
+  const corpus = `${task.goal ?? ''}\n${task.context ?? ''}\n${task.result ?? ''}`.toLowerCase();
+  const blockedPatterns = [
+    /周报/,
+    /日报/,
+    /月报/,
+    /年报/,
+    /工作总结/,
+    /总结一下/,
+    /生成.*周报/,
+    /撰写.*周报/,
+    /写.*周报/,
+    /润色/,
+    /改写/,
+    /翻译/,
+    /邮件/,
+    /文案/,
+    /汇报/,
+    /稿子/,
+    /草稿/
+  ];
+  return !blockedPatterns.some(pattern => pattern.test(corpus));
+}
+
 function buildPreferenceMemoryCandidates(
   task: TaskRecord,
   now: string,
@@ -335,7 +367,7 @@ function buildSkippedReasons(
 ) {
   const reasons = [
     extractedPreferences.length === 0 ? '未检测到足够稳定的长期偏好表达。' : undefined,
-    evaluation?.shouldExtractSkill === false ? '本轮未满足抽取技能候选的条件。' : undefined,
+    !shouldExtractSkillForTask(task, evaluation) ? '本轮未满足抽取技能候选的条件。' : undefined,
     task.skillSearch?.capabilityGapDetected === false ? '当前未检测到明显能力缺口，无需额外 skill 搜索。' : undefined
   ];
   return reasons.filter(Boolean) as string[];

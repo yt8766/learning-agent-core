@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getRuntimeArchitecture } from '@/api/admin-api-platform';
+import { getRuntimeArchitecture, isAbortedAdminRequestError } from '@/api/admin-api';
 import type { ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@/types/admin';
 import { ArchitectureMermaidCard } from './architecture-mermaid-card';
 
@@ -16,14 +16,31 @@ export function RuntimeArchitecturePanel() {
   const [activeKey, setActiveKey] = useState<keyof RuntimeArchitectureRecord>('project');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const latestRequestId = useRef(0);
 
   const load = () => {
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
     setLoading(true);
     setError('');
     void getRuntimeArchitecture()
-      .then(next => setRecord(next))
-      .catch(loadError => setError(loadError instanceof Error ? loadError.message : '加载失败'))
-      .finally(() => setLoading(false));
+      .then(next => {
+        if (latestRequestId.current !== requestId) {
+          return;
+        }
+        setRecord(next);
+      })
+      .catch(loadError => {
+        if (latestRequestId.current !== requestId || isAbortedAdminRequestError(loadError)) {
+          return;
+        }
+        setError(loadError instanceof Error ? loadError.message : '加载失败');
+      })
+      .finally(() => {
+        if (latestRequestId.current === requestId) {
+          setLoading(false);
+        }
+      });
   };
 
   useEffect(() => {

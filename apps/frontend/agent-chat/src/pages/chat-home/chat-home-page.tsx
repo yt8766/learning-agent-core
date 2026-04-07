@@ -117,8 +117,8 @@ export function ChatHomePage() {
         cognitionCountLabel,
         onToggleCognition: () => setCognitionExpanded(current => !current),
         getAgentLabel,
-        onApprovalAction: (intent, approved) => {
-          void chat.updateApproval(intent, approved);
+        onApprovalAction: (intent, approved, scope) => {
+          void chat.updateApproval(intent, approved, undefined, scope);
         },
         onApprovalAllowAlways: (intent, serverId, capabilityId) => {
           void chat.allowApprovalAndApprove({ intent, serverId, capabilityId });

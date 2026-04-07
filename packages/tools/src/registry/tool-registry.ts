@@ -20,6 +20,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     bootstrap: true,
     preferredMinistries: ['hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'number' } } }
   },
   {
@@ -34,6 +39,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search', 'bingbu-ops'],
     capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'external-side-effect',
     inputSchema: { type: 'object', properties: { url: { type: 'string' }, method: { type: 'string' } } }
   },
   {
@@ -48,6 +58,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['libu-delivery', 'hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, researchSummary: { type: 'string' } } }
   },
   {
@@ -62,6 +77,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['libu-governance', 'hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, limit: { type: 'number' } } }
   },
   {
@@ -76,6 +96,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: {
       type: 'object',
       properties: {
@@ -98,6 +123,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: {
       type: 'object',
       properties: { query: { type: 'string' }, goal: { type: 'string' }, freshnessHint: { type: 'string' } }
@@ -115,6 +145,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { url: { type: 'string' }, goal: { type: 'string' } } }
   },
   {
@@ -129,6 +164,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['hubu-search', 'libu-delivery'],
     capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: { repoUrl: { type: 'string' }, query: { type: 'string' } } }
   },
   {
@@ -143,6 +183,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['bingbu-ops', 'hubu-search'],
     capabilityType: 'mcp-capability',
+    isReadOnly: true,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'external-side-effect',
     inputSchema: { type: 'object', properties: { url: { type: 'string' }, goal: { type: 'string' } } }
   },
   {
@@ -157,6 +202,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['bingbu-ops', 'gongbu-code'],
     capabilityType: 'mcp-capability',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
     inputSchema: { type: 'object', properties: { command: { type: 'string' }, goal: { type: 'string' } } }
   },
   {
@@ -171,6 +221,11 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerType: 'shared',
     preferredMinistries: ['bingbu-ops', 'xingbu-review'],
     capabilityType: 'mcp-capability',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { target: { type: 'string' }, goal: { type: 'string' } } }
   }
 ];
@@ -200,6 +255,7 @@ export class ToolRegistry {
     if (!this.families.has(tool.family)) {
       throw new Error(`Unknown tool family "${tool.family}" for tool "${tool.name}"`);
     }
+    validateToolDefinition(tool);
     this.tools.set(tool.name, tool);
   }
 
@@ -245,4 +301,18 @@ export class ToolRegistry {
 
 export function createDefaultToolRegistry(): ToolRegistry {
   return new ToolRegistry(DEFAULT_TOOLS, DEFAULT_TOOL_FAMILIES);
+}
+
+function validateToolDefinition(tool: ToolDefinition): void {
+  const requiredFlags: Array<
+    keyof Pick<
+      ToolDefinition,
+      'isReadOnly' | 'isConcurrencySafe' | 'isDestructive' | 'supportsStreamingDispatch' | 'permissionScope'
+    >
+  > = ['isReadOnly', 'isConcurrencySafe', 'isDestructive', 'supportsStreamingDispatch', 'permissionScope'];
+  for (const key of requiredFlags) {
+    if (tool[key] === undefined) {
+      throw new Error(`Tool "${tool.name}" is missing required semantic field "${key}"`);
+    }
+  }
 }

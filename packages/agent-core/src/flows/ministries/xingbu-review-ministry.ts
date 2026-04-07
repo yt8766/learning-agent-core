@@ -11,8 +11,9 @@
 import { evaluateExecution } from '@agent/evals';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
 import { normalizeCritiqueResult } from '../../shared/schemas/critique-result-schema';
-import { safeGenerateObject, type StructuredContractMeta } from '../../shared/schemas/safe-generate-object';
+import { safeGenerateObject, type StructuredContractMeta } from '../../utils/schemas/safe-generate-object';
 import { XINGBU_REVIEW_SYSTEM_PROMPT } from './xingbu-review/prompts/review-prompts';
 import { ReviewDecisionOutput, ReviewDecisionSchema } from './xingbu-review/schemas/review-decision-schema';
 
@@ -63,38 +64,41 @@ export class XingbuReviewMinistry {
           contractVersion: 'review-decision.v1',
           isConfigured: this.context.llm.isConfigured(),
           schema: ReviewDecisionSchema,
-          invoke: async () =>
-            this.context.llm.generateObject(
-              [
-                {
-                  role: 'system',
-                  content: XINGBU_REVIEW_SYSTEM_PROMPT
-                },
-                {
-                  role: 'user',
-                  content: JSON.stringify({
-                    goal: this.context.goal,
-                    executionSummary,
-                    baseline
-                  })
-                }
-              ],
-              ReviewDecisionSchema,
-              {
-                role: 'reviewer',
-                modelId: this.context.currentWorker?.defaultModel,
-                taskId: this.context.taskId,
-                thinking: this.context.thinking.reviewer,
-                temperature: 0.1,
-                budgetState: this.context.budgetState,
-                onUsage: usage => {
-                  this.context.onUsage?.({
-                    usage,
-                    role: 'reviewer'
-                  });
-                }
-              }
-            )
+          messages: [
+            {
+              role: 'system',
+              content: XINGBU_REVIEW_SYSTEM_PROMPT
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                goal: this.context.goal,
+                executionSummary,
+                baseline
+              })
+            }
+          ],
+          invokeWithMessages: async messages =>
+            withReactiveContextRetry({
+              context: this.context,
+              trigger: 'xingbu-review',
+              messages,
+              invoke: async retryMessages =>
+                this.context.llm.generateObject(retryMessages, ReviewDecisionSchema, {
+                  role: 'reviewer',
+                  modelId: this.context.currentWorker?.defaultModel,
+                  taskId: this.context.taskId,
+                  thinking: this.context.thinking.reviewer,
+                  temperature: 0.1,
+                  budgetState: this.context.budgetState,
+                  onUsage: usage => {
+                    this.context.onUsage?.({
+                      usage,
+                      role: 'reviewer'
+                    });
+                  }
+                })
+            })
         })
       : {
           object: null,

@@ -156,6 +156,123 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(mainThread.map(message => message.id)).toContain('assistant_final_1');
   });
 
+  it('正式 assistant 消息已经存在时，会隐藏重复的 direct reply stream 回复', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'direct_reply_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'assistant_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ];
+
+    const mainThread = buildMainThreadMessages(messages);
+
+    expect(mainThread.map(message => message.id)).not.toContain('direct_reply_task-1');
+    expect(mainThread.map(message => message.id)).toContain('assistant_final_1');
+  });
+
+  it('不同 task 的相邻 assistant 消息不会被错误合并', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_task_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '第一条回复',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'assistant_task_2',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-2',
+        content: '第二条回复',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ];
+
+    const mainThread = buildMainThreadMessages(messages);
+
+    expect(mainThread).toHaveLength(2);
+    expect(mainThread.map(message => message.id)).toEqual(['assistant_task_1', 'assistant_task_2']);
+  });
+
+  it('summary stream 与最终 assistant 轻微差异时也会隐藏中间态流式消息', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'summary_stream_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'assistant_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ];
+
+    const mainThread = buildMainThreadMessages(messages);
+
+    expect(mainThread).toHaveLength(1);
+    expect(mainThread[0]?.id).toBe('assistant_final_1');
+    expect(mainThread[0]?.content).toBe('我是内阁首辅，一个基于大语言模型的智能助手。');
+  });
+
+  it('会过滤掉已经失效的空白 assistant 中间态气泡', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'direct_reply_task-old',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'summary_stream_task-old',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      },
+      {
+        id: 'assistant_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅。',
+        createdAt: '2026-04-07T00:00:02.000Z'
+      }
+    ];
+
+    const mainThread = buildMainThreadMessages(messages);
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+
+    expect(mainThread).toHaveLength(1);
+    expect(mainThread[0]?.id).toBe('assistant_final_1');
+    expect(items).toHaveLength(1);
+    expect(items[0]?.key).toBe('assistant_final_1');
+  });
+
   it('聊天记录里有来源引用时会渲染 Sources 卡片', () => {
     const messages: ChatMessageRecord[] = [
       {

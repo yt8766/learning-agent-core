@@ -17,6 +17,7 @@ import {
 import {
   ApprovalSummaryCard,
   ExecutionStateCard,
+  ExecutionStepsCard,
   LearningRecoveryCard,
   ModelRouteCard,
   ThoughtTimelineCard,
@@ -92,7 +93,22 @@ export function ChatRuntimeDrawer({
               { key: 'session', label: '会话', children: activeSession?.title ?? '未命名会话' },
               { key: 'status', label: '状态', children: getSessionStatusLabel(activeSession?.status) },
               { key: 'task', label: '任务', children: checkpoint?.taskId ?? '--' },
-              { key: 'step', label: '节点', children: checkpoint?.graphState?.currentStep ?? '--' },
+              {
+                key: 'step',
+                label: '节点',
+                children: checkpoint?.streamStatus?.nodeLabel ?? checkpoint?.graphState?.currentStep ?? '--'
+              },
+              {
+                key: 'stream',
+                label: '节点战报',
+                children: checkpoint?.streamStatus?.detail
+                  ? `${checkpoint.streamStatus.detail}${
+                      typeof checkpoint.streamStatus.progressPercent === 'number'
+                        ? `（${checkpoint.streamStatus.progressPercent}%）`
+                        : ''
+                    }`
+                  : '--'
+              },
               {
                 key: 'executionMode',
                 label: '当前模式',
@@ -253,6 +269,7 @@ export function ChatRuntimeDrawer({
         </Card>
 
         <ExecutionStateCard checkpoint={checkpoint} getAgentLabel={getAgentLabel} />
+        <ExecutionStepsCard checkpoint={checkpoint} />
         <ApprovalSummaryCard pendingApprovals={pendingApprovals} />
         <WorkflowRolesCard checkpoint={checkpoint} routeReason={routeReason} getAgentLabel={getAgentLabel} />
         <ModelRouteCard latestRoute={latestRoute} getAgentLabel={getAgentLabel} />

@@ -2,7 +2,7 @@ import type { TaskRecord } from '@agent/shared';
 import { TaskStatus } from '@agent/shared';
 
 import { createLearningGraph } from '../graphs/learning.graph';
-import type { AgentOrchestrator } from '../graphs/main.graph';
+import type { AgentOrchestrator } from '../graphs/main/main.graph';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 
 export async function autoConfirmLearningIfNeeded(

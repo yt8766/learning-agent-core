@@ -13,6 +13,7 @@ import type {
   TrustClass,
   WorkerDomain,
   WorkerKind,
+  SpecialistDomain,
   WorkflowApprovalPolicy
 } from './primitives';
 
@@ -305,6 +306,10 @@ export interface SkillManifestRecord {
   specialistAffinity?: string[];
   preferredMinistries?: WorkerDomain[];
   preferredConnectors?: string[];
+  triggers?: string[];
+  recommendedSpecialists?: SpecialistDomain[];
+  executionHints?: string[];
+  compressionHints?: string[];
   metadata?: Record<string, string>;
   safety?: SkillSafetyEvaluationRecord;
 }
@@ -375,6 +380,11 @@ export interface LocalSkillSuggestionRecord {
   specialistAffinity?: string[];
   preferredMinistries?: WorkerDomain[];
   preferredConnectors?: string[];
+  allowedTools?: string[];
+  triggers?: string[];
+  recommendedSpecialists?: SpecialistDomain[];
+  executionHints?: string[];
+  compressionHints?: string[];
 }
 
 export type SkillSearchStatus = 'not-needed' | 'suggested' | 'auto-installed' | 'blocked';

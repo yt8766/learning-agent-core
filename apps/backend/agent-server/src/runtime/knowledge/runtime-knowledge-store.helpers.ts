@@ -10,6 +10,8 @@ import type {
   KnowledgeStoreRecord
 } from '@agent/shared';
 import { loadSettings } from '@agent/config';
+import { resolveRuntimeEmbeddingApiKey } from '@agent/model';
+import { createKnowledgeEmbeddingProvider } from './runtime-knowledge-models';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 
@@ -116,21 +118,11 @@ export async function embedChunk(
   version: string
 ): Promise<KnowledgeEmbeddingRecord> {
   const now = new Date().toISOString();
-  if (!settings.zhipuApiKey) {
-    return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_zhipu_api_key');
+  if (!resolveRuntimeEmbeddingApiKey(settings)) {
+    return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_embedding_api_key');
   }
   try {
-    const response = await fetch(settings.embeddings.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.zhipuApiKey}`
-      },
-      body: JSON.stringify({ model: settings.embeddings.model, input: chunk.content })
-    });
-    if (!response.ok) throw new Error(`embedding_http_${response.status}`);
-    const payload = (await response.json()) as { data?: Array<{ embedding?: number[] }> };
-    const vector = payload.data?.[0]?.embedding;
+    const vector = await createKnowledgeEmbeddingProvider(settings).embedQuery(chunk.content);
     if (!vector?.length) throw new Error('empty_embedding');
     return {
       id: `embedding_${hashText(chunk.id)}`,

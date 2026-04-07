@@ -13,6 +13,9 @@ const EVENT_LABELS: Record<string, string> = {
   research_progress: 'Research 进展',
   tool_selected: '工具选择',
   tool_called: '工具调用',
+  tool_stream_detected: '流式工具已识别',
+  tool_stream_dispatched: '流式工具已派发',
+  tool_stream_completed: '流式工具已完成',
   interrupt_pending: '阻塞式中断确认',
   interrupt_resumed: '中断已恢复',
   interrupt_rejected_with_feedback: '中断已打回',
@@ -23,6 +26,9 @@ const EVENT_LABELS: Record<string, string> = {
   learning_pending_confirmation: '等待学习确认',
   learning_confirmed: '学习已确认',
   conversation_compacted: '对话已压缩',
+  context_compaction_applied: '上下文压缩已应用',
+  context_compaction_retried: '上下文压缩后重试',
+  dream_task_completed: '梦修纂已完成',
   assistant_message: 'Agent 回复',
   session_finished: '会话完成',
   session_failed: '会话失败'
@@ -46,6 +52,9 @@ function getInterruptEventLabel(eventItem: ChatEventRecord) {
     if (payload.interactionKind === 'plan-question') {
       return '等待方案澄清';
     }
+    if (payload.watchdog === true || payload.runtimeGovernanceReasonCode) {
+      return '运行时治理中断';
+    }
     return interruptMode === 'non-blocking' ? '非阻塞式中断建议' : '阻塞式中断确认';
   }
   if (eventItem.type === 'approval_resolved' || eventItem.type === 'interrupt_resumed') {
@@ -66,12 +75,26 @@ function getEventSummary(eventItem: ChatEventRecord) {
   const payload = eventItem.payload ?? {};
   const candidateCount = Array.isArray(payload.candidates) ? payload.candidates.length : 0;
   const condensedMessageCount = typeof payload.condensedMessageCount === 'number' ? payload.condensedMessageCount : 0;
+  const toolName = asString(payload.toolName);
+  const mode = asString(payload.mode);
+  const reasonCode = asString(payload.reasonCode) || asString(payload.runtimeGovernanceReasonCode);
+  const reactiveRetryCount = typeof payload.reactiveRetryCount === 'number' ? payload.reactiveRetryCount : undefined;
 
   return (
     asString(payload.content) ||
     asString(payload.summary) ||
     asString(payload.reason) ||
     asString(payload.error) ||
+    (eventItem.type === 'tool_stream_detected' && toolName ? `${toolName} 已进入流式调度队列` : '') ||
+    (eventItem.type === 'tool_stream_dispatched' && toolName ? `${toolName} 已派发执行` : '') ||
+    (eventItem.type === 'tool_stream_completed' && toolName ? `${toolName} 已完成并回流结果` : '') ||
+    (eventItem.type === 'context_compaction_applied'
+      ? `已执行上下文压缩${reasonCode ? ` · ${reasonCode}` : ''}`
+      : '') ||
+    (eventItem.type === 'context_compaction_retried'
+      ? `触发应急压缩并重试${typeof reactiveRetryCount === 'number' ? ` · 第 ${reactiveRetryCount} 次` : ''}`
+      : '') ||
+    (eventItem.type === 'dream_task_completed' ? `梦修纂已完成${mode ? ` · ${mode}` : ''}` : '') ||
     (condensedMessageCount > 0 ? `已压缩 ${condensedMessageCount} 条较早消息` : '') ||
     (candidateCount > 0 ? `产生 ${candidateCount} 个学习候选` : '') ||
     '事件已记录'
@@ -80,12 +103,21 @@ function getEventSummary(eventItem: ChatEventRecord) {
 
 function getEventMeta(eventItem: ChatEventRecord) {
   const payload = eventItem.payload ?? {};
+  const toolName = asString(payload.toolName);
+  const mode = asString(payload.mode);
+  const reasonCode = asString(payload.reasonCode) || asString(payload.runtimeGovernanceReasonCode);
   const parts = [
     asString(payload.from) ? `来源：${AGENT_LABELS[asString(payload.from)] ?? asString(payload.from)}` : '',
     asString(payload.node) ? `节点：${asString(payload.node)}` : '',
     asString(payload.intent) ? `意图：${asString(payload.intent)}` : '',
+    toolName ? `工具：${toolName}` : '',
+    asString(payload.scheduling) ? `调度：${asString(payload.scheduling)}` : '',
     asString(payload.interactionKind) === 'plan-question' ? '交互：计划提问' : '',
+    asString(payload.interactionKind) === 'supplemental-input' ? '交互：补充输入' : '',
     asString(payload.decision) ? `结果：${asString(payload.decision)}` : '',
+    reasonCode ? `原因：${reasonCode}` : '',
+    asString(payload.stage) ? `压缩层：${asString(payload.stage)}` : '',
+    mode ? `学习模式：${mode}` : '',
     payload.interruptSource === 'graph' ? '中断来源：图内' : '',
     payload.interruptSource === 'tool' ? '中断来源：工具内' : '',
     payload.interruptMode === 'blocking' ? '模式：阻塞式' : '',

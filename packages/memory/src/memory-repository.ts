@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
 import { MemoryRecord } from '@agent/shared';
+import type { VectorIndexRepository } from './vector-index-repository';
 
 export interface MemoryRepository {
   append(record: MemoryRecord): Promise<void>;
@@ -25,9 +26,14 @@ export interface MemoryRepository {
 
 export class FileMemoryRepository implements MemoryRepository {
   private readonly filePath: string;
+  private vectorIndexRepository?: VectorIndexRepository;
 
   constructor(filePath = loadSettings().memoryFilePath) {
     this.filePath = resolve(filePath);
+  }
+
+  setVectorIndexRepository(repository: VectorIndexRepository) {
+    this.vectorIndexRepository = repository;
   }
 
   async append(record: MemoryRecord): Promise<void> {
@@ -35,6 +41,7 @@ export class FileMemoryRepository implements MemoryRepository {
     const existing = await readFile(this.filePath, 'utf8').catch(() => '');
     const prefix = existing.trim().length > 0 ? '\n' : '';
     await appendFile(this.filePath, `${prefix}${JSON.stringify(record)}`, 'utf8');
+    await this.vectorIndexRepository?.upsertMemory(record);
   }
 
   async list(): Promise<MemoryRecord[]> {
@@ -95,6 +102,7 @@ export class FileMemoryRepository implements MemoryRepository {
     target.quarantineEvidenceRefs = evidenceRefs;
     target.quarantinedAt = new Date().toISOString();
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('memory', target.id);
     return target;
   }
 
@@ -109,6 +117,7 @@ export class FileMemoryRepository implements MemoryRepository {
     target.invalidatedAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('memory', target.id);
     return target;
   }
 
@@ -124,6 +133,7 @@ export class FileMemoryRepository implements MemoryRepository {
     target.supersededAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('memory', target.id);
     return target;
   }
 
@@ -138,6 +148,7 @@ export class FileMemoryRepository implements MemoryRepository {
     target.retiredAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('memory', target.id);
     return target;
   }
 
@@ -163,6 +174,7 @@ export class FileMemoryRepository implements MemoryRepository {
     target.quarantineEvidenceRefs = undefined;
     target.quarantinedAt = undefined;
     await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.upsertMemory(target);
     return target;
   }
 

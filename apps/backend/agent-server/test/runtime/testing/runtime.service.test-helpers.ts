@@ -1,5 +1,82 @@
 import { vi } from 'vitest';
 
+vi.mock('../../../src/runtime/knowledge/runtime-knowledge-store', () => ({
+  ingestLocalKnowledge: vi.fn(async () => ({
+    stores: [
+      { id: 'wenyuan-store', store: 'wenyuan', displayName: '文渊阁', status: 'active' },
+      { id: 'cangjing-store', store: 'cangjing', displayName: '藏经阁', status: 'active' }
+    ],
+    searchableDocumentCount: 1,
+    blockedDocumentCount: 0,
+    sourceCount: 2,
+    chunkCount: 4,
+    embeddingCount: 2,
+    latestReceipts: [{ id: 'receipt-1' }]
+  })),
+  readKnowledgeOverview: vi.fn(async () => ({
+    stores: [
+      { id: 'wenyuan-store', store: 'wenyuan', displayName: '文渊阁', status: 'active' },
+      { id: 'cangjing-store', store: 'cangjing', displayName: '藏经阁', status: 'active' }
+    ],
+    searchableDocumentCount: 1,
+    blockedDocumentCount: 0,
+    sourceCount: 2,
+    chunkCount: 4,
+    embeddingCount: 2,
+    latestReceipts: [{ id: 'receipt-1' }]
+  }))
+}));
+
+vi.mock('../../../src/runtime/helpers/prompt-regression-summary', () => ({
+  loadPromptRegressionConfigSummary: vi.fn(async () => ({
+    configPath: 'packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml',
+    promptCount: 4,
+    promptSuiteCount: 2,
+    testCount: 6,
+    providerCount: 1,
+    suites: [
+      {
+        suiteId: 'supervisor-plan',
+        label: 'Supervisor Plan',
+        promptIds: ['supervisor-plan-v1'],
+        versions: ['v1'],
+        promptCount: 1
+      },
+      {
+        suiteId: 'hubu-research',
+        label: 'Hubu Research',
+        promptIds: ['hubu-research-v1'],
+        versions: ['v1'],
+        promptCount: 1
+      }
+    ]
+  }))
+}));
+
+vi.mock('../../../src/runtime/skills/runtime-skill-sources.service', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../../src/runtime/skills/runtime-skill-sources.service')>();
+  return {
+    ...actual,
+    listSkillSources: vi.fn(async () => []),
+    listSkillManifests: vi.fn(async () => []),
+    searchLocalSkillSuggestions: vi.fn(async () => ({
+      suggestions: [],
+      gapSummary: undefined,
+      profile: 'platform',
+      usedInstalledSkills: []
+    }))
+  };
+});
+
+vi.mock('../../../src/runtime/skills/runtime-skill-install.service', async importOriginal => {
+  const actual = await importOriginal<typeof import('../../../src/runtime/skills/runtime-skill-install.service')>();
+  return {
+    ...actual,
+    readInstalledSkillRecords: vi.fn(async () => []),
+    readSkillInstallReceipts: vi.fn(async () => [])
+  };
+});
+
 import { RuntimeService } from '../../../src/runtime/runtime.service';
 
 /** RuntimeService keeps collaborators private; tests assign mocks without intersecting class private fields (TS would yield `never`). */
@@ -9,6 +86,8 @@ type RuntimeServiceCollaboratorMocks = {
   memoryRepository: any;
   ruleRepository: any;
   skillRegistry: any;
+  skillSourceSyncService?: any;
+  remoteSkillDiscoveryService?: any;
   runtimeStateRepository: any;
   mcpServerRegistry?: any;
   mcpCapabilityRegistry?: any;
@@ -23,6 +102,23 @@ export type ConnectorsCenterItem = Awaited<ReturnType<RuntimeService['getConnect
 export const createService = () => {
   const service = new RuntimeService();
   const c = collaborators(service);
+  (service as any).settings.dailyTechBriefing = {
+    ...(service as any).settings.dailyTechBriefing,
+    enabled: false
+  };
+  (service as any).settings.zhipuApiKey = '';
+  (service as any).settings.embeddings = {
+    ...(service as any).settings.embeddings,
+    apiKey: ''
+  };
+  (service as any).settings.mcp = {
+    ...(service as any).settings.mcp,
+    bigmodelApiKey: ''
+  };
+  (service as any).settings.providerAudit = {
+    ...(service as any).settings.providerAudit,
+    adapters: []
+  };
 
   c.orchestrator = {
     initialize: vi.fn(async () => undefined),
@@ -100,6 +196,19 @@ export const createService = () => {
     disable: vi.fn(async id => ({ id, status: 'disabled' })),
     restore: vi.fn(async id => ({ id, status: 'lab' })),
     retire: vi.fn(async id => ({ id, status: 'disabled', retiredAt: '2026-03-24T00:00:00.000Z' }))
+  };
+
+  c.skillSourceSyncService = {
+    readCachedSyncState: vi.fn(async () => undefined),
+    readCachedManifests: vi.fn(async () => []),
+    syncSource: vi.fn(async () => ({ status: 'ok' }))
+  };
+
+  c.remoteSkillDiscoveryService = {
+    discover: vi.fn(async () => ({
+      capabilityGapDetected: false,
+      suggestions: []
+    }))
   };
 
   c.ruleRepository = {

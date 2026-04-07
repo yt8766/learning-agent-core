@@ -49,6 +49,27 @@ export interface ApprovalPolicyRecord {
   matchedCount?: number;
 }
 
+export interface ApprovalScopePolicyRecord {
+  id: string;
+  scope: 'session' | 'always';
+  status: 'active' | 'revoked';
+  matchKey: string;
+  actor?: string;
+  sourceDomain?: string;
+  intent?: string;
+  toolName?: string;
+  riskCode?: string;
+  requestedBy?: string;
+  commandPreview?: string;
+  approvalScope?: 'once' | 'session' | 'always';
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  lastMatchedAt?: string;
+  matchCount?: number;
+}
+
 export interface ProfilePolicyHintRecord {
   enabledByProfile: boolean;
   recommendedForProfiles: Array<'platform' | 'company' | 'personal' | 'cli'>;

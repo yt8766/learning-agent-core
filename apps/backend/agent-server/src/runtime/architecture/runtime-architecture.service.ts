@@ -69,30 +69,49 @@ export class RuntimeArchitectureService {
 function buildMermaid(descriptor: ArchitectureDescriptor): string {
   const lines = [`flowchart ${descriptor.direction}`];
   descriptor.subgraphs.forEach(subgraph => {
-    lines.push(`subgraph ${safeId(subgraph.id)}["${escapeLabel(subgraph.title)}"]`);
+    lines.push(`subgraph ${safeSubgraphId(subgraph.id)} [${escapeSubgraphTitle(subgraph.title)}]`);
     descriptor.nodes
       .filter(node => node.subgraphId === subgraph.id)
-      .forEach(node => lines.push(`  ${safeId(node.id)}["${escapeLabel(node.label)}"]`));
+      .forEach(node => lines.push(`  ${safeNodeId(node.id)}["${escapeNodeLabel(node.label)}"]`));
     lines.push('end');
   });
 
   descriptor.nodes
     .filter(node => !node.subgraphId)
-    .forEach(node => lines.push(`${safeId(node.id)}["${escapeLabel(node.label)}"]`));
+    .forEach(node => lines.push(`${safeNodeId(node.id)}["${escapeNodeLabel(node.label)}"]`));
 
   descriptor.edges.forEach(edge => {
     const connector = edge.style === 'dashed' ? '-.->' : '-->';
-    const label = edge.label ? `|"${escapeLabel(edge.label)}"|` : '';
-    lines.push(`${safeId(edge.from)} ${connector}${label} ${safeId(edge.to)}`);
+    const label = edge.label ? `|${escapeEdgeLabel(edge.label)}|` : '';
+    lines.push(`${safeNodeId(edge.from)} ${connector}${label} ${safeNodeId(edge.to)}`);
   });
 
   return lines.join('\n');
 }
 
-function safeId(value: string) {
-  return value.replace(/[^a-zA-Z0-9_-]/g, '_');
+function toMermaidToken(value: string) {
+  return value.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
-function escapeLabel(value: string) {
-  return value.replace(/"/g, '&quot;').replace(/\n/g, '<br/>');
+function safeNodeId(value: string) {
+  return `node_${toMermaidToken(value)}`;
+}
+
+function safeSubgraphId(value: string) {
+  return `group_${toMermaidToken(value)}`;
+}
+
+function escapeNodeLabel(value: string) {
+  return value.replace(/"/g, "'").replace(/\|/g, '/').replace(/\n/g, '<br/>');
+}
+
+function escapeEdgeLabel(value: string) {
+  return value.replace(/"/g, "'").replace(/\|/g, '/').replace(/\n/g, ' / ');
+}
+
+function escapeSubgraphTitle(value: string) {
+  return value
+    .replace(/[[\]"]/g, '')
+    .replace(/\|/g, '/')
+    .replace(/\n/g, ' ');
 }

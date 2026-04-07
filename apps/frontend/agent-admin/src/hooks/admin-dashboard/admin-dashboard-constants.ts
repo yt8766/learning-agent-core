@@ -168,6 +168,12 @@ export function toApprovalItems(consoleData: PlatformConsoleRecord | null): Appr
         reason: task.pendingApproval?.reason ?? task.activeInterrupt?.reason ?? approval.reason,
         reasonCode:
           task.pendingApproval?.reasonCode ??
+          (task.activeInterrupt?.payload &&
+          typeof task.activeInterrupt.payload === 'object' &&
+          typeof (task.activeInterrupt.payload as { runtimeGovernanceReasonCode?: unknown })
+            .runtimeGovernanceReasonCode === 'string'
+            ? (task.activeInterrupt.payload as { runtimeGovernanceReasonCode: string }).runtimeGovernanceReasonCode
+            : undefined) ??
           (task.activeInterrupt?.kind === 'tool-approval' ? 'requires_approval_tool_policy' : undefined),
         toolName: task.pendingApproval?.toolName ?? task.activeInterrupt?.toolName,
         riskLevel: task.pendingApproval?.riskLevel ?? task.activeInterrupt?.riskLevel,
@@ -178,7 +184,27 @@ export function toApprovalItems(consoleData: PlatformConsoleRecord | null): Appr
         interruptSource: task.activeInterrupt?.source,
         interruptMode: task.activeInterrupt?.mode,
         resumeStrategy: task.activeInterrupt?.resumeStrategy,
-        preview: task.pendingApproval?.preview ?? task.activeInterrupt?.preview
+        preview: task.pendingApproval?.preview ?? task.activeInterrupt?.preview,
+        approvalScope:
+          task.activeInterrupt?.payload &&
+          typeof task.activeInterrupt.payload === 'object' &&
+          ((task.activeInterrupt.payload as { approvalScope?: unknown }).approvalScope === 'once' ||
+            (task.activeInterrupt.payload as { approvalScope?: unknown }).approvalScope === 'session' ||
+            (task.activeInterrupt.payload as { approvalScope?: unknown }).approvalScope === 'always')
+            ? (task.activeInterrupt.payload as { approvalScope: 'once' | 'session' | 'always' }).approvalScope
+            : undefined,
+        commandPreview:
+          task.activeInterrupt?.payload &&
+          typeof task.activeInterrupt.payload === 'object' &&
+          typeof (task.activeInterrupt.payload as { commandPreview?: unknown }).commandPreview === 'string'
+            ? (task.activeInterrupt.payload as { commandPreview: string }).commandPreview
+            : undefined,
+        riskReason:
+          task.activeInterrupt?.payload &&
+          typeof task.activeInterrupt.payload === 'object' &&
+          typeof (task.activeInterrupt.payload as { riskReason?: unknown }).riskReason === 'string'
+            ? (task.activeInterrupt.payload as { riskReason: string }).riskReason
+            : undefined
       }))
   );
 }

@@ -4,11 +4,7 @@ import { describeConnectorProfilePolicy } from '@agent/agent-core';
 import { SkillCard } from '@agent/shared';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from './helpers/runtime-connector-registry';
-import {
-  runBackgroundRunnerTick,
-  startBackgroundRunnerLoop,
-  type RuntimeBackgroundRunnerContext
-} from './helpers/runtime-background-runner';
+import { type RuntimeBackgroundRunnerContext } from './helpers/runtime-background-runner';
 import { fetchProviderUsageAudit, type ProviderAuditSyncResult } from './helpers/provider-audit';
 import { RemoteSkillDiscoveryService } from './skills/remote-skill-discovery.service';
 import { SkillArtifactFetcher } from './skills/skill-artifact-fetcher';
@@ -28,6 +24,8 @@ import { RuntimeSessionService } from './services/runtime-session.service';
 import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.service';
 import { RuntimeTaskService } from './services/runtime-task.service';
 import { RuntimeWenyuanFacade } from './wenyuan/runtime-wenyuan-facade';
+import { RuntimeTechBriefingService } from './briefings/runtime-tech-briefing.service';
+import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
 import {
   bindServiceMethods,
   CENTER_METHOD_NAMES,
@@ -77,11 +75,15 @@ export class RuntimeService implements OnModuleInit {
   private readonly skillCatalogService: RuntimeSkillCatalogService;
   private readonly taskService: RuntimeTaskService;
   private readonly wenyuanFacade: RuntimeWenyuanFacade;
+  private readonly techBriefingService: RuntimeTechBriefingService;
+  private readonly scheduleService: RuntimeScheduleService;
 
   constructor(
     private readonly runtimeHost: RuntimeHost = new RuntimeHost(),
     operationalState?: RuntimeOperationalStateService,
     bootstrapService?: RuntimeBootstrapService,
+    techBriefingService?: RuntimeTechBriefingService,
+    scheduleService?: RuntimeScheduleService,
     centersService?: RuntimeCentersService,
     sessionService?: RuntimeSessionService,
     knowledgeService?: RuntimeKnowledgeService,
@@ -108,6 +110,18 @@ export class RuntimeService implements OnModuleInit {
     this.skillSourceSyncService = runtimeHost.skillSourceSyncService;
     this.remoteSkillDiscoveryService = runtimeHost.remoteSkillDiscoveryService;
     this.skillArtifactFetcher = runtimeHost.skillArtifactFetcher;
+    this.techBriefingService =
+      techBriefingService ??
+      new RuntimeTechBriefingService(() => ({
+        settings: this.settings,
+        mcpClientManager: this.mcpClientManager
+      }));
+    this.scheduleService =
+      scheduleService ??
+      new RuntimeScheduleService(() => ({
+        settings: this.settings,
+        techBriefingService: this.techBriefingService
+      }));
     this.wenyuanFacade = new RuntimeWenyuanFacade(() => ({
       settings: this.settings,
       memoryRepository: this.memoryRepository,
@@ -124,6 +138,8 @@ export class RuntimeService implements OnModuleInit {
         getSkillSourcesContext: () => this.getSkillSourcesContext(),
         syncInstalledSkillWorkers: () => this.syncInstalledSkillWorkers(),
         applyStoredGovernanceOverrides: () => this.applyStoredGovernanceOverrides(),
+        initializeDailyTechBriefing: () => this.techBriefingService.initializeSchedule().then(() => undefined),
+        initializeScheduleRunner: () => this.scheduleService.initialize(),
         getBackgroundRunnerContext: () => this.getBackgroundRunnerContext()
       }));
     this.centersService = centersService ?? new RuntimeCentersService(() => this.getCentersContext());

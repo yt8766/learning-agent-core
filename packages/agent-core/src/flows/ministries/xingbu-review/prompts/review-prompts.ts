@@ -1,4 +1,4 @@
-import { buildStructuredPrompt } from '../../../../shared/prompts/prompt-template';
+import { buildStructuredPrompt } from '../../../../utils/prompts/prompt-template';
 
 export const XINGBU_REVIEW_SYSTEM_PROMPT = buildStructuredPrompt({
   role: '刑部尚书',

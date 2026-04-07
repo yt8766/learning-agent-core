@@ -37,6 +37,14 @@ describe('ChatCapabilityIntentsService', () => {
     };
     const runtimeCentersService = {
       getConnectorsCenter: vi.fn(async () => []),
+      installRemoteSkill: vi.fn(async (dto: any) => ({
+        id: 'receipt-lark-cli',
+        status: 'installed',
+        phase: 'completed',
+        skillId: 'remote-larksuite-cli-cli',
+        skillName: dto.skillName ?? 'cli',
+        repo: dto.repo
+      })),
       getToolsCenter: vi.fn(() => ({
         totalTools: 2,
         familyCount: 1,
@@ -256,6 +264,101 @@ describe('ChatCapabilityIntentsService', () => {
     );
   });
 
+  it('不会把包含 skill 字样的周报请求误识别为 create-skill', async () => {
+    const { service, runtimeSkillCatalogService } = createService();
+
+    const result = await service.tryHandle('session-1', {
+      message:
+        '1. Gosh 后台参考上面的生成我当前完成任务的周报。这个草稿会先做上下文理解，再根据缺失能力选择 skill / MCP / 审批链路。'
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        card: expect.objectContaining({
+          type: 'capability_catalog'
+        })
+      })
+    );
+    expect(runtimeSkillCatalogService.createUserSkillDraft).not.toHaveBeenCalled();
+  });
+
+  it('自然语言安装远程 skill 时会直接走 installRemoteSkill，而不是回落到普通聊天', async () => {
+    const { service, runtimeCentersService, runtimeSessionService } = createService();
+
+    const result = await service.tryHandle('session-1', {
+      message: '帮我安装 larksuite/cli'
+    });
+
+    expect(runtimeCentersService.installRemoteSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: 'larksuite/cli',
+        actor: 'agent-chat-user',
+        triggerReason: 'user_requested'
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        role: 'assistant',
+        content: expect.stringContaining('已安装完成'),
+        card: expect.objectContaining({
+          type: 'capability_catalog',
+          title: 'Skill 已安装'
+        })
+      })
+    );
+    expect(runtimeSessionService.appendInlineCapabilityResponse).toHaveBeenCalled();
+  });
+
+  it('支持从 npx skills add 命令文本中解析远程 skill 安装目标', async () => {
+    const { service, runtimeCentersService } = createService();
+
+    await service.tryHandle('session-1', {
+      message: '请执行 npx skills add larksuite/cli -y -g'
+    });
+
+    expect(runtimeCentersService.installRemoteSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: 'larksuite/cli'
+      })
+    );
+  });
+
+  it('远程 skill 安装失败时会返回失败态卡片而不是继续显示安装中', async () => {
+    const { service, runtimeCentersService } = createService();
+    runtimeCentersService.installRemoteSkill = vi.fn(async () => ({
+      id: 'receipt-lark-cli-failed',
+      status: 'failed',
+      phase: 'failed',
+      skillId: 'remote-larksuite-cli',
+      repo: 'larksuite/cli',
+      failureCode: 'Command failed: npx skills add larksuite/cli -g -y'
+    }));
+
+    const result = await service.tryHandle('session-1', {
+      message: '帮我安装 larksuite/cli'
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        content: expect.stringContaining('安装失败'),
+        card: expect.objectContaining({
+          type: 'capability_catalog',
+          title: 'Skill 安装失败',
+          groups: [
+            expect.objectContaining({
+              items: [
+                expect.objectContaining({
+                  status: 'failed',
+                  blockedReason: 'Command failed: npx skills add larksuite/cli -g -y'
+                })
+              ]
+            })
+          ]
+        })
+      })
+    );
+  });
+
   it('列出 tools 时返回按 family 分组的 catalog', async () => {
     const { service, runtimeToolsService } = createService();
 
@@ -266,6 +369,7 @@ describe('ChatCapabilityIntentsService', () => {
     expect(runtimeToolsService.getToolsCenter).toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
+        content: expect.stringContaining('当前可见 2 个工具'),
         card: expect.objectContaining({
           type: 'capability_catalog',
           title: '当前 Tools',
@@ -276,6 +380,24 @@ describe('ChatCapabilityIntentsService', () => {
               items: expect.arrayContaining([expect.objectContaining({ id: 'read_local_file', family: 'filesystem' })])
             })
           ]
+        })
+      })
+    );
+  });
+
+  it('会将“现在有什么工具”识别为快速工具清单意图', async () => {
+    const { service, runtimeToolsService } = createService();
+
+    const result = await service.tryHandle('session-1', {
+      message: '现在有什么工具可以用？'
+    });
+
+    expect(runtimeToolsService.getToolsCenter).toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        content: expect.stringContaining('当前可见 2 个工具'),
+        card: expect.objectContaining({
+          title: '当前 Tools'
         })
       })
     );

@@ -133,6 +133,55 @@ flowchart TD
 - `Capability Pool` 采用单节点总览表达，表示统一能力治理；具体五层池不在主图中拆成 5 个独立子图。
 - `LearningRecorder -> agent-admin` 表示学习沉淀默认服务后台治理，不默认回给用户。
 
+### LangGraph 状态约束补充
+
+在 `agent-core` 的 graph 实现里，需要明确区分：
+
+- `zod`
+  - 负责输出对象、协议字段、结构化结果的“格式正确性”
+  - 重点回答：这份数据是否合法、字段对不对、枚举值对不对
+- `Annotation`
+  - 负责 LangGraph 中 state 字段“如何存储和合并”
+  - 重点回答：这个字段要不要进 state、跨节点怎么传、重入时如何累积
+
+简化理解：
+
+- `zod = 数据格式层`
+- `Annotation = 图状态层`
+
+### `agent-core` 目录收敛
+
+当前 `packages/agent-core/src` 的推荐阅读与组织方式固定为：
+
+- `graphs/`
+  - 顶层 graph 入口：`chat / learning / recovery / main-route`
+  - graph 文件默认只保留状态定义与边编排，不直接堆叠节点业务实现
+  - `main/` 只负责主编排图
+  - `main/task/`：任务创建、上下文、运行态
+  - `main/lifecycle/`：快照、审批、后台协作、学习协作
+  - `main/background/`：background lease 与 learning jobs runtime
+  - `main/knowledge/`：citation / freshness / diagnosis evidence
+  - `main/orchestration/`：bridge、execution helper
+  - `main/pipeline/`：plan / research / execute / review / interrupt
+- `flows/`
+  - 负责“谁执行、怎么执行”
+- `runtime/`
+  - 负责“怎么装配整个系统”
+- `session/`
+  - 负责“聊天会话怎么驱动任务”
+- `shared/`
+  - 只保留跨模块 prompt/schema/contract
+- `utils/`
+  - 只保留纯工具，不承载主控制流
+
+收敛原则：
+
+- `graphs` 目录优先表达状态机与编排阶段，不承载通用工具
+- graph 节点默认实现、handler fallback 与业务逻辑优先放入 `flows/*`
+- `flows` 目录优先表达六部/首辅的执行语义
+- `runtime` 与 `session` 不应回填 graph 内部细节实现
+- `src/index.ts` 只导出稳定公共入口，不继续暴露 `graphs/main/*` 内部碎片
+
 ## 3. 运行闭环
 
 当前和后续都应优先维持这个闭环：
@@ -500,6 +549,7 @@ src/
 ├─ runtime/
 ├─ session/
 ├─ shared/
+├─ utils/
 ├─ workflows/
 └─ types/
 ```
@@ -511,6 +561,7 @@ src/
 - `graphs/` 只放图定义与编排入口
 - `session/` 负责会话、checkpoint、事件流持久化
 - `shared/` 放跨流程复用的事件映射、schema、prompt 与工具
+- `utils/` 放纯函数型通用工具，例如 parser、formatter、matcher、normalizer；不承载 service 和运行时状态
 - `workflows/` 负责预设工作流和能力组合，不与底层 graph 定义混放
 
 ## 10. Skills 目录分层

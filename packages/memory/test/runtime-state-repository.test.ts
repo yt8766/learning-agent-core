@@ -54,7 +54,11 @@ describe('FileRuntimeStateRepository', () => {
         connectorPolicyOverrides: [],
         capabilityPolicyOverrides: [],
         capabilityGovernanceProfiles: [],
+        ministryGovernanceProfiles: [],
+        specialistGovernanceProfiles: [],
+        workerGovernanceProfiles: [],
         counselorSelectorConfigs: [],
+        approvalScopePolicies: [],
         learningConflictScan: {
           scannedAt: '',
           conflictPairs: [],
@@ -104,7 +108,11 @@ describe('FileRuntimeStateRepository', () => {
         connectorPolicyOverrides: [],
         capabilityPolicyOverrides: [],
         capabilityGovernanceProfiles: [],
+        ministryGovernanceProfiles: [],
+        specialistGovernanceProfiles: [],
+        workerGovernanceProfiles: [],
         counselorSelectorConfigs: [],
+        approvalScopePolicies: [],
         learningConflictScan: {
           scannedAt: '',
           conflictPairs: [],

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AgentRole, TaskStatus, type TaskRecord } from '@agent/shared';
 
-import { runReviewStage } from '../../../../src/graphs/main/pipeline/main-graph-pipeline-review';
+import { runReviewStage } from '../../../../src/flows/ministries/review-stage-nodes';
 
 function createTask(): TaskRecord {
   const now = '2026-03-31T00:00:00.000Z';

@@ -149,10 +149,13 @@ export async function installRemoteSkillWithGovernance(input: {
     throw new NotFoundException('Skill source skills-sh-directory is disabled');
   }
 
-  const skillName = input.dto.skillName?.trim() || deriveSkillNameFromRepo(input.dto.repo);
-  const skillId = `remote-${sanitizeId(input.dto.repo)}-${sanitizeId(skillName)}`;
+  const explicitSkillName = input.dto.skillName?.trim();
+  const skillId = explicitSkillName
+    ? `remote-${sanitizeId(input.dto.repo)}-${sanitizeId(explicitSkillName)}`
+    : `remote-${sanitizeId(input.dto.repo)}`;
   const installCommand =
-    input.dto.installCommand ?? buildSkillsAddCommand({ repo: normalizeRepoForInstall(input.dto.repo), skillName });
+    input.dto.installCommand ??
+    buildSkillsAddCommand({ repo: normalizeRepoForInstall(input.dto.repo), skillName: explicitSkillName });
   const requiresApproval = input.dto.actor !== 'agent-chat-user' && source.trustClass !== 'internal';
   const receipt: SkillInstallReceipt = {
     id: `receipt_${skillId}_${Date.now()}`,
@@ -165,7 +168,7 @@ export async function installRemoteSkillWithGovernance(input: {
     approvedBy: requiresApproval ? undefined : (input.dto.actor ?? 'system'),
     reason: input.dto.summary,
     repo: input.dto.repo,
-    skillName,
+    skillName: explicitSkillName,
     detailsUrl: input.dto.detailsUrl,
     installCommand,
     triggerReason: input.dto.triggerReason

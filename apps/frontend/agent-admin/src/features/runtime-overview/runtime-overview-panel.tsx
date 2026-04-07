@@ -19,6 +19,7 @@ export function RuntimeOverviewPanel(props: RuntimeOverviewPanelProps) {
         onRetryTask={props.onRetryTask}
         onRefreshRuntime={props.onRefreshRuntime}
         onCreateDiagnosisTask={props.onCreateDiagnosisTask}
+        onRevokeApprovalPolicy={props.onRevokeApprovalPolicy}
       />
       <RuntimeAnalyticsSection
         runtime={props.runtime}

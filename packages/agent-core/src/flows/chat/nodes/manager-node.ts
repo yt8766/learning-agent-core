@@ -17,7 +17,8 @@ import {
   sanitizeFinalUserReply,
   shapeFinalUserReply
 } from '../../delivery';
-import { sanitizeTaskContextForModel } from '../../../shared/prompts/runtime-output-sanitizer';
+import { shouldExtractSkillForTask } from '../../learning/learning-flow-task';
+import { sanitizeTaskContextForModel } from '../../../utils/prompts/runtime-output-sanitizer';
 import { BaseAgent } from '../base-agent';
 
 function appendTaskContext(content: string, taskContext?: string): string {
@@ -158,7 +159,14 @@ export class ManagerAgent extends BaseAgent {
       shouldRetry: review.decision === 'retry',
       shouldWriteMemory: review.decision !== 'blocked',
       shouldCreateRule: review.decision === 'blocked',
-      shouldExtractSkill: review.decision === 'approved',
+      shouldExtractSkill: shouldExtractSkillForTask(
+        {
+          goal: this.context.goal,
+          context: this.context.taskContext,
+          result: fallbackSummary ?? executionSummary
+        } as never,
+        { shouldExtractSkill: review.decision === 'approved' }
+      ),
       notes: review.notes
     };
     this.state.finalOutput = shapeFinalUserReply(

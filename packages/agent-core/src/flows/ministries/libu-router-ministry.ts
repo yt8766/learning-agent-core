@@ -17,7 +17,8 @@ import {
   sanitizeFinalUserReply,
   shapeFinalUserReply
 } from '../delivery';
-import { sanitizeTaskContextForModel } from '../../shared/prompts/runtime-output-sanitizer';
+import { sanitizeTaskContextForModel } from '../../utils/prompts/runtime-output-sanitizer';
+import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
 
 function appendTaskContext(content: string, taskContext?: string) {
   const sanitizedTaskContext = sanitizeTaskContextForModel(taskContext);
@@ -56,8 +57,10 @@ export class LibuRouterMinistry {
     let llmPlan: ManagerPlan | null = null;
     if (this.context.llm.isConfigured()) {
       try {
-        const output = await this.context.llm.generateObject(
-          [
+        const output = await withReactiveContextRetry({
+          context: this.context,
+          trigger: 'libu-plan',
+          messages: [
             {
               role: 'system',
               content: SUPERVISOR_PLAN_SYSTEM_PROMPT
@@ -67,22 +70,22 @@ export class LibuRouterMinistry {
               content: appendTaskContext(buildSupervisorPlanUserPrompt(this.context.goal), this.context.taskContext)
             }
           ],
-          SupervisorPlanSchema,
-          {
-            role: 'manager',
-            taskId: this.context.taskId,
-            modelId: this.context.currentWorker?.defaultModel,
-            budgetState: this.context.budgetState,
-            thinking: this.context.thinking.manager,
-            temperature: 0.1,
-            onUsage: usage => {
-              this.context.onUsage?.({
-                usage,
-                role: 'manager'
-              });
-            }
-          }
-        );
+          invoke: async messages =>
+            this.context.llm.generateObject(messages, SupervisorPlanSchema, {
+              role: 'manager',
+              taskId: this.context.taskId,
+              modelId: this.context.currentWorker?.defaultModel,
+              budgetState: this.context.budgetState,
+              thinking: this.context.thinking.manager,
+              temperature: 0.1,
+              onUsage: usage => {
+                this.context.onUsage?.({
+                  usage,
+                  role: 'manager'
+                });
+              }
+            })
+        });
         llmPlan = toManagerPlan(
           { taskId: this.context.taskId, goal: this.context.goal },
           output ?? buildFallbackSupervisorPlan({ taskId: this.context.taskId, goal: this.context.goal })

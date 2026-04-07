@@ -63,8 +63,16 @@ export class SessionCoordinatorThinking {
   async compressConversationIfNeeded(
     session: ChatSessionRecord,
     messages: ChatMessageRecord[],
-    onCompacted: (payload: Record<string, unknown>) => void
+    onCompacted: (payload: Record<string, unknown>) => void,
+    latestUserInput?: string
   ): Promise<boolean> {
-    return compressSessionConversationIfNeeded(this.llm, session, messages, onCompacted);
+    return compressSessionConversationIfNeeded(
+      this.llm,
+      this.contextStrategy,
+      session,
+      messages,
+      onCompacted,
+      latestUserInput
+    );
   }
 }

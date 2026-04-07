@@ -12,4 +12,5 @@ export type RuntimeSummarySectionProps = Pick<
   | 'onRetryTask'
   | 'onRefreshRuntime'
   | 'onCreateDiagnosisTask'
+  | 'onRevokeApprovalPolicy'
 >;

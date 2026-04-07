@@ -15,6 +15,11 @@ const READ_TOOL: ToolDefinition = {
   timeoutMs: 1000,
   sandboxProfile: 'workspace-readonly',
   capabilityType: 'local-tool',
+  isReadOnly: true,
+  isConcurrencySafe: true,
+  isDestructive: false,
+  supportsStreamingDispatch: true,
+  permissionScope: 'readonly',
   inputSchema: {}
 };
 
@@ -24,7 +29,12 @@ const WRITE_TOOL: ToolDefinition = {
   category: 'action',
   riskLevel: 'high',
   requiresApproval: true,
-  sandboxProfile: 'workspace-write'
+  sandboxProfile: 'workspace-write',
+  isReadOnly: false,
+  isConcurrencySafe: false,
+  isDestructive: false,
+  supportsStreamingDispatch: false,
+  permissionScope: 'workspace-write'
 };
 
 describe('execution-mode-guard', () => {

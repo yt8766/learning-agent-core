@@ -401,8 +401,9 @@ export interface LearningQueueItem {
   taskId: string;
   runId?: string;
   status: 'queued' | 'running' | 'completed' | 'failed';
+  mode?: 'task-learning' | 'dream-task';
   priority?: 'high' | 'normal';
-  reason?: 'high_risk_failure' | 'rollback' | 'timeout_defaulted' | 'blocked_review' | 'normal';
+  reason?: 'high_risk_failure' | 'rollback' | 'timeout_defaulted' | 'blocked_review' | 'normal' | 'dream-task';
   selectedCounselorId?: string;
   selectedVersion?: string;
   trace: ExecutionTrace[];

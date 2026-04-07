@@ -106,4 +106,29 @@ describe('ModelRouter', () => {
     expect(resolved.modelId).toBe('glm-4.7-flash');
     expect(resolved.reason).toContain('超预算');
   });
+
+  it('resolves preferred provider/model pairs and falls back to the first configured provider', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o']));
+    registry.register(new StubProvider('zhipu', 'ZhiPu', ['glm-5']));
+    const router = new ModelRouter(registry, {});
+
+    const explicit = router.resolve({ role: 'manager', preferredModelId: 'zhipu/glm-5' });
+    const fallback = router.resolve({ role: 'manager', preferredModelId: 'missing-model' });
+
+    expect(explicit.provider.providerId).toBe('zhipu');
+    expect(explicit.modelId).toBe('glm-5');
+    expect(explicit.reason).toContain('模型路由策略');
+    expect(fallback.provider.providerId).toBe('openai');
+    expect(fallback.modelId).toBe('gpt-4o');
+    expect(fallback.reason).toContain('回退到 OpenAI');
+  });
+
+  it('throws when no configured provider is available', () => {
+    const registry = new ProviderRegistry();
+    registry.register(new StubProvider('openai', 'OpenAI', ['gpt-4o'], false));
+    const router = new ModelRouter(registry, {});
+
+    expect(() => router.resolve({ role: 'manager' })).toThrow('No configured LLM provider available for role manager.');
+  });
 });

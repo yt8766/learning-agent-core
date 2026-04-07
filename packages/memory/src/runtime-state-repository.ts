@@ -10,6 +10,7 @@ import {
   ChatEventRecord,
   ChatMessageRecord,
   ChatSessionRecord,
+  ApprovalScopePolicyRecord,
   CapabilityGovernanceProfileRecord,
   GovernanceProfileRecord,
   CounselorSelectorConfig,
@@ -83,6 +84,7 @@ export interface RuntimeStateSnapshot {
     workerGovernanceProfiles?: GovernanceProfileRecord[];
     specialistGovernanceProfiles?: GovernanceProfileRecord[];
     counselorSelectorConfigs?: CounselorSelectorConfig[];
+    approvalScopePolicies?: ApprovalScopePolicyRecord[];
     learningConflictScan?: LearningConflictScanResult;
   };
   governanceAudit?: Array<{
@@ -96,7 +98,8 @@ export interface RuntimeStateSnapshot {
       | 'skill-install'
       | 'connector'
       | 'counselor-selector'
-      | 'learning-conflict';
+      | 'learning-conflict'
+      | 'approval-policy';
     targetId: string;
     outcome: 'success' | 'rejected' | 'pending';
     reason?: string;
@@ -205,6 +208,9 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
           counselorSelectorConfigs: Array.isArray(parsed.governance?.counselorSelectorConfigs)
             ? parsed.governance?.counselorSelectorConfigs
             : [],
+          approvalScopePolicies: Array.isArray(parsed.governance?.approvalScopePolicies)
+            ? parsed.governance?.approvalScopePolicies
+            : [],
           learningConflictScan:
             parsed.governance?.learningConflictScan && typeof parsed.governance.learningConflictScan === 'object'
               ? parsed.governance.learningConflictScan
@@ -245,6 +251,7 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
           workerGovernanceProfiles: [],
           specialistGovernanceProfiles: [],
           counselorSelectorConfigs: [],
+          approvalScopePolicies: [],
           learningConflictScan: {
             scannedAt: '',
             conflictPairs: [],

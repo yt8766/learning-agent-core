@@ -177,8 +177,11 @@ export class ExecutorAgent extends BaseAgent {
     );
 
     const toolRoute = this.context.mcpClientManager?.describeToolRoute(tool.name);
-    const approvalEvaluation = this.context.approvalService.evaluate(intent, tool, {
+    const approvalEvaluation = await this.context.approvalService.evaluateWithClassifier(intent, tool, {
       ...toolInput,
+      executionMode: this.context.executionMode,
+      currentMinistry: this.context.currentWorker?.ministry,
+      currentWorker: this.context.currentWorker?.id,
       serverId: toolRoute?.serverId,
       capabilityId: toolRoute?.capabilityId
     });
@@ -215,6 +218,26 @@ export class ExecutorAgent extends BaseAgent {
     const executionResult = this.context.mcpClientManager
       ? await this.context.mcpClientManager.invokeTool(tool.name, request)
       : await this.context.sandbox.execute(request);
+    if (
+      executionResult.errorMessage === 'watchdog_timeout' ||
+      executionResult.errorMessage === 'watchdog_interaction_required'
+    ) {
+      this.setStatus('waiting_approval');
+      const summary = `执行已暂停：${tool.name} 命中兵部看门狗，需要人工干预。${executionResult.outputSummary}`;
+      this.state.finalOutput = summary;
+      return {
+        intent,
+        toolName: tool.name,
+        tool,
+        requiresApproval: true,
+        summary,
+        serverId: toolRoute?.serverId,
+        capabilityId: toolRoute?.capabilityId,
+        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
+        approvalReason: executionResult.outputSummary,
+        approvalReasonCode: executionResult.errorMessage
+      };
+    }
     const enrichedExecution = await this.maybeReadSearchResult(
       tool.name,
       executionResult,

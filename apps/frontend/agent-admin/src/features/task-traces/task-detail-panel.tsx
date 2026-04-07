@@ -64,6 +64,20 @@ export function TaskDetailPanel({ bundle }: TaskDetailPanelProps) {
               <span>{bundle?.task.currentStep ?? '暂无'}</span>
             </li>
             <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
+              <strong className="text-foreground">节点战报</strong>
+              <span>
+                {bundle?.task.streamStatus?.detail
+                  ? `${bundle.task.streamStatus.nodeLabel ?? bundle.task.streamStatus.nodeId ?? '当前节点'} · ${
+                      bundle.task.streamStatus.detail
+                    }${
+                      typeof bundle.task.streamStatus.progressPercent === 'number'
+                        ? `（${bundle.task.streamStatus.progressPercent}%）`
+                        : ''
+                    }`
+                  : '暂无'}
+              </span>
+            </li>
+            <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
               <strong className="text-foreground">Workflow</strong>
               <span>
                 {bundle?.task.resolvedWorkflow
@@ -86,6 +100,16 @@ export function TaskDetailPanel({ bundle }: TaskDetailPanelProps) {
             <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
               <strong className="text-foreground">评审结论</strong>
               <ReviewTag review={bundle?.review} />
+            </li>
+            <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
+              <strong className="text-foreground">文书科压缩</strong>
+              <span>
+                {bundle?.task.contextFilterState?.filteredContextSlice.compressionApplied
+                  ? `${bundle.task.contextFilterState.filteredContextSlice.compressionSource ?? 'heuristic'} / ${
+                      bundle.task.contextFilterState.filteredContextSlice.compressedMessageCount ?? 0
+                    }`
+                  : '未触发'}
+              </span>
             </li>
           </ul>
           <Separator />

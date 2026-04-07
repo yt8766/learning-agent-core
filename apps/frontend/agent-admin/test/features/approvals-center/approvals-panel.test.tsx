@@ -21,6 +21,9 @@ describe('ApprovalsPanel render smoke', () => {
             reasonCode: 'requires_approval_destructive',
             toolName: 'write_local_file',
             riskLevel: 'high',
+            riskReason: '命中高危命令策略，需要人工确认。',
+            commandPreview: 'rm -rf /tmp/runtime-cache',
+            approvalScope: 'once',
             requestedBy: 'gongbu-code',
             interruptSource: 'graph',
             interruptMode: 'blocking',
@@ -48,12 +51,56 @@ describe('ApprovalsPanel render smoke', () => {
     expect(html).toContain('risk high');
     expect(html).toContain('gongbu-code');
     expect(html).toContain('破坏性操作');
+    expect(html).toContain('命中高危命令策略');
+    expect(html).toContain('rm -rf /tmp/runtime-cache');
+    expect(html).toContain('审批范围');
+    expect(html).toContain('仅本次');
     expect(html).toContain('图内发起');
     expect(html).toContain('阻塞式');
     expect(html).toContain('图中断恢复');
     expect(html).toContain('.env.local');
     expect(html).toContain('批准');
     expect(html).toContain('拒绝');
+  });
+
+  it('renders watchdog runtime-governance approvals with dedicated labels', () => {
+    const html = renderToStaticMarkup(
+      <ApprovalsPanel
+        approvals={[
+          {
+            taskId: 'task-watchdog-1',
+            goal: '等待兵部处理运行时阻塞',
+            status: 'waiting_approval',
+            executionMode: 'execute',
+            sessionId: 'session-1',
+            currentMinistry: 'bingbu-ops',
+            currentWorker: 'bingbu-terminal',
+            intent: 'run_terminal',
+            interactionKind: 'supplemental-input',
+            reason: '命令长时间无输出，等待人工干预。',
+            reasonCode: 'watchdog_timeout',
+            toolName: 'run_terminal',
+            riskLevel: 'high',
+            interruptSource: 'tool',
+            interruptMode: 'blocking',
+            resumeStrategy: 'approval-recovery'
+          }
+        ]}
+        loading={false}
+        onExport={vi.fn()}
+        onCopyShareLink={vi.fn()}
+        executionModeFilter="all"
+        onExecutionModeFilterChange={vi.fn()}
+        interactionKindFilter="all"
+        onInteractionKindFilterChange={vi.fn()}
+        onDecision={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('运行时治理');
+    expect(html).toContain('runtime-governance');
+    expect(html).toContain('watchdog');
+    expect(html).toContain('运行时超时阻塞');
   });
 
   it('filters approvals by execution mode and interaction kind', () => {

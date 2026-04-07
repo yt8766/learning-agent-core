@@ -1,20 +1,22 @@
 import {
-  AlertCircle,
   BookMarked,
+  BookOpen,
   BrainCircuit,
+  Building2,
   Cable,
+  ChevronDown,
+  ChevronRight,
   ClipboardCheck,
   Database,
   FlaskConical,
-  LibraryBig,
+  FolderKanban,
   Radar,
-  Users,
-  Workflow
+  Settings2,
+  SquareTerminal,
+  Users
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -52,19 +54,19 @@ export const NAV_ITEMS: Array<{
   description: string;
   icon: typeof Radar;
 }> = [
-  { key: 'runtime', label: 'Runtime Center', description: '运行态、队列、活跃尚书与任务脉冲', icon: Radar },
+  { key: 'runtime', label: 'Runtime Center', description: '运行态、队列、活跃尚书与任务脉冲', icon: SquareTerminal },
   { key: 'approvals', label: 'Approvals Center', description: '待审批动作、批注反馈与风险阻塞', icon: ClipboardCheck },
   { key: 'learning', label: 'Learning Center', description: '自动沉淀、候选待审与学习质量', icon: BrainCircuit },
   { key: 'evals', label: 'Evals', description: 'benchmark 通过率、关键链路健康与回归基线', icon: FlaskConical },
   { key: 'archives', label: 'Archive Center', description: '长期归档、趋势窗口与导出管理', icon: Database },
-  { key: 'skills', label: 'Skill Lab', description: '技能版本、成功率、晋升与禁用', icon: Workflow },
-  { key: 'evidence', label: 'Evidence Center', description: '来源、证据链、trace 与可信度', icon: AlertCircle },
+  { key: 'skills', label: 'Skill Lab', description: '技能版本、成功率、晋升与禁用', icon: BookMarked },
+  { key: 'evidence', label: 'Evidence Center', description: '来源、证据链、trace 与可信度', icon: Radar },
   { key: 'connectors', label: 'Connector & Policy', description: 'MCP transport、capability 与策略健康', icon: Cable },
   {
     key: 'skillSources',
     label: 'Skill Sources',
     description: '市场、来源优先级、安装回执与本地落库',
-    icon: BookMarked
+    icon: BookOpen
   },
   {
     key: 'companyAgents',
@@ -74,191 +76,151 @@ export const NAV_ITEMS: Array<{
   }
 ];
 
-function statusVariant(status: string) {
-  switch (status) {
-    case 'completed':
-      return 'success' as const;
-    case 'failed':
-      return 'destructive' as const;
-    case 'waiting_approval':
-      return 'warning' as const;
-    case 'running':
-      return 'default' as const;
-    default:
-      return 'secondary' as const;
-  }
-}
-
 export function AppSidebar(props: AdminNavigationProps & { variant?: 'default' | 'inset' }) {
-  const {
-    page,
-    health,
-    loading,
-    polling,
-    pendingApprovals,
-    tasks,
-    activeTaskId,
-    refreshDiagnostics,
-    activeRefreshTargets,
-    onNavigate,
-    onRefresh,
-    onQuickCreate,
-    onSelectTask,
-    variant = 'inset'
-  } = props;
+  const { page, pendingApprovals, onNavigate, variant = 'inset' } = props;
+
+  const platformPrimary = NAV_ITEMS.slice(0, 3);
+  const platformNested = NAV_ITEMS.slice(3, 6);
+  const nestedParentKeys = new Set<DashboardPageKey>(['runtime', 'learning']);
+
+  const projects: Array<{ label: string; icon: typeof FolderKanban; key: DashboardPageKey }> = [
+    { label: 'Design Engineering', icon: FolderKanban, key: 'skillSources' },
+    { label: 'Sales & Marketing', icon: Users, key: 'companyAgents' }
+  ];
+
+  const utilityItems: Array<{ label: string; icon: typeof Database; key: DashboardPageKey }> = [
+    { label: 'Documentation', icon: BookOpen, key: 'evidence' },
+    { label: 'Settings', icon: Settings2, key: 'connectors' }
+  ];
 
   return (
-    <Sidebar
-      variant={variant}
-      className="sticky top-0 h-[calc(100vh-1.5rem)] overflow-hidden border-sidebar-border/80 bg-sidebar/95 backdrop-blur"
-    >
-      <div className="flex h-full flex-col gap-5 p-4">
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader className="gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Agent Admin</p>
-                <CardTitle className="mt-2 text-xl">Platform Console</CardTitle>
-              </div>
-              <div className="rounded-2xl bg-primary/10 p-2 text-primary">
-                <LibraryBig className="h-5 w-5" />
-              </div>
+    <Sidebar variant={variant} className="sticky top-0 h-screen overflow-hidden">
+      <div className="flex h-full flex-col bg-[#fbfbfa] px-3 py-3">
+        <div className="rounded-2xl bg-[#f6f6f4] p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1a1a18] text-white">
+              <Building2 className="h-5 w-5" />
             </div>
-            <CardDescription>管理运行、审批、学习沉淀、技能生命周期与连接器健康。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">{health}</Badge>
-              <Badge variant="secondary">待审批 {pendingApprovals}</Badge>
-              <Badge variant={polling ? 'warning' : 'outline'}>{polling ? '轮询中' : '轮询关闭'}</Badge>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[1.05rem] font-medium text-[#171717]">Acme Inc</p>
+              <p className="text-sm text-muted-foreground">Enterprise</p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button className="rounded-2xl" onClick={onQuickCreate} disabled={loading}>
-                新建审计任务
-              </Button>
-              <Button variant="outline" className="rounded-2xl" onClick={onRefresh} disabled={loading}>
-                刷新控制台
-              </Button>
-            </div>
-            {refreshDiagnostics ? (
-              <div className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">最近刷新</p>
-                <p className="mt-1">
-                  {refreshDiagnostics.scope} / {refreshDiagnostics.target}
-                </p>
-                <p className="mt-1">状态：{refreshDiagnostics.outcome}</p>
-                <p className="mt-1">{refreshDiagnostics.reason}</p>
-                <p className="mt-1">{new Date(refreshDiagnostics.at).toLocaleTimeString()}</p>
-              </div>
-            ) : null}
-            {activeRefreshTargets?.length ? (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3 py-3 text-xs text-primary">
-                <p className="font-medium text-foreground">当前刷新中</p>
-                <div className="mt-2 grid gap-1">
-                  {activeRefreshTargets.slice(-3).map(item => (
-                    <p key={`${item.scope}:${item.target}`}>
-                      {item.scope} / {item.target} / {new Date(item.since).toLocaleTimeString()}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
 
-        <ScrollArea className="flex-1 pr-1">
-          <div className="grid gap-3">
-            <div className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Centers</p>
-              {NAV_ITEMS.map(item => {
-                const active = item.key === page;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => onNavigate(item.key)}
-                    className={cn(
-                      'w-full rounded-3xl border px-4 py-4 text-left transition',
-                      active
-                        ? 'border-primary/20 bg-primary text-primary-foreground shadow-sm'
-                        : 'border-border/70 bg-card/80 hover:border-border hover:bg-accent'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={cn(
-                            'rounded-2xl p-2',
-                            active
-                              ? 'bg-primary-foreground/15 text-primary-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <strong
-                          className={cn(
-                            'text-sm font-semibold',
-                            active ? 'text-primary-foreground' : 'text-foreground'
-                          )}
-                        >
-                          {item.label}
-                        </strong>
-                      </div>
-                      {item.key === 'approvals' ? (
-                        <Badge variant={active ? 'secondary' : 'warning'}>{pendingApprovals}</Badge>
-                      ) : null}
-                    </div>
-                    <p
+        <ScrollArea className="mt-5 flex-1 pr-1">
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <p className="px-2 text-sm font-medium text-muted-foreground">Platform</p>
+              <div className="space-y-1">
+                {platformPrimary.map(item => {
+                  const Icon = item.icon;
+                  const active = item.key === page;
+                  const hasChildren = nestedParentKeys.has(item.key);
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => onNavigate(item.key)}
                       className={cn(
-                        'mt-2 text-xs leading-5',
-                        active ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[1.02rem] transition hover:bg-[#f2f2ef]',
+                        active ? 'bg-[#f2f2ef] text-foreground' : 'text-foreground'
                       )}
                     >
-                      {item.description}
-                    </p>
-                  </button>
-                );
-              })}
+                      <Icon className="h-4.5 w-4.5 text-[#1f1f1d]" />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {hasChildren ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : null}
+                      {item.key === 'approvals' ? (
+                        <Badge variant="secondary" className="rounded-full bg-[#ececeb] text-[#4a4a48]">
+                          {pendingApprovals}
+                        </Badge>
+                      ) : null}
+                    </button>
+                  );
+                })}
+
+                <div className="ml-4 border-l border-border/80 pl-5">
+                  {platformNested.map(item => {
+                    const active = item.key === page;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => onNavigate(item.key)}
+                        className={cn(
+                          'block w-full rounded-lg px-3 py-2 text-left text-[0.98rem] transition hover:bg-[#f2f2ef]',
+                          active ? 'bg-[#f2f2ef] text-foreground' : 'text-[#2c2c2a]'
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {utilityItems.map(item => {
+                  const Icon = item.icon;
+                  const active = page === item.key;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => onNavigate(item.key)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[1.02rem] transition hover:bg-[#f2f2ef]',
+                        active ? 'bg-[#f2f2ef] text-foreground' : 'text-foreground'
+                      )}
+                    >
+                      <Icon className="h-4.5 w-4.5 text-[#1f1f1d]" />
+                      <span className="flex-1">{item.label}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-sm">Recent Runs</CardTitle>
-                  <Badge variant="outline">{tasks.length}</Badge>
-                </div>
-                <CardDescription>选中最近运行任务，联动右侧详情和轨迹视图。</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                {tasks.slice(0, 6).map(task => (
-                  <button
-                    key={task.id}
-                    type="button"
-                    onClick={() => onSelectTask(task.id)}
-                    className={cn(
-                      'w-full rounded-2xl border px-3 py-3 text-left transition',
-                      activeTaskId === task.id
-                        ? 'border-primary/25 bg-primary/5'
-                        : 'border-border/70 bg-muted/30 hover:bg-accent'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge variant={statusVariant(task.status)}>{task.status}</Badge>
-                      <span className="text-[11px] text-muted-foreground">{task.id.slice(0, 8)}</span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-sm font-medium text-foreground">{task.goal}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {task.currentMinistry ?? task.currentStep ?? 'waiting assignment'}
-                    </p>
-                  </button>
-                ))}
-                {tasks.length === 0 ? <p className="text-sm text-muted-foreground">当前暂无运行任务。</p> : null}
-              </CardContent>
-            </Card>
+            <div className="space-y-3">
+              <p className="px-2 text-sm font-medium text-muted-foreground">Projects</p>
+              <div className="space-y-1">
+                {projects.map(item => {
+                  const Icon = item.icon;
+                  const active = page === item.key;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => onNavigate(item.key)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[1.02rem] transition hover:bg-[#f2f2ef]',
+                        active ? 'bg-[#f2f2ef] text-foreground' : 'text-foreground'
+                      )}
+                    >
+                      <Icon className="h-4.5 w-4.5 text-[#1f1f1d]" />
+                      <span className="flex-1">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </ScrollArea>
+
+        <div className="mt-3 border-t border-border/70 pt-3">
+          <div className="flex items-center gap-3 rounded-2xl px-2 py-2">
+            <img
+              alt="shadcn"
+              src="https://avatars.githubusercontent.com/u/124599?v=4"
+              className="h-10 w-10 rounded-xl object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[1.05rem] font-medium text-[#171717]">shadcn</p>
+              <p className="truncate text-sm text-muted-foreground">m@example.com</p>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
       </div>
     </Sidebar>
   );

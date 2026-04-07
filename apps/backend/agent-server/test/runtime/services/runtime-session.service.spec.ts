@@ -65,6 +65,63 @@ describe('RuntimeSessionService', () => {
     expect(sessionCoordinator.subscribe).toHaveBeenCalledWith('session-1', listener);
   });
 
+  it('listSessionMessages 会折叠同 task 的流式 assistant 与最终 assistant 重复项', () => {
+    const { service, sessionCoordinator } = createService();
+    sessionCoordinator.getMessages.mockReturnValue([
+      {
+        id: 'direct_reply_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'chat_msg_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ]);
+
+    expect(service.listSessionMessages('session-1')).toEqual([
+      expect.objectContaining({
+        id: 'chat_msg_final_1',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。'
+      })
+    ]);
+  });
+
+  it('listSessionMessages 会在最终 assistant 是流式前缀扩展版时保留更完整内容', () => {
+    const { service, sessionCoordinator } = createService();
+    sessionCoordinator.getMessages.mockReturnValue([
+      {
+        id: 'summary_stream_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      {
+        id: 'chat_msg_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ]);
+
+    expect(service.listSessionMessages('session-1')).toEqual([
+      expect.objectContaining({
+        id: 'chat_msg_final_1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。'
+      })
+    ]);
+  });
+
   it('对缺失 session 抛出 NotFoundException', async () => {
     const { service } = createService();
 

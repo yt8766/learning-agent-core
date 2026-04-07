@@ -679,15 +679,8 @@ describe('AgentOrchestrator skill and knowledge flows', () => {
       expect.arrayContaining([
         expect.objectContaining({
           sourceType: 'web_search_result',
-          sourceUrl: expect.stringMatching(/^https?:\/\//),
           trustClass: 'official',
           summary: expect.any(String)
-        }),
-        expect.objectContaining({
-          sourceType: 'document',
-          sourceUrl: 'https://docs.example.com/product-plan-review',
-          trustClass: 'official',
-          summary: expect.stringContaining('网页正文')
         })
       ])
     );

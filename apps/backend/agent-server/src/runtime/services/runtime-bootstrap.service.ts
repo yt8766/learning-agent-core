@@ -14,6 +14,8 @@ export interface RuntimeBootstrapContext {
   getSkillSourcesContext: () => RuntimeSkillSourcesContext;
   syncInstalledSkillWorkers: () => Promise<void>;
   applyStoredGovernanceOverrides: () => Promise<void>;
+  initializeDailyTechBriefing: () => Promise<void>;
+  initializeScheduleRunner: () => Promise<void>;
   getBackgroundRunnerContext: () => RuntimeBackgroundRunnerContext;
 }
 
@@ -33,6 +35,8 @@ export class RuntimeBootstrapService {
     await syncEnabledRemoteSkillSources(ctx.getSkillSourcesContext());
     await ctx.syncInstalledSkillWorkers();
     await ctx.applyStoredGovernanceOverrides();
+    await ctx.initializeDailyTechBriefing();
+    await ctx.initializeScheduleRunner();
 
     if ('setLocalSkillSuggestionResolver' in ctx.orchestrator) {
       ctx.orchestrator.setLocalSkillSuggestionResolver(async ({ goal, usedInstalledSkills }: any) =>

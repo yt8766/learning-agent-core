@@ -1,5 +1,5 @@
-import { buildStructuredPrompt } from '../../../../shared/prompts/prompt-template';
-import { buildTemporalContextBlock } from '../../../../shared/prompts/temporal-context';
+import { buildStructuredPrompt } from '../../../../utils/prompts/prompt-template';
+import { buildTemporalContextBlock } from '../../../../utils/prompts/temporal-context';
 
 export const HUBU_RESEARCH_SYSTEM_PROMPT = buildStructuredPrompt({
   role: '户部尚书',

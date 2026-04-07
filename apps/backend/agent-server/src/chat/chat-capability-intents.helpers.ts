@@ -6,6 +6,7 @@ export type CapabilityIntent =
   | { kind: 'list-tools' }
   | { kind: 'list-skills' }
   | { kind: 'list-connectors' }
+  | { kind: 'install-skill'; repo: string; skillName?: string }
   | { kind: 'create-skill'; description: string; displayName?: string }
   | {
       kind: 'use-connector';
@@ -17,8 +18,22 @@ export type CapabilityIntent =
 export function resolveCapabilityIntent(message: string): CapabilityIntent {
   const raw = message.trim();
   const normalized = raw.toLowerCase();
+  const asksWhatToolsAreAvailable =
+    /(我)?现在有(什么|哪些).*(tools?|工具)/i.test(raw) ||
+    /(当前|现在).*(有什么|有哪些|能用什么|可用什么).*(tools?|工具)/i.test(raw) ||
+    /(能用|可用).*(tools?|工具)/i.test(raw);
+  const asksWhatSkillsAreAvailable =
+    /(我)?现在有(什么|哪些).*(skills?|技能)/i.test(raw) ||
+    /(当前|现在).*(有什么|有哪些|能用什么|可用什么).*(skills?|技能)/i.test(raw);
+  const asksWhatConnectorsAreAvailable =
+    /(我)?现在有(什么|哪些).*(mcp|connectors?|连接器)/i.test(raw) ||
+    /(当前|现在).*(有什么|有哪些|能用什么|可用什么).*(mcp|connectors?|连接器)/i.test(raw);
   if (
-    ((/(我现在有哪些|当前有哪些|列出|看看)/i.test(raw) || /(what|list|show)/i.test(normalized)) &&
+    ((/(我现在有哪些|当前有哪些|列出|看看)/i.test(raw) ||
+      /(what|list|show)/i.test(normalized) ||
+      asksWhatToolsAreAvailable ||
+      asksWhatSkillsAreAvailable ||
+      asksWhatConnectorsAreAvailable) &&
       /(tools?|skills?|mcp|connectors?|技能|连接器)/i.test(raw)) ||
     /(tools?|skills?|mcp|connectors?)\s*\/\s*(tools?|skills?|mcp|connectors?)/i.test(normalized)
   ) {
@@ -31,23 +46,34 @@ export function resolveCapabilityIntent(message: string): CapabilityIntent {
   }
   if (
     /(我现在有哪些|当前有哪些|列出|看看).*(tools?|工具)/i.test(raw) ||
+    asksWhatToolsAreAvailable ||
     /(what|list|show).*(tools?)/i.test(normalized)
   ) {
     return { kind: 'list-tools' };
   }
   if (
     /(我现在有哪些|当前有哪些|列出|看看).*(skills?|技能)/i.test(raw) ||
+    asksWhatSkillsAreAvailable ||
     /(what|list|show).*(skills?)/i.test(normalized)
   ) {
     return { kind: 'list-skills' };
   }
   if (
     /(我现在有哪些|当前有哪些|列出|看看).*(mcp|connectors?|连接器)/i.test(raw) ||
+    asksWhatConnectorsAreAvailable ||
     /(what|list|show).*(mcp|connectors?)/i.test(normalized)
   ) {
     return { kind: 'list-connectors' };
   }
-  if (/(创建|生成|做一个|做个|帮我创建|create).*(skill|技能)/i.test(raw)) {
+  const installSkillTarget = extractRemoteSkillInstallTarget(raw);
+  if (installSkillTarget) {
+    return {
+      kind: 'install-skill',
+      repo: installSkillTarget.repo,
+      skillName: installSkillTarget.skillName
+    };
+  }
+  if (isCreateSkillIntent(raw)) {
     const description =
       raw
         .replace(/^(帮我|请)?(创建|生成|做一个|做个|create)\s*/i, '')
@@ -74,6 +100,34 @@ export function resolveCapabilityIntent(message: string): CapabilityIntent {
 
 export function buildSkillCatalogSummary(skillCount: number, bootstrapCount: number) {
   return `当前可见 ${skillCount} 个运行时 skill，另有 ${bootstrapCount} 个 Bootstrap Skills 常驻注入。`;
+}
+
+export function buildToolsCatalogSummary(toolsCenter: {
+  totalTools: number;
+  families: Array<{ displayName?: string; id: string; toolCount?: number }>;
+  tools: Array<{ isReadOnly?: boolean; requiresApproval?: boolean }>;
+  approvalRequiredCount?: number;
+}) {
+  if (toolsCenter.totalTools <= 0) {
+    return '当前还没有可见工具。';
+  }
+
+  const readonlyCount = toolsCenter.tools.filter(tool => tool.isReadOnly).length;
+  const approvalCount =
+    toolsCenter.approvalRequiredCount ?? toolsCenter.tools.filter(tool => tool.requiresApproval).length;
+  const familyPreview = toolsCenter.families
+    .slice(0, 4)
+    .map(family => family.displayName ?? family.id)
+    .join('、');
+  const extraFamilyCount = Math.max(0, toolsCenter.families.length - 4);
+  const familyText = extraFamilyCount > 0 ? `${familyPreview} 等 ${toolsCenter.families.length} 类` : familyPreview;
+  const parts = [
+    `当前可见 ${toolsCenter.totalTools} 个工具`,
+    familyText ? `主要包括 ${familyText}` : undefined,
+    readonlyCount > 0 ? `${readonlyCount} 个只读工具可直接使用` : undefined,
+    approvalCount > 0 ? `${approvalCount} 个高风险工具默认需要审批` : '当前未发现默认需审批的工具'
+  ].filter(Boolean);
+  return `${parts.join('，')}。`;
 }
 
 export function groupSkillCards(skills: Array<any>) {
@@ -167,6 +221,54 @@ function deriveSkillOwnerType(skill: any) {
 function extractQuotedName(message: string) {
   const match = message.match(/[“"']([^”"']+)[”"']/);
   return match?.[1]?.trim();
+}
+
+function isCreateSkillIntent(message: string) {
+  const compact = message.replace(/\s+/g, ' ').trim();
+  return /(帮我|请)?(创建|生成|做一个|做个|create)\s*(一个|个|一套|一个我自己的)?[\s\S]{0,40}(skill|技能)\b/i.test(
+    compact
+  );
+}
+
+function extractRemoteSkillInstallTarget(message: string) {
+  const raw = message.trim();
+  if (
+    !/(安装|添加|加上|装上|启用|install|add)/i.test(raw) ||
+    !/(skill|技能|skills?\.sh|npx skills add|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/i.test(raw)
+  ) {
+    return undefined;
+  }
+
+  const commandMatch = raw.match(/npx\s+skills\s+add\s+([^\s]+)(?:\s+--skill\s+([^\s]+))?/i);
+  if (commandMatch) {
+    return {
+      repo: normalizeRemoteSkillRepo(commandMatch[1]!),
+      skillName: commandMatch[2]?.trim()
+    };
+  }
+
+  const githubMatch = raw.match(/https?:\/\/github\.com\/([^/\s]+\/[^/\s]+)(?:\/|$)/i);
+  if (githubMatch) {
+    return {
+      repo: githubMatch[1]!.trim()
+    };
+  }
+
+  const repoMatch = raw.match(/\b([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\b(?:@([A-Za-z0-9_.-]+))?/);
+  if (repoMatch) {
+    return {
+      repo: repoMatch[1]!.trim(),
+      skillName: repoMatch[2]?.trim()
+    };
+  }
+
+  return undefined;
+}
+
+function normalizeRemoteSkillRepo(value: string) {
+  const normalized = value.trim();
+  const [repo] = normalized.split('@');
+  return repo?.replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, '') ?? normalized;
 }
 
 function parseLarkConnectorHints(rawMessage?: string) {

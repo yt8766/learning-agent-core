@@ -62,6 +62,9 @@ describe('EvalsCenterPanel render smoke', () => {
 
     expect(html).toContain('Evals Center');
     expect(html).toContain('Daily Trend');
+    expect(html).toContain('Trend');
+    expect(html).toContain('Suites');
+    expect(html).toContain('Pass Rate');
     expect(html).toContain('Prompt Regressions');
     expect(html).toContain('Benchmark Scenarios');
     expect(html).toContain('Recent Benchmark Runs');

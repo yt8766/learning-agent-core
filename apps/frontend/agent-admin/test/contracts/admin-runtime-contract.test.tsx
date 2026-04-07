@@ -34,6 +34,26 @@ describe('agent-admin runtime contract smoke', () => {
             diagnosisEvidenceCount: 1,
             activeMinistries: ['gongbu-code'],
             activeWorkers: ['gongbu-code'],
+            recentRuns: [
+              {
+                id: 'task-1',
+                streamStatus: {
+                  nodeId: 'context_filter',
+                  nodeLabel: '文书科',
+                  detail: '正在压缩历史上下文并整理给工部',
+                  progressPercent: 45,
+                  updatedAt: '2026-03-31T00:00:00.000Z'
+                },
+                contextFilterState: {
+                  filteredContextSlice: {
+                    summary: '已过滤系统战报与无关历史',
+                    compressionApplied: true,
+                    compressionSource: 'llm',
+                    compressedMessageCount: 12
+                  }
+                }
+              }
+            ],
             backgroundRunCount: 1,
             foregroundRunCount: 1,
             leasedBackgroundRunCount: 1,
@@ -47,6 +67,42 @@ describe('agent-admin runtime contract smoke', () => {
               learningMode: 'governed',
               sourcePolicyMode: 'controlled-first',
               budget: { stepBudget: 10, retryBudget: 2, sourceBudget: 5 }
+            },
+            dailyTechBriefing: {
+              enabled: true,
+              schedule: 'daily 11:00',
+              cron: '0 11 * * *',
+              scheduleValid: true,
+              jobKey: 'runtime-schedule:daily-tech-briefing',
+              lastRegisteredAt: '2026-03-31T10:59:00.000Z',
+              scheduler: 'bree',
+              timezone: 'Asia/Shanghai',
+              lastRunAt: '2026-03-31T11:00:00.000Z',
+              categories: [
+                {
+                  category: 'frontend-security',
+                  title: '前端安全情报',
+                  status: 'sent',
+                  itemCount: 2,
+                  emptyDigest: false,
+                  sentAt: '2026-03-31T11:00:05.000Z'
+                },
+                {
+                  category: 'ai-tech',
+                  title: 'AI 新技术情报',
+                  status: 'empty',
+                  itemCount: 0,
+                  emptyDigest: true
+                },
+                {
+                  category: 'frontend-tech',
+                  title: '前端新技术情报',
+                  status: 'sent',
+                  itemCount: 1,
+                  emptyDigest: false,
+                  sentAt: '2026-03-31T11:00:08.000Z'
+                }
+              ]
             },
             subgraphs: [],
             workflowVersions: []
@@ -68,7 +124,10 @@ describe('agent-admin runtime contract smoke', () => {
                 contextFilterState: {
                   filteredContextSlice: {
                     summary: '已过滤系统战报与无关历史',
-                    historyTraceCount: 4
+                    historyTraceCount: 4,
+                    compressionApplied: true,
+                    compressionSource: 'llm',
+                    compressedMessageCount: 12
                   },
                   audienceSlices: {
                     strategy: { summary: '先整理策略约束', dispatchCount: 1 },
@@ -99,6 +158,13 @@ describe('agent-admin runtime contract smoke', () => {
                   status: 'healthy',
                   summary: '治理评分稳定。',
                   trustAdjustment: 'promote'
+                },
+                streamStatus: {
+                  nodeId: 'context_filter',
+                  nodeLabel: '文书科',
+                  detail: '正在压缩历史上下文并整理给工部',
+                  progressPercent: 45,
+                  updatedAt: '2026-03-31T00:00:00.000Z'
                 }
               }
             ],
@@ -214,6 +280,12 @@ describe('agent-admin runtime contract smoke', () => {
     expect(visualsHtml).toContain('微循环状态');
     expect(visualsHtml).toContain('交付 delivered');
     expect(visualsHtml).toContain('受众切片');
+    expect(runtimeHtml).toContain('当前节点战报');
+    expect(runtimeHtml).toContain('文书科');
+    expect(runtimeHtml).toContain('正在压缩历史上下文并整理给工部');
+    expect(runtimeHtml).toContain('Daily Tech Briefing');
+    expect(runtimeHtml).toContain('daily 11:00');
+    expect(runtimeHtml).toContain('前端安全情报');
 
     expect(evidenceHtml).toContain('Checkpoint Replay');
     expect(evidenceHtml).toContain('cp-1');

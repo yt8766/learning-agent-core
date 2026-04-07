@@ -7,7 +7,7 @@ import {
   TaskStatus
 } from '@agent/shared';
 
-import { AgentOrchestrator } from '../graphs/main.graph';
+import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { syncCoordinatorTask } from './session-coordinator-sync';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';

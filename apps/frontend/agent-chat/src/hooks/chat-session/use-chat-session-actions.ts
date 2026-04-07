@@ -54,6 +54,7 @@ import {
   shouldRetryFinalSnapshotReconcile
 } from './chat-session-snapshot-policy';
 const FINAL_RECONCILE_RETRY_DELAY_MS = 500;
+const TERMINAL_SESSION_STATUSES = new Set(['completed', 'failed', 'cancelled']);
 
 interface SessionDetailRefreshOptions {
   showLoading?: boolean;
@@ -65,12 +66,41 @@ interface FinalSnapshotReconcileOptions {
 }
 
 export function createChatSessionActions(options: CreateChatSessionActionsOptions) {
-  const runLoading = async <T>(task: () => Promise<T>, fallbackMessage: string, withLoading = true) => {
+  const handleMissingSession = async (sessionId: string) => {
+    if (options.pendingInitialMessage.current?.sessionId === sessionId) {
+      options.pendingInitialMessage.current = null;
+    }
+    clearPendingSessionMessages(options, sessionId);
+    options.setSessions(current => current.filter(session => session.id !== sessionId));
+    if (options.activeSessionId === sessionId) {
+      options.setActiveSessionId('');
+      options.setMessages([]);
+      options.setEvents([]);
+      options.setCheckpoint(undefined);
+    }
+    const nextSessions = await listSessions().catch(() => undefined);
+    if (nextSessions) {
+      options.setSessions(nextSessions);
+    }
+    options.setError('当前会话已失效，可能因为后端重启或会话已被移除。已清理旧会话，请重新开始。');
+  };
+
+  const runLoading = async <T>(
+    task: () => Promise<T>,
+    fallbackMessage: string,
+    runOptions: boolean | { withLoading?: boolean; sessionId?: string } = true
+  ) => {
+    const withLoading = typeof runOptions === 'boolean' ? runOptions : (runOptions.withLoading ?? true);
+    const sessionId = typeof runOptions === 'boolean' ? undefined : runOptions.sessionId;
     try {
       if (withLoading) options.setLoading(true);
       options.setError('');
       return await task();
     } catch (nextError) {
+      if (sessionId && isMissingSessionError(nextError)) {
+        await handleMissingSession(sessionId);
+        return undefined;
+      }
       options.setError(formatChatError(nextError, fallbackMessage));
       return undefined;
     } finally {
@@ -100,10 +130,12 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
       () =>
         Promise.all([listMessages(sessionId), listEvents(sessionId), getCheckpoint(sessionId).catch(() => undefined)]),
       '加载会话详情失败',
-      showLoading
+      { withLoading: showLoading, sessionId }
     );
     if (!result) return;
-    const [nextMessages, nextEvents, rawCheckpoint] = result;
+    const [rawMessages, rawEvents, rawCheckpoint] = result;
+    const nextMessages = Array.isArray(rawMessages) ? rawMessages : [];
+    const nextEvents = Array.isArray(rawEvents) ? rawEvents : [];
     const nextCheckpoint = resolveCheckpointForOptimisticSend(options, sessionId, rawCheckpoint);
     const nextStatus = nextCheckpoint ? deriveSessionStatusFromCheckpoint(nextCheckpoint) : undefined;
     const hasPersistedUser = nextMessages.some(message => message.sessionId === sessionId && message.role === 'user');
@@ -191,7 +223,7 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     const rawCheckpoint = await runLoading(
       () => getCheckpoint(sessionId).catch(() => undefined),
       '同步会话运行态失败',
-      false
+      { withLoading: false, sessionId }
     );
     const nextCheckpoint = resolveCheckpointForOptimisticSend(options, sessionId, rawCheckpoint);
     if (nextCheckpoint !== undefined) {
@@ -248,9 +280,13 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     options.setDraft(STARTER_PROMPT);
     options.requestStreamReconnect(options.activeSessionId);
     beginOptimisticSend(options, options.activeSessionId, displayContent);
-    const nextUserMessage = await runLoading(async () => {
-      return appendMessage(options.activeSessionId, content);
-    }, '发送消息失败');
+    const nextUserMessage = await runLoading(
+      async () => {
+        return appendMessage(options.activeSessionId, content);
+      },
+      '发送消息失败',
+      { sessionId: options.activeSessionId }
+    );
 
     if (!nextUserMessage) {
       options.setDraft(previousDraft);
@@ -262,15 +298,23 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
 
     clearPendingUser(options, options.activeSessionId);
     options.setMessages(current => mergeOrAppendMessage(current, nextUserMessage));
-    await refreshCheckpointOnly(options.activeSessionId);
+    const nextCheckpoint = await refreshCheckpointOnly(options.activeSessionId);
+    if (shouldAttemptImmediateFinalReconcile(nextCheckpoint)) {
+      await reconcileFinalSnapshot(options.activeSessionId, { maxRetries: 2 });
+    }
   };
 
-  const updateApproval = async (intent: string, approved: boolean, feedback?: string) => {
+  const updateApproval = async (
+    intent: string,
+    approved: boolean,
+    feedback?: string,
+    approvalScope?: 'once' | 'session' | 'always'
+  ) => {
     if (!options.activeSessionId) return;
     const task = approved
-      ? () => approveSession(options.activeSessionId, intent, feedback)
+      ? () => approveSession(options.activeSessionId, intent, feedback, approvalScope)
       : () => rejectSession(options.activeSessionId, intent, feedback);
-    const updated = await runLoading(task, '更新审批失败');
+    const updated = await runLoading(task, '更新审批失败', { sessionId: options.activeSessionId });
     if (updated) await hydrateSessionSnapshot(options.activeSessionId, false);
   };
 
@@ -298,7 +342,8 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
               : { interactionKind: 'plan-question' }
           }
         }),
-      '更新计划问题失败'
+      '更新计划问题失败',
+      { sessionId: options.activeSessionId }
     );
     if (updated) {
       if (params.action === 'abort') {
@@ -314,20 +359,26 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
 
   const allowApprovalAndApprove = async (params: { intent: string; capabilityId?: string; serverId?: string }) => {
     if (!options.activeSessionId) return;
-    const updated = await runLoading(async () => {
-      if (params.capabilityId && params.serverId) {
-        await allowApprovalCapability(params.serverId, params.capabilityId);
-      } else if (params.serverId) {
-        await allowApprovalConnector(params.serverId);
-      }
-      return approveSession(options.activeSessionId, params.intent);
-    }, '更新授权策略失败');
+    const updated = await runLoading(
+      async () => {
+        if (params.capabilityId && params.serverId) {
+          await allowApprovalCapability(params.serverId, params.capabilityId);
+        } else if (params.serverId) {
+          await allowApprovalConnector(params.serverId);
+        }
+        return approveSession(options.activeSessionId, params.intent, undefined, 'always');
+      },
+      '更新授权策略失败',
+      { sessionId: options.activeSessionId }
+    );
     if (updated) await hydrateSessionSnapshot(options.activeSessionId, false);
   };
 
   const submitLearningConfirmation = async () => {
     if (!options.activeSessionId) return;
-    const updated = await runLoading(() => confirmLearning(options.activeSessionId), '确认学习失败');
+    const updated = await runLoading(() => confirmLearning(options.activeSessionId), '确认学习失败', {
+      sessionId: options.activeSessionId
+    });
     if (updated) await hydrateSessionSnapshot(options.activeSessionId, false);
   };
 
@@ -338,7 +389,9 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
       options.setError('当前这轮已经在处理中，无需重复恢复。');
       return;
     }
-    const updated = await runLoading(() => recoverSession(options.activeSessionId), '恢复会话失败');
+    const updated = await runLoading(() => recoverSession(options.activeSessionId), '恢复会话失败', {
+      sessionId: options.activeSessionId
+    });
     if (updated) {
       applyRecoveredSessionState(options, options.activeSessionId, updated);
       insertOptimisticControlMessage(options, options.activeSessionId, '已恢复执行');
@@ -363,7 +416,9 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
       options.setError('当前没有可终止的运行中的任务。');
       return;
     }
-    const updated = await runLoading(() => cancelSession(options.activeSessionId, reason), '终止会话失败');
+    const updated = await runLoading(() => cancelSession(options.activeSessionId, reason), '终止会话失败', {
+      sessionId: options.activeSessionId
+    });
     if (updated) {
       applyCancelledSessionState(options, options.activeSessionId, updated);
       insertOptimisticControlMessage(options, options.activeSessionId, reason ? `本轮已终止：${reason}` : '本轮已终止');
@@ -487,6 +542,22 @@ function formatChatError(nextError: unknown, fallbackMessage: string) {
   return nextError instanceof Error ? nextError.message : fallbackMessage;
 }
 
+function isMissingSessionError(nextError: unknown) {
+  if (!axios.isAxiosError(nextError)) {
+    return false;
+  }
+  if (nextError.response?.status !== 404) {
+    return false;
+  }
+  const detail =
+    typeof nextError.response.data === 'string'
+      ? nextError.response.data
+      : typeof nextError.response.data?.message === 'string'
+        ? nextError.response.data.message
+        : nextError.message;
+  return /session\s+.+not found/i.test(detail);
+}
+
 function normalizeOutboundMessage(input: string | OutboundChatMessage): OutboundChatMessage {
   if (typeof input === 'string') {
     return {
@@ -496,4 +567,13 @@ function normalizeOutboundMessage(input: string | OutboundChatMessage): Outbound
   }
 
   return input;
+}
+
+function shouldAttemptImmediateFinalReconcile(
+  checkpoint: Awaited<ReturnType<ReturnType<typeof createChatSessionActions>['refreshCheckpointOnly']>>
+) {
+  if (!checkpoint) {
+    return false;
+  }
+  return TERMINAL_SESSION_STATUSES.has(deriveSessionStatusFromCheckpoint(checkpoint));
 }

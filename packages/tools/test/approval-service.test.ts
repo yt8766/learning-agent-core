@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 
 import { loadSettings } from '@agent/config';
 import { ActionIntent, type ToolDefinition } from '@agent/shared';
@@ -25,6 +25,11 @@ describe('ApprovalService', () => {
       timeoutMs: 1000,
       sandboxProfile: 'workspace-write',
       capabilityType: 'local-tool',
+      isReadOnly: false,
+      isConcurrencySafe: false,
+      isDestructive: false,
+      supportsStreamingDispatch: false,
+      permissionScope: 'workspace-write',
       inputSchema: {},
       ...overrides
     };
@@ -51,7 +56,9 @@ describe('ApprovalService', () => {
           family: 'filesystem',
           category: 'system',
           riskLevel: 'low',
-          sandboxProfile: 'read-only'
+          sandboxProfile: 'read-only',
+          isReadOnly: true,
+          permissionScope: 'readonly'
         })
       })
     ).toBe(true);
@@ -128,7 +135,7 @@ describe('ApprovalService', () => {
     );
 
     expect(result.requiresApproval).toBe(true);
-    expect(result.reasonCode).toBe('requires_approval_destructive');
+    expect(result.reasonCode).toBe('preflight_denied');
   });
 
   it('build/test 命令默认自动通过', () => {
@@ -149,6 +156,25 @@ describe('ApprovalService', () => {
 
     expect(result.requiresApproval).toBe(false);
     expect(result.reasonCode).toBe('approved_by_policy');
+  });
+
+  it('工作区外路径会被前置治理直接阻断', () => {
+    const result = service.evaluate(
+      ActionIntent.WRITE_FILE,
+      {
+        ...createTool({
+          name: 'write_local_file',
+          description: 'write file'
+        })
+      },
+      {
+        path: '../.ssh/config'
+      }
+    );
+
+    expect(result.requiresApproval).toBe(true);
+    expect(result.reasonCode).toBe('preflight_denied');
+    expect(result.preflightDecision).toBe('deny');
   });
 
   it('DELETE 请求保持审批，GET 请求自动通过', () => {
@@ -184,7 +210,7 @@ describe('ApprovalService', () => {
     );
 
     expect(deleteResult.requiresApproval).toBe(true);
-    expect(deleteResult.reasonCode).toBe('requires_approval_destructive');
+    expect(deleteResult.reasonCode).toBe('requires_approval_tool_policy');
     expect(getResult.requiresApproval).toBe(false);
     expect(getResult.reasonCode).toBe('approved_by_policy');
   });
@@ -244,6 +270,40 @@ describe('ApprovalService', () => {
     );
 
     expect(result.requiresApproval).toBe(true);
-    expect(result.reasonCode).toBe('requires_approval_governance');
+    expect(result.reasonCode).toBe('requires_approval_tool_policy');
+  });
+
+  it('classifier can deny borderline tool requests before interrupt flow', async () => {
+    const classifier = vi.fn(async () => ({
+      decision: 'deny' as const,
+      reason: '刑部分类器阻断了该边界命令。'
+    }));
+    const classifierService = new ApprovalService(
+      loadSettings({
+        profile: 'personal',
+        env: {} as NodeJS.ProcessEnv
+      }),
+      { classifier }
+    );
+
+    const result = await classifierService.evaluateWithClassifier(
+      ActionIntent.WRITE_FILE,
+      {
+        ...createTool({
+          name: 'run_terminal',
+          description: 'run command',
+          family: 'mcp',
+          capabilityType: 'mcp-capability'
+        })
+      },
+      {
+        command: 'git push origin main'
+      }
+    );
+
+    expect(classifier).toHaveBeenCalled();
+    expect(result.requiresApproval).toBe(true);
+    expect(result.preflightDecision).toBe('deny');
+    expect(result.reasonCode).toBe('preflight_denied');
   });
 });

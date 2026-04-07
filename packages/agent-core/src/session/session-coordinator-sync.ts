@@ -1,12 +1,72 @@
-import type { ChatCheckpointRecord, TaskRecord } from '@agent/shared';
+import type { AgentRole, ChatCheckpointRecord, ExecutionStepRecord, TaskRecord } from '@agent/shared';
 import { TaskStatus } from '@agent/shared';
 
-import { TASK_MESSAGE_EVENT_MAP, TRACE_EVENT_MAP } from '../shared/event-maps';
+import { TASK_MESSAGE_EVENT_MAP, TRACE_EVENT_MAP } from '../utils/event-maps';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 import type { SessionCoordinatorThinking } from './session-coordinator-thinking';
+import { emitNodeStatusEvent } from './session-node-events';
 
 const CHAT_VISIBLE_MESSAGE_TYPES = new Set(['summary']);
 const PROGRESS_STREAM_MESSAGE_PREFIX = 'progress_stream_';
+
+function findStreamingAssistantMessage(
+  sessionMessages: ReturnType<SessionCoordinatorStore['getMessages']>,
+  taskId: string
+) {
+  const candidateIds = new Set([
+    `${PROGRESS_STREAM_MESSAGE_PREFIX}${taskId}`,
+    `direct_reply_${taskId}`,
+    `summary_stream_${taskId}`
+  ]);
+
+  return sessionMessages.find(
+    message => message.role === 'assistant' && Boolean(message.content.trim()) && candidateIds.has(message.id)
+  );
+}
+
+function bindAssistantResultMessage(
+  store: SessionCoordinatorStore,
+  sessionId: string,
+  sessionMessages: ReturnType<SessionCoordinatorStore['getMessages']>,
+  task: TaskRecord,
+  content: string,
+  linkedAgent?: AgentRole
+) {
+  const normalizedContent = content.trim();
+  if (!normalizedContent) {
+    return undefined;
+  }
+
+  const existingExact = sessionMessages.find(
+    message => message.role === 'assistant' && message.taskId === task.id && message.content === normalizedContent
+  );
+  if (existingExact) {
+    existingExact.taskId = task.id;
+    if (linkedAgent) {
+      existingExact.linkedAgent = linkedAgent;
+    }
+    return existingExact;
+  }
+
+  const streamingMessage = findStreamingAssistantMessage(sessionMessages, task.id);
+  if (streamingMessage) {
+    const currentContent = streamingMessage.content.trim();
+    if (
+      !currentContent ||
+      normalizedContent.startsWith(currentContent) ||
+      currentContent.startsWith(normalizedContent)
+    ) {
+      streamingMessage.content = normalizedContent;
+      streamingMessage.taskId = task.id;
+      if (linkedAgent) {
+        streamingMessage.linkedAgent = linkedAgent;
+      }
+      return streamingMessage;
+    }
+  }
+
+  return store.addMessage(sessionId, 'assistant', normalizedContent, linkedAgent, undefined, task.id);
+}
 
 export function syncCoordinatorTask(
   store: SessionCoordinatorStore,
@@ -27,6 +87,8 @@ export function syncCoordinatorTask(
   session.updatedAt = new Date().toISOString();
 
   const checkpoint = store.getCheckpoint(sessionId) ?? store.createCheckpoint(sessionId, task.id);
+  const previousNode = checkpoint.currentNode;
+  const previousExecutionSteps = checkpoint.executionSteps ?? [];
   if (checkpoint.taskId && checkpoint.taskId !== task.id) {
     checkpoint.traceCursor = 0;
     checkpoint.messageCursor = 0;
@@ -34,6 +96,18 @@ export function syncCoordinatorTask(
     checkpoint.learningCursor = 0;
   }
   const sessionMessages = store.getMessages(sessionId);
+
+  if (task.currentNode && task.currentNode !== previousNode) {
+    emitNodeStatusEvent(store, sessionId, {
+      task,
+      checkpoint,
+      nodeId: task.currentNode,
+      phase: 'start',
+      detail: task.currentStep ?? task.currentNode
+    });
+  }
+
+  emitExecutionStepEvents(store, sessionId, task, previousExecutionSteps);
 
   for (const trace of task.trace.slice(checkpoint.traceCursor)) {
     if (trace.node === 'approval_gate' || trace.node === 'approval_rejected_with_feedback') {
@@ -46,6 +120,13 @@ export function syncCoordinatorTask(
       node: trace.node,
       summary: trace.summary,
       data: trace.data ?? {}
+    });
+    emitNodeStatusEvent(store, sessionId, {
+      task,
+      checkpoint,
+      nodeId: trace.node,
+      phase: 'end',
+      detail: trace.summary
     });
   }
 
@@ -70,6 +151,13 @@ export function syncCoordinatorTask(
         from: taskMessage.from,
         summary: taskMessage.content
       });
+      emitNodeStatusEvent(store, sessionId, {
+        task,
+        checkpoint,
+        nodeId: task.currentNode ?? task.currentStep,
+        phase: 'progress',
+        detail: taskMessage.content
+      });
       continue;
     }
 
@@ -86,8 +174,15 @@ export function syncCoordinatorTask(
       continue;
     }
 
-    store.addMessage(sessionId, 'assistant', taskMessage.content, taskMessage.from);
-    if (task.result && taskMessage.content === task.result) {
+    const assistantMessage = bindAssistantResultMessage(
+      store,
+      sessionId,
+      sessionMessages,
+      task,
+      taskMessage.content,
+      taskMessage.from
+    );
+    if (task.result && assistantMessage?.content === task.result) {
       hasAssistantResult = true;
     }
   }
@@ -161,8 +256,13 @@ export function syncCoordinatorTask(
   );
   let boundAssistantMessageId =
     task.status === TaskStatus.RUNNING ? `${PROGRESS_STREAM_MESSAGE_PREFIX}${task.id}` : undefined;
+  if (progressStreamMessage && task.result && progressStreamMessage.content === task.result) {
+    hasAssistantResult = true;
+    boundAssistantMessageId = progressStreamMessage.id;
+  }
   if (task.status === TaskStatus.CANCELLED && progressStreamMessage && !hasAssistantResult) {
-    const assistantMessage = store.addMessage(sessionId, 'assistant', progressStreamMessage.content);
+    progressStreamMessage.taskId = task.id;
+    const assistantMessage = progressStreamMessage;
     boundAssistantMessageId = assistantMessage.id;
     hasAssistantResult = true;
     store.addEvent(sessionId, 'assistant_message', {
@@ -173,7 +273,9 @@ export function syncCoordinatorTask(
     });
   }
   if (task.result && !hasAssistantResult && task.status !== TaskStatus.CANCELLED) {
-    const assistantMessage = store.addMessage(sessionId, 'assistant', task.result);
+    const assistantMessage =
+      bindAssistantResultMessage(store, sessionId, sessionMessages, task, task.result) ??
+      store.addMessage(sessionId, 'assistant', task.result, undefined, undefined, task.id);
     boundAssistantMessageId = assistantMessage.id;
     hasAssistantResult = true;
     store.addEvent(sessionId, 'assistant_message', {
@@ -234,6 +336,8 @@ function updateCheckpoint(
   checkpoint.dispatches = task.dispatches;
   checkpoint.critiqueResult = task.critiqueResult;
   checkpoint.chatRoute = task.chatRoute;
+  checkpoint.executionSteps = task.executionSteps;
+  checkpoint.currentExecutionStep = task.currentExecutionStep;
   checkpoint.queueState = task.queueState;
   checkpoint.pendingAction = task.pendingAction;
   checkpoint.pendingApproval = task.pendingApproval;
@@ -303,4 +407,67 @@ function updateCheckpoint(
   checkpoint.thinkState = thinking.buildThinkState(task, messageId);
   checkpoint.thoughtGraph = thinking.buildThoughtGraph(task, checkpoint);
   checkpoint.updatedAt = new Date().toISOString();
+}
+
+function emitExecutionStepEvents(
+  store: SessionCoordinatorStore,
+  sessionId: string,
+  task: TaskRecord,
+  previousExecutionSteps: ExecutionStepRecord[]
+) {
+  const previousById = new Map(previousExecutionSteps.map(step => [step.id, step]));
+  for (const step of task.executionSteps ?? []) {
+    const previous = previousById.get(step.id);
+    if (!previous) {
+      store.addEvent(
+        sessionId,
+        resolveExecutionStepEventType(undefined, step.status),
+        buildExecutionStepPayload(task, step)
+      );
+      continue;
+    }
+    if (
+      previous.status !== step.status ||
+      previous.detail !== step.detail ||
+      previous.reason !== step.reason ||
+      previous.completedAt !== step.completedAt
+    ) {
+      store.addEvent(
+        sessionId,
+        resolveExecutionStepEventType(previous.status, step.status),
+        buildExecutionStepPayload(task, step)
+      );
+    }
+  }
+}
+
+function resolveExecutionStepEventType(
+  previousStatus: ExecutionStepRecord['status'] | undefined,
+  nextStatus: ExecutionStepRecord['status']
+) {
+  if (nextStatus === 'completed') {
+    return 'execution_step_completed' as const;
+  }
+  if (nextStatus === 'blocked') {
+    return 'execution_step_blocked' as const;
+  }
+  if (nextStatus === 'running' && previousStatus === 'blocked') {
+    return 'execution_step_resumed' as const;
+  }
+  return 'execution_step_started' as const;
+}
+
+function buildExecutionStepPayload(task: TaskRecord, step: ExecutionStepRecord) {
+  return {
+    taskId: task.id,
+    route: step.route,
+    stage: step.stage,
+    label: step.label,
+    owner: step.owner,
+    status: step.status,
+    detail: step.detail,
+    reason: step.reason,
+    startedAt: step.startedAt,
+    completedAt: step.completedAt
+  };
 }

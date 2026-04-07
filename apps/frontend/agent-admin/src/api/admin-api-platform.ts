@@ -43,6 +43,22 @@ export async function getApprovalsCenter(params?: { executionMode?: string; inte
   });
 }
 
+export async function getApprovalScopePolicies() {
+  return request<NonNullable<PlatformConsoleRecord['runtime']['approvalScopePolicies']>>(
+    '/platform/approval-policies',
+    {
+      cancelKey: 'approval-policies',
+      cancelPrevious: true
+    }
+  );
+}
+
+export async function revokeApprovalScopePolicy(policyId: string) {
+  return request(`/platform/approval-policies/${encodeURIComponent(policyId)}/revoke`, {
+    method: 'POST'
+  });
+}
+
 export async function getLearningCenter() {
   return request<PlatformConsoleRecord['learning']>('/learning/center', {
     cancelKey: 'learning-center',
@@ -98,6 +114,58 @@ export async function getRuntimeArchitecture() {
   return request<RuntimeArchitectureRecord>('/runtime/architecture', {
     cancelKey: 'runtime-architecture',
     cancelPrevious: true
+  });
+}
+
+export async function getBriefingRuns(params?: {
+  days?: number;
+  category?:
+    | 'frontend-security'
+    | 'general-security'
+    | 'devtool-security'
+    | 'ai-tech'
+    | 'frontend-tech'
+    | 'backend-tech'
+    | 'cloud-infra-tech';
+}) {
+  const search = new URLSearchParams();
+  if (params?.days) search.set('days', String(params.days));
+  if (params?.category) search.set('category', params.category);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return request<Array<Record<string, unknown>>>(`/platform/briefings/runs${suffix}`);
+}
+
+export async function forceBriefingRun(
+  category:
+    | 'frontend-security'
+    | 'general-security'
+    | 'devtool-security'
+    | 'ai-tech'
+    | 'frontend-tech'
+    | 'backend-tech'
+    | 'cloud-infra-tech'
+) {
+  return request(`/platform/briefings/${encodeURIComponent(category)}/force-run`, {
+    method: 'POST'
+  });
+}
+
+export async function submitBriefingFeedback(params: {
+  messageKey: string;
+  category:
+    | 'frontend-security'
+    | 'general-security'
+    | 'devtool-security'
+    | 'ai-tech'
+    | 'frontend-tech'
+    | 'backend-tech'
+    | 'cloud-infra-tech';
+  feedbackType: 'helpful' | 'notHelpful';
+  reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
+}) {
+  return request('/platform/briefings/feedback', {
+    method: 'POST',
+    body: JSON.stringify(params)
   });
 }
 

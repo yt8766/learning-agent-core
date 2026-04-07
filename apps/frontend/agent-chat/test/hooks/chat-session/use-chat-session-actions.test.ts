@@ -50,7 +50,111 @@ function applySetter<T>(current: T, next: T | ((value: T) => T)) {
   return typeof next === 'function' ? (next as (value: T) => T)(current) : next;
 }
 
+function createMissingSessionError(sessionId: string) {
+  return {
+    isAxiosError: true,
+    response: {
+      status: 404,
+      data: {
+        message: `Session ${sessionId} not found`
+      }
+    },
+    message: 'Request failed with status code 404'
+  };
+}
+
 describe('use-chat-session-actions optimistic sending', () => {
+  it('clears a stale session when detail refresh hits session not found', async () => {
+    listMessagesMock.mockReset();
+    listEventsMock.mockReset();
+    getCheckpointMock.mockReset();
+    listMessagesMock.mockRejectedValue(createMissingSessionError('session-1'));
+    listEventsMock.mockResolvedValue([]);
+    getCheckpointMock.mockResolvedValue(undefined);
+    const listSessionsApi = await import('@/api/chat-api');
+    vi.mocked(listSessionsApi.listSessions).mockResolvedValue([]);
+
+    let activeSessionId = 'session-1';
+    let error = '';
+    let loading = false;
+    let sessions: ChatSessionRecord[] = [
+      {
+        id: 'session-1',
+        title: '会话 1',
+        status: 'idle',
+        createdAt: '2026-03-28T00:00:00.000Z',
+        updatedAt: '2026-03-28T00:00:00.000Z'
+      }
+    ];
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'm1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: 'hello',
+        createdAt: '2026-03-28T00:00:00.000Z'
+      }
+    ];
+    let events: ChatEventRecord[] = [{ sessionId: 'session-1', type: 'user_message' } as ChatEventRecord];
+    let checkpoint: ChatCheckpointRecord | undefined = {
+      sessionId: 'session-1',
+      taskId: 'task-1',
+      learningCursor: 0,
+      traceCursor: 0,
+      messageCursor: 0,
+      approvalCursor: 0,
+      graphState: { status: 'idle' },
+      pendingApprovals: [],
+      agentStates: [],
+      createdAt: '2026-03-28T00:00:00.000Z',
+      updatedAt: '2026-03-28T00:00:01.000Z'
+    };
+
+    const actions = createChatSessionActions({
+      activeSessionId,
+      activeSession: sessions[0],
+      checkpoint,
+      draft: '',
+      setDraft: vi.fn(),
+      setError: next => {
+        error = applySetter(error, next);
+      },
+      setLoading: next => {
+        loading = applySetter(loading, next);
+      },
+      setSessions: next => {
+        sessions = applySetter(sessions, next);
+      },
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: next => {
+        events = applySetter(events, next);
+      },
+      setCheckpoint: next => {
+        checkpoint = applySetter(checkpoint, next);
+      },
+      setActiveSessionId: next => {
+        activeSessionId = applySetter(activeSessionId, next);
+      },
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} }
+    });
+
+    await actions.refreshSessionDetail('session-1', false);
+
+    expect(activeSessionId).toBe('');
+    expect(sessions).toEqual([]);
+    expect(messages).toEqual([]);
+    expect(events).toEqual([]);
+    expect(checkpoint).toBeUndefined();
+    expect(error).toContain('当前会话已失效');
+    expect(loading).toBe(false);
+  });
+
   it('shows user message, assistant placeholder, and thinking state immediately after send', async () => {
     const deferred = createDeferred<ChatMessageRecord>();
     appendMessageMock.mockReset();

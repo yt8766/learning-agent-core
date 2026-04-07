@@ -165,6 +165,13 @@ describe('chat-home-workbench thought items', () => {
         connectorRefs: ['github-mcp'],
         currentWorker: 'code-worker',
         currentMinistry: '工部',
+        streamStatus: {
+          nodeId: 'context_filter',
+          nodeLabel: '文书科',
+          detail: '正在压缩历史上下文并整理给工部的摘要',
+          progressPercent: 45,
+          updatedAt: '2026-03-28T00:00:00.000Z'
+        },
         updatedAt: '2026-03-28T00:00:00.000Z',
         createdAt: '2026-03-28T00:00:00.000Z'
       }
@@ -172,12 +179,18 @@ describe('chat-home-workbench thought items', () => {
 
     expect(items[0]).toEqual(
       expect.objectContaining({
+        title: '文书科',
+        description: expect.stringContaining('正在压缩历史上下文并整理给工部的摘要')
+      })
+    );
+    expect(items[1]).toEqual(
+      expect.objectContaining({
         title: '能力链路',
         description: expect.stringContaining('已复用 find-skills')
       })
     );
-    expect(String(items[0]?.description)).toContain('已接入 github-mcp');
-    expect(String(items[0]?.description)).toContain('当前由 code-worker 推进');
+    expect(String(items[1]?.description)).toContain('已接入 github-mcp');
+    expect(String(items[1]?.description)).toContain('当前由 code-worker 推进');
   });
 
   it('shows only the new optimistic thought item when a fresh turn starts', () => {
@@ -224,6 +237,57 @@ describe('chat-home-workbench thought items', () => {
         title: '正在准备回复',
         footer: '正在准备这轮回复'
       })
+    );
+  });
+
+  it('marks settled timeline events as success instead of leaving them in loading state', () => {
+    const items = buildThoughtItems({
+      events: [
+        {
+          id: 'evt-session-started',
+          sessionId: 'session-1',
+          type: 'session_started',
+          at: '2026-04-07T10:07:49.865Z',
+          payload: {}
+        },
+        {
+          id: 'evt-user-message',
+          sessionId: 'session-1',
+          type: 'user_message',
+          at: '2026-04-07T10:07:51.512Z',
+          payload: { content: '我现在有什么技能' }
+        },
+        {
+          id: 'evt-assistant-message',
+          sessionId: 'session-1',
+          type: 'assistant_message',
+          at: '2026-04-07T10:07:51.512Z',
+          payload: { content: '当前可见 2 个运行时 skill。' }
+        }
+      ],
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: {
+          status: 'completed'
+        },
+        createdAt: '2026-04-07T10:07:49.865Z',
+        updatedAt: '2026-04-07T10:07:51.512Z'
+      }
+    } as never);
+
+    expect(items.slice(0, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: 'Agent 回复', status: 'success' }),
+        expect.objectContaining({ title: '用户消息', status: 'success' }),
+        expect.objectContaining({ title: '会话启动', status: 'success' })
+      ])
     );
   });
 

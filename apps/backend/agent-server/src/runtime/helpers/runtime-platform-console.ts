@@ -35,26 +35,57 @@ export async function buildPlatformConsole(
     approvalsInteractionKind?: string;
   }
 ) {
-  const [skills, rules, learning, skillSources, connectors, companyAgents] = await Promise.all([
-    context.skillRegistry.list().catch(() => []),
-    context.orchestrator.listRules().catch(() => []),
-    context.getLearningCenter().catch(() => ({
-      totalCandidates: 0,
-      pendingCandidates: 0,
-      confirmedCandidates: 0,
-      candidates: []
-    })),
-    context.getSkillSourcesCenter().catch(() => ({
-      sources: [],
-      manifests: [],
-      installed: [],
-      receipts: []
-    })),
-    context.getConnectorsCenter().catch(() => []),
-    Promise.resolve()
-      .then(() => context.getCompanyAgentsCenter())
-      .catch(() => [])
-  ]);
+  const [skills, rules, learning, skillSources, connectors, companyAgents, runtime, approvals, evals, evidence] =
+    await Promise.all([
+      context.skillRegistry.list().catch(() => []),
+      context.orchestrator.listRules().catch(() => []),
+      context.getLearningCenter().catch(() => ({
+        totalCandidates: 0,
+        pendingCandidates: 0,
+        confirmedCandidates: 0,
+        candidates: []
+      })),
+      context.getSkillSourcesCenter().catch(() => ({
+        sources: [],
+        manifests: [],
+        installed: [],
+        receipts: []
+      })),
+      context.getConnectorsCenter().catch(() => []),
+      Promise.resolve()
+        .then(() => context.getCompanyAgentsCenter())
+        .catch(() => []),
+      context
+        .getRuntimeCenter(days, {
+          status: filters?.status,
+          model: filters?.model,
+          pricingSource: filters?.pricingSource,
+          executionMode: filters?.runtimeExecutionMode,
+          interactionKind: filters?.runtimeInteractionKind
+        })
+        .catch(() => ({
+          recentRuns: [],
+          usageAnalytics: { daily: [], persistedDailyHistory: [] }
+        })),
+      Promise.resolve()
+        .then(() =>
+          context.getApprovalsCenter({
+            executionMode: filters?.approvalsExecutionMode,
+            interactionKind: filters?.approvalsInteractionKind
+          })
+        )
+        .catch(() => []),
+      context.getEvalsCenter(days).catch(() => ({
+        dailyTrend: [],
+        persistedDailyHistory: [],
+        recentRuns: [],
+        promptRegression: { suites: [] }
+      })),
+      context.getEvidenceCenter().catch(() => ({
+        totalEvidenceCount: 0,
+        recentEvidence: []
+      }))
+    ]);
   const tasks = context.orchestrator.listTasks();
   const sessions = context.sessionCoordinator.listSessions();
   const checkpoints = sessions
@@ -65,21 +96,12 @@ export async function buildPlatformConsole(
     .filter((item): item is { session: ChatSessionRecord; checkpoint: ChatCheckpointRecord } => Boolean(item));
 
   return {
-    runtime: await context.getRuntimeCenter(days, {
-      status: filters?.status,
-      model: filters?.model,
-      pricingSource: filters?.pricingSource,
-      executionMode: filters?.runtimeExecutionMode,
-      interactionKind: filters?.runtimeInteractionKind
-    }),
-    approvals: context.getApprovalsCenter({
-      executionMode: filters?.approvalsExecutionMode,
-      interactionKind: filters?.approvalsInteractionKind
-    }),
+    runtime,
+    approvals,
     learning,
-    evals: await context.getEvalsCenter(days),
+    evals,
     skills,
-    evidence: await context.getEvidenceCenter(),
+    evidence,
     connectors,
     skillSources,
     companyAgents,
@@ -122,11 +144,20 @@ export async function exportRuntimeCenter(
     `filters,${csv(options?.status ?? '')},${csv(options?.model ?? '')},${csv(options?.pricingSource ?? '')},${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
     'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind',
     '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,updatedAt',
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt',
     ...runtime.recentRuns.map(
       task =>
-        `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(task))},${csv(task.currentWorker)},${csv(task.updatedAt)}`
-    )
+        `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(task))},${csv(task.currentWorker)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`
+    ),
+    '',
+    'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt',
+    `dailyTechScheduler,${csv(runtime.dailyTechBriefing?.scheduler ?? '')},${csv(runtime.dailyTechBriefing?.schedule ?? '')},${csv(runtime.dailyTechBriefing?.cron ?? '')},${csv(runtime.dailyTechBriefing?.scheduleValid ?? '')},${csv(runtime.dailyTechBriefing?.jobKey ?? '')},${csv(runtime.dailyTechBriefing?.lastRegisteredAt ?? '')}`,
+    '',
+    'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError',
+    ...((runtime.dailyTechBriefing?.categories ?? []).map(
+      item =>
+        `${csv(item.category)},${csv(item.status)},${csv(item.itemCount)},${csv(item.emptyDigest)},${csv(item.sentAt ?? '')},${csv(item.error ?? '')}`
+    ) as string[])
   ];
 
   return {
@@ -158,10 +189,10 @@ export async function exportApprovalsCenter(
     `filters,${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
     'filterExecutionMode,filterInteractionKind',
     '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason',
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt',
     ...approvals.map(
       item =>
-        `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(item))},${csv(item.currentWorker)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')}`
+        `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(item))},${csv(item.currentWorker)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')},${csv(resolveInterruptPayloadField(item, 'commandPreview'))},${csv(resolveInterruptPayloadField(item, 'riskReason'))},${csv(resolveInterruptPayloadField(item, 'riskCode'))},${csv(resolveInterruptPayloadField(item, 'approvalScope'))},${csv(item.policyMatchStatus ?? '')},${csv(item.policyMatchSource ?? '')},${csv(item.lastStreamStatusAt ?? '')}`
     )
   ];
 
@@ -185,6 +216,18 @@ function resolveInteractionKind(task: any) {
     return 'plan-question';
   }
   return task.pendingApproval || task.activeInterrupt ? 'approval' : '';
+}
+
+function resolveInterruptPayloadField(
+  task: any,
+  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
+) {
+  const payload = task.activeInterrupt?.payload;
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
+  const value = payload[field];
+  return typeof value === 'string' ? value : '';
 }
 
 export async function exportEvalsCenter(

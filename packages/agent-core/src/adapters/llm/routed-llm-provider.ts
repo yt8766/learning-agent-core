@@ -5,6 +5,7 @@ import { SemanticCacheRepository } from '@agent/memory';
 import { ChatMessage, GenerateTextOptions, LlmProvider, ModelInfo } from './llm-provider';
 import { ModelRouter } from './model-router';
 import { ProviderRegistry } from './provider-registry';
+import { withLlmRetry } from '../../utils/retry';
 
 function buildSemanticCacheKey(messages: ChatMessage[], options: GenerateTextOptions, resolvedModelId: string): string {
   return createHash('sha256')
@@ -134,9 +135,13 @@ export class RoutedLlmProvider implements LlmProvider {
         options.budgetState?.overBudget === true ||
         (options.budgetState?.costConsumedUsd ?? 0) >= (options.budgetState?.costBudgetUsd ?? Number.POSITIVE_INFINITY)
     });
-    return resolved.provider.generateObject(messages, schema, {
-      ...options,
-      modelId: resolved.modelId
-    });
+    return withLlmRetry(
+      retryMessages =>
+        resolved.provider.generateObject(retryMessages, schema, {
+          ...options,
+          modelId: resolved.modelId
+        }),
+      messages
+    );
   }
 }

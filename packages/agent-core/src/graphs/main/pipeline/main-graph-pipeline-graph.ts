@@ -17,15 +17,16 @@ import {
   XingbuReviewMinistry
 } from '../../../flows/ministries';
 import { PendingExecutionContext } from '../../../flows/approval';
-import { createAgentGraph, RuntimeAgentGraphState } from '../../chat.graph';
 import {
   runDispatchStage,
   runGoalIntakeStage,
   runManagerPlanStage,
   runRouteStage
-} from './main-graph-pipeline-planning';
-import { runExecuteStage, runResearchStage } from './main-graph-pipeline-runtime';
-import { runReviewStage } from './main-graph-pipeline-review';
+} from '../../../flows/supervisor/pipeline-stage-nodes';
+import { runReviewStage } from '../../../flows/ministries/review-stage-nodes';
+import { runExecuteStage, runResearchStage } from '../../../flows/ministries/runtime-stage-nodes';
+import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
+import { createAgentGraph } from '../../chat.graph';
 
 interface TaskPipelineGraphCallbacks {
   ensureTaskNotCancelled: (task: TaskRecord) => void;

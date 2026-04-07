@@ -1,5 +1,6 @@
 import { ToolExecutionRequest, ToolExecutionResult } from '@agent/shared';
 
+import { ExecutionWatchdog } from '../execution-watchdog';
 import { SandboxExecutor } from '../sandbox/sandbox-executor';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';
@@ -41,12 +42,15 @@ export class McpClientManager {
     private readonly fallbackExecutor: SandboxExecutor,
     options?: {
       stdioMaxSessions?: number;
+      watchdog?: ExecutionWatchdog;
     }
   ) {
     this.registerHandler(new LocalAdapterTransportHandler(this.fallbackExecutor));
     this.registerHandler(new HttpTransportHandler());
     this.registerHandler(new StdioTransportHandler({ maxSessions: options?.stdioMaxSessions }));
+    this.watchdog = options?.watchdog;
   }
+  private readonly watchdog?: ExecutionWatchdog;
 
   registerHandler(handler: McpTransportHandler): void {
     this.handlers.set(handler.transport, handler);
@@ -189,7 +193,19 @@ export class McpClientManager {
       };
     }
 
-    return handler.invoke(server, capability, request);
+    return this.watchdog
+      ? this.watchdog.guard(
+          {
+            taskId: request.taskId,
+            toolName: capability.toolName,
+            serverId: capability.serverId,
+            capabilityId: capability.id,
+            timeoutMs: capability.timeoutMs,
+            request
+          },
+          () => handler.invoke(server, capability, request)
+        )
+      : handler.invoke(server, capability, request);
   }
 
   async invokeTool(toolName: string, request: ToolExecutionRequest): Promise<ToolExecutionResult> {

@@ -1,5 +1,6 @@
 import { listSubgraphDescriptors, listWorkflowVersions } from '@agent/agent-core';
 import {
+  ApprovalScopePolicyRecord,
   ChatCheckpointRecord,
   ChatSessionRecord,
   getMinistryDisplayName,
@@ -10,6 +11,7 @@ import {
 import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
 import { buildModelHeatmap } from '../helpers/runtime-analytics';
 import { summarizeAndPersistUsageAnalytics } from '../helpers/runtime-metrics-store';
+import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 
 export function buildRuntimeCenter(input: {
   profile: string;
@@ -25,6 +27,7 @@ export function buildRuntimeCenter(input: {
   pendingApprovals: Array<{ id: string }>;
   usageAnalytics: Awaited<ReturnType<typeof summarizeAndPersistUsageAnalytics>>;
   recentGovernanceAudit: unknown;
+  approvalScopePolicies?: ApprovalScopePolicyRecord[];
   backgroundWorkerPoolSize: number;
   backgroundWorkerSlots: Map<string, { taskId: string; startedAt: string }>;
   filteredRecentRuns: TaskRecord[];
@@ -53,6 +56,7 @@ export function buildRuntimeCenter(input: {
       updatedAt: string;
     }>;
   };
+  dailyTechBriefing?: DailyTechBriefingStatusRecord;
 }) {
   // task.entryDecision is the persisted 通政司 / EntryRouter projection.
   // task.activeInterrupt and task.interruptHistory are persisted 司礼监 / InterruptController projections.
@@ -115,6 +119,19 @@ export function buildRuntimeCenter(input: {
     workflowVersions: listWorkflowVersions(),
     usageAnalytics: input.usageAnalytics,
     recentGovernanceAudit: input.recentGovernanceAudit,
+    approvalScopePolicies: input.approvalScopePolicies ?? [],
+    dailyTechBriefing: input.dailyTechBriefing,
+    streamMonitor: input.filteredRecentRuns.slice(0, 8).map(task => {
+      const checkpoint = task.sessionId ? input.getCheckpoint(task.sessionId) : undefined;
+      return {
+        taskId: task.id,
+        goal: task.goal,
+        currentNode: checkpoint?.streamStatus?.nodeLabel ?? checkpoint?.streamStatus?.nodeId ?? task.currentNode,
+        detail: checkpoint?.streamStatus?.detail ?? task.contextFilterState?.filteredContextSlice?.summary,
+        progressPercent: checkpoint?.streamStatus?.progressPercent,
+        updatedAt: checkpoint?.streamStatus?.updatedAt ?? task.updatedAt
+      };
+    }),
     recentAgentErrors: deriveRecentAgentErrors(input.tasks),
     diagnosisEvidenceCount: input.tasks.reduce(
       (count, task) =>
@@ -146,6 +163,7 @@ export function buildRuntimeCenter(input: {
       complexTaskPlan: task.complexTaskPlan,
       blackboardState: task.blackboardState,
       contextFilterState: task.contextFilterState,
+      streamStatus: task.sessionId ? input.getCheckpoint(task.sessionId)?.streamStatus : undefined,
       criticState: task.criticState,
       guardrailState: task.guardrailState,
       sandboxState: task.sandboxState,

@@ -45,20 +45,20 @@ import {
 } from '@agent/tools';
 
 import { createApprovalRecoveryGraph } from '../recovery.graph';
-import { MainGraphBackgroundRuntime } from './main-graph-background';
-import { MainGraphBridge } from './main-graph-bridge';
-import { MainGraphExecutionHelpers } from './main-graph-execution-helpers';
-import { MainGraphLifecycle } from './main-graph-lifecycle';
-import { MainGraphTaskContextRuntime } from './main-graph-task-context';
-import { MainGraphTaskDrafts } from './main-graph-task-drafts';
-import { MainGraphTaskFactory } from './main-graph-task-factory';
-import { MainGraphLearningJobsRuntime } from './main-graph-learning-jobs';
-import { MainGraphTaskRuntime } from './main-graph-task-runtime';
+import { MainGraphBackgroundRuntime } from './background/main-graph-background';
+import { MainGraphBridge } from './orchestration/main-graph-bridge';
+import { MainGraphExecutionHelpers } from './orchestration/main-graph-execution-helpers';
+import { MainGraphLifecycle } from './lifecycle/main-graph-lifecycle';
+import { MainGraphTaskContextRuntime } from './task/main-graph-task-context';
+import { MainGraphTaskDrafts } from './task/main-graph-task-drafts';
+import { MainGraphTaskFactory } from './task/main-graph-task-factory';
+import { MainGraphLearningJobsRuntime } from './background/main-graph-learning-jobs';
+import { MainGraphTaskRuntime } from './task/main-graph-task-runtime';
 import { executeApprovedAction, PendingExecutionContext } from '../../flows/approval';
 import { LibuRouterMinistry, XingbuReviewMinistry } from '../../flows/ministries';
 import { buildResearchSourcePlan, mergeEvidence } from '../../workflows/research-source-planner';
 import { LearningFlow } from '../../flows/learning';
-import { RuntimeAgentGraphState } from '../chat.graph';
+import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { LlmProvider } from '../../adapters/llm/llm-provider';
 import { buildWorkflowPresetPlan, resolveWorkflowPreset } from '../../workflows/workflow-preset-registry';
 import { resolveWorkflowRoute } from '../../workflows/workflow-route-registry';
@@ -69,6 +69,7 @@ import {
 } from '../../governance/worker-registry';
 import { ModelRoutingPolicy } from '../../governance/model-routing-policy';
 import { describeConnectorProfilePolicy } from '../../governance/profile-policy';
+import { LocalKnowledgeSearchService } from '../../runtime/local-knowledge-search-service';
 
 interface AgentRuntimeSettings {
   zhipuModels: {
@@ -88,6 +89,7 @@ interface AgentRuntimeSettings {
 export interface AgentOrchestratorDependencies {
   memoryRepository: MemoryRepository;
   memorySearchService?: MemorySearchService;
+  knowledgeSearchService?: LocalKnowledgeSearchService;
   skillRegistry: SkillRegistry;
   approvalService: ApprovalService;
   runtimeStateRepository: RuntimeStateRepository;

@@ -18,6 +18,25 @@ import { RuntimeToolsService } from '../services/runtime-tools.service';
 import { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
 import { autoInstallLocalManifest, type RuntimeSkillInstallContext } from '../skills/runtime-skill-install.service';
 import { searchLocalSkillSuggestions, type RuntimeSkillSourcesContext } from '../skills/runtime-skill-sources.service';
+import { RuntimeTechBriefingService } from '../briefings/runtime-tech-briefing.service';
+import { RuntimeScheduleService } from '../schedules/runtime-schedule.service';
+
+export function createRuntimeTechBriefingService(runtimeHost: RuntimeHost) {
+  return new RuntimeTechBriefingService(() => ({
+    settings: runtimeHost.settings,
+    mcpClientManager: runtimeHost.mcpClientManager
+  }));
+}
+
+export function createRuntimeScheduleService(
+  runtimeHost: RuntimeHost,
+  techBriefingService: RuntimeTechBriefingService
+) {
+  return new RuntimeScheduleService(() => ({
+    settings: runtimeHost.settings,
+    techBriefingService
+  }));
+}
 
 export function createRuntimeKnowledgeService(runtimeHost: RuntimeHost) {
   const wenyuanFacade = new RuntimeWenyuanFacade(() => ({
@@ -79,7 +98,9 @@ export function createRuntimeMessageGatewayFacadeService(
 
 export function createRuntimeBootstrapService(
   runtimeHost: RuntimeHost,
-  operationalState: RuntimeOperationalStateService
+  operationalState: RuntimeOperationalStateService,
+  techBriefingService: RuntimeTechBriefingService,
+  runtimeScheduleService: RuntimeScheduleService
 ) {
   return new RuntimeBootstrapService(() => ({
     sessionCoordinator: runtimeHost.sessionCoordinator,
@@ -96,6 +117,12 @@ export function createRuntimeBootstrapService(
     applyStoredGovernanceOverrides: async () => {
       const snapshot = await runtimeHost.runtimeStateRepository.load();
       applyGovernanceOverrides(createConnectorRegistryContext(runtimeHost), snapshot);
+    },
+    initializeDailyTechBriefing: async () => {
+      await techBriefingService.initializeSchedule();
+    },
+    initializeScheduleRunner: async () => {
+      await runtimeScheduleService.initialize();
     },
     getBackgroundRunnerContext: () => ({
       enabled: runtimeHost.settings.runtimeBackground.enabled,
@@ -116,7 +143,8 @@ export function createRuntimeBootstrapService(
 
 export function createRuntimeCentersService(
   runtimeHost: RuntimeHost,
-  operationalState: RuntimeOperationalStateService
+  operationalState: RuntimeOperationalStateService,
+  techBriefingService: RuntimeTechBriefingService
 ) {
   const wenyuanFacade = new RuntimeWenyuanFacade(() => ({
     settings: runtimeHost.settings,
@@ -127,6 +155,7 @@ export function createRuntimeCentersService(
   }));
   const context = {
     settings: runtimeHost.settings,
+    techBriefingService,
     wenyuanFacade,
     sessionCoordinator: runtimeHost.sessionCoordinator,
     orchestrator: runtimeHost.orchestrator,
@@ -187,7 +216,7 @@ function createSkillInstallContext(runtimeHost: RuntimeHost): RuntimeSkillInstal
     settings: runtimeHost.settings,
     skillRegistry: runtimeHost.skillRegistry,
     skillArtifactFetcher: runtimeHost.skillArtifactFetcher,
-    listSkillSources: () => createSkillSourcesContext(runtimeHost).listSkillSources?.() ?? Promise.resolve([]),
+    listSkillSources: () => createSkillSourcesContext(runtimeHost).listSkillSources(),
     remoteSkillCli: {
       install: (params: { repo: string; skillName?: string }) =>
         runtimeHost.remoteSkillDiscoveryService.installRemoteSkill(params),
@@ -200,9 +229,10 @@ function createSkillInstallContext(runtimeHost: RuntimeHost): RuntimeSkillInstal
 }
 
 function createSkillSourcesContext(runtimeHost: RuntimeHost): RuntimeSkillSourcesContext & {
-  listSkillSources?: () => Promise<any[]>;
+  listSkillSources: () => Promise<any[]>;
 } {
-  const context: RuntimeSkillSourcesContext & { listSkillSources?: () => Promise<any[]> } = {
+  const context = {} as RuntimeSkillSourcesContext & { listSkillSources: () => Promise<any[]> };
+  Object.assign(context, {
     settings: runtimeHost.settings,
     toolRegistry: runtimeHost.toolRegistry,
     skillRegistry: runtimeHost.skillRegistry,
@@ -214,7 +244,7 @@ function createSkillSourcesContext(runtimeHost: RuntimeHost): RuntimeSkillSource
     },
     autoInstallLocalManifest: (manifest: SkillManifestRecord) =>
       autoInstallLocalManifest(createSkillInstallContext(runtimeHost), manifest)
-  };
+  });
   context.listSkillSources = async () => {
     const { listSkillSources } = await import('../skills/runtime-skill-sources.service');
     return listSkillSources(context);

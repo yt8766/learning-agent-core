@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { AgentRole, TaskStatus, type TaskRecord } from '@agent/shared';
 
-import { runExecuteStage } from '../../../../src/graphs/main/pipeline/main-graph-pipeline-runtime';
+import { runExecuteStage } from '../../../../src/flows/ministries/runtime-stage-nodes';
+import { pauseExecutionForApproval } from '../../../../src/flows/ministries/runtime-stage-execute';
 import {
   buildCurrentSkillExecution,
   resolveExecutionDispatchObjective,
   resolveResearchDispatchObjective
-} from '../../../../src/graphs/main/pipeline/main-graph-pipeline-runtime-helpers';
+} from '../../../../src/flows/ministries/runtime-stage-helpers';
 
 function createTask(): TaskRecord {
   const now = new Date().toISOString();
@@ -242,5 +243,57 @@ describe('main-graph-pipeline-runtime skill execution state', () => {
 
     expect(next.executionSummary).toContain('计划模式');
     expect(task.trace).toEqual(expect.arrayContaining([expect.objectContaining({ node: 'mode_gate' })]));
+  });
+
+  it('turns watchdog approvals into runtime-governance interrupts', () => {
+    const task = createTask();
+    task.currentMinistry = 'bingbu-ops' as any;
+    task.approvals = [];
+    task.trace = [];
+    task.interruptHistory = [];
+    const pendingExecutions = new Map();
+
+    pauseExecutionForApproval({
+      task,
+      pendingExecutions,
+      researchSummary: 'inspect runtime',
+      execution: {
+        intent: 'read_file' as any,
+        toolName: 'run_terminal',
+        summary: '兵部已暂停 run_terminal：检测到长任务停滞。',
+        approvalReason: '兵部执行 run_terminal 时检测到长任务停滞或交互阻塞，需人工干预后才能继续。',
+        approvalReasonCode: 'watchdog_timeout',
+        approvalPreview: [{ label: 'Ops Tool', value: 'run_terminal' }],
+        tool: { riskLevel: 'medium' }
+      },
+      callbacks: {
+        transitionQueueState: () => undefined,
+        setSubTaskStatus: () => undefined,
+        addTrace: (currentTask, node, summary, data) => {
+          currentTask.trace.push({ node, at: new Date().toISOString(), summary, data } as never);
+        },
+        addProgressDelta: () => undefined,
+        describeActionIntent: () => '执行'
+      }
+    });
+
+    expect(task.activeInterrupt).toEqual(
+      expect.objectContaining({
+        kind: 'runtime-governance',
+        source: 'tool',
+        origin: 'timeout',
+        interactionKind: 'supplemental-input'
+      })
+    );
+    expect(task.currentNode).toBe('runtime_governance_gate');
+    expect(task.activeInterrupt?.payload).toEqual(
+      expect.objectContaining({
+        watchdog: true,
+        runtimeGovernanceReasonCode: 'watchdog_timeout'
+      })
+    );
+    expect(task.trace).toEqual(
+      expect.arrayContaining([expect.objectContaining({ node: 'runtime_governance_watchdog' })])
+    );
   });
 });

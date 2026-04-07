@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { MainGraphLearningJobsRuntime } from '../../../src/graphs/main/main-graph-learning-jobs';
+import { MainGraphLearningJobsRuntime } from '../../../src/graphs/main/background/main-graph-learning-jobs';
 
 function createRuntime(options?: { mcpThrows?: boolean }) {
   const learningJobs = new Map();

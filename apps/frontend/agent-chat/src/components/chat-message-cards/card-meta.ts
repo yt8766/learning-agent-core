@@ -59,12 +59,24 @@ export function getApprovalReasonLabel(reasonCode?: string) {
       return '检测到破坏性操作';
     case 'requires_approval_governance':
       return '治理或发布类动作';
+    case 'requires_approval_external_mutation':
+      return '涉及外部系统变更';
     case 'requires_approval_missing_preview':
       return '缺少执行预览';
+    case 'requires_approval_permission_escalation':
+      return '需要更高权限';
     case 'requires_approval_profile_override':
       return '当前 profile 保守策略';
+    case 'requires_approval_high_risk':
+      return '命中高危动作策略';
     case 'requires_approval_tool_policy':
       return '工具默认要求审批';
+    case 'watchdog_timeout':
+      return '运行时超时阻塞';
+    case 'watchdog_interaction_required':
+      return '运行时等待补充输入';
+    case 'runtime_governance_gate':
+      return '运行时治理闸门';
     default:
       return '';
   }

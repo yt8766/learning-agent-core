@@ -113,6 +113,75 @@ describe('RuntimeService centers', () => {
     expect(consoleRecord.approvals[0]?.taskId).toBe('task-plan');
   });
 
+  it('approvals center 会透出 streamStatus、文书科压缩元数据与高危审批字段', () => {
+    const service = createService();
+    collaborators(service).orchestrator.listPendingApprovals.mockReturnValue([
+      {
+        id: 'task-risky',
+        goal: '清理临时目录',
+        status: 'waiting_approval',
+        executionMode: 'execute',
+        currentMinistry: 'gongbu',
+        currentWorker: 'gongbu-code',
+        streamStatus: {
+          nodeId: 'context_filter',
+          nodeLabel: '文书科',
+          detail: '正在压缩历史上下文',
+          progressPercent: 45,
+          updatedAt: '2026-03-31T00:00:00.000Z'
+        },
+        contextFilterState: {
+          filteredContextSlice: {
+            summary: '已裁剪不相关上下文',
+            compressionApplied: true,
+            compressionSource: 'llm',
+            compressedMessageCount: 12
+          }
+        },
+        activeInterrupt: {
+          kind: 'approval',
+          source: 'graph',
+          intent: 'write_file',
+          requestedBy: 'gongbu-code',
+          payload: {
+            interactionKind: 'approval',
+            commandPreview: 'rm -rf /tmp/runtime-cache',
+            riskReason: '命中高危命令策略，需要人工确认。',
+            riskCode: 'requires_approval_high_risk',
+            approvalScope: 'once'
+          }
+        },
+        pendingApproval: {
+          intent: 'write_file',
+          riskLevel: 'high',
+          reason: '需要确认删除操作',
+          reasonCode: 'requires_approval_destructive'
+        },
+        approvals: []
+      }
+    ]);
+
+    const approvals = service.getApprovalsCenter();
+
+    expect(approvals).toEqual([
+      expect.objectContaining({
+        taskId: 'task-risky',
+        streamStatus: expect.objectContaining({ nodeLabel: '文书科' }),
+        contextFilterState: expect.objectContaining({
+          filteredContextSlice: expect.objectContaining({
+            compressionApplied: true,
+            compressionSource: 'llm',
+            compressedMessageCount: 12
+          })
+        }),
+        commandPreview: 'rm -rf /tmp/runtime-cache',
+        riskReason: '命中高危命令策略，需要人工确认。',
+        riskCode: 'requires_approval_high_risk',
+        approvalScope: 'once'
+      })
+    ]);
+  });
+
   it('runtime center 会暴露最近的 agent 级结构化错误', async () => {
     const service = createService();
     collaborators(service).orchestrator.listTasks.mockReturnValue([
@@ -185,6 +254,13 @@ describe('RuntimeService centers', () => {
         sourceCount: expect.any(Number),
         chunkCount: expect.any(Number),
         embeddingCount: expect.any(Number)
+      })
+    );
+    expect(runtime.dailyTechBriefing).toEqual(
+      expect.objectContaining({
+        enabled: false,
+        schedule: expect.any(String),
+        categories: expect.any(Array)
       })
     );
   });

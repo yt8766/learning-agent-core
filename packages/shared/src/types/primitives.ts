@@ -20,6 +20,7 @@ export enum ApprovalDecision {
 }
 
 export type ApprovalStatus = ApprovalDecision | 'pending';
+export type ApprovalScope = 'once' | 'session' | 'always';
 
 export enum ActionIntent {
   READ_FILE = 'read_file',
@@ -71,9 +72,16 @@ export type ChatEventType =
   | 'research_progress'
   | 'tool_selected'
   | 'tool_called'
+  | 'tool_stream_detected'
+  | 'tool_stream_dispatched'
+  | 'tool_stream_completed'
   | 'interrupt_pending'
   | 'interrupt_resumed'
   | 'interrupt_rejected_with_feedback'
+  | 'execution_step_started'
+  | 'execution_step_completed'
+  | 'execution_step_blocked'
+  | 'execution_step_resumed'
   | 'approval_required'
   | 'approval_resolved'
   | 'approval_rejected_with_feedback'
@@ -81,11 +89,18 @@ export type ChatEventType =
   | 'learning_pending_confirmation'
   | 'learning_confirmed'
   | 'conversation_compacted'
+  | 'context_compaction_applied'
+  | 'context_compaction_retried'
+  | 'node_status'
+  | 'node_progress'
   | 'assistant_token'
   | 'assistant_message'
   | 'run_resumed'
   | 'run_cancelled'
   | 'budget_exhausted'
+  | 'preflight_governance_blocked'
+  | 'background_learning_queued'
+  | 'dream_task_completed'
   | 'final_response_delta'
   | 'final_response_completed'
   | 'session_finished'
@@ -252,8 +267,55 @@ export interface ChatRouteRecord {
     | 'figma-design'
     | 'modification-intent'
     | 'general-prompt'
+    | 'research-first'
+    | 'plan-only'
+    | 'readiness-fallback'
     | 'fallback';
   priority: number;
+  intent?: 'direct-reply' | 'research-first' | 'plan-only' | 'workflow-execute' | 'approval-recovery';
+  intentConfidence?: number;
+  executionReadiness?:
+    | 'ready'
+    | 'approval-required'
+    | 'missing-capability'
+    | 'missing-connector'
+    | 'missing-workspace'
+    | 'blocked-by-policy';
+  matchedSignals?: string[];
+  readinessReason?: string;
+  profileAdjustmentReason?: string;
+  preferredExecutionMode?: 'direct-reply' | 'plan-first' | 'execute-first';
+  stepsSummary?: ExecutionStepRecord[];
+}
+
+export type ExecutionStepRoute = 'direct-reply' | 'research-first' | 'workflow-execute' | 'approval-recovery';
+
+export type ExecutionStepStage =
+  | 'request-received'
+  | 'route-selection'
+  | 'task-planning'
+  | 'research'
+  | 'execution'
+  | 'review'
+  | 'delivery'
+  | 'approval-interrupt'
+  | 'recovery';
+
+export type ExecutionStepStatus = 'pending' | 'running' | 'completed' | 'blocked';
+
+export type ExecutionStepOwner = 'session' | 'libu' | 'hubu' | 'gongbu' | 'bingbu' | 'xingbu' | 'libu-docs' | 'system';
+
+export interface ExecutionStepRecord {
+  id: string;
+  route: ExecutionStepRoute;
+  stage: ExecutionStepStage;
+  label: string;
+  owner: ExecutionStepOwner;
+  status: ExecutionStepStatus;
+  startedAt: string;
+  completedAt?: string;
+  detail?: string;
+  reason?: string;
 }
 
 export interface CheckpointRef {

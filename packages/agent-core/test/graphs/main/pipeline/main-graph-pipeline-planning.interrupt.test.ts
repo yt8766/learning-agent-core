@@ -11,7 +11,7 @@ vi.mock('@langchain/langgraph', async () => {
 import { interrupt } from '@langchain/langgraph';
 import { AgentRole, TaskStatus, type TaskRecord } from '@agent/shared';
 
-import { runManagerPlanStage } from '../../../../src/graphs/main/pipeline/main-graph-pipeline-planning';
+import { runManagerPlanStage } from '../../../../src/flows/supervisor/pipeline-stage-nodes';
 
 // task.activeInterrupt remains the persisted 司礼监 / InterruptController projection in planning-interrupt tests.
 function createPlanningTask(goal: string): TaskRecord {

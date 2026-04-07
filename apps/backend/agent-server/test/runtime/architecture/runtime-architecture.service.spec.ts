@@ -14,10 +14,16 @@ describe('RuntimeArchitectureService', () => {
 
     expect(Object.keys(diagrams)).toEqual(['project', 'agent', 'agentChat', 'agentAdmin']);
     expect(diagrams.project.mermaid).toContain('agent-core');
+    expect(diagrams.project.mermaid).not.toContain('|"');
+    expect(diagrams.project.mermaid).toContain('subgraph group_frontends [Frontends]');
+    expect(diagrams.project.mermaid).toContain('node_agent_core');
+    expect(diagrams.project.mermaid).not.toContain('subgraph-');
+    expect(diagrams.project.mermaid).not.toContain('graph-node-');
     expect(diagrams.project.sourceDescriptors).toContain('subgraph registry');
     expect(diagrams.project.sourceDescriptors).toContain('runtime host descriptor');
     expect(diagrams.agent.mermaid).toContain('BudgetGate');
     expect(diagrams.agent.mermaid).toContain('Critic');
+    expect(diagrams.agent.mermaid).not.toContain('|"');
     expect(diagrams.agent.sourceDescriptors).toEqual(
       expect.arrayContaining(['workflow route registry', 'worker registry'])
     );

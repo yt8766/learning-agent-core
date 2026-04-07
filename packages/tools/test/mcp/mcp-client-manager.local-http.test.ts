@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ActionIntent } from '@agent/shared';
 
 import { McpCapabilityRegistry } from '../../src/mcp/mcp-capability-registry';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';
@@ -164,6 +165,82 @@ describe('McpClientManager local and http transports', () => {
     expect(result.transportUsed).toBe('http');
     expect(result.serverId).toBe('remote-browser');
     expect(result.capabilityId).toBe('browse_page_remote');
+    expect(sandboxExecutor.execute).not.toHaveBeenCalled();
+  });
+
+  it('registerFromTools does not override a remote capability with the same toolName', async () => {
+    const servers = new McpServerRegistry();
+    const capabilities = new McpCapabilityRegistry();
+    const sandboxExecutor = {
+      execute: vi.fn(async () => ({
+        ok: true,
+        outputSummary: 'local fallback executed',
+        durationMs: 1,
+        exitCode: 0
+      }))
+    };
+
+    servers.register({ id: 'local-workspace', displayName: 'local', transport: 'local-adapter', enabled: true });
+    servers.register({
+      id: 'bigmodel-web-search',
+      displayName: 'BigModel Web Search MCP',
+      transport: 'http',
+      endpoint: 'http://mcp.local/invoke',
+      enabled: true
+    });
+
+    capabilities.register({
+      id: 'webSearchPrime',
+      toolName: 'webSearchPrime',
+      serverId: 'bigmodel-web-search',
+      displayName: 'Web Search Prime',
+      riskLevel: 'low',
+      requiresApproval: false,
+      category: 'knowledge'
+    });
+    capabilities.registerFromTools('local-workspace', [
+      {
+        name: 'webSearchPrime',
+        description: 'Search the open web for recent, citation-friendly sources.',
+        family: 'knowledge',
+        category: 'knowledge',
+        riskLevel: 'low',
+        requiresApproval: false,
+        timeoutMs: 10000,
+        sandboxProfile: 'research-readonly',
+        capabilityType: 'local-tool',
+        isReadOnly: true,
+        isConcurrencySafe: true,
+        isDestructive: false,
+        supportsStreamingDispatch: true,
+        permissionScope: 'readonly',
+        inputSchema: { type: 'object', properties: {} }
+      }
+    ]);
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        outputSummary: 'remote search executed',
+        durationMs: 8,
+        exitCode: 0
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const manager = new McpClientManager(servers, capabilities, sandboxExecutor as never);
+    const result = await manager.invokeTool('webSearchPrime', {
+      taskId: 'task-pref-2',
+      toolName: 'ignored',
+      intent: ActionIntent.CALL_EXTERNAL_API,
+      input: { query: 'latest runtime news' },
+      requestedBy: 'agent'
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.serverId).toBe('bigmodel-web-search');
+    expect(result.capabilityId).toBe('webSearchPrime');
     expect(sandboxExecutor.execute).not.toHaveBeenCalled();
   });
 

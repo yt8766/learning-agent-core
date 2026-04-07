@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SemanticCacheRecord, SemanticCacheRepository } from '@agent/memory';
 
@@ -9,6 +9,9 @@ import { RoutedLlmProvider } from '../../../src/adapters/llm/routed-llm-provider
 
 class StubProvider implements LlmProvider {
   callCount = 0;
+  objectCallCount = 0;
+  objectFailures: Error[] = [];
+  objectMessages: ChatMessage[][] = [];
 
   constructor(
     readonly providerId: string,
@@ -43,8 +46,14 @@ class StubProvider implements LlmProvider {
     return this.responseText;
   }
 
-  async generateObject<T>(): Promise<T> {
-    throw new Error('not implemented');
+  async generateObject<T>(messages: ChatMessage[]): Promise<T> {
+    this.objectCallCount += 1;
+    this.objectMessages.push(messages);
+    const nextFailure = this.objectFailures.shift();
+    if (nextFailure) {
+      throw nextFailure;
+    }
+    return { ok: true } as T;
   }
 }
 
@@ -66,6 +75,24 @@ class InMemorySemanticCacheRepository implements SemanticCacheRepository {
 }
 
 describe('RoutedLlmProvider', () => {
+  it('aggregates supported models and reports whether any provider is configured', () => {
+    const registry = new ProviderRegistry();
+    const configured = new StubProvider('zhipu', 'ZhiPu', ['glm-5']);
+    const unconfigured = new StubProvider('openai', 'OpenAI', ['gpt-4o']);
+    vi.spyOn(unconfigured, 'isConfigured').mockReturnValue(false);
+    registry.register(configured);
+    registry.register(unconfigured);
+    const router = new ModelRouter(registry, {
+      manager: {
+        primary: 'zhipu/glm-5'
+      }
+    });
+    const llm = new RoutedLlmProvider(registry, router);
+
+    expect(llm.isConfigured()).toBe(true);
+    expect(llm.supportedModels().map(model => model.id)).toEqual(['glm-5', 'gpt-4o']);
+  });
+
   it('returns cached text for identical prompts', async () => {
     const registry = new ProviderRegistry();
     const provider = new StubProvider('zhipu', 'ZhiPu', ['glm-5'], 'cached-answer');
@@ -85,5 +112,78 @@ describe('RoutedLlmProvider', () => {
     expect(first).toBe('cached-answer');
     expect(second).toBe('cached-answer');
     expect(provider.callCount).toBe(1);
+  });
+
+  it('streams from semantic cache and writes fresh streaming results back to cache', async () => {
+    const registry = new ProviderRegistry();
+    const provider = new StubProvider('zhipu', 'ZhiPu', ['glm-5'], 'stream-answer');
+    registry.register(provider);
+    const router = new ModelRouter(registry, {
+      manager: {
+        primary: 'zhipu/glm-5'
+      }
+    });
+    const cache = new InMemorySemanticCacheRepository();
+    const llm = new RoutedLlmProvider(registry, router, cache);
+    const messages = [{ role: 'user' as const, content: 'stream please' }];
+    const onToken = vi.fn();
+
+    const first = await llm.streamText(
+      messages,
+      {
+        role: 'manager',
+        budgetState: {
+          costConsumedUsd: 10,
+          costBudgetUsd: 10,
+          fallbackModelId: 'glm-5'
+        }
+      },
+      onToken
+    );
+    const second = await llm.streamText(messages, { role: 'manager' }, onToken);
+
+    expect(first).toBe('stream-answer');
+    expect(second).toBe('stream-answer');
+    expect(onToken).toHaveBeenCalledWith('stream-answer');
+    expect(provider.callCount).toBe(1);
+  });
+
+  it('routes generateObject through the resolved provider model', async () => {
+    const registry = new ProviderRegistry();
+    const provider = new StubProvider('zhipu', 'ZhiPu', ['glm-5'], 'object-answer');
+    registry.register(provider);
+    const router = new ModelRouter(registry, {
+      reviewer: {
+        primary: 'zhipu/glm-5'
+      }
+    });
+    const llm = new RoutedLlmProvider(registry, router);
+
+    await expect(
+      llm.generateObject([{ role: 'user', content: 'hello' }], {} as any, { role: 'reviewer' })
+    ).resolves.toEqual({ ok: true });
+    expect(provider.objectCallCount).toBe(1);
+  });
+
+  it('retries generateObject with error feedback when structured output is invalid', async () => {
+    const registry = new ProviderRegistry();
+    const provider = new StubProvider('zhipu', 'ZhiPu', ['glm-5'], 'object-answer');
+    provider.objectFailures.push(new Error('JSON parse failed: invalid enum value'));
+    registry.register(provider);
+    const router = new ModelRouter(registry, {
+      reviewer: {
+        primary: 'zhipu/glm-5'
+      }
+    });
+    const llm = new RoutedLlmProvider(registry, router);
+
+    await expect(
+      llm.generateObject([{ role: 'user', content: 'hello' }], {} as any, { role: 'reviewer' })
+    ).resolves.toEqual({ ok: true });
+
+    expect(provider.objectCallCount).toBe(2);
+    expect(provider.objectMessages[1]?.at(-1)?.role).toBe('user');
+    expect(provider.objectMessages[1]?.at(-1)?.content).toContain('上一次生成失败');
+    expect(provider.objectMessages[1]?.at(-1)?.content).toContain('JSON parse failed');
   });
 });

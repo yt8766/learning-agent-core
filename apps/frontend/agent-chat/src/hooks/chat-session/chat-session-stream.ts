@@ -59,6 +59,23 @@ export function syncCheckpointFromStreamEvent(checkpoint: ChatCheckpointRecord |
     return checkpoint;
   }
 
+  if (event.type === 'node_status' || event.type === 'node_progress') {
+    return {
+      ...checkpoint,
+      streamStatus: {
+        nodeId: typeof event.payload?.nodeId === 'string' ? event.payload.nodeId : checkpoint.streamStatus?.nodeId,
+        nodeLabel:
+          typeof event.payload?.nodeLabel === 'string' ? event.payload.nodeLabel : checkpoint.streamStatus?.nodeLabel,
+        detail: typeof event.payload?.detail === 'string' ? event.payload.detail : checkpoint.streamStatus?.detail,
+        progressPercent:
+          typeof event.payload?.progressPercent === 'number'
+            ? event.payload.progressPercent
+            : checkpoint.streamStatus?.progressPercent,
+        updatedAt: event.at
+      }
+    };
+  }
+
   if (!isAssistantContentEvent(event.type) && !shouldStopStreamingForEvent(event.type)) {
     return checkpoint;
   }

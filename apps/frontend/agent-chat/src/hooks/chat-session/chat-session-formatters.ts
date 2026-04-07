@@ -20,6 +20,8 @@ export const CHECKPOINT_REFRESH_EVENT_TYPES = new Set<ChatEventRecord['type']>([
   'run_cancelled',
   'learning_pending_confirmation',
   'learning_confirmed',
+  'node_status',
+  'node_progress',
   'final_response_completed',
   'session_finished',
   'session_failed'
@@ -27,6 +29,8 @@ export const CHECKPOINT_REFRESH_EVENT_TYPES = new Set<ChatEventRecord['type']>([
 
 export const MESSAGE_VISIBLE_EVENT_TYPES = new Set<ChatEventRecord['type']>([
   'conversation_compacted',
+  'node_status',
+  'node_progress',
   'interrupt_pending',
   'interrupt_resumed',
   'interrupt_rejected_with_feedback',

@@ -1,25 +1,23 @@
-import {
-  ActionIntent,
-  AgentRole,
-  ApprovalResumeInput,
-  TaskRecord,
-  TaskStatus,
-  ToolUsageSummaryRecord
-} from '@agent/shared';
-import { Annotation, BaseCheckpointSaver, END, interrupt, START, StateGraph } from '@langchain/langgraph';
+import { AgentRole, TaskRecord, ToolUsageSummaryRecord } from '@agent/shared';
+import { Annotation, BaseCheckpointSaver, END, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../flows/approval';
+import {
+  runDirectReplyInterruptFinishNode,
+  runDirectReplyNode,
+  runDirectReplySkillGateNode
+} from '../../../flows/chat/direct-reply-interrupt-nodes';
 import { LibuRouterMinistry } from '../../../flows/ministries';
 
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across direct-reply resumes.
-interface DirectReplyInterruptGraphState {
+export interface DirectReplyInterruptGraphState {
   taskId: string;
   goal: string;
   blocked: boolean;
   finalAnswer?: string;
 }
 
-interface DirectReplyInterruptGraphCallbacks {
+export interface DirectReplyInterruptGraphCallbacks {
   ensureTaskNotCancelled: (task: TaskRecord) => void;
   attachTool: (
     task: TaskRecord,
@@ -113,14 +111,6 @@ const DirectReplyInterruptAnnotation = Annotation.Root({
   finalAnswer: Annotation<string | undefined>()
 });
 
-function shouldAttemptRuntimeSkillIntervention(task: TaskRecord) {
-  return Boolean(
-    task.skillSearch?.capabilityGapDetected &&
-    (task.skillSearch?.suggestions.length ?? 0) > 0 &&
-    (task.usedInstalledSkills?.length ?? 0) === 0
-  );
-}
-
 interface BuildDirectReplyInterruptGraphParams {
   task: TaskRecord;
   libu: LibuRouterMinistry;
@@ -132,276 +122,9 @@ export function buildDirectReplyInterruptGraph(params: BuildDirectReplyInterrupt
   const { task, libu, callbacks, checkpointer } = params;
 
   return new StateGraph(DirectReplyInterruptAnnotation)
-    .addNode('skill_gate', async state => {
-      callbacks.ensureTaskNotCancelled(task);
-
-      if (!task.skillSearch || !shouldAttemptRuntimeSkillIntervention(task)) {
-        await callbacks.persistAndEmitTask(task);
-        return {
-          ...state,
-          blocked: false
-        };
-      }
-
-      const resolved = await callbacks.resolveRuntimeSkillIntervention({
-        task,
-        goal: task.goal,
-        currentStep: 'direct_reply',
-        skillSearch: task.skillSearch,
-        usedInstalledSkills: task.usedInstalledSkills
-      });
-
-      if (!resolved) {
-        await callbacks.persistAndEmitTask(task);
-        return {
-          ...state,
-          blocked: false
-        };
-      }
-
-      if (resolved.skillSearch) {
-        task.skillSearch = resolved.skillSearch;
-      }
-      if (resolved.usedInstalledSkills?.length) {
-        task.usedInstalledSkills = Array.from(
-          new Set([...(task.usedInstalledSkills ?? []), ...resolved.usedInstalledSkills])
-        );
-      }
-      if (resolved.traceSummary) {
-        callbacks.addTrace(task, 'skill_runtime_intervention', resolved.traceSummary, {
-          stage: 'direct_reply',
-          usedInstalledSkills: resolved.usedInstalledSkills
-        });
-      }
-      if (resolved.progressSummary) {
-        callbacks.addProgressDelta(task, resolved.progressSummary, AgentRole.MANAGER);
-      }
-
-      if (!resolved.pendingApproval || !resolved.pendingExecution?.receiptId) {
-        await callbacks.persistAndEmitTask(task);
-        return {
-          ...state,
-          blocked: false
-        };
-      }
-
-      const interruptAt = new Date().toISOString();
-      task.status = TaskStatus.WAITING_APPROVAL;
-      callbacks.transitionQueueState(task, 'waiting_approval');
-      task.currentNode = 'approval_gate';
-      task.currentStep = 'waiting_skill_install_approval';
-      task.pendingAction = {
-        toolName: resolved.pendingApproval.toolName,
-        intent: ActionIntent.INSTALL_SKILL,
-        requestedBy: task.currentMinistry ?? 'libu-governance'
-      };
-      task.pendingApproval = {
-        ...task.pendingAction,
-        reason: resolved.pendingApproval.reason,
-        preview: resolved.pendingApproval.preview
-      };
-      task.activeInterrupt = {
-        id: `interrupt_${task.id}_direct_reply_skill_install`,
-        status: 'pending',
-        mode: 'blocking',
-        source: 'graph',
-        origin: 'runtime',
-        kind: 'skill-install',
-        intent: ActionIntent.INSTALL_SKILL,
-        toolName: resolved.pendingApproval.toolName,
-        family: 'runtime-governance',
-        capabilityType: 'governance-tool',
-        requestedBy: task.currentMinistry ?? 'libu-governance',
-        ownerType: 'ministry-owned',
-        ownerId: task.currentMinistry ?? 'libu-governance',
-        reason: resolved.pendingApproval.reason,
-        blockedReason: resolved.pendingApproval.reason,
-        riskLevel: 'medium',
-        resumeStrategy: 'command',
-        preview: resolved.pendingApproval.preview,
-        payload: {
-          stage: 'direct_reply',
-          receiptId: resolved.pendingExecution.receiptId,
-          skillDisplayName: resolved.pendingExecution.skillDisplayName
-        },
-        createdAt: interruptAt
-      };
-      task.interruptHistory = [...(task.interruptHistory ?? []), task.activeInterrupt];
-      callbacks.attachTool(task, {
-        toolName: resolved.pendingApproval.toolName,
-        attachedBy: 'runtime',
-        preferred: true,
-        reason: resolved.pendingApproval.reason,
-        ownerType: 'ministry-owned',
-        ownerId: task.currentMinistry ?? 'libu-governance',
-        family: 'runtime-governance'
-      });
-      callbacks.recordToolUsage(task, {
-        toolName: resolved.pendingApproval.toolName,
-        status: 'blocked',
-        requestedBy: task.currentMinistry ?? 'libu-governance',
-        reason: resolved.pendingApproval.reason,
-        blockedReason: resolved.pendingApproval.reason,
-        approvalRequired: true,
-        route: 'governance',
-        family: 'runtime-governance',
-        capabilityType: 'governance-tool',
-        riskLevel: 'medium'
-      });
-      task.approvals.push({
-        taskId: task.id,
-        intent: ActionIntent.INSTALL_SKILL,
-        decision: 'pending',
-        decidedAt: new Date().toISOString(),
-        reason: resolved.pendingApproval.reason
-      });
-      callbacks.registerPendingExecution(task.id, {
-        taskId: task.id,
-        intent: ActionIntent.INSTALL_SKILL,
-        toolName: resolved.pendingApproval.toolName,
-        researchSummary: task.goal,
-        kind: 'skill_install',
-        receiptId: resolved.pendingExecution.receiptId,
-        goal: task.goal,
-        usedInstalledSkills: task.usedInstalledSkills,
-        skillDisplayName: resolved.pendingExecution.skillDisplayName,
-        currentSkillExecution: task.currentSkillExecution
-      });
-      callbacks.setSubTaskStatus(task, AgentRole.MANAGER, 'blocked');
-      callbacks.addTrace(
-        task,
-        'approval_gate',
-        `直答前检测到需要先安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}，已暂停等待审批。`,
-        {
-          stage: 'direct_reply',
-          receiptId: resolved.pendingExecution.receiptId,
-          skillDisplayName: resolved.pendingExecution.skillDisplayName
-        }
-      );
-      callbacks.addProgressDelta(
-        task,
-        `当前轮直答前需要先安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}，已暂停等待审批。`,
-        AgentRole.MANAGER
-      );
-      await callbacks.persistAndEmitTask(task);
-
-      const resume = interrupt({
-        interruptId: task.activeInterrupt.id,
-        kind: 'skill-install',
-        mode: 'blocking',
-        toolName: resolved.pendingApproval.toolName,
-        intent: ActionIntent.INSTALL_SKILL,
-        reason: resolved.pendingApproval.reason,
-        preview: resolved.pendingApproval.preview,
-        payload: {
-          stage: 'direct_reply',
-          receiptId: resolved.pendingExecution.receiptId,
-          skillDisplayName: resolved.pendingExecution.skillDisplayName
-        }
-      }) as ApprovalResumeInput | undefined;
-
-      if (!resume || resume.action !== 'approve') {
-        const resolvedAt = new Date().toISOString();
-        const blockedReason = resume?.feedback ?? resolved.pendingApproval.reason;
-        task.status = TaskStatus.BLOCKED;
-        callbacks.transitionQueueState(task, 'blocked');
-        task.approvalFeedback = resume?.feedback;
-        task.result = 'Approval rejected. Task is blocked.';
-        task.activeInterrupt = task.activeInterrupt
-          ? {
-              ...task.activeInterrupt,
-              status: 'cancelled',
-              blockedReason,
-              resolvedAt
-            }
-          : task.activeInterrupt;
-        if (task.activeInterrupt) {
-          task.interruptHistory = [...(task.interruptHistory ?? []), task.activeInterrupt];
-        }
-        callbacks.addTrace(
-          task,
-          resume?.feedback ? 'approval_rejected_with_feedback' : 'approval_gate',
-          resume?.feedback
-            ? `Approval rejected for ${ActionIntent.INSTALL_SKILL} with feedback: ${resume.feedback}`
-            : `Approval rejected for ${ActionIntent.INSTALL_SKILL}`
-        );
-        await callbacks.persistAndEmitTask(task);
-        return {
-          ...state,
-          blocked: true
-        };
-      }
-
-      const resolvedAfterApproval = await callbacks.resolveSkillInstallInterruptResume({
-        task,
-        receiptId: resolved.pendingExecution.receiptId,
-        skillDisplayName: resolved.pendingExecution.skillDisplayName,
-        usedInstalledSkills: task.usedInstalledSkills,
-        actor: typeof resume.payload?.actor === 'string' ? resume.payload.actor : undefined
-      });
-
-      if (resolvedAfterApproval?.skillSearch) {
-        task.skillSearch = resolvedAfterApproval.skillSearch;
-      }
-      if (resolvedAfterApproval?.usedInstalledSkills?.length) {
-        task.usedInstalledSkills = Array.from(
-          new Set([...(task.usedInstalledSkills ?? []), ...resolvedAfterApproval.usedInstalledSkills])
-        );
-      }
-      if (resolvedAfterApproval?.traceSummary) {
-        callbacks.addTrace(task, 'run_resumed', resolvedAfterApproval.traceSummary, {
-          interruptId: task.activeInterrupt?.id
-        });
-      }
-      if (resolvedAfterApproval?.progressSummary) {
-        callbacks.addProgressDelta(task, resolvedAfterApproval.progressSummary, AgentRole.MANAGER);
-      }
-      task.activeInterrupt = task.activeInterrupt
-        ? {
-            ...task.activeInterrupt,
-            status: 'resolved',
-            resolvedAt: new Date().toISOString()
-          }
-        : undefined;
-      if (task.activeInterrupt) {
-        task.interruptHistory = [...(task.interruptHistory ?? []), task.activeInterrupt];
-      }
-      callbacks.recordToolUsage(task, {
-        toolName: resolved.pendingApproval.toolName,
-        status: 'approved',
-        requestedBy: typeof resume.payload?.actor === 'string' ? resume.payload.actor : undefined,
-        reason: resolved.pendingApproval.reason,
-        approvalRequired: false,
-        route: 'governance',
-        family: 'runtime-governance',
-        capabilityType: 'governance-tool',
-        riskLevel: 'medium'
-      });
-      task.pendingApproval = undefined;
-      task.pendingAction = undefined;
-      task.activeInterrupt = undefined;
-      task.status = TaskStatus.RUNNING;
-      callbacks.transitionQueueState(task, 'running');
-      await callbacks.persistAndEmitTask(task);
-
-      return {
-        ...state,
-        blocked: false
-      };
-    })
-    .addNode('direct_reply', async state => {
-      if (state.blocked) {
-        return state;
-      }
-      callbacks.ensureTaskNotCancelled(task);
-      await callbacks.runDirectReplyTask(task, libu);
-      return {
-        ...state,
-        blocked: false,
-        finalAnswer: task.result
-      };
-    })
-    .addNode('finish', async state => state)
+    .addNode('skill_gate', state => runDirectReplySkillGateNode(state, task, callbacks))
+    .addNode('direct_reply', state => runDirectReplyNode(state, task, libu, callbacks))
+    .addNode('finish', runDirectReplyInterruptFinishNode)
     .addEdge(START, 'skill_gate')
     .addConditionalEdges('skill_gate', state => (state.blocked ? 'finish' : 'direct_reply'))
     .addEdge('direct_reply', 'finish')

@@ -5,7 +5,7 @@ import {
   TaskRecord,
   TaskStatus
 } from '@agent/shared';
-import { AgentOrchestrator } from '../graphs/main.graph';
+import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
 
@@ -27,19 +27,20 @@ export async function runSessionTurn(
   await deps.store.persistRuntimeState();
 
   try {
-    await compressConversationIfNeeded(deps, sessionId);
+    await compressConversationIfNeeded(deps, sessionId, input);
     if (deps.store.requireSession(sessionId).status === 'cancelled') {
       return;
     }
     const taskContextHints = buildTaskContextHints(deps.store, sessionId);
+    const conversationContext = await deps.thinking.buildConversationContext(
+      deps.store.requireSession(sessionId),
+      deps.store.getCheckpoint(sessionId),
+      deps.store.getMessages(sessionId),
+      input
+    );
     const task = await deps.orchestrator.createTask({
       goal: input,
-      context: await deps.thinking.buildConversationContext(
-        deps.store.requireSession(sessionId),
-        deps.store.getCheckpoint(sessionId),
-        deps.store.getMessages(sessionId),
-        input
-      ),
+      context: appendCrossSessionContext(conversationContext, taskContextHints.relatedHistory),
       constraints: [],
       sessionId,
       ...taskContextHints
@@ -90,6 +91,7 @@ export function buildTaskContextHints(
   capabilityAttachments?: CapabilityAttachmentRecord[];
   capabilityAugmentations?: CapabilityAugmentationRecord[];
   conversationSummary?: string;
+  conversationCompression?: ChatSessionRecord['compression'];
   recentTurns?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
   relatedHistory?: string[];
 } {
@@ -110,6 +112,7 @@ export function buildTaskContextHints(
       [
         checkpoint?.context,
         ...(checkpoint?.learningEvaluation?.notes ?? []).slice(0, 2),
+        ...buildRecentSessionCarryover(store, sessionId),
         ...messages
           .slice(Math.max(0, messages.length - 10), Math.max(0, messages.length - 6))
           .map(message => message.content.trim())
@@ -173,20 +176,80 @@ export function buildTaskContextHints(
         }))
       : undefined,
     conversationSummary: session.compression?.summary,
+    conversationCompression: session.compression
+      ? {
+          ...session.compression,
+          focuses: session.compression.focuses ? [...session.compression.focuses] : undefined,
+          keyDeliverables: session.compression.keyDeliverables ? [...session.compression.keyDeliverables] : undefined,
+          risks: session.compression.risks ? [...session.compression.risks] : undefined,
+          nextActions: session.compression.nextActions ? [...session.compression.nextActions] : undefined,
+          supportingFacts: session.compression.supportingFacts ? [...session.compression.supportingFacts] : undefined,
+          confirmedPreferences: session.compression.confirmedPreferences
+            ? [...session.compression.confirmedPreferences]
+            : undefined,
+          openLoops: session.compression.openLoops ? [...session.compression.openLoops] : undefined,
+          previewMessages: session.compression.previewMessages ? [...session.compression.previewMessages] : undefined
+        }
+      : undefined,
     recentTurns: recentTurns.length ? recentTurns : undefined,
     relatedHistory: relatedHistory.length ? relatedHistory : undefined
   };
 }
 
+function buildRecentSessionCarryover(store: SessionCoordinatorStore, sessionId: string): string[] {
+  return store
+    .listSessions()
+    .filter(session => session.id !== sessionId)
+    .slice(0, 3)
+    .flatMap(session => {
+      const summary = session.compression?.summary?.trim();
+      const recentMessages = store
+        .getMessages(session.id)
+        .filter(message => message.role !== 'system')
+        .slice(-4)
+        .map(message => message.content.trim())
+        .filter(Boolean);
+      const fallbackPreview = recentMessages.length ? recentMessages.join('；') : undefined;
+      const carryover = summary ?? fallbackPreview;
+      if (!carryover) {
+        return [];
+      }
+      return [`前序会话《${session.title}》摘要：${carryover}`];
+    });
+}
+
+function appendCrossSessionContext(context: string, relatedHistory?: string[]) {
+  if (!relatedHistory?.length) {
+    return context;
+  }
+  const crossSessionItems = relatedHistory.filter(item => item.startsWith('前序会话《')).slice(0, 3);
+  if (!crossSessionItems.length) {
+    return context;
+  }
+  return [
+    '以下是同一用户最近会话的跨会话延续线索，仅在与当前问题直接相关时使用：',
+    ...crossSessionItems.map(item => `- ${item}`),
+    context
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 export async function compressConversationIfNeeded(
   deps: Pick<SessionCoordinatorTurnDeps, 'store' | 'thinking'>,
-  sessionId: string
+  sessionId: string,
+  latestUserInput?: string
 ): Promise<void> {
   const session = deps.store.requireSession(sessionId);
   const messages = deps.store.getMessages(sessionId);
-  const compacted = await deps.thinking.compressConversationIfNeeded(session, messages, payload => {
-    deps.store.addEvent(sessionId, 'conversation_compacted', payload);
-  });
+  const compacted = await deps.thinking.compressConversationIfNeeded(
+    session,
+    messages,
+    payload => {
+      deps.store.addEvent(sessionId, 'conversation_compacted', payload);
+    },
+    latestUserInput
+  );
   if (compacted) {
     await deps.store.persistRuntimeState();
   }

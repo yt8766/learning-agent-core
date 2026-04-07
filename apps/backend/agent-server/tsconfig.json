@@ -8,6 +8,7 @@
       "@agent/config": ["packages/config/src"],
       "@agent/tools": ["packages/tools/src"],
       "@agent/memory": ["packages/memory/src"],
+      "@agent/model": ["packages/model/src"],
       "@agent/skills": ["packages/skills/src"],
       "@agent/evals": ["packages/evals/src"],
       "@agent/agent-core": ["packages/agent-core/src"]

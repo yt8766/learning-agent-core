@@ -160,4 +160,43 @@ describe('runtime-skill-install-actions', () => {
     expect(receipt.result).toBe('install_failed');
     expect(receipt.failureCode).toBe('npx failed');
   });
+
+  it('does not invent a skillName for repo-only remote installs like larksuite/cli', async () => {
+    const writeSkillInstallReceipt = vi.fn();
+    const finalizeRemoteSkillInstall = vi.fn(async () => undefined);
+
+    const sources: SkillSourceRecord[] = [
+      {
+        id: 'skills-sh-directory',
+        name: 'skills.sh Directory',
+        kind: 'git',
+        baseUrl: 'https://skills.sh',
+        discoveryMode: 'git-registry',
+        syncStrategy: 'on-demand',
+        allowedProfiles: ['platform'],
+        trustClass: 'internal',
+        priority: 'bundled/marketplace',
+        authMode: 'none',
+        enabled: true
+      }
+    ];
+
+    const receipt = await installRemoteSkillWithGovernance({
+      dto: {
+        actor: 'agent-chat-user',
+        repo: 'larksuite/cli',
+        summary: '安装 larksuite/cli'
+      },
+      runtimeStateRepository: {
+        load: vi.fn(async () => ({ governanceAudit: [] })),
+        save: vi.fn(async () => undefined)
+      },
+      listSkillSources: vi.fn(async () => sources),
+      writeSkillInstallReceipt,
+      finalizeRemoteSkillInstall
+    });
+
+    expect(receipt.skillName).toBeUndefined();
+    expect(receipt.skillId).toBe('remote-larksuite-cli');
+  });
 });

@@ -58,6 +58,57 @@ export class PlatformController {
     });
   }
 
+  @Get('briefings/runs')
+  getBriefingRuns(@Query('days') days?: string, @Query('category') category?: string) {
+    return this.runtimeCentersService.getBriefingRuns(
+      days ? Number(days) : undefined,
+      category as
+        | 'frontend-security'
+        | 'general-security'
+        | 'devtool-security'
+        | 'ai-tech'
+        | 'frontend-tech'
+        | 'backend-tech'
+        | 'cloud-infra-tech'
+        | undefined
+    );
+  }
+
+  @Post('briefings/:category/force-run')
+  forceBriefingRun(
+    @Param('category')
+    category:
+      | 'frontend-security'
+      | 'general-security'
+      | 'devtool-security'
+      | 'ai-tech'
+      | 'frontend-tech'
+      | 'backend-tech'
+      | 'cloud-infra-tech'
+  ) {
+    return this.runtimeCentersService.forceBriefingRun(category);
+  }
+
+  @Post('briefings/feedback')
+  recordBriefingFeedback(
+    @Body()
+    body: {
+      messageKey: string;
+      category:
+        | 'frontend-security'
+        | 'general-security'
+        | 'devtool-security'
+        | 'ai-tech'
+        | 'frontend-tech'
+        | 'backend-tech'
+        | 'cloud-infra-tech';
+      feedbackType: 'helpful' | 'notHelpful';
+      reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
+    }
+  ) {
+    return this.runtimeCentersService.recordBriefingFeedback(body);
+  }
+
   @Get('approvals-center')
   getApprovalsCenter(
     @Query('executionMode') executionMode?: string,
@@ -67,6 +118,16 @@ export class PlatformController {
       executionMode,
       interactionKind
     });
+  }
+
+  @Get('approval-policies')
+  listApprovalScopePolicies() {
+    return this.runtimeCentersService.listApprovalScopePolicies();
+  }
+
+  @Post('approval-policies/:policyId/revoke')
+  revokeApprovalScopePolicy(@Param('policyId') policyId: string) {
+    return this.runtimeCentersService.revokeApprovalScopePolicy(policyId);
   }
 
   @Get('learning-center')

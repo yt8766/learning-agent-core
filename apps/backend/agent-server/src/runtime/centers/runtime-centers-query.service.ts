@@ -19,7 +19,17 @@ import {
   exportRuntimeCenter
 } from '../helpers/runtime-platform-console';
 import { loadPromptRegressionConfigSummary } from '../helpers/prompt-regression-summary';
-import { getRecentGovernanceAudit, syncCapabilityGovernanceProfiles } from '../helpers/runtime-governance-store';
+import {
+  getRecentGovernanceAudit,
+  listApprovalScopePolicies,
+  syncCapabilityGovernanceProfiles
+} from '../helpers/runtime-governance-store';
+import {
+  appendBriefingFeedback,
+  readDailyTechBriefingRuns,
+  readDailyTechBriefingStatus
+} from '../briefings/runtime-tech-briefing-storage';
+import type { BriefingFeedbackRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
 import { readInstalledSkillRecords, readSkillInstallReceipts } from '../skills/runtime-skill-install.service';
 import {
   listSkillManifests,
@@ -54,7 +64,12 @@ export class RuntimeCentersQueryService {
       fetchProviderUsageAudit: (auditDays: number) => ctx.fetchProviderUsageAudit(auditDays)
     });
     await syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, tasks);
+    const approvalScopePolicies = await listApprovalScopePolicies(ctx.runtimeStateRepository);
     const knowledgeOverview = await ingestLocalKnowledge(ctx.settings);
+    const dailyTechBriefing = await readDailyTechBriefingStatus(ctx.settings.workspaceRoot, {
+      enabled: ctx.settings.dailyTechBriefing.enabled,
+      schedule: ctx.settings.dailyTechBriefing.schedule
+    });
 
     const filteredRecentRuns = tasks
       .filter((task: any) => !filters?.status || String(task.status) === filters.status)
@@ -83,11 +98,13 @@ export class RuntimeCentersQueryService {
         pendingApprovals,
         usageAnalytics,
         recentGovernanceAudit: await getRecentGovernanceAudit(ctx.runtimeStateRepository),
+        approvalScopePolicies,
         backgroundWorkerPoolSize: ctx.settings.runtimeBackground?.workerPoolSize ?? 2,
         backgroundWorkerSlots: ctx.getBackgroundWorkerSlots(),
         filteredRecentRuns,
         getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
-        knowledgeOverview
+        knowledgeOverview,
+        dailyTechBriefing
       }),
       tools: buildToolsCenter({
         toolRegistry: ctx.toolRegistry,
@@ -101,6 +118,40 @@ export class RuntimeCentersQueryService {
         interactionKind: filters?.interactionKind
       }
     };
+  }
+
+  async getBriefingRuns(days = 7, category?: TechBriefingCategory) {
+    const runs = await readDailyTechBriefingRuns(this.ctx().settings.workspaceRoot);
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return runs
+      .filter(run => new Date(run.runAt).getTime() >= cutoff)
+      .map(run => ({
+        ...run,
+        categories: category ? run.categories.filter(item => item.category === category) : run.categories
+      }))
+      .filter(run => run.categories.length > 0);
+  }
+
+  async forceBriefingRun(category: TechBriefingCategory) {
+    return this.ctx().techBriefingService?.forceRun(category);
+  }
+
+  async recordBriefingFeedback(input: {
+    messageKey: string;
+    category: TechBriefingCategory;
+    feedbackType: 'helpful' | 'notHelpful';
+    reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
+  }) {
+    const payload: BriefingFeedbackRecord = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      messageKey: input.messageKey,
+      category: input.category,
+      feedbackType: input.feedbackType,
+      reasonTag: input.reasonTag,
+      createdAt: new Date().toISOString()
+    };
+    await appendBriefingFeedback(this.ctx().settings.workspaceRoot, payload);
+    return { ok: true, payload };
   }
 
   getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }) {
@@ -120,6 +171,8 @@ export class RuntimeCentersQueryService {
         currentMinistry: getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry,
         currentWorker: task.currentWorker,
         executionMode: resolveTaskExecutionMode(task),
+        streamStatus: task.streamStatus,
+        contextFilterState: task.contextFilterState,
         pendingApproval: task.pendingApproval,
         // activeInterrupt is the persisted 司礼监 / InterruptController projection for approval-center compatibility.
         activeInterrupt: task.activeInterrupt,
@@ -131,6 +184,16 @@ export class RuntimeCentersQueryService {
         },
         planDraft: task.planDraft,
         approvals: task.approvals ?? []
+      }))
+      .map((task: any) => ({
+        ...task,
+        commandPreview: resolveInterruptPayloadField(task.activeInterrupt, 'commandPreview'),
+        riskReason: resolveInterruptPayloadField(task.activeInterrupt, 'riskReason'),
+        riskCode: resolveInterruptPayloadField(task.activeInterrupt, 'riskCode') || task.pendingApproval?.reasonCode,
+        approvalScope: resolveInterruptPayloadField(task.activeInterrupt, 'approvalScope'),
+        policyMatchStatus: 'manual-pending',
+        policyMatchSource: 'manual',
+        lastStreamStatusAt: task.streamStatus?.updatedAt
       }));
   }
 
@@ -324,6 +387,18 @@ export class RuntimeCentersQueryService {
   private ctx() {
     return this.getContext();
   }
+}
+
+function resolveInterruptPayloadField(
+  interrupt: any,
+  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
+) {
+  const payload = interrupt?.payload;
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+  const value = payload[field];
+  return typeof value === 'string' ? value : undefined;
 }
 
 function resolveTaskInteractionKind(task: any) {

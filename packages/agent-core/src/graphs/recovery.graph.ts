@@ -2,6 +2,7 @@ import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
 import { ApprovalDecision, ToolExecutionResult } from '@agent/shared';
 
+import { runApprovalRecoveryFinishNode, runExecuteApprovedNode } from '../flows/approval/recovery-graph-nodes';
 import { PendingExecutionContext } from '../flows/approval';
 
 export interface ApprovalRecoveryGraphState {
@@ -29,12 +30,8 @@ const RecoveryAnnotation = Annotation.Root({
 
 export function createApprovalRecoveryGraph(handlers: ApprovalRecoveryGraphHandlers = {}) {
   return new StateGraph(RecoveryAnnotation)
-    .addNode('execute_approved', async state =>
-      handlers.executeApproved
-        ? handlers.executeApproved(state)
-        : { ...state, approvalStatus: ApprovalDecision.APPROVED }
-    )
-    .addNode('finish', async state => (handlers.finish ? handlers.finish(state) : state))
+    .addNode('execute_approved', state => runExecuteApprovedNode(state, handlers))
+    .addNode('finish', state => runApprovalRecoveryFinishNode(state, handlers))
     .addEdge(START, 'execute_approved')
     .addEdge('execute_approved', 'finish')
     .addEdge('finish', END);

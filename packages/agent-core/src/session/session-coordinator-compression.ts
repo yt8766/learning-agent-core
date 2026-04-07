@@ -1,9 +1,11 @@
 import type { ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
+import type { ContextStrategy } from '@agent/config';
 
 import type { LlmProvider } from '../adapters/llm/llm-provider';
 
-const RECENT_MESSAGES_TO_KEEP = 8;
-const COMPRESSION_TRIGGER_COUNT = 16;
+const DEFAULT_RECENT_MESSAGES_TO_KEEP = 5;
+const DEFAULT_LEADING_MESSAGES_TO_KEEP = 10;
+const COMPRESSION_TRIGGER_COUNT = 15;
 const COMPRESSION_TRIGGER_CHAR_COUNT = 3600;
 const MAX_SUMMARY_CHARS = 1200;
 const PREVIEW_MESSAGE_COUNT = 3;
@@ -16,17 +18,43 @@ interface ConversationCompressionResult {
   risks?: string[];
   nextActions?: string[];
   supportingFacts?: string[];
+  decisionSummary?: string;
+  confirmedPreferences?: string[];
+  openLoops?: string[];
   source: 'heuristic' | 'llm';
 }
 
 export async function compressConversationIfNeeded(
   llm: LlmProvider,
+  contextStrategy: ContextStrategy | undefined,
   session: ChatSessionRecord,
   messages: ChatMessageRecord[],
-  onCompacted: (payload: Record<string, unknown>) => void
+  onCompacted: (payload: Record<string, unknown>) => void,
+  latestUserInput?: string
 ): Promise<boolean> {
+  if (contextStrategy?.compressionEnabled === false) {
+    return false;
+  }
+
+  const keepRecentMessages = Math.max(
+    1,
+    contextStrategy?.compressionKeepRecentMessages ?? DEFAULT_RECENT_MESSAGES_TO_KEEP
+  );
+  const keepLeadingMessages = Math.max(
+    0,
+    contextStrategy?.compressionKeepLeadingMessages ?? DEFAULT_LEADING_MESSAGES_TO_KEEP
+  );
+  const baseCompressionMessageThreshold = Math.max(
+    keepRecentMessages + 1,
+    contextStrategy?.compressionMessageThreshold ?? COMPRESSION_TRIGGER_COUNT
+  );
+  const compressionProfile = deriveCompressionProfile(latestUserInput);
+  const compressionMessageThreshold = Math.max(
+    keepRecentMessages + 1,
+    baseCompressionMessageThreshold + compressionProfile.thresholdAdjustment
+  );
   const condensedCount = session.compression?.condensedMessageCount ?? 0;
-  const nextCondensedCount = messages.length - RECENT_MESSAGES_TO_KEEP;
+  const nextCondensedCount = messages.length - keepRecentMessages;
   const totalCharacterCount = messages.reduce((sum, message) => sum + message.content.length, 0);
 
   if (nextCondensedCount <= condensedCount) {
@@ -34,7 +62,7 @@ export async function compressConversationIfNeeded(
   }
 
   const trigger =
-    messages.length >= COMPRESSION_TRIGGER_COUNT
+    messages.length >= compressionMessageThreshold
       ? 'message_count'
       : totalCharacterCount >= COMPRESSION_TRIGGER_CHAR_COUNT
         ? 'character_count'
@@ -44,9 +72,15 @@ export async function compressConversationIfNeeded(
     return false;
   }
 
-  const messagesToCondense = messages.slice(0, nextCondensedCount);
+  const leadingMessages = keepLeadingMessages > 0 ? messages.slice(0, keepLeadingMessages) : [];
+  const trailingBoundary = Math.max(keepLeadingMessages, nextCondensedCount);
+  const messagesToCondense = [...leadingMessages, ...messages.slice(keepLeadingMessages, trailingBoundary)];
   const condensedCharacterCount = messagesToCondense.reduce((sum, message) => sum + message.content.length, 0);
-  const compressed = await createConversationSummary(llm, messagesToCondense);
+  const compressed = await createConversationSummary(
+    llm,
+    messagesToCondense,
+    contextStrategy?.compressionMaxSummaryChars ?? MAX_SUMMARY_CHARS
+  );
   const previewMessages = buildCompressionPreviewMessages(messagesToCondense);
 
   session.compression = {
@@ -57,12 +91,19 @@ export async function compressConversationIfNeeded(
     risks: compressed.risks,
     nextActions: compressed.nextActions,
     supportingFacts: compressed.supportingFacts,
+    decisionSummary: compressed.decisionSummary,
+    confirmedPreferences: compressed.confirmedPreferences,
+    openLoops: compressed.openLoops,
     condensedMessageCount: nextCondensedCount,
     condensedCharacterCount,
     totalCharacterCount,
     previewMessages,
     trigger,
     source: compressed.source,
+    summaryLength: compressed.summary.length,
+    heuristicFallback: compressed.source === 'heuristic',
+    effectiveThreshold: compressionMessageThreshold,
+    compressionProfile: compressionProfile.profile,
     updatedAt: new Date().toISOString()
   };
   session.updatedAt = new Date().toISOString();
@@ -72,7 +113,7 @@ export async function compressConversationIfNeeded(
     condensedCharacterCount,
     totalCharacterCount,
     previewMessages,
-    recentMessageCount: RECENT_MESSAGES_TO_KEEP,
+    recentMessageCount: keepRecentMessages,
     trigger,
     summary: compressed.summary,
     periodOrTopic: compressed.periodOrTopic,
@@ -81,17 +122,51 @@ export async function compressConversationIfNeeded(
     risks: compressed.risks,
     nextActions: compressed.nextActions,
     supportingFacts: compressed.supportingFacts,
-    source: compressed.source
+    decisionSummary: compressed.decisionSummary,
+    confirmedPreferences: compressed.confirmedPreferences,
+    openLoops: compressed.openLoops,
+    source: compressed.source,
+    summaryLength: compressed.summary.length,
+    heuristicFallback: compressed.source === 'heuristic',
+    effectiveThreshold: compressionMessageThreshold,
+    compressionProfile: compressionProfile.profile
   });
 
   return true;
 }
 
+function deriveCompressionProfile(latestUserInput?: string) {
+  const normalized = latestUserInput?.trim().toLowerCase() ?? '';
+  if (!normalized) {
+    return {
+      profile: 'default',
+      thresholdAdjustment: 0
+    } as const;
+  }
+  if (/(review|审查|代码审阅|复查|排查|诊断|测试|发布|learning|学习|research|研究)/i.test(normalized)) {
+    return {
+      profile: 'long-flow',
+      thresholdAdjustment: -4
+    } as const;
+  }
+  if (/(简单问答|quick|brief|一句话|直接回答)/i.test(normalized)) {
+    return {
+      profile: 'light-chat',
+      thresholdAdjustment: 2
+    } as const;
+  }
+  return {
+    profile: 'default',
+    thresholdAdjustment: 0
+  } as const;
+}
+
 async function createConversationSummary(
   llm: LlmProvider,
-  messages: ChatMessageRecord[]
+  messages: ChatMessageRecord[],
+  maxSummaryChars: number
 ): Promise<ConversationCompressionResult> {
-  const heuristicSummary = createHeuristicConversationSummary(messages);
+  const heuristicSummary = createHeuristicConversationSummary(messages, maxSummaryChars);
 
   if (!llm.isConfigured()) {
     return heuristicSummary;
@@ -109,8 +184,9 @@ async function createConversationSummary(
             '如果是周报/复盘，优先保留：本周核心结果、核心版本/项目推进、经营观察、风险与下周动作。',
             '不要把一级重点降成无层级功能清单；尽量保留版本号、时间窗口、渠道名、风险判断原词。',
             '若内容里同时有问题判断和后续动作，必须都保留。',
+            '额外补充：必须提炼已确认决策、用户偏好/约束、仍未闭环的问题。',
             '只输出 JSON，不要 markdown，不要补充解释，不要编造不存在的信息。',
-            'JSON 结构：{"period_or_topic":"", "primary_focuses":[""], "key_deliverables":[""], "risks_and_gaps":[""], "next_actions":[""], "raw_supporting_points":[""], "summary":""}'
+            'JSON 结构：{"period_or_topic":"", "primary_focuses":[""], "key_deliverables":[""], "risks_and_gaps":[""], "next_actions":[""], "raw_supporting_points":[""], "decision_summary":"", "confirmed_preferences":[""], "open_loops":[""], "summary":""}'
           ].join('')
         },
         {
@@ -126,7 +202,7 @@ async function createConversationSummary(
       return heuristicSummary;
     }
 
-    const parsed = parseStructuredCompressionSummary(normalized);
+    const parsed = parseStructuredCompressionSummary(normalized, maxSummaryChars);
     if (!parsed) {
       return heuristicSummary;
     }
@@ -137,7 +213,10 @@ async function createConversationSummary(
   }
 }
 
-function createHeuristicConversationSummary(messages: ChatMessageRecord[]): ConversationCompressionResult {
+function createHeuristicConversationSummary(
+  messages: ChatMessageRecord[],
+  maxSummaryChars: number
+): ConversationCompressionResult {
   const nonEmptyLines = messages
     .flatMap(message =>
       message.content
@@ -162,6 +241,18 @@ function createHeuristicConversationSummary(messages: ChatMessageRecord[]): Conv
   );
   const nextActions = dedupeStrings(
     nonEmptyLines.filter(line => /修复|优化|推进|继续|跟进|强化|宣发|验证|排查|改造/i.test(line)).map(stripListMarker),
+    4
+  );
+  const decisionSummary = dedupeStrings(
+    nonEmptyLines.filter(line => /确认|决定|采用|改成|收敛到|统一为|必须|默认/i.test(line)).map(stripListMarker),
+    4
+  ).join('；');
+  const confirmedPreferences = dedupeStrings(
+    nonEmptyLines.filter(line => /希望|倾向|优先|偏好|约束|限制|必须使用|不要/i.test(line)).map(stripListMarker),
+    4
+  );
+  const openLoops = dedupeStrings(
+    nonEmptyLines.filter(line => /待定|待确认|未完成|后续|下一步|仍需|还要|TODO|todo/i.test(line)).map(stripListMarker),
     4
   );
   const supportingFacts = dedupeStrings(
@@ -203,15 +294,24 @@ function createHeuristicConversationSummary(messages: ChatMessageRecord[]): Conv
     keyDeliverables,
     risks,
     nextActions,
+    decisionSummary,
+    confirmedPreferences,
+    openLoops,
     supportingFacts: fallbackSupportingFacts,
-    summary: formatCompressionSummaryText({
-      periodOrTopic,
-      focuses: fallbackFocuses,
-      keyDeliverables,
-      risks,
-      nextActions,
-      supportingFacts: fallbackSupportingFacts
-    }),
+    summary: formatCompressionSummaryText(
+      {
+        periodOrTopic,
+        focuses: fallbackFocuses,
+        keyDeliverables,
+        risks,
+        nextActions,
+        decisionSummary,
+        confirmedPreferences,
+        openLoops,
+        supportingFacts: fallbackSupportingFacts
+      },
+      maxSummaryChars
+    ),
     source: 'heuristic'
   };
 }
@@ -231,7 +331,10 @@ function buildCompressionPreviewMessages(messages: ChatMessageRecord[]) {
     }));
 }
 
-function parseStructuredCompressionSummary(content: string): Omit<ConversationCompressionResult, 'source'> | undefined {
+function parseStructuredCompressionSummary(
+  content: string,
+  maxSummaryChars: number
+): Omit<ConversationCompressionResult, 'source'> | undefined {
   const normalizedJson = extractJsonObject(content);
   if (!normalizedJson) {
     return undefined;
@@ -245,17 +348,27 @@ function parseStructuredCompressionSummary(content: string): Omit<ConversationCo
     const risks = sanitizeStringArray(parsed.risks_and_gaps, 4);
     const nextActions = sanitizeStringArray(parsed.next_actions, 4);
     const supportingFacts = sanitizeStringArray(parsed.raw_supporting_points, 4);
+    const decisionSummary = typeof parsed.decision_summary === 'string' ? parsed.decision_summary.trim() : undefined;
+    const confirmedPreferences = sanitizeStringArray(parsed.confirmed_preferences, 4);
+    const openLoops = sanitizeStringArray(parsed.open_loops, 4);
     const providedSummary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
     const summary = truncateSummary(
       providedSummary ||
-        formatCompressionSummaryText({
-          periodOrTopic,
-          focuses,
-          keyDeliverables,
-          risks,
-          nextActions,
-          supportingFacts
-        })
+        formatCompressionSummaryText(
+          {
+            periodOrTopic,
+            focuses,
+            keyDeliverables,
+            risks,
+            nextActions,
+            decisionSummary,
+            confirmedPreferences,
+            openLoops,
+            supportingFacts
+          },
+          maxSummaryChars
+        ),
+      maxSummaryChars
     );
 
     if (!summary) {
@@ -269,6 +382,9 @@ function parseStructuredCompressionSummary(content: string): Omit<ConversationCo
       keyDeliverables,
       risks,
       nextActions,
+      decisionSummary,
+      confirmedPreferences,
+      openLoops,
       supportingFacts
     };
   } catch {
@@ -340,26 +456,35 @@ function detectPeriodOrTopic(lines: string[]) {
   return titleLine ? normalizeMessageSnippet(titleLine) : undefined;
 }
 
-function formatCompressionSummaryText({
-  periodOrTopic,
-  focuses,
-  keyDeliverables,
-  risks,
-  nextActions,
-  supportingFacts
-}: Partial<Omit<ConversationCompressionResult, 'summary' | 'source'>>) {
+function formatCompressionSummaryText(
+  {
+    periodOrTopic,
+    focuses,
+    keyDeliverables,
+    risks,
+    nextActions,
+    decisionSummary,
+    confirmedPreferences,
+    openLoops,
+    supportingFacts
+  }: Partial<Omit<ConversationCompressionResult, 'summary' | 'source'>>,
+  maxSummaryChars: number
+) {
   const sections = [
     periodOrTopic ? `主题：${periodOrTopic}` : '',
     focuses?.length ? `一级重点：${focuses.join('；')}` : '',
+    decisionSummary ? `已确认决策：${decisionSummary}` : '',
+    confirmedPreferences?.length ? `用户偏好 / 约束：${confirmedPreferences.join('；')}` : '',
     keyDeliverables?.length ? `关键交付：${keyDeliverables.join('；')}` : '',
     risks?.length ? `风险与缺口：${risks.join('；')}` : '',
     nextActions?.length ? `后续动作：${nextActions.join('；')}` : '',
+    openLoops?.length ? `未完成事项：${openLoops.join('；')}` : '',
     supportingFacts?.length ? `补充事实：${supportingFacts.join('；')}` : ''
   ].filter(Boolean);
 
-  return truncateSummary(sections.join('\n'));
+  return truncateSummary(sections.join('\n'), maxSummaryChars);
 }
 
-function truncateSummary(summary: string) {
-  return summary.length > MAX_SUMMARY_CHARS ? `${summary.slice(0, MAX_SUMMARY_CHARS)}...` : summary;
+function truncateSummary(summary: string, maxSummaryChars = MAX_SUMMARY_CHARS) {
+  return summary.length > maxSummaryChars ? `${summary.slice(0, maxSummaryChars)}...` : summary;
 }

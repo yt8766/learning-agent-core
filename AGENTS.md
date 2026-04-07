@@ -138,6 +138,10 @@ skills/
 
 - 应用层只通过 `@agent/*` 依赖共享包
 - 不要从应用层直连 `packages/*/src`
+- 依赖安装必须使用 `pnpm add`
+- 安装到工作空间根时，必须使用 `pnpm add -w`
+- 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
+- 不允许使用本地 `.pnpm-store` 安装或把 `.pnpm-store` 放在仓库内
 - 共享包构建输出：
   - `build/cjs`
   - `build/esm`

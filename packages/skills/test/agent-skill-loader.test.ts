@@ -24,9 +24,19 @@ license: Proprietary
 compatibility: Requires repo access.
 metadata:
   ministry: xingbu-review
+triggers:
+  - review
+recommended-ministries:
+  - xingbu-review
+recommended-specialists:
+  - risk-compliance
 allowed-tools:
   - read_local_file
   - list_directory
+execution-hints:
+  - Focus on regression risk first.
+compression-hints:
+  - Prefer summary over raw diff spam.
 approval-policy: none
 risk-level: low
 ---
@@ -58,7 +68,12 @@ Use this skill for code review and regression analysis.
         sourceId: 'workspace-skills',
         license: 'Proprietary',
         compatibility: 'Requires repo access.',
+        triggers: ['review'],
+        preferredMinistries: ['xingbu-review'],
+        recommendedSpecialists: ['risk-compliance'],
         allowedTools: ['read_local_file', 'list_directory'],
+        executionHints: ['Focus on regression risk first.'],
+        compressionHints: ['Prefer summary over raw diff spam.'],
         approvalPolicy: 'none',
         riskLevel: 'low'
       })

@@ -33,9 +33,36 @@ export function getApprovalReasonLabel(reasonCode?: string) {
       return '当前策略较保守';
     case 'requires_approval_tool_policy':
       return '工具默认要求审批';
+    case 'watchdog_timeout':
+      return '运行时超时阻塞';
+    case 'watchdog_interaction_required':
+      return '运行时等待补充输入';
+    case 'runtime_governance_gate':
+      return '运行时治理闸门';
     default:
       return '';
   }
+}
+
+function isWatchdogRuntimeInterrupt(checkpoint?: ChatCheckpointRecord) {
+  return (
+    checkpoint?.activeInterrupt?.kind === 'runtime-governance' &&
+    checkpoint.activeInterrupt.payload &&
+    typeof checkpoint.activeInterrupt.payload === 'object' &&
+    (checkpoint.activeInterrupt.payload as { watchdog?: unknown }).watchdog === true
+  );
+}
+
+function getRuntimeGovernanceReasonCode(checkpoint?: ChatCheckpointRecord) {
+  const payload = checkpoint?.activeInterrupt?.payload;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    typeof (payload as { runtimeGovernanceReasonCode?: unknown }).runtimeGovernanceReasonCode === 'string'
+  ) {
+    return (payload as { runtimeGovernanceReasonCode: string }).runtimeGovernanceReasonCode;
+  }
+  return undefined;
 }
 
 export function getApprovalSummaryCopy(approval: ApprovalRecord) {
@@ -130,6 +157,14 @@ export function getPendingApprovalStatusCopy(checkpoint?: ChatCheckpointRecord) 
   }
 
   if (checkpoint.activeInterrupt) {
+    if (isWatchdogRuntimeInterrupt(checkpoint)) {
+      const reasonLabel = getApprovalReasonLabel(getRuntimeGovernanceReasonCode(checkpoint));
+      return `兵部运行时阻塞 · ${reasonLabel || '等待补充输入'} · ${
+        checkpoint.activeInterrupt.toolName || checkpoint.activeInterrupt.intent || checkpoint.activeInterrupt.kind
+      } · ${getResumeStrategyLabel(checkpoint.activeInterrupt.resumeStrategy)} · ${getInterruptSourceLabel(
+        checkpoint.activeInterrupt.source
+      )}`;
+    }
     return `${checkpoint.activeInterrupt.toolName || checkpoint.activeInterrupt.intent || checkpoint.activeInterrupt.kind} · ${getApprovalRiskLabel(checkpoint.activeInterrupt.riskLevel)} · ${getResumeStrategyLabel(checkpoint.activeInterrupt.resumeStrategy)} · ${getInterruptSourceLabel(checkpoint.activeInterrupt.source)} · ${getInterruptModeLabel(checkpoint.activeInterrupt.mode)}`;
   }
 
@@ -143,6 +178,9 @@ export function getInterruptStatusSummary(checkpoint?: ChatCheckpointRecord) {
   }
   if (kind === 'plan-question') {
     return `${getInterruptInteractionKindLabel(kind)} · ${getInterruptQuestionSetTitle(checkpoint)} · ${getResumeStrategyLabel(checkpoint?.activeInterrupt?.resumeStrategy)}`;
+  }
+  if (kind === 'supplemental-input' && isWatchdogRuntimeInterrupt(checkpoint)) {
+    return `运行时治理中断 · ${getPendingApprovalStatusCopy(checkpoint)}`;
   }
   return `${getInterruptInteractionKindLabel(kind)} · ${getPendingApprovalStatusCopy(checkpoint)}`;
 }

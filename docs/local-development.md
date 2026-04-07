@@ -41,6 +41,11 @@ pnpm --dir apps/frontend/agent-admin dev
 ## 3. 关键环境变量
 
 - `ZHIPU_API_KEY`
+- `ZHIPU_API_BASE_URL`
+- `KNOWLEDGE_EMBEDDING_ENDPOINT`
+- `MCP_BIGMODEL_WEB_SEARCH_ENDPOINT`
+- `MCP_BIGMODEL_WEB_READER_ENDPOINT`
+- `MCP_BIGMODEL_ZREAD_ENDPOINT`
 - `PORT`
 - `RUNTIME_BACKGROUND_ENABLED`
 - `RUNTIME_BACKGROUND_WORKER_POOL_SIZE`
@@ -54,6 +59,8 @@ pnpm --dir apps/frontend/agent-admin dev
 最小建议：
 
 - 未配置模型 key 时，direct-reply 与研究能力会退化
+- `ZHIPU_API_BASE_URL` 不再有代码默认值，本地联调必须通过 `.env` 或显式 overrides 提供
+- embedding 与 BigModel MCP endpoints 也不再有代码默认值，需要通过 `.env` 显式提供
 - 未配置 research MCP endpoint 时，研究来源会退回本地或 sandbox 能力
 
 ## 4. 任务与学习状态机

@@ -149,6 +149,58 @@ describe('admin-dashboard-constants', () => {
     ]);
   });
 
+  it('toApprovalItems 会保留 runtime-governance watchdog 原因码', () => {
+    const items = toApprovalItems({
+      approvals: [
+        {
+          taskId: 'task-3',
+          goal: '等待终端补充输入',
+          status: 'waiting_approval',
+          sessionId: 'session-3',
+          executionMode: 'execute',
+          currentMinistry: 'bingbu-ops',
+          currentWorker: 'worker-bingbu',
+          activeInterrupt: {
+            id: 'interrupt-3',
+            status: 'pending',
+            mode: 'blocking',
+            source: 'tool',
+            kind: 'runtime-governance',
+            intent: 'run_terminal',
+            toolName: 'run_terminal',
+            reason: '终端命令长时间无输出。',
+            riskLevel: 'high',
+            resumeStrategy: 'approval-recovery',
+            payload: {
+              interactionKind: 'supplemental-input',
+              runtimeGovernanceReasonCode: 'watchdog_timeout',
+              commandPreview: 'pnpm test',
+              approvalScope: 'once'
+            }
+          },
+          approvals: [
+            {
+              taskId: 'task-3',
+              intent: 'run_terminal',
+              decision: 'pending',
+              decidedAt: '2026-03-28T00:00:00.000Z'
+            }
+          ]
+        }
+      ]
+    } as any);
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        taskId: 'task-3',
+        interactionKind: 'supplemental-input',
+        reasonCode: 'watchdog_timeout',
+        commandPreview: 'pnpm test',
+        approvalScope: 'once'
+      })
+    ]);
+  });
+
   it('shouldPollTask 只对真正可推进的运行中任务保持轮询', () => {
     expect(shouldPollTask({ status: 'queued' } as any)).toBe(true);
     expect(shouldPollTask({ status: 'running' } as any)).toBe(true);

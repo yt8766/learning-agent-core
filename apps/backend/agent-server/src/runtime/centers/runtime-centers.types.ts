@@ -1,5 +1,6 @@
 export interface RuntimeCentersContext {
   settings: any;
+  techBriefingService?: any;
   wenyuanFacade: any;
   sessionCoordinator: any;
   orchestrator: any;
@@ -33,11 +34,16 @@ export const RUNTIME_CENTER_QUERY_METHOD_NAMES = [
   'getCompanyAgentsCenter',
   'getEvalsCenter',
   'getPlatformConsole',
+  'getBriefingRuns',
+  'forceBriefingRun',
+  'recordBriefingFeedback',
   'exportRuntimeCenter',
   'exportEvalsCenter'
 ] as const;
 
 export const RUNTIME_CENTER_GOVERNANCE_METHOD_NAMES = [
+  'listApprovalScopePolicies',
+  'revokeApprovalScopePolicy',
   'getCounselorSelectorConfigs',
   'upsertCounselorSelectorConfig',
   'setCounselorSelectorEnabled',
@@ -68,8 +74,12 @@ export function bindServiceMethods<TTarget extends object, TSource extends objec
   methodNames: readonly string[]
 ) {
   for (const methodName of methodNames) {
+    const method = (source as any)[methodName];
+    if (typeof method !== 'function') {
+      continue;
+    }
     Object.defineProperty(target, methodName, {
-      value: (source as any)[methodName].bind(source),
+      value: method.bind(source),
       configurable: true,
       writable: true
     });

@@ -4,7 +4,7 @@ import {
   buildFreshnessAnswerInstruction,
   buildTemporalContextBlock,
   isFreshnessSensitiveGoal
-} from '../../../src/shared/prompts/temporal-context';
+} from '../../../src/utils/prompts/temporal-context';
 
 describe('temporal-context', () => {
   it('detects freshness-sensitive goals', () => {

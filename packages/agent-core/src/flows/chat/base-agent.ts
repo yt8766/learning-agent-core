@@ -4,6 +4,7 @@ import { AgentExecutionState, AgentRole } from '@agent/shared';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { ChatMessage } from '../../adapters/llm/llm-provider';
+import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
 
 export abstract class BaseAgent {
   protected readonly state: AgentExecutionState;
@@ -53,19 +54,25 @@ export abstract class BaseAgent {
 
     return this.withModelFallback(
       async modelId =>
-        this.context.llm.generateObject(messages, schema, {
-          role: options.role,
-          taskId: this.context.taskId,
-          modelId,
-          budgetState: this.context.budgetState,
-          thinking: options.thinking,
-          temperature: 0.1,
-          onUsage: usage => {
-            this.context.onUsage?.({
-              usage,
-              role: options.role
-            });
-          }
+        withReactiveContextRetry({
+          context: this.context,
+          trigger: `${options.role}-object`,
+          messages,
+          invoke: async compactedMessages =>
+            this.context.llm.generateObject(compactedMessages, schema, {
+              role: options.role,
+              taskId: this.context.taskId,
+              modelId,
+              budgetState: this.context.budgetState,
+              thinking: options.thinking,
+              temperature: 0.1,
+              onUsage: usage => {
+                this.context.onUsage?.({
+                  usage,
+                  role: options.role
+                });
+              }
+            })
         }),
       error => `LLM object generation fallback: ${error instanceof Error ? error.message : 'unknown error'}`,
       options.role
@@ -82,19 +89,25 @@ export abstract class BaseAgent {
 
     return this.withModelFallback(
       async modelId =>
-        this.context.llm.generateText(messages, {
-          role: options.role,
-          taskId: this.context.taskId,
-          modelId,
-          budgetState: this.context.budgetState,
-          thinking: options.thinking,
-          temperature: 0.2,
-          onUsage: usage => {
-            this.context.onUsage?.({
-              usage,
-              role: options.role
-            });
-          }
+        withReactiveContextRetry({
+          context: this.context,
+          trigger: `${options.role}-text`,
+          messages,
+          invoke: async compactedMessages =>
+            this.context.llm.generateText(compactedMessages, {
+              role: options.role,
+              taskId: this.context.taskId,
+              modelId,
+              budgetState: this.context.budgetState,
+              thinking: options.thinking,
+              temperature: 0.2,
+              onUsage: usage => {
+                this.context.onUsage?.({
+                  usage,
+                  role: options.role
+                });
+              }
+            })
         }),
       error => `LLM text generation fallback: ${error instanceof Error ? error.message : 'unknown error'}`,
       options.role

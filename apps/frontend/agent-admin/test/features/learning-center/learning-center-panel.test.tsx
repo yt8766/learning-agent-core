@@ -240,6 +240,47 @@ describe('LearningCenterPanel render smoke', () => {
           createdAt: '2026-03-22T00:00:00.000Z',
           updatedAt: '2026-03-22T00:00:00.000Z'
         }
+      ],
+      learningQueueSummary: {
+        queued: 2,
+        processing: 1,
+        blocked: 0,
+        completed: 3,
+        taskLearningQueued: 1,
+        dreamTaskQueued: 1,
+        dreamTaskCompleted: 2
+      },
+      learningQueue: [
+        {
+          id: 'queue-1',
+          taskId: 'task-1',
+          status: 'queued',
+          mode: 'task-learning',
+          queuedAt: '2026-03-22T00:00:00.000Z',
+          updatedAt: '2026-03-22T00:00:00.000Z',
+          priority: 'high',
+          capabilityUsageStats: {
+            toolCount: 3,
+            workerCount: 1,
+            totalTokens: 1200
+          }
+        },
+        {
+          id: 'dream-1',
+          taskId: 'task-1',
+          status: 'completed',
+          mode: 'dream-task',
+          summary: '整理用户偏好与成功案例',
+          candidateSummary: 'memory 1 / rule 1 / skill 0',
+          queuedAt: '2026-03-22T00:10:00.000Z',
+          updatedAt: '2026-03-22T00:20:00.000Z',
+          finishedAt: '2026-03-22T00:20:00.000Z',
+          priority: 'normal',
+          capabilityUsageStats: {
+            toolCount: 1,
+            workerCount: 1
+          }
+        }
       ]
     };
 
@@ -282,6 +323,15 @@ describe('LearningCenterPanel render smoke', () => {
     expect(html).toContain('payment-selector-v2');
     expect(html).toContain('payment_rollout');
     expect(html).toContain('conflict-payment');
+    expect(html).toContain('dream-task queued 1');
+    expect(html).toContain('dream-task');
+    expect(html).toContain('整理用户偏好与成功案例');
+    expect(html).toContain('仅整理候选，不会自动发布 stable skill');
+    expect(html).toContain('Learning Queue Structure');
+    expect(html).toContain('Queue');
+    expect(html).toContain('Conflict');
+    expect(html).toContain('Ministry');
+    expect(html).toContain('Trust');
     expect(html).toContain('Wenyuan / Cangjing');
     expect(html).toContain('文渊阁');
     expect(html).toContain('藏经阁');

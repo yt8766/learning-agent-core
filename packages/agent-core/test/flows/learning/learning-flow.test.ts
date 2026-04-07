@@ -234,6 +234,83 @@ describe('LearningFlow knowledge governance', () => {
     expect(evaluation?.notes).toEqual(expect.arrayContaining([expect.stringContaining('agent 故障诊断沉淀')]));
   });
 
+  it('does not publish weekly report drafting tasks to skill lab even if evaluation suggests skill extraction', async () => {
+    const skillRegistry = {
+      publishToLab: vi.fn(),
+      recordExecutionResult: vi.fn()
+    };
+    const flow = new LearningFlow({
+      memoryRepository: {
+        append: vi.fn(),
+        list: vi.fn(async () => []),
+        search: vi.fn(async () => []),
+        getById: vi.fn(),
+        invalidate: vi.fn()
+      } as never,
+      memorySearchService: {
+        search: vi.fn(async () => ({
+          memories: [],
+          rules: []
+        }))
+      } as never,
+      ruleRepository: {
+        append: vi.fn(),
+        list: vi.fn(async () => []),
+        search: vi.fn(async () => []),
+        getById: vi.fn(),
+        invalidate: vi.fn()
+      } as never,
+      skillRegistry: skillRegistry as never
+    });
+
+    const task: any = {
+      id: 'task_weekly_1',
+      runId: 'run_weekly_1',
+      goal: '参考上面的生成我当前完成任务的周报',
+      context: '把项目进展整理成周报输出。',
+      result: '周报草稿已完成。',
+      status: 'completed',
+      updatedAt: '2026-04-07T00:00:00.000Z',
+      trace: [],
+      externalSources: [],
+      agentStates: [],
+      usedInstalledSkills: [],
+      usedCompanyWorkers: [],
+      reusedMemories: [],
+      reusedRules: []
+    };
+
+    await flow.persistReviewArtifacts(
+      task,
+      task.goal,
+      {
+        success: true,
+        quality: 'high',
+        shouldRetry: false,
+        shouldWriteMemory: false,
+        shouldCreateRule: false,
+        shouldExtractSkill: true,
+        notes: []
+      },
+      {
+        taskId: task.id,
+        decision: 'approved',
+        notes: [],
+        createdAt: '2026-04-07T00:00:00.000Z'
+      },
+      '周报草稿已完成。',
+      {
+        buildMemoryRecord: vi.fn(),
+        buildRuleRecord: vi.fn(),
+        buildSkillDraft: vi.fn(),
+        addTrace: vi.fn()
+      }
+    );
+
+    expect(skillRegistry.publishToLab).not.toHaveBeenCalled();
+    expect(task.learningEvaluation?.suggestedCandidateTypes).not.toContain('skill');
+  });
+
   it('会从任务语义中提取稳定偏好并生成可自动确认的偏好记忆候选', () => {
     const flow = new LearningFlow({
       memoryRepository: {

@@ -24,7 +24,11 @@ import {
   registerConfiguredConnector,
   registerDiscoveredCapabilities
 } from '../helpers/runtime-connector-registry';
-import { appendGovernanceAudit } from '../helpers/runtime-governance-store';
+import {
+  appendGovernanceAudit,
+  listApprovalScopePolicies as loadApprovalScopePolicies,
+  revokeApprovalScopePolicy as persistApprovalScopePolicyRevocation
+} from '../helpers/runtime-governance-store';
 import {
   getCounselorSelectorConfigs as loadCounselorSelectorConfigs,
   setCounselorSelectorEnabled as persistCounselorSelectorEnabled,
@@ -45,6 +49,30 @@ import { loadConnectorView } from './runtime-centers-governance-connectors';
 
 export class RuntimeCentersGovernanceService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
+
+  async listApprovalScopePolicies() {
+    return loadApprovalScopePolicies(this.ctx().runtimeStateRepository);
+  }
+
+  async revokeApprovalScopePolicy(policyId: string) {
+    const ctx = this.ctx();
+    const revoked = await persistApprovalScopePolicyRevocation(
+      ctx.runtimeStateRepository,
+      policyId,
+      'agent-admin-user'
+    );
+    await appendGovernanceAudit(ctx.runtimeStateRepository, {
+      actor: 'agent-admin-user',
+      action: 'approval-policy.revoked',
+      scope: 'approval-policy',
+      targetId: policyId,
+      outcome: revoked ? 'success' : 'rejected'
+    });
+    if (!revoked) {
+      throw new NotFoundException(`Approval policy ${policyId} not found`);
+    }
+    return revoked;
+  }
 
   async getCounselorSelectorConfigs() {
     return loadCounselorSelectorConfigs(this.ctx().runtimeStateRepository);

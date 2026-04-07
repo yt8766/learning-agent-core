@@ -124,7 +124,6 @@ export function listEvents(sessionId: string) {
 export function getCheckpoint(sessionId: string) {
   return request<ChatCheckpointRecord | undefined>(withSessionId('/chat/checkpoint', sessionId), {
     dedupeKey: `GET:/chat/checkpoint:${sessionId}`,
-    cacheWindowMs: 500,
     timeoutMs: 5000
   });
 }
@@ -136,10 +135,15 @@ export function appendMessage(sessionId: string, message: string) {
   });
 }
 
-export function approveSession(sessionId: string, intent: string, feedback?: string) {
+export function approveSession(
+  sessionId: string,
+  intent: string,
+  feedback?: string,
+  approvalScope?: 'once' | 'session' | 'always'
+) {
   return request<ChatSessionRecord>('/chat/approve', {
     method: 'POST',
-    data: { intent, actor: 'agent-chat-user', sessionId, feedback }
+    data: { intent, actor: 'agent-chat-user', sessionId, feedback, approvalScope }
   });
 }
 

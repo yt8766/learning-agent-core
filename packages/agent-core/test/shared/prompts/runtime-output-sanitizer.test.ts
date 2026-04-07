@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   sanitizeTaskContextForModel,
   stripOperationalBoilerplate
-} from '../../../src/shared/prompts/runtime-output-sanitizer';
+} from '../../../src/utils/prompts/runtime-output-sanitizer';
 
 describe('runtime-output-sanitizer', () => {
   it('removes operational battle reports from final user-facing content', () => {

@@ -1,6 +1,6 @@
-import { buildStructuredPrompt } from '../../../shared/prompts/prompt-template';
-import { stripOperationalBoilerplate } from '../../../shared/prompts/runtime-output-sanitizer';
-import { buildFreshnessAnswerInstruction, buildTemporalContextBlock } from '../../../shared/prompts/temporal-context';
+import { buildStructuredPrompt } from '../../../utils/prompts/prompt-template';
+import { stripOperationalBoilerplate } from '../../../utils/prompts/runtime-output-sanitizer';
+import { buildFreshnessAnswerInstruction, buildTemporalContextBlock } from '../../../utils/prompts/temporal-context';
 
 export const DELIVERY_SUMMARY_SYSTEM_PROMPT = buildStructuredPrompt({
   role: '礼部交付官',

@@ -19,7 +19,7 @@ export function DashboardCenterShell({
 }) {
   return (
     <div className="grid gap-6">
-      <Card className="border-border/70 bg-card/90 shadow-sm">
+      <Card className="border-[#ecece8] bg-[#f8f8f6] shadow-none">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export function DashboardToolbar({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="border-border/70 bg-card/90 shadow-sm">
+    <Card className="border-[#ecece8] bg-[#f8f8f6] shadow-none">
       <CardContent className="grid gap-4 p-5">
         {title ? (
           <div className="space-y-1">
@@ -70,7 +70,7 @@ export function DashboardMetricGrid({
   return (
     <div className={cn('grid gap-4', columns)}>
       {items.map(item => (
-        <Card key={item.label} className="border-border/70 bg-card/90 shadow-sm">
+        <Card key={item.label} className="border-[#ecece8] bg-[#f8f8f6] shadow-none">
           <CardContent className="space-y-3 p-5">
             <p className="text-sm text-muted-foreground">{item.label}</p>
             <p className="text-3xl font-semibold tracking-tight text-foreground">{item.value}</p>
@@ -84,7 +84,7 @@ export function DashboardMetricGrid({
 
 export function DashboardEmptyState({ message, className }: { message: string; className?: string }) {
   return (
-    <Card className={cn('border-dashed border-border/70 bg-muted/20 shadow-none', className)}>
+    <Card className={cn('border-dashed border-[#e5e5e1] bg-[#f5f5f2] shadow-none', className)}>
       <CardContent className="p-6 text-sm text-muted-foreground">{message}</CardContent>
     </Card>
   );

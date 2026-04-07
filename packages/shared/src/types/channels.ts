@@ -1,5 +1,6 @@
-import type { ActionIntent, ChatRole, ExecutionPlanMode } from './primitives';
+import type { ActionIntent, ApprovalScope, ChatRole, ExecutionPlanMode } from './primitives';
 import type { ApprovalResumeInput } from './governance';
+import type { ChatSessionRecord } from './tasking';
 import type { CapabilityAttachmentRecord, CapabilityAugmentationRecord, RequestedExecutionHints } from './skills';
 
 export interface CreateTaskDto {
@@ -26,6 +27,7 @@ export interface CreateTaskDto {
   capabilityAttachments?: CapabilityAttachmentRecord[];
   capabilityAugmentations?: CapabilityAugmentationRecord[];
   conversationSummary?: string;
+  conversationCompression?: ChatSessionRecord['compression'];
   recentTurns?: Array<{
     role: ChatRole;
     content: string;
@@ -147,6 +149,7 @@ export interface ApprovalActionDto {
 
 export interface SessionApprovalDto extends ApprovalActionDto {
   sessionId: string;
+  approvalScope?: ApprovalScope;
 }
 
 export interface SessionCancelDto {

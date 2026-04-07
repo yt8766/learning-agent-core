@@ -1,6 +1,7 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
 import { LearningCandidateRecord } from '@agent/shared';
+import { runLearningConfirmNode, runLearningFinishNode } from '../flows/learning/graph-nodes';
 
 export interface LearningGraphState {
   taskId: string;
@@ -23,8 +24,8 @@ const LearningAnnotation = Annotation.Root({
 
 export function createLearningGraph(handlers: LearningGraphHandlers = {}) {
   return new StateGraph(LearningAnnotation)
-    .addNode('confirm', async state => (handlers.confirm ? handlers.confirm(state) : state))
-    .addNode('finish', async state => (handlers.finish ? handlers.finish(state) : state))
+    .addNode('confirm', state => runLearningConfirmNode(state, handlers))
+    .addNode('finish', state => runLearningFinishNode(state, handlers))
     .addEdge(START, 'confirm')
     .addEdge('confirm', 'finish')
     .addEdge('finish', END);

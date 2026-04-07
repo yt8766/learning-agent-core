@@ -14,6 +14,8 @@ import {
 
 export { PAGE_TITLES };
 
+let initialDashboardRefreshPromise: Promise<void> | null = null;
+
 export function useAdminDashboard() {
   const [page, setPage] = useState<DashboardPageKey>(() => readDashboardStateFromHash().page);
   const [health, setHealth] = useState('检查中');
@@ -210,7 +212,12 @@ export function useAdminDashboard() {
   }, [actions, page, evalScenarioFilter, evalOutcomeFilter]);
 
   useEffect(() => {
-    void actions.refreshAll();
+    if (!initialDashboardRefreshPromise) {
+      initialDashboardRefreshPromise = actions.refreshAll().finally(() => {
+        initialDashboardRefreshPromise = null;
+      });
+    }
+    void initialDashboardRefreshPromise;
     void getHealth()
       .then(value => setHealth(`${value.status} 路 ${value.now}`))
       .catch(() => setHealth('离线'));

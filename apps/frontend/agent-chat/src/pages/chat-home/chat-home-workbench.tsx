@@ -413,10 +413,14 @@ export function buildWorkspaceShareText(chat: ReturnType<typeof useChatSession>)
 
 export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
   const capabilityThought = buildCapabilityThoughtItem(chat);
+  const streamStatusThought = buildStreamStatusThoughtItem(chat);
+  const recentCompletedNodeThoughts = buildRecentCompletedNodeThoughtItems(chat);
   const optimisticThought = buildOptimisticThoughtItem(chat);
 
   if (optimisticThought) {
-    return capabilityThought ? [capabilityThought, optimisticThought] : [optimisticThought];
+    return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, optimisticThought].filter(
+      Boolean
+    ) as ThoughtChainItemType[];
   }
 
   if (chat.checkpoint?.thoughtChain?.length) {
@@ -438,7 +442,9 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
       blink: item.blink
     }));
 
-    return capabilityThought ? [capabilityThought, ...items] : items;
+    return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, ...items].filter(
+      Boolean
+    ) as ThoughtChainItemType[];
   }
 
   const items = chat.events
@@ -460,17 +466,41 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
         title: humanizeOperationalCopy(EVENT_LABELS[eventItem.type] ?? eventItem.type),
         description: buildEventSummary(eventItem),
         footer: meta || eventItem.at,
-        status:
-          eventItem.type === 'session_failed'
-            ? ('error' as const)
-            : eventItem.type === 'session_finished'
-              ? ('success' as const)
-              : ('loading' as const),
+        status: resolveThoughtItemStatus(eventItem.type),
         collapsible: Boolean(meta)
       };
     });
 
-  return capabilityThought ? [capabilityThought, ...items] : items;
+  return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, ...items].filter(
+    Boolean
+  ) as ThoughtChainItemType[];
+}
+
+function resolveThoughtItemStatus(eventType: string) {
+  if (
+    eventType === 'session_failed' ||
+    eventType === 'approval_rejected_with_feedback' ||
+    eventType === 'interrupt_rejected_with_feedback'
+  ) {
+    return 'error' as const;
+  }
+
+  if (
+    eventType === 'session_started' ||
+    eventType === 'user_message' ||
+    eventType === 'assistant_message' ||
+    eventType === 'final_response_completed' ||
+    eventType === 'session_finished' ||
+    eventType === 'approval_resolved' ||
+    eventType === 'interrupt_resumed' ||
+    eventType === 'learning_confirmed' ||
+    eventType === 'review_completed' ||
+    eventType === 'skill_stage_completed'
+  ) {
+    return 'success' as const;
+  }
+
+  return 'loading' as const;
 }
 
 function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
@@ -488,6 +518,89 @@ function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): Th
     collapsible: false,
     blink: true
   };
+}
+
+function buildStreamStatusThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
+  const streamStatus = chat.checkpoint?.streamStatus;
+  if (!streamStatus) {
+    return undefined;
+  }
+
+  const summary = buildNodeStreamCognitionSummary(streamStatus);
+  if (!summary) {
+    return undefined;
+  }
+
+  return {
+    key: `stream-status-${chat.checkpoint?.taskId ?? chat.activeSessionId ?? 'current'}`,
+    title: streamStatus.nodeLabel ?? '当前节点',
+    description: summary,
+    footer: streamStatus.updatedAt,
+    status:
+      typeof streamStatus.progressPercent === 'number' && streamStatus.progressPercent >= 100 ? 'success' : 'loading',
+    collapsible: false,
+    blink: true
+  };
+}
+
+function buildRecentCompletedNodeThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
+  const currentNodeId = chat.checkpoint?.streamStatus?.nodeId;
+  return chat.events
+    .filter(eventItem => eventItem.type === 'node_status' && eventItem.payload?.phase === 'end')
+    .slice()
+    .reverse()
+    .map(eventItem => {
+      const payload = eventItem.payload ?? {};
+      const nodeId = typeof payload.nodeId === 'string' ? payload.nodeId : '';
+      const nodeLabel = typeof payload.nodeLabel === 'string' ? payload.nodeLabel : nodeId || '节点';
+      const detail = typeof payload.detail === 'string' ? payload.detail : '';
+      const progressPercent = typeof payload.progressPercent === 'number' ? payload.progressPercent : undefined;
+      return {
+        key: `node-complete-${eventItem.id}`,
+        nodeId,
+        item: {
+          key: `node-complete-${eventItem.id}`,
+          title: nodeLabel,
+          description: buildNodeStreamCognitionSummary({ nodeLabel, detail, progressPercent }) ?? (detail || '已完成'),
+          footer: eventItem.at,
+          status: 'success' as const,
+          collapsible: false
+        }
+      };
+    })
+    .filter(entry => !currentNodeId || entry.nodeId !== currentNodeId)
+    .slice(0, 3)
+    .map(entry => entry.item);
+}
+
+function buildNodeStreamCognitionSummary(streamStatus?: {
+  nodeLabel?: string;
+  detail?: string;
+  progressPercent?: number;
+}) {
+  if (!streamStatus) {
+    return undefined;
+  }
+
+  const segments = [
+    typeof streamStatus.nodeLabel === 'string' ? streamStatus.nodeLabel : '',
+    typeof streamStatus.detail === 'string' ? streamStatus.detail : '',
+    typeof streamStatus.progressPercent === 'number' ? `进度 ${streamStatus.progressPercent}%` : ''
+  ].filter(Boolean);
+
+  if (!segments.length) {
+    return undefined;
+  }
+
+  const source = segments.join(' · ');
+  const normalized = source.replace(/\s+/g, ' ').trim();
+  const firstSentence = normalized.split(/[。！？\n]/)[0]?.trim() || normalized;
+
+  if (firstSentence.length <= 26) {
+    return firstSentence;
+  }
+
+  return `${firstSentence.slice(0, 26).trimEnd()}...`;
 }
 
 function buildCapabilityThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TaskStatus, type TaskRecord } from '@agent/shared';
 
-import { MainGraphTaskContextRuntime } from '../../../src/graphs/main/main-graph-task-context';
+import { MainGraphTaskContextRuntime } from '../../../src/graphs/main/task/main-graph-task-context';
 
 // task.activeInterrupt remains the persisted 司礼监 / InterruptController projection in runtime tests.
 function createTask(): TaskRecord {

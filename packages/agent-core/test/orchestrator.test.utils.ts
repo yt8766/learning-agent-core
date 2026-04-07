@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 
 import { ActionIntent } from '@agent/shared';
 
-import { AgentOrchestrator } from '../src/graphs/main.graph';
+import { AgentOrchestrator } from '../src/graphs/main/main.graph';
 
 export const createRuntimeRepository = (snapshot?: any) => ({
   load: vi.fn(
@@ -72,6 +72,17 @@ export const createOrchestrator = (
           : 'approved'
       ),
       evaluate: vi.fn((intent: ActionIntent, tool?: { requiresApproval?: boolean }) => {
+        const requiresApproval =
+          intent === ActionIntent.WRITE_FILE ||
+          intent === ActionIntent.CALL_EXTERNAL_API ||
+          Boolean(tool?.requiresApproval);
+        return {
+          requiresApproval,
+          reason: requiresApproval ? 'mock approval required' : 'mock policy auto approved',
+          reasonCode: requiresApproval ? 'requires_approval_tool_policy' : 'approved_by_policy'
+        };
+      }),
+      evaluateWithClassifier: vi.fn(async (intent: ActionIntent, tool?: { requiresApproval?: boolean }) => {
         const requiresApproval =
           intent === ActionIntent.WRITE_FILE ||
           intent === ActionIntent.CALL_EXTERNAL_API ||

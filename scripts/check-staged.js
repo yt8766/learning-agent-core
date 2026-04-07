@@ -22,6 +22,7 @@ const PRETTIER_EXTENSIONS = new Set([
 ]);
 
 const ESLINT_EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.mjs', '.cjs']);
+const TEST_RELATED_EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.mjs', '.cjs', '.json']);
 
 const TSC_PROJECT_RULES = [
   { test: file => file.startsWith('packages/config/'), project: 'packages/config/tsconfig.json' },
@@ -63,6 +64,9 @@ const FULL_TYPECHECK_TRIGGERS = [
   'prettier.config.js',
   'vitest.config.js'
 ];
+
+const FULL_RELATED_TEST_TRIGGERS = [...FULL_TYPECHECK_TRIGGERS, 'vitest.workspace.ts', 'vitest.workspace.js'];
+const COVERAGE_OPT_IN_ENV = 'CHECK_STAGED_WITH_COVERAGE';
 
 const ALL_TYPECHECK_PROJECTS = [
   'packages/config/tsconfig.json',
@@ -138,6 +142,37 @@ function resolveTypecheckProjects(files) {
   );
 }
 
+function resolveTestRun(files) {
+  const normalized = files.map(toPosix);
+  const shouldRunAll = normalized.some(file => {
+    if (FULL_RELATED_TEST_TRIGGERS.includes(file)) {
+      return true;
+    }
+
+    return file.startsWith('.husky/') || file.startsWith('.github/workflows/') || file.startsWith('scripts/');
+  });
+
+  if (shouldRunAll) {
+    return {
+      mode: 'all',
+      files: []
+    };
+  }
+
+  const relatedFiles = normalized.filter(file => TEST_RELATED_EXTENSIONS.has(path.extname(file).toLowerCase()));
+  if (relatedFiles.length === 0) {
+    return {
+      mode: 'none',
+      files: []
+    };
+  }
+
+  return {
+    mode: 'related',
+    files: relatedFiles
+  };
+}
+
 function main() {
   const stagedFiles = getStagedFiles();
 
@@ -149,6 +184,7 @@ function main() {
   const prettierFiles = stagedFiles.filter(file => PRETTIER_EXTENSIONS.has(path.extname(file).toLowerCase()));
   const eslintFiles = stagedFiles.filter(file => ESLINT_EXTENSIONS.has(path.extname(file).toLowerCase()));
   const typecheckProjects = resolveTypecheckProjects(stagedFiles);
+  const testRun = resolveTestRun(stagedFiles);
 
   if (prettierFiles.length > 0) {
     console.log('[check:staged] prettier:', prettierFiles.length, 'files');
@@ -171,6 +207,23 @@ function main() {
     }
   } else {
     console.log('[check:staged] no affected TypeScript projects');
+  }
+
+  if (testRun.mode === 'all') {
+    console.log('[check:staged] tests: full vitest run');
+    run('pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.config.js']);
+  } else if (testRun.mode === 'related') {
+    console.log('[check:staged] tests: related vitest run for', testRun.files.length, 'files');
+    run('pnpm', ['exec', 'vitest', 'related', '--run', '--config', 'vitest.config.js', ...testRun.files]);
+  } else {
+    console.log('[check:staged] no affected tests');
+  }
+
+  if (process.env[COVERAGE_OPT_IN_ENV] === '1') {
+    console.log('[check:staged] coverage: full vitest coverage run');
+    run('pnpm', ['exec', 'vitest', 'run', '--config', 'vitest.config.js', '--coverage']);
+  } else {
+    console.log(`[check:staged] coverage skipped (set ${COVERAGE_OPT_IN_ENV}=1 to enable)`);
   }
 
   if (

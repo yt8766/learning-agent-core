@@ -58,6 +58,9 @@ export interface ChatSessionRecord {
     risks?: string[];
     nextActions?: string[];
     supportingFacts?: string[];
+    decisionSummary?: string;
+    confirmedPreferences?: string[];
+    openLoops?: string[];
     condensedMessageCount: number;
     condensedCharacterCount: number;
     totalCharacterCount: number;
@@ -67,6 +70,10 @@ export interface ChatSessionRecord {
     }>;
     trigger: 'message_count' | 'character_count';
     source: 'heuristic' | 'llm';
+    summaryLength?: number;
+    heuristicFallback?: boolean;
+    effectiveThreshold?: number;
+    compressionProfile?: 'default' | 'long-flow' | 'light-chat';
     updatedAt: string;
   };
   createdAt: string;

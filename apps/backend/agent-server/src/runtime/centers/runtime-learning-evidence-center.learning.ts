@@ -12,6 +12,13 @@ import type {
 } from './runtime-learning-evidence-center.types';
 
 export async function buildLearningCenter(input: BuildLearningCenterInput) {
+  const learningQueue = input.learningQueue ?? [];
+  const queueByMode = (mode: 'task-learning' | 'dream-task') =>
+    learningQueue.filter(item => (item.mode ?? 'task-learning') === mode);
+  const queueByStatus = (status: string) => learningQueue.filter(item => item.status === status);
+  const queueByModeAndStatus = (mode: 'task-learning' | 'dream-task', status: string) =>
+    learningQueue.filter(item => (item.mode ?? 'task-learning') === mode && item.status === status);
+
   const learningCandidates = input.tasks.flatMap(task =>
     (task.learningCandidates ?? []).map(candidate => ({
       ...candidate,
@@ -127,7 +134,7 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
         expertiseSignals: job.learningEvaluation?.expertiseSignals ?? []
       })),
     queuedLearningTasks: input.tasks.filter(task => Boolean(task.learningQueueItemId)).length,
-    learningQueue: (input.learningQueue ?? [])
+    learningQueue: learningQueue
       .slice()
       .sort((left, right) => {
         const priorityGap = queuePriorityScore(right.priority) - queuePriorityScore(left.priority);
@@ -138,10 +145,33 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
       })
       .slice(0, 20),
     learningQueueSummary: {
-      total: (input.learningQueue ?? []).length,
-      running: (input.learningQueue ?? []).filter(item => item.status === 'running').length,
-      queued: (input.learningQueue ?? []).filter(item => item.status === 'queued').length,
-      completed: (input.learningQueue ?? []).filter(item => item.status === 'completed').length
+      total: learningQueue.length,
+      queued: queueByStatus('queued').length,
+      processing: queueByStatus('running').length,
+      blocked: queueByStatus('blocked').length,
+      completed: queueByStatus('completed').length,
+      taskLearningQueued: queueByModeAndStatus('task-learning', 'queued').length,
+      taskLearningProcessing: queueByModeAndStatus('task-learning', 'running').length,
+      taskLearningCompleted: queueByModeAndStatus('task-learning', 'completed').length,
+      dreamTaskQueued: queueByModeAndStatus('dream-task', 'queued').length,
+      dreamTaskProcessing: queueByModeAndStatus('dream-task', 'running').length,
+      dreamTaskCompleted: queueByModeAndStatus('dream-task', 'completed').length,
+      byMode: {
+        taskLearning: {
+          total: queueByMode('task-learning').length,
+          queued: queueByModeAndStatus('task-learning', 'queued').length,
+          processing: queueByModeAndStatus('task-learning', 'running').length,
+          blocked: queueByModeAndStatus('task-learning', 'blocked').length,
+          completed: queueByModeAndStatus('task-learning', 'completed').length
+        },
+        dreamTask: {
+          total: queueByMode('dream-task').length,
+          queued: queueByModeAndStatus('dream-task', 'queued').length,
+          processing: queueByModeAndStatus('dream-task', 'running').length,
+          blocked: queueByModeAndStatus('dream-task', 'blocked').length,
+          completed: queueByModeAndStatus('dream-task', 'completed').length
+        }
+      }
     },
     timeoutStats: {
       timedOutTaskCount: input.tasks.filter(task => (task.learningEvaluation?.timeoutStats?.count ?? 0) > 0).length,

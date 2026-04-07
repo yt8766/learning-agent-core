@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/v4';
 
-import { safeGenerateObject } from '../../../src/shared/schemas/safe-generate-object';
+import { safeGenerateObject } from '../../../src/utils/schemas/safe-generate-object';
 
 describe('safeGenerateObject', () => {
   it('returns success meta when object matches schema', async () => {
@@ -40,5 +40,34 @@ describe('safeGenerateObject', () => {
     expect(result.object).toBeNull();
     expect(result.meta.parseStatus).toBe('schema_parse_failed');
     expect(result.meta.fallbackUsed).toBe(true);
+  });
+
+  it('retries schema parse failures when retry messages are available', async () => {
+    let attempt = 0;
+
+    const result = await safeGenerateObject({
+      contractName: 'demo-contract',
+      contractVersion: 'demo-contract.v1',
+      isConfigured: true,
+      schema: z.object({
+        ok: z.boolean()
+      }),
+      messages: [{ role: 'user', content: 'please return json' }],
+      invokeWithMessages: async messages => {
+        attempt += 1;
+        if (attempt === 1) {
+          expect(messages).toHaveLength(1);
+          return { ok: 'bad' } as unknown as { ok: boolean };
+        }
+
+        expect(messages).toHaveLength(2);
+        expect(messages[1]?.content).toContain('上一次生成失败');
+        return { ok: true };
+      }
+    });
+
+    expect(result.object).toEqual({ ok: true });
+    expect(result.meta.parseStatus).toBe('success');
+    expect(result.meta.fallbackUsed).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ export interface McpCapabilityDefinition {
   riskLevel: RiskLevel;
   requiresApproval: boolean;
   category: ToolDefinition['category'];
+  timeoutMs?: number;
   dataScope?: string;
   writeScope?: string;
 }
@@ -26,13 +27,14 @@ export class McpCapabilityRegistry {
   registerFromTools(serverId: string, tools: ToolDefinition[]): void {
     tools.forEach(tool => {
       this.register({
-        id: tool.name,
+        id: `${serverId}:${tool.name}`,
         toolName: tool.name,
         serverId,
         displayName: tool.description,
         riskLevel: tool.riskLevel,
         requiresApproval: tool.requiresApproval,
         category: tool.category,
+        timeoutMs: tool.timeoutMs,
         dataScope:
           tool.category === 'memory' || tool.category === 'knowledge' ? 'workspace-and-knowledge' : 'workspace',
         writeScope:

@@ -70,4 +70,82 @@ describe('HubuSearchMinistry', () => {
     expect(result.summary).toContain('文渊阁记忆');
     expect(result.summary).toContain('藏经阁文档切片');
   });
+
+  it('prioritizes web search for freshness-sensitive research when webSearchPrime is available', async () => {
+    const invokeCapability = vi.fn().mockResolvedValue({
+      ok: true,
+      outputSummary: '已检索到最新网页结果',
+      rawOutput: {
+        results: [
+          {
+            url: 'https://example.com/latest-ai',
+            title: 'Latest AI update',
+            summary: 'Latest model release notes.'
+          }
+        ]
+      },
+      durationMs: 5
+    });
+    const ministry = new HubuSearchMinistry({
+      taskId: 'task-hubu-2',
+      goal: '最近 AI 有什么更新',
+      flow: 'chat',
+      memoryRepository: {
+        search: vi.fn()
+      },
+      memorySearchService: {
+        search: vi.fn().mockResolvedValue({
+          memories: [],
+          rules: []
+        })
+      },
+      knowledgeSearchService: {
+        search: vi.fn().mockResolvedValue([])
+      },
+      skillRegistry: {
+        list: vi.fn().mockResolvedValue([])
+      },
+      approvalService: {} as any,
+      toolRegistry: {
+        get: vi.fn((toolName: string) => (toolName === 'webSearchPrime' ? { name: 'webSearchPrime' } : undefined))
+      } as any,
+      mcpClientManager: {
+        hasCapability: vi.fn((toolName: string) => toolName === 'webSearchPrime'),
+        invokeCapability
+      } as any,
+      sandbox: {
+        execute: vi.fn()
+      } as any,
+      llm: {
+        isConfigured: () => false
+      } as any,
+      thinking: {
+        manager: false,
+        research: false,
+        executor: false,
+        reviewer: false
+      }
+    } as any);
+
+    const result = await ministry.research('先研究最新变化');
+
+    expect(invokeCapability).toHaveBeenCalledWith(
+      'webSearchPrime',
+      expect.objectContaining({
+        toolName: 'webSearchPrime',
+        input: expect.objectContaining({
+          query: '最近 AI 有什么更新',
+          freshnessHint: 'latest'
+        })
+      })
+    );
+    expect(result.knowledgeEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceType: 'web',
+          sourceUrl: 'https://example.com/latest-ai'
+        })
+      ])
+    );
+  });
 });

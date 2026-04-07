@@ -33,6 +33,7 @@ packages/agent-core/
 │  ├─ runtime/
 │  ├─ session/
 │  ├─ shared/
+│  ├─ utils/
 │  ├─ workflows/
 │  ├─ types/
 │  └─ index.ts
@@ -53,8 +54,24 @@ packages/agent-core/
 - `graphs/` 只放 graph 定义、编译入口、子图组装
 - `flows/` 只放节点、prompt、schema、局部 flow 工具
 - `shared/` 放跨 graph 复用的事件映射、prompt 片段、schema、常量
+- `utils/` 放无副作用、可稳定复用的纯函数工具，例如 parser、formatter、matcher、normalizer、轻量 mapper
 - `session/` 放 checkpoint、事件持久化、恢复与压缩
 - 测试统一放 `packages/agent-core/test/`，不要继续在 `src/` 下新增 `*.test.ts` 或 `*.int-spec.ts`
+
+`shared/` 与 `utils/` 的区别：
+
+- `shared/`
+  - 放带明确领域语义的共享资产
+  - 例如：prompt、schema、事件映射、跨流程协议
+- `utils/`
+  - 放不带强业务身份的通用函数
+  - 例如：字符串规整、数组分组、时间格式化、稳定排序、轻量解析
+
+禁止：
+
+- 把 service、repository、runtime bridge、tool executor 放进 `utils/`
+- 把某个 flow 私有的 helper 提前抽成全局 `utils/`
+- 用 `utils/` 代替 `shared/` 承载协议、prompt、schema
 
 ### `apps/backend/agent-server`
 
@@ -172,6 +189,36 @@ apps/frontend/agent-admin/
 
 - Graph 之间相互直接嵌套调用业务 service 来绕过 graph 边界
 - 在 app 层重新拼一套与 `agent-core` 平行的 graph 结构
+
+## 4.1 `zod` 与 `Annotation` 职责边界
+
+在当前项目里，这两个概念不要混用：
+
+- `zod`
+  - 负责“数据格式正确性”
+  - 用于约束模型输出、结构化结果、schema parse、字段合法性
+  - 典型位置：
+    - `shared/schemas/*`
+    - `flows/*/schemas/*`
+    - `utils/schemas/*`
+- `Annotation`
+  - 负责“图状态如何存储和合并”
+  - 用于定义 LangGraph state 中每个字段如何进入图、如何在节点之间传递、如何在多步执行中累积
+  - 典型位置：
+    - `graphs/chat.graph.ts`
+    - `graphs/main-route.graph.ts`
+    - `graphs/recovery.graph.ts`
+    - `graphs/learning.graph.ts`
+
+判断规则：
+
+- 如果你在解决“模型返回的数据是否合格”，优先想 `zod`
+- 如果你在解决“这个字段在 graph 里怎么挂、怎么传、怎么 merge”，优先想 `Annotation`
+
+禁止：
+
+- 用 `Annotation` 代替 `zod` 做字段值合法性校验
+- 用 `zod` 代替 `Annotation` 表达图状态累积/合并语义
 
 ## 5. 测试目录硬约束
 

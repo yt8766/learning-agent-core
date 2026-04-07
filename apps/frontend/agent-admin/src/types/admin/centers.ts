@@ -66,10 +66,33 @@ export interface LearningCenterRecord {
   pendingCandidates: number;
   confirmedCandidates: number;
   learningQueueSummary?: {
+    total?: number;
     queued: number;
     processing: number;
     blocked: number;
     completed: number;
+    taskLearningQueued?: number;
+    taskLearningProcessing?: number;
+    taskLearningCompleted?: number;
+    dreamTaskQueued?: number;
+    dreamTaskProcessing?: number;
+    dreamTaskCompleted?: number;
+    byMode?: {
+      taskLearning: {
+        total: number;
+        queued: number;
+        processing: number;
+        blocked: number;
+        completed: number;
+      };
+      dreamTask: {
+        total: number;
+        queued: number;
+        processing: number;
+        blocked: number;
+        completed: number;
+      };
+    };
   };
   conflictGovernance?: {
     open: number;
@@ -207,9 +230,14 @@ export interface LearningCenterRecord {
     id: string;
     taskId: string;
     status: string;
+    mode?: 'task-learning' | 'dream-task';
     queuedAt: string;
     updatedAt: string;
+    startedAt?: string;
+    finishedAt?: string;
     priority?: string;
+    summary?: string;
+    candidateSummary?: string;
     selectedCounselorId?: string;
     selectedVersion?: string;
     capabilityUsageStats?: {

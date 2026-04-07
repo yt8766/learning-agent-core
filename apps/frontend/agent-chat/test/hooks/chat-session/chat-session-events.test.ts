@@ -7,6 +7,7 @@ import {
   syncProcessMessageFromEvent,
   syncSessionFromEvent
 } from '@/hooks/chat-session/chat-session-events';
+import { syncCheckpointFromStreamEvent } from '@/hooks/chat-session/chat-session-stream';
 import type { ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 
 describe('chat-session-events', () => {
@@ -31,25 +32,27 @@ describe('chat-session-events', () => {
       }
     });
 
-    expect(card).toEqual({
-      type: 'approval_request',
-      intent: 'write_file',
-      toolName: 'write_local_file',
-      reason: '路径属于敏感位置，需要审批。',
-      reasonCode: 'requires_approval_destructive',
-      riskLevel: 'high',
-      requestedBy: 'gongbu-code',
-      interruptId: 'interrupt-1',
-      interruptSource: 'graph',
-      interruptMode: 'blocking',
-      resumeStrategy: 'command',
-      status: 'pending',
-      displayStatus: 'pending',
-      isPrimaryActionAvailable: true,
-      serverId: undefined,
-      capabilityId: undefined,
-      preview: [{ label: 'Path', value: '.env.local' }]
-    });
+    expect(card).toEqual(
+      expect.objectContaining({
+        type: 'approval_request',
+        intent: 'write_file',
+        toolName: 'write_local_file',
+        reason: '路径属于敏感位置，需要审批。',
+        reasonCode: 'requires_approval_destructive',
+        riskLevel: 'high',
+        requestedBy: 'gongbu-code',
+        interruptId: 'interrupt-1',
+        interruptSource: 'graph',
+        interruptMode: 'blocking',
+        resumeStrategy: 'command',
+        status: 'pending',
+        displayStatus: 'pending',
+        isPrimaryActionAvailable: true,
+        serverId: undefined,
+        capabilityId: undefined,
+        preview: [{ label: 'Path', value: '.env.local' }]
+      })
+    );
   });
 
   it('buildVisibleEventMessage 会把 approval_required 翻译成阻塞式中断确认文案', () => {
@@ -108,6 +111,24 @@ describe('chat-session-events', () => {
     } as any);
 
     expect(content).toBe('正在自动压缩背景信息');
+  });
+
+  it('buildVisibleEventMessage 会把 node_progress 翻译成当前节点战报', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-node-1',
+      sessionId: 'session-1',
+      type: 'node_progress',
+      at: '2026-03-28T00:00:00.000Z',
+      payload: {
+        ministry: 'gongbu-code',
+        nodeLabel: '工部执行',
+        phase: 'progress',
+        detail: '正在修复 plugin.ts',
+        progressPercent: 60
+      }
+    } as any);
+
+    expect(content).toBe('gongbu-code · 工部执行 进行中：正在修复 plugin.ts（60%）');
   });
 
   it('buildEventCard 会把 plan-question interrupt 映射成计划问题卡片', () => {
@@ -276,6 +297,42 @@ describe('chat-session-events', () => {
     expect(messages.filter(message => message.card?.type === 'compression_summary')).toHaveLength(0);
   });
 
+  it('syncProcessMessageFromEvent 会复用同一条 node status 系统消息，而不是不断追加', () => {
+    let messages: ChatMessageRecord[] = [];
+
+    messages = syncProcessMessageFromEvent(messages, {
+      id: 'evt-node-1',
+      sessionId: 'session-1',
+      type: 'node_status',
+      at: '2026-03-28T00:00:00.000Z',
+      payload: {
+        nodeLabel: '文书科压缩',
+        phase: 'start',
+        detail: '开始压缩较早消息'
+      }
+    } as any);
+
+    messages = syncProcessMessageFromEvent(messages, {
+      id: 'evt-node-2',
+      sessionId: 'session-1',
+      type: 'node_progress',
+      at: '2026-03-28T00:00:02.000Z',
+      payload: {
+        nodeLabel: '文书科压缩',
+        phase: 'progress',
+        detail: '正在整理关键决策'
+      }
+    } as any);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toEqual(
+      expect.objectContaining({
+        id: 'event_stream_status_session-1',
+        content: '文书科压缩 进行中：正在整理关键决策'
+      })
+    );
+  });
+
   it('syncSessionFromEvent 会用事件里的 title 刷新左侧会话标题', () => {
     const sessions: ChatSessionRecord[] = [
       {
@@ -305,6 +362,45 @@ describe('chat-session-events', () => {
         updatedAt: '2026-03-28T00:00:01.000Z'
       })
     );
+  });
+
+  it('syncCheckpointFromStreamEvent 会把 node_progress 写入 streamStatus', () => {
+    const next = syncCheckpointFromStreamEvent(
+      {
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        checkpointId: 'checkpoint-1',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: { status: 'running' as any },
+        createdAt: '2026-03-28T00:00:00.000Z',
+        updatedAt: '2026-03-28T00:00:00.000Z'
+      } as any,
+      {
+        id: 'evt-node-3',
+        sessionId: 'session-1',
+        type: 'node_progress',
+        at: '2026-03-28T00:00:03.000Z',
+        payload: {
+          nodeId: 'execute',
+          nodeLabel: '工部执行',
+          detail: '正在跑测试',
+          progressPercent: 80
+        }
+      } as any
+    );
+
+    expect(next?.streamStatus).toEqual({
+      nodeId: 'execute',
+      nodeLabel: '工部执行',
+      detail: '正在跑测试',
+      progressPercent: 80,
+      updatedAt: '2026-03-28T00:00:03.000Z'
+    });
   });
 
   it('syncMessageFromEvent 会连续追加 token，并在最终 assistant_message 到达时校正正文', () => {
@@ -362,6 +458,70 @@ describe('chat-session-events', () => {
         content: '你好，世界。'
       })
     ]);
+  });
+
+  it('syncMessageFromEvent 在最终快照重放 assistant_token 时不会把已持久化正文再追加一遍', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-03-28T00:00:03.000Z'
+      }
+    ];
+
+    const next = syncMessageFromEvent(messages, {
+      id: 'evt-token-replay',
+      sessionId: 'session-1',
+      type: 'assistant_token',
+      at: '2026-03-28T00:00:04.000Z',
+      payload: {
+        messageId: 'assistant-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        taskId: 'task-1',
+        from: 'manager'
+      }
+    });
+
+    expect(next).toEqual([
+      expect.objectContaining({
+        id: 'assistant-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。'
+      })
+    ]);
+  });
+
+  it('syncMessageFromEvent 在已存在 committed assistant 时会忽略 direct reply 历史 token 重放', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-final-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ];
+
+    const next = syncMessageFromEvent(messages, {
+      id: 'evt-token-replay-direct',
+      sessionId: 'session-1',
+      type: 'assistant_token',
+      at: '2026-04-07T00:00:02.000Z',
+      payload: {
+        messageId: 'direct_reply_task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手',
+        taskId: 'task-1',
+        from: 'manager'
+      }
+    });
+
+    expect(next).toHaveLength(1);
+    expect(next[0]).toMatchObject({
+      id: 'assistant-final-1',
+      content: '我是内阁首辅，一个基于大语言模型的智能助手。'
+    });
   });
 
   it('历史 replay 的 assistant 事件不会劫持当前轮刚创建的 pending assistant 占位', () => {

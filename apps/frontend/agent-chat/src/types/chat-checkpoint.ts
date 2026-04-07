@@ -1,6 +1,33 @@
 import type { AgentStateRecord, ApprovalRecord } from './chat-session';
 import type { ChatThinkState, ChatThoughtChainItem } from './chat-events';
 
+export type ExecutionStepRoute = 'direct-reply' | 'research-first' | 'workflow-execute' | 'approval-recovery';
+export type ExecutionStepStage =
+  | 'request-received'
+  | 'route-selection'
+  | 'task-planning'
+  | 'research'
+  | 'execution'
+  | 'review'
+  | 'delivery'
+  | 'approval-interrupt'
+  | 'recovery';
+export type ExecutionStepStatus = 'pending' | 'running' | 'completed' | 'blocked';
+export type ExecutionStepOwner = 'session' | 'libu' | 'hubu' | 'gongbu' | 'bingbu' | 'xingbu' | 'libu-docs' | 'system';
+
+export interface ExecutionStepRecord {
+  id: string;
+  route: ExecutionStepRoute;
+  stage: ExecutionStepStage;
+  label: string;
+  owner: ExecutionStepOwner;
+  status: ExecutionStepStatus;
+  startedAt: string;
+  completedAt?: string;
+  detail?: string;
+  reason?: string;
+}
+
 export interface ChatCheckpointRecord {
   sessionId: string;
   taskId: string;
@@ -90,9 +117,28 @@ export interface ChatCheckpointRecord {
       | 'figma-design'
       | 'modification-intent'
       | 'general-prompt'
+      | 'research-first'
+      | 'plan-only'
+      | 'readiness-fallback'
       | 'fallback';
     priority: number;
+    intent?: ExecutionStepRoute | 'plan-only';
+    intentConfidence?: number;
+    executionReadiness?:
+      | 'ready'
+      | 'approval-required'
+      | 'missing-capability'
+      | 'missing-connector'
+      | 'missing-workspace'
+      | 'blocked-by-policy';
+    matchedSignals?: string[];
+    readinessReason?: string;
+    profileAdjustmentReason?: string;
+    preferredExecutionMode?: 'direct-reply' | 'plan-first' | 'execute-first';
+    stepsSummary?: ExecutionStepRecord[];
   };
+  executionSteps?: ExecutionStepRecord[];
+  currentExecutionStep?: ExecutionStepRecord;
   pendingAction?: {
     toolName: string;
     intent: string;
@@ -275,6 +321,9 @@ export interface ChatCheckpointRecord {
       evidenceCount: number;
       specialistCount: number;
       ministryCount: number;
+      compressionApplied?: boolean;
+      compressionSource?: 'heuristic' | 'llm';
+      compressedMessageCount?: number;
     };
     audienceSlices?: {
       strategy: {
@@ -295,6 +344,13 @@ export interface ChatCheckpointRecord {
     hiddenTraceCount?: number;
     redactedKeys?: string[];
     createdAt: string;
+    updatedAt: string;
+  };
+  streamStatus?: {
+    nodeId?: string;
+    nodeLabel?: string;
+    detail?: string;
+    progressPercent?: number;
     updatedAt: string;
   };
   guardrailState?: {

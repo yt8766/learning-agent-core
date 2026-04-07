@@ -29,6 +29,7 @@
     "@agent/config": "workspace:*",
     "@agent/evals": "workspace:*",
     "@agent/memory": "workspace:*",
+    "@agent/model": "workspace:*",
     "@agent/shared": "workspace:*",
     "@agent/skills": "workspace:*",
     "@agent/tools": "workspace:*",

@@ -15,7 +15,7 @@
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
-- `packages/agent-core`：Agent 运行时核心，内部优先按 `adapters / flows / governance / graphs / runtime / session / shared / workflows / types` 分层
+- `packages/agent-core`：Agent 运行时核心，内部优先按 `adapters / flows / governance / graphs / runtime / session / shared / utils / workflows / types` 分层
 - `packages/shared`：共享 DTO、领域类型、事件模型
 - `packages/config`：运行时配置与路径解析
 - `packages/memory`：memory、rules、runtime state 本地存储

@@ -18,6 +18,81 @@ import {
 
 const { Text } = Typography;
 
+function getExecutionStepStatusColor(status?: string) {
+  switch (status) {
+    case 'completed':
+      return 'success';
+    case 'blocked':
+      return 'error';
+    case 'running':
+      return 'info';
+    default:
+      return 'info';
+  }
+}
+
+function getExecutionStepOwnerLabel(owner?: string) {
+  switch (owner) {
+    case 'session':
+      return '会话层';
+    case 'libu':
+      return '吏部';
+    case 'hubu':
+      return '户部';
+    case 'gongbu':
+      return '工部';
+    case 'bingbu':
+      return '兵部';
+    case 'xingbu':
+      return '刑部';
+    case 'libu-docs':
+      return '礼部';
+    case 'system':
+      return '系统';
+    default:
+      return owner ?? '--';
+  }
+}
+
+export function ExecutionStepsCard({ checkpoint }: { checkpoint?: ChatCheckpointRecord }) {
+  const steps = checkpoint?.chatRoute?.stepsSummary ?? checkpoint?.executionSteps ?? [];
+  const current = checkpoint?.currentExecutionStep;
+
+  return (
+    <Card title="执行步骤" variant="borderless">
+      {steps.length ? (
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {current ? (
+            <Alert
+              type={getExecutionStepStatusColor(current.status)}
+              showIcon
+              title={`当前阶段：${current.label}`}
+              description={`${getExecutionStepOwnerLabel(current.owner)}负责${
+                current.reason ? `；原因 ${current.reason}` : current.detail ? `；${current.detail}` : ''
+              }`}
+            />
+          ) : null}
+          {steps.map(step => (
+            <Card key={step.id} size="small">
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                <Space wrap>
+                  <Tag color={getExecutionStepStatusColor(step.status)}>{step.status}</Tag>
+                  <Tag>{step.label}</Tag>
+                  <Tag color="blue">{getExecutionStepOwnerLabel(step.owner)}</Tag>
+                </Space>
+                {step.detail ? <Text type="secondary">{step.detail}</Text> : null}
+                {step.reason ? <Text type="secondary">阻断/恢复原因：{step.reason}</Text> : null}
+              </Space>
+            </Card>
+          ))}
+        </Space>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有执行步骤投影。" />
+      )}
+    </Card>
+  );
+}
+
 export function ExecutionStateCard({
   checkpoint,
   getAgentLabel
@@ -163,6 +238,19 @@ export function WorkflowRolesCard({
           showIcon
           title="文书科受众切片"
           description={`群辅 ${checkpoint.contextFilterState.audienceSlices.strategy.dispatchCount} / 六部 ${checkpoint.contextFilterState.audienceSlices.ministry.dispatchCount} / 通才 ${checkpoint.contextFilterState.audienceSlices.fallback.dispatchCount}`}
+        />
+      ) : null}
+      {checkpoint?.streamStatus ? (
+        <Alert
+          style={{ marginTop: 12 }}
+          type="info"
+          showIcon
+          title={`当前节点：${checkpoint.streamStatus.nodeLabel ?? checkpoint.streamStatus.nodeId ?? '处理中'}`}
+          description={`${checkpoint.streamStatus.detail ?? '暂无节点明细'}${
+            typeof checkpoint.streamStatus.progressPercent === 'number'
+              ? `（${checkpoint.streamStatus.progressPercent}%）`
+              : ''
+          }`}
         />
       ) : null}
       {checkpoint?.budgetGateState ? (

@@ -8,7 +8,31 @@ import { PENDING_ASSISTANT_PREFIX } from '@/hooks/chat-session/chat-session-form
 
 export type AgentLabelResolver = (role?: string) => string;
 const PROGRESS_STREAM_MESSAGE_PREFIX = 'progress_stream_';
+const DIRECT_REPLY_STREAM_MESSAGE_PREFIX = 'direct_reply_';
+const SUMMARY_STREAM_MESSAGE_PREFIX = 'summary_stream_';
 const { Text } = Typography;
+
+export function buildNodeStreamCognitionSummary(streamStatus?: {
+  nodeLabel?: string;
+  detail?: string;
+  progressPercent?: number;
+}) {
+  if (!streamStatus) {
+    return undefined;
+  }
+
+  const segments = [
+    typeof streamStatus.nodeLabel === 'string' ? streamStatus.nodeLabel : '',
+    typeof streamStatus.detail === 'string' ? streamStatus.detail : '',
+    typeof streamStatus.progressPercent === 'number' ? `进度 ${streamStatus.progressPercent}%` : ''
+  ].filter(Boolean);
+
+  if (!segments.length) {
+    return undefined;
+  }
+
+  return buildCognitionSummary(segments.join(' · '));
+}
 
 export interface BuildBubbleItemsOptions {
   messages: ChatMessageRecord[];
@@ -17,7 +41,7 @@ export interface BuildBubbleItemsOptions {
   agentThinking?: boolean;
   copiedMessageId?: string;
   onCopy: (message: ChatMessageRecord) => void;
-  onApprovalAction?: (intent: string, approved: boolean) => void;
+  onApprovalAction?: (intent: string, approved: boolean, scope?: 'once' | 'session' | 'always') => void;
   onApprovalAllowAlways?: (intent: string, serverId?: string, capabilityId?: string) => void;
   onApprovalFeedback?: (intent: string, reason?: string) => void;
   onPlanAction?: (params: {
@@ -108,7 +132,9 @@ function renderMessageContent(
 
   const isThinking = Boolean(options.thinkState?.loading);
   const cognitionSummary = buildCognitionSummary(
-    options.thinkState?.content,
+    options.thinkState?.loading && options.thoughtItems?.[0]?.description
+      ? toPlainSummary(options.thoughtItems[0].description)
+      : options.thinkState?.content,
     toPlainSummary(options.thoughtItems?.[0]?.description)
   );
   const statusLabel = isThinking ? '思考中' : '已思考';
@@ -164,7 +190,11 @@ function renderMessageContent(
                   blink={options.thinkState.blink}
                   defaultExpanded
                 >
-                  <Text>{options.thinkState.content}</Text>
+                  <Text>
+                    {options.thinkState.loading && options.thoughtItems?.[0]?.description
+                      ? toPlainSummary(options.thoughtItems[0].description)
+                      : options.thinkState.content}
+                  </Text>
                 </Think>
               </div>
             ) : null}
@@ -223,7 +253,23 @@ function getMessageTaskIdentity(message: ChatMessageRecord) {
     return message.id.slice(PROGRESS_STREAM_MESSAGE_PREFIX.length);
   }
 
+  if (message.id.startsWith(DIRECT_REPLY_STREAM_MESSAGE_PREFIX)) {
+    return message.id.slice(DIRECT_REPLY_STREAM_MESSAGE_PREFIX.length);
+  }
+
+  if (message.id.startsWith(SUMMARY_STREAM_MESSAGE_PREFIX)) {
+    return message.id.slice(SUMMARY_STREAM_MESSAGE_PREFIX.length);
+  }
+
   return message.id;
+}
+
+function isTransientAssistantStreamMessage(message: ChatMessageRecord) {
+  return (
+    message.id.startsWith(PROGRESS_STREAM_MESSAGE_PREFIX) ||
+    message.id.startsWith(DIRECT_REPLY_STREAM_MESSAGE_PREFIX) ||
+    message.id.startsWith(SUMMARY_STREAM_MESSAGE_PREFIX)
+  );
 }
 
 function shouldRenderInMainThread(
@@ -260,7 +306,7 @@ function shouldRenderInMainThread(
     }
   }
 
-  if (message.id.startsWith(PROGRESS_STREAM_MESSAGE_PREFIX)) {
+  if (isTransientAssistantStreamMessage(message)) {
     if (message.id === cognitionTargetMessageId) {
       return true;
     }
@@ -273,7 +319,7 @@ function shouldRenderInMainThread(
     const hasCommittedAssistantResult = messages.some(
       candidate =>
         candidate.role === 'assistant' &&
-        !candidate.id.startsWith(PROGRESS_STREAM_MESSAGE_PREFIX) &&
+        !isTransientAssistantStreamMessage(candidate) &&
         getMessageTaskIdentity(candidate) === taskIdentity &&
         candidate.content.trim()
     );
@@ -297,6 +343,8 @@ function collapseMainThreadMessages(messages: ChatMessageRecord[], cognitionTarg
 
   for (const message of messages) {
     const previous = collapsed[collapsed.length - 1];
+    const previousTaskIdentity = previous ? getMessageTaskIdentity(previous) : undefined;
+    const currentTaskIdentity = getMessageTaskIdentity(message);
     const canMergeAssistantText =
       previous &&
       previous.role === 'assistant' &&
@@ -305,6 +353,7 @@ function collapseMainThreadMessages(messages: ChatMessageRecord[], cognitionTarg
       !message.card &&
       previous.id !== cognitionTargetMessageId &&
       message.id !== cognitionTargetMessageId &&
+      previousTaskIdentity === currentTaskIdentity &&
       previous.content.trim().length > 0 &&
       message.content.trim().length > 0;
 
@@ -342,7 +391,7 @@ export function buildMainThreadMessages(messages: ChatMessageRecord[], cognition
 }
 
 function normalizeCapabilityMessageForMainThread(message: ChatMessageRecord): ChatMessageRecord {
-  if (message.id.startsWith(PROGRESS_STREAM_MESSAGE_PREFIX)) {
+  if (isTransientAssistantStreamMessage(message)) {
     return {
       ...message,
       content: ''
@@ -500,6 +549,17 @@ export function buildBubbleItems({
       }
 
       if (message.card?.type === 'evidence_digest' && !lastAssistantMessageId) {
+        return false;
+      }
+
+      const isCurrentStreamingAssistant =
+        message.id === lastAssistantMessageId && (activeStatus === 'running' || Boolean(agentThinking));
+      const shouldKeepEmptyAssistantShell =
+        message.role === 'assistant' &&
+        !message.content.trim() &&
+        (isCurrentStreamingAssistant || message.id === resolvedCognitionTargetMessageId);
+
+      if (message.role === 'assistant' && !message.content.trim() && !shouldKeepEmptyAssistantShell) {
         return false;
       }
 

@@ -165,9 +165,14 @@ export interface BuildLearningCenterInput {
     id: string;
     taskId: string;
     status: string;
+    mode?: 'task-learning' | 'dream-task';
     queuedAt: string;
     updatedAt: string;
     priority?: string;
+    summary?: string;
+    candidateSummary?: string;
+    startedAt?: string;
+    finishedAt?: string;
     selectedCounselorId?: string;
     selectedVersion?: string;
     capabilityUsageStats?: {

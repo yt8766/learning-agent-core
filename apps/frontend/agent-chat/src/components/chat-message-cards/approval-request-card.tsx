@@ -16,14 +16,21 @@ import {
 interface ApprovalRequestCardProps {
   card: ApprovalRequestCardData;
   content: string;
-  onApprovalAction?: (intent: string, approved: boolean) => void;
+  onApprovalAction?: (intent: string, approved: boolean, scope?: 'once' | 'session' | 'always') => void;
   onApprovalFeedback?: (intent: string, reason?: string) => void;
 }
 
 export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
   const { card, content, onApprovalAction, onApprovalFeedback } = props;
   const summary = card.reason ?? content;
+  const riskSummary = card.riskReason ?? summary;
   const displayStatusMeta = getApprovalDisplayStatusMeta(card.displayStatus);
+  const isRuntimeGovernance = card.interactionKind === 'supplemental-input' && card.watchdog;
+  const title = isRuntimeGovernance ? '兵部运行时操作需要处理' : '允许继续执行此操作';
+  const eyebrow = isRuntimeGovernance ? '运行时治理中断' : '操作确认';
+  const summaryCopy = isRuntimeGovernance
+    ? '这一步不是普通高风险审批，而是兵部执行链在超时、等待输入或交互卡死时触发的运行时治理中断。'
+    : '这一步需要你的确认才能继续。将执行的操作、来源与高危原因如下。';
   const isHandled =
     card.isPrimaryActionAvailable === false ||
     card.status === 'approved' ||
@@ -34,18 +41,18 @@ export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
     <div className="chatx-approval-card">
       <div className="chatx-approval-card__header">
         <div className="chatx-approval-card__title-wrap">
-          <div className="chatx-approval-card__eyebrow">操作确认</div>
-          <div className="chatx-approval-card__title">允许继续执行此操作</div>
+          <div className="chatx-approval-card__eyebrow">{eyebrow}</div>
+          <div className="chatx-approval-card__title">{title}</div>
         </div>
         <Tag color={getRiskTagColor(card.riskLevel)}>{getRiskLabel(card.riskLevel)}</Tag>
       </div>
 
-      <div className="chatx-approval-card__summary">这一步需要你的确认才能继续。将执行的操作、工具和风险原因如下。</div>
+      <div className="chatx-approval-card__summary">{summaryCopy}</div>
 
       <div className="chatx-approval-card__reason">
-        <div className="chatx-approval-card__reason-label">原因</div>
+        <div className="chatx-approval-card__reason-label">高危摘要</div>
         <div className="chatx-markdown-shell is-system chatx-approval-card__body">
-          <XMarkdown content={summary} className="chatx-markdown" escapeRawHtml />
+          <XMarkdown content={riskSummary} className="chatx-markdown" escapeRawHtml />
         </div>
       </div>
 
@@ -63,10 +70,20 @@ export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
             </div>
             {card.requestedBy ? (
               <div className="chatx-approval-card__fact">
-                <span className="chatx-approval-card__fact-label">发起方</span>
+                <span className="chatx-approval-card__fact-label">来源部门</span>
                 <span className="chatx-approval-card__fact-text">{card.requestedBy}</span>
               </div>
             ) : null}
+            <div className="chatx-approval-card__fact">
+              <span className="chatx-approval-card__fact-label">审批范围</span>
+              <span className="chatx-approval-card__fact-text">
+                {card.approvalScope === 'always'
+                  ? '永远允许（预留）'
+                  : card.approvalScope === 'session'
+                    ? '本会话（预留）'
+                    : '仅本次'}
+              </span>
+            </div>
             {card.resumeStrategy ? (
               <div className="chatx-approval-card__fact">
                 <span className="chatx-approval-card__fact-label">恢复方式</span>
@@ -85,7 +102,22 @@ export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
                 <span className="chatx-approval-card__fact-text">{getInterruptModeLabel(card.interruptMode)}</span>
               </div>
             ) : null}
+            {card.runtimeGovernanceReasonCode ? (
+              <div className="chatx-approval-card__fact">
+                <span className="chatx-approval-card__fact-label">治理原因</span>
+                <span className="chatx-approval-card__fact-text">
+                  {getApprovalReasonLabel(card.runtimeGovernanceReasonCode) || card.runtimeGovernanceReasonCode}
+                </span>
+              </div>
+            ) : null}
           </div>
+
+          {card.commandPreview ? (
+            <div className="chatx-approval-card__preview">
+              <div className="chatx-approval-card__reason-label">命令预览</div>
+              <code className="chatx-approval-card__preview-value">{card.commandPreview}</code>
+            </div>
+          ) : null}
 
           {card.preview?.length ? (
             <div className="chatx-approval-card__preview">
@@ -100,13 +132,42 @@ export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
               </div>
             </div>
           ) : null}
+
+          {card.recommendedActions?.length ? (
+            <div className="chatx-approval-card__preview">
+              <div className="chatx-approval-card__reason-label">推荐动作</div>
+              <div className="chatx-approval-card__preview-list">
+                {card.recommendedActions.map(action => (
+                  <div key={action} className="chatx-approval-card__preview-item">
+                    <span className="chatx-approval-card__preview-label">建议</span>
+                    <code className="chatx-approval-card__preview-value">{action}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </details>
 
       <div className="chatx-approval-card__meta">
         <Tag>{card.intent}</Tag>
         {card.requestedBy ? <Tag>{card.requestedBy}</Tag> : null}
+        {isRuntimeGovernance ? <Tag color="volcano">runtime-governance</Tag> : null}
+        {card.watchdog ? <Tag color="orange">watchdog</Tag> : null}
         {card.reasonCode ? <Tag color="purple">{getApprovalReasonLabel(card.reasonCode)}</Tag> : null}
+        {card.runtimeGovernanceReasonCode ? (
+          <Tag color="purple">{getApprovalReasonLabel(card.runtimeGovernanceReasonCode)}</Tag>
+        ) : null}
+        {card.riskCode && card.riskCode !== card.reasonCode ? (
+          <Tag color="magenta">{getApprovalReasonLabel(card.riskCode) || card.riskCode}</Tag>
+        ) : null}
+        <Tag color="gold">
+          {card.approvalScope === 'always'
+            ? '永远允许（预留）'
+            : card.approvalScope === 'session'
+              ? '本会话（预留）'
+              : '仅本次'}
+        </Tag>
         {card.interruptSource ? <Tag color="cyan">{getInterruptSourceLabel(card.interruptSource)}</Tag> : null}
         {card.interruptMode ? <Tag color="blue">{getInterruptModeLabel(card.interruptMode)}</Tag> : null}
         {card.resumeStrategy ? (
@@ -117,8 +178,19 @@ export function ApprovalRequestCard(props: ApprovalRequestCardProps) {
         <Tag color={displayStatusMeta.color}>{displayStatusMeta.label}</Tag>
       </div>
       <Space wrap className="chatx-approval-card__actions">
-        <Button size="small" type="primary" disabled={isHandled} onClick={() => onApprovalAction?.(card.intent, true)}>
-          允许继续
+        <Button
+          size="small"
+          type="primary"
+          disabled={isHandled}
+          onClick={() => onApprovalAction?.(card.intent, true, 'once')}
+        >
+          允许本次
+        </Button>
+        <Button size="small" disabled={isHandled} onClick={() => onApprovalAction?.(card.intent, true, 'session')}>
+          本会话允许
+        </Button>
+        <Button size="small" disabled={isHandled} onClick={() => onApprovalAction?.(card.intent, true, 'always')}>
+          永久允许
         </Button>
         <Button size="small" disabled={isHandled} onClick={() => onApprovalAction?.(card.intent, false)}>
           拒绝

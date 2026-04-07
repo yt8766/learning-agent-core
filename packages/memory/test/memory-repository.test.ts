@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { FileMemoryRepository } from '../src/memory-repository';
 
@@ -40,5 +40,32 @@ describe('FileMemoryRepository', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]?.id).toBe('mem-safe');
+  });
+
+  it('同步调用向量索引更新钩子', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'memory-repo-hook-'));
+    const filePath = join(dir, 'records.jsonl');
+    const repository = new FileMemoryRepository(filePath);
+    const vectorIndexRepository = {
+      upsertMemory: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined)
+    };
+    repository.setVectorIndexRepository(vectorIndexRepository as any);
+
+    await repository.append({
+      id: 'mem-hook',
+      type: 'fact',
+      summary: 'runtime architecture',
+      content: 'vector sync',
+      tags: ['runtime'],
+      createdAt: '2026-03-28T00:00:00.000Z',
+      status: 'active'
+    });
+    const invalidated = await repository.invalidate('mem-hook', 'stale');
+    const restored = invalidated ? await repository.restore('mem-hook') : undefined;
+
+    expect(restored?.id).toBe('mem-hook');
+    expect(vectorIndexRepository.upsertMemory).toHaveBeenCalledTimes(2);
+    expect(vectorIndexRepository.remove).toHaveBeenCalledTimes(1);
   });
 });

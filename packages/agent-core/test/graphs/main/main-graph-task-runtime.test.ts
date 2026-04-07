@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AgentRole, TaskStatus, type ExecutionTrace, type TaskRecord } from '@agent/shared';
 import { createDefaultToolRegistry } from '@agent/tools';
 
-import { MainGraphTaskRuntime } from '../../../src/graphs/main/main-graph-task-runtime';
+import { MainGraphTaskRuntime } from '../../../src/graphs/main/task/main-graph-task-runtime';
 
 function createRuntime() {
   return new MainGraphTaskRuntime(

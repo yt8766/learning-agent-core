@@ -1,5 +1,6 @@
 import type {
   ActionIntent,
+  ApprovalScope,
   ApprovalStatus,
   InteractionKind,
   RiskLevel,
@@ -10,6 +11,39 @@ import type {
 import type { CapabilityOwnerType } from './skills';
 
 export type ToolCapabilityType = 'local-tool' | 'mcp-capability' | 'governance-tool';
+export type ToolPermissionScope = 'readonly' | 'workspace-write' | 'external-side-effect' | 'governance';
+export type PreflightGovernanceDecision = 'allow' | 'ask' | 'deny';
+
+export interface PermissionCheckResult {
+  decision: PreflightGovernanceDecision;
+  reason: string;
+  reasonCode:
+    | 'static_policy_allow'
+    | 'static_policy_ask'
+    | 'static_policy_deny'
+    | 'tool_checker_allow'
+    | 'tool_checker_ask'
+    | 'tool_checker_deny'
+    | 'classifier_allow'
+    | 'classifier_ask'
+    | 'classifier_deny';
+  matchedRuleId?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface StaticPolicyRule {
+  id: string;
+  effect: PreflightGovernanceDecision;
+  priority: number;
+  toolNames?: string[];
+  families?: string[];
+  intents?: string[];
+  pathPatterns?: string[];
+  commandPatterns?: string[];
+  profiles?: string[];
+  executionModes?: string[];
+  reason: string;
+}
 
 export interface ToolFamilyRecord {
   id: string;
@@ -38,6 +72,11 @@ export interface ToolDefinition {
   preferredMinistries?: WorkerDomain[];
   preferredSpecialists?: string[];
   capabilityType: ToolCapabilityType;
+  isReadOnly: boolean;
+  isConcurrencySafe: boolean;
+  isDestructive: boolean;
+  supportsStreamingDispatch: boolean;
+  permissionScope: ToolPermissionScope;
   inputSchema: Record<string, unknown>;
 }
 
@@ -182,4 +221,49 @@ export interface ApprovalPolicyRecord {
   sourceId?: string;
   capabilityId?: string;
   matchedCount?: number;
+}
+
+export interface ApprovalScopeMatchInput {
+  intent?: ActionIntent | string;
+  toolName?: string;
+  riskCode?: string;
+  requestedBy?: string;
+  commandPreview?: string;
+}
+
+export interface ApprovalScopePolicyRecord extends ApprovalScopeMatchInput {
+  id: string;
+  scope: Extract<ApprovalScope, 'session' | 'always'>;
+  status: 'active' | 'revoked';
+  matchKey: string;
+  actor?: string;
+  sourceDomain?: string;
+  approvalScope?: ApprovalScope;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  lastMatchedAt?: string;
+  matchCount?: number;
+}
+
+function normalizeApprovalScopeValue(value?: string) {
+  return value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? '';
+}
+
+export function buildApprovalScopeMatchKey(input: ApprovalScopeMatchInput) {
+  return [
+    normalizeApprovalScopeValue(input.intent),
+    normalizeApprovalScopeValue(input.toolName),
+    normalizeApprovalScopeValue(input.riskCode),
+    normalizeApprovalScopeValue(input.requestedBy),
+    normalizeApprovalScopeValue(input.commandPreview)
+  ].join('::');
+}
+
+export function matchesApprovalScopePolicy(
+  policy: Pick<ApprovalScopePolicyRecord, 'status' | 'matchKey'>,
+  input: ApprovalScopeMatchInput
+) {
+  return policy.status === 'active' && policy.matchKey === buildApprovalScopeMatchKey(input);
 }

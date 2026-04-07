@@ -7,6 +7,8 @@ import { syncMessageFromEvent, syncSessionFromEvent } from '@/hooks/chat-session
 
 const appendMessageMock = vi.fn();
 const getCheckpointMock = vi.fn();
+const listMessagesMock = vi.fn();
+const listEventsMock = vi.fn();
 
 vi.mock('../../../src/api/chat-api', () => ({
   allowApprovalCapability: vi.fn(),
@@ -18,8 +20,8 @@ vi.mock('../../../src/api/chat-api', () => ({
   createSession: vi.fn(),
   deleteSession: vi.fn(),
   getCheckpoint: (...args: unknown[]) => getCheckpointMock(...args),
-  listEvents: vi.fn(),
-  listMessages: vi.fn(),
+  listEvents: (...args: unknown[]) => listEventsMock(...args),
+  listMessages: (...args: unknown[]) => listMessagesMock(...args),
   listSessions: vi.fn(),
   recoverSession: vi.fn(),
   rejectSession: vi.fn(),
@@ -200,5 +202,131 @@ describe('chat-session streaming integration', () => {
     expect(checkpoint?.graphState?.status).toBe('running');
     expect(checkpoint?.thinkState?.loading).toBe(true);
     expect(events.map(event => event.type)).toEqual(['assistant_token', 'final_response_delta', 'assistant_message']);
+  });
+
+  it('reconcileFinalSnapshot keeps only one committed assistant message for direct reply style content', async () => {
+    appendMessageMock.mockReset();
+    getCheckpointMock.mockReset();
+    listMessagesMock.mockReset();
+    listEventsMock.mockReset();
+
+    let activeSessionId = 'session-1';
+    let draft = '';
+    let error = '';
+    let loading = false;
+    let sessions: ChatSessionRecord[] = [
+      {
+        id: 'session-1',
+        title: '内阁首辅',
+        status: 'running',
+        createdAt: '2026-04-07T00:00:00.000Z',
+        updatedAt: '2026-04-07T00:00:00.000Z'
+      }
+    ];
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'direct_reply_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+        createdAt: '2026-04-07T00:00:00.000Z'
+      }
+    ];
+    let events: ChatEventRecord[] = [
+      {
+        id: 'evt-token-1',
+        sessionId: 'session-1',
+        type: 'assistant_token',
+        at: '2026-04-07T00:00:00.100Z',
+        payload: {
+          messageId: 'direct_reply_task-1',
+          taskId: 'task-1',
+          content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+          from: 'manager'
+        }
+      }
+    ];
+    let checkpoint: ChatCheckpointRecord | undefined;
+
+    listMessagesMock.mockResolvedValue([
+      {
+        id: 'chat_msg_final_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        taskId: 'task-1',
+        content: '我是内阁首辅，一个基于大语言模型的智能助手。\n\n我可以帮你：\n\n- 回答问题与提供建议',
+        createdAt: '2026-04-07T00:00:01.000Z'
+      }
+    ]);
+    listEventsMock.mockResolvedValue([
+      {
+        id: 'evt-token-1',
+        sessionId: 'session-1',
+        type: 'assistant_token',
+        at: '2026-04-07T00:00:00.100Z',
+        payload: {
+          messageId: 'direct_reply_task-1',
+          taskId: 'task-1',
+          content: '我是内阁首辅，一个基于大语言模型的智能助手。',
+          from: 'manager'
+        }
+      }
+    ]);
+    getCheckpointMock.mockResolvedValue({
+      sessionId: 'session-1',
+      taskId: 'task-1',
+      updatedAt: '2026-04-07T00:00:01.000Z',
+      createdAt: '2026-04-07T00:00:00.000Z',
+      graphState: {
+        status: 'completed'
+      }
+    });
+
+    const actions = createChatSessionActions({
+      activeSessionId,
+      activeSession: sessions[0],
+      checkpoint,
+      draft,
+      setDraft: next => {
+        draft = applySetter(draft, next);
+      },
+      setError: next => {
+        error = applySetter(error, next);
+      },
+      setLoading: next => {
+        loading = applySetter(loading, next);
+      },
+      setSessions: next => {
+        sessions = applySetter(sessions, next);
+      },
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: next => {
+        events = applySetter(events, next);
+      },
+      setCheckpoint: next => {
+        checkpoint = applySetter(checkpoint, next);
+      },
+      setActiveSessionId: next => {
+        activeSessionId = applySetter(activeSessionId, next);
+      },
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} }
+    });
+
+    await actions.reconcileFinalSnapshot('session-1');
+
+    expect(error).toBe('');
+    expect(loading).toBe(false);
+    expect(messages.filter(message => message.role === 'assistant')).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      id: 'chat_msg_final_1',
+      taskId: 'task-1',
+      content: '我是内阁首辅，一个基于大语言模型的智能助手。\n\n我可以帮你：\n\n- 回答问题与提供建议'
+    });
   });
 });

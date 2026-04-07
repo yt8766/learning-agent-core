@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { SkillManifestRecord, SkillSourceRecord } from '@agent/shared';
+import { SkillManifestRecord, SkillSourceRecord, type SpecialistDomain, type WorkerDomain } from '@agent/shared';
 
 const PRIORITY_ORDER = ['bundled/marketplace', 'managed/local', 'workspace/internal'] as const;
 
@@ -126,6 +126,14 @@ function inferConnectors(body: string): string[] {
   return [...connectors];
 }
 
+function parseStringList(attributes: Record<string, unknown>, key: string): string[] | undefined {
+  if (!Array.isArray(attributes[key])) {
+    return undefined;
+  }
+  const values = (attributes[key] as unknown[]).map(item => String(item).trim()).filter(Boolean);
+  return values.length > 0 ? values : undefined;
+}
+
 export async function loadAgentSkillManifests(sources: SkillSourceRecord[]): Promise<SkillManifestRecord[]> {
   const orderedSources = [...sources].sort((left, right) => {
     return PRIORITY_ORDER.indexOf(left.priority) - PRIORITY_ORDER.indexOf(right.priority);
@@ -150,6 +158,12 @@ export async function loadAgentSkillManifests(sources: SkillSourceRecord[]): Pro
           const allowedTools = Array.isArray(attributes['allowed-tools'])
             ? (attributes['allowed-tools'] as string[]).map(item => String(item))
             : undefined;
+          const preferredMinistries = parseStringList(attributes, 'recommended-ministries') as
+            | WorkerDomain[]
+            | undefined;
+          const recommendedSpecialists = parseStringList(attributes, 'recommended-specialists') as
+            | SpecialistDomain[]
+            | undefined;
           const manifest: SkillManifestRecord = {
             id,
             name,
@@ -168,6 +182,12 @@ export async function loadAgentSkillManifests(sources: SkillSourceRecord[]): Pro
             summary: inferSummary(body),
             license: typeof attributes.license === 'string' ? String(attributes.license) : undefined,
             compatibility: typeof attributes.compatibility === 'string' ? String(attributes.compatibility) : undefined,
+            triggers: parseStringList(attributes, 'triggers'),
+            preferredMinistries,
+            recommendedSpecialists,
+            specialistAffinity: recommendedSpecialists,
+            executionHints: parseStringList(attributes, 'execution-hints'),
+            compressionHints: parseStringList(attributes, 'compression-hints'),
             metadata:
               attributes.metadata && typeof attributes.metadata === 'object'
                 ? Object.fromEntries(

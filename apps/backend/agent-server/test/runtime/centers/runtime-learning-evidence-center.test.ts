@@ -41,8 +41,29 @@ describe('runtime-learning-evidence-center', () => {
       })
     ]);
     expect(result.learningQueue).toEqual([
-      expect.objectContaining({ id: 'queue-1', taskId: 'task-1', status: 'queued', priority: 'high' })
+      expect.objectContaining({
+        id: 'queue-1',
+        taskId: 'task-1',
+        status: 'queued',
+        priority: 'high',
+        mode: 'task-learning'
+      }),
+      expect.objectContaining({ id: 'dream-1', taskId: 'task-1', status: 'completed', mode: 'dream-task' })
     ]);
+    expect(result.learningQueueSummary).toEqual(
+      expect.objectContaining({
+        queued: 1,
+        processing: 0,
+        blocked: 0,
+        completed: 1,
+        taskLearningQueued: 1,
+        dreamTaskCompleted: 1,
+        byMode: expect.objectContaining({
+          taskLearning: expect.objectContaining({ total: 1, queued: 1 }),
+          dreamTask: expect.objectContaining({ total: 1, completed: 1 })
+        })
+      })
+    );
     expect(result.counselorSelectorConfigs).toEqual([
       expect.objectContaining({ selectorId: 'payment-selector-v2', domain: 'payment' })
     ]);

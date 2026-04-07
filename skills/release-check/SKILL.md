@@ -8,10 +8,23 @@ compatibility: Requires repository and CI context. Release or write actions stil
 metadata:
   author: learning-agent-core
   ministry: bingbu-ops
+triggers:
+  - release
+  - pre-release
+recommended-ministries:
+  - bingbu-ops
+  - xingbu-review
+recommended-specialists:
+  - technical-architecture
 allowed-tools:
   - read_local_file
   - list_directory
   - run_terminal
+execution-hints:
+  - Verify build and typecheck before any publish-sensitive step.
+  - Prefer runtime-governance approval if a command stalls or requires interaction.
+compression-hints:
+  - Replace long CI logs with artifact summaries before passing to review and learning.
 approval-policy: high-risk-only
 risk-level: medium
 ---

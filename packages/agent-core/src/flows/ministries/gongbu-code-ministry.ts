@@ -2,12 +2,15 @@
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { filterToolsForExecutionMode, isToolAllowedInExecutionMode } from '../../capabilities/execution-mode-guard';
+import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '../../runtime/streaming-execution';
+import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
 import { PendingExecutionContext } from '../approval';
 import { GONGBU_EXECUTION_SYSTEM_PROMPT } from './gongbu-code/prompts/execution-prompts';
 import { ExecutionActionSchema } from './gongbu-code/schemas/execution-action-schema';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;
+  protected readonly streamingCoordinator = new StreamingExecutionCoordinator();
 
   constructor(protected readonly context: AgentRuntimeContext) {
     this.state = {
@@ -68,8 +71,10 @@ export class GongbuCodeMinistry {
     } | null = null;
     if (this.context.llm.isConfigured()) {
       try {
-        llmSelection = await this.context.llm.generateObject(
-          [
+        llmSelection = await withReactiveContextRetry({
+          context: this.context,
+          trigger: 'gongbu-selection',
+          messages: [
             {
               role: 'system',
               content: GONGBU_EXECUTION_SYSTEM_PROMPT
@@ -83,22 +88,22 @@ export class GongbuCodeMinistry {
               })
             }
           ],
-          ExecutionActionSchema,
-          {
-            role: 'executor',
-            modelId: this.context.currentWorker?.defaultModel,
-            taskId: this.context.taskId,
-            thinking: this.context.thinking.executor,
-            temperature: 0.1,
-            budgetState: this.context.budgetState,
-            onUsage: usage => {
-              this.context.onUsage?.({
-                usage,
-                role: 'executor'
-              });
-            }
-          }
-        );
+          invoke: async messages =>
+            this.context.llm.generateObject(messages, ExecutionActionSchema, {
+              role: 'executor',
+              modelId: this.context.currentWorker?.defaultModel,
+              taskId: this.context.taskId,
+              thinking: this.context.thinking.executor,
+              temperature: 0.1,
+              budgetState: this.context.budgetState,
+              onUsage: usage => {
+                this.context.onUsage?.({
+                  usage,
+                  role: 'executor'
+                });
+              }
+            })
+        });
       } catch {
         llmSelection = null;
       }
@@ -157,7 +162,12 @@ export class GongbuCodeMinistry {
     );
 
     const toolInput = this.buildToolInput(tool.name, actionPrompt, researchSummary);
-    const approvalEvaluation = this.context.approvalService.evaluate(intent, tool, toolInput);
+    const approvalEvaluation = await this.context.approvalService.evaluateWithClassifier(intent, tool, {
+      ...toolInput,
+      executionMode: this.context.executionMode,
+      currentMinistry: this.context.currentWorker?.ministry,
+      currentWorker: this.context.currentWorker?.id
+    });
     const requiresApproval = approvalEvaluation.requiresApproval;
     if (requiresApproval) {
       this.state.status = 'waiting_approval';
@@ -175,17 +185,27 @@ export class GongbuCodeMinistry {
       };
     }
 
-    const request = {
-      taskId: this.context.taskId,
-      toolName: tool.name,
-      intent,
-      input: toolInput,
-      requestedBy: 'agent' as const
-    };
-
-    const executionResult = this.context.mcpClientManager
-      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
-      : await this.context.sandbox.execute(request);
+    const executionResult = tool.isReadOnly
+      ? await this.executeReadonlyBatch(tool, candidateTools, intent, researchSummary, actionPrompt)
+      : await this.executeSingleTool(tool, intent, toolInput);
+    if (
+      executionResult.errorMessage === 'watchdog_timeout' ||
+      executionResult.errorMessage === 'watchdog_interaction_required'
+    ) {
+      this.state.status = 'waiting_approval';
+      const summary = `执行已暂停：${tool.name} 命中兵部看门狗，需要人工干预。${executionResult.outputSummary}`;
+      this.state.finalOutput = summary;
+      return {
+        intent,
+        toolName: tool.name,
+        tool,
+        requiresApproval: true,
+        summary,
+        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
+        approvalReason: executionResult.outputSummary,
+        approvalReasonCode: executionResult.errorMessage
+      };
+    }
     const enrichedExecution = await this.maybeReadSearchResult(
       tool.name,
       executionResult,
@@ -205,6 +225,107 @@ export class GongbuCodeMinistry {
       executionResult: enrichedExecution,
       summary: enrichedExecution.outputSummary
     };
+  }
+
+  protected async executeSingleTool(
+    tool: ToolDefinition,
+    intent: ActionIntent,
+    toolInput: Record<string, unknown>
+  ): Promise<ToolExecutionResult> {
+    const request = {
+      taskId: this.context.taskId,
+      toolName: tool.name,
+      intent,
+      input: toolInput,
+      requestedBy: 'agent' as const
+    };
+
+    return this.context.mcpClientManager
+      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
+      : await this.context.sandbox.execute(request);
+  }
+
+  protected async executeReadonlyBatch(
+    selectedTool: ToolDefinition,
+    candidateTools: ToolDefinition[],
+    intent: ActionIntent,
+    researchSummary: string,
+    actionPrompt: string
+  ): Promise<ToolExecutionResult> {
+    const readonlyTools = [selectedTool]
+      .concat(
+        candidateTools.filter(
+          tool =>
+            tool.name !== selectedTool.name &&
+            tool.isReadOnly &&
+            tool.supportsStreamingDispatch &&
+            [
+              'read_local_file',
+              'list_directory',
+              'glob_workspace',
+              'search_in_files',
+              'read_json',
+              'browse_page'
+            ].includes(tool.name)
+        )
+      )
+      .slice(0, 3);
+
+    if (readonlyTools.length === 1) {
+      return this.executeSingleTool(
+        selectedTool,
+        intent,
+        this.buildToolInput(selectedTool.name, actionPrompt, researchSummary)
+      );
+    }
+
+    const { results, events } = await this.streamingCoordinator.run(
+      this.buildReadonlyExecutionSteps(readonlyTools, researchSummary, actionPrompt),
+      {
+        shouldContinue: () => !this.context.isTaskCancelled?.(),
+        allowStep: async step => !step.tool.isDestructive
+      }
+    );
+    for (const event of events) {
+      this.state.toolCalls.push(`${event.type}:${event.toolName}`);
+      if (event.type === 'tool_stream_dispatched') {
+        this.state.observations.push(`工部/兵部已流式派发 ${event.toolName}（${event.scheduling}）`);
+      }
+    }
+
+    return {
+      ok: results.every(item => item.ok),
+      outputSummary: results.map(item => item.outputSummary).join('；'),
+      rawOutput: {
+        batch: true,
+        toolNames: readonlyTools.map(item => item.name),
+        outputs: results.map(item => item.rawOutput)
+      },
+      exitCode: results.some(item => (item.exitCode ?? 0) !== 0) ? 1 : 0,
+      durationMs: results.reduce((sum, item) => sum + item.durationMs, 0),
+      errorMessage: results.find(item => item.errorMessage)?.errorMessage
+    };
+  }
+
+  protected buildReadonlyExecutionSteps(
+    readonlyTools: ToolDefinition[],
+    researchSummary: string,
+    actionPrompt: string
+  ): ExecutionStepRecord<Record<string, unknown>, ToolExecutionResult>[] {
+    return readonlyTools.map(tool => {
+      const inputPreview = this.buildToolInput(tool.name, actionPrompt, researchSummary);
+      return {
+        id: `${this.context.taskId}:${tool.name}`,
+        toolName: tool.name,
+        ministry: this.context.currentWorker?.ministry,
+        source: this.constructor.name,
+        inputPreview,
+        streamingEligible: tool.isReadOnly && tool.supportsStreamingDispatch,
+        expectedSideEffect: tool.isReadOnly ? 'none' : 'workspace-write',
+        tool,
+        run: async () => this.executeSingleTool(tool, ActionIntent.READ_FILE, inputPreview)
+      };
+    });
   }
 
   buildApprovedState(executionResult: ToolExecutionResult, pending: PendingExecutionContext): AgentExecutionState {

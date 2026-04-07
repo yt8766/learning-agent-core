@@ -69,6 +69,10 @@ describe('chat message cards render smoke', () => {
         reason: '路径属于敏感位置，需要审批。',
         reasonCode: 'requires_approval_destructive',
         riskLevel: 'high',
+        riskCode: 'requires_approval_high_risk',
+        riskReason: '命中高危命令策略，需要人工确认后才能继续。',
+        commandPreview: 'rm -rf /tmp/test-artifacts',
+        approvalScope: 'once',
         requestedBy: 'gongbu-code',
         interruptSource: 'graph',
         interruptMode: 'blocking',
@@ -85,9 +89,14 @@ describe('chat message cards render smoke', () => {
     expect(html).toContain('操作确认');
     expect(html).toContain('高风险');
     expect(html).toContain('write_local_file');
-    expect(html).toContain('检测到破坏性操作');
+    expect(html).toContain('命中高危命令策略');
+    expect(html).toContain('命令预览');
+    expect(html).toContain('rm -rf /tmp/test-artifacts');
+    expect(html).toContain('仅本次');
     expect(html).toContain('.env.local');
-    expect(html).toContain('允许继续');
+    expect(html).toContain('允许本次');
+    expect(html).toContain('本会话允许');
+    expect(html).toContain('永久允许');
     expect(compactHtml).toContain('拒绝');
     expect(html).toContain('添加说明');
     expect(html).toContain('查看详情');

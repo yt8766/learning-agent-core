@@ -3,6 +3,7 @@ import type { PolicyConfig, RuntimeProfile, RuntimeSettingsOverrides } from './s
 export const DEFAULT_DATA_PATHS = {
   memoryFilePath: 'data/memory/records.jsonl',
   rulesFilePath: 'data/rules/rules.jsonl',
+  vectorIndexFilePath: 'data/memory/vector-index.json',
   tasksStateFilePath: 'data/runtime/tasks-state.json',
   semanticCacheFilePath: 'data/runtime/semantic-cache.json',
   skillsRoot: 'data/skills',
@@ -21,6 +22,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
       return {
         memoryFilePath: 'data/agent-work/memory/records.jsonl',
         rulesFilePath: 'data/agent-work/rules/rules.jsonl',
+        vectorIndexFilePath: 'data/agent-work/memory/vector-index.json',
         tasksStateFilePath: 'data/agent-work/runtime/tasks-state.json',
         semanticCacheFilePath: 'data/agent-work/runtime/semantic-cache.json',
         skillsRoot: 'data/agent-work/skills',
@@ -66,6 +68,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
       return {
         memoryFilePath: 'data/agent-personal/memory/records.jsonl',
         rulesFilePath: 'data/agent-personal/rules/rules.jsonl',
+        vectorIndexFilePath: 'data/agent-personal/memory/vector-index.json',
         tasksStateFilePath: 'data/agent-personal/runtime/tasks-state.json',
         semanticCacheFilePath: 'data/agent-personal/runtime/semantic-cache.json',
         skillsRoot: 'data/agent-personal/skills',

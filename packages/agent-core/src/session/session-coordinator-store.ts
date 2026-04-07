@@ -130,6 +130,7 @@ export class SessionCoordinatorStore {
         status: TaskStatus.QUEUED
       },
       pendingApprovals: [],
+      executionSteps: [],
       agentStates: [],
       externalSources: [],
       reusedMemories: [],

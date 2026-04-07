@@ -1,6 +1,7 @@
 import {
   AppendChatMessageDto,
   ApprovalDecision,
+  ApprovalScopePolicyRecord,
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
   ChatCheckpointRecord,
@@ -14,13 +15,15 @@ import {
   SessionApprovalDto,
   TaskRecord,
   TaskStatus,
-  UpdateChatSessionDto
+  UpdateChatSessionDto,
+  buildApprovalScopeMatchKey,
+  matchesApprovalScopePolicy
 } from '@agent/shared';
 import { ContextStrategy } from '@agent/config';
 import { MemorySearchService, RuntimeStateRepository } from '@agent/memory';
 
 import { LlmProvider } from '../adapters/llm/llm-provider';
-import { AgentOrchestrator } from '../graphs/main.graph';
+import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { autoConfirmLearningIfNeeded, runLearningConfirmation } from './session-coordinator-learning';
 import {
   cancelSessionRun,
@@ -228,8 +231,29 @@ export class SessionCoordinator {
       undefined,
       response.card
     );
-    session.updatedAt = new Date().toISOString();
-    session.status = 'idle';
+    const completedAt = new Date().toISOString();
+    session.updatedAt = completedAt;
+    session.status = 'completed';
+    const checkpoint =
+      this.store.getCheckpoint(sessionId) ??
+      this.store.createCheckpoint(sessionId, session.currentTaskId ?? `inline-capability:${sessionId}`);
+    checkpoint.updatedAt = completedAt;
+    checkpoint.graphState = {
+      ...(checkpoint.graphState ?? {}),
+      status: 'completed'
+    } as never;
+    checkpoint.thinkState = checkpoint.thinkState
+      ? {
+          ...checkpoint.thinkState,
+          loading: false,
+          blink: false
+        }
+      : undefined;
+    checkpoint.pendingApproval = undefined;
+    checkpoint.pendingApprovals = [];
+    checkpoint.activeInterrupt = undefined;
+    checkpoint.pendingAction = undefined;
+    checkpoint.streamStatus = undefined;
     this.store.addEvent(sessionId, 'user_message', {
       messageId: userMessage.id,
       content: userMessage.content,
@@ -242,6 +266,12 @@ export class SessionCoordinator {
       card: responseMessage.card,
       title: session.title,
       summary: responseMessage.content
+    });
+    this.store.addEvent(sessionId, 'final_response_completed', {
+      messageId: responseMessage.id,
+      content: responseMessage.content,
+      title: session.title,
+      taskId: checkpoint.taskId
     });
     await this.store.persistRuntimeState();
     return userMessage;
@@ -262,6 +292,9 @@ export class SessionCoordinator {
     const task = await this.orchestrator.applyApproval(taskId, dto, ApprovalDecision.APPROVED);
     if (!task) {
       throw new Error(`Task ${taskId} not found`);
+    }
+    if (dto.approvalScope === 'session' || dto.approvalScope === 'always') {
+      await this.persistApprovalScopePolicy(session, currentTask, dto);
     }
     this.syncTask(sessionId, task);
     this.store.addEvent(sessionId, resolutionEventType, {
@@ -359,24 +392,22 @@ export class SessionCoordinator {
       }
       void (async () => {
         const session = this.store.getSession(task.sessionId!);
-        if (
-          session &&
-          !session.channelIdentity &&
-          task.status === TaskStatus.WAITING_APPROVAL &&
-          task.pendingApproval?.intent &&
-          !this.autoApprovingTaskIds.has(task.id)
-        ) {
+        const autoApprovalPolicy = session ? await this.resolveAutoApprovalPolicy(session, task) : undefined;
+        if (session && autoApprovalPolicy && !this.autoApprovingTaskIds.has(task.id)) {
           this.autoApprovingTaskIds.add(task.id);
           try {
             const approvedTask = await this.orchestrator.applyApproval(
               task.id,
               {
-                intent: task.pendingApproval.intent,
-                actor: 'agent-chat-auto-approve',
-                reason: 'agent-chat default auto approval'
+                intent: task.pendingApproval!.intent,
+                actor: autoApprovalPolicy.actor,
+                reason: autoApprovalPolicy.reason
               },
               ApprovalDecision.APPROVED
             );
+            if (autoApprovalPolicy.policyRecord) {
+              await this.recordPolicyAutoAllow(session, autoApprovalPolicy.policyRecord, task);
+            }
             if (approvedTask?.sessionId) {
               this.syncTask(approvedTask.sessionId, approvedTask);
               await this.store.persistRuntimeState();
@@ -447,6 +478,152 @@ export class SessionCoordinator {
     await this.orchestrator.initialize();
     await this.store.hydrate();
   }
+
+  private async resolveAutoApprovalPolicy(session: ChatSessionRecord, task: TaskRecord) {
+    if (task.status !== TaskStatus.WAITING_APPROVAL || !task.pendingApproval?.intent) {
+      return undefined;
+    }
+
+    const sessionPolicy = (session.approvalPolicies?.sessionAllowRules ?? []).find(policy =>
+      matchesApprovalScopePolicy(policy, buildApprovalScopeMatchInput(task))
+    );
+    if (sessionPolicy) {
+      return {
+        actor: 'agent-chat-session-policy',
+        reason: 'session approval scope policy auto allow',
+        policyRecord: sessionPolicy,
+        source: 'session' as const
+      };
+    }
+
+    const runtimePolicy = await this.findRuntimeApprovalScopePolicy(task);
+    if (runtimePolicy) {
+      return {
+        actor: 'agent-runtime-approval-policy',
+        reason: 'runtime approval scope policy auto allow',
+        policyRecord: runtimePolicy,
+        source: 'always' as const
+      };
+    }
+
+    if (!session.channelIdentity) {
+      return {
+        actor: 'agent-chat-auto-approve',
+        reason: 'agent-chat default auto approval'
+      };
+    }
+
+    return undefined;
+  }
+
+  private async findRuntimeApprovalScopePolicy(task: TaskRecord) {
+    const snapshot = await this.runtimeStateRepository.load();
+    const policies = snapshot.governance?.approvalScopePolicies ?? [];
+    return policies.find(policy => matchesApprovalScopePolicy(policy, buildApprovalScopeMatchInput(task)));
+  }
+
+  private async recordPolicyAutoAllow(session: ChatSessionRecord, policy: ApprovalScopePolicyRecord, task: TaskRecord) {
+    const snapshot = await this.runtimeStateRepository.load();
+    snapshot.governanceAudit = [
+      {
+        id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        at: new Date().toISOString(),
+        actor: policy.scope === 'session' ? 'agent-chat-session-policy' : 'agent-runtime-approval-policy',
+        action: 'approval-policy.auto-allowed',
+        scope: 'approval-policy' as const,
+        targetId: policy.id,
+        outcome: 'success' as const,
+        reason: `${policy.scope}:${task.pendingApproval?.intent ?? task.activeInterrupt?.intent ?? ''}`
+      },
+      ...(snapshot.governanceAudit ?? [])
+    ].slice(0, 50);
+    if (policy.scope === 'always') {
+      snapshot.governance = {
+        ...(snapshot.governance ?? {}),
+        approvalScopePolicies: (snapshot.governance?.approvalScopePolicies ?? []).map(item =>
+          item.id === policy.id
+            ? {
+                ...item,
+                lastMatchedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                matchCount: (item.matchCount ?? 0) + 1
+              }
+            : item
+        )
+      };
+    } else {
+      session.approvalPolicies = {
+        sessionAllowRules: (session.approvalPolicies?.sessionAllowRules ?? []).map(item =>
+          item.id === policy.id
+            ? {
+                ...item,
+                lastMatchedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                matchCount: (item.matchCount ?? 0) + 1
+              }
+            : item
+        )
+      };
+    }
+    await this.runtimeStateRepository.save(snapshot);
+  }
+
+  private async persistApprovalScopePolicy(
+    session: ChatSessionRecord,
+    task: TaskRecord | undefined,
+    dto: SessionApprovalDto
+  ) {
+    const scope = dto.approvalScope;
+    if (!task || !scope || scope === 'once') {
+      return;
+    }
+    const matchInput = buildApprovalScopeMatchInput(task);
+    const now = new Date().toISOString();
+    const policy: ApprovalScopePolicyRecord = {
+      id: `approval_policy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      scope,
+      status: 'active',
+      actor: dto.actor,
+      sourceDomain: task.currentMinistry ?? task.currentWorker,
+      approvalScope: scope,
+      matchKey: buildApprovalScopeMatchKey(matchInput),
+      intent: matchInput.intent,
+      toolName: matchInput.toolName,
+      riskCode: matchInput.riskCode,
+      requestedBy: matchInput.requestedBy,
+      commandPreview: matchInput.commandPreview,
+      createdAt: now,
+      updatedAt: now,
+      matchCount: 0
+    };
+
+    if (scope === 'session') {
+      session.approvalPolicies = {
+        sessionAllowRules: upsertSessionApprovalPolicy(session.approvalPolicies?.sessionAllowRules ?? [], policy)
+      };
+      return;
+    }
+
+    const snapshot = await this.runtimeStateRepository.load();
+    snapshot.governance = {
+      ...(snapshot.governance ?? {}),
+      approvalScopePolicies: upsertRuntimeApprovalPolicy(snapshot.governance?.approvalScopePolicies ?? [], policy)
+    };
+    snapshot.governanceAudit = [
+      {
+        id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        at: now,
+        actor: dto.actor ?? 'agent-chat-user',
+        action: 'approval-policy.created',
+        scope: 'approval-policy' as const,
+        targetId: policy.id,
+        outcome: 'success' as const,
+        reason: `${policy.scope}:${policy.intent ?? ''}`
+      },
+      ...(snapshot.governanceAudit ?? [])
+    ].slice(0, 50);
+    await this.runtimeStateRepository.save(snapshot);
+  }
 }
 
 function dedupeById<T extends { id: string }>(items: T[]) {
@@ -455,4 +632,44 @@ function dedupeById<T extends { id: string }>(items: T[]) {
     deduped.set(item.id, item);
   }
   return Array.from(deduped.values());
+}
+
+function buildApprovalScopeMatchInput(task: TaskRecord) {
+  const interruptPayload =
+    task.activeInterrupt?.payload && typeof task.activeInterrupt.payload === 'object'
+      ? task.activeInterrupt.payload
+      : {};
+  return {
+    intent: task.pendingApproval?.intent ?? task.activeInterrupt?.intent,
+    toolName: task.pendingApproval?.toolName ?? task.activeInterrupt?.toolName,
+    riskCode:
+      (typeof (interruptPayload as Record<string, unknown>).riskCode === 'string'
+        ? ((interruptPayload as Record<string, unknown>).riskCode as string)
+        : undefined) ?? task.pendingApproval?.reasonCode,
+    requestedBy: task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? task.currentMinistry,
+    commandPreview:
+      typeof (interruptPayload as Record<string, unknown>).commandPreview === 'string'
+        ? ((interruptPayload as Record<string, unknown>).commandPreview as string)
+        : undefined
+  };
+}
+
+function upsertSessionApprovalPolicy(policies: ApprovalScopePolicyRecord[], policy: ApprovalScopePolicyRecord) {
+  const existingIndex = policies.findIndex(
+    item => item.status === 'active' && item.scope === policy.scope && item.matchKey === policy.matchKey
+  );
+  if (existingIndex < 0) {
+    return [policy, ...policies].slice(0, 50);
+  }
+  return policies.map((item, index) => (index === existingIndex ? { ...item, ...policy, id: item.id } : item));
+}
+
+function upsertRuntimeApprovalPolicy(policies: ApprovalScopePolicyRecord[], policy: ApprovalScopePolicyRecord) {
+  const existingIndex = policies.findIndex(
+    item => item.status === 'active' && item.scope === policy.scope && item.matchKey === policy.matchKey
+  );
+  if (existingIndex < 0) {
+    return [policy, ...policies].slice(0, 200);
+  }
+  return policies.map((item, index) => (index === existingIndex ? { ...item, ...policy, id: item.id } : item));
 }

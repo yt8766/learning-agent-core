@@ -1,5 +1,11 @@
 import { RuntimeStateSnapshot } from '@agent/memory';
-import { CapabilityGovernanceProfileRecord, GovernanceProfileRecord, TaskRecord } from '@agent/shared';
+import {
+  ApprovalScopePolicyRecord,
+  CapabilityGovernanceProfileRecord,
+  GovernanceProfileRecord,
+  TaskRecord,
+  buildApprovalScopeMatchKey
+} from '@agent/shared';
 import { McpClientManager } from '@agent/tools';
 
 import { defaultConnectorSessionState } from './runtime-derived-records';
@@ -7,7 +13,14 @@ import { defaultConnectorSessionState } from './runtime-derived-records';
 type GovernanceAuditEntry = {
   actor: string;
   action: string;
-  scope: 'skill-source' | 'company-worker' | 'skill-install' | 'connector' | 'counselor-selector' | 'learning-conflict';
+  scope:
+    | 'skill-source'
+    | 'company-worker'
+    | 'skill-install'
+    | 'connector'
+    | 'counselor-selector'
+    | 'learning-conflict'
+    | 'approval-policy';
   targetId: string;
   outcome: 'success' | 'rejected' | 'pending';
   reason?: string;
@@ -166,6 +179,128 @@ export async function listGovernanceProfiles(
     return snapshot.governance?.workerGovernanceProfiles ?? [];
   }
   return snapshot.governance?.specialistGovernanceProfiles ?? [];
+}
+
+export async function listApprovalScopePolicies(runtimeStateRepository: { load: () => Promise<RuntimeStateSnapshot> }) {
+  const snapshot = await runtimeStateRepository.load();
+  return (snapshot.governance?.approvalScopePolicies ?? [])
+    .filter(policy => policy.status === 'active')
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+export async function upsertApprovalScopePolicy(
+  runtimeStateRepository: {
+    load: () => Promise<RuntimeStateSnapshot>;
+    save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+  },
+  input: Omit<
+    ApprovalScopePolicyRecord,
+    'id' | 'createdAt' | 'updatedAt' | 'matchKey' | 'matchCount' | 'lastMatchedAt'
+  > & {
+    id?: string;
+  }
+) {
+  const snapshot = await runtimeStateRepository.load();
+  const policies = [...(snapshot.governance?.approvalScopePolicies ?? [])];
+  const now = new Date().toISOString();
+  const matchKey = buildApprovalScopeMatchKey(input);
+  const existingIndex = policies.findIndex(
+    policy => policy.status === 'active' && policy.scope === input.scope && policy.matchKey === matchKey
+  );
+  const existing = existingIndex >= 0 ? policies[existingIndex] : undefined;
+  const policy: ApprovalScopePolicyRecord = {
+    id: existing?.id ?? input.id ?? `approval_policy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    status: input.status,
+    scope: input.scope,
+    actor: input.actor,
+    sourceDomain: input.sourceDomain,
+    intent: input.intent,
+    toolName: input.toolName,
+    riskCode: input.riskCode,
+    requestedBy: input.requestedBy,
+    commandPreview: input.commandPreview,
+    approvalScope: input.approvalScope ?? input.scope,
+    matchKey,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    revokedAt: input.revokedAt,
+    revokedBy: input.revokedBy,
+    lastMatchedAt: existing?.lastMatchedAt,
+    matchCount: existing?.matchCount ?? 0
+  };
+
+  if (existingIndex >= 0) {
+    policies.splice(existingIndex, 1, policy);
+  } else {
+    policies.unshift(policy);
+  }
+
+  snapshot.governance = {
+    ...(snapshot.governance ?? {}),
+    approvalScopePolicies: policies.slice(0, 200)
+  };
+  await runtimeStateRepository.save(snapshot);
+  return policy;
+}
+
+export async function revokeApprovalScopePolicy(
+  runtimeStateRepository: {
+    load: () => Promise<RuntimeStateSnapshot>;
+    save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+  },
+  policyId: string,
+  actor: string
+) {
+  const snapshot = await runtimeStateRepository.load();
+  const policies = [...(snapshot.governance?.approvalScopePolicies ?? [])];
+  const index = policies.findIndex(policy => policy.id === policyId);
+  if (index < 0) {
+    return undefined;
+  }
+  const current = policies[index];
+  const next: ApprovalScopePolicyRecord = {
+    ...current,
+    status: 'revoked',
+    revokedAt: new Date().toISOString(),
+    revokedBy: actor,
+    updatedAt: new Date().toISOString()
+  };
+  policies.splice(index, 1, next);
+  snapshot.governance = {
+    ...(snapshot.governance ?? {}),
+    approvalScopePolicies: policies
+  };
+  await runtimeStateRepository.save(snapshot);
+  return next;
+}
+
+export async function recordApprovalScopePolicyMatch(
+  runtimeStateRepository: {
+    load: () => Promise<RuntimeStateSnapshot>;
+    save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+  },
+  policyId: string
+) {
+  const snapshot = await runtimeStateRepository.load();
+  const policies = [...(snapshot.governance?.approvalScopePolicies ?? [])];
+  const index = policies.findIndex(policy => policy.id === policyId);
+  if (index < 0) {
+    return undefined;
+  }
+  const current = policies[index];
+  const next: ApprovalScopePolicyRecord = {
+    ...current,
+    lastMatchedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    matchCount: (current.matchCount ?? 0) + 1
+  };
+  policies.splice(index, 1, next);
+  snapshot.governance = {
+    ...(snapshot.governance ?? {}),
+    approvalScopePolicies: policies
+  };
+  await runtimeStateRepository.save(snapshot);
+  return next;
 }
 
 function aggregateCapabilityGovernanceProfiles(

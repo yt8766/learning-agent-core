@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { TaskRecord } from '@agent/shared';
 
-import { buildCitationSourceSummary } from '../../../src/graphs/main/main-graph-knowledge';
+import { buildCitationSourceSummary } from '../../../src/graphs/main/knowledge/main-graph-knowledge';
 
 describe('buildCitationSourceSummary', () => {
   it('excludes web research plan placeholders and keeps real fetched sources', () => {

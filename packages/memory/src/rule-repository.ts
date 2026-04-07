@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
 import { RuleRecord } from '@agent/shared';
+import type { VectorIndexRepository } from './vector-index-repository';
 
 export interface RuleRepository {
   append(record: RuleRecord): Promise<void>;
@@ -17,9 +18,14 @@ export interface RuleRepository {
 
 export class FileRuleRepository implements RuleRepository {
   private readonly filePath: string;
+  private vectorIndexRepository?: VectorIndexRepository;
 
   constructor(filePath = loadSettings().rulesFilePath) {
     this.filePath = resolve(filePath);
+  }
+
+  setVectorIndexRepository(repository: VectorIndexRepository) {
+    this.vectorIndexRepository = repository;
   }
 
   async append(record: RuleRecord): Promise<void> {
@@ -27,6 +33,7 @@ export class FileRuleRepository implements RuleRepository {
     const current = await this.list();
     current.push(record);
     await writeFile(this.filePath, current.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.upsertRule(record);
   }
 
   async list(): Promise<RuleRecord[]> {
@@ -79,6 +86,7 @@ export class FileRuleRepository implements RuleRepository {
     target.invalidatedAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, items.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('rule', target.id);
     return target;
   }
 
@@ -94,6 +102,7 @@ export class FileRuleRepository implements RuleRepository {
     target.supersededAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, items.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('rule', target.id);
     return target;
   }
 
@@ -108,6 +117,7 @@ export class FileRuleRepository implements RuleRepository {
     target.retiredAt = new Date().toISOString();
     target.invalidationReason = reason;
     await writeFile(this.filePath, items.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.remove('rule', target.id);
     return target;
   }
 
@@ -126,6 +136,7 @@ export class FileRuleRepository implements RuleRepository {
     target.supersededById = undefined;
     target.retiredAt = undefined;
     await writeFile(this.filePath, items.map(item => JSON.stringify(item)).join('\n'));
+    await this.vectorIndexRepository?.upsertRule(target);
     return target;
   }
 }

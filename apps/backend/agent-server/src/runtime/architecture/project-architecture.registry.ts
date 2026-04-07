@@ -25,7 +25,7 @@ export function buildProjectArchitectureDescriptor(input: {
   ];
   input.subgraphs.forEach(subgraph => {
     nodes.push({
-      id: `subgraph-${subgraph.id}`,
+      id: `runtime-unit-${subgraph.id}`,
       label: `${subgraph.displayName}\n${subgraph.owner}`,
       kind: 'runtime',
       subgraphId: 'runtime'
@@ -46,7 +46,7 @@ export function buildProjectArchitectureDescriptor(input: {
   input.subgraphs.forEach(subgraph => {
     edges.push({
       from: 'agent-core',
-      to: `subgraph-${subgraph.id}`,
+      to: `runtime-unit-${subgraph.id}`,
       label: subgraph.id
     });
   });

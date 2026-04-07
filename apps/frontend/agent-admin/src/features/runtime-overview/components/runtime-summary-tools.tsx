@@ -24,6 +24,9 @@ interface RuntimeInterruptViewItem {
   executionMode?: 'plan' | 'execute' | 'imperial_direct';
   interactionKind: InterruptInteractionKind;
   interruptLabel: string;
+  reasonLabel?: string;
+  isRuntimeGovernance?: boolean;
+  isWatchdog?: boolean;
   currentMinistry?: string;
   currentWorker?: string;
   updatedAt: string;
@@ -51,15 +54,35 @@ function getInteractionKindLabel(kind: InterruptInteractionKind) {
   }
 }
 
+function getRuntimeGovernanceReasonLabel(reasonCode?: string) {
+  switch (reasonCode) {
+    case 'watchdog_timeout':
+      return '运行时超时阻塞';
+    case 'watchdog_interaction_required':
+      return '运行时等待补充输入';
+    default:
+      return reasonCode;
+  }
+}
+
 function toRuntimeInterruptItems(runtime: RuntimeCenterRecord): RuntimeInterruptViewItem[] {
   return (runtime.recentRuns ?? [])
     .filter(
       task => Boolean(task.activeInterrupt) || task.status === 'waiting_interrupt' || task.status === 'waiting_approval'
     )
     .map(task => {
-      const payload = task.activeInterrupt?.payload as { interactionKind?: InterruptInteractionKind } | undefined;
+      const payload = task.activeInterrupt?.payload as
+        | {
+            interactionKind?: InterruptInteractionKind;
+            watchdog?: boolean;
+            runtimeGovernanceReasonCode?: string;
+          }
+        | undefined;
       const interactionKind =
         payload?.interactionKind ?? (task.activeInterrupt?.kind === 'user-input' ? 'plan-question' : 'approval');
+      const isRuntimeGovernance =
+        task.activeInterrupt?.kind === 'runtime-governance' || task.currentNode === 'runtime_governance_gate';
+      const reasonLabel = getRuntimeGovernanceReasonLabel(payload?.runtimeGovernanceReasonCode);
 
       return {
         taskId: task.id,
@@ -70,7 +93,12 @@ function toRuntimeInterruptItems(runtime: RuntimeCenterRecord): RuntimeInterrupt
         interruptLabel:
           task.activeInterrupt?.kind === 'user-input'
             ? (task.planDraft?.questionSet?.title ?? '计划问题')
-            : (task.pendingApproval?.intent ?? task.activeInterrupt?.intent ?? '操作确认'),
+            : isRuntimeGovernance
+              ? (reasonLabel ?? '运行时治理中断')
+              : (task.pendingApproval?.intent ?? task.activeInterrupt?.intent ?? '操作确认'),
+        reasonLabel,
+        isRuntimeGovernance,
+        isWatchdog: payload?.watchdog === true,
         currentMinistry: getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry,
         currentWorker: task.currentWorker,
         updatedAt: task.updatedAt
@@ -126,6 +154,7 @@ export function RuntimeSummaryTools({
   const executeCount = interruptItems.filter(item => item.executionMode === 'execute').length;
   const planQuestionCount = interruptItems.filter(item => item.interactionKind === 'plan-question').length;
   const operationApprovalCount = interruptItems.filter(item => item.interactionKind === 'approval').length;
+  const runtimeGovernanceCount = interruptItems.filter(item => item.isRuntimeGovernance).length;
 
   return (
     <Card className="rounded-[28px] border-border/70 bg-card/90 shadow-sm">
@@ -162,6 +191,7 @@ export function RuntimeSummaryTools({
                 <Badge variant="outline">执行模式 {executeCount}</Badge>
                 <Badge variant="outline">计划提问 {planQuestionCount}</Badge>
                 <Badge variant="outline">操作确认 {operationApprovalCount}</Badge>
+                <Badge variant="warning">运行时治理 {runtimeGovernanceCount}</Badge>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -262,13 +292,24 @@ export function RuntimeSummaryTools({
                 className="rounded-2xl border border-border/70 bg-background p-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={item.interactionKind === 'plan-question' ? 'secondary' : 'warning'}>
+                  <Badge
+                    variant={
+                      item.interactionKind === 'plan-question'
+                        ? 'secondary'
+                        : item.isRuntimeGovernance
+                          ? 'warning'
+                          : 'warning'
+                    }
+                  >
                     {getInteractionKindLabel(item.interactionKind)}
                   </Badge>
+                  {item.isRuntimeGovernance ? <Badge variant="warning">runtime-governance</Badge> : null}
+                  {item.isWatchdog ? <Badge variant="outline">watchdog</Badge> : null}
                   <Badge variant="outline">{getExecutionModeLabel(item.executionMode)}</Badge>
                   <Badge variant="outline">{item.status}</Badge>
                 </div>
                 <p className="mt-2 text-sm font-semibold text-foreground">{item.interruptLabel}</p>
+                {item.reasonLabel ? <p className="mt-1 text-xs text-muted-foreground">{item.reasonLabel}</p> : null}
                 <p className="mt-1 text-sm text-muted-foreground">{item.goal}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {item.taskId}

@@ -1,11 +1,8 @@
-﻿{
+{
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src",
     "baseUrl": "./",
-    "paths": {},
-    "incremental": false,
-    "noEmit": false
+    "paths": {}
   },
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts", "logs"]
 }

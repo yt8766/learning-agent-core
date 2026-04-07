@@ -32,6 +32,46 @@ function buildRouteReason(task?: TaskRecord | null) {
   return task.specialistLead.reason ?? null;
 }
 
+function getExecutionStepOwnerLabel(owner?: string) {
+  switch (owner) {
+    case 'session':
+      return '会话层';
+    case 'libu':
+      return '吏部';
+    case 'hubu':
+      return '户部';
+    case 'gongbu':
+      return '工部';
+    case 'bingbu':
+      return '兵部';
+    case 'xingbu':
+      return '刑部';
+    case 'libu-docs':
+      return '礼部';
+    case 'system':
+      return '系统';
+    default:
+      return owner ?? '--';
+  }
+}
+
+function summarizeExecutionSteps(task?: TaskRecord | null) {
+  if (!task?.executionSteps?.length) {
+    return null;
+  }
+  const blockedCount = task.executionSteps.filter(step => step.status === 'blocked').length;
+  const recoveryCount = task.executionSteps.filter(step => step.stage === 'recovery').length;
+  const current = task.currentExecutionStep;
+  const currentCopy = current ? `${current.label} / ${getExecutionStepOwnerLabel(current.owner)}` : '未进入阶段';
+  const lastReason = [...task.executionSteps].reverse().find(step => step.reason)?.reason;
+  return {
+    currentCopy,
+    blockedCount,
+    recoveryCount,
+    lastReason: current?.reason ?? lastReason
+  };
+}
+
 function getTraceNodeLabel(node: string) {
   switch (node) {
     case 'planning_readonly_guard':
@@ -152,56 +192,67 @@ export function RuntimeQueueSection(props: RuntimeOverviewPanelProps) {
             </div>
           </DashboardToolbar>
 
-          {runtime.recentRuns.map(task => (
-            <article key={task.id} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{task.goal}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{task.id}</p>
+          {runtime.recentRuns.map(task => {
+            const executionSummary = summarizeExecutionSteps(task);
+            return (
+              <article key={task.id} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{task.goal}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{task.id}</p>
+                  </div>
+                  <Badge variant="outline">{task.status}</Badge>
                 </div>
-                <Badge variant="outline">{task.status}</Badge>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {task.resolvedWorkflow ? (
-                  <Badge variant="secondary">
-                    {task.resolvedWorkflow.id} v{task.resolvedWorkflow.version ?? '1.0.0'}
-                  </Badge>
-                ) : null}
-                {task.specialistLead ? (
-                  <Badge variant="secondary">主导: {task.specialistLead.displayName}</Badge>
-                ) : null}
-                {task.supportingSpecialists?.length ? (
-                  <Badge variant="outline">支撑 {task.supportingSpecialists.length}</Badge>
-                ) : null}
-                {formatRouteConfidence(task.routeConfidence) ? (
-                  <Badge variant="outline">{formatRouteConfidence(task.routeConfidence)}</Badge>
-                ) : null}
-                {task.critiqueResult ? <Badge variant="outline">刑部 {task.critiqueResult.decision}</Badge> : null}
-                {task.currentMinistry ? <Badge variant="secondary">{task.currentMinistry}</Badge> : null}
-                {task.currentWorker ? <Badge variant="secondary">{task.currentWorker}</Badge> : null}
-                {task.currentStep ? <Badge variant="secondary">{task.currentStep}</Badge> : null}
-                {task.queueState ? <Badge variant="outline">{task.queueState.mode}</Badge> : null}
-                {task.queueState ? <Badge variant="outline">attempt {task.queueState.attempt}</Badge> : null}
-                {task.subgraphTrail?.map(subgraph => (
-                  <span key={`${task.id}-${subgraph}`}>
-                    <Badge variant="outline">{subgraph}</Badge>
-                  </span>
-                ))}
-              </div>
-              {task.queueState ? (
-                <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
-                  <p>
-                    queue {task.queueState.status} / enqueued {new Date(task.queueState.enqueuedAt).toLocaleString()}
-                  </p>
-                  {buildRouteReason(task) ? <p>{buildRouteReason(task)}</p> : null}
-                  {task.queueState.leaseOwner ? <p>lease {task.queueState.leaseOwner}</p> : null}
-                  {task.queueState.lastHeartbeatAt ? (
-                    <p>heartbeat {new Date(task.queueState.lastHeartbeatAt).toLocaleString()}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {task.resolvedWorkflow ? (
+                    <Badge variant="secondary">
+                      {task.resolvedWorkflow.id} v{task.resolvedWorkflow.version ?? '1.0.0'}
+                    </Badge>
                   ) : null}
+                  {task.specialistLead ? (
+                    <Badge variant="secondary">主导: {task.specialistLead.displayName}</Badge>
+                  ) : null}
+                  {task.supportingSpecialists?.length ? (
+                    <Badge variant="outline">支撑 {task.supportingSpecialists.length}</Badge>
+                  ) : null}
+                  {formatRouteConfidence(task.routeConfidence) ? (
+                    <Badge variant="outline">{formatRouteConfidence(task.routeConfidence)}</Badge>
+                  ) : null}
+                  {task.critiqueResult ? <Badge variant="outline">刑部 {task.critiqueResult.decision}</Badge> : null}
+                  {task.currentMinistry ? <Badge variant="secondary">{task.currentMinistry}</Badge> : null}
+                  {task.currentWorker ? <Badge variant="secondary">{task.currentWorker}</Badge> : null}
+                  {task.currentStep ? <Badge variant="secondary">{task.currentStep}</Badge> : null}
+                  {task.queueState ? <Badge variant="outline">{task.queueState.mode}</Badge> : null}
+                  {task.queueState ? <Badge variant="outline">attempt {task.queueState.attempt}</Badge> : null}
+                  {executionSummary ? <Badge variant="secondary">{executionSummary.currentCopy}</Badge> : null}
+                  {task.subgraphTrail?.map(subgraph => (
+                    <span key={`${task.id}-${subgraph}`}>
+                      <Badge variant="outline">{subgraph}</Badge>
+                    </span>
+                  ))}
                 </div>
-              ) : null}
-            </article>
-          ))}
+                {task.queueState ? (
+                  <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                    <p>
+                      queue {task.queueState.status} / enqueued {new Date(task.queueState.enqueuedAt).toLocaleString()}
+                    </p>
+                    {executionSummary ? (
+                      <p>
+                        execution steps / blocked {executionSummary.blockedCount} / recovery{' '}
+                        {executionSummary.recoveryCount}
+                      </p>
+                    ) : null}
+                    {executionSummary?.lastReason ? <p>last reason: {executionSummary.lastReason}</p> : null}
+                    {buildRouteReason(task) ? <p>{buildRouteReason(task)}</p> : null}
+                    {task.queueState.leaseOwner ? <p>lease {task.queueState.leaseOwner}</p> : null}
+                    {task.queueState.lastHeartbeatAt ? (
+                      <p>heartbeat {new Date(task.queueState.lastHeartbeatAt).toLocaleString()}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -213,61 +264,82 @@ export function RuntimeQueueSection(props: RuntimeOverviewPanelProps) {
         <CardContent className="grid gap-4">
           {bundle ? (
             <>
-              <div>
-                <p className="text-sm font-medium text-foreground">{bundle.task.goal}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{bundle.task.id}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {bundle.task.resolvedWorkflow ? (
-                  <Badge variant="secondary">
-                    {bundle.task.resolvedWorkflow.id} v{bundle.task.resolvedWorkflow.version ?? '1.0.0'}
-                  </Badge>
-                ) : null}
-                {bundle.task.specialistLead ? (
-                  <Badge variant="secondary">主导: {bundle.task.specialistLead.displayName}</Badge>
-                ) : null}
-                {bundle.task.supportingSpecialists?.length ? (
-                  <Badge variant="outline">支撑 {bundle.task.supportingSpecialists.length}</Badge>
-                ) : null}
-                {formatRouteConfidence(bundle.task.routeConfidence) ? (
-                  <Badge variant="outline">{formatRouteConfidence(bundle.task.routeConfidence)}</Badge>
-                ) : null}
-                {bundle.task.critiqueResult ? (
-                  <Badge variant="outline">刑部 {bundle.task.critiqueResult.decision}</Badge>
-                ) : null}
-                {bundle.task.currentNode ? <Badge variant="secondary">{bundle.task.currentNode}</Badge> : null}
-                {bundle.task.currentMinistry ? <Badge variant="secondary">{bundle.task.currentMinistry}</Badge> : null}
-                {bundle.task.currentWorker ? <Badge variant="secondary">{bundle.task.currentWorker}</Badge> : null}
-                {bundle.task.executionMode ? <Badge variant="outline">{bundle.task.executionMode}</Badge> : null}
-                {bundle.task.queueState ? <Badge variant="outline">{bundle.task.queueState.mode}</Badge> : null}
-                {bundle.task.queueState ? (
-                  <Badge variant="outline">attempt {bundle.task.queueState.attempt}</Badge>
-                ) : null}
-                {bundle.task.subgraphTrail?.map(subgraph => (
-                  <span key={`${bundle.task.id}-${subgraph}`}>
-                    <Badge variant="outline">{subgraph}</Badge>
-                  </span>
-                ))}
-              </div>
-              {bundle.task.queueState ? (
-                <div className="grid gap-1 rounded-2xl border border-border/70 bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
-                  <p>Queue: {bundle.task.queueState.status}</p>
-                  <p>Enqueued: {new Date(bundle.task.queueState.enqueuedAt).toLocaleString()}</p>
-                  {bundle.task.queueState.startedAt ? (
-                    <p>Started: {new Date(bundle.task.queueState.startedAt).toLocaleString()}</p>
-                  ) : null}
-                  {bundle.task.queueState.leaseOwner ? <p>Lease Owner: {bundle.task.queueState.leaseOwner}</p> : null}
-                  {bundle.task.queueState.lastHeartbeatAt ? (
-                    <p>Last Heartbeat: {new Date(bundle.task.queueState.lastHeartbeatAt).toLocaleString()}</p>
-                  ) : null}
-                  {bundle.task.queueState.leaseExpiresAt ? (
-                    <p>Lease Expires: {new Date(bundle.task.queueState.leaseExpiresAt).toLocaleString()}</p>
-                  ) : null}
-                  {bundle.task.queueState.finishedAt ? (
-                    <p>Finished: {new Date(bundle.task.queueState.finishedAt).toLocaleString()}</p>
-                  ) : null}
-                </div>
-              ) : null}
+              {(() => {
+                const executionSummary = summarizeExecutionSteps(bundle.task);
+                return (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{bundle.task.goal}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{bundle.task.id}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {bundle.task.resolvedWorkflow ? (
+                        <Badge variant="secondary">
+                          {bundle.task.resolvedWorkflow.id} v{bundle.task.resolvedWorkflow.version ?? '1.0.0'}
+                        </Badge>
+                      ) : null}
+                      {bundle.task.specialistLead ? (
+                        <Badge variant="secondary">主导: {bundle.task.specialistLead.displayName}</Badge>
+                      ) : null}
+                      {bundle.task.supportingSpecialists?.length ? (
+                        <Badge variant="outline">支撑 {bundle.task.supportingSpecialists.length}</Badge>
+                      ) : null}
+                      {formatRouteConfidence(bundle.task.routeConfidence) ? (
+                        <Badge variant="outline">{formatRouteConfidence(bundle.task.routeConfidence)}</Badge>
+                      ) : null}
+                      {bundle.task.critiqueResult ? (
+                        <Badge variant="outline">刑部 {bundle.task.critiqueResult.decision}</Badge>
+                      ) : null}
+                      {bundle.task.currentNode ? <Badge variant="secondary">{bundle.task.currentNode}</Badge> : null}
+                      {bundle.task.currentMinistry ? (
+                        <Badge variant="secondary">{bundle.task.currentMinistry}</Badge>
+                      ) : null}
+                      {bundle.task.currentWorker ? (
+                        <Badge variant="secondary">{bundle.task.currentWorker}</Badge>
+                      ) : null}
+                      {bundle.task.executionMode ? <Badge variant="outline">{bundle.task.executionMode}</Badge> : null}
+                      {bundle.task.queueState ? <Badge variant="outline">{bundle.task.queueState.mode}</Badge> : null}
+                      {bundle.task.queueState ? (
+                        <Badge variant="outline">attempt {bundle.task.queueState.attempt}</Badge>
+                      ) : null}
+                      {executionSummary ? <Badge variant="secondary">{executionSummary.currentCopy}</Badge> : null}
+                      {bundle.task.subgraphTrail?.map(subgraph => (
+                        <span key={`${bundle.task.id}-${subgraph}`}>
+                          <Badge variant="outline">{subgraph}</Badge>
+                        </span>
+                      ))}
+                    </div>
+                    {bundle.task.queueState ? (
+                      <div className="grid gap-1 rounded-2xl border border-border/70 bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+                        <p>Queue: {bundle.task.queueState.status}</p>
+                        <p>Enqueued: {new Date(bundle.task.queueState.enqueuedAt).toLocaleString()}</p>
+                        {bundle.task.queueState.startedAt ? (
+                          <p>Started: {new Date(bundle.task.queueState.startedAt).toLocaleString()}</p>
+                        ) : null}
+                        {executionSummary ? (
+                          <p>
+                            Execution Steps: blocked {executionSummary.blockedCount} / recovery{' '}
+                            {executionSummary.recoveryCount}
+                          </p>
+                        ) : null}
+                        {executionSummary?.lastReason ? <p>Last Reason: {executionSummary.lastReason}</p> : null}
+                        {bundle.task.queueState.leaseOwner ? (
+                          <p>Lease Owner: {bundle.task.queueState.leaseOwner}</p>
+                        ) : null}
+                        {bundle.task.queueState.lastHeartbeatAt ? (
+                          <p>Last Heartbeat: {new Date(bundle.task.queueState.lastHeartbeatAt).toLocaleString()}</p>
+                        ) : null}
+                        {bundle.task.queueState.leaseExpiresAt ? (
+                          <p>Lease Expires: {new Date(bundle.task.queueState.leaseExpiresAt).toLocaleString()}</p>
+                        ) : null}
+                        {bundle.task.queueState.finishedAt ? (
+                          <p>Finished: {new Date(bundle.task.queueState.finishedAt).toLocaleString()}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                );
+              })()}
               {bundle.task.budgetState ? (
                 <div className="grid gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-3">
                   <p className="text-sm font-semibold text-foreground">Budget</p>

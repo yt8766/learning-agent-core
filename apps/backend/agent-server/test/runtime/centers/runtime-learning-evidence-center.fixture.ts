@@ -120,10 +120,24 @@ export function createLearningCenterFixture() {
         id: 'queue-1',
         taskId: 'task-1',
         status: 'queued',
+        mode: 'task-learning',
         queuedAt: '2026-03-28T00:10:00.000Z',
         updatedAt: '2026-03-28T00:10:00.000Z',
         priority: 'high',
         capabilityUsageStats: { toolCount: 2, workerCount: 1, totalTokens: 1200, totalCostUsd: 0.3 }
+      },
+      {
+        id: 'dream-1',
+        taskId: 'task-1',
+        status: 'completed',
+        mode: 'dream-task',
+        queuedAt: '2026-03-28T00:12:00.000Z',
+        updatedAt: '2026-03-28T00:20:00.000Z',
+        finishedAt: '2026-03-28T00:20:00.000Z',
+        summary: '整理高价值阻断经验',
+        candidateSummary: 'memory 1 / rule 0 / skill 0',
+        priority: 'normal',
+        capabilityUsageStats: { toolCount: 1, workerCount: 1, totalTokens: 480, totalCostUsd: 0.09 }
       }
     ],
     memoryStatsPromise: Promise.resolve({

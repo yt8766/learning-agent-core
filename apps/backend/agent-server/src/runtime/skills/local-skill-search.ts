@@ -109,9 +109,14 @@ function buildManifestText(manifest: SkillManifestRecord): string {
     manifest.description,
     manifest.summary ?? '',
     manifest.compatibility ?? '',
+    ...(manifest.triggers ?? []),
     ...(manifest.allowedTools ?? []),
     ...manifest.requiredCapabilities,
-    ...(manifest.requiredConnectors ?? [])
+    ...(manifest.requiredConnectors ?? []),
+    ...(manifest.preferredMinistries ?? []),
+    ...(manifest.recommendedSpecialists ?? []),
+    ...(manifest.executionHints ?? []),
+    ...(manifest.compressionHints ?? [])
   ].join(' ');
 }
 
@@ -195,7 +200,15 @@ export function buildLocalSkillSuggestions(params: BuildLocalSkillSuggestionsPar
       sourceLabel: source?.name,
       sourceTrustClass: source?.trustClass,
       installationMode: remoteInstallable ? 'marketplace-managed' : 'builtin',
-      safety: manifest.safety
+      safety: manifest.safety,
+      allowedTools: manifest.allowedTools,
+      preferredMinistries: manifest.preferredMinistries,
+      preferredConnectors: manifest.preferredConnectors ?? manifest.requiredConnectors,
+      specialistAffinity: manifest.specialistAffinity ?? manifest.recommendedSpecialists,
+      triggers: manifest.triggers,
+      recommendedSpecialists: manifest.recommendedSpecialists,
+      executionHints: manifest.executionHints,
+      compressionHints: manifest.compressionHints
     });
   }
 

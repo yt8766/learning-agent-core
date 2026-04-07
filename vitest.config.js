@@ -57,6 +57,7 @@ export default defineConfig({
       '@agent/config': resolvePath('./packages/config/src'),
       '@agent/tools': resolvePath('./packages/tools/src'),
       '@agent/memory': resolvePath('./packages/memory/src'),
+      '@agent/model': resolvePath('./packages/model/src'),
       '@agent/skills': resolvePath('./packages/skills/src'),
       '@agent/evals': resolvePath('./packages/evals/src'),
       '@agent/agent-core': resolvePath('./packages/agent-core/src')

@@ -47,4 +47,5 @@ export interface RuntimeOverviewPanelProps {
     stack?: string;
     recoveryPlaybook?: string[];
   }) => void | Promise<void>;
+  onRevokeApprovalPolicy?: (policyId: string) => void | Promise<void>;
 }

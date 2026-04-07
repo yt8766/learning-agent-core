@@ -56,6 +56,33 @@ export interface SpecialistFindingRecord {
   confidence?: number;
 }
 
+export type ExecutionStepRoute = 'direct-reply' | 'research-first' | 'workflow-execute' | 'approval-recovery';
+export type ExecutionStepStage =
+  | 'request-received'
+  | 'route-selection'
+  | 'task-planning'
+  | 'research'
+  | 'execution'
+  | 'review'
+  | 'delivery'
+  | 'approval-interrupt'
+  | 'recovery';
+export type ExecutionStepStatus = 'pending' | 'running' | 'completed' | 'blocked';
+export type ExecutionStepOwner = 'session' | 'libu' | 'hubu' | 'gongbu' | 'bingbu' | 'xingbu' | 'libu-docs' | 'system';
+
+export interface ExecutionStepRecord {
+  id: string;
+  route: ExecutionStepRoute;
+  stage: ExecutionStepStage;
+  label: string;
+  owner: ExecutionStepOwner;
+  status: ExecutionStepStatus;
+  startedAt: string;
+  completedAt?: string;
+  detail?: string;
+  reason?: string;
+}
+
 export interface TaskRecord {
   id: string;
   goal: string;
@@ -130,6 +157,9 @@ export interface TaskRecord {
       evidenceCount: number;
       specialistCount: number;
       ministryCount: number;
+      compressionApplied?: boolean;
+      compressionSource?: 'heuristic' | 'llm';
+      compressedMessageCount?: number;
     };
     audienceSlices?: {
       strategy: {
@@ -149,6 +179,13 @@ export interface TaskRecord {
     hiddenTraceCount?: number;
     redactedKeys?: string[];
     createdAt: string;
+    updatedAt: string;
+  };
+  streamStatus?: {
+    nodeId?: string;
+    nodeLabel?: string;
+    detail?: string;
+    progressPercent?: number;
     updatedAt: string;
   };
   finalReviewState?: {
@@ -229,6 +266,8 @@ export interface TaskRecord {
     lastHeartbeatAt?: string;
   };
   currentStep?: string;
+  executionSteps?: ExecutionStepRecord[];
+  currentExecutionStep?: ExecutionStepRecord;
   pendingApproval?: {
     toolName?: string;
     intent?: string;
@@ -576,6 +615,13 @@ export interface ApprovalCenterItem {
   interruptSource?: 'graph' | 'tool';
   interruptMode?: 'blocking' | 'non-blocking';
   resumeStrategy?: 'command' | 'approval-recovery';
+  commandPreview?: string;
+  riskReason?: string;
+  riskCode?: string;
+  approvalScope?: 'once' | 'session' | 'always' | string;
+  policyMatchStatus?: string;
+  policyMatchSource?: string;
+  lastStreamStatusAt?: string;
   preview?: Array<{
     label: string;
     value: string;

@@ -46,8 +46,18 @@ describe('SessionCoordinator context and compression', () => {
     const currentSession = coordinator.getSession(session.id);
     expect(currentSession?.compression).toEqual(expect.objectContaining({ source: 'heuristic' }));
     expect(currentSession?.compression?.condensedMessageCount).toBeGreaterThan(0);
+    expect(currentSession?.compression?.summaryLength).toBeGreaterThan(0);
     expect(coordinator.getEvents(session.id)).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'conversation_compacted' })])
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'conversation_compacted',
+          payload: expect.objectContaining({
+            heuristicFallback: true,
+            effectiveThreshold: expect.any(Number),
+            compressionProfile: expect.any(String)
+          })
+        })
+      ])
     );
 
     const compactedContext = await (coordinator as any).buildConversationContext(session.id, '继续总结当前会话');
@@ -220,6 +230,9 @@ describe('SessionCoordinator context and compression', () => {
     const currentSession = coordinator.getSession(session.id)!;
     currentSession.compression = {
       summary: '更早的讨论聚焦 VIP 承接与高价值用户留存。',
+      decisionSummary: '统一按代理、支付、ROI 三线一起评估。',
+      confirmedPreferences: ['希望最终直接给建议'],
+      openLoops: ['还需要收敛最终建议'],
       condensedMessageCount: 3,
       condensedCharacterCount: 40,
       totalCharacterCount: 120,
@@ -251,6 +264,12 @@ describe('SessionCoordinator context and compression', () => {
       expect.objectContaining({
         sessionId: session.id,
         conversationSummary: '更早的讨论聚焦 VIP 承接与高价值用户留存。',
+        conversationCompression: expect.objectContaining({
+          summary: '更早的讨论聚焦 VIP 承接与高价值用户留存。',
+          decisionSummary: '统一按代理、支付、ROI 三线一起评估。',
+          confirmedPreferences: ['希望最终直接给建议'],
+          openLoops: ['还需要收敛最终建议']
+        }),
         recentTurns: expect.arrayContaining([
           { role: 'user', content: '第三轮：结合代理和支付一起判断。' },
           { role: 'user', content: '第四轮：给我最终建议。' }
@@ -259,6 +278,34 @@ describe('SessionCoordinator context and compression', () => {
           '上一轮确定要一起评估代理、支付与 ROI。',
           '代理渠道曾出现高转化但投诉偏多。'
         ])
+      })
+    );
+  });
+
+  it('长流程语义会更早触发压缩配置档位', async () => {
+    const runtimeRepository = createRuntimeRepository();
+    const orchestrator = createOrchestrator();
+    const coordinator = new SessionCoordinator(
+      orchestrator as never,
+      runtimeRepository as never,
+      createLlmProvider() as never
+    );
+
+    const session = await coordinator.createSession({ title: 'compression-profile', message: '先做一次 review。' });
+    await flushAsyncWork();
+
+    for (let index = 0; index < 12; index += 1) {
+      await coordinator.appendMessage(session.id, {
+        message: `第 ${index + 1} 轮：继续 review、测试、排查和修复。`
+      });
+      await flushAsyncWork();
+    }
+
+    const compactedEvent = coordinator.getEvents(session.id).find(event => event.type === 'conversation_compacted');
+    expect(compactedEvent?.payload).toEqual(
+      expect.objectContaining({
+        compressionProfile: 'long-flow',
+        effectiveThreshold: 11
       })
     );
   });

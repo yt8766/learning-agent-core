@@ -6,7 +6,7 @@ import {
   WorkflowPresetDefinition,
   normalizeExecutionMode
 } from '@agent/shared';
-import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../shared/prompts/temporal-context';
+import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../utils/prompts/temporal-context';
 
 // Legacy execution mode aliases are normalized into canonical executionPlan.mode values before source planning.
 interface ResearchSourcePlanInput {

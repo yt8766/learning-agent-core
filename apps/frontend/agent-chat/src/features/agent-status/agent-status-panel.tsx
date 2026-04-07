@@ -44,7 +44,19 @@ export function AgentStatusPanel(props: AgentStatusPanelProps) {
       </div>
       <div className="panel-section">
         <strong>执行节点</strong>
-        <p>{checkpoint?.graphState?.currentStep ?? '尚未开始'}</p>
+        <p>{checkpoint?.streamStatus?.nodeLabel ?? checkpoint?.graphState?.currentStep ?? '尚未开始'}</p>
+      </div>
+      <div className="panel-section">
+        <strong>节点战报</strong>
+        <p>
+          {checkpoint?.streamStatus?.detail
+            ? `${checkpoint.streamStatus.detail}${
+                typeof checkpoint.streamStatus.progressPercent === 'number'
+                  ? `（${checkpoint.streamStatus.progressPercent}%）`
+                  : ''
+              }`
+            : '当前还没有新的节点战报'}
+        </p>
       </div>
       <div className="panel-section">
         <strong>当前 Skill 步骤</strong>

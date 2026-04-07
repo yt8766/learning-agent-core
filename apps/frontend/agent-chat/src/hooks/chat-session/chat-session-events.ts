@@ -2,6 +2,8 @@ import type { ChatEventRecord, ChatMessageRecord, ChatSessionRecord, ChatSession
 
 import { MESSAGE_VISIBLE_EVENT_TYPES, PENDING_ASSISTANT_PREFIX, PENDING_USER_PREFIX } from './chat-session-formatters';
 
+const TRANSIENT_ASSISTANT_MESSAGE_PREFIXES = ['progress_stream_', 'direct_reply_', 'summary_stream_'] as const;
+
 export function mergeEvent(current: ChatEventRecord[], nextEvent: ChatEventRecord) {
   if (current.some(event => event.id === nextEvent.id)) {
     return current;
@@ -67,17 +69,43 @@ export function mergeOrAppendMessage(
     );
   }
 
+  const nextAppendedContent = resolveAppendedContent(target.content, nextMessage.content);
+
   return current.map(message =>
     message.id === nextMessage.id
       ? {
           ...message,
-          content: `${message.content}${nextMessage.content}`,
+          content: nextAppendedContent,
           taskId: nextMessage.taskId ?? message.taskId,
           linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
           card: nextMessage.card ?? message.card
         }
       : message
   );
+}
+
+function resolveAppendedContent(currentContent: string, incomingContent: string) {
+  if (!incomingContent) {
+    return currentContent;
+  }
+
+  if (!currentContent) {
+    return incomingContent;
+  }
+
+  if (incomingContent === currentContent) {
+    return currentContent;
+  }
+
+  if (incomingContent.startsWith(currentContent)) {
+    return incomingContent;
+  }
+
+  if (currentContent.endsWith(incomingContent)) {
+    return currentContent;
+  }
+
+  return `${currentContent}${incomingContent}`;
 }
 
 function shouldReplacePendingPlaceholder(pendingMessage: ChatMessageRecord, nextMessage: ChatMessageRecord) {
@@ -217,6 +245,13 @@ export function buildEventCard(event: ChatEventRecord): ChatMessageRecord['card'
       reason: typeof payload.reason === 'string' ? payload.reason : undefined,
       reasonCode: typeof payload.reasonCode === 'string' ? payload.reasonCode : undefined,
       riskLevel: typeof payload.riskLevel === 'string' ? payload.riskLevel : undefined,
+      riskCode: typeof payload.riskCode === 'string' ? payload.riskCode : undefined,
+      riskReason: typeof payload.riskReason === 'string' ? payload.riskReason : undefined,
+      commandPreview: typeof payload.commandPreview === 'string' ? payload.commandPreview : undefined,
+      approvalScope:
+        payload.approvalScope === 'once' || payload.approvalScope === 'session' || payload.approvalScope === 'always'
+          ? payload.approvalScope
+          : undefined,
       requestedBy: typeof payload.requestedBy === 'string' ? payload.requestedBy : undefined,
       status: 'pending',
       displayStatus: 'pending',
@@ -234,6 +269,18 @@ export function buildEventCard(event: ChatEventRecord): ChatMessageRecord['card'
         payload.resumeStrategy === 'command' || payload.resumeStrategy === 'approval-recovery'
           ? payload.resumeStrategy
           : undefined,
+      interactionKind:
+        payload.interactionKind === 'approval' ||
+        payload.interactionKind === 'plan-question' ||
+        payload.interactionKind === 'supplemental-input'
+          ? payload.interactionKind
+          : undefined,
+      watchdog: payload.watchdog === true,
+      runtimeGovernanceReasonCode:
+        typeof payload.runtimeGovernanceReasonCode === 'string' ? payload.runtimeGovernanceReasonCode : undefined,
+      recommendedActions: Array.isArray(payload.recommendedActions)
+        ? payload.recommendedActions.filter(item => typeof item === 'string')
+        : undefined,
       preview: Array.isArray(payload.preview)
         ? payload.preview
             .filter(
@@ -372,6 +419,9 @@ export function buildVisibleEventMessage(event: ChatEventRecord) {
     case 'conversation_compacted': {
       return '正在自动压缩背景信息';
     }
+    case 'node_status':
+    case 'node_progress':
+      return buildNodeStatusCopy(payload);
     case 'decree_received':
       return '已接收你的请求，正在判断这一轮该如何处理。';
     case 'skill_resolved':
@@ -501,6 +551,13 @@ export function syncSessionFromEvent(sessions: ChatSessionRecord[], event: ChatE
             nextActions: sanitizeStringArray(event.payload?.nextActions, 4) ?? session.compression?.nextActions,
             supportingFacts:
               sanitizeStringArray(event.payload?.supportingFacts, 4) ?? session.compression?.supportingFacts,
+            decisionSummary:
+              typeof event.payload?.decisionSummary === 'string'
+                ? event.payload.decisionSummary
+                : session.compression?.decisionSummary,
+            confirmedPreferences:
+              sanitizeStringArray(event.payload?.confirmedPreferences, 4) ?? session.compression?.confirmedPreferences,
+            openLoops: sanitizeStringArray(event.payload?.openLoops, 4) ?? session.compression?.openLoops,
             condensedMessageCount:
               typeof event.payload?.condensedMessageCount === 'number'
                 ? event.payload.condensedMessageCount
@@ -579,6 +636,19 @@ export function syncMessageFromEvent(current: ChatMessageRecord[], event: ChatEv
       ? (payload.card as ChatMessageRecord['card'])
       : undefined;
 
+  if (
+    (event.type === 'assistant_token' || event.type === 'final_response_delta') &&
+    isTransientAssistantMessageId(messageId) &&
+    hasCommittedAssistantEquivalent(current, {
+      id: messageId,
+      role,
+      content,
+      taskId
+    })
+  ) {
+    return current;
+  }
+
   return mergeOrAppendMessage(
     current,
     {
@@ -593,6 +663,52 @@ export function syncMessageFromEvent(current: ChatMessageRecord[], event: ChatEv
     },
     event.type === 'assistant_token' || event.type === 'final_response_delta'
   );
+}
+
+function isTransientAssistantMessageId(messageId: string) {
+  return TRANSIENT_ASSISTANT_MESSAGE_PREFIXES.some(prefix => messageId.startsWith(prefix));
+}
+
+function resolveAssistantTaskIdentity(message: Pick<ChatMessageRecord, 'id' | 'taskId'>) {
+  if (message.taskId) {
+    return message.taskId;
+  }
+
+  for (const prefix of TRANSIENT_ASSISTANT_MESSAGE_PREFIXES) {
+    if (message.id.startsWith(prefix)) {
+      return message.id.slice(prefix.length);
+    }
+  }
+
+  return message.id;
+}
+
+function hasCommittedAssistantEquivalent(
+  current: ChatMessageRecord[],
+  nextMessage: Pick<ChatMessageRecord, 'id' | 'role' | 'content' | 'taskId'>
+) {
+  const nextContent = nextMessage.content.trim();
+  if (nextMessage.role !== 'assistant' || !nextContent) {
+    return false;
+  }
+
+  const nextTaskIdentity = resolveAssistantTaskIdentity(nextMessage);
+  return current.some(message => {
+    if (message.role !== 'assistant' || isTransientAssistantMessageId(message.id)) {
+      return false;
+    }
+
+    if (resolveAssistantTaskIdentity(message) !== nextTaskIdentity) {
+      return false;
+    }
+
+    const existingContent = message.content.trim();
+    return (
+      existingContent === nextContent ||
+      existingContent.startsWith(nextContent) ||
+      nextContent.startsWith(existingContent)
+    );
+  });
 }
 
 export function attachEventTaskIdsToMessages(messages: ChatMessageRecord[], events: ChatEventRecord[]) {
@@ -622,6 +738,21 @@ export function attachEventTaskIdsToMessages(messages: ChatMessageRecord[], even
 export function syncProcessMessageFromEvent(current: ChatMessageRecord[], event: ChatEventRecord) {
   if (event.type === 'conversation_compacted') {
     return current.filter(message => message.card?.type !== 'compression_summary');
+  }
+
+  if (event.type === 'node_status' || event.type === 'node_progress') {
+    const content = buildVisibleEventMessage(event);
+    if (!content) {
+      return current;
+    }
+    const messageId = `event_stream_status_${event.sessionId}`;
+    return mergeOrAppendMessage(current, {
+      id: messageId,
+      sessionId: event.sessionId,
+      role: 'system',
+      content,
+      createdAt: event.at
+    });
   }
 
   if (event.type === 'run_cancelled' && event.payload?.interactionKind === 'plan-question') {
@@ -700,12 +831,18 @@ function buildApprovalRequiredCopy(payload: Record<string, unknown>) {
   const sourceSuffix =
     interruptSource === 'graph' ? '，由图内中断触发' : interruptSource === 'tool' ? '，由工具内中断触发' : '';
   const prefix = interruptMode === 'non-blocking' ? '中断建议' : '阻塞式中断确认';
+  const commandPreview = typeof payload.commandPreview === 'string' ? payload.commandPreview : '';
+  const riskReason = typeof payload.riskReason === 'string' ? payload.riskReason : '';
+  const approvalScope = typeof payload.approvalScope === 'string' ? payload.approvalScope : '';
+  const commandSuffix = commandPreview ? ` 命令预览：${commandPreview}。` : '';
+  const riskSuffix = riskReason ? ` 风险说明：${riskReason}` : '';
+  const scopeSuffix = approvalScope ? ` 审批范围：${approvalScope === 'once' ? '仅本次' : approvalScope}` : '';
 
   if (reason) {
-    return `${prefix}：准备执行${intentLabel}${toolSuffix}${actorSuffix}${sourceSuffix}。${reason}`;
+    return `${prefix}：准备执行${intentLabel}${toolSuffix}${actorSuffix}${sourceSuffix}。${reason}${commandSuffix}${riskSuffix}${scopeSuffix}`;
   }
 
-  return `${prefix}：准备执行${intentLabel}${toolSuffix}${actorSuffix}${sourceSuffix}。该动作具有风险，需要你明确拍板后才能继续。`;
+  return `${prefix}：准备执行${intentLabel}${toolSuffix}${actorSuffix}${sourceSuffix}。该动作具有风险，需要你明确拍板后才能继续。${commandSuffix}${riskSuffix}${scopeSuffix}`;
 }
 
 function buildPlanQuestionCopy(payload: Record<string, unknown>) {
@@ -746,4 +883,22 @@ function sanitizeStringArray(value: unknown, maxItems: number) {
     .slice(0, maxItems);
 
   return sanitized.length ? sanitized : undefined;
+}
+
+function buildNodeStatusCopy(payload: Record<string, unknown>) {
+  const nodeLabel = typeof payload.nodeLabel === 'string' ? payload.nodeLabel : '当前节点';
+  const detail = typeof payload.detail === 'string' ? payload.detail : '';
+  const ministry = typeof payload.ministry === 'string' ? payload.ministry : '';
+  const phase = payload.phase === 'end' ? 'end' : payload.phase === 'progress' ? 'progress' : 'start';
+  const progressPercent = typeof payload.progressPercent === 'number' ? payload.progressPercent : undefined;
+  const ministryPrefix = ministry ? `${ministry} · ` : '';
+  if (phase === 'start') {
+    return `${ministryPrefix}${nodeLabel} 已开始${detail ? `：${detail}` : '。'}`;
+  }
+  if (phase === 'progress') {
+    return `${ministryPrefix}${nodeLabel} 进行中${detail ? `：${detail}` : ''}${
+      typeof progressPercent === 'number' ? `（${progressPercent}%）` : ''
+    }`;
+  }
+  return `${ministryPrefix}${nodeLabel} 已完成${detail ? `：${detail}` : '。'}`;
 }

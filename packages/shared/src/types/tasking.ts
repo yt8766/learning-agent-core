@@ -1,6 +1,7 @@
 import type { ChannelIdentity } from './channels';
 import type {
   ApprovalPolicyRecord,
+  ApprovalScopePolicyRecord,
   ApprovalInterruptRecord,
   ApprovalRecord,
   ConnectorHealthRecord,
@@ -16,6 +17,7 @@ import type {
   ChatSessionStatus,
   CheckpointRef,
   CritiqueDecision,
+  ExecutionStepRecord,
   ExecutionPlanMode,
   MainChainNode,
   LlmUsageRecord,
@@ -365,6 +367,28 @@ export interface ContextFilterRecord {
     evidenceCount: number;
     specialistCount: number;
     ministryCount: number;
+    compressionApplied?: boolean;
+    compressionSource?: 'heuristic' | 'llm';
+    compressedMessageCount?: number;
+    artifactCount?: number;
+    originalCharacterCount?: number;
+    compactedCharacterCount?: number;
+    reactiveRetryCount?: number;
+    pipelineAudit?: Array<{
+      stage:
+        | 'large_result_offload'
+        | 'micro_compression'
+        | 'history_trim'
+        | 'projection'
+        | 'conversation_summary'
+        | 'reactive_compact_retry';
+      applied: boolean;
+      reason: string;
+      originalSize?: number;
+      compactedSize?: number;
+      artifactIds?: string[];
+      triggeredBy?: string;
+    }>;
   };
   audienceSlices?: {
     strategy: {
@@ -570,6 +594,8 @@ export interface TaskRecord {
   dispatches?: DispatchInstruction[];
   critiqueResult?: CritiqueResultRecord;
   chatRoute?: ChatRouteRecord;
+  executionSteps?: ExecutionStepRecord[];
+  currentExecutionStep?: ExecutionStepRecord;
   queueState?: QueueStateRecord;
   pendingAction?: PendingActionRecord;
   pendingApproval?: PendingApprovalRecord;
@@ -644,6 +670,15 @@ export interface TaskRecord {
   knowledgeIndexState?: KnowledgeIndexStateRecord;
   llmUsage?: LlmUsageRecord;
   learningQueueItemId?: string;
+  backgroundLearningState?: {
+    status: 'idle' | 'queued' | 'running' | 'completed' | 'failed';
+    mode: 'task-learning' | 'dream-task';
+    queuedAt?: string;
+    startedAt?: string;
+    finishedAt?: string;
+    summary?: string;
+    updatedAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -668,6 +703,9 @@ export interface ChatSessionRecord {
     risks?: string[];
     nextActions?: string[];
     supportingFacts?: string[];
+    decisionSummary?: string;
+    confirmedPreferences?: string[];
+    openLoops?: string[];
     condensedMessageCount: number;
     condensedCharacterCount: number;
     totalCharacterCount: number;
@@ -677,7 +715,14 @@ export interface ChatSessionRecord {
     }>;
     trigger: 'message_count' | 'character_count';
     source: 'heuristic' | 'llm';
+    summaryLength?: number;
+    heuristicFallback?: boolean;
+    effectiveThreshold?: number;
+    compressionProfile?: 'default' | 'long-flow' | 'light-chat';
     updatedAt: string;
+  };
+  approvalPolicies?: {
+    sessionAllowRules?: ApprovalScopePolicyRecord[];
   };
   createdAt: string;
   updatedAt: string;
@@ -696,7 +741,12 @@ export interface ChatMessageRecord {
         intent: string;
         toolName?: string;
         reason?: string;
+        reasonCode?: string;
         riskLevel?: import('./primitives').RiskLevel;
+        riskCode?: string;
+        riskReason?: string;
+        commandPreview?: string;
+        approvalScope?: 'once' | 'session' | 'always';
         requestedBy?: string;
         serverId?: string;
         capabilityId?: string;
@@ -817,6 +867,8 @@ export interface ChatCheckpointRecord {
   dispatches?: DispatchInstruction[];
   critiqueResult?: CritiqueResultRecord;
   chatRoute?: ChatRouteRecord;
+  executionSteps?: ExecutionStepRecord[];
+  currentExecutionStep?: ExecutionStepRecord;
   queueState?: QueueStateRecord;
   pendingAction?: PendingActionRecord;
   pendingApproval?: PendingApprovalRecord;
@@ -850,6 +902,14 @@ export interface ChatCheckpointRecord {
   capabilityAugmentations?: CapabilityAugmentationRecord[];
   capabilityAttachments?: CapabilityAttachmentRecord[];
   currentSkillExecution?: CurrentSkillExecutionRecord;
+  streamStatus?: {
+    nodeId?: string;
+    nodeLabel?: string;
+    detail?: string;
+    progressPercent?: number;
+    updatedAt: string;
+  };
+  approvalPolicies?: ApprovalScopePolicyRecord[];
   learningEvaluation?: LearningEvaluationRecord;
   governanceScore?: GovernanceScoreRecord;
   governanceReport?: GovernanceReportRecord;
@@ -862,6 +922,7 @@ export interface ChatCheckpointRecord {
   knowledgeIndexState?: KnowledgeIndexStateRecord;
   llmUsage?: LlmUsageRecord;
   learningQueueItemId?: string;
+  backgroundLearningState?: TaskRecord['backgroundLearningState'];
   recoverability?: 'safe' | 'partial' | 'unsafe';
   traceCursor: number;
   messageCursor: number;

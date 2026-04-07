@@ -14,6 +14,11 @@ export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'libu-governance',
     preferredMinistries: ['libu-governance', 'bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { templateId: { type: 'string' }, displayName: { type: 'string' } } }
   },
   {
@@ -29,6 +34,11 @@ export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'libu-governance',
     preferredMinistries: ['libu-governance', 'xingbu-review'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: true,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { connectorId: { type: 'string' }, secretRef: { type: 'string' } } }
   },
   {
@@ -44,6 +54,11 @@ export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'libu-governance',
     preferredMinistries: ['libu-governance', 'bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { connectorId: { type: 'string' } } }
   },
   {
@@ -59,6 +74,11 @@ export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'libu-governance',
     preferredMinistries: ['libu-governance', 'bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'governance',
     inputSchema: { type: 'object', properties: { connectorId: { type: 'string' } } }
   },
   {
@@ -74,6 +94,11 @@ export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
     ownerId: 'libu-governance',
     preferredMinistries: ['libu-governance', 'bingbu-ops'],
     capabilityType: 'governance-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
     inputSchema: { type: 'object', properties: {} }
   }
 ];

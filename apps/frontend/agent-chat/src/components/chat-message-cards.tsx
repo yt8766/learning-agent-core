@@ -48,7 +48,7 @@ export function renderStructuredMessageCard(
   message: ChatMessageRecord,
   streaming: boolean,
   options: {
-    onApprovalAction?: (intent: string, approved: boolean) => void;
+    onApprovalAction?: (intent: string, approved: boolean, scope?: 'once' | 'session' | 'always') => void;
     onApprovalAllowAlways?: (intent: string, serverId?: string, capabilityId?: string) => void;
     onApprovalFeedback?: (intent: string, reason?: string) => void;
     onPlanAction?: (params: {

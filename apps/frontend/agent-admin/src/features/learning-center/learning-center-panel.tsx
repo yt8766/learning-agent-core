@@ -1,8 +1,30 @@
 import { useMemo, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  XAxis,
+  YAxis
+} from 'recharts';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig
+} from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import {
   DashboardCenterShell,
@@ -45,6 +67,7 @@ export function LearningCenterPanel({
   onSetLearningConflictStatus
 }: LearningCenterPanelProps) {
   const ruleCandidates = learning.candidates.filter(candidate => candidate.type === 'rule');
+  const [activeChart, setActiveChart] = useState<'queue' | 'conflict' | 'ministry' | 'trust'>('queue');
   const [selectorDomainFilter, setSelectorDomainFilter] = useState('');
   const [selectorFeatureFlagFilter, setSelectorFeatureFlagFilter] = useState('');
   const filteredSelectors = useMemo(
@@ -59,6 +82,71 @@ export function LearningCenterPanel({
       }),
     [learning.counselorSelectorConfigs, selectorDomainFilter, selectorFeatureFlagFilter]
   );
+  const queueModeData = useMemo(() => {
+    const summary = learning.learningQueueSummary?.byMode;
+    if (summary) {
+      return [
+        { key: 'taskLearning', label: 'task-learning', value: summary.taskLearning.total },
+        { key: 'dreamTask', label: 'dream-task', value: summary.dreamTask.total }
+      ];
+    }
+
+    if (learning.learningQueue?.length) {
+      const taskLearning = learning.learningQueue.filter(item => item.mode !== 'dream-task').length;
+      const dreamTask = learning.learningQueue.filter(item => item.mode === 'dream-task').length;
+      return [
+        { key: 'taskLearning', label: 'task-learning', value: taskLearning },
+        { key: 'dreamTask', label: 'dream-task', value: dreamTask }
+      ];
+    }
+
+    return [
+      {
+        key: 'taskLearning',
+        label: 'task-learning',
+        value:
+          (learning.learningQueueSummary?.taskLearningQueued ?? 0) +
+          (learning.learningQueueSummary?.taskLearningProcessing ?? 0) +
+          (learning.learningQueueSummary?.taskLearningCompleted ?? 0)
+      },
+      {
+        key: 'dreamTask',
+        label: 'dream-task',
+        value:
+          (learning.learningQueueSummary?.dreamTaskQueued ?? 0) +
+          (learning.learningQueueSummary?.dreamTaskProcessing ?? 0) +
+          (learning.learningQueueSummary?.dreamTaskCompleted ?? 0)
+      }
+    ];
+  }, [learning.learningQueue, learning.learningQueueSummary]);
+  const conflictData = useMemo(
+    () => [
+      { key: 'open', label: 'open', value: learning.conflictGovernance?.open ?? 0 },
+      { key: 'merged', label: 'merged', value: learning.conflictGovernance?.merged ?? 0 },
+      { key: 'dismissed', label: 'dismissed', value: learning.conflictGovernance?.dismissed ?? 0 },
+      { key: 'escalated', label: 'escalated', value: learning.conflictGovernance?.escalated ?? 0 }
+    ],
+    [learning.conflictGovernance]
+  );
+  const ministryScoreData = useMemo(
+    () =>
+      (learning.ministryScorecards ?? []).map(item => ({
+        ministry: item.ministry,
+        score: Number((item.averageScore ?? 0).toFixed(1))
+      })),
+    [learning.ministryScorecards]
+  );
+  const trustDistributionData = useMemo(() => {
+    const result = { high: 0, medium: 0, low: 0 };
+    for (const item of learning.capabilityTrustProfiles ?? []) {
+      result[item.trustLevel] += 1;
+    }
+    return [
+      { key: 'high', label: 'high', value: result.high },
+      { key: 'medium', label: 'medium', value: result.medium },
+      { key: 'low', label: 'low', value: result.low }
+    ];
+  }, [learning.capabilityTrustProfiles]);
 
   return (
     <DashboardCenterShell
@@ -89,6 +177,14 @@ export function LearningCenterPanel({
           { label: '失效规则', value: learning.invalidatedRules ?? 0 },
           { label: '平均评估分', value: Math.round(learning.averageEvaluationScore ?? 0) }
         ]}
+      />
+      <LearningChartsCard
+        activeChart={activeChart}
+        onChartChange={setActiveChart}
+        queueModeData={queueModeData}
+        conflictData={conflictData}
+        ministryScoreData={ministryScoreData}
+        trustDistributionData={trustDistributionData}
       />
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -137,6 +233,9 @@ export function LearningCenterPanel({
             <p>processing {learning.learningQueueSummary?.processing ?? 0}</p>
             <p>blocked {learning.learningQueueSummary?.blocked ?? 0}</p>
             <p>completed {learning.learningQueueSummary?.completed ?? 0}</p>
+            <p>task-learning queued {learning.learningQueueSummary?.taskLearningQueued ?? 0}</p>
+            <p>dream-task queued {learning.learningQueueSummary?.dreamTaskQueued ?? 0}</p>
+            <p>dream-task completed {learning.learningQueueSummary?.dreamTaskCompleted ?? 0}</p>
           </CardContent>
         </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -281,10 +380,17 @@ export function LearningCenterPanel({
                       {item.priority ?? 'normal'}
                     </Badge>
                     <Badge variant="outline">{item.status}</Badge>
+                    <Badge variant={item.mode === 'dream-task' ? 'secondary' : 'outline'}>
+                      {item.mode === 'dream-task' ? 'dream-task' : 'task-learning'}
+                    </Badge>
                     {item.selectedCounselorId ? <Badge variant="outline">{item.selectedCounselorId}</Badge> : null}
                     {item.selectedVersion ? <Badge variant="outline">{item.selectedVersion}</Badge> : null}
                   </div>
                   <p className="mt-2 text-sm font-semibold text-foreground">{item.taskId}</p>
+                  {item.summary ? <p className="mt-1 text-xs text-muted-foreground">{item.summary}</p> : null}
+                  {item.candidateSummary ? (
+                    <p className="mt-1 text-xs text-muted-foreground">候选摘要：{item.candidateSummary}</p>
+                  ) : null}
                   <p className="mt-1 text-xs text-muted-foreground">
                     tools {item.capabilityUsageStats?.toolCount ?? 0} / workers{' '}
                     {item.capabilityUsageStats?.workerCount ?? 0}
@@ -292,6 +398,9 @@ export function LearningCenterPanel({
                       ? ` / tokens ${Math.round(item.capabilityUsageStats.totalTokens)}`
                       : ''}
                   </p>
+                  {item.mode === 'dream-task' ? (
+                    <p className="mt-1 text-xs text-muted-foreground">仅整理候选，不会自动发布 stable skill。</p>
+                  ) : null}
                 </article>
               ))
             )}
@@ -855,6 +964,189 @@ export function LearningCenterPanel({
         </CardContent>
       </Card>
     </DashboardCenterShell>
+  );
+}
+
+const learningQueueConfig = {
+  taskLearning: { label: 'task-learning', color: 'var(--chart-1)' },
+  dreamTask: { label: 'dream-task', color: 'var(--chart-2)' }
+} satisfies ChartConfig;
+
+const learningConflictConfig = {
+  open: { label: 'open', color: 'var(--chart-3)' },
+  merged: { label: 'merged', color: 'var(--chart-1)' },
+  dismissed: { label: 'dismissed', color: 'var(--chart-4)' },
+  escalated: { label: 'escalated', color: 'var(--chart-5)' }
+} satisfies ChartConfig;
+
+const learningMinistryConfig = {
+  score: { label: 'Average Score', color: 'var(--chart-2)' }
+} satisfies ChartConfig;
+
+const learningTrustConfig = {
+  high: { label: 'high', color: 'var(--chart-1)' },
+  medium: { label: 'medium', color: 'var(--chart-3)' },
+  low: { label: 'low', color: 'var(--chart-5)' }
+} satisfies ChartConfig;
+
+function LearningChartsCard({
+  activeChart,
+  onChartChange,
+  queueModeData,
+  conflictData,
+  ministryScoreData,
+  trustDistributionData
+}: {
+  activeChart: 'queue' | 'conflict' | 'ministry' | 'trust';
+  onChartChange: (value: 'queue' | 'conflict' | 'ministry' | 'trust') => void;
+  queueModeData: Array<{ key: string; label: string; value: number }>;
+  conflictData: Array<{ key: string; label: string; value: number }>;
+  ministryScoreData: Array<{ ministry: string; score: number }>;
+  trustDistributionData: Array<{ key: string; label: string; value: number }>;
+}) {
+  const meta = {
+    queue: {
+      title: 'Learning Queue Structure',
+      description: '查看 task-learning 与 dream-task 的沉淀结构。',
+      empty: '当前还没有可视化的学习队列结构。'
+    },
+    conflict: {
+      title: 'Conflict Governance',
+      description: '查看冲突治理压力和处理结果分布。',
+      empty: '当前没有可视化的冲突治理数据。'
+    },
+    ministry: {
+      title: 'Ministry Scorecards',
+      description: '查看六部长期治理分数。',
+      empty: '当前还没有 ministry 评分数据。'
+    },
+    trust: {
+      title: 'Capability Trust Distribution',
+      description: '查看 capability trust 的层级分布。',
+      empty: '当前还没有 capability trust 分布。'
+    }
+  }[activeChart];
+
+  return (
+    <Card className="border-border/70 bg-card/90 shadow-sm">
+      <CardHeader className="gap-4 border-b border-[#ecece8] pb-4">
+        <div className="space-y-1">
+          <CardTitle className="text-lg font-semibold text-foreground">{meta.title}</CardTitle>
+          <p className="text-sm text-muted-foreground">{meta.description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={activeChart === 'queue' ? 'default' : 'ghost'}
+            onClick={() => onChartChange('queue')}
+          >
+            Queue
+          </Button>
+          <Button
+            size="sm"
+            variant={activeChart === 'conflict' ? 'default' : 'ghost'}
+            onClick={() => onChartChange('conflict')}
+          >
+            Conflict
+          </Button>
+          <Button
+            size="sm"
+            variant={activeChart === 'ministry' ? 'default' : 'ghost'}
+            onClick={() => onChartChange('ministry')}
+          >
+            Ministry
+          </Button>
+          <Button
+            size="sm"
+            variant={activeChart === 'trust' ? 'default' : 'ghost'}
+            onClick={() => onChartChange('trust')}
+          >
+            Trust
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-5">
+        {activeChart === 'queue' ? (
+          queueModeData.some(item => item.value > 0) ? (
+            <ChartContainer config={learningQueueConfig}>
+              <PieChart>
+                <ChartTooltip content={<ChartTooltipContent formatter={value => Number(value).toLocaleString()} />} />
+                <Pie
+                  data={queueModeData}
+                  dataKey="value"
+                  nameKey="key"
+                  innerRadius={72}
+                  outerRadius={112}
+                  paddingAngle={4}
+                >
+                  {queueModeData.map(item => (
+                    <Cell key={item.key} fill={`var(--color-${item.key})`} />
+                  ))}
+                </Pie>
+                <ChartLegend content={<ChartLegendContent />} />
+              </PieChart>
+            </ChartContainer>
+          ) : (
+            <DashboardEmptyState message={meta.empty} />
+          )
+        ) : null}
+
+        {activeChart === 'conflict' ? (
+          conflictData.some(item => item.value > 0) ? (
+            <ChartContainer config={learningConflictConfig}>
+              <BarChart data={conflictData} margin={{ left: 8, right: 8, top: 12, bottom: 4 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} width={56} />
+                <ChartTooltip content={<ChartTooltipContent formatter={value => Number(value).toLocaleString()} />} />
+                <Bar dataKey="value" radius={[10, 10, 4, 4]}>
+                  {conflictData.map(item => (
+                    <Cell key={item.key} fill={`var(--color-${item.key})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <DashboardEmptyState message={meta.empty} />
+          )
+        ) : null}
+
+        {activeChart === 'ministry' ? (
+          ministryScoreData.length ? (
+            <ChartContainer config={learningMinistryConfig}>
+              <RadarChart data={ministryScoreData} outerRadius={110}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="ministry" tick={{ fill: 'var(--muted-foreground)' }} />
+                <ChartTooltip content={<ChartTooltipContent formatter={value => Number(value).toFixed(1)} />} />
+                <Radar dataKey="score" fill="var(--color-score)" fillOpacity={0.28} stroke="var(--color-score)" />
+              </RadarChart>
+            </ChartContainer>
+          ) : (
+            <DashboardEmptyState message={meta.empty} />
+          )
+        ) : null}
+
+        {activeChart === 'trust' ? (
+          trustDistributionData.some(item => item.value > 0) ? (
+            <ChartContainer config={learningTrustConfig}>
+              <BarChart data={trustDistributionData} margin={{ left: 8, right: 8, top: 12, bottom: 4 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} width={56} />
+                <ChartTooltip content={<ChartTooltipContent formatter={value => Number(value).toLocaleString()} />} />
+                <Bar dataKey="value" radius={[10, 10, 4, 4]}>
+                  {trustDistributionData.map(item => (
+                    <Cell key={item.key} fill={`var(--color-${item.key})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <DashboardEmptyState message={meta.empty} />
+          )
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 

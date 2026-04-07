@@ -39,6 +39,8 @@ describe('RuntimeBootstrapService', () => {
         }) as never,
       syncInstalledSkillWorkers: vi.fn(async () => undefined),
       applyStoredGovernanceOverrides: vi.fn(async () => undefined),
+      initializeDailyTechBriefing: vi.fn(async () => undefined),
+      initializeScheduleRunner: vi.fn(async () => undefined),
       getBackgroundRunnerContext: () =>
         ({
           enabled: false,

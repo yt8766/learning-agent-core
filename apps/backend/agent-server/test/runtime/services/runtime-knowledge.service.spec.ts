@@ -70,10 +70,31 @@ describe('RuntimeKnowledgeService', () => {
         runtimeStateSnapshot = snapshot;
       })
     };
+    const wenyuanFacade = {
+      searchMemory: vi.fn(async (query: string, limit = 10) => memoryRepository.search(query, limit)),
+      listMemories: vi.fn(async () => memoryRepository.list()),
+      getMemory: vi.fn(async (memoryId: string) => memoryRepository.getById(memoryId)),
+      invalidateMemory: vi.fn(async (memoryId: string, reason: string) =>
+        memoryRepository.invalidate(memoryId, reason)
+      ),
+      supersedeMemory: vi.fn(async (memoryId: string, replacementId: string, reason: string) =>
+        memoryRepository.supersede(memoryId, replacementId, reason)
+      ),
+      restoreMemory: vi.fn(async (memoryId: string) => memoryRepository.restore(memoryId)),
+      retireMemory: vi.fn(async (memoryId: string, reason: string) => memoryRepository.retire(memoryId, reason)),
+      quarantineMemory: vi.fn(async (memoryId: string, reason: string, evidenceRefs?: string[]) =>
+        memoryRepository.quarantine(memoryId, reason, evidenceRefs)
+      ),
+      getMemoryRepository: vi.fn(() => memoryRepository),
+      listCrossCheckEvidence: vi.fn(async (memoryId?: string) => {
+        const evidence = runtimeStateSnapshot.crossCheckEvidence ?? [];
+        return memoryId ? evidence.filter(item => item.memoryId === memoryId) : evidence;
+      })
+    };
 
     return {
       service: new RuntimeKnowledgeService(() => ({
-        memoryRepository,
+        wenyuanFacade: wenyuanFacade as any,
         ruleRepository,
         orchestrator,
         runtimeStateRepository

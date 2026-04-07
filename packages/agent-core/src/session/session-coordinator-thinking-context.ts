@@ -2,7 +2,8 @@ import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from 
 import type { ContextStrategy } from '@agent/config';
 import type { MemorySearchService } from '@agent/memory';
 
-import { sanitizeTaskContextForModel } from '../shared/prompts/runtime-output-sanitizer';
+import { applyReactiveCompactRetry, buildContextCompressionResult } from '../utils/context-compression-pipeline';
+import { sanitizeTaskContextForModel } from '../utils/prompts/runtime-output-sanitizer';
 
 const CONTEXT_MESSAGE_WINDOW = 10;
 const CONTEXT_MESSAGE_MAX_CHARS = 320;
@@ -26,8 +27,19 @@ export async function buildSessionConversationContext(
         '\n'
       )
     : '';
+  const taskCompression = buildContextCompressionResult({
+    goal: query,
+    context: sanitizedCheckpointContext,
+    trace: checkpoint?.thoughtGraph?.nodes?.map(node => ({ id: node.id })) as never,
+    planDraft: undefined,
+    plan: undefined
+  });
+  const resilientTaskCompression =
+    taskCompression.compactedCharacterCount > 320
+      ? applyReactiveCompactRetry(taskCompression, 'session-context-build', '会话上下文已进行应急压缩。')
+      : taskCompression;
   const taskContextBlock = sanitizedCheckpointContext
-    ? ['以下是上一轮任务留下的结构化上下文：', sanitizedCheckpointContext].join('\n')
+    ? ['以下是上一轮任务留下的结构化上下文：', resilientTaskCompression.summary].join('\n')
     : '';
   const memoryReuseEvidence = (checkpoint?.externalSources ?? []).filter(
     source => source.sourceType === 'memory_reuse'
@@ -146,6 +158,11 @@ function formatCompressionContext(compression: NonNullable<ChatSessionRecord['co
     compression.nextActions?.length
       ? ['后续动作：', ...compression.nextActions.map(item => `- ${item}`)].join('\n')
       : '',
+    compression.decisionSummary ? `已确认决策：${compression.decisionSummary}` : '',
+    compression.confirmedPreferences?.length
+      ? ['用户偏好 / 约束：', ...compression.confirmedPreferences.map(item => `- ${item}`)].join('\n')
+      : '',
+    compression.openLoops?.length ? ['未完成事项：', ...compression.openLoops.map(item => `- ${item}`)].join('\n') : '',
     compression.supportingFacts?.length
       ? ['补充事实：', ...compression.supportingFacts.map(item => `- ${item}`)].join('\n')
       : '',

@@ -13,6 +13,10 @@ export interface ChatMessageRecord {
         reason?: string;
         reasonCode?: string;
         riskLevel?: string;
+        riskCode?: string;
+        riskReason?: string;
+        commandPreview?: string;
+        approvalScope?: 'once' | 'session' | 'always';
         requestedBy?: string;
         status?: 'pending' | 'approved' | 'rejected' | 'allowed';
         displayStatus?: 'pending' | 'allowed' | 'rejected' | 'rejected_with_feedback';
@@ -23,6 +27,10 @@ export interface ChatMessageRecord {
         interruptSource?: 'graph' | 'tool';
         interruptMode?: 'blocking' | 'non-blocking';
         resumeStrategy?: 'command' | 'approval-recovery';
+        interactionKind?: 'approval' | 'plan-question' | 'supplemental-input';
+        watchdog?: boolean;
+        runtimeGovernanceReasonCode?: string;
+        recommendedActions?: string[];
         preview?: Array<{
           label: string;
           value: string;

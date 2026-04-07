@@ -1,5 +1,5 @@
-import { buildStructuredPrompt } from '../../../shared/prompts/prompt-template';
-import { buildFreshnessAnswerInstruction, buildTemporalContextBlock } from '../../../shared/prompts/temporal-context';
+import { buildStructuredPrompt } from '../../../utils/prompts/prompt-template';
+import { buildFreshnessAnswerInstruction, buildTemporalContextBlock } from '../../../utils/prompts/temporal-context';
 import { isConversationRecallGoal } from '../../../workflows/workflow-route-registry';
 
 export const SUPERVISOR_PLAN_SYSTEM_PROMPT = buildStructuredPrompt({

@@ -62,6 +62,11 @@ export interface ContextStrategy {
   summaryInterval: number;
   ragTopK: number;
   compressionModel: string;
+  compressionEnabled: boolean;
+  compressionMessageThreshold: number;
+  compressionKeepRecentMessages: number;
+  compressionKeepLeadingMessages: number;
+  compressionMaxSummaryChars: number;
 }
 
 export interface RuntimeBackgroundConfig {
@@ -73,11 +78,55 @@ export interface RuntimeBackgroundConfig {
   runnerIdPrefix: string;
 }
 
+export interface DailyTechBriefingConfig {
+  enabled: boolean;
+  schedule: string;
+  sendEmptyDigest: boolean;
+  maxItemsPerCategory: number;
+  duplicateWindowDays: number;
+  maxNonCriticalItemsPerCategory: number;
+  maxCriticalItemsPerCategory: number;
+  maxTotalItemsPerCategory: number;
+  sendOnlyDelta: boolean;
+  resendOnlyOnMaterialChange: boolean;
+  larkDigestMode: 'markdown-summary' | 'interactive-card' | 'dual';
+  larkDetailMode?: 'summary' | 'detailed';
+  sourcePolicy: 'tiered-authority' | 'official-only';
+  webhookEnvVar: string;
+  webhookUrl?: string;
+  translationEnabled: boolean;
+  translationModel: string;
+  aiLookbackDays: number;
+  frontendLookbackDays: number;
+  securityLookbackDays: number;
+  categories: {
+    frontendSecurity: DailyTechBriefingCategoryConfig;
+    generalSecurity: DailyTechBriefingCategoryConfig;
+    devtoolSecurity: DailyTechBriefingCategoryConfig;
+    aiTech: DailyTechBriefingCategoryConfig;
+    frontendTech: DailyTechBriefingCategoryConfig;
+    backendTech: DailyTechBriefingCategoryConfig;
+    cloudInfraTech: DailyTechBriefingCategoryConfig;
+  };
+}
+
+export interface DailyTechBriefingCategoryConfig {
+  enabled: boolean;
+  baseIntervalHours: number;
+  lookbackDays: number;
+  adaptivePolicy: {
+    hotThresholdRuns: number;
+    cooldownEmptyRuns: number;
+    allowedIntervalHours: number[];
+  };
+}
+
 export interface RuntimeSettingsOverrides {
   profile?: RuntimeProfile;
   workspaceRoot?: string;
   memoryFilePath?: string;
   rulesFilePath?: string;
+  vectorIndexFilePath?: string;
   tasksStateFilePath?: string;
   semanticCacheFilePath?: string;
   skillsRoot?: string;
@@ -99,6 +148,7 @@ export interface RuntimeSettingsOverrides {
   policy?: Partial<PolicyConfig>;
   contextStrategy?: Partial<ContextStrategy>;
   runtimeBackground?: Partial<RuntimeBackgroundConfig>;
+  dailyTechBriefing?: Partial<DailyTechBriefingConfig>;
 }
 
 export interface LoadSettingsOptions {
@@ -113,6 +163,7 @@ export interface RuntimeSettings {
   workspaceRoot: string;
   memoryFilePath: string;
   rulesFilePath: string;
+  vectorIndexFilePath: string;
   tasksStateFilePath: string;
   semanticCacheFilePath: string;
   skillsRoot: string;
@@ -144,11 +195,13 @@ export interface RuntimeSettings {
   policy: PolicyConfig;
   contextStrategy: ContextStrategy;
   runtimeBackground: RuntimeBackgroundConfig;
+  dailyTechBriefing: DailyTechBriefingConfig;
   embeddings: {
     provider: 'glm';
     model: 'Embedding-3';
     dimensions: number;
     endpoint: string;
+    apiKey: string;
   };
   mcp: {
     bigmodelApiKey: string;

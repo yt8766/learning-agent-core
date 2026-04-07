@@ -22,7 +22,10 @@ describe('Runtime canonical contract', () => {
           historyTraceCount: 4,
           evidenceCount: 1,
           specialistCount: 1,
-          ministryCount: 2
+          ministryCount: 2,
+          compressionApplied: true,
+          compressionSource: 'llm',
+          compressedMessageCount: 12
         },
         audienceSlices: {
           strategy: { summary: '先整理策略约束', dispatchCount: 1 },
@@ -62,6 +65,13 @@ describe('Runtime canonical contract', () => {
           updatedAt: '2026-03-31T00:00:00.000Z'
         }
       },
+      streamStatus: {
+        nodeId: 'context_filter',
+        nodeLabel: '文书科',
+        detail: '正在压缩历史上下文并整理给工部',
+        progressPercent: 45,
+        updatedAt: '2026-03-31T00:00:00.000Z'
+      },
       finalReviewState: {
         node: 'final_review',
         ministry: 'xingbu-review',
@@ -85,10 +95,16 @@ describe('Runtime canonical contract', () => {
         modeGateState: expect.objectContaining({ activeMode: 'execute' }),
         contextFilterState: expect.objectContaining({
           dispatchOrder: ['strategy', 'ministry', 'fallback'],
+          filteredContextSlice: expect.objectContaining({
+            compressionApplied: true,
+            compressionSource: 'llm',
+            compressedMessageCount: 12
+          }),
           audienceSlices: expect.objectContaining({
             strategy: expect.objectContaining({ dispatchCount: 1 })
           })
         }),
+        streamStatus: expect.objectContaining({ nodeLabel: '文书科' }),
         dispatches: [expect.objectContaining({ kind: 'strategy' })],
         governanceScore: expect.objectContaining({ score: 88, trustAdjustment: 'promote' }),
         finalReviewState: expect.objectContaining({ decision: 'pass', deliveryStatus: 'delivered' }),
@@ -119,10 +135,10 @@ describe('Runtime canonical contract', () => {
     const evalsExport = await service.exportEvalsCenter({ days: 7, format: 'csv' });
 
     expect(runtimeExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,updatedAt'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt'
     );
     expect(approvalsExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt'
     );
     expect(evalsExport.content).toContain('day,runCount,passCount,passRate');
   });

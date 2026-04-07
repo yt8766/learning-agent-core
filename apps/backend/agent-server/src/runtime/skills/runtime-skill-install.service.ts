@@ -212,22 +212,24 @@ export async function finalizeRemoteSkillInstall(
     throw new Error(`Remote skill receipt ${receipt.id} is missing repo`);
   }
 
-  const skillName = receipt.skillName ?? receipt.skillId;
+  const cliSkillName = normalizeOptionalSkillName(receipt.skillName);
+  const resolvedSkillName = cliSkillName ?? deriveRemoteSkillDisplayName(receipt.repo);
   const version = receipt.version || 'remote';
-  const installCommand = receipt.installCommand ?? buildSkillsAddCommand({ repo: receipt.repo, skillName });
+  const installCommand =
+    receipt.installCommand ?? buildSkillsAddCommand({ repo: receipt.repo, skillName: cliSkillName });
   const runner = context.remoteSkillCli?.install ?? defaultRemoteSkillInstall;
   try {
     receipt.phase = 'installing';
     receipt.result = 'running_npx_skills_add';
     await writeSkillInstallReceipt(context, receipt);
 
-    const cliResult = await runner({ repo: receipt.repo, skillName });
+    const cliResult = await runner({ repo: receipt.repo, skillName: cliSkillName });
     const installedAt = new Date().toISOString();
     const installLocation = join(
       context.settings.skillPackagesRoot,
       'third-party',
       sanitizePathSegment(receipt.repo),
-      sanitizePathSegment(skillName),
+      sanitizePathSegment(resolvedSkillName),
       version
     );
     const installed: InstalledSkillRecord = {
@@ -242,14 +244,14 @@ export async function finalizeRemoteSkillInstall(
 
     const skillCard: SkillCard = {
       id: receipt.skillId,
-      name: skillName,
+      name: resolvedSkillName,
       description: receipt.reason ?? `Imported from ${receipt.repo} via npx skills add`,
-      applicableGoals: [receipt.reason ?? `Use ${skillName} for specialized execution and answer quality.`],
+      applicableGoals: [receipt.reason ?? `Use ${resolvedSkillName} for specialized execution and answer quality.`],
       requiredTools: [],
       steps: [
         {
           title: 'Load remote-installed skill',
-          instruction: `Use ${skillName} from ${receipt.repo} when the session needs more specialized help.`,
+          instruction: `Use ${resolvedSkillName} from ${receipt.repo} when the session needs more specialized help.`,
           toolNames: []
         }
       ],
@@ -320,6 +322,22 @@ async function writeJsonFile(filePath: string, payload: unknown): Promise<void> 
 
 function sanitizePathSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-');
+}
+
+function normalizeOptionalSkillName(value?: string) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function deriveRemoteSkillDisplayName(repo: string) {
+  return repo
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^github\.com\//i, '')
+    .replace(/\/+$/, '');
 }
 
 async function defaultRemoteSkillInstall(params: { repo: string; skillName?: string }) {

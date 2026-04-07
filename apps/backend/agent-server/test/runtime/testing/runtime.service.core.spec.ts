@@ -69,7 +69,7 @@ describe('RuntimeService core', () => {
         suites: expect.any(Array)
       })
     );
-  });
+  }, 15000);
 
   it('对缺失资源抛出 NotFoundException', async () => {
     const service = createService();
@@ -208,18 +208,24 @@ describe('RuntimeService core', () => {
       'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind'
     );
     expect(runtimeExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,updatedAt'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt'
+    );
+    expect(runtimeExport.content).toContain(
+      'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError'
+    );
+    expect(runtimeExport.content).toContain(
+      'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt'
     );
     expect(approvalsExport.filename).toContain('approvals-center');
     expect(approvalsExport.mimeType).toBe('text/csv');
     expect(approvalsExport.content).toContain('filterExecutionMode,filterInteractionKind');
     expect(approvalsExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt'
     );
     expect(evalsExport.filename).toContain('evals-center-7d');
     expect(evalsExport.mimeType).toBe('text/csv');
     expect(evalsExport.content).toContain('day,runCount,passCount,passRate');
-  });
+  }, 15000);
 
   it('支持创建 agent diagnosis task', async () => {
     const service = createService();

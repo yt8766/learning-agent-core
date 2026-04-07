@@ -14,6 +14,55 @@ describe('RuntimeQueueSection render smoke', () => {
                 id: 'task-1',
                 goal: '评估 VIP 产品规划',
                 status: 'running',
+                queueState: {
+                  mode: 'foreground',
+                  status: 'running',
+                  enqueuedAt: '2026-03-28T00:00:00.000Z',
+                  startedAt: '2026-03-28T00:00:01.000Z',
+                  lastTransitionAt: '2026-03-28T00:00:01.000Z',
+                  attempt: 1
+                },
+                currentExecutionStep: {
+                  id: 'execution_step_workflow-execute_research',
+                  route: 'workflow-execute',
+                  stage: 'research',
+                  label: '研究取证',
+                  owner: 'hubu',
+                  status: 'running',
+                  startedAt: '2026-03-28T00:00:00.000Z',
+                  detail: '户部正在补证据'
+                },
+                executionSteps: [
+                  {
+                    id: 'execution_step_workflow-execute_request-received',
+                    route: 'workflow-execute',
+                    stage: 'request-received',
+                    label: '接收请求',
+                    owner: 'session',
+                    status: 'completed',
+                    startedAt: '2026-03-28T00:00:00.000Z'
+                  },
+                  {
+                    id: 'execution_step_workflow-execute_approval-interrupt',
+                    route: 'workflow-execute',
+                    stage: 'approval-interrupt',
+                    label: '审批中断',
+                    owner: 'system',
+                    status: 'blocked',
+                    startedAt: '2026-03-28T00:00:01.000Z',
+                    reason: '执行链已暂停等待审批。'
+                  },
+                  {
+                    id: 'execution_step_workflow-execute_recovery',
+                    route: 'workflow-execute',
+                    stage: 'recovery',
+                    label: '恢复继续',
+                    owner: 'system',
+                    status: 'completed',
+                    startedAt: '2026-03-28T00:00:02.000Z',
+                    completedAt: '2026-03-28T00:00:03.000Z'
+                  }
+                ],
                 approvals: [],
                 updatedAt: '2026-03-28T00:00:00.000Z',
                 createdAt: '2026-03-28T00:00:00.000Z'
@@ -28,6 +77,15 @@ describe('RuntimeQueueSection render smoke', () => {
             id: 'task-1',
             goal: '评估 VIP 产品规划',
             status: 'running',
+            queueState: {
+              mode: 'foreground',
+              backgroundRun: false,
+              status: 'running',
+              enqueuedAt: '2026-03-28T00:00:00.000Z',
+              startedAt: '2026-03-28T00:00:01.000Z',
+              lastTransitionAt: '2026-03-28T00:00:01.000Z',
+              attempt: 1
+            },
             approvals: [],
             updatedAt: '2026-03-28T00:00:00.000Z',
             createdAt: '2026-03-28T00:00:00.000Z',
@@ -67,6 +125,38 @@ describe('RuntimeQueueSection render smoke', () => {
                 constraints: ['必须增加熔断开关'],
                 suggestions: ['先灰度发布再全量'],
                 confidence: 0.88
+              }
+            ],
+            currentExecutionStep: {
+              id: 'execution_step_workflow-execute_review',
+              route: 'workflow-execute',
+              stage: 'review',
+              label: '审查校验',
+              owner: 'xingbu',
+              status: 'blocked',
+              startedAt: '2026-03-28T00:00:04.000Z',
+              reason: '终审要求阻断或修订。'
+            },
+            executionSteps: [
+              {
+                id: 'execution_step_workflow-execute_review',
+                route: 'workflow-execute',
+                stage: 'review',
+                label: '审查校验',
+                owner: 'xingbu',
+                status: 'blocked',
+                startedAt: '2026-03-28T00:00:04.000Z',
+                reason: '终审要求阻断或修订。'
+              },
+              {
+                id: 'execution_step_workflow-execute_recovery',
+                route: 'workflow-execute',
+                stage: 'recovery',
+                label: '恢复继续',
+                owner: 'system',
+                status: 'completed',
+                startedAt: '2026-03-28T00:00:02.000Z',
+                completedAt: '2026-03-28T00:00:03.000Z'
               }
             ]
           },
@@ -175,6 +265,9 @@ describe('RuntimeQueueSection render smoke', () => {
     expect(html).toContain('review');
     expect(html).toContain('gpt-4o-mini');
     expect(html).toContain('fallback reason: provider_timeout');
+    expect(html).toContain('Execution Steps: blocked 1 / recovery 1');
+    expect(html).toContain('Last Reason: 终审要求阻断或修订');
+    expect(html).toContain('研究取证 / 户部');
     expect(html).toContain('from route');
     expect(html).toContain('Trace Waterfall');
     expect(html).toContain('Critical Path');

@@ -1,7 +1,8 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 
-import { getChannelDeliveries } from '@/api/admin-api';
+import { getChannelDeliveries, isAbortedAdminRequestError } from '@/api/admin-api';
 import { RuntimeSummaryAgentErrors } from './runtime-summary-agent-errors';
+import { RuntimeSummaryBriefingAudit } from './runtime-summary-briefing-audit';
 import { RuntimeSummaryBudget } from './runtime-summary-budget';
 import { RuntimeSummaryChannelDeliveries } from './runtime-summary-channel-deliveries';
 import { RuntimeSummaryGovernance } from './runtime-summary-governance';
@@ -20,7 +21,8 @@ export function RuntimeSummarySection({
   onSelectTask,
   onRetryTask,
   onRefreshRuntime,
-  onCreateDiagnosisTask
+  onCreateDiagnosisTask,
+  onRevokeApprovalPolicy
 }: RuntimeSummarySectionProps) {
   const [errorCodeFilter, setErrorCodeFilter] = useState('');
   const [ministryFilter, setMinistryFilter] = useState('');
@@ -55,14 +57,28 @@ export function RuntimeSummarySection({
   );
 
   useEffect(() => {
+    let cancelled = false;
     void getChannelDeliveries()
-      .then(setChannelDeliveries)
-      .catch(() => setChannelDeliveries([]));
+      .then(next => {
+        if (cancelled) {
+          return;
+        }
+        setChannelDeliveries(next);
+      })
+      .catch(error => {
+        if (cancelled || isAbortedAdminRequestError(error)) {
+          return;
+        }
+        setChannelDeliveries([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [runtime.taskCount, runtime.activeTaskCount, runtime.pendingApprovalCount]);
 
   return (
     <>
-      <RuntimeSummaryOverview runtime={runtime} />
+      <RuntimeSummaryOverview runtime={runtime} onRevokeApprovalPolicy={onRevokeApprovalPolicy} />
       <RuntimeSummaryBudget runtime={runtime} />
       <RuntimeSummaryGovernance runtime={runtime} />
       <RuntimeSummaryTools
@@ -90,6 +106,7 @@ export function RuntimeSummarySection({
         onRetryableFilterChange={setRetryableFilter}
       />
       <RuntimeSummaryVisuals runtime={runtime} onSelectTask={onSelectTask} />
+      <RuntimeSummaryBriefingAudit runtime={runtime} />
       <RuntimeSummaryChannelDeliveries channelDeliveries={channelDeliveries} />
     </>
   );
