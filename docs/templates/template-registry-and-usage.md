@@ -2,7 +2,7 @@
 
 状态：current
 适用范围：`packages/templates`
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 ## 1. 这篇文档说明什么
 
@@ -42,6 +42,15 @@
   - 入口文件
   - 是否参与代码生成或报表生成
 - `src/bonus-center-data` 这类业务报表模板如果已经由外层模块卡片提供标题，内部图表卡片不要再重复渲染 `common.base.chart` 一类的通用小标题，避免出现双标题
+- `src/bonus-center-data` 必须始终保留这组共享模板资产，不能只剩页面组件目录：
+  - `services/data/bonusCenter.ts`
+  - `types/data/bonusCenter.ts`
+  - `pages/dataDashboard/bonusCenterData/config.tsx`
+  - `routes.ts`
+- 原因：
+  - `packages/report-kit/src/data-report-blueprint.ts` 会从 `services/data/bonusCenter.ts` 解析接口注释与函数名，生成单报表/多报表 blueprint
+  - sandbox preview、backend sandpack preview、assembly/write 测试都把这些文件视为稳定模板契约
+  - 如果删掉共享 service/types 文件，CI 会在 blueprint、sandbox、chat sandpack 相关链路同时报错，而不是只影响模板包本身
 
 ## 5. 继续阅读
 

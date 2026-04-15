@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { getFrontendTemplate, resolveFrontendTemplateDir } from '@agent/templates';
 
+import { collectBonusCenterTemplateEntries, findMatchedBonusCenterEntry } from './data-report-blueprint-template';
+
 export type DataReportScope = 'single' | 'multiple' | 'shell-first';
 export type DataReportSingleStructureMode = 'page-only' | 'component-files';
 
@@ -52,10 +54,6 @@ interface StructuredReportIntent {
 const MULTIPLE_SCOPE_PATTERN = /(多个|多张|多页|multi|批量|一组|多个报表)/i;
 const SHELL_SCOPE_PATTERN = /(骨架|shell|先搭|容器)/i;
 const BIG_DATA_INTERFACE_PATTERN = /(大数据接口|big\s*data\s*api)[：:]\s*([a-z0-9_]+)/gi;
-const BONUS_CENTER_ROUTE_NAME_OVERRIDES: Record<string, string> = {
-  exchangeMall: 'silverCoinExchangeRecord'
-};
-
 function normalize(text: string) {
   return text.trim().toLowerCase();
 }
@@ -82,10 +80,6 @@ function splitFieldList(value: string | undefined) {
 
 function camelCase(value: string) {
   return value.charAt(0).toLowerCase() + value.slice(1);
-}
-
-function buildRouteNameFromKey(key: string) {
-  return BONUS_CENTER_ROUTE_NAME_OVERRIDES[key] ?? key;
 }
 
 function normalizeRouteNameFromServiceKey(serviceKey: string) {
@@ -136,93 +130,6 @@ function extractStructuredReportIntent(
   };
 }
 
-function parseBonusCenterTitles(templateDir: string) {
-  const configPath = join(templateDir, 'pages', 'dataDashboard', 'bonusCenterData', 'config.tsx');
-  const raw = readFileSync(configPath, 'utf8');
-  return Array.from(raw.matchAll(/^\s*(\w+)\s*=\s*\d+,\s*\/\/\s*(.+)$/gm))
-    .map(match => {
-      const key = match[1];
-      const title = match[2];
-      return key && title
-        ? {
-            key,
-            title: title.trim()
-          }
-        : null;
-    })
-    .filter((item): item is { key: string; title: string } => item !== null);
-}
-
-function parseBonusCenterApis(templateDir: string) {
-  const servicePath = join(templateDir, 'services', 'data', 'bonusCenter.ts');
-  const raw = readFileSync(servicePath, 'utf8');
-  return Array.from(
-    raw.matchAll(
-      /\/\*\*[\s\S]*?使用大数据接口\s+([a-z0-9_]+)[\s\S]*?\*\/\s*export\s+async\s+function\s+get([A-Z][A-Za-z0-9]+)Data\(/g
-    )
-  )
-    .map(match => {
-      const apiName = match[1];
-      const moduleId = match[2];
-      return apiName && moduleId ? { apiName, moduleId } : null;
-    })
-    .filter((item): item is { apiName: string; moduleId: string } => item !== null);
-}
-
-function collectBonusCenterTemplateEntries(templateDir: string): BonusCenterTemplateEntry[] {
-  const titleByModule = new Map(
-    parseBonusCenterTitles(templateDir).map(item => [item.key.toLowerCase(), item.title] as const)
-  );
-  const apis = parseBonusCenterApis(templateDir);
-
-  return apis.map(item => {
-    const key = camelCase(item.moduleId);
-    return {
-      key,
-      moduleId: item.moduleId,
-      routeName: buildRouteNameFromKey(key),
-      title: titleByModule.get(key.toLowerCase()) ?? item.moduleId,
-      apiName: item.apiName
-    };
-  });
-}
-
-function findMatchedBonusCenterEntry(
-  goal: string,
-  taskContext: string | undefined,
-  entries: BonusCenterTemplateEntry[]
-) {
-  const structuredIntent = extractStructuredReportIntent(goal, taskContext);
-  if (structuredIntent) {
-    const serviceKey = normalize(structuredIntent.serviceKey ?? '');
-    const reportName = normalize(structuredIntent.reportName ?? '');
-    const routeName = normalize(structuredIntent.routeName ?? '');
-
-    const structuredMatch = entries.find(entry => {
-      const candidates = [entry.apiName, entry.title, entry.routeName, entry.key, entry.moduleId]
-        .filter(Boolean)
-        .map(candidate => normalize(candidate!));
-      return (
-        (serviceKey && candidates.includes(serviceKey)) ||
-        (reportName && candidates.includes(reportName)) ||
-        (routeName && candidates.includes(routeName))
-      );
-    });
-
-    if (structuredMatch) {
-      return structuredMatch;
-    }
-  }
-
-  const text = normalize(`${goal}\n${taskContext ?? ''}`);
-  return entries.find(entry => {
-    const candidates = [entry.title, entry.key, entry.moduleId, entry.routeName, entry.apiName].filter(
-      Boolean
-    ) as string[];
-    return candidates.some(candidate => text.includes(normalize(candidate)));
-  });
-}
-
 function countDeclaredBigDataInterfaces(goal: string, taskContext: string | undefined) {
   const text = `${goal}\n${taskContext ?? ''}`;
   const matches = Array.from(text.matchAll(BIG_DATA_INTERFACE_PATTERN));
@@ -247,7 +154,7 @@ function resolveScope(
   const declaredInterfaceCount = countDeclaredBigDataInterfaces(goal, taskContext);
   if (declaredInterfaceCount > 1) return 'multiple';
   if (declaredInterfaceCount === 1) return 'single';
-  if (findMatchedBonusCenterEntry(goal, taskContext, templateEntries)) return 'single';
+  if (findMatchedBonusCenterEntry(goal, taskContext, templateEntries, structuredIntent)) return 'single';
   return 'single';
 }
 
@@ -330,7 +237,7 @@ export function buildDataReportBlueprint(params: {
   const templateEntries =
     templateId === 'bonus-center-data' && templateDir ? collectBonusCenterTemplateEntries(templateDir) : [];
   const structuredIntent = extractStructuredReportIntent(params.goal, params.taskContext);
-  const matchedEntry = findMatchedBonusCenterEntry(params.goal, params.taskContext, templateEntries);
+  const matchedEntry = findMatchedBonusCenterEntry(params.goal, params.taskContext, templateEntries, structuredIntent);
   const scope = resolveScope(params.goal, params.taskContext, templateEntries);
   const routeName =
     matchedEntry?.routeName ??
