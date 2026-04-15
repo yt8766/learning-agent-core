@@ -42,6 +42,7 @@ import {
   rejectSession,
   respondInterrupt,
   selectSession,
+  streamReportSchema,
   updateSession
 } from '@/api/chat-api';
 
@@ -353,5 +354,80 @@ describe('chat-api url builders', () => {
         method: 'GET'
       })
     );
+  });
+
+  it('streams report-schema SSE events over POST /chat', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              [
+                'event: stage',
+                'data: {"stage":"analysisNode","status":"success"}',
+                '',
+                'event: schema_ready',
+                'data: {"schema":{"kind":"data-report-json"}}',
+                '',
+                'event: done',
+                'data: {"status":"success"}',
+                ''
+              ].join('\n')
+            )
+          );
+          controller.close();
+        }
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const events: Array<{ type: string; data?: Record<string, unknown>; message?: string }> = [];
+
+    await streamReportSchema(
+      {
+        message: '生成直播间分类报表',
+        reportSchemaInput: {
+          meta: {
+            reportId: 'roomCategoryDashboard'
+          }
+        }
+      },
+      event => {
+        events.push(event);
+      }
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/chat'),
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: expect.stringContaining('"preferLlm":true')
+      })
+    );
+    expect(events).toEqual([
+      {
+        type: 'stage',
+        data: {
+          stage: 'analysisNode',
+          status: 'success'
+        }
+      },
+      {
+        type: 'schema_ready',
+        data: {
+          schema: {
+            kind: 'data-report-json'
+          }
+        }
+      },
+      {
+        type: 'done',
+        data: {
+          status: 'success'
+        }
+      }
+    ]);
   });
 });

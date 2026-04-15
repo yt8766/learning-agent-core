@@ -255,7 +255,7 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
   const runtimeEnv = resolveRuntimeEnv(options.env ?? process.env, workspaceRoot);
   const zhipuModels: RuntimeSettings['zhipuModels'] = {
     manager: runtimeEnv.ZHIPU_MANAGER_MODEL ?? 'glm-5',
-    research: runtimeEnv.ZHIPU_RESEARCH_MODEL ?? 'glm-4.7-flashx',
+    research: runtimeEnv.ZHIPU_RESEARCH_MODEL ?? 'glm-5.1',
     executor: runtimeEnv.ZHIPU_EXECUTOR_MODEL ?? 'glm-4.6',
     reviewer: runtimeEnv.ZHIPU_REVIEWER_MODEL ?? 'glm-4.7'
   };
@@ -307,7 +307,7 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
         retryBudget: overrides.policy?.budget?.retryBudget ?? 1,
         sourceBudget: overrides.policy?.budget?.sourceBudget ?? 8,
         maxCostPerTaskUsd: overrides.policy?.budget?.maxCostPerTaskUsd ?? 2,
-        fallbackModelId: overrides.policy?.budget?.fallbackModelId ?? 'glm-4.7-flash'
+        fallbackModelId: overrides.policy?.budget?.fallbackModelId ?? 'glm-5.1'
       }
     },
     contextStrategy: {

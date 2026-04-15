@@ -1,4 +1,12 @@
 import { ToolExecutionRequest, ToolExecutionResult } from '@agent/shared';
+import {
+  assembleDataReportBundle,
+  buildDataReportBlueprint,
+  buildDataReportModuleScaffold,
+  buildDataReportRoutes,
+  buildDataReportScaffold,
+  writeDataReportBundle
+} from '@agent/report-kit';
 
 import { executeConnectorTool } from '../connectors/connectors-executor';
 import { executeFilesystemTool } from '../filesystem/filesystem-executor';
@@ -75,6 +83,74 @@ export class LocalSandboxExecutor implements SandboxExecutor {
       }
       case 'find-skills':
         return executeFindSkills(request);
+      case 'generate_data_report_scaffold': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const taskContext = typeof request.input.taskContext === 'string' ? request.input.taskContext : undefined;
+        const baseDir = typeof request.input.baseDir === 'string' ? request.input.baseDir : undefined;
+        const scaffold = buildDataReportScaffold({ goal, taskContext, baseDir });
+        return {
+          outputSummary: `Generated data-report scaffold with ${scaffold.files.length} files for "${goal}"`,
+          rawOutput: scaffold
+        };
+      }
+      case 'generate_data_report_module': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const taskContext = typeof request.input.taskContext === 'string' ? request.input.taskContext : undefined;
+        const baseDir = typeof request.input.baseDir === 'string' ? request.input.baseDir : undefined;
+        const moduleId = typeof request.input.moduleId === 'string' ? request.input.moduleId : 'Overview';
+        const moduleScaffold = buildDataReportModuleScaffold({ goal, taskContext, baseDir, moduleId });
+        return {
+          outputSummary: `Generated data-report module ${moduleScaffold.module.id} with ${moduleScaffold.files.length} files`,
+          rawOutput: moduleScaffold
+        };
+      }
+      case 'assemble_data_report_bundle': {
+        const blueprint = request.input.blueprint as any;
+        const moduleResults = Array.isArray(request.input.moduleResults) ? (request.input.moduleResults as any[]) : [];
+        const sharedFiles = Array.isArray(request.input.sharedFiles) ? (request.input.sharedFiles as any[]) : [];
+        const routeFiles = Array.isArray(request.input.routeFiles) ? (request.input.routeFiles as any[]) : undefined;
+        const bundle = assembleDataReportBundle({
+          blueprint,
+          moduleResults,
+          sharedFiles,
+          routeFiles
+        });
+        return {
+          outputSummary: `Assembled data-report bundle with ${bundle.assemblyPlan.totalFiles} files`,
+          rawOutput: bundle
+        };
+      }
+      case 'write_data_report_bundle': {
+        const bundle = request.input.bundle as any;
+        const targetRoot =
+          typeof request.input.targetRoot === 'string' ? request.input.targetRoot : 'data/generated/data-report-output';
+        const result = await writeDataReportBundle({
+          bundle,
+          targetRoot
+        });
+        return {
+          outputSummary: `Materialized data-report bundle with ${result.totalWritten} files into ${targetRoot}`,
+          rawOutput: result
+        };
+      }
+      case 'plan_data_report_structure': {
+        const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
+        const taskContext = typeof request.input.taskContext === 'string' ? request.input.taskContext : undefined;
+        const baseDir = typeof request.input.baseDir === 'string' ? request.input.baseDir : undefined;
+        const blueprint = buildDataReportBlueprint({ goal, taskContext, baseDir });
+        return {
+          outputSummary: `Planned data-report blueprint with ${blueprint.modules.length} modules for "${goal}"`,
+          rawOutput: blueprint
+        };
+      }
+      case 'generate_data_report_routes': {
+        const blueprint = request.input.blueprint as any;
+        const routeResult = buildDataReportRoutes(blueprint);
+        return {
+          outputSummary: `Generated data-report routes with ${routeResult.files.length} files`,
+          rawOutput: routeResult
+        };
+      }
       case 'collect_research_source': {
         const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
         const url = typeof request.input.url === 'string' ? request.input.url : 'https://example.com/';

@@ -10,7 +10,7 @@ import type {
   KnowledgeStoreRecord
 } from '@agent/shared';
 import { loadSettings } from '@agent/config';
-import { resolveRuntimeEmbeddingApiKey } from '@agent/model';
+import { resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
 import { createKnowledgeEmbeddingProvider } from './runtime-knowledge-models';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
@@ -64,7 +64,7 @@ export async function listKnowledgeCandidates(workspaceRoot: string) {
   const docsRoot = join(workspaceRoot, 'docs');
   const candidates: Array<{ absolutePath: string; relativePath: string; kind: KnowledgeSourceRecord['sourceType'] }> =
     [];
-  for (const file of ['README.md', 'PROJECT_CONVENTIONS.md']) {
+  for (const file of ['README.md', 'docs/project-conventions.md']) {
     candidates.push({
       absolutePath: join(workspaceRoot, file),
       relativePath: file,

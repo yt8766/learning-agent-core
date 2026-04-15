@@ -1,5 +1,9 @@
 # 提示词规范
 
+状态：current
+适用范围：提示词工程规范
+最后核对：2026-04-14
+
 适用范围：
 
 - `packages/agent-core/src/flows/**/prompts/*.ts`
@@ -260,6 +264,28 @@ few-shot 数量建议：
 - 样例要比说明更像“合同示范”，不要写成散文
 - 样例里不要混入与当前 schema 无关的历史字段
 - 样例更新要跟 `schema` 版本一起看，避免 example 漂移
+
+### 6.1 data-report-json 额外规范
+
+适用：
+
+- `agents/data-report/src/flows/data-report-json/prompts/generate-report-page-prompt.ts`
+- `agents/data-report/src/flows/data-report-json/prompts/generate-report-page-part-prompt.ts`
+- `agents/data-report/src/flows/data-report-json/prompts/generate-report-page-spec-prompt.ts`
+
+强制要求：
+
+- 每个进入模型的 prompt 都至少提供 `1` 个明确示例，不能只有抽象规则
+- system prompt 必须包含“输出示例”，展示目标 JSON 结构或关键片段
+- user prompt 必须包含“需求示例”，告诉模型什么样的自然语言需求是合格输入
+- 示例必须使用当前 schema 仍然合法的字段名、block 名和 key 命名，不允许放过期结构
+- 如果 prompt 负责局部片段，示例也必须缩到对应片段，不要给整页 schema 造成噪音
+
+推荐做法：
+
+- 优先给最小可工作的示例，而不是超长大样本
+- 对 table.columns、filterSchema、sections.blocks 这类最容易漂移的结构，示例要尽量贴近真实产物
+- 需求示例要同时包含标题、接口、筛选项、字段和期望布局，避免模型只学到单一句式
 
 如果是分类任务，再加一条：
 
@@ -596,7 +622,7 @@ prompt 改动默认不是“拍脑袋上线”，而是应该能被回归。
 仓库已提供一个最小模板：
 
 - [packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml](/Users/dev/Desktop/learning-agent-core/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
-- [packages/evals/promptfoo/README.md](/Users/dev/Desktop/learning-agent-core/packages/evals/promptfoo/README.md)
+- [docs/evals/promptfoo-regression.md](/Users/dev/Desktop/learning-agent-core/docs/evals/promptfoo-regression.md)
 
 ## 11. 渐进式优化策略
 

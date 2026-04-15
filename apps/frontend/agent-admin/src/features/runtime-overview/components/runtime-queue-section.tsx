@@ -225,7 +225,7 @@ export function RuntimeQueueSection(props: RuntimeOverviewPanelProps) {
                   {task.queueState ? <Badge variant="outline">{task.queueState.mode}</Badge> : null}
                   {task.queueState ? <Badge variant="outline">attempt {task.queueState.attempt}</Badge> : null}
                   {executionSummary ? <Badge variant="secondary">{executionSummary.currentCopy}</Badge> : null}
-                  {task.subgraphTrail?.map(subgraph => (
+                  {task.subgraphTrail?.map((subgraph: string) => (
                     <span key={`${task.id}-${subgraph}`}>
                       <Badge variant="outline">{subgraph}</Badge>
                     </span>

@@ -44,6 +44,10 @@ import {
 } from '@/api/admin-api';
 import { downloadText } from './admin-dashboard-constants';
 import type { AdminDashboardActionContext } from './admin-dashboard-actions.types';
+import {
+  promptCreateCounselorSelector,
+  promptEditCounselorSelector
+} from './admin-dashboard-counselor-selector-prompts';
 
 interface RefreshActions {
   refreshAll: () => Promise<void>;
@@ -335,41 +339,12 @@ export function createAdminDashboardMutationActions(
         await refreshActions.refreshPageCenter('companyAgents');
       }, '停用 company agent 失败'),
     handleCreateCounselorSelector: async () => {
-      const selectorId = window.prompt('输入 selectorId，例如 payment-selector-v2');
-      if (!selectorId) {
+      const params = promptCreateCounselorSelector(window);
+      if (!params) {
         return;
       }
-      const domain = window.prompt('输入 domain，例如 payment', 'general') ?? 'general';
-      const strategy =
-        (window.prompt('输入策略：manual / user-id / session-ratio / task-type / feature-flag', 'task-type') as
-          | 'manual'
-          | 'user-id'
-          | 'session-ratio'
-          | 'task-type'
-          | 'feature-flag'
-          | null) ?? 'task-type';
-      const candidateIds = (window.prompt('输入 candidateIds，逗号分隔', `${domain}-counselor-v1`) ?? '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
-      if (!candidateIds.length) {
-        return;
-      }
-      const defaultCounselorId =
-        window.prompt('输入 defaultCounselorId', candidateIds[0] ?? `${domain}-counselor-v1`) ?? candidateIds[0]!;
-      const featureFlag =
-        strategy === 'feature-flag'
-          ? (window.prompt('输入 feature flag 名称', `${domain}_selector`) ?? undefined)
-          : undefined;
       await runMutation(async () => {
-        await createOrUpdateCounselorSelector({
-          selectorId,
-          domain,
-          strategy,
-          candidateIds,
-          defaultCounselorId,
-          featureFlag
-        });
+        await createOrUpdateCounselorSelector(params);
         await refreshActions.refreshPageCenter('learning');
       }, '创建群辅 selector 失败');
     },
@@ -385,54 +360,12 @@ export function createAdminDashboardMutationActions(
       updatedAt?: string;
       enabled: boolean;
     }) => {
-      const strategy =
-        (window.prompt('更新策略：manual / user-id / session-ratio / task-type / feature-flag', selector.strategy) as
-          | 'manual'
-          | 'user-id'
-          | 'session-ratio'
-          | 'task-type'
-          | 'feature-flag'
-          | null) ??
-        ((selector.strategy as 'manual' | 'user-id' | 'session-ratio' | 'task-type' | 'feature-flag') || 'task-type');
-      const candidateIds = (window.prompt('更新 candidateIds，逗号分隔', selector.candidateIds.join(',')) ?? '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
-      if (!candidateIds.length) {
+      const params = promptEditCounselorSelector(window, selector);
+      if (!params) {
         return;
       }
-      const defaultCounselorId =
-        window.prompt('更新 defaultCounselorId', selector.defaultCounselorId) ?? selector.defaultCounselorId;
-      const featureFlag =
-        strategy === 'feature-flag'
-          ? (window.prompt('更新 feature flag', selector.featureFlag ?? `${selector.domain}_selector`) ??
-            selector.featureFlag)
-          : undefined;
-      const weightsInput =
-        strategy === 'session-ratio'
-          ? window.prompt(
-              '更新 weights，逗号分隔',
-              selector.weights?.join(',') ?? candidateIds.map(() => '1').join(',')
-            )
-          : undefined;
-      const weights =
-        strategy === 'session-ratio'
-          ? weightsInput
-              ?.split(',')
-              .map(item => Number(item.trim()))
-              .filter(item => Number.isFinite(item) && item > 0)
-          : undefined;
       await runMutation(async () => {
-        await createOrUpdateCounselorSelector({
-          selectorId: selector.selectorId,
-          domain: selector.domain,
-          strategy,
-          candidateIds,
-          defaultCounselorId,
-          featureFlag,
-          weights,
-          enabled: selector.enabled
-        });
+        await createOrUpdateCounselorSelector(params);
         await refreshActions.refreshPageCenter('learning');
       }, '更新群辅 selector 失败');
     },

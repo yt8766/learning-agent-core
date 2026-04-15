@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRecord, RuleRecord } from '@agent/shared';
 
-import type { EmbeddingProvider } from '../src/embedding-provider';
-import { LocalVectorIndexRepository } from '../src/vector-index-repository';
+import type { EmbeddingProvider } from '@agent/memory';
+import { LocalVectorIndexRepository } from '@agent/memory';
 
 describe('LocalVectorIndexRepository', () => {
   let tempDir = '';

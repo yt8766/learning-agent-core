@@ -8,7 +8,7 @@ vi.mock('@agent/model', () => ({
   createRuntimeEmbeddingProvider: (...args: unknown[]) => createRuntimeEmbeddingProviderMock(...args)
 }));
 
-import { createHttpEmbeddingProvider, HttpEmbeddingProvider } from '../src/embedding-provider';
+import { createHttpEmbeddingProvider, HttpEmbeddingProvider } from '@agent/memory';
 
 describe('HttpEmbeddingProvider', () => {
   beforeEach(() => {

@@ -65,6 +65,12 @@ pnpm-debug.log*
 data
 data/**/*.tmp
 tmp
+!packages/templates/src/bonus-center-data/services/
+!packages/templates/src/bonus-center-data/services/data/
+!packages/templates/src/bonus-center-data/services/data/bonusCenter.ts
+!packages/templates/src/bonus-center-data/types/
+!packages/templates/src/bonus-center-data/types/data/
+!packages/templates/src/bonus-center-data/types/data/bonusCenter.ts
 
 # -----------------------------------------------------------------------------
 # 操作系统杂项

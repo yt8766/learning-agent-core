@@ -29,7 +29,7 @@ describe('runtime-knowledge-store', () => {
     await mkdir(join(root, 'docs'), { recursive: true });
     await mkdir(join(root, 'apps/backend/agent-server'), { recursive: true });
     await writeFile(join(root, 'README.md'), '# Root\n\nhello knowledge');
-    await writeFile(join(root, 'PROJECT_CONVENTIONS.md'), '# Conventions\n\nkeep it canonical');
+    await writeFile(join(root, 'docs', 'project-conventions.md'), '# Conventions\n\nkeep it canonical');
     await writeFile(join(root, 'docs', 'ARCHITECTURE.md'), '# Architecture\n\nfive layers');
     await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'fixture' }, null, 2));
     await writeFile(join(root, 'apps/backend/agent-server/package.json'), JSON.stringify({ name: 'server' }, null, 2));

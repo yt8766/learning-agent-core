@@ -1,9 +1,44 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { renderedButtons, setActiveChartMock } = vi.hoisted(() => ({
+  renderedButtons: [] as Array<{ children?: unknown; onClick?: () => void }>,
+  setActiveChartMock: vi.fn()
+}));
+
+function getButtonText(children: unknown): string {
+  if (Array.isArray(children)) {
+    return children.map(getButtonText).join('');
+  }
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return '';
+  }
+  return String(children);
+}
+
+vi.mock('react', async importOriginal => {
+  const actual = await importOriginal<typeof import('react')>();
+  return {
+    ...actual,
+    useState: ((initialValue: unknown) => [initialValue, setActiveChartMock]) as unknown as typeof actual.useState
+  };
+});
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick }: { children?: unknown; onClick?: () => void }) => {
+    renderedButtons.push({ children, onClick });
+    return <button>{children as any}</button>;
+  }
+}));
 
 import { EvalsCenterPanel } from '@/features/evals-center/evals-center-panel';
 
-describe('EvalsCenterPanel render smoke', () => {
+describe('EvalsCenterPanel', () => {
+  beforeEach(() => {
+    renderedButtons.length = 0;
+    setActiveChartMock.mockReset();
+  });
+
   it('renders eval dashboard sections and filters', () => {
     const html = renderToStaticMarkup(
       <EvalsCenterPanel
@@ -69,5 +104,55 @@ describe('EvalsCenterPanel render smoke', () => {
     expect(html).toContain('Benchmark Scenarios');
     expect(html).toContain('Recent Benchmark Runs');
     expect(html).toContain('VIP retention');
+  });
+
+  it('routes export, history-window and chart-tab actions through callbacks', () => {
+    const onHistoryDaysChange = vi.fn();
+    const onExport = vi.fn();
+
+    renderToStaticMarkup(
+      <EvalsCenterPanel
+        evals={
+          {
+            scenarioCount: 8,
+            runCount: 20,
+            overallPassRate: 72,
+            dailyTrend: [{ day: '2026-03-30', runCount: 5, passCount: 4, passRate: 80 }],
+            scenarios: [],
+            recentRuns: [],
+            promptRegression: {
+              promptSuiteCount: 0,
+              promptCount: 0,
+              testCount: 0,
+              providerCount: 0,
+              configPath: '/tmp/prompts',
+              suites: []
+            }
+          } as any
+        }
+        historyDays={30}
+        onHistoryDaysChange={onHistoryDaysChange}
+        scenarioFilter=""
+        onScenarioFilterChange={vi.fn()}
+        outcomeFilter=""
+        onOutcomeFilterChange={vi.fn()}
+        onExport={onExport}
+      />
+    );
+
+    renderedButtons.find(item => getButtonText(item.children) === '导出')?.onClick?.();
+    renderedButtons.filter(item => getButtonText(item.children) === '导出')[1]?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '7d')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '90d')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === 'Trend')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === 'Suites')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === 'Pass Rate')?.onClick?.();
+
+    expect(onExport).toHaveBeenCalledTimes(2);
+    expect(onHistoryDaysChange).toHaveBeenNthCalledWith(1, 7);
+    expect(onHistoryDaysChange).toHaveBeenNthCalledWith(2, 90);
+    expect(setActiveChartMock).toHaveBeenNthCalledWith(1, 'trend');
+    expect(setActiveChartMock).toHaveBeenNthCalledWith(2, 'suites');
+    expect(setActiveChartMock).toHaveBeenNthCalledWith(3, 'passRate');
   });
 });

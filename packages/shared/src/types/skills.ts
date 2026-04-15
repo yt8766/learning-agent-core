@@ -323,6 +323,24 @@ export interface InstalledSkillRecord {
   status: SkillInstallStatus;
   receiptId: string;
   ownership?: CapabilityOwnershipRecord;
+  governanceRecommendation?: string;
+  allowedTools?: string[];
+  compatibility?: string;
+  activeTaskCount?: number;
+  totalTaskCount?: number;
+  recentTaskGoals?: string[];
+  firstUsedAt?: string;
+  lastUsedAt?: string;
+  successRate?: number;
+  lastOutcome?: 'success' | 'failure';
+  recentFailureReason?: string;
+  recentTasks?: Array<{
+    taskId: string;
+    goal: string;
+    status: string;
+    approvalCount: number;
+    latestTraceSummary?: string;
+  }>;
 }
 
 export interface SkillInstallReceipt {
@@ -346,6 +364,35 @@ export interface SkillInstallReceipt {
   detailsUrl?: string;
   installCommand?: string;
   triggerReason?: SkillTriggerReason;
+}
+
+export interface CompanyAgentRecord {
+  id: string;
+  enabled?: boolean;
+  ministry: string;
+  kind?: string;
+  displayName: string;
+  defaultModel: string;
+  supportedCapabilities: string[];
+  reviewPolicy: string;
+  sourceId?: string;
+  owner?: string;
+  tags?: string[];
+  requiredConnectors?: string[];
+  activeTaskCount?: number;
+  totalTaskCount?: number;
+  successRate?: number;
+  promotionState?: string;
+  sourceRuns?: string[];
+  recentTaskGoals?: string[];
+  governanceStatus?: string;
+}
+
+export interface SkillSourcesCenterRecord {
+  sources: SkillSourceRecord[];
+  manifests: SkillManifestRecord[];
+  installed: InstalledSkillRecord[];
+  receipts: SkillInstallReceipt[];
 }
 
 export type SkillTriggerReason = 'user_requested' | 'capability_gap_detected' | 'domain_specialization_needed';

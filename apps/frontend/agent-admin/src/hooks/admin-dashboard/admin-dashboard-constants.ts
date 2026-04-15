@@ -1,4 +1,5 @@
-﻿import type { ApprovalCenterItem, DashboardPageKey, PlatformConsoleRecord, TaskRecord } from '@/types/admin';
+﻿import { RUNTIME_CENTER_PAGE_TITLES } from '@agent/shared';
+import type { ApprovalCenterItem, DashboardPageKey, PlatformConsoleRecord, TaskRecord } from '@/types/admin';
 import { getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
 
 // Dashboard hash filters normalize legacy aliases into canonical executionPlan.mode values.
@@ -35,18 +36,9 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'companyAgents'
 ];
 
-export const PAGE_TITLES: Record<DashboardPageKey, string> = {
-  runtime: 'Runtime Center',
-  approvals: 'Approvals Center',
-  learning: 'Learning Center',
-  evals: 'Evals',
-  archives: 'Archive Center',
-  skills: 'Skill Lab',
-  evidence: 'Evidence Center',
-  connectors: 'Connector & Policy Center',
-  skillSources: 'Skill Sources / Marketplace',
-  companyAgents: 'Company Agents'
-};
+export const PAGE_TITLES = {
+  ...RUNTIME_CENTER_PAGE_TITLES
+} satisfies Record<DashboardPageKey, string>;
 
 function isExecutionModeFilter(value: string | null): value is ExecutionModeFilter {
   return value === 'all' || value === 'plan' || value === 'execute' || value === 'imperial_direct';

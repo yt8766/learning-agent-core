@@ -1,4 +1,4 @@
-import { SessionCoordinator } from '@agent/agent-core';
+import { SessionCoordinator } from '@agent/runtime';
 import { ChatCheckpointRecord, SkillCard, TaskRecord } from '@agent/shared';
 import { RuntimeStateSnapshot } from '@agent/memory';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { MemoryScrubberService } from '../src/memory-scrubber-service';
+import { MemoryScrubberService } from '@agent/memory';
 
 describe('MemoryScrubberService', () => {
   it('会把命中冲突校验的经验隔离', async () => {

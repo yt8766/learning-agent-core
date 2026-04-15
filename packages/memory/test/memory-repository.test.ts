@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { FileMemoryRepository } from '../src/memory-repository';
+import { FileMemoryRepository } from '@agent/memory';
 
 describe('FileMemoryRepository', () => {
   it('search 会过滤 quarantined memory', async () => {

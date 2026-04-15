@@ -1,10 +1,68 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const learningCenterTestState = vi.hoisted(() => ({
+  renderedButtons: [] as Array<{ children?: unknown; onClick?: () => void }>,
+  renderedInputs: [] as Array<{
+    placeholder?: string;
+    onChange?: (event: { target: { value: string } }) => void;
+  }>,
+  stateQueue: [] as Array<[unknown, ReturnType<typeof vi.fn>]>
+}));
+
+function getButtonText(children: unknown): string {
+  if (Array.isArray(children)) {
+    return children.map(getButtonText).join('');
+  }
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return '';
+  }
+  return String(children);
+}
+
+vi.mock('react', async importOriginal => {
+  const actual = await importOriginal<typeof import('react')>();
+  return {
+    ...actual,
+    useState: ((initialValue: unknown) => {
+      if (learningCenterTestState.stateQueue.length > 0) {
+        return learningCenterTestState.stateQueue.shift()!;
+      }
+      return [initialValue, vi.fn()];
+    }) as unknown as typeof actual.useState
+  };
+});
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick }: { children?: unknown; onClick?: () => void }) => {
+    learningCenterTestState.renderedButtons.push({ children, onClick });
+    return <button>{children as any}</button>;
+  }
+}));
+
+vi.mock('@/components/ui/input', () => ({
+  Input: ({
+    placeholder,
+    onChange
+  }: {
+    placeholder?: string;
+    onChange?: (event: { target: { value: string } }) => void;
+  }) => {
+    learningCenterTestState.renderedInputs.push({ placeholder, onChange });
+    return <input />;
+  }
+}));
 
 import { LearningCenterPanel } from '@/features/learning-center/learning-center-panel';
 import type { LearningCenterRecord } from '@/types/admin';
 
 describe('LearningCenterPanel render smoke', () => {
+  beforeEach(() => {
+    learningCenterTestState.renderedButtons.length = 0;
+    learningCenterTestState.renderedInputs.length = 0;
+    learningCenterTestState.stateQueue.length = 0;
+  });
+
   it('renders learning candidate governance metadata and recent job signals', () => {
     const learning: LearningCenterRecord = {
       totalCandidates: 1,
@@ -345,5 +403,196 @@ describe('LearningCenterPanel render smoke', () => {
     expect(html).toContain('product-strategy');
     expect(html).toContain('3 reports');
     expect(html).toContain('promote 2 / hold 1 / downgrade 0');
+  });
+
+  it('routes selector, conflict, memory and chart actions through callbacks', () => {
+    const setActiveChart = vi.fn();
+    const setSelectorDomainFilter = vi.fn();
+    const setSelectorFeatureFlagFilter = vi.fn();
+    const onInvalidateMemory = vi.fn();
+    const onSupersedeMemory = vi.fn();
+    const onRestoreMemory = vi.fn();
+    const onRetireMemory = vi.fn();
+    const onCreateCounselorSelector = vi.fn();
+    const onEditCounselorSelector = vi.fn();
+    const onEnableCounselorSelector = vi.fn();
+    const onDisableCounselorSelector = vi.fn();
+    const onSetLearningConflictStatus = vi.fn();
+
+    learningCenterTestState.stateQueue.push(
+      ['queue', setActiveChart],
+      ['', setSelectorDomainFilter],
+      ['', setSelectorFeatureFlagFilter]
+    );
+
+    renderToStaticMarkup(
+      <LearningCenterPanel
+        learning={
+          {
+            totalCandidates: 1,
+            pendingCandidates: 1,
+            confirmedCandidates: 0,
+            researchJobs: 1,
+            averageEvaluationScore: 94,
+            autoConfirmableCandidates: 1,
+            autoPersistedResearchJobs: 1,
+            conflictingResearchJobs: 1,
+            invalidatedMemories: 0,
+            quarantinedMemories: 0,
+            invalidatedRules: 0,
+            candidates: [],
+            recentGovernanceReports: [],
+            capabilityTrustProfiles: [{ capabilityId: 'cap-1', displayName: 'Cap', trustLevel: 'high' }],
+            ministryGovernanceProfiles: [],
+            workerGovernanceProfiles: [],
+            specialistGovernanceProfiles: [],
+            counselorSelectorConfigs: [
+              {
+                selectorId: 'selector-enabled',
+                domain: 'payment',
+                enabled: true,
+                strategy: 'session-ratio',
+                candidateIds: ['c1'],
+                weights: [1],
+                featureFlag: 'payment_rollout',
+                defaultCounselorId: 'c1',
+                createdAt: '2026-03-22T00:00:00.000Z',
+                updatedAt: '2026-03-22T00:00:00.000Z'
+              },
+              {
+                selectorId: 'selector-disabled',
+                domain: 'support',
+                enabled: false,
+                strategy: 'sticky',
+                candidateIds: ['c2'],
+                weights: [1],
+                defaultCounselorId: 'c2',
+                createdAt: '2026-03-22T00:00:00.000Z',
+                updatedAt: '2026-03-22T00:00:00.000Z'
+              }
+            ],
+            learningConflictScan: {
+              scannedAt: '2026-03-22T00:00:00.000Z',
+              conflictPairs: [
+                {
+                  id: 'conflict-open',
+                  contextSignature: 'ctx-payment',
+                  memoryIds: ['mem-a', 'mem-b'],
+                  recommendation: 'lightweight_review_required',
+                  riskLevel: 'medium',
+                  effectivenessSpread: 0.08,
+                  status: 'open'
+                }
+              ],
+              mergeSuggestions: [
+                {
+                  conflictId: 'conflict-merge',
+                  preferredMemoryId: 'mem-a',
+                  loserMemoryIds: ['mem-b'],
+                  suggestion: 'Prefer mem-a and retire mem-b.'
+                }
+              ],
+              manualReviewQueue: [
+                {
+                  id: 'conflict-manual',
+                  contextSignature: 'ctx-manual',
+                  memoryIds: ['mem-x', 'mem-y'],
+                  severity: 'medium',
+                  resolution: 'lightweight_review_required',
+                  preferredMemoryId: 'mem-x',
+                  effectivenessSpread: 0.06,
+                  status: 'open'
+                }
+              ]
+            },
+            learningQueueSummary: {
+              queued: 1,
+              processing: 0,
+              blocked: 0,
+              completed: 1,
+              taskLearningQueued: 1,
+              dreamTaskQueued: 0,
+              dreamTaskCompleted: 1
+            },
+            learningQueue: [],
+            counselorExperiments: [],
+            recentJobs: [
+              {
+                id: 'job-1',
+                sourceType: 'research',
+                status: 'completed',
+                goal: '补齐 skill gap',
+                summary: '主动补齐能力缺口',
+                persistedMemoryIds: ['mem-1'],
+                updatedAt: '2026-03-22T00:00:00.000Z'
+              }
+            ],
+            ministryScorecards: [{ ministry: 'hubu', averageScore: 92, reportCount: 2 }],
+            knowledgeStores: {},
+            conflictGovernance: { open: 1, merged: 0, dismissed: 0, escalated: 0 },
+            budgetEfficiencyWarnings: [],
+            quarantineCategoryStats: {},
+            quarantineRestoreSuggestions: [],
+            recentCrossCheckEvidence: [],
+            recentQuarantinedMemories: [],
+            recentSkillGovernance: []
+          } as any
+        }
+        loading={false}
+        onInvalidateMemory={onInvalidateMemory}
+        onSupersedeMemory={onSupersedeMemory}
+        onRestoreMemory={onRestoreMemory}
+        onRetireMemory={onRetireMemory}
+        onCreateCounselorSelector={onCreateCounselorSelector}
+        onEditCounselorSelector={onEditCounselorSelector}
+        onEnableCounselorSelector={onEnableCounselorSelector}
+        onDisableCounselorSelector={onDisableCounselorSelector}
+        onSetLearningConflictStatus={onSetLearningConflictStatus}
+      />
+    );
+
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '新建 selector')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '编辑')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '停用')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '启用')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '接受合并建议')?.onClick?.();
+    learningCenterTestState.renderedButtons.filter(item => getButtonText(item.children) === '升级处理')[0]?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '挂起')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '重新打开')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '标记已完成')?.onClick?.();
+    learningCenterTestState.renderedButtons.filter(item => getButtonText(item.children) === '升级')[0]?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '失效')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '替代')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '恢复')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === '归档')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === 'Conflict')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === 'Ministry')?.onClick?.();
+    learningCenterTestState.renderedButtons.find(item => getButtonText(item.children) === 'Trust')?.onClick?.();
+    learningCenterTestState.renderedInputs
+      .find(item => item.placeholder === '按 domain 过滤')
+      ?.onChange?.({ target: { value: 'payment' } });
+    learningCenterTestState.renderedInputs
+      .find(item => item.placeholder === '按 feature flag 过滤')
+      ?.onChange?.({ target: { value: 'rollout' } });
+
+    expect(onCreateCounselorSelector).toHaveBeenCalledTimes(1);
+    expect(onEditCounselorSelector).toHaveBeenCalledWith(expect.objectContaining({ selectorId: 'selector-enabled' }));
+    expect(onDisableCounselorSelector).toHaveBeenCalledWith('selector-enabled');
+    expect(onEnableCounselorSelector).toHaveBeenCalledWith('selector-disabled');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(1, 'conflict-merge', 'merged', 'mem-a');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(2, 'conflict-merge', 'escalated', 'mem-a');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(3, 'conflict-open', 'dismissed');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(4, 'conflict-open', 'open');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(5, 'conflict-manual', 'merged', 'mem-x');
+    expect(onSetLearningConflictStatus).toHaveBeenNthCalledWith(6, 'conflict-manual', 'escalated', 'mem-x');
+    expect(onInvalidateMemory).toHaveBeenCalledWith('mem-1');
+    expect(onSupersedeMemory).toHaveBeenCalledWith('mem-1');
+    expect(onRestoreMemory).toHaveBeenCalledWith('mem-1');
+    expect(onRetireMemory).toHaveBeenCalledWith('mem-1');
+    expect(setActiveChart).toHaveBeenNthCalledWith(1, 'conflict');
+    expect(setActiveChart).toHaveBeenNthCalledWith(2, 'ministry');
+    expect(setActiveChart).toHaveBeenNthCalledWith(3, 'trust');
+    expect(setSelectorDomainFilter).toHaveBeenCalledWith('payment');
+    expect(setSelectorFeatureFlagFilter).toHaveBeenCalledWith('rollout');
   });
 });

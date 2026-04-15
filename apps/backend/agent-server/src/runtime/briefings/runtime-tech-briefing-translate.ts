@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { OpenAICompatibleProvider } from '@agent/agent-core';
+import { OpenAICompatibleProvider, generateObjectWithRetry } from '@agent/adapters';
 import type { ProviderSettingsRecord } from '@agent/config';
 
 import type { TechBriefingCategory, TechBriefingItem } from './runtime-tech-briefing.types';
@@ -103,8 +103,11 @@ function createTranslator(context: RuntimeTechBriefingTranslateContext) {
   }
 
   return async (input: { category: TechBriefingCategory; title: string; summary: string; sourceName: string }) => {
-    return provider.generateObject(
-      [
+    return generateObjectWithRetry({
+      llm: provider,
+      contractName: 'daily-tech-briefing-translation',
+      contractVersion: '1.0.0',
+      messages: [
         {
           role: 'system',
           content: [
@@ -123,14 +126,14 @@ function createTranslator(context: RuntimeTechBriefingTranslateContext) {
           content: JSON.stringify(input)
         }
       ],
-      translatedBriefingSchema,
-      {
+      schema: translatedBriefingSchema,
+      options: {
         role: 'research',
         modelId: context.settings.dailyTechBriefing.translationModel,
         maxTokens: 320,
         temperature: 0.2
       }
-    );
+    });
   };
 }
 

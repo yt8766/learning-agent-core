@@ -187,6 +187,35 @@ describe('chat-session-events', () => {
     });
   });
 
+  it('buildEventCard 会忽略 previewMessages 里的非法项并保留合法会话预览', () => {
+    const card = buildEventCard({
+      id: 'evt-compact-2',
+      sessionId: 'session-1',
+      type: 'conversation_compacted',
+      at: '2026-03-28T00:00:00.000Z',
+      payload: {
+        summary: '压缩摘要',
+        previewMessages: [
+          { role: 'user', content: '保留这一条' },
+          { role: 'assistant', content: '也保留这一条' },
+          { role: 'tool', content: '这条应该被过滤' },
+          { role: 'system' },
+          null
+        ]
+      }
+    } as any);
+
+    expect(card).toEqual(
+      expect.objectContaining({
+        type: 'compression_summary',
+        previewMessages: [
+          { role: 'user', content: '保留这一条' },
+          { role: 'assistant', content: '也保留这一条' }
+        ]
+      })
+    );
+  });
+
   it('syncSessionFromEvent 会把 plan-question interrupt 标成 waiting_interrupt', () => {
     const sessions: ChatSessionRecord[] = [
       {

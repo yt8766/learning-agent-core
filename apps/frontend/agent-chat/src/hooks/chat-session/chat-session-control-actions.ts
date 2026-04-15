@@ -6,12 +6,19 @@ import {
   PENDING_ASSISTANT_PREFIX,
   PENDING_USER_PREFIX,
   removePendingMessages,
+  syncSessionFromCheckpoint,
   syncCheckpointMessages
 } from './chat-session-helpers';
 import { mergeCheckpointForDetailRefresh, TERMINAL_SESSION_STATUSES } from './chat-session-snapshot-policy';
 import type { CreateChatSessionActionsOptions } from './chat-session-actions.types';
-
-export const OPTIMISTIC_CONTROL_MESSAGE_PREFIX = 'optimistic_control_';
+import {
+  buildCancelledCheckpointState,
+  buildOptimisticControlMessage,
+  buildRecoveredCheckpointState,
+  clearOptimisticThinkingCheckpoint,
+  createOptimisticThinkingCheckpoint,
+  mapReceiptStatus
+} from './chat-session-control-action-helpers';
 
 export function insertPendingUserMessage(options: CreateChatSessionActionsOptions, sessionId: string, content: string) {
   const pendingId = `${PENDING_USER_PREFIX}${sessionId}`;
@@ -73,80 +80,15 @@ export function markSessionStatus(
 
 export function setOptimisticThinkingState(options: CreateChatSessionActionsOptions, sessionId: string) {
   const now = new Date().toISOString();
-  const optimisticTaskId = `optimistic_${sessionId}`;
   const pendingAssistantId = options.pendingAssistantIds.current[sessionId];
   options.optimisticThinkingStartedAt.current[sessionId] = now;
-  options.setCheckpoint(current => {
-    if (current?.sessionId === sessionId) {
-      return {
-        ...current,
-        taskId: optimisticTaskId,
-        pendingApproval: undefined,
-        pendingApprovals: [],
-        activeInterrupt: undefined,
-        graphState: {
-          ...current.graphState,
-          status: 'running',
-          currentStep: 'drafting_reply'
-        },
-        thoughtChain: [],
-        thinkState: {
-          messageId: pendingAssistantId,
-          thinkingDurationMs: 0,
-          title: '正在准备回复',
-          content: '正在梳理你刚刚的消息，整理最合适的回复和下一步动作。',
-          loading: true,
-          blink: true
-        },
-        updatedAt: now
-      };
-    }
-
-    return {
-      sessionId,
-      taskId: optimisticTaskId,
-      traceCursor: 0,
-      messageCursor: 0,
-      approvalCursor: 0,
-      learningCursor: 0,
-      pendingApprovals: [],
-      agentStates: [],
-      graphState: {
-        status: 'running',
-        currentStep: 'drafting_reply'
-      },
-      thoughtChain: [],
-      thinkState: {
-        messageId: pendingAssistantId,
-        thinkingDurationMs: 0,
-        title: '正在准备回复',
-        content: '正在梳理你刚刚的消息，整理最合适的回复和下一步动作。',
-        loading: true,
-        blink: true
-      },
-      createdAt: now,
-      updatedAt: now
-    };
-  });
+  options.setCheckpoint(current => createOptimisticThinkingCheckpoint(current, sessionId, now, pendingAssistantId));
 }
 
 export function clearOptimisticThinkingState(options: CreateChatSessionActionsOptions, sessionId: string) {
   const pendingAssistantId = options.pendingAssistantIds.current[sessionId];
   delete options.optimisticThinkingStartedAt.current[sessionId];
-  options.setCheckpoint(current => {
-    if (!current || current.sessionId !== sessionId) {
-      return current;
-    }
-
-    if (current.taskId === `optimistic_${sessionId}`) {
-      return undefined;
-    }
-
-    return {
-      ...current,
-      thinkState: current.thinkState?.messageId === pendingAssistantId ? undefined : current.thinkState
-    };
-  });
+  options.setCheckpoint(current => clearOptimisticThinkingCheckpoint(current, sessionId, pendingAssistantId));
 }
 
 export function resolveCheckpointForOptimisticSend(
@@ -185,22 +127,7 @@ export function insertOptimisticControlMessage(
   sessionId: string,
   content: string
 ) {
-  const isSuccess = /恢复执行|开始安装|已安装/.test(content);
-  const label = content.includes('恢复执行') ? '已恢复执行' : content.includes('安装') ? 'Skill 状态' : '本轮已终止';
-  options.setMessages(current =>
-    mergeOrAppendMessage(current, {
-      id: `${OPTIMISTIC_CONTROL_MESSAGE_PREFIX}${sessionId}`,
-      sessionId,
-      role: 'system',
-      content,
-      card: {
-        type: 'control_notice',
-        tone: isSuccess ? 'success' : 'warning',
-        label
-      },
-      createdAt: new Date().toISOString()
-    })
-  );
+  options.setMessages(current => mergeOrAppendMessage(current, buildOptimisticControlMessage(sessionId, content)));
 }
 
 export function updateSkillSuggestionInstallState(
@@ -275,20 +202,7 @@ export function applyCancelledSessionState(
     )
   );
   options.setCheckpoint(current => {
-    if (!current || current.sessionId !== sessionId) {
-      return current;
-    }
-
-    return {
-      ...current,
-      graphState: {
-        ...current.graphState,
-        status: 'cancelled',
-        currentStep: 'cancelled'
-      },
-      thinkState: undefined,
-      updatedAt: now
-    };
+    return buildCancelledCheckpointState(current, sessionId, now);
   });
 }
 
@@ -310,52 +224,8 @@ export function applyRecoveredSessionState(
     )
   );
   options.setCheckpoint(current => {
-    if (!current || current.sessionId !== sessionId) {
-      return current;
-    }
-
-    return {
-      ...current,
-      graphState: {
-        ...(current.graphState ?? {}),
-        status: 'running',
-        currentStep: current.graphState?.currentStep ?? 'recovering'
-      },
-      thinkState: {
-        messageId: current.thinkState?.messageId,
-        thinkingDurationMs: 0,
-        title: '正在恢复执行',
-        content: current.currentSkillExecution
-          ? `正在恢复 ${current.currentSkillExecution.displayName} 的 ${current.currentSkillExecution.title}。`
-          : '正在基于当前上下文恢复本轮处理。',
-        loading: true,
-        blink: true
-      },
-      updatedAt: now
-    };
+    return buildRecoveredCheckpointState(current, sessionId, now);
   });
-}
-
-export function mapReceiptStatus(status: 'pending' | 'approved' | 'rejected' | 'installed' | 'failed', phase?: string) {
-  if (status === 'approved' && phase === 'installing') {
-    return 'installing' as const;
-  }
-  if (status === 'approved' && phase === 'approved') {
-    return 'approved' as const;
-  }
-  if (status === 'pending') {
-    return 'pending' as const;
-  }
-  if (status === 'installed') {
-    return 'installed' as const;
-  }
-  if (status === 'failed') {
-    return 'failed' as const;
-  }
-  if (status === 'rejected') {
-    return 'rejected' as const;
-  }
-  return 'approved' as const;
 }
 
 interface PollSkillInstallReceiptOptions {
@@ -516,18 +386,4 @@ export function syncCheckpointOnly(
   );
   options.setSessions(current => syncSessionFromCheckpoint(current, mergedCheckpoint));
   return mergedCheckpoint;
-}
-
-function syncSessionFromCheckpoint(sessions: ChatSessionRecord[], checkpoint?: ChatCheckpointRecord) {
-  if (!checkpoint) return sessions;
-  const nextStatus = deriveSessionStatusFromCheckpoint(checkpoint);
-  return sessions.map(session =>
-    session.id === checkpoint.sessionId
-      ? {
-          ...session,
-          status: nextStatus,
-          updatedAt: checkpoint.updatedAt
-        }
-      : session
-  );
 }

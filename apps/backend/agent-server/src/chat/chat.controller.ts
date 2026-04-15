@@ -23,6 +23,7 @@ import {
   UpdateChatSessionDto
 } from '@agent/shared';
 
+import { DirectChatRequestDto } from './chat.direct.dto';
 import { ChatService } from './chat.service';
 
 const SESSION_COOKIE_NAME = 'agent_session_id';
@@ -33,6 +34,73 @@ type SseResponse = Response & { flush?: () => void; flushHeaders?: () => void };
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
+
+  @Post()
+  async streamDirectChat(@Body() dto: DirectChatRequestDto, @Res() response: Response) {
+    const directResponseMode = this.chatService.resolveDirectResponseMode(dto);
+    const sseResponse = response as SseResponse;
+    sseResponse.setHeader('Content-Type', 'text/event-stream');
+    sseResponse.setHeader('Cache-Control', 'no-cache, no-transform');
+    sseResponse.setHeader('Connection', 'keep-alive');
+    sseResponse.setHeader('X-Accel-Buffering', 'no');
+    sseResponse.flushHeaders?.();
+
+    try {
+      sseResponse.write(': keep-alive\n\n');
+      if (directResponseMode === 'preview') {
+        await this.chatService.streamSandpackPreview(dto, event => {
+          this.writeSseEvent(sseResponse, event);
+        });
+        this.writeSseEvent(sseResponse, { type: 'done' });
+        sseResponse.end();
+        return;
+      }
+
+      if (directResponseMode === 'sandpack') {
+        const result = await this.chatService.streamSandpackCode(dto, event => {
+          this.writeSseEvent(sseResponse, event);
+        });
+        this.writeSseEvent(sseResponse, {
+          type: 'done',
+          data: {
+            content: result.content
+          }
+        });
+        sseResponse.end();
+        return;
+      }
+
+      if (directResponseMode === 'report-schema') {
+        const result = await this.chatService.streamReportSchema(dto, event => {
+          this.writeSseEvent(sseResponse, event);
+        });
+        this.writeSseEvent(sseResponse, {
+          type: 'done',
+          data: {
+            content: result.content,
+            status: result.status,
+            elapsedMs: result.elapsedMs,
+            reportSummaries: result.reportSummaries,
+            runtime: result.runtime
+          }
+        });
+        sseResponse.end();
+        return;
+      }
+
+      await this.chatService.streamChat(dto, event => {
+        this.writeSseEvent(sseResponse, event);
+      });
+      this.writeSseEvent(sseResponse, { type: 'done' });
+      sseResponse.end();
+    } catch (error) {
+      this.writeSseEvent(sseResponse, {
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+      sseResponse.end();
+    }
+  }
 
   @Get('sessions')
   listSessions() {
@@ -235,6 +303,14 @@ export class ChatController {
     }
 
     return undefined;
+  }
+
+  private writeSseEvent(
+    sseResponse: SseResponse,
+    event: { type: string; data?: Record<string, unknown>; message?: string }
+  ) {
+    sseResponse.write(`data: ${JSON.stringify(event)}\n\n`);
+    sseResponse.flush?.();
   }
 
   private setSessionCookie(response: Response, sessionId: string): void {

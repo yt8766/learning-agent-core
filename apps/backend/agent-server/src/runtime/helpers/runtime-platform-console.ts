@@ -1,4 +1,12 @@
-import { ChatCheckpointRecord, ChatSessionRecord, getMinistryDisplayName, normalizeExecutionMode } from '@agent/shared';
+import {
+  ChatCheckpointRecord,
+  ChatSessionRecord,
+  EvalsCenterRecord,
+  getMinistryDisplayName,
+  LearningCenterRecord,
+  normalizeExecutionMode,
+  type PlatformApprovalRecord
+} from '@agent/shared';
 
 export interface RuntimePlatformConsoleContext {
   skillRegistry: {
@@ -13,9 +21,9 @@ export interface RuntimePlatformConsoleContext {
     getCheckpoint: (sessionId: string) => ChatCheckpointRecord | undefined;
   };
   getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => Promise<any>;
-  getApprovalsCenter: (filters?: Record<string, unknown>) => unknown;
-  getLearningCenter: () => Promise<unknown>;
-  getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => Promise<any>;
+  getApprovalsCenter: (filters?: Record<string, unknown>) => PlatformApprovalRecord[];
+  getLearningCenter: () => Promise<LearningCenterRecord>;
+  getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => Promise<EvalsCenterRecord>;
   getEvidenceCenter: () => Promise<unknown>;
   getConnectorsCenter: () => Promise<unknown[]>;
   getSkillSourcesCenter: () => Promise<unknown>;
@@ -175,7 +183,7 @@ export async function exportApprovalsCenter(
     format?: string;
   }
 ) {
-  const approvals = context.getApprovalsCenter(options) as any[];
+  const approvals = context.getApprovalsCenter(options);
   const format = options?.format === 'json' ? 'json' : 'csv';
   if (format === 'json') {
     return {

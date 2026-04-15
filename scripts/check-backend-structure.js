@@ -8,7 +8,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const backendRoot = path.join(rootDir, 'apps/backend/agent-server/src');
 const backendTestRoot = path.join(rootDir, 'apps/backend/agent-server/test');
 const allowedModuleSubdirs = new Set(['dto', 'entities', 'interfaces']);
-const legacyModuleDirs = new Set(['app', 'logger', 'platform', 'runtime']);
+const legacyModuleDirs = new Set(['app', 'cors', 'logger', 'platform', 'runtime', 'templates']);
 const maxBackendLines = 400;
 const temporaryOversizeAllowlist = new Set([
   'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-localize.ts',
@@ -62,6 +62,7 @@ function countLines(filePath) {
 function ensureFileLength(files) {
   const oversize = files
     .filter(file => file.endsWith('.ts') || file.endsWith('.tsx'))
+    .filter(file => fs.existsSync(path.join(rootDir, file)))
     .map(file => ({
       file,
       lines: countLines(path.join(rootDir, file))

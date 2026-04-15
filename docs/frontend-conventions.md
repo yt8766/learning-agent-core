@@ -1,5 +1,9 @@
 # 前端规范
 
+状态：current
+适用范围：前端工程规范
+最后核对：2026-04-14
+
 适用范围：
 
 - `apps/frontend/agent-chat`
@@ -52,27 +56,42 @@
 ### `agent-chat/src`
 
 - `app/`：应用壳层
+- `api/`：HTTP / SSE 封装
+- `components/`：可复用 UI
+- `components/chat-message-cards/`：聊天消息卡片与消息内交互组件
+- `hooks/`：轮询、订阅与会话驱动逻辑
+- `hooks/chat-session/`：会话格式化与会话相关派生逻辑
+- `store/`：前端状态管理
+- `types/`：前端本地类型
+- `lib/`：轻量工具与适配函数
+- `assets/`：静态资源
+- `styles/`：全局与页面样式
 - `pages/`：页面级入口
   - `chat-home/`
   - `session-detail/`
 - `features/`：业务块
+  - `chat/`
   - `session-list/`
   - `chat-thread/`
   - `event-timeline/`
   - `approvals/`
   - `learning/`
   - `agent-status/`
-- `components/`：可复用 UI
-- `api/`：HTTP / SSE 封装
-- `hooks/`：轮询与订阅逻辑
-- `store/`：前端状态管理
-- `types/`：前端本地类型
-- `assets/`：静态资源
-- `styles/`：全局与页面样式
+  - `runtime-panel/`
+  - `report-schema/`
 
 ### `agent-admin/src`
 
 - `app/`：应用壳层
+- `api/`：请求封装
+- `components/`：可复用 UI
+- `components/ui/`：基础 UI 组件
+- `hooks/`：轮询与状态逻辑
+- `hooks/admin-dashboard/`：后台面板状态编排
+- `store/`：前端状态管理
+- `types/`、`types/admin/`：前端本地类型与 admin 聚合类型
+- `assets/`：静态资源
+- `styles/`：样式资源
 - `pages/`：页面级入口
   - `dashboard/`
   - `tasks/`
@@ -83,14 +102,15 @@
   - `task-traces/`
   - `approvals-center/`
   - `skill-lab/`
+  - `skill-sources-center/`
   - `rules-browser/`
   - `runtime-overview/`
-- `components/`：可复用 UI
-- `api/`：请求封装
-- `hooks/`：轮询与状态逻辑
-- `store/`：前端状态管理
-- `types/`：前端本地类型
-- `styles/`：样式资源
+  - `learning-center/`
+  - `evidence-center/`
+  - `connectors-center/`
+  - `evals-center/`
+  - `archive-center/`
+  - `company-agents/`
 
 建议在 `features/*` 下继续按职责细分：
 
@@ -249,7 +269,7 @@
 
 保留：
 
-- 根级 `eslint.config.mjs`
+- 根级 `eslint.config.js`
 - 根级 `prettier.config.js`
 - 根级 `husky`
 

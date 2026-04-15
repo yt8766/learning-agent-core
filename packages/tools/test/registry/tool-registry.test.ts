@@ -46,6 +46,49 @@ describe('ToolRegistry', () => {
         permissionScope: 'workspace-write'
       })
     );
+    expect(registry.get('generate_data_report_scaffold')).toEqual(
+      expect.objectContaining({
+        isReadOnly: true,
+        requiresApproval: false,
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('plan_data_report_structure')).toEqual(
+      expect.objectContaining({
+        isReadOnly: true,
+        requiresApproval: false,
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('generate_data_report_module')).toEqual(
+      expect.objectContaining({
+        isReadOnly: true,
+        requiresApproval: false,
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('assemble_data_report_bundle')).toEqual(
+      expect.objectContaining({
+        isReadOnly: true,
+        requiresApproval: false,
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('generate_data_report_routes')).toEqual(
+      expect.objectContaining({
+        isReadOnly: true,
+        requiresApproval: false,
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('write_data_report_bundle')).toEqual(
+      expect.objectContaining({
+        isReadOnly: false,
+        requiresApproval: true,
+        permissionScope: 'workspace-write',
+        preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
   });
 
   it('rejects tools missing required semantic fields', () => {

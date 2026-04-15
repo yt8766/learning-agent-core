@@ -2,6 +2,12 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  assembleDataReportBundle,
+  buildDataReportBlueprint,
+  buildDataReportModuleScaffold,
+  buildDataReportScaffold
+} from '@agent/report-kit';
 import { ActionIntent } from '@agent/shared';
 
 import { LocalSandboxExecutor } from '../../src/sandbox/sandbox-executor';
@@ -145,5 +151,224 @@ describe('LocalSandboxExecutor find-skills', () => {
     const created = JSON.parse(await readFile(output.path, 'utf8')) as { name: string; schedule: string };
     expect(created.name).toBe('Daily Lark Digest');
     expect(created.schedule).toBe('weekday 09:00');
+  });
+
+  it('generates a data-report scaffold preview without writing files', async () => {
+    const root = join(process.cwd(), 'tmp', `sandbox-data-report-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+
+    process.chdir(root);
+    const executor = new LocalSandboxExecutor();
+    const result = await executor.execute({
+      taskId: 'task-data-report',
+      toolName: 'generate_data_report_scaffold',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template'
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.outputSummary).toContain('Generated data-report scaffold');
+    expect(result.rawOutput).toEqual(
+      expect.objectContaining({
+        scope: 'multiple',
+        templateRef: 'bonusCenterData',
+        templateId: 'bonus-center-data',
+        files: expect.arrayContaining([
+          expect.objectContaining({ path: 'src/pages/dataDashboard/bonusCenterData/index.tsx' }),
+          expect.objectContaining({ path: 'src/pages/dataDashboard/bonusCenterData/components/Search/index.tsx' }),
+          expect.objectContaining({ path: 'src/services/data/bonusCenter.ts' }),
+          expect.objectContaining({ path: 'src/types/data/bonusCenter.ts' })
+        ])
+      })
+    );
+    const output = result.rawOutput as {
+      files: Array<{ path: string; content: string }>;
+    };
+    expect(
+      output.files.find(item => item.path === 'src/pages/dataDashboard/bonusCenterData/index.tsx')?.content
+    ).toContain('PageContainer');
+    expect(output.files.some(item => item.path === 'src/routes.ts')).toBe(false);
+  });
+
+  it('plans a data-report blueprint preview without writing files', async () => {
+    const root = join(process.cwd(), 'tmp', `sandbox-data-report-blueprint-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+
+    process.chdir(root);
+    const executor = new LocalSandboxExecutor();
+    const result = await executor.execute({
+      taskId: 'task-data-report-blueprint',
+      toolName: 'plan_data_report_structure',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template'
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.rawOutput).toEqual(
+      expect.objectContaining({
+        templateId: 'bonus-center-data',
+        pageDir: 'src/pages/dataDashboard/bonusCenterData',
+        modules: expect.arrayContaining([expect.objectContaining({ id: 'TaskPagePenetration' })])
+      })
+    );
+  });
+
+  it('generates a data-report module preview without writing files', async () => {
+    const root = join(process.cwd(), 'tmp', `sandbox-data-report-module-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+
+    process.chdir(root);
+    const executor = new LocalSandboxExecutor();
+    const result = await executor.execute({
+      taskId: 'task-data-report-module',
+      toolName: 'generate_data_report_module',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template',
+        moduleId: 'TaskPagePenetration'
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.rawOutput).toEqual(
+      expect.objectContaining({
+        templateId: 'bonus-center-data',
+        module: expect.objectContaining({ id: 'TaskPagePenetration' }),
+        files: expect.arrayContaining([
+          expect.objectContaining({
+            path: 'src/pages/dataDashboard/bonusCenterData/components/TaskPagePenetration/index.tsx'
+          })
+        ])
+      })
+    );
+  });
+
+  it('assembles a data-report delivery bundle preview without writing files', async () => {
+    const root = join(process.cwd(), 'tmp', `sandbox-data-report-assembly-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+
+    process.chdir(root);
+    const executor = new LocalSandboxExecutor();
+    const blueprintResult = await executor.execute({
+      taskId: 'task-data-report-blueprint-2',
+      toolName: 'plan_data_report_structure',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template'
+      }
+    });
+    const moduleResult = await executor.execute({
+      taskId: 'task-data-report-module-2',
+      toolName: 'generate_data_report_module',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template',
+        moduleId: 'TaskPagePenetration'
+      }
+    });
+    const scaffoldResult = await executor.execute({
+      taskId: 'task-data-report-scaffold-2',
+      toolName: 'generate_data_report_scaffold',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        goal: '参考 bonusCenterData 生成多个数据报表页面',
+        taskContext: 'bonusCenterData template'
+      }
+    });
+    const routeResult = await executor.execute({
+      taskId: 'task-data-report-routes',
+      toolName: 'generate_data_report_routes',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        blueprint: blueprintResult.rawOutput
+      }
+    });
+
+    const result = await executor.execute({
+      taskId: 'task-data-report-assembly',
+      toolName: 'assemble_data_report_bundle',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: {
+        blueprint: blueprintResult.rawOutput,
+        moduleResults: [moduleResult.rawOutput],
+        sharedFiles: (scaffoldResult.rawOutput as any).files,
+        routeFiles: (routeResult.rawOutput as any).files
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.rawOutput).toEqual(
+      expect.objectContaining({
+        assemblyPlan: expect.objectContaining({
+          moduleArtifacts: expect.arrayContaining([expect.objectContaining({ moduleId: 'TaskPagePenetration' })]),
+          routeArtifacts: expect.arrayContaining(['App.tsx']),
+          postProcessSummary: expect.objectContaining({ pending: false })
+        }),
+        sandpackFiles: expect.objectContaining({
+          '/App.tsx': expect.objectContaining({
+            code: expect.stringContaining("import ReportPage from './src/pages/dataDashboard/bonusCenterData';")
+          })
+        })
+      })
+    );
+  });
+
+  it('writes an assembled data-report bundle into the requested target root', async () => {
+    const root = join(process.cwd(), 'tmp', `sandbox-data-report-write-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+
+    const blueprint = buildDataReportBlueprint({
+      goal: '参考 bonusCenterData 生成多个数据报表页面',
+      taskContext: 'bonusCenterData template'
+    });
+    const moduleResult = buildDataReportModuleScaffold({
+      goal: '参考 bonusCenterData 生成多个数据报表页面',
+      taskContext: 'bonusCenterData template',
+      moduleId: 'TaskPagePenetration'
+    });
+    const scaffold = buildDataReportScaffold({
+      goal: '参考 bonusCenterData 生成多个数据报表页面',
+      taskContext: 'bonusCenterData template'
+    });
+    const bundle = assembleDataReportBundle({
+      blueprint,
+      moduleResults: [moduleResult],
+      sharedFiles: scaffold.files
+    });
+
+    process.chdir(root);
+    const executor = new LocalSandboxExecutor();
+    const result = await executor.execute({
+      taskId: 'task-data-report-write',
+      toolName: 'write_data_report_bundle',
+      intent: ActionIntent.WRITE_FILE,
+      requestedBy: 'agent',
+      input: {
+        bundle,
+        targetRoot: 'output/report-bundle'
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.outputSummary).toContain('Materialized data-report bundle');
+    const appContent = await readFile(join(root, 'output/report-bundle/App.tsx'), 'utf8');
+    expect(appContent).toContain("import ReportPage from './src/pages/dataDashboard/bonusCenterData';");
   });
 });

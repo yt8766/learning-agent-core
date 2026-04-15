@@ -1,12 +1,95 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const renderedButtons: Array<{ children?: unknown; onClick?: () => void }> = [];
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick }: { children?: unknown; onClick?: () => void }) => {
+    renderedButtons.push({ children, onClick });
+    return <button>{children as any}</button>;
+  }
+}));
 
 import {
+  getExecutionModeLabel,
+  getInteractionKindLabel,
+  getRuntimeGovernanceReasonLabel,
   filterRuntimeInterruptItems,
-  RuntimeSummaryTools
+  RuntimeSummaryTools,
+  toRuntimeInterruptItems
 } from '@/features/runtime-overview/components/runtime-summary-tools';
 
 describe('RuntimeSummaryTools helpers', () => {
+  beforeEach(() => {
+    renderedButtons.length = 0;
+  });
+
+  it('maps labels and transforms recent runs into interrupt items', () => {
+    expect(getExecutionModeLabel('plan')).toBeTruthy();
+    expect(getExecutionModeLabel(undefined)).toBe('未标记');
+    expect(getInteractionKindLabel('plan-question')).toBe('计划提问');
+    expect(getInteractionKindLabel('supplemental-input')).toBe('补充输入');
+    expect(getInteractionKindLabel('approval')).toBe('操作确认');
+    expect(getRuntimeGovernanceReasonLabel('watchdog_timeout')).toBe('运行时超时阻塞');
+    expect(getRuntimeGovernanceReasonLabel('custom_reason')).toBe('custom_reason');
+
+    const items = toRuntimeInterruptItems({
+      recentRuns: [
+        {
+          id: 'task-plan',
+          goal: '先整理方案',
+          status: 'waiting_interrupt',
+          executionMode: 'planning-readonly',
+          currentMinistry: 'gongbu-code',
+          currentWorker: 'worker-gongbu',
+          updatedAt: '2026-03-29T10:00:00.000Z',
+          activeInterrupt: {
+            kind: 'user-input',
+            payload: { interactionKind: 'plan-question' }
+          },
+          planDraft: {
+            questionSet: { title: '需要补充计划边界' }
+          }
+        },
+        {
+          id: 'task-watchdog',
+          goal: '终端执行卡住',
+          status: 'waiting_approval',
+          executionMode: 'execute',
+          currentNode: 'runtime_governance_gate',
+          currentMinistry: 'bingbu-ops',
+          currentWorker: 'worker-bingbu',
+          updatedAt: '2026-03-29T11:00:00.000Z',
+          activeInterrupt: {
+            kind: 'runtime-governance',
+            payload: {
+              interactionKind: 'supplemental-input',
+              watchdog: true,
+              runtimeGovernanceReasonCode: 'watchdog_timeout'
+            }
+          }
+        }
+      ]
+    } as any);
+
+    expect(items[0]).toEqual(
+      expect.objectContaining({
+        taskId: 'task-watchdog',
+        isRuntimeGovernance: true,
+        isWatchdog: true,
+        reasonLabel: '运行时超时阻塞'
+      })
+    );
+    expect(items[1]).toEqual(
+      expect.objectContaining({
+        taskId: 'task-plan',
+        executionMode: 'plan',
+        interactionKind: 'plan-question',
+        interruptLabel: '需要补充计划边界'
+      })
+    );
+  });
+
   it('filters interrupt items by execution mode and interaction kind', () => {
     const filtered = filterRuntimeInterruptItems(
       [
@@ -135,5 +218,97 @@ describe('RuntimeSummaryTools helpers', () => {
     expect(html).toContain('github.search_code');
     expect(html).toContain('当前阻塞原因');
     expect(html).toContain('缺少连接器授权');
+  });
+
+  it('renders empty states when no matching interrupt or tool records exist', () => {
+    const html = renderToStaticMarkup(
+      <RuntimeSummaryTools
+        runtime={
+          {
+            recentRuns: [],
+            tools: {
+              totalTools: 0,
+              familyCount: 0,
+              blockedToolCount: 0,
+              approvalRequiredCount: 0,
+              mcpBackedCount: 0,
+              governanceToolCount: 0,
+              families: [],
+              recentUsage: [],
+              blockedReasons: []
+            }
+          } as any
+        }
+        executionModeFilter="plan"
+        onExecutionModeFilterChange={vi.fn()}
+        interactionKindFilter="approval"
+        onInteractionKindFilterChange={vi.fn()}
+        onCopyShareLink={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('当前没有 tool family 统计。');
+    expect(html).toContain('当前筛选条件下没有匹配的交互中断任务。');
+    expect(html).toContain('当前还没有工具使用记录。');
+    expect(html).toContain('当前没有 tool governance 阻塞。');
+  });
+
+  it('routes filter buttons and share-link action through component callbacks', () => {
+    const onExecutionModeFilterChange = vi.fn();
+    const onInteractionKindFilterChange = vi.fn();
+    const onCopyShareLink = vi.fn();
+
+    renderToStaticMarkup(
+      <RuntimeSummaryTools
+        runtime={
+          {
+            recentRuns: [
+              {
+                id: 'task-plan',
+                goal: '先整理方案',
+                status: 'waiting_interrupt',
+                executionMode: 'plan',
+                updatedAt: '2026-03-29T10:00:00.000Z',
+                activeInterrupt: {
+                  kind: 'user-input',
+                  payload: { interactionKind: 'plan-question' }
+                },
+                planDraft: {
+                  questionSet: { title: '需要补充计划边界' }
+                }
+              }
+            ],
+            tools: {
+              totalTools: 1,
+              familyCount: 1,
+              blockedToolCount: 0,
+              approvalRequiredCount: 0,
+              mcpBackedCount: 0,
+              governanceToolCount: 0,
+              families: [],
+              recentUsage: [],
+              blockedReasons: []
+            }
+          } as any
+        }
+        executionModeFilter="all"
+        onExecutionModeFilterChange={onExecutionModeFilterChange}
+        interactionKindFilter="all"
+        onInteractionKindFilterChange={onInteractionKindFilterChange}
+        onCopyShareLink={onCopyShareLink}
+      />
+    );
+
+    renderedButtons.find(button => button.children === '复制视角链接')?.onClick?.();
+    renderedButtons.find(button => button.children === '计划模式')?.onClick?.();
+    renderedButtons.find(button => button.children === '执行模式')?.onClick?.();
+    renderedButtons.find(button => button.children === '计划提问')?.onClick?.();
+    renderedButtons.find(button => button.children === '补充输入')?.onClick?.();
+
+    expect(onCopyShareLink).toHaveBeenCalled();
+    expect(onExecutionModeFilterChange).toHaveBeenNthCalledWith(1, 'plan');
+    expect(onExecutionModeFilterChange).toHaveBeenNthCalledWith(2, 'execute');
+    expect(onInteractionKindFilterChange).toHaveBeenNthCalledWith(1, 'plan-question');
+    expect(onInteractionKindFilterChange).toHaveBeenNthCalledWith(2, 'supplemental-input');
   });
 });

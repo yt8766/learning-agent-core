@@ -31,6 +31,40 @@ describe('chat-home-workbench-sections helpers', () => {
     );
   });
 
+  it('returns supplemental-input and approval copies for runtime interrupts', () => {
+    expect(
+      getWorkbenchInterruptCopy({
+        activeInterrupt: {
+          kind: 'runtime-governance',
+          intent: 'run_terminal',
+          reason: '需要补充仓库路径',
+          payload: { interactionKind: 'supplemental-input' }
+        }
+      } as any)
+    ).toEqual(
+      expect.objectContaining({
+        tag: '补充输入',
+        summary: 'run_terminal',
+        detail: '需要补充仓库路径'
+      })
+    );
+
+    expect(
+      getWorkbenchInterruptCopy({
+        pendingApproval: {
+          toolName: 'write_file',
+          reason: '等待高风险操作确认'
+        }
+      } as any)
+    ).toEqual(
+      expect.objectContaining({
+        tag: '操作确认',
+        summary: 'write_file',
+        detail: '等待高风险操作确认'
+      })
+    );
+  });
+
   it('builds workbench sections for checkpoint, reuse, approval history and event stream', () => {
     const state = buildWorkbenchSectionState(
       {
@@ -153,6 +187,73 @@ describe('chat-home-workbench-sections helpers', () => {
     expect(state.compressionHint).toContain('已折叠 4 条消息');
     expect(state.llmFallbackNotes).toEqual(['LLM fallback to cheaper model']);
     expect(state.workbenchItems).toHaveLength(7);
+  });
+
+  it('builds evidence variants and handles empty workbench state', () => {
+    const rich = buildWorkbenchSectionState(
+      {
+        activeSession: {
+          status: 'running'
+        },
+        checkpoint: {
+          executionMode: 'execute',
+          graphState: { currentStep: 'delivery' },
+          externalSources: [
+            {
+              id: 'freshness-1',
+              sourceType: 'freshness_meta',
+              summary: 'Freshness 校验',
+              trustClass: 'internal',
+              detail: {
+                referenceTime: '2026-04-08T12:00:00.000Z',
+                sourceCount: 3
+              }
+            }
+          ],
+          specialistFindings: [
+            {
+              specialistId: 'general',
+              summary: '兜底发现',
+              domain: 'general',
+              source: 'fallback',
+              degraded: true,
+              fallbackMessage: '已降级为通用发现',
+              contractVersion: 'v1',
+              stage: 'dispatch'
+            }
+          ],
+          learningEvaluation: {
+            score: 0.6,
+            confidence: 'medium',
+            notes: [],
+            recommendedCandidateIds: [],
+            autoConfirmCandidateIds: []
+          },
+          agentStates: []
+        },
+        events: []
+      } as any,
+      []
+    );
+
+    expect(rich.runningHint).toBe('正在执行：delivery');
+    expect(rich.compressionHint).toBe('');
+    expect(rich.workbenchItems).toHaveLength(4);
+
+    const empty = buildWorkbenchSectionState(
+      {
+        activeSession: {
+          status: 'completed'
+        },
+        events: []
+      } as any,
+      []
+    );
+
+    expect(empty.runningHint).toBe('');
+    expect(empty.compressionHint).toBe('');
+    expect(empty.llmFallbackNotes).toEqual([]);
+    expect(empty.workbenchItems).toHaveLength(0);
   });
 
   it('renders failure alert item when the session has stopped', () => {

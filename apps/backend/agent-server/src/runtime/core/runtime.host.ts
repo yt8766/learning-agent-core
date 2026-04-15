@@ -1,4 +1,4 @@
-import { AgentRuntime } from '@agent/agent-core';
+import { AgentRuntime } from '@agent/runtime';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
 import { SkillArtifactFetcher } from '../skills/skill-artifact-fetcher';

@@ -5,6 +5,7 @@ import { MetadataScanner, ModulesContainer, NestFactory } from '@nestjs/core';
 import * as chalk from 'chalk';
 
 import { AppModule } from './app.module';
+import { createCorsOptions } from './cors/cors-options';
 import { AppLoggerService } from './logger/app-logger.service';
 
 const GLOBAL_PREFIX = 'api';
@@ -45,29 +46,7 @@ async function bootstrap(): Promise<void> {
     const logger = app.get(AppLoggerService);
     app.useLogger(logger);
     app.setGlobalPrefix(GLOBAL_PREFIX);
-    app.enableCors({
-      origin: (origin, callback) => {
-        if (!origin) {
-          callback(null, true);
-          return;
-        }
-
-        try {
-          const parsed = new URL(origin);
-          const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
-          const isLocalDevProtocol = parsed.protocol === 'http:' || parsed.protocol === 'https:';
-          callback(null, isLocalhost && isLocalDevProtocol);
-          return;
-        } catch {
-          callback(null, false);
-          return;
-        }
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-      exposedHeaders: ['set-cookie']
-    });
+    app.enableCors(createCorsOptions());
 
     const modules = app.get(ModulesContainer);
     logInitializedModules(modules, logger);

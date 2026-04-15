@@ -5,9 +5,13 @@ import {
   getRecentGovernanceAudit,
   listCapabilityGovernanceProfiles,
   listGovernanceProfiles,
+  listApprovalScopePolicies,
   persistConnectorDiscoverySnapshot,
+  recordApprovalScopePolicyMatch,
+  revokeApprovalScopePolicy,
   syncCapabilityGovernanceProfiles,
-  toConnectorDiscoveryHistoryRecord
+  toConnectorDiscoveryHistoryRecord,
+  upsertApprovalScopePolicy
 } from '../../../src/runtime/helpers/runtime-governance-store';
 
 describe('runtime-governance-store', () => {
@@ -174,6 +178,127 @@ describe('runtime-governance-store', () => {
         entityId: 'product-strategy',
         entityKind: 'specialist'
       })
+    ]);
+  });
+
+  it('会新增 更新 排序 撤销并记录 approval scope policy 命中次数', async () => {
+    let snapshot: any = {
+      governance: {
+        approvalScopePolicies: [
+          {
+            id: 'policy-old',
+            status: 'active',
+            scope: 'connector',
+            approvalScope: 'connector',
+            actor: 'agent-admin-user',
+            sourceDomain: 'github.com',
+            requestedBy: 'user-a',
+            matchKey: 'old',
+            createdAt: '2026-03-01T00:00:00.000Z',
+            updatedAt: '2026-03-01T00:00:00.000Z',
+            matchCount: 1
+          },
+          {
+            id: 'policy-revoked',
+            status: 'revoked',
+            scope: 'connector',
+            approvalScope: 'connector',
+            actor: 'agent-admin-user',
+            sourceDomain: 'example.com',
+            requestedBy: 'user-b',
+            matchKey: 'revoked',
+            createdAt: '2026-02-01T00:00:00.000Z',
+            updatedAt: '2026-02-01T00:00:00.000Z',
+            revokedAt: '2026-02-02T00:00:00.000Z',
+            revokedBy: 'agent-admin-user',
+            matchCount: 0
+          }
+        ]
+      }
+    };
+    const runtimeStateRepository = {
+      load: vi.fn(async () => snapshot),
+      save: vi.fn(async next => {
+        snapshot = next;
+      })
+    };
+
+    const created = await upsertApprovalScopePolicy(runtimeStateRepository as any, {
+      status: 'active',
+      scope: 'connector',
+      approvalScope: 'connector',
+      actor: 'agent-admin-user',
+      sourceDomain: 'github.com',
+      requestedBy: 'user-c',
+      toolName: 'github.create_issue_comment'
+    });
+
+    expect(created).toEqual(
+      expect.objectContaining({
+        status: 'active',
+        scope: 'connector',
+        toolName: 'github.create_issue_comment',
+        matchCount: 0
+      })
+    );
+
+    const updated = await upsertApprovalScopePolicy(runtimeStateRepository as any, {
+      id: created.id,
+      status: 'active',
+      scope: 'connector',
+      approvalScope: 'connector',
+      actor: 'agent-admin-user',
+      sourceDomain: 'github.com',
+      requestedBy: 'user-d',
+      toolName: 'github.create_issue_comment',
+      riskCode: 'write-risk'
+    });
+
+    expect(updated.id).toBe(created.id);
+    expect(updated.riskCode).toBe('write-risk');
+    expect(Date.parse(updated.createdAt)).not.toBeNaN();
+    expect(Date.parse(updated.createdAt)).toBeLessThanOrEqual(Date.parse(updated.updatedAt));
+
+    const matched = await recordApprovalScopePolicyMatch(runtimeStateRepository as any, created.id);
+    expect(matched).toEqual(
+      expect.objectContaining({
+        id: created.id,
+        matchCount: 1
+      })
+    );
+
+    const revoked = await revokeApprovalScopePolicy(runtimeStateRepository as any, created.id, 'reviewer-a');
+    expect(revoked).toEqual(
+      expect.objectContaining({
+        id: created.id,
+        status: 'revoked',
+        revokedBy: 'reviewer-a'
+      })
+    );
+
+    expect(
+      await revokeApprovalScopePolicy(runtimeStateRepository as any, 'missing-policy', 'reviewer-a')
+    ).toBeUndefined();
+    expect(await recordApprovalScopePolicyMatch(runtimeStateRepository as any, 'missing-policy')).toBeUndefined();
+
+    snapshot.governance.approvalScopePolicies.push({
+      id: 'policy-newer',
+      status: 'active',
+      scope: 'connector',
+      approvalScope: 'connector',
+      actor: 'agent-admin-user',
+      sourceDomain: 'lark.com',
+      requestedBy: 'user-e',
+      matchKey: 'newer',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      matchCount: 0
+    });
+
+    await expect(listApprovalScopePolicies(runtimeStateRepository as any)).resolves.toEqual([
+      expect.objectContaining({ id: created.id }),
+      expect.objectContaining({ id: 'policy-newer' }),
+      expect.objectContaining({ id: 'policy-old' })
     ]);
   });
 });

@@ -5,6 +5,10 @@ import { ChatController } from '../../src/chat/chat.controller';
 function createSseResponse() {
   return {
     cookie: vi.fn(),
+    status: vi.fn(function status() {
+      return this;
+    }),
+    json: vi.fn(),
     setHeader: vi.fn(),
     flushHeaders: vi.fn(),
     flush: vi.fn(),
@@ -15,6 +19,68 @@ function createSseResponse() {
 
 describe('ChatController', () => {
   const createChatService = () => ({
+    resolveDirectResponseMode: vi.fn(() => 'stream'),
+    generateSandpackPreview: vi.fn(async () => ({
+      '/App.tsx': { code: 'export default function App() { return null; }' }
+    })),
+    streamSandpackPreview: vi.fn(async (_dto, push) => {
+      push({ type: 'stage', data: { stage: 'analysis', progressPercent: 5, status: 'pending' } });
+      push({
+        type: 'files',
+        data: {
+          files: {
+            '/App.tsx': 'export default function App() { return null; }',
+            '/routes.ts': 'export const reportRoutes = [];',
+            '/index.tsx': 'export default function Preview() { return null; }'
+          }
+        }
+      });
+      return {
+        '/App.tsx': { code: 'export default function App() { return null; }' },
+        '/routes.ts': { code: 'export const reportRoutes = [];' },
+        '/index.tsx': { code: 'export default function Preview() { return null; }' }
+      };
+    }),
+    streamChat: vi.fn(async (_dto, push) => {
+      push({ type: 'token', data: { content: '你' } });
+      push({ type: 'token', data: { content: '好' } });
+      return { content: '你好' };
+    }),
+    streamReportSchema: vi.fn(async (_dto, push) => {
+      push({
+        type: 'schema_failed',
+        data: {
+          error: {
+            errorCode: 'report_schema_generation_failed',
+            errorMessage: 'provider exploded',
+            retryable: true
+          },
+          runtime: {
+            executionPath: 'partial-llm',
+            cacheHit: false,
+            nodeDurations: {
+              sectionSchemaNode: 12
+            }
+          }
+        }
+      });
+      return {
+        status: 'failed',
+        content: '{"status":"failed"}',
+        error: {
+          errorCode: 'report_schema_generation_failed',
+          errorMessage: 'provider exploded',
+          retryable: true
+        },
+        runtime: {
+          executionPath: 'partial-llm',
+          cacheHit: false,
+          nodeDurations: {
+            sectionSchemaNode: 12
+          }
+        }
+      };
+    }),
     listSessions: vi.fn(() => ['session-1']),
     createSession: vi.fn(dto => ({ id: 'session-1', ...dto })),
     getSession: vi.fn(id => ({ id })),
@@ -154,5 +220,158 @@ describe('ChatController', () => {
     closeHandler?.();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
     expect(response.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('streams direct llm responses over POST /chat SSE', async () => {
+    const chatService = createChatService();
+    const controller = new ChatController(chatService as never);
+    const response = createSseResponse();
+
+    await controller.streamDirectChat(
+      {
+        message: '你好',
+        systemPrompt: '你是一个助手'
+      } as never,
+      response as never
+    );
+
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
+    expect(response.write).toHaveBeenCalledWith(': keep-alive\n\n');
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({ type: 'token', data: { content: '你' } })}\n\n`
+    );
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({ type: 'token', data: { content: '好' } })}\n\n`
+    );
+    expect(response.write).toHaveBeenCalledWith(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    expect(response.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('streams stage events and final sandpack files for data-report preview requests', async () => {
+    const chatService = createChatService();
+    chatService.resolveDirectResponseMode.mockReturnValue('preview');
+    const controller = new ChatController(chatService as never);
+    const response = createSseResponse();
+
+    await controller.streamDirectChat(
+      {
+        message: '参考 bonusCenterData 生成多个数据报表页面'
+      } as never,
+      response as never
+    );
+
+    expect(chatService.resolveDirectResponseMode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '参考 bonusCenterData 生成多个数据报表页面'
+      })
+    );
+    expect(chatService.streamSandpackPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '参考 bonusCenterData 生成多个数据报表页面'
+      }),
+      expect.any(Function)
+    );
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
+    expect(response.write).toHaveBeenCalledWith(': keep-alive\n\n');
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({ type: 'stage', data: { stage: 'analysis', progressPercent: 5, status: 'pending' } })}\n\n`
+    );
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({
+        type: 'files',
+        data: {
+          files: {
+            '/App.tsx': 'export default function App() { return null; }',
+            '/routes.ts': 'export const reportRoutes = [];',
+            '/index.tsx': 'export default function Preview() { return null; }'
+          }
+        }
+      })}\n\n`
+    );
+    expect(response.write).toHaveBeenCalledWith(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    expect(response.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts duyi-figma-make style request fields and preserves SSE envelope shape', async () => {
+    const chatService = createChatService();
+    const controller = new ChatController(chatService as never);
+    const response = createSseResponse();
+
+    await controller.streamDirectChat(
+      {
+        messages: [{ role: 'user', content: '继续' }],
+        projectId: 'project-1',
+        mockConfig: { preset: 'default' }
+      } as never,
+      response as never
+    );
+
+    expect(chatService.streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [{ role: 'user', content: '继续' }],
+        projectId: 'project-1',
+        mockConfig: { preset: 'default' }
+      }),
+      expect.any(Function)
+    );
+    expect(response.write).toHaveBeenCalledWith(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+  });
+
+  it('streams structured report-schema events and includes the final status payload', async () => {
+    const chatService = createChatService();
+    chatService.resolveDirectResponseMode.mockReturnValue('report-schema');
+    const controller = new ChatController(chatService as never);
+    const response = createSseResponse();
+
+    await controller.streamDirectChat(
+      {
+        message: '生成 Bonus Center 报表 JSON',
+        responseFormat: 'report-schema'
+      } as never,
+      response as never
+    );
+
+    expect(chatService.streamReportSchema).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '生成 Bonus Center 报表 JSON',
+        responseFormat: 'report-schema'
+      }),
+      expect.any(Function)
+    );
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({
+        type: 'schema_failed',
+        data: {
+          error: {
+            errorCode: 'report_schema_generation_failed',
+            errorMessage: 'provider exploded',
+            retryable: true
+          },
+          runtime: {
+            executionPath: 'partial-llm',
+            cacheHit: false,
+            nodeDurations: {
+              sectionSchemaNode: 12
+            }
+          }
+        }
+      })}\n\n`
+    );
+    expect(response.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({
+        type: 'done',
+        data: {
+          content: '{"status":"failed"}',
+          status: 'failed',
+          runtime: {
+            executionPath: 'partial-llm',
+            cacheHit: false,
+            nodeDurations: {
+              sectionSchemaNode: 12
+            }
+          }
+        }
+      })}\n\n`
+    );
   });
 });

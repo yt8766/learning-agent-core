@@ -1,4 +1,4 @@
-import { listSubgraphDescriptors } from '@agent/agent-core';
+import { listSubgraphDescriptors } from '@agent/agents-supervisor';
 import type {
   ArchitectureDescriptor,
   ArchitectureDescriptorRegistryEntry,
@@ -17,7 +17,7 @@ export function buildProjectArchitectureDescriptor(input: {
     { id: 'agent-admin', label: 'agent-admin\n六大中心指挥面', kind: 'frontend', subgraphId: 'frontends' },
     { id: 'backend', label: 'backend / agent-server', kind: 'backend', subgraphId: 'runtime' },
     { id: 'worker', label: 'worker\n异步执行与恢复', kind: 'worker', subgraphId: 'runtime' },
-    { id: 'agent-core', label: 'agent-core\nSupervisor + 六部 runtime', kind: 'runtime', subgraphId: 'runtime' },
+    { id: 'runtime-host', label: 'runtime-host\nSupervisor + 六部 runtime', kind: 'runtime', subgraphId: 'runtime' },
     { id: 'wenyuan', label: '文渊阁\nmemory / history / trace / checkpoint', kind: 'data', subgraphId: 'storage' },
     { id: 'cangjing', label: '藏经阁\ncatalog / documents / chunks / vectors', kind: 'data', subgraphId: 'storage' },
     { id: 'tools', label: 'tool registry', kind: 'registry', subgraphId: 'infra' },
@@ -35,17 +35,17 @@ export function buildProjectArchitectureDescriptor(input: {
   const edges: ArchitectureEdgeDescriptor[] = [
     { from: 'agent-chat', to: 'backend', label: 'chat / approvals / recover / stream' },
     { from: 'agent-admin', to: 'backend', label: 'runtime / governance / architecture' },
-    { from: 'backend', to: 'agent-core', label: 'runtime facade' },
-    { from: 'worker', to: 'agent-core', label: 'background contract' },
-    { from: 'agent-core', to: 'wenyuan', label: 'session memory / trace / checkpoint' },
-    { from: 'agent-core', to: 'cangjing', label: 'knowledge retrieval / ingestion' },
-    { from: 'agent-core', to: 'tools', label: 'tool lookup' },
-    { from: 'agent-core', to: 'connectors', label: 'connector routing' },
+    { from: 'backend', to: 'runtime-host', label: 'runtime facade' },
+    { from: 'worker', to: 'runtime-host', label: 'background contract' },
+    { from: 'runtime-host', to: 'wenyuan', label: 'session memory / trace / checkpoint' },
+    { from: 'runtime-host', to: 'cangjing', label: 'knowledge retrieval / ingestion' },
+    { from: 'runtime-host', to: 'tools', label: 'tool lookup' },
+    { from: 'runtime-host', to: 'connectors', label: 'connector routing' },
     { from: 'backend', to: 'worker', label: 'queue / lease / retry' }
   ];
   input.subgraphs.forEach(subgraph => {
     edges.push({
-      from: 'agent-core',
+      from: 'runtime-host',
       to: `runtime-unit-${subgraph.id}`,
       label: subgraph.id
     });

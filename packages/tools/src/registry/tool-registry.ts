@@ -85,6 +85,161 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
     inputSchema: { type: 'object', properties: { goal: { type: 'string' }, limit: { type: 'number' } } }
   },
   {
+    name: 'plan_data_report_structure',
+    description:
+      'Plan a structured data-report blueprint including pages, modules, services, types, and route targets.',
+    family: 'knowledge',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string' },
+        taskContext: { type: 'string' },
+        baseDir: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'generate_data_report_scaffold',
+    description: 'Generate a reusable data-report page scaffold with shared search, metrics, chart, and table modules.',
+    family: 'knowledge',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string' },
+        taskContext: { type: 'string' },
+        baseDir: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'generate_data_report_module',
+    description: 'Generate a single data-report module payload for component-level execution.',
+    family: 'knowledge',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        goal: { type: 'string' },
+        taskContext: { type: 'string' },
+        baseDir: { type: 'string' },
+        moduleId: { type: 'string' }
+      }
+    }
+  },
+  {
+    name: 'assemble_data_report_bundle',
+    description: 'Assemble blueprint, module outputs, and shared files into a final readonly delivery manifest.',
+    family: 'knowledge',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        blueprint: { type: 'object' },
+        moduleResults: { type: 'array' },
+        sharedFiles: { type: 'array' }
+      }
+    }
+  },
+  {
+    name: 'generate_data_report_routes',
+    description: 'Generate preview routes and App.tsx for data-report sandpack rendering.',
+    family: 'knowledge',
+    category: 'knowledge',
+    riskLevel: 'low',
+    requiresApproval: false,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-readonly',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: true,
+    isConcurrencySafe: true,
+    isDestructive: false,
+    supportsStreamingDispatch: true,
+    permissionScope: 'readonly',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        blueprint: { type: 'object' }
+      }
+    }
+  },
+  {
+    name: 'write_data_report_bundle',
+    description: 'Materialize an assembled data-report bundle into a workspace target root after approval.',
+    family: 'knowledge',
+    category: 'action',
+    riskLevel: 'high',
+    requiresApproval: true,
+    timeoutMs: 8000,
+    sandboxProfile: 'workspace-write',
+    ownerType: 'shared',
+    preferredMinistries: ['gongbu-code', 'libu-delivery'],
+    capabilityType: 'local-tool',
+    isReadOnly: false,
+    isConcurrencySafe: false,
+    isDestructive: false,
+    supportsStreamingDispatch: false,
+    permissionScope: 'workspace-write',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bundle: { type: 'object' },
+        targetRoot: { type: 'string' }
+      }
+    }
+  },
+  {
     name: 'collect_research_source',
     description: 'Collect a structured summary from an approved research source.',
     family: 'knowledge',

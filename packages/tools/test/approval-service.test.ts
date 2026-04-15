@@ -150,7 +150,7 @@ describe('ApprovalService', () => {
         })
       },
       {
-        command: 'pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit'
+        command: 'pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit'
       }
     );
 

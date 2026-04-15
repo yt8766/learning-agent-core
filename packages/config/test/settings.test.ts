@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadSettings } from '../src/settings';
+import { loadSettings } from '@agent/config';
 
 /** 与 settings.findWorkspaceRoot 一致：从启动时的 cwd 向上找 pnpm-workspace.yaml（避免硬编码盘符与目录名） */
 function resolveMonorepoRootFromCwd(): string {
@@ -181,7 +181,7 @@ describe('loadSettings', () => {
     expect(settings.policy.suggestionPolicy.autoSearchSkillsOnGap).toBe(true);
     expect(settings.policy.budget.stepBudget).toBe(12);
     expect(settings.policy.budget.maxCostPerTaskUsd).toBe(1);
-    expect(settings.policy.budget.fallbackModelId).toBe('glm-4.7-flash');
+    expect(settings.policy.budget.fallbackModelId).toBe('glm-5.1');
     expect(settings.contextStrategy.ragTopK).toBe(4);
     expect(settings.contextStrategy.recentTurns).toBe(10);
   });

@@ -145,7 +145,7 @@ export function RuntimeSummaryAgentErrors({
                       goal: item.goal,
                       errorCode: item.errorCode,
                       ministry: item.ministry,
-                      message: item.message,
+                      message: item.message ?? item.errorName,
                       diagnosisHint: item.diagnosisHint,
                       recommendedAction: item.recommendedAction,
                       stack: item.stack,

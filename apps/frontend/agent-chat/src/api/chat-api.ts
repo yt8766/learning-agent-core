@@ -342,3 +342,115 @@ export function buildBrowserReplayPath(sessionId: string) {
 export function buildBrowserReplayUrl(sessionId: string) {
   return toApiUrl(buildBrowserReplayPath(sessionId));
 }
+
+export interface ReportSchemaStreamRequest {
+  message: string;
+  reportSchemaInput?: Record<string, unknown>;
+  temperature?: number;
+  maxTokens?: number;
+  modelId?: string;
+  currentSchema?: Record<string, unknown>;
+  preferLlm?: boolean;
+}
+
+export interface ReportSchemaStreamEvent {
+  type: string;
+  data?: Record<string, unknown>;
+  message?: string;
+}
+
+export async function streamReportSchema(
+  input: ReportSchemaStreamRequest,
+  onEvent: (event: ReportSchemaStreamEvent) => void
+) {
+  const message = input.currentSchema
+    ? `CHANGE_REQUEST: ${input.message}\nCURRENT_SCHEMA:\n${JSON.stringify(input.currentSchema)}`
+    : input.message;
+  const response = await fetch(toApiUrl('/chat'), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message,
+      preferLlm: input.preferLlm ?? true,
+      reportSchemaInput: input.reportSchemaInput,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens,
+      modelId: input.modelId,
+      responseFormat: 'report-schema'
+    })
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Report schema request failed with status ${response.status}.`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const frames = buffer.split('\n\n');
+    buffer = frames.pop() ?? '';
+
+    for (const frame of frames) {
+      const parsed = parseSseFrame(frame);
+      if (parsed) {
+        onEvent(parsed);
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    const parsed = parseSseFrame(buffer);
+    if (parsed) {
+      onEvent(parsed);
+    }
+  }
+}
+
+function parseSseFrame(frame: string): ReportSchemaStreamEvent | null {
+  const trimmed = frame.trim();
+  if (!trimmed || trimmed.startsWith(':')) {
+    return null;
+  }
+
+  const eventType = trimmed
+    .split('\n')
+    .find(line => line.startsWith('event:'))
+    ?.slice('event:'.length)
+    .trim();
+  const dataText = trimmed
+    .split('\n')
+    .filter(line => line.startsWith('data:'))
+    .map(line => line.slice('data:'.length).trim())
+    .join('\n');
+
+  if (!eventType) {
+    return null;
+  }
+
+  if (!dataText) {
+    return { type: eventType };
+  }
+
+  try {
+    return {
+      type: eventType,
+      data: JSON.parse(dataText) as Record<string, unknown>
+    };
+  } catch {
+    return {
+      type: eventType,
+      message: dataText
+    };
+  }
+}

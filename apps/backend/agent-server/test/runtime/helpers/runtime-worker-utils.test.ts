@@ -6,7 +6,8 @@ import {
   inferCapabilityRiskLevel,
   resolveInstalledSkillMinistry,
   resolveInstalledSkillModel,
-  toCapabilityDisplayName
+  toCapabilityDisplayName,
+  toMinistryDisplayName
 } from '../../../src/runtime/helpers/runtime-worker-utils';
 
 describe('runtime-worker-utils', () => {
@@ -44,5 +45,47 @@ describe('runtime-worker-utils', () => {
     } as any;
 
     expect(resolveInstalledSkillMinistry(skill)).toBe('libu-delivery');
+  });
+
+  it('会覆盖 review code search 和默认 ministry 分支', () => {
+    const models = {
+      research: 'research-model',
+      reviewer: 'review-model',
+      executor: 'exec-model',
+      manager: 'manager-model'
+    };
+
+    expect(resolveInstalledSkillMinistry({ requiredCapabilities: ['security.review'], requiredTools: [] } as any)).toBe(
+      'xingbu-review'
+    );
+    expect(resolveInstalledSkillMinistry({ requiredCapabilities: ['code.refactor'], requiredTools: [] } as any)).toBe(
+      'gongbu-code'
+    );
+    expect(
+      resolveInstalledSkillMinistry({ requiredCapabilities: ['knowledge.search'], requiredTools: [] } as any)
+    ).toBe('hubu-search');
+    expect(resolveInstalledSkillMinistry({ requiredCapabilities: [], requiredTools: [] } as any)).toBe('libu-delivery');
+
+    expect(
+      resolveInstalledSkillModel(models, { requiredCapabilities: ['security.review'], requiredTools: [] } as any)
+    ).toBe('review-model');
+    expect(
+      resolveInstalledSkillModel(models, { requiredCapabilities: ['code.refactor'], requiredTools: [] } as any)
+    ).toBe('exec-model');
+    expect(
+      resolveInstalledSkillModel(models, { requiredCapabilities: ['knowledge.search'], requiredTools: [] } as any)
+    ).toBe('research-model');
+    expect(resolveInstalledSkillModel(models, { requiredCapabilities: [], requiredTools: [] } as any)).toBe(
+      'manager-model'
+    );
+  });
+
+  it('会回退 capability 分类和 ministry 展示名称', () => {
+    expect(inferCapabilityRiskLevel('memory.lookup')).toBe('low');
+    expect(inferCapabilityRequiresApproval('memory.lookup')).toBe(false);
+    expect(inferCapabilityCategory('memory.lookup')).toBe('knowledge');
+    expect(toMinistryDisplayName('hubu-search')).toContain('户部');
+    expect(toMinistryDisplayName('custom-ministry')).toBe('custom-ministry');
+    expect(toMinistryDisplayName()).toBe('未知部');
   });
 });

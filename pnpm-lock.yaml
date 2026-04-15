@@ -76,11 +76,29 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2(@types/node@22.19.15)(msw@2.12.14(@types/node@22.19.15)(typescript@5.9.3))(vite@8.0.1(@types/node@22.19.15)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(yaml@2.8.3))
 
+  agents/coder: {}
+
+  agents/data-report:
+    dependencies:
+      '@agent/report-kit':
+        specifier: workspace:*
+        version: link:../../packages/report-kit
+
+  agents/reviewer: {}
+
+  agents/supervisor: {}
+
   apps/backend/agent-server:
     dependencies:
-      '@agent/agent-core':
+      '@agent/adapters':
         specifier: workspace:*
-        version: link:../../../packages/agent-core
+        version: link:../../../packages/adapters
+      '@agent/agents-data-report':
+        specifier: workspace:*
+        version: link:../../../agents/data-report
+      '@agent/agents-supervisor':
+        specifier: workspace:*
+        version: link:../../../agents/supervisor
       '@agent/config':
         specifier: workspace:*
         version: link:../../../packages/config
@@ -90,15 +108,18 @@ importers:
       '@agent/memory':
         specifier: workspace:*
         version: link:../../../packages/memory
-      '@agent/model':
+      '@agent/runtime':
         specifier: workspace:*
-        version: link:../../../packages/model
+        version: link:../../../packages/runtime
       '@agent/shared':
         specifier: workspace:*
         version: link:../../../packages/shared
       '@agent/skills':
         specifier: workspace:*
         version: link:../../../packages/skills
+      '@agent/templates':
+        specifier: workspace:*
+        version: link:../../../packages/templates
       '@agent/tools':
         specifier: workspace:*
         version: link:../../../packages/tools
@@ -190,6 +211,9 @@ importers:
 
   apps/frontend/agent-admin:
     dependencies:
+      '@agent/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
       '@fontsource-variable/figtree':
         specifier: ^5.2.10
         version: 5.2.10
@@ -266,6 +290,9 @@ importers:
 
   apps/frontend/agent-chat:
     dependencies:
+      '@agent/shared':
+        specifier: workspace:*
+        version: link:../../../packages/shared
       '@ant-design/x':
         specifier: ^2.4.0
         version: 2.4.0(antd@6.3.3(moment@2.30.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -315,15 +342,15 @@ importers:
 
   apps/worker:
     dependencies:
-      '@agent/agent-core':
-        specifier: workspace:*
-        version: link:../../packages/agent-core
       '@agent/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@agent/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@agent/skills':
         specifier: workspace:*
         version: link:../../packages/skills
@@ -331,40 +358,25 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tools
 
-  packages/agent-core:
+  packages/adapters:
     dependencies:
-      '@agent/config':
-        specifier: workspace:*
-        version: link:../config
-      '@agent/evals':
-        specifier: workspace:*
-        version: link:../evals
-      '@agent/memory':
-        specifier: workspace:*
-        version: link:../memory
       '@agent/model':
         specifier: workspace:*
         version: link:../model
+
+  packages/config: {}
+
+  packages/core:
+    dependencies:
+      '@agent/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      '@agent/report-kit':
+        specifier: workspace:*
+        version: link:../report-kit
       '@agent/shared':
         specifier: workspace:*
         version: link:../shared
-      '@agent/skills':
-        specifier: workspace:*
-        version: link:../skills
-      '@agent/tools':
-        specifier: workspace:*
-        version: link:../tools
-      '@langchain/core':
-        specifier: ^1.1.35
-        version: 1.1.35(openai@6.32.0(zod@4.3.6))
-      '@langchain/openai':
-        specifier: ^1.3.0
-        version: 1.3.0(@langchain/core@1.1.35(openai@6.32.0(zod@4.3.6)))
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-
-  packages/config: {}
 
   packages/evals:
     dependencies:
@@ -393,6 +405,14 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0(@langchain/core@1.1.35(openai@6.32.0(zod@4.3.6)))
 
+  packages/report-kit:
+    dependencies:
+      '@agent/templates':
+        specifier: workspace:*
+        version: link:../templates
+
+  packages/runtime: {}
+
   packages/shared: {}
 
   packages/skills:
@@ -404,11 +424,16 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/templates: {}
+
   packages/tools:
     dependencies:
       '@agent/shared':
         specifier: workspace:*
         version: link:../shared
+      '@agent/templates':
+        specifier: workspace:*
+        version: link:../templates
 
 packages:
 

@@ -2,7 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
-import { getMinistryDisplayName, normalizeExecutionMode } from '@agent/shared';
+import {
+  EvalsCenterRecord,
+  getMinistryDisplayName,
+  LearningCenterRecord,
+  normalizeExecutionMode,
+  type PlatformApprovalRecord
+} from '@agent/shared';
 
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import { buildConnectorsCenter } from './runtime-connectors-center';
@@ -37,6 +43,12 @@ import {
   searchLocalSkillSuggestions
 } from '../skills/runtime-skill-sources.service';
 import { RuntimeCentersContext } from './runtime-centers.types';
+import {
+  resolveInterruptPayloadField,
+  resolveLocalSkillSuggestionsWithTimeout,
+  resolveTaskExecutionMode,
+  resolveTaskInteractionKind
+} from './runtime-centers-query.helpers';
 import { ingestLocalKnowledge, readKnowledgeOverview } from '../knowledge/runtime-knowledge-store';
 
 export class RuntimeCentersQueryService {
@@ -154,7 +166,7 @@ export class RuntimeCentersQueryService {
     return { ok: true, payload };
   }
 
-  getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }) {
+  getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }): PlatformApprovalRecord[] {
     return this.ctx()
       .orchestrator.listPendingApprovals()
       .filter(
@@ -197,7 +209,7 @@ export class RuntimeCentersQueryService {
       }));
   }
 
-  getLearningCenter() {
+  getLearningCenter(): Promise<LearningCenterRecord> {
     const ctx = this.ctx();
     const tasks = ctx.orchestrator.listTasks();
     const jobs = ctx.orchestrator.listLearningJobs();
@@ -247,7 +259,7 @@ export class RuntimeCentersQueryService {
             limit: 3
           })
         )
-    });
+    }) as Promise<LearningCenterRecord>;
   }
 
   getEvidenceCenter() {
@@ -331,7 +343,7 @@ export class RuntimeCentersQueryService {
     });
   }
 
-  async getEvalsCenter(days = 30, filters?: { scenarioId?: string; outcome?: string }) {
+  async getEvalsCenter(days = 30, filters?: { scenarioId?: string; outcome?: string }): Promise<EvalsCenterRecord> {
     const ctx = this.ctx();
     const [evals, promptRegression] = await Promise.all([
       summarizeAndPersistEvalHistory({
@@ -387,65 +399,4 @@ export class RuntimeCentersQueryService {
   private ctx() {
     return this.getContext();
   }
-}
-
-function resolveInterruptPayloadField(
-  interrupt: any,
-  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
-) {
-  const payload = interrupt?.payload;
-  if (!payload || typeof payload !== 'object') {
-    return undefined;
-  }
-  const value = payload[field];
-  return typeof value === 'string' ? value : undefined;
-}
-
-function resolveTaskInteractionKind(task: any) {
-  // activeInterrupt is the persisted 司礼监 / InterruptController projection for center filtering.
-  if (typeof task.activeInterrupt?.interactionKind === 'string') {
-    return task.activeInterrupt.interactionKind;
-  }
-  const payload = task.activeInterrupt?.payload;
-  if (payload && typeof payload === 'object' && typeof payload.interactionKind === 'string') {
-    return payload.interactionKind;
-  }
-  if (task.activeInterrupt?.kind === 'user-input') {
-    return 'plan-question';
-  }
-  return task.pendingApproval || task.activeInterrupt ? 'approval' : undefined;
-}
-
-function resolveTaskExecutionMode(task: any) {
-  return String(
-    normalizeExecutionMode(
-      task.executionMode ??
-        task.executionPlan?.mode ??
-        (task.planMode && task.planMode !== 'finalized' && task.planMode !== 'aborted' ? 'plan' : 'execute')
-    ) ?? 'execute'
-  );
-}
-
-async function resolveLocalSkillSuggestionsWithTimeout(
-  resolver: () => Promise<{
-    suggestions: unknown[];
-    gapSummary?: string;
-    profile?: string;
-    usedInstalledSkills?: string[];
-  }>
-) {
-  const timeoutMs = 250;
-  const timeoutResult = {
-    suggestions: [],
-    gapSummary: 'local-skill-suggestions-timeout',
-    profile: undefined,
-    usedInstalledSkills: []
-  };
-
-  return Promise.race([
-    resolver().catch(() => timeoutResult),
-    new Promise<typeof timeoutResult>(resolve => {
-      setTimeout(() => resolve(timeoutResult), timeoutMs);
-    })
-  ]);
 }
