@@ -72,6 +72,8 @@
 - 所有结构化输出 prompt 必须固定追加 `packages/adapters/src/shared/prompts/json-safety-prompt.ts` 的内容；推荐统一使用 `buildStructuredPrompt(..., json: true)` 或 `appendJsonSafetyToMessages`
 - 模型降级、候选模型重试、JSON 安全附加、结构化重试反馈这类跨流程能力，优先沉淀到 `shared/` 或 `utils/`，不要继续散落在单个 agent/node 内部
 - 涉及 `packages/*` 的改动，优先执行 `pnpm build:lib`，再验证应用层
+- `packages/*` 与 `agents/*` 的 `tsup` 默认只允许以稳定公开入口 `src/index.ts` 作为构建入口；除非某个子路径已通过 `package.json` 的 `exports` 显式对外发布，否则不要把 `src/**/*.ts` 或零散内部模块当成多入口打包，避免 `build:lib` 被内部实现膨胀拖慢
+- `.github/workflows/*` 中的 JavaScript actions 默认优先使用 Node 24-ready 主版本；当 GitHub 公告提示某个 action 仍运行在 Node 20 时，应优先升级到支持 `runs.using: node24` 的版本，并显式用 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` 提前验证兼容性
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
