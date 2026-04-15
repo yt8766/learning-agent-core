@@ -15,22 +15,38 @@
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
-- `packages/agent-core`：Agent 运行时核心，内部优先按 `adapters / flows / governance / graphs / runtime / session / shared / utils / workflows / types` 分层
-- `packages/shared`：共享 DTO、领域类型、事件模型
+- `packages/core`：稳定 contract、共享 DTO、接口边界入口
 - `packages/config`：运行时配置与路径解析
+- `packages/runtime`：执行引擎、会话驱动、运行时 facade
+- `packages/adapters`：LLM/provider 等适配器隔离层
 - `packages/memory`：memory、rules、runtime state 本地存储
 - `packages/tools`：工具注册、审批规则、执行器
+- `agents/supervisor`：主控路由、workflow preset、subgraph 描述等 supervisor 入口
+- `agents/data-report`：数据报表生成智能体入口
+- `agents/coder`：代码生成智能体入口占位
+- `agents/reviewer`：质量审核智能体入口占位
+- `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
 - `packages/skills`：运行时技能注册与技能卡领域包
 - `packages/evals`：评估与复盘
+- `packages/shared` / `packages/model`：共享契约与模型接入层
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
-- `docs/*`：项目规范与模板文档
+- `docs/*`：项目规范、模块说明、联调结论与当前实现沉淀
+
+如果需要看“当前每个目录现在在做什么”，优先阅读：
+
+- [`docs/repo-directory-overview.md`](./docs/repo-directory-overview.md)
+- [`docs/apps-overview.md`](./docs/apps-overview.md)
+- [`docs/packages-overview.md`](./docs/packages-overview.md)
+- [`docs/data-overview.md`](./docs/data-overview.md)
+
+根目录不再维护单独的 `TODO.md`。后续 roadmap、联调结论和模块待办统一沉淀到对应的 `docs/<module>/` 文档，并直接按最新实现更新原文档。
 
 ## LangGraph 应用结构
 
 当前项目采用“Graph 入口清晰、共享能力集中、测试目录与源码分离”的结构规范：
 
-- 结构规范文档：[`docs/langgraph-app-structure.md`](./docs/langgraph-app-structure.md)
-- 主图与子图入口优先放在 `packages/agent-core/src/graphs`
+- 结构规范文档：[`docs/langgraph-app-structure-guidelines.md`](./docs/langgraph-app-structure-guidelines.md)
+- 主图与运行时 graph 入口优先放在 `packages/runtime/src/graphs`
 - app 层只通过 `@agent/*` 依赖 graph/runtime facade，不在应用层重新拼 graph
 - 从现在起，每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试
 - 根级 `vitest` 现在只发现 `test/` 目录中的测试
@@ -157,7 +173,7 @@
 仓库当前提供一套最小 `promptfoo` 回归入口，用于比较户部、刑部、礼部关键 prompt 的版本差异：
 
 - 配置文件：[`packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml`](./packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
-- 使用说明：[`packages/evals/promptfoo/README.md`](./packages/evals/promptfoo/README.md)
+- 使用说明：[`docs/evals/promptfoo-regression.md`](./docs/evals/promptfoo-regression.md)
 
 默认命令：
 
@@ -185,7 +201,13 @@
 - 日志
 - 测试生成文件
 
-不要为了释放空间删除用户浏览器登录态或 profile 数据。特别是禁止触碰：
+不要为了释放空间删除用户浏览器登录态、profile 数据或浏览器站点存储。特别是禁止删除或重置：
+
+- Cookie
+- Local Storage
+- Session Storage
+- IndexedDB
+- Cache Storage / Service Worker 站点缓存
 
 - `~/Library/Application Support/Google/Chrome`
 - `~/Library/Caches/Google/Chrome`
@@ -289,12 +311,13 @@
 - [后端规范](./docs/backend-conventions.md)
 - [前端规范](./docs/frontend-conventions.md)
 - [GitHub Flow 规范](./docs/github-flow.md)
-- [模板示例](./docs/project-templates.md)
+- [模板示例](./docs/project-template-guidelines.md)
 - [测试规范](./docs/test-conventions.md)
-- [agent-core 结构报告](./docs/agent-core-structure-report.md)
+- [agent-core 历史结构报告（归档）](./docs/agent-core/archive/agent-core-structure-report.md)
 - [架构总览](./docs/ARCHITECTURE.md)
-- [前后端对接文档](./docs/frontend-backend-integration.md)
-- [规范总览](./PROJECT_CONVENTIONS.md)
+- [前后端对接文档](./docs/integration/frontend-backend-integration.md)
+- [仓库目录概览](./docs/repo-directory-overview.md)
+- [规范总览](./docs/project-conventions.md)
 
 ## For Codex / Agents
 
@@ -303,7 +326,7 @@
 1. [AGENTS.md](./AGENTS.md)
 2. [README.md](./README.md)
 3. [架构总览](./docs/ARCHITECTURE.md)
-4. [前后端对接文档](./docs/frontend-backend-integration.md)
+4. [前后端对接文档](./docs/integration/frontend-backend-integration.md)
 
 最重要的当前约束：
 
@@ -331,7 +354,7 @@
 ## 最低检查
 
 - shared：`pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
-- agent-core：`pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit`
+- runtime：`pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`
 - backend：`pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`
 - agent-chat：`pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit`
 - agent-admin：`pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit`

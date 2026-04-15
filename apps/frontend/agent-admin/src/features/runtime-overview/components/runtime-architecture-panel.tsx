@@ -3,13 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRuntimeArchitecture, isAbortedAdminRequestError } from '@/api/admin-api';
 import type { ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@/types/admin';
 import { ArchitectureMermaidCard } from './architecture-mermaid-card';
-
-const DIAGRAM_ORDER: Array<{ key: keyof RuntimeArchitectureRecord; label: string }> = [
-  { key: 'project', label: '当前项目' },
-  { key: 'agent', label: 'Agent' },
-  { key: 'agentChat', label: 'agent-chat' },
-  { key: 'agentAdmin', label: 'agent-admin' }
-];
+import {
+  DIAGRAM_ORDER,
+  getArchitectureDiagramSummary,
+  resolveActiveArchitectureDiagram
+} from './runtime-architecture-panel-helpers';
 
 export function RuntimeArchitecturePanel() {
   const [record, setRecord] = useState<RuntimeArchitectureRecord | null>(null);
@@ -48,10 +46,7 @@ export function RuntimeArchitecturePanel() {
   }, []);
 
   const activeDiagram = useMemo<ArchitectureDiagramRecord | null>(() => {
-    if (!record) {
-      return null;
-    }
-    return record[activeKey];
+    return resolveActiveArchitectureDiagram(record, activeKey);
   }, [record, activeKey]);
 
   return (
@@ -99,9 +94,7 @@ export function RuntimeArchitecturePanel() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">{activeDiagram.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {activeDiagram.descriptor.nodes.length} nodes / {activeDiagram.descriptor.edges.length} routes
-                </p>
+                <p className="text-sm text-muted-foreground">{getArchitectureDiagramSummary(activeDiagram)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {activeDiagram.sourceDescriptors.map(source => (

@@ -1,4 +1,5 @@
-import { listSubgraphDescriptors, listWorkflowPresets, WorkerRegistry } from '@agent/agent-core';
+import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
+import { WorkerRegistry } from '@agent/runtime';
 import type { ArchitectureDescriptorRegistryEntry, RuntimeArchitectureRecord } from '@agent/shared';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';

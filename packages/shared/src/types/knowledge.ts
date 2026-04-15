@@ -281,13 +281,23 @@ export interface BudgetState {
 export interface EvidenceRecord {
   id: string;
   taskId: string;
+  taskGoal?: string;
   sourceId?: string;
   sourceType: string;
   sourceUrl?: string;
   trustClass: TrustClass;
+  sourceStore?: Extract<KnowledgeStore, 'wenyuan' | 'cangjing'>;
   summary: string;
   detail?: Record<string, unknown>;
   linkedRunId?: string;
+  checkpointRef?: {
+    sessionId: string;
+    taskId?: string;
+    checkpointId: string;
+    checkpointCursor: number;
+    recoverability: 'safe' | 'partial' | 'unsafe';
+  };
+  recoverable?: boolean;
   createdAt: string;
   fetchedAt?: string;
   replay?: {

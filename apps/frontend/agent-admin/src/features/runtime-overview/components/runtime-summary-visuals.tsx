@@ -2,30 +2,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DashboardEmptyState } from '@/components/dashboard-center-shell';
-import { getExecutionModeDisplayName, getMainChainNodeLabel, getMinistryDisplayName } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
 
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
+import { getChainNodeLabel } from './runtime-summary-visuals-helpers';
 
 // runtime.interruptLedger carries persisted 司礼监 / InterruptController projections for admin observability.
 export function RuntimeSummaryVisuals({
   runtime,
   onSelectTask
 }: Pick<RuntimeSummarySectionProps, 'runtime' | 'onSelectTask'>) {
-  const getChainNodeLabel = (node?: string) => {
-    switch (node) {
-      case 'entry_router':
-      case 'mode_gate':
-      case 'dispatch_planner':
-      case 'context_filter':
-      case 'result_aggregator':
-      case 'interrupt_controller':
-      case 'learning_recorder':
-        return getMainChainNodeLabel(node);
-      default:
-        return node ?? '链路待推进';
-    }
-  };
-
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <Card className="border-border/70 bg-card/90 shadow-sm">

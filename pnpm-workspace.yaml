@@ -1,4 +1,6 @@
 packages:
   - apps/*
   - apps/*/*
+  - agents/*
   - packages/*
+  - packages/*/*

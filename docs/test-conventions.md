@@ -1,5 +1,15 @@
 # 测试规范
 
+状态：current
+适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
+最后核对：2026-04-14
+
+配套现状文档：
+
+- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
+- [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
+- [Prompt Regression And Thresholds](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
+
 适用范围：
 
 - `packages/*`

@@ -13,6 +13,7 @@ import { RulesModule } from './rules/rules.module';
 import { RuntimeModule } from './runtime/runtime.module';
 import { SkillsModule } from './skills/skills.module';
 import { TasksModule } from './tasks/tasks.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { TasksModule } from './tasks/tasks.module';
     RulesModule,
     SkillsModule,
     LearningModule,
-    ApprovalsModule
+    ApprovalsModule,
+    TemplatesModule
   ]
 })
 export class AppModule {}

@@ -2,19 +2,32 @@ import { Alert, App as AntApp, Button, ConfigProvider, Layout, Modal, Space, Tag
 import { XProvider } from '@ant-design/x';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  buildApprovalsCenterExportUrl,
-  buildBrowserReplayUrl,
-  buildRuntimeCenterExportUrl,
-  exportApprovalsCenter,
-  exportRuntimeCenter,
-  getBrowserReplay
-} from '@/api/chat-api';
+import { exportApprovalsCenter, exportRuntimeCenter, getBrowserReplay } from '@/api/chat-api';
 import { buildBubbleItems } from '@/features/chat/chat-message-adapter';
-import { ChatRuntimeDrawer, getRuntimeDrawerExportFilters } from '@/features/runtime-panel/chat-runtime-drawer';
-import { formatSessionTime, getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
+import { ReportSchemaWorkbench } from '@/features/report-schema/report-schema-workbench';
+import { ChatRuntimeDrawer } from '@/features/runtime-panel/chat-runtime-drawer';
+import { getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
 import '@/styles/chat-home-page.scss';
-import { buildEventSummary, getAgentLabel, getErrorCopy } from './chat-home-helpers';
+import { getAgentLabel, getErrorCopy } from './chat-home-helpers';
+import {
+  buildApprovalsExportRequest,
+  buildReplayDownloadFilename,
+  buildChatHomeShareLinks,
+  buildDeleteSessionConfirmConfig,
+  buildRuntimeExportRequest,
+  buildCognitionDurationLabel,
+  getWorkbenchToggleLabel,
+  openApprovalFeedbackState,
+  resetApprovalFeedbackState,
+  resolveApprovalFeedbackSubmission,
+  buildShareLinksText,
+  buildStreamEventItems,
+  downloadTextFile,
+  resolveCognitionTargetMessageId,
+  serializeBrowserReplay,
+  shouldShowSessionHeaderActions,
+  shouldShowErrorAlert
+} from './chat-home-page-helpers';
 import { ChatHomeSidebar } from './chat-home-sidebar';
 import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
 
@@ -54,25 +67,11 @@ export function ChatHomePage() {
   const agentThinking = Boolean(chat.checkpoint?.thinkState?.loading);
   const thoughtItems = useMemo(() => buildThoughtItems(chat), [chat]);
   const cognitionTargetMessageId = useMemo(
-    () =>
-      chat.checkpoint?.thinkState?.messageId ??
-      chat.checkpoint?.thoughtChain?.find(item => item.messageId)?.messageId ??
-      '',
+    () => resolveCognitionTargetMessageId(chat.checkpoint, chat.checkpoint?.thoughtChain),
     [chat.checkpoint?.thinkState?.messageId, chat.checkpoint?.thoughtChain]
   );
   const cognitionDurationLabel = useMemo(() => {
-    const durationMs =
-      chat.checkpoint?.thinkState?.thinkingDurationMs ??
-      chat.checkpoint?.thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs;
-    if (typeof durationMs !== 'number') {
-      return '';
-    }
-
-    const extraMs = chat.checkpoint?.thinkState?.loading
-      ? Math.max(0, thinkingNow - new Date(chat.checkpoint.updatedAt).getTime())
-      : 0;
-    const seconds = Math.max(1, Math.round((durationMs + extraMs) / 1000));
-    return chat.checkpoint?.thinkState?.loading ? `${seconds}s` : `约 ${seconds} 秒`;
+    return buildCognitionDurationLabel(chat.checkpoint, chat.checkpoint?.thoughtChain, thinkingNow);
   }, [
     chat.checkpoint?.thinkState?.thinkingDurationMs,
     chat.checkpoint?.thinkState?.loading,
@@ -124,8 +123,9 @@ export function ChatHomePage() {
           void chat.allowApprovalAndApprove({ intent, serverId, capabilityId });
         },
         onApprovalFeedback: (intent, reason) => {
-          setFeedbackIntent(intent);
-          setFeedbackDraft(reason ?? '');
+          const nextState = openApprovalFeedbackState(intent, reason);
+          setFeedbackIntent(nextState.feedbackIntent);
+          setFeedbackDraft(nextState.feedbackDraft);
         },
         onPlanAction: params => {
           void chat.updatePlanInterrupt(params);
@@ -154,48 +154,18 @@ export function ChatHomePage() {
       chat.installSuggestedSkill
     ]
   );
-  const streamEvents = useMemo(
-    () =>
-      chat.events
-        .slice()
-        .reverse()
-        .map(eventItem => ({
-          id: eventItem.id,
-          type: eventItem.type,
-          summary: buildEventSummary(eventItem),
-          at: formatSessionTime(eventItem.at),
-          raw: JSON.stringify(eventItem.payload ?? {}, null, 2)
-        })),
-    [chat.events]
-  );
+  const streamEvents = useMemo(() => buildStreamEventItems(chat.events), [chat.events]);
   const errorCopy = chat.error ? getErrorCopy(chat.error) : null;
-
-  const downloadText = (filename: string, mimeType: string, content: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  };
+  const showErrorAlert = shouldShowErrorAlert(chat.error, dismissedError, Boolean(errorCopy));
 
   const handleExportRuntime = async () => {
-    const exported = await exportRuntimeCenter({
-      ...getRuntimeDrawerExportFilters(chat.checkpoint),
-      format: 'json'
-    });
-    downloadText(exported.filename, exported.mimeType, exported.content);
+    const exported = await exportRuntimeCenter(buildRuntimeExportRequest(chat.checkpoint));
+    downloadTextFile(exported.filename, exported.mimeType, exported.content);
   };
 
   const handleExportApprovals = async () => {
-    const exported = await exportApprovalsCenter({
-      ...getRuntimeDrawerExportFilters(chat.checkpoint),
-      format: 'json'
-    });
-    downloadText(exported.filename, exported.mimeType, exported.content);
+    const exported = await exportApprovalsCenter(buildApprovalsExportRequest(chat.checkpoint));
+    downloadTextFile(exported.filename, exported.mimeType, exported.content);
   };
 
   const handleDownloadReplay = async () => {
@@ -203,22 +173,15 @@ export function ChatHomePage() {
       return;
     }
     const replay = await getBrowserReplay(chat.activeSessionId);
-    downloadText(`browser-replay-${chat.activeSessionId}.json`, 'application/json', JSON.stringify(replay, null, 2));
+    downloadTextFile(
+      buildReplayDownloadFilename(chat.activeSessionId),
+      'application/json',
+      serializeBrowserReplay(replay)
+    );
   };
 
   const handleCopyShareLinks = async () => {
-    const filters = getRuntimeDrawerExportFilters(chat.checkpoint);
-    const runtimeUrl = buildRuntimeCenterExportUrl({ ...filters, format: 'json' });
-    const approvalsUrl = buildApprovalsCenterExportUrl({ ...filters, format: 'json' });
-    const replayUrl = chat.activeSessionId ? buildBrowserReplayUrl(chat.activeSessionId) : '';
-    const content = [
-      '当前运行视角链接',
-      `runtime: ${runtimeUrl}`,
-      `approvals: ${approvalsUrl}`,
-      replayUrl ? `replay: ${replayUrl}` : undefined
-    ]
-      .filter(Boolean)
-      .join('\n');
+    const content = buildShareLinksText(buildChatHomeShareLinks(chat.checkpoint, chat.activeSessionId));
     await navigator.clipboard.writeText(content);
   };
 
@@ -246,7 +209,7 @@ export function ChatHomePage() {
                   </Space>
                 </div>
                 <Space>
-                  {chat.activeSessionId ? (
+                  {shouldShowSessionHeaderActions(chat.activeSessionId) ? (
                     <>
                       <Button
                         htmlType="button"
@@ -258,14 +221,7 @@ export function ChatHomePage() {
                         htmlType="button"
                         danger
                         onClick={() => {
-                          Modal.confirm({
-                            title: '删除当前会话？',
-                            content: '删除后，这个会话的聊天记录、事件流和检查点都会一并移除。',
-                            okText: '删除',
-                            okButtonProps: { danger: true },
-                            cancelText: '取消',
-                            onOk: async () => chat.deleteActiveSession()
-                          });
+                          Modal.confirm(buildDeleteSessionConfirmConfig(async () => chat.deleteActiveSession()));
                         }}
                       >
                         删除会话
@@ -273,7 +229,7 @@ export function ChatHomePage() {
                     </>
                   ) : null}
                   <Button htmlType="button" onClick={() => setShowWorkbench(current => !current)}>
-                    {showWorkbench ? '收起工作区' : '打开工作区'}
+                    {getWorkbenchToggleLabel(showWorkbench)}
                   </Button>
                   <Button htmlType="button" type="primary" onClick={() => chat.setShowRightPanel(true)}>
                     打开总览面板
@@ -283,7 +239,7 @@ export function ChatHomePage() {
 
               <Content className="chatx-content">
                 <div className="chatx-main-card">
-                  {chat.error && dismissedError !== chat.error && errorCopy ? (
+                  {showErrorAlert && errorCopy ? (
                     <Alert
                       type="error"
                       showIcon
@@ -301,6 +257,7 @@ export function ChatHomePage() {
                     bubbleItems={bubbleItems}
                     streamEvents={streamEvents}
                   />
+                  <ReportSchemaWorkbench />
                 </div>
               </Content>
             </Layout>
@@ -328,14 +285,17 @@ export function ChatHomePage() {
               okText="提交批注"
               cancelText="取消"
               onCancel={() => {
-                setFeedbackIntent('');
-                setFeedbackDraft('');
+                const nextState = resetApprovalFeedbackState();
+                setFeedbackIntent(nextState.feedbackIntent);
+                setFeedbackDraft(nextState.feedbackDraft);
               }}
               onOk={() => {
-                if (!feedbackIntent) return;
-                void chat.updateApproval(feedbackIntent, false, feedbackDraft.trim() || undefined);
-                setFeedbackIntent('');
-                setFeedbackDraft('');
+                const submission = resolveApprovalFeedbackSubmission(feedbackIntent, feedbackDraft);
+                if (!submission) return;
+                void chat.updateApproval(submission.intent, submission.approved, submission.reason);
+                const nextState = resetApprovalFeedbackState();
+                setFeedbackIntent(nextState.feedbackIntent);
+                setFeedbackDraft(nextState.feedbackDraft);
               }}
             >
               <Space orientation="vertical" size={12} style={{ width: '100%' }}>

@@ -3,6 +3,14 @@ import { Copy, Download, Maximize2, MinusCircle, PlusCircle, RotateCcw } from 'l
 import mermaid from 'mermaid';
 
 import type { ArchitectureDiagramRecord } from '@/types/admin';
+import {
+  ARCHITECTURE_MERMAID_CONFIG,
+  computeArchitectureFitScale,
+  formatArchitectureGeneratedAt,
+  formatArchitectureZoomLabel,
+  getArchitectureDownloadPayload,
+  normalizeArchitectureScale
+} from './architecture-mermaid-helpers';
 
 export function sanitizeMermaidSource(source: string) {
   const nodeIdMap = new Map<string, string>();
@@ -68,31 +76,11 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
   const safeMermaid = sanitizeMermaidSource(diagram.mermaid);
   const canRenderDiagram = Boolean(svg) && view === 'diagram';
   const effectiveScale = useMemo(() => Number((scale * fitScale).toFixed(3)), [fitScale, scale]);
-  const zoomLabel = useMemo(() => `${Math.round(effectiveScale * 100)}%`, [effectiveScale]);
+  const zoomLabel = useMemo(() => formatArchitectureZoomLabel(effectiveScale), [effectiveScale]);
 
   useEffect(() => {
     let cancelled = false;
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'loose',
-      theme: 'base',
-      themeVariables: {
-        primaryColor: '#ece9ff',
-        primaryBorderColor: '#cdc6ff',
-        primaryTextColor: '#514a77',
-        lineColor: '#a9abc3',
-        secondaryColor: '#fff8bf',
-        secondaryBorderColor: '#efe394',
-        tertiaryColor: '#f7f7fb',
-        clusterBkg: '#fff9c9',
-        clusterBorder: '#efe394',
-        fontFamily: 'Geist Variable, Figtree Variable, sans-serif',
-        fontSize: '14px'
-      },
-      flowchart: {
-        curve: 'basis'
-      }
-    });
+    mermaid.initialize(ARCHITECTURE_MERMAID_CONFIG);
 
     void mermaid
       .render(`runtime-architecture-${elementId}`, safeMermaid)
@@ -143,8 +131,7 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
       if (!width) {
         return;
       }
-      const nextFitScale = Math.min(1.1, Math.max(0.55, (viewport.clientWidth - 48) / width));
-      setFitScale(Number(nextFitScale.toFixed(3)));
+      setFitScale(computeArchitectureFitScale(viewport.clientWidth, width));
     };
 
     applyFit();
@@ -153,8 +140,8 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
     return () => resizeObserver.disconnect();
   }, [canRenderDiagram, svg]);
 
-  const handleZoomIn = () => setScale(current => Math.min(2, Number((current + 0.1).toFixed(2))));
-  const handleZoomOut = () => setScale(current => Math.max(0.5, Number((current - 0.1).toFixed(2))));
+  const handleZoomIn = () => setScale(current => normalizeArchitectureScale(current + 0.1, 0.5, 2));
+  const handleZoomOut = () => setScale(current => normalizeArchitectureScale(current - 0.1, 0.5, 2));
   const handleResetView = () => {
     setScale(1);
     const viewport = viewportRef.current;
@@ -165,9 +152,7 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
   };
 
   const handleDownload = async () => {
-    const content = view === 'code' || !svg ? safeMermaid : svg;
-    const filename = `${diagram.id}-${view === 'code' || !svg ? 'diagram.mmd' : 'diagram.svg'}`;
-    const mimeType = view === 'code' || !svg ? 'text/plain;charset=utf-8' : 'image/svg+xml;charset=utf-8';
+    const { content, filename, mimeType } = getArchitectureDownloadPayload({ view, svg, safeMermaid, diagram });
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -312,7 +297,7 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="rounded-full bg-muted px-2 py-1 font-medium">v{diagram.version}</span>
-        <span>{new Date(diagram.generatedAt).toLocaleString()}</span>
+        <span>{formatArchitectureGeneratedAt(diagram.generatedAt)}</span>
       </div>
 
       {canRenderDiagram ? (
@@ -343,7 +328,6 @@ export function ArchitectureMermaidCard({ diagram }: { diagram: ArchitectureDiag
     </div>
   );
 }
-
 function toMermaidToken(value: string) {
   return value.replace(/[^a-zA-Z0-9]/g, '_');
 }

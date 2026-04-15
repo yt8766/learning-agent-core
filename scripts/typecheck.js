@@ -8,13 +8,19 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const tsc = path.join(rootDir, 'node_modules/typescript/lib/tsc.js');
 
 const projects = [
+  'packages/core/tsconfig.json',
   'packages/config/tsconfig.json',
   'packages/shared/tsconfig.json',
+  'packages/runtime/tsconfig.json',
+  'packages/adapters/tsconfig.json',
   'packages/memory/tsconfig.json',
   'packages/evals/tsconfig.json',
   'packages/tools/tsconfig.json',
   'packages/skills/tsconfig.json',
-  'packages/agent-core/tsconfig.json',
+  'agents/supervisor/tsconfig.json',
+  'agents/data-report/tsconfig.json',
+  'agents/coder/tsconfig.json',
+  'agents/reviewer/tsconfig.json',
   'apps/backend/agent-server/tsconfig.json',
   'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.json',

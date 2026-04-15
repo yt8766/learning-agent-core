@@ -92,17 +92,30 @@ function readWorkspacePackages() {
     return [];
   }
 
-  return fs
-    .readdirSync(packagesDir, { withFileTypes: true })
-    .filter(entry => entry.isDirectory())
-    .map(entry => {
-      const dir = path.join(packagesDir, entry.name);
-      const packageJsonPath = path.join(dir, 'package.json');
-      if (!fs.existsSync(packageJsonPath)) {
-        return null;
+  const packageDirs = [];
+
+  function collectPackageDirs(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
       }
 
-      const packageJson = readJson(packageJsonPath);
+      const candidateDir = path.join(dir, entry.name);
+      const packageJsonPath = path.join(candidateDir, 'package.json');
+      if (fs.existsSync(packageJsonPath)) {
+        packageDirs.push(candidateDir);
+        continue;
+      }
+
+      collectPackageDirs(candidateDir);
+    }
+  }
+
+  collectPackageDirs(packagesDir);
+
+  return packageDirs
+    .map(dir => {
+      const packageJson = readJson(path.join(dir, 'package.json'));
       const scripts = packageJson.scripts ?? {};
       const supportsBuild = Boolean(
         scripts['build:lib'] || scripts.build || fs.existsSync(path.join(dir, 'tsup.config.ts'))
@@ -110,7 +123,7 @@ function readWorkspacePackages() {
 
       return {
         dir,
-        folderName: entry.name,
+        folderName: path.relative(packagesDir, dir).replace(/\\/g, '/'),
         packageName: packageJson.name,
         supportsBuild
       };

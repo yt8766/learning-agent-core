@@ -144,11 +144,11 @@ describe('PlanQuestionCard', () => {
                 question: '这轮优先覆盖哪里？',
                 questionType: 'detail',
                 whyAsked: '避免盲目扩散。',
-                recommendedOptionId: 'agent-core',
+                recommendedOptionId: 'runtime-host',
                 allowFreeform: true,
-                defaultAssumption: '默认先做 agent-core',
+                defaultAssumption: '默认先做 runtime-host',
                 options: [
-                  { id: 'agent-core', label: 'agent-core', description: '优先清主短板' },
+                  { id: 'runtime-host', label: 'runtime-host', description: '优先清主短板' },
                   { id: 'backend', label: 'backend', description: '先补 backend wrapper' }
                 ]
               },
@@ -244,7 +244,7 @@ describe('PlanQuestionCard', () => {
                   id: 'scope',
                   question: '这轮优先覆盖哪里？',
                   questionType: 'direction',
-                  options: [{ id: 'agent-core', label: 'agent-core', description: '优先清主短板' }]
+                  options: [{ id: 'runtime-host', label: 'runtime-host', description: '优先清主短板' }]
                 }
               ]
             } as any
@@ -293,7 +293,7 @@ describe('PlanQuestionCard', () => {
                 question: '继续推进哪一块？',
                 questionType: 'detail',
                 allowFreeform: true,
-                options: [{ id: 'agent-core', label: 'agent-core', description: '继续 agent-core' }]
+                options: [{ id: 'runtime-host', label: 'runtime-host', description: '继续 runtime-host' }]
               }
             ]
           } as any

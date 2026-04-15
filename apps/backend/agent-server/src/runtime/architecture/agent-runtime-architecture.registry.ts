@@ -1,4 +1,5 @@
-import { listWorkflowPresets, WorkerRegistry } from '@agent/agent-core';
+import { listWorkflowPresets } from '@agent/agents-supervisor';
+import { WorkerRegistry } from '@agent/runtime';
 import type {
   ArchitectureDescriptor,
   ArchitectureDescriptorRegistryEntry,
@@ -9,10 +10,10 @@ export function buildAgentArchitectureDescriptor(input: {
   workflows: ReturnType<typeof listWorkflowPresets>;
   workers: ReturnType<WorkerRegistry['list']>;
 }): ArchitectureDescriptor {
-  const ministryCounts = input.workers.reduce<Record<string, number>>((acc, worker) => {
-    acc[worker.ministry] = (acc[worker.ministry] ?? 0) + 1;
-    return acc;
-  }, {});
+  const ministryCounts: Record<string, number> = {};
+  input.workers.forEach(worker => {
+    ministryCounts[worker.ministry] = (ministryCounts[worker.ministry] ?? 0) + 1;
+  });
 
   const nodes: ArchitectureNodeDescriptor[] = [
     { id: 'entry-router', label: 'EntryRouter', kind: 'entry', subgraphId: 'main-chain' },

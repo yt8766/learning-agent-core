@@ -215,14 +215,13 @@ export interface SkillManifestRecord {
   };
 }
 
-export interface InstalledSkillRecord {
-  skillId: string;
-  version: string;
-  sourceId: string;
-  installLocation: string;
-  installedAt: string;
-  status: string;
-  receiptId: string;
+import type {
+  CompanyAgentRecord as SharedCompanyAgentRecord,
+  InstalledSkillRecord as SharedInstalledSkillRecord,
+  SkillInstallReceipt as SharedSkillInstallReceipt
+} from '@agent/shared';
+
+export type InstalledSkillRecord = SharedInstalledSkillRecord & {
   governanceRecommendation?: string;
   allowedTools?: string[];
   compatibility?: string;
@@ -241,39 +240,14 @@ export interface InstalledSkillRecord {
     approvalCount: number;
     latestTraceSummary?: string;
   }>;
-}
+};
 
-export interface SkillInstallReceipt {
-  id: string;
-  skillId: string;
-  version: string;
-  sourceId: string;
-  phase?: 'requested' | 'approved' | 'downloading' | 'verifying' | 'installing' | 'installed' | 'failed';
-  integrity?: string;
-  approvedBy?: string;
-  rejectedBy?: string;
-  reason?: string;
-  downloadRef?: string;
-  failureCode?: string;
-  failureDetail?: string;
-  installedAt?: string;
+export type SkillInstallReceipt = SharedSkillInstallReceipt & {
   status: string;
   result?: string;
-}
+};
 
-export interface CompanyAgentRecord {
-  id: string;
-  enabled?: boolean;
-  ministry: string;
-  kind?: string;
-  displayName: string;
-  defaultModel: string;
-  supportedCapabilities: string[];
-  reviewPolicy: string;
-  sourceId?: string;
-  owner?: string;
-  tags?: string[];
-  requiredConnectors?: string[];
+export type CompanyAgentRecord = SharedCompanyAgentRecord & {
   activeTaskCount?: number;
   totalTaskCount?: number;
   successRate?: number;
@@ -281,7 +255,7 @@ export interface CompanyAgentRecord {
   sourceRuns?: string[];
   recentTaskGoals?: string[];
   governanceStatus?: string;
-}
+};
 
 export interface SessionRecord {
   id: string;

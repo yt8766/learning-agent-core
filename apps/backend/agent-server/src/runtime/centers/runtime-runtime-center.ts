@@ -1,10 +1,12 @@
-import { listSubgraphDescriptors, listWorkflowVersions } from '@agent/agent-core';
+import { listSubgraphDescriptors, listWorkflowVersions } from '@agent/agents-supervisor';
 import {
   ApprovalScopePolicyRecord,
   ChatCheckpointRecord,
   ChatSessionRecord,
   getMinistryDisplayName,
   getSpecialistDisplayName,
+  RuntimeCenterRecord,
+  RuntimeProfile,
   TaskRecord
 } from '@agent/shared';
 
@@ -14,19 +16,23 @@ import { summarizeAndPersistUsageAnalytics } from '../helpers/runtime-metrics-st
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 
 export function buildRuntimeCenter(input: {
-  profile: string;
+  profile: RuntimeProfile;
   policy: {
-    approvalMode: string;
-    skillInstallMode: string;
-    learningMode: string;
-    sourcePolicyMode: string;
-    budget: unknown;
+    approvalMode: 'strict' | 'balanced' | 'auto';
+    skillInstallMode: 'manual' | 'low-risk-auto';
+    learningMode: 'controlled' | 'aggressive';
+    sourcePolicyMode: 'internal-only' | 'controlled-first' | 'open-web-allowed';
+    budget: {
+      stepBudget: number;
+      retryBudget: number;
+      sourceBudget: number;
+    };
   };
   tasks: TaskRecord[];
   sessions: ChatSessionRecord[];
   pendingApprovals: Array<{ id: string }>;
   usageAnalytics: Awaited<ReturnType<typeof summarizeAndPersistUsageAnalytics>>;
-  recentGovernanceAudit: unknown;
+  recentGovernanceAudit?: RuntimeCenterRecord['recentGovernanceAudit'];
   approvalScopePolicies?: ApprovalScopePolicyRecord[];
   backgroundWorkerPoolSize: number;
   backgroundWorkerSlots: Map<string, { taskId: string; startedAt: string }>;
@@ -57,7 +63,7 @@ export function buildRuntimeCenter(input: {
     }>;
   };
   dailyTechBriefing?: DailyTechBriefingStatusRecord;
-}) {
+}): RuntimeCenterRecord {
   // task.entryDecision is the persisted 通政司 / EntryRouter projection.
   // task.activeInterrupt and task.interruptHistory are persisted 司礼监 / InterruptController projections.
   const activeTasks = input.tasks.filter(task =>

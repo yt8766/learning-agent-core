@@ -3,6 +3,68 @@ import { describe, expect, it, vi } from 'vitest';
 import { RuntimeSkillCatalogService } from '../../../src/runtime/services/runtime-skill-catalog.service';
 
 describe('RuntimeSkillCatalogService', () => {
+  it('falls back to heuristic draft blueprint when llm is unavailable or generation fails', async () => {
+    const publishToLab = vi.fn(async (skill: any) => skill);
+    const registerSkillWorker = vi.fn();
+    const serviceWithoutLlm = new RuntimeSkillCatalogService(() => ({
+      skillRegistry: {
+        list: vi.fn(),
+        getById: vi.fn(),
+        publishToLab,
+        promote: vi.fn(),
+        disable: vi.fn(),
+        restore: vi.fn(),
+        retire: vi.fn()
+      },
+      registerSkillWorker
+    }));
+
+    const browserDraft = await serviceWithoutLlm.createUserSkillDraft({
+      prompt: '帮我分析网页并截图后发飞书通知',
+      sessionId: 'session-1',
+      taskId: 'task-1'
+    });
+
+    expect(browserDraft.name).toContain('分析网页并截图后发飞书通知');
+    expect(browserDraft.requiredTools).toEqual(expect.arrayContaining(['browser.open_page', 'notify.send_message']));
+    expect(browserDraft.preferredConnectors).toEqual(
+      expect.arrayContaining(['browser-mcp-template', 'lark-mcp-template'])
+    );
+    expect(browserDraft.constraints).toEqual(
+      expect.arrayContaining(['sessionId=session-1', 'taskId=task-1', 'preferredConnector=lark-mcp-template'])
+    );
+    expect(browserDraft.riskLevel).toBe('medium');
+    expect(registerSkillWorker).toHaveBeenCalledWith(expect.objectContaining({ id: browserDraft.id }));
+
+    const serviceWithFailingLlm = new RuntimeSkillCatalogService(() => ({
+      skillRegistry: {
+        list: vi.fn(),
+        getById: vi.fn(),
+        publishToLab,
+        promote: vi.fn(),
+        disable: vi.fn(),
+        restore: vi.fn(),
+        retire: vi.fn()
+      },
+      llmProvider: {
+        isConfigured: () => true,
+        generateObject: vi.fn(async () => {
+          throw new Error('llm unavailable');
+        })
+      } as any
+    }));
+
+    const architectureDraft = await serviceWithFailingLlm.createUserSkillDraft({
+      prompt: '帮我梳理代码库架构并检查依赖'
+    });
+
+    expect(architectureDraft.description).toContain('技术架构视角');
+    expect(architectureDraft.toolContract?.optional).toEqual(
+      expect.arrayContaining(['repo.map_dependencies', 'repo.trace_callers'])
+    );
+    expect(architectureDraft.steps).toHaveLength(4);
+  });
+
   it('uses llm-generated skill draft contract when provider is configured', async () => {
     const publishToLab = vi.fn(async (skill: any) => skill);
     const registerSkillWorker = vi.fn();
@@ -127,6 +189,85 @@ describe('RuntimeSkillCatalogService', () => {
         status: 'stable'
       })
     ]);
+  });
+
+  it('lists lab skills, exposes bootstrap skills and forwards catalog mutations', async () => {
+    const stableSkill = { id: 'skill-stable', status: 'stable', name: 'Stable', description: 'Stable skill' } as any;
+    const labSkill = { id: 'skill-lab', status: 'lab', name: 'Lab', description: 'Lab skill' } as any;
+    const skillRegistry = {
+      list: vi.fn(async (status?: string) => (status === 'lab' ? [labSkill] : [stableSkill, labSkill])),
+      getById: vi.fn(async (skillId: string) => (skillId === 'skill-stable' ? stableSkill : undefined)),
+      publishToLab: vi.fn(),
+      promote: vi.fn(async (skillId: string) => ({ id: skillId, action: 'promoted' })),
+      disable: vi.fn(async (skillId: string, reason?: string) => ({ id: skillId, reason })),
+      restore: vi.fn(async (skillId: string) => ({ id: skillId, action: 'restored' })),
+      retire: vi.fn(async (skillId: string, reason?: string) => ({ id: skillId, reason }))
+    };
+    const service = new RuntimeSkillCatalogService(() => ({
+      skillRegistry
+    }));
+
+    await expect(service.listLabSkills()).resolves.toEqual([expect.objectContaining({ id: 'skill-lab' })]);
+    expect(service.listBootstrapSkills()).toEqual(expect.any(Array));
+    await expect(service.getSkill('skill-stable')).resolves.toEqual(stableSkill);
+    await expect(service.promoteSkill('skill-stable')).resolves.toEqual({
+      id: 'skill-stable',
+      action: 'promoted'
+    });
+    await expect(service.disableSkill('skill-stable')).resolves.toEqual({
+      id: 'skill-stable',
+      reason: 'disabled_from_admin'
+    });
+    await expect(service.restoreSkill('skill-stable')).resolves.toEqual({
+      id: 'skill-stable',
+      action: 'restored'
+    });
+    await expect(service.retireSkill('skill-stable')).resolves.toEqual({
+      id: 'skill-stable',
+      reason: 'retired_from_admin'
+    });
+    expect(skillRegistry.list).toHaveBeenCalledWith('lab');
+  });
+
+  it('throws when requested skill is missing and prefers stable copies over newer draft duplicates', async () => {
+    const service = new RuntimeSkillCatalogService(() => ({
+      skillRegistry: {
+        list: vi.fn(async () => [
+          {
+            id: 'older-stable',
+            name: 'GitHub Review',
+            description: 'Review pull requests safely.',
+            status: 'stable',
+            source: 'execution',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            ownership: { ownerType: 'shared' }
+          },
+          {
+            id: 'newer-lab',
+            name: 'GitHub Review',
+            description: 'Review pull requests safely.',
+            status: 'lab',
+            source: 'execution',
+            createdAt: '2026-04-01T00:00:00.000Z',
+            ownership: { ownerType: 'shared' }
+          }
+        ]),
+        getById: vi.fn(async () => undefined),
+        publishToLab: vi.fn(),
+        promote: vi.fn(),
+        disable: vi.fn(),
+        restore: vi.fn(),
+        retire: vi.fn()
+      }
+    }));
+
+    await expect(service.listSkills()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'older-stable',
+        status: 'stable'
+      })
+    ]);
+    await expect(service.getSkill('missing-skill')).rejects.toThrow('Skill missing-skill not found');
   });
 
   it('rejects creating user skill drafts for weekly report style prompts', async () => {

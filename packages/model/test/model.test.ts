@@ -1,4 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createChatOpenAIModel,
+  createOpenAIEmbeddingModel,
+  createRuntimeEmbeddingProvider,
+  createZhipuChatModel,
+  normalizeEmbeddingBaseUrl,
+  normalizeModelBaseUrl,
+  resolveRuntimeEmbeddingApiKey
+} from '@agent/model';
 
 const chatOpenAIInstances: any[] = [];
 const openAIEmbeddingsInstances: any[] = [];
@@ -28,16 +37,6 @@ vi.mock('@langchain/openai', () => ({
 vi.mock('@agent/config', () => ({
   loadSettings: () => loadSettingsMock()
 }));
-
-import {
-  createChatOpenAIModel,
-  createOpenAIEmbeddingModel,
-  createRuntimeEmbeddingProvider,
-  resolveRuntimeEmbeddingApiKey,
-  createZhipuChatModel,
-  normalizeEmbeddingBaseUrl,
-  normalizeModelBaseUrl
-} from '../src';
 
 describe('model package', () => {
   beforeEach(() => {
@@ -133,6 +132,7 @@ describe('model package', () => {
       dimensions: undefined,
       apiKey: 'embed-key',
       batchSize: 8,
+      encodingFormat: 'float',
       configuration: {
         baseURL: 'https://open.bigmodel.cn/api/coding/paas/v4'
       }
@@ -156,6 +156,31 @@ describe('model package', () => {
       dimensions: undefined,
       apiKey: 'embedding-key',
       batchSize: 16,
+      encodingFormat: 'float',
+      configuration: {
+        baseURL: 'https://open.bigmodel.cn/api/coding/paas/v4'
+      }
+    });
+  });
+
+  it('suppresses embedding dimensions when runtime settings use the unified bigmodel base url', async () => {
+    const provider = createRuntimeEmbeddingProvider({
+      embeddings: {
+        endpoint: 'https://open.bigmodel.cn/api/coding/paas/v4',
+        model: 'Embedding-3',
+        dimensions: 1024,
+        apiKey: 'embedding-key'
+      },
+      zhipuApiKey: 'zhipu-key'
+    });
+
+    await expect(provider.embedQuery('hello')).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(openAIEmbeddingsInstances[0]?.config).toEqual({
+      model: 'Embedding-3',
+      dimensions: undefined,
+      apiKey: 'embedding-key',
+      batchSize: 16,
+      encodingFormat: 'float',
       configuration: {
         baseURL: 'https://open.bigmodel.cn/api/coding/paas/v4'
       }

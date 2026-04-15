@@ -1,5 +1,9 @@
 # Runtime Interrupts
 
+状态：current
+适用范围：运行时中断规范
+最后核对：2026-04-14
+
 本文件定义仓库内“审批 / 人工确认 / 等待补充输入”相关流程的统一中断规范。
 
 目标不是再扩展一套 `pendingApproval` 变体，而是把“中断”明确为 runtime 与 graph 的主控制原语。

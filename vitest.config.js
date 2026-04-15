@@ -53,14 +53,22 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@agent/core': resolvePath('./packages/core/src'),
       '@agent/shared': resolvePath('./packages/shared/src'),
       '@agent/config': resolvePath('./packages/config/src'),
+      '@agent/runtime': resolvePath('./packages/runtime/src'),
+      '@agent/adapters': resolvePath('./packages/adapters/src'),
       '@agent/tools': resolvePath('./packages/tools/src'),
       '@agent/memory': resolvePath('./packages/memory/src'),
       '@agent/model': resolvePath('./packages/model/src'),
+      '@agent/report-kit': resolvePath('./packages/report-kit/src'),
       '@agent/skills': resolvePath('./packages/skills/src'),
+      '@agent/templates': resolvePath('./packages/templates/src'),
       '@agent/evals': resolvePath('./packages/evals/src'),
-      '@agent/agent-core': resolvePath('./packages/agent-core/src')
+      '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),
+      '@agent/agents-data-report': resolvePath('./agents/data-report/src'),
+      '@agent/agents-coder': resolvePath('./agents/coder/src'),
+      '@agent/agents-reviewer': resolvePath('./agents/reviewer/src')
     }
   },
   test: {
@@ -68,12 +76,18 @@ export default defineConfig({
     passWithNoTests: true,
     environment: 'node',
     include: [
-      'packages/*/test/**/*.test.ts',
-      'packages/*/test/**/*.spec.ts',
-      'packages/*/test/**/*.int-spec.ts',
-      'packages/*/test/**/*.test.tsx',
-      'packages/*/test/**/*.spec.tsx',
-      'packages/*/test/**/*.int-spec.tsx',
+      'packages/**/test/**/*.test.ts',
+      'packages/**/test/**/*.spec.ts',
+      'packages/**/test/**/*.int-spec.ts',
+      'packages/**/test/**/*.test.tsx',
+      'packages/**/test/**/*.spec.tsx',
+      'packages/**/test/**/*.int-spec.tsx',
+      'agents/**/test/**/*.test.ts',
+      'agents/**/test/**/*.spec.ts',
+      'agents/**/test/**/*.int-spec.ts',
+      'agents/**/test/**/*.test.tsx',
+      'agents/**/test/**/*.spec.tsx',
+      'agents/**/test/**/*.int-spec.tsx',
       'apps/**/test/**/*.test.ts',
       'apps/**/test/**/*.spec.ts',
       'apps/**/test/**/*.int-spec.ts',
@@ -88,9 +102,18 @@ export default defineConfig({
       '**/.turbo/**',
       '**/coverage/**',
       '**/data/**',
-      '**/e2e/**'
+      '**/e2e/**',
+      'packages/templates/**'
     ],
-    watchExclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.turbo/**', '**/coverage/**', '**/data/**'],
+    watchExclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/.turbo/**',
+      '**/coverage/**',
+      '**/data/**',
+      'packages/templates/**'
+    ],
     reporters: ['default'],
     coverage: {
       provider: 'v8',
@@ -99,7 +122,8 @@ export default defineConfig({
       all: true,
       reportOnFailure: true,
       include: [
-        'packages/*/src/**/*.{ts,tsx}',
+        'packages/**/src/**/*.{ts,tsx}',
+        'agents/**/src/**/*.{ts,tsx}',
         'apps/backend/agent-server/src/**/*.{ts,tsx}',
         'apps/frontend/agent-chat/src/**/*.{ts,tsx}',
         'apps/frontend/agent-admin/src/**/*.{ts,tsx}'
@@ -130,7 +154,7 @@ export default defineConfig({
         statements: 85,
         functions: 85,
         branches: 85,
-        'packages/agent-core/src/**': {
+        'packages/runtime/src/**': {
           lines: 85,
           statements: 85,
           functions: 85,

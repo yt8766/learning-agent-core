@@ -1,5 +1,9 @@
 # 后端规范
 
+状态：current
+适用范围：后端工程规范
+最后核对：2026-04-14
+
 适用范围：
 
 - `apps/backend/agent-server`
@@ -28,13 +32,18 @@
 
 - `app/`：健康检查与轻量应用级信息
 - `chat/`：会话、消息、SSE、恢复
+- `message-gateway/`：消息网关相关 DTO、接口与规范化逻辑
 - `tasks/`：内部执行观测与调试接口
 - `approvals/`：审批接口
 - `learning/`：学习确认与文档学习入口
+- `evidence/`：evidence API 门面
 - `memory/`：memory API 门面
 - `rules/`：rules API 门面
 - `skills/`：skills API 门面
+- `templates/`：模板查询与模板接口
+- `platform/`：平台视图与整包 console 相关接口
 - `runtime/`：后端运行时门面
+- `cors/`：跨域配置
 - `logger/`：日志模块、filter、middleware、interceptor
 - `common/`：跨模块复用的 Nest 通用层
   - `dto/`
@@ -125,6 +134,22 @@
 - `RuntimeService`
   - 仅作为兼容 facade 与少量聚合入口
 
+当前 `runtime/` 下的主要组织目录包括：
+
+- `actions/`
+- `architecture/`
+- `briefings/`
+- `centers/`
+- `core/`
+- `helpers/`
+- `knowledge/`
+- `schedules/`
+- `services/`
+- `skills/`
+- `testing/`
+- `tools/`
+- `wenyuan/`
+
 约束：
 
 - 新增业务模块默认直接依赖最窄 provider，不要优先注入 `RuntimeService`
@@ -202,7 +227,7 @@
 - `data/memory/`
 - `data/runtime/`
 - `data/skills/`
-- `data/logs/`（如果后续决定统一日志目录）
+- `data/knowledge/`
 
 ### Runtime Profile 补充
 
@@ -357,7 +382,7 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 
 保留少量根级约束：
 
-- 根级 `eslint.config.mjs`
+- 根级 `eslint.config.js`
 - 根级 `prettier.config.js`
 - 根级 `husky`
 - 各 app/package 必要的 `tsconfig`

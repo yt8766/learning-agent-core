@@ -779,19 +779,6 @@ export function syncProcessMessageFromEvent(current: ChatMessageRecord[], event:
     return current;
   }
 
-  if (event.type === 'conversation_compacted') {
-    const nextCompressionMessage: ChatMessageRecord = {
-      id: `event_${event.id}`,
-      sessionId: event.sessionId,
-      role: 'system',
-      content,
-      card: buildEventCard(event),
-      createdAt: event.at
-    };
-
-    return [...current.filter(message => message.card?.type !== 'compression_summary'), nextCompressionMessage];
-  }
-
   return mergeMessage(current, {
     id: `event_${event.id}`,
     sessionId: event.sessionId,

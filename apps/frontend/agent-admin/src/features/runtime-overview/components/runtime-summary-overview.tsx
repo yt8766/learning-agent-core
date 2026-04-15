@@ -5,6 +5,11 @@ import { DashboardEmptyState, DashboardMetricGrid } from '@/components/dashboard
 
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
 
+function getBudgetValue(budget: Record<string, unknown>, key: 'stepBudget' | 'retryBudget' | 'sourceBudget') {
+  const value = budget[key];
+  return typeof value === 'number' || typeof value === 'string' ? value : '--';
+}
+
 export function RuntimeSummaryOverview({
   runtime,
   onRevokeApprovalPolicy
@@ -83,9 +88,9 @@ export function RuntimeSummaryOverview({
             <Badge variant="secondary">Skill 安装 {runtime.policy.skillInstallMode}</Badge>
             <Badge variant="secondary">学习 {runtime.policy.learningMode}</Badge>
             <Badge variant="secondary">来源 {runtime.policy.sourcePolicyMode}</Badge>
-            <Badge variant="secondary">步骤预算 {runtime.policy.budget.stepBudget}</Badge>
-            <Badge variant="secondary">重试预算 {runtime.policy.budget.retryBudget}</Badge>
-            <Badge variant="secondary">来源预算 {runtime.policy.budget.sourceBudget}</Badge>
+            <Badge variant="secondary">步骤预算 {getBudgetValue(runtime.policy.budget, 'stepBudget')}</Badge>
+            <Badge variant="secondary">重试预算 {getBudgetValue(runtime.policy.budget, 'retryBudget')}</Badge>
+            <Badge variant="secondary">来源预算 {getBudgetValue(runtime.policy.budget, 'sourceBudget')}</Badge>
           </CardContent>
         </Card>
       ) : null}

@@ -1,6 +1,15 @@
 # 架构总览
 
+状态：current
+适用范围：仓库长期架构方向
+最后核对：2026-04-14
+
 本文件描述当前仓库面向代码代理和开发者的长期架构方向。它不是逐文件 API 文档，而是帮助在实现细节变化时仍保持同一条演进主线。
+
+当前实现形态补充阅读：
+
+- [agent-core runtime current state](/Users/dev/Desktop/learning-agent-core/docs/agent-core/runtime-current-state.md)
+- [system flow current state](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
 
 ## 1. 产品分工
 
@@ -524,7 +533,7 @@ profile 影响范围至少包括：
 
 ### 当前已知坑
 
-- `packages/*/src` 可能混入历史 `.js/.d.ts/.map`
+- `packages/*/src`、`agents/*/src` 不允许混入 `.js/.d.ts/.js.map`；这类文件一律视为误生成构建产物
 - `tsup` 入口应只打 `.ts` 运行时源码
 - `build:lib` 必须串行执行，避免只生成 `build/types`
 
@@ -623,7 +632,7 @@ skills/
 
 1. [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
 2. [README.md](/Users/dev/Desktop/learning-agent-core/README.md)
-3. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/frontend-backend-integration.md)
+3. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
 4. [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
 5. [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
 

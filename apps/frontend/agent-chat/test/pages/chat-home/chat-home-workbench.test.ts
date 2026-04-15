@@ -142,6 +142,23 @@ describe('chat-home-workbench empty session chrome', () => {
       } as never)
     ).toBe(true);
   });
+
+  it('shows mission control when there are pending approvals even before dialogue starts', () => {
+    expect(
+      shouldShowMissionControl({
+        messages: [],
+        pendingApprovals: [{ intent: 'run_command' }],
+        activeSession: {
+          id: 'session-1',
+          title: '当前会话',
+          status: 'idle',
+          createdAt: '2026-03-28T00:00:00.000Z',
+          updatedAt: '2026-03-28T00:00:00.000Z'
+        },
+        checkpoint: undefined
+      } as never)
+    ).toBe(true);
+  });
 });
 
 describe('chat-home-workbench thought items', () => {
@@ -291,6 +308,106 @@ describe('chat-home-workbench thought items', () => {
     );
   });
 
+  it('prefers active-message scoped thought chain and surfaces pending skill / missing connector capability state', () => {
+    const items = buildThoughtItems({
+      activeSessionId: 'session-1',
+      events: [
+        {
+          id: 'evt-node-end-1',
+          sessionId: 'session-1',
+          type: 'node_status',
+          at: '2026-04-07T10:07:50.000Z',
+          payload: {
+            phase: 'end',
+            nodeId: 'planning',
+            nodeLabel: '规划节点',
+            detail: '已完成任务规划'
+          }
+        },
+        {
+          id: 'evt-node-end-2',
+          sessionId: 'session-1',
+          type: 'node_status',
+          at: '2026-04-07T10:07:51.000Z',
+          payload: {
+            phase: 'end',
+            nodeId: 'execution',
+            nodeLabel: '执行节点',
+            detail: '已完成执行'
+          }
+        }
+      ],
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: {
+          status: 'running',
+          currentStep: 'execute'
+        },
+        thinkState: {
+          messageId: 'assistant-msg-1',
+          title: '当前思考',
+          content: '正在执行',
+          loading: false,
+          blink: false
+        },
+        thoughtChain: [
+          {
+            key: 'thought-1',
+            title: '针对当前消息',
+            description: '只保留当前消息相关 thought',
+            messageId: 'assistant-msg-1'
+          },
+          {
+            key: 'thought-2',
+            title: '历史消息',
+            description: '不应该出现',
+            messageId: 'assistant-msg-2'
+          }
+        ],
+        pendingApproval: {
+          toolName: 'skill-installer',
+          intent: 'install_skill',
+          requestedBy: 'gongbu',
+          preview: [{ label: 'Skill', value: 'repo-inspector' }]
+        },
+        skillSearch: {
+          capabilityGapDetected: true,
+          suggestions: [],
+          mcpRecommendation: {
+            kind: 'connector',
+            summary: 'need browser',
+            reason: 'missing connector',
+            connectorTemplateId: 'browser-mcp-template'
+          }
+        },
+        createdAt: '2026-04-07T10:07:49.865Z',
+        updatedAt: '2026-04-07T10:07:51.512Z'
+      }
+    } as never);
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: '规划节点', status: 'success' }),
+        expect.objectContaining({
+          title: '能力链路',
+          description: expect.stringContaining('等待安装 repo-inspector')
+        }),
+        expect.objectContaining({
+          key: 'thought-1',
+          title: '针对当前消息'
+        })
+      ])
+    );
+    expect(items.some(item => item.key === 'thought-2')).toBe(false);
+  });
+
   it('builds workspace share text from the current snapshot', () => {
     const content = buildWorkspaceShareText({
       messages: [
@@ -342,5 +459,39 @@ describe('chat-home-workbench thought items', () => {
     expect(content).toContain('最新结论：建议先修多轮状态，再补项目上下文。');
     expect(content).toContain('技能数：1');
     expect(content).toContain('连接器数：1');
+  });
+
+  it('builds execute-stage quick actions and keeps labels deduped to five items', () => {
+    const chips = buildQuickActionChips({
+      messages: [],
+      activeSession: {
+        id: 'session-1',
+        title: '当前会话',
+        status: 'running',
+        createdAt: '2026-03-28T00:00:00.000Z',
+        updatedAt: '2026-03-28T00:00:00.000Z'
+      },
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: {
+          status: 'running',
+          currentStep: 'execute'
+        },
+        createdAt: '2026-03-28T00:00:00.000Z',
+        updatedAt: '2026-03-28T00:00:00.000Z'
+      }
+    } as never);
+
+    expect(chips).toHaveLength(5);
+    expect(chips.map(item => item.label)).toContain('给出下一步改动');
+    expect(chips.map(item => item.label)).toContain('代码修改');
+    expect(new Set(chips.map(item => item.label)).size).toBe(chips.length);
   });
 });

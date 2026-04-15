@@ -1,9 +1,22 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const renderedButtons: Array<{ children?: unknown; onClick?: () => void }> = [];
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick }: { children?: unknown; onClick?: () => void }) => {
+    renderedButtons.push({ children, onClick });
+    return <button>{children as any}</button>;
+  }
+}));
 
 import { ApprovalsPanel, filterApprovals } from '@/features/approvals-center/approvals-panel';
 
 describe('ApprovalsPanel render smoke', () => {
+  beforeEach(() => {
+    renderedButtons.length = 0;
+  });
+
   it('renders reason code labels, tool metadata and preview values', () => {
     const html = renderToStaticMarkup(
       <ApprovalsPanel
@@ -133,5 +146,61 @@ describe('ApprovalsPanel render smoke', () => {
         executionMode: 'plan'
       })
     ]);
+  });
+
+  it('routes export, share, filter and decision actions through callbacks', () => {
+    const onExport = vi.fn();
+    const onCopyShareLink = vi.fn();
+    const onExecutionModeFilterChange = vi.fn();
+    const onInteractionKindFilterChange = vi.fn();
+    const onDecision = vi.fn();
+
+    renderToStaticMarkup(
+      <ApprovalsPanel
+        approvals={[
+          {
+            taskId: 'task-plan',
+            goal: '先确认计划边界',
+            status: 'waiting_interrupt',
+            executionMode: 'plan',
+            intent: 'plan_review',
+            interactionKind: 'plan-question',
+            questionSetTitle: '需要补充计划边界'
+          },
+          {
+            taskId: 'task-approval',
+            goal: '发布运行时变更',
+            status: 'waiting_approval',
+            executionMode: 'execute',
+            intent: 'deploy_runtime',
+            interactionKind: 'approval'
+          }
+        ]}
+        loading={false}
+        onExport={onExport}
+        onCopyShareLink={onCopyShareLink}
+        executionModeFilter="all"
+        onExecutionModeFilterChange={onExecutionModeFilterChange}
+        interactionKindFilter="all"
+        onInteractionKindFilterChange={onInteractionKindFilterChange}
+        onDecision={onDecision}
+      />
+    );
+
+    renderedButtons.find(item => item.children === '复制视角链接')?.onClick?.();
+    renderedButtons.find(item => item.children === '导出 approvals')?.onClick?.();
+    renderedButtons.find(item => item.children === '计划模式')?.onClick?.();
+    renderedButtons.find(item => item.children === '补充输入')?.onClick?.();
+    renderedButtons.find(item => item.children === '按推荐继续')?.onClick?.();
+    renderedButtons.find(item => item.children === '批准')?.onClick?.();
+    renderedButtons.filter(item => item.children === '拒绝')[0]?.onClick?.();
+
+    expect(onCopyShareLink).toHaveBeenCalledTimes(1);
+    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(onExecutionModeFilterChange).toHaveBeenCalledWith('plan');
+    expect(onInteractionKindFilterChange).toHaveBeenCalledWith('supplemental-input');
+    expect(onDecision).toHaveBeenNthCalledWith(1, 'approve', 'task-plan', 'plan_review');
+    expect(onDecision).toHaveBeenNthCalledWith(2, 'approve', 'task-approval', 'deploy_runtime');
+    expect(onDecision).toHaveBeenNthCalledWith(3, 'reject', 'task-plan', 'plan_review');
   });
 });

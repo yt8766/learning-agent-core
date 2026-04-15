@@ -25,13 +25,22 @@ const ESLINT_EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.mjs', '.cjs']);
 const TEST_RELATED_EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.mjs', '.cjs', '.json']);
 
 const TSC_PROJECT_RULES = [
+  { test: file => file.startsWith('packages/core/'), project: 'packages/core/tsconfig.json' },
   { test: file => file.startsWith('packages/config/'), project: 'packages/config/tsconfig.json' },
   { test: file => file.startsWith('packages/shared/'), project: 'packages/shared/tsconfig.json' },
+  { test: file => file.startsWith('packages/runtime/'), project: 'packages/runtime/tsconfig.json' },
+  { test: file => file.startsWith('packages/adapters/'), project: 'packages/adapters/tsconfig.json' },
   { test: file => file.startsWith('packages/memory/'), project: 'packages/memory/tsconfig.json' },
   { test: file => file.startsWith('packages/evals/'), project: 'packages/evals/tsconfig.json' },
   { test: file => file.startsWith('packages/tools/'), project: 'packages/tools/tsconfig.json' },
   { test: file => file.startsWith('packages/skills/'), project: 'packages/skills/tsconfig.json' },
-  { test: file => file.startsWith('packages/agent-core/'), project: 'packages/agent-core/tsconfig.json' },
+  { test: file => file.startsWith('agents/supervisor/'), project: 'agents/supervisor/tsconfig.json' },
+  {
+    test: file => file.startsWith('agents/data-report/'),
+    project: 'agents/data-report/tsconfig.json'
+  },
+  { test: file => file.startsWith('agents/coder/'), project: 'agents/coder/tsconfig.json' },
+  { test: file => file.startsWith('agents/reviewer/'), project: 'agents/reviewer/tsconfig.json' },
   { test: file => file.startsWith('apps/backend/agent-server/'), project: 'apps/backend/agent-server/tsconfig.json' },
   { test: file => file.startsWith('apps/worker/'), project: 'apps/worker/tsconfig.json' },
   {
@@ -69,13 +78,19 @@ const FULL_RELATED_TEST_TRIGGERS = [...FULL_TYPECHECK_TRIGGERS, 'vitest.workspac
 const COVERAGE_OPT_IN_ENV = 'CHECK_STAGED_WITH_COVERAGE';
 
 const ALL_TYPECHECK_PROJECTS = [
+  'packages/core/tsconfig.json',
   'packages/config/tsconfig.json',
   'packages/shared/tsconfig.json',
+  'packages/runtime/tsconfig.json',
+  'packages/adapters/tsconfig.json',
   'packages/memory/tsconfig.json',
   'packages/evals/tsconfig.json',
   'packages/tools/tsconfig.json',
   'packages/skills/tsconfig.json',
-  'packages/agent-core/tsconfig.json',
+  'agents/supervisor/tsconfig.json',
+  'agents/data-report/tsconfig.json',
+  'agents/coder/tsconfig.json',
+  'agents/reviewer/tsconfig.json',
   'apps/backend/agent-server/tsconfig.json',
   'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.app.json',
@@ -180,6 +195,9 @@ function main() {
     console.log('[check:staged] no staged files');
     return;
   }
+
+  console.log('[check:staged] source artifact scan');
+  run(process.execPath, [path.join(rootDir, 'scripts/check-source-artifacts.js')], { shell: false });
 
   const prettierFiles = stagedFiles.filter(file => PRETTIER_EXTENSIONS.has(path.extname(file).toLowerCase()));
   const eslintFiles = stagedFiles.filter(file => ESLINT_EXTENSIONS.has(path.extname(file).toLowerCase()));

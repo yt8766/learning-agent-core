@@ -1,12 +1,38 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const {
+  configureConnectorWithGovernanceMock,
+  setConnectorEnabledWithGovernanceMock,
+  registerConfiguredConnectorMock,
+  registerDiscoveredCapabilitiesMock
+} = vi.hoisted(() => ({
+  configureConnectorWithGovernanceMock: vi.fn(async (input: any) => input.loadConnectorView('github-mcp')),
+  setConnectorEnabledWithGovernanceMock: vi.fn(async () => ({ id: 'github-mcp' })),
+  registerConfiguredConnectorMock: vi.fn(),
+  registerDiscoveredCapabilitiesMock: vi.fn()
+}));
+
+vi.mock('../../../src/runtime/actions/runtime-connector-governance-actions', () => ({
+  configureConnectorWithGovernance: configureConnectorWithGovernanceMock,
+  setConnectorEnabledWithGovernance: setConnectorEnabledWithGovernanceMock
+}));
+
+vi.mock('../../../src/runtime/helpers/runtime-connector-registry', () => ({
+  registerConfiguredConnector: registerConfiguredConnectorMock,
+  registerDiscoveredCapabilities: registerDiscoveredCapabilitiesMock
+}));
 
 import { RuntimeToolsService } from '../../../src/runtime/services/runtime-tools.service';
 
 describe('RuntimeToolsService', () => {
-  function createService() {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function createService(overrides?: { configuredConnectors?: any[] }) {
     let snapshot = {
       governance: {
-        configuredConnectors: []
+        configuredConnectors: overrides?.configuredConnectors ?? []
       }
     };
     const connectors = [
@@ -100,7 +126,10 @@ describe('RuntimeToolsService', () => {
           }
         })
       })),
-      getSnapshot: () => snapshot
+      getSnapshot: () => snapshot,
+      updateSnapshot: (next: typeof snapshot) => {
+        snapshot = next;
+      }
     };
   }
 
@@ -117,6 +146,16 @@ describe('RuntimeToolsService', () => {
 
   it('creates connector drafts through the unified facade', async () => {
     const { service, getSnapshot } = createService();
+    configureConnectorWithGovernanceMock.mockImplementationOnce(async (input: any) => {
+      const current = await input.runtimeStateRepository.load();
+      current.governance.configuredConnectors.push({
+        connectorId: 'github-mcp',
+        templateId: input.dto.templateId,
+        enabled: input.dto.enabled
+      });
+      await input.runtimeStateRepository.save(current);
+      return input.loadConnectorView('github-mcp');
+    });
 
     await service.createConnectorDraft({
       templateId: 'github-mcp-template',
@@ -131,6 +170,82 @@ describe('RuntimeToolsService', () => {
           enabled: false
         })
       ])
+    );
+  });
+
+  it('loads connectors, sweeps idle sessions, and throws when a connector is missing', async () => {
+    const { service } = createService();
+
+    await expect(service.listConnectors()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'github-mcp'
+      })
+    ]);
+    await expect(service.getConnector('missing-connector')).rejects.toThrow('Connector missing-connector not found');
+  });
+
+  it('enables and disables connectors through governance wrappers', async () => {
+    const { service } = createService();
+
+    await expect(service.enableConnector('github-mcp')).resolves.toEqual(expect.objectContaining({ id: 'github-mcp' }));
+    await expect(service.disableConnector('github-mcp')).resolves.toEqual(
+      expect.objectContaining({ id: 'github-mcp' })
+    );
+
+    expect(setConnectorEnabledWithGovernanceMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        connectorId: 'github-mcp',
+        enabled: true,
+        profile: 'platform'
+      })
+    );
+    expect(setConnectorEnabledWithGovernanceMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        connectorId: 'github-mcp',
+        enabled: false,
+        profile: 'platform'
+      })
+    );
+  });
+
+  it('updates connector secrets from existing configuration and forwards configure requests', async () => {
+    const { service } = createService({
+      configuredConnectors: [
+        {
+          connectorId: 'github-mcp',
+          templateId: 'github-mcp-template',
+          transport: 'stdio',
+          displayName: 'GitHub MCP',
+          command: 'npx',
+          args: ['-y', 'github-mcp-server'],
+          endpoint: undefined,
+          enabled: true
+        }
+      ]
+    });
+
+    await expect(service.updateConnectorSecret('github-mcp', 'new-secret', 'tester')).resolves.toEqual(
+      expect.objectContaining({ id: 'github-mcp' })
+    );
+
+    expect(configureConnectorWithGovernanceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dto: expect.objectContaining({
+          templateId: 'github-mcp-template',
+          apiKey: 'new-secret',
+          actor: 'tester'
+        })
+      })
+    );
+  });
+
+  it('throws when updating the secret for an unconfigured connector', async () => {
+    const { service } = createService();
+
+    await expect(service.updateConnectorSecret('missing', 'new-secret')).rejects.toThrow(
+      'Connector missing not configured'
     );
   });
 });

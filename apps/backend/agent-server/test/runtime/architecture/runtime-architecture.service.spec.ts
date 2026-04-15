@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { RuntimeArchitectureService } from '../../../src/runtime/architecture/runtime-architecture.service';
 import { createArchitectureDescriptorRegistry } from '../../../src/runtime/architecture/runtime-architecture-registries';
 import { loadSettings } from '@agent/config';
-import { listSubgraphDescriptors, listWorkflowPresets, WorkerRegistry } from '@agent/agent-core';
+import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
+import { WorkerRegistry } from '@agent/runtime';
 import { buildKnowledgeDescriptor } from '../../../src/runtime/knowledge/runtime-knowledge-store';
 
 describe('RuntimeArchitectureService', () => {
@@ -13,10 +14,10 @@ describe('RuntimeArchitectureService', () => {
     const diagrams = service.getArchitecture();
 
     expect(Object.keys(diagrams)).toEqual(['project', 'agent', 'agentChat', 'agentAdmin']);
-    expect(diagrams.project.mermaid).toContain('agent-core');
+    expect(diagrams.project.mermaid).toContain('runtime-host');
     expect(diagrams.project.mermaid).not.toContain('|"');
     expect(diagrams.project.mermaid).toContain('subgraph group_frontends [Frontends]');
-    expect(diagrams.project.mermaid).toContain('node_agent_core');
+    expect(diagrams.project.mermaid).toContain('node_runtime_host');
     expect(diagrams.project.mermaid).not.toContain('subgraph-');
     expect(diagrams.project.mermaid).not.toContain('graph-node-');
     expect(diagrams.project.sourceDescriptors).toContain('subgraph registry');

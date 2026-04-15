@@ -1,4 +1,4 @@
-import { describeConnectorProfilePolicy } from '@agent/agent-core';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
 import { SkillCard, SkillManifestRecord } from '@agent/shared';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from '../helpers/runtime-connector-registry';

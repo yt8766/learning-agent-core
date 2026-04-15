@@ -13,6 +13,24 @@ import {
   type RuntimeSkillSourcesContext
 } from './skills/runtime-skill-sources.service';
 
+export interface RuntimeSkillSuggestion {
+  id: string;
+  kind: string;
+  displayName: string;
+  availability: string;
+  repo?: string;
+  skillName?: string;
+  detailsUrl?: string;
+  installCommand?: string;
+  triggerReason?: 'user_requested' | 'capability_gap_detected' | 'domain_specialization_needed';
+  summary?: string;
+  sourceLabel?: string;
+}
+
+export interface RuntimeSkillSearchPayload {
+  suggestions?: RuntimeSkillSuggestion[];
+}
+
 export const KNOWLEDGE_METHOD_NAMES = [
   'searchMemory',
   'getMemory',
@@ -176,7 +194,7 @@ export async function resolvePreExecutionSkillIntervention(input: {
   centersService: any;
   getSkillSourcesContext: () => RuntimeSkillSourcesContext & { listSkillSources?: () => Promise<any[]> };
   goal: string;
-  skillSearch?: { suggestions?: Array<any> };
+  skillSearch?: RuntimeSkillSearchPayload;
   usedInstalledSkills?: string[];
 }) {
   const candidate = input.skillSearch?.suggestions?.find(
@@ -283,7 +301,7 @@ export async function resolveRuntimeSkillIntervention(input: {
   getSkillSourcesContext: () => RuntimeSkillSourcesContext & { listSkillSources?: () => Promise<any[]> };
   goal: string;
   currentStep: 'direct_reply' | 'research';
-  skillSearch?: { suggestions?: Array<any> };
+  skillSearch?: RuntimeSkillSearchPayload;
   usedInstalledSkills?: string[];
 }) {
   const resolved = await resolvePreExecutionSkillIntervention(input);

@@ -32,11 +32,11 @@ interface RuntimeInterruptViewItem {
   updatedAt: string;
 }
 
-function getExecutionModeLabel(mode?: string) {
+export function getExecutionModeLabel(mode?: string) {
   return getExecutionModeDisplayName(mode) ?? '未标记';
 }
 
-function getInteractionKindLabel(kind: InterruptInteractionKind) {
+export function getInteractionKindLabel(kind: InterruptInteractionKind) {
   switch (kind) {
     case 'plan-question':
       return '计划提问';
@@ -54,7 +54,7 @@ function getInteractionKindLabel(kind: InterruptInteractionKind) {
   }
 }
 
-function getRuntimeGovernanceReasonLabel(reasonCode?: string) {
+export function getRuntimeGovernanceReasonLabel(reasonCode?: string) {
   switch (reasonCode) {
     case 'watchdog_timeout':
       return '运行时超时阻塞';
@@ -65,7 +65,7 @@ function getRuntimeGovernanceReasonLabel(reasonCode?: string) {
   }
 }
 
-function toRuntimeInterruptItems(runtime: RuntimeCenterRecord): RuntimeInterruptViewItem[] {
+export function toRuntimeInterruptItems(runtime: RuntimeCenterRecord): RuntimeInterruptViewItem[] {
   return (runtime.recentRuns ?? [])
     .filter(
       task => Boolean(task.activeInterrupt) || task.status === 'waiting_interrupt' || task.status === 'waiting_approval'

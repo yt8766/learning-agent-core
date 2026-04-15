@@ -1,0 +1,196 @@
+# 项目规范总览
+
+状态：current
+适用范围：仓库级开发规范
+最后核对：2026-04-15
+
+请优先查看以下文档：
+
+- [AGENTS](./AGENTS.md)
+- [README](./README.md)
+- [架构总览](./docs/ARCHITECTURE.md)
+- [前后端对接文档](./docs/integration/frontend-backend-integration.md)
+- [Runtime Interrupts](./docs/runtime-interrupts.md)
+- [LangGraph 应用结构规范](./docs/langgraph-app-structure-guidelines.md)
+- [GitHub Flow 规范](./docs/github-flow.md)
+- [后端规范](./docs/backend-conventions.md)
+- [前端规范](./docs/frontend-conventions.md)
+- [提示词规范](./docs/prompt-conventions.md)
+- [模板示例](./docs/project-template-guidelines.md)
+- [测试规范](./docs/test-conventions.md)
+
+总原则：
+
+- 前端双应用分离：`agent-chat` 与 `agent-admin`
+- `agent-chat` 采用 OpenClaw 模态，作为前线作战面
+- `agent-admin` 作为平台控制台，承载六大中心
+- 系统主线是开发自治，按“Human / Supervisor / 六部”方向演进
+- 仓库级代理技能统一放在 `skills/*/SKILL.md`
+- `packages/skills` 只承载运行时 skill 领域，不承载 Codex/Claude 技能说明
+- 后端单 API + 独立 worker
+- `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
+  - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
+  - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
+- `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](./docs/package-architecture-guidelines.md)
+- 包分层治理的固定检查入口：
+  - `pnpm check:package-boundaries`
+  - `pnpm check:architecture`
+- “子 Agent”必须同时具备 graph 入口与 flow 节点：
+  - `packages/runtime/src/graphs/<domain>.graph.ts` 或 `agents/<domain>/src/graphs/<domain>.graph.ts` 只放 `Annotation / StateGraph / node wiring / edge wiring / graph state`，作为子 Agent 可观测入口
+  - 对应宿主的 `src/flows/<domain>/` 放节点实现、prompt、schema、解析、校验、重试策略；跨节点复用或 graph 共享的领域类型优先收敛到 `packages/core/src`、`packages/shared/src` 或宿主包 `src/types/`
+  - 对应宿主的 `src/flows/<domain>/prompts/` 只放提示词与提示词格式化逻辑
+  - 对应宿主的 `src/flows/<domain>/schemas/` 必须承载模型输出的显式结构约束；稳定 JSON 契约禁止仅靠 `JSON.parse` 和零散正则校验
+  - 当 flow 节点数量变多或单文件持续膨胀时，升级为对应宿主的 `src/flows/<domain>/nodes/`，按节点域拆分实现，避免 graph wiring 与 node 细节耦合
+  - `agents/supervisor/src/workflows/` 只放 workflow 路由、预设、轻量任务契约和分类策略，不允许承载可执行子 Agent、长提示词生成器、LLM 调用主链或 Sandpack/代码生成校验链
+  - 后端 `apps/backend/*` 只负责 HTTP/SSE/鉴权/运行时装配，不允许把子 Agent 的系统提示词、节点流程、模型输出解析和结构校验直接写进 controller/service
+  - 报表生成这类垂直 Agent 默认采用 `graphs/data-report.graph.ts` + `flows/data-report/*`，不得退回 `chat.service.ts` 或 `workflows/*` 胶水实现
+  - `data-report` 的领域类型文件统一放在 `packages/core/src`、`packages/shared/src` 或 `agents/data-report/src/types/`，不要继续放在 `flows/data-report/` 下
+  - `data-report` 的确定性生成资产分层必须固定：`packages/report-kit` 只承载 blueprint/scaffold/routes/assembly/write；`agents/data-report` 与 `packages/runtime` 只承载 preview flow、graph/runtime facade 与 LLM 节点编排；`apps/backend/*` 只能做 HTTP/SSE 装配并调用 facade，禁止在 service 中直接串 `report-kit` 流程、直接 `graph.compile().invoke()`，或复制 preview/report-schema/sandpack 子链
+- `packages/runtime/src/graphs` 进一步约束为：
+  - 顶层 `chat.graph.ts / learning.graph.ts / recovery.graph.ts / main-route.graph.ts`
+  - graph 文件默认只承载 `Annotation / StateGraph / edge / conditional edge / state type`
+  - graph 节点的默认实现、handler fallback、业务分支逻辑优先下沉到 `flows/*`
+  - `main/` 只保留主入口与装配层
+  - `main/task/` 承载 task context / draft / factory / runtime
+  - `main/lifecycle/` 承载 snapshot、approval、background coordination、learning coordination
+  - `main/background/` 承载后台 lease / learning jobs runtime
+  - `main/knowledge/` 承载 freshness / citation / diagnosis evidence 语义
+  - `main/orchestration/` 承载 bridge 与 execution helper
+  - `main/pipeline/` 承载阶段编排与 interrupt graph
+- 本地运行数据统一放仓库根级 `data/`
+- 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
+- 规范以文档为主，少量根级配置为辅
+- `packages/templates/**` 当前作为模板资产目录，暂不纳入根级默认质量检查；当前已从根级 ESLint 与 Vitest 发现范围中排除，也不作为独立根级类型检查目标维护。如模板转为正式运行时代码，需恢复检查并补齐约束
+
+补充约束：
+
+- 新设计优先采用 `supervisor / ministry / workflow / evidence / learning` 语义
+- 任何“等待用户确认后继续”的新流程，默认优先采用可恢复 interrupt 语义；`pendingApproval` 仅作为兼容投影，不应继续充当新的主控制流
+- 共享类型里仍存在 `manager / research / executor / reviewer` 等兼容字段时，文档应显式标注“过渡兼容”，不要把旧模型继续当成目标架构
+- 大模型执行链上的关键阶段必须可观察，不能只靠最终答案让用户猜测流程。至少要为 `plan / route / research / execution / review / delivery / interrupt / recover / learning` 这些阶段输出结构化 trace、事件或 checkpoint 摘要，并保证 `agent-chat` 的 Think / ThoughtChain 或运行态面板可见
+- 所有要求模型输出 JSON / Schema / 结构化对象的调用，必须统一走带重试的结构化入口，例如 `generateObjectWithRetry` 或 `safeGenerateObject`，禁止直接裸调 `llm.generateObject`
+- 所有结构化输出 prompt 必须固定追加 `packages/adapters/src/shared/prompts/json-safety-prompt.ts` 的内容；推荐统一使用 `buildStructuredPrompt(..., json: true)` 或 `appendJsonSafetyToMessages`
+- 模型降级、候选模型重试、JSON 安全附加、结构化重试反馈这类跨流程能力，优先沉淀到 `shared/` 或 `utils/`，不要继续散落在单个 agent/node 内部
+- 涉及 `packages/*` 的改动，优先执行 `pnpm build:lib`，再验证应用层
+- 依赖安装必须使用 `pnpm add`
+- 安装到工作空间根时，必须使用 `pnpm add -w`
+- 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
+- 不允许使用本地 `.pnpm-store` 安装或把 `.pnpm-store` 放在仓库内
+- 最低类型检查以 `AGENTS.md` 中列出的五条 `tsc --noEmit` 为准
+- 前端 `apps/frontend/*/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分组件、hooks、adapters、constants 或 types
+- 前端副作用必须可证明收敛：`useEffect`、轮询、SSE fallback、定时器必须有明确触发条件、停止条件和清理逻辑，禁止形成无限循环或隐式自激刷新
+- 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](./docs/frontend-conventions.md)
+- 前端默认禁止动态导入；`apps/frontend/*` 中的依赖一般必须使用顶层静态 `import`。只有在明确代码分割、运行时隔离或重资产浏览器专属加载场景下，才允许 `import('...')`，且必须在代码旁写明理由
+- 前端路径别名必须统一：`apps/frontend/agent-chat/src` 与 `apps/frontend/agent-admin/src` 下跨目录引用一律使用 `@/...`，禁止新增 `../../hooks/use-chat-session`、`../../../src/...` 这类指回本应用 `src/` 的相对路径；测试引用本应用 `src/` 时也同样使用 `@/...`
+- 每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试；从现在起不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
+- 全仓测试现已统一收敛到各项目 `test/` 目录，`src/` 下不再保留测试文件
+- 聊天发送链路必须区分 `display` 与 `payload`：slash workflow 命令只能进入接口 payload，不能污染用户消息正文
+- 聊天主链路每次更改都必须保证既有功能不退化，至少要保持：
+  - 发送后立即出现用户消息与思考占位
+  - 同会话续聊优先重连 stream，不先触发详情三连
+  - 历史会话切换只做一次初始化详情加载
+  - 会话完成后停止 `messages / events / checkpoint` 轮询
+  - 最终答复与来源引用不重复展示同一份信息
+- 代码代理在执行明确计划时，默认进入连续执行循环：
+  - 读下一项
+  - 直接实现
+  - 立即验证
+  - 自动推进下一项
+  - 不要停下来等待“是否继续”的确认
+- 当一轮计划项全部完成时，代码代理必须明确告知用户“计划已完成”或等价结论
+- 构建失败、测试失败、类型错误时，代码代理必须先自我修复并重试；同一阻断允许最多连续修复 `3` 次，之后才可报告人工 unblock
+- 代码代理输出应保持低废话、行动导向；优先交付代码、验证和简洁进度，不要输出与执行无关的铺垫
+- 长流程修改必须优先精准编辑，不要无必要整文件重写；并在每个主要里程碑后重新验证核心链路
+- 新增、重构或替换实现后，必须同步删除本轮改动后已无调用方的节点、未接线 graph 分支、废弃导出、无引用 helper 与其他死代码，禁止把“暂时没用到”的实现继续保留在主仓
+- 后端 `apps/backend/agent-server/src` 与 `apps/worker/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分 DTO、entities、interfaces 或独立 service 文件
+- 后端 `apps/backend/agent-server/test` 与 `apps/worker/test` 下测试文件也不得超过 400 行，超过必须按场景或 helper 拆分
+- `packages/runtime/src`、`packages/report-kit/src`、`agents/*/src` 与其他 `packages/*/src` 下手写源码文件单文件也不得超过 400 行；只要本轮改动触达某个文件且它已超过 400 行，就必须在本轮顺手继续拆分，优先拆到 `nodes/`、`prompts/`、`schemas/`、`runtime/`、`shared/`、`utils/` 或同域 helper 文件
+- 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](./docs/backend-conventions.md)
+- 涉及文件系统读写、目录创建、复制、移动、删除等能力时，默认统一使用 `fs-extra`
+- 除非是 Node 运行时强依赖的同步极简场景或测试环境刻意隔离原生 `fs` 行为，否则不要新增 `node:fs` / `node:fs/promises` 作为业务实现的默认选择
+- 后端业务模块目录默认按以下结构收敛：
+  - `dto/`
+  - `entities/`
+  - `interfaces/`
+  - `<module>.module.ts`
+  - `<module>.controller.ts`
+  - `<module>.service.ts`
+  - `<module>.service.spec.ts`
+- 这套后端模块结构默认参考 NestJS 官方 feature module 组织方式，并在工程落地时补充 `entities/`
+- `utils/` 目录从现在起允许作为显式规范目录使用，但必须满足：
+  - 只放稳定、可复用、以纯函数为主的工具，不放控制流主逻辑
+  - 不直接持有数据库、文件系统、工具执行器或运行时状态
+  - 允许放轻量模型获取器、模型配置标准化和 chat model factory，但不要在这里堆业务编排
+  - embedding provider / vector provider factory 优先放在更底层的能力包，例如 `@agent/memory`，由 runtime 装配层注入使用
+  - 与具体业务强绑定的 helper 优先放回所属模块，例如 `flows/*`、`runtime/*`、`session/*` 内部
+  - 跨流程但带业务语义的共享能力优先放 `shared/`，不要因为“想复用”就一律扔进 `utils/`
+  - `utils/` 优先承载 parser、formatter、normalizer、matcher、mapper、纯计算函数
+  - 禁止把大型 service、隐式 side effect helper、胶水编排代码伪装成 `utils`
+- Packages 分层与依赖强制约定：
+  - `packages/shared`
+    - 只允许放 DTO、Record、Enum、跨端展示 contract、label/normalize 纯函数
+    - 禁止放 prompt、retry、LLM、service、graph、node、executor、repository、副作用逻辑
+  - `packages/config`
+    - 只允许放 profile、settings schema、feature flags、storage/path policy、budget/source policy 默认值
+    - 禁止放业务流程、graph、flow、工具执行逻辑
+  - `packages/model`
+    - 只允许放 provider normalize、chat/embedding factory、fallback candidate、provider metadata
+    - 禁止放 flow-specific prompt、业务 heuristic、graph/flow 编排
+  - `packages/memory`
+    - 只允许放 memory/rule/runtime-state repository、vector index、semantic cache、search contract
+    - 禁止放 agent 主链编排、delivery/review/research 流程控制
+  - `packages/tools`
+    - 只允许放 tool registry、tool definition、sandbox executor、approval preflight、MCP transport
+    - 禁止放 agent orchestration、chat/review/research prompt、graph/ministry 主逻辑
+  - `packages/report-kit`
+    - 只允许放 data-report blueprint、scaffold、routes、assembly、write 等垂直生成能力
+    - 禁止放 tool registry、sandbox executor、MCP transport、agent orchestration
+  - `packages/skills`
+    - 只允许放运行时 skill registry、skill manifest loader、skill source sync 基础能力
+    - 禁止放仓库级 `skills/*` 代理技能文档、agent graph 逻辑
+  - `packages/runtime`
+    - 只允许放 graphs、flows、runtime orchestration、session、governance、主链 shared utils / capabilities
+    - 禁止放 app controller/view model、前端专属展示 DTO、长期散落的 provider 细节
+  - 依赖方向必须满足：
+    - `shared` 不得依赖任何业务包
+    - `config` 不得依赖 `runtime` 或任意 `agents/*`
+    - `model / memory / tools / skills` 只允许依赖 `shared`、`config` 和必要第三方库
+    - `runtime` 可以依赖 `shared / config / model / memory / tools / skills / core`
+    - `agents/*` 可以依赖 `shared / config / core / adapters / runtime / memory / tools / skills`
+    - `apps/*` 只能依赖各包公开入口，禁止依赖 `packages/*/src`
+    - 禁止 `tools / model / memory / skills` 反向依赖 `runtime` 或 `agents/*`
+  - 新增代码默认按以下规则落位：
+    - 跨端共享的数据结构：放 `shared`
+    - 运行时默认策略与配置：放 `config`
+    - 模型/provider/embedding 装配：放 `model`
+    - memory/rule/vector/cache 存取与搜索：放 `memory`
+    - executor/registry/sandbox/MCP：放 `tools`
+    - data-report 生成资产与拼装：放 `report-kit`
+    - skill registry/manifest/source：放 `skills`
+    - graph/flow/session/governance/agent runtime：放 `runtime` 或对应 `agents/*`
+  - “多个地方复用”不等于必须进入 `shared`
+  - 只有稳定 contract 才能进入 `shared`
+  - 带业务语义的 helper 不得因为复用而强行上提到 `shared`
+  - 默认优先面向稳定接口编程，而不是面向某个调用点、页面或单次流程硬编码
+  - 跨模块协作优先通过 `contract / adapter / facade / schema` 解耦，不要让调用方绑定内部实现细节
+  - 高变动实现与稳定契约必须分离：易变逻辑下沉，稳定边界上收
+  - 新增能力优先新增 provider、adapter、strategy、node、template 等扩展点，不要持续堆叠 `if/else`
+  - 一段能力一旦出现第二个相似场景，应优先提炼为可测试、可替换、可组合的封装，而不是继续复制粘贴
+  - 修改已有 DTO、事件、payload、共享类型或 facade 时，必须同步评估兼容性、更新调用方、补测试并更新文档
+- `packages/runtime/src/index.ts` 与 `agents/*/src/index.ts` 只暴露稳定公共 API：
+  - graph 入口
+  - flow 入口
+  - runtime/session/workflow/governance 对外能力
+  - 公共 schema 与 utils
+  - 不应继续把内部子模块直接向包外扩散
+  - 优先使用显式命名导出，不继续用“大而全”的 `export *` 把内部实现整体暴露出去
+- `packages/core/src/types`、`packages/shared/src/types` 或宿主包 `src/types` 只放包级公共类型：
+  - 例如 graph/session/workflow-route 这类会被多个目录复用的 contract
+  - 不把局部 callbacks、局部 state patch、某一部专用类型全塞进去
+  - 某个 flow/runtime/session 私有类型优先贴着模块放
+- 如果需要清理磁盘空间，默认只允许清理仓库内可重建内容，例如构建产物、临时缓存、日志和测试生成文件
+- 禁止为了释放磁盘空间删除用户的 Google Chrome 登录状态、浏览器 profile、Cookie、Local Storage、Session Storage、IndexedDB、Cache Storage、Service Worker 站点缓存或其他浏览器本地站点数据
+- 特别是不要触碰以下目录：
+  - `~/Library/Application Support/Google/Chrome`
+  - `~/Library/Caches/Google/Chrome`
+- 根级清理脚本如果涉及文件删除，必须内置这两条路径的显式保护，不允许通过参数绕过

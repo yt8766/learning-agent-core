@@ -1,12 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-
-import { describeConnectorProfilePolicy } from '@agent/agent-core';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
 import { SkillCard } from '@agent/shared';
-
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from './helpers/runtime-connector-registry';
 import { type RuntimeBackgroundRunnerContext } from './helpers/runtime-background-runner';
 import { fetchProviderUsageAudit, type ProviderAuditSyncResult } from './helpers/provider-audit';
-import { RemoteSkillDiscoveryService } from './skills/remote-skill-discovery.service';
 import { SkillArtifactFetcher } from './skills/skill-artifact-fetcher';
 import type { RuntimeSkillInstallContext } from './skills/runtime-skill-install.service';
 import {
@@ -32,6 +29,7 @@ import {
   createSkillInstallContext,
   createSkillSourcesContext,
   KNOWLEDGE_METHOD_NAMES,
+  type RuntimeSkillSearchPayload,
   resolvePreExecutionSkillIntervention,
   resolveRuntimeSkillIntervention,
   resolveSkillInstallApproval,
@@ -65,7 +63,6 @@ export class RuntimeService implements OnModuleInit {
   private readonly backgroundHeartbeatMs;
   private readonly backgroundPollMs;
   private readonly skillSourceSyncService;
-  private readonly remoteSkillDiscoveryService;
   private readonly skillArtifactFetcher;
   private readonly operationalState: RuntimeOperationalStateService;
   private readonly bootstrapService: RuntimeBootstrapService;
@@ -108,7 +105,6 @@ export class RuntimeService implements OnModuleInit {
     this.backgroundHeartbeatMs = this.settings.runtimeBackground.heartbeatMs;
     this.backgroundPollMs = this.settings.runtimeBackground.pollMs;
     this.skillSourceSyncService = runtimeHost.skillSourceSyncService;
-    this.remoteSkillDiscoveryService = runtimeHost.remoteSkillDiscoveryService;
     this.skillArtifactFetcher = runtimeHost.skillArtifactFetcher;
     this.techBriefingService =
       techBriefingService ??
@@ -159,8 +155,36 @@ export class RuntimeService implements OnModuleInit {
   async onModuleInit() {
     await this.bootstrapService.initialize();
     if ('setLocalSkillSuggestionResolver' in this.orchestrator) {
+      type LocalSkillSuggestionResolverInput = {
+        goal: string;
+        usedInstalledSkills?: string[];
+        requestedHints?: Record<string, unknown>;
+        specialistDomain?: string;
+      };
+      type PreExecutionSkillResolverInput = {
+        goal: string;
+        skillSearch?: RuntimeSkillSearchPayload;
+        usedInstalledSkills?: string[];
+      };
+      type RuntimeSkillResolverInput = {
+        task: { id: string };
+        goal: string;
+        currentStep: 'direct_reply' | 'research';
+        skillSearch?: RuntimeSkillSearchPayload;
+        usedInstalledSkills?: string[];
+      };
+      type SkillInstallApprovalResolverInput = {
+        task: { goal: string; usedInstalledSkills?: string[] };
+        pending: {
+          receiptId?: string;
+          usedInstalledSkills?: string[];
+          skillDisplayName?: string;
+        };
+        actor?: string;
+      };
+
       this.orchestrator.setLocalSkillSuggestionResolver(
-        async ({ goal, usedInstalledSkills, requestedHints, specialistDomain }: any) =>
+        async ({ goal, usedInstalledSkills, requestedHints, specialistDomain }: LocalSkillSuggestionResolverInput) =>
           resolveTaskSkillSearch(this.getSkillSourcesContext(), goal, {
             usedInstalledSkills,
             requestedHints,
@@ -168,15 +192,16 @@ export class RuntimeService implements OnModuleInit {
           })
       );
       this.orchestrator.setPreExecutionSkillInterventionResolver(
-        async ({ goal, skillSearch, usedInstalledSkills }: any) =>
+        async ({ goal, skillSearch, usedInstalledSkills }: PreExecutionSkillResolverInput) =>
           this.resolvePreExecutionSkillIntervention(goal, skillSearch, usedInstalledSkills)
       );
       this.orchestrator.setRuntimeSkillInterventionResolver(
-        async ({ task, goal, currentStep, skillSearch, usedInstalledSkills }: any) =>
+        async ({ task, goal, currentStep, skillSearch, usedInstalledSkills }: RuntimeSkillResolverInput) =>
           this.resolveRuntimeSkillIntervention(task, goal, currentStep, skillSearch, usedInstalledSkills)
       );
-      this.orchestrator.setSkillInstallApprovalResolver(async ({ task, pending, actor }: any) =>
-        this.resolveSkillInstallApproval(task, pending, actor)
+      this.orchestrator.setSkillInstallApprovalResolver(
+        async ({ task, pending, actor }: SkillInstallApprovalResolverInput) =>
+          this.resolveSkillInstallApproval(task, pending, actor)
       );
     }
   }
@@ -203,21 +228,7 @@ export class RuntimeService implements OnModuleInit {
     task: { id: string },
     goal: string,
     currentStep: 'direct_reply' | 'research',
-    skillSearch?: {
-      suggestions?: Array<{
-        id: string;
-        kind: string;
-        displayName: string;
-        availability: string;
-        repo?: string;
-        skillName?: string;
-        detailsUrl?: string;
-        installCommand?: string;
-        triggerReason?: 'user_requested' | 'capability_gap_detected' | 'domain_specialization_needed';
-        summary?: string;
-        sourceLabel?: string;
-      }>;
-    },
+    skillSearch?: RuntimeSkillSearchPayload,
     usedInstalledSkills?: string[]
   ) {
     return resolveRuntimeSkillIntervention({
@@ -233,7 +244,7 @@ export class RuntimeService implements OnModuleInit {
 
   private async resolvePreExecutionSkillIntervention(
     goal: string,
-    skillSearch?: { suggestions?: Array<any> },
+    skillSearch?: RuntimeSkillSearchPayload,
     usedInstalledSkills?: string[]
   ) {
     return resolvePreExecutionSkillIntervention({
@@ -269,21 +280,21 @@ export class RuntimeService implements OnModuleInit {
       settings: this.settings,
       skillRegistry: this.skillRegistry,
       skillArtifactFetcher: this.skillArtifactFetcher,
-      remoteSkillDiscoveryService: this.remoteSkillDiscoveryService,
+      remoteSkillDiscoveryService: this.runtimeHost.remoteSkillDiscoveryService,
       getSkillSourcesContext: () => this.getSkillSourcesContext(),
       registerSkillWorker: (skill: SkillCard) => registerInstalledSkillWorker(this.getConnectorRegistryContext(), skill)
     });
   }
 
   private getSkillSourcesContext(): RuntimeSkillSourcesContext & {
-    listSkillSources?: () => Promise<any[]>;
+    listSkillSources?: () => Promise<unknown[]>;
   } {
     return createSkillSourcesContext({
       settings: this.settings,
       toolRegistry: this.toolRegistry,
       skillRegistry: this.skillRegistry,
       skillSourceSyncService: this.skillSourceSyncService,
-      remoteSkillDiscoveryService: this.remoteSkillDiscoveryService,
+      remoteSkillDiscoveryService: this.runtimeHost.remoteSkillDiscoveryService,
       getDisabledSkillSourceIds: () => this.getDisabledSkillSourceIds(),
       getSkillInstallContext: () => this.getSkillInstallContext()
     });

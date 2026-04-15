@@ -19,6 +19,9 @@
     "build": "pnpm build:lib && pnpm build:server && pnpm build:frontend",
     "check:staged": "node ./scripts/check-staged.js",
     "check:backend-structure": "node ./scripts/check-backend-structure.js",
+    "check:package-boundaries": "node ./scripts/check-package-boundaries.js",
+    "check:source-artifacts": "node ./scripts/check-source-artifacts.js",
+    "check:architecture": "pnpm check:backend-structure && pnpm check:package-boundaries && pnpm check:source-artifacts",
     "check:terminology": "pnpm exec tsc --pretty false --outDir /tmp/agent-terminology-check scripts/check-terminology.ts && node /tmp/agent-terminology-check/check-terminology.js",
     "lint:tsc": "node scripts/typecheck.js",
     "lint:prettier": "prettier --write \"**/*.{js,ts,mjs,cjs,json,tsx,css,less,scss,html,md}\"",
@@ -31,7 +34,7 @@
     "test:watch": "vitest --config vitest.config.js",
     "eval:prompts": "node ./scripts/run-prompt-regression.js",
     "eval:prompts:view": "pnpm dlx promptfoo@latest view",
-    "check": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc"
+    "check": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc && pnpm check:architecture"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",

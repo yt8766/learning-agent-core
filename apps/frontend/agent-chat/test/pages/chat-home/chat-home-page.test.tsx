@@ -1,8 +1,35 @@
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+let useStateOverride:
+  | ((actualUseState: (initialState?: unknown) => unknown, initialState?: unknown) => unknown)
+  | null = null;
 const mockUseChatSession = vi.fn();
+const renderedButtons: Array<{ children?: ReactNode; onClick?: () => void | Promise<void> }> = [];
+const renderedAlerts: Array<Record<string, unknown>> = [];
+const renderedModals: Array<Record<string, unknown>> = [];
+const mockModalConfirm = vi.fn();
+const mockExportApprovalsCenter = vi.fn();
+const mockExportRuntimeCenter = vi.fn();
+const mockGetBrowserReplay = vi.fn();
+const mockStreamReportSchema = vi.fn();
+const runtimeDrawerProps: Array<Record<string, unknown>> = [];
+
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof import('react')>('react');
+  const actualUseState = actual.useState as unknown as (initialState?: unknown) => unknown;
+
+  return {
+    ...actual,
+    useState: ((initialState?: unknown) => {
+      if (useStateOverride) {
+        return useStateOverride(actualUseState, initialState);
+      }
+      return actualUseState(initialState);
+    }) as typeof actual.useState
+  };
+});
 
 vi.mock('antd', async () => {
   const actual = await vi.importActual<typeof import('antd')>('antd');
@@ -15,26 +42,52 @@ vi.mock('antd', async () => {
       Sider: ({ children }: { children?: ReactNode }) => <aside>{children}</aside>,
       Content: ({ children }: { children?: ReactNode }) => <main>{children}</main>
     }),
-    Alert: ({ title, description }: { title?: ReactNode; description?: ReactNode }) => (
-      <section>
-        <div>{title}</div>
-        <div>{description}</div>
-      </section>
-    ),
-    Button: ({ children }: { children?: ReactNode }) => <button>{children}</button>,
+    Alert: (props: { title?: ReactNode; description?: ReactNode; onClose?: () => void }) => {
+      renderedAlerts.push(props);
+      return (
+        <section>
+          <div>{props.title}</div>
+          <div>{props.description}</div>
+        </section>
+      );
+    },
+    Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void | Promise<void> }) => {
+      renderedButtons.push({ children, onClick });
+      return <button>{children}</button>;
+    },
     Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
     Typography: {
       Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
       Title: ({ children }: { children?: ReactNode }) => <h1>{children}</h1>
     },
-    Modal: ({ title, children, open }: { title?: ReactNode; children?: ReactNode; open?: boolean }) =>
-      open ? (
-        <section>
-          <h2>{title}</h2>
-          {children}
-        </section>
-      ) : null
+    Modal: Object.assign(
+      ({
+        title,
+        children,
+        open,
+        onCancel,
+        onOk
+      }: {
+        title?: ReactNode;
+        children?: ReactNode;
+        open?: boolean;
+        onCancel?: () => void;
+        onOk?: () => void;
+      }) =>
+        (() => {
+          renderedModals.push({ title, children, open, onCancel, onOk });
+          return open ? (
+            <section>
+              <h2>{title}</h2>
+              {children}
+            </section>
+          ) : null;
+        })(),
+      {
+        confirm: (config: Record<string, unknown>) => mockModalConfirm(config)
+      }
+    )
   };
 });
 
@@ -46,9 +99,10 @@ vi.mock('@/api/chat-api', () => ({
   buildApprovalsCenterExportUrl: () => '/approvals-export',
   buildBrowserReplayUrl: () => '/replay',
   buildRuntimeCenterExportUrl: () => '/runtime-export',
-  exportApprovalsCenter: vi.fn(),
-  exportRuntimeCenter: vi.fn(),
-  getBrowserReplay: vi.fn()
+  exportApprovalsCenter: (...args: unknown[]) => mockExportApprovalsCenter(...args),
+  exportRuntimeCenter: (...args: unknown[]) => mockExportRuntimeCenter(...args),
+  getBrowserReplay: (...args: unknown[]) => mockGetBrowserReplay(...args),
+  streamReportSchema: (...args: unknown[]) => mockStreamReportSchema(...args)
 }));
 
 vi.mock('@/features/chat/chat-message-adapter', () => ({
@@ -56,7 +110,10 @@ vi.mock('@/features/chat/chat-message-adapter', () => ({
 }));
 
 vi.mock('@/features/runtime-panel/chat-runtime-drawer', () => ({
-  ChatRuntimeDrawer: ({ open }: { open: boolean }) => <div>runtime-drawer:{open ? 'open' : 'closed'}</div>,
+  ChatRuntimeDrawer: (props: Record<string, unknown>) => {
+    runtimeDrawerProps.push(props);
+    return <div>runtime-drawer:{props.open ? 'open' : 'closed'}</div>;
+  },
   getRuntimeDrawerExportFilters: () => ({ executionMode: 'plan', interactionKind: 'plan-question' })
 }));
 
@@ -99,6 +156,10 @@ vi.mock('@/pages/chat-home/chat-home-workbench', () => ({
 import { ChatHomePage } from '@/pages/chat-home/chat-home-page';
 
 describe('ChatHomePage shell', () => {
+  function findRenderedButton(label: string) {
+    return renderedButtons.find(button => button.children === label);
+  }
+
   function createChatSessionOverrides(overrides: Record<string, unknown> = {}) {
     return {
       activeSessionId: 'session-1',
@@ -142,6 +203,19 @@ describe('ChatHomePage shell', () => {
     };
   }
 
+  beforeEach(() => {
+    renderedButtons.length = 0;
+    renderedAlerts.length = 0;
+    renderedModals.length = 0;
+    runtimeDrawerProps.length = 0;
+    mockModalConfirm.mockReset();
+    mockExportApprovalsCenter.mockReset();
+    mockExportRuntimeCenter.mockReset();
+    mockGetBrowserReplay.mockReset();
+    mockStreamReportSchema.mockReset();
+    useStateOverride = null;
+  });
+
   it('renders header, error state, workbench and runtime drawer shell', () => {
     mockUseChatSession.mockReturnValue(createChatSessionOverrides());
 
@@ -176,5 +250,200 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('开始新会话');
     expect(html).not.toContain('连接错误');
     expect(html).toContain('runtime-drawer:closed');
+    expect(findRenderedButton('刷新当前会话')).toBeUndefined();
+    expect(findRenderedButton('删除会话')).toBeUndefined();
+  });
+
+  it('wires header buttons to refresh, confirm deletion and open the right panel', async () => {
+    const chat = createChatSessionOverrides();
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    await findRenderedButton('刷新当前会话')?.onClick?.();
+    expect(chat.refreshSessionDetail).toHaveBeenCalled();
+
+    await findRenderedButton('打开总览面板')?.onClick?.();
+    expect(chat.setShowRightPanel).toHaveBeenCalledWith(true);
+
+    await findRenderedButton('删除会话')?.onClick?.();
+    expect(mockModalConfirm).toHaveBeenCalledTimes(1);
+    const config = mockModalConfirm.mock.calls[0]?.[0] as { onOk?: () => Promise<void>; title?: string };
+    expect(config.title).toBe('删除当前会话？');
+    await config.onOk?.();
+    expect(chat.deleteActiveSession).toHaveBeenCalled();
+  });
+
+  it('routes runtime drawer actions to export, replay and share handlers', async () => {
+    const chat = createChatSessionOverrides();
+    const clipboardWriteText = vi.fn(async () => undefined);
+    mockUseChatSession.mockReturnValue(chat);
+    mockExportRuntimeCenter.mockResolvedValue({
+      filename: 'runtime.json',
+      mimeType: 'application/json',
+      content: '{"runtime":true}'
+    });
+    mockExportApprovalsCenter.mockResolvedValue({
+      filename: 'approvals.json',
+      mimeType: 'application/json',
+      content: '{"approvals":true}'
+    });
+    mockGetBrowserReplay.mockResolvedValue({ replay: true });
+
+    const previousClipboard = navigator.clipboard;
+    const previousBlob = globalThis.Blob;
+    const previousDocument = globalThis.document;
+    const previousUrl = globalThis.URL;
+    const appendChild = vi.fn();
+    const removeChild = vi.fn();
+    const click = vi.fn();
+    const createElement = vi.fn(() => ({ href: '', download: '', click }));
+    const createObjectURL = vi.fn(() => 'blob:chat-home');
+    const revokeObjectURL = vi.fn();
+    const blobMock = vi.fn(function BlobMock(this: Record<string, unknown>, parts: unknown[], options: unknown) {
+      this.parts = parts;
+      this.options = options;
+    });
+
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: clipboardWriteText },
+      configurable: true
+    });
+    Object.defineProperty(globalThis, 'Blob', {
+      value: blobMock,
+      configurable: true
+    });
+    Object.defineProperty(globalThis, 'document', {
+      value: {
+        createElement,
+        body: { appendChild, removeChild }
+      },
+      configurable: true
+    });
+    Object.defineProperty(globalThis, 'URL', {
+      value: {
+        createObjectURL,
+        revokeObjectURL
+      },
+      configurable: true
+    });
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const drawer = runtimeDrawerProps[0] as {
+      onExportRuntime?: () => Promise<void>;
+      onExportApprovals?: () => Promise<void>;
+      onDownloadReplay?: () => Promise<void>;
+      onCopyShareLinks?: () => Promise<void>;
+    };
+
+    await drawer.onExportRuntime?.();
+    await drawer.onExportApprovals?.();
+    await drawer.onDownloadReplay?.();
+    await drawer.onCopyShareLinks?.();
+
+    expect(mockExportRuntimeCenter).toHaveBeenCalledWith({
+      executionMode: 'plan',
+      interactionKind: 'plan-question',
+      format: 'json'
+    });
+    expect(mockExportApprovalsCenter).toHaveBeenCalledWith({
+      executionMode: 'plan',
+      interactionKind: 'plan-question',
+      format: 'json'
+    });
+    expect(mockGetBrowserReplay).toHaveBeenCalledWith('session-1');
+    expect(clipboardWriteText).toHaveBeenCalledWith(
+      ['当前运行视角链接', 'runtime: /runtime-export', 'approvals: /approvals-export', 'replay: /replay'].join('\n')
+    );
+    expect(blobMock).toHaveBeenCalled();
+    expect(createElement).toHaveBeenCalledWith('a');
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:chat-home');
+
+    Object.defineProperty(navigator, 'clipboard', { value: previousClipboard, configurable: true });
+    Object.defineProperty(globalThis, 'Blob', { value: previousBlob, configurable: true });
+    Object.defineProperty(globalThis, 'document', { value: previousDocument, configurable: true });
+    Object.defineProperty(globalThis, 'URL', { value: previousUrl, configurable: true });
+  });
+
+  it('routes runtime drawer close, learning confirmation and recover callbacks back into chat actions', async () => {
+    const chat = createChatSessionOverrides();
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const drawer = runtimeDrawerProps[0] as {
+      onClose?: () => void;
+      onConfirmLearning?: () => Promise<void>;
+      onRecover?: () => Promise<void>;
+    };
+
+    drawer.onClose?.();
+    await drawer.onConfirmLearning?.();
+    await drawer.onRecover?.();
+
+    expect(chat.setShowRightPanel).toHaveBeenCalledWith(false);
+    expect(chat.submitLearningConfirmation).toHaveBeenCalled();
+    expect(chat.recoverActiveSession).toHaveBeenCalled();
+  });
+
+  it('dismisses the error alert with the current error value', () => {
+    const dismissedErrorSetter = vi.fn();
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 5) {
+        return ['', dismissedErrorSetter];
+      }
+      return actualUseState(initial);
+    };
+
+    mockUseChatSession.mockReturnValue(createChatSessionOverrides());
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const alert = renderedAlerts[0] as { onClose?: () => void };
+    alert.onClose?.();
+
+    expect(dismissedErrorSetter).toHaveBeenCalledWith('provider timeout');
+  });
+
+  it('cancels and submits approval feedback through the modal callbacks', () => {
+    const feedbackIntentSetter = vi.fn();
+    const feedbackDraftSetter = vi.fn();
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 1) {
+        return ['enable_connector', feedbackIntentSetter];
+      }
+      if (stateCallIndex === 2) {
+        return ['  先补测试  ', feedbackDraftSetter];
+      }
+      return actualUseState(initial);
+    };
+
+    const chat = createChatSessionOverrides();
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const modal = renderedModals[0] as {
+      open?: boolean;
+      onCancel?: () => void;
+      onOk?: () => void;
+    };
+
+    expect(modal.open).toBe(true);
+
+    modal.onCancel?.();
+    expect(feedbackIntentSetter).toHaveBeenCalledWith('');
+    expect(feedbackDraftSetter).toHaveBeenCalledWith('');
+
+    modal.onOk?.();
+    expect(chat.updateApproval).toHaveBeenCalledWith('enable_connector', false, '先补测试');
+    expect(feedbackIntentSetter).toHaveBeenCalledWith('');
+    expect(feedbackDraftSetter).toHaveBeenCalledWith('');
   });
 });

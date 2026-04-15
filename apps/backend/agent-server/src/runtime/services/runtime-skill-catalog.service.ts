@@ -1,8 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod/v4';
 
-import type { LlmProvider } from '@agent/agent-core';
-import { listBootstrapSkills } from '@agent/agent-core';
+import type { LlmProvider } from '@agent/adapters';
+import { generateObjectWithRetry } from '@agent/adapters';
+import { listBootstrapSkills } from '@agent/agents-supervisor';
 import { SkillCard, SkillStatus } from '@agent/shared';
 
 export interface RuntimeSkillCatalogContext {
@@ -146,8 +147,11 @@ export class RuntimeSkillCatalogService {
     });
 
     try {
-      const generated = await llm.generateObject(
-        [
+      const generated = await generateObjectWithRetry({
+        llm,
+        contractName: 'runtime-skill-draft',
+        contractVersion: '1.0.0',
+        messages: [
           {
             role: 'system',
             content: [
@@ -162,12 +166,12 @@ export class RuntimeSkillCatalogService {
           }
         ],
         schema,
-        {
+        options: {
           role: 'manager',
           maxTokens: 800,
           temperature: 0.2
         }
-      );
+      });
 
       return {
         description: generated.description,

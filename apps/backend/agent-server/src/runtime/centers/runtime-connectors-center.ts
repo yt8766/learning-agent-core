@@ -1,4 +1,4 @@
-import { describeConnectorProfilePolicy } from '@agent/agent-core';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
 import { RuntimeStateSnapshot } from '@agent/memory';
 import { ApprovalPolicyRecord, ConnectorHealthRecord, RuntimeProfile, TaskRecord, TaskStatus } from '@agent/shared';
 import { McpClientManager } from '@agent/tools';

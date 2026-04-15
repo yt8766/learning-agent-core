@@ -5,9 +5,8 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryRecord, RuleRecord } from '@agent/shared';
 
-import { type EmbeddingProvider } from '../src/embedding-provider';
-import { DefaultMemorySearchService } from '../src/memory-search-service';
-import { LocalVectorIndexRepository, NullVectorIndexRepository } from '../src/vector-index-repository';
+import type { EmbeddingProvider } from '@agent/memory';
+import { DefaultMemorySearchService, LocalVectorIndexRepository, NullVectorIndexRepository } from '@agent/memory';
 
 describe('DefaultMemorySearchService', () => {
   let tempDir = '';

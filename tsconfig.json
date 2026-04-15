@@ -28,14 +28,22 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
+      "@agent/core": ["packages/core/src/index.ts"],
       "@agent/shared": ["packages/shared/src"],
       "@agent/config": ["packages/config/src"],
+      "@agent/runtime": ["packages/runtime/src/index.ts"],
+      "@agent/adapters": ["packages/adapters/src/index.ts"],
       "@agent/tools": ["packages/tools/src"],
       "@agent/memory": ["packages/memory/src"],
       "@agent/model": ["packages/model/src"],
+      "@agent/report-kit": ["packages/report-kit/src/index.ts"],
+      "@agent/templates": ["packages/templates/src"],
       "@agent/skills": ["packages/skills/src"],
       "@agent/evals": ["packages/evals/src"],
-      "@agent/agent-core": ["packages/agent-core/src"]
+      "@agent/agents-supervisor": ["agents/supervisor/src/index.ts"],
+      "@agent/agents-data-report": ["agents/data-report/src/index.ts"],
+      "@agent/agents-coder": ["agents/coder/src/index.ts"],
+      "@agent/agents-reviewer": ["agents/reviewer/src/index.ts"]
     }
   }
 }

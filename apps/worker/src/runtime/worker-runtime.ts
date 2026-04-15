@@ -1,4 +1,4 @@
-import { AgentRuntime } from '@agent/agent-core';
+import { AgentRuntime } from '@agent/runtime';
 
 import {
   runBackgroundRunnerTick,

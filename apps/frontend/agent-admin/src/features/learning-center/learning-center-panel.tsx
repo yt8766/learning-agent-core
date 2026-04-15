@@ -130,10 +130,12 @@ export function LearningCenterPanel({
   );
   const ministryScoreData = useMemo(
     () =>
-      (learning.ministryScorecards ?? []).map(item => ({
-        ministry: item.ministry,
-        score: Number((item.averageScore ?? 0).toFixed(1))
-      })),
+      (learning.ministryScorecards ?? [])
+        .filter((item): item is typeof item & { ministry: string } => typeof item.ministry === 'string')
+        .map(item => ({
+          ministry: item.ministry,
+          score: Number((item.averageScore ?? item.score ?? 0).toFixed(1))
+        })),
     [learning.ministryScorecards]
   );
   const trustDistributionData = useMemo(() => {
