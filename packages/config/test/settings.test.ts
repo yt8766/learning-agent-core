@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadSettings } from '@agent/config';
+import { parseDotEnvFile } from '../src/settings/settings.helpers';
 import { loadSettings as directLoadSettings } from '../src/settings/settings.loader';
 import * as settingsExports from '../src/settings';
 
@@ -26,6 +27,7 @@ function resolveMonorepoRootFromCwd(): string {
 
 const REPO_ROOT = resolveMonorepoRootFromCwd();
 const BACKEND_AGENT_SERVER_CWD = join(REPO_ROOT, 'apps', 'backend', 'agent-server');
+const ROOT_DOTENV = parseDotEnvFile(join(REPO_ROOT, '.env'));
 
 const ORIGINAL_CWD = process.cwd();
 
@@ -57,7 +59,11 @@ describe('loadSettings', () => {
     expect(toPosixPath(settings.vectorIndexFilePath)).toBe(
       toPosixPath(join(REPO_ROOT, 'data', 'memory', 'vector-index.json'))
     );
-    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'skills')));
+    const expectedSkillsRoot = join(
+      REPO_ROOT,
+      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skill-runtime'
+    );
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(expectedSkillsRoot));
   });
 
   it('保留显式传入的绝对路径配置', () => {

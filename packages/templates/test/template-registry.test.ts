@@ -1,9 +1,26 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { getFrontendTemplate, listFrontendTemplates, resolveFrontendTemplateDir } from '../src';
+
+function resolveMonorepoRootFromCwd(): string {
+  let current = resolve(process.cwd());
+  while (true) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new Error('Unable to locate monorepo root from process.cwd().');
+    }
+    current = parent;
+  }
+}
+
+const REPO_ROOT = resolveMonorepoRootFromCwd();
+const BACKEND_AGENT_SERVER_CWD = join(REPO_ROOT, 'apps', 'backend', 'agent-server');
 
 describe('@agent/templates frontend template registry', () => {
   it('lists stable frontend templates for downstream selection', () => {
@@ -44,7 +61,7 @@ describe('@agent/templates frontend template registry', () => {
 
   it('resolves the template directory even when cwd is the backend app', () => {
     const previousCwd = process.cwd();
-    process.chdir('/Users/dev/Desktop/learning-agent-core/apps/backend/agent-server');
+    process.chdir(BACKEND_AGENT_SERVER_CWD);
 
     try {
       const templateDir = resolveFrontendTemplateDir('react-ts');
