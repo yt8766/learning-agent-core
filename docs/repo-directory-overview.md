@@ -164,8 +164,8 @@
 
 ## 建议阅读顺序
 
-1. [README](/Users/dev/Desktop/learning-agent-core/README.md)
-2. [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-3. [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-4. [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
+1. [README](/README.md)
+2. [项目规范总览](/docs/project-conventions.md)
+3. [架构总览](/docs/ARCHITECTURE.md)
+4. [目录地图](/docs/repo-directory-overview.md)
 5. 对应目录自己的 README 或 `docs/<module>/README.md`

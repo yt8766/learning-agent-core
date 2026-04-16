@@ -31,9 +31,9 @@
 
 当前文档：
 
-- [runtime-current-state.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/runtime-current-state.md)
-- [data-report-json-generation-guide.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/data-report-json-generation-guide.md)
-- [package-migration-status.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/package-migration-status.md)
+- [runtime-current-state.md](/docs/archive/agent-core/runtime-current-state.md)
+- [data-report-json-generation-guide.md](/docs/archive/agent-core/data-report-json-generation-guide.md)
+- [package-migration-status.md](/docs/archive/agent-core/package-migration-status.md)
 
 当前用途：
 
@@ -43,6 +43,6 @@
 
 历史归档文档：
 
-- [archive/README.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/README.md)
-- [agent-core-structure-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/agent-core-structure-report.md)
-- [flow-prompt-schema-optimization-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)
+- [archive/README.md](/docs/archive/agent-core/archive/README.md)
+- [agent-core-structure-report.md](/docs/archive/agent-core/archive/agent-core-structure-report.md)
+- [flow-prompt-schema-optimization-report.md](/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)

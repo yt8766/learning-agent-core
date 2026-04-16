@@ -9,13 +9,13 @@
 
 相关入口：
 
-- [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
-- [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
-- [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
-- [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
-- [Prompt Regression And Thresholds](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
+- [AGENTS.md](/AGENTS.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [测试规范](/docs/test-conventions.md)
+- [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
+- [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
+- [Prompt Regression And Thresholds](/docs/evals/prompt-regression-and-thresholds.md)
 
 ## 1. 核心目标
 
@@ -142,10 +142,10 @@
   - `pnpm test:integration:affected`
   - `pnpm verify:affected`
 - `verify:affected` 默认先执行治理门槛与受影响范围 Spec，再执行受影响包的 Turbo-only Type / Unit / Demo / Integration
-- `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
 - 对存在额外模板或脚手架依赖的宿主，应使用宿主级例外补充 `inputs`；当前仓库里的 scaffold 回归已迁回 `packages/tools` 测试与 integration，不再保留独立 demo 例外
-- 更深的 Turbo 主链收敛当前仍被 `runtime <-> agents/*` 循环依赖簇阻断；下一阶段治理路线见 [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- 更深的 Turbo 主链收敛当前仍被 `runtime <-> agents/*` 循环依赖簇阻断；下一阶段治理路线见 [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 
 ## 4.1 当前 Turbo 接入边界
 
@@ -173,7 +173,7 @@ pnpm exec turbo run check:docs check:architecture --graph=turbo-verify-governanc
 
 - `verify:governance` 只覆盖治理门槛，不替代根级 `pnpm verify`
 - 需要完成五层验证时，仍优先使用 `pnpm verify`，或在根级验证被无关 blocker 卡住时，按受影响范围逐层补齐 Type / Spec / Unit / Demo / Integration
-- 后续若要继续把 `typecheck`、`test:unit`、`test:integration` 精准迁入 Turbo，必须先处理当前循环依赖并统一 `apps/*`、`agents/*`、`packages/*` 的任务边界；详见 [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- 后续若要继续把 `typecheck`、`test:unit`、`test:integration` 精准迁入 Turbo，必须先处理当前循环依赖并统一 `apps/*`、`agents/*`、`packages/*` 的任务边界；详见 [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 
 ## 5. 各层验证的强制要求
 

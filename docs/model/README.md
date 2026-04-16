@@ -34,4 +34,4 @@
 
 当前文档：
 
-- [provider-and-fallback.md](/Users/dev/Desktop/learning-agent-core/docs/model/provider-and-fallback.md)
+- [provider-and-fallback.md](/docs/model/provider-and-fallback.md)

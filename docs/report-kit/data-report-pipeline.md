@@ -52,5 +52,5 @@
 
 ## 5. 继续阅读
 
-- [report-kit 文档目录](/Users/dev/Desktop/learning-agent-core/docs/report-kit/README.md)
-- [agent-core data-report 指南（历史迁移参考）](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/data-report-json-generation-guide.md)
+- [report-kit 文档目录](/docs/report-kit/README.md)
+- [agent-core data-report 指南（历史迁移参考）](/docs/archive/agent-core/data-report-json-generation-guide.md)

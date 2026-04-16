@@ -11,7 +11,7 @@
 
 本文是“当前实现与近期收敛约束”文档；如果需要看长期蓝图与主动内存管理方向，优先阅读：
 
-- [Agent Memory Architecture](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
+- [Agent Memory Architecture](/docs/memory/agent-memory-architecture.md)
 
 ## 2. 当前目录结构
 
@@ -248,7 +248,7 @@
 
 ## 8. 继续阅读
 
-- [memory 文档目录](/Users/dev/Desktop/learning-agent-core/docs/memory/README.md)
-- [Agent Memory Architecture](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
-- [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
-- [Runtime State Machine](/Users/dev/Desktop/learning-agent-core/docs/runtime-state-machine.md)
+- [memory 文档目录](/docs/memory/README.md)
+- [Agent Memory Architecture](/docs/memory/agent-memory-architecture.md)
+- [目录地图](/docs/repo-directory-overview.md)
+- [Runtime State Machine](/docs/runtime-state-machine.md)

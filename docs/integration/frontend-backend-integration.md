@@ -17,15 +17,15 @@
 
 相关专题文档：
 
-- `SSE / chat session` 细节： [chat-session-sse.md](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- `approval / reject / recover` 细节： [approval-recovery.md](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
-- `runtime center / admin API` 细节： [runtime-centers-api.md](/Users/dev/Desktop/learning-agent-core/docs/integration/runtime-centers-api.md)
+- `SSE / chat session` 细节： [chat-session-sse.md](/docs/integration/chat-session-sse.md)
+- `approval / reject / recover` 细节： [approval-recovery.md](/docs/integration/approval-recovery.md)
+- `runtime center / admin API` 细节： [runtime-centers-api.md](/docs/integration/runtime-centers-api.md)
 
 当前专题拆分：
 
-- [Chat Session And SSE](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- [Runtime Centers API](/Users/dev/Desktop/learning-agent-core/docs/integration/runtime-centers-api.md)
-- [Approval Recovery](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
+- [Runtime Centers API](/docs/integration/runtime-centers-api.md)
+- [Approval Recovery](/docs/integration/approval-recovery.md)
 
 ## 1. 总体链路
 

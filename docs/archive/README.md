@@ -15,12 +15,12 @@
 
 当前目录：
 
-- [agent-core 历史归档](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
+- [agent-core 历史归档](/docs/archive/agent-core/README.md)
   - 已删除 `packages/agent-core` 的迁移背景、旧结构说明和专题历史资料
 
 本目录主文档：
 
-- 历史归档入口：[agent-core/README.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
+- 历史归档入口：[agent-core/README.md](/docs/archive/agent-core/README.md)
 
 建议阅读方式：
 

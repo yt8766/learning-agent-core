@@ -9,9 +9,9 @@
 
 首次接手建议按这个顺序阅读：
 
-1. [type-barrel-notes.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/type-barrel-notes.md)
-2. [report-kit 文档目录](/Users/dev/Desktop/learning-agent-core/docs/report-kit/README.md)
-3. [data-report-pipeline.md](/Users/dev/Desktop/learning-agent-core/docs/report-kit/data-report-pipeline.md)
+1. [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
+2. [report-kit 文档目录](/docs/report-kit/README.md)
+3. [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
 
 改 `agents/data-report` 前，优先确认：
 
@@ -21,8 +21,8 @@
 
 本目录主文档：
 
-- `agents/data-report` 类型入口约束：[type-barrel-notes.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/type-barrel-notes.md)
+- `agents/data-report` 类型入口约束：[type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
 
 当前文档：
 
-- [type-barrel-notes.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/type-barrel-notes.md)
+- [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)

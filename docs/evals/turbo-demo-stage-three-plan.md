@@ -7,9 +7,9 @@
 
 本主题配套文档：
 
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
-- [Turbo 验证二阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-verification-stage-two-plan.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [测试规范](/docs/test-conventions.md)
+- [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
 
 本文只覆盖：
 

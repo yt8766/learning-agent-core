@@ -9,51 +9,51 @@
 
 如果想先搞清楚仓库当前各目录在做什么，先看：
 
-- [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
-- [apps 目录说明](/Users/dev/Desktop/learning-agent-core/docs/apps-overview.md)
-- [packages 目录说明](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-- [data 目录说明](/Users/dev/Desktop/learning-agent-core/docs/data-overview.md)
+- [目录地图](/docs/repo-directory-overview.md)
+- [apps 目录说明](/docs/apps-overview.md)
+- [packages 目录说明](/docs/packages-overview.md)
+- [data 目录说明](/docs/data-overview.md)
 
 当前高优先级入口：
 
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [本地联调指南](/Users/dev/Desktop/learning-agent-core/docs/local-development-guide.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [目录地图](/docs/repo-directory-overview.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [本地联调指南](/docs/local-development-guide.md)
 
 本目录主文档：
 
-- 仓库阅读入口：[repo-directory-overview.md](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
-- 全局规范入口：[project-conventions.md](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- 跨模块对接入口：[integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- 仓库阅读入口：[repo-directory-overview.md](/docs/repo-directory-overview.md)
+- 全局规范入口：[project-conventions.md](/docs/project-conventions.md)
+- 跨模块对接入口：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 
 按需参考入口：
 
-- [历史归档目录](/Users/dev/Desktop/learning-agent-core/docs/archive/README.md)
-- [Docs 重构计划（已完成）](/Users/dev/Desktop/learning-agent-core/docs/docs-refactor-plan.md)
-- [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
+- [历史归档目录](/docs/archive/README.md)
+- [Docs 重构计划（已完成）](/docs/docs-refactor-plan.md)
+- [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
 
 ## 0.1 阅读路径
 
 如果你是第一次接手这个仓库，推荐按下面顺序读：
 
 1. 先看“仓库现在是什么”：
-   - [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
-   - [apps 目录说明](/Users/dev/Desktop/learning-agent-core/docs/apps-overview.md)
-   - [packages 目录说明](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+   - [目录地图](/docs/repo-directory-overview.md)
+   - [apps 目录说明](/docs/apps-overview.md)
+   - [packages 目录说明](/docs/packages-overview.md)
 2. 再看“全局规则是什么”：
-   - [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-   - [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-   - [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
+   - [项目规范总览](/docs/project-conventions.md)
+   - [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+   - [测试规范](/docs/test-conventions.md)
 3. 如果你要改具体模块：
-   - 后端：先看 [docs/backend/README.md](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
-   - 前端：先看 [docs/frontend/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/README.md)
-   - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-   - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
-   - 跨模块联调：先看 [docs/integration/README.md](/Users/dev/Desktop/learning-agent-core/docs/integration/README.md)
-   - 运行时质量与评测：先看 [docs/evals/README.md](/Users/dev/Desktop/learning-agent-core/docs/evals/README.md)
+   - 后端：先看 [docs/backend/README.md](/docs/backend/README.md)
+   - 前端：先看 [docs/frontend/README.md](/docs/frontend/README.md)
+   - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
+   - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
+   - 跨模块联调：先看 [docs/integration/README.md](/docs/integration/README.md)
+   - 运行时质量与评测：先看 [docs/evals/README.md](/docs/evals/README.md)
 4. 只有在需要追迁移背景时，再看：
-   - [历史归档目录](/Users/dev/Desktop/learning-agent-core/docs/archive/README.md)
+   - [历史归档目录](/docs/archive/README.md)
 
 ## 0. 元信息规则
 

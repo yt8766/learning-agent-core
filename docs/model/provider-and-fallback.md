@@ -90,5 +90,5 @@
 
 ## 6. 继续阅读
 
-- [model 文档目录](/Users/dev/Desktop/learning-agent-core/docs/model/README.md)
-- [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- [model 文档目录](/docs/model/README.md)
+- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)

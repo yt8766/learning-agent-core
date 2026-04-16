@@ -7,8 +7,8 @@
 
 本主题主文档：
 
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 
 本文只覆盖：
 
@@ -23,7 +23,7 @@
 - `test:demo:affected`
 - `verify:affected` 中的 Demo 编排
 
-上述内容已单独收敛到 [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)。
+上述内容已单独收敛到 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)。
 
 ## 1. 背景与结论
 
@@ -136,8 +136,8 @@
 
 其中根级脚本不是真正的“Turbo 可拆分任务”：
 
-- 根级 `typecheck` 由 [scripts/typecheck.js](/Users/dev/Desktop/learning-agent-core/scripts/typecheck.js) 顺序扫描多个 `tsconfig`
-- 根级 `test:unit` 与 `test:integration` 都直接调用根 [vitest.config.js](/Users/dev/Desktop/learning-agent-core/vitest.config.js)
+- 根级 `typecheck` 由 [scripts/typecheck.js](/scripts/typecheck.js) 顺序扫描多个 `tsconfig`
+- 根级 `test:unit` 与 `test:integration` 都直接调用根 [vitest.config.js](/vitest.config.js)
 
 所以即使对根级任务使用 Turbo `--filter`，很多情况下也仍然是在执行“一个会扫全仓的根任务”，很难获得按包精确裁剪的收益。
 

@@ -70,6 +70,6 @@
 
 ## 6. 继续阅读
 
-- [tools 文档目录](/Users/dev/Desktop/learning-agent-core/docs/tools/README.md)
-- [Runtime Interrupts](/Users/dev/Desktop/learning-agent-core/docs/runtime-interrupts.md)
-- [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- [tools 文档目录](/docs/tools/README.md)
+- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)

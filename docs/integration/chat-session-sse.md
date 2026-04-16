@@ -7,7 +7,7 @@
 
 本主题主文档：
 
-- 总体对接关系仍以 [frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md) 为准
+- 总体对接关系仍以 [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md) 为准
 
 本文只覆盖：
 
@@ -100,5 +100,5 @@
 
 ## 6. 继续阅读
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [Approval Recovery](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [Approval Recovery](/docs/integration/approval-recovery.md)

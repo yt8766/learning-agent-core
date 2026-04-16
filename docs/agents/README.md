@@ -15,8 +15,8 @@
 
 当前文档：
 
-- [data-report 文档目录](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/README.md)
-- [data-report 类型导出说明](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/type-barrel-notes.md)
+- [data-report 文档目录](/docs/agents/data-report/README.md)
+- [data-report 类型导出说明](/docs/agents/data-report/type-barrel-notes.md)
 
 后续建议：
 

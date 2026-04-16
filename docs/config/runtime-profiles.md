@@ -63,6 +63,6 @@ profile 不只是数据目录标签，还会影响：
 
 ## 6. 继续阅读
 
-- [config 文档目录](/Users/dev/Desktop/learning-agent-core/docs/config/README.md)
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [Runtime State Machine](/Users/dev/Desktop/learning-agent-core/docs/runtime-state-machine.md)
+- [config 文档目录](/docs/config/README.md)
+- [README](/README.md)
+- [Runtime State Machine](/docs/runtime-state-machine.md)

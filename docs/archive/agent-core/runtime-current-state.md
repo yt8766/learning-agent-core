@@ -114,6 +114,6 @@ packages/
 
 ## 8. 继续阅读
 
-- [agent-core 文档目录](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [LangGraph 应用结构规范](/Users/dev/Desktop/learning-agent-core/docs/langgraph-app-structure-guidelines.md)
+- [agent-core 文档目录](/docs/archive/agent-core/README.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)

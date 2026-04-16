@@ -17,8 +17,8 @@
 
 更细专题请继续看：
 
-- runtime 边界：[runtime-module-notes.md](/Users/dev/Desktop/learning-agent-core/docs/backend/runtime-module-notes.md)
-- 前后端接口：[docs/integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- runtime 边界：[runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
+- 前后端接口：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 
 `agent-server` 是平台主 API 服务，负责：
 

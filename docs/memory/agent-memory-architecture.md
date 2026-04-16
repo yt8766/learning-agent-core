@@ -20,10 +20,10 @@
 
 本文描述的是目标架构与当前仓库的收敛路径，不是某个单文件 API 说明。实现时必须同时遵守：
 
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [Storage And Search](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)
+- [README](/README.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [Storage And Search](/docs/memory/storage-and-search.md)
 
 ## 2. 设计原则
 

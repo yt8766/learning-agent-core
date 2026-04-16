@@ -32,4 +32,4 @@
 
 当前文档：
 
-- [data-report-pipeline.md](/Users/dev/Desktop/learning-agent-core/docs/report-kit/data-report-pipeline.md)
+- [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)

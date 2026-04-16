@@ -55,10 +55,10 @@
 
 本目录主文档：
 
-- contract 边界主文档：[core-contract-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/core/core-contract-guidelines.md)
+- contract 边界主文档：[core-contract-guidelines.md](/docs/core/core-contract-guidelines.md)
 
 建议优先阅读：
 
-1. [core contract 规范](/Users/dev/Desktop/learning-agent-core/docs/core/core-contract-guidelines.md)
-2. [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-3. [Packages 目录说明](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+1. [core contract 规范](/docs/core/core-contract-guidelines.md)
+2. [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+3. [Packages 目录说明](/docs/packages-overview.md)

@@ -7,9 +7,9 @@
 
 本主题配套文档：
 
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [Turbo 验证二阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-verification-stage-two-plan.md)
-- [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
+- [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 
 本文只覆盖：
 
@@ -172,7 +172,7 @@
 
 当前状态：
 
-- 本步骤已完成，产出见 [Runtime-Agent 循环依赖消费清单](/Users/dev/Desktop/learning-agent-core/docs/evals/runtime-agent-cycle-audit.md)
+- 本步骤已完成，产出见 [Runtime-Agent 循环依赖消费清单](/docs/evals/runtime-agent-cycle-audit.md)
 
 ### 5.2 第二步：抽离稳定 contract
 

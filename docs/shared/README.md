@@ -38,7 +38,7 @@
 
 当前文档：
 
-- [core-compat-boundary.md](/Users/dev/Desktop/learning-agent-core/docs/shared/core-compat-boundary.md)
+- [core-compat-boundary.md](/docs/shared/core-compat-boundary.md)
 
 当前真实入口约束补充：
 

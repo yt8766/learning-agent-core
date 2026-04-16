@@ -41,5 +41,5 @@
 
 当前文档：
 
-- [runtime-governance-and-sandbox.md](/Users/dev/Desktop/learning-agent-core/docs/tools/runtime-governance-and-sandbox.md)
-- [scaffold-generation.md](/Users/dev/Desktop/learning-agent-core/docs/tools/scaffold-generation.md)
+- [runtime-governance-and-sandbox.md](/docs/tools/runtime-governance-and-sandbox.md)
+- [scaffold-generation.md](/docs/tools/scaffold-generation.md)

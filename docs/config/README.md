@@ -34,5 +34,5 @@
 
 当前文档：
 
-- [runtime-profiles.md](/Users/dev/Desktop/learning-agent-core/docs/config/runtime-profiles.md)
-- [package-installation-strategy.md](/Users/dev/Desktop/learning-agent-core/docs/config/package-installation-strategy.md)
+- [runtime-profiles.md](/docs/config/runtime-profiles.md)
+- [package-installation-strategy.md](/docs/config/package-installation-strategy.md)

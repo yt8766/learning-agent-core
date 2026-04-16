@@ -9,7 +9,7 @@
 
 当前入口：
 
-- [ministry-prompts.promptfooconfig.yaml](/Users/dev/Desktop/learning-agent-core/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
+- [ministry-prompts.promptfooconfig.yaml](/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
 
 ## 当前覆盖
 

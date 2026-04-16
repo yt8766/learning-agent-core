@@ -35,6 +35,6 @@
 
 建议阅读：
 
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [config 文档目录](/Users/dev/Desktop/learning-agent-core/docs/config/README.md)
-- [Runtime State Machine](/Users/dev/Desktop/learning-agent-core/docs/runtime-state-machine.md)
+- [README](/README.md)
+- [config 文档目录](/docs/config/README.md)
+- [Runtime State Machine](/docs/runtime-state-machine.md)

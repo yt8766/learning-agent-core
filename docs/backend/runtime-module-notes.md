@@ -15,7 +15,7 @@
 - runtime facade 与各窄接口的依赖原则
 - backend runtime 相关测试与模块内约束
 
-总体服务职责仍以 [agent-server-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/agent-server-overview.md) 为准
+总体服务职责仍以 [agent-server-overview.md](/docs/backend/agent-server-overview.md) 为准
 
 `runtime/` 现在不再承载单一“大而全” service，而是按长期稳定边界拆成多个 provider。
 

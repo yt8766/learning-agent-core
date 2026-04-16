@@ -14,10 +14,10 @@
 
 相关约束来源：
 
-- [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-- [Packages 目录说明](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+- [AGENTS.md](/AGENTS.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+- [Packages 目录说明](/docs/packages-overview.md)
 
 ## 1. 总原则
 

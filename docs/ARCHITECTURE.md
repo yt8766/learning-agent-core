@@ -9,8 +9,8 @@
 
 当前实现形态补充阅读：
 
-- [agent-core runtime current state](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/runtime-current-state.md)
-- [system flow current state](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
+- [agent-core runtime current state](/docs/archive/agent-core/runtime-current-state.md)
+- [system flow current state](/docs/integration/system-flow-current-state.md)
 
 ## 1. 产品分工
 
@@ -270,7 +270,7 @@ flowchart TD
 
 记忆系统的长期蓝图详见：
 
-- [Agent Memory Architecture](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
+- [Agent Memory Architecture](/docs/memory/agent-memory-architecture.md)
 
 这层策略先由运行时本地实现，后续再逐步升级为向量检索、语义缓存和更细粒度的 worker-specific context slice。
 
@@ -645,11 +645,11 @@ skills/
 
 如果你是进入本仓库工作的代码代理，建议按这个顺序阅读：
 
-1. [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-2. [README.md](/Users/dev/Desktop/learning-agent-core/README.md)
-3. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-4. [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
-5. [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
+1. [AGENTS.md](/AGENTS.md)
+2. [README.md](/README.md)
+3. [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+4. [后端规范](/docs/backend-conventions.md)
+5. [前端规范](/docs/frontend-conventions.md)
 
 ## 13. 最低检查
 

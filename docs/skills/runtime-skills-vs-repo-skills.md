@@ -88,6 +88,6 @@ skills/
 
 ## 6. 继续阅读
 
-- [skills/README.md](/Users/dev/Desktop/learning-agent-core/skills/README.md)
-- [skills 文档目录](/Users/dev/Desktop/learning-agent-core/docs/skills/README.md)
-- [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
+- [skills/README.md](/skills/README.md)
+- [skills 文档目录](/docs/skills/README.md)
+- [目录地图](/docs/repo-directory-overview.md)

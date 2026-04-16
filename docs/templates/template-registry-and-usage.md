@@ -76,6 +76,6 @@
 
 ## 5. 继续阅读
 
-- [templates 文档目录](/Users/dev/Desktop/learning-agent-core/docs/templates/README.md)
-- [模板示例](/Users/dev/Desktop/learning-agent-core/docs/project-template-guidelines.md)
-- [scaffold-generation.md](/Users/dev/Desktop/learning-agent-core/docs/tools/scaffold-generation.md)
+- [templates 文档目录](/docs/templates/README.md)
+- [模板示例](/docs/project-template-guidelines.md)
+- [scaffold-generation.md](/docs/tools/scaffold-generation.md)

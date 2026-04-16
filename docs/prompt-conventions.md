@@ -75,8 +75,8 @@
 
 当前推荐方式：
 
-- 优先复用 [packages/adapters/src/utils/prompts/prompt-template.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/src/utils/prompts/prompt-template.ts)
-- 所有结构化输出默认追加 [packages/adapters/src/shared/prompts/json-safety-prompt.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/src/shared/prompts/json-safety-prompt.ts)
+- 优先复用 [packages/adapters/src/utils/prompts/prompt-template.ts](/packages/adapters/src/utils/prompts/prompt-template.ts)
+- 所有结构化输出默认追加 [packages/adapters/src/shared/prompts/json-safety-prompt.ts](/packages/adapters/src/shared/prompts/json-safety-prompt.ts)
 - 优先使用 `buildStructuredPrompt(..., json: true)`、`appendJsonSafetyToMessages` 或同等封装
 
 为什么这样优化：结构化失败通常不是单一 prompt 问题，而是“提示词 + schema + 重试反馈”没有成套。  
@@ -132,16 +132,16 @@ Few-shot 只在这两种情况优先考虑：
 
 当前回归入口：
 
-- [docs/evals/promptfoo-regression.md](/Users/dev/Desktop/learning-agent-core/docs/evals/promptfoo-regression.md)
-- [docs/evals/prompt-regression-and-thresholds.md](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
-- [packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml](/Users/dev/Desktop/learning-agent-core/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
+- [docs/evals/promptfoo-regression.md](/docs/evals/promptfoo-regression.md)
+- [docs/evals/prompt-regression-and-thresholds.md](/docs/evals/prompt-regression-and-thresholds.md)
+- [packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml](/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
 
 为什么这样优化：提示词是行为代码，改了就应该有回归证明。  
 为什么不选“只靠人工看回答感觉更好了”：因为人工主观判断无法稳定防回归。
 
 ## 8. 继续阅读
 
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [LangGraph 应用结构规范](/Users/dev/Desktop/learning-agent-core/docs/langgraph-app-structure-guidelines.md)
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)

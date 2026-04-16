@@ -7,19 +7,19 @@
 
 请优先查看以下文档：
 
-- [AGENTS](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [Runtime Interrupts](/Users/dev/Desktop/learning-agent-core/docs/runtime-interrupts.md)
-- [LangGraph 应用结构规范](/Users/dev/Desktop/learning-agent-core/docs/langgraph-app-structure-guidelines.md)
-- [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
-- [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
-- [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
-- [提示词规范](/Users/dev/Desktop/learning-agent-core/docs/prompt-conventions.md)
-- [依赖安装与声明策略](/Users/dev/Desktop/learning-agent-core/docs/config/package-installation-strategy.md)
-- [模板示例](/Users/dev/Desktop/learning-agent-core/docs/project-template-guidelines.md)
-- [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
+- [AGENTS](/AGENTS.md)
+- [README](/README.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
+- [GitHub Flow 规范](/docs/github-flow.md)
+- [后端规范](/docs/backend-conventions.md)
+- [前端规范](/docs/frontend-conventions.md)
+- [提示词规范](/docs/prompt-conventions.md)
+- [依赖安装与声明策略](/docs/config/package-installation-strategy.md)
+- [模板示例](/docs/project-template-guidelines.md)
+- [测试规范](/docs/test-conventions.md)
 
 总原则：
 
@@ -34,7 +34,7 @@
 - `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
-- `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
 - `packages/core` 与 `packages/shared` 如出现职责重叠或同一 contract 双轨维护，默认优先把稳定主 contract 收口到 `packages/core`；`packages/shared` 仅保留前端默认组合、展示约束与 compat re-export
 - `packages/core` 默认采用 schema-first：
   - 所有稳定 JSON / DTO / event / payload contract 必须先定义 schema
@@ -119,7 +119,7 @@
 - 最低类型检查以 `AGENTS.md` 中列出的五条 `tsc --noEmit` 为准
 - 前端 `apps/frontend/*/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分组件、hooks、adapters、constants 或 types
 - 前端副作用必须可证明收敛：`useEffect`、轮询、SSE fallback、定时器必须有明确触发条件、停止条件和清理逻辑，禁止形成无限循环或隐式自激刷新
-- 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
+- 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](/docs/frontend-conventions.md)
 - 前端默认禁止动态导入；`apps/frontend/*` 中的依赖一般必须使用顶层静态 `import`。只有在明确代码分割、运行时隔离或重资产浏览器专属加载场景下，才允许 `import('...')`，且必须在代码旁写明理由
 - 前端路径别名必须统一：`apps/frontend/agent-chat/src` 与 `apps/frontend/agent-admin/src` 下跨目录引用一律使用 `@/...`，禁止新增 `../../hooks/use-chat-session`、`../../../src/...` 这类指回本应用 `src/` 的相对路径；测试引用本应用 `src/` 时也同样使用 `@/...`
 - 每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试；从现在起不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
@@ -145,7 +145,7 @@
 - 后端 `apps/backend/agent-server/src` 与 `apps/worker/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分 DTO、entities、interfaces 或独立 service 文件
 - 后端 `apps/backend/agent-server/test` 与 `apps/worker/test` 下测试文件也不得超过 400 行，超过必须按场景或 helper 拆分
 - `packages/runtime/src`、`packages/report-kit/src`、`agents/*/src` 与其他 `packages/*/src` 下手写源码文件单文件也不得超过 400 行；只要本轮改动触达某个文件且它已超过 400 行，就必须在本轮顺手继续拆分，优先拆到 `nodes/`、`prompts/`、`schemas/`、`runtime/`、`shared/`、`utils/` 或同域 helper 文件
-- 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
+- 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](/docs/backend-conventions.md)
 - 涉及文件系统读写、目录创建、复制、移动、删除等能力时，默认统一使用 `fs-extra`
 - 除非是 Node 运行时强依赖的同步极简场景或测试环境刻意隔离原生 `fs` 行为，否则不要新增 `node:fs` / `node:fs/promises` 作为业务实现的默认选择
 - 后端业务模块目录默认按以下结构收敛：

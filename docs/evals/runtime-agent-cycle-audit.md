@@ -7,8 +7,8 @@
 
 本主题配套文档：
 
-- [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
+- [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
 
 本文只回答一个问题：
 

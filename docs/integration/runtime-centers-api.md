@@ -7,7 +7,7 @@
 
 本主题主文档：
 
-- 总体对接关系仍以 [frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md) 为准
+- 总体对接关系仍以 [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md) 为准
 
 本文只覆盖：
 
@@ -83,5 +83,5 @@ CSV 当前额外包含：
 
 ## 6. 继续阅读
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [backend 文档目录](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [backend 文档目录](/docs/backend/README.md)

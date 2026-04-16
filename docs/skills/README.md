@@ -32,4 +32,4 @@
 
 当前文档：
 
-- [runtime-skills-vs-repo-skills.md](/Users/dev/Desktop/learning-agent-core/docs/skills/runtime-skills-vs-repo-skills.md)
+- [runtime-skills-vs-repo-skills.md](/docs/skills/runtime-skills-vs-repo-skills.md)

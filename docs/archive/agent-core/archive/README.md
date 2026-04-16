@@ -11,14 +11,14 @@
 
 当前优先阅读：
 
-- [上级历史入口](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
+- [上级历史入口](/docs/archive/agent-core/README.md)
 
 本目录主文档：
 
-- 历史结构观察：[agent-core-structure-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/agent-core-structure-report.md)
-- flow / prompt / schema 优化归档：[flow-prompt-schema-optimization-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)
+- 历史结构观察：[agent-core-structure-report.md](/docs/archive/agent-core/archive/agent-core-structure-report.md)
+- flow / prompt / schema 优化归档：[flow-prompt-schema-optimization-report.md](/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)
 
 当前文档：
 
-- [agent-core-structure-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/agent-core-structure-report.md)
-- [flow-prompt-schema-optimization-report.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)
+- [agent-core-structure-report.md](/docs/archive/agent-core/archive/agent-core-structure-report.md)
+- [flow-prompt-schema-optimization-report.md](/docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md)

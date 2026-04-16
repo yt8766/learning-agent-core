@@ -18,9 +18,9 @@
 
 更细实现请继续看：
 
-- 后端入口：[backend/README.md](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
-- chat 前端入口：[frontend/agent-chat/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-- admin 前端入口：[frontend/agent-admin/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
+- 后端入口：[backend/README.md](/docs/backend/README.md)
+- chat 前端入口：[frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
+- admin 前端入口：[frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
 
 当前目录职责：
 
@@ -35,6 +35,6 @@
 
 建议阅读顺序：
 
-1. [backend 文档目录](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
-2. [agent-chat 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-3. [agent-admin 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
+1. [backend 文档目录](/docs/backend/README.md)
+2. [agent-chat 文档目录](/docs/frontend/agent-chat/README.md)
+3. [agent-admin 文档目录](/docs/frontend/agent-admin/README.md)

@@ -37,4 +37,4 @@
 
 当前文档：
 
-- [overview.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/overview.md)
+- [overview.md](/docs/frontend/agent-chat/overview.md)

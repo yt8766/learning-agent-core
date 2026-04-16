@@ -9,10 +9,10 @@
 
 首次接手前端时，建议按这个顺序阅读：
 
-1. [agent-chat 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-2. [agent-admin 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
-3. [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
-4. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+1. [agent-chat 文档目录](/docs/frontend/agent-chat/README.md)
+2. [agent-admin 文档目录](/docs/frontend/agent-admin/README.md)
+3. [前端规范](/docs/frontend-conventions.md)
+4. [前后端对接文档](/docs/integration/frontend-backend-integration.md)
 
 改前端前先确认：
 
@@ -21,11 +21,11 @@
 
 本目录主文档：
 
-- 前线执行面入口：[agent-chat/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-- 后台治理面入口：[agent-admin/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
-- 跨端协作入口：[integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- 前线执行面入口：[agent-chat/README.md](/docs/frontend/agent-chat/README.md)
+- 后台治理面入口：[agent-admin/README.md](/docs/frontend/agent-admin/README.md)
+- 跨端协作入口：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 
 当前文档：
 
-- [agent-chat 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-- [agent-admin 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
+- [agent-chat 文档目录](/docs/frontend/agent-chat/README.md)
+- [agent-admin 文档目录](/docs/frontend/agent-admin/README.md)

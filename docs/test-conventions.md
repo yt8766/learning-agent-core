@@ -7,11 +7,11 @@
 
 配套现状文档：
 
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [Turbo 验证二阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-verification-stage-two-plan.md)
-- [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
-- [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
-- [Prompt Regression And Thresholds](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
+- [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
+- [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
+- [Prompt Regression And Thresholds](/docs/evals/prompt-regression-and-thresholds.md)
 
 适用范围：
 
@@ -98,7 +98,7 @@
 - `pnpm test:demo` 会动态发现仍保留 `demo/` 与 `demo` 脚本的宿主；没有独立 `demo/` 的宿主由 integration 或等价 smoke 承担最小闭环
 - `pnpm test:spec:affected` 会基于 `origin/main...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
 - `pnpm test:demo:affected` 会通过 `turbo run demo --filter='...[origin/main]'` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
-- 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
 - 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
 - 对脚手架链路，`Demo` 不只指生成器自身能跑，还包括“生成出的目标至少存在最小可运行闭环”：
@@ -109,7 +109,7 @@
 - `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
 - GitHub PR 校验当前直接复用根级主入口：代码改动默认执行 `pnpm verify`，纯文档改动默认执行 `pnpm check:docs`
 - 当前不要把根级 `typecheck`、`test:unit`、`test:integration` 直接改成 Turbo 任务入口；仓库仍存在 `runtime <-> agents/*` 的循环依赖，直接沿 package graph 编排会报错
-- 后续二阶段迁移默认采用“新增 Turbo-only 包级任务”而不是直接篡改现有主入口，详见 [Turbo 验证二阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-verification-stage-two-plan.md)
+- 后续二阶段迁移默认采用“新增 Turbo-only 包级任务”而不是直接篡改现有主入口，详见 [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
 - 当前 Phase 2A 已落地的 Turbo-only 包级命令为：
   - `pnpm turbo:typecheck`
   - `pnpm turbo:test:unit`
@@ -246,7 +246,7 @@
 包级执行约定：
 
 - 包级 `test:integration` 默认只扫描当前项目 `test/` 目录下的 `*.int-spec.ts` 与 `*.int-spec.tsx`
-- 当前统一通过 [scripts/run-package-integration-tests.js](/Users/dev/Desktop/learning-agent-core/scripts/run-package-integration-tests.js) 枚举文件后再调用根 [vitest.config.js](/Users/dev/Desktop/learning-agent-core/vitest.config.js)
+- 当前统一通过 [scripts/run-package-integration-tests.js](/scripts/run-package-integration-tests.js) 枚举文件后再调用根 [vitest.config.js](/vitest.config.js)
 - 如果当前包没有 integration 用例，脚本应稳定返回成功并输出 `no integration tests found`，不要把“暂无集成测试”变成失败原因
 
 ### LangGraph Graph 测试补充

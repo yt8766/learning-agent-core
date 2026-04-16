@@ -9,20 +9,20 @@
 
 首次接手建议按这个顺序阅读：
 
-1. [frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-2. [system-flow-current-state.md](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
+1. [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+2. [system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
 3. 按专题继续看 `chat-session-sse`、`approval-recovery`、`runtime-centers-api`
 
 改前后端协议、SSE、审批恢复前，优先阅读：
 
-- [frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [chat-session-sse.md](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- [approval-recovery.md](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+- [chat-session-sse.md](/docs/integration/chat-session-sse.md)
+- [approval-recovery.md](/docs/integration/approval-recovery.md)
 
 本目录主文档：
 
-- 总对接主文档：[frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- 系统运行闭环：[system-flow-current-state.md](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
+- 总对接主文档：[frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+- 系统运行闭环：[system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
 
 约定：
 
@@ -31,11 +31,11 @@
 
 当前优先阅读：
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [Current System Flow](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
-- [Chat Session And SSE](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- [Runtime Centers API](/Users/dev/Desktop/learning-agent-core/docs/integration/runtime-centers-api.md)
-- [Approval Recovery](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [Current System Flow](/docs/integration/system-flow-current-state.md)
+- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
+- [Runtime Centers API](/docs/integration/runtime-centers-api.md)
+- [Approval Recovery](/docs/integration/approval-recovery.md)
 
 说明：
 

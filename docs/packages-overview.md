@@ -24,9 +24,9 @@
 
 更细规则请继续看：
 
-- 分层与依赖约定：[package-architecture-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-- contract 边界：[core/README.md](/Users/dev/Desktop/learning-agent-core/docs/core/README.md)
-- 迁移历史：[archive/agent-core/README.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
+- 分层与依赖约定：[package-architecture-guidelines.md](/docs/package-architecture-guidelines.md)
+- contract 边界：[core/README.md](/docs/core/README.md)
+- 迁移历史：[archive/agent-core/README.md](/docs/archive/agent-core/README.md)
 
 当前目录职责：
 
@@ -94,7 +94,7 @@
 
 建议优先阅读：
 
-1. [agent-core 迁移历史目录](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
-2. [core 文档目录](/Users/dev/Desktop/learning-agent-core/docs/core/README.md)
-3. [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-4. [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
+1. [agent-core 迁移历史目录](/docs/archive/agent-core/README.md)
+2. [core 文档目录](/docs/core/README.md)
+3. [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+4. [目录地图](/docs/repo-directory-overview.md)

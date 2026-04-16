@@ -77,7 +77,7 @@
 
 ## 6. 后续 AI 应优先阅读
 
-1. [packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-2. [README](/Users/dev/Desktop/learning-agent-core/README.md)
-3. [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-4. [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
+1. [packages-overview.md](/docs/packages-overview.md)
+2. [README](/README.md)
+3. [AGENTS.md](/AGENTS.md)
+4. [项目规范总览](/docs/project-conventions.md)

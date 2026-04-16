@@ -9,8 +9,8 @@
 
 优先阅读：
 
-- [agent-memory-architecture.md](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
-- [storage-and-search.md](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)
+- [agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
+- [storage-and-search.md](/docs/memory/storage-and-search.md)
 
 包边界：
 
@@ -40,5 +40,5 @@
 
 当前文档：
 
-- [agent-memory-architecture.md](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
-- [storage-and-search.md](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)
+- [agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
+- [storage-and-search.md](/docs/memory/storage-and-search.md)

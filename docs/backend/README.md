@@ -9,20 +9,20 @@
 
 首次接手建议按这个顺序阅读：
 
-1. [agent-server-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/agent-server-overview.md)
-2. [runtime-module-notes.md](/Users/dev/Desktop/learning-agent-core/docs/backend/runtime-module-notes.md)
-3. [worker-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/worker-overview.md)
+1. [agent-server-overview.md](/docs/backend/agent-server-overview.md)
+2. [runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
+3. [worker-overview.md](/docs/backend/worker-overview.md)
 
 改接口、SSE、审批恢复前，优先同时阅读：
 
-- [docs/integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [docs/integration/approval-recovery.md](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+- [docs/integration/approval-recovery.md](/docs/integration/approval-recovery.md)
 
 本目录主文档：
 
-- `agent-server` 总体入口：[agent-server-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/agent-server-overview.md)
-- runtime 模块边界：[runtime-module-notes.md](/Users/dev/Desktop/learning-agent-core/docs/backend/runtime-module-notes.md)
-- worker 链路入口：[worker-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/worker-overview.md)
+- `agent-server` 总体入口：[agent-server-overview.md](/docs/backend/agent-server-overview.md)
+- runtime 模块边界：[runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
+- worker 链路入口：[worker-overview.md](/docs/backend/worker-overview.md)
 
 当前主要对应目录：
 
@@ -46,6 +46,6 @@
 
 当前文档：
 
-- [agent-server-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/agent-server-overview.md)
-- [worker-overview.md](/Users/dev/Desktop/learning-agent-core/docs/backend/worker-overview.md)
-- [runtime-module-notes.md](/Users/dev/Desktop/learning-agent-core/docs/backend/runtime-module-notes.md)
+- [agent-server-overview.md](/docs/backend/agent-server-overview.md)
+- [worker-overview.md](/docs/backend/worker-overview.md)
+- [runtime-module-notes.md](/docs/backend/runtime-module-notes.md)

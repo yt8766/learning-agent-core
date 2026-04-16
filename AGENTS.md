@@ -4,10 +4,10 @@
 
 优先阅读：
 
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- [README](/README.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
 
 ## 1. 产品定位
 

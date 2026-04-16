@@ -33,5 +33,5 @@
 
 当前文档：
 
-- [template-registry-and-usage.md](/Users/dev/Desktop/learning-agent-core/docs/templates/template-registry-and-usage.md)
-- [scaffold-generation.md](/Users/dev/Desktop/learning-agent-core/docs/tools/scaffold-generation.md)
+- [template-registry-and-usage.md](/docs/templates/template-registry-and-usage.md)
+- [scaffold-generation.md](/docs/tools/scaffold-generation.md)
