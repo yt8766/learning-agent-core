@@ -28,7 +28,7 @@ async function loadLoggerModule() {
   return import('../../src/logger/app-logger.service');
 }
 
-describe('AppLoggerService', () => {
+describe.sequential('AppLoggerService', () => {
   beforeEach(() => {
     appendFileSyncMock.mockReset();
     mkdirSyncMock.mockReset();
@@ -54,6 +54,28 @@ describe('AppLoggerService', () => {
     expect(appendFileSyncMock).toHaveBeenCalledWith(
       expect.stringContaining('/logs/app-'),
       expect.stringContaining('"message":"hello world"'),
+      'utf8'
+    );
+  });
+
+  it('writes logs into the backend logs directory even when cwd points elsewhere', async () => {
+    process.env.NODE_ENV = 'test';
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/tmp/codex-test-root');
+    const { AppLoggerService } = await loadLoggerModule();
+
+    const logger = new AppLoggerService();
+    logger.log('fixed path', 'RuntimeController');
+
+    const expectedLogsDirSuffix = '/apps/backend/agent-server/logs';
+    expect(cwdSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(mkdirSyncMock).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${expectedLogsDirSuffix}$`)), {
+      recursive: true
+    });
+    expect(appendFileSyncMock).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`${expectedLogsDirSuffix}/app-`)),
+      expect.stringContaining('"message":"fixed path"'),
       'utf8'
     );
   });

@@ -1,5 +1,10 @@
 # agent-chat 文档目录
 
+状态：current
+文档类型：index
+适用范围：`docs/frontend/agent-chat/`
+最后核对：2026-04-15
+
 本目录用于沉淀 `apps/frontend/agent-chat` 相关文档。
 
 当前对应实现目录：

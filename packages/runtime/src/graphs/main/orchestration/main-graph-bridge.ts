@@ -9,7 +9,9 @@ import {
   MemoryRecord,
   ModelRouteDecision,
   QueueStateRecord,
+  ReviewMinistryLike,
   ReviewRecord,
+  RouterMinistryLike,
   RuleRecord,
   SkillCard,
   SubgraphId,
@@ -27,8 +29,6 @@ import { MainGraphTaskDrafts } from '../task/main-graph-task-drafts';
 import { MainGraphTaskRuntime } from '../task/main-graph-task-runtime';
 import { PendingExecutionContext } from '../../../flows/approval';
 import { LearningFlow } from '../../../flows/learning';
-import { LibuRouterMinistry } from '@agent/agents-supervisor';
-import { XingbuReviewMinistry } from '@agent/agents-reviewer';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 
 interface MainGraphBridgeParams {
@@ -205,7 +205,7 @@ export class MainGraphBridge {
   createGraphStartState(
     task: TaskRecord,
     dto: CreateTaskDto,
-    libu: LibuRouterMinistry,
+    libu: RouterMinistryLike,
     options: { mode: 'initial' | 'retry' | 'approval_resume'; pending?: PendingExecutionContext }
   ): RuntimeAgentGraphState {
     return this.params.executionHelpers.createGraphStartState(task, dto, libu, options);
@@ -213,7 +213,7 @@ export class MainGraphBridge {
 
   reviewExecution(
     task: TaskRecord,
-    xingbu: XingbuReviewMinistry,
+    xingbu: ReviewMinistryLike,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ): Promise<{ review: ReviewRecord; evaluation: EvaluationResult }> {
@@ -253,7 +253,7 @@ export class MainGraphBridge {
   resolveGraphThreadId(task: TaskRecord) {
     return task.runId ?? task.id;
   }
-  async runDirectReplyTask(task: TaskRecord, libu: LibuRouterMinistry): Promise<void> {
+  async runDirectReplyTask(task: TaskRecord, libu: RouterMinistryLike): Promise<void> {
     await this.params.executionHelpers.runDirectReplyTask(task, libu);
   }
   createAgentContext(taskId: string, goal: string, flow: 'chat' | 'approval' | 'learning') {

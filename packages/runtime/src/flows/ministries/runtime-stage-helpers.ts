@@ -1,6 +1,6 @@
 import { AgentRole, CurrentSkillExecutionRecord, DispatchInstruction, EvidenceRecord, TaskRecord } from '@agent/shared';
 
-import { mergeEvidence } from '@agent/agents-supervisor';
+import { mergeEvidence } from '@agent/shared';
 
 type SkillStage = 'research' | 'execute';
 

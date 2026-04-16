@@ -1,5 +1,17 @@
 import { loadSettings } from '@agent/config';
-import { ChatCheckpointRecord, ChatSessionRecord, EvidenceRecord, MemoryRecord, TaskRecord } from '@agent/shared';
+import {
+  ChatCheckpointRecord,
+  EvidenceRecord,
+  MemoryEventRecord,
+  MemoryEvidenceLinkRecord,
+  MemoryRecord,
+  MemorySearchRequest,
+  MemorySearchResult,
+  ResolutionCandidateRecord,
+  TaskRecord,
+  UserProfileRecord,
+  ChatSessionRecord
+} from '@agent/shared';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 
@@ -7,6 +19,7 @@ export interface RuntimeWenyuanFacadeContext {
   settings: RuntimeSettings;
   memoryRepository: {
     search(query: string, limit?: number): Promise<MemoryRecord[]>;
+    searchStructured?(request: MemorySearchRequest): Promise<MemorySearchResult>;
     list(): Promise<MemoryRecord[]>;
     getById(id: string): Promise<MemoryRecord | undefined>;
     invalidate(id: string, reason: string): Promise<MemoryRecord | undefined>;
@@ -14,6 +27,28 @@ export interface RuntimeWenyuanFacadeContext {
     restore(id: string): Promise<MemoryRecord | undefined>;
     retire(id: string, reason: string): Promise<MemoryRecord | undefined>;
     quarantine(id: string, reason: string, evidenceRefs?: string[]): Promise<MemoryRecord | undefined>;
+    listEvents?(memoryId?: string): Promise<MemoryEventRecord[]>;
+    getHistory?(id: string): Promise<{ memory?: MemoryRecord; events: MemoryEventRecord[] }>;
+    recordFeedback?(
+      id: string,
+      kind: 'retrieved' | 'injected' | 'adopted' | 'dismissed' | 'corrected',
+      at?: string
+    ): Promise<MemoryRecord | undefined>;
+    override?(
+      id: string,
+      replacement: Partial<MemoryRecord> & Pick<MemoryRecord, 'summary' | 'content'>,
+      reason: string,
+      actor?: string
+    ): Promise<{ previous?: MemoryRecord; replacement: MemoryRecord } | undefined>;
+    rollback?(id: string, version: number, actor?: string): Promise<MemoryRecord | undefined>;
+    getProfile?(userId: string): Promise<UserProfileRecord | undefined>;
+    patchProfile?(userId: string, patch: Partial<UserProfileRecord>, actor?: string): Promise<UserProfileRecord>;
+    listResolutionCandidates?(): Promise<ResolutionCandidateRecord[]>;
+    resolveResolutionCandidate?(
+      id: string,
+      resolution: 'accepted' | 'rejected'
+    ): Promise<ResolutionCandidateRecord | undefined>;
+    listEvidenceLinks?(memoryId: string): Promise<MemoryEvidenceLinkRecord[]>;
   };
   runtimeStateRepository: {
     load(): Promise<{
@@ -53,6 +88,10 @@ export class RuntimeWenyuanFacade {
     return this.ctx().memoryRepository.search(query, limit);
   }
 
+  searchMemoryStructured(request: any) {
+    return this.ctx().memoryRepository.searchStructured?.(request);
+  }
+
   listMemories() {
     return this.ctx().memoryRepository.list();
   }
@@ -79,6 +118,55 @@ export class RuntimeWenyuanFacade {
 
   quarantineMemory(memoryId: string, reason: string, evidenceRefs?: string[]) {
     return this.ctx().memoryRepository.quarantine(memoryId, reason, evidenceRefs);
+  }
+
+  listMemoryEvents(memoryId?: string) {
+    return this.ctx().memoryRepository.listEvents?.(memoryId) ?? Promise.resolve([]);
+  }
+
+  getMemoryHistory(memoryId: string) {
+    return this.ctx().memoryRepository.getHistory?.(memoryId) ?? Promise.resolve({ memory: undefined, events: [] });
+  }
+
+  recordMemoryFeedback(
+    memoryId: string,
+    kind: 'retrieved' | 'injected' | 'adopted' | 'dismissed' | 'corrected',
+    at?: string
+  ) {
+    return this.ctx().memoryRepository.recordFeedback?.(memoryId, kind, at);
+  }
+
+  overrideMemory(
+    memoryId: string,
+    replacement: Partial<MemoryRecord> & Pick<MemoryRecord, 'summary' | 'content'>,
+    reason: string,
+    actor?: string
+  ) {
+    return this.ctx().memoryRepository.override?.(memoryId, replacement, reason, actor);
+  }
+
+  rollbackMemory(memoryId: string, version: number, actor?: string) {
+    return this.ctx().memoryRepository.rollback?.(memoryId, version, actor);
+  }
+
+  getProfile(userId: string) {
+    return this.ctx().memoryRepository.getProfile?.(userId);
+  }
+
+  patchProfile(userId: string, patch: Partial<UserProfileRecord>, actor?: string) {
+    return this.ctx().memoryRepository.patchProfile?.(userId, patch, actor);
+  }
+
+  listResolutionCandidates() {
+    return this.ctx().memoryRepository.listResolutionCandidates?.() ?? Promise.resolve([]);
+  }
+
+  resolveResolutionCandidate(id: string, resolution: 'accepted' | 'rejected') {
+    return this.ctx().memoryRepository.resolveResolutionCandidate?.(id, resolution);
+  }
+
+  listEvidenceLinks(memoryId: string) {
+    return this.ctx().memoryRepository.listEvidenceLinks?.(memoryId) ?? Promise.resolve([]);
   }
 
   listHistory() {

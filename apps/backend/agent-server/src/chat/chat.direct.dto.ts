@@ -1,7 +1,7 @@
-import type { LlmProvider } from '@agent/adapters';
+import type { ILLMProvider } from '@agent/core';
 import type { DataReportJsonStructuredInput } from '@agent/agents-data-report';
 
-export type DirectChatMessages = Parameters<LlmProvider['streamText']>[0];
+export type DirectChatMessages = Parameters<ILLMProvider['streamText']>[0];
 export type DirectStageStatus = 'idle' | 'pending' | 'success' | 'error';
 
 export interface DirectChatRequestDto {

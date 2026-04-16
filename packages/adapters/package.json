@@ -23,9 +23,23 @@
     "build:watch": "tsup --watch",
     "build:watch:types": "tsc -p tsconfig.types.json --watch",
     "watch": "pnpm build:watch & pnpm build:watch:types",
-    "build:lib": "pnpm build:transpile && pnpm build:types"
+    "build:lib": "pnpm build:transpile && pnpm build:types",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/adapters",
+    "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/adapters/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:test:unit": "pnpm test",
+    "test:integration": "node ../../scripts/run-package-integration-tests.js packages/adapters",
+    "turbo:test:integration": "pnpm test:integration",
+    "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/model": "workspace:*"
+    "@agent/config": "workspace:*",
+    "@agent/core": "workspace:*",
+    "@agent/memory": "workspace:*",
+    "@agent/model": "workspace:*",
+    "@agent/shared": "workspace:*",
+    "@langchain/core": "^1.1.35",
+    "@langchain/openai": "^1.3.0",
+    "zod": "^4.3.6"
   }
 }

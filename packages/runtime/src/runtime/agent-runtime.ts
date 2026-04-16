@@ -1,4 +1,5 @@
 import { loadSettings, LoadSettingsOptions, RuntimeProfile, RuntimeSettings } from '@agent/config';
+import type { ILLMProvider } from '@agent/core';
 import { createRuntimeEmbeddingProvider } from '@agent/model';
 import {
   FileMemoryRepository,
@@ -8,7 +9,7 @@ import {
   DefaultMemorySearchService,
   LocalVectorIndexRepository
 } from '@agent/memory';
-import { SkillRegistry } from '@agent/skills';
+import { SkillRegistry } from '@agent/skill-runtime';
 import {
   ApprovalService,
   ExecutionWatchdog,
@@ -21,12 +22,6 @@ import {
   createDefaultToolRegistry
 } from '@agent/tools';
 
-import { OpenAICompatibleProvider } from '../adapters/llm/openai-compatible-provider';
-import { LlmProvider } from '../adapters/llm/llm-provider';
-import { ModelRouter } from '../adapters/llm/model-router';
-import { ProviderRegistry } from '../adapters/llm/provider-registry';
-import { RoutedLlmProvider } from '../adapters/llm/routed-llm-provider';
-import { ZhipuLlmProvider } from '../adapters/llm/zhipu-provider';
 import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { XingbuClassifier } from './xingbu-classifier';
 import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
@@ -36,7 +31,11 @@ export interface AgentRuntimeOptions {
   settings?: RuntimeSettings;
   settingsOptions?: LoadSettingsOptions;
   profile?: RuntimeProfile;
-  llmProvider?: LlmProvider;
+  llmProvider?: ILLMProvider;
+  createLlmProvider?: (input: {
+    settings: RuntimeSettings;
+    semanticCacheRepository: FileSemanticCacheRepository;
+  }) => ILLMProvider;
   sandboxExecutor?: SandboxExecutor;
 }
 
@@ -56,9 +55,7 @@ export class AgentRuntime {
   readonly mcpServerRegistry: McpServerRegistry;
   readonly mcpCapabilityRegistry: McpCapabilityRegistry;
   readonly mcpClientManager: McpClientManager;
-  readonly providerRegistry: ProviderRegistry;
-  readonly modelRouter: ModelRouter;
-  readonly llmProvider: LlmProvider;
+  readonly llmProvider: ILLMProvider;
   readonly orchestrator: AgentOrchestrator;
   readonly sessionCoordinator: SessionCoordinator;
 
@@ -94,11 +91,13 @@ export class AgentRuntime {
     this.semanticCacheRepository = new FileSemanticCacheRepository(this.settings.semanticCacheFilePath);
     this.toolRegistry = createDefaultToolRegistry();
     this.sandboxExecutor = options.sandboxExecutor ?? new StubSandboxExecutor();
-    this.providerRegistry = this.createProviderRegistry();
-    this.modelRouter = new ModelRouter(this.providerRegistry, this.settings.routing);
     this.llmProvider =
       options.llmProvider ??
-      new RoutedLlmProvider(this.providerRegistry, this.modelRouter, this.semanticCacheRepository);
+      options.createLlmProvider?.({
+        settings: this.settings,
+        semanticCacheRepository: this.semanticCacheRepository
+      }) ??
+      failMissingLlmProvider();
     const xingbuClassifier = new XingbuClassifier(this.llmProvider);
     this.approvalService = new ApprovalService(this.settings, {
       classifier: input => xingbuClassifier.classify(input as never)
@@ -146,20 +145,6 @@ export class AgentRuntime {
   async stop(): Promise<void> {
     const servers = this.mcpServerRegistry.list();
     await Promise.all(servers.map(server => this.mcpClientManager.closeServerSession(server.id).catch(() => false)));
-  }
-
-  private createProviderRegistry(): ProviderRegistry {
-    const registry = new ProviderRegistry();
-    for (const providerConfig of this.settings.providers) {
-      if (providerConfig.type === 'anthropic') {
-        continue;
-      }
-      registry.register(OpenAICompatibleProvider.fromConfig(providerConfig));
-    }
-    if (!registry.get('zhipu') && this.settings.zhipuApiKey) {
-      registry.register(new ZhipuLlmProvider(this.settings));
-    }
-    return registry;
   }
 
   private registerMcpServers(): void {
@@ -385,4 +370,8 @@ export class AgentRuntime {
       allowedProfiles: ['platform', 'company', 'personal', 'cli']
     });
   }
+}
+
+function failMissingLlmProvider(): never {
+  throw new Error('AgentRuntime requires llmProvider or createLlmProvider to be supplied by the host application.');
 }

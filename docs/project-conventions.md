@@ -1,23 +1,25 @@
 # 项目规范总览
 
 状态：current
+文档类型：convention
 适用范围：仓库级开发规范
-最后核对：2026-04-15
+最后核对：2026-04-16
 
 请优先查看以下文档：
 
-- [AGENTS](./AGENTS.md)
-- [README](./README.md)
-- [架构总览](./docs/ARCHITECTURE.md)
-- [前后端对接文档](./docs/integration/frontend-backend-integration.md)
-- [Runtime Interrupts](./docs/runtime-interrupts.md)
-- [LangGraph 应用结构规范](./docs/langgraph-app-structure-guidelines.md)
-- [GitHub Flow 规范](./docs/github-flow.md)
-- [后端规范](./docs/backend-conventions.md)
-- [前端规范](./docs/frontend-conventions.md)
-- [提示词规范](./docs/prompt-conventions.md)
-- [模板示例](./docs/project-template-guidelines.md)
-- [测试规范](./docs/test-conventions.md)
+- [AGENTS](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
+- [README](/Users/dev/Desktop/learning-agent-core/README.md)
+- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
+- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- [Runtime Interrupts](/Users/dev/Desktop/learning-agent-core/docs/runtime-interrupts.md)
+- [LangGraph 应用结构规范](/Users/dev/Desktop/learning-agent-core/docs/langgraph-app-structure-guidelines.md)
+- [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
+- [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
+- [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
+- [提示词规范](/Users/dev/Desktop/learning-agent-core/docs/prompt-conventions.md)
+- [依赖安装与声明策略](/Users/dev/Desktop/learning-agent-core/docs/config/package-installation-strategy.md)
+- [模板示例](/Users/dev/Desktop/learning-agent-core/docs/project-template-guidelines.md)
+- [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
 
 总原则：
 
@@ -26,15 +28,32 @@
 - `agent-admin` 作为平台控制台，承载六大中心
 - 系统主线是开发自治，按“Human / Supervisor / 六部”方向演进
 - 仓库级代理技能统一放在 `skills/*/SKILL.md`
-- `packages/skills` 只承载运行时 skill 领域，不承载 Codex/Claude 技能说明
+- `packages/skill-runtime` 承载运行时 skill 领域，不承载 Codex/Claude 技能说明
+- `artifacts/*` 统一承载覆盖率、日志、临时目录等可重建产物，默认不提交 Git
 - 后端单 API + 独立 worker
 - `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
-- `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](./docs/package-architecture-guidelines.md)
+- `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- `packages/core` 与 `packages/shared` 如出现职责重叠或同一 contract 双轨维护，默认优先把稳定主 contract 收口到 `packages/core`；`packages/shared` 仅保留前端默认组合、展示约束与 compat re-export
+- `packages/core` 默认采用 schema-first：
+  - 所有稳定 JSON / DTO / event / payload contract 必须先定义 schema
+  - 类型必须优先通过 `z.infer<typeof Schema>` 推导
+  - 不再允许在 `core` 长期新增“只写 interface/type、不提供 schema”的稳定公共 contract
+  - 如果某个 contract 当前在 `shared` 与 `core` 同时存在，后续迁移目标必须是“core 唯一主定义 + shared compat re-export”，不允许把双轨状态当成长期终态
+- provider 防腐层默认规则：
+  - `packages/core/src/providers/*` 定义抽象 provider interface
+  - `packages/adapters` 负责实现这些 interface
+  - `packages/runtime` 与 `agents/*` 只能依赖 `packages/core` 暴露的抽象与 contract，不默认直接依赖 vendor SDK 或具体 adapter 类
+  - 具体 adapter 实例默认在 `apps/backend/*/src/app`、`apps/worker/src/bootstrap` 等应用启动层装配
 - 包分层治理的固定检查入口：
+  - `pnpm check:barrel-layout`
   - `pnpm check:package-boundaries`
   - `pnpm check:architecture`
+- TypeScript 声明产物约束：
+  - `packages/*`、`agents/*` 的声明文件与声明映射只允许输出到各自的 `build/types`
+  - 不允许把 `.d.ts`、`.d.ts.map` 回写到 `src/` 源码目录
+  - 如果工作区出现误生成到源码目录的声明映射，必须在本轮直接清理并同步修正忽略规则或构建配置
 - “子 Agent”必须同时具备 graph 入口与 flow 节点：
   - `packages/runtime/src/graphs/<domain>.graph.ts` 或 `agents/<domain>/src/graphs/<domain>.graph.ts` 只放 `Annotation / StateGraph / node wiring / edge wiring / graph state`，作为子 Agent 可观测入口
   - 对应宿主的 `src/flows/<domain>/` 放节点实现、prompt、schema、解析、校验、重试策略；跨节点复用或 graph 共享的领域类型优先收敛到 `packages/core/src`、`packages/shared/src` 或宿主包 `src/types/`
@@ -58,9 +77,26 @@
   - `main/orchestration/` 承载 bridge 与 execution helper
   - `main/pipeline/` 承载阶段编排与 interrupt graph
 - 本地运行数据统一放仓库根级 `data/`
+- 运行时技能相关本地数据默认优先使用 `data/skill-runtime/`
+- 本地可重建产物统一放仓库根级 `artifacts/`
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
 - 规范以文档为主，少量根级配置为辅
-- `packages/templates/**` 当前作为模板资产目录，暂不纳入根级默认质量检查；当前已从根级 ESLint 与 Vitest 发现范围中排除，也不作为独立根级类型检查目标维护。如模板转为正式运行时代码，需恢复检查并补齐约束
+- 每次任务完成后，必须顺手检查本轮涉及的规范文档是否已经过期；如果真实实现、流程边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不能把失效规范留到后续任务
+- 文档新增与更新默认要经过 `pnpm check:docs`；如果新增文档，优先使用 `pnpm new:doc docs/<module>/<name>.md` 生成标准骨架，再补充内容
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前都必须补齐五层验证：
+  - `Type`
+  - `Spec`
+  - `Unit`
+  - `Demo`
+  - `Integration`
+- 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
+- 受影响范围入口 `pnpm verify:affected` 也必须带上 `Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + test:spec:affected + turbo:typecheck + turbo:test:unit + demo + turbo:test:integration`
+- GitHub PR 流水线对代码改动默认执行根级 `pnpm verify`，对纯文档改动默认执行 `pnpm check:docs`；不要再把五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
+- 根级治理校验现已提供 Turbo 入口：`pnpm check:docs:turbo`、`pnpm check:architecture:turbo`、`pnpm verify:governance`
+- 上述 Turbo 入口当前只覆盖治理门槛，不替代五层验证主入口；在仓库循环依赖清理前，不要把根级 `typecheck`、`build` 或 `test:*` 直接改写为依赖 package graph 的 Turbo 任务
+- 纯文档改动至少执行 `pnpm check:docs`
+- `packages/templates` 与 `packages/tools` 当前都已纳入根级 `Vitest` 与 `pnpm typecheck`
+- `packages/templates` 继续只承载模板资产与 registry；通用 scaffold preview / write 逻辑固定放在 `packages/tools/src/scaffold`
 
 补充约束：
 
@@ -77,11 +113,13 @@
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
-- 不允许使用本地 `.pnpm-store` 安装或把 `.pnpm-store` 放在仓库内
+- `tsup`、`vitest` 这类 workspace 工具链依赖默认只允许放根目录，不在子包重复声明
+- 不允许使用本地 `.pnpm-store` 安装、通过 `--store-dir <local-path>` 指向本地 store 安装，或把 `.pnpm-store` 放在仓库内
+- 依赖安装时不要手动指定本地 `store-dir`；pnpm 会通过软链接管理依赖，直接使用 `pnpm add` 即可
 - 最低类型检查以 `AGENTS.md` 中列出的五条 `tsc --noEmit` 为准
 - 前端 `apps/frontend/*/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分组件、hooks、adapters、constants 或 types
 - 前端副作用必须可证明收敛：`useEffect`、轮询、SSE fallback、定时器必须有明确触发条件、停止条件和清理逻辑，禁止形成无限循环或隐式自激刷新
-- 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](./docs/frontend-conventions.md)
+- 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
 - 前端默认禁止动态导入；`apps/frontend/*` 中的依赖一般必须使用顶层静态 `import`。只有在明确代码分割、运行时隔离或重资产浏览器专属加载场景下，才允许 `import('...')`，且必须在代码旁写明理由
 - 前端路径别名必须统一：`apps/frontend/agent-chat/src` 与 `apps/frontend/agent-admin/src` 下跨目录引用一律使用 `@/...`，禁止新增 `../../hooks/use-chat-session`、`../../../src/...` 这类指回本应用 `src/` 的相对路径；测试引用本应用 `src/` 时也同样使用 `@/...`
 - 每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试；从现在起不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
@@ -107,7 +145,7 @@
 - 后端 `apps/backend/agent-server/src` 与 `apps/worker/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分 DTO、entities、interfaces 或独立 service 文件
 - 后端 `apps/backend/agent-server/test` 与 `apps/worker/test` 下测试文件也不得超过 400 行，超过必须按场景或 helper 拆分
 - `packages/runtime/src`、`packages/report-kit/src`、`agents/*/src` 与其他 `packages/*/src` 下手写源码文件单文件也不得超过 400 行；只要本轮改动触达某个文件且它已超过 400 行，就必须在本轮顺手继续拆分，优先拆到 `nodes/`、`prompts/`、`schemas/`、`runtime/`、`shared/`、`utils/` 或同域 helper 文件
-- 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](./docs/backend-conventions.md)
+- 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
 - 涉及文件系统读写、目录创建、复制、移动、删除等能力时，默认统一使用 `fs-extra`
 - 除非是 Node 运行时强依赖的同步极简场景或测试环境刻意隔离原生 `fs` 行为，否则不要新增 `node:fs` / `node:fs/promises` 作为业务实现的默认选择
 - 后端业务模块目录默认按以下结构收敛：
@@ -147,7 +185,7 @@
   - `packages/report-kit`
     - 只允许放 data-report blueprint、scaffold、routes、assembly、write 等垂直生成能力
     - 禁止放 tool registry、sandbox executor、MCP transport、agent orchestration
-  - `packages/skills`
+  - `packages/skill-runtime`
     - 只允许放运行时 skill registry、skill manifest loader、skill source sync 基础能力
     - 禁止放仓库级 `skills/*` 代理技能文档、agent graph 逻辑
   - `packages/runtime`
@@ -156,11 +194,11 @@
   - 依赖方向必须满足：
     - `shared` 不得依赖任何业务包
     - `config` 不得依赖 `runtime` 或任意 `agents/*`
-    - `model / memory / tools / skills` 只允许依赖 `shared`、`config` 和必要第三方库
-    - `runtime` 可以依赖 `shared / config / model / memory / tools / skills / core`
-    - `agents/*` 可以依赖 `shared / config / core / adapters / runtime / memory / tools / skills`
+    - `model / memory / tools / skill-runtime` 只允许依赖 `shared`、`config` 和必要第三方库
+    - `runtime` 可以依赖 `shared / config / model / memory / tools / skill-runtime / core`
+    - `agents/*` 可以依赖 `shared / config / core / adapters / runtime / memory / tools / skill-runtime`
     - `apps/*` 只能依赖各包公开入口，禁止依赖 `packages/*/src`
-    - 禁止 `tools / model / memory / skills` 反向依赖 `runtime` 或 `agents/*`
+    - 禁止 `tools / model / memory / skill-runtime` 反向依赖 `runtime` 或 `agents/*`
   - 新增代码默认按以下规则落位：
     - 跨端共享的数据结构：放 `shared`
     - 运行时默认策略与配置：放 `config`
@@ -168,10 +206,12 @@
     - memory/rule/vector/cache 存取与搜索：放 `memory`
     - executor/registry/sandbox/MCP：放 `tools`
     - data-report 生成资产与拼装：放 `report-kit`
-    - skill registry/manifest/source：放 `skills`
+    - skill registry/manifest/source：放 `skill-runtime`
     - graph/flow/session/governance/agent runtime：放 `runtime` 或对应 `agents/*`
   - “多个地方复用”不等于必须进入 `shared`
   - 只有稳定 contract 才能进入 `shared`
+  - 只要 `shared` 与 `core` 承载了相同语义或相同 contract，必须默认继续迁到 `core`，不要长期双写
+  - `shared` 中与 `core` 同功能的 contract 视为待迁移债务，而不是可接受现状
   - 带业务语义的 helper 不得因为复用而强行上提到 `shared`
   - 默认优先面向稳定接口编程，而不是面向某个调用点、页面或单次流程硬编码
   - 跨模块协作优先通过 `contract / adapter / facade / schema` 解耦，不要让调用方绑定内部实现细节
@@ -186,6 +226,15 @@
   - 公共 schema 与 utils
   - 不应继续把内部子模块直接向包外扩散
   - 优先使用显式命名导出，不继续用“大而全”的 `export *` 把内部实现整体暴露出去
+  - `repositories / search / vector / embeddings / approval / watchdog / settings` 这类命名目录如果存在 `index.ts`，其实现文件必须物理位于该目录内；`index.ts` 不得通过 `../` 回跳父级转发
+  - 禁止为了少写一个 import 路径，在其他包里新增“中转 re-export”文件，例如 `export * from '../../../../adapters/src/llm/model-router'`
+  - 某个调用方需要能力时，默认直接依赖该能力所属模块的正式公开入口；如果现有公开入口不够用，应在归属包补 `src/index.ts` 或 `package.json exports`，不要在下游包额外包一层透传
+  - 这种“只改路径、不提供新 contract、不做稳定封装”的透传文件视为无效抽象；若无真实兼容迁移价值，必须删除，禁止继续新增
+- 目录 barrel 与物理落位必须一致：
+  - 如果创建了 `repositories/`、`nodes/`、`prompts/`、`schemas/`、`types/`、`adapters/`、`runtime/`、`shared/`、`utils/` 等具名领域目录，并在其中放置 `index.ts` 作为分组入口，则默认要求该目录名所表达的主要实现也物理落在该目录下
+  - 不允许长期保留“目录里只有 `index.ts` re-export，真实实现散落在父目录或兄弟目录”的半收敛结构
+  - 如果因兼容迁移必须短期保留 barrel-only 目录，必须同时满足：有明确迁移期限、相邻文档注明这是过渡态、并在本轮或后续明确计划中继续完成物理收敛
+  - 新增目录分组时，优先做到“逻辑边界”和“物理目录”同步收口，而不是先命名一个目录、再把实现长期留在旧位置
 - `packages/core/src/types`、`packages/shared/src/types` 或宿主包 `src/types` 只放包级公共类型：
   - 例如 graph/session/workflow-route 这类会被多个目录复用的 contract
   - 不把局部 callbacks、局部 state patch、某一部专用类型全塞进去

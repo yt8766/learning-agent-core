@@ -1,6 +1,17 @@
-export * from '../../model/src/index';
+export type {
+  IEmbeddingProvider,
+  ILLMProvider,
+  IToolProvider,
+  LlmProviderAgentRole,
+  LlmProviderCapability,
+  LlmProviderMessage,
+  LlmProviderModelInfo,
+  LlmProviderOptions
+} from '@agent/core';
+export { createDefaultRuntimeLlmProvider, type DefaultRuntimeLlmProviderOptions } from './llm/runtime-provider-factory';
+export { MiniMaxProvider } from './llm/minimax-provider';
 export { OpenAICompatibleProvider } from './llm/openai-compatible-provider';
-export type { ChatMessage, GenerateTextOptions, LlmProvider } from './llm/llm-provider';
+export type { ChatMessage, GenerateTextOptions, LlmProvider, LlmUsageMetadata } from './llm/llm-provider';
 export { jsonObjectInstruction } from './llm/llm-provider';
 export {
   JSON_SAFETY_PROMPT,

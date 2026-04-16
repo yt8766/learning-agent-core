@@ -81,18 +81,15 @@ describe('@agent/templates frontend template registry', () => {
     expect(templateDir).toContain('packages/templates/src/bonus-center-data');
   });
 
-  it('keeps the react-ts template ready for bonusCenterData report generation', () => {
+  it('keeps the react-ts template ready as a minimal runnable frontend scaffold', () => {
     const templateDir = resolveFrontendTemplateDir('react-ts');
 
     expect(templateDir).toContain('packages/templates/src/react-ts');
-    expect(existsSync(join(templateDir!, 'src/pages/dataDashboard/bonusCenterData/index.tsx'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/pages/dataDashboard/bonusCenterData/components/Search/index.tsx'))).toBe(
-      true
-    );
-    expect(existsSync(join(templateDir!, 'src/services/data/bonusCenter.ts'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/types/data/bonusCenter.ts'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/config/layout.tsx'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/constants/time.ts'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'App.tsx'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'index.tsx'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'styles.css'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'package.json'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'tsconfig.json'))).toBe(true);
     expect(existsSync(join(templateDir!, 'vite.config.ts'))).toBe(true);
   });
 });

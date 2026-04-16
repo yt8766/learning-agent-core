@@ -28,7 +28,8 @@ out
 # -----------------------------------------------------------------------------
 # 测试与覆盖率
 # -----------------------------------------------------------------------------
-coverage
+/coverage
+/artifacts/coverage
 *.lcov
 .nyc_output
 
@@ -52,7 +53,8 @@ coverage
 # -----------------------------------------------------------------------------
 # 日志与调试输出
 # -----------------------------------------------------------------------------
-logs
+/logs
+/artifacts/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -62,9 +64,17 @@ pnpm-debug.log*
 # -----------------------------------------------------------------------------
 # 项目本地数据（运行时生成、大文件等）
 # -----------------------------------------------------------------------------
-data
+/artifacts/tmp
+/tmp
+/data/runtime
+/data/memory
+/data/knowledge
+/data/skills
+/data/skill-runtime
 data/**/*.tmp
-tmp
+packages/templates/src/*.d.ts
+packages/templates/src/*.d.ts.map
+packages/*/src/**/*.d.ts.map
 !packages/templates/src/bonus-center-data/services/
 !packages/templates/src/bonus-center-data/services/data/
 !packages/templates/src/bonus-center-data/services/data/bonusCenter.ts

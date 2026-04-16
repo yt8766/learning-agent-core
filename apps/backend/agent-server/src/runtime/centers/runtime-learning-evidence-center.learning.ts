@@ -51,7 +51,8 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
     invalidatedRules,
     crossCheckEvidence,
     localSkillSuggestions,
-    governanceSnapshot
+    governanceSnapshot,
+    resolutionCandidates
   ]: [
     Awaited<NonNullable<typeof input.wenyuanOverviewPromise>> | undefined,
     Awaited<NonNullable<typeof input.knowledgeOverviewPromise>> | undefined,
@@ -59,7 +60,8 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
     number,
     CrossCheckEvidenceEntry[],
     LocalSkillSuggestionsRecord[],
-    Awaited<NonNullable<typeof input.governanceSnapshotPromise>> | undefined
+    Awaited<NonNullable<typeof input.governanceSnapshotPromise>> | undefined,
+    Awaited<NonNullable<typeof input.resolutionCandidatesPromise>> | undefined
   ] = await Promise.all([
     input.wenyuanOverviewPromise,
     input.knowledgeOverviewPromise,
@@ -77,7 +79,8 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
           ...(await input.resolveLocalSkillSuggestions(task))
         }))
     ),
-    input.governanceSnapshotPromise
+    input.governanceSnapshotPromise,
+    input.resolutionCandidatesPromise
   ]);
 
   const selectorConfigs = governanceSnapshot?.governance?.counselorSelectorConfigs ?? [];
@@ -211,6 +214,22 @@ export async function buildLearningCenter(input: BuildLearningCenterInput) {
         status: item.status
       }))
     },
+    memoryResolutionCandidates: (resolutionCandidates ?? [])
+      .slice()
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, 12)
+      .map(item => ({
+        id: item.id,
+        conflictKind: item.conflictKind,
+        challengerId: item.challengerId,
+        incumbentId: item.incumbentId,
+        suggestedAction: item.suggestedAction,
+        confidence: item.confidence,
+        rationale: item.rationale,
+        requiresHumanReview: item.requiresHumanReview,
+        resolution: item.resolution,
+        createdAt: item.createdAt
+      })),
     conflictGovernance: {
       scannedAt: learningConflictScan?.scannedAt,
       openConflictCount: (learningConflictScan?.conflictPairs ?? []).filter(item => item.status !== 'resolved').length,

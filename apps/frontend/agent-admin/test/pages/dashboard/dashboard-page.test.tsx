@@ -10,6 +10,8 @@ vi.mock('@/hooks/use-admin-dashboard', () => ({
     runtime: 'Runtime Center',
     approvals: 'Approvals Center',
     learning: 'Learning Center',
+    memory: 'Memory Center',
+    profiles: 'Profile Center',
     evals: 'Evals',
     archives: 'Archive Center',
     skills: 'Skill Lab',
@@ -30,6 +32,18 @@ vi.mock('../../../src/features/approvals-center/approvals-panel', () => ({
 }));
 vi.mock('../../../src/features/learning-center/learning-center-panel', () => ({
   LearningCenterPanel: () => <div>learning panel body</div>
+}));
+vi.mock('../../../src/features/learning-center/memory-center-panel', () => ({
+  MemoryCenterPanel: () => <div>memory center panel body</div>
+}));
+vi.mock('../../../src/features/learning-center/profile-center-panel', () => ({
+  ProfileCenterPanel: () => <div>profile center panel body</div>
+}));
+vi.mock('../../../src/features/learning-center/memory-governance-panel', () => ({
+  MemoryGovernancePanel: () => <div>memory governance panel body</div>
+}));
+vi.mock('../../../src/features/learning-center/memory-resolution-queue-card', () => ({
+  MemoryResolutionQueueCard: () => <div>memory resolution queue body</div>
 }));
 vi.mock('../../../src/features/evals-center/evals-center-panel', () => ({
   EvalsCenterPanel: () => <div>evals panel body</div>
@@ -133,6 +147,7 @@ describe('DashboardPage shell', () => {
       handleSupersedeMemory: vi.fn(),
       handleRestoreMemory: vi.fn(),
       handleRetireMemory: vi.fn(),
+      handleResolveMemoryResolutionCandidate: vi.fn(),
       handleCreateCounselorSelector: vi.fn(),
       handleEditCounselorSelector: vi.fn(),
       handleEnableCounselorSelector: vi.fn(),
@@ -180,18 +195,24 @@ describe('DashboardPage shell', () => {
     expect(html).toContain('runtime panel body');
   });
 
-  it('renders page-specific center panels for approvals, learning and evals', () => {
+  it('renders page-specific center panels for approvals, learning, memory, profiles and evals', () => {
     mockUseAdminDashboard
       .mockReturnValueOnce(createDashboardOverrides({ page: 'approvals', title: 'Approvals Center' }))
       .mockReturnValueOnce(createDashboardOverrides({ page: 'learning', title: 'Learning Center' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'memory', title: 'Memory Center' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'profiles', title: 'Profile Center' }))
       .mockReturnValueOnce(createDashboardOverrides({ page: 'evals', title: 'Evals' }));
 
     const approvalsHtml = renderToStaticMarkup(<DashboardPage />);
     const learningHtml = renderToStaticMarkup(<DashboardPage />);
+    const memoryHtml = renderToStaticMarkup(<DashboardPage />);
+    const profilesHtml = renderToStaticMarkup(<DashboardPage />);
     const evalsHtml = renderToStaticMarkup(<DashboardPage />);
 
     expect(approvalsHtml).toContain('approvals panel body');
     expect(learningHtml).toContain('learning panel body');
+    expect(memoryHtml).toContain('memory center panel body');
+    expect(profilesHtml).toContain('profile center panel body');
     expect(evalsHtml).toContain('evals panel body');
   });
 

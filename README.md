@@ -15,7 +15,9 @@
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
+- `artifacts/*`：覆盖率、日志、临时目录等可重建产物，默认不提交 Git
 - `packages/core`：稳定 contract、共享 DTO、接口边界入口
+- `packages/core/src/providers`：运行时对外依赖的 provider 抽象接口层
 - `packages/config`：运行时配置与路径解析
 - `packages/runtime`：执行引擎、会话驱动、运行时 facade
 - `packages/adapters`：LLM/provider 等适配器隔离层
@@ -26,10 +28,11 @@
 - `agents/coder`：代码生成智能体入口占位
 - `agents/reviewer`：质量审核智能体入口占位
 - `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
-- `packages/skills`：运行时技能注册与技能卡领域包
+- `packages/skill-runtime`：运行时技能注册与技能卡领域包；是 `@agent/skill-runtime` 的真实物理宿主
 - `packages/evals`：评估与复盘
 - `packages/shared` / `packages/model`：共享契约与模型接入层
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
+  - 运行时技能数据默认落在 `data/skill-runtime`
 - `docs/*`：项目规范、模块说明、联调结论与当前实现沉淀
 
 如果需要看“当前每个目录现在在做什么”，优先阅读：
@@ -161,8 +164,12 @@
 - 管理前端：`pnpm --dir apps/frontend/agent-admin dev`（默认 `127.0.0.1:5174`）
 - 库构建：`pnpm build:lib`
 - 单元测试：`pnpm test`
+- Spec 结构校验：`pnpm test:spec`
 - 原子层测试：`pnpm test:unit`
+- Demo 闭环：`pnpm test:demo`
 - 协同层测试：`pnpm test:integration`
+- 受影响范围 Spec：`pnpm test:spec:affected`
+- 受影响范围 Demo：`pnpm test:demo:affected`
 - 覆盖率测试：`pnpm test:coverage`
 - 测试监听：`pnpm test:watch`
 - Prompt 回归：`pnpm eval:prompts`
@@ -183,7 +190,9 @@
 说明：
 
 - 这套回归默认是“小样本、关键链路、可比较版本”的最小集合
-- 运行前需要本地可用的 `promptfoo` 命令和对应模型 API Key
+- 仓库已将 `promptfoo` 固定为工作区开发依赖，提交前命中 prompt 相关改动时会由 `husky -> pnpm check:staged` 自动执行 `pnpm eval:prompts`
+- 运行前仍需要可用的模型 API Key；当前默认读取 `OPENAI_API_KEY`
+- `promptfoo` 运行时还要求 Node `^20.20.0 || >=22.22.0`；如果本地提交时 Node 版本暂不满足，该脚本会直接跳过本地阻塞且不覆盖 `latest-summary.json`，CI 仍应使用受支持版本执行真实回归
 - 当前核心阻塞套件：`supervisor-plan`、`specialist-finding`、`hubu-research`、`xingbu-review`、`libu-delivery`
 - 核心套件成功率要求 `> 90%`，低于门槛会阻塞对应 CI 任务
 
@@ -278,7 +287,8 @@
 
 仓库现在额外支持一个可选的 prompt 回归 CI 任务：
 
-- PR 工作流里会在改到 `packages/**`、`scripts/**`、工作流或根级工程配置时尝试运行
+- 本地提交时，如果 staged 文件命中 `agents/**/prompts/**`、`packages/**/prompts/**`、`apps/**/prompts/**`、`packages/evals/promptfoo/**` 或 prompt 回归脚本，会自动执行 `pnpm eval:prompts`
+- PR 工作流里会在改到上述 prompt 相关路径、`packages/**`、`scripts/**`、工作流或根级工程配置时尝试运行
 - main 工作流里会在每次推送时尝试运行
 - 如果仓库 secrets 中没有配置 `OPENAI_API_KEY`，任务会显式跳过，不阻塞主检查
 - 如果配置了 `OPENAI_API_KEY`，会执行 `pnpm eval:prompts`，并上传：
@@ -313,7 +323,7 @@
 - [GitHub Flow 规范](./docs/github-flow.md)
 - [模板示例](./docs/project-template-guidelines.md)
 - [测试规范](./docs/test-conventions.md)
-- [agent-core 历史结构报告（归档）](./docs/agent-core/archive/agent-core-structure-report.md)
+- [agent-core 历史结构报告（归档）](./docs/archive/agent-core/archive/agent-core-structure-report.md)
 - [架构总览](./docs/ARCHITECTURE.md)
 - [前后端对接文档](./docs/integration/frontend-backend-integration.md)
 - [仓库目录概览](./docs/repo-directory-overview.md)
@@ -340,7 +350,7 @@
   - 默认只展示用户消息、Agent 最终回复、必要审批/终止卡
   - Think、ThoughtChain、Evidence、Learning、Skill、Route 等运行态信息优先收纳到 workbench / runtime panel
 - 共享包改动后，优先执行 `pnpm build:lib`
-- 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skills` 混用
+- 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skill-runtime` 混用
 
 ## 工程原则
 
@@ -353,6 +363,12 @@
 
 ## 最低检查
 
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前默认先跑 `pnpm verify`
+- `pnpm verify` 当前会串联 `check:docs + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`
+- `pnpm verify:affected` 当前会串联 `verify:governance + test:spec:affected + turbo:typecheck + turbo:test:unit + demo + turbo:test:integration`
+- GitHub PR 校验当前也以这条主入口为准：代码改动默认跑 `pnpm verify`，纯文档改动默认跑 `pnpm check:docs`
+- 如果 `pnpm verify` 被与本轮无关的既有红灯或环境问题阻断，仍必须对受影响范围补齐 `Type / Spec / Unit / Demo / Integration` 五层验证，并在交付说明中写明 blocker
+- 纯文档改动至少执行 `pnpm check:docs`
 - shared：`pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
 - runtime：`pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`
 - backend：`pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`

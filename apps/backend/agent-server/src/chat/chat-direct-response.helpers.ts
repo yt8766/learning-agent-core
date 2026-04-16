@@ -14,7 +14,7 @@ import {
   type DataReportSandpackFiles,
   type DataReportSandpackStage
 } from '@agent/agents-data-report';
-import { withLlmRetry } from '@agent/adapters';
+import { withLlmRetry } from '@agent/runtime';
 
 import type { RuntimeHost } from '../runtime/core/runtime.host';
 import type { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';

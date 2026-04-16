@@ -1,8 +1,9 @@
 # Packages 目录说明
 
 状态：current
+文档类型：overview
 适用范围：`packages/*`
-最后核对：2026-04-15
+最后核对：2026-04-16
 
 `packages/` 放共享库和运行时基础能力，应用层应只通过 `@agent/*` 公开入口依赖这里的包。
 
@@ -10,6 +11,22 @@
 
 - `agents/*` 现在作为 root 级 agent package 目录存在，与 `packages/*` 同级
 - 本文仍一并记录这些 agent 包，因为它们同样通过 `@agent/agents-*` 作为工作区公开入口被消费
+
+本主题主文档：
+
+- 本文是 `packages/*` 与 `agents/*` 的总入口
+
+本文只覆盖：
+
+- 目录职责和宿主边界
+- 当前迁移收敛结果
+- 推荐继续阅读顺序
+
+更细规则请继续看：
+
+- 分层与依赖约定：[package-architecture-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- contract 边界：[core/README.md](/Users/dev/Desktop/learning-agent-core/docs/core/README.md)
+- 迁移历史：[archive/agent-core/README.md](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
 
 当前目录职责：
 
@@ -30,6 +47,7 @@
   - reviewer agent 的公开入口与真实实现位置，承载 `ReviewerAgent`、`XingbuReviewMinistry`
 - `packages/shared`
   - DTO、Record、Enum、跨端展示 contract
+  - 对 `@agent/core` 主 contract 的 compat re-export 与前端友好默认组合
 - `packages/config`
   - profile、settings schema、默认策略与路径布局
 - `packages/model`
@@ -38,12 +56,12 @@
   - memory/rule/runtime-state repository、vector index、semantic cache、search
 - `packages/tools`
   - tool registry、executor、sandbox、approval preflight、MCP transport
-- `packages/skills`
-  - 运行时 skill registry、manifest loader、source sync
+- `packages/skill-runtime`
+  - 运行时 skill registry、manifest loader、source sync 的真实宿主
 - `packages/report-kit`
   - data-report 的 blueprint、scaffold、assembly、write
 - `packages/templates`
-  - 可被生成链路复用的前端模板资产
+  - 可被生成链路复用的前端模板资产与 scaffold 模板资产
 - `packages/evals`
   - bench、prompt 回归、质量评测基建
 
@@ -67,7 +85,7 @@
 - 本轮继续把 prompt template、LLM retry、safe structured object、reactive retry 收口到 `@agent/adapters` 的稳定共享入口
 - 本轮继续把 `supervisor` 的 `libu-router / hubu-search / libu-docs` 物理迁到了 `agents/supervisor/src/flows/ministries/*`
 - 当前已不存在 `agents/* -> packages/runtime/src/*` 的直接桥接；agent 包统一通过 `@agent/runtime`、`@agent/adapters`、`@agent/core` 与 `@agent/agents-*` 的稳定入口协作
-- `docs/agent-core/*` 现在保留为迁移历史与专题说明目录，不再对应一个真实工作区包
+- `docs/archive/agent-core/*` 现在保留为迁移历史与专题说明目录，不再对应一个真实工作区包
 
 补充说明：
 
@@ -76,7 +94,7 @@
 
 建议优先阅读：
 
-1. [agent-core 迁移历史目录](/Users/dev/Desktop/learning-agent-core/docs/agent-core/README.md)
+1. [agent-core 迁移历史目录](/Users/dev/Desktop/learning-agent-core/docs/archive/agent-core/README.md)
 2. [core 文档目录](/Users/dev/Desktop/learning-agent-core/docs/core/README.md)
 3. [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
 4. [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)

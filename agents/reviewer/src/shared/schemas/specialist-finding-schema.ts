@@ -1,6 +1,1 @@
-export {
-  SpecialistFindingSchema,
-  buildSpecialistFindingOutputInstruction,
-  normalizeSpecialistFinding,
-  upsertSpecialistFinding
-} from '@agent/core';
+export { SpecialistFindingSchema } from '@agent/core';

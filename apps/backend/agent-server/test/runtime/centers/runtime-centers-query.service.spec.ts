@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RuntimeCentersQueryService } from '../../../src/runtime/centers/runtime-centers-query.service';
 import { buildPlatformConsole } from '../../../src/runtime/helpers/runtime-platform-console';
 import { getDisabledCompanyWorkerIds } from '../../../src/runtime/helpers/runtime-connector-registry';
-import { summarizeAndPersistEvalHistory } from '../../../src/runtime/helpers/runtime-metrics-store';
+import { summarizeAndPersistEvalHistory } from '../../../src/modules/runtime-metrics/services/runtime-metrics-store';
 import { loadPromptRegressionConfigSummary } from '../../../src/runtime/helpers/prompt-regression-summary';
 import {
   readInstalledSkillRecords,
@@ -38,7 +38,7 @@ vi.mock('../../../src/runtime/helpers/runtime-platform-console', () => ({
   exportRuntimeCenter: vi.fn(async () => ({ scope: 'runtime-export' }))
 }));
 
-vi.mock('../../../src/runtime/helpers/runtime-metrics-store', () => ({
+vi.mock('../../../src/modules/runtime-metrics/services/runtime-metrics-store', () => ({
   summarizeAndPersistEvalHistory: vi.fn(async () => ({ total: 2, outcomes: ['passed'] })),
   summarizeAndPersistUsageAnalytics: vi.fn(async () => ({ summaries: [] }))
 }));

@@ -345,6 +345,11 @@ async function loadPageCenter(
       };
     case 'learning':
       return { learning: await getLearningCenter() };
+    case 'memory':
+    case 'profiles':
+    case 'archives':
+    case 'skills':
+      return null;
     case 'evals':
       return {
         evals: await getEvalsCenterFiltered({

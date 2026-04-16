@@ -1,8 +1,8 @@
 import { z } from 'zod/v4';
 
+import type { LlmProviderMessage as ChatMessage } from '@agent/core';
 import { AgentExecutionState, AgentRole } from '@agent/shared';
 import {
-  type ChatMessage,
   generateObjectWithRetry,
   generateTextWithRetry,
   streamTextWithRetry,

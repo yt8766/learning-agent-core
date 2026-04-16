@@ -4,7 +4,7 @@ import type {
   ArchitectureDescriptorRegistryEntry,
   ArchitectureEdgeDescriptor,
   ArchitectureNodeDescriptor
-} from '@agent/shared';
+} from '@agent/core';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 

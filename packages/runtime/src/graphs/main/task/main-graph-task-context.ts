@@ -1,4 +1,5 @@
 import { loadSettings } from '@agent/config';
+import type { ILLMProvider } from '@agent/core';
 import { AgentRole, LlmUsageRecord, TaskRecord } from '@agent/shared';
 import {
   MemoryRepository,
@@ -7,10 +8,9 @@ import {
   MemorySearchService,
   NullVectorIndexRepository
 } from '@agent/memory';
-import { SkillRegistry } from '@agent/skills';
+import { SkillRegistry } from '@agent/skill-runtime';
 import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from '@agent/tools';
 
-import { LlmProvider } from '../../../adapters/llm/llm-provider';
 import { WorkerRegistry } from '../../../governance/worker-registry';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { LocalKnowledgeSearchService } from '../../../runtime/local-knowledge-search-service';
@@ -42,7 +42,7 @@ export class MainGraphTaskContextRuntime {
   constructor(
     private readonly dependencies: MainGraphTaskContextDependencies,
     private readonly settings: RuntimeSettings,
-    private readonly llm: LlmProvider,
+    private readonly llm: ILLMProvider,
     private readonly toolRegistry: ToolRegistry,
     private readonly workerRegistry: WorkerRegistry,
     private readonly tasks: Map<string, TaskRecord>,
@@ -224,7 +224,17 @@ export class MainGraphTaskContextRuntime {
       },
       get currentWorker() {
         const workerId = resolveTask()?.currentWorker;
-        return workerId ? workerRegistry.get(workerId) : undefined;
+        const worker = workerId ? workerRegistry.get(workerId) : undefined;
+        if (!worker) {
+          return undefined;
+        }
+        const selectedModel = resolveTask()?.modelRoute?.find(route => route.workerId === workerId)?.selectedModel;
+        return selectedModel && selectedModel !== worker.defaultModel
+          ? {
+              ...worker,
+              defaultModel: selectedModel
+            }
+          : worker;
       },
       get compiledSkill() {
         const task = resolveTask();

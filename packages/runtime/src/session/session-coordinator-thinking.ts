@@ -11,9 +11,9 @@ import type {
 } from '@agent/shared';
 import { getMinistryDisplayName, normalizeExecutionMode, TaskStatus } from '@agent/shared';
 import type { ContextStrategy } from '@agent/config';
+import type { ILLMProvider as LlmProvider } from '@agent/core';
 import type { MemorySearchService } from '@agent/memory';
 
-import type { LlmProvider } from '../adapters/llm/llm-provider';
 import { compressConversationIfNeeded as compressSessionConversationIfNeeded } from './session-coordinator-compression';
 import { buildSessionConversationContext } from './session-coordinator-thinking-context';
 import {

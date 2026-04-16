@@ -2,24 +2,26 @@ import {
   AgentRole,
   ApprovalDecision,
   ApprovalResumeInput,
+  CodeExecutionMinistryLike,
   CreateTaskDto,
   EvaluationResult,
+  MinistryContractMeta,
+  markExecutionStepCompleted,
+  markExecutionStepResumed,
   QueueStateRecord,
+  ReviewMinistryLike,
   ReviewRecord,
+  RouterMinistryLike,
   TaskRecord,
   TaskStatus,
   WorkflowPresetDefinition
 } from '@agent/shared';
 import { getMinistryDisplayName } from '@agent/shared';
-import { GongbuCodeMinistry } from '@agent/agents-coder';
-import { LibuRouterMinistry, markExecutionStepCompleted, markExecutionStepResumed } from '@agent/agents-supervisor';
-import { XingbuReviewMinistry } from '@agent/agents-reviewer';
 
 import { buildMinistryStagePreferences } from '../../../capabilities/capability-pool';
 import { executeApprovedAction, PendingExecutionContext } from '../../../flows/approval';
-import { StructuredContractMeta } from '../../../utils/schemas/safe-generate-object';
 import { createApprovalRecoveryGraph } from '../../recovery.graph';
-import { TaskCancelledError } from '../task/main-graph-task-runtime';
+import { TaskCancelledError } from '../task/main-graph-task-runtime-errors';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 import { createInitialState } from '../../chat.graph';
 
@@ -52,6 +54,7 @@ export class MainGraphExecutionHelpers {
       data?: Record<string, unknown>
     ) => void,
     private readonly addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void,
+    private readonly createApprovalRecoveryMinistry: (taskId: string, goal: string) => CodeExecutionMinistryLike,
     private readonly getRunTaskPipeline: () => (
       task: TaskRecord,
       dto: CreateTaskDto,
@@ -63,7 +66,7 @@ export class MainGraphExecutionHelpers {
     ) => Promise<void>
   ) {}
 
-  async runDirectReplyTask(task: TaskRecord, libu: LibuRouterMinistry): Promise<void> {
+  async runDirectReplyTask(task: TaskRecord, libu: RouterMinistryLike): Promise<void> {
     this.syncTaskRuntime(task, {
       currentStep: 'direct_reply',
       retryCount: task.retryCount ?? 0,
@@ -141,7 +144,7 @@ export class MainGraphExecutionHelpers {
     });
     await this.persistAndEmitTask(task);
 
-    const gongbu = new GongbuCodeMinistry(this.createAgentContext(task.id, dto.goal, 'approval'));
+    const gongbu = this.createApprovalRecoveryMinistry(task.id, dto.goal);
     try {
       const graph = createApprovalRecoveryGraph({
         executeApproved: async state => {
@@ -207,7 +210,7 @@ export class MainGraphExecutionHelpers {
   createGraphStartState(
     task: TaskRecord,
     dto: CreateTaskDto,
-    libu: LibuRouterMinistry,
+    libu: RouterMinistryLike,
     options: { mode: 'initial' | 'retry' | 'approval_resume' | 'interrupt_resume'; pending?: PendingExecutionContext }
   ): RuntimeAgentGraphState {
     const base = createInitialState(task.id, dto.goal, dto.context);
@@ -221,6 +224,7 @@ export class MainGraphExecutionHelpers {
       researchSummary: options.pending.researchSummary,
       toolIntent: options.pending.intent,
       toolName: options.pending.toolName,
+      pendingToolInput: options.pending.toolInput,
       approvalRequired: false,
       approvalStatus: ApprovalDecision.APPROVED,
       resumeFromApproval: true
@@ -229,7 +233,7 @@ export class MainGraphExecutionHelpers {
 
   async reviewExecution(
     task: TaskRecord,
-    xingbu: XingbuReviewMinistry,
+    xingbu: ReviewMinistryLike,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ): Promise<{
@@ -237,7 +241,7 @@ export class MainGraphExecutionHelpers {
     evaluation: EvaluationResult;
     critiqueResult?: TaskRecord['critiqueResult'];
     specialistFinding?: NonNullable<TaskRecord['specialistFindings']>[number];
-    contractMeta: StructuredContractMeta;
+    contractMeta: MinistryContractMeta;
   }> {
     this.setSubTaskStatus(task, AgentRole.REVIEWER, 'running');
     const reviewed = await xingbu.review(executionResult, executionSummary);

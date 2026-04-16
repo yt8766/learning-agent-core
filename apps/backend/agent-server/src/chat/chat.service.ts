@@ -28,6 +28,11 @@ import { resolveReportSchemaArtifactCacheKey, streamReportSchema } from './chat-
 type SandpackFiles = Record<string, { code: string }>;
 type SandpackStringFiles = DataReportSandpackFiles;
 type DirectResponseMode = 'preview' | 'stream' | 'sandpack' | 'report-schema';
+type ChatModelOption = {
+  id: string;
+  displayName: string;
+  providerId: string;
+};
 
 @Injectable()
 export class ChatService {
@@ -63,6 +68,17 @@ export class ChatService {
 
   listEvents(sessionId: string) {
     return this.runtimeSessionService.listSessionEvents(sessionId);
+  }
+
+  listAvailableModels(): ChatModelOption[] {
+    return this.runtimeHost.llmProvider
+      .supportedModels()
+      .map(model => ({
+        id: `${model.providerId}/${model.id}`,
+        displayName: model.displayName,
+        providerId: model.providerId
+      }))
+      .sort((left, right) => left.displayName.localeCompare(right.displayName));
   }
 
   getCheckpoint(sessionId: string) {

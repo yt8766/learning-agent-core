@@ -22,7 +22,7 @@ vi.mock('@agent/runtime', () => ({
   describeSkillSourceProfilePolicy: describeSkillSourceProfilePolicyMock
 }));
 
-vi.mock('@agent/skills', () => ({
+vi.mock('@agent/skill-runtime', () => ({
   loadAgentSkillManifests: loadAgentSkillManifestsMock
 }));
 

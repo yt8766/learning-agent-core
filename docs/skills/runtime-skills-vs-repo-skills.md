@@ -1,8 +1,9 @@
 # Runtime Skills vs Repo Skills
 
 状态：current
-适用范围：`packages/skills`、`skills/`
-最后核对：2026-04-14
+文档类型：reference
+适用范围：`packages/skill-runtime`、`skills/`
+最后核对：2026-04-16
 
 ## 1. 这篇文档说明什么
 
@@ -10,9 +11,14 @@
 
 ## 2. 两类 skill 的边界
 
-### `packages/skills`
+### `packages/skill-runtime` / `@agent/skill-runtime`
 
 这是运行时技能层，服务对象是系统运行时。
+
+术语约定：
+
+- 物理宿主当前位于 `packages/skill-runtime`
+- 新代码语义统一使用 `@agent/skill-runtime`
 
 当前职责：
 
@@ -48,10 +54,11 @@
 运行时 skill：
 
 ```text
-packages/skills/
-├─ src/
-├─ build/
-└─ README.md
+packages/
+└─ skill-runtime/
+   ├─ src/
+   ├─ test/
+   └─ package.json
 ```
 
 仓库级代理 skill：
@@ -67,11 +74,19 @@ skills/
 
 ## 4. 容易犯错的地方
 
-- 不要把代理 skill 的说明文档写进 `packages/skills`
+- 不要把代理 skill 的说明文档写进 `packages/skill-runtime`
 - 不要把运行时 skill card / registry 写到 `skills/`
 - 不要因为都叫 skill，就让前后端、后端运行时、代码代理共用一套目录语义
 
-## 5. 继续阅读
+## 5. 当前状态
+
+当前已经完成：
+
+- `packages/runtime` 与 backend 上层代码已切到 `@agent/skill-runtime`
+- 运行时数据默认目录已切到 `data/skill-runtime`
+- 旧的兼容包与 alias 已删除，仓库只保留 `@agent/skill-runtime`
+
+## 6. 继续阅读
 
 - [skills/README.md](/Users/dev/Desktop/learning-agent-core/skills/README.md)
 - [skills 文档目录](/Users/dev/Desktop/learning-agent-core/docs/skills/README.md)

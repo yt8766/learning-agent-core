@@ -1,8 +1,24 @@
 # agent-server 概览
 
 状态：current
+文档类型：overview
 适用范围：`apps/backend/agent-server`
 最后核对：2026-04-15
+
+本主题主文档：
+
+- 本文是 `agent-server` 的总体入口
+
+本文只覆盖：
+
+- 服务职责边界
+- 启动方式
+- chat 模块拆分约束
+
+更细专题请继续看：
+
+- runtime 边界：[runtime-module-notes.md](/Users/dev/Desktop/learning-agent-core/docs/backend/runtime-module-notes.md)
+- 前后端接口：[docs/integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
 
 `agent-server` 是平台主 API 服务，负责：
 
@@ -53,6 +69,14 @@ pnpm --dir apps/backend/agent-server start:prod
 - `MCP_RESEARCH_HTTP_ENDPOINT`
 - `MCP_RESEARCH_HTTP_API_KEY`
 - 其他 provider 变量按实际接入启用
+
+## 日志落盘
+
+`AppLoggerService` 会固定把日志写入 `apps/backend/agent-server/logs`。
+
+- 不再跟随启动命令所在的 `cwd` 漂移到仓库根或其他目录
+- 常规日志写入 `app-YYYY-MM-DD.log`
+- error 级别会额外写入 `app-YYYY-MM-DD.error.log`
 
 ## Runtime Background
 

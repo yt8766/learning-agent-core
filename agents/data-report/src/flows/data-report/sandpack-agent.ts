@@ -1,4 +1,4 @@
-import type { ChatMessage, GenerateTextOptions } from '../../adapters/llm/llm-provider';
+import type { ChatMessage, GenerateTextOptions } from '@agent/adapters';
 import { withLlmRetry } from '../../utils/retry';
 import { DATA_REPORT_SANDPACK_SYSTEM_PROMPT, formatDataReportSandpackRetryFeedback } from './prompts';
 import { parseDataReportSandpackPayload } from './schemas';

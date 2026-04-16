@@ -25,4 +25,5 @@ export interface CreateChatSessionActionsOptions {
 export interface OutboundChatMessage {
   display: string;
   payload: string;
+  modelId?: string;
 }

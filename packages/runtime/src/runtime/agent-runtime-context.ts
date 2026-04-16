@@ -9,11 +9,12 @@ import {
   WorkflowPresetDefinition
 } from '@agent/shared';
 import { ContextStrategy } from '@agent/config';
+import type { ILLMProvider, LlmProviderAgentRole as AgentModelRole } from '@agent/core';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
-import { SkillRegistry } from '@agent/skills';
+import { SkillRegistry } from '@agent/skill-runtime';
 import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from '@agent/tools';
 
-import { AgentModelRole, LlmProvider, LlmUsageMetadata } from '../adapters/llm/llm-provider';
+import type { LlmUsageMetadata } from '@agent/adapters';
 
 export interface AgentRuntimeContext {
   taskId: string;
@@ -63,7 +64,7 @@ export interface AgentRuntimeContext {
   };
   mcpClientManager?: McpClientManager;
   sandbox: SandboxExecutor;
-  llm: LlmProvider;
+  llm: ILLMProvider;
   thinking: {
     manager: boolean;
     research: boolean;

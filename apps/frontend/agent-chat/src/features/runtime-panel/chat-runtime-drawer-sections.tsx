@@ -22,7 +22,7 @@ export function renderCompressionDetails(
     <>
       {sections.map(section => (
         <Card key={section.key} size="small" title={section.label}>
-          <Space direction="vertical" size={6} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={6} style={{ width: '100%' }}>
             {section.items?.map(item => (
               <Text key={item}>{item}</Text>
             ))}
@@ -31,7 +31,7 @@ export function renderCompressionDetails(
       ))}
       {previewMessages?.length ? (
         <Card size="small" title="折叠消息预览">
-          <Space direction="vertical" size={6} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={6} style={{ width: '100%' }}>
             {previewMessages.map((item, index) => (
               <Text key={`${item.role}-${index}`} type="secondary">
                 {item.role}: {item.content}

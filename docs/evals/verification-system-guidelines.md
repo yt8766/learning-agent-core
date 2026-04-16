@@ -1,8 +1,9 @@
 # 验证体系规范
 
 状态：current
+文档类型：evaluation
 适用范围：workspace 根包、`packages/*`、`apps/*`
-最后核对：2026-04-15
+最后核对：2026-04-16
 
 本文件将“验证体系需求”收敛为当前仓库可直接执行的统一规范，供后续 AI 与开发者在新增功能、修复缺陷、重构与跨包协作时复用。
 
@@ -11,6 +12,8 @@
 - [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
 - [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
 - [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
+- [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 - [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
 - [Prompt Regression And Thresholds](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
 
@@ -47,14 +50,20 @@
 
 ### 2.5 Demo / 最小闭环验证
 
-本仓库不强制每个包单独维护 `demo/` 目录，但强制要求“每轮改动都要补一个最小可证明闭环”。闭环形式可以是：
+当前不再要求 `packages/*` 与 `agents/*` 默认维护与 `src/` 同级的 `demo/` 目录，但仍强制要求“每轮改动都要补一个最小可证明闭环”。闭环形式可以是：
 
 - 可直接运行的包级 demo
 - 集成测试中的最小 happy path
 - 面向 CLI / script / build 流程的最小命令验证
 - 前端或后端的最小真实链路验证
 
-换句话说，本仓库更看重“最小闭环被自动化验证”，而不是机械要求每个包都建一个 `demo/` 文件夹。
+换句话说，本仓库要求每个宿主都要有自动化最小闭环；如果不单独生成 `demo/`，则必须由 integration 或等价 smoke 验证承担这层责任。
+
+当前默认宿主规则：
+
+- `packages/*`：默认允许由 integration、build 或其他自动化 smoke 承担最小闭环
+- `agents/*`：默认允许由 integration、build 或其他自动化 smoke 承担最小闭环
+- `apps/*` 与 `apps/backend/agent-server`：当前允许由 integration 或其他自动化最小闭环承担 Demo 层责任，但如果后续引入显式 demo，它必须明显比 integration 更轻
 
 ### 2.6 Eval 验证
 
@@ -118,6 +127,53 @@
 - 如果要运行 TypeScript 脚本，仓库当前优先沿用现有脚本体系，不要求为满足“demo”强行引入新工具链
 - `promptfoo` 用于模型层评测，不替代 `Vitest`
 - 结构化输出与 schema 校验默认优先 `zod`
+- 当前 Turbo 只安全接入了根级治理校验入口：`check:docs` 与 `check:architecture`
+- 根级 `typecheck`、`build` 与基于包图的 `test` 任务暂不直接切到 Turbo pipeline；仓库现存 `@agent/runtime` 与多个 `agents/*` 的循环依赖，直接运行对应 Turbo task 会触发 cyclic dependency 错误
+- 当前已新增 Turbo-only 包级验证通道：
+  - `turbo:typecheck`
+  - `turbo:test:unit`
+  - `turbo:test:integration`
+- 这条通道用于单包缓存、`--filter` 与执行预览，不替代根级 `pnpm verify`
+- 当前已新增根级受影响范围入口：
+  - `pnpm typecheck:affected`
+  - `pnpm test:spec:affected`
+  - `pnpm test:unit:affected`
+  - `pnpm test:demo:affected`
+  - `pnpm test:integration:affected`
+  - `pnpm verify:affected`
+- `verify:affected` 默认先执行治理门槛与受影响范围 Spec，再执行受影响包的 Turbo-only Type / Unit / Demo / Integration
+- `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-demo-stage-three-plan.md)
+- `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
+- 对存在额外模板或脚手架依赖的宿主，应使用宿主级例外补充 `inputs`；当前仓库里的 scaffold 回归已迁回 `packages/tools` 测试与 integration，不再保留独立 demo 例外
+- 更深的 Turbo 主链收敛当前仍被 `runtime <-> agents/*` 循环依赖簇阻断；下一阶段治理路线见 [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+
+## 4.1 当前 Turbo 接入边界
+
+当前仓库已经在 `turbo.json` 中为以下根级治理命令声明了 root task：
+
+- `check:docs`
+- `check:architecture`
+
+推荐入口：
+
+```bash
+pnpm check:docs:turbo
+pnpm check:architecture:turbo
+pnpm verify:governance
+```
+
+推荐预览方式：
+
+```bash
+pnpm exec turbo run check:docs check:architecture --dry-run=json
+pnpm exec turbo run check:docs check:architecture --graph=turbo-verify-governance.html
+```
+
+约束说明：
+
+- `verify:governance` 只覆盖治理门槛，不替代根级 `pnpm verify`
+- 需要完成五层验证时，仍优先使用 `pnpm verify`，或在根级验证被无关 blocker 卡住时，按受影响范围逐层补齐 Type / Spec / Unit / Demo / Integration
+- 后续若要继续把 `typecheck`、`test:unit`、`test:integration` 精准迁入 Turbo，必须先处理当前循环依赖并统一 `apps/*`、`agents/*`、`packages/*` 的任务边界；详见 [Turbo 循环依赖治理六阶段方案](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 
 ## 5. 各层验证的强制要求
 
@@ -128,11 +184,7 @@
 最低基线以仓库现有规则为准：
 
 ```bash
-pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
-pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit
-pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
-pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit
-pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit
+pnpm typecheck
 ```
 
 当改动明确涉及其他包时，还应补对应项目的 `tsc --noEmit`。
@@ -169,6 +221,7 @@ pnpm lint:tsc
 
 验证方式：
 
+- 优先通过 `pnpm test:spec` 或 `pnpm test:spec:affected` 运行结构校验回归
 - 为 schema 写 unit test
 - 为 parse 成功 / 失败路径写测试
 - 对关键 contract 做兼容性回归
@@ -288,44 +341,51 @@ pnpm eval:prompts:view
 - registry / executor / approval preflight 单测
 - sandbox / MCP / tool contract 集成测试
 
-### 6.6 `packages/skills`
+### 6.6 `packages/skill-runtime` / `@agent/skill-runtime`
 
 - 类型检查
 - manifest loader / registry / source sync 单测
 - 安装与来源治理关键路径集成测试
 
-### 6.7 `packages/agent-core`
+### 6.7 `packages/runtime`
 
 - 类型检查
 - graph / flow / prompt / schema 单测
 - LangGraph 主链、interrupt、recover、checkpoint 集成测试
 - 关键 prompt 回归或最小结构化合同验证
 
-### 6.8 `packages/report-kit`
+### 6.8 `agents/*`
+
+- 类型检查
+- 对应 graph / flow / prompt / schema 单测
+- 子 Agent 的 planning / execution / review / delivery 主链集成测试
+- 稳定结构化合同的 schema parse 回归
+
+### 6.9 `packages/report-kit`
 
 - 类型检查
 - blueprint / scaffold / assembly 单测
 - 最小报表生成链路验证
 
-### 6.9 `apps/backend/agent-server`
+### 6.10 `apps/backend/agent-server`
 
 - 类型检查
 - controller / service / DTO mapper 单测
 - 关键 API、runtime center、SSE、审批恢复链路集成测试
 
-### 6.10 `apps/worker`
+### 6.11 `apps/worker`
 
 - 类型检查
 - 任务消费、重试、学习任务处理单测
 - background runner / queue 协同集成测试
 
-### 6.11 `apps/frontend/agent-chat`
+### 6.12 `apps/frontend/agent-chat`
 
 - 类型检查
 - hooks / formatters / reducers / card helpers 单测
 - 会话、消息流、stream merge、approval 交互集成测试
 
-### 6.12 `apps/frontend/agent-admin`
+### 6.13 `apps/frontend/agent-admin`
 
 - 类型检查
 - center 级 state / adapter / card mapper 单测
@@ -339,7 +399,9 @@ pnpm eval:prompts:view
 
 ```bash
 pnpm test
+pnpm test:spec
 pnpm test:unit
+pnpm test:demo
 pnpm test:integration
 pnpm test:coverage
 pnpm eval:prompts

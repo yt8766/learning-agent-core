@@ -8,8 +8,11 @@ import type {
   SkillSearchStateRecord,
   WorkerDefinition
 } from '@agent/shared';
+import { resolveSpecialistRoute, type resolveWorkflowPreset } from '@agent/shared';
 import type { MemoryRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
-import { resolveSpecialistRoute, type resolveWorkflowPreset } from '@agent/agents-supervisor';
+
+import { archivalMemorySearchByParams } from '../../../memory/active-memory-tools';
+import { flattenStructuredMemories } from '../../../memory/runtime-memory-search';
 
 type WorkflowResolution = ReturnType<typeof resolveWorkflowPreset>;
 
@@ -21,34 +24,82 @@ export async function resolveLifecycleKnowledgeReuse(params: {
   memoryRepository: MemoryRepository;
   memorySearchService?: MemorySearchService;
 }) {
-  const searchResult = params.memorySearchService
-    ? await params.memorySearchService.search(params.goal, 5)
-    : { memories: await params.memoryRepository.search(params.goal, 5), rules: [] as RuleRecord[] };
-  const reusedMemoryIds = searchResult.memories.map(memory => memory.id);
-  const reusedRuleIds = searchResult.rules.map(rule => rule.id);
+  const structured = await archivalMemorySearchByParams(params.memorySearchService, {
+    query: params.goal,
+    limit: 5,
+    actorRole: 'system/background',
+    scopeType: 'task',
+    allowedScopeTypes: ['task', 'workspace', 'team', 'org', 'global', 'user'],
+    taskId: params.taskId,
+    memoryTypes: ['constraint', 'procedure', 'skill-experience', 'failure-pattern'],
+    includeRules: true,
+    includeReflections: true
+  });
+  const fallbackMemories = structured ? [] : await params.memoryRepository.search(params.goal, 5);
+  const memories = structured ? flattenStructuredMemories(structured) : fallbackMemories;
+  const rules = structured?.rules ?? ([] as RuleRecord[]);
+  const reasonById = new Map((structured?.reasons ?? []).map(item => [item.id, item] as const));
+  const reusedMemoryIds = memories.map(memory => memory.id);
+  const reusedRuleIds = rules.map(rule => rule.id);
   const evidence = [
-    ...searchResult.memories.map((memory, index) => ({
-      id: `memory_reuse_${params.taskId}_${index + 1}`,
+    ...memories.map((memory, index) => {
+      const reason = reasonById.get(memory.id);
+      return {
+        id: `memory_reuse_${params.taskId}_${index + 1}`,
+        taskId: params.taskId,
+        sourceType: 'memory_reuse' as const,
+        trustClass: 'internal' as const,
+        summary: `已命中历史记忆：${memory.summary}`,
+        detail: {
+          memoryId: memory.id,
+          memoryType: memory.type,
+          tags: memory.tags,
+          qualityScore: memory.qualityScore,
+          scopeType: memory.scopeType,
+          relatedEntities: memory.relatedEntities,
+          reason: reason?.reason,
+          score: reason?.score
+        },
+        linkedRunId: params.runId,
+        createdAt: params.createdAt
+      };
+    }),
+    ...rules.map((rule, index) => {
+      const reason = reasonById.get(rule.id);
+      return {
+        id: `rule_reuse_${params.taskId}_${index + 1}`,
+        taskId: params.taskId,
+        sourceType: 'rule_reuse' as const,
+        trustClass: 'internal' as const,
+        summary: `已命中历史规则：${rule.summary}`,
+        detail: {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          conditions: rule.conditions,
+          reason: reason?.reason,
+          score: reason?.score
+        },
+        linkedRunId: params.runId,
+        createdAt: params.createdAt
+      };
+    }),
+    ...(structured?.reflections ?? []).slice(0, 4).map((reflection, index) => ({
+      id: `reflection_reuse_${params.taskId}_${index + 1}`,
       taskId: params.taskId,
       sourceType: 'memory_reuse' as const,
       trustClass: 'internal' as const,
-      summary: `已命中历史记忆：${memory.summary}`,
-      detail: { memoryId: memory.id, memoryType: memory.type, tags: memory.tags, qualityScore: memory.qualityScore },
-      linkedRunId: params.runId,
-      createdAt: params.createdAt
-    })),
-    ...searchResult.rules.map((rule, index) => ({
-      id: `rule_reuse_${params.taskId}_${index + 1}`,
-      taskId: params.taskId,
-      sourceType: 'rule_reuse' as const,
-      trustClass: 'internal' as const,
-      summary: `已命中历史规则：${rule.summary}`,
-      detail: { ruleId: rule.id, ruleName: rule.name, conditions: rule.conditions },
+      summary: `已命中历史反思：${reflection.summary}`,
+      detail: {
+        reflectionId: reflection.id,
+        reflectionKind: reflection.kind,
+        whatFailed: reflection.whatFailed,
+        nextAttemptAdvice: reflection.nextAttemptAdvice
+      },
       linkedRunId: params.runId,
       createdAt: params.createdAt
     }))
   ];
-  return { memories: searchResult.memories, rules: searchResult.rules, reusedMemoryIds, reusedRuleIds, evidence };
+  return { memories, rules, reusedMemoryIds, reusedRuleIds, evidence };
 }
 
 export async function applyLifecycleCounselorSelectorGovernance(params: {

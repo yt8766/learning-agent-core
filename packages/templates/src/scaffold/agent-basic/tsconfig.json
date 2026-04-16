@@ -1,0 +1,16 @@
+{
+  "extends": "__REPO_ROOT_RELATIVE__/tsconfig.json",
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "outDir": "./build/tmp",
+    "types": ["node"],
+    "typeRoots": ["__NODE_TYPES_ROOT_RELATIVE__"],
+    "lib": ["ESNext"],
+    "baseUrl": ".",
+    "paths": {
+      "zod": ["__ZOD_PACKAGE_RELATIVE__"]
+    },
+    "importHelpers": false,
+    "noEmit": true
+  }
+}

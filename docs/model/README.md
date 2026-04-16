@@ -1,8 +1,9 @@
 # model 文档目录
 
 状态：current
+文档类型：index
 适用范围：`docs/model/`
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 本目录用于沉淀 `packages/model` 相关文档。
 

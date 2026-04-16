@@ -27,7 +27,7 @@ export function ExecutionStepsCard({ checkpoint }: { checkpoint?: ChatCheckpoint
   return (
     <Card title="执行步骤" variant="borderless">
       {steps.length ? (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           {current ? (
             <Alert
               type={getExecutionStepStatusColor(current.status)}
@@ -40,7 +40,7 @@ export function ExecutionStepsCard({ checkpoint }: { checkpoint?: ChatCheckpoint
           ) : null}
           {steps.map(step => (
             <Card key={step.id} size="small">
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                 <Space wrap>
                   <Tag color={getExecutionStepStatusColor(step.status)}>{step.status}</Tag>
                   <Tag>{step.label}</Tag>

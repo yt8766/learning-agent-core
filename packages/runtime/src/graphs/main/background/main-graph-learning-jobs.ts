@@ -5,11 +5,12 @@ import {
   CreateResearchLearningJobDto,
   EvidenceRecord,
   LearningJob,
-  SkillCard
+  SkillCard,
+  buildResearchSourcePlan
 } from '@agent/shared';
-import { SkillRegistry } from '@agent/skills';
+import { resolveWorkflowPreset } from '@agent/shared';
+import { SkillRegistry } from '@agent/skill-runtime';
 import { McpClientManager } from '@agent/tools';
-import { buildResearchSourcePlan, resolveWorkflowPreset } from '@agent/agents-supervisor';
 
 import { LearningFlow } from '../../../flows/learning';
 

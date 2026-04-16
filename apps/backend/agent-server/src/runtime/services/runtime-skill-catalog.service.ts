@@ -1,8 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod/v4';
 
-import type { LlmProvider } from '@agent/adapters';
-import { generateObjectWithRetry } from '@agent/adapters';
+import type { ILLMProvider } from '@agent/core';
+import { generateObjectWithRetry } from '@agent/runtime';
 import { listBootstrapSkills } from '@agent/agents-supervisor';
 import { SkillCard, SkillStatus } from '@agent/shared';
 
@@ -16,7 +16,7 @@ export interface RuntimeSkillCatalogContext {
     restore: (skillId: string) => Promise<SkillCard>;
     retire: (skillId: string, reason?: string) => Promise<SkillCard>;
   };
-  llmProvider?: LlmProvider;
+  llmProvider?: ILLMProvider;
   registerSkillWorker?: (skill: SkillCard) => void;
 }
 

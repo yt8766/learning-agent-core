@@ -23,9 +23,22 @@
     "build:watch": "tsup --watch",
     "build:watch:types": "tsc -p tsconfig.types.json --watch",
     "watch": "pnpm build:watch & pnpm build:watch:types",
-    "build:lib": "pnpm build:transpile && pnpm build:types"
+    "build:lib": "pnpm build:transpile && pnpm build:types",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js agents/data-report",
+    "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js agents/data-report/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:test:unit": "pnpm test",
+    "test:integration": "node ../../scripts/run-package-integration-tests.js agents/data-report",
+    "turbo:test:integration": "pnpm test:integration",
+    "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/report-kit": "workspace:*"
+    "@agent/adapters": "workspace:*",
+    "@agent/agents-supervisor": "workspace:*",
+    "@agent/core": "workspace:*",
+    "@agent/report-kit": "workspace:*",
+    "@langchain/langgraph": "^1.2.5",
+    "fs-extra": "^11.3.4",
+    "zod": "^4.3.6"
   }
 }

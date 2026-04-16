@@ -282,7 +282,7 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     beginOptimisticSend(options, options.activeSessionId, displayContent);
     const nextUserMessage = await runLoading(
       async () => {
-        return appendMessage(options.activeSessionId, content);
+        return appendMessage(options.activeSessionId, content, { modelId: resolvedMessage.modelId });
       },
       '发送消息失败',
       { sessionId: options.activeSessionId }

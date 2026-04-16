@@ -13,7 +13,7 @@
       "@agent/memory": ["../../../packages/memory/src/index.ts"],
       "@agent/model": ["../../../packages/model/src/index.ts"],
       "@agent/report-kit": ["../../../packages/report-kit/src/index.ts"],
-      "@agent/skills": ["../../../packages/skills/src/index.ts"],
+      "@agent/skill-runtime": ["../../../packages/skill-runtime/src/index.ts"],
       "@agent/templates": ["../../../packages/templates/src/index.ts"],
       "@agent/evals": ["../../../packages/evals/src/index.ts"],
       "@agent/agents-supervisor": ["../../../agents/supervisor/src/index.ts"],

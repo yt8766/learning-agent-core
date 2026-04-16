@@ -11,8 +11,8 @@ import {
 } from '@agent/shared';
 
 import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
-import { buildModelHeatmap } from '../helpers/runtime-analytics';
-import { summarizeAndPersistUsageAnalytics } from '../helpers/runtime-metrics-store';
+import { buildModelHeatmap } from '../../modules/runtime-metrics/services/runtime-analytics';
+import { summarizeAndPersistUsageAnalytics } from '../../modules/runtime-metrics/services/runtime-metrics-store';
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 
 export function buildRuntimeCenter(input: {

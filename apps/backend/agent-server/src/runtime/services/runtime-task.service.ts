@@ -9,7 +9,7 @@ import {
   CreateTaskDto
 } from '@agent/shared';
 
-import { buildTraceAnalytics } from '../helpers/runtime-analytics';
+import { buildTraceAnalytics } from '../../modules/runtime-metrics/services/runtime-analytics';
 import { extractBrowserReplay } from '../helpers/runtime-connector-utils';
 
 export interface RuntimeTaskContext {

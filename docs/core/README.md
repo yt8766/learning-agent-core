@@ -1,8 +1,9 @@
 # core 文档目录
 
 状态：current
+文档类型：index
 适用范围：`docs/core/`
-最后核对：2026-04-15
+最后核对：2026-04-16
 
 本目录用于沉淀 `packages/core` 相关文档。
 
@@ -32,8 +33,29 @@
 
 当前现实：
 
-- `packages/core` 目前仍是迁移期 facade，源码只做 `shared` 的 re-export
-- 这不改变它的目标职责：后续稳定公共 contract 仍应按 `core` 边界思考，而不是继续把 `core` 当“任何共用代码都能放”的杂物层
+- `packages/core` 已经不只是迁移期 facade；当前源码中已经承载 provider interface、memory schema、approval / shared schema 以及多组稳定类型入口
+- `packages/core/src/types/tasking-planning.ts`
+  - 已开始承接 tasking planning 子域的 schema-first 主定义，当前覆盖 plan question / decision / draft / mode transition，以及 `EntryDecisionRecord` / `ExecutionPlanRecord` / `PartialAggregationRecord`
+- `packages/core/src/types/tasking-orchestration.ts`
+  - 已开始承接 tasking orchestration 子域的 schema-first 主定义，当前覆盖 agent message / sub task / manager plan / review record，以及 `DispatchInstruction` / specialist context-finding / critique 子契约；治理与执行状态中的 `BudgetGateStateRecord`、`ComplexTaskPlanRecord`、`BlackboardStateRecord`、`MicroLoopStateRecord`、`CurrentSkillExecutionRecord`、`GovernanceScoreRecord`、`GovernanceReportRecord` 也已进入 core-hosted schema
+- `packages/core/src/types/tasking-chat.ts`
+  - 当前承接 chat 子域里最稳定的 schema-first 主定义，覆盖 chat message / chat event / thought chain item / think state
+- `packages/core/src/types/tasking-runtime-state.ts`
+  - 当前承接 task record 与 checkpoint 内部可独立复用的稳定状态契约，覆盖 mode gate state / background learning state / checkpoint graph state / checkpoint stream status / checkpoint cursors
+- `packages/core/src/types/tasking-session.ts`
+  - 当前承接 chat session 子域的 schema-first 主定义，覆盖 channel identity / compression / session record
+- `packages/core/src/types/tasking-thought-graph.ts`
+  - 当前承接 checkpoint thought graph 子域的 schema-first 主定义，覆盖 checkpoint ref / thought graph node / thought graph edge / thought graph wrapper
+- `packages/core/src/types/tasking-checkpoint.ts`
+  - 当前承接 checkpoint 主体与 checkpoint wrapper 的 schema-first 主定义，覆盖 checkpoint metadata / pending approvals / agent states / checkpoint record；checkpoint 上的 `externalSources`、`llmUsage`、预算/治理/黑板/技能执行等稳定状态字段已改为引用 core-hosted 子 schema
+- `packages/core/src/types/tasking-task-record.ts`
+  - 当前承接 task 主体的 schema-first 主定义，作为 `TaskRecord` 的稳定主宿主；当前已覆盖 task 主体骨架、`externalSources` / `learningCandidates`、`llmUsage` 以及多组预算/治理/黑板/技能执行稳定聚合字段，剩余高变嵌套字段继续按兼容 schema 逐步精细化
+- 仍然存在部分 contract 从 `shared` 向 `core` 继续迁移的债务，但 `core` 本身已经是当前真实生效的稳定 contract 宿主之一
+- 后续稳定公共 contract 仍应按 `core` 边界思考，而不是继续把 `core` 当“任何共用代码都能放”的杂物层
+
+本目录主文档：
+
+- contract 边界主文档：[core-contract-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/core/core-contract-guidelines.md)
 
 建议优先阅读：
 

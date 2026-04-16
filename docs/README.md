@@ -1,8 +1,9 @@
 # docs 目录规范
 
 状态：current
+文档类型：index
 适用范围：`docs/`
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 本目录用于沉淀仓库级规范、模块文档、联调结论与后续 AI 接手所需上下文。
 
@@ -16,24 +17,102 @@
 当前高优先级入口：
 
 - [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [Docs 重构计划](/Users/dev/Desktop/learning-agent-core/docs/docs-refactor-plan.md)
+- [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
 - [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- [本地联调指南](/Users/dev/Desktop/learning-agent-core/docs/local-development-guide.md)
+
+本目录主文档：
+
+- 仓库阅读入口：[repo-directory-overview.md](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
+- 全局规范入口：[project-conventions.md](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
+- 跨模块对接入口：[integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+
+按需参考入口：
+
+- [历史归档目录](/Users/dev/Desktop/learning-agent-core/docs/archive/README.md)
+- [Docs 重构计划（已完成）](/Users/dev/Desktop/learning-agent-core/docs/docs-refactor-plan.md)
 - [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
+
+## 0.1 阅读路径
+
+如果你是第一次接手这个仓库，推荐按下面顺序读：
+
+1. 先看“仓库现在是什么”：
+   - [目录地图](/Users/dev/Desktop/learning-agent-core/docs/repo-directory-overview.md)
+   - [apps 目录说明](/Users/dev/Desktop/learning-agent-core/docs/apps-overview.md)
+   - [packages 目录说明](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+2. 再看“全局规则是什么”：
+   - [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
+   - [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+   - [测试规范](/Users/dev/Desktop/learning-agent-core/docs/test-conventions.md)
+3. 如果你要改具体模块：
+   - 后端：先看 [docs/backend/README.md](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
+   - 前端：先看 [docs/frontend/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/README.md)
+   - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
+   - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
+   - 跨模块联调：先看 [docs/integration/README.md](/Users/dev/Desktop/learning-agent-core/docs/integration/README.md)
+   - 运行时质量与评测：先看 [docs/evals/README.md](/Users/dev/Desktop/learning-agent-core/docs/evals/README.md)
+4. 只有在需要追迁移背景时，再看：
+   - [历史归档目录](/Users/dev/Desktop/learning-agent-core/docs/archive/README.md)
+
+## 0. 元信息规则
+
+每篇文档头部默认包含这四行：
+
+- `状态`
+- `文档类型`
+- `适用范围`
+- `最后核对`
+
+推荐类型：
+
+- `index`
+  - 目录入口与阅读导航
+- `architecture`
+  - 长期架构方向
+- `overview`
+  - 当前目录或模块概览
+- `convention`
+  - 规范、约束、治理规则
+- `guide`
+  - 上手、联调、迁移、使用指导
+- `integration`
+  - 跨模块对接与协议链路
+- `reference`
+  - 事实说明、边界说明、专题资料
+- `evaluation`
+  - 评测、验证、质量基建说明
+- `baseline`
+  - 带明确时间点的快照基线，不代表实时状态
+- `plan`
+  - 阶段性计划与执行清单
+- `history`
+  - 历史迁移资料，保留参考价值但不作为当前宿主
+- `archive`
+  - 归档文档，不再按当前实现维护
+
+推荐状态：
+
+- `current`
+- `completed`
+- `snapshot`
+- `history`
+- `archive`
 
 ## 1. 放置规则
 
 文档默认按模块归档到 `docs/<module>/`。
 
-对于 `packages/*`，要求与 `agent-core` 保持一致，一律按包名建立独立目录：
+对于 `packages/*`，默认按包名建立独立目录；已删除包的历史迁移文档保留在对应历史目录：
 
-- `packages/agent-core` -> `docs/agent-core/`
+- 已删除的 `packages/agent-core` 历史迁移档案 -> `docs/archive/agent-core/`
 - `packages/config` -> `docs/config/`
 - `packages/evals` -> `docs/evals/`
 - `packages/memory` -> `docs/memory/`
 - `packages/model` -> `docs/model/`
 - `packages/report-kit` -> `docs/report-kit/`
 - `packages/shared` -> `docs/shared/`
-- `packages/skills` -> `docs/skills/`
+- `packages/skill-runtime` -> `docs/skills/`
 - `packages/templates` -> `docs/templates/`
 - `packages/tools` -> `docs/tools/`
 
@@ -43,6 +122,8 @@
 - `docs/frontend/agent-chat/`
 - `docs/frontend/agent-admin/`
 - `docs/integration/`
+- `docs/agents/`
+- `docs/archive/`
 
 `docs/` 根目录只保留以下内容：
 
@@ -95,4 +176,9 @@
 - 改一个 `package`，就优先更新对应的 `docs/<package>/README.md`
 - 新增专项说明时，尽量同时补对应模块目录下的索引
 - 如果是跨模块链路，优先写到 `docs/integration/`
+- 计划、基线、迁移快照不要伪装成长期规范；应通过 `文档类型` 与 `状态` 明确标识
+- 历史资料统一收进 `docs/archive/`，不要继续和当前实现文档混放
+- 运行 `pnpm check:docs`，至少确认元信息、目录索引、旧路径引用和本地 Markdown 链接没有回归
+- 新增文档时优先使用 `pnpm new:doc docs/<module>/<name>.md` 生成标准骨架，再补内容
 - 在最终交付说明里明确列出这次更新了哪些文档、清理了哪些旧文档
+- 目录级 `README.md` 默认至少回答三件事：先读哪篇、改动前看哪篇、该目录的主文档是谁

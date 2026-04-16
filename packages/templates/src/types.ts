@@ -10,3 +10,12 @@ export interface FrontendTemplateDefinition {
   outputRoot?: string;
   defaultBaseDir?: string;
 }
+
+export interface ScaffoldTemplateDefinition {
+  id: 'package-lib' | 'agent-basic';
+  hostKind: 'package' | 'agent';
+  displayName: string;
+  description: string;
+  directoryName: string;
+  entryFiles: string[];
+}

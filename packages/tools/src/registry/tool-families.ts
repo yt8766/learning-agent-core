@@ -20,6 +20,15 @@ export const DEFAULT_TOOL_FAMILIES: ToolFamilyRecord[] = [
     preferredMinistries: ['gongbu-code', 'bingbu-ops']
   },
   {
+    id: 'scaffold',
+    displayName: 'Scaffold Tools',
+    description: 'Template-driven packages/* and agents/* scaffold generation helpers.',
+    capabilityType: 'local-tool',
+    ownerType: 'shared',
+    bootstrap: true,
+    preferredMinistries: ['libu-governance', 'gongbu-code', 'libu-delivery']
+  },
+  {
     id: 'scheduling',
     displayName: 'Scheduling Tools',
     description: 'Runtime task scheduling and lifecycle management tools.',

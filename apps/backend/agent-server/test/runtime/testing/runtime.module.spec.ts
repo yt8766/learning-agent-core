@@ -6,7 +6,7 @@ import { ChatCapabilityIntentsService } from '../../../src/chat/chat-capability-
 import { ChatService } from '../../../src/chat/chat.service';
 import { MemoryService } from '../../../src/memory/memory.service';
 import { SkillsService } from '../../../src/skills/skills.service';
-import { TasksService } from '../../../src/tasks/tasks.service';
+import { TasksService } from '../../../src/modules/tasks/services/tasks.service';
 import { RuntimeCentersService } from '../../../src/runtime/centers/runtime-centers.service';
 import { RuntimeArchitectureService } from '../../../src/runtime/architecture/runtime-architecture.service';
 import { RuntimeKnowledgeService } from '../../../src/runtime/services/runtime-knowledge.service';

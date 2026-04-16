@@ -10,6 +10,7 @@ import {
   Database,
   FlaskConical,
   FolderKanban,
+  IdCard,
   Radar,
   Settings2,
   SquareTerminal,
@@ -57,6 +58,8 @@ export const NAV_ITEMS: Array<{
   { key: 'runtime', label: 'Runtime Center', description: '运行态、队列、活跃尚书与任务脉冲', icon: SquareTerminal },
   { key: 'approvals', label: 'Approvals Center', description: '待审批动作、批注反馈与风险阻塞', icon: ClipboardCheck },
   { key: 'learning', label: 'Learning Center', description: '自动沉淀、候选待审与学习质量', icon: BrainCircuit },
+  { key: 'memory', label: 'Memory Center', description: '长期记忆治理、对比、回滚与效果洞察', icon: Database },
+  { key: 'profiles', label: 'Profile Center', description: '用户画像、偏好 patch 与作用域约束', icon: IdCard },
   { key: 'evals', label: 'Evals', description: 'benchmark 通过率、关键链路健康与回归基线', icon: FlaskConical },
   { key: 'archives', label: 'Archive Center', description: '长期归档、趋势窗口与导出管理', icon: Database },
   { key: 'skills', label: 'Skill Lab', description: '技能版本、成功率、晋升与禁用', icon: BookMarked },
@@ -79,9 +82,9 @@ export const NAV_ITEMS: Array<{
 export function AppSidebar(props: AdminNavigationProps & { variant?: 'default' | 'inset' }) {
   const { page, pendingApprovals, onNavigate, variant = 'inset' } = props;
 
-  const platformPrimary = NAV_ITEMS.slice(0, 3);
-  const platformNested = NAV_ITEMS.slice(3, 6);
-  const nestedParentKeys = new Set<DashboardPageKey>(['runtime', 'learning']);
+  const platformPrimary = NAV_ITEMS.slice(0, 5);
+  const platformNested = NAV_ITEMS.slice(5, 8);
+  const nestedParentKeys = new Set<DashboardPageKey>(['runtime', 'learning', 'memory']);
 
   const projects: Array<{ label: string; icon: typeof FolderKanban; key: DashboardPageKey }> = [
     { label: 'Design Engineering', icon: FolderKanban, key: 'skillSources' },

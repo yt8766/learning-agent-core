@@ -158,7 +158,7 @@ vi.mock('../../../src/runtime/helpers/runtime-connector-registry', () => ({
   applyGovernanceOverrides: applyGovernanceOverridesMock,
   registerInstalledSkillWorker: registerInstalledSkillWorkerMock
 }));
-vi.mock('../../../src/runtime/helpers/provider-audit', () => ({
+vi.mock('../../../src/modules/runtime-metrics/services/provider-audit', () => ({
   fetchProviderUsageAudit: fetchProviderUsageAuditMock
 }));
 vi.mock('../../../src/runtime/services/runtime-knowledge.service', () => ({

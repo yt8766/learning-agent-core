@@ -16,12 +16,29 @@ import {
 } from '@agent/shared';
 import { loadSettings } from '@agent/config';
 import { McpClientManager, ToolRegistry } from '@agent/tools';
+import { resolveWorkflowRoute } from '@agent/shared';
 import { buildWorkerSelectionPreferences } from '../../../capabilities/capability-pool';
 import { WorkerRegistry, WorkerSelectionConstraints } from '../../../governance/worker-registry';
 import { ModelRoutingPolicy } from '../../../governance/model-routing-policy';
 import { describeConnectorProfilePolicy } from '../../../governance/profile-policy';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
-import { resolveWorkflowRoute } from '@agent/agents-supervisor';
+import {
+  assertTaskBudgetAllowsProgress,
+  createTaskQueueState,
+  estimateRuntimeStepsConsumed,
+  transitionTaskQueueState,
+  updateTaskBudgetState
+} from './main-graph-task-runtime-budget';
+import {
+  addRuntimeMessage,
+  addRuntimeProgressDelta,
+  addRuntimeTrace,
+  attachRuntimeTool,
+  recordRuntimeToolUsage,
+  setRuntimeSubTaskStatus,
+  upsertRuntimeAgentState
+} from './main-graph-task-runtime-trace';
+import { TaskBudgetExceededError, TaskCancelledError } from './main-graph-task-runtime-errors';
 
 interface MainGraphTaskRuntimeDependencies {
   mcpClientManager?: McpClientManager;
@@ -111,7 +128,8 @@ export class MainGraphTaskRuntime {
         this.modelRoutingPolicy.resolveRoute(
           ministry,
           workflow?.displayName ?? 'general workflow',
-          selectionConstraints
+          selectionConstraints,
+          task.requestedHints?.preferredModelId
         )
       )
       .filter((item): item is ModelRouteDecision => Boolean(item));
@@ -120,7 +138,8 @@ export class MainGraphTaskRuntime {
       const routerRoute = this.modelRoutingPolicy.resolveRoute(
         'libu-governance',
         workflow?.displayName ?? 'general workflow',
-        selectionConstraints
+        selectionConstraints,
+        task.requestedHints?.preferredModelId
       );
       if (routerRoute) {
         routes.unshift(routerRoute);
@@ -145,35 +164,16 @@ export class MainGraphTaskRuntime {
     task.currentStep = state.currentStep;
     task.retryCount = state.retryCount;
     task.maxRetries = state.maxRetries;
-    const stepsConsumed = Math.max(task.budgetState?.stepsConsumed ?? 0, this.estimateStepsConsumed(state.currentStep));
+    const stepsConsumed = Math.max(
+      task.budgetState?.stepsConsumed ?? 0,
+      estimateRuntimeStepsConsumed(state.currentStep)
+    );
     task.budgetState = this.updateBudgetState(task, {
       stepsConsumed,
       retryBudget: task.budgetState?.retryBudget ?? state.maxRetries,
       retriesConsumed: state.retryCount
     });
-    if (stepsConsumed > (task.budgetState.stepBudget ?? 8)) {
-      throw new TaskBudgetExceededError(
-        `当前任务已耗尽 step budget，已在 ${state.currentStep ?? 'unknown'} 阶段暂停。`,
-        {
-          stepBudget: task.budgetState.stepBudget,
-          stepsConsumed,
-          currentStep: state.currentStep
-        }
-      );
-    }
-    const budgetInterruptState = task.budgetState?.budgetInterruptState;
-    if (budgetInterruptState?.status === 'hard-threshold-triggered') {
-      throw new TaskBudgetExceededError(
-        budgetInterruptState.reason ?? '当前任务已超过预算硬阈值，系统已强制终止执行。',
-        {
-          tokenBudget: task.budgetState?.tokenBudget,
-          tokenConsumed: task.budgetState?.tokenConsumed,
-          costBudgetUsd: task.budgetState?.costBudgetUsd,
-          costConsumedUsd: task.budgetState?.costConsumedUsd,
-          currentStep: state.currentStep
-        }
-      );
-    }
+    assertTaskBudgetAllowsProgress(task, state);
     task.blackboardState = {
       node: 'blackboard_state',
       taskId: task.id,
@@ -194,98 +194,15 @@ export class MainGraphTaskRuntime {
     task: TaskRecord,
     overrides: Partial<NonNullable<TaskRecord['budgetState']>>
   ): NonNullable<TaskRecord['budgetState']> {
-    const nextBudget = {
-      stepBudget: task.budgetState?.stepBudget ?? this.settings.policy?.budget.stepBudget ?? 8,
-      stepsConsumed: task.budgetState?.stepsConsumed ?? 0,
-      retryBudget: task.budgetState?.retryBudget ?? this.settings.policy?.budget.retryBudget ?? 1,
-      retriesConsumed: task.budgetState?.retriesConsumed ?? 0,
-      sourceBudget: task.budgetState?.sourceBudget ?? this.settings.policy?.budget.sourceBudget ?? 8,
-      sourcesConsumed: task.budgetState?.sourcesConsumed ?? 0,
-      tokenBudget: task.budgetState?.tokenBudget ?? 10000,
-      tokenConsumed: task.budgetState?.tokenConsumed ?? 0,
-      costBudgetUsd: task.budgetState?.costBudgetUsd ?? this.settings.policy?.budget.maxCostPerTaskUsd ?? 0,
-      costConsumedUsd: task.budgetState?.costConsumedUsd ?? 0,
-      costConsumedCny: task.budgetState?.costConsumedCny ?? 0,
-      softBudgetThreshold: task.budgetState?.softBudgetThreshold ?? 0.8,
-      hardBudgetThreshold: task.budgetState?.hardBudgetThreshold ?? 1,
-      budgetInterruptState: task.budgetState?.budgetInterruptState ?? { status: 'idle' as const },
-      fallbackModelId: task.budgetState?.fallbackModelId ?? this.settings.policy?.budget.fallbackModelId,
-      overBudget: task.budgetState?.overBudget ?? false,
-      ...overrides
-    };
-    const tokenBudget = nextBudget.tokenBudget ?? Number.POSITIVE_INFINITY;
-    const costBudget = nextBudget.costBudgetUsd ?? Number.POSITIVE_INFINITY;
-    const tokenRatio = tokenBudget > 0 ? (nextBudget.tokenConsumed ?? 0) / tokenBudget : 0;
-    const costRatio = costBudget > 0 ? (nextBudget.costConsumedUsd ?? 0) / costBudget : 0;
-    const budgetRatio = Math.max(tokenRatio, costRatio);
-    if (budgetRatio >= (nextBudget.hardBudgetThreshold ?? 1)) {
-      nextBudget.budgetInterruptState = {
-        status: 'hard-threshold-triggered',
-        interactionKind: 'supplemental-input',
-        triggeredAt: new Date().toISOString(),
-        reason: '成本超限，请简化问题或提高预算。'
-      };
-    } else if (
-      budgetRatio >= (nextBudget.softBudgetThreshold ?? 0.8) &&
-      nextBudget.budgetInterruptState?.status !== 'soft-threshold-triggered'
-    ) {
-      nextBudget.budgetInterruptState = {
-        status: 'soft-threshold-triggered',
-        interactionKind: 'supplemental-input',
-        triggeredAt: new Date().toISOString(),
-        reason: '当前任务已接近预算阈值，建议缩小范围或确认是否继续。'
-      };
-    }
-    nextBudget.overBudget =
-      nextBudget.overBudget ||
-      (nextBudget.costConsumedUsd ?? 0) >= (nextBudget.costBudgetUsd ?? Number.POSITIVE_INFINITY);
-    task.budgetGateState = {
-      node: 'budget_gate',
-      status:
-        nextBudget.budgetInterruptState?.status === 'hard-threshold-triggered'
-          ? 'hard_blocked'
-          : nextBudget.budgetInterruptState?.status === 'soft-threshold-triggered'
-            ? 'soft_blocked'
-            : task.queueState?.status === 'queued'
-              ? 'throttled'
-              : 'open',
-      summary:
-        nextBudget.budgetInterruptState?.reason ??
-        (task.queueState?.status === 'queued' ? '预算门当前按队列节流等待执行。' : '预算门已放行当前任务继续执行。'),
-      queueDepth: task.queueState?.status === 'queued' ? 1 : 0,
-      rateLimitKey: task.sessionId ?? task.id,
-      triggeredAt:
-        nextBudget.budgetInterruptState?.status === 'idle' ? undefined : nextBudget.budgetInterruptState?.triggeredAt,
-      updatedAt: new Date().toISOString()
-    };
-    return nextBudget;
+    return updateTaskBudgetState(task, this.settings, overrides);
   }
 
   createQueueState(sessionId: string | undefined, now: string): QueueStateRecord {
-    return {
-      mode: sessionId ? 'foreground' : 'background',
-      backgroundRun: !sessionId,
-      status: 'queued',
-      enqueuedAt: now,
-      lastTransitionAt: now,
-      attempt: 1
-    };
+    return createTaskQueueState(sessionId, now);
   }
 
   transitionQueueState(task: TaskRecord, status: QueueStateRecord['status']): void {
-    const now = new Date().toISOString();
-    const previous = task.queueState ?? this.createQueueState(task.sessionId, now);
-    const shouldReleaseLease = status !== 'queued' && status !== 'running';
-    task.queueState = {
-      ...previous,
-      status,
-      lastTransitionAt: now,
-      startedAt: status === 'running' ? (previous.startedAt ?? now) : previous.startedAt,
-      finishedAt: ['completed', 'failed', 'cancelled'].includes(status) ? now : previous.finishedAt,
-      leaseOwner: shouldReleaseLease ? undefined : previous.leaseOwner,
-      leaseExpiresAt: shouldReleaseLease ? undefined : previous.leaseExpiresAt,
-      lastHeartbeatAt: shouldReleaseLease ? undefined : previous.lastHeartbeatAt
-    };
+    transitionTaskQueueState(task, status);
   }
 
   addMessage(
@@ -295,48 +212,23 @@ export class MainGraphTaskRuntime {
     from: AgentRole,
     to: AgentRole = AgentRole.MANAGER
   ): void {
-    task.messages.push({
-      id: `msg_${Date.now()}_${task.messages.length}`,
-      taskId: task.id,
-      from,
-      to,
-      type,
-      content,
-      createdAt: new Date().toISOString()
-    });
+    addRuntimeMessage(task, type, content, from, to);
   }
 
   addProgressDelta(task: TaskRecord, content: string, from: AgentRole = AgentRole.MANAGER): void {
-    const normalized = content.trim();
-    if (!normalized) {
-      return;
-    }
-    task.messages.push({
-      id: `progress_${task.id}`,
-      taskId: task.id,
-      from,
-      to: AgentRole.MANAGER,
-      type: 'summary_delta',
-      content: `${normalized}\n`,
-      createdAt: new Date().toISOString()
-    });
+    addRuntimeProgressDelta(task, content, from);
   }
 
   upsertAgentState(task: TaskRecord, nextState: AgentExecutionState): void {
-    const index = task.agentStates.findIndex(item => item.role === nextState.role);
-    if (index >= 0) {
-      task.agentStates[index] = { ...nextState };
+    if (upsertRuntimeAgentState(task, nextState)) {
       this.emitTaskUpdate(task);
       return;
     }
-    task.agentStates.push({ ...nextState });
     this.emitTaskUpdate(task);
   }
 
   setSubTaskStatus(task: TaskRecord, role: AgentRole, status: 'pending' | 'running' | 'completed' | 'blocked'): void {
-    const target = task.plan?.subTasks.find(subTask => subTask.assignedTo === role);
-    if (target) {
-      target.status = status;
+    if (setRuntimeSubTaskStatus(task, role, status)) {
       this.emitTaskUpdate(task);
     }
   }
@@ -348,34 +240,7 @@ export class MainGraphTaskRuntime {
     data?: Record<string, unknown>,
     task?: TaskRecord
   ): void {
-    const traceId = task?.traceId ?? randomUUID();
-    if (task && !task.traceId) {
-      task.traceId = traceId;
-    }
-    const spanId = typeof data?.spanId === 'string' ? data.spanId : randomUUID();
-    const parentSpanId =
-      typeof data?.parentSpanId === 'string' ? data.parentSpanId : this.resolveParentSpanId(trace, node);
-    trace.push({
-      traceId,
-      spanId,
-      parentSpanId,
-      node,
-      at: new Date().toISOString(),
-      summary,
-      data,
-      specialistId: typeof data?.specialistId === 'string' ? data.specialistId : undefined,
-      role: this.toSpanRole(data?.role),
-      latencyMs: typeof data?.latencyMs === 'number' ? data.latencyMs : undefined,
-      status: this.toTraceStatus(data?.status),
-      revisionCount: typeof data?.revisionCount === 'number' ? data.revisionCount : undefined,
-      modelUsed: typeof data?.modelUsed === 'string' ? data.modelUsed : undefined,
-      isFallback: typeof data?.isFallback === 'boolean' ? data.isFallback : undefined,
-      fallbackReason: typeof data?.fallbackReason === 'string' ? data.fallbackReason : undefined,
-      tokenUsage:
-        data?.tokenUsage && typeof data.tokenUsage === 'object'
-          ? (data.tokenUsage as ExecutionTrace['tokenUsage'])
-          : undefined
-    });
+    addRuntimeTrace(trace, node, summary, data, task);
     if (task) {
       this.emitTaskUpdate(task);
     }
@@ -400,20 +265,7 @@ export class MainGraphTaskRuntime {
       family?: string;
     }
   ) {
-    const tool = this.dependencies.toolRegistry?.get(params.toolName);
-    const now = new Date().toISOString();
-    const attachment = {
-      toolName: params.toolName,
-      family: params.family ?? tool?.family ?? 'runtime-governance',
-      ownerType: params.ownerType ?? tool?.ownerType ?? 'runtime-derived',
-      ownerId: params.ownerId ?? tool?.ownerId,
-      attachedAt: now,
-      attachedBy: params.attachedBy,
-      preferred: params.preferred ?? false,
-      reason: params.reason
-    };
-    task.toolAttachments = dedupeByToolName([...(task.toolAttachments ?? []), attachment]);
-    task.updatedAt = now;
+    attachRuntimeTool(task, this.dependencies.toolRegistry, params);
     this.emitTaskUpdate(task);
   }
 
@@ -434,31 +286,7 @@ export class MainGraphTaskRuntime {
       capabilityType?: ToolUsageSummaryRecord['capabilityType'];
     }
   ) {
-    const tool = this.dependencies.toolRegistry?.get(params.toolName);
-    const now = new Date().toISOString();
-    const item: ToolUsageSummaryRecord = {
-      toolName: params.toolName,
-      family: params.family ?? tool?.family ?? 'runtime-governance',
-      capabilityType: params.capabilityType ?? tool?.capabilityType ?? 'governance-tool',
-      status: params.status,
-      route:
-        params.route ??
-        (params.serverId || tool?.capabilityType === 'mcp-capability'
-          ? 'mcp'
-          : tool?.capabilityType === 'governance-tool'
-            ? 'governance'
-            : 'local'),
-      requestedBy: params.requestedBy,
-      reason: params.reason,
-      blockedReason: params.blockedReason,
-      serverId: params.serverId,
-      capabilityId: params.capabilityId,
-      approvalRequired: params.approvalRequired,
-      riskLevel: params.riskLevel ?? tool?.riskLevel,
-      usedAt: now
-    };
-    task.toolUsageSummary = dedupeUsage([...(task.toolUsageSummary ?? []), item]).slice(-50);
-    task.updatedAt = now;
+    recordRuntimeToolUsage(task, this.dependencies.toolRegistry, params);
     this.emitTaskUpdate(task);
   }
 
@@ -479,83 +307,5 @@ export class MainGraphTaskRuntime {
       disallowedConnectorIds,
       ...capabilityPreferences
     };
-  }
-
-  private estimateStepsConsumed(currentStep?: string): number {
-    switch (currentStep) {
-      case 'manager_plan':
-        return 1;
-      case 'research':
-        return 2;
-      case 'execute':
-        return 3;
-      case 'review':
-        return 4;
-      default:
-        return 0;
-    }
-  }
-
-  private resolveParentSpanId(trace: ExecutionTrace[], node: string): string | undefined {
-    if (!trace.length) {
-      return undefined;
-    }
-    const scopedParent = [...trace]
-      .reverse()
-      .find(item => item.node === node || this.belongsToSameStage(item.node, node));
-    return scopedParent?.spanId ?? trace[trace.length - 1]?.spanId;
-  }
-
-  private belongsToSameStage(previousNode: string, nextNode: string): boolean {
-    const groups = [
-      ['goal_intake', 'route', 'libu_routed', 'specialist_routed', 'dispatch'],
-      ['research', 'budget_exhausted', 'ministry_started', 'ministry_reported'],
-      ['execute', 'approval_gate'],
-      ['review', 'critique_guard_triggered', 'final_response_completed', 'finish']
-    ];
-    return groups.some(group => group.includes(previousNode) && group.includes(nextNode));
-  }
-
-  private toSpanRole(value: unknown): ExecutionTrace['role'] | undefined {
-    if (value === 'lead' || value === 'support' || value === 'ministry') {
-      return value;
-    }
-    return undefined;
-  }
-
-  private toTraceStatus(value: unknown): ExecutionTrace['status'] | undefined {
-    if (
-      value === 'running' ||
-      value === 'failed' ||
-      value === 'rejected' ||
-      value === 'success' ||
-      value === 'timeout'
-    ) {
-      return value;
-    }
-    return undefined;
-  }
-}
-
-function dedupeByToolName<T extends { toolName: string }>(items: T[]) {
-  return Array.from(new Map(items.map(item => [item.toolName, item])).values());
-}
-
-function dedupeUsage(items: ToolUsageSummaryRecord[]) {
-  return Array.from(new Map(items.map(item => [`${item.toolName}:${item.status}:${item.usedAt}`, item])).values());
-}
-
-export class TaskCancelledError extends Error {
-  constructor(taskId: string) {
-    super(`Task ${taskId} was cancelled.`);
-  }
-}
-
-export class TaskBudgetExceededError extends Error {
-  constructor(
-    message: string,
-    public readonly detail?: Record<string, unknown>
-  ) {
-    super(message);
   }
 }

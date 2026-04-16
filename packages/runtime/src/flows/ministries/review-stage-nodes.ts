@@ -1,90 +1,33 @@
-import { AgentRole, EvaluationResult, ReviewRecord, TaskRecord, TaskStatus } from '@agent/shared';
-import { XingbuReviewMinistry } from '@agent/agents-reviewer';
-import { LibuDocsMinistry, LibuRouterMinistry } from '@agent/agents-supervisor';
-import { applyReactiveCompactRetry, buildContextCompressionResult } from '../../utils/context-compression-pipeline';
-import { normalizeCritiqueResult, upsertSpecialistFinding } from '@agent/core';
-import { StructuredContractMeta } from '../../utils/schemas/safe-generate-object';
 import {
+  AgentRole,
+  DeliveryMinistryLike,
+  EvaluationResult,
+  ReviewMinistryLike,
+  ReviewRecord,
+  RouterMinistryLike,
+  TaskRecord,
+  TaskStatus,
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted
-} from '@agent/agents-supervisor';
+} from '@agent/shared';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {
   applyCapabilityTrustFromGovernance,
   buildGovernanceReport,
   buildGovernanceScore
 } from './governance-stage-helpers';
-import { buildFinalReviewSummary, deriveFinalReviewDecision } from './review-stage-helpers';
-
-type NormalizedReviewResult = {
-  review: ReviewRecord;
-  evaluation: EvaluationResult;
-  critiqueResult?: TaskRecord['critiqueResult'];
-  specialistFinding?: NonNullable<TaskRecord['specialistFindings']>[number];
-  contractMeta: StructuredContractMeta;
-};
-
-interface ReviewCallbacks {
-  ensureTaskNotCancelled: (task: TaskRecord) => void;
-  syncTaskRuntime: (
-    task: TaskRecord,
-    state: Pick<RuntimeAgentGraphState, 'currentStep' | 'retryCount' | 'maxRetries'>
-  ) => void;
-  markSubgraph: (task: TaskRecord, subgraphId: 'review') => void;
-  markWorkerUsage: (task: TaskRecord, workerId?: string) => void;
-  addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
-  addMessage: (task: TaskRecord, type: 'review_result' | 'summary', content: string, from: AgentRole) => void;
-  upsertAgentState: (task: TaskRecord, nextState: unknown) => void;
-  persistAndEmitTask: (task: TaskRecord) => Promise<void>;
-  transitionQueueState: (
-    task: TaskRecord,
-    status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'blocked'
-  ) => void;
-  resolveReviewMinistry: (
-    task: TaskRecord,
-    workflow?: TaskRecord['resolvedWorkflow']
-  ) => 'xingbu-review' | 'libu-delivery';
-  getMinistryLabel: (ministry: string) => string;
-  reviewExecution: (
-    task: TaskRecord,
-    xingbu: XingbuReviewMinistry,
-    executionResult: RuntimeAgentGraphState['executionResult'],
-    executionSummary: string
-  ) => Promise<{
-    review: ReviewRecord;
-    evaluation: EvaluationResult;
-    critiqueResult?: TaskRecord['critiqueResult'];
-    specialistFinding?: NonNullable<TaskRecord['specialistFindings']>[number];
-    contractMeta: StructuredContractMeta;
-  }>;
-  persistReviewArtifacts: (
-    task: TaskRecord,
-    goal: string,
-    evaluation: EvaluationResult,
-    review: ReviewRecord,
-    executionSummary: string
-  ) => Promise<void>;
-  enqueueTaskLearning: (task: TaskRecord, userFeedback?: string) => void;
-  shouldRunLibuDocsDelivery: (workflow?: TaskRecord['resolvedWorkflow']) => boolean;
-  buildFreshnessSourceSummary: (task: TaskRecord) => string | undefined;
-  buildCitationSourceSummary: (task: TaskRecord) => string | undefined;
-  appendDiagnosisEvidence: (
-    task: TaskRecord,
-    review: ReviewRecord,
-    executionSummary: string,
-    finalAnswer: string
-  ) => void;
-}
+import { resolveExecutionSummaryForPersistence } from './review-stage-persistence';
+import { applyReviewOutcomeState, recordReviewSpecialistFindings } from './review-stage-state';
+import type { NormalizedReviewResult, ReviewCallbacks } from './review-stage.types';
 
 export async function runReviewStage(
   task: TaskRecord,
   dtoGoal: string,
   state: RuntimeAgentGraphState,
-  libu: LibuRouterMinistry,
-  libuDocs: LibuDocsMinistry,
-  xingbu: XingbuReviewMinistry,
+  libu: RouterMinistryLike,
+  libuDocs: DeliveryMinistryLike,
+  xingbu: ReviewMinistryLike,
   callbacks: ReviewCallbacks
 ): Promise<Partial<RuntimeAgentGraphState>> {
   callbacks.ensureTaskNotCancelled(task);
@@ -132,80 +75,20 @@ export async function runReviewStage(
         );
   callbacks.ensureTaskNotCancelled(task);
 
-  const critiqueDecision = deriveFinalReviewDecision(task, reviewed.review, reviewed.evaluation.shouldRetry);
-  task.critiqueResult = normalizeCritiqueResult({
-    ...reviewed.critiqueResult,
-    decision: critiqueDecision,
-    summary: buildFinalReviewSummary(task, reviewed.critiqueResult?.summary, critiqueDecision),
-    blockingIssues:
-      reviewed.critiqueResult?.blockingIssues ?? (reviewed.review.decision === 'blocked' ? reviewed.review.notes : []),
-    constraints: reviewed.critiqueResult?.constraints ?? reviewed.evaluation.notes,
-    evidenceRefs: reviewed.critiqueResult?.evidenceRefs ?? task.externalSources?.slice(0, 5).map(source => source.id),
-    shouldBlockEarly: reviewed.critiqueResult?.shouldBlockEarly ?? critiqueDecision === 'block'
-  });
+  const critiqueDecision = applyReviewOutcomeState(task, reviewed, reviewMinistry);
   const critiqueResult = task.critiqueResult!;
-  task.criticState = {
-    node: 'critic',
-    decision: critiqueDecision === 'pass' ? 'pass_through' : 'rewrite_required',
-    summary: critiqueDecision === 'pass' ? '批判层允许聚合稿进入刑部终审。' : '批判层要求回流调度链做修订或阻断处理。',
-    blockingIssues: critiqueResult.blockingIssues,
-    createdAt: task.criticState?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  task.finalReviewState = {
-    node: 'final_review',
-    ministry: reviewMinistry,
-    decision: critiqueDecision === 'needs_human_approval' ? 'revise_required' : critiqueDecision,
-    summary: critiqueResult.summary,
-    interruptRequired: critiqueDecision !== 'pass',
-    deliveryStatus: critiqueDecision === 'pass' ? 'pending' : 'interrupted',
-    deliveryMinistry: 'libu-delivery',
-    createdAt: task.finalReviewState?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  task.microLoopState = {
-    state: 'idle',
-    attempt: task.microLoopCount ?? 0,
-    maxAttempts: task.maxMicroLoops ?? 0,
-    updatedAt: new Date().toISOString()
-  };
-  task.guardrailState = {
-    stage: 'post',
-    verdict: critiqueDecision === 'pass' ? 'pass_through' : critiqueDecision === 'block' ? 'block' : 'rewrite_required',
-    summary:
-      critiqueDecision === 'pass'
-        ? '出站护栏通过，允许礼部交付。'
-        : critiqueDecision === 'block'
-          ? '出站护栏阻断当前稿件。'
-          : '出站护栏要求先修订再交付。',
-    updatedAt: new Date().toISOString()
-  };
-  task.sandboxState = {
-    ...(task.sandboxState ?? {
-      node: 'sandbox',
-      stage: 'review',
-      status: 'idle',
-      attempt: task.microLoopCount ?? 0,
-      maxAttempts: task.maxMicroLoops ?? 0,
-      updatedAt: new Date().toISOString()
-    }),
-    stage: 'review',
-    status: critiqueDecision === 'block' ? 'failed' : (task.sandboxState?.status ?? 'passed'),
-    verdict: critiqueDecision === 'block' ? 'unsafe' : (task.sandboxState?.verdict ?? 'safe'),
-    exhaustedReason: critiqueDecision === 'block' ? 'final_review_blocked' : task.sandboxState?.exhaustedReason,
-    updatedAt: new Date().toISOString()
-  };
+  const finalReviewState = task.finalReviewState!;
   callbacks.addTrace(task, 'result_aggregator', '汇总票拟已接收策略、执行证据与终审意见。', {
     strategyCounselors: task.executionPlan?.strategyCounselors ?? [],
     executionMinistries: task.executionPlan?.executionMinistries ?? [],
     critiqueDecision
   });
   callbacks.addTrace(task, 'final_review_gate', '刑部终审门已完成本轮放行判断。', {
-    decision: task.finalReviewState.decision,
-    interruptRequired: task.finalReviewState.interruptRequired
+    decision: finalReviewState.decision,
+    interruptRequired: finalReviewState.interruptRequired
   });
-  if (task.finalReviewState.interruptRequired) {
-    markExecutionStepBlocked(task, 'review', task.finalReviewState.summary, '终审要求阻断或修订。', 'xingbu');
+  if (finalReviewState.interruptRequired) {
+    markExecutionStepBlocked(task, 'review', finalReviewState.summary, '终审要求阻断或修订。', 'xingbu');
     markExecutionStepBlocked(
       task,
       'approval-interrupt',
@@ -216,56 +99,12 @@ export async function runReviewStage(
     task.mainChainNode = 'interrupt_controller';
     task.currentNode = 'final_review_interrupted';
     callbacks.addTrace(task, 'interrupt_controller', '司礼监已接收刑部终审阻断/修订结论。', {
-      finalReviewDecision: task.finalReviewState.decision,
-      deliveryStatus: task.finalReviewState.deliveryStatus
+      finalReviewDecision: finalReviewState.decision,
+      deliveryStatus: finalReviewState.deliveryStatus
     });
-    callbacks.addProgressDelta(
-      task,
-      `刑部终审结论为 ${task.finalReviewState.decision}，已转入司礼监处理后续阻断或修订。`
-    );
+    callbacks.addProgressDelta(task, `刑部终审结论为 ${finalReviewState.decision}，已转入司礼监处理后续阻断或修订。`);
   }
-  if (task.specialistLead) {
-    upsertSpecialistFinding(task, {
-      specialistId: task.specialistLead.id,
-      role: 'lead',
-      source: 'critique',
-      stage: 'review',
-      domain: task.specialistLead.domain,
-      summary: state.executionSummary ?? task.result ?? '主导专家正在整理最终结论。',
-      riskLevel: reviewed.review.decision === 'blocked' ? 'high' : reviewed.evaluation.shouldRetry ? 'medium' : 'low',
-      constraints: reviewed.evaluation.notes,
-      blockingIssues: reviewed.review.decision === 'blocked' ? reviewed.review.notes : [],
-      evidenceRefs: task.externalSources?.slice(0, 5).map(source => source.id),
-      confidence: task.routeConfidence
-    });
-  }
-  if (
-    (task.supportingSpecialists ?? []).some(item => item.id === 'risk-compliance') ||
-    task.specialistLead?.id === 'risk-compliance'
-  ) {
-    upsertSpecialistFinding(
-      task,
-      reviewed.specialistFinding ?? {
-        specialistId: 'risk-compliance',
-        role: task.specialistLead?.id === 'risk-compliance' ? 'lead' : 'support',
-        source: 'critique',
-        stage: 'review',
-        domain: 'risk-compliance',
-        summary: critiqueResult.summary,
-        riskLevel:
-          critiqueResult.decision === 'block'
-            ? 'critical'
-            : critiqueResult.decision === 'revise_required'
-              ? 'high'
-              : critiqueResult.decision === 'needs_human_approval'
-                ? 'medium'
-                : 'low',
-        blockingIssues: critiqueResult.blockingIssues,
-        constraints: critiqueResult.constraints,
-        evidenceRefs: critiqueResult.evidenceRefs
-      }
-    );
-  }
+  recordReviewSpecialistFindings(task, reviewed, state.executionSummary ?? task.result ?? '');
 
   if (reviewed.evaluation.shouldRetry) {
     const nextRevisionCount = (task.revisionCount ?? 0) + 1;
@@ -422,7 +261,7 @@ export async function runReviewStage(
   task.governanceReport = buildGovernanceReport(task, reviewed.evaluation, task.governanceScore);
   applyCapabilityTrustFromGovernance(task);
   const docsSummary =
-    task.finalReviewState.decision === 'pass' && callbacks.shouldRunLibuDocsDelivery(task.resolvedWorkflow)
+    finalReviewState.decision === 'pass' && callbacks.shouldRunLibuDocsDelivery(task.resolvedWorkflow)
       ? libuDocs.buildDelivery(task, state.executionSummary ?? task.result ?? 'No execution summary available.')
       : undefined;
   if (docsSummary) {
@@ -433,7 +272,7 @@ export async function runReviewStage(
   const stitchedSummary = docsSummary
     ? `${state.executionSummary ?? task.result ?? ''}\n${docsSummary}`
     : (state.executionSummary ?? task.result ?? 'No execution summary available.');
-  if (task.finalReviewState.decision === 'pass') {
+  if (finalReviewState.decision === 'pass') {
     callbacks.addTrace(task, 'delivery_gate', '礼部交付门已接收终审放行结果，开始整理最终答复。', {
       deliveryMinistry: 'libu-delivery'
     });
@@ -478,8 +317,8 @@ export async function runReviewStage(
   task.currentNode = 'finalize_response';
   task.updatedAt = new Date().toISOString();
   task.finalReviewState = {
-    ...task.finalReviewState,
-    deliveryStatus: task.finalReviewState.decision === 'pass' ? 'delivered' : 'interrupted',
+    ...finalReviewState,
+    deliveryStatus: finalReviewState.decision === 'pass' ? 'delivered' : 'interrupted',
     deliveryMinistry: 'libu-delivery',
     updatedAt: new Date().toISOString()
   };
@@ -517,57 +356,5 @@ export async function runReviewStage(
     reviewDecision: reviewed.review.decision,
     shouldRetry: false,
     finalAnswer
-  };
-}
-
-function resolveExecutionSummaryForPersistence(task: TaskRecord, executionSummary: string) {
-  const shouldCompact =
-    executionSummary.length > 1200 || /(stderr|stdout|stack|trace|error|failed|exception)/i.test(executionSummary);
-  const existingSlice = task.contextFilterState?.filteredContextSlice;
-  const baseCompression = existingSlice
-    ? {
-        summary: existingSlice.summary,
-        compressionApplied: existingSlice.compressionApplied ?? false,
-        compressionSource: existingSlice.compressionSource ?? ('heuristic' as const),
-        compressedMessageCount: existingSlice.compressedMessageCount ?? 0,
-        artifactCount: existingSlice.artifactCount ?? 0,
-        originalCharacterCount: existingSlice.originalCharacterCount ?? executionSummary.length,
-        compactedCharacterCount: existingSlice.compactedCharacterCount ?? existingSlice.summary.length,
-        reactiveRetryCount: existingSlice.reactiveRetryCount ?? 0,
-        pipelineAudit: existingSlice.pipelineAudit ?? []
-      }
-    : buildContextCompressionResult({
-        goal: task.goal,
-        context: executionSummary,
-        planDraft: task.planDraft,
-        plan: task.plan,
-        trace: task.trace
-      });
-  if (!shouldCompact) {
-    return {
-      summary: executionSummary,
-      wasCompacted: false,
-      compression: baseCompression
-    };
-  }
-  const compacted = applyReactiveCompactRetry(baseCompression, 'review-stage', '执行摘要已压缩。');
-  if (task.contextFilterState) {
-    task.contextFilterState.filteredContextSlice = {
-      ...task.contextFilterState.filteredContextSlice,
-      summary: compacted.summary,
-      compressionApplied: compacted.compressionApplied,
-      compressionSource: compacted.compressionSource,
-      compressedMessageCount: compacted.compressedMessageCount,
-      artifactCount: compacted.artifactCount,
-      originalCharacterCount: compacted.originalCharacterCount,
-      compactedCharacterCount: compacted.compactedCharacterCount,
-      reactiveRetryCount: compacted.reactiveRetryCount,
-      pipelineAudit: compacted.pipelineAudit
-    };
-  }
-  return {
-    summary: compacted.summary || executionSummary,
-    wasCompacted: true,
-    compression: compacted
   };
 }

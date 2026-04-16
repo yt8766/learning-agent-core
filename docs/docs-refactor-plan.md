@@ -1,8 +1,11 @@
 # Docs 重构计划
 
-状态：current
+状态：completed
+文档类型：plan
 适用范围：`docs/`
-最后核对：2026-04-14
+最后核对：2026-04-15
+
+说明：本计划已完成，现作为文档治理历史清单保留，不再代表当前待办列表。
 
 本文件用于整理当前仓库文档仍可优化的空间，并给出可直接执行的收口清单。
 
@@ -26,13 +29,13 @@
 
 ### 2.1 归档历史报告
 
-- [x] 新建 `docs/agent-core/archive/`
-- [x] 移动 `docs/agent-core-structure-report.md` 到 `docs/agent-core/archive/agent-core-structure-report.md`
-- [x] 移动 `docs/flow-prompt-schema-optimization-report.md` 到 `docs/agent-core/archive/flow-prompt-schema-optimization-report.md`
+- [x] 新建 `docs/archive/agent-core/archive/`
+- [x] 移动 `docs/agent-core-structure-report.md` 到 `docs/archive/agent-core/archive/agent-core-structure-report.md`
+- [x] 移动 `docs/flow-prompt-schema-optimization-report.md` 到 `docs/archive/agent-core/archive/flow-prompt-schema-optimization-report.md`
 - [x] 给两篇文档头部补充：
   - `状态：archive`
   - `说明：历史阶段报告，不代表当前实现`
-- [x] 在 `docs/agent-core/README.md` 增加“历史归档文档”索引
+- [x] 在 `docs/archive/agent-core/README.md` 增加“历史归档文档”索引
 
 ### 2.2 修正文档和现状不一致
 
@@ -84,7 +87,7 @@
   - `docs/integration/approval-recovery.md`
 - [x] 将架构文档拆成：
   - `docs/ARCHITECTURE.md` 只保留长期方向
-  - `docs/agent-core/runtime-current-state.md`
+  - `docs/archive/agent-core/runtime-current-state.md`
   - `docs/integration/system-flow-current-state.md`
 - [x] 将测试文档拆成：
   - `docs/test-conventions.md`

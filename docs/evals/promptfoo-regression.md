@@ -1,8 +1,9 @@
 # Promptfoo 回归说明
 
 状态：current
+文档类型：evaluation
 适用范围：`packages/evals/promptfoo`
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 这目录放的是“关键 prompt 的最小回归配置”，不是完整评测平台。
 
@@ -72,9 +73,32 @@ pnpm dlx promptfoo@latest
 
 因此：
 
+- 仓库安装依赖后会直接复用工作区内固定版本的 `promptfoo`
 - 本地已全局安装 `promptfoo` 时，直接复用本地命令
 - 本地未安装但有网络时，也可以直接运行
 - 如果两者都不可用，会返回明确错误提示
+- `promptfoo` 还要求受支持的 Node.js 运行时；当前门槛为 `^20.20.0 || >=22.22.0`
+- 如果本地提交阶段命中 prompt 门禁，但当前 Node 版本不满足 `promptfoo` 要求，脚本会直接跳过本地阻塞且不覆盖 `latest-summary.json`；CI 仍应使用受支持的 Node 版本执行真实回归
+
+## 提交与 CI 门禁
+
+当前仓库已经把 prompt 回归接入两层门禁：
+
+- 本地提交时，`husky -> pnpm check:staged` 会在 staged 文件命中以下路径时自动执行 `pnpm eval:prompts`：
+  - `agents/**/prompts/**`
+  - `packages/**/prompts/**`
+  - `apps/**/prompts/**`
+  - `packages/evals/promptfoo/**`
+  - `scripts/run-prompt-regression.js`
+  - `scripts/prompt-regression.js`
+  - `scripts/prompt-regression.d.ts`
+- PR 工作流会在上述 prompt 相关路径、`packages/**`、`scripts/**`、工作流或根级工程配置变更时尝试运行 prompt regression
+- `push -> main` 工作流会继续在每次推送时尝试运行 prompt regression
+
+说明：
+
+- 本地提交命中 prompt 门禁时，需要可用的模型 API Key；当前默认读取 `OPENAI_API_KEY`
+- CI 侧如果未配置 `OPENAI_API_KEY`，会显式跳过 prompt regression job
 
 当前约定会额外写出两份产物：
 

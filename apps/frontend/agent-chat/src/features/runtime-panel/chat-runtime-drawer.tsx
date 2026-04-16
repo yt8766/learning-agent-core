@@ -140,14 +140,14 @@ export function ChatRuntimeDrawer({
             style={{ marginTop: 12 }}
             type="info"
             showIcon
-            message="导出与回放范围"
+            title="导出与回放范围"
             description={getRuntimeDrawerExportScopeCopy(checkpoint)}
           />
           <Alert
             style={{ marginTop: 12 }}
             type={activeMode === 'plan' ? 'info' : 'success'}
             showIcon
-            message={activeMode === 'plan' ? '模式门已切到 plan' : '模式门已切到 execute'}
+            title={activeMode === 'plan' ? '模式门已切到 plan' : '模式门已切到 execute'}
             description={getExecutionModeSummary(checkpoint)}
           />
           <Descriptions
@@ -245,7 +245,7 @@ export function ChatRuntimeDrawer({
                     key: 'summary',
                     label: '查看压缩上下文',
                     children: (
-                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                      <Space orientation="vertical" size={10} style={{ width: '100%' }}>
                         <Card size="small">
                           <Text type="secondary">{activeSession.compression.summary}</Text>
                         </Card>

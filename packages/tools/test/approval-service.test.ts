@@ -3,7 +3,8 @@
 import { loadSettings } from '@agent/config';
 import { ActionIntent, type ToolDefinition } from '@agent/shared';
 
-import { ApprovalService } from '../src/approval-service';
+import { ApprovalService } from '../src/approval/approval-service';
+import * as approvalExports from '../src/approval';
 
 describe('ApprovalService', () => {
   const service = new ApprovalService();
@@ -34,6 +35,10 @@ describe('ApprovalService', () => {
       ...overrides
     };
   }
+
+  it('co-locates approval implementation under src/approval', () => {
+    expect(ApprovalService).toBe(approvalExports.ApprovalService);
+  });
 
   it('对高风险动作返回需要审批', () => {
     expect(service.requiresApproval(ActionIntent.WRITE_FILE)).toBe(true);
@@ -80,6 +85,26 @@ describe('ApprovalService', () => {
 
     expect(result.requiresApproval).toBe(false);
     expect(result.reasonCode).toBe('approved_by_policy');
+  });
+
+  it('write_scaffold 这类高风险生成写入即使提供 targetRoot 预览也保持审批', () => {
+    const result = personalService.evaluate(
+      ActionIntent.WRITE_FILE,
+      {
+        ...createTool({
+          name: 'write_scaffold',
+          description: 'write scaffold',
+          family: 'scaffold',
+          category: 'system'
+        })
+      },
+      {
+        targetRoot: 'packages/generated-toolkit'
+      }
+    );
+
+    expect(result.requiresApproval).toBe(true);
+    expect(result.reasonCode).toBe('requires_approval_tool_policy');
   });
 
   it('工作区内普通 dotfile 写入会自动通过', () => {

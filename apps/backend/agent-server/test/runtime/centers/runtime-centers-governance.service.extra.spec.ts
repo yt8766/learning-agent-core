@@ -112,7 +112,7 @@ const {
   registerDiscoveredCapabilitiesMock: vi.fn(async () => undefined)
 }));
 
-vi.mock('../../../src/runtime/helpers/runtime-governance-store', () => ({
+vi.mock('../../../src/modules/runtime-governance/services/runtime-governance-store', () => ({
   appendGovernanceAudit: appendGovernanceAuditMock,
   listApprovalScopePolicies: listApprovalScopePoliciesMock,
   revokeApprovalScopePolicy: revokeApprovalScopePolicyMock

@@ -33,7 +33,7 @@ const TSC_PROJECT_RULES = [
   { test: file => file.startsWith('packages/memory/'), project: 'packages/memory/tsconfig.json' },
   { test: file => file.startsWith('packages/evals/'), project: 'packages/evals/tsconfig.json' },
   { test: file => file.startsWith('packages/tools/'), project: 'packages/tools/tsconfig.json' },
-  { test: file => file.startsWith('packages/skills/'), project: 'packages/skills/tsconfig.json' },
+  { test: file => file.startsWith('packages/skill-runtime/'), project: 'packages/skill-runtime/tsconfig.json' },
   { test: file => file.startsWith('agents/supervisor/'), project: 'agents/supervisor/tsconfig.json' },
   {
     test: file => file.startsWith('agents/data-report/'),
@@ -76,6 +76,14 @@ const FULL_TYPECHECK_TRIGGERS = [
 
 const FULL_RELATED_TEST_TRIGGERS = [...FULL_TYPECHECK_TRIGGERS, 'vitest.workspace.ts', 'vitest.workspace.js'];
 const COVERAGE_OPT_IN_ENV = 'CHECK_STAGED_WITH_COVERAGE';
+const PROMPT_REGRESSION_GLOBS = [
+  /^packages\/evals\/promptfoo\//,
+  /^scripts\/run-prompt-regression\.js$/,
+  /^scripts\/prompt-regression\.(?:js|d\.ts)$/,
+  /^agents\/.+\/prompts\//,
+  /^packages\/.+\/prompts\//,
+  /^apps\/.+\/prompts\//
+];
 
 const ALL_TYPECHECK_PROJECTS = [
   'packages/core/tsconfig.json',
@@ -86,7 +94,7 @@ const ALL_TYPECHECK_PROJECTS = [
   'packages/memory/tsconfig.json',
   'packages/evals/tsconfig.json',
   'packages/tools/tsconfig.json',
-  'packages/skills/tsconfig.json',
+  'packages/skill-runtime/tsconfig.json',
   'agents/supervisor/tsconfig.json',
   'agents/data-report/tsconfig.json',
   'agents/coder/tsconfig.json',
@@ -188,6 +196,17 @@ function resolveTestRun(files) {
   };
 }
 
+export function resolvePromptRegressionRun(files) {
+  const matchedFiles = unique(
+    files.map(toPosix).filter(file => PROMPT_REGRESSION_GLOBS.some(pattern => pattern.test(file)))
+  );
+
+  return {
+    required: matchedFiles.length > 0,
+    files: matchedFiles
+  };
+}
+
 function main() {
   const stagedFiles = getStagedFiles();
 
@@ -203,6 +222,7 @@ function main() {
   const eslintFiles = stagedFiles.filter(file => ESLINT_EXTENSIONS.has(path.extname(file).toLowerCase()));
   const typecheckProjects = resolveTypecheckProjects(stagedFiles);
   const testRun = resolveTestRun(stagedFiles);
+  const promptRegressionRun = resolvePromptRegressionRun(stagedFiles);
 
   if (prettierFiles.length > 0) {
     console.log('[check:staged] prettier:', prettierFiles.length, 'files');
@@ -244,6 +264,13 @@ function main() {
     console.log(`[check:staged] coverage skipped (set ${COVERAGE_OPT_IN_ENV}=1 to enable)`);
   }
 
+  if (promptRegressionRun.required) {
+    console.log('[check:staged] prompt regression:', promptRegressionRun.files.length, 'prompt-related files');
+    run(process.execPath, [path.join(rootDir, 'scripts/run-prompt-regression.js')], { shell: false });
+  } else {
+    console.log('[check:staged] prompt regression skipped');
+  }
+
   if (
     stagedFiles.some(
       file =>
@@ -258,4 +285,6 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

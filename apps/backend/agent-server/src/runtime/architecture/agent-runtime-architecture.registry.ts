@@ -4,7 +4,7 @@ import type {
   ArchitectureDescriptor,
   ArchitectureDescriptorRegistryEntry,
   ArchitectureNodeDescriptor
-} from '@agent/shared';
+} from '@agent/core';
 
 export function buildAgentArchitectureDescriptor(input: {
   workflows: ReturnType<typeof listWorkflowPresets>;

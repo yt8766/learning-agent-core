@@ -1,8 +1,19 @@
 # Approval Recovery
 
 状态：current
+文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-14
+最后核对：2026-04-15
+
+本主题主文档：
+
+- 总体对接关系仍以 [frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md) 为准
+
+本文只覆盖：
+
+- 审批、拒绝、恢复相关接口
+- checkpoint / interrupt 的恢复语义
+- 前端恢复与终态校准要求
 
 ## 1. 这篇文档说明什么
 

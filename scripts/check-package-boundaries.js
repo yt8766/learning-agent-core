@@ -27,8 +27,8 @@ const publicEntryRoots = [
   'packages/memory/src',
   'packages/tools/src',
   'packages/tools/test',
-  'packages/skills/src',
-  'packages/skills/test',
+  'packages/skill-runtime/src',
+  'packages/skill-runtime/test',
   'apps/backend/agent-server/src',
   'apps/backend/agent-server/test'
 ];

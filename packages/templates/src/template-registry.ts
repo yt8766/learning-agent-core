@@ -1,18 +1,46 @@
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import type { FrontendTemplateDefinition } from './types';
 
 function resolveFrontendTemplatesRootDir(): string {
-  const candidates = [
-    join(resolve(process.cwd()), 'packages', 'templates', 'src'),
-    resolve(__dirname),
-    resolve(__dirname, '..', 'src'),
-    resolve(__dirname, '..', '..', 'src')
-  ];
+  const cwdResolved = findTemplatesRootFrom(process.cwd());
+  if (cwdResolved) {
+    return cwdResolved;
+  }
+
+  const moduleDir = resolveModuleDir();
+  const candidates = moduleDir
+    ? [moduleDir, resolve(moduleDir, '..', 'src'), resolve(moduleDir, '..', '..', 'src')]
+    : [];
 
   const resolved = candidates.find(candidate => existsSync(join(candidate, 'react-ts')));
-  return resolved ?? candidates[0] ?? join(resolve(process.cwd()), 'packages', 'templates', 'src');
+  return resolved ?? join(resolve(process.cwd()), 'packages', 'templates', 'src');
+}
+
+function findTemplatesRootFrom(startDir: string): string | undefined {
+  let currentDir = resolve(startDir);
+
+  while (true) {
+    const candidate = join(currentDir, 'packages', 'templates', 'src');
+    if (existsSync(join(candidate, 'react-ts'))) {
+      return candidate;
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      return undefined;
+    }
+    currentDir = parentDir;
+  }
+}
+
+function resolveModuleDir(): string | undefined {
+  try {
+    return __dirname;
+  } catch {
+    return undefined;
+  }
 }
 
 const FRONTEND_TEMPLATES: FrontendTemplateDefinition[] = [

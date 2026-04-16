@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,60 +6,56 @@ import { DashboardCenterShell, DashboardEmptyState } from '@/components/dashboar
 
 import { getBrowserReplay, recoverToCheckpoint } from '@/api/admin-api';
 import type { EvidenceRecord } from '@/types/admin';
+import {
+  clearHighlightedEvidence,
+  openEvidenceReplay,
+  prioritizeEvidenceRecords,
+  readHighlightedEvidenceIds,
+  recoverEvidenceCheckpoint
+} from './evidence-center-panel.helpers';
 
 interface EvidenceCenterPanelProps {
   evidence: EvidenceRecord[];
 }
 
 export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
+  const [highlightedEvidenceIds, setHighlightedEvidenceIds] = useState<string[]>(readHighlightedEvidenceIds());
   const [expandedReplayId, setExpandedReplayId] = useState<string>();
   const [replayPayloads, setReplayPayloads] = useState<Record<string, Record<string, unknown>>>({});
   const [loadingReplayId, setLoadingReplayId] = useState<string>();
   const [recoveringEvidenceId, setRecoveringEvidenceId] = useState<string>();
+  const highlightedEvidenceList = highlightedEvidenceIds ?? [];
+  const replayPayloadMap = replayPayloads ?? {};
   const diagnosisEvidence = evidence.filter(item => item.sourceType === 'diagnosis_result');
+  const highlightedEvidenceIdSet = useMemo(() => new Set(highlightedEvidenceList), [highlightedEvidenceList]);
+  const prioritizedEvidence = useMemo(
+    () => prioritizeEvidenceRecords(evidence, highlightedEvidenceList),
+    [evidence, highlightedEvidenceList]
+  );
 
-  const handleReplayOpen = async (item: EvidenceRecord) => {
-    if (!item.replay?.sessionId) {
-      return;
-    }
+  const handleReplayOpen = async (item: EvidenceRecord) =>
+    openEvidenceReplay({
+      item,
+      expandedReplayId,
+      replayPayloads: replayPayloadMap,
+      loadReplay: getBrowserReplay,
+      setExpandedReplayId,
+      setReplayPayloads,
+      setLoadingReplayId
+    });
 
-    if (expandedReplayId === item.id) {
-      setExpandedReplayId(undefined);
-      return;
-    }
+  const handleRecover = async (item: EvidenceRecord) =>
+    recoverEvidenceCheckpoint({
+      item,
+      recover: recoverToCheckpoint,
+      setRecoveringEvidenceId
+    });
 
-    setExpandedReplayId(item.id);
-    if (replayPayloads[item.replay.sessionId]) {
-      return;
-    }
-
-    try {
-      setLoadingReplayId(item.id);
-      const payload = await getBrowserReplay(item.replay.sessionId);
-      setReplayPayloads(current => ({
-        ...current,
-        [item.replay!.sessionId!]: payload
-      }));
-    } finally {
-      setLoadingReplayId(undefined);
-    }
-  };
-
-  const handleRecover = async (item: EvidenceRecord) => {
-    if (!item.recoverable || !item.checkpointRef) {
-      return;
-    }
-    try {
-      setRecoveringEvidenceId(item.id);
-      await recoverToCheckpoint({
-        sessionId: item.checkpointRef.sessionId,
-        checkpointId: item.checkpointRef.checkpointId,
-        checkpointCursor: item.checkpointRef.checkpointCursor,
-        reason: `recover_from_evidence:${item.id}`
-      });
-    } finally {
-      setRecoveringEvidenceId(undefined);
-    }
+  const clearHighlight = () => {
+    clearHighlightedEvidence({
+      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+      setHighlightedEvidenceIds
+    });
   };
 
   return (
@@ -70,6 +66,21 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
       actions={<Badge variant="secondary">Diagnosis & Replay</Badge>}
     >
       <div className="grid gap-4">
+        {highlightedEvidenceList.length > 0 ? (
+          <div className="rounded-2xl border border-sky-200/70 bg-sky-50/80 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-sky-950">Memory Link Highlight</p>
+                <p className="mt-1 text-xs text-sky-900">
+                  命中 {highlightedEvidenceList.length} 条来自 Memory Insight 的证据高亮。
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={clearHighlight}>
+                清除高亮
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {diagnosisEvidence.length > 0 ? (
           <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
@@ -97,13 +108,15 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
         {evidence.length === 0 ? (
           <DashboardEmptyState message="当前没有可展示的证据记录。" />
         ) : (
-          evidence.slice(0, 20).map(item => (
+          prioritizedEvidence.slice(0, 20).map(item => (
             <article
               key={item.id}
               className={`rounded-2xl border px-4 py-4 ${
-                item.sourceType === 'diagnosis_result'
-                  ? 'border-emerald-200/70 bg-emerald-50/70'
-                  : 'border-border/70 bg-card/90'
+                highlightedEvidenceIdSet.has(item.id)
+                  ? 'border-sky-300 bg-sky-50/70'
+                  : item.sourceType === 'diagnosis_result'
+                    ? 'border-emerald-200/70 bg-emerald-50/70'
+                    : 'border-border/70 bg-card/90'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -114,6 +127,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
                 <Badge variant="outline">{item.trustClass}</Badge>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
+                {highlightedEvidenceIdSet.has(item.id) ? <Badge variant="success">memory linked</Badge> : null}
                 <Badge variant="secondary">
                   {item.sourceType === 'freshness_meta'
                     ? 'freshness'
@@ -254,9 +268,9 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
                         <p className="font-medium text-stone-200">Replay Payload</p>
                         {loadingReplayId === item.id ? (
                           <p className="mt-2 text-stone-400">加载中…</p>
-                        ) : item.replay.sessionId && replayPayloads[item.replay.sessionId] ? (
+                        ) : item.replay.sessionId && replayPayloadMap[item.replay.sessionId] ? (
                           <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">
-                            {JSON.stringify(replayPayloads[item.replay.sessionId], null, 2)}
+                            {JSON.stringify(replayPayloadMap[item.replay.sessionId], null, 2)}
                           </pre>
                         ) : (
                           <p className="mt-2 text-stone-400">暂无回放负载。</p>

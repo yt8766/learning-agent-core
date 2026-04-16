@@ -8,6 +8,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const backendRoot = path.join(rootDir, 'apps/backend/agent-server/src');
 const backendTestRoot = path.join(rootDir, 'apps/backend/agent-server/test');
 const allowedModuleSubdirs = new Set(['dto', 'entities', 'interfaces']);
+const allowedNestedModuleSubdirs = new Set(['controllers', 'services', 'dto', 'entities', 'interfaces']);
 const legacyModuleDirs = new Set(['app', 'cors', 'logger', 'platform', 'runtime', 'templates']);
 const maxBackendLines = 400;
 const temporaryOversizeAllowlist = new Set([
@@ -83,8 +84,13 @@ function getTouchedModuleDirs(files) {
     ...new Set(
       files
         .map(file => file.replace(/^apps\/backend\/agent-server\/src\//, ''))
-        .filter(file => file.includes('/'))
-        .map(file => file.split('/')[0])
+        .map(file => {
+          const segments = file.split('/');
+          if (segments[0] === 'modules' && segments[1]) {
+            return segments[1];
+          }
+          return segments[0];
+        })
         .filter(Boolean)
     )
   ];
@@ -96,13 +102,27 @@ function ensureModuleLayout(moduleDirName) {
   }
 
   const moduleDir = path.join(backendRoot, moduleDirName);
+  const nestedModuleDir = path.join(backendRoot, 'modules', moduleDirName);
   if (!fs.existsSync(moduleDir) || !fs.statSync(moduleDir).isDirectory()) {
     return;
   }
 
-  const requiredFiles = [`${moduleDirName}.module.ts`, `${moduleDirName}.controller.ts`, `${moduleDirName}.service.ts`];
+  const nestedControllerPath = path.join(nestedModuleDir, 'controllers', `${moduleDirName}.controller.ts`);
+  const nestedServicePath = path.join(nestedModuleDir, 'services', `${moduleDirName}.service.ts`);
+  const usesNestedLayout = fs.existsSync(nestedControllerPath) || fs.existsSync(nestedServicePath);
+  const requiredFiles = usesNestedLayout
+    ? [`${moduleDirName}.module.ts`]
+    : [`${moduleDirName}.module.ts`, `${moduleDirName}.controller.ts`, `${moduleDirName}.service.ts`];
 
   const missing = requiredFiles.filter(file => !fs.existsSync(path.join(moduleDir, file)));
+  if (usesNestedLayout) {
+    if (!fs.existsSync(nestedControllerPath)) {
+      missing.push(`modules/${moduleDirName}/controllers/${moduleDirName}.controller.ts`);
+    }
+    if (!fs.existsSync(nestedServicePath)) {
+      missing.push(`modules/${moduleDirName}/services/${moduleDirName}.service.ts`);
+    }
+  }
   const hasServiceTestFile =
     fs.existsSync(path.join(moduleDir, `${moduleDirName}.service.spec.ts`)) ||
     fs.existsSync(path.join(moduleDir, `${moduleDirName}.service.test.ts`)) ||
@@ -114,7 +134,11 @@ function ensureModuleLayout(moduleDirName) {
   if (missing.length > 0) {
     fail(
       `backend module "${moduleDirName}" must include required files:\n${missing
-        .map(file => `- apps/backend/agent-server/src/${moduleDirName}/${file}`)
+        .map(file =>
+          file.startsWith('modules/')
+            ? `- apps/backend/agent-server/src/${file}`
+            : `- apps/backend/agent-server/src/${moduleDirName}/${file}`
+        )
         .join('\n')}`
     );
   }
@@ -130,6 +154,24 @@ function ensureModuleLayout(moduleDirName) {
       `backend module "${moduleDirName}" contains unsupported subdirectories:\n${invalidEntries
         .map(name => `- apps/backend/agent-server/src/${moduleDirName}/${name}`)
         .join('\n')}\nAllowed subdirectories: dto/, entities/, interfaces/`
+    );
+  }
+
+  if (!usesNestedLayout || !fs.existsSync(nestedModuleDir) || !fs.statSync(nestedModuleDir).isDirectory()) {
+    return;
+  }
+
+  const invalidNestedEntries = fs
+    .readdirSync(nestedModuleDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .filter(name => !allowedNestedModuleSubdirs.has(name));
+
+  if (invalidNestedEntries.length > 0) {
+    fail(
+      `backend nested module "${moduleDirName}" contains unsupported subdirectories:\n${invalidNestedEntries
+        .map(name => `- apps/backend/agent-server/src/modules/${moduleDirName}/${name}`)
+        .join('\n')}\nAllowed subdirectories: controllers/, services/, dto/, entities/, interfaces/`
     );
   }
 }

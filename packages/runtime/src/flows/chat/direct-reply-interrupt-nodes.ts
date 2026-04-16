@@ -1,4 +1,5 @@
-import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus } from '@agent/shared';
+import { ActionIntent, AgentRole, ApprovalResumeInput, RouterMinistryLike, TaskStatus } from '@agent/shared';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/shared';
 import { interrupt } from '@langchain/langgraph';
 
 import type {
@@ -6,9 +7,6 @@ import type {
   DirectReplyInterruptGraphState
 } from '../../graphs/main/pipeline/direct-reply-interrupt-graph';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../approval/risk-interrupts';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
-import type { LibuRouterMinistry } from '../ministries';
-
 function shouldAttemptRuntimeSkillIntervention(
   task: Parameters<DirectReplyInterruptGraphCallbacks['persistAndEmitTask']>[0]
 ) {
@@ -283,7 +281,7 @@ export async function runDirectReplySkillGateNode(
 export async function runDirectReplyNode(
   state: DirectReplyInterruptGraphState,
   task: Parameters<DirectReplyInterruptGraphCallbacks['persistAndEmitTask']>[0],
-  libu: LibuRouterMinistry,
+  libu: RouterMinistryLike,
   callbacks: DirectReplyInterruptGraphCallbacks
 ): Promise<DirectReplyInterruptGraphState> {
   if (state.blocked) {

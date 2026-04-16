@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
 import { loadSettings } from '@agent/config';
-import type { ArchitectureDescriptor, ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@agent/shared';
+import type { ArchitectureDescriptor, ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@agent/core';
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 import { createArchitectureDescriptorRegistry } from './runtime-architecture-registries';
 

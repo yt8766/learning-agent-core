@@ -1,8 +1,9 @@
 # Prompt Regression And Thresholds
 
 状态：current
+文档类型：evaluation
 适用范围：`packages/evals`、`promptfoo`
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 ## 1. 这篇文档说明什么
 

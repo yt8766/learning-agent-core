@@ -7,5 +7,5 @@
     "emitDeclarationOnly": true,
     "declarationMap": true
   },
-  "include": ["src/index.ts", "src/template-registry.ts", "src/types.ts"]
+  "include": ["src/index.ts", "src/types.ts", "src/template-registry.ts", "src/scaffold-template-registry.ts"]
 }

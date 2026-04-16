@@ -11,7 +11,7 @@ import {
   type DataReportScaffoldResult
 } from '@agent/report-kit';
 
-import { resolveWorkflowPreset } from '../../workflows/workflow-preset-registry';
+import { resolveWorkflowPreset } from '@agent/agents-supervisor';
 import type { DataReportPreviewStage } from '../../types/data-report';
 
 export interface DataReportPreviewStageEvent {

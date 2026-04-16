@@ -217,8 +217,8 @@ describe('buildLocalSkillSuggestions', () => {
           requiredConnectors: ['repo'],
           approvalPolicy: 'none',
           riskLevel: 'low',
-          entry: 'data/skills/remote-sources/artifacts/repo-review-companion/SKILL.md',
-          artifactUrl: 'data/skills/remote-sources/artifacts/repo-review-companion',
+          entry: 'data/skill-runtime/remote-sources/artifacts/repo-review-companion/SKILL.md',
+          artifactUrl: 'data/skill-runtime/remote-sources/artifacts/repo-review-companion',
           integrity: 'sha256-demo',
           license: 'Proprietary',
           compatibility: 'Requires repo access.'

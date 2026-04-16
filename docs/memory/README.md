@@ -1,10 +1,16 @@
 # memory 文档目录
 
 状态：current
+文档类型：index
 适用范围：`docs/memory/`
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 本目录用于沉淀 `packages/memory` 相关文档。
+
+优先阅读：
+
+- [agent-memory-architecture.md](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
+- [storage-and-search.md](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)
 
 包边界：
 
@@ -34,4 +40,5 @@
 
 当前文档：
 
+- [agent-memory-architecture.md](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
 - [storage-and-search.md](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)

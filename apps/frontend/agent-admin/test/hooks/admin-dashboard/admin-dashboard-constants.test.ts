@@ -55,6 +55,11 @@ describe('admin-dashboard-constants', () => {
     );
   });
 
+  it('accepts memory and profile center pages from hash parsing', () => {
+    expect(readDashboardStateFromHash({ hash: '#/memory' } as Location).page).toBe('memory');
+    expect(readDashboardStateFromHash({ hash: '#/profiles' } as Location).page).toBe('profiles');
+  });
+
   it('toApprovalItems 会透传 pendingApproval 的原因码、工具和预览信息', () => {
     const items = toApprovalItems({
       approvals: [

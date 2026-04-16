@@ -1,8 +1,9 @@
 # core contract 规范
 
 状态：current
+文档类型：convention
 适用范围：`packages/core`
-最后核对：2026-04-15
+最后核对：2026-04-16
 
 本规范用于回答一个问题：在本仓库里，什么才配进入 `packages/core`。
 
@@ -22,6 +23,14 @@
 
 `core` 不负责真实业务执行，不负责 provider/sdk 接线，也不负责 graph/flow 编排。
 
+补充硬规则：
+
+- 如果 `packages/shared` 与 `packages/core` 出现职责重叠，默认以 `packages/core` 为准，继续把稳定主 contract 迁入 `core`
+- `packages/shared` 不再作为稳定主 contract 的长期宿主
+- `packages/core` 默认采用 schema-first；稳定公共 contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型
+- 没有 schema 的结构，不应作为 `core` 的长期公共边界继续扩张
+- 迁移完成后的目标形态是：`core` 拥有唯一主定义，`shared` 最多只保留 compat re-export 或前端默认组合；不允许把“shared 与 core 双主定义”当成稳定状态
+
 ## 2. core 负责什么
 
 结合当前仓库，`core` 默认只负责下面五类内容。
@@ -36,7 +45,16 @@
 - `ChatCheckpointRecord`
 - `SkillCard`
 - `EvidenceRecord`
+- `MemoryRecord`
+- `RuleRecord`
 - `McpCapability`
+- `HealthCheckResult`
+- approval / governance policy records
+- `QueueStateRecord`
+- `LlmUsageModelRecord`
+- `LlmUsageRecord`
+- `ConnectorKnowledgeIngestionSummary`
+- `ConnectorCapabilityUsageRecord`
 - runtime / approval / evidence / learning 等会被 apps、backend、runtime、agent 同时消费的公共 DTO
 - pipeline 输入输出、SSE payload、结构化 trace、checkpoint 摘要等公共协议
 
@@ -48,7 +66,7 @@
 
 ### 2.2 数据校验规则
 
-`core` 应把 Zod 作为稳定 contract 的唯一数据规则源。
+`core` 应把 Zod 作为稳定 contract 的唯一数据规则源，用它表达面向 JSON 的稳定结构约束。
 
 固定要求：
 
@@ -60,6 +78,34 @@
 - 先写 `z.object(...)`
 - 再用 `z.infer<typeof Schema>`
 - 不再手写一份容易漂移的重复 Type
+- 如果某个 `shared` 类型已经被认定要迁入 `core`，迁移时必须补对应 schema，不能只把 interface 搬目录
+- 如果某个已有 `core` contract 目前还是手写 interface/type，本仓库后续默认把它视为待补 schema 的迁移项，而不是最终形态
+- 当前已经切到 schema-first 的示例包括：
+  - `HealthCheckResult`
+  - `ConnectorHealthRecord`
+  - `ApprovalPolicyRecord`
+  - `ApprovalScopePolicyRecord`
+  - `McpCapability`
+  - `QueueStateRecord`
+  - `LlmUsageModelRecord`
+  - `LlmUsageRecord`
+  - `ConnectorKnowledgeIngestionSummary`
+  - `ConnectorCapabilityUsageRecord`
+  - tasking planning 子域中的 `PlanQuestionRecord`、`PlanDecisionRecord`、`PlanDraftRecord`
+  - tasking planning 子域中的 `EntryDecisionRecord`、`ExecutionPlanRecord`、`PartialAggregationRecord`
+  - tasking orchestration 子域中的 `AgentMessageRecord`、`SubTaskRecord`、`ManagerPlan`
+  - tasking orchestration 子域中的 `DispatchInstruction`、`SpecialistLeadRecord`、`SpecialistSupportRecord`、`SpecialistFindingRecord`、`ContextSliceRecord`、`CritiqueResultRecord`
+  - tasking orchestration 子域中的 `BudgetGateStateRecord`、`ComplexTaskPlanRecord`、`BlackboardStateRecord`、`MicroLoopStateRecord`、`CurrentSkillExecutionRecord`
+  - tasking orchestration 子域中的 `GovernanceScoreRecord`、`GovernanceReportRecord`
+  - tasking chat 子域中的 `ChatMessageRecord`、`ChatEventRecord`、`ChatThoughtChainItem`、`ChatThinkState`
+  - tasking runtime state 子域中的 `TaskModeGateState`、`TaskBackgroundLearningState`、`TaskCheckpointGraphState`、`TaskCheckpointStreamStatus`、`TaskCheckpointCursorState`
+  - tasking session 子域中的 `ChannelIdentity`、`ChatSessionCompressionRecord`、`ChatSessionRecord`
+  - tasking thought graph 子域中的 `CheckpointRef`、`ThoughtGraphNode`、`ThoughtGraphEdge`
+  - tasking checkpoint 子域中的 `ChatCheckpointMetadata`、`ChatCheckpointPendingApprovals`、`ChatCheckpointAgentStates`、`ChatCheckpointRecord`
+  - tasking task / checkpoint 主体中引用的 `EvidenceRecord`、`LearningCandidateRecord`、`LlmUsageRecord`
+  - tasking task 子域中的 `TaskRecord`
+  - governance 子域中的 `ApprovalRecord`
+  - tasking orchestration 子域中的 `AgentExecutionState`
 
 允许例外：
 
@@ -165,14 +211,15 @@
 ### `packages/shared`
 
 - 当前仍承载大量历史 DTO / Record / Enum
-- 在迁移期可以继续作为实现来源
-- 但只要某个能力被认定为“公共稳定边界”，就应按 `core` 语义管理，并通过 `@agent/core` 暴露
+- 在迁移期可以继续作为 compat 出口与默认组合层
+- 但只要某个能力被认定为“公共稳定边界”，就必须继续向 `core` 收口，不允许长期在 `shared` 与 `core` 双写
+- 如果 `shared` 与 `core` 都暴露了同一个稳定 contract，评审时应默认判定为“边界未收口”，需要继续迁移，而不是接受双定义
 
-### `packages/agent-core`
+### `packages/runtime` / `agents/*`
 
-- 负责 graph、flow、session、governance、LLM interaction policy
+- 负责 graph、flow、session、governance、专项 agent orchestration 与 LLM interaction policy
 - 不是 `core` contract 层
-- 不要把 `agent-core` 内部 state 或节点细节错误上提为 `core` 公共协议
+- 不要把 runtime / agents 内部 state 或节点细节错误上提为 `core` 公共协议
 
 ### `packages/runtime` / `packages/tools` / `packages/memory` / `packages/model`
 
@@ -203,8 +250,8 @@
 后续凡是新增或修改 `packages/core` 相关能力，默认要同步满足：
 
 1. 文档落在 `docs/core/`
-2. 稳定结构优先提供 schema
-3. type 优先由 schema 推导
+2. 稳定结构必须优先提供 schema
+3. type 必须优先由 `z.infer<typeof Schema>` 推导
 4. 通过 `@agent/core` 根入口暴露，不新增深层公共导入约定
 5. 评估是否需要同步更新 `docs/package-architecture-guidelines.md` 与 `docs/packages-overview.md`
 

@@ -1,11 +1,17 @@
-import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus } from '@agent/shared';
+import {
+  ActionIntent,
+  AgentRole,
+  ApprovalResumeInput,
+  TaskStatus,
+  markExecutionStepBlocked,
+  markExecutionStepResumed
+} from '@agent/shared';
 import { interrupt } from '@langchain/langgraph';
 
 import type {
   TaskBootstrapCallbacks,
   TaskBootstrapGraphState
 } from '../../graphs/main/pipeline/task-bootstrap-interrupt-graph';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
 
 export async function runPreExecutionSkillGateNode(

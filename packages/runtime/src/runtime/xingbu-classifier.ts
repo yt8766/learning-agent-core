@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import type { ActionIntent, ToolDefinition } from '@agent/shared';
-import type { LlmProvider } from '../adapters/llm/llm-provider';
+import type { ILLMProvider as LlmProvider } from '@agent/core';
 import { generateObjectWithRetry } from '../utils/llm-retry';
 
 export interface XingbuClassifierInput {

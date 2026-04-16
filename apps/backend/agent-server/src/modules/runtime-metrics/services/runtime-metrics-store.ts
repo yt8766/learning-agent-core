@@ -1,0 +1,167 @@
+import { evaluateBenchmarks } from '@agent/evals';
+import { RuntimeStateSnapshot } from '@agent/memory';
+import { TaskRecord } from '@agent/shared';
+
+import { summarizeProviderBilling } from './provider-audit';
+import type { ProviderAuditSyncResult } from './provider-audit';
+import { formatDay, roundCurrency, summarizeUsageAnalytics } from './runtime-analytics';
+
+type UsageHistoryPoint = NonNullable<RuntimeStateSnapshot['usageHistory']>[number];
+type EvalHistoryPoint = NonNullable<RuntimeStateSnapshot['evalHistory']>[number];
+type UsageAuditRecord = NonNullable<RuntimeStateSnapshot['usageAudit']>[number];
+
+export async function summarizeAndPersistUsageAnalytics(input: {
+  runtimeStateRepository: {
+    load: () => Promise<RuntimeStateSnapshot>;
+    save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+  };
+  tasks: TaskRecord[];
+  days: number;
+  filters?: { model?: string; pricingSource?: string };
+  fetchProviderUsageAudit: (days: number) => Promise<ProviderAuditSyncResult>;
+}) {
+  const analytics = summarizeUsageAnalytics(input.tasks);
+  const providerBillingStatus = await input.fetchProviderUsageAudit(input.days);
+  const snapshot = await input.runtimeStateRepository.load();
+  const currentByDay = new Map<string, UsageHistoryPoint>(
+    (snapshot.usageHistory ?? []).map(item => [item.day, item] as const)
+  );
+  for (const point of analytics.daily) {
+    currentByDay.set(point.day, {
+      ...point,
+      measuredRunCount: analytics.measuredRunCount,
+      estimatedRunCount: analytics.estimatedRunCount,
+      updatedAt: new Date().toISOString()
+    });
+  }
+  const mergedHistory: UsageHistoryPoint[] = Array.from(currentByDay.values())
+    .sort((left, right) => left.day.localeCompare(right.day))
+    .slice(-30);
+  const currentAuditByTask = new Map<string, UsageAuditRecord>(
+    (snapshot.usageAudit ?? []).map(item => [item.taskId, item] as const)
+  );
+  for (const task of input.tasks) {
+    if (!task.llmUsage) {
+      continue;
+    }
+    currentAuditByTask.set(task.id, {
+      taskId: task.id,
+      day: formatDay(task.updatedAt ?? task.createdAt),
+      modelBreakdown: task.llmUsage.models.map(item => ({
+        model: item.model,
+        totalTokens: item.totalTokens,
+        costUsd: item.costUsd ?? 0,
+        costCny: item.costCny ?? 0,
+        pricingSource: item.pricingSource,
+        callCount: item.callCount
+      })),
+      totalTokens: task.llmUsage.totalTokens,
+      totalCostUsd: roundCurrency(task.llmUsage.models.reduce((sum, item) => sum + (item.costUsd ?? 0), 0)),
+      totalCostCny: roundCurrency(task.llmUsage.models.reduce((sum, item) => sum + (item.costCny ?? 0), 0)),
+      measuredCallCount: task.llmUsage.measuredCallCount,
+      estimatedCallCount: task.llmUsage.estimatedCallCount,
+      updatedAt: task.llmUsage.updatedAt
+    });
+  }
+  const mergedAudit: UsageAuditRecord[] = Array.from(currentAuditByTask.values())
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 50);
+  await input.runtimeStateRepository.save({
+    ...snapshot,
+    usageHistory: mergedHistory,
+    usageAudit: mergedAudit
+  });
+  const windowedHistory = mergedHistory.slice(-Math.max(1, input.days));
+  const filteredAudit = mergedAudit
+    .filter(item => !input.filters?.model || item.modelBreakdown.some(model => model.model === input.filters.model))
+    .filter(
+      item =>
+        !input.filters?.pricingSource ||
+        item.modelBreakdown.some(model => (model.pricingSource ?? 'estimated') === input.filters?.pricingSource)
+    );
+  const filteredModels = analytics.models.filter(
+    item =>
+      (!input.filters?.model || item.model === input.filters.model) &&
+      (!input.filters?.pricingSource ||
+        filteredAudit.some(audit =>
+          audit.modelBreakdown.some(
+            breakdown =>
+              breakdown.model === item.model &&
+              (breakdown.pricingSource ?? 'estimated') === input.filters?.pricingSource
+          )
+        ))
+  );
+
+  return {
+    ...analytics,
+    models: filteredModels,
+    historyDays: mergedHistory.length,
+    historyRange:
+      mergedHistory.length > 0
+        ? {
+            earliestDay: mergedHistory[0]?.day,
+            latestDay: mergedHistory[mergedHistory.length - 1]?.day
+          }
+        : undefined,
+    persistedDailyHistory: windowedHistory,
+    recentUsageAudit: filteredAudit.slice(0, 10),
+    providerBillingStatus,
+    providerBillingDailyHistory: providerBillingStatus.daily,
+    providerBillingTotals: summarizeProviderBilling(providerBillingStatus.daily)
+  };
+}
+
+export async function summarizeAndPersistEvalHistory(input: {
+  runtimeStateRepository: {
+    load: () => Promise<RuntimeStateSnapshot>;
+    save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+  };
+  tasks: TaskRecord[];
+  days: number;
+  filters?: { scenarioId?: string; outcome?: string };
+}) {
+  const evals = evaluateBenchmarks(input.tasks);
+  const snapshot = await input.runtimeStateRepository.load();
+  const currentByDay = new Map<string, EvalHistoryPoint>(
+    (snapshot.evalHistory ?? []).map(item => [item.day, item] as const)
+  );
+  for (const point of evals.dailyTrend) {
+    currentByDay.set(point.day, {
+      ...point,
+      scenarioCount: evals.scenarioCount,
+      overallPassRate: evals.overallPassRate,
+      updatedAt: new Date().toISOString()
+    });
+  }
+  const mergedHistory: EvalHistoryPoint[] = Array.from(currentByDay.values())
+    .sort((left, right) => left.day.localeCompare(right.day))
+    .slice(-30);
+  await input.runtimeStateRepository.save({
+    ...snapshot,
+    evalHistory: mergedHistory
+  });
+  const windowedHistory = mergedHistory.slice(-Math.max(1, input.days));
+  const filteredRecentRuns = evals.recentRuns.filter(
+    run =>
+      (!input.filters?.scenarioId || run.scenarioIds.includes(input.filters.scenarioId)) &&
+      (!input.filters?.outcome || (input.filters.outcome === 'pass' ? run.success : !run.success))
+  );
+  const filteredScenarios = evals.scenarios.filter(
+    scenario => !input.filters?.scenarioId || scenario.scenarioId === input.filters.scenarioId
+  );
+
+  return {
+    ...evals,
+    scenarios: filteredScenarios,
+    recentRuns: filteredRecentRuns,
+    historyDays: mergedHistory.length,
+    historyRange:
+      mergedHistory.length > 0
+        ? {
+            earliestDay: mergedHistory[0]?.day,
+            latestDay: mergedHistory[mergedHistory.length - 1]?.day
+          }
+        : undefined,
+    persistedDailyHistory: windowedHistory
+  };
+}

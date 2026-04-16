@@ -28,7 +28,7 @@ import {
   appendGovernanceAudit,
   listApprovalScopePolicies as loadApprovalScopePolicies,
   revokeApprovalScopePolicy as persistApprovalScopePolicyRevocation
-} from '../helpers/runtime-governance-store';
+} from '../../modules/runtime-governance/services/runtime-governance-store';
 import {
   getCounselorSelectorConfigs as loadCounselorSelectorConfigs,
   setCounselorSelectorEnabled as persistCounselorSelectorEnabled,

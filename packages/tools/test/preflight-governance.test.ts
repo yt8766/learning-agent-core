@@ -8,7 +8,7 @@ import {
   evaluatePermissionCheckers,
   evaluateStaticPolicy,
   mergeGovernanceDecisions
-} from '../src/preflight-governance';
+} from '../src/approval/preflight-governance';
 
 describe('preflight-governance helpers', () => {
   const settings = {
@@ -126,10 +126,11 @@ describe('preflight-governance helpers', () => {
     expect(checker.check(tool, { command: 'echo safe' } as any)).toBeUndefined();
   });
 
-  it('checks workspace paths for escaped paths only on filesystem tools', () => {
+  it('checks workspace paths for escaped paths on filesystem and scaffold tools', () => {
     const checker = new WorkspacePathPermissionChecker();
 
     expect(checker.supports({ name: 'read_file', family: 'filesystem' } as any)).toBe(true);
+    expect(checker.supports({ name: 'write_scaffold', family: 'scaffold' } as any)).toBe(true);
     expect(checker.supports({ name: 'http_request', family: 'network' } as any)).toBe(false);
     expect(
       checker.check(
@@ -153,6 +154,19 @@ describe('preflight-governance helpers', () => {
         } as any
       )
     ).toBeUndefined();
+    expect(
+      checker.check(
+        { name: 'write_scaffold', family: 'scaffold' } as any,
+        {
+          targetRoot: '../outside/generated'
+        } as any
+      )
+    ).toEqual({
+      decision: 'deny',
+      reason: '工具 write_scaffold 试图访问工作区外路径 ../outside/generated，前置治理已阻断。',
+      reasonCode: 'tool_checker_deny',
+      details: { path: '../outside/generated' }
+    });
   });
 
   it('checks only mutating http methods and ignores generic mcp tools', () => {

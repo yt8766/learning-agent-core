@@ -25,7 +25,7 @@
       "@agent/memory": ["packages/memory/src"],
       "@agent/model": ["packages/model/src"],
       "@agent/report-kit": ["packages/report-kit/src/index.ts"],
-      "@agent/skills": ["packages/skills/src"],
+      "@agent/skill-runtime": ["packages/skill-runtime/src/index.ts"],
       "@agent/templates": ["packages/templates/src"],
       "@agent/evals": ["packages/evals/src"],
       "@agent/agents-supervisor": ["agents/supervisor/src/index.ts"],

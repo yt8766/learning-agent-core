@@ -1,10 +1,21 @@
 # 仓库目录概览
 
 状态：current
+文档类型：overview
 适用范围：仓库顶层目录
 最后核对：2026-04-15
 
 本文件说明仓库当前主要目录“现在在做什么”，用于补足各目录 README 只讲规范、不讲现实职责的问题。
+
+本主题主文档：
+
+- 本文是整个仓库目录结构的总入口
+
+本文只覆盖：
+
+- 顶层目录和主要子目录当前职责
+- 目录之间的术语边界
+- 继续阅读顺序
 
 ## 顶层目录
 
@@ -17,6 +28,9 @@
   - 当前承载 `supervisor / data-report / coder / reviewer` 四个智能体包。
 - `data/`
   - 本地运行数据与缓存产物，不放源码。
+- `artifacts/`
+  - 可重建产物与临时目录。
+  - 默认只承载 `coverage / logs / tmp` 这类不应进入 Git 的输出。
 - `docs/`
   - 架构、规范、模块说明、联调结论。
 - `skills/`
@@ -47,12 +61,14 @@
 - `packages/core`
   - 稳定 contract 与接口边界入口。
   - 当前作为 `shared` 的迁移 facade，用于后续把 DTO / contract 收敛到新结构。
+  - `src/providers/*` 承载 provider 抽象接口，供 runtime 与 agents 依赖。
 - `packages/runtime`
   - 运行时 facade。
   - 当前对外暴露 `AgentRuntime`、`SessionCoordinator`、worker registry 与 profile policy。
 - `packages/adapters`
   - 适配器隔离层 facade。
   - 当前对外暴露模型/provider 与 LLM retry / structured output 能力入口。
+  - 具体 provider 实现应落在这里，并实现 `packages/core` 定义的接口。
 - `agents/supervisor`
   - supervisor 相关公开入口。
   - 当前承载 workflow preset、subgraph descriptor、bootstrap skill 列表。
@@ -64,21 +80,9 @@
 - `agents/reviewer`
   - reviewer agent 包入口占位。
 - `packages/agent-core`
-  - 多 Agent 运行核心。
-  - `src/graphs`
-    - graph 入口、状态定义、边编排。
-  - `src/flows`
-    - 节点执行实现，按 chat、approval、delivery、learning、supervisor、ministries、data-report 等域拆分。
-  - `src/runtime`
-    - 运行时装配与主链 orchestration。
-  - `src/session`
-    - 聊天会话驱动与 task/session 桥接。
-  - `src/shared`
-    - graph/flow 共享 prompt、schema、contract。
-  - `src/types`
-    - 包级公共类型。
-  - `src/workflows`
-    - workflow 路由、preset、轻量契约。
+  - 已删除。
+  - 原多 Agent 主链已迁入 `packages/runtime`、`packages/adapters` 与 `agents/*`。
+  - 相关历史说明统一保留在 `docs/archive/agent-core/`，不要把它当成当前代码宿主。
 - `packages/shared`
   - 跨端共享 DTO、Record、Enum 和纯 contract。
   - 当前仍作为迁移兼容实现保留。
@@ -91,12 +95,13 @@
   - repositories、search、vector、embeddings、semantic cache。
 - `packages/tools`
   - tool registry、approval、filesystem、sandbox、MCP、runtime governance。
-- `packages/skills`
-  - 运行时技能注册、manifest 解析、source sync。
+- `packages/skill-runtime`
+  - 运行时技能注册、manifest 解析、source sync 的真实宿主。
+  - 新代码统一通过 `@agent/skill-runtime` 消费。
 - `packages/report-kit`
   - data-report 的确定性蓝图、骨架、组装和落盘能力。
 - `packages/templates`
-  - 前端模板资产；当前有 `react-ts`、`single-report-table`、`bonus-center-data` 等模板。
+  - 前端模板资产与通用 scaffold 模板资产；当前有 `react-ts`、`single-report-table`、`bonus-center-data`、`scaffold/package-lib`、`scaffold/agent-basic`。
 - `packages/evals`
   - prompt 回归和质量评测基建。
 
@@ -108,8 +113,22 @@
   - 本地 memory / rule 存储。
 - `data/knowledge`
   - 受控知识源及其 ingestion、catalog、chunks、vectors 产物。
-- `data/skills`
+- `data/skill-runtime`
   - 运行时技能的 installed、stable、lab、receipts 数据。
+  - 新默认路径已统一为 `data/skill-runtime`。
+
+## 目录与术语补充约束
+
+- `artifacts/*`
+  - 统一承载覆盖率、日志、临时目录等可重建产物，默认不提交 Git。
+- `skills/*`
+  - 只表示仓库级代理技能。
+- `packages/skill-runtime`
+  - 表示运行时 skill 基础能力；代码语义统一使用 `@agent/skill-runtime`，不要与 `skills/*` 混用。
+- `packages/runtime`
+  - 承载 graph、flow、session、governance 等运行时内核能力。
+- `apps/backend/agent-server/src/runtime`
+  - 只应承载 HTTP/SSE/鉴权/聚合装配，不应继续沉淀 graph、prompt、schema 主逻辑。
 
 ## `docs/`
 
@@ -117,7 +136,7 @@
   - 长期架构方向与“皇帝-首辅-六部”主线。
 - `docs/integration/frontend-backend-integration.md`
   - 前后端接口与联调约定。
-- `docs/agent-core/`
+- `docs/archive/agent-core/`
   - `packages/agent-core` 专项实现文档。
 - `docs/core/`
   - `packages/core` 稳定 contract facade 文档。

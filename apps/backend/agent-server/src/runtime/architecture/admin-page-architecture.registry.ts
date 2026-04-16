@@ -1,4 +1,4 @@
-import type { ArchitectureDescriptor, ArchitectureDescriptorRegistryEntry } from '@agent/shared';
+import type { ArchitectureDescriptor, ArchitectureDescriptorRegistryEntry } from '@agent/core';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 

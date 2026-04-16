@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { vi } from 'vitest';
 
 import {
   buildQuickActionChips,
@@ -8,6 +9,11 @@ import {
   resolveSuggestedDraftSubmission,
   shouldShowMissionControl
 } from '@/pages/chat-home/chat-home-workbench';
+
+vi.mock('@ant-design/x', () => ({
+  Bubble: () => null,
+  Sender: () => null
+}));
 
 describe('chat-home-workbench suggestion submission', () => {
   it('keeps the internal workflow payload when submitting an untouched suggestion draft', () => {

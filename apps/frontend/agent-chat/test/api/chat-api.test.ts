@@ -32,6 +32,7 @@ import {
   exportApprovalsCenter,
   exportRuntimeCenter,
   getBrowserReplay,
+  listAvailableChatModels,
   getCheckpoint,
   getRemoteSkillInstallReceipt,
   installRemoteSkill,
@@ -145,7 +146,9 @@ describe('chat-api url builders', () => {
       .mockResolvedValueOnce({ data: { ok: true } })
       .mockResolvedValueOnce({ data: { ok: true } });
 
-    await expect(appendMessage('session-1', 'hello')).resolves.toEqual({ id: 'message-1' });
+    await expect(appendMessage('session-1', 'hello', { modelId: 'minimax/MiniMax-M2.7' })).resolves.toEqual({
+      id: 'message-1'
+    });
     await expect(getCheckpoint('session-1')).resolves.toBeUndefined();
     await expect(listEvents('session-1')).resolves.toEqual([{ id: 'evt-1' }]);
     await expect(getBrowserReplay('session-1')).resolves.toEqual({ replay: true });
@@ -157,7 +160,7 @@ describe('chat-api url builders', () => {
       expect.objectContaining({
         url: '/chat/messages',
         method: 'POST',
-        data: { message: 'hello', sessionId: 'session-1' }
+        data: { message: 'hello', sessionId: 'session-1', modelId: 'minimax/MiniMax-M2.7' }
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
@@ -208,6 +211,9 @@ describe('chat-api url builders', () => {
   it('covers the remaining session and export wrapper calls', async () => {
     requestMock
       .mockResolvedValueOnce({ data: { id: 'session-created' } })
+      .mockResolvedValueOnce({
+        data: [{ id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }]
+      })
       .mockResolvedValueOnce({ data: { id: 'session-selected' } })
       .mockResolvedValueOnce({ data: { id: 'approved' } })
       .mockResolvedValueOnce({ data: { id: 'rejected' } })
@@ -225,6 +231,9 @@ describe('chat-api url builders', () => {
     await expect(createSession('hello', 'title')).resolves.toEqual({
       id: 'session-created'
     });
+    await expect(listAvailableChatModels()).resolves.toEqual([
+      { id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }
+    ]);
     await expect(selectSession('session-1')).resolves.toEqual({
       id: 'session-selected'
     });
@@ -290,10 +299,14 @@ describe('chat-api url builders', () => {
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ url: '/chat/sessions/session-1', method: 'GET' })
+      expect.objectContaining({ url: '/chat/models', method: 'GET', timeout: 5000 })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       3,
+      expect.objectContaining({ url: '/chat/sessions/session-1', method: 'GET' })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      4,
       expect.objectContaining({
         url: '/chat/approve',
         method: 'POST',
@@ -301,7 +314,7 @@ describe('chat-api url builders', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      4,
+      5,
       expect.objectContaining({
         url: '/chat/reject',
         method: 'POST',
@@ -309,7 +322,7 @@ describe('chat-api url builders', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      5,
+      6,
       expect.objectContaining({
         url: '/chat/approve',
         method: 'POST',
@@ -317,7 +330,7 @@ describe('chat-api url builders', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      6,
+      7,
       expect.objectContaining({
         url: '/platform/skill-sources-center/receipts/receipt%2F1',
         method: 'GET',
@@ -325,15 +338,15 @@ describe('chat-api url builders', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      10,
+      11,
       expect.objectContaining({ url: '/chat/sessions/session%2F1', method: 'DELETE' })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      11,
+      12,
       expect.objectContaining({ url: '/chat/sessions/session%2F1', method: 'PATCH', data: { title: 'renamed' } })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      12,
+      13,
       expect.objectContaining({
         url: '/platform/skill-sources-center/install-remote',
         method: 'POST',
@@ -341,14 +354,14 @@ describe('chat-api url builders', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      13,
+      14,
       expect.objectContaining({
         url: '/platform/runtime-center/export?days=30&executionMode=execute&interactionKind=interrupt&format=json',
         method: 'GET'
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      14,
+      15,
       expect.objectContaining({
         url: '/platform/approvals-center/export?executionMode=imperial_direct&interactionKind=approval&format=csv',
         method: 'GET'

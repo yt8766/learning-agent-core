@@ -1,8 +1,9 @@
 # 后端规范
 
 状态：current
+文档类型：convention
 适用范围：后端工程规范
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 适用范围：
 
@@ -33,7 +34,7 @@
 - `app/`：健康检查与轻量应用级信息
 - `chat/`：会话、消息、SSE、恢复
 - `message-gateway/`：消息网关相关 DTO、接口与规范化逻辑
-- `tasks/`：内部执行观测与调试接口
+- `tasks/`：内部执行观测与调试接口；当前已开始向 `modules/tasks/*` 试点收敛
 - `approvals/`：审批接口
 - `learning/`：学习确认与文档学习入口
 - `evidence/`：evidence API 门面
@@ -90,6 +91,11 @@
   - `interfaces/`
 - 其中 `dto/`、`interfaces/` 直接对齐 NestJS 官方 feature module 示例；`entities/` 是在实际工程中针对数据库/持久化层补充的扩展目录
 - `app/`、`logger/`、`runtime/` 作为现阶段基础设施/遗留目录，可暂不完全遵循这套业务模块模板
+- `tasks/`、`approvals/`、`learning/` 当前已开始把 `controller/service` 下沉到 `src/modules/<domain>/{controllers,services}`；后续其它低风险业务域沿同一方式收敛
+- `pnpm check:backend-structure` 当前同时接受两种布局：
+  - 经典平铺布局：`src/<domain>/<domain>.controller.ts` + `src/<domain>/<domain>.service.ts`
+  - 下沉收敛布局：`src/<domain>/<domain>.module.ts` + `src/modules/<domain>/controllers|services/*`
+- `runtime/` 中的纯计算/持久化辅助片段，优先继续抽到 `src/modules/<domain>/services/*`；当前 `runtime-metrics` 已开始承接 usage/eval analytics 与 provider audit 真实实现，`runtime-governance` 也已开始承接治理快照聚合与持久化读取
 - 其他新增或被修改的业务模块，应按上面的目录模板收敛，不再继续扩散 `types/`、`constants/`、`helpers/` 等随意命名子目录
 
 ### `apps/worker/src`
@@ -97,7 +103,7 @@
 - `bootstrap/`：worker 启动装配
 - `jobs/`：任务与学习任务入口
 - `consumers/`：事件或队列消费
-- `runtime/`：调用 `@agent/agent-core`
+- `runtime/`：调用 `@agent/runtime` 与对应 agent facade
 - `recovery/`：checkpoint 恢复
 - `health/`：健康与运行状态
 
@@ -133,6 +139,10 @@
   - Runtime / Learning / Evidence / Connectors / Skill Sources / Platform Console
 - `RuntimeService`
   - 仅作为兼容 facade 与少量聚合入口
+- `modules/runtime-metrics`
+  - usage analytics、eval history、provider audit、runtime metrics 持久化与聚合
+- `modules/runtime-governance`
+  - connector / skill source 治理快照、聚合视图与持久化读取
 
 当前 `runtime/` 下的主要组织目录包括：
 
@@ -142,6 +152,7 @@
 - `centers/`
 - `core/`
 - `helpers/`
+- `modules/`
 - `knowledge/`
 - `schedules/`
 - `services/`
@@ -226,7 +237,7 @@
 
 - `data/memory/`
 - `data/runtime/`
-- `data/skills/`
+- `data/skill-runtime/`
 - `data/knowledge/`
 
 ### Runtime Profile 补充
@@ -358,10 +369,11 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 推荐：
 
 - `@agent/shared`
-- `@agent/agent-core`
+- `@agent/core`
+- `@agent/runtime`
 - `@agent/memory`
 - `@agent/tools`
-- `@agent/skills`
+- `@agent/skill-runtime`
 
 禁止：
 

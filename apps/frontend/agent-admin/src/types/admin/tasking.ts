@@ -1,6 +1,6 @@
 import type { ApprovalDecisionRecord, RuntimeCenterPageKey, TaskRecord as SharedTaskRecord } from '@agent/shared';
 
-export type DashboardPageKey = RuntimeCenterPageKey;
+export type DashboardPageKey = RuntimeCenterPageKey | 'memory' | 'profiles';
 
 export interface SpecialistLeadRecord {
   id: string;

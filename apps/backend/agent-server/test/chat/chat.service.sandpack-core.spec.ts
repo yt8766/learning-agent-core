@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { LlmProvider } from '@agent/adapters';
+import type { ILLMProvider as LlmProvider } from '@agent/core';
 
 import { ChatService } from '../../src/chat/chat.service';
 import {

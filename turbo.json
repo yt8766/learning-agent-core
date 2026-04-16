@@ -1,6 +1,32 @@
 {
   "$schema": "https://turbo.net.cn/schema.json",
+  "globalDependencies": [
+    "vitest.config.js",
+    "scripts/demo-smoke.js",
+    "scripts/demo-smoke.d.ts",
+    "scripts/run-package-integration-tests.js",
+    "scripts/run-package-typecheck.js",
+    "scripts/typecheck.js"
+  ],
   "tasks": {
+    "//#check:docs": {
+      "inputs": ["docs/**", "README.md", "AGENTS.md", "scripts/check-docs.js"],
+      "outputs": []
+    },
+    "//#check:architecture": {
+      "inputs": [
+        "apps/**/package.json",
+        "apps/**/src/**",
+        "agents/**/package.json",
+        "agents/**/src/**",
+        "packages/**/package.json",
+        "packages/**/src/**",
+        "scripts/check-backend-structure.js",
+        "scripts/check-package-boundaries.js",
+        "scripts/check-source-artifacts.js"
+      ],
+      "outputs": []
+    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**/*", "build/**/*"]
@@ -10,7 +36,6 @@
       "cache": false
     },
     "build:lib": {
-      "dependsOn": ["^build:lib"],
       "outputs": ["build/**/*"]
     },
     "dev": {
@@ -32,9 +57,23 @@
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
+    "turbo:typecheck": {
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**/*"]
+    },
+    "demo": {
+      "dependsOn": ["build:lib", "^build:lib"],
+      "inputs": ["demo/**", "src/**", "package.json", "tsconfig.json", "tsconfig.*.json"],
+      "outputs": []
+    },
+    "turbo:test:unit": {
+      "outputs": []
+    },
+    "turbo:test:integration": {
+      "outputs": []
     }
   },
   "ui": "tui",

@@ -8,7 +8,10 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "turbo:typecheck": "node ../../../scripts/run-package-typecheck.js apps/frontend/agent-admin",
+    "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/agent-admin/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:test:integration": "node ../../../scripts/run-package-integration-tests.js apps/frontend/agent-admin"
   },
   "dependencies": {
     "@agent/shared": "workspace:*",

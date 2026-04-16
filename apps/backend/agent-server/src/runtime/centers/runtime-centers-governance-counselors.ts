@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 
 import { CounselorSelectorConfig } from '@agent/shared';
 
-import { appendGovernanceAudit } from '../helpers/runtime-governance-store';
+import { appendGovernanceAudit } from '../../modules/runtime-governance/services/runtime-governance-store';
 
 export async function getCounselorSelectorConfigs(runtimeStateRepository: { load: () => Promise<any> }) {
   const snapshot = await runtimeStateRepository.load();

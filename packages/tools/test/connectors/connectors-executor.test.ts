@@ -5,16 +5,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/shared';
 
 import { executeConnectorTool } from '../../src/connectors/connectors-executor';
+import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeConnectorTool', () => {
   const originalCwd = process.cwd();
+  const tempWorkspaces: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(originalCwd);
+    await cleanupTempWorkspaces(tempWorkspaces.splice(0));
   });
 
   it('creates, updates, enables, and lists connector drafts', async () => {
-    const root = join(process.cwd(), 'tmp', `connector-tools-${Date.now()}`);
+    const root = await createTempWorkspace('connector-tools');
+    tempWorkspaces.push(root);
     await mkdir(root, { recursive: true });
     process.chdir(root);
 

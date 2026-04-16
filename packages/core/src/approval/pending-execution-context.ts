@@ -5,6 +5,7 @@ export interface PendingExecutionContext {
   intent: ActionIntent;
   toolName: string;
   researchSummary: string;
+  toolInput?: Record<string, unknown>;
   kind?: 'tool_execution' | 'skill_install';
   receiptId?: string;
   goal?: string;

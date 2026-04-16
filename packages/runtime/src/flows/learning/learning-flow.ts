@@ -1,7 +1,8 @@
 import { loadSettings } from '@agent/config';
 import { z } from 'zod/v4';
+import type { ILLMProvider as LlmProvider } from '@agent/core';
 import { MemoryRepository, RuleRepository, MemorySearchService } from '@agent/memory';
-import { type LlmProvider, generateObjectWithRetry } from '@agent/adapters';
+import { generateObjectWithRetry } from '@agent/adapters';
 import {
   EvaluationResult,
   LearningEvaluationRecord,
@@ -11,8 +12,10 @@ import {
   SkillCard,
   TaskRecord
 } from '@agent/shared';
-import { SkillRegistry } from '@agent/skills';
+import { SkillRegistry } from '@agent/skill-runtime';
 
+import { archivalMemorySearchByParams } from '../../memory/active-memory-tools';
+import { flattenStructuredMemories } from '../../memory/runtime-memory-search';
 import { autoPersistResearchMemory, evaluateResearchJob } from './learning-flow-research';
 import {
   ensureCandidates,
@@ -47,9 +50,26 @@ export class LearningFlow {
       return;
     }
 
-    const related = await this.dependencies.memorySearchService.search(query, limit);
+    const related = (await archivalMemorySearchByParams(this.dependencies.memorySearchService, {
+      query,
+      limit,
+      actorRole: 'learning',
+      scopeType: 'task',
+      allowedScopeTypes: ['task', 'workspace', 'team', 'org', 'global', 'user'],
+      taskId: task.id,
+      memoryTypes: ['constraint', 'procedure', 'skill-experience', 'failure-pattern'],
+      includeRules: true,
+      includeReflections: true
+    })) ?? {
+      coreMemories: [],
+      archivalMemories: await this.dependencies.memoryRepository.search(query, limit),
+      rules: [],
+      reflections: [],
+      reasons: []
+    };
+    const relatedMemories = flattenStructuredMemories(related);
     task.reusedMemories = Array.from(
-      new Set([...(task.reusedMemories ?? []), ...related.memories.map(memory => memory.id)])
+      new Set([...(task.reusedMemories ?? []), ...relatedMemories.map(memory => memory.id)])
     );
     task.reusedRules = Array.from(new Set([...(task.reusedRules ?? []), ...related.rules.map(rule => rule.id)]));
   }

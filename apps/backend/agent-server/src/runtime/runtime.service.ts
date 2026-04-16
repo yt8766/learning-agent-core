@@ -1,21 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { describeConnectorProfilePolicy } from '@agent/runtime';
-import { SkillCard } from '@agent/shared';
-import { applyGovernanceOverrides, registerInstalledSkillWorker } from './helpers/runtime-connector-registry';
-import { type RuntimeBackgroundRunnerContext } from './helpers/runtime-background-runner';
-import { fetchProviderUsageAudit, type ProviderAuditSyncResult } from './helpers/provider-audit';
-import { SkillArtifactFetcher } from './skills/skill-artifact-fetcher';
-import type { RuntimeSkillInstallContext } from './skills/runtime-skill-install.service';
-import {
-  resolveTaskSkillSearch,
-  syncEnabledRemoteSkillSources,
-  type RuntimeSkillSourcesContext
-} from './skills/runtime-skill-sources.service';
-import { SkillSourceSyncService } from './skills/skill-source-sync.service';
+import { resolveTaskSkillSearch, syncEnabledRemoteSkillSources } from './skills/runtime-skill-sources.service';
 import { RuntimeHost } from './core/runtime.host';
 import { RuntimeCentersService } from './centers/runtime-centers.service';
 import { RuntimeBootstrapService } from './services/runtime-bootstrap.service';
-import { RuntimeKnowledgeContext, RuntimeKnowledgeService } from './services/runtime-knowledge.service';
+import { RuntimeKnowledgeService } from './services/runtime-knowledge.service';
 import { RuntimeOperationalStateService } from './services/runtime-operational-state.service';
 import { RuntimeSessionService } from './services/runtime-session.service';
 import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.service';
@@ -23,20 +12,17 @@ import { RuntimeTaskService } from './services/runtime-task.service';
 import { RuntimeWenyuanFacade } from './wenyuan/runtime-wenyuan-facade';
 import { RuntimeTechBriefingService } from './briefings/runtime-tech-briefing.service';
 import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
+import { RuntimeServiceContextFactory } from './runtime.service-contexts';
 import {
   bindServiceMethods,
   CENTER_METHOD_NAMES,
-  createSkillInstallContext,
-  createSkillSourcesContext,
   KNOWLEDGE_METHOD_NAMES,
   type RuntimeSkillSearchPayload,
   resolvePreExecutionSkillIntervention,
   resolveRuntimeSkillIntervention,
   resolveSkillInstallApproval,
-  resolveTaskSkillSuggestions,
   SESSION_METHOD_NAMES,
   SKILL_CATALOG_METHOD_NAMES,
-  syncInstalledSkillWorkers,
   TASK_METHOD_NAMES
 } from './runtime.service.helpers';
 
@@ -63,7 +49,6 @@ export class RuntimeService implements OnModuleInit {
   private readonly backgroundHeartbeatMs;
   private readonly backgroundPollMs;
   private readonly skillSourceSyncService;
-  private readonly skillArtifactFetcher;
   private readonly operationalState: RuntimeOperationalStateService;
   private readonly bootstrapService: RuntimeBootstrapService;
   private readonly centersService: RuntimeCentersService;
@@ -74,6 +59,7 @@ export class RuntimeService implements OnModuleInit {
   private readonly wenyuanFacade: RuntimeWenyuanFacade;
   private readonly techBriefingService: RuntimeTechBriefingService;
   private readonly scheduleService: RuntimeScheduleService;
+  private readonly contextFactory: RuntimeServiceContextFactory;
 
   constructor(
     private readonly runtimeHost: RuntimeHost = new RuntimeHost(),
@@ -105,12 +91,12 @@ export class RuntimeService implements OnModuleInit {
     this.backgroundHeartbeatMs = this.settings.runtimeBackground.heartbeatMs;
     this.backgroundPollMs = this.settings.runtimeBackground.pollMs;
     this.skillSourceSyncService = runtimeHost.skillSourceSyncService;
-    this.skillArtifactFetcher = runtimeHost.skillArtifactFetcher;
     this.techBriefingService =
       techBriefingService ??
       new RuntimeTechBriefingService(() => ({
         settings: this.settings,
-        mcpClientManager: this.mcpClientManager
+        mcpClientManager: this.mcpClientManager,
+        llmProvider: this.llmProvider
       }));
     this.scheduleService =
       scheduleService ??
@@ -126,25 +112,60 @@ export class RuntimeService implements OnModuleInit {
       orchestrator: this.orchestrator
     }));
     this.operationalState = operationalState ?? new RuntimeOperationalStateService();
+    this.centersService = centersService ?? new RuntimeCentersService(() => this.contextFactory.getCentersContext());
+    this.contextFactory = new RuntimeServiceContextFactory({
+      settings: () => this.settings,
+      runtimeHost: () => this.runtimeHost,
+      skillRegistry: () => this.skillRegistry,
+      toolRegistry: () => this.toolRegistry,
+      llmProvider: () => this.llmProvider,
+      mcpServerRegistry: () => this.mcpServerRegistry,
+      mcpCapabilityRegistry: () => this.mcpCapabilityRegistry,
+      mcpClientManager: () => this.mcpClientManager,
+      orchestrator: () => this.orchestrator,
+      sessionCoordinator: () => this.sessionCoordinator,
+      runtimeStateRepository: () => this.runtimeStateRepository,
+      memoryRepository: () => this.memoryRepository,
+      ruleRepository: () => this.ruleRepository,
+      skillSourceSyncService: () => this.skillSourceSyncService,
+      skillArtifactFetcher: () => this.runtimeHost.skillArtifactFetcher,
+      describeConnectorProfilePolicy: this.describeConnectorProfilePolicy,
+      operationalState: () => this.operationalState,
+      centersService: () => this.centersService,
+      wenyuanFacade: () => this.wenyuanFacade,
+      getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => this.getRuntimeCenter(days, filters),
+      getApprovalsCenter: (filters?: Record<string, unknown>) => this.getApprovalsCenter(filters),
+      getLearningCenter: () => this.getLearningCenter(),
+      getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => this.getEvalsCenter(days, filters),
+      getEvidenceCenter: () => this.getEvidenceCenter(),
+      getConnectorsCenter: () => this.getConnectorsCenter(),
+      getSkillSourcesCenter: () => this.getSkillSourcesCenter(),
+      getCompanyAgentsCenter: () => this.getCompanyAgentsCenter(),
+      backgroundRunnerId: this.backgroundRunnerId,
+      backgroundWorkerPoolSize: this.backgroundWorkerPoolSize,
+      backgroundLeaseTtlMs: this.backgroundLeaseTtlMs,
+      backgroundHeartbeatMs: this.backgroundHeartbeatMs,
+      backgroundPollMs: this.backgroundPollMs
+    });
     this.bootstrapService =
       bootstrapService ??
       new RuntimeBootstrapService(() => ({
         sessionCoordinator: this.sessionCoordinator,
         orchestrator: this.orchestrator,
-        getSkillSourcesContext: () => this.getSkillSourcesContext(),
-        syncInstalledSkillWorkers: () => this.syncInstalledSkillWorkers(),
-        applyStoredGovernanceOverrides: () => this.applyStoredGovernanceOverrides(),
+        getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
+        syncInstalledSkillWorkers: () => this.contextFactory.syncInstalledSkillWorkers(),
+        applyStoredGovernanceOverrides: () => this.contextFactory.applyStoredGovernanceOverrides(),
         initializeDailyTechBriefing: () => this.techBriefingService.initializeSchedule().then(() => undefined),
         initializeScheduleRunner: () => this.scheduleService.initialize(),
-        getBackgroundRunnerContext: () => this.getBackgroundRunnerContext()
+        getBackgroundRunnerContext: () => this.contextFactory.getBackgroundRunnerContext()
       }));
-    this.centersService = centersService ?? new RuntimeCentersService(() => this.getCentersContext());
     this.sessionService =
       sessionService ?? new RuntimeSessionService(() => ({ sessionCoordinator: this.sessionCoordinator }));
-    this.knowledgeService = knowledgeService ?? new RuntimeKnowledgeService(() => this.getKnowledgeContext());
+    this.knowledgeService =
+      knowledgeService ?? new RuntimeKnowledgeService(() => this.contextFactory.getKnowledgeContext());
     this.skillCatalogService =
-      skillCatalogService ?? new RuntimeSkillCatalogService(() => this.getSkillCatalogContext());
-    this.taskService = taskService ?? new RuntimeTaskService(() => this.getTaskContext());
+      skillCatalogService ?? new RuntimeSkillCatalogService(() => this.contextFactory.getSkillCatalogContext());
+    this.taskService = taskService ?? new RuntimeTaskService(() => this.contextFactory.getTaskContext());
     bindServiceMethods(this, this.taskService, TASK_METHOD_NAMES);
     bindServiceMethods(this, this.knowledgeService, KNOWLEDGE_METHOD_NAMES);
     bindServiceMethods(this, this.skillCatalogService, SKILL_CATALOG_METHOD_NAMES);
@@ -185,7 +206,7 @@ export class RuntimeService implements OnModuleInit {
 
       this.orchestrator.setLocalSkillSuggestionResolver(
         async ({ goal, usedInstalledSkills, requestedHints, specialistDomain }: LocalSkillSuggestionResolverInput) =>
-          resolveTaskSkillSearch(this.getSkillSourcesContext(), goal, {
+          resolveTaskSkillSearch(this.contextFactory.getSkillSourcesContext(), goal, {
             usedInstalledSkills,
             requestedHints,
             specialistDomain
@@ -217,7 +238,7 @@ export class RuntimeService implements OnModuleInit {
   ) {
     return resolveSkillInstallApproval({
       centersService: this.centersService,
-      getSkillSourcesContext: () => this.getSkillSourcesContext(),
+      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
       task,
       pending,
       actor
@@ -234,7 +255,7 @@ export class RuntimeService implements OnModuleInit {
     return resolveRuntimeSkillIntervention({
       settings: this.settings,
       centersService: this.centersService,
-      getSkillSourcesContext: () => this.getSkillSourcesContext(),
+      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
       goal,
       currentStep,
       skillSearch,
@@ -250,7 +271,7 @@ export class RuntimeService implements OnModuleInit {
     return resolvePreExecutionSkillIntervention({
       settings: this.settings,
       centersService: this.centersService,
-      getSkillSourcesContext: () => this.getSkillSourcesContext(),
+      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
       goal,
       skillSearch,
       usedInstalledSkills
@@ -258,152 +279,7 @@ export class RuntimeService implements OnModuleInit {
   }
 
   private resolveTaskSkillSuggestions(goal: string, options?: { usedInstalledSkills?: string[]; limit?: number }) {
-    return resolveTaskSkillSuggestions(() => this.getSkillSourcesContext(), goal, options);
-  }
-
-  private getBackgroundWorkerSlots(): Map<string, { taskId: string; startedAt: string }> {
-    return this.operationalState.getBackgroundWorkerSlots();
-  }
-
-  private getConnectorRegistryContext() {
-    return {
-      settings: this.settings,
-      mcpServerRegistry: this.mcpServerRegistry,
-      mcpCapabilityRegistry: this.mcpCapabilityRegistry,
-      mcpClientManager: this.mcpClientManager,
-      orchestrator: this.orchestrator
-    };
-  }
-
-  private getSkillInstallContext(): RuntimeSkillInstallContext {
-    return createSkillInstallContext({
-      settings: this.settings,
-      skillRegistry: this.skillRegistry,
-      skillArtifactFetcher: this.skillArtifactFetcher,
-      remoteSkillDiscoveryService: this.runtimeHost.remoteSkillDiscoveryService,
-      getSkillSourcesContext: () => this.getSkillSourcesContext(),
-      registerSkillWorker: (skill: SkillCard) => registerInstalledSkillWorker(this.getConnectorRegistryContext(), skill)
-    });
-  }
-
-  private getSkillSourcesContext(): RuntimeSkillSourcesContext & {
-    listSkillSources?: () => Promise<unknown[]>;
-  } {
-    return createSkillSourcesContext({
-      settings: this.settings,
-      toolRegistry: this.toolRegistry,
-      skillRegistry: this.skillRegistry,
-      skillSourceSyncService: this.skillSourceSyncService,
-      remoteSkillDiscoveryService: this.runtimeHost.remoteSkillDiscoveryService,
-      getDisabledSkillSourceIds: () => this.getDisabledSkillSourceIds(),
-      getSkillInstallContext: () => this.getSkillInstallContext()
-    });
-  }
-
-  private getPlatformConsoleContext() {
-    return {
-      skillRegistry: this.skillRegistry,
-      orchestrator: this.orchestrator,
-      sessionCoordinator: this.sessionCoordinator,
-      getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => this.getRuntimeCenter(days, filters),
-      getApprovalsCenter: (filters?: Record<string, unknown>) => this.getApprovalsCenter(filters),
-      getLearningCenter: () => this.getLearningCenter(),
-      getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => this.getEvalsCenter(days, filters),
-      getEvidenceCenter: () => this.getEvidenceCenter(),
-      getConnectorsCenter: () => this.getConnectorsCenter(),
-      getSkillSourcesCenter: () => this.getSkillSourcesCenter(),
-      getCompanyAgentsCenter: () => this.getCompanyAgentsCenter()
-    };
-  }
-
-  private async fetchProviderUsageAudit(days: number): Promise<ProviderAuditSyncResult> {
-    return fetchProviderUsageAudit(
-      this.settings.providerAudit.adapters,
-      this.settings.providerAudit.primaryProvider,
-      days
-    );
-  }
-
-  private getBackgroundRunnerContext(): RuntimeBackgroundRunnerContext {
-    return {
-      enabled: this.settings.runtimeBackground.enabled,
-      orchestrator: this.orchestrator,
-      runnerId: this.backgroundRunnerId,
-      workerPoolSize: this.backgroundWorkerPoolSize,
-      leaseTtlMs: this.backgroundLeaseTtlMs,
-      heartbeatMs: this.backgroundHeartbeatMs,
-      pollMs: this.backgroundPollMs,
-      backgroundWorkerSlots: this.operationalState.getBackgroundWorkerSlots(),
-      isSweepInFlight: () => this.operationalState.isBackgroundRunnerSweepInFlight(),
-      setSweepInFlight: value => this.operationalState.setBackgroundRunnerSweepInFlight(value)
-    };
-  }
-
-  private async syncInstalledSkillWorkers(): Promise<void> {
-    await syncInstalledSkillWorkers({
-      skillRegistry: this.skillRegistry,
-      registerSkillWorker: (skill: SkillCard) => registerInstalledSkillWorker(this.getConnectorRegistryContext(), skill)
-    });
-  }
-
-  private async applyStoredGovernanceOverrides(): Promise<void> {
-    const snapshot = await this.runtimeStateRepository.load();
-    applyGovernanceOverrides(this.getConnectorRegistryContext(), snapshot);
-  }
-
-  private async getDisabledSkillSourceIds(): Promise<string[]> {
-    const snapshot = await this.runtimeStateRepository.load();
-    return snapshot.governance?.disabledSkillSourceIds ?? [];
-  }
-
-  private getKnowledgeContext(): RuntimeKnowledgeContext {
-    return {
-      wenyuanFacade: this.wenyuanFacade,
-      ruleRepository: this.ruleRepository,
-      orchestrator: this.orchestrator,
-      runtimeStateRepository: this.runtimeStateRepository
-    };
-  }
-
-  private getSkillCatalogContext() {
-    return {
-      skillRegistry: this.skillRegistry,
-      llmProvider: this.llmProvider,
-      registerSkillWorker: (skill: SkillCard) => registerInstalledSkillWorker(this.getConnectorRegistryContext(), skill)
-    };
-  }
-
-  private getTaskContext() {
-    return {
-      orchestrator: this.orchestrator,
-      runtimeStateRepository: this.runtimeStateRepository,
-      resolveTaskSkillSuggestions: (goal: string, options?: { usedInstalledSkills?: string[]; limit?: number }) =>
-        this.resolveTaskSkillSuggestions(goal, options)
-    };
-  }
-
-  private getCentersContext() {
-    return {
-      settings: this.settings,
-      wenyuanFacade: this.wenyuanFacade,
-      sessionCoordinator: this.sessionCoordinator,
-      orchestrator: this.orchestrator,
-      runtimeStateRepository: this.runtimeStateRepository,
-      memoryRepository: this.memoryRepository,
-      ruleRepository: this.ruleRepository,
-      skillRegistry: this.skillRegistry,
-      toolRegistry: this.toolRegistry,
-      mcpClientManager: this.mcpClientManager,
-      mcpServerRegistry: this.mcpServerRegistry,
-      mcpCapabilityRegistry: this.mcpCapabilityRegistry,
-      describeConnectorProfilePolicy: this.describeConnectorProfilePolicy,
-      fetchProviderUsageAudit: (days: number) => this.fetchProviderUsageAudit(days),
-      getBackgroundWorkerSlots: () => this.getBackgroundWorkerSlots(),
-      getConnectorRegistryContext: () => this.getConnectorRegistryContext(),
-      getSkillInstallContext: () => this.getSkillInstallContext(),
-      getSkillSourcesContext: () => this.getSkillSourcesContext(),
-      getPlatformConsoleContext: () => this.getPlatformConsoleContext()
-    };
+    return this.contextFactory.resolveTaskSkillSuggestions(goal, options);
   }
 }
 

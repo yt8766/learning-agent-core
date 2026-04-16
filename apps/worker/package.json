@@ -8,13 +8,17 @@
     "build": "tsup src/main.ts --format cjs --dts --out-dir dist",
     "lint": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm --dir ../.. exec vitest run apps/worker/test"
+    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js apps/worker",
+    "test": "pnpm --dir ../.. exec vitest run apps/worker/test",
+    "turbo:test:unit": "pnpm test",
+    "turbo:test:integration": "node ../../scripts/run-package-integration-tests.js apps/worker"
   },
   "dependencies": {
+    "@agent/adapters": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/memory": "workspace:*",
     "@agent/runtime": "workspace:*",
-    "@agent/skills": "workspace:*",
+    "@agent/skill-runtime": "workspace:*",
     "@agent/tools": "workspace:*"
   }
 }

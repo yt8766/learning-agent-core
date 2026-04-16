@@ -62,7 +62,7 @@ export default defineConfig({
       '@agent/memory': resolvePath('./packages/memory/src'),
       '@agent/model': resolvePath('./packages/model/src'),
       '@agent/report-kit': resolvePath('./packages/report-kit/src'),
-      '@agent/skills': resolvePath('./packages/skills/src'),
+      '@agent/skill-runtime': resolvePath('./packages/skill-runtime/src'),
       '@agent/templates': resolvePath('./packages/templates/src'),
       '@agent/evals': resolvePath('./packages/evals/src'),
       '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),
@@ -103,7 +103,7 @@ export default defineConfig({
       '**/coverage/**',
       '**/data/**',
       '**/e2e/**',
-      'packages/templates/**'
+      'packages/templates/src/scaffold/**'
     ],
     watchExclude: [
       '**/node_modules/**',
@@ -112,7 +112,7 @@ export default defineConfig({
       '**/.turbo/**',
       '**/coverage/**',
       '**/data/**',
-      'packages/templates/**'
+      'packages/templates/src/scaffold/**'
     ],
     reporters: ['default'],
     coverage: {
@@ -144,6 +144,7 @@ export default defineConfig({
         '**/coverage/**',
         '**/data/**',
         '**/assets/**',
+        'packages/templates/src/scaffold/**',
         '**/*.stories.*',
         '**/vite-env.d.ts',
         '**/src/main.ts',

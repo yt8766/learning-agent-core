@@ -1,3 +1,20 @@
+import type {
+  CheckpointRef as CoreCheckpointRef,
+  LlmUsageModelRecord as CoreLlmUsageModelRecord,
+  LlmUsageRecord as CoreLlmUsageRecord,
+  QueueStateRecord as CoreQueueStateRecord,
+  ThoughtGraphRecord as CoreThoughtGraphRecord,
+  ThoughtGraphEdge as CoreThoughtGraphEdge,
+  ThoughtGraphNode as CoreThoughtGraphNode
+} from '@agent/core';
+export {
+  CheckpointRefSchema,
+  ThoughtGraphEdgeSchema,
+  ThoughtGraphNodeSchema,
+  ThoughtGraphRecordSchema
+} from '@agent/core';
+export { LlmUsageModelRecordSchema, LlmUsageRecordSchema, QueueStateRecordSchema } from '@agent/core';
+
 export const SkillStatusValues = ['draft', 'lab', 'stable', 'disabled'] as const;
 export type SkillStatus = (typeof SkillStatusValues)[number];
 
@@ -35,12 +52,14 @@ export enum ActionIntent {
   MODIFY_RULE = 'modify_rule'
 }
 
-export enum AgentRole {
-  MANAGER = 'manager',
-  RESEARCH = 'research',
-  EXECUTOR = 'executor',
-  REVIEWER = 'reviewer'
-}
+export const AgentRole = {
+  MANAGER: 'manager',
+  RESEARCH: 'research',
+  EXECUTOR: 'executor',
+  REVIEWER: 'reviewer'
+} as const;
+
+export type AgentRole = (typeof AgentRole)[keyof typeof AgentRole];
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type LearningSourceType = 'execution' | 'document' | 'research';
@@ -186,19 +205,7 @@ export interface ModelRouteDecision {
   reason: string;
 }
 
-export interface QueueStateRecord {
-  mode: 'foreground' | 'background';
-  backgroundRun: boolean;
-  status: 'queued' | 'running' | 'waiting_approval' | 'blocked' | 'completed' | 'failed' | 'cancelled';
-  enqueuedAt: string;
-  startedAt?: string;
-  finishedAt?: string;
-  lastTransitionAt: string;
-  attempt: number;
-  leaseOwner?: string;
-  leaseExpiresAt?: string;
-  lastHeartbeatAt?: string;
-}
+export type QueueStateRecord = CoreQueueStateRecord;
 
 export interface PendingActionRecord {
   toolName: string;
@@ -223,6 +230,7 @@ export interface WorkflowPresetDefinition {
   id: string;
   displayName: string;
   command?: string;
+  explicitOnly?: boolean;
   version?: string;
   intentPatterns: string[];
   requiredMinistries: MinistryId[];
@@ -318,49 +326,18 @@ export interface ExecutionStepRecord {
   reason?: string;
 }
 
-export interface CheckpointRef {
-  sessionId: string;
-  taskId?: string;
-  checkpointId: string;
-  checkpointCursor: number;
-  recoverability: 'safe' | 'partial' | 'unsafe';
-}
+export type CheckpointRef = CoreCheckpointRef;
 
-export interface ThoughtGraphNode {
-  id: string;
-  kind: 'planning' | 'research' | 'execution' | 'approval' | 'review' | 'recovery' | 'finalize' | 'failure';
-  label: string;
+export interface ThoughtGraphNode extends Omit<CoreThoughtGraphNode, 'ministry'> {
   ministry?: WorkerDomain;
-  status: 'completed' | 'running' | 'blocked' | 'failed' | 'pending';
-  at?: string;
-  errorCode?: string;
-  checkpointRef?: CheckpointRef;
 }
 
-export interface ThoughtGraphEdge {
-  from: string;
-  to: string;
-  reason: string;
-}
+export type ThoughtGraphEdge = CoreThoughtGraphEdge;
 
-export interface LlmUsageModelRecord {
-  model: string;
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  costUsd?: number;
-  costCny?: number;
-  pricingSource?: 'provider' | 'estimated';
-  callCount: number;
-}
+export type ThoughtGraphRecord = CoreThoughtGraphRecord;
 
-export interface LlmUsageRecord {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  estimated: boolean;
-  measuredCallCount: number;
-  estimatedCallCount: number;
+export type LlmUsageModelRecord = CoreLlmUsageModelRecord;
+
+export interface LlmUsageRecord extends Omit<CoreLlmUsageRecord, 'models'> {
   models: LlmUsageModelRecord[];
-  updatedAt: string;
 }

@@ -95,13 +95,11 @@ export {
   dataReportJsonDataSourcesSpecSchema,
   dataReportJsonSectionsSpecSchema,
   dataReportJsonSchema,
-  parseDataReportJsonSchema
-} from './flows/data-report-json/schemas/report-page-schema';
-export {
   dataReportJsonPatchIntentBundleSchema,
   dataReportJsonPatchIntentSchema,
-  dataReportJsonPatchTargetSchema
-} from './flows/data-report-json/schemas/patch-intent-schema';
+  dataReportJsonPatchTargetSchema,
+  parseDataReportJsonSchema
+} from './flows/data-report-json/schemas';
 export { executeDataReportJsonGraph } from './flows/data-report-json/runtime';
 export {
   DATA_REPORT_JSON_DEFAULT_MODEL_POLICY,
@@ -115,16 +113,12 @@ export {
 } from './flows/data-report-json/model-policy';
 export {
   createDataReportJsonSystemPrompt,
-  createDataReportJsonUserPrompt
-} from './flows/data-report-json/prompts/generate-report-page-prompt';
-export {
+  createDataReportJsonUserPrompt,
   createDataReportJsonPartSystemPrompt,
   createDataReportJsonPartUserPrompt,
-  createDataReportJsonPatchPartUserPrompt
-} from './flows/data-report-json/prompts/generate-report-page-part-prompt';
-export {
+  createDataReportJsonPatchPartUserPrompt,
   createDataReportJsonSpecSystemPrompt,
   createDataReportJsonSpecUserPrompt
-} from './flows/data-report-json/prompts/generate-report-page-spec-prompt';
+} from './flows/data-report-json/prompts';
 
 export type { DataReportBlueprintResult } from '@agent/report-kit';

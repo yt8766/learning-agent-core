@@ -40,6 +40,7 @@ const AgentAnnotation = Annotation.Root({
   dispatches: Annotation<DispatchInstruction[]>(),
   researchSummary: Annotation<string | undefined>(),
   toolName: Annotation<string | undefined>(),
+  pendingToolInput: Annotation<Record<string, unknown> | undefined>(),
   executionSummary: Annotation<string | undefined>(),
   executionResult: Annotation<ToolExecutionResult | undefined>(),
   reviewDecision: Annotation<ReviewDecision | undefined>(),
