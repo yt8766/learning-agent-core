@@ -10,8 +10,7 @@ import type {
   KnowledgeStoreRecord
 } from '@agent/shared';
 import { loadSettings } from '@agent/config';
-import { resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
-import { createKnowledgeEmbeddingProvider } from './runtime-knowledge-models';
+import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/model';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 
@@ -122,7 +121,7 @@ export async function embedChunk(
     return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_embedding_api_key');
   }
   try {
-    const vector = await createKnowledgeEmbeddingProvider(settings).embedQuery(chunk.content);
+    const vector = await createRuntimeEmbeddingProvider(settings).embedQuery(chunk.content);
     if (!vector?.length) throw new Error('empty_embedding');
     return {
       id: `embedding_${hashText(chunk.id)}`,

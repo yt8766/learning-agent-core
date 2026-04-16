@@ -2,6 +2,7 @@ import {
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
   ChatSessionRecord,
+  RequestedExecutionHints,
   TaskRecord,
   TaskStatus
 } from '@agent/shared';
@@ -19,7 +20,10 @@ type SessionCoordinatorTurnDeps = {
 export async function runSessionTurn(
   deps: SessionCoordinatorTurnDeps,
   sessionId: string,
-  input: string
+  input: {
+    message: string;
+    modelId?: string;
+  }
 ): Promise<void> {
   const session = deps.store.requireSession(sessionId);
   session.status = 'running';
@@ -27,19 +31,19 @@ export async function runSessionTurn(
   await deps.store.persistRuntimeState();
 
   try {
-    await compressConversationIfNeeded(deps, sessionId, input);
+    await compressConversationIfNeeded(deps, sessionId, input.message);
     if (deps.store.requireSession(sessionId).status === 'cancelled') {
       return;
     }
-    const taskContextHints = buildTaskContextHints(deps.store, sessionId);
+    const taskContextHints = buildTaskContextHints(deps.store, sessionId, { modelId: input.modelId });
     const conversationContext = await deps.thinking.buildConversationContext(
       deps.store.requireSession(sessionId),
       deps.store.getCheckpoint(sessionId),
       deps.store.getMessages(sessionId),
-      input
+      input.message
     );
     const task = await deps.orchestrator.createTask({
-      goal: input,
+      goal: input.message,
       context: appendCrossSessionContext(conversationContext, taskContextHints.relatedHistory),
       constraints: [],
       sessionId,
@@ -67,7 +71,10 @@ export async function runSessionTurn(
 
 export function buildTaskContextHints(
   store: SessionCoordinatorStore,
-  sessionId: string
+  sessionId: string,
+  options?: {
+    modelId?: string;
+  }
 ): {
   requestedMode?: 'plan' | 'execute' | 'imperial_direct';
   counselorSelector?: {
@@ -86,6 +93,7 @@ export function buildTaskContextHints(
     requestedSkill?: string;
     requestedConnectorTemplate?: 'github-mcp-template' | 'browser-mcp-template' | 'lark-mcp-template';
     requestedCapability?: string;
+    preferredModelId?: string;
     preferredMode?: 'direct-reply' | 'workflow' | 'research-first';
   };
   capabilityAttachments?: CapabilityAttachmentRecord[];
@@ -123,7 +131,7 @@ export function buildTaskContextHints(
   ).slice(0, 4);
 
   const routingHints = deriveRequestedHints(messages.at(-1)?.content ?? '');
-  const requestedHints = routingHints
+  const requestedHints: RequestedExecutionHints | undefined = routingHints
     ? {
         requestedSpecialist: routingHints.requestedSpecialist,
         requestedSkill: routingHints.requestedSkill,
@@ -148,6 +156,7 @@ export function buildTaskContextHints(
     requestedHints: requestedHints
       ? {
           ...requestedHints,
+          preferredModelId: options?.modelId ?? requestedHints.preferredModelId,
           requestedSkill: requestedHints.requestedSkill ?? sessionAttachedSkill?.displayName,
           requestedConnectorTemplate:
             requestedHints.requestedConnectorTemplate ??
@@ -156,12 +165,17 @@ export function buildTaskContextHints(
         }
       : sessionAttachedSkill || sessionAttachedConnector
         ? {
+            preferredModelId: options?.modelId,
             requestedSkill: sessionAttachedSkill?.displayName,
             requestedConnectorTemplate:
               inferConnectorTemplateFromAttachment(sessionAttachedConnector) ??
               inferConnectorTemplateFromAttachment(sessionAttachedSkill)
           }
-        : undefined,
+        : options?.modelId
+          ? {
+              preferredModelId: options.modelId
+            }
+          : undefined,
     capabilityAttachments: checkpoint?.capabilityAttachments?.length
       ? checkpoint.capabilityAttachments.map(item => ({
           ...item,

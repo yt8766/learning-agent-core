@@ -1,7 +1,6 @@
-import { ToolExecutionResult } from '@agent/shared';
+import { ApprovedExecutionAgentLike, ToolExecutionResult } from '@agent/shared';
 
 import type { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
-import { ExecutorAgent } from '@agent/agents-coder';
 import type { PendingExecutionContext } from '@agent/core';
 
 export async function executeApprovedAction(
@@ -13,7 +12,8 @@ export async function executeApprovedAction(
     toolName: pending.toolName,
     intent: pending.intent,
     input: {
-      goal: context.goal,
+      ...(pending.toolInput ?? {}),
+      goal: pending.goal ?? context.goal,
       researchSummary: pending.researchSummary,
       approved: true
     },
@@ -22,7 +22,7 @@ export async function executeApprovedAction(
 }
 
 export function syncApprovedExecutorState(
-  executor: ExecutorAgent,
+  executor: ApprovedExecutionAgentLike,
   executionResult: ToolExecutionResult,
   pending: PendingExecutionContext
 ) {

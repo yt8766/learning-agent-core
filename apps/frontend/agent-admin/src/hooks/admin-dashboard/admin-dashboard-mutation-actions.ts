@@ -30,6 +30,7 @@ import {
   restoreMemory,
   restoreRule,
   restoreSkill,
+  resolveMemoryResolutionCandidate,
   revokeApprovalScopePolicy,
   retireMemory,
   retireRule,
@@ -387,6 +388,14 @@ export function createAdminDashboardMutationActions(
       runMutation(async () => {
         await setLearningConflictStatus(conflictId, status, preferredMemoryId);
         await refreshActions.refreshPageCenter('learning');
-      }, '更新 learning conflict 状态失败')
+      }, '更新 learning conflict 状态失败'),
+    handleResolveMemoryResolutionCandidate: async (
+      resolutionCandidateId: string,
+      resolution: 'accepted' | 'rejected'
+    ) =>
+      runMutation(async () => {
+        await resolveMemoryResolutionCandidate(resolutionCandidateId, resolution);
+        await refreshActions.refreshPageCenter('learning');
+      }, '更新 memory 决议候选失败')
   };
 }

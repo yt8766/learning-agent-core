@@ -9,6 +9,15 @@ import type {
   WorkflowApprovalPolicy
 } from './primitives';
 import type { CapabilityOwnerType } from './skills';
+import type {
+  ApprovalRecord as CoreApprovalRecord,
+  ApprovalPolicyRecord as CoreApprovalPolicyRecord,
+  ApprovalScopeMatchInput as CoreApprovalScopeMatchInput,
+  ApprovalScopePolicyRecord as CoreApprovalScopePolicyRecord,
+  ConnectorHealthRecord as CoreConnectorHealthRecord,
+  McpCapability as CoreMcpCapability
+} from '@agent/core';
+export { ApprovalRecordSchema, buildApprovalScopeMatchKey, matchesApprovalScopePolicy } from '@agent/core';
 
 export type ToolCapabilityType = 'local-tool' | 'mcp-capability' | 'governance-tool';
 export type ToolPermissionScope = 'readonly' | 'workspace-write' | 'external-side-effect' | 'governance';
@@ -170,16 +179,12 @@ export interface ApprovalResumeInput {
   payload?: Record<string, unknown>;
 }
 
-export interface ApprovalRecord {
-  taskId: string;
+export interface ApprovalRecord extends Omit<CoreApprovalRecord, 'intent' | 'decision'> {
   intent: ActionIntent | string;
-  actor?: string;
-  reason?: string;
   decision: ApprovalStatus;
-  decidedAt: string;
 }
 
-export interface McpCapability {
+export interface McpCapability extends CoreMcpCapability {
   id: string;
   toolName: string;
   serverId: string;
@@ -199,71 +204,17 @@ export interface McpCapability {
   writeScope?: string;
 }
 
-export interface ConnectorHealthRecord {
-  connectorId: string;
-  healthState: 'healthy' | 'degraded' | 'error' | 'unknown' | 'disabled';
-  reason?: string;
-  checkedAt: string;
-  transport?: string;
-  implementedCapabilityCount?: number;
-  discoveredCapabilityCount?: number;
-}
+export type ConnectorHealthRecord = CoreConnectorHealthRecord;
 
-export interface ApprovalPolicyRecord {
-  id: string;
-  scope: 'connector' | 'worker' | 'skill-source' | 'capability';
-  targetId: string;
+export interface ApprovalPolicyRecord extends CoreApprovalPolicyRecord {
   mode: WorkflowApprovalPolicy | 'allow' | 'deny' | 'require-approval' | 'observe';
-  reason: string;
-  effect?: 'allow' | 'deny' | 'require-approval' | 'observe';
-  connectorId?: string;
-  workerId?: string;
-  sourceId?: string;
-  capabilityId?: string;
-  matchedCount?: number;
 }
 
-export interface ApprovalScopeMatchInput {
+export interface ApprovalScopeMatchInput extends CoreApprovalScopeMatchInput {
   intent?: ActionIntent | string;
-  toolName?: string;
-  riskCode?: string;
-  requestedBy?: string;
-  commandPreview?: string;
 }
 
-export interface ApprovalScopePolicyRecord extends ApprovalScopeMatchInput {
-  id: string;
+export interface ApprovalScopePolicyRecord extends CoreApprovalScopePolicyRecord, ApprovalScopeMatchInput {
   scope: Extract<ApprovalScope, 'session' | 'always'>;
-  status: 'active' | 'revoked';
-  matchKey: string;
-  actor?: string;
-  sourceDomain?: string;
   approvalScope?: ApprovalScope;
-  createdAt: string;
-  updatedAt: string;
-  revokedAt?: string;
-  revokedBy?: string;
-  lastMatchedAt?: string;
-  matchCount?: number;
-}
-
-function normalizeApprovalScopeValue(value?: string) {
-  return value?.trim().replace(/\s+/g, ' ').toLowerCase() ?? '';
-}
-
-export function buildApprovalScopeMatchKey(input: ApprovalScopeMatchInput) {
-  return [
-    normalizeApprovalScopeValue(input.intent),
-    normalizeApprovalScopeValue(input.toolName),
-    normalizeApprovalScopeValue(input.riskCode),
-    normalizeApprovalScopeValue(input.requestedBy),
-    normalizeApprovalScopeValue(input.commandPreview)
-  ].join('::');
-}
-
-export function matchesApprovalScopePolicy(
-  policy: Pick<ApprovalScopePolicyRecord, 'status' | 'matchKey'>,
-  input: ApprovalScopeMatchInput
-) {
-  return policy.status === 'active' && policy.matchKey === buildApprovalScopeMatchKey(input);
 }

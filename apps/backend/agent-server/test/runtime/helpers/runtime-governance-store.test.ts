@@ -12,7 +12,7 @@ import {
   syncCapabilityGovernanceProfiles,
   toConnectorDiscoveryHistoryRecord,
   upsertApprovalScopePolicy
-} from '../../../src/runtime/helpers/runtime-governance-store';
+} from '../../../src/modules/runtime-governance/services/runtime-governance-store';
 
 describe('runtime-governance-store', () => {
   it('会生成 connector discovery 历史记录', () => {

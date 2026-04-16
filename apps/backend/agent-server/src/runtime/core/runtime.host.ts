@@ -1,3 +1,4 @@
+import { createDefaultRuntimeLlmProvider } from '@agent/adapters';
 import { AgentRuntime } from '@agent/runtime';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
@@ -9,7 +10,12 @@ export class RuntimeHost {
     profile: 'platform',
     settingsOptions: {
       workspaceRoot: process.cwd()
-    }
+    },
+    createLlmProvider: ({ settings, semanticCacheRepository }) =>
+      createDefaultRuntimeLlmProvider({
+        settings,
+        semanticCacheRepository
+      })
   });
 
   readonly settings = this.runtime.settings;

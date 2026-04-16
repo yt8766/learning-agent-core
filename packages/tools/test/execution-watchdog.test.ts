@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ExecutionWatchdog } from '../src/execution-watchdog';
+import { ExecutionWatchdog } from '../src/watchdog/execution-watchdog';
+import * as watchdogExports from '../src/watchdog';
 
 describe('ExecutionWatchdog', () => {
+  it('co-locates watchdog implementation under src/watchdog', () => {
+    expect(ExecutionWatchdog).toBe(watchdogExports.ExecutionWatchdog);
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-02T10:00:00.000Z'));

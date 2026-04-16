@@ -107,6 +107,11 @@ export class ChatController {
     return this.chatService.listSessions();
   }
 
+  @Get('models')
+  listAvailableModels() {
+    return this.chatService.listAvailableModels();
+  }
+
   @Post('sessions')
   async createSession(@Body() dto: CreateChatSessionDto, @Res({ passthrough: true }) response: Response) {
     const session = await this.chatService.createSession(dto);
@@ -171,7 +176,7 @@ export class ChatController {
   ) {
     const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
     this.setSessionCookie(response, resolvedSessionId);
-    return this.chatService.appendMessage(resolvedSessionId, { message: dto.message });
+    return this.chatService.appendMessage(resolvedSessionId, { message: dto.message, modelId: dto.modelId });
   }
 
   @Post('approve')

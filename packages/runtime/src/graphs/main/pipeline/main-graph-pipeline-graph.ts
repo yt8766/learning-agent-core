@@ -1,24 +1,20 @@
 import {
   AgentRole,
   ApprovalDecision,
+  CodeExecutionMinistryLike,
   CreateTaskDto,
+  DeliveryMinistryLike,
+  OpsExecutionMinistryLike,
+  ResearchMinistryLike,
+  ReviewMinistryLike,
+  RouterMinistryLike,
   SourcePolicyMode,
   TaskRecord,
   ToolUsageSummaryRecord
 } from '@agent/shared';
 import { BaseCheckpointSaver } from '@langchain/langgraph';
 
-import {
-  HubuSearchMinistry,
-  LibuDocsMinistry,
-  LibuRouterMinistry,
-  runDispatchStage,
-  runGoalIntakeStage,
-  runManagerPlanStage,
-  runRouteStage
-} from '@agent/agents-supervisor';
-import { BingbuOpsMinistry, GongbuCodeMinistry } from '@agent/agents-coder';
-import { XingbuReviewMinistry } from '@agent/agents-reviewer';
+import { runDispatchStage, runGoalIntakeStage, runManagerPlanStage, runRouteStage } from '@agent/agents-supervisor';
 import { PendingExecutionContext } from '../../../flows/approval';
 import { runReviewStage } from '../../../flows/ministries/review-stage-nodes';
 import { runExecuteStage, runResearchStage } from '../../../flows/ministries/runtime-stage-nodes';
@@ -105,7 +101,7 @@ interface TaskPipelineGraphCallbacks {
   createAgentContext: (taskId: string, goal: string, flow: 'chat' | 'approval' | 'learning') => any;
   reviewExecution: (
     task: TaskRecord,
-    xingbu: XingbuReviewMinistry,
+    xingbu: ReviewMinistryLike,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ) => Promise<any>;
@@ -169,12 +165,12 @@ interface TaskPipelineGraphParams {
   task: TaskRecord;
   dto: CreateTaskDto;
   options: { mode: 'initial' | 'retry' | 'approval_resume'; pending?: PendingExecutionContext };
-  libu: LibuRouterMinistry;
-  hubu: HubuSearchMinistry;
-  gongbu: GongbuCodeMinistry;
-  bingbu: BingbuOpsMinistry;
-  xingbu: XingbuReviewMinistry;
-  libuDocs: LibuDocsMinistry;
+  libu: RouterMinistryLike;
+  hubu: ResearchMinistryLike;
+  gongbu: CodeExecutionMinistryLike;
+  bingbu: OpsExecutionMinistryLike;
+  xingbu: ReviewMinistryLike;
+  libuDocs: DeliveryMinistryLike;
   pendingExecutions: Map<string, PendingExecutionContext>;
   llmConfigured: boolean;
   sourcePolicyMode: SourcePolicyMode | undefined;

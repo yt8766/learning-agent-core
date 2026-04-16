@@ -30,6 +30,7 @@ export interface RuntimeAgentGraphState {
   dispatches: DispatchInstruction[];
   researchSummary?: string;
   toolName?: string;
+  pendingToolInput?: Record<string, unknown>;
   executionSummary?: string;
   executionResult?: ToolExecutionResult;
   reviewDecision?: ReviewDecision;

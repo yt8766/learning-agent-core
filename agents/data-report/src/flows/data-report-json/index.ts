@@ -16,8 +16,11 @@ export {
   dataReportJsonDataSourcesSpecSchema,
   dataReportJsonSectionsSpecSchema,
   dataReportJsonSchema,
+  dataReportJsonPatchIntentBundleSchema,
+  dataReportJsonPatchIntentSchema,
+  dataReportJsonPatchTargetSchema,
   parseDataReportJsonSchema
-} from './schemas/report-page-schema';
+} from './schemas';
 export { executeDataReportJsonGraph } from './runtime';
 export {
   DATA_REPORT_JSON_DEFAULT_MODEL_POLICY,

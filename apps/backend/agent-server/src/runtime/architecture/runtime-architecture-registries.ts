@@ -1,6 +1,6 @@
 import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
-import type { ArchitectureDescriptorRegistryEntry, RuntimeArchitectureRecord } from '@agent/shared';
+import type { ArchitectureDescriptorRegistryEntry, RuntimeArchitectureRecord } from '@agent/core';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 import { createAgentAdminArchitectureRegistryEntry } from './admin-page-architecture.registry';

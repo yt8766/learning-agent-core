@@ -8,6 +8,7 @@ vi.mock('@/api/admin-api-core', () => ({
 
 import {
   approveSkillInstall,
+  compareMemoryVersions,
   clearCapabilityPolicy,
   clearConnectorPolicy,
   closeConnectorSession,
@@ -22,15 +23,18 @@ import {
   enableConnector,
   enableCounselorSelector,
   enableSkillSource,
+  getMemoryUsageInsights,
   installSkill,
   invalidateMemory,
   invalidateRule,
   promoteSkill,
+  patchProfile,
   refreshConnectorDiscovery,
   rejectSkillInstall,
   restoreMemory,
   restoreRule,
   restoreSkill,
+  searchMemories,
   retireMemory,
   retireRule,
   retireSkill,
@@ -180,6 +184,65 @@ describe('admin-api-governance', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ preferredMemoryId: 'mem-2' })
+      })
+    );
+  });
+
+  it('builds structured memory search requests', async () => {
+    await searchMemories({
+      query: 'deploy preference',
+      limit: 8,
+      scopeContext: {
+        actorRole: 'agent-admin-user',
+        scopeType: 'workspace',
+        allowedScopeTypes: ['workspace', 'team', 'org']
+      },
+      memoryTypes: ['preference', 'constraint'],
+      includeRules: true,
+      includeReflections: false
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      '/memory/search',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          query: 'deploy preference',
+          limit: 8,
+          scopeContext: {
+            actorRole: 'agent-admin-user',
+            scopeType: 'workspace',
+            allowedScopeTypes: ['workspace', 'team', 'org']
+          },
+          memoryTypes: ['preference', 'constraint'],
+          includeRules: true,
+          includeReflections: false
+        })
+      })
+    );
+  });
+
+  it('builds memory insights, compare and profile patch requests', async () => {
+    await getMemoryUsageInsights();
+    await compareMemoryVersions('mem-1', 2, 5);
+    await patchProfile('user-1', {
+      communicationStyle: 'concise',
+      doNotDo: ['no auto-commit'],
+      actor: 'agent-admin-user'
+    });
+
+    expect(requestMock).toHaveBeenNthCalledWith(1, '/memory/insights/usage');
+    expect(requestMock).toHaveBeenNthCalledWith(2, '/memory/mem-1/compare/2/5');
+    expect(requestMock).toHaveBeenNthCalledWith(
+      3,
+      '/memory/profiles/user-1',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          communicationStyle: 'concise',
+          doNotDo: ['no auto-commit'],
+          actor: 'agent-admin-user'
+        })
       })
     );
   });

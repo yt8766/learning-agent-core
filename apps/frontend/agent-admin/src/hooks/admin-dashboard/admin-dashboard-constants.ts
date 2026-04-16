@@ -27,6 +27,8 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'runtime',
   'approvals',
   'learning',
+  'memory',
+  'profiles',
   'evals',
   'archives',
   'skills',
@@ -37,7 +39,9 @@ export const PAGE_KEYS: DashboardPageKey[] = [
 ];
 
 export const PAGE_TITLES = {
-  ...RUNTIME_CENTER_PAGE_TITLES
+  ...RUNTIME_CENTER_PAGE_TITLES,
+  memory: 'Memory Center',
+  profiles: 'Profile Center'
 } satisfies Record<DashboardPageKey, string>;
 
 function isExecutionModeFilter(value: string | null): value is ExecutionModeFilter {

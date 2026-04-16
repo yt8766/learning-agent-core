@@ -17,3 +17,19 @@ export { createLearningGraph } from './graphs/learning.graph';
 export { LearningFlow } from './flows/learning/learning-flow';
 export { AgentRuntime } from './runtime/agent-runtime';
 export type { AgentRuntimeOptions } from './runtime/agent-runtime';
+export {
+  archivalMemorySearch,
+  archivalMemorySearchByParams,
+  coreMemoryAppend,
+  coreMemoryReplace
+} from './memory/active-memory-tools';
+export {
+  generateObjectWithRetry,
+  generateTextWithRetry,
+  streamTextWithRetry,
+  withLlmRetry,
+  type SafeGenerateObjectResult,
+  type SafeGenerateObjectRetryOptions,
+  type StructuredContractMeta,
+  type StructuredParseStatus
+} from './runtime/llm-facade';

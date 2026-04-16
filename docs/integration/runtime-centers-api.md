@@ -1,8 +1,18 @@
 # Runtime Centers API
 
 状态：current
+文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-admin`
-最后核对：2026-04-14
+最后核对：2026-04-15
+
+本主题主文档：
+
+- 总体对接关系仍以 [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md) 为准
+
+本文只覆盖：
+
+- `agent-admin` 依赖的 runtime center / approvals / platform console 接口
+- admin 侧筛选字段与兼容别名语义
 
 ## 1. 这篇文档说明什么
 
@@ -73,5 +83,5 @@ CSV 当前额外包含：
 
 ## 6. 继续阅读
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [backend 文档目录](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [backend 文档目录](/docs/backend/README.md)

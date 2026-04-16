@@ -1,7 +1,7 @@
 import type { ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
 import type { ContextStrategy } from '@agent/config';
+import type { ILLMProvider as LlmProvider } from '@agent/core';
 
-import type { LlmProvider } from '../adapters/llm/llm-provider';
 import { generateTextWithRetry } from '../utils/llm-retry';
 
 const DEFAULT_RECENT_MESSAGES_TO_KEEP = 5;

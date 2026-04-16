@@ -1,8 +1,9 @@
 # Runtime State Machine
 
 状态：current
+文档类型：reference
 适用范围：运行态状态机
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 本文档固定当前 runtime、worker 与 chat 的主状态机语义，避免 backend、worker、admin、agent-chat 对同一状态产生不同解释。
 

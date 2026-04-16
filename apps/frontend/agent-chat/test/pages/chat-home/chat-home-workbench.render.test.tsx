@@ -288,6 +288,18 @@ describe('chat-home-workbench component', () => {
   it('submits sender payloads for direct mode, plan mode and cancel actions', async () => {
     const sendMessage = vi.fn(async () => undefined);
     const cancelActiveSession = vi.fn(async () => undefined);
+    let stateCallIndex = 0;
+
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 4) {
+        return [[{ id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }], vi.fn()];
+      }
+      if (stateCallIndex === 5) {
+        return ['minimax/MiniMax-M2.7', vi.fn()];
+      }
+      return actualUseState(initial);
+    };
 
     renderToStaticMarkup(
       <ChatHomeWorkbench
@@ -322,7 +334,8 @@ describe('chat-home-workbench component', () => {
 
     expect(sendMessage).toHaveBeenCalledWith({
       display: '直接回答这个问题',
-      payload: '直接回答这个问题'
+      payload: '直接回答这个问题',
+      modelId: 'minimax/MiniMax-M2.7'
     });
     expect(cancelActiveSession).toHaveBeenCalled();
 
@@ -331,7 +344,7 @@ describe('chat-home-workbench component', () => {
     renderedSwitches.length = 0;
     renderedSenders.length = 0;
 
-    let stateCallIndex = 0;
+    stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
       if (stateCallIndex === 1) {
@@ -342,6 +355,12 @@ describe('chat-home-workbench component', () => {
       }
       if (stateCallIndex === 3) {
         return [true, vi.fn()];
+      }
+      if (stateCallIndex === 4) {
+        return [[], vi.fn()];
+      }
+      if (stateCallIndex === 5) {
+        return ['', vi.fn()];
       }
       return actualUseState(initial);
     };
@@ -376,7 +395,8 @@ describe('chat-home-workbench component', () => {
 
     expect(sendMessage).toHaveBeenLastCalledWith({
       display: '给我一个实现方案',
-      payload: '/plan 给我一个实现方案'
+      payload: '/plan 给我一个实现方案',
+      modelId: undefined
     });
   });
 });

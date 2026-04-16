@@ -20,7 +20,38 @@ export {
   markExecutionStepResumed,
   markExecutionStepStarted
 } from './workflows/execution-steps';
-export * from './flows/supervisor';
+export {
+  applyDefaultPlanAssumptions,
+  applyRecommendedPlanAnswers,
+  applyUserPlanAnswers,
+  buildContextFilterAudienceSlices,
+  buildFallbackSupervisorPlan,
+  compileSkillContractIntoPlan,
+  executeSupervisorPlan,
+  inferDispatchKind,
+  orderRuntimeDispatches,
+  resolveExecutionDispatchObjective,
+  resolveResearchDispatchObjective,
+  runDispatchStage,
+  runGoalIntakeStage,
+  runManagerPlanStage,
+  runRouteStage,
+  buildSupervisorDirectReplyUserPrompt,
+  buildSupervisorPlanUserPrompt,
+  SUPERVISOR_DIRECT_REPLY_PROMPT,
+  SUPERVISOR_PLAN_SYSTEM_PROMPT,
+  SupervisorPlanSchema,
+  toManagerPlan
+} from './flows/supervisor';
+export type { SupervisorPlanContext, SupervisorPlanOutput } from './flows/supervisor';
+export {
+  buildDeliverySummaryUserPrompt,
+  DELIVERY_SUMMARY_SYSTEM_PROMPT,
+  DeliverySummarySchema,
+  sanitizeFinalUserReply,
+  shapeFinalUserReply
+} from './flows/delivery';
+export type { DeliverySummaryOutput } from './flows/delivery';
 export {
   BingbuOpsMinistry,
   GongbuCodeMinistry,

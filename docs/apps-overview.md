@@ -1,10 +1,26 @@
 # Apps 目录说明
 
 状态：current
+文档类型：overview
 适用范围：`apps/*`
-最后核对：2026-04-14
+最后核对：2026-04-15
 
 `apps/` 放可直接运行的应用进程，是仓库最上层的交付面。
+
+本主题主文档：
+
+- 本文是 `apps/*` 的总入口
+
+本文只覆盖：
+
+- 四个应用进程的职责分工
+- 推荐进入各应用文档目录的阅读顺序
+
+更细实现请继续看：
+
+- 后端入口：[backend/README.md](/docs/backend/README.md)
+- chat 前端入口：[frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
+- admin 前端入口：[frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
 
 当前目录职责：
 
@@ -19,6 +35,6 @@
 
 建议阅读顺序：
 
-1. [backend 文档目录](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
-2. [agent-chat 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-chat/README.md)
-3. [agent-admin 文档目录](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/README.md)
+1. [backend 文档目录](/docs/backend/README.md)
+2. [agent-chat 文档目录](/docs/frontend/agent-chat/README.md)
+3. [agent-admin 文档目录](/docs/frontend/agent-admin/README.md)

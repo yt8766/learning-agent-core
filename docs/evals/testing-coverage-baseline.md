@@ -1,8 +1,11 @@
 # 测试覆盖率基线
 
-状态：current
+状态：snapshot
+文档类型：baseline
 适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
-最后核对：2026-04-14
+最后核对：2026-04-15
+
+说明：这是 `2026-04-02` 的覆盖率快照，用于回看当时的门槛与缺口，不代表当前实时覆盖率。
 
 生成时间：`2026-04-02 18:52:56 CST`
 命令：`pnpm test:coverage`
@@ -86,7 +89,7 @@
 - `packages/agent-core/src/adapters/llm/chat-model-factory.ts`
 - `packages/agent-core/src/adapters/llm/zhipu-provider.ts`
 - `agents/supervisor/src/flows/supervisor/nodes/supervisor-plan-node.ts`
-- `packages/tools/src/execution-watchdog.ts`
+- `packages/tools/src/watchdog/execution-watchdog.ts`
 
 ## 下一轮建议优先级
 

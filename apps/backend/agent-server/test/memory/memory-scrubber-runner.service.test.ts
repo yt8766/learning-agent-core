@@ -1,10 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { Logger } from '@nestjs/common';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { MemoryCrossCheckService } from '../../src/memory/memory-cross-check.service';
 import { MemoryScrubberRunnerService } from '../../src/memory/memory-scrubber-runner.service';
 
 describe('MemoryScrubberRunnerService', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('运行 sweep 时会调用 runtime scrubber 并返回隔离结果', async () => {
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const scrubRecent = vi.fn(async () => [{ id: 'mem-1', quarantined: true }]);
     const runtimeKnowledgeService = {
       createMemoryScrubber: vi.fn(() => ({
@@ -21,6 +27,7 @@ describe('MemoryScrubberRunnerService', () => {
     expect(runtimeKnowledgeService.createMemoryScrubber).toHaveBeenCalled();
     expect(scrubRecent).toHaveBeenCalledWith(20);
     expect(result).toEqual([{ id: 'mem-1', quarantined: true }]);
+    expect(warnSpy).toHaveBeenCalledWith('Quarantined 1 suspicious memory records.');
   });
 
   it('并发 sweep 时只允许一个执行中的任务', async () => {

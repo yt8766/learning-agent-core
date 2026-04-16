@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createChatOpenAIModel,
+  createMiniMaxChatModel,
   createOpenAIEmbeddingModel,
   createRuntimeEmbeddingProvider,
   createZhipuChatModel,
@@ -114,6 +115,27 @@ describe('model package', () => {
           type: 'enabled'
         }
       }
+    });
+  });
+
+  it('creates minimax chat models with the default MiniMax base url', () => {
+    const model = createMiniMaxChatModel({
+      model: 'MiniMax-M2.7',
+      apiKey: 'minimax-key',
+      temperature: 0.15,
+      maxTokens: 1024
+    });
+
+    expect(model).toBe(chatOpenAIInstances[0]);
+    expect(chatOpenAIInstances[0]?.config).toEqual({
+      model: 'MiniMax-M2.7',
+      temperature: 0.15,
+      maxTokens: 1024,
+      apiKey: 'minimax-key',
+      configuration: {
+        baseURL: 'https://api.minimaxi.com/v1'
+      },
+      modelKwargs: undefined
     });
   });
 

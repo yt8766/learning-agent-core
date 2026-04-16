@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApprovalsController } from '../../src/approvals/approvals.controller';
+import { ApprovalsController } from '../../src/modules/approvals/controllers/approvals.controller';
 import { EvidenceController } from '../../src/evidence/evidence.controller';
-import { LearningController } from '../../src/learning/learning.controller';
+import { LearningController } from '../../src/modules/learning/controllers/learning.controller';
 import { RulesController } from '../../src/rules/rules.controller';
 import { SkillsController } from '../../src/skills/skills.controller';
-import { TasksController } from '../../src/tasks/tasks.controller';
+import { TasksController } from '../../src/modules/tasks/controllers/tasks.controller';
 
 describe('backend controllers', () => {
   it('delegates approvals controller endpoints', () => {

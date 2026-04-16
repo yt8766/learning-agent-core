@@ -1,25 +1,20 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { renderedButtons, getBrowserReplayMock, recoverToCheckpointMock, stateQueue } = vi.hoisted(() => ({
+import {
+  EVIDENCE_HIGHLIGHT_STORAGE_KEY,
+  clearHighlightedEvidence,
+  openEvidenceReplay,
+  recoverEvidenceCheckpoint
+} from '@/features/evidence-center/evidence-center-panel.helpers';
+
+const { renderedButtons, getBrowserReplayMock, recoverToCheckpointMock } = vi.hoisted(() => ({
   renderedButtons: [] as Array<{ children?: unknown; onClick?: () => void | Promise<void> }>,
   getBrowserReplayMock: vi.fn(),
-  recoverToCheckpointMock: vi.fn(),
-  stateQueue: [] as Array<[unknown, ReturnType<typeof vi.fn>]>
+  recoverToCheckpointMock: vi.fn()
 }));
 
-vi.mock('react', async importOriginal => {
-  const actual = await importOriginal<typeof import('react')>();
-  return {
-    ...actual,
-    useState: ((initialValue: unknown) => {
-      if (stateQueue.length > 0) {
-        return stateQueue.shift()!;
-      }
-      return [initialValue, vi.fn()];
-    }) as unknown as typeof actual.useState
-  };
-});
+const originalWindow = globalThis.window;
 
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick }: { children?: unknown; onClick?: () => void | Promise<void> }) => {
@@ -38,9 +33,12 @@ import { EvidenceCenterPanel } from '@/features/evidence-center/evidence-center-
 describe('EvidenceCenterPanel', () => {
   beforeEach(() => {
     renderedButtons.length = 0;
-    stateQueue.length = 0;
     getBrowserReplayMock.mockReset();
     recoverToCheckpointMock.mockReset();
+    vi.unstubAllGlobals();
+    if (originalWindow) {
+      vi.stubGlobal('window', originalWindow);
+    }
   });
 
   it('renders diagnosis, replay, checkpoint and evidence detail sections', () => {
@@ -103,123 +101,124 @@ describe('EvidenceCenterPanel', () => {
     expect(html).toContain('信息基准日期');
   });
 
-  it('loads replay payloads and caches existing replay sessions', async () => {
+  it('loads replay payloads, skips cached sessions, and closes expanded replay', async () => {
     const setExpandedReplayId = vi.fn();
     const setReplayPayloads = vi.fn();
     const setLoadingReplayId = vi.fn();
-    const setRecoveringEvidenceId = vi.fn();
 
-    stateQueue.push(
-      [undefined, setExpandedReplayId],
-      [{}, setReplayPayloads],
-      [undefined, setLoadingReplayId],
-      [undefined, setRecoveringEvidenceId]
-    );
     getBrowserReplayMock.mockResolvedValue({ steps: 3 });
 
-    renderToStaticMarkup(
-      <EvidenceCenterPanel
-        evidence={[
-          {
-            id: 'e-1',
-            sourceType: 'document',
-            summary: '回放样本',
-            taskGoal: '加载浏览器回放',
-            trustClass: 'high',
-            createdAt: '2026-03-30T10:00:00.000Z',
-            replay: {
-              sessionId: 'replay-1',
-              snapshotSummary: 'browser replay'
-            }
-          } as any
-        ]}
-      />
-    );
-
-    const openReplay = renderedButtons.find(item => item.children === '打开回放');
-    await openReplay?.onClick?.();
+    await openEvidenceReplay({
+      item: {
+        id: 'e-1',
+        sourceType: 'document',
+        summary: '回放样本',
+        taskGoal: '加载浏览器回放',
+        trustClass: 'high',
+        createdAt: '2026-03-30T10:00:00.000Z',
+        replay: {
+          sessionId: 'replay-1',
+          snapshotSummary: 'browser replay'
+        }
+      } as any,
+      expandedReplayId: undefined,
+      replayPayloads: {},
+      loadReplay: getBrowserReplayMock,
+      setExpandedReplayId,
+      setReplayPayloads,
+      setLoadingReplayId
+    });
 
     expect(setExpandedReplayId).toHaveBeenCalledWith('e-1');
     expect(setLoadingReplayId).toHaveBeenNthCalledWith(1, 'e-1');
     expect(getBrowserReplayMock).toHaveBeenCalledWith('replay-1');
     expect(setReplayPayloads).toHaveBeenCalledTimes(1);
+    expect(setReplayPayloads.mock.calls[0]?.[0]?.({})).toEqual({
+      'replay-1': { steps: 3 }
+    });
     expect(setLoadingReplayId).toHaveBeenNthCalledWith(2, undefined);
 
-    renderedButtons.length = 0;
-    stateQueue.push(
-      [undefined, vi.fn()],
-      [{ 'replay-1': { cached: true } }, vi.fn()],
-      [undefined, vi.fn()],
-      [undefined, vi.fn()]
-    );
+    setExpandedReplayId.mockClear();
+    setReplayPayloads.mockClear();
+    setLoadingReplayId.mockClear();
     getBrowserReplayMock.mockClear();
 
-    renderToStaticMarkup(
-      <EvidenceCenterPanel
-        evidence={[
-          {
-            id: 'e-1',
-            sourceType: 'document',
-            summary: '回放样本',
-            taskGoal: '加载浏览器回放',
-            trustClass: 'high',
-            createdAt: '2026-03-30T10:00:00.000Z',
-            replay: {
-              sessionId: 'replay-1',
-              snapshotSummary: 'browser replay'
-            }
-          } as any
-        ]}
-      />
-    );
+    await openEvidenceReplay({
+      item: {
+        id: 'e-1',
+        sourceType: 'document',
+        summary: '回放样本',
+        taskGoal: '加载浏览器回放',
+        trustClass: 'high',
+        createdAt: '2026-03-30T10:00:00.000Z',
+        replay: {
+          sessionId: 'replay-1',
+          snapshotSummary: 'browser replay'
+        }
+      } as any,
+      expandedReplayId: undefined,
+      replayPayloads: { 'replay-1': { cached: true } },
+      loadReplay: getBrowserReplayMock,
+      setExpandedReplayId,
+      setReplayPayloads,
+      setLoadingReplayId
+    });
 
-    await renderedButtons.find(item => item.children === '打开回放')?.onClick?.();
+    expect(setExpandedReplayId).toHaveBeenCalledWith('e-1');
     expect(getBrowserReplayMock).not.toHaveBeenCalled();
+    expect(setReplayPayloads).not.toHaveBeenCalled();
+    expect(setLoadingReplayId).not.toHaveBeenCalled();
+
+    setExpandedReplayId.mockClear();
+
+    await openEvidenceReplay({
+      item: {
+        id: 'e-1',
+        sourceType: 'document',
+        summary: '回放样本',
+        taskGoal: '加载浏览器回放',
+        trustClass: 'high',
+        createdAt: '2026-03-30T10:00:00.000Z',
+        replay: {
+          sessionId: 'replay-1',
+          snapshotSummary: 'browser replay'
+        }
+      } as any,
+      expandedReplayId: 'e-1',
+      replayPayloads: {},
+      loadReplay: getBrowserReplayMock,
+      setExpandedReplayId,
+      setReplayPayloads,
+      setLoadingReplayId
+    });
+
+    expect(setExpandedReplayId).toHaveBeenCalledWith(undefined);
   });
 
-  it('closes expanded replay and triggers checkpoint recovery callbacks', async () => {
-    const setExpandedReplayId = vi.fn();
+  it('triggers checkpoint recovery callbacks', async () => {
     const setRecoveringEvidenceId = vi.fn();
 
-    stateQueue.push(
-      ['e-1', setExpandedReplayId],
-      [{}, vi.fn()],
-      [undefined, vi.fn()],
-      [undefined, setRecoveringEvidenceId]
-    );
-
-    renderToStaticMarkup(
-      <EvidenceCenterPanel
-        evidence={[
-          {
-            id: 'e-1',
-            sourceType: 'diagnosis_result',
-            summary: '回放样本',
-            taskGoal: '恢复到检查点',
-            trustClass: 'high',
-            createdAt: '2026-03-30T10:00:00.000Z',
-            replay: {
-              sessionId: 'replay-1',
-              snapshotSummary: 'browser replay'
-            },
-            recoverable: true,
-            checkpointRef: {
-              sessionId: 'session-1',
-              checkpointId: 'cp-1',
-              checkpointCursor: 9,
-              recoverability: 'partial'
-            }
-          } as any
-        ]}
-      />
-    );
-
-    await renderedButtons.find(item => item.children === '收起回放')?.onClick?.();
-    expect(setExpandedReplayId).toHaveBeenCalledWith(undefined);
-    expect(getBrowserReplayMock).not.toHaveBeenCalled();
-
     recoverToCheckpointMock.mockResolvedValue({ ok: true });
-    await renderedButtons.find(item => item.children === '回到此刻')?.onClick?.();
+
+    await recoverEvidenceCheckpoint({
+      item: {
+        id: 'e-1',
+        sourceType: 'diagnosis_result',
+        summary: '回放样本',
+        taskGoal: '恢复到检查点',
+        trustClass: 'high',
+        createdAt: '2026-03-30T10:00:00.000Z',
+        recoverable: true,
+        checkpointRef: {
+          sessionId: 'session-1',
+          checkpointId: 'cp-1',
+          checkpointCursor: 9,
+          recoverability: 'partial'
+        }
+      } as any,
+      recover: recoverToCheckpointMock,
+      setRecoveringEvidenceId
+    });
 
     expect(setRecoveringEvidenceId).toHaveBeenNthCalledWith(1, 'e-1');
     expect(recoverToCheckpointMock).toHaveBeenCalledWith({
@@ -234,5 +233,53 @@ describe('EvidenceCenterPanel', () => {
   it('renders empty state when there is no evidence', () => {
     const html = renderToStaticMarkup(<EvidenceCenterPanel evidence={[]} />);
     expect(html).toContain('当前没有可展示的证据记录。');
+  });
+
+  it('prioritizes highlighted evidence ids from sessionStorage and clears the highlight state', async () => {
+    const removeItem = vi.fn();
+
+    vi.stubGlobal('window', {
+      sessionStorage: {
+        getItem: vi.fn(() => JSON.stringify(['e-2'])),
+        removeItem
+      }
+    } as unknown as Window & typeof globalThis);
+
+    const html = renderToStaticMarkup(
+      <EvidenceCenterPanel
+        evidence={[
+          {
+            id: 'e-1',
+            sourceType: 'document',
+            summary: '普通 evidence',
+            taskGoal: 'baseline',
+            trustClass: 'medium',
+            createdAt: '2026-03-30T10:00:00.000Z'
+          } as any,
+          {
+            id: 'e-2',
+            sourceType: 'document',
+            summary: '被高亮 evidence',
+            taskGoal: 'memory linked',
+            trustClass: 'high',
+            createdAt: '2026-03-31T10:00:00.000Z'
+          } as any
+        ]}
+      />
+    );
+
+    expect(html.indexOf('被高亮 evidence')).toBeLessThan(html.indexOf('普通 evidence'));
+    expect(html).toContain('Memory Link Highlight');
+    expect(html).toContain('命中 1 条来自 Memory Insight 的证据高亮。');
+
+    await renderedButtons.find(item => item.children === '清除高亮')?.onClick?.();
+    expect(removeItem).toHaveBeenCalledWith(EVIDENCE_HIGHLIGHT_STORAGE_KEY);
+
+    const setHighlightedEvidenceIds = vi.fn();
+    clearHighlightedEvidence({
+      storage: { removeItem },
+      setHighlightedEvidenceIds
+    });
+    expect(setHighlightedEvidenceIds).toHaveBeenCalledWith([]);
   });
 });

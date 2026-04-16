@@ -6,6 +6,7 @@ import {
   ChatHomeApprovalActions,
   getWorkbenchInterruptCopy
 } from '@/pages/chat-home/chat-home-workbench-sections';
+import { renderEvidenceSection } from '@/pages/chat-home/chat-home-workbench-section-renders';
 
 // activeInterrupt in these tests is the persisted 司礼监 / InterruptController projection.
 describe('chat-home-workbench-sections helpers', () => {
@@ -271,5 +272,38 @@ describe('chat-home-workbench-sections helpers', () => {
 
     expect(html).toContain('当前轮次已停止');
     expect(html).toContain('恢复执行');
+  });
+
+  it('renders memory evidence reasons, score, entity and scope details in the evidence section', () => {
+    const section = renderEvidenceSection({
+      checkpoint: {
+        externalSources: [
+          {
+            id: 'memory-source-1',
+            taskId: 'task-1',
+            sourceType: 'memory_reuse',
+            trustClass: 'internal',
+            summary: '已命中历史记忆：项目 A 不要自动提交。',
+            detail: {
+              reason: 'entity matched; same scope; strong relevance',
+              score: 0.91,
+              relatedEntities: [
+                { entityType: 'project', entityId: 'repo:a' },
+                { entityType: 'workspace', entityId: 'workspace:core' }
+              ],
+              scopeType: 'workspace'
+            },
+            createdAt: '2026-04-16T00:00:00.000Z'
+          }
+        ]
+      }
+    } as any);
+
+    const html = renderToStaticMarkup(<>{section?.children}</>);
+
+    expect(html).toContain('采用原因：entity matched; same scope; strong relevance');
+    expect(html).toContain('score 0.91');
+    expect(html).toContain('project:repo:a');
+    expect(html).toContain('workspace');
   });
 });

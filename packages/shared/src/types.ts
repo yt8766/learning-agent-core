@@ -11,9 +11,6 @@ export * from './types/delivery';
 export * from './types/platform-console';
 export * from './types/architecture-records';
 export * from './types/tasking';
+export * from './bootstrap/bootstrap-skill-registry';
+export * from './workflows/workflow-preset-registry';
 export * from './architecture';
-export type {
-  ApprovalDecisionRecord,
-  PlatformApprovalRecord,
-  SharedPlatformConsoleRecord
-} from './types/platform-console';

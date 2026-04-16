@@ -63,7 +63,20 @@ export interface LearningJobRecord {
   updatedAt: string;
 }
 
-export type LearningCenterRecord = SharedLearningCenterRecord;
+export type LearningCenterRecord = SharedLearningCenterRecord & {
+  memoryResolutionCandidates?: Array<{
+    id: string;
+    conflictKind: string;
+    challengerId: string;
+    incumbentId: string;
+    suggestedAction: 'keep_incumbent' | 'supersede_existing' | 'merge_both' | 'escalate_human_review';
+    confidence: number;
+    rationale: string;
+    requiresHumanReview: boolean;
+    resolution: 'pending' | 'accepted' | 'rejected';
+    createdAt: string;
+  }>;
+};
 
 export interface EvalScenarioRecord {
   scenarioId: string;

@@ -9,7 +9,7 @@ import {
   SkillSourceRecord
 } from '@agent/shared';
 
-import { appendGovernanceAudit } from '../helpers/runtime-governance-store';
+import { appendGovernanceAudit } from '../../modules/runtime-governance/services/runtime-governance-store';
 import { buildSkillsAddCommand, normalizeRepoForInstall } from '../skills/runtime-skill-cli';
 
 export async function installSkillWithGovernance(input: {

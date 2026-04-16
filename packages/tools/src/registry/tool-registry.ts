@@ -4,6 +4,7 @@ import { CONNECTOR_TOOL_DEFINITIONS } from '../connectors/connector-tool-definit
 import { FILESYSTEM_TOOL_DEFINITIONS } from '../filesystem/filesystem-tool-definitions';
 import { DEFAULT_TOOL_FAMILIES } from './tool-families';
 import { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from '../runtime-governance/runtime-governance-tool-definitions';
+import { SCAFFOLD_TOOL_DEFINITIONS } from '../scaffold/scaffold-tool-definitions';
 import { SCHEDULING_TOOL_DEFINITIONS } from '../scheduling/scheduling-tool-definitions';
 
 const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
@@ -388,6 +389,7 @@ const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
 export const DEFAULT_TOOLS: ToolDefinition[] = [
   ...KNOWLEDGE_TOOL_DEFINITIONS,
   ...FILESYSTEM_TOOL_DEFINITIONS,
+  ...SCAFFOLD_TOOL_DEFINITIONS,
   ...SCHEDULING_TOOL_DEFINITIONS,
   ...CONNECTOR_TOOL_DEFINITIONS,
   ...RUNTIME_GOVERNANCE_TOOL_DEFINITIONS

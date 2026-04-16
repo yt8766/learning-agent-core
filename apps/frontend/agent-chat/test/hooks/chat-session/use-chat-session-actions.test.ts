@@ -236,7 +236,8 @@ describe('use-chat-session-actions optimistic sending', () => {
 
     const sendPromise = actions.sendMessage({
       display: '这个产品规划怎么样',
-      payload: '/browse 这个产品规划怎么样'
+      payload: '/browse 这个产品规划怎么样',
+      modelId: 'minimax/MiniMax-M2.7'
     });
 
     expect(reconnectRequests).toEqual(['session-1']);
@@ -271,6 +272,9 @@ describe('use-chat-session-actions optimistic sending', () => {
     await sendPromise;
 
     expect(events).toEqual([]);
+    expect(appendMessageMock).toHaveBeenCalledWith('session-1', '/browse 这个产品规划怎么样', {
+      modelId: 'minimax/MiniMax-M2.7'
+    });
     expect(messages.some(message => message.id === 'chat_msg_user_1')).toBe(true);
     expect(getCheckpointMock).toHaveBeenCalledWith('session-1');
   });

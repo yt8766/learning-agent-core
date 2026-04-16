@@ -1,9 +1,26 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { getFrontendTemplate, listFrontendTemplates, resolveFrontendTemplateDir } from '../src';
+
+function resolveMonorepoRootFromCwd(): string {
+  let current = resolve(process.cwd());
+  while (true) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new Error('Unable to locate monorepo root from process.cwd().');
+    }
+    current = parent;
+  }
+}
+
+const REPO_ROOT = resolveMonorepoRootFromCwd();
+const BACKEND_AGENT_SERVER_CWD = join(REPO_ROOT, 'apps', 'backend', 'agent-server');
 
 describe('@agent/templates frontend template registry', () => {
   it('lists stable frontend templates for downstream selection', () => {
@@ -44,7 +61,7 @@ describe('@agent/templates frontend template registry', () => {
 
   it('resolves the template directory even when cwd is the backend app', () => {
     const previousCwd = process.cwd();
-    process.chdir('/Users/dev/Desktop/learning-agent-core/apps/backend/agent-server');
+    process.chdir(BACKEND_AGENT_SERVER_CWD);
 
     try {
       const templateDir = resolveFrontendTemplateDir('react-ts');
@@ -81,18 +98,15 @@ describe('@agent/templates frontend template registry', () => {
     expect(templateDir).toContain('packages/templates/src/bonus-center-data');
   });
 
-  it('keeps the react-ts template ready for bonusCenterData report generation', () => {
+  it('keeps the react-ts template ready as a minimal runnable frontend scaffold', () => {
     const templateDir = resolveFrontendTemplateDir('react-ts');
 
     expect(templateDir).toContain('packages/templates/src/react-ts');
-    expect(existsSync(join(templateDir!, 'src/pages/dataDashboard/bonusCenterData/index.tsx'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/pages/dataDashboard/bonusCenterData/components/Search/index.tsx'))).toBe(
-      true
-    );
-    expect(existsSync(join(templateDir!, 'src/services/data/bonusCenter.ts'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/types/data/bonusCenter.ts'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/config/layout.tsx'))).toBe(true);
-    expect(existsSync(join(templateDir!, 'src/constants/time.ts'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'App.tsx'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'index.tsx'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'styles.css'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'package.json'))).toBe(true);
+    expect(existsSync(join(templateDir!, 'tsconfig.json'))).toBe(true);
     expect(existsSync(join(templateDir!, 'vite.config.ts'))).toBe(true);
   });
 });

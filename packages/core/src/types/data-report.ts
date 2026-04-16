@@ -1,5 +1,33 @@
-import type { DataReportBlueprintResult } from '@agent/report-kit';
 import type { LlmProviderLike } from './llm-provider-like';
+
+export type DataReportScope = 'single' | 'multiple' | 'shell-first';
+
+export interface DataReportModuleBlueprint {
+  id: string;
+  componentDir: string;
+  entryFile: string;
+  sourceDir?: string;
+}
+
+export interface DataReportBlueprintResult {
+  scope: DataReportScope;
+  templateRef: 'bonusCenterData' | 'generic-report';
+  templateId: string;
+  baseDir: string;
+  routeName: string;
+  routeTitle: string;
+  templateApiCount: number;
+  pageDir: string;
+  servicesDir: string;
+  typesDir: string;
+  routesFile: string;
+  modules: DataReportModuleBlueprint[];
+  moduleIds: string[];
+  sharedFiles: string[];
+  moduleFilePatterns: string[];
+  assemblyOrder: string[];
+  plannedFiles: string[];
+}
 
 export interface DataReportPlannedFile {
   path: string;

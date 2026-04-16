@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadSettings } from '@agent/config';
+import { parseDotEnvFile } from '../src/settings/settings.helpers';
+import { loadSettings as directLoadSettings } from '../src/settings/settings.loader';
+import * as settingsExports from '../src/settings';
 
 /** 与 settings.findWorkspaceRoot 一致：从启动时的 cwd 向上找 pnpm-workspace.yaml（避免硬编码盘符与目录名） */
 function resolveMonorepoRootFromCwd(): string {
@@ -24,6 +27,7 @@ function resolveMonorepoRootFromCwd(): string {
 
 const REPO_ROOT = resolveMonorepoRootFromCwd();
 const BACKEND_AGENT_SERVER_CWD = join(REPO_ROOT, 'apps', 'backend', 'agent-server');
+const ROOT_DOTENV = parseDotEnvFile(join(REPO_ROOT, '.env'));
 
 const ORIGINAL_CWD = process.cwd();
 
@@ -34,9 +38,15 @@ function toPosixPath(p: string): string {
 describe('loadSettings', () => {
   afterEach(() => {
     process.chdir(ORIGINAL_CWD);
+    delete process.env.SKILLS_ROOT;
+    delete process.env.SKILL_RUNTIME_ROOT;
   });
 
-  it('从后端目录启动时仍然把数据路径解析到仓库根级 data 目录', () => {
+  it('co-locates settings implementation under src/settings', () => {
+    expect(directLoadSettings).toBe(settingsExports.loadSettings);
+  });
+
+  it('从后端目录启动时仍然把数据路径解析到仓库根级 data 目录，并尊重根 .env 覆盖', () => {
     process.chdir(BACKEND_AGENT_SERVER_CWD);
 
     const settings = loadSettings({ PORT: '3000' } as NodeJS.ProcessEnv);
@@ -49,7 +59,11 @@ describe('loadSettings', () => {
     expect(toPosixPath(settings.vectorIndexFilePath)).toBe(
       toPosixPath(join(REPO_ROOT, 'data', 'memory', 'vector-index.json'))
     );
-    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'skills')));
+    const expectedSkillsRoot = join(
+      REPO_ROOT,
+      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skill-runtime'
+    );
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(expectedSkillsRoot));
   });
 
   it('保留显式传入的绝对路径配置', () => {
@@ -152,6 +166,7 @@ describe('loadSettings', () => {
         expect(toPosixPath(settings.tasksStateFilePath)).toBe(
           toPosixPath(join(workspaceRoot, 'data', 'runtime', 'tasks-state.json'))
         );
+        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skill-runtime')));
       } finally {
         await rm(workspaceRoot, { recursive: true, force: true });
       }
@@ -254,6 +269,62 @@ describe('loadSettings', () => {
       pollMs: 5000,
       runnerIdPrefix: 'worker'
     });
+  });
+
+  it('supports MiniMax provider defaults through env-backed provider discovery', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        MINIMAX_API_KEY: 'minimax-key',
+        MINIMAX_BASE_URL: 'https://api.minimaxi.com/v1/'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(settings.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'minimax',
+          type: 'minimax',
+          displayName: 'MiniMax',
+          apiKey: 'minimax-key',
+          baseUrl: 'https://api.minimaxi.com/v1',
+          roleModels: {
+            manager: 'MiniMax-M2.7',
+            research: 'MiniMax-M2.5',
+            executor: 'MiniMax-M2.5-highspeed',
+            reviewer: 'MiniMax-M2.7-highspeed'
+          },
+          models: ['MiniMax-M2.7', 'MiniMax-M2.5', 'MiniMax-M2.5-highspeed', 'MiniMax-M2.7-highspeed', 'M2-her']
+        })
+      ])
+    );
+  });
+
+  it('supports overriding MiniMax role models through env', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        MINIMAX_API_KEY: 'minimax-key',
+        MINIMAX_MANAGER_MODEL: 'MiniMax-M2.7-highspeed',
+        MINIMAX_RESEARCH_MODEL: 'MiniMax-M2.7',
+        MINIMAX_EXECUTOR_MODEL: 'MiniMax-M2.5',
+        MINIMAX_REVIEWER_MODEL: 'M2-her',
+        MINIMAX_DIALOG_MODEL: 'M2-her'
+      } as NodeJS.ProcessEnv
+    });
+
+    const minimaxProvider = settings.providers.find(provider => provider.id === 'minimax');
+    expect(minimaxProvider).toEqual(
+      expect.objectContaining({
+        roleModels: {
+          manager: 'MiniMax-M2.7-highspeed',
+          research: 'MiniMax-M2.7',
+          executor: 'MiniMax-M2.5',
+          reviewer: 'M2-her'
+        }
+      })
+    );
+    expect(minimaxProvider?.models).toEqual(['MiniMax-M2.7-highspeed', 'MiniMax-M2.7', 'MiniMax-M2.5', 'M2-her']);
   });
 
   it('支持每日技术情报简报配置与 env override', () => {

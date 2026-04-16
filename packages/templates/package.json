@@ -23,6 +23,23 @@
     "build:watch": "tsup --watch",
     "build:watch:types": "tsc -p tsconfig.types.json --watch",
     "watch": "pnpm build:watch & pnpm build:watch:types",
-    "build:lib": "pnpm build:transpile && pnpm build:types"
+    "build:lib": "pnpm build:transpile && pnpm build:types",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/templates",
+    "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/templates/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:test:unit": "pnpm test",
+    "test:integration": "node ../../scripts/run-package-integration-tests.js packages/templates",
+    "turbo:test:integration": "pnpm test:integration",
+    "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
+  },
+  "dependencies": {
+    "@ant-design/pro-components": "^2.8.5",
+    "antd": "^5.22.1",
+    "dayjs": "^1.11.13",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-intl": "^6.0.0"
   }
 }

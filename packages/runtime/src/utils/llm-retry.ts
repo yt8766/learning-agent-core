@@ -1,12 +1,14 @@
 import type { ZodType } from 'zod/v4';
 
+import type {
+  ILLMProvider as LlmProvider,
+  LlmProviderMessage as ChatMessage,
+  LlmProviderOptions as GenerateTextOptions
+} from '@agent/core';
 import {
   appendJsonSafetyToMessages,
   safeGenerateObject,
   withLlmRetry,
-  type ChatMessage,
-  type GenerateTextOptions,
-  type LlmProvider,
   type SafeGenerateObjectRetryOptions
 } from '@agent/adapters';
 

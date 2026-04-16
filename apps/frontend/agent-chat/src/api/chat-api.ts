@@ -128,10 +128,24 @@ export function getCheckpoint(sessionId: string) {
   });
 }
 
-export function appendMessage(sessionId: string, message: string) {
+export function appendMessage(sessionId: string, message: string, options?: { modelId?: string }) {
   return request<ChatMessageRecord>('/chat/messages', {
     method: 'POST',
-    data: { message, sessionId }
+    data: { message, sessionId, modelId: options?.modelId }
+  });
+}
+
+export interface ChatModelOption {
+  id: string;
+  displayName: string;
+  providerId: string;
+}
+
+export function listAvailableChatModels() {
+  return request<ChatModelOption[]>('/chat/models', {
+    dedupeKey: 'GET:/chat/models',
+    cacheWindowMs: 1000,
+    timeoutMs: 5000
   });
 }
 

@@ -1,5 +1,10 @@
 # agent-admin 文档目录
 
+状态：current
+文档类型：index
+适用范围：`docs/frontend/agent-admin/`
+最后核对：2026-04-15
+
 本目录用于沉淀 `apps/frontend/agent-admin` 相关文档。
 
 当前对应实现目录：
@@ -32,4 +37,4 @@
 
 当前文档：
 
-- [overview.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/agent-admin/overview.md)
+- [overview.md](/docs/frontend/agent-admin/overview.md)

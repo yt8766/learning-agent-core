@@ -1,4 +1,5 @@
 import { ActionIntent, AgentRole, RiskLevel, TaskRecord, TaskStatus } from '@agent/shared';
+
 import { PendingExecutionContext } from '../approval';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../approval/risk-interrupts';
 import { setSkillStepStatus } from './runtime-stage-helpers';
@@ -19,6 +20,7 @@ type ExecutionApprovalContext = {
       label: string;
       value: string;
     }>;
+    toolInput?: Record<string, unknown>;
     tool?: {
       riskLevel?: RiskLevel;
     };
@@ -126,6 +128,7 @@ export function pauseExecutionForApproval({
     intent: execution.intent,
     toolName: execution.toolName,
     researchSummary,
+    toolInput: execution.toolInput,
     currentSkillExecution: task.currentSkillExecution
   });
   setSkillStepStatus(task, 'execute', 'blocked');

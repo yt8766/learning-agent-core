@@ -1,1 +1,1 @@
-export * from '../execution-watchdog';
+export * from './execution-watchdog';

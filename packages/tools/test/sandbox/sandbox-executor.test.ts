@@ -11,16 +11,20 @@ import {
 import { ActionIntent } from '@agent/shared';
 
 import { LocalSandboxExecutor } from '../../src/sandbox/sandbox-executor';
+import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('LocalSandboxExecutor find-skills', () => {
   const originalCwd = process.cwd();
+  const tempWorkspaces: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(originalCwd);
+    await cleanupTempWorkspaces(tempWorkspaces.splice(0));
   });
 
   it('discovers installed, local, and cached remote skills from the workspace', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-find-skills-${Date.now()}`);
+    const root = await createTempWorkspace('sandbox-find-skills');
+    tempWorkspaces.push(root);
     await mkdir(join(root, 'skills', 'repo-audit'), { recursive: true });
     await mkdir(join(root, 'data', 'skills', 'remote-sources', 'bundled-marketplace'), { recursive: true });
     await mkdir(join(root, 'data', 'skills', 'installed', 'bundled-marketplace', 'repo_review_companion', '0.1.0'), {
@@ -105,7 +109,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('deletes a workspace file with delete_local_file', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-delete-file-${Date.now()}`);
+    const root = await createTempWorkspace('sandbox-delete-file');
+    tempWorkspaces.push(root);
     const targetFile = join(root, 'data', 'tmp.txt');
     await mkdir(join(root, 'data'), { recursive: true });
     await writeFile(targetFile, 'to-delete');
@@ -127,8 +132,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('creates a local runtime schedule with schedule_task', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-schedule-task-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-schedule-task');
+    tempWorkspaces.push(root);
 
     process.chdir(root);
     const executor = new LocalSandboxExecutor();
@@ -154,8 +159,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('generates a data-report scaffold preview without writing files', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-data-report-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-data-report');
+    tempWorkspaces.push(root);
 
     process.chdir(root);
     const executor = new LocalSandboxExecutor();
@@ -195,8 +200,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('plans a data-report blueprint preview without writing files', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-data-report-blueprint-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-data-report-blueprint');
+    tempWorkspaces.push(root);
 
     process.chdir(root);
     const executor = new LocalSandboxExecutor();
@@ -222,8 +227,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('generates a data-report module preview without writing files', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-data-report-module-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-data-report-module');
+    tempWorkspaces.push(root);
 
     process.chdir(root);
     const executor = new LocalSandboxExecutor();
@@ -254,8 +259,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('assembles a data-report delivery bundle preview without writing files', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-data-report-assembly-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-data-report-assembly');
+    tempWorkspaces.push(root);
 
     process.chdir(root);
     const executor = new LocalSandboxExecutor();
@@ -331,8 +336,8 @@ describe('LocalSandboxExecutor find-skills', () => {
   });
 
   it('writes an assembled data-report bundle into the requested target root', async () => {
-    const root = join(process.cwd(), 'tmp', `sandbox-data-report-write-${Date.now()}`);
-    await mkdir(root, { recursive: true });
+    const root = await createTempWorkspace('sandbox-data-report-write');
+    tempWorkspaces.push(root);
 
     const blueprint = buildDataReportBlueprint({
       goal: '参考 bonusCenterData 生成多个数据报表页面',

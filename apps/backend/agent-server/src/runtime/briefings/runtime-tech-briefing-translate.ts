@@ -1,7 +1,8 @@
 import { z } from 'zod/v4';
 
-import { OpenAICompatibleProvider, generateObjectWithRetry } from '@agent/adapters';
+import type { ILLMProvider } from '@agent/core';
 import type { ProviderSettingsRecord } from '@agent/config';
+import { generateObjectWithRetry } from '@agent/runtime';
 
 import type { TechBriefingCategory, TechBriefingItem } from './runtime-tech-briefing.types';
 
@@ -27,6 +28,7 @@ export interface RuntimeTechBriefingTranslateContext {
       translationModel: string;
     };
   };
+  llmProvider?: ILLMProvider;
   translateText?: (input: {
     category: TechBriefingCategory;
     title: string;
@@ -80,25 +82,8 @@ function createTranslator(context: RuntimeTechBriefingTranslateContext) {
     return context.translateText;
   }
 
-  if (
-    !context.settings.zhipuApiKey ||
-    !context.settings.zhipuApiBaseUrl ||
-    !context.settings.zhipuModels ||
-    Object.keys(context.settings.zhipuModels).length === 0
-  ) {
-    return null;
-  }
-
-  const provider = OpenAICompatibleProvider.fromConfig({
-    id: 'daily-tech-briefing-translation',
-    type: 'zhipu',
-    displayName: 'Daily Tech Briefing Translation',
-    apiKey: context.settings.zhipuApiKey,
-    baseUrl: context.settings.zhipuApiBaseUrl,
-    models: Array.from(new Set(Object.values(context.settings.zhipuModels))),
-    roleModels: context.settings.zhipuModels
-  });
-  if (!provider.isConfigured()) {
+  const provider = context.llmProvider;
+  if (!provider?.isConfigured()) {
     return null;
   }
 

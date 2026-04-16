@@ -1,8 +1,19 @@
 # Chat Session And SSE
 
 状态：current
+文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`
 最后核对：2026-04-15
+
+本主题主文档：
+
+- 总体对接关系仍以 [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md) 为准
+
+本文只覆盖：
+
+- chat session 生命周期
+- `/api/chat/messages` 与 `/api/chat/stream` 的配合
+- SSE 事件、回放、前端消息合并相关细节
 
 ## 1. 总体链路
 
@@ -89,5 +100,5 @@
 
 ## 6. 继续阅读
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [Approval Recovery](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [Approval Recovery](/docs/integration/approval-recovery.md)

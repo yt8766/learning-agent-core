@@ -2,9 +2,9 @@
 
 本目录用于存放给代码代理读取的仓库级 skills，例如 Codex、Claude Code。
 
-它和 `packages/skills` 不是一回事：
+它和 `packages/skill-runtime` 不是一回事：
 
-- `packages/skills`
+- `packages/skill-runtime`
   - 面向运行时
   - 存放 skill registry、skill card、实验区/稳定区的领域实现
 - `skills/`

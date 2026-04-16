@@ -1,3 +1,4 @@
+import { createDefaultRuntimeLlmProvider } from '@agent/adapters';
 import { AgentRuntime } from '@agent/runtime';
 
 import {
@@ -23,7 +24,12 @@ export async function startWorkerProcess(): Promise<WorkerProcessHandle> {
           runnerIdPrefix: 'worker'
         }
       }
-    }
+    },
+    createLlmProvider: ({ settings, semanticCacheRepository }) =>
+      createDefaultRuntimeLlmProvider({
+        settings,
+        semanticCacheRepository
+      })
   });
   await runtime.start();
 

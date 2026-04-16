@@ -1,6 +1,6 @@
 import { ToolExecutionRequest, ToolExecutionResult } from '@agent/shared';
 
-import { ExecutionWatchdog } from '../execution-watchdog';
+import { ExecutionWatchdog } from '../watchdog/execution-watchdog';
 import { SandboxExecutor } from '../sandbox/sandbox-executor';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
 
-import { LearningService } from '../../src/learning/learning.service';
+import { LearningService } from '../../src/modules/learning/services/learning.service';
 
 describe('LearningService', () => {
   it('delegates center loading to RuntimeCentersService', () => {

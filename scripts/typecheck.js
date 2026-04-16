@@ -7,26 +7,15 @@ import { spawnSync } from 'node:child_process';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tsc = path.join(rootDir, 'node_modules/typescript/lib/tsc.js');
 
-const projects = [
-  'packages/core/tsconfig.json',
-  'packages/config/tsconfig.json',
-  'packages/shared/tsconfig.json',
-  'packages/runtime/tsconfig.json',
-  'packages/adapters/tsconfig.json',
-  'packages/memory/tsconfig.json',
-  'packages/evals/tsconfig.json',
-  'packages/tools/tsconfig.json',
-  'packages/skills/tsconfig.json',
-  'agents/supervisor/tsconfig.json',
-  'agents/data-report/tsconfig.json',
-  'agents/coder/tsconfig.json',
-  'agents/reviewer/tsconfig.json',
+const appProjects = [
   'apps/backend/agent-server/tsconfig.json',
   'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.json',
+  'apps/frontend/agent-admin/tsconfig.node.json',
   'apps/frontend/agent-chat/tsconfig.app.json',
   'apps/frontend/agent-chat/tsconfig.node.json'
 ];
+const projects = [...collectPackageProjects('packages'), ...collectPackageProjects('agents'), ...appProjects];
 
 if (!fs.existsSync(tsc)) {
   console.error('typescript not found at', tsc);
@@ -49,3 +38,17 @@ for (const rel of projects) {
 }
 
 console.log('[typecheck] ok:', projects.length, 'projects');
+
+function collectPackageProjects(rootSegment) {
+  const segmentRoot = path.join(rootDir, rootSegment);
+  if (!fs.existsSync(segmentRoot)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(segmentRoot, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => `${rootSegment}/${entry.name}/tsconfig.json`)
+    .filter(relPath => fs.existsSync(path.join(rootDir, relPath)))
+    .sort((left, right) => left.localeCompare(right));
+}

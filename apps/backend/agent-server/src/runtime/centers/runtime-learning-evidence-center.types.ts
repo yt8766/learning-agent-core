@@ -1,4 +1,5 @@
 import { EvidenceRecord, TaskRecord } from '@agent/shared';
+import type { ResolutionCandidateRecord } from '@agent/shared';
 
 export interface RecentQuarantinedMemory {
   id: string;
@@ -190,6 +191,7 @@ export interface BuildLearningCenterInput {
   invalidatedRulesPromise: Promise<number>;
   crossCheckEvidencePromise: Promise<CrossCheckEvidenceEntry[]>;
   governanceSnapshotPromise?: Promise<RuntimeGovernanceSnapshotRecord>;
+  resolutionCandidatesPromise?: Promise<ResolutionCandidateRecord[]>;
   resolveLocalSkillSuggestions: (task: TaskRecord) => Promise<{
     suggestions: unknown[];
     gapSummary?: string;

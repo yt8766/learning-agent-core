@@ -17,7 +17,10 @@ import { buildRuntimeCenter } from './runtime-runtime-center';
 import { buildSkillSourcesCenter } from './runtime-skill-sources-center';
 import { buildToolsCenter } from '../tools/runtime-tools-center';
 import { getDisabledCompanyWorkerIds } from '../helpers/runtime-connector-registry';
-import { summarizeAndPersistEvalHistory, summarizeAndPersistUsageAnalytics } from '../helpers/runtime-metrics-store';
+import {
+  summarizeAndPersistEvalHistory,
+  summarizeAndPersistUsageAnalytics
+} from '../../modules/runtime-metrics/services/runtime-metrics-store';
 import {
   buildPlatformConsole,
   exportApprovalsCenter,
@@ -29,7 +32,7 @@ import {
   getRecentGovernanceAudit,
   listApprovalScopePolicies,
   syncCapabilityGovernanceProfiles
-} from '../helpers/runtime-governance-store';
+} from '../../modules/runtime-governance/services/runtime-governance-store';
 import {
   appendBriefingFeedback,
   readDailyTechBriefingRuns,
@@ -252,6 +255,7 @@ export class RuntimeCentersQueryService {
       invalidatedRulesPromise,
       crossCheckEvidencePromise,
       governanceSnapshotPromise: capabilityGovernanceSyncPromise.then(() => ctx.runtimeStateRepository.load()),
+      resolutionCandidatesPromise: ctx.wenyuanFacade.listResolutionCandidates?.() ?? Promise.resolve([]),
       resolveLocalSkillSuggestions: (task: any) =>
         resolveLocalSkillSuggestionsWithTimeout(() =>
           searchLocalSkillSuggestions(ctx.getSkillSourcesContext(), task.goal, {

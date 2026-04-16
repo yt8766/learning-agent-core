@@ -1,7 +1,7 @@
 import { z, type ZodType } from 'zod/v4';
 
 import type { DataReportJsonGenerationNode, DataReportJsonGraphState } from '../../../types/data-report-json';
-import type { ChatMessage } from '../../../adapters/llm/llm-provider';
+import type { ChatMessage } from '@agent/adapters';
 import { generateObjectWithRetry } from '../../../utils/llm-retry';
 import { resolveDataReportJsonNodeModelCandidates } from '../model-policy';
 

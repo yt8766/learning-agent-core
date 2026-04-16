@@ -1,7 +1,7 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import type { DataReportBlueprintResult } from '@agent/report-kit';
 
-import type { LlmProvider } from '../adapters/llm/llm-provider';
+import type { LlmProvider } from '@agent/adapters';
 import {
   runAnalysisNode,
   runAppGenNode,

@@ -2,14 +2,34 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
-import { derivePromptRegressionSummary, enforcePromptRegressionGate } from './prompt-regression.js';
+import {
+  buildPromptRegressionSkipSummary,
+  derivePromptRegressionSummary,
+  enforcePromptRegressionGate,
+  isSupportedPromptfooNodeRuntime
+} from './prompt-regression.js';
 
 const CONFIG_PATH = resolve('packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml');
 const RAW_OUTPUT_PATH = resolve('packages/evals/promptfoo/latest-promptfoo-results.json');
 const SUMMARY_PATH = resolve('packages/evals/promptfoo/latest-summary.json');
+const PROMPTFOO_SUPPORTED_NODE_RANGE = '^20.20.0 || >=22.22.0';
 
 async function main() {
   await mkdir(dirname(RAW_OUTPUT_PATH), { recursive: true });
+  if (!isSupportedPromptfooNodeRuntime()) {
+    buildPromptRegressionSkipSummary('unsupported_node_runtime', {
+      detectedNodeVersion: process.versions.node,
+      requiredNodeRange: PROMPTFOO_SUPPORTED_NODE_RANGE
+    });
+    console.warn(
+      [
+        `[prompt-regression] skipped: promptfoo requires Node ${PROMPTFOO_SUPPORTED_NODE_RANGE}.`,
+        `Detected ${process.versions.node}.`,
+        `Skip summaries are not written locally for unsupported runtimes.`
+      ].join(' ')
+    );
+    return;
+  }
   await runPromptfooEval();
   const raw = JSON.parse(await readFile(RAW_OUTPUT_PATH, 'utf8'));
   const summary = derivePromptRegressionSummary(raw);

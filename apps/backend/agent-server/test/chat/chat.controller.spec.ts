@@ -82,6 +82,9 @@ describe('ChatController', () => {
       };
     }),
     listSessions: vi.fn(() => ['session-1']),
+    listAvailableModels: vi.fn(() => [
+      { id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }
+    ]),
     createSession: vi.fn(dto => ({ id: 'session-1', ...dto })),
     getSession: vi.fn(id => ({ id })),
     listMessages: vi.fn(id => [{ sessionId: id, role: 'user', content: 'hello' }]),
@@ -106,6 +109,9 @@ describe('ChatController', () => {
     const response = createResponse();
 
     expect(controller.listSessions()).toEqual(['session-1']);
+    expect(controller.listAvailableModels()).toEqual([
+      { id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }
+    ]);
     expect(controller.getSession('session-1', response as never)).toEqual({ id: 'session-1' });
     expect(controller.listMessages(request as never, response as never, 'session-1')).toEqual([
       { sessionId: 'session-1', role: 'user', content: 'hello' }
@@ -140,7 +146,11 @@ describe('ChatController', () => {
       candidateIds: ['candidate-1'],
       sessionId: 'session-1'
     });
-    controller.appendMessage(request as never, response as never, { sessionId: 'session-1', message: '继续执行' });
+    controller.appendMessage(request as never, response as never, {
+      sessionId: 'session-1',
+      message: '继续执行',
+      modelId: 'minimax/MiniMax-M2.7'
+    });
     controller.createSession({ title: '新会话' }, response as never);
     controller.recover(request as never, response as never, { sessionId: 'session-1' });
 
@@ -159,7 +169,10 @@ describe('ChatController', () => {
       candidateIds: ['candidate-1'],
       sessionId: 'session-1'
     });
-    expect(chatService.appendMessage).toHaveBeenCalledWith('session-1', { message: '继续执行' });
+    expect(chatService.appendMessage).toHaveBeenCalledWith('session-1', {
+      message: '继续执行',
+      modelId: 'minimax/MiniMax-M2.7'
+    });
     expect(chatService.recover).toHaveBeenCalledWith('session-1');
     expect(response.cookie).toHaveBeenCalled();
   });

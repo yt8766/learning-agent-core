@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { HealthCheckResult } from '@agent/shared';
+import { HealthCheckResult } from '@agent/core';
 
 import { RuntimeTaskService } from '../runtime/services/runtime-task.service';
 

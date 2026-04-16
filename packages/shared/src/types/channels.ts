@@ -1,3 +1,5 @@
+export { ChannelIdentitySchema, ChannelKindSchema } from '@agent/core';
+import type { ChannelIdentity, ChannelKind } from '@agent/core';
 import type { ActionIntent, ApprovalScope, ChatRole, ExecutionPlanMode } from './primitives';
 import type { ApprovalResumeInput } from './governance';
 import type { ChatSessionRecord } from './tasking';
@@ -47,16 +49,6 @@ export interface CreateAgentDiagnosisTaskDto {
   stack?: string;
 }
 
-export type ChannelKind = 'web' | 'telegram' | 'feishu' | 'wechat';
-
-export interface ChannelIdentity {
-  channel: ChannelKind;
-  channelUserId?: string;
-  channelChatId?: string;
-  messageId?: string;
-  displayName?: string;
-}
-
 export interface InboundChannelAttachment {
   type: 'image' | 'file' | 'link' | 'unknown';
   url?: string;
@@ -99,6 +91,7 @@ export interface UpdateChatSessionDto {
 
 export interface AppendChatMessageDto {
   message: string;
+  modelId?: string;
   channelIdentity?: ChannelIdentity;
 }
 
@@ -112,6 +105,31 @@ export interface RecoverToCheckpointDto {
 export interface SearchMemoryDto {
   query: string;
   limit?: number;
+  scopeContext?: {
+    actorRole?: string;
+    scopeType?: string;
+    allowedScopeTypes?: string[];
+    userId?: string;
+    workspaceId?: string;
+    teamId?: string;
+    orgId?: string;
+  };
+  entityContext?: Array<{
+    entityType: 'user' | 'project' | 'repo' | 'workspace' | 'tool' | 'connector';
+    entityId: string;
+  }>;
+  memoryTypes?: Array<
+    | 'fact'
+    | 'preference'
+    | 'constraint'
+    | 'procedure'
+    | 'reflection'
+    | 'summary'
+    | 'skill-experience'
+    | 'failure-pattern'
+  >;
+  includeRules?: boolean;
+  includeReflections?: boolean;
 }
 
 export interface InvalidateKnowledgeDto {
@@ -125,6 +143,51 @@ export interface SupersedeKnowledgeDto {
 
 export interface RetireKnowledgeDto {
   reason: string;
+}
+
+export interface OverrideMemoryDto {
+  summary: string;
+  content: string;
+  tags?: string[];
+  reason: string;
+  actor?: string;
+  memoryType?:
+    | 'fact'
+    | 'preference'
+    | 'constraint'
+    | 'procedure'
+    | 'reflection'
+    | 'summary'
+    | 'skill-experience'
+    | 'failure-pattern';
+  scopeType?: 'session' | 'user' | 'task' | 'workspace' | 'team' | 'org' | 'global';
+}
+
+export interface RollbackMemoryDto {
+  version: number;
+  actor?: string;
+}
+
+export interface MemoryFeedbackDto {
+  kind: 'retrieved' | 'injected' | 'adopted' | 'dismissed' | 'corrected';
+  at?: string;
+}
+
+export interface PatchUserProfileDto {
+  communicationStyle?: string;
+  executionStyle?: string;
+  approvalStyle?: string;
+  riskTolerance?: string;
+  codingPreferences?: string[];
+  toolPreferences?: string[];
+  productFocus?: string[];
+  doNotDo?: string[];
+  privacyFlags?: string[];
+  actor?: string;
+}
+
+export interface ResolveResolutionCandidateDto {
+  resolution: 'accepted' | 'rejected';
 }
 
 export interface CreateDocumentLearningJobDto {
@@ -163,3 +226,5 @@ export interface LearningConfirmationDto {
   candidateIds?: string[];
   actor?: string;
 }
+
+export type { ChannelIdentity, ChannelKind } from '@agent/core';

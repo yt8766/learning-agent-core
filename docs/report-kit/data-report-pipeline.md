@@ -1,12 +1,13 @@
 # Data Report Pipeline
 
 状态：current
-适用范围：`packages/report-kit`、`packages/agent-core`
-最后核对：2026-04-14
+文档类型：reference
+适用范围：`packages/report-kit`、`agents/data-report`、`packages/runtime`
+最后核对：2026-04-15
 
 ## 1. 这篇文档说明什么
 
-本文档说明 data-report 相关能力在 `report-kit` 与 `agent-core` 之间的边界，避免后续再次把报表生成逻辑写回 app service。
+本文档说明 data-report 相关能力在 `report-kit`、`agents/data-report` 与 `packages/runtime` 之间的边界，避免后续再次把报表生成逻辑写回 app service。
 
 ## 2. `report-kit` 当前职责
 
@@ -21,9 +22,9 @@
 
 这是 data-report 生成链路里的“确定性层”。
 
-## 3. `agent-core` 当前职责
+## 3. `agents/data-report` / `packages/runtime` 当前职责
 
-`packages/agent-core` 在 data-report 相关链路中负责：
+`agents/data-report` 与 `packages/runtime` 在 data-report 相关链路中负责：
 
 - preview flow
 - graph / runtime facade
@@ -44,12 +45,12 @@
 
 - `report-kit`
   - 确定性生成资产
-- `agent-core`
+- `agents/data-report` / `packages/runtime`
   - graph 编排与 facade
 - `apps/backend/*`
   - HTTP / SSE / 鉴权 / 运行时装配
 
 ## 5. 继续阅读
 
-- [report-kit 文档目录](/Users/dev/Desktop/learning-agent-core/docs/report-kit/README.md)
-- [agent-core data-report 指南](/Users/dev/Desktop/learning-agent-core/docs/agent-core/data-report-json-generation-guide.md)
+- [report-kit 文档目录](/docs/report-kit/README.md)
+- [agent-core data-report 指南（历史迁移参考）](/docs/archive/agent-core/data-report-json-generation-guide.md)

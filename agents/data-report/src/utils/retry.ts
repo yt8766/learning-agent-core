@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@agent/adapters';
+import type { LlmProviderMessage as ChatMessage } from '@agent/core';
 
 export interface LlmRetryOptions {
   maxRetries?: number;

@@ -1,13 +1,25 @@
-﻿import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
-
-import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
-import { filterToolsForExecutionMode, isToolAllowedInExecutionMode } from '../../capabilities/execution-mode-guard';
-import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '../../runtime/streaming-execution';
-import { withReactiveContextRetry } from '../../utils/reactive-context-retry';
-import { generateObjectWithRetry } from '../../utils/llm-retry';
+import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
 import type { PendingExecutionContext } from '@agent/core';
-import { GONGBU_EXECUTION_SYSTEM_PROMPT } from './gongbu-code/prompts/execution-prompts';
-import { ExecutionActionSchema } from './gongbu-code/schemas/execution-action-schema';
+
+import type { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { filterToolsForExecutionMode } from '../../capabilities/execution-mode-guard';
+import { StreamingExecutionCoordinator } from '../../runtime/streaming-execution';
+import { buildGongbuApprovalPreview, evaluateGongbuApprovalGate } from './gongbu-code/gongbu-code-approval-gate';
+import { executeGongbuToolRequest, maybeReadGongbuSearchResult } from './gongbu-code/gongbu-code-execution-runner';
+import { executeReadonlyBatch } from './gongbu-code/gongbu-code-readonly-batch';
+import { selectGongbuExecution } from './gongbu-code/gongbu-code-selection-service';
+import {
+  buildGongbuToolInput,
+  resolveGongbuToolSelection,
+  selectGongbuIntent,
+  selectPreferredResearchSource,
+  selectPreferredToolNameByWorkflow
+} from './gongbu-code/gongbu-code-tool-resolution';
+import {
+  inspectScaffoldWriteCommand,
+  resolveScaffoldIntent,
+  resolveScaffoldToolName
+} from './gongbu-code/gongbu-code-scaffold';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;
@@ -45,6 +57,7 @@ export class GongbuCodeMinistry {
       label: string;
       value: string;
     }>;
+    toolInput?: Record<string, unknown>;
   }> {
     this.state.status = 'running';
     this.state.subTask = subTask;
@@ -54,6 +67,9 @@ export class GongbuCodeMinistry {
 
     if (this.context.workflowPreset?.id === 'data-report') {
       return this.executeDataReportPipeline(researchSummary);
+    }
+    if (this.context.workflowPreset?.id === 'scaffold') {
+      return this.executeScaffoldWorkflow(researchSummary);
     }
 
     const allowedCapabilities = this.context.workflowPreset?.allowedCapabilities;
@@ -67,93 +83,19 @@ export class GongbuCodeMinistry {
       riskLevel: tool.riskLevel,
       requiresApproval: tool.requiresApproval
     }));
+    const llmSelection = await selectGongbuExecution({
+      context: this.context,
+      researchSummary,
+      availableTools
+    });
 
-    let llmSelection: {
-      intent: ActionIntent;
-      toolName: string;
-      rationale: string;
-      actionPrompt: string;
-    } | null = null;
-    if (this.context.llm.isConfigured()) {
-      try {
-        llmSelection = await withReactiveContextRetry({
-          context: this.context,
-          trigger: 'gongbu-selection',
-          messages: [
-            {
-              role: 'system',
-              content: GONGBU_EXECUTION_SYSTEM_PROMPT
-            },
-            {
-              role: 'user',
-              content: JSON.stringify({
-                goal: this.context.goal,
-                taskContext: this.context.taskContext,
-                researchSummary,
-                availableTools
-              })
-            }
-          ],
-          invoke: async messages =>
-            generateObjectWithRetry({
-              llm: this.context.llm,
-              contractName: 'gongbu-execution-selection',
-              contractVersion: 'gongbu-execution-selection.v1',
-              messages,
-              schema: ExecutionActionSchema,
-              options: {
-                role: 'executor',
-                modelId: this.context.currentWorker?.defaultModel,
-                taskId: this.context.taskId,
-                thinking: this.context.thinking.executor,
-                temperature: 0.1,
-                budgetState: this.context.budgetState,
-                onUsage: usage => {
-                  this.context.onUsage?.({
-                    usage,
-                    role: 'executor'
-                  });
-                }
-              }
-            })
-        });
-      } catch {
-        llmSelection = null;
-      }
-    }
-
-    const fallbackIntent = this.selectIntent(this.context.goal);
-    const intent = llmSelection?.intent ?? fallbackIntent;
-    const presetPreferredToolName = this.selectPreferredToolNameByWorkflow();
-    const llmSelectedTool = llmSelection?.toolName ? this.context.toolRegistry.get(llmSelection.toolName) : undefined;
-    const presetPreferredTool = presetPreferredToolName
-      ? this.context.toolRegistry.get(presetPreferredToolName)
-      : undefined;
-    const preferredTool =
-      llmSelection?.toolName &&
-      (!allowedCapabilities || allowedCapabilities.includes(llmSelection.toolName)) &&
-      llmSelectedTool &&
-      isToolAllowedInExecutionMode(llmSelectedTool, this.context.executionMode)
-        ? llmSelectedTool
-        : undefined;
-    const presetTool =
-      presetPreferredToolName &&
-      (!allowedCapabilities || allowedCapabilities.includes(presetPreferredToolName)) &&
-      presetPreferredTool &&
-      isToolAllowedInExecutionMode(presetPreferredTool, this.context.executionMode)
-        ? presetPreferredTool
-        : undefined;
-    const mappedTool = this.context.toolRegistry.getForIntent(intent);
-    const fallbackTool = candidateTools.find(tool => tool.name === 'local-analysis') ?? candidateTools[0];
-    const tool =
-      preferredTool ??
-      presetTool ??
-      (mappedTool &&
-      (!allowedCapabilities || allowedCapabilities.includes(mappedTool.name)) &&
-      isToolAllowedInExecutionMode(mappedTool, this.context.executionMode)
-        ? mappedTool
-        : undefined) ??
-      fallbackTool;
+    const intent = llmSelection?.intent ?? this.selectIntent(this.context.goal);
+    const tool = resolveGongbuToolSelection({
+      context: this.context,
+      llmSelection,
+      intent,
+      candidateTools
+    });
 
     if (!tool) {
       this.state.status = 'failed';
@@ -177,14 +119,8 @@ export class GongbuCodeMinistry {
     );
 
     const toolInput = this.buildToolInput(tool.name, actionPrompt, researchSummary);
-    const approvalEvaluation = await this.context.approvalService.evaluateWithClassifier(intent, tool, {
-      ...toolInput,
-      executionMode: this.context.executionMode,
-      currentMinistry: this.context.currentWorker?.ministry,
-      currentWorker: this.context.currentWorker?.id
-    });
-    const requiresApproval = approvalEvaluation.requiresApproval;
-    if (requiresApproval) {
+    const approvalEvaluation = await evaluateGongbuApprovalGate(this.context, intent, tool, toolInput);
+    if (approvalEvaluation.requiresApproval) {
       this.state.status = 'waiting_approval';
       const summary = `执行已暂停：${intent} 使用 ${tool.name} 需要人工审批。${approvalEvaluation.reason}`;
       this.state.finalOutput = summary;
@@ -194,6 +130,7 @@ export class GongbuCodeMinistry {
         tool,
         requiresApproval: true,
         summary,
+        toolInput,
         approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
         approvalReason: approvalEvaluation.reason,
         approvalReasonCode: approvalEvaluation.reasonCode
@@ -201,8 +138,26 @@ export class GongbuCodeMinistry {
     }
 
     const executionResult = tool.isReadOnly
-      ? await this.executeReadonlyBatch(tool, candidateTools, intent, researchSummary, actionPrompt)
+      ? await executeReadonlyBatch({
+          coordinator: this.streamingCoordinator,
+          context: this.context,
+          selectedTool: tool,
+          candidateTools,
+          researchSummary,
+          actionPrompt,
+          source: this.constructor.name,
+          buildToolInput: (toolName, currentActionPrompt, currentResearchSummary) =>
+            this.buildToolInput(toolName, currentActionPrompt, currentResearchSummary),
+          runTool: (resolvedTool, resolvedIntent, input) => this.executeSingleTool(resolvedTool, resolvedIntent, input),
+          onEvent: event => {
+            this.state.toolCalls.push(`${event.type}:${event.toolName}`);
+            if (event.type === 'tool_stream_dispatched') {
+              this.state.observations.push(`工部/兵部已流式派发 ${event.toolName}（${event.scheduling}）`);
+            }
+          }
+        })
       : await this.executeSingleTool(tool, intent, toolInput);
+
     if (
       executionResult.errorMessage === 'watchdog_timeout' ||
       executionResult.errorMessage === 'watchdog_interaction_required'
@@ -216,11 +171,13 @@ export class GongbuCodeMinistry {
         tool,
         requiresApproval: true,
         summary,
+        toolInput,
         approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
         approvalReason: executionResult.outputSummary,
         approvalReasonCode: executionResult.errorMessage
       };
     }
+
     const enrichedExecution = await this.maybeReadSearchResult(
       tool.name,
       executionResult,
@@ -247,17 +204,7 @@ export class GongbuCodeMinistry {
     intent: ActionIntent,
     toolInput: Record<string, unknown>
   ): Promise<ToolExecutionResult> {
-    const request = {
-      taskId: this.context.taskId,
-      toolName: tool.name,
-      intent,
-      input: toolInput,
-      requestedBy: 'agent' as const
-    };
-
-    return this.context.mcpClientManager
-      ? await this.context.mcpClientManager.invokeCapability(tool.name, request)
-      : await this.context.sandbox.execute(request);
+    return executeGongbuToolRequest(this.context, tool, intent, toolInput);
   }
 
   protected async executeDataReportPipeline(researchSummary: string): Promise<{
@@ -273,6 +220,7 @@ export class GongbuCodeMinistry {
       label: string;
       value: string;
     }>;
+    toolInput?: Record<string, unknown>;
   }> {
     const intent = ActionIntent.READ_FILE;
     const stageToolNames = [
@@ -282,16 +230,11 @@ export class GongbuCodeMinistry {
       'generate_data_report_routes',
       'assemble_data_report_bundle'
     ] as const;
-    const blueprintToolName = 'plan_data_report_structure';
-    const moduleToolName = 'generate_data_report_module';
-    const sharedToolName = 'generate_data_report_scaffold';
-    const routeToolName = 'generate_data_report_routes';
-    const assembleToolName = 'assemble_data_report_bundle';
-    const blueprintTool = this.context.toolRegistry.get(blueprintToolName);
-    const moduleTool = this.context.toolRegistry.get(moduleToolName);
-    const sharedTool = this.context.toolRegistry.get(sharedToolName);
-    const routeTool = this.context.toolRegistry.get(routeToolName);
-    const assembleTool = this.context.toolRegistry.get(assembleToolName);
+    const blueprintTool = this.context.toolRegistry.get('plan_data_report_structure');
+    const moduleTool = this.context.toolRegistry.get('generate_data_report_module');
+    const sharedTool = this.context.toolRegistry.get('generate_data_report_scaffold');
+    const routeTool = this.context.toolRegistry.get('generate_data_report_routes');
+    const assembleTool = this.context.toolRegistry.get('assemble_data_report_bundle');
 
     if (!blueprintTool || !moduleTool || !sharedTool || !routeTool || !assembleTool) {
       const summary = '工部无法完成数据报表分阶段生成，缺少必要的只读工具。';
@@ -304,8 +247,8 @@ export class GongbuCodeMinistry {
         summary
       };
     }
-    const actionPrompt = `目标：${this.context.goal}；任务上下文：${this.context.taskContext ?? '无'}；研究摘要：${researchSummary}`;
 
+    const actionPrompt = `目标：${this.context.goal}；任务上下文：${this.context.taskContext ?? '无'}；研究摘要：${researchSummary}`;
     this.state.plan = ['规划报表蓝图', '按模块生成报表文件', '生成共享骨架', '生成预览路由', '组装 Sandpack 预览'];
 
     const blueprintResult = await this.executeSingleTool(
@@ -325,12 +268,13 @@ export class GongbuCodeMinistry {
 
     const moduleResults: ToolExecutionResult[] = [];
     for (const moduleId of moduleIds) {
-      const moduleResult = await this.executeSingleTool(
-        moduleTool,
-        intent,
-        this.buildToolInput(moduleTool.name, actionPrompt, researchSummary, { moduleId })
+      moduleResults.push(
+        await this.executeSingleTool(
+          moduleTool,
+          intent,
+          this.buildToolInput(moduleTool.name, actionPrompt, researchSummary, { moduleId })
+        )
       );
-      moduleResults.push(moduleResult);
     }
 
     const sharedResult = await this.executeSingleTool(
@@ -351,7 +295,6 @@ export class GongbuCodeMinistry {
     const routeFiles = Array.isArray((routeResult.rawOutput as { files?: unknown[] } | undefined)?.files)
       ? (((routeResult.rawOutput as { files?: unknown[] }).files ?? []) as unknown[])
       : [];
-
     const assemblyResult = await this.executeSingleTool(
       assembleTool,
       intent,
@@ -391,87 +334,123 @@ export class GongbuCodeMinistry {
     };
   }
 
-  protected async executeReadonlyBatch(
-    selectedTool: ToolDefinition,
-    candidateTools: ToolDefinition[],
-    intent: ActionIntent,
-    researchSummary: string,
-    actionPrompt: string
-  ): Promise<ToolExecutionResult> {
-    const readonlyTools = [selectedTool]
-      .concat(
-        candidateTools.filter(
-          tool =>
-            tool.name !== selectedTool.name &&
-            tool.isReadOnly &&
-            tool.supportsStreamingDispatch &&
-            [
-              'read_local_file',
-              'list_directory',
-              'glob_workspace',
-              'search_in_files',
-              'read_json',
-              'browse_page'
-            ].includes(tool.name)
-        )
-      )
-      .slice(0, 3);
+  protected async executeScaffoldWorkflow(researchSummary: string): Promise<{
+    intent: ActionIntent;
+    toolName: string;
+    requiresApproval: boolean;
+    tool?: ToolDefinition;
+    executionResult?: ToolExecutionResult;
+    summary: string;
+    approvalReason?: string;
+    approvalReasonCode?: string;
+    approvalPreview?: Array<{
+      label: string;
+      value: string;
+    }>;
+    toolInput?: Record<string, unknown>;
+  }> {
+    let toolName: string;
+    let intent: ActionIntent;
+    let toolInput: Record<string, unknown>;
 
-    if (readonlyTools.length === 1) {
-      return this.executeSingleTool(
-        selectedTool,
+    try {
+      toolName = resolveScaffoldToolName(this.context.goal);
+      intent = resolveScaffoldIntent(this.context.goal);
+      toolInput = this.buildToolInput(toolName, `脚手架流程：${this.context.goal}`, researchSummary);
+    } catch (error) {
+      const summary = error instanceof Error ? error.message : '无法解析 /scaffold 命令。';
+      this.state.status = 'failed';
+      this.state.finalOutput = summary;
+      return {
+        intent: ActionIntent.READ_FILE,
+        toolName: 'invalid_scaffold_command',
+        requiresApproval: false,
+        summary
+      };
+    }
+
+    const tool = this.context.toolRegistry.get(toolName);
+    if (!tool) {
+      const summary = `工部无法找到 /scaffold 所需工具 ${toolName}。`;
+      this.state.status = 'failed';
+      this.state.finalOutput = summary;
+      return {
         intent,
-        this.buildToolInput(selectedTool.name, actionPrompt, researchSummary)
-      );
+        toolName,
+        requiresApproval: false,
+        summary,
+        toolInput
+      };
     }
 
-    const { results, events } = await this.streamingCoordinator.run(
-      this.buildReadonlyExecutionSteps(readonlyTools, researchSummary, actionPrompt),
-      {
-        shouldContinue: () => !this.context.isTaskCancelled?.(),
-        allowStep: async step => !step.tool.isDestructive
-      }
-    );
-    for (const event of events) {
-      this.state.toolCalls.push(`${event.type}:${event.toolName}`);
-      if (event.type === 'tool_stream_dispatched') {
-        this.state.observations.push(`工部/兵部已流式派发 ${event.toolName}（${event.scheduling}）`);
+    this.state.plan = ['解析 /scaffold 命令', '生成脚手架预览或预检', '在需要时执行审批与写入'];
+    this.state.toolCalls.push(`intent:${intent}`, `tool:${tool.name}`);
+    this.state.observations.push(`已进入 ${this.context.workflowPreset?.displayName ?? '脚手架'} 显式流程。`);
+
+    if (tool.name === 'write_scaffold') {
+      const { bundle, inspection } = await inspectScaffoldWriteCommand(this.context.goal);
+      if (!inspection.canWriteSafely && toolInput.force !== true) {
+        const summary = `Scaffold target is not empty: ${inspection.targetRoot}`;
+        const executionResult: ToolExecutionResult = {
+          ok: true,
+          outputSummary: summary,
+          rawOutput: {
+            blocked: true,
+            inspection,
+            bundle
+          },
+          exitCode: 0,
+          durationMs: 0
+        };
+        this.state.observations.push(summary);
+        this.state.shortTermMemory = [researchSummary, summary];
+        this.state.finalOutput = summary;
+        this.state.status = 'completed';
+        return {
+          intent,
+          toolName: tool.name,
+          tool,
+          requiresApproval: false,
+          executionResult,
+          summary,
+          toolInput
+        };
       }
     }
+
+    const approvalEvaluation = await evaluateGongbuApprovalGate(this.context, intent, tool, toolInput);
+    if (approvalEvaluation.requiresApproval) {
+      this.state.status = 'waiting_approval';
+      const summary = `执行已暂停：${intent} 使用 ${tool.name} 需要人工审批。${approvalEvaluation.reason}`;
+      this.state.finalOutput = summary;
+      return {
+        intent,
+        toolName: tool.name,
+        tool,
+        requiresApproval: true,
+        summary,
+        toolInput,
+        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
+        approvalReason: approvalEvaluation.reason,
+        approvalReasonCode: approvalEvaluation.reasonCode
+      };
+    }
+
+    const executionResult = await this.executeSingleTool(tool, intent, toolInput);
+    this.state.observations.push(executionResult.outputSummary);
+    this.state.shortTermMemory = [researchSummary, executionResult.outputSummary];
+    this.state.finalOutput = executionResult.outputSummary;
+    this.state.status = 'completed';
 
     return {
-      ok: results.every(item => item.ok),
-      outputSummary: results.map(item => item.outputSummary).join('；'),
-      rawOutput: {
-        batch: true,
-        toolNames: readonlyTools.map(item => item.name),
-        outputs: results.map(item => item.rawOutput)
-      },
-      exitCode: results.some(item => (item.exitCode ?? 0) !== 0) ? 1 : 0,
-      durationMs: results.reduce((sum, item) => sum + item.durationMs, 0),
-      errorMessage: results.find(item => item.errorMessage)?.errorMessage
+      intent,
+      toolName: tool.name,
+      tool,
+      requiresApproval: false,
+      executionResult,
+      summary: executionResult.outputSummary,
+      toolInput
     };
-  }
-
-  protected buildReadonlyExecutionSteps(
-    readonlyTools: ToolDefinition[],
-    researchSummary: string,
-    actionPrompt: string
-  ): ExecutionStepRecord<Record<string, unknown>, ToolExecutionResult>[] {
-    return readonlyTools.map(tool => {
-      const inputPreview = this.buildToolInput(tool.name, actionPrompt, researchSummary);
-      return {
-        id: `${this.context.taskId}:${tool.name}`,
-        toolName: tool.name,
-        ministry: this.context.currentWorker?.ministry,
-        source: this.constructor.name,
-        inputPreview,
-        streamingEligible: tool.isReadOnly && tool.supportsStreamingDispatch,
-        expectedSideEffect: tool.isReadOnly ? 'none' : 'workspace-write',
-        tool,
-        run: async () => this.executeSingleTool(tool, ActionIntent.READ_FILE, inputPreview)
-      };
-    });
   }
 
   buildApprovedState(executionResult: ToolExecutionResult, pending: PendingExecutionContext): AgentExecutionState {
@@ -490,32 +469,7 @@ export class GongbuCodeMinistry {
   }
 
   protected selectIntent(goal: string): ActionIntent {
-    const normalizedGoal = goal.toLowerCase();
-    if (
-      normalizedGoal.includes('delete') ||
-      normalizedGoal.includes('remove') ||
-      normalizedGoal.includes('cleanup') ||
-      normalizedGoal.includes('清理') ||
-      normalizedGoal.includes('删除')
-    ) {
-      return ActionIntent.DELETE_FILE;
-    }
-    if (
-      normalizedGoal.includes('schedule') ||
-      normalizedGoal.includes('cron') ||
-      normalizedGoal.includes('timer') ||
-      normalizedGoal.includes('定时') ||
-      normalizedGoal.includes('提醒')
-    ) {
-      return ActionIntent.SCHEDULE_TASK;
-    }
-    if (normalizedGoal.includes('write') || normalizedGoal.includes('save') || normalizedGoal.includes('file')) {
-      return ActionIntent.WRITE_FILE;
-    }
-    if (normalizedGoal.includes('http') || normalizedGoal.includes('api') || normalizedGoal.includes('request')) {
-      return ActionIntent.CALL_EXTERNAL_API;
-    }
-    return ActionIntent.READ_FILE;
+    return selectGongbuIntent(goal);
   }
 
   protected buildToolInput(
@@ -524,179 +478,19 @@ export class GongbuCodeMinistry {
     researchSummary: string,
     overrides?: Record<string, unknown>
   ): Record<string, unknown> {
-    const preferredResearchSource = this.selectPreferredResearchSource();
-    switch (toolName) {
-      case 'read_local_file':
-        return { path: 'package.json', goal: this.context.goal, researchSummary, actionPrompt };
-      case 'list_directory':
-        return { path: '.', goal: this.context.goal, researchSummary, actionPrompt };
-      case 'write_local_file':
-        return {
-          path: 'data/generated/executor-output.txt',
-          content: `目标：${this.context.goal}\n研究摘要：${researchSummary}\n动作：${actionPrompt}`
-        };
-      case 'plan_data_report_structure':
-        return {
-          goal: this.context.goal,
-          taskContext: this.context.taskContext,
-          baseDir: 'src',
-          ...overrides
-        };
-      case 'generate_data_report_module':
-        return {
-          goal: this.context.goal,
-          taskContext: this.context.taskContext,
-          baseDir: 'src',
-          moduleId: overrides?.moduleId ?? 'Overview'
-        };
-      case 'generate_data_report_scaffold':
-        return {
-          goal: this.context.goal,
-          taskContext: this.context.taskContext,
-          baseDir: 'src',
-          ...overrides
-        };
-      case 'generate_data_report_routes':
-        return {
-          blueprint: overrides?.blueprint
-        };
-      case 'assemble_data_report_bundle':
-        return {
-          blueprint: overrides?.blueprint,
-          moduleResults: overrides?.moduleResults,
-          sharedFiles: overrides?.sharedFiles,
-          routeFiles: overrides?.routeFiles
-        };
-      case 'write_data_report_bundle':
-        return {
-          bundle: overrides?.bundle,
-          targetRoot: 'data/generated/data-report-output'
-        };
-      case 'delete_local_file':
-        return {
-          path: 'data/generated/executor-output.txt',
-          recursive: false,
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt
-        };
-      case 'schedule_task':
-        return {
-          name: 'runtime-followup',
-          prompt: actionPrompt,
-          schedule: 'manual',
-          status: 'ACTIVE',
-          cwd: '.',
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt
-        };
-      case 'http_request':
-        return { url: 'https://example.com', method: 'GET', goal: this.context.goal, researchSummary, actionPrompt };
-      case 'webSearchPrime':
-        return {
-          query: this.context.goal,
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt,
-          freshnessHint: isLikelyFreshnessSensitive(this.context.goal) ? 'latest' : 'general'
-        };
-      case 'webReader':
-        return {
-          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt
-        };
-      case 'search_doc':
-        return {
-          repoUrl: preferredResearchSource?.sourceUrl ?? 'https://github.com/',
-          query: this.context.goal,
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt
-        };
-      case 'collect_research_source':
-        return {
-          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt,
-          trustClass: preferredResearchSource?.trustClass ?? 'official',
-          sourceType: preferredResearchSource?.sourceType ?? 'web'
-        };
-      case 'browse_page':
-        return {
-          url: preferredResearchSource?.sourceUrl ?? buildSearchUrl(this.context.goal),
-          goal: this.context.goal,
-          researchSummary,
-          actionPrompt
-        };
-      case 'run_terminal':
-        return { command: 'pnpm exec vitest --help', goal: this.context.goal, researchSummary, actionPrompt };
-      case 'ship_release':
-        return { target: 'main', goal: this.context.goal, researchSummary, actionPrompt };
-      default:
-        return { goal: this.context.goal, researchSummary, actionPrompt };
-    }
+    return buildGongbuToolInput(this.context, toolName, actionPrompt, researchSummary, overrides);
   }
 
   protected buildApprovalPreview(toolName: string, input: Record<string, unknown>) {
-    const preview = [
-      typeof input.command === 'string' ? { label: 'Command', value: input.command } : null,
-      typeof input.path === 'string' ? { label: 'Path', value: input.path } : null,
-      typeof input.schedule === 'string' ? { label: 'Schedule', value: input.schedule } : null,
-      typeof input.url === 'string' ? { label: 'URL', value: input.url } : null,
-      typeof input.target === 'string' ? { label: 'Target', value: input.target } : null,
-      typeof input.targetRoot === 'string' ? { label: 'Target Root', value: input.targetRoot } : null,
-      typeof input.method === 'string' ? { label: 'Method', value: input.method } : null,
-      typeof input.actionPrompt === 'string' ? { label: 'Action', value: input.actionPrompt } : null,
-      !('command' in input) && !('path' in input) && !('url' in input) && !('target' in input)
-        ? { label: 'Tool', value: toolName }
-        : null
-    ].filter(Boolean) as Array<{ label: string; value: string }>;
-
-    return preview.slice(0, 4);
+    return buildGongbuApprovalPreview(toolName, input);
   }
 
   protected selectPreferredToolNameByWorkflow(): string | undefined {
-    switch (this.context.workflowPreset?.id) {
-      case 'browse':
-        return this.selectPreferredBrowseToolName();
-      case 'ship':
-        return 'ship_release';
-      case 'qa':
-        return 'run_terminal';
-      case 'data-report':
-        return 'plan_data_report_structure';
-      default:
-        return undefined;
-    }
+    return selectPreferredToolNameByWorkflow(this.context);
   }
 
   protected selectPreferredResearchSource() {
-    const candidates = (this.context.externalSources ?? []).filter(source => source.sourceUrl);
-    return (
-      candidates.find(source => source.sourceType === 'web_research_plan') ??
-      candidates.find(source => source.trustClass === 'official') ??
-      candidates[0]
-    );
-  }
-
-  protected selectPreferredBrowseToolName() {
-    const preferredSource = this.selectPreferredResearchSource();
-    const sourceUrl = preferredSource?.sourceUrl?.toLowerCase();
-
-    if (sourceUrl?.includes('github.com') && this.context.mcpClientManager?.hasCapability('search_doc')) {
-      return 'search_doc';
-    }
-    if (sourceUrl && this.context.mcpClientManager?.hasCapability('webReader')) {
-      return 'webReader';
-    }
-    if (this.context.mcpClientManager?.hasCapability('webSearchPrime')) {
-      return 'webSearchPrime';
-    }
-    return this.context.toolRegistry.get('webSearchPrime') ? 'webSearchPrime' : 'collect_research_source';
+    return selectPreferredResearchSource(this.context);
   }
 
   protected async maybeReadSearchResult(
@@ -705,128 +499,12 @@ export class GongbuCodeMinistry {
     researchSummary: string,
     actionPrompt: string
   ): Promise<ToolExecutionResult> {
-    if (toolName !== 'webSearchPrime') {
-      return executionResult;
-    }
-
-    const candidate = this.findReadableSearchCandidate(executionResult.rawOutput);
-    if (!candidate) {
-      return executionResult;
-    }
-
-    const followupToolName = this.resolveFollowupBrowseToolName(candidate.url);
-    if (!followupToolName) {
-      return executionResult;
-    }
-
-    const followupRequest = {
-      taskId: this.context.taskId,
-      toolName: followupToolName,
-      intent: ActionIntent.READ_FILE,
-      input:
-        followupToolName === 'search_doc'
-          ? {
-              repoUrl: candidate.url,
-              query: this.context.goal,
-              goal: this.context.goal,
-              researchSummary,
-              actionPrompt
-            }
-          : {
-              url: candidate.url,
-              goal: this.context.goal,
-              researchSummary,
-              actionPrompt
-            },
-      requestedBy: 'agent' as const
-    };
-
-    const followupResult = this.context.mcpClientManager
-      ? await this.context.mcpClientManager.invokeCapability(followupToolName, followupRequest)
-      : await this.context.sandbox.execute(followupRequest);
-
-    return {
-      ...followupResult,
-      outputSummary: `${executionResult.outputSummary}；${followupResult.outputSummary}`,
-      rawOutput: mergeExecutionOutputs(executionResult.rawOutput, followupResult.rawOutput, followupToolName)
-    };
+    return maybeReadGongbuSearchResult({
+      context: this.context,
+      toolName,
+      executionResult,
+      researchSummary,
+      actionPrompt
+    });
   }
-
-  protected findReadableSearchCandidate(rawOutput: unknown): { url: string } | undefined {
-    if (!rawOutput || typeof rawOutput !== 'object') {
-      return undefined;
-    }
-
-    const items = Array.isArray((rawOutput as { results?: unknown[] }).results)
-      ? (rawOutput as { results: unknown[] }).results
-      : Array.isArray((rawOutput as { items?: unknown[] }).items)
-        ? (rawOutput as { items: unknown[] }).items
-        : [];
-
-    return items.find(item => {
-      if (!item || typeof item !== 'object') {
-        return false;
-      }
-
-      const url = typeof (item as { url?: unknown }).url === 'string' ? (item as { url: string }).url : '';
-      return Boolean(url) && !isSearchResultUrl(url);
-    }) as { url: string } | undefined;
-  }
-
-  protected resolveFollowupBrowseToolName(url: string) {
-    const normalizedUrl = url.toLowerCase();
-    if (normalizedUrl.includes('github.com') && this.context.toolRegistry.get('search_doc')) {
-      return 'search_doc';
-    }
-    if (this.context.toolRegistry.get('webReader')) {
-      return 'webReader';
-    }
-    return undefined;
-  }
-}
-
-function buildSearchUrl(goal: string) {
-  return `https://www.bing.com/search?q=${encodeURIComponent(goal.trim() || '智能搜索')}`;
-}
-
-function isLikelyFreshnessSensitive(goal: string) {
-  return /(最新|最近|today|latest|recent|本周|今天|近况)/i.test(goal);
-}
-
-function isSearchResultUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.host.toLowerCase();
-    const path = parsed.pathname.toLowerCase();
-    return (
-      (host.includes('bing.com') && path.startsWith('/search')) ||
-      (host.includes('google.') && path.startsWith('/search')) ||
-      (host.includes('duckduckgo.com') && path.startsWith('/')) ||
-      (host.includes('baidu.com') && path.startsWith('/s'))
-    );
-  } catch {
-    return true;
-  }
-}
-
-function mergeExecutionOutputs(primaryRawOutput: unknown, followupRawOutput: unknown, followupToolName: string) {
-  const primary =
-    primaryRawOutput && typeof primaryRawOutput === 'object' ? (primaryRawOutput as Record<string, unknown>) : {};
-  const followup =
-    followupRawOutput && typeof followupRawOutput === 'object' ? (followupRawOutput as Record<string, unknown>) : {};
-  const primaryResults = Array.isArray(primary.results)
-    ? primary.results
-    : Array.isArray(primary.items)
-      ? primary.items
-      : [];
-
-  return {
-    ...primary,
-    ...followup,
-    results: [...primaryResults, followup],
-    followedBy: {
-      toolName: followupToolName,
-      url: typeof followup.url === 'string' ? followup.url : undefined
-    }
-  };
 }

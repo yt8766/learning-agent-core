@@ -1,6 +1,6 @@
 ﻿import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
 import { appendFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import * as chalk from 'chalk';
 
@@ -24,7 +24,7 @@ export class AppLoggerService implements LoggerService {
   private readonly format: LogFormat;
 
   constructor() {
-    this.logsDir = join(process.cwd(), 'logs');
+    this.logsDir = resolve(__dirname, '..', '..', 'logs');
     mkdirSync(this.logsDir, { recursive: true });
     this.format = this.resolveFormat();
   }

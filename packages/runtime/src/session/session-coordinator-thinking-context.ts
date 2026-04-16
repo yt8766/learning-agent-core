@@ -2,6 +2,8 @@ import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from 
 import type { ContextStrategy } from '@agent/config';
 import type { MemorySearchService } from '@agent/memory';
 
+import { archivalMemorySearchByParams } from '../memory/active-memory-tools';
+import { flattenStructuredMemories } from '../memory/runtime-memory-search';
 import { applyReactiveCompactRetry, buildContextCompressionResult } from '../utils/context-compression-pipeline';
 import { sanitizeTaskContextForModel } from '../utils/prompts/runtime-output-sanitizer';
 
@@ -95,12 +97,24 @@ export async function buildSessionConversationContext(
         ...(checkpoint.learningEvaluation.notes ?? []).slice(0, ragTopK).map(note => `- ${note}`)
       ].join('\n')
     : '';
-  const retrieved = memorySearchService ? await memorySearchService.search(query, ragTopK) : undefined;
+  const retrieved = await archivalMemorySearchByParams(memorySearchService, {
+    query,
+    limit: Math.max(ragTopK, 5),
+    actorRole: 'agent-chat-user',
+    scopeType: 'session',
+    allowedScopeTypes: ['session', 'user', 'workspace', 'task'],
+    userId: checkpoint?.channelIdentity?.channelUserId ?? session.channelIdentity?.channelUserId,
+    taskId: checkpoint?.taskId,
+    memoryTypes: ['preference', 'constraint', 'procedure', 'skill-experience', 'failure-pattern'],
+    includeRules: true,
+    includeReflections: true
+  });
+  const retrievedMemories = flattenStructuredMemories(retrieved);
   const retrievedMemoryBlock =
-    retrieved?.memories && retrieved.memories.length > 0
+    retrievedMemories.length > 0
       ? [
-          '以下是本轮按当前问题再次检索出的历史经验，请优先提取与当前追问最相关的部分：',
-          retrieved.memories
+          '以下是本轮按当前问题再次检索出的核心记忆，请优先使用当前用户偏好、任务约束和已验证经验：',
+          retrievedMemories
             .slice(0, ragTopK)
             .map(item => `- ${item.summary}`)
             .join('\n')
@@ -114,6 +128,13 @@ export async function buildSessionConversationContext(
             .slice(0, ragTopK)
             .map(item => `- ${item.summary}`)
             .join('\n')
+        ].join('\n')
+      : '';
+  const reflectionBlock =
+    retrieved?.reflections && retrieved.reflections.length > 0
+      ? [
+          '以下是与当前问题相关的历史反思，请优先避免重复失败并复用已验证策略：',
+          ...retrieved.reflections.slice(0, 2).map(item => `- ${formatReflection(item)}`)
         ].join('\n')
       : '';
   const messageBlock = recentMessages
@@ -141,6 +162,7 @@ export async function buildSessionConversationContext(
     evidenceBlock,
     retrievedMemoryBlock,
     retrievedRuleBlock,
+    reflectionBlock,
     currentQueryBlock
   ]
     .filter(Boolean)
@@ -179,4 +201,11 @@ function formatConversationContextMessage(role: 'user' | 'assistant' | 'system',
       ? `${normalized.slice(0, CONTEXT_MESSAGE_MAX_CHARS)}...(truncated)`
       : normalized;
   return `${role}: ${clipped}`;
+}
+
+function formatReflection(
+  reflection: NonNullable<Awaited<ReturnType<typeof archivalMemorySearchByParams>>>['reflections'][number]
+) {
+  const advice = reflection.nextAttemptAdvice.slice(0, 2).join('；');
+  return advice ? `${reflection.summary}；下次建议：${advice}` : reflection.summary;
 }

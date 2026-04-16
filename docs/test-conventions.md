@@ -1,14 +1,17 @@
 # 测试规范
 
 状态：current
+文档类型：convention
 适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 配套现状文档：
 
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [测试覆盖率基线](/Users/dev/Desktop/learning-agent-core/docs/evals/testing-coverage-baseline.md)
-- [Prompt Regression And Thresholds](/Users/dev/Desktop/learning-agent-core/docs/evals/prompt-regression-and-thresholds.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
+- [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
+- [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
+- [Prompt Regression And Thresholds](/docs/evals/prompt-regression-and-thresholds.md)
 
 适用范围：
 
@@ -29,8 +32,17 @@
 - 不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
 - 现有历史测试也已统一迁入 `test/`，根级 `vitest` 不再扫描 `src/` 下的测试文件
 
-当前规范采用“3 层测试 + 1 组通用门槛”：
+当前生成规范默认要求每个新增模块或重大改动同时考虑以下 5 类验证能力：
 
+- `Type`：TypeScript 静态类型检查
+- `Spec`：基于 `zod` 的结构校验
+- `Unit`：原子逻辑单测
+- `Demo`：最小可运行闭环
+- `Integration`：跨模块或跨包协同验证
+
+其中本文件聚焦“测试与可证明闭环”部分，当前仓库的测试执行主力采用“4 层自动化验证 + 1 组通用门槛”：
+
+- `Spec`：schema、contract、parse / safeParse、normalization 回归
 - `Unit`：原子逻辑、schema、prompt builder、policy、route resolver
 - `Integration`：主链协同、状态迁移、事件输出、回退策略
 - `Eval`：核心 Prompt 套件回归
@@ -54,14 +66,115 @@
 
 当前命令：
 
+- `pnpm typecheck`
 - `pnpm test`
+- `pnpm test:spec`
 - `pnpm test:unit`
+- `pnpm test:demo`
 - `pnpm test:integration`
 - `pnpm test:coverage`
 - `pnpm test:watch`
 - `pnpm eval:prompts`
+- `pnpm verify`
+- `pnpm check:docs:turbo`
+- `pnpm check:architecture:turbo`
+- `pnpm verify:governance`
+- `pnpm typecheck:affected`
+- `pnpm test:spec:affected`
+- `pnpm test:unit:affected`
+- `pnpm test:demo:affected`
+- `pnpm test:integration:affected`
+- `pnpm verify:affected`
 
-## 2. 测试分层
+说明：
+
+- `pnpm typecheck` 对应五层验证里的 `Type`
+- `pnpm test:spec` 对应五层验证里的 `Spec`
+- `pnpm test:spec` 会扫描各宿主 `test/` 目录下与 schema、contract、parser、normalization 相关，或显式使用 `zod` / `Schema.parse` / `safeParse` 的测试文件，并作为结构校验回归的统一入口
+- `Demo` 在本仓库中指“最小可运行闭环”；当前不再要求 `packages/*` 与 `agents/*` 默认维护与 `src/` 同级的 `demo/`，优先使用 integration、build 或其他自动化 smoke 承担这层责任
+- 当前默认规则是：
+  - `packages/*` 与 `agents/*` 可以不再维护显式 `demo/` 与 `demo` 脚本
+  - `apps/*` 与 `server` 当前同样允许由 integration 或等价自动化闭环承担 Demo 层责任
+- `pnpm test:demo` 会动态发现仍保留 `demo/` 与 `demo` 脚本的宿主；没有独立 `demo/` 的宿主由 integration 或等价 smoke 承担最小闭环
+- `pnpm test:spec:affected` 会基于 `origin/main...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
+- `pnpm test:demo:affected` 会通过 `turbo run demo --filter='...[origin/main]'` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
+- 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
+- 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
+- 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
+- 对脚手架链路，`Demo` 不只指生成器自身能跑，还包括“生成出的目标至少存在最小可运行闭环”：
+  - `package-lib` 需要验证最小类型闭环与 integration 闭环
+  - `agent-basic` 需要验证 integration 闭环与最小类型闭环
+- `pnpm verify` 是根级聚合入口，当前串联 `check:docs + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
+- `pnpm verify:affected` 当前串联 `verify:governance + test:spec:affected + turbo:typecheck + turbo:test:unit + demo + turbo:test:integration`
+- `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
+- GitHub PR 校验当前直接复用根级主入口：代码改动默认执行 `pnpm verify`，纯文档改动默认执行 `pnpm check:docs`
+- 当前不要把根级 `typecheck`、`test:unit`、`test:integration` 直接改成 Turbo 任务入口；仓库仍存在 `runtime <-> agents/*` 的循环依赖，直接沿 package graph 编排会报错
+- 后续二阶段迁移默认采用“新增 Turbo-only 包级任务”而不是直接篡改现有主入口，详见 [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
+- 当前 Phase 2A 已落地的 Turbo-only 包级命令为：
+  - `pnpm turbo:typecheck`
+  - `pnpm turbo:test:unit`
+  - `pnpm turbo:test:integration`
+- 当前 Phase 2B 已落地的受影响范围入口为：
+  - `pnpm typecheck:affected`
+  - `pnpm test:spec:affected`
+  - `pnpm test:unit:affected`
+  - `pnpm test:demo:affected`
+  - `pnpm test:integration:affected`
+  - `pnpm verify:affected`
+
+## 1.1 强制执行要求
+
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前就必须补齐五层验证，不允许只跑其中一层就结束。
+- 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
+- 如果 `pnpm verify` 被与本轮无关的既有红灯、网络、凭据、外部服务或环境问题阻断，仍必须对受影响范围逐层补齐以下验证：
+  - `Type`：`pnpm typecheck` 或受影响项目的 `tsc --noEmit`
+  - `Spec`：`pnpm test:spec`、`pnpm test:spec:affected` 或受影响项目的 schema parse / safeParse 回归
+  - `Unit`：`pnpm test:unit` 或受影响项目的 unit tests
+  - `Demo`：根级优先 `pnpm test:demo`；受影响范围优先 `pnpm test:demo:affected`，也可执行等价最小闭环，例如 integration、build 或宿主自定义 smoke
+  - `Integration`：`pnpm test:integration` 或受影响项目的 integration tests
+- 只要本轮触达模板、脚手架、CLI、工具 adapter、workflow preset、审批恢复或最小闭环相关实现，这五层验证依旧全部生效，不能因为“只是生成链路”就跳过 Demo / Integration
+- 纯文档改动至少执行 `pnpm check:docs`；如果文档与代码同轮变更，仍按五层验证执行。
+- 如果只想预览治理校验会执行哪些 Turbo 任务，可运行 `pnpm exec turbo run check:docs check:architecture --dry-run=json` 或 `pnpm exec turbo run check:docs check:architecture --graph=turbo-verify-governance.html`。
+- 交付说明里必须明确写出：
+  - 实际执行了哪些验证命令
+  - 哪一层因什么 blocker 未执行
+  - blocker 是否属于本轮改动
+
+## 2. 五层验证落地方式
+
+### Type（类型层）
+
+- 默认通过 `pnpm typecheck` 或受影响包的 `tsc --noEmit` 验证
+- 修改共享 DTO、graph state、SSE payload、公共 facade 后必须补类型检查
+
+### Spec（结构层）
+
+- 所有稳定结构化 contract 默认要有 `zod` schema
+- schema 的成功、失败、边界路径默认写入 `test/` 下可被 `pnpm test:spec` 识别的回归用例
+- 不允许只靠 `JSON.parse` + 零散 `if` 作为正式验证
+
+## 3. 测试分层
+
+### Unit（原子层）
+
+- 负责证明函数、schema、parser、formatter、policy、selector 的局部行为
+- 是覆盖率的主要贡献来源之一
+
+### Demo（最小闭环）
+
+- 负责证明模块或链路“至少能跑通一次”
+- 当前 `packages/*` 与 `agents/*` 不再默认维护与 `src/` 同级的 `demo/`
+- `package-lib` 与 `agent-basic` 脚手架都默认使用 integration 作为最小可运行闭环
+- 可接受形式包括：
+  - 一条最小 happy path integration test
+  - 一个 build / CLI / API / UI 最小链路验证
+  - 仍保留历史 demo 脚本的宿主可以继续复用它
+- 对不单独生成 `demo/` 的宿主，必须明确由 integration 或其他自动化闭环承担这层责任
+
+### Integration（协同层）
+
+- 负责证明跨节点、跨模块、跨包协作没有断
+- 主链、审批、恢复、SSE、学习、前后端联动默认优先补这层
 
 ### Unit（原子层）
 
@@ -102,6 +215,7 @@
 执行命令：
 
 - `pnpm test:integration`
+- `pnpm --dir <package-or-agent> test:integration`
 
 适用对象：
 
@@ -129,9 +243,15 @@
 - learning confirmation 链路
 - SSE streaming / fallback 链路
 
+包级执行约定：
+
+- 包级 `test:integration` 默认只扫描当前项目 `test/` 目录下的 `*.int-spec.ts` 与 `*.int-spec.tsx`
+- 当前统一通过 [scripts/run-package-integration-tests.js](/scripts/run-package-integration-tests.js) 枚举文件后再调用根 [vitest.config.js](/vitest.config.js)
+- 如果当前包没有 integration 用例，脚本应稳定返回成功并输出 `no integration tests found`，不要把“暂无集成测试”变成失败原因
+
 ### LangGraph Graph 测试补充
 
-对于 `packages/agent-core` 里的主图、子图和带 interrupt 的流程，默认优先补以下三类测试：
+对于 `packages/runtime` 与 `agents/*` 里的主图、子图和带 interrupt 的流程，默认优先补以下三类测试：
 
 #### 1. 整图测试
 
@@ -201,17 +321,18 @@
 当前已落地样例：
 
 - `Supervisor -> Ministry`：
-  当前代表性样例位于 `packages/agent-core/test/graphs` 与 `packages/agent-core/test/flows`
+  当前代表性样例位于 `packages/runtime/test` 与 `apps/backend/agent-server/test/runtime`
 - `Session -> SSE -> Message merge`：
-  当前代表性样例位于 `apps/frontend/agent-chat/test/hooks`
+  当前代表性样例位于 `packages/runtime/test/session-inline-capability.int-spec.ts` 与 `apps/frontend/agent-chat/test/hooks`
+  其中 `packages/runtime/test/session-inline-capability.int-spec.ts` 已覆盖 inline capability 响应落盘、checkpoint recovery 与 cancel fallback 最小闭环
 - `Approval / Recover / Cancel`：
-  代表性样例位于 `packages/agent-core/test/session`
+  代表性样例位于 `packages/runtime/test/approval-recovery.int-spec.ts`、`apps/backend/agent-server/test/chat` 与 `apps/frontend/agent-chat/test/hooks/chat-session`
 - `多轮上下文追问`：
-  代表性样例位于 `packages/agent-core/test/session`
+  代表性样例位于 `apps/frontend/agent-chat/test/hooks/chat-session`
 - `Learning confirmation`：
-  代表性样例位于 `packages/agent-core/test/session`
+  代表性样例位于 `apps/backend/agent-server/test/runtime/testing`
 - `Research -> Delivery`：
-  代表性样例位于 `packages/agent-core/test/flows`
+  代表性样例位于 `apps/backend/agent-server/test/chat` 与 `apps/backend/agent-server/test/runtime/testing`
 - `Runtime audit 聚合`：
   代表性样例位于 `apps/backend/agent-server/test/runtime`
 
@@ -266,7 +387,7 @@
 
 当前按模块卡门槛：
 
-- `packages/agent-core`
+- `packages/runtime`
 - `apps/backend/agent-server`
 - `apps/frontend/agent-chat`
 - `apps/frontend/agent-admin`
@@ -392,7 +513,7 @@ PR 规则：
 
 ## 9. 当前推荐补测顺序
 
-1. `packages/agent-core` 的会话、上下文、主图路由
+1. `packages/runtime` 与 `agents/*` 的会话、上下文、主图路由
 2. `apps/backend/agent-server` 的 chat、runtime、approval
 3. `apps/frontend/agent-chat` 的 SSE、输入、消息合并、状态面板
 4. `apps/frontend/agent-admin` 的关键中心面板与运行态展示

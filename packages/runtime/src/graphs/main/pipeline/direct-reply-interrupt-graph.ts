@@ -1,4 +1,4 @@
-import { AgentRole, TaskRecord, ToolUsageSummaryRecord } from '@agent/shared';
+import { AgentRole, RouterMinistryLike, TaskRecord, ToolUsageSummaryRecord } from '@agent/shared';
 import { Annotation, BaseCheckpointSaver, END, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../flows/approval';
@@ -7,8 +7,6 @@ import {
   runDirectReplyNode,
   runDirectReplySkillGateNode
 } from '../../../flows/chat/direct-reply-interrupt-nodes';
-import { LibuRouterMinistry } from '../../../flows/ministries';
-
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across direct-reply resumes.
 export interface DirectReplyInterruptGraphState {
   taskId: string;
@@ -101,7 +99,7 @@ export interface DirectReplyInterruptGraphCallbacks {
       }
     | undefined
   >;
-  runDirectReplyTask: (task: TaskRecord, libu: LibuRouterMinistry) => Promise<void>;
+  runDirectReplyTask: (task: TaskRecord, libu: RouterMinistryLike) => Promise<void>;
 }
 
 const DirectReplyInterruptAnnotation = Annotation.Root({
@@ -113,7 +111,7 @@ const DirectReplyInterruptAnnotation = Annotation.Root({
 
 interface BuildDirectReplyInterruptGraphParams {
   task: TaskRecord;
-  libu: LibuRouterMinistry;
+  libu: RouterMinistryLike;
   callbacks: DirectReplyInterruptGraphCallbacks;
   checkpointer: BaseCheckpointSaver;
 }

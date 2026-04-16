@@ -1,54 +1,20 @@
 ﻿import { z, ZodType } from 'zod/v4';
 
-export type ChatRole = 'system' | 'user' | 'assistant';
-export type AgentModelRole = 'manager' | 'research' | 'executor' | 'reviewer';
-export type ModelCapability =
-  | 'text'
-  | 'vision'
-  | 'audio'
-  | 'image-gen'
-  | 'video-gen'
-  | 'tts'
-  | 'asr'
-  | 'realtime'
-  | 'tool-call'
-  | 'thinking';
+import type {
+  ILLMProvider,
+  LlmProviderAgentRole,
+  LlmProviderCapability,
+  LlmProviderMessage,
+  LlmProviderModelInfo,
+  LlmProviderOptions
+} from '@agent/core';
 
-export interface ChatMessage {
-  role: ChatRole;
-  content: string;
-}
-
-export interface ModelInfo {
-  id: string;
-  displayName: string;
-  providerId: string;
-  contextWindow: number;
-  maxOutput: number;
-  capabilities: ModelCapability[];
-  pricing?: {
-    inputPer1k: number;
-    outputPer1k: number;
-    currency: string;
-  };
-}
-
-export interface GenerateTextOptions {
-  role: AgentModelRole;
-  modelId?: string;
-  taskId?: string;
-  temperature?: number;
-  maxTokens?: number;
-  thinking?: boolean;
-  disableRetry?: boolean;
-  budgetState?: {
-    costConsumedUsd?: number;
-    costBudgetUsd?: number;
-    fallbackModelId?: string;
-    overBudget?: boolean;
-  };
-  onUsage?: (usage: LlmUsageMetadata) => void;
-}
+export type ChatRole = LlmProviderMessage['role'];
+export type AgentModelRole = LlmProviderAgentRole;
+export type ModelCapability = LlmProviderCapability;
+export type ChatMessage = LlmProviderMessage;
+export type ModelInfo = LlmProviderModelInfo;
+export type GenerateTextOptions = LlmProviderOptions;
 
 export interface LlmUsageMetadata {
   promptTokens: number;
@@ -60,17 +26,7 @@ export interface LlmUsageMetadata {
   costCny?: number;
 }
 
-export interface LlmProvider {
-  readonly providerId: string;
-  readonly displayName: string;
-  supportedModels(): ModelInfo[];
-  isConfigured(): boolean;
-  generateText(messages: ChatMessage[], options: GenerateTextOptions): Promise<string>;
-  streamText(
-    messages: ChatMessage[],
-    options: GenerateTextOptions,
-    onToken: (token: string, metadata?: { model?: string }) => void
-  ): Promise<string>;
+export interface LlmProvider extends ILLMProvider {
   generateObject<T>(messages: ChatMessage[], schema: ZodType<T>, options: GenerateTextOptions): Promise<T>;
 }
 

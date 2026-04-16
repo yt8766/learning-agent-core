@@ -1,14 +1,31 @@
 # 前后端对接文档
 
 状态：current
+文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-14
+最后核对：2026-04-16
+
+本主题主文档：
+
+- 本文是前后端对接总入口；涉及聊天主链、SSE、runtime center、审批恢复时，默认先看本文
+
+本文只覆盖：
+
+- 前后端整体接口边界
+- 聊天主链与 admin 侧关键对接点
+- 与专题文档之间的总分关系
+
+相关专题文档：
+
+- `SSE / chat session` 细节： [chat-session-sse.md](/docs/integration/chat-session-sse.md)
+- `approval / reject / recover` 细节： [approval-recovery.md](/docs/integration/approval-recovery.md)
+- `runtime center / admin API` 细节： [runtime-centers-api.md](/docs/integration/runtime-centers-api.md)
 
 当前专题拆分：
 
-- [Chat Session And SSE](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- [Runtime Centers API](/Users/dev/Desktop/learning-agent-core/docs/integration/runtime-centers-api.md)
-- [Approval Recovery](/Users/dev/Desktop/learning-agent-core/docs/integration/approval-recovery.md)
+- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
+- [Runtime Centers API](/docs/integration/runtime-centers-api.md)
+- [Approval Recovery](/docs/integration/approval-recovery.md)
 
 ## 1. 总体链路
 
@@ -48,6 +65,10 @@
 
 - 首条消息现在也统一通过 `POST /api/chat/messages` 提交
 - `POST /api/chat/sessions` 只负责创建空会话并返回 `sessionId`
+- `agent-chat` 当前已支持在发送前一键切换模型：
+  - 默认值为“自动选择”，保持治理路由自动选模
+  - 用户手动选择模型后，仅覆盖当前消息触发的这一轮执行
+  - 下拉项由 `GET /api/chat/models` 动态返回，适配运行时新增 provider 或模型
 
 ---
 
@@ -63,6 +84,10 @@
   - 获取会话列表
 - `POST /api/chat/sessions`
   - 创建新会话
+- `GET /api/chat/models`
+  - 获取当前运行时可选模型列表
+  - 返回值来自后端实际挂载的 LLM provider，前端不再硬编码模型枚举
+  - `agent-chat` 聊天输入框的“切换模型”下拉框默认消费这条接口
 - `GET /api/chat/sessions/:id`
   - 获取会话详情
 - `GET /api/chat/messages?sessionId=...`
@@ -121,6 +146,9 @@
 
 - `POST /api/chat/messages`
   - 在已有会话中继续发消息
+  - 当前请求体除 `sessionId`、`message` 外，还可选传 `modelId`
+  - 当传入 `modelId` 时，本轮消息会把该模型写入 `requestedHints.preferredModelId`
+  - Runtime 会优先按该显式模型路由，并同步覆盖当前 worker 的实际调用模型
 - `POST /api/chat/approve`
   - 审批通过或恢复中断
 - `POST /api/chat/reject`
@@ -370,7 +398,7 @@ interface ChatCheckpointRecord {
 SSE 实现位置：
 
 - `apps/backend/agent-server/src/chat/chat.controller.ts`
-- `packages/agent-core/src/session/session-coordinator.ts`
+- `packages/runtime/src/session/session-coordinator.ts`
 
 ### 4.1 首次连接
 
@@ -557,37 +585,40 @@ if (event.type === 'assistant_token') {
 
 ---
 
-## 7. 当前 agent-core 推荐结构
+## 7. 当前 runtime / agents 推荐结构
 
-建议 `packages/agent-core/src` 后续按这套结构继续整理：
+建议按 `packages/runtime/src` 与对应 `agents/*/src` 的宿主边界继续整理：
 
 ```text
-src/
-├─ adapters/
+packages/runtime/src/
 ├─ flows/
 ├─ governance/
 ├─ graphs/
 ├─ runtime/
 ├─ session/
+├─ capabilities/
+└─ types/
+
+agents/<domain>/src/
+├─ flows/
+├─ graphs/
+├─ runtime/
 ├─ shared/
-├─ workflows/
 └─ types/
 ```
 
 推荐解释：
 
-- `adapters/`
-  - 对接 LLM、tools、memory、session 等外部能力
 - `flows/`
   - 按聊天流、审批流、学习流组织 `nodes/prompts/schemas/utils`
 - `governance/`
   - 管理 worker registry、model routing policy、预算与治理策略
 - `graphs/`
   - 只放图定义与编排入口
-- `shared/`
-  - 多 flow 共用的 prompt、schema、事件映射
 - `runtime/`
   - Agent 运行时上下文
+- `shared/`
+  - 放在对应 agent 宿主下，承载多 flow 共用的 prompt、schema、事件映射
 - `session/`
   - 会话、checkpoint、事件持久化
 - `workflows/`

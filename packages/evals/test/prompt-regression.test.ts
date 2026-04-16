@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildPromptRegressionSkipSummary,
   derivePromptRegressionSummary,
   enforcePromptRegressionGate,
-  extractPromptResultRows
+  extractPromptResultRows,
+  isSupportedPromptfooNodeRuntime
 } from '../../../scripts/prompt-regression.js';
 
 describe('prompt regression summary helpers', () => {
@@ -146,5 +148,29 @@ describe('prompt regression summary helpers', () => {
         ]
       })
     ).toThrow(/hubu-research: 90%/);
+  });
+
+  it('detects supported promptfoo Node runtimes and builds skip summaries for unsupported ones', () => {
+    expect(isSupportedPromptfooNodeRuntime('20.20.0')).toBe(true);
+    expect(isSupportedPromptfooNodeRuntime('22.22.0')).toBe(true);
+    expect(isSupportedPromptfooNodeRuntime('22.21.1')).toBe(false);
+
+    expect(
+      buildPromptRegressionSkipSummary('unsupported_node_runtime', {
+        runAt: '2026-04-16T00:00:00.000Z',
+        detectedNodeVersion: '22.21.1',
+        requiredNodeRange: '^20.20.0 || >=22.22.0'
+      })
+    ).toEqual({
+      runAt: '2026-04-16T00:00:00.000Z',
+      overallStatus: 'partial',
+      passRate: undefined,
+      providerIds: [],
+      suiteResults: [],
+      skipped: true,
+      skipReason: 'unsupported_node_runtime',
+      detectedNodeVersion: '22.21.1',
+      requiredNodeRange: '^20.20.0 || >=22.22.0'
+    });
   });
 });

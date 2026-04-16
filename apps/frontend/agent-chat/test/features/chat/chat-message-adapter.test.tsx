@@ -33,9 +33,23 @@ vi.mock('@ant-design/x-markdown', () => ({
 }));
 
 vi.mock('@ant-design/x', async () => {
-  const actual = await vi.importActual<typeof import('@ant-design/x')>('@ant-design/x');
   return {
-    ...actual,
+    Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
+      <section>
+        <div>{title}</div>
+        <div>{children}</div>
+      </section>
+    ),
+    ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
+      <section>
+        {items?.map((item, index) => (
+          <article key={index}>
+            <div>{item.title}</div>
+            <div>{item.description}</div>
+          </article>
+        ))}
+      </section>
+    ),
     Sources: ({
       title,
       items
@@ -331,6 +345,57 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('文档引用');
     expect(html).toContain('来源 A');
     expect(html).toContain('来源 B');
+  });
+
+  it('memory reuse 来源会展示采用原因、scope 与 entity 解释', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '这是结合历史记忆后的回复。',
+        createdAt: '2026-03-28T00:00:00.500Z'
+      },
+      {
+        id: 'checkpoint_sources_task-1',
+        sessionId: 'session-1',
+        role: 'system',
+        content: '本轮已收集 1 条来源证据。',
+        card: {
+          type: 'evidence_digest',
+          sources: [
+            {
+              id: 'memory-source-1',
+              sourceType: 'memory_reuse',
+              trustClass: 'internal',
+              summary: '已命中历史记忆：项目 A 禁止自动提交。',
+              detail: {
+                reason: 'entity matched; same scope; strong relevance',
+                score: 0.91,
+                scopeType: 'workspace',
+                relatedEntities: [{ entityType: 'project', entityId: 'repo:a' }]
+              }
+            }
+          ]
+        },
+        createdAt: '2026-03-28T00:00:01.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+
+    const assistantItem = items.find(item => item.key === 'assistant-1');
+    const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
+
+    expect(html).toContain('采用原因：entity matched; same scope; strong relevance');
+    expect(html).toContain('score 0.91');
+    expect(html).toContain('scope workspace');
+    expect(html).toContain('project:repo:a');
   });
 
   it('assistant 已经包含引用来源段落时，不再重复渲染 evidence_digest 卡片', () => {

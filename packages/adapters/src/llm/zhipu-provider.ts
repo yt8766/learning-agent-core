@@ -49,5 +49,3 @@ export class ZhipuLlmProvider implements LlmProvider {
     return this.delegate.generateObject(messages, schema, options);
   }
 }
-
-export { ZhipuChatModelFactory } from './chat-model-factory';

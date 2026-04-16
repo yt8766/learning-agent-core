@@ -5,16 +5,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/shared';
 
 import { executeRuntimeGovernanceTool } from '../../src/runtime-governance/runtime-governance-executor';
+import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeRuntimeGovernanceTool', () => {
   const originalCwd = process.cwd();
+  const tempWorkspaces: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(originalCwd);
+    await cleanupTempWorkspaces(tempWorkspaces.splice(0));
   });
 
   it('archives threads and lists runtime artifacts', async () => {
-    const root = join(process.cwd(), 'tmp', `runtime-governance-${Date.now()}`);
+    const root = await createTempWorkspace('runtime-governance');
+    tempWorkspaces.push(root);
     await mkdir(join(root, 'data', 'browser-replays', 'session-1'), { recursive: true });
     process.chdir(root);
 

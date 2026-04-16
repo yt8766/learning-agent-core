@@ -41,17 +41,7 @@ export function EvidenceCard(props: EvidenceCardProps) {
               items={group.sources.map(source => ({
                 key: source.id,
                 title: source.summary,
-                description: (
-                  <Space size={6} wrap className="chatx-sources__meta">
-                    <Tag>{getSourceTypeLabel(source.sourceType)}</Tag>
-                    <Tag color="blue">{source.trustClass}</Tag>
-                    <span className="chatx-sources__desc">
-                      {source.sourceUrl ??
-                        (typeof source.detail?.documentId === 'string' ? source.detail.documentId : undefined) ??
-                        'document-reference'}
-                    </span>
-                  </Space>
-                )
+                description: <SourceDescription source={source} />
               }))}
             />
           </div>
@@ -70,17 +60,7 @@ export function createInlineSourceSupComponent(sources: EvidenceDigestSource[]) 
     key: index + 1,
     title: `${index + 1}. ${source.summary}`,
     url: source.sourceUrl,
-    description: (
-      <Space size={6} wrap className="chatx-sources__meta">
-        <Tag>{getSourceTypeLabel(source.sourceType)}</Tag>
-        <Tag color="blue">{source.trustClass}</Tag>
-        <span className="chatx-sources__desc">
-          {source.sourceUrl ??
-            (typeof source.detail?.documentId === 'string' ? source.detail.documentId : undefined) ??
-            'document-reference'}
-        </span>
-      </Space>
-    )
+    description: <SourceDescription source={source} />
   }));
 
   return memo(function InlineSourceSup(props: { children?: unknown }) {
@@ -91,6 +71,32 @@ export function createInlineSourceSupComponent(sources: EvidenceDigestSource[]) 
 
     return <Sources inline items={items} activeKey={activeKey} title={String(props.children ?? activeKey)} />;
   });
+}
+
+function SourceDescription(props: { source: EvidenceDigestSource }) {
+  const source = props.source;
+  const entities = extractSourceEntities(source).slice(0, 2);
+  return (
+    <Space size={6} wrap className="chatx-sources__meta">
+      <Tag>{getSourceTypeLabel(source.sourceType)}</Tag>
+      <Tag color="blue">{source.trustClass}</Tag>
+      {typeof source.detail?.scopeType === 'string' ? <Tag>scope {source.detail.scopeType}</Tag> : null}
+      {entities.map(entity => (
+        <Tag key={`${source.id}:${entity}`}>{entity}</Tag>
+      ))}
+      {typeof source.detail?.score === 'number' ? (
+        <Tag color="geekblue">score {source.detail.score.toFixed(2)}</Tag>
+      ) : null}
+      <span className="chatx-sources__desc">
+        {source.sourceUrl ??
+          (typeof source.detail?.documentId === 'string' ? source.detail.documentId : undefined) ??
+          'document-reference'}
+      </span>
+      {typeof source.detail?.reason === 'string' && source.detail.reason ? (
+        <span className="chatx-sources__desc">采用原因：{source.detail.reason}</span>
+      ) : null}
+    </Space>
+  );
 }
 
 function groupEvidenceSources(sources: EvidenceDigestSource[]) {
@@ -107,6 +113,9 @@ function groupEvidenceSources(sources: EvidenceDigestSource[]) {
 }
 
 function getSourceGroupKey(source: EvidenceDigestSource) {
+  if (source.sourceType === 'memory_reuse' || source.sourceType === 'rule_reuse') {
+    return 'memory';
+  }
   if (source.sourceType === 'document') {
     return 'documents';
   }
@@ -118,6 +127,8 @@ function getSourceGroupKey(source: EvidenceDigestSource) {
 
 function getSourceGroupTitle(key: string) {
   switch (key) {
+    case 'memory':
+      return '记忆 / 规则复用';
     case 'documents':
       return '文档引用';
     case 'web':
@@ -129,6 +140,10 @@ function getSourceGroupTitle(key: string) {
 
 function getSourceTypeLabel(sourceType: string) {
   switch (sourceType) {
+    case 'memory_reuse':
+      return 'memory';
+    case 'rule_reuse':
+      return 'rule';
     case 'web_research_plan':
       return 'web';
     case 'document':
@@ -138,4 +153,25 @@ function getSourceTypeLabel(sourceType: string) {
     default:
       return sourceType;
   }
+}
+
+function extractSourceEntities(source: EvidenceDigestSource) {
+  const relatedEntities = source.detail?.relatedEntities;
+  if (!Array.isArray(relatedEntities)) {
+    return [];
+  }
+  return relatedEntities
+    .map(item => {
+      if (!item || typeof item !== 'object') {
+        return '';
+      }
+      const entityType =
+        typeof (item as { entityType?: unknown }).entityType === 'string'
+          ? (item as { entityType: string }).entityType
+          : '';
+      const entityId =
+        typeof (item as { entityId?: unknown }).entityId === 'string' ? (item as { entityId: string }).entityId : '';
+      return entityType && entityId ? `${entityType}:${entityId}` : entityType || entityId;
+    })
+    .filter(Boolean);
 }

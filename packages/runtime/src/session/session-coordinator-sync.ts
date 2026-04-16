@@ -324,7 +324,7 @@ function updateCheckpoint(
   checkpoint.skillId = task.skillId;
   checkpoint.skillStage = task.skillStage;
   checkpoint.resolvedWorkflow = task.resolvedWorkflow;
-  checkpoint.subgraphTrail = task.subgraphTrail;
+  checkpoint.subgraphTrail = task.subgraphTrail as ChatCheckpointRecord['subgraphTrail'];
   checkpoint.currentNode = task.currentNode;
   checkpoint.currentMinistry = task.currentMinistry;
   checkpoint.currentWorker = task.currentWorker;
@@ -332,7 +332,8 @@ function updateCheckpoint(
   checkpoint.supportingSpecialists = task.supportingSpecialists;
   checkpoint.specialistFindings = task.specialistFindings;
   checkpoint.routeConfidence = task.routeConfidence;
-  checkpoint.contextSlicesBySpecialist = task.contextSlicesBySpecialist;
+  checkpoint.contextSlicesBySpecialist =
+    task.contextSlicesBySpecialist as ChatCheckpointRecord['contextSlicesBySpecialist'];
   checkpoint.dispatches = task.dispatches;
   checkpoint.critiqueResult = task.critiqueResult;
   checkpoint.chatRoute = task.chatRoute;

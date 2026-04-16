@@ -30,6 +30,39 @@ export function extractPromptResultRows(raw) {
     .filter(Boolean);
 }
 
+export function isSupportedPromptfooNodeRuntime(version = process.versions.node) {
+  const [major = 0, minor = 0, patch = 0] = String(version)
+    .trim()
+    .replace(/^v/, '')
+    .split('.')
+    .map(part => Number.parseInt(part, 10));
+
+  if (major === 20) {
+    return minor > 20 || (minor === 20 && patch >= 0);
+  }
+  if (major === 22) {
+    return minor > 22 || (minor === 22 && patch >= 0);
+  }
+  return major > 22;
+}
+
+export function buildPromptRegressionSkipSummary(reason, options = {}) {
+  const detectedNodeVersion = options.detectedNodeVersion ?? process.versions.node;
+  const requiredNodeRange = options.requiredNodeRange ?? '^20.20.0 || >=22.22.0';
+
+  return {
+    runAt: options.runAt ?? new Date().toISOString(),
+    overallStatus: 'partial',
+    passRate: undefined,
+    providerIds: [],
+    suiteResults: [],
+    skipped: true,
+    skipReason: reason,
+    detectedNodeVersion,
+    requiredNodeRange
+  };
+}
+
 export function derivePromptRegressionSummary(raw, options = {}) {
   const rows = extractPromptResultRows(raw);
   const providerIds = Array.from(new Set(rows.map(row => row.providerId).filter(Boolean))).sort();

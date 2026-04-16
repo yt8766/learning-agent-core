@@ -9,7 +9,8 @@ export class ModelRoutingPolicy {
   resolveRoute(
     ministry: WorkerDomain,
     goal: string,
-    constraints?: WorkerSelectionConstraints
+    constraints?: WorkerSelectionConstraints,
+    preferredModelId?: string
   ): ModelRouteDecision | undefined {
     const worker = this.workerRegistry.getPrimaryWorker(ministry, goal, constraints);
     if (!worker) {
@@ -18,8 +19,9 @@ export class ModelRoutingPolicy {
 
     const lowered = goal.toLowerCase();
     const freshnessSensitive = isFreshnessSensitiveGoal(goal);
-    const selectedModel =
-      ministry === 'xingbu-review'
+    const selectedModel = preferredModelId
+      ? preferredModelId
+      : ministry === 'xingbu-review'
         ? 'glm-4.7'
         : ministry === 'hubu-search' && (freshnessSensitive || lowered.includes('文档'))
           ? 'glm-4.7-flashx'
@@ -32,8 +34,9 @@ export class ModelRoutingPolicy {
       workerId: worker.id,
       defaultModel: worker.defaultModel,
       selectedModel,
-      reason:
-        selectedModel === worker.defaultModel
+      reason: preferredModelId
+        ? `按用户显式指定覆盖为 ${preferredModelId}`
+        : selectedModel === worker.defaultModel
           ? `使用 ${worker.displayName} 的默认模型`
           : `按任务特征覆盖 ${worker.displayName} 的默认模型`
     };

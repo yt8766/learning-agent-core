@@ -4,7 +4,7 @@ import { ProviderAuditSyncResult } from '../../../src/runtime/helpers/provider-a
 import {
   summarizeAndPersistEvalHistory,
   summarizeAndPersistUsageAnalytics
-} from '../../../src/runtime/helpers/runtime-metrics-store';
+} from '../../../src/modules/runtime-metrics/services/runtime-metrics-store';
 
 describe('runtime-metrics-store', () => {
   it('会持久化 usage analytics', async () => {

@@ -1,2 +1,2 @@
-export * from '../approval-service';
-export * from '../preflight-governance';
+export * from './approval-service';
+export * from './preflight-governance';

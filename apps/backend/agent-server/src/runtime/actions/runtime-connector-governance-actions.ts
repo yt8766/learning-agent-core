@@ -2,7 +2,10 @@ import { NotFoundException } from '@nestjs/common';
 
 import { ConfigureConnectorDto } from '@agent/shared';
 
-import { appendGovernanceAudit, persistConnectorDiscoverySnapshot } from '../helpers/runtime-governance-store';
+import {
+  appendGovernanceAudit,
+  persistConnectorDiscoverySnapshot
+} from '../../modules/runtime-governance/services/runtime-governance-store';
 
 export async function setConnectorEnabledWithGovernance(input: {
   connectorId: string;

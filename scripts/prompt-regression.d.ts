@@ -3,6 +3,10 @@ export interface PromptRegressionLatestSummary {
   overallStatus: 'pass' | 'fail' | 'partial';
   passRate?: number;
   providerIds: string[];
+  skipped?: boolean;
+  skipReason?: string;
+  detectedNodeVersion?: string;
+  requiredNodeRange?: string;
   suiteResults: Array<{
     suiteId: string;
     label: string;
@@ -28,6 +32,15 @@ export interface PromptRegressionResultRow {
 }
 
 export function extractPromptResultRows(raw: unknown): PromptRegressionResultRow[];
+export function isSupportedPromptfooNodeRuntime(version?: string): boolean;
+export function buildPromptRegressionSkipSummary(
+  reason: string,
+  options?: {
+    runAt?: string;
+    detectedNodeVersion?: string;
+    requiredNodeRange?: string;
+  }
+): PromptRegressionLatestSummary;
 export function derivePromptRegressionSummary(
   raw: unknown,
   options?: {

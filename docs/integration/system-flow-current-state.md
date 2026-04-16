@@ -1,8 +1,19 @@
 # System Flow Current State
 
 状态：current
-适用范围：`apps/backend/agent-server`、`packages/agent-core`、`apps/frontend/*`
-最后核对：2026-04-14
+文档类型：integration
+适用范围：`apps/backend/agent-server`、`packages/runtime`、`agents/*`、`apps/frontend/*`
+最后核对：2026-04-15
+
+本主题主文档：
+
+- 总体对接关系仍以 [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md) 为准
+
+本文只覆盖：
+
+- 当前系统的真实运行闭环
+- 任务接入、执行、审批、学习的阶段划分
+- runtime / agents / frontend 在主链上的协同语义
 
 ## 1. 这篇文档说明什么
 
@@ -34,6 +45,19 @@
 2. 修改类请求：进入多 Agent 工作流
 3. Figma / 设计稿类请求：进入多 Agent 工作流
 4. 普通文本 prompt：优先走 direct-reply 流式聊天
+
+当前显式 workflow 命令包含固定入口，例如：
+
+- `/review`
+- `/data-report`
+- `/scaffold`
+
+其中 `/scaffold` 当前规则固定为：
+
+- 只在显式命令下命中，不做自由文本自动推断
+- `list-templates` / `preview` 直接走只读 scaffold 能力
+- `write` 先做目标目录预检，再决定是否进入审批与落盘
+- 不接入当前“缺能力补 skill / 远程 skill 安装”的自动干预链路
 
 ## 4. Learning / Context / Cache
 
@@ -125,7 +149,7 @@
 
 ## 8. 继续阅读
 
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-- [Chat Session And SSE](/Users/dev/Desktop/learning-agent-core/docs/integration/chat-session-sse.md)
-- [Runtime Interrupts](/Users/dev/Desktop/learning-agent-core/docs/runtime-interrupts.md)
-- [Runtime State Machine](/Users/dev/Desktop/learning-agent-core/docs/runtime-state-machine.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
+- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Runtime State Machine](/docs/runtime-state-machine.md)

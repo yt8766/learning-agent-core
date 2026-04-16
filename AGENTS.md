@@ -4,10 +4,10 @@
 
 优先阅读：
 
-- [README](/Users/dev/Desktop/learning-agent-core/README.md)
-- [项目规范总览](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [架构总览](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-- [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
+- [README](/README.md)
+- [项目规范总览](/docs/project-conventions.md)
+- [架构总览](/docs/ARCHITECTURE.md)
+- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
 
 ## 1. 产品定位
 
@@ -104,7 +104,7 @@
 
 ### 运行时技能
 
-- 目录：`packages/skills`
+- 目录：`packages/skill-runtime`
 - 作用：服务端运行时的技能注册、技能卡、技能领域模型
 
 ### 代理技能
@@ -127,7 +127,7 @@ skills/
 约束：
 
 - 每个代理技能目录必须有 `SKILL.md`
-- 不要把代理技能写进 `packages/skills`
+- 不要把代理技能写进 `packages/skill-runtime`
 - 不要把运行时 skill card/registry 写进 `skills/`
 
 ## 5. 共享模型与执行策略
@@ -158,7 +158,8 @@ skills/
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
-- 不允许使用本地 `.pnpm-store` 安装或把 `.pnpm-store` 放在仓库内
+- 不允许使用本地 `.pnpm-store` 安装、通过 `--store-dir <local-path>` 指向本地 store 安装，或把 `.pnpm-store` 放在仓库内
+- 依赖安装时不要手动指定本地 `store-dir`；pnpm 会通过软链接管理依赖，直接使用 `pnpm add` 即可
 - 共享包构建输出：
   - `build/cjs`
   - `build/esm`
@@ -169,9 +170,15 @@ skills/
 ## 6.0 接口稳定性与可扩展封装规范
 
 - 所有新增或修改实现，默认优先面向稳定接口编程，而不是面向具体调用方、临时页面或单次流程硬编码。
+- `packages/core` 与 `packages/shared` 如果承载同一类稳定 contract，默认继续把主 contract 收到 `packages/core`；`packages/shared` 只保留展示组合、默认类型参数和 compat re-export，不允许长期双轨维护。
+- `packages/core` 默认采用 schema-first：所有稳定 JSON / DTO / event / payload contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型；不要继续在 `core` 新增只有 interface/type、没有 schema 的长期公共 contract。
+- 一旦发现 `packages/shared` 与 `packages/core` 存在“同功能、同语义、同消费边界”的 contract，必须以 `packages/core` 为唯一主宿主，并把 `packages/shared` 改成 compat re-export；禁止长期保留两份平行主定义。
 - 对外暴露的模块必须先定义清晰边界：输入、输出、错误语义、版本兼容策略，再落具体实现；禁止先把实现写散，再事后补接口包装。
 - 涉及跨包、跨模块、前后端、graph 与 tool、service 与 repository 之间的协作时，优先抽象稳定 `contract / adapter / facade`，避免调用方直接耦合底层细节。
 - 高变动逻辑与稳定契约必须分离：易变部分下沉到 `flows/`、`runtime/`、`adapters/`、`repositories/` 等内部实现；稳定部分通过 `@agent/*` 根入口、DTO、schema、facade 对外暴露。
+- 目录分组名与物理落位必须一致：如果已经创建 `repositories/`、`nodes/`、`prompts/`、`schemas/`、`types/`、`adapters/`、`runtime/`、`shared/`、`utils/` 等目录，并在其中使用 `index.ts` 作为分组 barrel，则该目录名对应的主要实现也必须物理放进该目录；不要长期保留“目录里只有 `index.ts`，实现却散在父目录”的半收敛结构。
+- 如果兼容迁移期间不得不保留 barrel-only 目录，必须在相邻文档或代码注释中显式标注“过渡态”，并在本轮或明确后续计划里继续完成物理收敛；不能把这种结构当成终态。
+- 仓库已提供 `pnpm check:barrel-layout` 作为目录 barrel 物理落位的固定检查入口；涉及目录收敛时默认把它纳入本轮验证。
 - 默认追求高内聚、低耦合：
   - 一个模块只负责一个清晰领域能力，避免同时承担协议转换、流程编排、状态存储和 UI 拼装。
   - 如果两个模块总是一起修改，优先重新划分边界，而不是继续相互引用、透传上下文或复制分支逻辑。
@@ -202,7 +209,7 @@ pnpm --dir apps/backend/agent-server build
 
 - 以后每次完成功能、修复缺陷、调整链路、补齐约束或确认重要联调结论后，必须同步把结果写入文档，不能只改代码不沉淀。
 - 文档必须放在 `docs/<module>/` 目录下，按当前主要改动模块归档：
-- `packages/runtime/*` 与已删除 `packages/agent-core` 的历史迁移文档 -> `docs/agent-core/`
+- `packages/runtime/*` 与已删除 `packages/agent-core` 的历史迁移文档 -> `docs/archive/agent-core/`
   - `apps/backend/*` -> `docs/backend/`
   - `apps/frontend/agent-chat/*` -> `docs/frontend/agent-chat/`
   - `apps/frontend/agent-admin/*` -> `docs/frontend/agent-admin/`
@@ -217,13 +224,34 @@ pnpm --dir apps/backend/agent-server build
   - 删除与当前实现明显不符、且已无保留价值的旧文档
   - 将仍有部分参考价值但内容已过期的文档显式标注“过时”或改写为最新实现
   - 避免同一主题在多个位置出现互相冲突的说明
+- 每次任务完成后，除检查实现文档外，还必须顺手检查本轮涉及的规范文档是否已经过期：
+  - 包括但不限于 `AGENTS.md`、`docs/project-conventions.md`、模块 `README`、专题 `*-conventions.md` / `*-guidelines.md`
+  - 如果实现、流程、目录边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不要把“规范已失效”留到后续任务
+  - 如果暂时无法在本轮彻底改完，至少要显式标注“过时”并指出正确入口，避免后续 AI 继续按旧规范执行
 - 如果本轮改动影响既有文档内容，必须直接更新原文档，而不是只额外新增一份“补充说明”导致知识分叉。
 - 交付时应在结果中明确说明：
   - 新增或更新了哪些文档
   - 是否清理了过时文档
   - 后续 AI 应优先阅读哪些文档
 
-## 7. 最低检查
+## 7. 完成后验证
+
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前就必须补齐五层验证，不允许只改代码不校验。
+- 五层验证固定为：
+  - `Type`：TypeScript 静态类型检查
+  - `Spec`：基于 `zod` 的结构校验与 parse 回归
+- `Unit`：原子逻辑单测
+- `Demo`：最小可运行闭环
+- `Integration`：跨模块、跨包、跨节点协同验证
+- 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
+- 当前根级 `pnpm verify` 必须覆盖 `pnpm test:spec` 与 `pnpm test:demo`，确保 `Spec` 和 `Demo` 两层都不是只停留在口头约定或目录存在。
+- 如果 `pnpm verify` 被与本轮无关的既有红灯、外部服务、凭据、网络或环境问题阻断，仍必须对受影响范围逐层补齐五层验证，并在交付中明确说明：
+  - 实际执行了哪些命令
+  - 哪一层因什么 blocker 未能完成
+  - blocker 是否属于本轮改动
+- 纯文档改动至少执行 `pnpm check:docs`；如果文档改动同时伴随代码或配置改动，仍按五层验证执行。
+
+## 7.1 最低检查
 
 - shared：
   - `pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
@@ -240,7 +268,7 @@ pnpm --dir apps/backend/agent-server build
 
 - 给定计划后，默认连续执行，不要停下来反复询问“是否继续”。
 - 同一阻断优先自修复，最多连续尝试 `3` 次；只有达到上限才允许报告阻塞。
-- 每次改动都要尽量补对应验证，不要只改代码不校验。
+- 每次改动完成后都必须补齐五层验证，或明确记录阻断原因；不要只改代码不校验。
 - 默认采用 **TDD（Test-Driven Development）** 推进新增功能、修复和重构：先写失败测试，再写最小实现，最后在测试保护下重构。
 - **当一轮计划中的任务已全部完成时，必须明确告知用户“计划已完成”或等价结论。**
 
@@ -294,6 +322,7 @@ pnpm --dir apps/backend/agent-server build
 - 长流程中要保持阶段性收口，避免上下文漂移
 - 优先精准修改，不要无必要整文件重写
 - 新增、重构或替换实现后，必须主动清理本轮改动引入或遗留的未使用节点、未接线 graph 分支、未引用导出、废弃 helper 与死代码；不要把“已经没用到”的实现继续留在仓库里
+- 每次任务收尾时，必须回看本轮涉及的规范是否仍与真实实现一致；若发现规范过期，必须立即更新或显式标注过时，不能在明知失效的情况下结束任务
 - 修改任何主链逻辑时，必须默认遵守：
   - 不破坏现有功能
   - 不降低已建立的测试覆盖

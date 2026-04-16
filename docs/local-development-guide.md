@@ -1,8 +1,9 @@
 # 本地联调指南
 
 状态：current
+文档类型：guide
 适用范围：本地开发与联调
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 ## 1. 推荐启动顺序
 
@@ -46,6 +47,13 @@ pnpm --dir apps/frontend/agent-admin dev
 
 - `ZHIPU_API_KEY`
 - `ZHIPU_API_BASE_URL`
+- `MINIMAX_API_KEY`
+- `MINIMAX_BASE_URL`
+- `MINIMAX_MANAGER_MODEL`
+- `MINIMAX_RESEARCH_MODEL`
+- `MINIMAX_EXECUTOR_MODEL`
+- `MINIMAX_REVIEWER_MODEL`
+- `MINIMAX_DIALOG_MODEL`
 - `KNOWLEDGE_EMBEDDING_ENDPOINT`
 - `MCP_BIGMODEL_WEB_SEARCH_ENDPOINT`
 - `MCP_BIGMODEL_WEB_READER_ENDPOINT`
@@ -64,6 +72,14 @@ pnpm --dir apps/frontend/agent-admin dev
 
 - 未配置模型 key 时，direct-reply 与研究能力会退化
 - `ZHIPU_API_BASE_URL` 不再有代码默认值，本地联调必须通过 `.env` 或显式 overrides 提供
+- `MINIMAX_BASE_URL` 默认会回落到 `https://api.minimaxi.com/v1`
+- 若只配置 `MINIMAX_API_KEY`，系统会自动注册 `minimax` provider，并默认带上：
+  - `MiniMax-M2.7`
+  - `MiniMax-M2.7-highspeed`
+  - `MiniMax-M2.5`
+  - `MiniMax-M2.5-highspeed`
+  - `M2-her`
+- `minimax` 现在会通过独立的 `MiniMaxProvider` 适配器注册，再由路由层按 `minimax/<modelId>` 选择具体模型；provider 内部直接调用 `@agent/model` 的 `createMiniMaxChatModel(...)`
 - embedding 与 BigModel MCP endpoints 也不再有代码默认值，需要通过 `.env` 显式提供
 - 未配置 research MCP endpoint 时，研究来源会退回本地或 sandbox 能力
 
@@ -107,13 +123,13 @@ pnpm --dir apps/frontend/agent-admin dev
   - runtime state、任务状态、briefings、schedules 等运行态数据
 - `data/knowledge`
   - 受控知识源、catalog、chunks、ingestion、vectors 产物
-- `data/skills`
+- `data/skill-runtime`
   - 运行时技能安装区、稳定区、实验区和安装回执
 
 建议：
 
 - 不要把临时调试输出混写进 `data/runtime`
-- 清理 `data/knowledge` 与 `data/skills` 前，先确认 runtime / learning / skill lab 是否仍在引用
+- 清理 `data/knowledge` 与 `data/skill-runtime` 前，先确认 runtime / learning / skill lab 是否仍在引用
 - 当切换 runner 模式时，backend 与 worker 应共享同一份 `data/runtime/tasks-state.json`
 
 ## 6. 常见排查
@@ -151,7 +167,7 @@ pnpm test
 pnpm test:integration
 pnpm exec tsc -p packages/config/tsconfig.json --noEmit
 pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
-pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit
+pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm exec tsc -p apps/worker/tsconfig.json --noEmit
 pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit

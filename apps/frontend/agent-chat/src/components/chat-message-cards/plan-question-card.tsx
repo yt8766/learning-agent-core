@@ -73,7 +73,7 @@ export function PlanQuestionCard(props: PlanQuestionCardProps) {
                 }))
               }
             >
-              <Space direction="vertical">
+              <Space orientation="vertical">
                 {question.options.map(option => (
                   <Radio key={option.id} value={option.id}>
                     <span>{option.label}</span>

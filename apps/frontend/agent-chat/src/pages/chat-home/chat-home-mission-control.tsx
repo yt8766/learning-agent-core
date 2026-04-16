@@ -1,6 +1,8 @@
 import { Space, Tag, Typography } from 'antd';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
+import { ChatMemoryChips } from './chat-memory-chips';
+import { ChatMemoryFeedbackStrip } from './chat-memory-feedback-strip';
 import { getChatRouteFlowLabel, getChatRouteTone, getMinistryLabel, getMinistryTone } from './chat-home-helpers';
 
 const { Text, Title } = Typography;
@@ -21,6 +23,10 @@ export function SessionMissionControl({ chat }: { chat: ReturnType<typeof useCha
       item.status === 'waiting_interrupt'
   );
   const currentSkillExecution = checkpoint?.currentSkillExecution;
+  const memoryEvidence = (checkpoint?.externalSources ?? []).filter(
+    source => source.sourceType === 'memory_reuse' || source.sourceType === 'rule_reuse'
+  );
+  const reflectionEvidence = memoryEvidence.filter(source => source.summary.includes('历史反思'));
 
   return (
     <section className="chatx-mission-control">
@@ -88,23 +94,23 @@ export function SessionMissionControl({ chat }: { chat: ReturnType<typeof useCha
           <Title level={5}>
             {reuseCount} 项复用 · {evidenceCount} 条来源
           </Title>
-          <div className="chatx-mission-card__meta">
-            {(checkpoint?.reusedMemories ?? []).slice(0, 2).map(item => (
-              <Tag key={item} color="gold">
-                memory:{item}
-              </Tag>
-            ))}
-            {(checkpoint?.reusedRules ?? []).slice(0, 2).map(item => (
-              <Tag key={item} color="purple">
-                rule:{item}
-              </Tag>
-            ))}
-            {(checkpoint?.reusedSkills ?? []).slice(0, 2).map(item => (
-              <Tag key={item} color="cyan">
-                skill:{item}
-              </Tag>
-            ))}
-          </div>
+          <Text type="secondary">
+            {reflectionEvidence.length
+              ? `本轮已注入 ${reflectionEvidence.length} 条历史反思，用于规避重复失败。`
+              : '当前展示的是本轮真正被采用的记忆与规则，而不是后台全部存量。'}
+          </Text>
+          <ChatMemoryChips
+            sources={memoryEvidence}
+            reusedMemories={checkpoint?.reusedMemories}
+            reusedRules={checkpoint?.reusedRules}
+            reusedSkills={checkpoint?.reusedSkills}
+          />
+          <ChatMemoryFeedbackStrip
+            sources={memoryEvidence}
+            onUpdated={async () => {
+              await chat.refreshSessionDetail();
+            }}
+          />
         </article>
 
         <article className="chatx-mission-card">

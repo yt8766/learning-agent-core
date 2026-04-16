@@ -7,14 +7,22 @@ describe('ToolRegistry', () => {
   it('groups tools by stable families', () => {
     const registry = createDefaultToolRegistry();
     const filesystem = registry.listByFamily('filesystem').map(tool => tool.name);
+    const scaffold = registry.listByFamily('scaffold').map(tool => tool.name);
 
     expect(filesystem).toEqual(
       expect.arrayContaining(['read_local_file', 'write_local_file', 'patch_local_file', 'search_in_files'])
     );
+    expect(scaffold).toEqual(expect.arrayContaining(['list_scaffold_templates', 'preview_scaffold', 'write_scaffold']));
     expect(registry.getFamily('filesystem')).toEqual(
       expect.objectContaining({
         id: 'filesystem',
         preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.getFamily('scaffold')).toEqual(
+      expect.objectContaining({
+        id: 'scaffold',
+        preferredMinistries: expect.arrayContaining(['libu-governance', 'gongbu-code', 'libu-delivery'])
       })
     );
   });
@@ -87,6 +95,32 @@ describe('ToolRegistry', () => {
         requiresApproval: true,
         permissionScope: 'workspace-write',
         preferredMinistries: expect.arrayContaining(['gongbu-code'])
+      })
+    );
+    expect(registry.get('list_scaffold_templates')).toEqual(
+      expect.objectContaining({
+        family: 'scaffold',
+        isReadOnly: true,
+        requiresApproval: false,
+        permissionScope: 'readonly'
+      })
+    );
+    expect(registry.get('preview_scaffold')).toEqual(
+      expect.objectContaining({
+        family: 'scaffold',
+        isReadOnly: true,
+        requiresApproval: false,
+        permissionScope: 'readonly'
+      })
+    );
+    expect(registry.get('write_scaffold')).toEqual(
+      expect.objectContaining({
+        family: 'scaffold',
+        isReadOnly: false,
+        requiresApproval: true,
+        sandboxProfile: 'workspace-write',
+        permissionScope: 'workspace-write',
+        preferredMinistries: expect.arrayContaining(['libu-governance', 'gongbu-code', 'libu-delivery'])
       })
     );
   });

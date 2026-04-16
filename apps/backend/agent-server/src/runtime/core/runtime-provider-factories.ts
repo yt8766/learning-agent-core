@@ -2,7 +2,7 @@ import { describeConnectorProfilePolicy } from '@agent/runtime';
 import { SkillCard, SkillManifestRecord } from '@agent/shared';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from '../helpers/runtime-connector-registry';
-import { fetchProviderUsageAudit } from '../helpers/provider-audit';
+import { fetchProviderUsageAudit } from '../../modules/runtime-metrics/services/provider-audit';
 import { RuntimeCentersGovernanceService } from '../centers/runtime-centers-governance.service';
 import { RuntimeCentersQueryService } from '../centers/runtime-centers-query.service';
 import { RuntimeCentersService } from '../centers/runtime-centers.service';
@@ -24,7 +24,8 @@ import { RuntimeScheduleService } from '../schedules/runtime-schedule.service';
 export function createRuntimeTechBriefingService(runtimeHost: RuntimeHost) {
   return new RuntimeTechBriefingService(() => ({
     settings: runtimeHost.settings,
-    mcpClientManager: runtimeHost.mcpClientManager
+    mcpClientManager: runtimeHost.mcpClientManager,
+    llmProvider: runtimeHost.llmProvider
   }));
 }
 

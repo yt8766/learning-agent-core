@@ -5,16 +5,20 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/shared';
 
 import { executeFilesystemTool } from '../../src/filesystem/filesystem-executor';
+import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeFilesystemTool', () => {
   const originalCwd = process.cwd();
+  const tempWorkspaces: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(originalCwd);
+    await cleanupTempWorkspaces(tempWorkspaces.splice(0));
   });
 
   it('patches a workspace file', async () => {
-    const root = join(process.cwd(), 'tmp', `filesystem-patch-${Date.now()}`);
+    const root = await createTempWorkspace('filesystem-patch');
+    tempWorkspaces.push(root);
     const targetFile = join(root, 'src', 'demo.ts');
     await mkdir(join(root, 'src'), { recursive: true });
     await writeFile(targetFile, 'const value = "before";\n');
@@ -37,7 +41,8 @@ describe('executeFilesystemTool', () => {
   });
 
   it('searches in files and returns line-level matches', async () => {
-    const root = join(process.cwd(), 'tmp', `filesystem-search-${Date.now()}`);
+    const root = await createTempWorkspace('filesystem-search');
+    tempWorkspaces.push(root);
     await mkdir(join(root, 'src'), { recursive: true });
     await writeFile(join(root, 'src', 'a.ts'), 'export const featureFlag = true;\n');
     await writeFile(join(root, 'src', 'b.ts'), 'const nothing = false;\n');
@@ -62,7 +67,8 @@ describe('executeFilesystemTool', () => {
   });
 
   it('moves and copies files inside the workspace', async () => {
-    const root = join(process.cwd(), 'tmp', `filesystem-move-copy-${Date.now()}`);
+    const root = await createTempWorkspace('filesystem-move-copy');
+    tempWorkspaces.push(root);
     await mkdir(join(root, 'src'), { recursive: true });
     await writeFile(join(root, 'src', 'input.txt'), 'hello');
 

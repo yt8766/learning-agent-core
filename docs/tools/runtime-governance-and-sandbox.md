@@ -1,8 +1,9 @@
 # Runtime Governance And Sandbox
 
 状态：current
+文档类型：reference
 适用范围：`packages/tools`、`apps/backend/agent-server/src/runtime`
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 ## 1. 这篇文档说明什么
 
@@ -35,6 +36,12 @@
 - `src/filesystem`、`src/scheduling`、`src/watchdog`
   - 垂直执行基础能力
 
+对外导出约束：
+
+- `@agent/tools` 根入口继续作为唯一稳定消费入口
+- 根入口应显式列出稳定命名导出，避免用整包 `export *` 把内部目录递归暴露
+- `src/approval`、`src/mcp`、`src/registry` 等目录保留为包内组织层，不作为新增消费方的默认导入入口
+
 ## 3. 不属于这里的内容
 
 以下内容不应继续塞回 `packages/tools`：
@@ -44,7 +51,7 @@
 - chat / review / research prompt
 - 长链路 workflow 编排
 
-这些应继续留在 `packages/agent-core`。
+这些应继续留在 `packages/runtime` 与对应 `agents/*` 宿主。
 
 ## 4. 与审批和中断的关系
 
@@ -63,6 +70,6 @@
 
 ## 6. 继续阅读
 
-- [tools 文档目录](/Users/dev/Desktop/learning-agent-core/docs/tools/README.md)
-- [Runtime Interrupts](/Users/dev/Desktop/learning-agent-core/docs/runtime-interrupts.md)
-- [Packages 分层与依赖约定](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- [tools 文档目录](/docs/tools/README.md)
+- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)

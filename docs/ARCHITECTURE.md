@@ -1,15 +1,16 @@
 # 架构总览
 
 状态：current
+文档类型：architecture
 适用范围：仓库长期架构方向
-最后核对：2026-04-14
+最后核对：2026-04-16
 
 本文件描述当前仓库面向代码代理和开发者的长期架构方向。它不是逐文件 API 文档，而是帮助在实现细节变化时仍保持同一条演进主线。
 
 当前实现形态补充阅读：
 
-- [agent-core runtime current state](/Users/dev/Desktop/learning-agent-core/docs/agent-core/runtime-current-state.md)
-- [system flow current state](/Users/dev/Desktop/learning-agent-core/docs/integration/system-flow-current-state.md)
+- [agent-core runtime current state](/docs/archive/agent-core/runtime-current-state.md)
+- [system flow current state](/docs/integration/system-flow-current-state.md)
 
 ## 1. 产品分工
 
@@ -144,7 +145,7 @@ flowchart TD
 
 ### LangGraph 状态约束补充
 
-在 `agent-core` 的 graph 实现里，需要明确区分：
+在当前 `runtime / agents` 的 graph 实现里，需要明确区分：
 
 - `zod`
   - 负责输出对象、协议字段、结构化结果的“格式正确性”
@@ -158,30 +159,23 @@ flowchart TD
 - `zod = 数据格式层`
 - `Annotation = 图状态层`
 
-### `agent-core` 目录收敛
+### `runtime / agents` 目录收敛
 
-当前 `packages/agent-core/src` 的推荐阅读与组织方式固定为：
+当前推荐按“runtime 主链 + 专项 agent 图”理解源码宿主：
 
-- `graphs/`
-  - 顶层 graph 入口：`chat / learning / recovery / main-route`
+- `packages/runtime/src/graphs`
+  - 主链 graph 入口：`chat / learning / recovery / main/*`
   - graph 文件默认只保留状态定义与边编排，不直接堆叠节点业务实现
-  - `main/` 只负责主编排图
-  - `main/task/`：任务创建、上下文、运行态
-  - `main/lifecycle/`：快照、审批、后台协作、学习协作
-  - `main/background/`：background lease 与 learning jobs runtime
-  - `main/knowledge/`：citation / freshness / diagnosis evidence
-  - `main/orchestration/`：bridge、execution helper
-  - `main/pipeline/`：plan / research / execute / review / interrupt
-- `flows/`
-  - 负责“谁执行、怎么执行”
-- `runtime/`
-  - 负责“怎么装配整个系统”
-- `session/`
-  - 负责“聊天会话怎么驱动任务”
-- `shared/`
-  - 只保留跨模块 prompt/schema/contract
-- `utils/`
-  - 只保留纯工具，不承载主控制流
+- `packages/runtime/src/flows`
+  - 主链节点执行、审批、学习、会话等 runtime 级 flow
+- `packages/runtime/src/runtime`、`src/session`
+  - runtime 装配、会话驱动、checkpoint 与恢复协同
+- `agents/supervisor/src/graphs`、`src/flows`
+  - supervisor 主图、路由、delivery、ministries 与专项提示词/结构化约束
+- `agents/data-report/src/graphs`、`src/flows`
+  - data-report / data-report-json graph、preview/runtime facade、报表专项节点
+- `packages/adapters/src/shared/prompts` 与各宿主 `src/utils/prompts`
+  - 结构化 prompt helper、JSON safety 附加和宿主内部复用模板
 
 收敛原则：
 
@@ -263,6 +257,20 @@ flowchart TD
 - top-K reused memory / rule / skill
 - top-K evidence
 - 上一轮 learning evaluation 摘要
+
+长期收敛方向补充：
+
+- Prompt 只保留受控的 `Core Memory`
+  - 用户画像核心片段
+  - 当前任务约束
+  - 当前会话必需状态
+- 大量长期记忆默认留在 `Archival Memory`
+  - 通过 runtime 主动触发的 memory retrieval / override 工具按需读取
+- 不把“扩大上下文窗口”当作长期主解
+
+记忆系统的长期蓝图详见：
+
+- [Agent Memory Architecture](/docs/memory/agent-memory-architecture.md)
 
 这层策略先由运行时本地实现，后续再逐步升级为向量检索、语义缓存和更细粒度的 worker-specific context slice。
 
@@ -545,21 +553,27 @@ pnpm build:lib
 
 再执行需要的应用构建或类型检查。
 
-### `agent-core` 当前推荐分层
+### `runtime / agents` 当前推荐分层
 
-当前 `packages/agent-core/src` 已经按下列方向展开，后续优先沿这个结构收敛，而不是回退到旧的 `models / agents / graph` 粗分层：
+当前推荐按 `packages/runtime`、`packages/adapters` 与 `agents/*` 收敛，而不是回退到旧的 `models / agents / graph` 粗分层：
 
 ```text
-src/
-├─ adapters/
+packages/runtime/src/
 ├─ flows/
 ├─ governance/
 ├─ graphs/
 ├─ runtime/
 ├─ session/
+├─ capabilities/
+├─ utils/
+└─ types/
+
+agents/<domain>/src/
+├─ flows/
+├─ graphs/
+├─ runtime/
 ├─ shared/
 ├─ utils/
-├─ workflows/
 └─ types/
 ```
 
@@ -569,9 +583,9 @@ src/
 - `governance/` 负责 worker registry、路由策略、预算与治理决策
 - `graphs/` 只放图定义与编排入口
 - `session/` 负责会话、checkpoint、事件流持久化
-- `shared/` 放跨流程复用的事件映射、schema、prompt 与工具
+- agent 宿主下的 `shared/` 放跨流程复用的事件映射、schema、prompt 与工具
 - `utils/` 放纯函数型通用工具，例如 parser、formatter、matcher、normalizer；不承载 service 和运行时状态
-- `workflows/` 负责预设工作流和能力组合，不与底层 graph 定义混放
+- `agents/supervisor/src/workflows/` 只负责预设工作流和能力组合，不与底层 graph 定义混放
 
 ## 10. Skills 目录分层
 
@@ -579,7 +593,8 @@ src/
 
 ### A. 运行时 skill
 
-- 目录：`packages/skills`
+- 目录：`packages/skill-runtime`
+- 新代码导入名：`@agent/skill-runtime`
 - 用途：运行时 skill registry、skill card、实验区/稳定区领域模型
 - 被后端、shared、admin 消费
 
@@ -607,7 +622,7 @@ skills/
 - `references/` 放规范、样例、领域知识
 - `scripts/` 放可执行脚本
 - `assets/` 放模板或静态资源
-- 仓库级代理 skill 不应与运行时 `packages/skills` 混合
+- 仓库级代理 skill 不应与运行时 `packages/skill-runtime` / `@agent/skill-runtime` 混合
 - 新增代理工作流时，优先考虑放进 `skills/`，而不是塞进随机文档目录
 
 ## 11. 优先级
@@ -630,11 +645,11 @@ skills/
 
 如果你是进入本仓库工作的代码代理，建议按这个顺序阅读：
 
-1. [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
-2. [README.md](/Users/dev/Desktop/learning-agent-core/README.md)
-3. [前后端对接文档](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-4. [后端规范](/Users/dev/Desktop/learning-agent-core/docs/backend-conventions.md)
-5. [前端规范](/Users/dev/Desktop/learning-agent-core/docs/frontend-conventions.md)
+1. [AGENTS.md](/AGENTS.md)
+2. [README.md](/README.md)
+3. [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+4. [后端规范](/docs/backend-conventions.md)
+5. [前端规范](/docs/frontend-conventions.md)
 
 ## 13. 最低检查
 
@@ -642,7 +657,7 @@ skills/
 
 ```bash
 pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
-pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit
+pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit
 pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit

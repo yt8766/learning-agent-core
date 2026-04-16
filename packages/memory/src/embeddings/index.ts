@@ -1,1 +1,1 @@
-export * from '../embedding-provider';
+export * from './embedding-provider';
