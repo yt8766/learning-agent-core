@@ -1,13 +1,9 @@
-import type {
-  ActionIntent,
-  ApprovalStatus,
-  DispatchInstruction,
-  ExecutionStepRecord,
-  MemoryRecord,
-  ReviewDecision,
-  SkillCard,
-  ToolExecutionResult
-} from '@agent/shared';
+import type { ActionIntent, ApprovalStatus, ReviewDecision } from './primitives';
+import type { MemoryRecord } from '../memory';
+import type { SkillCard } from './skills';
+import type { DispatchInstruction } from './tasking-orchestration';
+import type { ExecutionStepRecord } from './primitives';
+import type { ToolExecutionResult } from './governance';
 
 export interface RuntimeAgentGraphState {
   taskId: string;

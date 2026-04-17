@@ -1,4 +1,5 @@
-import { ActionIntent, type CurrentSkillExecutionRecord } from '@agent/shared';
+import type { ActionIntent } from '../types/primitives';
+import type { CurrentSkillExecutionRecord } from '../types/tasking-orchestration';
 
 export interface PendingExecutionContext {
   taskId: string;

@@ -1,15 +1,6 @@
-import type { TrustClass } from '@agent/shared';
+import { z } from 'zod';
 
-export interface DeliveryCitationRecord {
-  label: string;
-  sourceUrl?: string;
-  sourceType?: string;
-  trustClass?: TrustClass | string;
-  summary?: string;
-}
+import { DeliveryCitationRecordSchema, DeliverySourceSummaryRecordSchema } from '../spec/delivery';
 
-export interface DeliverySourceSummaryRecord {
-  freshnessSourceSummary?: string;
-  citationSourceSummary?: string;
-  citations?: DeliveryCitationRecord[];
-}
+export type DeliveryCitationRecord = z.infer<typeof DeliveryCitationRecordSchema>;
+export type DeliverySourceSummaryRecord = z.infer<typeof DeliverySourceSummaryRecordSchema>;

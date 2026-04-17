@@ -1,272 +1,81 @@
-export type DataReportJsonScope = 'single' | 'multiple';
-export type DataReportJsonLayout = 'dashboard' | 'single-table';
-export type DataReportJsonGenerationMode = 'brand-new' | 'patch';
-export type DataReportJsonGenerationStatus = 'success' | 'partial' | 'failed';
-export type DataReportJsonComplexityLevel = 'simple' | 'complex';
-export type DataReportJsonFilterValueType = 'string' | 'string[]' | 'date-range';
-export type DataReportJsonBlockType = 'metrics' | 'chart' | 'table';
-export type DataReportJsonChartType = 'line' | 'bar' | 'pie' | 'line-bar';
-export type DataReportJsonChartSeriesType = Extract<DataReportJsonChartType, 'line' | 'bar'>;
-export type DataReportJsonFormat = 'text' | 'number' | 'percent' | 'date';
-export type DataReportJsonAggregate = 'latest' | 'sum';
-export type DataReportJsonMigrationSourceProduct = 'metabase' | 'superset' | 'grafana' | 'retool' | 'custom';
+import { z } from 'zod';
 
-export interface DataReportJsonMeta {
-  reportId: string;
-  title: string;
-  description: string;
-  route: string;
-  templateRef: string;
-  scope: DataReportJsonScope;
-  layout: DataReportJsonLayout;
-  owner: 'data-report-json-agent';
-}
+import {
+  DataReportJsonAggregateSchema,
+  DataReportJsonAnalysisArtifactSchema,
+  DataReportJsonBlockSchema,
+  DataReportJsonBlockTypeSchema,
+  DataReportJsonChartBlockSchema,
+  DataReportJsonChartSeriesSchema,
+  DataReportJsonChartSeriesTypeSchema,
+  DataReportJsonChartTypeSchema,
+  DataReportJsonComplexityLevelSchema,
+  DataReportJsonDataSourceSchema,
+  DataReportJsonFilterFieldSchema,
+  DataReportJsonFilterSchemaSchema,
+  DataReportJsonFilterValueTypeSchema,
+  DataReportJsonFormatSchema,
+  DataReportJsonGenerationHintsSchema,
+  DataReportJsonGenerationModeSchema,
+  DataReportJsonGenerationStatusSchema,
+  DataReportJsonLayoutSchema,
+  DataReportJsonMetaSchema,
+  DataReportJsonMetricItemSchema,
+  DataReportJsonMetricsBlockSchema,
+  DataReportJsonMigrationContextSchema,
+  DataReportJsonMigrationSourceProductSchema,
+  DataReportJsonPageDefaultsSchema,
+  DataReportJsonPatchOperationSchema,
+  DataReportJsonSchemaSchema,
+  DataReportJsonScopeSchema,
+  DataReportJsonSectionSchema,
+  DataReportJsonStructuredChartSpecSchema,
+  DataReportJsonStructuredDataSourceInputSchema,
+  DataReportJsonStructuredFilterInputSchema,
+  DataReportJsonStructuredInputSchema,
+  DataReportJsonStructuredMetricsSpecSchema,
+  DataReportJsonStructuredSectionInputSchema,
+  DataReportJsonStructuredTableSpecSchema,
+  DataReportJsonTableBlockSchema,
+  DataReportJsonTableColumnSchema,
+  DataReportJsonVersionInfoSchema
+} from '../spec/data-report-json-schema';
 
-export interface DataReportJsonFilterField {
-  name: string;
-  label: string;
-  options?: Array<{
-    label: string;
-    value: string | number;
-  }>;
-  component: {
-    type: 'custom';
-    componentKey: string;
-    props: Record<string, unknown>;
-  };
-  valueType: DataReportJsonFilterValueType;
-  required: boolean;
-  defaultValue?: unknown;
-  requestMapping?: Record<string, string>;
-}
-
-export interface DataReportJsonFilterSchema {
-  formKey: string;
-  layout: 'inline';
-  fields: DataReportJsonFilterField[];
-}
-
-export interface DataReportJsonDataSource {
-  serviceKey: string;
-  requestAdapter: Record<string, string>;
-  responseAdapter: {
-    listPath: string;
-    totalPath?: string;
-  };
-}
-
-export interface DataReportJsonMetricItem {
-  key: string;
-  label: string;
-  field: string;
-  format: Extract<DataReportJsonFormat, 'number' | 'percent'>;
-  aggregate: DataReportJsonAggregate;
-}
-
-export interface DataReportJsonChartSeries {
-  key: string;
-  label: string;
-  field: string;
-  seriesType?: DataReportJsonChartSeriesType;
-}
-
-export interface DataReportJsonTableColumn {
-  title: string;
-  dataIndex: string;
-  width: number;
-  fixed?: 'left' | 'right';
-}
-
-export interface DataReportJsonStructuredFilterInput {
-  name: string;
-  label: string;
-  options?: Array<{
-    label: string;
-    value: string | number;
-  }>;
-  componentKey: string;
-  valueType: DataReportJsonFilterValueType;
-  required: boolean;
-  defaultValue?: unknown;
-  requestMapping?: Record<string, string>;
-  props?: Record<string, unknown>;
-}
-
-export interface DataReportJsonStructuredDataSourceInput {
-  key: string;
-  serviceKey: string;
-  requestAdapter: Record<string, string>;
-  responseAdapter: {
-    listPath: string;
-    totalPath?: string;
-  };
-}
-
-export interface DataReportJsonStructuredMetricsSpec {
-  title?: string;
-  items: DataReportJsonMetricItem[];
-}
-
-export interface DataReportJsonStructuredChartSpec {
-  title: string;
-  chartType: DataReportJsonChartType;
-  xField: string;
-  series: DataReportJsonChartSeries[];
-}
-
-export interface DataReportJsonStructuredTableSpec {
-  title: string;
-  exportable: boolean;
-  columns: DataReportJsonTableColumn[];
-}
-
-export interface DataReportJsonStructuredSectionInput {
-  id: string;
-  title: string;
-  description: string;
-  dataSourceKey: string;
-  metricsSpec: DataReportJsonStructuredMetricsSpec | DataReportJsonMetricItem[];
-  chartSpec: DataReportJsonStructuredChartSpec;
-  tableSpec: DataReportJsonStructuredTableSpec;
-  sectionDefaults?: {
-    filters?: Record<string, unknown>;
-    table?: {
-      pageSize?: number;
-      defaultSort?: {
-        field: string;
-        order: 'asc' | 'desc';
-      };
-    };
-    chart?: {
-      granularity?: 'day';
-    };
-  };
-}
-
-export interface DataReportJsonGenerationHints {
-  autoQueryOnInit?: boolean;
-  autoQueryOnFilterChange?: boolean;
-  cacheKey?: string;
-  targetLatencyClass?: 'fast' | 'balanced' | 'quality';
-}
-
-export interface DataReportJsonMigrationContext {
-  sourceProduct: DataReportJsonMigrationSourceProduct;
-  sourceDatasetName?: string;
-  sourcePanelTypes?: string[];
-  sourceFilters?: string[];
-  sourceNotes?: string;
-}
-
-export interface DataReportJsonStructuredInput {
-  meta: Omit<DataReportJsonMeta, 'owner'>;
-  filters: DataReportJsonStructuredFilterInput[];
-  dataSources: DataReportJsonStructuredDataSourceInput[];
-  sections: DataReportJsonStructuredSectionInput[];
-  generationHints?: DataReportJsonGenerationHints;
-  migrationContext?: DataReportJsonMigrationContext;
-}
-
-export interface DataReportJsonMetricsBlock {
-  type: 'metrics';
-  title: string;
-  items: DataReportJsonMetricItem[];
-}
-
-export interface DataReportJsonChartBlock {
-  type: 'chart';
-  title: string;
-  chartType: DataReportJsonChartType;
-  xField: string;
-  series: DataReportJsonChartSeries[];
-}
-
-export interface DataReportJsonTableBlock {
-  type: 'table';
-  title: string;
-  exportable: boolean;
-  columns: DataReportJsonTableColumn[];
-}
-
-export type DataReportJsonBlock = DataReportJsonMetricsBlock | DataReportJsonChartBlock | DataReportJsonTableBlock;
-
-export interface DataReportJsonSection {
-  id: string;
-  title: string;
-  description: string;
-  dataSourceKey: string;
-  sectionDefaults: {
-    filters: Record<string, unknown>;
-    table: {
-      pageSize: number;
-      defaultSort: {
-        field: string;
-        order: 'asc' | 'desc';
-      };
-    };
-    chart?: {
-      granularity: 'day';
-    };
-  };
-  blocks: DataReportJsonBlock[];
-}
-
-export interface DataReportJsonPageDefaults {
-  filters: Record<string, unknown>;
-  queryPolicy: {
-    autoQueryOnInit: boolean;
-    autoQueryOnFilterChange: boolean;
-    cacheKey: string;
-  };
-}
-
-export interface DataReportJsonPatchOperation {
-  op:
-    | 'replace-meta-title'
-    | 'replace-section-title'
-    | 'replace-block-title'
-    | 'replace-filter-default'
-    | 'prepend-block';
-  path: string;
-  summary: string;
-}
-
-export interface DataReportJsonVersionInfo {
-  baseVersion: number;
-  nextVersion: number;
-  patchSummary: string;
-}
-
-export interface DataReportJsonSchema {
-  version: '1.0';
-  kind: 'data-report-json';
-  meta: DataReportJsonMeta;
-  pageDefaults: DataReportJsonPageDefaults;
-  filterSchema: DataReportJsonFilterSchema;
-  dataSources: Record<string, DataReportJsonDataSource>;
-  sections: DataReportJsonSection[];
-  registries: {
-    filterComponents: string[];
-    blockTypes: DataReportJsonBlockType[];
-    serviceKeys: string[];
-  };
-  modification: {
-    strategy: 'patchable-json';
-    supportedOperations: Array<'update-filter-defaults' | 'replace-section' | 'append-section' | 'update-block-config'>;
-  };
-  patchOperations?: DataReportJsonPatchOperation[];
-  warnings: string[];
-}
-
-export interface DataReportJsonAnalysisArtifact {
-  templateRef: DataReportJsonMeta['templateRef'];
-  scope: DataReportJsonScope;
-  routeName: string;
-  route: string;
-  title: string;
-  layout: DataReportJsonLayout;
-  reportName?: string;
-  serviceKey?: string;
-  filterFields?: string[];
-  displayFields?: string[];
-}
+export type DataReportJsonScope = z.infer<typeof DataReportJsonScopeSchema>;
+export type DataReportJsonLayout = z.infer<typeof DataReportJsonLayoutSchema>;
+export type DataReportJsonGenerationMode = z.infer<typeof DataReportJsonGenerationModeSchema>;
+export type DataReportJsonGenerationStatus = z.infer<typeof DataReportJsonGenerationStatusSchema>;
+export type DataReportJsonComplexityLevel = z.infer<typeof DataReportJsonComplexityLevelSchema>;
+export type DataReportJsonFilterValueType = z.infer<typeof DataReportJsonFilterValueTypeSchema>;
+export type DataReportJsonBlockType = z.infer<typeof DataReportJsonBlockTypeSchema>;
+export type DataReportJsonChartType = z.infer<typeof DataReportJsonChartTypeSchema>;
+export type DataReportJsonChartSeriesType = z.infer<typeof DataReportJsonChartSeriesTypeSchema>;
+export type DataReportJsonFormat = z.infer<typeof DataReportJsonFormatSchema>;
+export type DataReportJsonAggregate = z.infer<typeof DataReportJsonAggregateSchema>;
+export type DataReportJsonMigrationSourceProduct = z.infer<typeof DataReportJsonMigrationSourceProductSchema>;
+export type DataReportJsonMeta = z.infer<typeof DataReportJsonMetaSchema>;
+export type DataReportJsonFilterField = z.infer<typeof DataReportJsonFilterFieldSchema>;
+export type DataReportJsonFilterSchema = z.infer<typeof DataReportJsonFilterSchemaSchema>;
+export type DataReportJsonDataSource = z.infer<typeof DataReportJsonDataSourceSchema>;
+export type DataReportJsonMetricItem = z.infer<typeof DataReportJsonMetricItemSchema>;
+export type DataReportJsonChartSeries = z.infer<typeof DataReportJsonChartSeriesSchema>;
+export type DataReportJsonTableColumn = z.infer<typeof DataReportJsonTableColumnSchema>;
+export type DataReportJsonStructuredFilterInput = z.infer<typeof DataReportJsonStructuredFilterInputSchema>;
+export type DataReportJsonStructuredDataSourceInput = z.infer<typeof DataReportJsonStructuredDataSourceInputSchema>;
+export type DataReportJsonStructuredMetricsSpec = z.infer<typeof DataReportJsonStructuredMetricsSpecSchema>;
+export type DataReportJsonStructuredChartSpec = z.infer<typeof DataReportJsonStructuredChartSpecSchema>;
+export type DataReportJsonStructuredTableSpec = z.infer<typeof DataReportJsonStructuredTableSpecSchema>;
+export type DataReportJsonStructuredSectionInput = z.infer<typeof DataReportJsonStructuredSectionInputSchema>;
+export type DataReportJsonGenerationHints = z.infer<typeof DataReportJsonGenerationHintsSchema>;
+export type DataReportJsonMigrationContext = z.infer<typeof DataReportJsonMigrationContextSchema>;
+export type DataReportJsonStructuredInput = z.infer<typeof DataReportJsonStructuredInputSchema>;
+export type DataReportJsonMetricsBlock = z.infer<typeof DataReportJsonMetricsBlockSchema>;
+export type DataReportJsonChartBlock = z.infer<typeof DataReportJsonChartBlockSchema>;
+export type DataReportJsonTableBlock = z.infer<typeof DataReportJsonTableBlockSchema>;
+export type DataReportJsonBlock = z.infer<typeof DataReportJsonBlockSchema>;
+export type DataReportJsonSection = z.infer<typeof DataReportJsonSectionSchema>;
+export type DataReportJsonPageDefaults = z.infer<typeof DataReportJsonPageDefaultsSchema>;
+export type DataReportJsonPatchOperation = z.infer<typeof DataReportJsonPatchOperationSchema>;
+export type DataReportJsonVersionInfo = z.infer<typeof DataReportJsonVersionInfoSchema>;
+export type DataReportJsonSchema = z.infer<typeof DataReportJsonSchemaSchema>;
+export type DataReportJsonAnalysisArtifact = z.infer<typeof DataReportJsonAnalysisArtifactSchema>;

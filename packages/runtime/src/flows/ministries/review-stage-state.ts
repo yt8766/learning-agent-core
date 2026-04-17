@@ -1,7 +1,17 @@
-import { normalizeCritiqueResult, upsertSpecialistFinding } from '@agent/core';
-import type { TaskRecord } from '@agent/shared';
+import { normalizeCritiqueResult, normalizeSpecialistFinding } from '@agent/core';
+import type { SpecialistFindingRecord, TaskRecord } from '@agent/shared';
 import { buildFinalReviewSummary, deriveFinalReviewDecision } from './review-stage-helpers';
 import type { NormalizedReviewResult } from './review-stage.types';
+
+function upsertRuntimeSpecialistFinding(task: TaskRecord, input: Parameters<typeof normalizeSpecialistFinding>[0]) {
+  const finding = normalizeSpecialistFinding(input) as SpecialistFindingRecord;
+  const current: SpecialistFindingRecord[] = task.specialistFindings ?? [];
+  task.specialistFindings = [
+    ...current.filter(item => !(item.specialistId === finding.specialistId && item.role === finding.role)),
+    finding
+  ];
+  return finding;
+}
 
 export function applyReviewOutcomeState(
   task: TaskRecord,
@@ -88,7 +98,7 @@ export function recordReviewSpecialistFindings(
   }
 
   if (task.specialistLead) {
-    upsertSpecialistFinding(task, {
+    upsertRuntimeSpecialistFinding(task, {
       specialistId: task.specialistLead.id,
       role: 'lead',
       source: 'critique',
@@ -109,7 +119,7 @@ export function recordReviewSpecialistFindings(
     return;
   }
 
-  upsertSpecialistFinding(
+  upsertRuntimeSpecialistFinding(
     task,
     reviewed.specialistFinding ?? {
       specialistId: 'risk-compliance',

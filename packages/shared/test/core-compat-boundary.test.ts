@@ -10,16 +10,26 @@ import {
 import { ApprovalRecordSchema, TaskRecordSchema, buildApprovalScopeMatchKey, isCitationEvidenceSource } from '../src';
 import type {
   ApprovalRecord,
+  ChatRouteRecord,
   MemoryRecord,
+  ModelRouteDecision,
   PlatformApprovalRecord,
+  PendingApprovalRecord,
+  PendingActionRecord,
   ReflectionResult,
   SharedPlatformConsoleRecord,
-  TaskRecord
+  TaskRecord,
+  WorkflowPresetDefinition
 } from '../src';
 import type {
   PlatformApprovalRecord as CorePlatformApprovalRecord,
+  ChatRouteRecord as CoreChatRouteRecord,
+  ModelRouteDecision as CoreModelRouteDecision,
+  PendingApprovalRecord as CorePendingApprovalRecord,
+  PendingActionRecord as CorePendingActionRecord,
   SharedPlatformConsoleRecord as CoreSharedPlatformConsoleRecord,
-  TaskRecord as CoreTaskRecord
+  TaskRecord as CoreTaskRecord,
+  WorkflowPresetDefinition as CoreWorkflowPresetDefinition
 } from '@agent/core';
 
 describe('@agent/shared core compat boundary', () => {
@@ -109,5 +119,55 @@ describe('@agent/shared core compat boundary', () => {
     const coreConsoleRecord: CoreSharedPlatformConsoleRecord = consoleRecord;
 
     expect(coreConsoleRecord.runtime).toBeUndefined();
+  });
+
+  it('keeps shared primitive compat aliases mapped to core host contracts', () => {
+    const preset: WorkflowPresetDefinition = {
+      id: 'workflow-1',
+      displayName: 'Runtime Audit',
+      intentPatterns: ['audit runtime'],
+      requiredMinistries: ['gongbu-code'],
+      allowedCapabilities: ['filesystem.read'],
+      approvalPolicy: 'all-actions',
+      outputContract: {
+        type: 'markdown',
+        requiredSections: ['summary']
+      }
+    };
+    const route: ChatRouteRecord = {
+      graph: 'workflow',
+      flow: 'supervisor',
+      reason: 'compat route',
+      adapter: 'workflow-command',
+      priority: 1
+    };
+    const modelRoute: ModelRouteDecision = {
+      ministry: 'gongbu-code',
+      workerId: 'worker-1',
+      defaultModel: 'gpt-5.4',
+      selectedModel: 'gpt-5.4',
+      reason: 'default'
+    };
+    const pendingAction: PendingActionRecord = {
+      toolName: 'filesystem.write',
+      intent: 'write_file',
+      requestedBy: 'gongbu-code'
+    };
+    const pendingApproval: PendingApprovalRecord = {
+      ...pendingAction,
+      reason: 'needs approval'
+    };
+
+    const corePreset: CoreWorkflowPresetDefinition = preset;
+    const coreRoute: CoreChatRouteRecord = route;
+    const coreModelRoute: CoreModelRouteDecision = modelRoute;
+    const corePendingAction: CorePendingActionRecord = pendingAction;
+    const corePendingApproval: CorePendingApprovalRecord = pendingApproval;
+
+    expect(corePreset.id).toBe('workflow-1');
+    expect(coreRoute.adapter).toBe('workflow-command');
+    expect(coreModelRoute.selectedModel).toBe('gpt-5.4');
+    expect(corePendingAction.toolName).toBe('filesystem.write');
+    expect(corePendingApproval.reason).toBe('needs approval');
   });
 });

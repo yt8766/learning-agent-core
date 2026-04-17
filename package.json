@@ -66,6 +66,7 @@
     "prettier": "^3.5.3",
     "promptfoo": "^0.121.5",
     "tsup": "^8.4.0",
+    "tsx": "^4.21.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1",

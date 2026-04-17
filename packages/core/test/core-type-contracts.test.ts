@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  ActionIntent,
+  ApprovalScope,
   ApprovalDecisionRecord,
   ApprovalScopePolicyRecord,
+  CapabilityAttachmentRecord,
+  CapabilityGovernanceProfileRecord,
   ConnectorCapabilityUsageRecord,
   ConnectorHealthRecord,
   ConnectorKnowledgeIngestionSummary,
   DeliveryCitationRecord,
   DeliverySourceSummaryRecord,
   EvidenceRecord,
+  ExecutionPlanMode,
   ExecutionTrace,
   HealthCheckResult,
+  LearningSourceType,
   LlmUsageRecord,
   QueueStateRecord,
   MemoryRecord,
@@ -18,12 +24,14 @@ import type {
   PlatformApprovalRecord,
   PlanDraftRecord,
   PlanQuestionRecord,
+  RequestedExecutionHints,
   ManagerPlan,
   AgentMessageRecord,
   AgentExecutionState,
   ChatEventRecord,
   ChatCheckpointRecord,
   ChatMessageRecord,
+  ChatRole,
   ChatSessionRecord,
   ChatThinkState,
   ChatThoughtChainItem,
@@ -34,37 +42,71 @@ import type {
   ThoughtGraphNode,
   TaskRecord,
   RuleRecord,
+  SkillCard,
+  ToolExecutionResult,
+  TrustClass,
+  GovernanceProfileRecord,
   SharedPlatformConsoleRecord
 } from '../src';
 import {
   AgentExecutionStateSchema,
   AgentMessageRecordSchema,
+  ApprovalRequestChatMessageCardSchema,
+  ApprovalScopeValues,
   ApprovalRecordSchema,
+  CapabilityCatalogChatMessageCardSchema,
+  ChatCheckpointAgentStatesSchema,
+  ChatCheckpointCursorFieldsSchema,
+  ChatCheckpointMetadataSchema,
+  ChatCheckpointPendingApprovalsSchema,
   ChatCheckpointRecordSchema,
+  ChatCheckpointSharedStringRefsSchema,
+  ChatCheckpointSpecialistStateSchema,
+  ChatApprovalRequestPreviewItemSchema,
+  ChatCapabilityCatalogGroupSchema,
+  ChatCapabilityCatalogItemSchema,
   ChatEventRecordSchema,
+  ChatMessageCardSchema,
   ChatMessageRecordSchema,
+  ChatPlanQuestionCardStatusSchema,
+  ChatSkillDraftContractSchema,
   ChatSessionRecordSchema,
   ChatThinkStateSchema,
   ChatThoughtChainItemSchema,
+  ChatRoleValues,
   ApprovalPolicyRecordSchema,
   ApprovalScopePolicyRecordSchema,
   buildApprovalScopeMatchKey,
   BlackboardStateRecordSchema,
+  BlackboardRefsSchema,
   BudgetGateStateRecordSchema,
+  CapabilityAttachmentRecordSchema,
+  CapabilityGovernanceProfileRecordSchema,
   ComplexTaskPlanRecordSchema,
+  ComplexTaskPlanDependencySchema,
   ContextSliceRecordSchema,
+  ContextSliceRecentTurnSchema,
   ConnectorCapabilityUsageRecordSchema,
   ConnectorHealthRecordSchema,
   ConnectorKnowledgeIngestionSummarySchema,
   CritiqueResultRecordSchema,
   CurrentSkillExecutionRecordSchema,
+  CounselorSelectorSchema,
+  DispatchChainNodeSchema,
   DispatchInstructionSchema,
   EntryDecisionRecordSchema,
+  ImperialDirectIntentSchema,
   ExecutionPlanRecordSchema,
+  ExecutionPlanModeValues,
   GovernanceReportRecordSchema,
+  GovernanceProfileRecordSchema,
+  GovernanceDimensionSchema,
+  GovernanceInterruptLoadSchema,
+  GovernanceReviewOutcomeSchema,
   GovernanceScoreRecordSchema,
   HealthCheckResultSchema,
   isCitationEvidenceSource,
+  LearningSourceTypeValues,
   LlmUsageRecordSchema,
   ManagerPlanSchema,
   MemoryEventRecordSchema,
@@ -72,28 +114,51 @@ import {
   MemorySearchRequestSchema,
   MemorySearchResultSchema,
   PartialAggregationRecordSchema,
+  PartialAggregationOutputKindSchema,
+  PartialAggregationPolicySchema,
   PlanDraftRecordSchema,
+  PlanDraftMicroBudgetSchema,
+  PlanDraftQuestionSetSchema,
+  PlanQuestionChatMessageCardSchema,
   PlanQuestionRecordSchema,
+  RequestedExecutionHintsSchema,
+  ReviewDecisionValues,
   ReflectionRecordSchema,
   ResolutionCandidateRecordSchema,
   McpCapabilitySchema,
   QueueStateRecordSchema,
+  RiskLevelValues,
   MicroLoopStateRecordSchema,
   SpecialistFindingRecordSchema,
   SpecialistLeadRecordSchema,
   SpecialistSupportRecordSchema,
   TaskBackgroundLearningStateSchema,
+  TaskBackgroundLearningModeSchema,
+  TaskBackgroundLearningStatusSchema,
   TaskCheckpointCursorStateSchema,
+  TaskCheckpointGraphMicroLoopStateSchema,
+  TaskCheckpointGraphMicroLoopStateValueSchema,
+  TaskCheckpointGraphMicroLoopStatusSchema,
   TaskCheckpointGraphStateSchema,
+  TaskCheckpointGraphRevisionStateSchema,
   TaskCheckpointStreamStatusSchema,
   TaskModeGateStateSchema,
+  TaskRecordAgentOutputsSchema,
+  TaskRecordExecutionStateSchema,
+  TaskRecordPlanningStateSchema,
   ChannelIdentitySchema,
   CheckpointRefSchema,
+  SkillCardSchema,
+  SkillDraftCreatedChatMessageCardSchema,
   ThoughtGraphRecordSchema,
   ThoughtGraphEdgeSchema,
   ThoughtGraphNodeSchema,
   TaskRecordSchema,
+  ToolExecutionResultSchema,
+  TrustClassValues,
+  TrustClassSchema,
   UserProfileRecordSchema,
+  RunCancelledChatMessageCardSchema,
   matchesApprovalScopePolicy
 } from '../src';
 
@@ -349,7 +414,13 @@ describe('@agent/core type contracts', () => {
       TaskCheckpointGraphStateSchema.parse({
         status: 'running',
         currentStep: 'delivery',
-        retryCount: 1
+        retryCount: 1,
+        microLoopState: {
+          status: 'active',
+          state: 'retrying',
+          attempt: 1
+        },
+        revisionState: 'revising'
       }).status
     ).toBe('running');
 
@@ -370,6 +441,19 @@ describe('@agent/core type contracts', () => {
         approvalCursor: 1,
         learningCursor: 0
       }).messageCursor
+    ).toBe(2);
+
+    expect(TaskBackgroundLearningStatusSchema.parse('running')).toBe('running');
+    expect(TaskBackgroundLearningModeSchema.parse('dream-task')).toBe('dream-task');
+    expect(TaskCheckpointGraphMicroLoopStatusSchema.parse('completed')).toBe('completed');
+    expect(TaskCheckpointGraphMicroLoopStateValueSchema.parse('exhausted')).toBe('exhausted');
+    expect(TaskCheckpointGraphRevisionStateSchema.parse('blocked')).toBe('blocked');
+    expect(
+      TaskCheckpointGraphMicroLoopStateSchema.parse({
+        status: 'active',
+        state: 'retrying',
+        attempt: 2
+      }).attempt
     ).toBe(2);
   });
 
@@ -423,6 +507,93 @@ describe('@agent/core type contracts', () => {
         createdAt: '2026-04-16T00:00:00.000Z'
       }).card?.type
     ).toBe('skill_draft_created');
+  });
+
+  it('parses named chat card sub-schemas from tasking-chat spec', () => {
+    expect(
+      ChatApprovalRequestPreviewItemSchema.parse({
+        label: 'Path',
+        value: 'packages/core/src/spec/tasking-chat.ts'
+      }).label
+    ).toBe('Path');
+    expect(
+      ApprovalRequestChatMessageCardSchema.parse({
+        type: 'approval_request',
+        intent: 'write_file',
+        preview: [{ label: 'Path', value: 'README.md' }]
+      }).type
+    ).toBe('approval_request');
+    expect(ChatPlanQuestionCardStatusSchema.parse('answered')).toBe('answered');
+    expect(
+      PlanQuestionChatMessageCardSchema.parse({
+        type: 'plan_question',
+        title: 'Confirm direction',
+        questions: [
+          {
+            id: 'q-1',
+            question: 'Which path should we take?',
+            questionType: 'direction',
+            options: [{ id: 'a', label: 'A', description: 'Use path A' }]
+          }
+        ]
+      }).type
+    ).toBe('plan_question');
+    expect(
+      RunCancelledChatMessageCardSchema.parse({
+        type: 'run_cancelled',
+        reason: 'User requested stop'
+      }).type
+    ).toBe('run_cancelled');
+    expect(
+      ChatCapabilityCatalogItemSchema.parse({
+        id: 'cap-1',
+        displayName: 'Filesystem Write'
+      }).displayName
+    ).toBe('Filesystem Write');
+    expect(
+      ChatCapabilityCatalogGroupSchema.parse({
+        key: 'tools',
+        label: 'Tools',
+        kind: 'tool',
+        items: [{ id: 'cap-1', displayName: 'Filesystem Write' }]
+      }).kind
+    ).toBe('tool');
+    expect(
+      CapabilityCatalogChatMessageCardSchema.parse({
+        type: 'capability_catalog',
+        title: 'Available capabilities',
+        groups: [{ key: 'tools', label: 'Tools', kind: 'tool', items: [] }]
+      }).type
+    ).toBe('capability_catalog');
+    expect(
+      ChatSkillDraftContractSchema.parse({
+        requiredTools: ['filesystem.read'],
+        optionalTools: [],
+        approvalSensitiveTools: [],
+        preferredConnectors: [],
+        requiredConnectors: []
+      }).requiredTools
+    ).toEqual(['filesystem.read']);
+    expect(
+      SkillDraftCreatedChatMessageCardSchema.parse({
+        type: 'skill_draft_created',
+        skillId: 'skill-1',
+        displayName: 'Repo Auditor',
+        description: 'Audit the repo',
+        ownerType: 'shared',
+        scope: 'workspace',
+        status: 'draft',
+        enabled: true,
+        nextActions: ['review']
+      }).type
+    ).toBe('skill_draft_created');
+    expect(
+      ChatMessageCardSchema.parse({
+        type: 'capability_catalog',
+        title: 'Available capabilities',
+        groups: [{ key: 'tools', label: 'Tools', kind: 'tool', items: [] }]
+      }).type
+    ).toBe('capability_catalog');
   });
 
   it('parses chat session and channel identity contracts from schema-first core definitions', () => {
@@ -550,6 +721,79 @@ describe('@agent/core type contracts', () => {
 
     expect(ApprovalRecordSchema.parse(approval).decision).toBe('pending');
     expect(AgentExecutionStateSchema.parse(agentState).role).toBe('research');
+    expect(
+      ChatCheckpointPendingApprovalsSchema.parse({
+        pendingApprovals: [approval]
+      }).pendingApprovals[0]?.taskId
+    ).toBe('task-1');
+    expect(
+      ChatCheckpointAgentStatesSchema.parse({
+        agentStates: [agentState]
+      }).agentStates[0]?.agentId
+    ).toBe('agent-1');
+    expect(
+      ChatCheckpointMetadataSchema.parse({
+        checkpointId: 'checkpoint-1',
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        createdAt: '2026-04-16T00:00:00.000Z',
+        updatedAt: '2026-04-16T00:00:00.000Z'
+      }).checkpointId
+    ).toBe('checkpoint-1');
+    expect(
+      ChatCheckpointCursorFieldsSchema.parse({
+        traceCursor: 1,
+        messageCursor: 1,
+        approvalCursor: 1,
+        learningCursor: 0
+      }).traceCursor
+    ).toBe(1);
+    expect(
+      ChatCheckpointSharedStringRefsSchema.parse({
+        reusedMemories: ['memory-1'],
+        connectorRefs: ['connector-1']
+      }).connectorRefs?.[0]
+    ).toBe('connector-1');
+    expect(
+      ChatCheckpointSpecialistStateSchema.parse({
+        supportingSpecialists: [
+          {
+            id: 'risk-compliance',
+            displayName: 'Risk',
+            domain: 'risk-compliance'
+          }
+        ]
+      }).supportingSpecialists?.[0]?.domain
+    ).toBe('risk-compliance');
+    expect(
+      TaskRecordExecutionStateSchema.parse({
+        currentStep: 'delivery',
+        retryCount: 1,
+        microLoopState: {
+          state: 'retrying',
+          attempt: 1,
+          maxAttempts: 2,
+          updatedAt: '2026-04-16T00:00:00.000Z'
+        }
+      }).currentStep
+    ).toBe('delivery');
+    expect(
+      TaskRecordPlanningStateSchema.parse({
+        executionMode: 'plan',
+        planDraft: {
+          summary: '先读上下文',
+          autoResolved: [],
+          openQuestions: [],
+          assumptions: []
+        }
+      }).executionMode
+    ).toBe('plan');
+    expect(
+      TaskRecordAgentOutputsSchema.parse({
+        agentStates: [agentState],
+        messages: []
+      }).agentStates[0]?.agentId
+    ).toBe('agent-1');
     expect(ChatCheckpointRecordSchema.parse(checkpoint).pendingApprovals[0]?.taskId).toBe('task-1');
     expect(TaskRecordSchema.parse(task).goal).toContain('runtime');
   });
@@ -683,11 +927,36 @@ describe('@agent/core type contracts', () => {
     ).toBe('plan');
 
     expect(
+      CounselorSelectorSchema.parse({
+        strategy: 'manual',
+        candidateIds: ['c-1']
+      }).strategy
+    ).toBe('manual');
+    expect(
+      ImperialDirectIntentSchema.parse({
+        enabled: true,
+        trigger: 'known-capability',
+        requestedCapability: 'filesystem.write'
+      }).trigger
+    ).toBe('known-capability');
+    expect(DispatchChainNodeSchema.parse('dispatch_planner')).toBe('dispatch_planner');
+
+    expect(
       ExecutionPlanRecordSchema.parse({
         mode: 'execute',
         dispatchChain: ['entry_router', 'result_aggregator']
       }).dispatchChain?.[1]
     ).toBe('result_aggregator');
+
+    expect(
+      PartialAggregationPolicySchema.parse({
+        allowedOutputKinds: ['preview'],
+        requiresInterruptApprovalForProgress: true
+      }).allowedOutputKinds
+    ).toEqual(['preview']);
+    expect(PartialAggregationOutputKindSchema.parse('approved_lightweight_progress')).toBe(
+      'approved_lightweight_progress'
+    );
 
     expect(
       PartialAggregationRecordSchema.parse({
@@ -698,6 +967,20 @@ describe('@agent/core type contracts', () => {
         createdAt: '2026-04-16T00:00:00.000Z'
       }).kind
     ).toBe('preview');
+
+    expect(
+      PlanDraftQuestionSetSchema.parse({
+        title: 'Clarify direction',
+        summary: 'Need one answer before planning'
+      }).title
+    ).toBe('Clarify direction');
+    expect(
+      PlanDraftMicroBudgetSchema.parse({
+        readOnlyToolLimit: 2,
+        readOnlyToolsUsed: 1,
+        budgetTriggered: false
+      }).readOnlyToolLimit
+    ).toBe(2);
 
     expect(
       DispatchInstructionSchema.parse({
@@ -746,6 +1029,13 @@ describe('@agent/core type contracts', () => {
     ).toBe('user');
 
     expect(
+      ContextSliceRecentTurnSchema.parse({
+        role: 'assistant',
+        content: '先确认 core host。'
+      }).role
+    ).toBe('assistant');
+
+    expect(
       CritiqueResultRecordSchema.parse({
         contractVersion: 'critique-result.v1',
         decision: 'pass',
@@ -775,6 +1065,13 @@ describe('@agent/core type contracts', () => {
     ).toBe('complex_task_plan');
 
     expect(
+      ComplexTaskPlanDependencySchema.parse({
+        from: 'planning',
+        to: 'orchestration'
+      }).to
+    ).toBe('orchestration');
+
+    expect(
       BlackboardStateRecordSchema.parse({
         node: 'blackboard_state',
         taskId: 'task-1',
@@ -783,6 +1080,14 @@ describe('@agent/core type contracts', () => {
         updatedAt: '2026-04-16T00:00:00.000Z'
       }).refs.evidenceCount
     ).toBe(0);
+
+    expect(
+      BlackboardRefsSchema.parse({
+        traceCount: 1,
+        evidenceCount: 2,
+        checkpointId: 'checkpoint-1'
+      }).checkpointId
+    ).toBe('checkpoint-1');
 
     expect(
       MicroLoopStateRecordSchema.parse({
@@ -834,6 +1139,26 @@ describe('@agent/core type contracts', () => {
         updatedAt: '2026-04-16T00:00:00.000Z'
       }).trustAdjustment
     ).toBe('promote');
+
+    expect(
+      GovernanceDimensionSchema.parse({
+        score: 0.9,
+        summary: '执行质量稳定'
+      }).score
+    ).toBe(0.9);
+    expect(
+      GovernanceReviewOutcomeSchema.parse({
+        decision: 'needs_human_approval',
+        summary: '需要人工确认'
+      }).decision
+    ).toBe('needs_human_approval');
+    expect(
+      GovernanceInterruptLoadSchema.parse({
+        interruptCount: 1,
+        microLoopCount: 2,
+        summary: '当前负载可控'
+      }).microLoopCount
+    ).toBe(2);
   });
 
   it('keeps queue and llm usage contracts stable in core', () => {
@@ -1066,5 +1391,112 @@ describe('@agent/core type contracts', () => {
         reasons: []
       }).coreMemories
     ).toEqual([]);
+  });
+
+  it('keeps intent and trust-class contracts stable in core', () => {
+    const intent: ActionIntent = 'write_file';
+    const trustClass: TrustClass = TrustClassSchema.parse('internal');
+
+    expect(intent).toBe('write_file');
+    expect(trustClass).toBe('internal');
+  });
+
+  it('exports primitive value collections from core without forcing downstream enum duplication', () => {
+    const approvalScope: ApprovalScope = ApprovalScopeValues[1];
+    const chatRole: ChatRole = ChatRoleValues[1];
+    const executionPlanMode: ExecutionPlanMode = ExecutionPlanModeValues[2];
+    const learningSourceType: LearningSourceType = LearningSourceTypeValues[0];
+
+    expect(RiskLevelValues).toEqual(['low', 'medium', 'high', 'critical']);
+    expect(ReviewDecisionValues).toEqual(['approved', 'retry', 'blocked']);
+    expect(TrustClassValues).toContain('internal');
+    expect(approvalScope).toBe('session');
+    expect(chatRole).toBe('assistant');
+    expect(executionPlanMode).toBe('imperial_direct');
+    expect(learningSourceType).toBe('execution');
+  });
+
+  it('parses capability hints and attachments from core-hosted schemas', () => {
+    const hints: RequestedExecutionHints = RequestedExecutionHintsSchema.parse({
+      requestedSpecialist: 'technical-architecture',
+      requestedCapability: 'filesystem.write',
+      preferredMode: 'workflow'
+    });
+    const attachment: CapabilityAttachmentRecord = CapabilityAttachmentRecordSchema.parse({
+      id: 'cap-1',
+      displayName: 'Filesystem Write',
+      kind: 'tool',
+      owner: {
+        ownerType: 'shared',
+        capabilityType: 'tool',
+        scope: 'workspace',
+        trigger: 'workflow_required'
+      },
+      enabled: true,
+      permission: 'write',
+      createdAt: '2026-04-16T00:00:00.000Z'
+    });
+
+    expect(hints.preferredMode).toBe('workflow');
+    expect(attachment.owner.scope).toBe('workspace');
+  });
+
+  it('keeps skill, governance profile, and tool execution result contracts stable in core', () => {
+    const skill: SkillCard = SkillCardSchema.parse({
+      id: 'skill-1',
+      name: 'Repo Auditor',
+      description: 'Summarize repo structure and risks.',
+      applicableGoals: ['audit repo'],
+      requiredTools: ['filesystem.read'],
+      steps: [{ title: 'Inspect', instruction: 'Read the repo', toolNames: ['filesystem.read'] }],
+      constraints: ['read only'],
+      successSignals: ['clear summary'],
+      riskLevel: 'low',
+      source: 'research',
+      status: 'stable',
+      createdAt: '2026-04-16T00:00:00.000Z',
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const capabilityProfile: CapabilityGovernanceProfileRecord = CapabilityGovernanceProfileRecordSchema.parse({
+      capabilityId: 'cap-1',
+      displayName: 'Filesystem Write',
+      ownerType: 'shared',
+      kind: 'tool',
+      trustLevel: 'high',
+      trustTrend: 'steady',
+      reportCount: 4,
+      promoteCount: 2,
+      holdCount: 1,
+      downgradeCount: 1,
+      passCount: 3,
+      reviseRequiredCount: 1,
+      blockCount: 0,
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const governanceProfile: GovernanceProfileRecord = GovernanceProfileRecordSchema.parse({
+      entityId: 'gongbu-code',
+      displayName: '工部',
+      entityKind: 'ministry',
+      trustLevel: 'high',
+      trustTrend: 'up',
+      reportCount: 8,
+      promoteCount: 5,
+      holdCount: 2,
+      downgradeCount: 1,
+      passCount: 7,
+      reviseRequiredCount: 1,
+      blockCount: 0,
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const result: ToolExecutionResult = ToolExecutionResultSchema.parse({
+      ok: true,
+      outputSummary: 'Applied the workspace change.',
+      durationMs: 120
+    });
+
+    expect(skill.name).toBe('Repo Auditor');
+    expect(capabilityProfile.kind).toBe('tool');
+    expect(governanceProfile.entityKind).toBe('ministry');
+    expect(result.ok).toBe(true);
   });
 });

@@ -1,4 +1,16 @@
 import type {
+  CapabilityAttachmentRecord as CoreCapabilityAttachmentRecord,
+  CapabilityGovernanceProfileRecord as CoreCapabilityGovernanceProfileRecord,
+  CapabilityOwnerType as CoreCapabilityOwnerType,
+  CapabilityOwnershipRecord as CoreCapabilityOwnershipRecord,
+  CapabilityScope as CoreCapabilityScope,
+  CapabilityTier as CoreCapabilityTier,
+  CapabilityTrigger as CoreCapabilityTrigger,
+  CapabilityType as CoreCapabilityType,
+  GovernanceProfileRecord as CoreGovernanceProfileRecord,
+  RequestedExecutionHints as CoreRequestedExecutionHints
+} from '@agent/core';
+import type {
   RiskLevel,
   RuntimeProfile,
   SkillSuggestionAvailability,
@@ -11,56 +23,13 @@ import type {
   WorkflowApprovalPolicy
 } from './primitives';
 
-export type CapabilityOwnerType =
-  | 'shared'
-  | 'ministry-owned'
-  | 'specialist-owned'
-  | 'imperial-attached'
-  | 'temporary-assignment'
-  | 'user-attached'
-  | 'runtime-derived';
-
-export type CapabilityTier =
-  | 'shared'
-  | 'ministry-owned'
-  | 'specialist-owned'
-  | 'imperial-attached'
-  | 'temporary-assignment';
-
-export type CapabilityType = 'skill' | 'connector' | 'tool';
-
-export type CapabilityScope = 'task' | 'session' | 'workspace';
-
-export type CapabilityTrigger =
-  | 'bootstrap'
-  | 'user_requested'
-  | 'specialist_requested'
-  | 'capability_gap_detected'
-  | 'workflow_required';
-
-export interface CapabilityOwnershipRecord {
-  ownerType: CapabilityOwnerType;
-  ownerId?: string;
-  tier?: CapabilityTier;
-  capabilityType: CapabilityType;
-  scope: CapabilityScope;
-  trigger: CapabilityTrigger;
-  consumedByMinistry?: WorkerDomain;
-  consumedBySpecialist?: string;
-}
-
-export interface RequestedExecutionHints {
-  requestedSpecialist?: string;
-  requestedSkill?: string;
-  requestedConnectorTemplate?: 'github-mcp-template' | 'browser-mcp-template' | 'lark-mcp-template';
-  requestedCapability?: string;
-  preferredModelId?: string;
-  preferredMode?: 'direct-reply' | 'workflow' | 'research-first';
-  createSkillIntent?: {
-    description: string;
-    displayName?: string;
-  };
-}
+export type CapabilityOwnerType = CoreCapabilityOwnerType;
+export type CapabilityTier = CoreCapabilityTier;
+export type CapabilityType = CoreCapabilityType;
+export type CapabilityScope = CoreCapabilityScope;
+export type CapabilityTrigger = CoreCapabilityTrigger;
+export type CapabilityOwnershipRecord = CoreCapabilityOwnershipRecord;
+export type RequestedExecutionHints = CoreRequestedExecutionHints;
 
 export interface CapabilityAugmentationRecord {
   id: string;
@@ -76,119 +45,9 @@ export interface CapabilityAugmentationRecord {
   updatedAt: string;
 }
 
-export interface CapabilityAttachmentRecord {
-  id: string;
-  displayName: string;
-  kind: CapabilityType;
-  owner: CapabilityOwnershipRecord;
-  enabled: boolean;
-  sourceId?: string;
-  permission?: 'readonly' | 'write' | 'external-side-effect' | 'publish';
-  riskLevel?: RiskLevel;
-  promotionStatus?: 'candidate' | 'active' | 'stable' | 'deprecated';
-  deprecated_in_favor_of?: string;
-  stats?: {
-    successCount?: number;
-    failureCount?: number;
-    avgTokenCost?: number;
-    avgCostUsd?: number;
-  };
-  capabilityTrust?: {
-    trustLevel: 'high' | 'medium' | 'low';
-    trustTrend: 'up' | 'steady' | 'down';
-    lastGovernanceSummary?: string;
-    lastReason?: string;
-    updatedAt: string;
-  };
-  governanceProfile?: {
-    reportCount: number;
-    promoteCount: number;
-    holdCount: number;
-    downgradeCount: number;
-    passCount: number;
-    reviseRequiredCount: number;
-    blockCount: number;
-    lastTaskId?: string;
-    lastReviewDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-    lastTrustAdjustment?: 'promote' | 'hold' | 'downgrade';
-    recentOutcomes?: Array<{
-      taskId: string;
-      reviewDecision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-      trustAdjustment: 'promote' | 'hold' | 'downgrade';
-      updatedAt: string;
-    }>;
-    updatedAt: string;
-  };
-  metadata?: {
-    steps?: Array<{
-      title: string;
-      instruction: string;
-      toolNames?: string[];
-    }>;
-    requiredTools?: string[];
-    optionalTools?: string[];
-    approvalSensitiveTools?: string[];
-    preferredConnectors?: string[];
-    requiredConnectors?: string[];
-  };
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface CapabilityGovernanceProfileRecord {
-  capabilityId: string;
-  displayName: string;
-  ownerType: CapabilityOwnerType;
-  kind: CapabilityType;
-  trustLevel: 'high' | 'medium' | 'low';
-  trustTrend: 'up' | 'steady' | 'down';
-  reportCount: number;
-  promoteCount: number;
-  holdCount: number;
-  downgradeCount: number;
-  passCount: number;
-  reviseRequiredCount: number;
-  blockCount: number;
-  lastTaskId?: string;
-  lastReviewDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-  lastTrustAdjustment?: 'promote' | 'hold' | 'downgrade';
-  lastReason?: string;
-  lastGovernanceSummary?: string;
-  recentOutcomes?: Array<{
-    taskId: string;
-    reviewDecision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-    trustAdjustment: 'promote' | 'hold' | 'downgrade';
-    updatedAt: string;
-  }>;
-  updatedAt: string;
-}
-
-export interface GovernanceProfileRecord {
-  entityId: string;
-  displayName: string;
-  entityKind: 'ministry' | 'worker' | 'specialist';
-  trustLevel: 'high' | 'medium' | 'low';
-  trustTrend: 'up' | 'steady' | 'down';
-  reportCount: number;
-  promoteCount: number;
-  holdCount: number;
-  downgradeCount: number;
-  passCount: number;
-  reviseRequiredCount: number;
-  blockCount: number;
-  lastTaskId?: string;
-  lastReviewDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-  lastTrustAdjustment?: 'promote' | 'hold' | 'downgrade';
-  lastReason?: string;
-  lastGovernanceSummary?: string;
-  recentOutcomes?: Array<{
-    taskId: string;
-    reviewDecision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-    trustAdjustment: 'promote' | 'hold' | 'downgrade';
-    updatedAt: string;
-  }>;
-  updatedAt: string;
-}
+export type CapabilityAttachmentRecord = CoreCapabilityAttachmentRecord;
+export type CapabilityGovernanceProfileRecord = CoreCapabilityGovernanceProfileRecord;
+export type GovernanceProfileRecord = CoreGovernanceProfileRecord;
 
 export interface CapabilityPromotionRecord {
   capabilityId: string;

@@ -1,5 +1,17 @@
 import type { CapabilityGovernanceProfileRecord, GovernanceProfileRecord, TaskRecord } from '@agent/shared';
 
+function toCritiqueStyleReviewDecision(
+  decision: NonNullable<TaskRecord['governanceReport']>['reviewOutcome']['decision']
+): 'pass' | 'revise_required' | 'block' | 'needs_human_approval' {
+  if (decision === 'blocked') {
+    return 'block';
+  }
+  if (decision === 'approved' || decision === 'retry') {
+    return 'pass';
+  }
+  return decision;
+}
+
 export function aggregateCapabilityGovernanceProfiles(
   tasks: TaskRecord[],
   persistedProfiles: CapabilityGovernanceProfileRecord[]
@@ -68,7 +80,7 @@ export function aggregateNamedGovernanceProfiles(
     }
 
     const current = profileMap.get(entityId);
-    const reviewDecision = task.governanceReport.reviewOutcome.decision;
+    const reviewDecision = toCritiqueStyleReviewDecision(task.governanceReport.reviewOutcome.decision);
     const trustAdjustment = task.governanceReport.trustAdjustment;
     const updatedAt = task.governanceReport.updatedAt;
     const recentOutcomes = mergeRecentOutcomes(current?.recentOutcomes ?? [], [

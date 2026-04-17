@@ -1,56 +1,65 @@
+import {
+  ActionIntent as CoreActionIntentValue,
+  ApprovalDecision as CoreApprovalDecisionValue,
+  TaskStatus as CoreTaskStatusValue
+} from '@agent/core';
 import type {
+  ApprovalScope as CoreApprovalScope,
   CheckpointRef as CoreCheckpointRef,
+  ChatRole as CoreChatRole,
+  ChatRouteRecord as CoreChatRouteRecord,
+  ApprovalStatus as CoreApprovalStatus,
+  ExecutionPlanMode as CoreExecutionPlanMode,
   LlmUsageModelRecord as CoreLlmUsageModelRecord,
   LlmUsageRecord as CoreLlmUsageRecord,
+  ModelRouteDecision as CoreModelRouteDecision,
+  PendingActionRecord as CorePendingActionRecord,
+  PendingApprovalRecord as CorePendingApprovalRecord,
   QueueStateRecord as CoreQueueStateRecord,
+  ReviewDecision as CoreReviewDecision,
+  SkillStatus as CoreSkillStatus,
   ThoughtGraphRecord as CoreThoughtGraphRecord,
   ThoughtGraphEdge as CoreThoughtGraphEdge,
-  ThoughtGraphNode as CoreThoughtGraphNode
+  ThoughtGraphNode as CoreThoughtGraphNode,
+  TrustClass as CoreTrustClass,
+  WorkflowPresetDefinition as CoreWorkflowPresetDefinition
 } from '@agent/core';
 export {
+  ActionIntentSchema,
+  ApprovalDecisionSchema,
+  ApprovalScopeSchema,
+  ApprovalStatusSchema,
+  ChatRouteRecordSchema,
+  ChatRoleSchema,
   CheckpointRefSchema,
+  ModelRouteDecisionSchema,
+  PendingActionRecordSchema,
+  PendingApprovalRecordSchema,
+  SkillStatusSchema,
+  TaskStatusSchema,
   ThoughtGraphEdgeSchema,
   ThoughtGraphNodeSchema,
-  ThoughtGraphRecordSchema
+  ThoughtGraphRecordSchema,
+  TrustClassSchema,
+  WorkflowPresetDefinitionSchema
 } from '@agent/core';
 export { LlmUsageModelRecordSchema, LlmUsageRecordSchema, QueueStateRecordSchema } from '@agent/core';
 
+export const ActionIntent = CoreActionIntentValue;
+export const ApprovalDecision = CoreApprovalDecisionValue;
+export const TaskStatus = CoreTaskStatusValue;
+
 export const SkillStatusValues = ['draft', 'lab', 'stable', 'disabled'] as const;
-export type SkillStatus = (typeof SkillStatusValues)[number];
+export type SkillStatus = CoreSkillStatus;
 
 export const MemoryTypeValues = ['success_case', 'failure_case', 'fact', 'heuristic', 'task_summary'] as const;
 export type MemoryType = (typeof MemoryTypeValues)[number];
 
-export enum TaskStatus {
-  QUEUED = 'queued',
-  RUNNING = 'running',
-  WAITING_APPROVAL = 'waiting_approval',
-  BLOCKED = 'blocked',
-  CANCELLED = 'cancelled',
-  COMPLETED = 'completed',
-  FAILED = 'failed'
-}
-
-export enum ApprovalDecision {
-  APPROVED = 'approved',
-  REJECTED = 'rejected'
-}
-
-export type ApprovalStatus = ApprovalDecision | 'pending';
-export type ApprovalScope = 'once' | 'session' | 'always';
-
-export enum ActionIntent {
-  READ_FILE = 'read_file',
-  WRITE_FILE = 'write_file',
-  DELETE_FILE = 'delete_file',
-  SCHEDULE_TASK = 'schedule_task',
-  CALL_EXTERNAL_API = 'call_external_api',
-  INSTALL_SKILL = 'install_skill',
-  PUBLISH_SKILL = 'publish_skill',
-  PROMOTE_SKILL = 'promote_skill',
-  ENABLE_PLUGIN = 'enable_plugin',
-  MODIFY_RULE = 'modify_rule'
-}
+export type ApprovalDecision = (typeof ApprovalDecision)[keyof typeof ApprovalDecision];
+export type ApprovalStatus = CoreApprovalStatus;
+export type ApprovalScope = CoreApprovalScope;
+export type ActionIntent = (typeof ActionIntent)[keyof typeof ActionIntent];
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
 
 export const AgentRole = {
   MANAGER: 'manager',
@@ -62,10 +71,19 @@ export const AgentRole = {
 export type AgentRole = (typeof AgentRole)[keyof typeof AgentRole];
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type LearningSourceType = 'execution' | 'document' | 'research';
-export type ReviewDecision = 'approved' | 'retry' | 'blocked';
-export type TrustClass = 'official' | 'curated' | 'community' | 'unverified' | 'internal';
-export type ChatRole = 'user' | 'assistant' | 'system';
+export type LearningSourceType =
+  | 'execution'
+  | 'document'
+  | 'research'
+  | 'memory'
+  | 'official-docs'
+  | 'repo'
+  | 'community'
+  | 'web'
+  | 'market';
+export type ReviewDecision = CoreReviewDecision;
+export type TrustClass = CoreTrustClass;
+export type ChatRole = CoreChatRole;
 export type ChatSessionStatus =
   | 'idle'
   | 'running'
@@ -152,7 +170,7 @@ export type SourcePolicyMode = 'internal-only' | 'controlled-first' | 'open-web-
 export type RuntimeProfile = 'platform' | 'company' | 'personal' | 'cli';
 // executionPlan.mode is canonical; `standard` / `planning-readonly` are retained for compatibility reads only.
 export type ExecutionMode = 'standard' | 'planning-readonly' | 'plan' | 'execute' | 'imperial_direct';
-export type ExecutionPlanMode = 'plan' | 'execute' | 'imperial_direct';
+export type ExecutionPlanMode = CoreExecutionPlanMode;
 export type InteractionKind =
   | 'approval'
   | 'plan-question'
@@ -197,62 +215,28 @@ export type KnowledgeStore = 'wenyuan' | 'cangjing';
 export type EmbeddingProvider = 'glm';
 export type EmbeddingModel = 'Embedding-3';
 
-export interface ModelRouteDecision {
-  ministry: WorkerDomain;
-  workerId: string;
-  defaultModel: string;
-  selectedModel: string;
-  reason: string;
-}
+export type ModelRouteDecision = CoreModelRouteDecision;
 
 export type QueueStateRecord = CoreQueueStateRecord;
 
-export interface PendingActionRecord {
-  toolName: string;
-  intent: ActionIntent;
-  riskLevel?: RiskLevel;
-  requestedBy: WorkerDomain;
-}
+export type PendingActionRecord = CorePendingActionRecord;
 
-export interface PendingApprovalRecord extends PendingActionRecord {
-  reason?: string;
-  reasonCode?: string;
-  feedback?: string;
-  serverId?: string;
-  capabilityId?: string;
-  preview?: Array<{
-    label: string;
-    value: string;
-  }>;
-}
+export type PendingApprovalRecord = CorePendingApprovalRecord;
 
-export interface WorkflowPresetDefinition {
-  id: string;
-  displayName: string;
-  command?: string;
-  explicitOnly?: boolean;
-  version?: string;
-  intentPatterns: string[];
+export interface WorkflowPresetDefinition extends Omit<
+  CoreWorkflowPresetDefinition,
+  'sourcePolicy' | 'webLearningPolicy'
+> {
   requiredMinistries: MinistryId[];
-  allowedCapabilities: string[];
-  approvalPolicy: WorkflowApprovalPolicy;
+  explicitOnly?: boolean;
   webLearningPolicy?: {
     enabled: boolean;
-    preferredSourceTypes: string[];
+    preferredSourceTypes: LearningSourceType[];
     acceptedTrustClasses: TrustClass[];
   };
   sourcePolicy?: {
     mode: SourcePolicyMode;
     preferredUrls?: string[];
-  };
-  autoPersistPolicy?: {
-    memory: 'manual' | 'high-confidence';
-    rule: 'manual' | 'suggest';
-    skill: 'manual' | 'suggest';
-  };
-  outputContract: {
-    type: string;
-    requiredSections: string[];
   };
 }
 
@@ -264,37 +248,7 @@ export interface WorkflowVersionRecord {
   changelog: string[];
 }
 
-export interface ChatRouteRecord {
-  graph: 'workflow' | 'approval-recovery' | 'learning';
-  flow: 'supervisor' | 'approval' | 'learning' | 'direct-reply';
-  reason: string;
-  adapter:
-    | 'workflow-command'
-    | 'approval-recovery'
-    | 'identity-capability'
-    | 'figma-design'
-    | 'modification-intent'
-    | 'general-prompt'
-    | 'research-first'
-    | 'plan-only'
-    | 'readiness-fallback'
-    | 'fallback';
-  priority: number;
-  intent?: 'direct-reply' | 'research-first' | 'plan-only' | 'workflow-execute' | 'approval-recovery';
-  intentConfidence?: number;
-  executionReadiness?:
-    | 'ready'
-    | 'approval-required'
-    | 'missing-capability'
-    | 'missing-connector'
-    | 'missing-workspace'
-    | 'blocked-by-policy';
-  matchedSignals?: string[];
-  readinessReason?: string;
-  profileAdjustmentReason?: string;
-  preferredExecutionMode?: 'direct-reply' | 'plan-first' | 'execute-first';
-  stepsSummary?: ExecutionStepRecord[];
-}
+export type ChatRouteRecord = CoreChatRouteRecord;
 
 export type ExecutionStepRoute = 'direct-reply' | 'research-first' | 'workflow-execute' | 'approval-recovery';
 

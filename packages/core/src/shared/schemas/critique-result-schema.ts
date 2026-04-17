@@ -1,5 +1,5 @@
-import { type CritiqueResultRecord } from '@agent/shared';
 import { z } from 'zod/v4';
+import type { CritiqueResultRecord } from '../../types/tasking-orchestration';
 
 export const CritiqueResultSchema = z.object({
   contractVersion: z.literal('critique-result.v1'),

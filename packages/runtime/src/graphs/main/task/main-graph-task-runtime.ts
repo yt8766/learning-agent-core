@@ -6,6 +6,7 @@ import {
   AgentRole,
   CapabilityOwnerType,
   ExecutionTrace,
+  MinistryId,
   ModelRouteDecision,
   QueueStateRecord,
   SubgraphId,
@@ -116,7 +117,7 @@ export class MainGraphTaskRuntime {
   }
 
   resolveWorkflowRoutes(task: TaskRecord, workflow?: WorkflowPresetDefinition): ModelRouteDecision[] {
-    const ministries = workflow?.requiredMinistries ?? [
+    const ministries: MinistryId[] = workflow?.requiredMinistries ?? [
       'libu-governance',
       'hubu-search',
       'gongbu-code',

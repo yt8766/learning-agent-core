@@ -1,59 +1,19 @@
-import type {
-  CapabilityAttachmentRecord,
-  ChatRouteRecord,
-  CreateTaskDto,
-  RequestedExecutionHints,
-  WorkflowPresetDefinition
-} from '@agent/shared';
+import { z } from 'zod';
 
-export interface WorkflowRouteContext {
-  goal: string;
-  context?: string;
-  workflow?: WorkflowPresetDefinition;
-  requestedMode?: CreateTaskDto['requestedMode'];
-  requestedHints?: RequestedExecutionHints;
-  capabilityAttachments?: CapabilityAttachmentRecord[];
-  connectorRefs?: string[];
-  recentTurns?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
-  relatedHistory?: string[];
-}
+import {
+  ExecutionReadinessSchema,
+  IntentClassificationResultSchema,
+  RouteIntentSchema,
+  RoutingProfileSchema,
+  WorkflowRouteAdapterIdSchema,
+  WorkflowRouteContextSchema,
+  WorkflowRouteResultSchema
+} from '../spec/workflow-route';
 
-export type WorkflowRouteAdapterId =
-  | 'workflow-command'
-  | 'approval-recovery'
-  | 'identity-capability'
-  | 'figma-design'
-  | 'modification-intent'
-  | 'general-prompt'
-  | 'research-first'
-  | 'plan-only'
-  | 'readiness-fallback'
-  | 'fallback';
-
-export interface WorkflowRouteResult extends ChatRouteRecord {
-  adapter: WorkflowRouteAdapterId;
-}
-
-export type RouteIntent = 'direct-reply' | 'research-first' | 'plan-only' | 'workflow-execute' | 'approval-recovery';
-
-export type ExecutionReadiness =
-  | 'ready'
-  | 'approval-required'
-  | 'missing-capability'
-  | 'missing-connector'
-  | 'missing-workspace'
-  | 'blocked-by-policy';
-
-export interface IntentClassificationResult {
-  intent: RouteIntent;
-  confidence: number;
-  matchedSignals: string[];
-  adapterHint?: WorkflowRouteAdapterId;
-  reasonHint?: string;
-}
-
-export interface RoutingProfile {
-  defaultMode: 'direct-reply' | 'plan-first' | 'execute-first';
-  prefersResearchFirst: boolean;
-  executionTolerance: 'low' | 'medium' | 'high';
-}
+export type WorkflowRouteContext = z.infer<typeof WorkflowRouteContextSchema>;
+export type WorkflowRouteAdapterId = z.infer<typeof WorkflowRouteAdapterIdSchema>;
+export type WorkflowRouteResult = z.infer<typeof WorkflowRouteResultSchema>;
+export type RouteIntent = z.infer<typeof RouteIntentSchema>;
+export type ExecutionReadiness = z.infer<typeof ExecutionReadinessSchema>;
+export type IntentClassificationResult = z.infer<typeof IntentClassificationResultSchema>;
+export type RoutingProfile = z.infer<typeof RoutingProfileSchema>;

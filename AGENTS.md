@@ -166,6 +166,8 @@ skills/
   - `build/types`
 - 代码里涉及文件系统操作时，默认优先使用 `fs-extra`
 - 除非是 Node 原生同步 API 的极小型启动逻辑、第三方接口硬约束，或测试明确需要 mock `node:fs` / `node:fs/promises`，否则不要新增原生 `fs` 作为默认实现
+- 生成分支名、提交信息、PR 标题或判断提交流程时，必须先阅读并遵守 [GitHub Flow 规范](/docs/github-flow.md)
+- 不允许只按通用 GitHub Flow 习惯临时命名分支；必须优先使用仓库 `docs/github-flow.md` 中定义的命名约定
 
 ## 6.0 接口稳定性与可扩展封装规范
 

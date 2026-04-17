@@ -75,7 +75,7 @@ import type {
   PlanModeTransitionRecord
 } from './tasking-planning';
 
-export interface TaskRecord extends TaskRuntimeDecorations, CoreTaskRecord {
+export interface TaskRecord extends TaskRuntimeDecorations, Omit<CoreTaskRecord, 'resolvedWorkflow'> {
   status: TaskStatus;
   resolvedWorkflow?: WorkflowPresetDefinition;
   currentMinistry?: WorkerDomain;

@@ -1,5 +1,23 @@
 import type { EvaluationResult, GovernanceReportRecord, TaskRecord } from '@agent/shared';
 
+function toGovernanceReviewDecision(
+  decision: NonNullable<TaskRecord['critiqueResult']>['decision']
+): GovernanceReportRecord['reviewOutcome']['decision'] {
+  return decision === 'block' ? 'blocked' : decision;
+}
+
+function toCritiqueDecision(
+  decision: GovernanceReportRecord['reviewOutcome']['decision']
+): 'pass' | 'revise_required' | 'block' | 'needs_human_approval' {
+  if (decision === 'blocked') {
+    return 'block';
+  }
+  if (decision === 'approved' || decision === 'retry') {
+    return 'pass';
+  }
+  return decision;
+}
+
 function clampGovernanceScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
@@ -78,7 +96,7 @@ export function buildGovernanceReport(
   evaluation: EvaluationResult,
   governanceScore: NonNullable<TaskRecord['governanceScore']>
 ): GovernanceReportRecord {
-  const reviewDecision = task.critiqueResult?.decision ?? 'pass';
+  const reviewDecision = toGovernanceReviewDecision(task.critiqueResult?.decision ?? 'pass');
   const interruptCount = task.interruptHistory?.length ?? 0;
   const microLoopCount = task.microLoopCount ?? 0;
   const executionQualityScore = governanceScore.score;
@@ -94,7 +112,7 @@ export function buildGovernanceReport(
         : task.sandboxState?.status === 'failed'
           ? 20
           : 60;
-  const businessFeedbackScore = evaluation.success ? 82 : reviewDecision === 'block' ? 30 : 58;
+  const businessFeedbackScore = evaluation.success ? 82 : reviewDecision === 'blocked' ? 30 : 58;
 
   return {
     ministry: 'libu-governance',
@@ -137,7 +155,7 @@ export function buildGovernanceReport(
       score: businessFeedbackScore,
       summary: evaluation.success
         ? '当前结果满足交付与沉淀条件。'
-        : reviewDecision === 'block'
+        : reviewDecision === 'blocked'
           ? '当前结果不满足交付要求，应优先人工复核。'
           : '当前结果可保守复用，但不应过度放大信任。'
     },
@@ -164,7 +182,7 @@ export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
       : task.governanceReport.trustAdjustment === 'downgrade'
         ? 'down'
         : 'steady';
-  const reviewDecision = task.governanceReport.reviewOutcome.decision;
+  const reviewDecision = toCritiqueDecision(task.governanceReport.reviewOutcome.decision);
   const trustAdjustment = task.governanceReport.trustAdjustment;
 
   task.capabilityAttachments = task.capabilityAttachments.map(attachment => ({

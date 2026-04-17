@@ -68,7 +68,7 @@ export async function applyApprovalAction(
           resume
         }
       );
-      if (![TaskStatus.WAITING_APPROVAL, TaskStatus.BLOCKED].includes(task.status)) {
+      if (task.status !== TaskStatus.WAITING_APPROVAL && task.status !== TaskStatus.BLOCKED) {
         await params.runTaskPipeline(
           task,
           { goal: task.goal, context: task.context, constraints: [] },

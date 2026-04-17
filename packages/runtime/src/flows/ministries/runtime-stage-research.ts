@@ -18,7 +18,7 @@ import {
   mergeEvidence,
   normalizeExecutionMode
 } from '@agent/shared';
-import { upsertSpecialistFinding } from '@agent/core';
+import { normalizeSpecialistFinding } from '@agent/core';
 
 import { handleResearchSkillIntervention } from '../approval/research-skill-interruption';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
@@ -33,6 +33,16 @@ type NormalizedResearchResult = {
   specialistFinding?: SpecialistFindingRecord;
   contractMeta: MinistryContractMeta;
 };
+
+function upsertRuntimeSpecialistFinding(task: TaskRecord, input: Parameters<typeof normalizeSpecialistFinding>[0]) {
+  const finding = normalizeSpecialistFinding(input) as SpecialistFindingRecord;
+  const current: SpecialistFindingRecord[] = task.specialistFindings ?? [];
+  task.specialistFindings = [
+    ...current.filter(item => !(item.specialistId === finding.specialistId && item.role === finding.role)),
+    finding
+  ];
+  return finding;
+}
 
 export async function runResearchStage(
   task: TaskRecord,
@@ -183,7 +193,7 @@ export async function runResearchStage(
   });
   const researchEvidenceRefs = (task.externalSources ?? []).slice(0, 5).map(source => source.id);
   if (task.specialistLead) {
-    upsertSpecialistFinding(
+    upsertRuntimeSpecialistFinding(
       task,
       researchResult.specialistFinding ?? {
         specialistId: task.specialistLead.id,
@@ -200,7 +210,7 @@ export async function runResearchStage(
   }
   for (const support of task.supportingSpecialists ?? []) {
     const slice = task.contextSlicesBySpecialist?.find(item => item.specialistId === support.id);
-    upsertSpecialistFinding(task, {
+    upsertRuntimeSpecialistFinding(task, {
       specialistId: support.id,
       role: 'support',
       source: 'research',

@@ -15,6 +15,20 @@ import { buildModelHeatmap } from '../../modules/runtime-metrics/services/runtim
 import { summarizeAndPersistUsageAnalytics } from '../../modules/runtime-metrics/services/runtime-metrics-store';
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 
+function toCritiqueStyleReviewOutcome(
+  reviewOutcome: NonNullable<NonNullable<TaskRecord['governanceReport']>['reviewOutcome']>
+): NonNullable<NonNullable<RuntimeCenterRecord['governanceScorecards']>[number]['governanceReport']>['reviewOutcome'] {
+  return {
+    ...reviewOutcome,
+    decision:
+      reviewOutcome.decision === 'blocked'
+        ? 'block'
+        : reviewOutcome.decision === 'approved' || reviewOutcome.decision === 'retry'
+          ? 'pass'
+          : reviewOutcome.decision
+  };
+}
+
 export function buildRuntimeCenter(input: {
   profile: RuntimeProfile;
   policy: {
@@ -231,7 +245,7 @@ export function buildRuntimeCenter(input: {
         governanceReport: task.governanceReport
           ? {
               summary: task.governanceReport.summary,
-              reviewOutcome: task.governanceReport.reviewOutcome,
+              reviewOutcome: toCritiqueStyleReviewOutcome(task.governanceReport.reviewOutcome),
               evidenceSufficiency: task.governanceReport.evidenceSufficiency,
               sandboxReliability: task.governanceReport.sandboxReliability
             }

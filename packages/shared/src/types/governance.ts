@@ -10,6 +10,7 @@ import type {
 } from './primitives';
 import type { CapabilityOwnerType } from './skills';
 import type {
+  ToolExecutionResult as CoreToolExecutionResult,
   ApprovalRecord as CoreApprovalRecord,
   ApprovalPolicyRecord as CoreApprovalPolicyRecord,
   ApprovalScopeMatchInput as CoreApprovalScopeMatchInput,
@@ -124,18 +125,7 @@ export interface ToolExecutionRequest {
   requestedBy: 'agent' | 'user';
 }
 
-export interface ToolExecutionResult {
-  ok: boolean;
-  outputSummary: string;
-  rawOutput?: unknown;
-  exitCode?: number;
-  errorMessage?: string;
-  durationMs: number;
-  serverId?: string;
-  capabilityId?: string;
-  transportUsed?: 'local-adapter' | 'stdio' | 'http';
-  fallbackUsed?: boolean;
-}
+export type ToolExecutionResult = CoreToolExecutionResult;
 
 export interface ApprovalInterruptRecord {
   id: string;

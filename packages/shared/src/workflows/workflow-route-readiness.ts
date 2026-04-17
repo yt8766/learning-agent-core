@@ -1,4 +1,9 @@
-import type { ExecutionReadiness, RouteIntent, WorkflowRouteContext } from '@agent/core';
+import type { ExecutionReadiness, RouteIntent, WorkflowRouteContext as CoreWorkflowRouteContext } from '@agent/core';
+import type { WorkflowPresetDefinition } from '../types/primitives';
+
+type WorkflowRouteContext = Omit<CoreWorkflowRouteContext, 'workflow'> & {
+  workflow?: WorkflowPresetDefinition;
+};
 
 function hasNonGeneralWorkflow(context: WorkflowRouteContext) {
   return Boolean(context.workflow && context.workflow.id !== 'general');

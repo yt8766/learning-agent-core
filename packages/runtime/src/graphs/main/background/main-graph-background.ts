@@ -209,7 +209,7 @@ export class MainGraphBackgroundRuntime {
       { goal: task.goal, context: task.context, constraints: [] },
       { mode: 'initial' }
     );
-    if (![TaskStatus.WAITING_APPROVAL, TaskStatus.BLOCKED].includes(task.status)) {
+    if (task.status !== TaskStatus.WAITING_APPROVAL && task.status !== TaskStatus.BLOCKED) {
       await this.getRunTaskPipeline()(
         task,
         { goal: task.goal, context: task.context, constraints: [] },

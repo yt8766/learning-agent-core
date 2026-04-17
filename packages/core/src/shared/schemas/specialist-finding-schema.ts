@@ -1,5 +1,8 @@
-import { type SpecialistFindingRecord, type TaskRecord } from '@agent/shared';
 import { z } from 'zod/v4';
+
+import type { SpecialistFindingRecord } from '../../types/tasking-orchestration';
+import type { TaskRecord } from '../../types/tasking-task-record';
+import { RiskLevelSchema } from '../../spec/primitives';
 
 const SpecialistDomainSchema = z.enum([
   'general-assistant',
@@ -10,8 +13,6 @@ const SpecialistDomainSchema = z.enum([
   'risk-compliance',
   'technical-architecture'
 ]);
-
-const SpecialistFindingRiskLevelSchema = z.enum(['low', 'medium', 'high', 'critical']);
 
 const SpecialistFindingRoleSchema = z.enum(['lead', 'support']);
 const SpecialistFindingSourceSchema = z.enum(['route', 'research', 'execution', 'critique']);
@@ -25,7 +26,7 @@ const SpecialistFindingInputSchema = z.object({
   stage: SpecialistFindingStageSchema.optional(),
   summary: z.string().trim().optional(),
   domain: SpecialistDomainSchema.optional(),
-  riskLevel: SpecialistFindingRiskLevelSchema.optional(),
+  riskLevel: RiskLevelSchema.optional(),
   blockingIssues: z.array(z.string()).optional(),
   constraints: z.array(z.string()).optional(),
   suggestions: z.array(z.string()).optional(),
@@ -41,7 +42,7 @@ export const SpecialistFindingSchema = z.object({
   stage: SpecialistFindingStageSchema,
   summary: z.string().trim().min(1),
   domain: SpecialistDomainSchema,
-  riskLevel: SpecialistFindingRiskLevelSchema.optional(),
+  riskLevel: RiskLevelSchema.optional(),
   blockingIssues: z.array(z.string().trim().min(1)).optional(),
   constraints: z.array(z.string().trim().min(1)).optional(),
   suggestions: z.array(z.string().trim().min(1)).optional(),

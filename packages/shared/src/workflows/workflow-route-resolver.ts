@@ -1,4 +1,4 @@
-import type { WorkflowRouteContext, WorkflowRouteResult } from '@agent/core';
+import type { WorkflowRouteContext as CoreWorkflowRouteContext, WorkflowRouteResult } from '@agent/core';
 import { applyRoutingProfile, classifyIntent, deriveRoutingProfile } from './workflow-route-signals';
 import {
   evaluateExecutionReadiness,
@@ -6,6 +6,11 @@ import {
   hasPromptContent,
   hasSpecializedWorkflowRoute
 } from './workflow-route-readiness';
+import type { WorkflowPresetDefinition } from '../types/primitives';
+
+type WorkflowRouteContext = Omit<CoreWorkflowRouteContext, 'workflow'> & {
+  workflow?: WorkflowPresetDefinition;
+};
 
 export function resolveWorkflowRoute(context: WorkflowRouteContext): WorkflowRouteResult {
   if (hasApprovalOnlyWorkflowRoute(context)) {

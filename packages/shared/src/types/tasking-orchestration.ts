@@ -21,23 +21,21 @@ export {
 export type {
   AgentExecutionState,
   AgentMessageRecord as AgentMessage,
+  BlackboardStateRecord,
+  BudgetGateStateRecord,
+  ComplexTaskPlanRecord,
+  CurrentSkillExecutionRecord,
+  GovernanceReportRecord,
+  GovernanceScoreRecord,
   LearningCandidateRecord,
   ManagerPlan,
+  MicroLoopStateRecord,
   ReviewRecord,
   SubTaskRecord
 } from '@agent/core';
 
 import type { ApprovalInterruptRecord } from './governance';
-import type {
-  AgentRole,
-  ApprovalStatus,
-  ChatRole,
-  CritiqueDecision,
-  ExecutionPlanMode,
-  ReviewDecision,
-  SpecialistDomain,
-  WorkerDomain
-} from './primitives';
+import type { AgentRole, ApprovalStatus, ReviewDecision, SpecialistDomain, WorkerDomain } from './primitives';
 import type { EvaluationResult, EvidenceRecord, MemoryRecord, ReflectionResult, SkillCard } from './knowledge';
 
 export interface AgentState {
@@ -65,96 +63,6 @@ export interface DispatchInstruction {
   to: AgentRole;
   kind: 'strategy' | 'ministry' | 'fallback';
   objective: string;
-}
-
-export interface GovernanceScoreRecord {
-  ministry: 'libu-governance';
-  score: number;
-  status: 'healthy' | 'watch' | 'risky';
-  summary: string;
-  rationale: string[];
-  recommendedLearningTargets: Array<'memory' | 'rule' | 'skill'>;
-  trustAdjustment: 'promote' | 'hold' | 'downgrade';
-  updatedAt: string;
-}
-
-export interface GovernanceReportRecord {
-  ministry: 'libu-governance';
-  summary: string;
-  executionQuality: {
-    score: number;
-    summary: string;
-  };
-  evidenceSufficiency: {
-    score: number;
-    summary: string;
-  };
-  sandboxReliability: {
-    score: number;
-    summary: string;
-  };
-  reviewOutcome: {
-    decision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
-    summary: string;
-  };
-  interruptLoad: {
-    interruptCount: number;
-    microLoopCount: number;
-    summary: string;
-  };
-  businessFeedback: {
-    score: number;
-    summary: string;
-  };
-  recommendedLearningTargets: Array<'memory' | 'rule' | 'skill'>;
-  trustAdjustment: 'promote' | 'hold' | 'downgrade';
-  updatedAt: string;
-}
-
-export interface BudgetGateStateRecord {
-  node: 'budget_gate';
-  status: 'open' | 'soft_blocked' | 'hard_blocked' | 'throttled';
-  summary: string;
-  queueDepth?: number;
-  rateLimitKey?: string;
-  triggeredAt?: string;
-  updatedAt: string;
-}
-
-export interface ComplexTaskPlanRecord {
-  node: 'complex_task_plan';
-  status: 'pending' | 'completed' | 'blocked';
-  summary: string;
-  subGoals: string[];
-  dependencies: Array<{
-    from: string;
-    to: string;
-  }>;
-  recoveryPoints?: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface BlackboardStateRecord {
-  node: 'blackboard_state';
-  taskId: string;
-  sessionId?: string;
-  visibleScopes: Array<'supervisor' | 'strategy' | 'ministry' | 'fallback' | 'governance'>;
-  refs: {
-    traceCount: number;
-    evidenceCount: number;
-    checkpointId?: string;
-    activeInterruptId?: string;
-  };
-  updatedAt: string;
-}
-
-export interface MicroLoopStateRecord {
-  state: 'idle' | 'retrying' | 'exhausted' | 'completed';
-  attempt: number;
-  maxAttempts: number;
-  exhaustedReason?: string;
-  updatedAt: string;
 }
 
 export interface AgentTokenEvent {
@@ -200,7 +108,7 @@ export interface ContextSliceRecord {
   specialistId: SpecialistDomain;
   summary?: string;
   recentTurns?: Array<{
-    role: ChatRole;
+    role: import('./primitives').ChatRole;
     content: string;
   }>;
   relatedHistory?: string[];
@@ -211,24 +119,12 @@ export interface ContextSliceRecord {
 
 export interface CritiqueResultRecord {
   contractVersion: 'critique-result.v1';
-  decision: CritiqueDecision;
+  decision: import('./primitives').CritiqueDecision;
   summary: string;
   blockingIssues?: string[];
   constraints?: string[];
   evidenceRefs?: string[];
   shouldBlockEarly?: boolean;
-}
-
-export interface CurrentSkillExecutionRecord {
-  skillId: string;
-  displayName: string;
-  phase: 'research' | 'execute';
-  stepIndex: number;
-  totalSteps: number;
-  title: string;
-  instruction: string;
-  toolNames?: string[];
-  updatedAt: string;
 }
 
 export interface ContextFilterRecord {

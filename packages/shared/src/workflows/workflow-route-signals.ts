@@ -1,5 +1,14 @@
-import type { IntentClassificationResult, RoutingProfile, WorkflowRouteContext } from '@agent/core';
+import type {
+  IntentClassificationResult,
+  RoutingProfile,
+  WorkflowRouteContext as CoreWorkflowRouteContext
+} from '@agent/core';
 import { isFreshnessSensitiveGoal } from '../prompts/temporal-context';
+import type { WorkflowPresetDefinition } from '../types/primitives';
+
+type WorkflowRouteContext = Omit<CoreWorkflowRouteContext, 'workflow'> & {
+  workflow?: WorkflowPresetDefinition;
+};
 
 function normalizeGoal(goal: string) {
   return goal.trim().toLowerCase();

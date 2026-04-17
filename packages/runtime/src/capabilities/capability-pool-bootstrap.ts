@@ -2,6 +2,7 @@ import type {
   BootstrapSkillRecord,
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
+  MinistryId,
   RequestedExecutionHints,
   SpecialistLeadRecord,
   TaskRecord,
@@ -59,7 +60,7 @@ export function buildInitialCapabilityState(params: {
 
   if (params.workflow) {
     for (const ministry of params.workflow.requiredMinistries) {
-      const canonicalMinistry = normalizeMinistryId(ministry) ?? ministry;
+      const canonicalMinistry = (normalizeMinistryId(ministry) ?? ministry) as MinistryId;
       attachments.push({
         id: `ministry:${ministry}`,
         displayName: resolveMinistryDisplay(ministry),
