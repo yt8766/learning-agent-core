@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +71,8 @@ export function readChangedPaths(options = {}) {
   };
 }
 
-export function resolveAffectedLintFiles(changedPaths, tool) {
+export function resolveAffectedLintFiles(changedPaths, tool, options = {}) {
+  const repoRoot = options.repoRoot ?? defaultRepoRoot;
   const normalizedPaths = [...new Set(changedPaths.map(normalizeRepoRelativePath))].filter(Boolean);
 
   if (normalizedPaths.some(pathname => GLOBAL_LINT_IMPACT_PATHS.has(pathname))) {
@@ -81,7 +83,13 @@ export function resolveAffectedLintFiles(changedPaths, tool) {
   }
 
   const extensions = tool === 'eslint' ? ESLINT_EXTENSIONS : PRETTIER_EXTENSIONS;
-  const files = normalizedPaths.filter(relativePath => extensions.has(path.extname(relativePath).toLowerCase()));
+  const files = normalizedPaths.filter(relativePath => {
+    if (!extensions.has(path.extname(relativePath).toLowerCase())) {
+      return false;
+    }
+
+    return fs.existsSync(path.join(repoRoot, relativePath));
+  });
 
   if (files.length === 0) {
     return {

@@ -31,14 +31,18 @@ describe('affected workspace helpers', () => {
   });
 
   it('filters changed files per lint tool', () => {
-    expect(resolveAffectedLintFiles(['docs/test.md', 'apps/frontend/agent-chat/src/page.tsx'], 'eslint')).toEqual({
+    expect(
+      resolveAffectedLintFiles(['README.md', 'scripts/affected-workspace.js', 'missing-file.ts'], 'eslint')
+    ).toEqual({
       mode: 'targeted',
-      files: ['apps/frontend/agent-chat/src/page.tsx']
+      files: ['scripts/affected-workspace.js']
     });
 
-    expect(resolveAffectedLintFiles(['docs/test.md', 'apps/frontend/agent-chat/src/page.tsx'], 'prettier')).toEqual({
+    expect(
+      resolveAffectedLintFiles(['README.md', 'scripts/affected-workspace.js', 'missing-file.ts'], 'prettier')
+    ).toEqual({
       mode: 'targeted',
-      files: ['docs/test.md', 'apps/frontend/agent-chat/src/page.tsx']
+      files: ['README.md', 'scripts/affected-workspace.js']
     });
   });
 });
