@@ -288,6 +288,7 @@
   - `apps/**/dist`
   - `packages/**/build`
 - `main` 工作流中的缓存采用 `actions/cache/restore` + `actions/cache/save` 显式分离；只有在对应目录实际生成后才保存，避免 post-job cleanup 因路径不存在而报错
+- 所有 `actions/setup-node@v5` 都显式设置了 `package-manager-cache: false`，避免它基于根 `packageManager` 字段再触发一套隐式缓存逻辑，和仓库自定义缓存步骤互相打架
 
 ### Prompt Regression CI
 

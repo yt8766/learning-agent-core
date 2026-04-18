@@ -30,6 +30,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Check pnpm lockfile sync
         run: node ./scripts/check-lockfile-sync.js
@@ -52,6 +53,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Restore Turbo Cache
         id: turbo-cache-restore
@@ -140,6 +142,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Install Dependencies
         if: steps.promptfoo.outputs.ready == 'true'
