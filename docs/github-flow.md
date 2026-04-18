@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：协作流程规范
-最后核对：2026-04-15
+最后核对：2026-04-18
 
 本文档定义本项目的 GitHub Flow 协作方式。核心目标只有两个：
 
@@ -80,8 +80,8 @@ git checkout -b feature/xxx
 建议在提交前执行：
 
 ```bash
-pnpm lint:eslint
-pnpm lint:prettier
+pnpm lint:eslint:check
+pnpm lint:prettier:check
 pnpm lint:tsc
 pnpm test
 ```

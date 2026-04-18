@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { InvalidateKnowledgeDto, RetireKnowledgeDto, SupersedeKnowledgeDto } from '@agent/shared';
+import { InvalidateKnowledgeDto, RetireKnowledgeDto, SupersedeKnowledgeDto } from '@agent/core';
 
 import { RulesService } from './rules.service';
 

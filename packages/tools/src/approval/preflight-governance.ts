@@ -4,7 +4,7 @@ import {
   type PreflightGovernanceDecision,
   type StaticPolicyRule,
   type ToolDefinition
-} from '@agent/shared';
+} from '@agent/core';
 
 import type { ApprovalEvaluationInput } from './approval-service';
 

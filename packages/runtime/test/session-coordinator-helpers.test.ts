@@ -6,7 +6,7 @@ import {
   buildApprovalScopeMatchKey,
   type ApprovalScopePolicyRecord,
   type ChatCheckpointRecord
-} from '@agent/shared';
+} from '@agent/core';
 
 import {
   resolveApprovalEventType,

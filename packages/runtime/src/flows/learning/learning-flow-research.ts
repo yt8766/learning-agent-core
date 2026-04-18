@@ -1,5 +1,6 @@
-import type { LearningEvaluationRecord, LearningJob, MemoryRecord } from '@agent/shared';
+import type { LearningEvaluationRecord, MemoryRecord } from '@agent/core';
 import type { MemoryRepository } from '@agent/memory';
+import type { RuntimeLearningJob as LearningJob } from '../../runtime/runtime-learning.types';
 
 export function evaluateResearchJob(job: LearningJob): LearningEvaluationRecord {
   const sources = job.sources ?? [];

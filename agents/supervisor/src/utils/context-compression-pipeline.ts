@@ -1,6 +1,21 @@
-import type { ContextFilterRecord, TaskRecord } from '@agent/shared';
+import type { ContextFilterRecord } from '@agent/core';
 
 type PipelineAudit = NonNullable<ContextFilterRecord['filteredContextSlice']['pipelineAudit']>;
+
+interface ContextCompressionTaskLike {
+  goal: string;
+  context?: string;
+  planDraft?: {
+    summary?: string;
+  };
+  plan?: {
+    summary?: string;
+  };
+  trace?: Array<{
+    node?: string;
+    summary?: string;
+  }>;
+}
 
 export interface ContextCompressionResult {
   summary: string;
@@ -14,9 +29,7 @@ export interface ContextCompressionResult {
   pipelineAudit: PipelineAudit;
 }
 
-export function buildContextCompressionResult(
-  task: Pick<TaskRecord, 'goal' | 'context' | 'planDraft' | 'plan' | 'trace'>
-) {
+export function buildContextCompressionResult(task: ContextCompressionTaskLike) {
   const rawSegments = [task.goal, task.context, task.planDraft?.summary, task.plan?.summary].filter(
     (value): value is string => Boolean(value)
   );

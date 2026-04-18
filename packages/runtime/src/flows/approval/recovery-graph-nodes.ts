@@ -1,4 +1,4 @@
-import { ApprovalDecision } from '@agent/shared';
+import { ApprovalDecision } from '@agent/core';
 
 import type { ApprovalRecoveryGraphHandlers, ApprovalRecoveryGraphState } from '../../graphs/recovery.graph';
 

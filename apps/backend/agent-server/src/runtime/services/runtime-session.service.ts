@@ -14,7 +14,7 @@ import {
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto
-} from '@agent/shared';
+} from '@agent/core';
 
 export interface RuntimeSessionContext {
   sessionCoordinator: any;

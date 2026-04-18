@@ -1,4 +1,45 @@
-import { ExecutionTrace, TaskRecord } from '@agent/shared';
+import type { ExecutionTrace } from '@agent/core';
+
+interface UsageAnalyticsTaskLike {
+  id: string;
+  goal: string;
+  result?: string;
+  createdAt: string;
+  updatedAt: string;
+  currentMinistry?: string;
+  status?: string;
+  retryCount?: number;
+  plan?: {
+    summary?: string;
+  };
+  externalSources?: Array<{
+    summary?: string;
+  }>;
+  trace?: Array<{
+    summary?: string;
+  }>;
+  messages?: Array<{
+    content?: string;
+  }>;
+  llmUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    measuredCallCount?: number;
+    estimatedCallCount?: number;
+    models: Array<{
+      model: string;
+      totalTokens: number;
+      costUsd?: number;
+      callCount: number;
+      pricingSource?: string;
+    }>;
+  };
+  modelRoute?: Array<{
+    ministry?: string;
+    selectedModel?: string;
+  }>;
+}
 
 const MODEL_COST_PER_1K_TOKENS_USD: Record<string, number> = {
   'glm-5': 0.002,
@@ -14,7 +55,7 @@ const USAGE_BUDGET_POLICY = {
   totalCostCnyWarning: 20
 };
 
-export function summarizeUsageAnalytics(tasks: TaskRecord[]) {
+export function summarizeUsageAnalytics(tasks: UsageAnalyticsTaskLike[]) {
   const daily = new Map<string, { tokens: number; costUsd: number; runs: number }>();
   const models = new Map<string, { tokens: number; costUsd: number; runCount: number }>();
   let totalPromptTokens = 0;
@@ -168,7 +209,7 @@ function normalizeMinistryId(ministry?: string) {
   }
 }
 
-export function buildModelHeatmap(tasks: TaskRecord[]) {
+export function buildModelHeatmap(tasks: UsageAnalyticsTaskLike[]) {
   return ['libu-governance', 'hubu-search', 'gongbu-code', 'bingbu-ops', 'xingbu-review', 'libu-delivery'].map(
     ministry => {
       const scopedTasks = tasks.filter(task => normalizeMinistryId(task.currentMinistry) === ministry);

@@ -4,7 +4,7 @@ import {
   MemorySearchRequest,
   MemorySearchResult,
   ReflectionRecord
-} from '@agent/shared';
+} from '@agent/core';
 
 export function normalizeMemoryRecord(record: MemoryRecord): MemoryRecord {
   const status = record.status ?? 'active';

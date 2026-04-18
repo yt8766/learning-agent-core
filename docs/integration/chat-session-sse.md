@@ -92,10 +92,10 @@
 补充约束：
 
 - `apps/frontend/agent-chat/src/hooks/chat-session/chat-session-events.ts` 只负责事件 wiring；数组 payload 的收敛、审批卡片解析、可见消息文案和 token/message 同步逻辑应继续拆到同目录 helper 文件，避免再回堆成超大单文件
-- `apps/frontend/agent-chat/src/types/chat-events.ts` 当前使用前端本地兼容类型，不直接从 `@agent/shared` 源码导入
+- `apps/frontend/agent-chat/src/types/chat-events.ts` 当前使用前端本地兼容类型，不直接从已退场的 `@agent/shared` 路径导入
 - 原因：
   - `agent-chat` 的 `tsconfig.app.json` 启用了 `erasableSyntaxOnly`
-  - 直接指向 `packages/shared/src` 会把 shared 里的非擦除语法一起带进前端 typecheck，导致单独执行 `pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit` 时失败
+  - 历史上直接指向 `packages/shared/src` 会把非擦除语法一起带进前端 typecheck，导致单独执行 `pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit` 时失败
   - 前端如果只需要 `ChatEventRecord / ChatThinkState / ChatThoughtChainItem` 这类消费态 contract，应优先维持本地兼容定义，再通过 SSE/checkpoint payload 保持结构一致
 
 ## 6. 继续阅读

@@ -1,15 +1,13 @@
-import {
+import type {
+  AgentRoleValue as AgentRole,
   AgentExecutionState,
-  AgentRole,
+  ApprovalResumeInput,
   CreateTaskDto,
   ExecutionTrace,
-  LearningJob,
-  LearningQueueItem,
   RequestedExecutionHints,
   SkillSearchStateRecord,
-  SubgraphId,
-  TaskRecord
-} from '@agent/shared';
+  SubgraphIdValue as SubgraphId
+} from '@agent/core';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
 import { MainGraphBackgroundRuntime } from '../background/main-graph-background';
@@ -19,6 +17,11 @@ import { MainGraphTaskRuntime } from '../task/main-graph-task-runtime';
 import type { PendingExecutionContext } from '../../../flows/approval';
 import { LearningFlow } from '../../../flows/learning';
 import { WorkerRegistry } from '../../../governance/worker-registry';
+import type {
+  RuntimeLearningJob as LearningJob,
+  RuntimeLearningQueueItem as LearningQueueItem
+} from '../../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 export type LocalSkillSuggestionResolver = (params: {
   goal: string;
@@ -124,7 +127,7 @@ export interface MainGraphLifecycleParams {
     options: {
       mode: 'initial' | 'retry' | 'approval_resume' | 'interrupt_resume';
       pending?: PendingExecutionContext;
-      resume?: import('@agent/shared').ApprovalResumeInput;
+      resume?: ApprovalResumeInput;
     }
   ) => Promise<void>;
   runBootstrapGraph: (
@@ -132,7 +135,7 @@ export interface MainGraphLifecycleParams {
     dto: CreateTaskDto,
     options: {
       mode: 'initial' | 'interrupt_resume';
-      resume?: import('@agent/shared').ApprovalResumeInput;
+      resume?: ApprovalResumeInput;
     }
   ) => Promise<void>;
   runApprovalRecoveryPipeline: (

@@ -1,4 +1,4 @@
-import type { ToolExecutionRequest } from '@agent/shared';
+import type { ToolExecutionRequest } from '@agent/core';
 import {
   buildAgentScaffold,
   buildPackageScaffold,

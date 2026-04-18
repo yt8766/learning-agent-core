@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { UserProfileRecord } from '@agent/shared';
+import type { UserProfileRecord } from '@agent/core';
 
 export interface UserProfileRepository {
   getById(userId: string): Promise<UserProfileRecord | undefined>;

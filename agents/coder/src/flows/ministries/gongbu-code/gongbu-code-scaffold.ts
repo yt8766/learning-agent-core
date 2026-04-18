@@ -1,4 +1,4 @@
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 import {
   buildAgentScaffold,
   buildPackageScaffold,
@@ -10,6 +10,7 @@ import {
 type ScaffoldHostKind = 'package' | 'agent';
 type ScaffoldTemplateId = 'package-lib' | 'agent-basic';
 type ScaffoldAction = 'list-templates' | 'preview' | 'write';
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export interface ParsedScaffoldWorkflowCommand {
   action: ScaffoldAction;
@@ -76,7 +77,7 @@ export function resolveScaffoldToolName(
   }
 }
 
-export function resolveScaffoldIntent(goal: string): ActionIntent {
+export function resolveScaffoldIntent(goal: string): ActionIntentValue {
   return parseScaffoldWorkflowCommand(goal).action === 'write' ? ActionIntent.WRITE_FILE : ActionIntent.READ_FILE;
 }
 

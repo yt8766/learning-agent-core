@@ -2,11 +2,11 @@ import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 
 import {
   ConfigureConnectorDto,
-  CounselorSelectorConfig,
   InstallRemoteSkillDto,
   InstallSkillDto,
+  CounselorSelectorConfig,
   ResolveSkillInstallDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { RuntimeCentersService } from '../runtime/centers/runtime-centers.service';
 import { RuntimeToolsService } from '../runtime/services/runtime-tools.service';

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/shared';
+import type { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/core';
 
 import { TasksService } from '../../src/modules/tasks/services/tasks.service';
 

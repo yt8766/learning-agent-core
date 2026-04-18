@@ -11,7 +11,7 @@ import {
   ReflectionRecord,
   ResolutionCandidateRecord,
   UserProfileRecord
-} from '@agent/shared';
+} from '@agent/core';
 import type { VectorIndexRepository } from '../vector/vector-index-repository';
 import { FileMemoryEventRepository, type MemoryEventRepository } from './memory-event-repository';
 import { FileMemoryEvidenceLinkRepository, type MemoryEvidenceLinkRepository } from './memory-evidence-link.repository';

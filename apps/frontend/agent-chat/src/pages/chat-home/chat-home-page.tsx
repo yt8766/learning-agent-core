@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { exportApprovalsCenter, exportRuntimeCenter, getBrowserReplay } from '@/api/chat-api';
 import { buildBubbleItems } from '@/features/chat/chat-message-adapter';
-import { ReportSchemaWorkbench } from '@/features/report-schema/report-schema-workbench';
 import { ChatRuntimeDrawer } from '@/features/runtime-panel/chat-runtime-drawer';
 import { getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
 import '@/styles/chat-home-page.scss';
@@ -257,7 +256,6 @@ export function ChatHomePage() {
                     bubbleItems={bubbleItems}
                     streamEvents={streamEvents}
                   />
-                  <ReportSchemaWorkbench />
                 </div>
               </Content>
             </Layout>

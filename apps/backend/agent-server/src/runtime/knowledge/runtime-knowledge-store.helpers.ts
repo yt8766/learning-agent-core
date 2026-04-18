@@ -8,9 +8,9 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
-} from '@agent/shared';
+} from '@agent/core';
+import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
 import { loadSettings } from '@agent/config';
-import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/model';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 

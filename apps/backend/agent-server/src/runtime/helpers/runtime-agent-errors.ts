@@ -1,4 +1,18 @@
-import { TaskRecord } from '@agent/shared';
+interface AgentErrorTaskLike {
+  id: string;
+  goal: string;
+  status?: string;
+  currentNode?: string;
+  currentStep?: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  trace?: Array<{
+    node?: string;
+    summary?: string;
+    at: string;
+    data?: Record<string, unknown>;
+  }>;
+}
 
 export interface AgentErrorInput {
   errorCode: string;
@@ -120,7 +134,7 @@ export function buildAgentErrorRecoveryPlaybook(input: AgentErrorInput): string[
       ];
 }
 
-export function deriveRecentAgentErrors(tasks: TaskRecord[], limit = 8): RecentAgentErrorRecord[] {
+export function deriveRecentAgentErrors(tasks: AgentErrorTaskLike[], limit = 8): RecentAgentErrorRecord[] {
   return tasks
     .flatMap(task =>
       (task.trace ?? [])

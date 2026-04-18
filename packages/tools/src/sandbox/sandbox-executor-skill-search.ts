@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/shared';
+import type { ToolExecutionRequest } from '@agent/core';
 
 import { collectFiles, scoreMatch } from './sandbox-executor-utils';
 

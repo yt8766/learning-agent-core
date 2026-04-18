@@ -1,6 +1,8 @@
 import { z } from 'zod/v4';
 
-import { ActionIntent, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
+import { ActionIntent, AgentRole, ToolExecutionResult, type ToolDefinition } from '@agent/core';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 import { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { filterToolsForExecutionMode, isToolAllowedInExecutionMode } from '../../../capabilities/execution-mode-guard';
@@ -29,7 +31,7 @@ export class ExecutorAgent extends BaseAgent {
     subTask: string,
     researchSummary: string
   ): Promise<{
-    intent: ActionIntent;
+    intent: ActionIntentValue;
     toolName: string;
     requiresApproval: boolean;
     tool?: ToolDefinition;

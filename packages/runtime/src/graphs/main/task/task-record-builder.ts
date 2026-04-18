@@ -1,14 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  CreateTaskDto,
-  type EntryDecisionRecord,
-  ExecutionPlanMode,
-  QueueStateRecord,
-  TaskRecord,
-  TaskStatus
-} from '@agent/shared';
+import type { CreateTaskDto, EntryDecisionRecord, QueueStateRecord } from '@agent/core';
+import { ExecutionPlanMode, TaskStatus } from '@agent/core';
 
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 import type { KnowledgeReuseResult, RuntimeSettings } from './task-factory.types';
 
 export function buildTaskRecord(params: {

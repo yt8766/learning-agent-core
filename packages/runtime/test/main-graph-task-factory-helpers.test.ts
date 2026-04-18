@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CreateTaskDto } from '@agent/shared';
+import type { CreateTaskDto } from '@agent/core';
 
 import { buildExecutionPlan, deriveOrchestrationGovernance } from '../src/graphs/main/task/task-execution-plan';
 import { resolveCounselorSelection, resolveRequestedMode } from '../src/graphs/main/task/task-entry-decision';

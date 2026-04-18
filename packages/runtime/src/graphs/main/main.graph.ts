@@ -1,24 +1,28 @@
 import { loadSettings } from '@agent/config';
+import { ApprovalDecision as ApprovalDecisionValue } from '@agent/core';
 import type {
   AgentExecutionState,
-  AgentMessage,
+  AgentMessageRecord as AgentMessage,
   AgentTokenEvent,
   ApprovalActionDto,
-  ApprovalDecision,
   CreateDocumentLearningJobDto,
   CreateResearchLearningJobDto,
   CreateTaskDto,
   ExecutionTrace,
-  LearningCandidateRecord,
   LearningConflictRecord,
-  LearningJob,
-  LearningQueueItem,
+  LearningCandidateRecord,
   ManagerPlan,
   ReviewRecord,
   RuleRecord,
-  TaskRecord,
   WorkerDefinition
-} from '@agent/shared';
+} from '@agent/core';
+import type {
+  RuntimeLearningJob as LearningJob,
+  RuntimeLearningQueueItem as LearningQueueItem
+} from '../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
+
+type ApprovalDecision = (typeof ApprovalDecisionValue)[keyof typeof ApprovalDecisionValue];
 
 import type { PendingExecutionContext } from '../../flows/approval';
 import { createMainGraphRuntimeModules } from './main-graph-runtime-modules';

@@ -8,10 +8,10 @@ import {
   MemorySearchRequest,
   MemorySearchResult,
   ResolutionCandidateRecord,
+  ChatSessionRecord,
   TaskRecord,
-  UserProfileRecord,
-  ChatSessionRecord
-} from '@agent/shared';
+  UserProfileRecord
+} from '@agent/core';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 

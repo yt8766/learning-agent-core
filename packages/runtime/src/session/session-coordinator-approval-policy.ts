@@ -1,14 +1,10 @@
-import {
-  buildApprovalScopeMatchKey,
-  matchesApprovalScopePolicy,
-  type ApprovalScopePolicyRecord,
-  type ChatSessionRecord,
-  type SessionApprovalDto,
-  type TaskRecord
-} from '@agent/shared';
+import { buildApprovalScopeMatchKey, matchesApprovalScopePolicy, type ApprovalScopePolicyRecord } from '@agent/core';
+import type { ChatSessionRecord, SessionApprovalDto } from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
-export function buildApprovalScopeMatchInput(task: TaskRecord) {
+import type { SessionTaskLike } from './session-task.types';
+
+export function buildApprovalScopeMatchInput(task: SessionTaskLike) {
   const interruptPayload =
     task.activeInterrupt?.payload && typeof task.activeInterrupt.payload === 'object'
       ? task.activeInterrupt.payload
@@ -48,7 +44,10 @@ export function upsertRuntimeApprovalPolicy(policies: ApprovalScopePolicyRecord[
   return policies.map((item, index) => (index === existingIndex ? { ...item, ...policy, id: item.id } : item));
 }
 
-export async function findRuntimeApprovalScopePolicy(runtimeStateRepository: RuntimeStateRepository, task: TaskRecord) {
+export async function findRuntimeApprovalScopePolicy(
+  runtimeStateRepository: RuntimeStateRepository,
+  task: SessionTaskLike
+) {
   const snapshot = await runtimeStateRepository.load();
   const policies = snapshot.governance?.approvalScopePolicies ?? [];
   return policies.find(policy => matchesApprovalScopePolicy(policy, buildApprovalScopeMatchInput(task)));
@@ -58,7 +57,7 @@ export async function recordPolicyAutoAllow(params: {
   runtimeStateRepository: RuntimeStateRepository;
   session: ChatSessionRecord;
   policy: ApprovalScopePolicyRecord;
-  task: TaskRecord;
+  task: SessionTaskLike;
 }) {
   const snapshot = await params.runtimeStateRepository.load();
   snapshot.governanceAudit = [
@@ -108,7 +107,7 @@ export async function recordPolicyAutoAllow(params: {
 export async function persistApprovalScopePolicy(params: {
   runtimeStateRepository: RuntimeStateRepository;
   session: ChatSessionRecord;
-  task: TaskRecord | undefined;
+  task: SessionTaskLike | undefined;
   dto: SessionApprovalDto;
 }) {
   const scope = params.dto.approvalScope;

@@ -1,14 +1,14 @@
-import type { CreateTaskDto, TaskRecord } from '@agent/shared';
+import type { CreateTaskDto } from '@agent/core';
 import { markExecutionStepCompleted } from '../../workflows/execution-steps';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
-import type { PlanningCallbacks } from './pipeline-stage-node.types';
+import type { PlanningCallbacks, SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
 
-export async function runGoalIntakeStage(
-  task: TaskRecord,
+export async function runGoalIntakeStage<TTask extends SupervisorPlanningTaskLike>(
+  task: TTask,
   dto: CreateTaskDto,
   state: RuntimeAgentGraphState,
   mode: 'initial' | 'retry' | 'approval_resume',
-  callbacks: PlanningCallbacks
+  callbacks: PlanningCallbacks<TTask>
 ): Promise<Partial<RuntimeAgentGraphState>> {
   callbacks.ensureTaskNotCancelled(task);
   const action =
@@ -32,10 +32,10 @@ export async function runGoalIntakeStage(
   };
 }
 
-export async function runRouteStage(
-  task: TaskRecord,
+export async function runRouteStage<TTask extends SupervisorPlanningTaskLike>(
+  task: TTask,
   state: RuntimeAgentGraphState,
-  callbacks: PlanningCallbacks
+  callbacks: PlanningCallbacks<TTask>
 ): Promise<Partial<RuntimeAgentGraphState>> {
   callbacks.ensureTaskNotCancelled(task);
   callbacks.syncTaskRuntime(task, {

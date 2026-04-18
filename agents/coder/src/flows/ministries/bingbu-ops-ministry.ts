@@ -1,6 +1,8 @@
-import { ActionIntent, ToolExecutionResult } from '@agent/shared';
+import { ActionIntent, ToolExecutionResult } from '@agent/core';
 
 import { GongbuCodeMinistry } from './gongbu-code-ministry';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 const BINGBU_TOOL_PRIORITY = [
   'run_terminal',
@@ -68,7 +70,7 @@ export class BingbuOpsMinistry extends GongbuCodeMinistry {
 
   protected override async executeSingleTool(
     tool: Parameters<GongbuCodeMinistry['executeSingleTool']>[0],
-    intent: ActionIntent,
+    intent: ActionIntentValue,
     toolInput: Record<string, unknown>
   ): Promise<ToolExecutionResult> {
     const result = await super.executeSingleTool(tool, intent, toolInput);

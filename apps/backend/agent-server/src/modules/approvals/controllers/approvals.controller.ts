@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { ApprovalActionDto } from '@agent/shared';
+import { ApprovalActionDto } from '@agent/core';
 
 import { ApprovalsService } from '../services/approvals.service';
 

@@ -4,27 +4,81 @@ import { dirname, resolve } from 'node:path';
 import { loadSettings } from '@agent/config';
 import {
   ActionIntent,
-  ChatCheckpointRecord,
+  type ApprovalScopePolicyRecord,
+  CapabilityGovernanceProfileRecord,
   ChannelIdentity,
   ChannelOutboundMessage,
+  ChatCheckpointRecord,
   ChatEventRecord,
   ChatMessageRecord,
   ChatSessionRecord,
-  ApprovalScopePolicyRecord,
-  CapabilityGovernanceProfileRecord,
-  GovernanceProfileRecord,
-  CounselorSelectorConfig,
+  EvidenceRecord,
   ConfiguredConnectorRecord,
   ConnectorDiscoveryHistoryRecord,
-  LearningConflictScanResult,
-  LearningQueueItem,
-  LearningJob,
-  TaskRecord
-} from '@agent/shared';
+  CounselorSelectorConfig,
+  GovernanceProfileRecord,
+  LearningConflictScanResult
+} from '@agent/core';
+
+import type { RuntimeStateTaskRecord } from './runtime-state-task.types';
+
+export interface RuntimeStateLearningJob {
+  id: string;
+  sourceType:
+    | 'execution'
+    | 'document'
+    | 'research'
+    | 'memory'
+    | 'official-docs'
+    | 'repo'
+    | 'community'
+    | 'web'
+    | 'market';
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  documentUri: string;
+  goal?: string;
+  workflowId?: string;
+  preferredUrls?: string[];
+  summary?: string;
+  sources?: EvidenceRecord[];
+  trustSummary?: Partial<Record<'official' | 'curated' | 'community' | 'unverified' | 'internal', number>>;
+  learningEvaluation?: import('@agent/core').LearningEvaluationRecord;
+  autoPersistEligible?: boolean;
+  persistedMemoryIds?: string[];
+  conflictDetected?: boolean;
+  conflictNotes?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RuntimeStateLearningQueueItem {
+  id: string;
+  taskId: string;
+  runId?: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  mode?: 'task-learning' | 'dream-task';
+  priority?: 'high' | 'normal';
+  reason?: 'high_risk_failure' | 'rollback' | 'timeout_defaulted' | 'blocked_review' | 'normal' | 'dream-task';
+  selectedCounselorId?: string;
+  selectedVersion?: string;
+  trace: import('@agent/core').ExecutionTrace[];
+  aggregationResult?: string;
+  userFeedback?: string;
+  capabilityUsageStats?: {
+    toolCount: number;
+    workerCount: number;
+    totalTokens?: number;
+    totalCostUsd?: number;
+  };
+  queuedAt: string;
+  updatedAt: string;
+}
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export interface PendingExecutionRecord {
   taskId: string;
-  intent: ActionIntent;
+  intent: ActionIntentValue;
   toolName: string;
   researchSummary: string;
 }
@@ -45,9 +99,9 @@ export interface ChannelDeliveryRecord {
 }
 
 export interface RuntimeStateSnapshot {
-  tasks: TaskRecord[];
-  learningJobs: LearningJob[];
-  learningQueue?: LearningQueueItem[];
+  tasks: RuntimeStateTaskRecord[];
+  learningJobs: RuntimeStateLearningJob[];
+  learningQueue?: RuntimeStateLearningQueueItem[];
   pendingExecutions: PendingExecutionRecord[];
   channelDeliveries: ChannelDeliveryRecord[];
   chatSessions: ChatSessionRecord[];
@@ -56,7 +110,7 @@ export interface RuntimeStateSnapshot {
   chatCheckpoints: ChatCheckpointRecord[];
   crossCheckEvidence?: Array<{
     memoryId: string;
-    record: import('@agent/shared').EvidenceRecord;
+    record: EvidenceRecord;
   }>;
   governance?: {
     disabledSkillSourceIds?: string[];

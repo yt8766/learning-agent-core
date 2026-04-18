@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { PatchUserProfileDto } from '@agent/shared';
+import type { PatchUserProfileDto } from '@agent/core';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
 

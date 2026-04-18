@@ -1,6 +1,7 @@
-import type { ReviewRecord, TaskRecord } from '@agent/shared';
+import type { ReviewRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 
-export function deriveFinalReviewDecision(task: TaskRecord, review: ReviewRecord, shouldRetry: boolean) {
+export function deriveFinalReviewDecision(task: RuntimeTaskRecord, review: ReviewRecord, shouldRetry: boolean) {
   if (review.decision === 'blocked') {
     return 'block' as const;
   }
@@ -14,7 +15,7 @@ export function deriveFinalReviewDecision(task: TaskRecord, review: ReviewRecord
 }
 
 export function buildFinalReviewSummary(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   summary?: string,
   critiqueDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval'
 ) {

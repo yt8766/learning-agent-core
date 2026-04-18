@@ -2,13 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
-import {
-  EvalsCenterRecord,
-  getMinistryDisplayName,
-  LearningCenterRecord,
-  normalizeExecutionMode,
-  type PlatformApprovalRecord
-} from '@agent/shared';
+import type { PlatformApprovalRecord } from '@agent/core';
 
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import { buildConnectorsCenter } from './runtime-connectors-center';
@@ -52,7 +46,9 @@ import {
   resolveTaskExecutionMode,
   resolveTaskInteractionKind
 } from './runtime-centers-query.helpers';
+import type { EvalsCenterRecord, LearningCenterRecord } from './runtime-centers.records';
 import { ingestLocalKnowledge, readKnowledgeOverview } from '../knowledge/runtime-knowledge-store';
+import { getMinistryDisplayName, normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
 
 export class RuntimeCentersQueryService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}

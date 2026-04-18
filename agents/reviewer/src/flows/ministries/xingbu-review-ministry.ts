@@ -3,11 +3,11 @@ import {
   AgentRole,
   CritiqueResultRecord,
   EvaluationResult,
-  ReviewDecision,
   ReviewRecord,
+  ReviewDecision,
   SpecialistFindingRecord,
   ToolExecutionResult
-} from '@agent/shared';
+} from '@agent/core';
 import { evaluateExecution } from '@agent/evals';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';

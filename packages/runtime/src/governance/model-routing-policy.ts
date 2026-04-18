@@ -1,4 +1,4 @@
-import { ModelRouteDecision, WorkerDomain } from '@agent/shared';
+import type { ModelRouteDecision, WorkerDomain } from '@agent/core';
 
 import { isFreshnessSensitiveGoal } from '../utils/prompts/temporal-context';
 import { WorkerRegistry, WorkerSelectionConstraints } from './worker-registry';

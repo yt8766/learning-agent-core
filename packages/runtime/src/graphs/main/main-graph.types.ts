@@ -1,15 +1,10 @@
-import type {
-  ApprovalResumeInput,
-  CreateTaskDto,
-  RequestedExecutionHints,
-  SkillSearchStateRecord,
-  TaskRecord
-} from '@agent/shared';
+import type { ApprovalResumeInput, CreateTaskDto, RequestedExecutionHints, SkillSearchStateRecord } from '@agent/core';
 import type { loadSettings } from '@agent/config';
 import type { MemoryRepository, MemorySearchService, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 import type { SkillRegistry } from '@agent/skill-runtime';
 import type { ApprovalService, McpClientManager, SandboxExecutor, ToolRegistry } from '@agent/tools';
 import type { LocalKnowledgeSearchService } from '../../runtime/local-knowledge-search-service';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { WorkerRegistry } from '../../governance/worker-registry';
 import type { LlmProvider } from '@agent/adapters';
 import type { PendingExecutionContext } from '../../flows/approval';

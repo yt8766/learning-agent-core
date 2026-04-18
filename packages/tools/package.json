@@ -35,7 +35,6 @@
   "dependencies": {
     "@agent/config": "workspace:*",
     "@agent/report-kit": "workspace:*",
-    "@agent/shared": "workspace:*",
     "@agent/templates": "workspace:*",
     "fs-extra": "^11.3.4"
   }

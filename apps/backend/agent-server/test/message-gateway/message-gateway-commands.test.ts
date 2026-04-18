@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ActionIntent, type ChannelOutboundMessage, type InboundChannelMessage } from '@agent/shared';
+import { ActionIntent, type ChannelOutboundMessage, type InboundChannelMessage } from '@agent/core';
 
 import { executeGatewayCommand, type GatewayCommandRuntime } from '../../src/message-gateway/message-gateway-commands';
 

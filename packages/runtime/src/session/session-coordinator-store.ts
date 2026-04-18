@@ -1,5 +1,10 @@
-import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
-import { TaskStatus } from '@agent/shared';
+import {
+  TaskStatus,
+  type ChatCheckpointRecord,
+  type ChatEventRecord,
+  type ChatMessageRecord,
+  type ChatSessionRecord
+} from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
 export class SessionCoordinatorStore {

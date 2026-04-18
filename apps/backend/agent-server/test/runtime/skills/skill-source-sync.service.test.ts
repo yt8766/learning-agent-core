@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { SkillSourceRecord } from '@agent/shared';
+import type { SkillSourceRecord } from '@agent/core';
 
 import { SkillSourceSyncService } from '../../../src/runtime/skills/skill-source-sync.service';
 

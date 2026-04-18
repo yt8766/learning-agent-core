@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "@agent/report-kit": "workspace:*",
-    "@agent/shared": "workspace:*",
     "zod": "^4.3.6"
   }
 }

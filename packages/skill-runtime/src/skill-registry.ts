@@ -2,7 +2,18 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
-import { PluginDraft, SkillCard, SkillStatus } from '@agent/shared';
+import { SkillCard, SkillStatus } from '@agent/core';
+
+export interface PluginDraft {
+  id: string;
+  name: string;
+  description: string;
+  manifest: Record<string, unknown>;
+  code?: string;
+  status: 'draft' | 'lab' | 'disabled';
+  createdAt: string;
+  updatedAt: string;
+}
 
 export class SkillRegistry {
   private readonly root: string;

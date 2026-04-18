@@ -1,8 +1,8 @@
-import { AgentRole } from '@agent/shared';
+import { AgentRole } from '@agent/core';
 import { describe, expect, it } from 'vitest';
 
 import { compileSkillContractIntoPlan } from '../src/flows/supervisor/pipeline-stage-nodes';
-import type { TaskRecord } from '@agent/shared';
+import type { TaskRecord } from '@agent/core';
 
 describe('pipeline stage nodes', () => {
   it('将挂载技能步骤编译进执行计划并为不同角色补足子任务', () => {

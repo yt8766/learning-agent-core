@@ -1,12 +1,12 @@
 import type { RuntimeSettings } from '@agent/config';
 import type { ILLMProvider } from '@agent/core';
-import type { SemanticCacheRepository } from '@agent/memory';
 
 import { ModelRouter } from './model-router';
 import { MiniMaxProvider } from './minimax-provider';
 import { OpenAICompatibleProvider } from './openai-compatible-provider';
 import { ProviderRegistry } from './provider-registry';
 import { RoutedLlmProvider } from './routed-llm-provider';
+import type { SemanticCacheRepository } from './semantic-cache';
 import { ZhipuLlmProvider } from './zhipu-provider';
 
 export interface DefaultRuntimeLlmProviderOptions {

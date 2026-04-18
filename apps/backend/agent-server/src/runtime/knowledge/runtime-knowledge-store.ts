@@ -6,7 +6,7 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
-} from '@agent/shared';
+} from '@agent/core';
 import { loadSettings } from '@agent/config';
 import {
   chunkDocumentContent,

@@ -1,5 +1,125 @@
-import { EvidenceRecord, TaskRecord } from '@agent/shared';
-import type { ResolutionCandidateRecord } from '@agent/shared';
+import { EvidenceRecord } from '@agent/core';
+import type { ResolutionCandidateRecord } from '@agent/core';
+
+export interface LearningCenterTaskLike {
+  id: string;
+  goal: string;
+  createdAt?: string;
+  updatedAt: string;
+  status?: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  interruptHistory?: unknown[];
+  trace?: Array<{
+    node?: string;
+    summary?: string;
+    at: string;
+    data?: Record<string, unknown>;
+  }>;
+  externalSources?: Array<{
+    id: string;
+    sourceType?: string;
+    summary?: string;
+    trustClass?: string;
+  }>;
+  executionPlan?: {
+    selectedCounselorId?: string;
+    selectedVersion?: string;
+  };
+  entryDecision?: {
+    counselorSelector?: {
+      selectedCounselorId?: string;
+      selectedVersion?: string;
+    };
+  };
+  critiqueResult?: {
+    decision?: string;
+  };
+  learningCandidates?: Array<{
+    id: string;
+    type?: string;
+    summary?: string;
+    status?: string;
+    confidenceScore?: number;
+    autoConfirmEligible?: boolean;
+    provenance?: unknown[];
+    payload?: unknown;
+    createdAt: string;
+  }>;
+  learningEvaluation?: {
+    score?: number;
+    confidence?: number;
+    candidateReasons?: string[];
+    skippedReasons?: string[];
+    conflictDetected?: boolean;
+    conflictTargets?: string[];
+    derivedFromLayers?: string[];
+    policyMode?: string;
+    expertiseSignals?: string[];
+    rationale?: string;
+    governanceWarnings?: string[];
+    timeoutStats?: {
+      count?: number;
+      defaultAppliedCount?: number;
+    };
+    skillGovernanceRecommendations?: Array<{
+      skillId: string;
+      recommendation: string;
+      successRate?: number;
+      promotionState?: string;
+    }>;
+  };
+  llmUsage?: {
+    totalTokens?: number;
+  };
+  budgetState?: {
+    costConsumedUsd?: number;
+    budgetInterruptState?: {
+      status?: string;
+      reason?: string;
+    };
+  };
+  learningQueueItemId?: string;
+  governanceReport?: {
+    summary?: string;
+    reviewOutcome: {
+      decision?: string;
+      summary?: string;
+    };
+    trustAdjustment?: string;
+    evidenceSufficiency?: {
+      score?: number;
+    };
+    sandboxReliability?: {
+      score?: number;
+    };
+  };
+  evaluationReport?: {
+    score?: number;
+    summary?: string;
+  };
+  libuEvaluationReportId?: string;
+  capabilityAttachments?: Array<{
+    id: string;
+    displayName: string;
+    capabilityTrust?: {
+      trustLevel?: 'high' | 'medium' | 'low';
+      trustTrend?: 'up' | 'steady' | 'down';
+      lastReason?: string;
+      updatedAt?: string;
+    };
+    governanceProfile?: {
+      reportCount?: number;
+      promoteCount?: number;
+      holdCount?: number;
+      downgradeCount?: number;
+      lastTaskId?: string;
+      lastReviewDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
+      updatedAt?: string;
+    };
+    updatedAt?: string;
+  }>;
+}
 
 export interface RecentQuarantinedMemory {
   id: string;
@@ -138,7 +258,7 @@ export interface RuntimeGovernanceSnapshotRecord {
 }
 
 export interface BuildLearningCenterInput {
-  tasks: TaskRecord[];
+  tasks: LearningCenterTaskLike[];
   jobs: any[];
   wenyuanOverviewPromise?: Promise<{
     store: 'wenyuan';
@@ -192,7 +312,7 @@ export interface BuildLearningCenterInput {
   crossCheckEvidencePromise: Promise<CrossCheckEvidenceEntry[]>;
   governanceSnapshotPromise?: Promise<RuntimeGovernanceSnapshotRecord>;
   resolutionCandidatesPromise?: Promise<ResolutionCandidateRecord[]>;
-  resolveLocalSkillSuggestions: (task: TaskRecord) => Promise<{
+  resolveLocalSkillSuggestions: (task: LearningCenterTaskLike) => Promise<{
     suggestions: unknown[];
     gapSummary?: string;
     profile?: string;

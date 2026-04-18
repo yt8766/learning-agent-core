@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import { ConfigureConnectorDto, InstallRemoteSkillDto, InstallSkillDto, ResolveSkillInstallDto } from '@agent/shared';
+import { ConfigureConnectorDto, InstallRemoteSkillDto, InstallSkillDto, ResolveSkillInstallDto } from '@agent/core';
 
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import {

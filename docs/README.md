@@ -109,7 +109,7 @@
 - `packages/config` -> `docs/config/`
 - `packages/evals` -> `docs/evals/`
 - `packages/memory` -> `docs/memory/`
-- `packages/model` -> `docs/model/`
+- 已删除的 `packages/model` 历史说明 -> `docs/archive/model/`
 - `packages/report-kit` -> `docs/report-kit/`
 - `packages/shared` -> `docs/shared/`
 - `packages/skill-runtime` -> `docs/skills/`

@@ -1,6 +1,7 @@
 ﻿import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import type { ExecutionStepRecord, RequestedExecutionHints, WorkflowPresetDefinition } from '@agent/shared';
+import type { WorkflowPresetDefinition } from '@agent/core';
+import type { ExecutionStepRecord, RequestedExecutionHints } from '@agent/core';
 
 import { runMainRouteNode } from '../flows/route/main-route-node';
 

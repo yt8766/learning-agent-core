@@ -1,12 +1,8 @@
 import { listSkillSourcesSnapshot } from '../helpers/runtime-connector-registry';
 import type { RuntimeSkillSourcesContext } from './runtime-skill-sources.service';
 
-import type {
-  LocalSkillSuggestionRecord,
-  SkillManifestRecord,
-  SkillSearchStatus,
-  SkillSourceRecord
-} from '@agent/shared';
+import type { SkillManifestRecord, SkillSourceRecord } from '@agent/core';
+import type { LocalSkillSuggestionRecord, SkillSearchStatus } from '@agent/core';
 
 export function evaluateSkillManifestSafety(
   context: RuntimeSkillSourcesContext,

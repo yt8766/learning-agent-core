@@ -1,6 +1,10 @@
-import type { ActionIntent, ApprovalInterruptRecord, PendingApprovalRecord, RiskLevel } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
+import type { RiskLevel } from '@agent/core';
+import type { PendingApprovalRecord } from '@agent/core';
+import type { RuntimeApprovalInterruptRecord as ApprovalInterruptRecord } from '../../runtime/runtime-approval.types';
 
 type ApprovalScope = 'once' | 'session' | 'always';
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 const DESTRUCTIVE_COMMAND_PATTERN =
   /\b(rm\s+-rf|rm\s+-r|del\s+\/s|del\s+\/q|rmdir\s+\/s|chmod\s+777|chown\s+-R|mkfs|dd\s+if=|shutdown|reboot)\b/i;
@@ -8,7 +12,7 @@ const PERMISSION_ESCALATION_PATTERN = /\b(sudo|su|doas|runas)\b/i;
 const EXTERNAL_MUTATION_PATTERN = /\b(curl|wget|http|fetch|axios).*(post|put|patch|delete|publish|deploy)/i;
 
 export function buildRiskApprovalMetadata(params: {
-  intent?: ActionIntent | string;
+  intent?: ActionIntentValue | string;
   riskLevel?: RiskLevel;
   toolName?: string;
   reason?: string;
@@ -97,7 +101,7 @@ export function extendInterruptWithRiskMetadata(
 }
 
 function classifyInterruptRisk(params: {
-  intent?: ActionIntent | string;
+  intent?: ActionIntentValue | string;
   riskLevel?: RiskLevel;
   toolName?: string;
   reason?: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ActionIntent, TaskStatus } from '@agent/shared';
+import { ActionIntent, TaskStatus } from '@agent/core';
 import type { RuntimeStateRepository, RuntimeStateSnapshot } from '@agent/memory';
 
 import { SessionCoordinator } from '../src/session/session-coordinator';

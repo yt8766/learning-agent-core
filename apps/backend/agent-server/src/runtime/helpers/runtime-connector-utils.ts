@@ -1,4 +1,10 @@
-import { TaskRecord } from '@agent/shared';
+interface ConnectorTraceTaskLike {
+  trace?: Array<{
+    node?: string;
+    summary?: string;
+    data?: unknown;
+  }>;
+}
 
 export interface BrowserReplayRecord {
   sessionId?: string;
@@ -81,7 +87,7 @@ export function describeCapabilityApprovalReason(connectorDisplayName: string, t
   return `${connectorDisplayName} 的 ${toolName} 被标记为需审批能力，当前策略要求在调用前确认。`;
 }
 
-export function taskTouchesCapability(task: TaskRecord, toolName: string): boolean {
+export function taskTouchesCapability(task: ConnectorTraceTaskLike, toolName: string): boolean {
   const loweredToolName = toolName.toLowerCase();
   return (task.trace ?? []).some(trace => {
     const summary = String(trace.summary ?? '').toLowerCase();
@@ -91,7 +97,7 @@ export function taskTouchesCapability(task: TaskRecord, toolName: string): boole
   });
 }
 
-export function findCapabilityTraceSummary(task: TaskRecord, toolName: string): string | undefined {
+export function findCapabilityTraceSummary(task: ConnectorTraceTaskLike, toolName: string): string | undefined {
   const loweredToolName = toolName.toLowerCase();
   const trace = (task.trace ?? []).find(item => {
     const summary = String(item.summary ?? '').toLowerCase();

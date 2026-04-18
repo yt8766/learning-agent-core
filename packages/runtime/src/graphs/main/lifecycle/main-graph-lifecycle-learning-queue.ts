@@ -1,6 +1,6 @@
-import type { LearningQueueItem, TaskRecord } from '@agent/shared';
-
 import type { LearningFlow } from '../../../flows/learning';
+import type { RuntimeLearningQueueItem as LearningQueueItem } from '../../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 import { enqueueTaskLearningItem, listLearningQueueItems } from './main-graph-lifecycle-state';
 
 type LearningPersistDeps = {

@@ -1,12 +1,6 @@
-import {
-  ActionIntent,
-  AgentRole,
-  ApprovalActionDto,
-  ApprovalDecision,
-  ApprovalResumeInput,
-  TaskRecord,
-  TaskStatus
-} from '@agent/shared';
+import type { ApprovalActionDto, ApprovalResumeInput } from '@agent/core';
+import { ActionIntent, AgentRole, ApprovalDecision, TaskStatus } from '@agent/core';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 import type { LifecycleApprovalParams, LifecyclePersistCallbacks } from './main-graph-lifecycle-approval.types';
 
@@ -14,7 +8,7 @@ export async function applyApprovalAction(
   params: LifecycleApprovalParams & LifecyclePersistCallbacks,
   taskId: string,
   dto: ApprovalActionDto,
-  decision: ApprovalDecision
+  decision: (typeof ApprovalDecision)[keyof typeof ApprovalDecision]
 ): Promise<TaskRecord | undefined> {
   const task = params.tasks.get(taskId);
   if (!task) return undefined;
@@ -68,7 +62,7 @@ export async function applyApprovalAction(
           resume
         }
       );
-      if (![TaskStatus.WAITING_APPROVAL, TaskStatus.BLOCKED].includes(task.status)) {
+      if (task.status !== TaskStatus.WAITING_APPROVAL && task.status !== TaskStatus.BLOCKED) {
         await params.runTaskPipeline(
           task,
           { goal: task.goal, context: task.context, constraints: [] },

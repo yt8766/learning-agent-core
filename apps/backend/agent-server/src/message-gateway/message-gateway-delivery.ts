@@ -1,4 +1,4 @@
-import type { ChannelIdentity, ChannelOutboundMessage } from '@agent/shared';
+import type { ChannelIdentity, ChannelOutboundMessage } from '@agent/core';
 
 import type { ChannelDeliveryReceipt } from './interfaces/message-gateway.interface';
 

@@ -1,4 +1,5 @@
-import { ActionIntent, EvidenceRecord, TaskRecord, TaskStatus } from '@agent/shared';
+import { ActionIntent, TaskStatus } from '@agent/core';
+import type { EvidenceRecord } from '@agent/core';
 
 import { mergeCapabilityStateFromSkillSearch } from '../../../capabilities/capability-pool';
 import {
@@ -10,6 +11,7 @@ import type {
   PreExecutionSkillInterventionResolver,
   TaskFactoryRuntimeCallbacks
 } from './task-factory.types';
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 
 export async function applyLocalSkillSuggestions(params: {
   task: TaskRecord;

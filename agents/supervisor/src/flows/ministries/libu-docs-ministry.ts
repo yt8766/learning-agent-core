@@ -1,18 +1,16 @@
-import {
-  ActionIntent,
-  AgentExecutionState,
-  AgentRole,
+import { AgentExecutionState, ActionIntent, ReviewRecord, ToolExecutionResult } from '@agent/core';
+import type {
+  DeliveryMinistryLike,
   EvaluationResult,
   MemoryRecord,
-  ReviewRecord,
   SkillCard,
-  TaskRecord,
-  ToolExecutionResult
-} from '@agent/shared';
+  TaskRecord as CoreTaskRecord
+} from '@agent/core';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { AgentRole } from '../supervisor/supervisor-architecture-helpers';
 
-export class LibuDocsMinistry {
+export class LibuDocsMinistry implements DeliveryMinistryLike {
   private readonly state: AgentExecutionState;
 
   constructor(private readonly context: AgentRuntimeContext) {
@@ -29,7 +27,7 @@ export class LibuDocsMinistry {
     };
   }
 
-  async research(task: TaskRecord): Promise<{ summary: string; memories: MemoryRecord[]; skills: SkillCard[] }> {
+  async research(task: CoreTaskRecord): Promise<{ summary: string; memories: MemoryRecord[]; skills: SkillCard[] }> {
     this.state.status = 'running';
     this.state.subTask = '整理交付规范';
     this.state.plan = ['读取 workflow 输出契约', '整理 required sections', '输出礼部研究摘要'];
@@ -49,10 +47,10 @@ export class LibuDocsMinistry {
   }
 
   async execute(
-    task: TaskRecord,
+    task: CoreTaskRecord,
     executionSummary: string
   ): Promise<{
-    intent: ActionIntent;
+    intent: (typeof ActionIntent)[keyof typeof ActionIntent];
     toolName: string;
     requiresApproval: boolean;
     tool?: never;
@@ -89,7 +87,7 @@ export class LibuDocsMinistry {
     };
   }
 
-  review(task: TaskRecord, executionSummary: string): { review: ReviewRecord; evaluation: EvaluationResult } {
+  review(task: CoreTaskRecord, executionSummary: string): { review: ReviewRecord; evaluation: EvaluationResult } {
     this.state.status = 'running';
     this.state.subTask = '礼部复核交付';
     const note = `礼部复核通过：${executionSummary}`;
@@ -116,7 +114,7 @@ export class LibuDocsMinistry {
     };
   }
 
-  buildDelivery(task: TaskRecord, executionSummary: string): string {
+  buildDelivery(task: CoreTaskRecord, executionSummary: string): string {
     const sections = task.resolvedWorkflow?.outputContract.requiredSections.join('、') ?? 'summary';
     return `礼部已整理 ${task.resolvedWorkflow?.displayName ?? '当前流程'} 的交付说明，重点覆盖：${sections}。当前执行摘要：${executionSummary}`;
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { executeApprovedAction } from '../src/flows/approval';
 

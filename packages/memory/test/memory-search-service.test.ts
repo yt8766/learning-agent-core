@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { MemoryRecord, RuleRecord } from '@agent/shared';
+import { MemoryRecord, RuleRecord } from '@agent/core';
 
 import type { EmbeddingProvider } from '@agent/memory';
 import { DefaultMemorySearchService, LocalVectorIndexRepository, NullVectorIndexRepository } from '@agent/memory';

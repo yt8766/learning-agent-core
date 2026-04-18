@@ -1,4 +1,19 @@
-import { TaskRecord } from '@agent/shared';
+interface BenchmarkTaskLike {
+  id: string;
+  skillId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  reusedMemories?: unknown[];
+  externalSources?: Array<{
+    sourceType?: string;
+  }>;
+  approvals: Array<{
+    decision?: string;
+  }>;
+  trace: Array<{
+    node?: string;
+  }>;
+}
 
 export interface BenchmarkScenarioDefinition {
   id: string;
@@ -106,7 +121,7 @@ export const DEFAULT_BENCHMARK_SCENARIOS: BenchmarkScenarioDefinition[] = [
 ];
 
 export function evaluateBenchmarks(
-  tasks: TaskRecord[],
+  tasks: BenchmarkTaskLike[],
   scenarios: BenchmarkScenarioDefinition[] = DEFAULT_BENCHMARK_SCENARIOS
 ): BenchmarkSummary {
   const scenarioResults = scenarios.map(scenario => {
@@ -146,7 +161,7 @@ export function evaluateBenchmarks(
 }
 
 function buildRecentRuns(
-  tasks: TaskRecord[],
+  tasks: BenchmarkTaskLike[],
   scenarios: BenchmarkScenarioDefinition[],
   limit = 12
 ): BenchmarkRunRecord[] {
@@ -169,7 +184,11 @@ function buildRecentRuns(
     .slice(0, limit);
 }
 
-function buildTrend(tasks: TaskRecord[], scenarios: BenchmarkScenarioDefinition[], maxDays = 7): BenchmarkTrendPoint[] {
+function buildTrend(
+  tasks: BenchmarkTaskLike[],
+  scenarios: BenchmarkScenarioDefinition[],
+  maxDays = 7
+): BenchmarkTrendPoint[] {
   const buckets = new Map<string, { runCount: number; passCount: number }>();
 
   for (const task of tasks) {
@@ -206,7 +225,7 @@ function formatDay(value?: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-function matchesScenario(task: TaskRecord, scenario: BenchmarkScenarioDefinition): boolean {
+function matchesScenario(task: BenchmarkTaskLike, scenario: BenchmarkScenarioDefinition): boolean {
   if (scenario.matcher.skillId) {
     return task.skillId === scenario.matcher.skillId;
   }
@@ -218,7 +237,7 @@ function matchesScenario(task: TaskRecord, scenario: BenchmarkScenarioDefinition
   return true;
 }
 
-function passesScenario(task: TaskRecord, scenario: BenchmarkScenarioDefinition): boolean {
+function passesScenario(task: BenchmarkTaskLike, scenario: BenchmarkScenarioDefinition): boolean {
   if (scenario.matcher.traceNodes?.length) {
     const nodes = new Set(task.trace.map(trace => trace.node));
     if (!scenario.matcher.traceNodes.every(node => nodes.has(node))) {

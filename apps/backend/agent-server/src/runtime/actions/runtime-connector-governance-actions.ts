@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import { ConfigureConnectorDto } from '@agent/shared';
+import { ConfigureConnectorDto } from '@agent/core';
 
 import {
   appendGovernanceAudit,

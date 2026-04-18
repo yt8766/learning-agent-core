@@ -1,11 +1,13 @@
-import { ActionIntent, type ToolDefinition, type ToolExecutionResult } from '@agent/shared';
+import { ActionIntent, type ToolDefinition, type ToolExecutionResult } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export async function executeGongbuToolRequest(
   context: AgentRuntimeContext,
   tool: ToolDefinition,
-  intent: ActionIntent,
+  intent: ActionIntentValue,
   toolInput: Record<string, unknown>
 ): Promise<ToolExecutionResult> {
   const request = {

@@ -130,4 +130,91 @@ describe('FileRuntimeStateRepository', () => {
 
     await expect(repository.load()).resolves.toEqual(snapshot);
   });
+
+  it('保留任务快照中的运行态 overlay 字段', async () => {
+    const { FileRuntimeStateRepository } = await import('@agent/memory');
+    const repository = new FileRuntimeStateRepository();
+    const snapshot = {
+      tasks: [
+        {
+          id: 'task-overlay',
+          goal: 'keep runtime overlay fields',
+          status: 'waiting_approval',
+          trace: [],
+          approvals: [],
+          agentStates: [],
+          messages: [],
+          activeInterrupt: {
+            id: 'interrupt-1',
+            status: 'pending',
+            mode: 'blocking',
+            source: 'graph',
+            origin: 'runtime',
+            kind: 'user-input',
+            interactionKind: 'supplemental-input',
+            requestedBy: 'libu-governance',
+            reason: 'budget confirmation required',
+            createdAt: '2026-04-17T00:00:00.000Z'
+          },
+          interruptHistory: [
+            {
+              id: 'interrupt-1',
+              status: 'pending',
+              mode: 'blocking',
+              source: 'graph',
+              origin: 'runtime',
+              kind: 'user-input',
+              interactionKind: 'supplemental-input',
+              requestedBy: 'libu-governance',
+              reason: 'budget confirmation required',
+              createdAt: '2026-04-17T00:00:00.000Z'
+            }
+          ],
+          createdAt: '2026-04-17T00:00:00.000Z',
+          updatedAt: '2026-04-17T00:00:00.000Z'
+        }
+      ],
+      learningJobs: [],
+      learningQueue: [],
+      pendingExecutions: [],
+      channelDeliveries: [],
+      chatSessions: [],
+      chatMessages: [],
+      chatEvents: [],
+      chatCheckpoints: [],
+      crossCheckEvidence: [],
+      governance: {
+        disabledSkillSourceIds: [],
+        disabledCompanyWorkerIds: [],
+        disabledConnectorIds: [],
+        configuredConnectors: [],
+        connectorDiscoveryHistory: [],
+        connectorPolicyOverrides: [],
+        capabilityPolicyOverrides: [],
+        capabilityGovernanceProfiles: [],
+        ministryGovernanceProfiles: [],
+        specialistGovernanceProfiles: [],
+        workerGovernanceProfiles: [],
+        counselorSelectorConfigs: [],
+        approvalScopePolicies: [],
+        learningConflictScan: {
+          scannedAt: '',
+          conflictPairs: [],
+          mergeSuggestions: [],
+          manualReviewQueue: []
+        }
+      },
+      governanceAudit: [],
+      usageHistory: [],
+      evalHistory: [],
+      usageAudit: []
+    };
+
+    await repository.save(snapshot as any);
+
+    const loaded = await repository.load();
+
+    expect(loaded.tasks[0]?.activeInterrupt?.id).toBe('interrupt-1');
+    expect(loaded.tasks[0]?.interruptHistory).toHaveLength(1);
+  });
 });

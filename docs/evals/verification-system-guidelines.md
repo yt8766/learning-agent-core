@@ -3,7 +3,7 @@
 状态：current
 文档类型：evaluation
 适用范围：workspace 根包、`packages/*`、`apps/*`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本文件将“验证体系需求”收敛为当前仓库可直接执行的统一规范，供后续 AI 与开发者在新增功能、修复缺陷、重构与跨包协作时复用。
 
@@ -73,6 +73,8 @@
 
 除上述验证层外，当前仓库还强制执行：
 
+- `prettier` 格式化
+- `eslint` 静态检查与可自动修复项收口
 - package boundary 检查
 - backend structure 检查
 - architecture 聚合检查
@@ -120,6 +122,8 @@
 - `Vitest`
 - `zod`
 - `promptfoo`
+- `prettier`
+- `eslint`
 - 根级现有脚本与 `pnpm` 命令
 
 补充说明：
@@ -129,19 +133,25 @@
 - 结构化输出与 schema 校验默认优先 `zod`
 - 当前 Turbo 只安全接入了根级治理校验入口：`check:docs` 与 `check:architecture`
 - 根级 `typecheck`、`build` 与基于包图的 `test` 任务暂不直接切到 Turbo pipeline；仓库现存 `@agent/runtime` 与多个 `agents/*` 的循环依赖，直接运行对应 Turbo task 会触发 cyclic dependency 错误
+- 根级 `start:dev` 也不应继续经由 `turbo start:dev` 走 package graph；当前根级入口固定代理到 `apps/backend/agent-server`，避免开发启动被现有循环依赖阻断
 - 当前已新增 Turbo-only 包级验证通道：
   - `turbo:typecheck`
   - `turbo:test:unit`
   - `turbo:test:integration`
 - 这条通道用于单包缓存、`--filter` 与执行预览，不替代根级 `pnpm verify`
 - 当前已新增根级受影响范围入口：
+  - `pnpm lint:prettier:affected`
+  - `pnpm lint:eslint:affected`
   - `pnpm typecheck:affected`
   - `pnpm test:spec:affected`
   - `pnpm test:unit:affected`
   - `pnpm test:demo:affected`
   - `pnpm test:integration:affected`
+  - `pnpm eval:prompts:affected`
   - `pnpm verify:affected`
-- `verify:affected` 默认先执行治理门槛与受影响范围 Spec，再执行受影响包的 Turbo-only Type / Unit / Demo / Integration
+- `verify:affected` 默认先执行治理门槛与受影响范围 Spec，再执行受影响包的 Type / Unit / Demo / Integration
+- `Eval` 当前保留为独立入口：`pnpm eval:prompts:affected`
+- 受影响范围入口默认读取环境变量 `VERIFY_BASE_REF`；未显式配置时回落到 `origin/main`
 - `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
 - 对存在额外模板或脚手架依赖的宿主，应使用宿主级例外补充 `inputs`；当前仓库里的 scaffold 回归已迁回 `packages/tools` 测试与 integration，不再保留独立 demo 例外
@@ -307,23 +317,49 @@ pnpm eval:prompts
 pnpm eval:prompts:view
 ```
 
+## 5.7 治理门槛验证
+
+`prettier` 与 `eslint` 不归入 Type / Spec / Unit / Demo / Integration / Eval 任一单独测试层，但它们属于当前仓库验证体系的阻塞型治理门槛，默认不能省略。
+
+当前固定要求：
+
+- 代码改动默认必须确保格式与静态 lint 规则收口
+- `prettier` 负责统一格式、Markdown/JSON/CSS/TS 等可自动格式化文件的一致性
+- `eslint` 负责发现未使用变量、危险模式、React/TS 约束和可自动修复的规范问题
+- 不允许以“类型已通过”“测试已通过”替代 `eslint` / `prettier`
+- 不允许为了通过 `eslint` 而静默关闭关键规则、扩大忽略范围或引入无意义规避代码
+
+统一入口：
+
+```bash
+pnpm lint:prettier
+pnpm lint:eslint
+pnpm lint:prettier:check
+pnpm lint:eslint:check
+pnpm lint:prettier:affected
+pnpm lint:eslint:affected
+pnpm check
+```
+
+执行约束：
+
+- `pnpm check` 当前是重型全量入口，串联 `prettier + eslint + 测试 + 类型 + architecture`
+- 日常交付不一定每次都跑完整 `pnpm check`，但必须至少确保本轮改动范围内的 `prettier` 与 `eslint` 问题已收口
+- 根级 `pnpm verify` 当前已纳入 `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check`
+- 受影响范围交付默认优先使用 `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected`
+- 纯文档改动至少执行 `pnpm check:docs`；如果文档改动同时触达代码块、配置样例或脚本片段并可能影响格式规则，仍应补充相应格式检查
+
 ## 6. 各模块最低验收标准
 
 当前仓库不再按外部 RAG SDK 的 `core/runtime/indexing/eval` 目录硬套，而是按本仓库真实模块划分执行。
 
-### 6.1 `packages/shared`
-
-- 类型检查
-- DTO / schema / normalize 逻辑单测
-- 改共享 contract 时补调用方回归
-
-### 6.2 `packages/config`
+### 6.1 `packages/config`
 
 - 类型检查
 - settings / profile / policy schema 测试
 - 环境变量覆盖与默认值回归
 
-### 6.3 `packages/model`
+### 6.2 `packages/adapters`
 
 - 类型检查
 - provider normalize / factory 单测
@@ -405,7 +441,15 @@ pnpm test:demo
 pnpm test:integration
 pnpm test:coverage
 pnpm eval:prompts
+pnpm eval:prompts:affected
+pnpm lint:prettier
+pnpm lint:eslint
+pnpm lint:prettier:check
+pnpm lint:eslint:check
+pnpm lint:prettier:affected
+pnpm lint:eslint:affected
 pnpm lint:tsc
+pnpm check
 pnpm check:package-boundaries
 pnpm check:architecture
 ```
@@ -415,6 +459,29 @@ pnpm check:architecture
 - `pnpm check` 当前是重型全量检查，包含 prettier、eslint、测试、类型与架构检查
 - 日常改动不一定每次都跑完整 `pnpm check`，但交付前应至少覆盖受影响范围所需的验证组合
 
+## 7.1 CI 对齐规则
+
+CI 流程也必须与本文件的验证入口保持一致，不能长期维持另一套“文档写一套、workflow 跑另一套”的规则。
+
+当前固定映射如下：
+
+- PR 增量校验：`/.github/workflows/pr-check.yml`
+  - 代码改动默认执行 `pnpm verify:affected`
+  - `VERIFY_BASE_REF` 默认对齐到 `origin/${base_ref}`，确保受影响范围判断与目标分支一致
+  - 纯文档改动至少执行 `pnpm check:docs`
+  - prompt 敏感改动额外执行 `pnpm eval:prompts:affected`
+- main 全量校验：`/.github/workflows/main-check.yml`
+  - 默认执行 `pnpm verify`
+  - prompt 回归独立执行 `pnpm eval:prompts`
+  - `pnpm build`、覆盖率基线或其他非验证体系附加检查可以追加在 `pnpm verify` 之后，但不能替代 `pnpm verify`
+- lockfile 漂移检查继续通过 `node ./scripts/check-lockfile-sync.js` 提前失败；它属于 CI 前置门，不替代 `pnpm install --frozen-lockfile`
+
+补充约束：
+
+- 不要在 CI 中把五层验证重新拆散成“只跑 lint / tsc / test”的旧式拼装流来替代 `pnpm verify` 或 `pnpm verify:affected`
+- 如果因为 secrets、外部 API 或 prompt artifact 上传需求把 Eval 单独拆成 job，必须在文档中明确这是同一验证体系里的独立层，不得与五层验证主入口语义冲突
+- 当根脚本、受影响范围脚本或工作流入口发生变化时，必须同步更新本文件、相关规范文档与对应 workflow，避免再次漂移
+
 ## 8. 标准执行顺序
 
 每完成一个功能、缺陷修复或重构，默认按以下顺序推进：
@@ -423,9 +490,11 @@ pnpm check:architecture
 2. 完成实现
 3. 先跑新增测试或受影响测试
 4. 再跑对应类型检查
-5. 如涉及主链或跨包协作，再跑集成验证
-6. 如涉及 prompt / 模型结构化输出，再跑 eval 回归
-7. 同步更新文档
+5. 再收口 `prettier` 与 `eslint` 治理门槛
+6. 如涉及主链或跨包协作，再跑集成验证
+7. 如涉及 prompt / 模型结构化输出，再跑 eval 回归
+8. 如走受影响范围验证，优先确认 `VERIFY_BASE_REF` 是否正确
+9. 同步更新文档
 
 如果改动涉及 `packages/*`，优先补：
 
@@ -445,6 +514,7 @@ pnpm --dir apps/backend/agent-server build
 
 - 只改代码，不补任何自动化验证
 - 只靠人工页面点击，不留回归保护
+- 改动代码后不收口 `prettier` 或 `eslint`
 - 新增稳定结构化 contract 却没有 schema 校验
 - 修改 graph / interrupt / recover 主链却不补流程级测试
 - 修改共享 DTO、SSE payload、tool result 后不补调用方验证
@@ -462,6 +532,7 @@ pnpm --dir apps/backend/agent-server build
 - 稳定结构化输出补 `zod` schema 与 parse 测试
 - prompt 或模型结构化合同改动补 eval
 - 至少跑受影响范围的 `tsc --noEmit`
+- 收口 `prettier` 与 `eslint` 治理门槛
 - 涉及共享包优先跑 `pnpm build:lib`
 - 改完代码后同步更新文档
 

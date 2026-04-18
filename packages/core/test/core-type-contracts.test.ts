@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  ActionIntent,
+  ApprovalScope,
   ApprovalDecisionRecord,
   ApprovalScopePolicyRecord,
+  CapabilityAugmentationRecord,
+  CapabilityAttachmentRecord,
+  CapabilityGovernanceProfileRecord,
   ConnectorCapabilityUsageRecord,
   ConnectorHealthRecord,
   ConnectorKnowledgeIngestionSummary,
+  CompanyAgentRecord,
   DeliveryCitationRecord,
   DeliverySourceSummaryRecord,
   EvidenceRecord,
+  EvaluationResult,
+  ExecutionPlanMode,
   ExecutionTrace,
   HealthCheckResult,
+  InstalledSkillRecord,
+  LearningSourceType,
   LlmUsageRecord,
   QueueStateRecord,
   MemoryRecord,
@@ -18,12 +28,14 @@ import type {
   PlatformApprovalRecord,
   PlanDraftRecord,
   PlanQuestionRecord,
+  RequestedExecutionHints,
   ManagerPlan,
   AgentMessageRecord,
   AgentExecutionState,
   ChatEventRecord,
   ChatCheckpointRecord,
   ChatMessageRecord,
+  ChatRole,
   ChatSessionRecord,
   ChatThinkState,
   ChatThoughtChainItem,
@@ -34,66 +46,165 @@ import type {
   ThoughtGraphNode,
   TaskRecord,
   RuleRecord,
+  SkillCard,
+  SkillInstallReceipt,
+  SkillManifestRecord,
+  SkillSourceRecord,
+  ToolExecutionResult,
+  TrustClass,
+  WorkflowVersionRecord,
+  GovernanceProfileRecord,
   SharedPlatformConsoleRecord
 } from '../src';
 import {
   AgentExecutionStateSchema,
   AgentMessageRecordSchema,
+  ApprovalRequestChatMessageCardSchema,
+  ApprovalScopeValues,
   ApprovalRecordSchema,
+  CapabilityCatalogChatMessageCardSchema,
+  ChatCheckpointAgentStatesSchema,
+  ChatCheckpointCursorFieldsSchema,
+  ChatCheckpointMetadataSchema,
+  ChatCheckpointPendingApprovalsSchema,
   ChatCheckpointRecordSchema,
+  ChatCheckpointSharedStringRefsSchema,
+  ChatCheckpointSpecialistStateSchema,
+  ChatApprovalRequestPreviewItemSchema,
+  ChatCapabilityCatalogGroupSchema,
+  ChatCapabilityCatalogItemSchema,
   ChatEventRecordSchema,
+  ChatMessageCardSchema,
   ChatMessageRecordSchema,
+  ChatPlanQuestionCardStatusSchema,
+  ChatSkillDraftContractSchema,
   ChatSessionRecordSchema,
   ChatThinkStateSchema,
   ChatThoughtChainItemSchema,
+  ChatRoleValues,
   ApprovalPolicyRecordSchema,
   ApprovalScopePolicyRecordSchema,
   buildApprovalScopeMatchKey,
   BlackboardStateRecordSchema,
+  BlackboardRefsSchema,
+  CapabilityAugmentationRecordSchema,
   BudgetGateStateRecordSchema,
+  CapabilityAttachmentRecordSchema,
+  CapabilityGovernanceProfileRecordSchema,
+  CompanyAgentRecordSchema,
   ComplexTaskPlanRecordSchema,
+  ComplexTaskPlanDependencySchema,
   ContextSliceRecordSchema,
+  ContextSliceRecentTurnSchema,
+  ContextFilterRecordSchema,
   ConnectorCapabilityUsageRecordSchema,
   ConnectorHealthRecordSchema,
   ConnectorKnowledgeIngestionSummarySchema,
+  CriticStateRecordSchema,
   CritiqueResultRecordSchema,
   CurrentSkillExecutionRecordSchema,
+  CreateTaskDtoSchema,
+  CounselorSelectorSchema,
+  DispatchChainNodeSchema,
   DispatchInstructionSchema,
   EntryDecisionRecordSchema,
+  EvaluationReportRecordSchema,
+  EvaluationResultSchema,
+  FinalReviewRecordSchema,
+  GuardrailStateRecordSchema,
+  ImperialDirectIntentSchema,
+  InternalSubAgentResultSchema,
   ExecutionPlanRecordSchema,
+  ExecutionPlanModeValues,
   GovernanceReportRecordSchema,
+  GovernanceProfileRecordSchema,
+  GovernanceDimensionSchema,
+  GovernanceInterruptLoadSchema,
+  GovernanceReviewOutcomeSchema,
   GovernanceScoreRecordSchema,
   HealthCheckResultSchema,
+  InstalledSkillRecordSchema,
+  BudgetStateSchema,
+  LearningEvaluationRecordSchema,
+  KnowledgeIndexStateRecordSchema,
+  KnowledgeIngestionStateRecordSchema,
   isCitationEvidenceSource,
+  LearningSourceTypeValues,
   LlmUsageRecordSchema,
   ManagerPlanSchema,
   MemoryEventRecordSchema,
   MemoryRecordSchema,
   MemorySearchRequestSchema,
   MemorySearchResultSchema,
+  PermissionCheckResultSchema,
   PartialAggregationRecordSchema,
+  PartialAggregationOutputKindSchema,
+  PartialAggregationPolicySchema,
   PlanDraftRecordSchema,
+  PlanDraftMicroBudgetSchema,
+  PlanDraftQuestionSetSchema,
+  PlanQuestionChatMessageCardSchema,
   PlanQuestionRecordSchema,
+  PreflightGovernanceDecisionSchema,
+  RequestedExecutionHintsSchema,
+  SkillInstallReceiptSchema,
+  SkillManifestRecordSchema,
+  ReviewDecisionValues,
   ReflectionRecordSchema,
   ResolutionCandidateRecordSchema,
   McpCapabilitySchema,
   QueueStateRecordSchema,
+  RiskLevelValues,
+  WorkflowVersionRecordSchema,
   MicroLoopStateRecordSchema,
   SpecialistFindingRecordSchema,
   SpecialistLeadRecordSchema,
   SpecialistSupportRecordSchema,
+  SkillSearchStateRecordSchema,
   TaskBackgroundLearningStateSchema,
+  TaskBackgroundLearningModeSchema,
+  TaskBackgroundLearningStatusSchema,
   TaskCheckpointCursorStateSchema,
+  TaskCheckpointGraphMicroLoopStateSchema,
+  TaskCheckpointGraphMicroLoopStateValueSchema,
+  TaskCheckpointGraphMicroLoopStatusSchema,
   TaskCheckpointGraphStateSchema,
+  TaskCheckpointGraphRevisionStateSchema,
   TaskCheckpointStreamStatusSchema,
   TaskModeGateStateSchema,
+  TaskRecordAgentOutputsSchema,
+  TaskRecordExecutionStateSchema,
+  TaskRecordPlanningStateSchema,
   ChannelIdentitySchema,
   CheckpointRefSchema,
+  SkillCardSchema,
+  SkillSourceRecordSchema,
+  SkillDraftCreatedChatMessageCardSchema,
+  InstallSkillDtoSchema,
+  RemoteSkillSearchDtoSchema,
+  RemoteSkillSearchResultRecordSchema,
+  InstallRemoteSkillDtoSchema,
+  ResolveSkillInstallDtoSchema,
+  ConfigureConnectorDtoSchema,
+  ConfiguredConnectorRecordSchema,
+  ConnectorDiscoveryHistoryRecordSchema,
   ThoughtGraphRecordSchema,
   ThoughtGraphEdgeSchema,
   ThoughtGraphNodeSchema,
   TaskRecordSchema,
+  ToolAttachmentRecordSchema,
+  ToolCapabilityTypeSchema,
+  ToolDefinitionSchema,
+  ToolExecutionRequestSchema,
+  ToolExecutionResultSchema,
+  ToolFamilyRecordSchema,
+  ToolPermissionScopeSchema,
+  ToolUsageSummaryRecordSchema,
+  SandboxStateRecordSchema,
+  TrustClassValues,
+  TrustClassSchema,
   UserProfileRecordSchema,
+  RunCancelledChatMessageCardSchema,
   matchesApprovalScopePolicy
 } from '../src';
 
@@ -133,6 +244,70 @@ describe('@agent/core type contracts', () => {
         latestTraceSummary: 'connector policy passed'
       }).approvalCount
     ).toBe(1);
+  });
+
+  it('keeps evaluation result as a schema-first core contract', () => {
+    const evaluation: EvaluationResult = {
+      success: true,
+      quality: 'high',
+      shouldRetry: false,
+      shouldWriteMemory: false,
+      shouldCreateRule: false,
+      shouldExtractSkill: true,
+      notes: ['review contract moved to core']
+    };
+
+    expect(EvaluationResultSchema.parse(evaluation).shouldExtractSkill).toBe(true);
+  });
+
+  it('parses tool governance contracts from core-hosted schemas', () => {
+    expect(ToolCapabilityTypeSchema.parse('local-tool')).toBe('local-tool');
+    expect(ToolPermissionScopeSchema.parse('readonly')).toBe('readonly');
+    expect(PreflightGovernanceDecisionSchema.parse('allow')).toBe('allow');
+    expect(
+      ToolFamilyRecordSchema.parse({
+        id: 'filesystem',
+        displayName: 'Filesystem',
+        description: 'workspace file operations',
+        capabilityType: 'local-tool',
+        ownerType: 'shared'
+      }).id
+    ).toBe('filesystem');
+    expect(
+      ToolDefinitionSchema.parse({
+        name: 'filesystem.read',
+        description: 'read project files',
+        family: 'filesystem',
+        category: 'knowledge',
+        riskLevel: 'low',
+        requiresApproval: false,
+        timeoutMs: 5000,
+        sandboxProfile: 'readonly',
+        capabilityType: 'local-tool',
+        isReadOnly: true,
+        isConcurrencySafe: true,
+        isDestructive: false,
+        supportsStreamingDispatch: false,
+        permissionScope: 'readonly',
+        inputSchema: {}
+      }).category
+    ).toBe('knowledge');
+    expect(
+      ToolExecutionRequestSchema.parse({
+        taskId: 'task-1',
+        toolName: 'filesystem.read',
+        intent: 'read_file',
+        input: { path: 'README.md' },
+        requestedBy: 'agent'
+      }).toolName
+    ).toBe('filesystem.read');
+    expect(
+      PermissionCheckResultSchema.parse({
+        decision: 'allow',
+        reason: 'policy matched',
+        reasonCode: 'static_policy_allow'
+      }).decision
+    ).toBe('allow');
   });
 
   it('keeps delivery source summary and connector capability usage contract stable', () => {
@@ -349,7 +524,13 @@ describe('@agent/core type contracts', () => {
       TaskCheckpointGraphStateSchema.parse({
         status: 'running',
         currentStep: 'delivery',
-        retryCount: 1
+        retryCount: 1,
+        microLoopState: {
+          status: 'active',
+          state: 'retrying',
+          attempt: 1
+        },
+        revisionState: 'revising'
       }).status
     ).toBe('running');
 
@@ -370,6 +551,19 @@ describe('@agent/core type contracts', () => {
         approvalCursor: 1,
         learningCursor: 0
       }).messageCursor
+    ).toBe(2);
+
+    expect(TaskBackgroundLearningStatusSchema.parse('running')).toBe('running');
+    expect(TaskBackgroundLearningModeSchema.parse('dream-task')).toBe('dream-task');
+    expect(TaskCheckpointGraphMicroLoopStatusSchema.parse('completed')).toBe('completed');
+    expect(TaskCheckpointGraphMicroLoopStateValueSchema.parse('exhausted')).toBe('exhausted');
+    expect(TaskCheckpointGraphRevisionStateSchema.parse('blocked')).toBe('blocked');
+    expect(
+      TaskCheckpointGraphMicroLoopStateSchema.parse({
+        status: 'active',
+        state: 'retrying',
+        attempt: 2
+      }).attempt
     ).toBe(2);
   });
 
@@ -423,6 +617,93 @@ describe('@agent/core type contracts', () => {
         createdAt: '2026-04-16T00:00:00.000Z'
       }).card?.type
     ).toBe('skill_draft_created');
+  });
+
+  it('parses named chat card sub-schemas from tasking chat schema host', () => {
+    expect(
+      ChatApprovalRequestPreviewItemSchema.parse({
+        label: 'Path',
+        value: 'packages/core/src/tasking/schemas/chat.ts'
+      }).label
+    ).toBe('Path');
+    expect(
+      ApprovalRequestChatMessageCardSchema.parse({
+        type: 'approval_request',
+        intent: 'write_file',
+        preview: [{ label: 'Path', value: 'README.md' }]
+      }).type
+    ).toBe('approval_request');
+    expect(ChatPlanQuestionCardStatusSchema.parse('answered')).toBe('answered');
+    expect(
+      PlanQuestionChatMessageCardSchema.parse({
+        type: 'plan_question',
+        title: 'Confirm direction',
+        questions: [
+          {
+            id: 'q-1',
+            question: 'Which path should we take?',
+            questionType: 'direction',
+            options: [{ id: 'a', label: 'A', description: 'Use path A' }]
+          }
+        ]
+      }).type
+    ).toBe('plan_question');
+    expect(
+      RunCancelledChatMessageCardSchema.parse({
+        type: 'run_cancelled',
+        reason: 'User requested stop'
+      }).type
+    ).toBe('run_cancelled');
+    expect(
+      ChatCapabilityCatalogItemSchema.parse({
+        id: 'cap-1',
+        displayName: 'Filesystem Write'
+      }).displayName
+    ).toBe('Filesystem Write');
+    expect(
+      ChatCapabilityCatalogGroupSchema.parse({
+        key: 'tools',
+        label: 'Tools',
+        kind: 'tool',
+        items: [{ id: 'cap-1', displayName: 'Filesystem Write' }]
+      }).kind
+    ).toBe('tool');
+    expect(
+      CapabilityCatalogChatMessageCardSchema.parse({
+        type: 'capability_catalog',
+        title: 'Available capabilities',
+        groups: [{ key: 'tools', label: 'Tools', kind: 'tool', items: [] }]
+      }).type
+    ).toBe('capability_catalog');
+    expect(
+      ChatSkillDraftContractSchema.parse({
+        requiredTools: ['filesystem.read'],
+        optionalTools: [],
+        approvalSensitiveTools: [],
+        preferredConnectors: [],
+        requiredConnectors: []
+      }).requiredTools
+    ).toEqual(['filesystem.read']);
+    expect(
+      SkillDraftCreatedChatMessageCardSchema.parse({
+        type: 'skill_draft_created',
+        skillId: 'skill-1',
+        displayName: 'Repo Auditor',
+        description: 'Audit the repo',
+        ownerType: 'shared',
+        scope: 'workspace',
+        status: 'draft',
+        enabled: true,
+        nextActions: ['review']
+      }).type
+    ).toBe('skill_draft_created');
+    expect(
+      ChatMessageCardSchema.parse({
+        type: 'capability_catalog',
+        title: 'Available capabilities',
+        groups: [{ key: 'tools', label: 'Tools', kind: 'tool', items: [] }]
+      }).type
+    ).toBe('capability_catalog');
   });
 
   it('parses chat session and channel identity contracts from schema-first core definitions', () => {
@@ -550,8 +831,345 @@ describe('@agent/core type contracts', () => {
 
     expect(ApprovalRecordSchema.parse(approval).decision).toBe('pending');
     expect(AgentExecutionStateSchema.parse(agentState).role).toBe('research');
+    expect(
+      ChatCheckpointPendingApprovalsSchema.parse({
+        pendingApprovals: [approval]
+      }).pendingApprovals[0]?.taskId
+    ).toBe('task-1');
+    expect(
+      ChatCheckpointAgentStatesSchema.parse({
+        agentStates: [agentState]
+      }).agentStates[0]?.agentId
+    ).toBe('agent-1');
+    expect(
+      ChatCheckpointMetadataSchema.parse({
+        checkpointId: 'checkpoint-1',
+        sessionId: 'session-1',
+        taskId: 'task-1',
+        createdAt: '2026-04-16T00:00:00.000Z',
+        updatedAt: '2026-04-16T00:00:00.000Z'
+      }).checkpointId
+    ).toBe('checkpoint-1');
+    expect(
+      ChatCheckpointCursorFieldsSchema.parse({
+        traceCursor: 1,
+        messageCursor: 1,
+        approvalCursor: 1,
+        learningCursor: 0
+      }).traceCursor
+    ).toBe(1);
+    expect(
+      ChatCheckpointSharedStringRefsSchema.parse({
+        reusedMemories: ['memory-1'],
+        connectorRefs: ['connector-1']
+      }).connectorRefs?.[0]
+    ).toBe('connector-1');
+    expect(
+      ChatCheckpointSpecialistStateSchema.parse({
+        supportingSpecialists: [
+          {
+            id: 'risk-compliance',
+            displayName: 'Risk',
+            domain: 'risk-compliance'
+          }
+        ]
+      }).supportingSpecialists?.[0]?.domain
+    ).toBe('risk-compliance');
+    expect(
+      TaskRecordExecutionStateSchema.parse({
+        currentStep: 'delivery',
+        retryCount: 1,
+        microLoopState: {
+          state: 'retrying',
+          attempt: 1,
+          maxAttempts: 2,
+          updatedAt: '2026-04-16T00:00:00.000Z'
+        }
+      }).currentStep
+    ).toBe('delivery');
+    expect(
+      TaskRecordPlanningStateSchema.parse({
+        executionMode: 'plan',
+        planDraft: {
+          summary: '先读上下文',
+          autoResolved: [],
+          openQuestions: [],
+          assumptions: []
+        }
+      }).executionMode
+    ).toBe('plan');
+    expect(
+      TaskRecordAgentOutputsSchema.parse({
+        agentStates: [agentState],
+        messages: []
+      }).agentStates[0]?.agentId
+    ).toBe('agent-1');
     expect(ChatCheckpointRecordSchema.parse(checkpoint).pendingApprovals[0]?.taskId).toBe('task-1');
     expect(TaskRecordSchema.parse(task).goal).toContain('runtime');
+  });
+
+  it('parses formerly-any checkpoint and task runtime support fields from explicit schemas', () => {
+    expect(
+      SkillSearchStateRecordSchema.parse({
+        capabilityGapDetected: true,
+        status: 'suggested',
+        suggestions: [
+          {
+            id: 'skill-1',
+            kind: 'remote-skill',
+            displayName: 'Runtime Audit Skill',
+            summary: '补齐 runtime 审计能力',
+            score: 0.91,
+            availability: 'installable-remote',
+            reason: '检测到 runtime 能力缺口',
+            requiredCapabilities: ['filesystem.read'],
+            triggerReason: 'capability_gap_detected'
+          }
+        ],
+        safetyNotes: ['需要先评估来源可信度'],
+        query: 'runtime audit'
+      }).suggestions[0]?.kind
+    ).toBe('remote-skill');
+
+    expect(
+      BudgetStateSchema.parse({
+        stepBudget: 8,
+        stepsConsumed: 3,
+        retryBudget: 1,
+        retriesConsumed: 0,
+        sourceBudget: 6,
+        sourcesConsumed: 2,
+        budgetInterruptState: {
+          status: 'soft-threshold-triggered',
+          interactionKind: 'approval'
+        }
+      }).budgetInterruptState?.status
+    ).toBe('soft-threshold-triggered');
+
+    expect(
+      LearningEvaluationRecordSchema.parse({
+        score: 92,
+        confidence: 'high',
+        notes: ['evidence stable'],
+        recommendedCandidateIds: ['candidate-1'],
+        autoConfirmCandidateIds: ['candidate-1'],
+        sourceSummary: {
+          externalSourceCount: 1,
+          internalSourceCount: 2,
+          reusedMemoryCount: 1,
+          reusedRuleCount: 0,
+          reusedSkillCount: 1
+        }
+      }).confidence
+    ).toBe('high');
+
+    expect(
+      ToolAttachmentRecordSchema.parse({
+        toolName: 'filesystem.read',
+        family: 'filesystem',
+        ownerType: 'runtime-derived',
+        attachedAt: '2026-04-17T00:00:00.000Z',
+        attachedBy: 'runtime',
+        preferred: true
+      }).ownerType
+    ).toBe('runtime-derived');
+
+    expect(
+      ToolAttachmentRecordSchema.parse({
+        toolName: 'connector.github',
+        family: 'connector',
+        ownerType: 'user-attached',
+        ownerId: 'workspace-github',
+        attachedAt: '2026-04-17T00:00:00.000Z',
+        attachedBy: 'user',
+        preferred: true
+      }).ownerType
+    ).toBe('user-attached');
+
+    expect(
+      ToolUsageSummaryRecordSchema.parse({
+        toolName: 'filesystem.read',
+        family: 'filesystem',
+        capabilityType: 'local-tool',
+        status: 'completed',
+        route: 'local',
+        usedAt: '2026-04-17T00:00:00.000Z'
+      }).status
+    ).toBe('completed');
+
+    expect(
+      ContextFilterRecordSchema.parse({
+        node: 'context_filter',
+        status: 'completed',
+        filteredContextSlice: {
+          summary: 'trimmed context',
+          historyTraceCount: 2,
+          evidenceCount: 1,
+          specialistCount: 1,
+          ministryCount: 1
+        },
+        createdAt: '2026-04-17T00:00:00.000Z',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).node
+    ).toBe('context_filter');
+
+    expect(
+      GuardrailStateRecordSchema.parse({
+        stage: 'pre',
+        verdict: 'pass_through',
+        summary: 'safe to continue',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).verdict
+    ).toBe('pass_through');
+
+    expect(
+      CriticStateRecordSchema.parse({
+        node: 'critic',
+        decision: 'rewrite_required',
+        summary: 'tighten evidence language',
+        updatedAt: '2026-04-17T00:00:00.000Z',
+        createdAt: '2026-04-17T00:00:00.000Z'
+      }).decision
+    ).toBe('rewrite_required');
+
+    expect(
+      SandboxStateRecordSchema.parse({
+        node: 'sandbox',
+        stage: 'gongbu',
+        status: 'running',
+        attempt: 1,
+        maxAttempts: 2,
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).stage
+    ).toBe('gongbu');
+
+    expect(
+      FinalReviewRecordSchema.parse({
+        node: 'final_review',
+        ministry: 'xingbu',
+        decision: 'pass',
+        summary: 'ready to deliver',
+        interruptRequired: false,
+        createdAt: '2026-04-17T00:00:00.000Z',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).decision
+    ).toBe('pass');
+
+    expect(
+      KnowledgeIngestionStateRecordSchema.parse({
+        node: 'knowledge_ingestion',
+        store: 'wenyuan',
+        status: 'processing',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).store
+    ).toBe('wenyuan');
+
+    expect(
+      KnowledgeIndexStateRecordSchema.parse({
+        node: 'knowledge_index',
+        store: 'cangjing',
+        indexStatus: 'building',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).indexStatus
+    ).toBe('building');
+
+    expect(
+      EvaluationReportRecordSchema.parse({
+        id: 'report-1',
+        ministry: 'libu-governance',
+        score: 0.91,
+        summary: 'governance stable',
+        rlaifNotes: ['strong evidence'],
+        derivedFromTaskId: 'task-1',
+        createdAt: '2026-04-17T00:00:00.000Z',
+        updatedAt: '2026-04-17T00:00:00.000Z'
+      }).score
+    ).toBe(0.91);
+
+    expect(
+      InternalSubAgentResultSchema.parse({
+        agentId: 'agent-1',
+        status: 'needs_user_input',
+        interactionKind: 'plan-question',
+        questions: [
+          {
+            id: 'q-1',
+            question: '继续收紧哪一层？',
+            questionType: 'direction',
+            options: [{ id: 'o-1', label: 'tasking', description: '继续 tasking facade 收口' }]
+          }
+        ],
+        createdAt: '2026-04-17T00:00:00.000Z'
+      }).status
+    ).toBe('needs_user_input');
+  });
+
+  it('parses skills-search dto and connector contracts from schema-first core definitions', () => {
+    expect(
+      InstallSkillDtoSchema.parse({
+        manifestId: 'manifest-1',
+        actor: 'runtime-center'
+      }).manifestId
+    ).toBe('manifest-1');
+
+    expect(
+      RemoteSkillSearchDtoSchema.parse({
+        query: 'runtime audit',
+        triggerReason: 'capability_gap_detected',
+        limit: 5
+      }).query
+    ).toBe('runtime audit');
+
+    expect(
+      RemoteSkillSearchResultRecordSchema.parse({
+        query: 'runtime audit',
+        discoverySource: 'market-index',
+        triggerReason: 'capability_gap_detected',
+        executedAt: '2026-04-17T00:00:00.000Z',
+        results: []
+      }).discoverySource
+    ).toBe('market-index');
+
+    expect(
+      InstallRemoteSkillDtoSchema.parse({
+        repo: 'org/runtime-audit-skill',
+        triggerReason: 'user_requested'
+      }).repo
+    ).toBe('org/runtime-audit-skill');
+
+    expect(
+      ResolveSkillInstallDtoSchema.parse({
+        actor: 'reviewer',
+        reason: 'safe'
+      }).actor
+    ).toBe('reviewer');
+
+    expect(
+      ConfigureConnectorDtoSchema.parse({
+        templateId: 'github-mcp-template',
+        transport: 'stdio',
+        displayName: 'GitHub MCP'
+      }).templateId
+    ).toBe('github-mcp-template');
+
+    expect(
+      ConfiguredConnectorRecordSchema.parse({
+        connectorId: 'github-mcp',
+        configuredAt: '2026-04-17T00:00:00.000Z',
+        templateId: 'github-mcp-template',
+        transport: 'stdio'
+      }).connectorId
+    ).toBe('github-mcp');
+
+    expect(
+      ConnectorDiscoveryHistoryRecordSchema.parse({
+        connectorId: 'github-mcp',
+        discoveredAt: '2026-04-17T00:00:00.000Z',
+        discoveryMode: 'registered',
+        sessionState: 'connected',
+        discoveredCapabilities: ['filesystem.read']
+      }).sessionState
+    ).toBe('connected');
   });
 
   it('parses tasking health-check contract from schema-first core definition', () => {
@@ -566,6 +1184,109 @@ describe('@agent/core type contracts', () => {
       service: 'agent-server',
       now: '2026-04-15T00:00:00.000Z'
     });
+  });
+
+  it('parses capability augmentation contracts across dto and checkpoint boundaries', () => {
+    const augmentation: CapabilityAugmentationRecord = CapabilityAugmentationRecordSchema.parse({
+      id: 'augment-1',
+      kind: 'skill',
+      status: 'ready',
+      requestedBy: 'workflow',
+      targetKind: 'skill',
+      target: 'runtime-audit-skill',
+      reason: 'workflow requires structured runtime audit support',
+      owner: {
+        ownerType: 'shared',
+        capabilityType: 'skill',
+        scope: 'task',
+        trigger: 'workflow_required'
+      },
+      summary: 'attach runtime audit skill before execution',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z'
+    });
+
+    const dto = CreateTaskDtoSchema.parse({
+      goal: 'audit runtime task bootstrap',
+      capabilityAugmentations: [augmentation]
+    });
+
+    const checkpoint = ChatCheckpointRecordSchema.parse({
+      checkpointId: 'checkpoint-1',
+      sessionId: 'session-1',
+      taskId: 'task-1',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+      traceCursor: 1,
+      messageCursor: 1,
+      approvalCursor: 0,
+      learningCursor: 0,
+      graphState: {
+        status: 'running',
+        currentStep: 'task-bootstrap'
+      },
+      pendingApprovals: [],
+      agentStates: [],
+      capabilityAugmentations: [augmentation]
+    });
+
+    expect(dto.capabilityAugmentations?.[0]?.target).toBe('runtime-audit-skill');
+    expect(checkpoint.capabilityAugmentations?.[0]?.owner.capabilityType).toBe('skill');
+  });
+
+  it('rejects malformed capability augmentation payloads at dto boundary', () => {
+    expect(() =>
+      CreateTaskDtoSchema.parse({
+        goal: 'audit runtime task bootstrap',
+        capabilityAugmentations: [
+          {
+            id: 'augment-1',
+            kind: 'skill',
+            status: 'ready',
+            requestedBy: 'workflow',
+            reason: 'missing owner should fail',
+            createdAt: '2026-04-17T00:00:00.000Z',
+            updatedAt: '2026-04-17T00:00:00.000Z'
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
+  it('parses task records with capability augmentation overlays', () => {
+    const augmentation: CapabilityAugmentationRecord = {
+      id: 'augment-2',
+      kind: 'connector',
+      status: 'suggested',
+      requestedBy: 'supervisor',
+      targetKind: 'connector',
+      target: 'github-mcp-template',
+      reason: 'need connector before execution',
+      owner: {
+        ownerType: 'runtime-derived',
+        capabilityType: 'connector',
+        scope: 'task',
+        trigger: 'capability_gap_detected'
+      },
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z'
+    };
+
+    const task = TaskRecordSchema.parse({
+      id: 'task-augment-1',
+      goal: 'prepare github-backed runtime audit',
+      status: 'queued',
+      trace: [],
+      approvals: [],
+      agentStates: [],
+      messages: [],
+      capabilityAugmentations: [augmentation],
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z'
+    });
+
+    expect(task.capabilityAugmentations?.[0]?.targetKind).toBe('connector');
+    expect(task.capabilityAugmentations?.[0]?.owner.trigger).toBe('capability_gap_detected');
   });
 
   it('keeps planning and orchestration tasking contracts stable in core', () => {
@@ -683,11 +1404,36 @@ describe('@agent/core type contracts', () => {
     ).toBe('plan');
 
     expect(
+      CounselorSelectorSchema.parse({
+        strategy: 'manual',
+        candidateIds: ['c-1']
+      }).strategy
+    ).toBe('manual');
+    expect(
+      ImperialDirectIntentSchema.parse({
+        enabled: true,
+        trigger: 'known-capability',
+        requestedCapability: 'filesystem.write'
+      }).trigger
+    ).toBe('known-capability');
+    expect(DispatchChainNodeSchema.parse('dispatch_planner')).toBe('dispatch_planner');
+
+    expect(
       ExecutionPlanRecordSchema.parse({
         mode: 'execute',
         dispatchChain: ['entry_router', 'result_aggregator']
       }).dispatchChain?.[1]
     ).toBe('result_aggregator');
+
+    expect(
+      PartialAggregationPolicySchema.parse({
+        allowedOutputKinds: ['preview'],
+        requiresInterruptApprovalForProgress: true
+      }).allowedOutputKinds
+    ).toEqual(['preview']);
+    expect(PartialAggregationOutputKindSchema.parse('approved_lightweight_progress')).toBe(
+      'approved_lightweight_progress'
+    );
 
     expect(
       PartialAggregationRecordSchema.parse({
@@ -698,6 +1444,20 @@ describe('@agent/core type contracts', () => {
         createdAt: '2026-04-16T00:00:00.000Z'
       }).kind
     ).toBe('preview');
+
+    expect(
+      PlanDraftQuestionSetSchema.parse({
+        title: 'Clarify direction',
+        summary: 'Need one answer before planning'
+      }).title
+    ).toBe('Clarify direction');
+    expect(
+      PlanDraftMicroBudgetSchema.parse({
+        readOnlyToolLimit: 2,
+        readOnlyToolsUsed: 1,
+        budgetTriggered: false
+      }).readOnlyToolLimit
+    ).toBe(2);
 
     expect(
       DispatchInstructionSchema.parse({
@@ -746,6 +1506,13 @@ describe('@agent/core type contracts', () => {
     ).toBe('user');
 
     expect(
+      ContextSliceRecentTurnSchema.parse({
+        role: 'assistant',
+        content: '先确认 core host。'
+      }).role
+    ).toBe('assistant');
+
+    expect(
       CritiqueResultRecordSchema.parse({
         contractVersion: 'critique-result.v1',
         decision: 'pass',
@@ -775,6 +1542,13 @@ describe('@agent/core type contracts', () => {
     ).toBe('complex_task_plan');
 
     expect(
+      ComplexTaskPlanDependencySchema.parse({
+        from: 'planning',
+        to: 'orchestration'
+      }).to
+    ).toBe('orchestration');
+
+    expect(
       BlackboardStateRecordSchema.parse({
         node: 'blackboard_state',
         taskId: 'task-1',
@@ -783,6 +1557,14 @@ describe('@agent/core type contracts', () => {
         updatedAt: '2026-04-16T00:00:00.000Z'
       }).refs.evidenceCount
     ).toBe(0);
+
+    expect(
+      BlackboardRefsSchema.parse({
+        traceCount: 1,
+        evidenceCount: 2,
+        checkpointId: 'checkpoint-1'
+      }).checkpointId
+    ).toBe('checkpoint-1');
 
     expect(
       MicroLoopStateRecordSchema.parse({
@@ -834,6 +1616,26 @@ describe('@agent/core type contracts', () => {
         updatedAt: '2026-04-16T00:00:00.000Z'
       }).trustAdjustment
     ).toBe('promote');
+
+    expect(
+      GovernanceDimensionSchema.parse({
+        score: 0.9,
+        summary: '执行质量稳定'
+      }).score
+    ).toBe(0.9);
+    expect(
+      GovernanceReviewOutcomeSchema.parse({
+        decision: 'needs_human_approval',
+        summary: '需要人工确认'
+      }).decision
+    ).toBe('needs_human_approval');
+    expect(
+      GovernanceInterruptLoadSchema.parse({
+        interruptCount: 1,
+        microLoopCount: 2,
+        summary: '当前负载可控'
+      }).microLoopCount
+    ).toBe(2);
   });
 
   it('keeps queue and llm usage contracts stable in core', () => {
@@ -1066,5 +1868,194 @@ describe('@agent/core type contracts', () => {
         reasons: []
       }).coreMemories
     ).toEqual([]);
+  });
+
+  it('keeps intent and trust-class contracts stable in core', () => {
+    const intent: ActionIntent = 'write_file';
+    const trustClass: TrustClass = TrustClassSchema.parse('internal');
+
+    expect(intent).toBe('write_file');
+    expect(trustClass).toBe('internal');
+  });
+
+  it('exports primitive value collections from core without forcing downstream enum duplication', () => {
+    const approvalScope: ApprovalScope = ApprovalScopeValues[1];
+    const chatRole: ChatRole = ChatRoleValues[1];
+    const executionPlanMode: ExecutionPlanMode = ExecutionPlanModeValues[2];
+    const learningSourceType: LearningSourceType = LearningSourceTypeValues[0];
+
+    expect(RiskLevelValues).toEqual(['low', 'medium', 'high', 'critical']);
+    expect(ReviewDecisionValues).toEqual(['approved', 'retry', 'blocked']);
+    expect(TrustClassValues).toContain('internal');
+    expect(approvalScope).toBe('session');
+    expect(chatRole).toBe('assistant');
+    expect(executionPlanMode).toBe('imperial_direct');
+    expect(learningSourceType).toBe('execution');
+  });
+
+  it('parses capability hints and attachments from core-hosted schemas', () => {
+    const hints: RequestedExecutionHints = RequestedExecutionHintsSchema.parse({
+      requestedSpecialist: 'technical-architecture',
+      requestedCapability: 'filesystem.write',
+      preferredMode: 'workflow'
+    });
+    const attachment: CapabilityAttachmentRecord = CapabilityAttachmentRecordSchema.parse({
+      id: 'cap-1',
+      displayName: 'Filesystem Write',
+      kind: 'tool',
+      owner: {
+        ownerType: 'shared',
+        capabilityType: 'tool',
+        scope: 'workspace',
+        trigger: 'workflow_required'
+      },
+      enabled: true,
+      permission: 'write',
+      createdAt: '2026-04-16T00:00:00.000Z'
+    });
+
+    expect(hints.preferredMode).toBe('workflow');
+    expect(attachment.owner.scope).toBe('workspace');
+  });
+
+  it('keeps skill, governance profile, and tool execution result contracts stable in core', () => {
+    const skill: SkillCard = SkillCardSchema.parse({
+      id: 'skill-1',
+      name: 'Repo Auditor',
+      description: 'Summarize repo structure and risks.',
+      applicableGoals: ['audit repo'],
+      requiredTools: ['filesystem.read'],
+      steps: [{ title: 'Inspect', instruction: 'Read the repo', toolNames: ['filesystem.read'] }],
+      constraints: ['read only'],
+      successSignals: ['clear summary'],
+      riskLevel: 'low',
+      source: 'research',
+      status: 'stable',
+      createdAt: '2026-04-16T00:00:00.000Z',
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const capabilityProfile: CapabilityGovernanceProfileRecord = CapabilityGovernanceProfileRecordSchema.parse({
+      capabilityId: 'cap-1',
+      displayName: 'Filesystem Write',
+      ownerType: 'shared',
+      kind: 'tool',
+      trustLevel: 'high',
+      trustTrend: 'steady',
+      reportCount: 4,
+      promoteCount: 2,
+      holdCount: 1,
+      downgradeCount: 1,
+      passCount: 3,
+      reviseRequiredCount: 1,
+      blockCount: 0,
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const governanceProfile: GovernanceProfileRecord = GovernanceProfileRecordSchema.parse({
+      entityId: 'gongbu-code',
+      displayName: '工部',
+      entityKind: 'ministry',
+      trustLevel: 'high',
+      trustTrend: 'up',
+      reportCount: 8,
+      promoteCount: 5,
+      holdCount: 2,
+      downgradeCount: 1,
+      passCount: 7,
+      reviseRequiredCount: 1,
+      blockCount: 0,
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    });
+    const result: ToolExecutionResult = ToolExecutionResultSchema.parse({
+      ok: true,
+      outputSummary: 'Applied the workspace change.',
+      durationMs: 120
+    });
+
+    expect(skill.name).toBe('Repo Auditor');
+    expect(capabilityProfile.kind).toBe('tool');
+    expect(governanceProfile.entityKind).toBe('ministry');
+    expect(result.ok).toBe(true);
+  });
+
+  it('keeps skill source and manifest contracts schema-first in core', () => {
+    const source: SkillSourceRecord = SkillSourceRecordSchema.parse({
+      id: 'workspace-skills',
+      name: 'Workspace Skills',
+      kind: 'internal',
+      baseUrl: '/tmp/skills',
+      discoveryMode: 'local-dir',
+      trustClass: 'internal',
+      priority: 'workspace/internal',
+      enabled: true,
+      profilePolicy: {
+        enabledByProfile: true,
+        recommendedForProfiles: ['platform', 'cli'],
+        reason: 'workspace bootstrap skills'
+      }
+    });
+    const manifest: SkillManifestRecord = SkillManifestRecordSchema.parse({
+      id: 'repo_auditor',
+      name: 'Repo Auditor',
+      version: '1.0.0',
+      description: 'Audit repository structure and risks.',
+      publisher: 'workspace',
+      sourceId: source.id,
+      requiredCapabilities: ['documentation'],
+      approvalPolicy: 'none',
+      riskLevel: 'low',
+      entry: '/tmp/skills/repo-auditor/SKILL.md',
+      sourcePolicy: {
+        mode: 'internal-only'
+      },
+      preferredMinistries: ['gongbu-code'],
+      recommendedSpecialists: ['technical-architecture']
+    });
+
+    expect(source.profilePolicy?.recommendedForProfiles).toContain('cli');
+    expect(manifest.preferredMinistries).toContain('gongbu-code');
+  });
+
+  it('keeps installed skill, install receipt, and company agent records schema-first in core', () => {
+    const installed: InstalledSkillRecord = InstalledSkillRecordSchema.parse({
+      skillId: 'repo_auditor',
+      version: '1.0.0',
+      sourceId: 'workspace-skills',
+      installLocation: '/tmp/skills/repo-auditor/1.0.0',
+      installedAt: '2026-04-17T00:00:00.000Z',
+      status: 'installed',
+      receiptId: 'receipt-1'
+    });
+    const receipt: SkillInstallReceipt = SkillInstallReceiptSchema.parse({
+      id: 'receipt-1',
+      skillId: 'repo_auditor',
+      version: '1.0.0',
+      sourceId: 'workspace-skills',
+      status: 'installed',
+      phase: 'installed'
+    });
+    const agent: CompanyAgentRecord = CompanyAgentRecordSchema.parse({
+      id: 'gongbu-worker-1',
+      ministry: 'gongbu-code',
+      displayName: '工部执行官',
+      defaultModel: 'gpt-5.4',
+      supportedCapabilities: ['filesystem.read'],
+      reviewPolicy: 'mandatory-xingbu'
+    });
+
+    expect(installed.status).toBe('installed');
+    expect(receipt.id).toBe('receipt-1');
+    expect(agent.ministry).toBe('gongbu-code');
+  });
+
+  it('keeps workflow version records schema-first in core', () => {
+    const version: WorkflowVersionRecord = WorkflowVersionRecordSchema.parse({
+      workflowId: 'review',
+      version: '1.0.0',
+      status: 'active',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+      changelog: ['initial-registry-baseline']
+    });
+
+    expect(version.status).toBe('active');
   });
 });

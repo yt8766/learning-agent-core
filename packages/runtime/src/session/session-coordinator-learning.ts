@@ -1,15 +1,15 @@
-import type { TaskRecord } from '@agent/shared';
-import { TaskStatus } from '@agent/shared';
+import { TaskStatus } from '@agent/core';
 
 import { createLearningGraph } from '../graphs/learning.graph';
 import type { AgentOrchestrator } from '../graphs/main/main.graph';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
+import type { SessionTaskLike } from './session-task.types';
 
 export async function autoConfirmLearningIfNeeded(
   orchestrator: AgentOrchestrator,
   store: SessionCoordinatorStore,
   sessionId: string,
-  task: TaskRecord
+  task: SessionTaskLike
 ): Promise<void> {
   const preferredCandidateIds = task.learningEvaluation?.autoConfirmCandidateIds;
   const pendingCandidateIds =
@@ -31,7 +31,7 @@ export async function runLearningConfirmation(
   orchestrator: AgentOrchestrator,
   store: SessionCoordinatorStore,
   sessionId: string,
-  task: TaskRecord,
+  task: SessionTaskLike,
   candidateIds?: string[],
   autoConfirmed = false
 ): Promise<void> {

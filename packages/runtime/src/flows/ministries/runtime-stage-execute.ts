@@ -1,15 +1,18 @@
-import { ActionIntent, AgentRole, RiskLevel, TaskRecord, TaskStatus } from '@agent/shared';
+import { ActionIntent, AgentRole, RiskLevel, TaskStatus, type AgentRoleValue } from '@agent/core';
 
 import { PendingExecutionContext } from '../approval';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../approval/risk-interrupts';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 import { setSkillStepStatus } from './runtime-stage-helpers';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 type ExecutionApprovalContext = {
-  task: TaskRecord;
+  task: RuntimeTaskRecord;
   pendingExecutions: Map<string, PendingExecutionContext>;
   researchSummary: string;
   execution: {
-    intent: ActionIntent;
+    intent: ActionIntentValue;
     toolName: string;
     summary: string;
     serverId?: string;
@@ -27,16 +30,16 @@ type ExecutionApprovalContext = {
   };
   callbacks: {
     transitionQueueState: (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'blocked'
     ) => void;
     setSubTaskStatus: (
-      task: TaskRecord,
-      role: AgentRole,
+      task: RuntimeTaskRecord,
+      role: AgentRoleValue,
       status: 'pending' | 'running' | 'completed' | 'blocked'
     ) => void;
-    addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-    addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+    addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+    addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRoleValue) => void;
     describeActionIntent: (intent: string) => string;
   };
 };

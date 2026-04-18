@@ -6,7 +6,7 @@ import type {
   ResearchMinistryLike,
   ReviewMinistryLike,
   RouterMinistryLike
-} from '@agent/shared';
+} from '@agent/core';
 import { HubuSearchMinistry, LibuDocsMinistry, LibuRouterMinistry } from '@agent/agents-supervisor';
 import { BingbuOpsMinistry, GongbuCodeMinistry } from '@agent/agents-coder';
 import { XingbuReviewMinistry as XingbuReviewMinistryImpl } from '@agent/agents-reviewer';

@@ -1,13 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 
 import {
+  type SkillInstallReceipt,
+  type SkillManifestRecord,
   InstallRemoteSkillDto,
   InstallSkillDto,
   ResolveSkillInstallDto,
-  SkillInstallReceipt,
-  SkillManifestRecord,
-  SkillSourceRecord
-} from '@agent/shared';
+  type SkillSourceRecord
+} from '@agent/core';
 
 import { appendGovernanceAudit } from '../../modules/runtime-governance/services/runtime-governance-store';
 import { buildSkillsAddCommand, normalizeRepoForInstall } from '../skills/runtime-skill-cli';

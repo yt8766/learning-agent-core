@@ -3,13 +3,13 @@ import { ensureDir, readFile, remove, writeFile } from 'fs-extra';
 
 import { NotFoundException } from '@nestjs/common';
 
-import {
+import type {
   InstalledSkillRecord,
   SkillCard,
   SkillInstallReceipt,
   SkillManifestRecord,
   SkillSourceRecord
-} from '@agent/shared';
+} from '@agent/core';
 
 import {
   buildSkillsAddCommand,

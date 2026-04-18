@@ -1,16 +1,16 @@
 ﻿import {
   AgentExecutionState,
-  AgentRole,
   EvidenceRecord,
   MemoryRecord,
   RuleRecord,
   SkillCard,
   SpecialistFindingRecord
-} from '@agent/shared';
+} from '@agent/core';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '@agent/runtime';
 import { type StructuredContractMeta } from '@agent/adapters';
+import { AgentRole } from '../supervisor/supervisor-architecture-helpers';
 import { isChatPersonaGoal, MinistryToolCallDecision, ResearchToolId } from './hubu-search/hubu-search-helpers';
 import { createHubuSearchTaskMap } from './hubu-search/hubu-search-task-map';
 import { generateHubuResearchEvidence } from './hubu-search/hubu-search-research-generator';

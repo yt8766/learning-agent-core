@@ -6,15 +6,15 @@ on:
       - main
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 concurrency:
   group: main-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-and-build:
-    name: Validate And Build Main
+  lockfile:
+    name: Lockfile Sync Main
     runs-on: ubuntu-latest
 
     steps:
@@ -23,15 +23,41 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
+        with:
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          package-manager-cache: false
+
+      - name: Check pnpm lockfile sync
+        run: node ./scripts/check-lockfile-sync.js
+
+  verify-and-build:
+    name: Verify And Build Main
+    runs-on: ubuntu-latest
+    needs: lockfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
 
       - name: Restore Turbo Cache
-        uses: actions/cache@v4
+        id: turbo-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: .turbo/cache
           key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'apps/**/package.json', 'packages/**/package.json') }}
@@ -39,7 +65,8 @@ jobs:
             ${{ runner.os }}-turbo-
 
       - name: Restore Build Artifacts Cache
-        uses: actions/cache@v4
+        id: build-artifacts-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: |
             apps/**/dist
@@ -51,34 +78,39 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run ESLint
-        run: pnpm lint:eslint
-
-      - name: Run Prettier
-        run: pnpm lint:prettier
-
-      - name: Run TypeScript Checks
-        run: pnpm lint:tsc
+      - name: Run Full Verify
+        run: pnpm verify
 
       - name: Run Terminology Check (Non-blocking)
         run: pnpm check:terminology || true
-
-      - name: Run Tests
-        run: pnpm test
 
       - name: Run Coverage (Non-blocking Baseline Check)
         continue-on-error: true
         run: pnpm test:coverage
 
-      - name: Run Backend Structure Check
-        run: pnpm check:backend-structure
-
       - name: Run Full Build
         run: pnpm build
+
+      - name: Save Turbo Cache
+        if: success() && hashFiles('.turbo/cache/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .turbo/cache
+          key: ${{ steps.turbo-cache-restore.outputs.cache-primary-key }}
+
+      - name: Save Build Artifacts Cache
+        if: success() && (hashFiles('apps/**/dist/**') != '' || hashFiles('packages/**/build/**') != '')
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            apps/**/dist
+            packages/**/build
+          key: ${{ steps.build-artifacts-cache-restore.outputs.cache-primary-key }}
 
   prompt-regression:
     name: Prompt Regression Main
     runs-on: ubuntu-latest
+    needs: lockfile
 
     steps:
       - name: Checkout
@@ -102,13 +134,15 @@ jobs:
       - name: Setup pnpm
         if: steps.promptfoo.outputs.ready == 'true'
         uses: pnpm/action-setup@v5
+        with:
+          run_install: false
 
       - name: Setup Node.js
         if: steps.promptfoo.outputs.ready == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          package-manager-cache: false
 
       - name: Install Dependencies
         if: steps.promptfoo.outputs.ready == 'true'
@@ -134,7 +168,8 @@ jobs:
     name: Send Email Notification
     runs-on: ubuntu-latest
     needs:
-      - validate-and-build
+      - lockfile
+      - verify-and-build
       - prompt-regression
     # job/step 的 if 表达式不能使用 secrets；用 run + env 注入后再写 outputs，供后续 if 使用
     if: always()
@@ -157,8 +192,38 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Summarize failure focus
+        id: failure_focus
+        if: always()
+        env:
+          LOCKFILE_RESULT: ${{ needs.lockfile.result }}
+          VERIFY_AND_BUILD_RESULT: ${{ needs.verify-and-build.result }}
+          PROMPT_REGRESSION_RESULT: ${{ needs.prompt-regression.result }}
+        run: |
+          first_job="none"
+          first_result="success"
+          next_hint="No failed or cancelled jobs were detected."
+
+          if [ "$LOCKFILE_RESULT" = "failure" ] || [ "$LOCKFILE_RESULT" = "cancelled" ]; then
+            first_job="lockfile"
+            first_result="$LOCKFILE_RESULT"
+            next_hint="Review package manifests and pnpm-lock.yaml drift first."
+          elif [ "$VERIFY_AND_BUILD_RESULT" = "failure" ] || [ "$VERIFY_AND_BUILD_RESULT" = "cancelled" ]; then
+            first_job="verify-and-build"
+            first_result="$VERIFY_AND_BUILD_RESULT"
+            next_hint="Open verify-and-build and inspect verify, coverage, and build logs in order."
+          elif [ "$PROMPT_REGRESSION_RESULT" = "failure" ] || [ "$PROMPT_REGRESSION_RESULT" = "cancelled" ]; then
+            first_job="prompt-regression"
+            first_result="$PROMPT_REGRESSION_RESULT"
+            next_hint="Inspect prompt regression logs and uploaded artifacts for the first failing prompt case."
+          fi
+
+          echo "first_job=$first_job" >> "$GITHUB_OUTPUT"
+          echo "first_result=$first_result" >> "$GITHUB_OUTPUT"
+          echo "next_hint=$next_hint" >> "$GITHUB_OUTPUT"
+
       - name: Send Success Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && needs.validate-and-build.result == 'success' && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && needs.lockfile.result == 'success' && needs.verify-and-build.result == 'success' && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -173,13 +238,34 @@ jobs:
             Main branch full validation succeeded.
 
             Repository: ${{ github.repository }}
+            Workflow: ${{ github.workflow }}
+            Event: ${{ github.event_name }}
             Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
             Actor: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+            Compare URL: ${{ github.event.compare }}
+            Run Attempt: ${{ github.run_attempt }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+            Job Summary:
+            - lockfile: ${{ needs.lockfile.result }}
+            - verify-and-build: ${{ needs.verify-and-build.result }}
+            - prompt-regression: ${{ needs.prompt-regression.result }}
+
+            Failure Focus:
+            - first non-success job: ${{ steps.failure_focus.outputs.first_job }}
+            - result: ${{ steps.failure_focus.outputs.first_result }}
+
+            Validation Coverage:
+            - verify-and-build includes `pnpm verify`, non-blocking coverage, and `pnpm build`.
+            - prompt-regression runs when OPENAI_API_KEY is configured; otherwise it is expected to be skipped.
+
+            Next step:
+            No action is needed unless you want to review artifacts or logs for this run.
+
       - name: Send Failure Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.validate-and-build.result == 'failure' || needs.validate-and-build.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.lockfile.result == 'failure' || needs.lockfile.result == 'cancelled' || needs.verify-and-build.result == 'failure' || needs.verify-and-build.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -194,8 +280,28 @@ jobs:
             Main branch full validation failed or was cancelled.
 
             Repository: ${{ github.repository }}
+            Workflow: ${{ github.workflow }}
+            Event: ${{ github.event_name }}
             Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
             Actor: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+            Compare URL: ${{ github.event.compare }}
+            Run Attempt: ${{ github.run_attempt }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Job result: ${{ needs.validate-and-build.result }}
+
+            Job Summary:
+            - lockfile: ${{ needs.lockfile.result }}
+            - verify-and-build: ${{ needs.verify-and-build.result }}
+            - prompt-regression: ${{ needs.prompt-regression.result }}
+
+            Failure Focus:
+            - first non-success job: ${{ steps.failure_focus.outputs.first_job }}
+            - result: ${{ steps.failure_focus.outputs.first_result }}
+            - next hint: ${{ steps.failure_focus.outputs.next_hint }}
+
+            First places to inspect:
+            - Open the run page above and inspect the first failed or cancelled job.
+            - If lockfile failed, review package manifest and pnpm-lock.yaml drift first.
+            - If verify-and-build failed, check verify, coverage, and build in order.
+            - If prompt-regression failed, inspect prompt regression logs and uploaded artifacts.

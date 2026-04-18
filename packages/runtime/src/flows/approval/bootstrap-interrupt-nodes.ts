@@ -1,11 +1,5 @@
-import {
-  ActionIntent,
-  AgentRole,
-  ApprovalResumeInput,
-  TaskStatus,
-  markExecutionStepBlocked,
-  markExecutionStepResumed
-} from '@agent/shared';
+import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus } from '@agent/core';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type {

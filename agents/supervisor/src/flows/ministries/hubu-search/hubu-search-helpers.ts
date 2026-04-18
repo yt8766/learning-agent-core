@@ -1,4 +1,4 @@
-import type { MemoryRecord, RuleRecord, SkillCard } from '@agent/shared';
+import type { MemoryRecord, RuleRecord, SkillCard } from '@agent/core';
 import { z } from 'zod/v4';
 
 export const RESEARCH_TOOL_IDS = ['memory-search', 'knowledge-search', 'skill-search', 'web-search'] as const;

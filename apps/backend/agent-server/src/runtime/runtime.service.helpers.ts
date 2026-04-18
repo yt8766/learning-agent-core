@@ -1,4 +1,4 @@
-import { SkillCard, SkillManifestRecord } from '@agent/shared';
+import type { SkillCard, SkillManifestRecord } from '@agent/core';
 
 import { registerInstalledSkillWorker } from './helpers/runtime-connector-registry';
 import {

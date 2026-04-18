@@ -1,4 +1,4 @@
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { BRIEFING_CATEGORY_TITLES } from './runtime-tech-briefing-sources';
 import {
@@ -45,6 +45,8 @@ import type {
   TechBriefingRunRecord
 } from './runtime-tech-briefing.types';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 export interface RuntimeTechBriefingContext {
   settings: {
     workspaceRoot: string;
@@ -75,7 +77,7 @@ export interface RuntimeTechBriefingContext {
       request: {
         taskId: string;
         toolName: string;
-        intent: ActionIntent;
+        intent: ActionIntentValue;
         input: Record<string, unknown>;
         requestedBy: 'agent' | 'user';
       }

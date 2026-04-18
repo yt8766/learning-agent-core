@@ -1,4 +1,4 @@
-import type { SkillSourceRecord } from '@agent/shared';
+import type { SkillSourceRecord } from '@agent/core';
 
 export function createInternalSkillSource(): SkillSourceRecord {
   return {

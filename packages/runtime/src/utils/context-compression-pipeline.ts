@@ -1,4 +1,5 @@
-import type { ContextFilterRecord, TaskRecord } from '@agent/shared';
+import type { ContextFilterRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
 
 type PipelineAudit = NonNullable<ContextFilterRecord['filteredContextSlice']['pipelineAudit']>;
 
@@ -15,7 +16,7 @@ export interface ContextCompressionResult {
 }
 
 export function buildContextCompressionResult(
-  task: Pick<TaskRecord, 'goal' | 'context' | 'planDraft' | 'plan' | 'trace'>
+  task: Pick<RuntimeTaskRecord, 'goal' | 'context' | 'planDraft' | 'plan' | 'trace'>
 ) {
   const rawSegments = [task.goal, task.context, task.planDraft?.summary, task.plan?.summary].filter(
     (value): value is string => Boolean(value)

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { ApprovalActionDto } from '@agent/shared';
+import { ApprovalActionDto } from '@agent/core';
 
 import { RuntimeTaskService } from '../../../runtime/services/runtime-task.service';
 

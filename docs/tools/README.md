@@ -23,7 +23,7 @@
   - ministry/graph 主逻辑
   - 长期混入垂直领域生成引擎
 - 依赖方向：
-  - 只依赖 `@agent/shared`、`@agent/config`、模板资产与必要第三方库
+  - 只依赖 `@agent/core`、`@agent/config`、模板资产与必要第三方库
   - 不得反向依赖 `@agent/runtime` 或任意 `agents/*`
 - 公开入口：
   - 根入口：`@agent/tools`

@@ -1,12 +1,8 @@
-import {
-  AgentRole,
-  ApprovalDecision,
-  CodeExecutionMinistryLike,
-  TaskRecord,
-  markExecutionStepCompleted
-} from '@agent/shared';
+import { AgentRole, ApprovalDecision, type CodeExecutionMinistryLike } from '@agent/core';
+import { markExecutionStepCompleted } from '@agent/agents-supervisor';
 
 import { executeApprovedAction } from '../approval';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { appendExecutionEvidence, completeSkillStep } from './runtime-stage-helpers';
 import type { PipelineRuntimeCallbacks } from './runtime-stage-types';

@@ -85,3 +85,8 @@ pnpm --dir apps/frontend/agent-admin dev
 ```bash
 pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit
 ```
+
+补充约束：
+
+- `agent-admin` 的前端类型检查不能依赖本地已存在的 `packages/*/build` 产物兜底
+- `tsconfig.app.json` 必须保持对 `@agent/*` workspace 源码入口的路径映射，这样 GitHub Actions 的干净环境也能直接完成 typecheck

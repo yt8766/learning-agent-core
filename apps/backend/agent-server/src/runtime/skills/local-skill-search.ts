@@ -1,11 +1,5 @@
-import {
-  LocalSkillSuggestionRecord,
-  RuntimeProfile,
-  SkillCard,
-  SkillManifestRecord,
-  SkillSourcePriority,
-  SkillSourceRecord
-} from '@agent/shared';
+import type { LocalSkillSuggestionRecord, SkillCard, SkillManifestRecord, SkillSourceRecord } from '@agent/core';
+import type { RuntimeProfile } from '@agent/config';
 
 interface BuildLocalSkillSuggestionsParams {
   goal: string;
@@ -58,7 +52,7 @@ function installedSkillEffectivenessBoost(skill: SkillCard): number {
   return successRate * 0.25 + recommendationBoost;
 }
 
-function priorityScore(priority?: SkillSourcePriority): number {
+function priorityScore(priority?: SkillSourceRecord['priority']): number {
   switch (priority) {
     case 'workspace/internal':
       return 30;

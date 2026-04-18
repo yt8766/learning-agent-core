@@ -13,7 +13,7 @@
 - Approval cards、Cancel、Recover 等消息流内操作
 - Think / ThoughtChain / Event Timeline 运行态可视化
 - Evidence / Sources / Learning suggestions 展示
-- Runtime panel、session list、report schema 等执行辅助视图
+- Runtime panel、session list 等执行辅助视图
 
 ## 当前目录职责
 
@@ -33,26 +33,6 @@
   - 学习建议、复用提示等学习闭环 UI
 - `src/features/session-list`
   - 会话列表与切换
-- `src/features/report-schema`
-  - 报表 schema / 结构化产物相关展示
-  - `report-schema-workbench.tsx`
-    - 只保留 workbench 容器、state 与 orchestration
-  - `report-schema-workbench-editor.tsx`
-    - 承载 goal / structured input / current schema / single-report form 编辑区
-  - `report-schema-workbench-preview.tsx`
-    - 承载 runtime、真实预览、meta、filters、data source、metrics、table 与 raw json 展示区
-  - `report-schema-workbench-runtime.ts`
-    - 承载流式 stage/schema/done/error 事件归并
-  - `report-schema-workbench-support.ts`
-    - 只保留 facade 导出
-  - `report-schema-workbench-parser.ts`
-    - 承载 JSON draft parse 与 schema normalize
-  - `report-schema-workbench-formatter.ts`
-    - 承载 schema section / filter / mapping / runtime summary / warning 的只读格式化与提取
-  - `report-schema-workbench-patch-planner.ts`
-    - 承载 structured input starter、single-report form values 推导与 patch 回写
-  - `report-schema-workbench-preview-mapper.ts`
-    - 承载 single-report mock preview model 映射
 - `src/components`
   - 跨 feature 复用组件
 - `src/hooks`

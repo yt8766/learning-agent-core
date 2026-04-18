@@ -1,10 +1,59 @@
 import { evaluateBenchmarks } from '@agent/evals';
 import { RuntimeStateSnapshot } from '@agent/memory';
-import { TaskRecord } from '@agent/shared';
 
 import { summarizeProviderBilling } from './provider-audit';
 import type { ProviderAuditSyncResult } from './provider-audit';
 import { formatDay, roundCurrency, summarizeUsageAnalytics } from './runtime-analytics';
+
+interface RuntimeMetricsTaskLike {
+  id: string;
+  goal: string;
+  skillId?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvals: Array<{
+    decision?: string;
+  }>;
+  trace: Array<{
+    node?: string;
+    summary?: string;
+  }>;
+  reusedMemories?: unknown[];
+  externalSources?: Array<{
+    sourceType?: string;
+    summary?: string;
+  }>;
+  messages?: Array<{
+    content?: string;
+  }>;
+  result?: string;
+  plan?: {
+    summary?: string;
+  };
+  currentMinistry?: string;
+  status?: string;
+  retryCount?: number;
+  modelRoute?: Array<{
+    ministry?: string;
+    selectedModel?: string;
+  }>;
+  llmUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens: number;
+    measuredCallCount?: number;
+    estimatedCallCount?: number;
+    updatedAt: string;
+    models: Array<{
+      model: string;
+      totalTokens: number;
+      costUsd?: number;
+      costCny?: number;
+      pricingSource?: 'provider' | 'estimated';
+      callCount: number;
+    }>;
+  };
+}
 
 type UsageHistoryPoint = NonNullable<RuntimeStateSnapshot['usageHistory']>[number];
 type EvalHistoryPoint = NonNullable<RuntimeStateSnapshot['evalHistory']>[number];
@@ -15,7 +64,7 @@ export async function summarizeAndPersistUsageAnalytics(input: {
     load: () => Promise<RuntimeStateSnapshot>;
     save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
   };
-  tasks: TaskRecord[];
+  tasks: RuntimeMetricsTaskLike[];
   days: number;
   filters?: { model?: string; pricingSource?: string };
   fetchProviderUsageAudit: (days: number) => Promise<ProviderAuditSyncResult>;
@@ -116,7 +165,7 @@ export async function summarizeAndPersistEvalHistory(input: {
     load: () => Promise<RuntimeStateSnapshot>;
     save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
   };
-  tasks: TaskRecord[];
+  tasks: RuntimeMetricsTaskLike[];
   days: number;
   filters?: { scenarioId?: string; outcome?: string };
 }) {

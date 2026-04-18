@@ -1,4 +1,4 @@
-import type { MemoryRecord } from '@agent/shared';
+import type { EvidenceRecord, MemoryRecord } from '@agent/core';
 
 import type { MemoryRepository } from '../repositories/memory-repository';
 
@@ -10,7 +10,7 @@ export interface MemoryScrubberFinding {
   detail?: string;
   restoreSuggestion?: string;
   evidenceRefs?: string[];
-  evidenceRecords?: import('@agent/shared').EvidenceRecord[];
+  evidenceRecords?: EvidenceRecord[];
 }
 
 export interface MemoryScrubberValidator {

@@ -656,7 +656,6 @@ skills/
 当前最低检查命令如下，文档、代码和 CI 都应以此为基线保持一致：
 
 ```bash
-pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
 pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit

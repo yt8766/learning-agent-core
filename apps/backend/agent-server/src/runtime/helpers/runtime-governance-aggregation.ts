@@ -1,7 +1,58 @@
-import type { CapabilityGovernanceProfileRecord, GovernanceProfileRecord, TaskRecord } from '@agent/shared';
+import type { CapabilityGovernanceProfileRecord, GovernanceProfileRecord } from '@agent/core';
+
+interface CapabilityGovernanceTaskLike {
+  capabilityAttachments?: Array<{
+    id: string;
+    displayName: string;
+    owner: {
+      ownerType: CapabilityGovernanceProfileRecord['ownerType'];
+    };
+    kind: CapabilityGovernanceProfileRecord['kind'];
+    capabilityTrust?: {
+      trustLevel?: 'high' | 'medium' | 'low';
+      trustTrend?: 'up' | 'steady' | 'down';
+      lastReason?: string;
+      lastGovernanceSummary?: string;
+    };
+    governanceProfile?: Partial<CapabilityGovernanceProfileRecord> & {
+      updatedAt: string;
+    };
+  }>;
+}
+
+interface NamedGovernanceTaskLike {
+  id: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  specialistLead?: {
+    domain?: string;
+    displayName: string;
+  };
+  governanceReport?: {
+    reviewOutcome: {
+      decision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval' | 'blocked' | 'approved' | 'retry';
+      summary?: string;
+    };
+    trustAdjustment?: 'promote' | 'hold' | 'downgrade';
+    summary?: string;
+    updatedAt: string;
+  };
+}
+
+function toCritiqueStyleReviewDecision(
+  decision: NonNullable<NonNullable<NamedGovernanceTaskLike['governanceReport']>['reviewOutcome']['decision']>
+): 'pass' | 'revise_required' | 'block' | 'needs_human_approval' {
+  if (decision === 'blocked') {
+    return 'block';
+  }
+  if (decision === 'approved' || decision === 'retry') {
+    return 'pass';
+  }
+  return decision;
+}
 
 export function aggregateCapabilityGovernanceProfiles(
-  tasks: TaskRecord[],
+  tasks: CapabilityGovernanceTaskLike[],
   persistedProfiles: CapabilityGovernanceProfileRecord[]
 ): CapabilityGovernanceProfileRecord[] {
   const profileMap = new Map<string, CapabilityGovernanceProfileRecord>(
@@ -48,7 +99,7 @@ export function aggregateCapabilityGovernanceProfiles(
 }
 
 export function aggregateNamedGovernanceProfiles(
-  tasks: TaskRecord[],
+  tasks: NamedGovernanceTaskLike[],
   kind: GovernanceProfileRecord['entityKind'],
   persistedProfiles: GovernanceProfileRecord[]
 ): GovernanceProfileRecord[] {
@@ -60,6 +111,9 @@ export function aggregateNamedGovernanceProfiles(
     if (!task.governanceReport) {
       continue;
     }
+    if (!task.governanceReport.reviewOutcome.decision) {
+      continue;
+    }
 
     const entityId =
       kind === 'ministry' ? task.currentMinistry : kind === 'worker' ? task.currentWorker : task.specialistLead?.domain;
@@ -68,7 +122,7 @@ export function aggregateNamedGovernanceProfiles(
     }
 
     const current = profileMap.get(entityId);
-    const reviewDecision = task.governanceReport.reviewOutcome.decision;
+    const reviewDecision = toCritiqueStyleReviewDecision(task.governanceReport.reviewOutcome.decision);
     const trustAdjustment = task.governanceReport.trustAdjustment;
     const updatedAt = task.governanceReport.updatedAt;
     const recentOutcomes = mergeRecentOutcomes(current?.recentOutcomes ?? [], [

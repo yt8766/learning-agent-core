@@ -1,4 +1,12 @@
-import { EvaluationResult, SkillEvalResult, ToolExecutionResult } from '@agent/shared';
+import { EvaluationResult, ToolExecutionResult } from '@agent/core';
+
+export interface SkillEvalResult {
+  skillId: string;
+  pass: boolean;
+  consecutiveSuccesses: number;
+  severeIncidents: number;
+  notes: string[];
+}
 
 export function evaluateExecution(result: ToolExecutionResult): EvaluationResult {
   const success = result.ok && result.exitCode === 0;

@@ -1,6 +1,7 @@
-﻿import { AgentExecutionState, AgentRole, ManagerPlan, ReviewRecord } from '@agent/shared';
+﻿import type { AgentExecutionState, ManagerPlan, ReviewRecord } from '@agent/core';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
+import { AgentRole } from '../supervisor/supervisor-architecture-helpers';
 import {
   buildFallbackSupervisorPlan,
   inferDispatchKind,

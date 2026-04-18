@@ -1,20 +1,20 @@
-import {
+import type {
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
   ChatSessionRecord,
-  RequestedExecutionHints,
-  TaskRecord,
-  TaskStatus
-} from '@agent/shared';
+  RequestedExecutionHints
+} from '@agent/core';
+import { TaskStatus } from '@agent/core';
 import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
+import type { SessionTaskAggregate } from './session-task.types';
 
 type SessionCoordinatorTurnDeps = {
   orchestrator: AgentOrchestrator;
   store: SessionCoordinatorStore;
   thinking: SessionCoordinatorThinking;
-  syncTask: (sessionId: string, task: TaskRecord) => void;
+  syncTask: (sessionId: string, task: SessionTaskAggregate) => void;
 };
 
 export async function runSessionTurn(

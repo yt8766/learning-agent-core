@@ -1,11 +1,12 @@
-import { ActionIntent, TaskRecord, TaskStatus } from '@agent/shared';
+import { ActionIntent, TaskStatus } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 
 export type CreatedTaskDispatch =
   | { kind: 'wait_approval' }
   | { kind: 'session_bootstrap_and_pipeline' }
   | { kind: 'background_queue' };
 
-export function resolveCreatedTaskDispatch(task: TaskRecord): CreatedTaskDispatch {
+export function resolveCreatedTaskDispatch(task: RuntimeTaskRecord): CreatedTaskDispatch {
   if (task.status === TaskStatus.WAITING_APPROVAL) {
     return {
       kind: 'wait_approval'
@@ -23,6 +24,6 @@ export function resolveCreatedTaskDispatch(task: TaskRecord): CreatedTaskDispatc
   };
 }
 
-export function isSkillInstallApprovalPending(task: TaskRecord): boolean {
+export function isSkillInstallApprovalPending(task: RuntimeTaskRecord): boolean {
   return task.status === TaskStatus.WAITING_APPROVAL && task.pendingApproval?.intent === ActionIntent.INSTALL_SKILL;
 }

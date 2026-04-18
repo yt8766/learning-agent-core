@@ -1,5 +1,5 @@
 import { describeConnectorProfilePolicy } from '@agent/runtime';
-import { SkillCard, SkillManifestRecord } from '@agent/shared';
+import type { SkillCard, SkillManifestRecord } from '@agent/core';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from '../helpers/runtime-connector-registry';
 import { fetchProviderUsageAudit } from '../../modules/runtime-metrics/services/provider-audit';

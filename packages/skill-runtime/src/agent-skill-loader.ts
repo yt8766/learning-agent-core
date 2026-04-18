@@ -1,7 +1,12 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { SkillManifestRecord, SkillSourceRecord, type SpecialistDomain, type WorkerDomain } from '@agent/shared';
+import {
+  type SkillManifestRecord,
+  type SkillSourceRecord,
+  type SpecialistDomain,
+  type WorkerDomain
+} from '@agent/core';
 
 const PRIORITY_ORDER = ['bundled/marketplace', 'managed/local', 'workspace/internal'] as const;
 

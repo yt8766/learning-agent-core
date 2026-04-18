@@ -1,13 +1,32 @@
-import type { EvaluationResult, GovernanceReportRecord, TaskRecord } from '@agent/shared';
+import type { EvaluationResult, GovernanceReportRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
+
+function toGovernanceReviewDecision(
+  decision: NonNullable<RuntimeTaskRecord['critiqueResult']>['decision']
+): GovernanceReportRecord['reviewOutcome']['decision'] {
+  return decision === 'block' ? 'blocked' : decision;
+}
+
+function toCritiqueDecision(
+  decision: GovernanceReportRecord['reviewOutcome']['decision']
+): 'pass' | 'revise_required' | 'block' | 'needs_human_approval' {
+  if (decision === 'blocked') {
+    return 'block';
+  }
+  if (decision === 'approved' || decision === 'retry') {
+    return 'pass';
+  }
+  return decision;
+}
 
 function clampGovernanceScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 export function buildGovernanceScore(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   evaluation: EvaluationResult
-): NonNullable<TaskRecord['governanceScore']> {
+): NonNullable<RuntimeTaskRecord['governanceScore']> {
   let score = task.learningEvaluation?.score ?? 72;
   const rationale: string[] = [];
   const recommendedLearningTargets: Array<'memory' | 'rule' | 'skill'> = [];
@@ -74,11 +93,11 @@ export function buildGovernanceScore(
 }
 
 export function buildGovernanceReport(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   evaluation: EvaluationResult,
-  governanceScore: NonNullable<TaskRecord['governanceScore']>
+  governanceScore: NonNullable<RuntimeTaskRecord['governanceScore']>
 ): GovernanceReportRecord {
-  const reviewDecision = task.critiqueResult?.decision ?? 'pass';
+  const reviewDecision = toGovernanceReviewDecision(task.critiqueResult?.decision ?? 'pass');
   const interruptCount = task.interruptHistory?.length ?? 0;
   const microLoopCount = task.microLoopCount ?? 0;
   const executionQualityScore = governanceScore.score;
@@ -94,7 +113,7 @@ export function buildGovernanceReport(
         : task.sandboxState?.status === 'failed'
           ? 20
           : 60;
-  const businessFeedbackScore = evaluation.success ? 82 : reviewDecision === 'block' ? 30 : 58;
+  const businessFeedbackScore = evaluation.success ? 82 : reviewDecision === 'blocked' ? 30 : 58;
 
   return {
     ministry: 'libu-governance',
@@ -137,7 +156,7 @@ export function buildGovernanceReport(
       score: businessFeedbackScore,
       summary: evaluation.success
         ? '当前结果满足交付与沉淀条件。'
-        : reviewDecision === 'block'
+        : reviewDecision === 'blocked'
           ? '当前结果不满足交付要求，应优先人工复核。'
           : '当前结果可保守复用，但不应过度放大信任。'
     },
@@ -147,7 +166,7 @@ export function buildGovernanceReport(
   };
 }
 
-export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
+export function applyCapabilityTrustFromGovernance(task: RuntimeTaskRecord) {
   if (!task.capabilityAttachments?.length || !task.governanceReport) {
     return;
   }
@@ -164,7 +183,7 @@ export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
       : task.governanceReport.trustAdjustment === 'downgrade'
         ? 'down'
         : 'steady';
-  const reviewDecision = task.governanceReport.reviewOutcome.decision;
+  const reviewDecision = toCritiqueDecision(task.governanceReport.reviewOutcome.decision);
   const trustAdjustment = task.governanceReport.trustAdjustment;
 
   task.capabilityAttachments = task.capabilityAttachments.map(attachment => ({
@@ -186,7 +205,7 @@ export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
 }
 
 function mergeCapabilityGovernanceProfile(
-  current: NonNullable<TaskRecord['capabilityAttachments']>[number]['governanceProfile'] | undefined,
+  current: NonNullable<RuntimeTaskRecord['capabilityAttachments']>[number]['governanceProfile'] | undefined,
   next: {
     taskId: string;
     reviewDecision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';

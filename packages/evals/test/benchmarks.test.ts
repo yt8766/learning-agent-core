@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { TaskStatus } from '@agent/shared';
+import { TaskStatus } from '@agent/core';
 
 import { evaluateBenchmarks } from '../src/benchmarks';
 

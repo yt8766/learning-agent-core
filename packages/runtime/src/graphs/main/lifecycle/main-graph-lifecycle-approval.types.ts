@@ -1,12 +1,12 @@
 import type {
-  AgentRole,
+  AgentRoleValue as AgentRole,
   ApprovalResumeInput,
   CreateTaskDto,
   ExecutionTrace,
-  SkillSearchStateRecord,
-  TaskRecord
-} from '@agent/shared';
+  SkillSearchStateRecord
+} from '@agent/core';
 import type { PendingExecutionContext } from '../../../flows/approval';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 export type LifecycleApprovalParams = {
   tasks: Map<string, TaskRecord>;

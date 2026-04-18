@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 
 import { describeSkillSourceProfilePolicy } from '@agent/runtime';
-import { ConfiguredConnectorRecord, SkillCard } from '@agent/shared';
+import { ConfiguredConnectorRecord } from '@agent/core';
+import type { SkillCard } from '@agent/core';
 
 import {
   inferCapabilityCategory,

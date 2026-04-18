@@ -1,7 +1,11 @@
-import type { LearningJob, LearningQueueItem, TaskRecord } from '@agent/shared';
 import type { PendingExecutionRecord, RuntimeStateRepository } from '@agent/memory';
 
 import type { PendingExecutionContext } from '../../../flows/approval';
+import type {
+  RuntimeLearningJob as LearningJob,
+  RuntimeLearningQueueItem as LearningQueueItem
+} from '../../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 export function listLearningQueueItems(learningQueue: Map<string, LearningQueueItem>): LearningQueueItem[] {
   return [...learningQueue.values()].sort((left, right) => {

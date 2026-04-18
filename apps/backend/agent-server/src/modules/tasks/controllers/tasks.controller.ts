@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/shared';
+import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/core';
 
 import { TasksService } from '../services/tasks.service';
 

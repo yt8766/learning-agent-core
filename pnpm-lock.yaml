@@ -47,6 +47,9 @@ importers:
       tsup:
         specifier: ^8.4.0
         version: 8.5.1(@swc/core@1.15.26)(jiti@2.6.1)(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       turbo:
         specifier: ^2.5.0
         version: 2.8.20
@@ -71,9 +74,6 @@ importers:
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@agent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -119,9 +119,6 @@ importers:
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -143,9 +140,6 @@ importers:
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@langchain/langgraph':
         specifier: ^1.2.5
         version: 1.2.5(@langchain/core@1.1.35(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
@@ -176,15 +170,9 @@ importers:
       '@agent/memory':
         specifier: workspace:*
         version: link:../../../packages/memory
-      '@agent/model':
-        specifier: workspace:*
-        version: link:../../../packages/model
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../../packages/runtime
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../../packages/shared
       '@agent/skill-runtime':
         specifier: workspace:*
         version: link:../../../packages/skill-runtime
@@ -291,9 +279,9 @@ importers:
 
   apps/frontend/agent-admin:
     dependencies:
-      '@agent/shared':
+      '@agent/core':
         specifier: workspace:*
-        version: link:../../../packages/shared
+        version: link:../../../packages/core
       '@fontsource-variable/figtree':
         specifier: ^5.2.10
         version: 5.2.10
@@ -370,9 +358,6 @@ importers:
 
   apps/frontend/agent-chat:
     dependencies:
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../../packages/shared
       '@ant-design/x':
         specifier: ^2.4.0
         version: 2.4.0(antd@6.3.3(moment@2.30.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -449,15 +434,6 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../core
-      '@agent/memory':
-        specifier: workspace:*
-        version: link:../memory
-      '@agent/model':
-        specifier: workspace:*
-        version: link:../model
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@langchain/core':
         specifier: ^1.1.35
         version: 1.1.35(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0)
@@ -475,39 +451,20 @@ importers:
       '@agent/report-kit':
         specifier: workspace:*
         version: link:../report-kit
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
       zod:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/evals:
-    dependencies:
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
+  packages/evals: {}
 
   packages/memory:
     dependencies:
+      '@agent/adapters':
+        specifier: workspace:*
+        version: link:../adapters
       '@agent/config':
         specifier: workspace:*
         version: link:../config
-      '@agent/model':
-        specifier: workspace:*
-        version: link:../model
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
-
-  packages/model:
-    dependencies:
-      '@agent/config':
-        specifier: workspace:*
-        version: link:../config
-      '@langchain/openai':
-        specifier: ^1.3.0
-        version: 1.3.0(@langchain/core@1.1.35(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(ws@8.20.0)
 
   packages/report-kit:
     dependencies:
@@ -544,12 +501,6 @@ importers:
       '@agent/memory':
         specifier: workspace:*
         version: link:../memory
-      '@agent/model':
-        specifier: workspace:*
-        version: link:../model
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@agent/skill-runtime':
         specifier: workspace:*
         version: link:../skill-runtime
@@ -563,16 +514,11 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/shared: {}
-
   packages/skill-runtime:
     dependencies:
       '@agent/config':
         specifier: workspace:*
         version: link:../config
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
 
   packages/templates:
     dependencies:
@@ -609,9 +555,6 @@ importers:
       '@agent/report-kit':
         specifier: workspace:*
         version: link:../report-kit
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@agent/templates':
         specifier: workspace:*
         version: link:../templates

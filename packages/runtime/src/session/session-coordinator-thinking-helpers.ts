@@ -1,15 +1,18 @@
 import type {
+  CheckpointRef,
   ChatCheckpointRecord,
   ChatThinkState,
   ChatThoughtChainItem,
-  CheckpointRef,
-  TaskRecord,
   ThoughtGraphEdge,
   ThoughtGraphNode
-} from '@agent/shared';
-import { getMinistryDisplayName, normalizeExecutionMode, TaskStatus } from '@agent/shared';
+} from '@agent/core';
+import { TaskStatus } from '@agent/core';
+import { getMinistryDisplayName, normalizeExecutionMode } from './session-architecture-helpers';
+import type { SessionTaskLike } from './session-task.types';
 
-export function buildSessionThoughtChain(task: TaskRecord, messageId?: string): ChatThoughtChainItem[] {
+type TaskStatusValue = (typeof TaskStatus)[keyof typeof TaskStatus];
+
+export function buildSessionThoughtChain(task: SessionTaskLike, messageId?: string): ChatThoughtChainItem[] {
   const thinkingDurationMs = getThinkingDurationMs(task);
   return task.trace.map((trace, index) => {
     const isLast = index === task.trace.length - 1;
@@ -30,7 +33,7 @@ export function buildSessionThoughtChain(task: TaskRecord, messageId?: string): 
   });
 }
 
-export function buildSessionThinkState(task: TaskRecord, messageId?: string): ChatThinkState | undefined {
+export function buildSessionThinkState(task: SessionTaskLike, messageId?: string): ChatThinkState | undefined {
   const latestTrace = task.trace.at(-1);
   if (!latestTrace) {
     return undefined;
@@ -47,7 +50,7 @@ export function buildSessionThinkState(task: TaskRecord, messageId?: string): Ch
 }
 
 export function buildSessionThoughtGraph(
-  task: TaskRecord,
+  task: SessionTaskLike,
   checkpoint: ChatCheckpointRecord
 ): { nodes: ThoughtGraphNode[]; edges: ThoughtGraphEdge[] } {
   const checkpointRef: CheckpointRef = {
@@ -97,7 +100,7 @@ export function buildSessionThoughtGraph(
 }
 
 function buildThoughtDetail(
-  task: TaskRecord,
+  task: SessionTaskLike,
   node: string,
   summary: string,
   isLast: boolean
@@ -181,7 +184,7 @@ function buildThoughtDetail(
   }
 }
 
-function getThinkingDurationMs(task: TaskRecord): number | undefined {
+function getThinkingDurationMs(task: SessionTaskLike): number | undefined {
   const startedAt = task.trace[0]?.at ?? task.createdAt;
   const endedAt = task.trace.at(-1)?.at ?? task.updatedAt;
   if (!startedAt || !endedAt) {
@@ -196,7 +199,7 @@ function getThinkingDurationMs(task: TaskRecord): number | undefined {
   return durationMs;
 }
 
-function buildThinkContent(task: TaskRecord, latestSummary: string): string {
+function buildThinkContent(task: SessionTaskLike, latestSummary: string): string {
   if (task.status === TaskStatus.WAITING_APPROVAL && task.activeInterrupt?.kind === 'user-input') {
     const title =
       task.planDraft?.questionSet?.title ??
@@ -254,7 +257,7 @@ function buildThinkContent(task: TaskRecord, latestSummary: string): string {
     .join('\n');
 }
 
-function buildMinistryThinkContent(task: TaskRecord, latestSummary: string): string {
+function buildMinistryThinkContent(task: SessionTaskLike, latestSummary: string): string {
   const ministry = task.currentMinistry ?? '';
   const workerLine = task.currentWorker
     ? `当前由 ${getMinistryLabel(ministry)} 的 ${task.currentWorker} 具体推进。`
@@ -271,7 +274,7 @@ function buildMinistryThinkContent(task: TaskRecord, latestSummary: string): str
   return [workerLine, routeLine, planLine, latestLine, nextLine].filter(Boolean).join('\n');
 }
 
-function buildNextActionHint(task: TaskRecord): string {
+function buildNextActionHint(task: SessionTaskLike): string {
   switch (task.currentStep) {
     case 'goal_intake':
       return '我接下来会先判断该走哪条流程模板，再决定需要调动哪些尚书。';
@@ -298,7 +301,7 @@ function buildNextActionHint(task: TaskRecord): string {
   }
 }
 
-function buildMinistryNextActionHint(task: TaskRecord, ministry: string): string {
+function buildMinistryNextActionHint(task: SessionTaskLike, ministry: string): string {
   switch (ministry) {
     case 'libu-governance':
     case 'libu-router':
@@ -321,7 +324,7 @@ function buildMinistryNextActionHint(task: TaskRecord, ministry: string): string
   }
 }
 
-function getThinkTitle(task: TaskRecord): string {
+function getThinkTitle(task: SessionTaskLike): string {
   if (task.status === TaskStatus.WAITING_APPROVAL && task.activeInterrupt?.kind === 'user-input') {
     return '等待方案澄清';
   }
@@ -369,7 +372,7 @@ function getThoughtTitle(node: string): string {
   }
 }
 
-function getThoughtStatus(node: string, taskStatus: TaskStatus, isLast: boolean): ChatThoughtChainItem['status'] {
+function getThoughtStatus(node: string, taskStatus: TaskStatusValue, isLast: boolean): ChatThoughtChainItem['status'] {
   if (node === 'finish' || node === 'final_response_completed' || taskStatus === TaskStatus.COMPLETED) return 'success';
   if (taskStatus === TaskStatus.FAILED || taskStatus === TaskStatus.BLOCKED) return isLast ? 'error' : 'success';
   if (taskStatus === TaskStatus.CANCELLED) return isLast ? 'abort' : 'success';

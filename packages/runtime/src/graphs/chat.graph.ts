@@ -2,14 +2,15 @@
 
 import {
   ActionIntent,
-  ApprovalStatus,
-  DispatchInstruction,
-  MemoryRecord,
-  ReviewDecision,
-  SkillCard,
-  ToolExecutionResult
-} from '@agent/shared';
-import type { AgentGraphHandlers, RuntimeAgentGraphState } from '@agent/core';
+  type ApprovalStatus,
+  type DispatchInstruction,
+  type MemoryRecord,
+  type ReviewDecision,
+  type SkillCard,
+  type ToolExecutionResult,
+  type AgentGraphHandlers,
+  type RuntimeAgentGraphState
+} from '@agent/core';
 import {
   runDispatchNode,
   runExecuteNode,
@@ -21,6 +22,8 @@ import {
   runRouteNode
 } from '../flows/chat/graph-nodes';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 const AgentAnnotation = Annotation.Root({
   taskId: Annotation<string>(),
   goal: Annotation<string>(),
@@ -28,7 +31,7 @@ const AgentAnnotation = Annotation.Root({
   constraints: Annotation<string[]>(),
   currentPlan: Annotation<string[]>(),
   currentStep: Annotation<string | undefined>(),
-  toolIntent: Annotation<ActionIntent | undefined>(),
+  toolIntent: Annotation<ActionIntentValue | undefined>(),
   approvalRequired: Annotation<boolean>(),
   approvalStatus: Annotation<ApprovalStatus | undefined>(),
   observations: Annotation<string[]>(),

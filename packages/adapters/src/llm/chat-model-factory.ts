@@ -1,8 +1,8 @@
 ﻿import { ChatOpenAI } from '@langchain/openai';
-import { createZhipuChatModel } from '@agent/model';
 
 import { loadSettings } from '@agent/config';
 
+import { createZhipuChatModel } from '../chat/chat-model-factory';
 import { AgentModelRole } from './llm-provider';
 
 interface ZhipuRuntimeSettings {

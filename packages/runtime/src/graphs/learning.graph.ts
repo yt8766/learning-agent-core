@@ -1,6 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import { LearningCandidateRecord } from '@agent/shared';
+import type { LearningCandidateRecord } from '@agent/core';
 import { runLearningConfirmNode, runLearningFinishNode } from '../flows/learning/graph-nodes';
 
 export interface LearningGraphState {

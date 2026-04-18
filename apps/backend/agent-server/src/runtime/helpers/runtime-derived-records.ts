@@ -1,5 +1,5 @@
 import { SessionCoordinator } from '@agent/runtime';
-import { ChatCheckpointRecord, SkillCard, TaskRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, SkillCard } from '@agent/core';
 import { RuntimeStateSnapshot } from '@agent/memory';
 
 import { buildAgentErrorDiagnosisHint, buildAgentErrorRecoveryPlaybook } from './runtime-agent-errors';
@@ -9,7 +9,26 @@ type DiscoveryRecord = NonNullable<
   NonNullable<RuntimeStateSnapshot['governance']>['connectorDiscoveryHistory']
 >[number];
 
-export function buildRuleCandidates(tasks: TaskRecord[]) {
+interface RuleCandidateTaskLike {
+  id: string;
+  goal: string;
+  updatedAt: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  learningEvaluation?: {
+    score?: number;
+    confidence?: number;
+  };
+  externalSources?: Array<{
+    sourceType?: string;
+  }>;
+  trace?: Array<{
+    node?: string;
+    data?: Record<string, unknown>;
+  }>;
+}
+
+export function buildRuleCandidates(tasks: RuleCandidateTaskLike[]) {
   const grouped = new Map<
     string,
     {
@@ -17,9 +36,9 @@ export function buildRuleCandidates(tasks: TaskRecord[]) {
       ministry: string;
       toolName?: string;
       count: number;
-      tasks: TaskRecord[];
+      tasks: RuleCandidateTaskLike[];
       notes: string[];
-      provenance: NonNullable<TaskRecord['externalSources']>;
+      provenance: NonNullable<RuleCandidateTaskLike['externalSources']>;
     }
   >();
 

@@ -1,14 +1,8 @@
-import {
-  ActionIntent,
-  AgentRole,
-  ApprovalResumeInput,
-  TaskRecord,
-  TaskStatus,
-  ToolUsageSummaryRecord
-} from '@agent/shared';
+import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus, ToolUsageSummaryRecord } from '@agent/core';
 import { Annotation, BaseCheckpointSaver, END, interrupt, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../flows/approval';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 import {
   runPreExecutionSkillGateNode,
   runTaskBootstrapFinishNode
@@ -22,11 +16,11 @@ export interface TaskBootstrapGraphState {
 }
 
 export interface TaskBootstrapCallbacks {
-  persistAndEmitTask: (task: TaskRecord) => Promise<void>;
-  addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+  persistAndEmitTask: (task: RuntimeTaskRecord) => Promise<void>;
+  addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+  addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRole) => void;
   attachTool: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       attachedBy: 'bootstrap' | 'user' | 'runtime' | 'workflow' | 'specialist';
@@ -38,7 +32,7 @@ export interface TaskBootstrapCallbacks {
     }
   ) => void;
   recordToolUsage: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       status: ToolUsageSummaryRecord['status'];
@@ -53,7 +47,7 @@ export interface TaskBootstrapCallbacks {
     }
   ) => void;
   transitionQueueState: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'blocked'
   ) => void;
   registerPendingExecution: (taskId: string, pending: PendingExecutionContext) => void;
@@ -62,11 +56,11 @@ export interface TaskBootstrapCallbacks {
     taskId: string;
     runId: string;
     sessionId?: string;
-    skillSearch: NonNullable<TaskRecord['skillSearch']>;
+    skillSearch: NonNullable<RuntimeTaskRecord['skillSearch']>;
     usedInstalledSkills?: string[];
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         progressSummary?: string;
         traceSummary?: string;
@@ -86,14 +80,14 @@ export interface TaskBootstrapCallbacks {
     | undefined
   >;
   resolveSkillInstallInterruptResume: (params: {
-    task: TaskRecord;
+    task: RuntimeTaskRecord;
     receiptId: string;
     skillDisplayName?: string;
     usedInstalledSkills?: string[];
     actor?: string;
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         traceSummary?: string;
         progressSummary?: string;
@@ -109,7 +103,7 @@ const TaskBootstrapAnnotation = Annotation.Root({
 });
 
 interface BuildTaskBootstrapInterruptGraphParams {
-  task: TaskRecord;
+  task: RuntimeTaskRecord;
   callbacks: TaskBootstrapCallbacks;
   checkpointer: BaseCheckpointSaver;
 }

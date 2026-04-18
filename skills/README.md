@@ -84,3 +84,14 @@ skills/
 - `references/` 用于放规范、样例、知识卡
 - `scripts/` 用于放代理可直接运行的辅助脚本
 - `assets/` 用于放模板、静态资源
+
+## 当前常用 Skill
+
+- `skills/code-review`
+  - 代码审查、回归风险分析
+- `skills/auto-commit-push`
+  - 生成英文提交信息、自动本地提交、修复 hook 失败并推送当前分支
+- `skills/release-check`
+  - 发布前检查、构建与发布风险确认
+- `skills/task-delivery-loop`
+  - 需求分析、TDD、实现、验证、文档同步与 review-ready 交付闭环

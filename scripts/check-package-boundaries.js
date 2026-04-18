@@ -23,7 +23,6 @@ const publicEntryRoots = [
   'agents/data-report/src',
   'agents/coder/src',
   'agents/reviewer/src',
-  'packages/model/src',
   'packages/memory/src',
   'packages/tools/src',
   'packages/tools/test',
@@ -37,7 +36,6 @@ const forbiddenRootEntrypoints = new Set();
 const forbiddenSubpathPrefixes = [
   '@agent/config/',
   '@agent/memory/',
-  '@agent/model/',
   '@agent/runtime/',
   '@agent/adapters/',
   '@agent/tools/',

@@ -1,4 +1,4 @@
-import type { ToolFamilyRecord } from '@agent/shared';
+import type { ToolFamilyRecord } from '@agent/core';
 
 export const DEFAULT_TOOL_FAMILIES: ToolFamilyRecord[] = [
   {

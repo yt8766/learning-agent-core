@@ -1,10 +1,13 @@
-import type { ActionIntent, ToolDefinition } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
+import type { ToolDefinition } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 export async function evaluateGongbuApprovalGate(
   context: AgentRuntimeContext,
-  intent: ActionIntent,
+  intent: ActionIntentValue,
   tool: ToolDefinition,
   toolInput: Record<string, unknown>
 ) {

@@ -1,14 +1,14 @@
 import { loadSettings } from '@agent/config';
 import {
-  CapabilityOwnerType,
-  EvidenceRecord,
   RequestedExecutionHints,
   SkillSearchStateRecord,
+  CapabilityOwnerType,
   SpecialistDomain,
-  SubgraphId,
-  TaskRecord,
   ToolUsageSummaryRecord
-} from '@agent/shared';
+} from '@agent/core';
+import type { EvidenceRecord } from '@agent/core';
+import type { SubgraphIdValue as SubgraphId } from './task-architecture-helpers';
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 
 export type RuntimeSettings = ReturnType<typeof loadSettings>;
 

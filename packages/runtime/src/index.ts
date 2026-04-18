@@ -11,6 +11,11 @@ export {
 export { SessionCoordinator } from './session/session-coordinator';
 export { WorkerRegistry, createDefaultWorkerRegistry } from './governance/worker-registry';
 export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './governance/profile-policy';
+export {
+  buildFreshnessAnswerInstruction,
+  buildTemporalContextBlock,
+  isFreshnessSensitiveGoal
+} from './utils/prompts/temporal-context';
 export { createAgentGraph, createInitialState } from './graphs/chat.graph';
 export { createApprovalRecoveryGraph } from './graphs/recovery.graph';
 export { createLearningGraph } from './graphs/learning.graph';

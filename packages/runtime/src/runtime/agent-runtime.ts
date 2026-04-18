@@ -1,6 +1,6 @@
 import { loadSettings, LoadSettingsOptions, RuntimeProfile, RuntimeSettings } from '@agent/config';
+import { createRuntimeEmbeddingProvider } from '@agent/adapters';
 import type { ILLMProvider } from '@agent/core';
-import { createRuntimeEmbeddingProvider } from '@agent/model';
 import {
   FileMemoryRepository,
   FileRuleRepository,

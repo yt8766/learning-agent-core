@@ -1,9 +1,11 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import { ApprovalDecision, ToolExecutionResult } from '@agent/shared';
+import { ApprovalDecision, ToolExecutionResult } from '@agent/core';
 
 import { runApprovalRecoveryFinishNode, runExecuteApprovedNode } from '../flows/approval/recovery-graph-nodes';
 import { PendingExecutionContext } from '../flows/approval';
+
+type ApprovalDecisionValue = (typeof ApprovalDecision)[keyof typeof ApprovalDecision];
 
 export interface ApprovalRecoveryGraphState {
   taskId: string;
@@ -11,7 +13,7 @@ export interface ApprovalRecoveryGraphState {
   pending: PendingExecutionContext;
   executionResult?: ToolExecutionResult;
   executionSummary?: string;
-  approvalStatus?: ApprovalDecision;
+  approvalStatus?: ApprovalDecisionValue;
 }
 
 export interface ApprovalRecoveryGraphHandlers {
@@ -25,7 +27,7 @@ const RecoveryAnnotation = Annotation.Root({
   pending: Annotation<PendingExecutionContext>(),
   executionResult: Annotation<ToolExecutionResult | undefined>(),
   executionSummary: Annotation<string | undefined>(),
-  approvalStatus: Annotation<ApprovalDecision | undefined>()
+  approvalStatus: Annotation<ApprovalDecisionValue | undefined>()
 });
 
 export function createApprovalRecoveryGraph(handlers: ApprovalRecoveryGraphHandlers = {}) {

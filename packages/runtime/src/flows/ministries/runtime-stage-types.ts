@@ -1,12 +1,9 @@
-import {
-  AgentRole,
-  ApprovalDecision,
-  CurrentSkillExecutionRecord,
-  TaskRecord,
-  ToolUsageSummaryRecord
-} from '@agent/shared';
+import type { CurrentSkillExecutionRecord } from '@agent/core';
+import { ApprovalDecision } from '@agent/core';
+import type { AgentRoleValue as AgentRole, ToolUsageSummaryRecord } from '@agent/core';
 
 import type { PendingExecutionContext } from '../approval';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 
 export interface PipelineRuntimeCallbacks {

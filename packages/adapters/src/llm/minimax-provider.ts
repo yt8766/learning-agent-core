@@ -1,6 +1,7 @@
 import { ProviderSettingsRecord } from '@agent/config';
-import { createMiniMaxChatModel, normalizeModelBaseUrl } from '@agent/model';
 
+import { createMiniMaxChatModel } from '../chat/chat-model-factory';
+import { normalizeModelBaseUrl } from '../providers/base-url';
 import {
   ChatMessage,
   extractJsonObject,

@@ -1,6 +1,5 @@
-import type { ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
 import type { ContextStrategy } from '@agent/config';
-import type { ILLMProvider as LlmProvider } from '@agent/core';
+import type { ChatMessageRecord, ChatSessionRecord, ILLMProvider as LlmProvider } from '@agent/core';
 
 import { generateTextWithRetry } from '../utils/llm-retry';
 

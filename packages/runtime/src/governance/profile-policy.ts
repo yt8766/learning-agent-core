@@ -1,4 +1,5 @@
-import { ProfilePolicyHintRecord, RuntimeProfile, SourcePolicyMode, WorkerDefinition } from '@agent/shared';
+import type { RuntimeProfile } from '@agent/config';
+import type { ProfilePolicyHintRecord, SourcePolicyMode, WorkerDefinition } from '@agent/core';
 
 export function describeSkillSourceProfilePolicy(
   sourceId: string,

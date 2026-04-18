@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { MemoryEventRecord } from '@agent/shared';
+import type { MemoryEventRecord } from '@agent/core';
 
 export interface MemoryEventRepository {
   append(event: MemoryEventRecord): Promise<void>;

@@ -27,7 +27,6 @@ const TEST_RELATED_EXTENSIONS = new Set(['.js', '.ts', '.tsx', '.mjs', '.cjs', '
 const TSC_PROJECT_RULES = [
   { test: file => file.startsWith('packages/core/'), project: 'packages/core/tsconfig.json' },
   { test: file => file.startsWith('packages/config/'), project: 'packages/config/tsconfig.json' },
-  { test: file => file.startsWith('packages/shared/'), project: 'packages/shared/tsconfig.json' },
   { test: file => file.startsWith('packages/runtime/'), project: 'packages/runtime/tsconfig.json' },
   { test: file => file.startsWith('packages/adapters/'), project: 'packages/adapters/tsconfig.json' },
   { test: file => file.startsWith('packages/memory/'), project: 'packages/memory/tsconfig.json' },
@@ -69,7 +68,7 @@ const FULL_TYPECHECK_TRIGGERS = [
   'tsconfig.json',
   'tsconfig.app.json',
   'tsconfig.node.json',
-  'eslint.config.mjs',
+  'eslint.config.js',
   'prettier.config.js',
   'vitest.config.js'
 ];
@@ -88,7 +87,6 @@ const PROMPT_REGRESSION_GLOBS = [
 const ALL_TYPECHECK_PROJECTS = [
   'packages/core/tsconfig.json',
   'packages/config/tsconfig.json',
-  'packages/shared/tsconfig.json',
   'packages/runtime/tsconfig.json',
   'packages/adapters/tsconfig.json',
   'packages/memory/tsconfig.json',

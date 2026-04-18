@@ -1,24 +1,23 @@
 import {
   AgentExecutionState,
-  AgentMessage,
+  AgentMessageRecord as AgentMessage,
   AgentRole,
+  type AgentRoleValue,
   ApprovalResumeInput,
   CreateTaskDto,
-  EvaluationResult,
   ExecutionTrace,
   MemoryRecord,
   ModelRouteDecision,
   QueueStateRecord,
-  ReviewMinistryLike,
   ReviewRecord,
-  RouterMinistryLike,
   RuleRecord,
   SkillCard,
-  SubgraphId,
-  TaskRecord,
+  type SubgraphIdValue as SubgraphId,
   WorkflowPresetDefinition
-} from '@agent/shared';
+} from '@agent/core';
 import { Command } from '@langchain/langgraph';
+import type { EvaluationResult } from '@agent/core';
+import type { ReviewMinistryLike, RouterMinistryLike } from '@agent/core';
 
 import { MainGraphExecutionHelpers } from './main-graph-execution-helpers';
 import { MainGraphLifecycle } from '../lifecycle/main-graph-lifecycle';
@@ -29,6 +28,7 @@ import { MainGraphTaskDrafts } from '../task/main-graph-task-drafts';
 import { MainGraphTaskRuntime } from '../task/main-graph-task-runtime';
 import { PendingExecutionContext } from '../../../flows/approval';
 import { LearningFlow } from '../../../flows/learning';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 
 interface MainGraphBridgeParams {
@@ -299,18 +299,22 @@ export class MainGraphBridge {
     task: TaskRecord,
     type: AgentMessage['type'],
     content: string,
-    from: AgentRole,
-    to: AgentRole = AgentRole.MANAGER
+    from: AgentRoleValue,
+    to: AgentRoleValue = AgentRole.MANAGER
   ): void {
     this.params.runtime.addMessage(task, type, content, from, to);
   }
-  addProgressDelta(task: TaskRecord, content: string, from: AgentRole = AgentRole.MANAGER): void {
+  addProgressDelta(task: TaskRecord, content: string, from: AgentRoleValue = AgentRole.MANAGER): void {
     this.params.runtime.addProgressDelta(task, content, from);
   }
   upsertAgentState(task: TaskRecord, nextState: AgentExecutionState): void {
     this.params.runtime.upsertAgentState(task, nextState);
   }
-  setSubTaskStatus(task: TaskRecord, role: AgentRole, status: 'pending' | 'running' | 'completed' | 'blocked'): void {
+  setSubTaskStatus(
+    task: TaskRecord,
+    role: AgentRoleValue,
+    status: 'pending' | 'running' | 'completed' | 'blocked'
+  ): void {
     this.params.runtime.setSubTaskStatus(task, role, status);
   }
   addTrace(

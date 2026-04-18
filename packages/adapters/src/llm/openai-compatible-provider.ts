@@ -1,7 +1,7 @@
-import { createChatOpenAIModel, normalizeModelBaseUrl } from '@agent/model';
-
 import { ProviderSettingsRecord } from '@agent/config';
 
+import { createChatOpenAIModel } from '../chat/chat-model-factory';
+import { normalizeModelBaseUrl } from '../providers/base-url';
 import {
   ChatMessage,
   extractJsonObject,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { McpCapabilityRegistry } from '../../src/mcp/mcp-capability-registry';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';

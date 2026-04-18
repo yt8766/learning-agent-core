@@ -8,6 +8,8 @@ export type {
   LlmProviderModelInfo,
   LlmProviderOptions
 } from '@agent/core';
+export * from './chat';
+export * from './embeddings';
 export { createDefaultRuntimeLlmProvider, type DefaultRuntimeLlmProviderOptions } from './llm/runtime-provider-factory';
 export { MiniMaxProvider } from './llm/minimax-provider';
 export { OpenAICompatibleProvider } from './llm/openai-compatible-provider';
@@ -31,3 +33,4 @@ export {
 export { shouldFallbackModel, withFallbackModel } from './utils/model-fallback';
 export { withLlmRetry } from './utils/retry';
 export { withReactiveContextRetry } from './utils/reactive-context-retry';
+export { normalizeEmbeddingBaseUrl, normalizeModelBaseUrl } from './providers/base-url';

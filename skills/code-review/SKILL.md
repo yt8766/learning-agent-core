@@ -45,7 +45,7 @@ risk-level: low
 
 - `agent-chat` 是否把审批、Evidence、Learning、Think、ThoughtChain 从消息主链中移走
 - `agent-admin` 是否退化成普通 dashboard，而不是六大中心控制台
-- `packages/shared` 的领域模型变更是否和前后端消费保持一致
+- `packages/core` 与各宿主本地 compat/facade 类型层是否保持一致
 - `packages/*` 构建是否仍遵守 `build/cjs`、`build/esm`、`build/types`
 - `apps/*` 是否错误直连 `packages/*/src`
 - 与 LearningFlow、MCP、审批流有关的改动是否破坏既有闭环

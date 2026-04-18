@@ -1,5 +1,5 @@
 import type { MemoryRepository, MemorySearchService } from '@agent/memory';
-import type { MemoryRecord, MemorySearchResult, RuleRecord } from '@agent/shared';
+import type { MemoryRecord, MemorySearchResult, RuleRecord } from '@agent/core';
 import { archivalMemorySearchByParams } from '@agent/runtime';
 
 interface SearchHubuMemoriesParams {

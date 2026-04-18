@@ -1,8 +1,10 @@
-import { ActionIntent, type ToolDefinition } from '@agent/shared';
+import { ActionIntent, type ToolDefinition } from '@agent/core';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 import type { ApprovalEvaluationInput } from './approval-service';
 
-export const GOVERNANCE_INTENTS = new Set<ActionIntent>([
+export const GOVERNANCE_INTENTS = new Set<ActionIntentValue>([
   ActionIntent.PROMOTE_SKILL,
   ActionIntent.ENABLE_PLUGIN,
   ActionIntent.MODIFY_RULE
@@ -48,7 +50,11 @@ export function matchesAny(value: string, patterns: RegExp[]): boolean {
   return patterns.some(pattern => pattern.test(value));
 }
 
-export function shouldInvokeClassifier(intent: ActionIntent, tool: ToolDefinition, input?: ApprovalEvaluationInput) {
+export function shouldInvokeClassifier(
+  intent: ActionIntentValue,
+  tool: ToolDefinition,
+  input?: ApprovalEvaluationInput
+) {
   if (tool.name === 'run_terminal') {
     const command = String(input?.command ?? '').trim();
     return Boolean(command) && !matchesAny(command, SAFE_TERMINAL_COMMAND_PATTERNS);

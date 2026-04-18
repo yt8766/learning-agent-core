@@ -1,4 +1,5 @@
-import { getMinistryDisplayName, normalizeMinistryId, type MinistryId, type SkillCard } from '@agent/shared';
+import type { SkillCard, WorkerDomain } from '@agent/core';
+import { getMinistryDisplayName, normalizeMinistryId } from './runtime-architecture-helpers';
 
 export function toCapabilityDisplayName(toolName: string) {
   return toolName
@@ -31,7 +32,7 @@ export function inferCapabilityCategory(toolName: string): 'knowledge' | 'system
   return 'knowledge';
 }
 
-export function resolveInstalledSkillMinistry(skill: SkillCard): MinistryId {
+export function resolveInstalledSkillMinistry(skill: SkillCard): WorkerDomain {
   const capabilities = [...(skill.requiredCapabilities ?? []), ...(skill.requiredTools ?? [])].map(item =>
     item.toLowerCase()
   );

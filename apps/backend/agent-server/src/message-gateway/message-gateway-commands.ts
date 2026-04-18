@@ -1,4 +1,4 @@
-import type { ChannelOutboundMessage, InboundChannelMessage } from '@agent/shared';
+import type { ChannelOutboundMessage, InboundChannelMessage } from '@agent/core';
 
 import { parseActionIntent, parseGatewayCommand } from './message-gateway-normalizer';
 

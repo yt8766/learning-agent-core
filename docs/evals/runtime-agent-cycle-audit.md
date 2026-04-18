@@ -115,11 +115,10 @@
 - 不适合先做“局部小搬运”
 - 更适合在后续阶段通过 specialist descriptor / facade / registry 去间接化
 
-当前状态更新：
+当时状态更新：
 
-- `RouterMinistryLike` 已在 `@agent/shared` 建立，runtime 中大部分吏部参数位已不再依赖 `LibuRouterMinistry`
-- `ResearchMinistryLike` 已在 `@agent/shared` 建立，runtime 的 research stage / pipeline graph 已改为依赖接口而非 `HubuSearchMinistry` 具体类型
-- `DeliveryMinistryLike` 已在 `@agent/shared` 建立，runtime 的 research / execute / review 路径已改为依赖接口而非 `LibuDocsMinistry` 具体类型
+- 以下内容是历史迁移阶段记录，保留用来解释当时为何引入 shared-facing contract；当前现役宿主已改为 `packages/core` 与真实宿主本地 compat/facade。
+- 当时已先把 Router / Research / Delivery 这批 runtime-facing contract 收口到 `@agent/shared`
 - 目前允许保留具体类引用的位置已进一步收缩到：
   - runtime orchestration 装配点
   - runtime 本地 compat barrel
@@ -151,20 +150,10 @@
 - 优先评估是否能迁到 `packages/core`
 - 或下沉成 runtime-facing workflow contract facade
 
-当前状态更新：
+当时状态更新：
 
-- `resolveWorkflowPreset`
-- `buildWorkflowPresetPlan`
-- `GENERAL_PRESET`
-- `WORKFLOW_PRESETS`
-
-已在本轮下沉到 `@agent/shared`
-
-- `packages/runtime` 中直接消费 workflow preset registry / plan 的位置已改为从 `@agent/shared` 导入
-- `agents/supervisor/src/workflows/workflow-preset-*.ts` 当前保留 compat re-export
-- `buildResearchSourcePlan` 已在本轮下沉到 `@agent/shared`
-- `resolveWorkflowRoute` 与其 `signals/readiness` 纯决策栈已在本轮下沉到 `@agent/shared`
-- `resolveSpecialistRoute` 已在本轮下沉到 `@agent/shared`
+- workflow preset / research source / route / specialist routing 这组纯策略 contract 当时已统一下沉到 `@agent/shared`
+- runtime 对这些能力的消费当时已改为依赖 contract，而不是直接依赖 supervisor 实现文件
 
 ### 2.3 Execution Step / Evidence helper
 
@@ -215,9 +204,9 @@
 - 抽成 bootstrap skill descriptor contract
 - 让 runtime 依赖描述，而不是 supervisor 包的导出实现
 
-当前状态更新：
+当时状态更新：
 
-- 已在本轮迁移到 `@agent/shared`
+- 已在该阶段迁移到 `@agent/shared`
 - `packages/runtime/src/capabilities/capability-pool-bootstrap.ts` 已不再从 `@agent/agents-supervisor` 导入该符号
 - `agents/supervisor/src/bootstrap/bootstrap-skill-registry.ts` 当前改为 compat re-export
 
@@ -248,11 +237,9 @@
 - 暂不建议优先从 Ministry 实现类下手
 - 可以先看 `ExecutorAgent` 是否能被更薄的 executor contract 替换
 
-当前状态更新：
+当时状态更新：
 
-- `CodeExecutionMinistryLike` 已在 `@agent/shared` 建立，runtime 的 execute / approval-resume 路径已不再依赖 `GongbuCodeMinistry` 具体类型
-- `OpsExecutionMinistryLike` 已在 `@agent/shared` 建立，runtime 的 execute 路径已不再依赖 `BingbuOpsMinistry` 具体类型
-- `ApprovedExecutionAgentLike` 已在 `@agent/shared` 建立，`recovery-node.ts` 已不再直接依赖 `ExecutorAgent`
+- coder 侧 runtime-facing facade 当时已迁到 `@agent/shared`
 - 当前 `@agent/agents-coder` 在 runtime 内剩余直接引用已收缩到：
   - runtime 本地 compat barrel
   - orchestration 装配点
@@ -281,10 +268,10 @@
 - 当前 reviewer 侧依赖集中度反而更高，几乎都是围绕 Ministry 实现
 - 它更像第二批 specialist contract 收敛对象，不是第一刀最佳切口
 
-当前状态更新：
+当时状态更新：
 
-- `ReviewMinistryLike` 已在 `@agent/shared` 建立
-- runtime 的 review stage、review callbacks、bridge 与 pipeline graph 参数位已改为依赖接口
+- reviewer 侧 runtime-facing facade 当时已迁到 `@agent/shared`
+- runtime 的 review stage、review callbacks、bridge 与 pipeline graph 参数位当时已改为依赖接口
 - 当前 `@agent/agents-reviewer` 在 runtime 内剩余直接引用已收缩到：
   - runtime 本地 compat barrel
   - orchestration 装配点
@@ -310,9 +297,9 @@
 - 后续可评估把 data-report contract 下沉到 `packages/core` 或 `packages/shared`
 - 这条边可能比 Ministry 实现类更容易收敛
 
-当前状态更新：
+当时状态更新：
 
-- `buildDataReportContract` 与 `appendDataReportContext` 已在本轮下沉到 `@agent/shared`
+- `buildDataReportContract` 与 `appendDataReportContext` 当时已下沉到 `@agent/shared`
 - `packages/runtime/src/graphs/main/task/task-workflow-resolution.ts` 已不再从 `@agent/agents-data-report` 直接导入
 - `agents/data-report/src/flows/data-report/contract.ts` 当前保留 compat re-export
 - 当前 runtime 对 `@agent/agents-data-report` 的直接 import 面已清零

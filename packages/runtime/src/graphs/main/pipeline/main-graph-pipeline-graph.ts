@@ -1,36 +1,32 @@
-import {
-  AgentRole,
-  ApprovalDecision,
+import { AgentRole, ApprovalDecision, CreateTaskDto, SourcePolicyMode, ToolUsageSummaryRecord } from '@agent/core';
+import type {
   CodeExecutionMinistryLike,
-  CreateTaskDto,
   DeliveryMinistryLike,
   OpsExecutionMinistryLike,
   ResearchMinistryLike,
   ReviewMinistryLike,
-  RouterMinistryLike,
-  SourcePolicyMode,
-  TaskRecord,
-  ToolUsageSummaryRecord
-} from '@agent/shared';
+  RouterMinistryLike
+} from '@agent/core';
 import { BaseCheckpointSaver } from '@langchain/langgraph';
 
 import { runDispatchStage, runGoalIntakeStage, runManagerPlanStage, runRouteStage } from '@agent/agents-supervisor';
 import { PendingExecutionContext } from '../../../flows/approval';
 import { runReviewStage } from '../../../flows/ministries/review-stage-nodes';
 import { runExecuteStage, runResearchStage } from '../../../flows/ministries/runtime-stage-nodes';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 import { createAgentGraph } from '../../chat.graph';
 
 interface TaskPipelineGraphCallbacks {
-  ensureTaskNotCancelled: (task: TaskRecord) => void;
+  ensureTaskNotCancelled: (task: RuntimeTaskRecord) => void;
   syncTaskRuntime: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     state: Pick<RuntimeAgentGraphState, 'currentStep' | 'retryCount' | 'maxRetries'>
   ) => void;
-  markSubgraph: (task: TaskRecord, subgraphId: 'research' | 'execution' | 'review') => void;
-  markWorkerUsage: (task: TaskRecord, workerId?: string) => void;
+  markSubgraph: (task: RuntimeTaskRecord, subgraphId: 'research' | 'execution' | 'review') => void;
+  markWorkerUsage: (task: RuntimeTaskRecord, workerId?: string) => void;
   attachTool: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       attachedBy: 'bootstrap' | 'user' | 'runtime' | 'workflow' | 'specialist';
@@ -42,7 +38,7 @@ interface TaskPipelineGraphCallbacks {
     }
   ) => void;
   recordToolUsage: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       status: ToolUsageSummaryRecord['status'];
@@ -58,74 +54,82 @@ interface TaskPipelineGraphCallbacks {
       capabilityType?: ToolUsageSummaryRecord['capabilityType'];
     }
   ) => void;
-  addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+  addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+  addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRole) => void;
   setSubTaskStatus: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     role: AgentRole,
     status: 'pending' | 'running' | 'completed' | 'blocked'
   ) => void;
   addMessage: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     type: 'research_result' | 'execution_result' | 'review_result' | 'summary',
     content: string,
     from: AgentRole
   ) => void;
-  upsertAgentState: (task: TaskRecord, nextState: unknown) => void;
-  persistAndEmitTask: (task: TaskRecord) => Promise<void>;
+  upsertAgentState: (task: RuntimeTaskRecord, nextState: unknown) => void;
+  persistAndEmitTask: (task: RuntimeTaskRecord) => Promise<void>;
   updateBudgetState: (
-    task: TaskRecord,
-    overrides: Partial<NonNullable<TaskRecord['budgetState']>>
-  ) => NonNullable<TaskRecord['budgetState']>;
-  recordDispatches: (task: TaskRecord, dispatches: RuntimeAgentGraphState['dispatches']) => void;
+    task: RuntimeTaskRecord,
+    overrides: Partial<NonNullable<RuntimeTaskRecord['budgetState']>>
+  ) => NonNullable<RuntimeTaskRecord['budgetState']>;
+  recordDispatches: (task: RuntimeTaskRecord, dispatches: RuntimeAgentGraphState['dispatches']) => void;
   transitionQueueState: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'blocked'
   ) => void;
   registerPendingExecution: (taskId: string, pending: PendingExecutionContext) => void;
-  resolveWorkflowRoutes: (task: TaskRecord, workflow?: TaskRecord['resolvedWorkflow']) => TaskRecord['modelRoute'];
+  resolveWorkflowRoutes: (
+    task: RuntimeTaskRecord,
+    workflow?: RuntimeTaskRecord['resolvedWorkflow']
+  ) => RuntimeTaskRecord['modelRoute'];
   resolveResearchMinistry: (
-    task: TaskRecord,
-    workflow?: TaskRecord['resolvedWorkflow']
+    task: RuntimeTaskRecord,
+    workflow?: RuntimeTaskRecord['resolvedWorkflow']
   ) => 'hubu-search' | 'libu-delivery';
   resolveExecutionMinistry: (
-    task: TaskRecord,
-    workflow?: TaskRecord['resolvedWorkflow']
+    task: RuntimeTaskRecord,
+    workflow?: RuntimeTaskRecord['resolvedWorkflow']
   ) => 'gongbu-code' | 'bingbu-ops' | 'libu-delivery';
   resolveReviewMinistry: (
-    task: TaskRecord,
-    workflow?: TaskRecord['resolvedWorkflow']
+    task: RuntimeTaskRecord,
+    workflow?: RuntimeTaskRecord['resolvedWorkflow']
   ) => 'xingbu-review' | 'libu-delivery';
   getMinistryLabel: (ministry: string) => string;
   describeActionIntent: (intent: string) => string;
   createAgentContext: (taskId: string, goal: string, flow: 'chat' | 'approval' | 'learning') => any;
   reviewExecution: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     xingbu: ReviewMinistryLike,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ) => Promise<any>;
   persistReviewArtifacts: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     goal: string,
     evaluation: any,
     review: any,
     executionSummary: string
   ) => Promise<void>;
-  enqueueTaskLearning: (task: TaskRecord, userFeedback?: string) => void;
-  shouldRunLibuDocsDelivery: (workflow?: TaskRecord['resolvedWorkflow']) => boolean;
-  buildFreshnessSourceSummary: (task: TaskRecord) => string | undefined;
-  buildCitationSourceSummary: (task: TaskRecord) => string | undefined;
-  appendDiagnosisEvidence: (task: TaskRecord, review: any, executionSummary: string, finalAnswer: string) => void;
+  enqueueTaskLearning: (task: RuntimeTaskRecord, userFeedback?: string) => void;
+  shouldRunLibuDocsDelivery: (workflow?: RuntimeTaskRecord['resolvedWorkflow']) => boolean;
+  buildFreshnessSourceSummary: (task: RuntimeTaskRecord) => string | undefined;
+  buildCitationSourceSummary: (task: RuntimeTaskRecord) => string | undefined;
+  appendDiagnosisEvidence: (
+    task: RuntimeTaskRecord,
+    review: any,
+    executionSummary: string,
+    finalAnswer: string
+  ) => void;
   resolveRuntimeSkillIntervention: (params: {
-    task: TaskRecord;
+    task: RuntimeTaskRecord;
     goal: string;
     currentStep: 'direct_reply' | 'research';
-    skillSearch: NonNullable<TaskRecord['skillSearch']>;
+    skillSearch: NonNullable<RuntimeTaskRecord['skillSearch']>;
     usedInstalledSkills?: string[];
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         progressSummary?: string;
         traceSummary?: string;
@@ -145,14 +149,14 @@ interface TaskPipelineGraphCallbacks {
     | undefined
   >;
   resolveSkillInstallInterruptResume: (params: {
-    task: TaskRecord;
+    task: RuntimeTaskRecord;
     receiptId: string;
     skillDisplayName?: string;
     usedInstalledSkills?: string[];
     actor?: string;
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         traceSummary?: string;
         progressSummary?: string;
@@ -162,7 +166,7 @@ interface TaskPipelineGraphCallbacks {
 }
 
 interface TaskPipelineGraphParams {
-  task: TaskRecord;
+  task: RuntimeTaskRecord;
   dto: CreateTaskDto;
   options: { mode: 'initial' | 'retry' | 'approval_resume'; pending?: PendingExecutionContext };
   libu: RouterMinistryLike;

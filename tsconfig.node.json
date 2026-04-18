@@ -17,13 +17,11 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@agent/core": ["packages/core/src/index.ts"],
-      "@agent/shared": ["packages/shared/src"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],
       "@agent/adapters": ["packages/adapters/src/index.ts"],
       "@agent/tools": ["packages/tools/src"],
       "@agent/memory": ["packages/memory/src"],
-      "@agent/model": ["packages/model/src"],
       "@agent/report-kit": ["packages/report-kit/src/index.ts"],
       "@agent/skill-runtime": ["packages/skill-runtime/src/index.ts"],
       "@agent/templates": ["packages/templates/src"],

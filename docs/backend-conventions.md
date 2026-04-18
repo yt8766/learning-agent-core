@@ -368,7 +368,6 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 
 推荐：
 
-- `@agent/shared`
 - `@agent/core`
 - `@agent/runtime`
 - `@agent/memory`

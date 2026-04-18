@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { SkillSourceRecord } from '@agent/shared';
+import type { SkillSourceRecord } from '@agent/core';
 
 import { loadAgentSkillManifests } from '../src/agent-skill-loader';
 

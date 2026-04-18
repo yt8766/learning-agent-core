@@ -1,13 +1,12 @@
-import type { TaskRecord } from '@agent/shared';
 import { buildContextCompressionResult } from '../../utils/context-compression-pipeline';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { buildContextFilterAudienceSlices, orderRuntimeDispatches } from './dispatch-stage-helpers';
-import type { PlanningCallbacks } from './pipeline-stage-node.types';
+import type { PlanningCallbacks, SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
 
-export async function runDispatchStage(
-  task: TaskRecord,
+export async function runDispatchStage<TTask extends SupervisorPlanningTaskLike>(
+  task: TTask,
   state: RuntimeAgentGraphState,
-  callbacks: PlanningCallbacks
+  callbacks: PlanningCallbacks<TTask>
 ): Promise<Partial<RuntimeAgentGraphState>> {
   callbacks.ensureTaskNotCancelled(task);
   callbacks.syncTaskRuntime(task, {
@@ -42,7 +41,7 @@ export async function runDispatchStage(
     node: 'context_filter',
     status: 'completed',
     filteredContextSlice,
-    audienceSlices: buildContextFilterAudienceSlices(task, orderedDispatches),
+    audienceSlices: buildContextFilterAudienceSlices(orderedDispatches),
     dispatchOrder,
     noiseGuards: Array.from(
       new Set([
@@ -57,12 +56,13 @@ export async function runDispatchStage(
     createdAt: task.contextFilterState?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+  const nextContextFilterState = task.contextFilterState;
   callbacks.recordDispatches(task, orderedDispatches);
   callbacks.addTrace(task, 'context_filter', '文书科已完成上下文压缩与脱敏切片。', {
     filteredContextSlice,
-    hiddenTraceCount: task.contextFilterState.hiddenTraceCount,
+    hiddenTraceCount: nextContextFilterState.hiddenTraceCount,
     dispatchOrder,
-    audienceSlices: task.contextFilterState.audienceSlices
+    audienceSlices: nextContextFilterState.audienceSlices
   });
   await callbacks.persistAndEmitTask(task);
   return { currentStep: 'dispatch', dispatches: orderedDispatches };

@@ -45,13 +45,10 @@
   - coder agent 的公开入口与真实实现位置，承载 `ExecutorAgent`、`GongbuCodeMinistry`、`BingbuOpsMinistry`
 - `agents/reviewer`
   - reviewer agent 的公开入口与真实实现位置，承载 `ReviewerAgent`、`XingbuReviewMinistry`
-- `packages/shared`
-  - DTO、Record、Enum、跨端展示 contract
-  - 对 `@agent/core` 主 contract 的 compat re-export 与前端友好默认组合
+- `docs/shared/*`
+  - `packages/shared` 退场过程的历史台账与兼容边界归档
 - `packages/config`
   - profile、settings schema、默认策略与路径布局
-- `packages/model`
-  - 模型 provider normalize、chat/embedding factory
 - `packages/memory`
   - memory/rule/runtime-state repository、vector index、semantic cache、search
 - `packages/tools`
@@ -74,6 +71,8 @@
 - `packages/runtime` 现已继续承载 `capability-pool`、直答/审批 interrupt 节点与 main graph 所需的 ministries stage orchestration 真实源码
 - `packages/adapters` 已承载 `adapters/llm` 的真实源码
 - `packages/adapters` 现已继续承载 prompt template、LLM retry、safe structured object、model fallback、reactive retry 与 JSON safety prompt 的真实源码
+- `packages/adapters` 现已继续承载 chat model factory、embedding factory 与 provider base-url normalize 的真实源码
+- `packages/model` 已删除；模型与 embedding 工厂能力统一收口到 `@agent/adapters`
 - `agents/supervisor` 已承载 `bootstrap / subgraph-registry / main-route / workflows / flows/supervisor` 的真实源码
 - `agents/data-report` 已承载 `data-report.graph / data-report-json.graph / flows/data-report / flows/data-report-json` 的真实源码
 - `agents/coder` 已承载 `executor-node / gongbu-code-ministry / bingbu-ops-ministry / 执行 prompt / 执行 schema` 的真实源码

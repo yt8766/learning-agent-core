@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ActionIntent, ApprovalDecision } from '@agent/shared';
+import { ActionIntent, ApprovalDecision } from '@agent/core';
 
 import { createApprovalRecoveryGraph } from '../src/graphs/recovery.graph';
 

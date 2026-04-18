@@ -1,17 +1,12 @@
-import {
-  ApprovalDecision,
-  ChatSessionRecord,
-  RecoverToCheckpointDto,
-  SessionCancelDto,
-  TaskRecord,
-  TaskStatus
-} from '@agent/shared';
+import { ApprovalDecision, TaskStatus } from '@agent/core';
+import type { ChatSessionRecord, RecoverToCheckpointDto, SessionCancelDto } from '@agent/core';
 
 import { AgentOrchestrator } from '../graphs/main/main.graph';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { syncCoordinatorTask } from './session-coordinator-sync';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
 import { autoConfirmLearningIfNeeded, runLearningConfirmation } from './session-coordinator-learning';
+import type { SessionTaskAggregate } from './session-task.types';
 
 type SessionSyncDeps = {
   orchestrator: AgentOrchestrator;
@@ -22,7 +17,7 @@ type SessionSyncDeps = {
 export function syncSessionTask(
   { orchestrator, store, thinking }: SessionSyncDeps,
   sessionId: string,
-  task: TaskRecord
+  task: SessionTaskAggregate
 ): void {
   syncCoordinatorTask(
     store,

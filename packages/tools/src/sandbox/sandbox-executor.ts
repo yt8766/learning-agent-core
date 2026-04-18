@@ -1,4 +1,4 @@
-import { ToolExecutionRequest, ToolExecutionResult } from '@agent/shared';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
 import {
   assembleDataReportBundle,
   buildDataReportBlueprint,

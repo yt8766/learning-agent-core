@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
 import {
+  buildPromptfooEvalArgs,
   buildPromptRegressionSkipSummary,
   derivePromptRegressionSummary,
   enforcePromptRegressionGate,
@@ -39,7 +40,7 @@ async function main() {
 }
 
 function runPromptfooEval() {
-  return spawnPromptfoo(['eval', '-c', CONFIG_PATH, '--output', RAW_OUTPUT_PATH]);
+  return spawnPromptfoo(buildPromptfooEvalArgs(CONFIG_PATH, RAW_OUTPUT_PATH));
 }
 
 async function spawnPromptfoo(args) {

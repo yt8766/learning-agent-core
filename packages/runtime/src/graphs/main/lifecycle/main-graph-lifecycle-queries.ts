@@ -1,19 +1,21 @@
-import {
+import type {
   AgentExecutionState,
-  AgentMessage,
+  AgentMessageRecord as AgentMessage,
   CreateDocumentLearningJobDto,
   CreateResearchLearningJobDto,
   ExecutionTrace,
-  LearningCandidateRecord,
   LearningConflictRecord,
-  LearningJob,
-  LearningQueueItem,
+  LearningCandidateRecord,
   ManagerPlan,
   ReviewRecord,
-  RuleRecord,
-  TaskRecord,
   WorkerDefinition
-} from '@agent/shared';
+} from '@agent/core';
+import type { RuleRecord } from '@agent/core';
+import type {
+  RuntimeLearningJob as LearningJob,
+  RuntimeLearningQueueItem as LearningQueueItem
+} from '../../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 import {
   createLifecycleDocumentLearningJob,

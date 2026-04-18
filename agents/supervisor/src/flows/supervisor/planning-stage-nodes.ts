@@ -1,4 +1,4 @@
-import { ApprovalDecision, CreateTaskDto, RouterMinistryLike, TaskRecord, TaskStatus } from '@agent/shared';
+import { ApprovalDecision, TaskStatus, type CreateTaskDto, type RouterMinistryLike } from '@agent/core';
 import { interrupt } from '@langchain/langgraph';
 import { buildPlanningPolicy } from '../../workflows/planning-question-policy';
 import {
@@ -26,18 +26,18 @@ import {
 } from './planning-stage-helpers';
 import { applyPlanningMicroBudget } from './planning-stage-budget';
 import { compileSkillContractIntoPlan, resolveCompiledSkillAttachment } from './planning-stage-skill-contract';
-import type { PlanningCallbacks } from './pipeline-stage-node.types';
+import type { PlanningCallbacks, SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
 
 export { runGoalIntakeStage, runRouteStage } from './planning-stage-intake';
 export { compileSkillContractIntoPlan } from './planning-stage-skill-contract';
 
-export async function runManagerPlanStage(
-  task: TaskRecord,
+export async function runManagerPlanStage<TTask extends SupervisorPlanningTaskLike>(
+  task: TTask,
   dto: CreateTaskDto,
   state: RuntimeAgentGraphState,
   libu: RouterMinistryLike,
-  callbacks: PlanningCallbacks & {
-    upsertAgentState: (task: TaskRecord, nextState: unknown) => void;
+  callbacks: PlanningCallbacks<TTask> & {
+    upsertAgentState: (task: TTask, nextState: unknown) => void;
   }
 ): Promise<Partial<RuntimeAgentGraphState>> {
   callbacks.ensureTaskNotCancelled(task);

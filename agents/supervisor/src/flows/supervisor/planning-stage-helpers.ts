@@ -2,14 +2,14 @@ import {
   CreateTaskDto,
   InternalSubAgentResult,
   ManagerPlan,
+  PlanMode,
   PlanDecisionRecord,
   PlanDraftRecord,
-  PlanMode,
-  TaskRecord,
   TaskStatus
-} from '@agent/shared';
+} from '@agent/core';
+import type { SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
 
-export function buildPartialAggregationPreview(task: TaskRecord, planDraft: PlanDraftRecord) {
+export function buildPartialAggregationPreview(task: SupervisorPlanningTaskLike, planDraft: PlanDraftRecord) {
   const questionCount = planDraft.questions?.length ?? 0;
   const openQuestions = (planDraft.openQuestions ?? []).slice(0, 3).join('、');
   return {
@@ -26,7 +26,7 @@ export function buildPartialAggregationPreview(task: TaskRecord, planDraft: Plan
   };
 }
 
-export function syncTaskExecutionMode(task: TaskRecord) {
+export function syncTaskExecutionMode(task: SupervisorPlanningTaskLike) {
   if (task.executionPlan?.mode === 'imperial_direct') {
     task.executionMode = 'imperial_direct';
     return;
@@ -41,7 +41,7 @@ export function syncTaskExecutionMode(task: TaskRecord) {
   };
 }
 
-export function resolveInteractivePlanMode(task: TaskRecord, dto: CreateTaskDto): PlanMode | undefined {
+export function resolveInteractivePlanMode(task: SupervisorPlanningTaskLike, dto: CreateTaskDto): PlanMode | undefined {
   const normalizedGoal = dto.goal.trim().toLowerCase();
   if (task.planMode) {
     return task.planMode === 'aborted' ? undefined : task.planMode;
@@ -62,7 +62,7 @@ export function resolveInteractivePlanMode(task: TaskRecord, dto: CreateTaskDto)
 }
 
 export function ensurePlanDraft(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   plan: ManagerPlan,
   planMode: PlanMode,
   now: string,
@@ -102,7 +102,7 @@ export function ensurePlanDraft(
 }
 
 export function applyDefaultPlanAssumptions(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   planDraft: PlanDraftRecord,
   now: string,
   resolutionSource: PlanDecisionRecord['resolutionSource']
@@ -147,7 +147,7 @@ export function applyDefaultPlanAssumptions(
 }
 
 export function applyRecommendedPlanAnswers(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   planDraft: PlanDraftRecord,
   now: string,
   resolutionSource: PlanDecisionRecord['resolutionSource']
@@ -195,7 +195,7 @@ export function applyRecommendedPlanAnswers(
 }
 
 export function applyUserPlanAnswers(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   planDraft: PlanDraftRecord,
   resume: {
     action?: 'approve' | 'reject' | 'feedback' | 'input' | 'bypass' | 'abort';
@@ -272,7 +272,12 @@ export function applyUserPlanAnswers(
   };
 }
 
-export function finalizePlanInterrupt(task: TaskRecord, now: string, status: 'resolved' | 'cancelled', reason: string) {
+export function finalizePlanInterrupt(
+  task: SupervisorPlanningTaskLike,
+  now: string,
+  status: 'resolved' | 'cancelled',
+  reason: string
+) {
   if (!task.activeInterrupt) {
     return;
   }
@@ -292,7 +297,7 @@ export function finalizePlanInterrupt(task: TaskRecord, now: string, status: 're
   }
 }
 
-export function shouldExecuteAfterPlanning(task: TaskRecord) {
+export function shouldExecuteAfterPlanning(task: SupervisorPlanningTaskLike) {
   return task.planDraft?.decisions?.some(
     item =>
       item.resolutionSource === 'bypass-recommended' ||
@@ -300,7 +305,7 @@ export function shouldExecuteAfterPlanning(task: TaskRecord) {
   );
 }
 
-export function buildPlanningFinalAnswer(task: TaskRecord, plan: ManagerPlan) {
+export function buildPlanningFinalAnswer(task: SupervisorPlanningTaskLike, plan: ManagerPlan) {
   const lines = [
     '## 计划结论',
     task.planDraft?.summary ?? plan.summary,
@@ -341,7 +346,7 @@ export function buildPlanningFinalAnswer(task: TaskRecord, plan: ManagerPlan) {
 }
 
 export function buildInternalSubAgentResults(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   planDraft: PlanDraftRecord,
   now: string
 ): InternalSubAgentResult[] {
@@ -370,11 +375,11 @@ export function buildInternalSubAgentResults(
 }
 
 export function buildCounselorProxyInterrupt(
-  task: TaskRecord,
+  task: SupervisorPlanningTaskLike,
   planDraft: PlanDraftRecord,
   interruptId: string,
   now: string
-): NonNullable<TaskRecord['activeInterrupt']> {
+): NonNullable<SupervisorPlanningTaskLike['activeInterrupt']> {
   const results = task.internalSubAgents ?? [];
   const aggregatedQuestions = results.flatMap(item => item.questions ?? []).slice(0, 3);
   const interactionKind: 'plan-question' | 'supplemental-input' = results.some(
@@ -422,11 +427,11 @@ export function buildCounselorProxyInterrupt(
   };
 }
 
-export function collectCounselorIds(task: TaskRecord) {
+export function collectCounselorIds(task: SupervisorPlanningTaskLike) {
   return Array.from(
     new Set(
       [task.specialistLead?.id, ...(task.supportingSpecialists?.map(item => item.id) ?? [])].filter(
-        (item): item is NonNullable<TaskRecord['specialistLead']>['id'] => Boolean(item)
+        (item): item is NonNullable<SupervisorPlanningTaskLike['specialistLead']>['id'] => Boolean(item)
       )
     )
   );

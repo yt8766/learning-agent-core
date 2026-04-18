@@ -1,5 +1,5 @@
-import type { ChatCheckpointRecord, ChatEventRecord, TaskRecord } from '@agent/shared';
-import { getMinistryDisplayName } from '@agent/shared';
+import type { ChatCheckpointRecord, ChatEventRecord } from '@agent/core';
+import { getMinistryDisplayName } from './session-architecture-helpers';
 
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 
@@ -24,7 +24,14 @@ export function emitNodeStatusEvent(
   store: SessionCoordinatorStore,
   sessionId: string,
   params: {
-    task: TaskRecord;
+    task: {
+      id: string;
+      currentMinistry?: string;
+      currentWorker?: string;
+      specialistLead?: {
+        displayName: string;
+      };
+    };
     checkpoint: ChatCheckpointRecord;
     nodeId?: string;
     phase: NodePhase;

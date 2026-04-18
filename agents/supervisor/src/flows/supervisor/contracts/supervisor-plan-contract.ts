@@ -1,5 +1,5 @@
-﻿import type { ManagerPlan } from '@agent/shared';
-import { AgentRole } from '@agent/shared';
+﻿import type { ManagerPlan } from '@agent/core';
+import { AgentRole } from '../supervisor-architecture-helpers';
 
 import type { SupervisorPlanOutput } from '../schemas/supervisor-plan-schema';
 

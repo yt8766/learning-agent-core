@@ -1,4 +1,4 @@
-import { ActionIntent, type ToolDefinition, type ToolExecutionResult } from '@agent/shared';
+import { ActionIntent, type ToolDefinition, type ToolExecutionResult } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import type {
@@ -6,6 +6,8 @@ import type {
   StreamingExecutionCoordinator,
   StreamingExecutionEvent
 } from '../../../runtime/streaming-execution';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export function selectReadonlyBatchTools(selectedTool: ToolDefinition, candidateTools: ToolDefinition[]) {
   return [selectedTool]
@@ -37,7 +39,7 @@ export function buildReadonlyExecutionSteps(params: {
   buildToolInput: (toolName: string, actionPrompt: string, researchSummary: string) => Record<string, unknown>;
   runTool: (
     tool: ToolDefinition,
-    intent: ActionIntent,
+    intent: ActionIntentValue,
     toolInput: Record<string, unknown>
   ) => Promise<ToolExecutionResult>;
 }) {
@@ -69,7 +71,7 @@ export async function executeReadonlyBatch(params: {
   buildToolInput: (toolName: string, actionPrompt: string, researchSummary: string) => Record<string, unknown>;
   runTool: (
     tool: ToolDefinition,
-    intent: ActionIntent,
+    intent: ActionIntentValue,
     toolInput: Record<string, unknown>
   ) => Promise<ToolExecutionResult>;
   onEvent?: (event: StreamingExecutionEvent<ToolExecutionResult>) => void;

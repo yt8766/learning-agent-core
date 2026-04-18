@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { SkillStatus } from '@agent/shared';
+import { SkillStatus } from '@agent/core';
 
 import { RuntimeSkillCatalogService } from '../runtime/services/runtime-skill-catalog.service';
 

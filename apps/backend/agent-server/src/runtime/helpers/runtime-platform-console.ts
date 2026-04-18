@@ -1,12 +1,6 @@
-import {
-  ChatCheckpointRecord,
-  ChatSessionRecord,
-  EvalsCenterRecord,
-  getMinistryDisplayName,
-  LearningCenterRecord,
-  normalizeExecutionMode,
-  type PlatformApprovalRecord
-} from '@agent/shared';
+import { getMinistryDisplayName, normalizeExecutionMode } from './runtime-architecture-helpers';
+import type { ChatCheckpointRecord, ChatSessionRecord, PlatformApprovalRecord } from '@agent/core';
+import type { EvalsCenterRecord, LearningCenterRecord } from '../centers/runtime-centers.records';
 
 export interface RuntimePlatformConsoleContext {
   skillRegistry: {

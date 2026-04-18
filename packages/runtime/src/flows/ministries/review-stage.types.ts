@@ -1,10 +1,6 @@
-import type {
-  EvaluationResult,
-  MinistryContractMeta,
-  ReviewMinistryLike,
-  ReviewRecord,
-  TaskRecord
-} from '@agent/shared';
+import type { AgentRoleValue, EvaluationResult, ReviewRecord } from '@agent/core';
+import type { MinistryContractMeta, ReviewMinistryLike } from '@agent/core';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 
 export type NormalizedReviewResult = {
@@ -24,13 +20,8 @@ export interface ReviewCallbacks {
   markSubgraph: (task: TaskRecord, subgraphId: 'review') => void;
   markWorkerUsage: (task: TaskRecord, workerId?: string) => void;
   addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: import('@agent/shared').AgentRole) => void;
-  addMessage: (
-    task: TaskRecord,
-    type: 'review_result' | 'summary',
-    content: string,
-    from: import('@agent/shared').AgentRole
-  ) => void;
+  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRoleValue) => void;
+  addMessage: (task: TaskRecord, type: 'review_result' | 'summary', content: string, from: AgentRoleValue) => void;
   upsertAgentState: (task: TaskRecord, nextState: unknown) => void;
   persistAndEmitTask: (task: TaskRecord) => Promise<void>;
   transitionQueueState: (

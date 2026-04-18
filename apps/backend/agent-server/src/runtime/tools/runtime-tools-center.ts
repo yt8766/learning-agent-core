@@ -1,4 +1,4 @@
-import type { ToolAttachmentRecord, ToolDefinition, ToolFamilyRecord, ToolUsageSummaryRecord } from '@agent/shared';
+import type { ToolAttachmentRecord, ToolDefinition, ToolFamilyRecord, ToolUsageSummaryRecord } from '@agent/core';
 
 function summarizeToolUsage(tasks: any[]): ToolUsageSummaryRecord[] {
   const items: ToolUsageSummaryRecord[] = [];

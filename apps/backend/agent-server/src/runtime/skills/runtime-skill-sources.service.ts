@@ -2,14 +2,14 @@ import { join } from 'node:path';
 
 import { describeSkillSourceProfilePolicy } from '@agent/runtime';
 import { loadAgentSkillManifests } from '@agent/skill-runtime';
-import {
+import type {
   LocalSkillSuggestionRecord,
   RequestedExecutionHints,
+  SpecialistDomain,
   SkillManifestRecord,
   SkillSearchStatus,
-  SkillSourceRecord,
-  SpecialistDomain
-} from '@agent/shared';
+  SkillSourceRecord
+} from '@agent/core';
 
 import {
   buildConnectorTemplateSuggestions,

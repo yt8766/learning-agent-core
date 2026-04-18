@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/shared';
+import type { ToolDefinition } from '@agent/core';
 
 export interface ExecutionStepRecord<TInput = Record<string, unknown>, TResult = unknown> {
   id: string;

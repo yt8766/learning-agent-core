@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 export const ExecutionActionSchema = z.object({
   intent: z

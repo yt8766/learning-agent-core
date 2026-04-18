@@ -1,4 +1,4 @@
-import type { PatchUserProfileDto } from '@agent/shared';
+import type { PatchUserProfileDto } from '@agent/core';
 
 import type { ChatCheckpointRecord } from '@/types/chat';
 

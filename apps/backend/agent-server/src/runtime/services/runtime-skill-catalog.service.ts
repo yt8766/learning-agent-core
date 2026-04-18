@@ -1,10 +1,9 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod/v4';
 
-import type { ILLMProvider } from '@agent/core';
+import type { ILLMProvider, SkillCard, SkillStatus } from '@agent/core';
 import { generateObjectWithRetry } from '@agent/runtime';
 import { listBootstrapSkills } from '@agent/agents-supervisor';
-import { SkillCard, SkillStatus } from '@agent/shared';
 
 export interface RuntimeSkillCatalogContext {
   skillRegistry: {

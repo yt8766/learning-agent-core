@@ -30,6 +30,10 @@ export function extractPromptResultRows(raw) {
     .filter(Boolean);
 }
 
+export function buildPromptfooEvalArgs(configPath, outputPath) {
+  return ['eval', '-c', configPath, '--output', outputPath, '--no-write'];
+}
+
 export function isSupportedPromptfooNodeRuntime(version = process.versions.node) {
   const [major = 0, minor = 0, patch = 0] = String(version)
     .trim()

@@ -1,15 +1,16 @@
-import {
+import { WorkerDefinition } from '@agent/core';
+import { ContextStrategy } from '@agent/config';
+import type {
   AgentExecutionState,
   BudgetState,
   ContextFilterRecord,
-  type ExecutionMode,
   EvidenceRecord,
+  ExecutionMode,
+  ILLMProvider,
+  LlmProviderAgentRole as AgentModelRole,
   SkillStep,
-  WorkerDefinition,
   WorkflowPresetDefinition
-} from '@agent/shared';
-import { ContextStrategy } from '@agent/config';
-import type { ILLMProvider, LlmProviderAgentRole as AgentModelRole } from '@agent/core';
+} from '@agent/core';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 import { SkillRegistry } from '@agent/skill-runtime';
 import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from '@agent/tools';

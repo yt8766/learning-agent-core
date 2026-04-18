@@ -1,23 +1,21 @@
-import {
+import { ContextStrategy } from '@agent/config';
+import { ApprovalDecision } from '@agent/core';
+import type {
   AppendChatMessageDto,
-  ApprovalDecision,
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
   ChatCheckpointRecord,
   ChatEventRecord,
-  ChatEventType,
   ChatMessageRecord,
   ChatSessionRecord,
   CreateChatSessionDto,
+  ILLMProvider as LlmProvider,
   LearningConfirmationDto,
   RecoverToCheckpointDto,
   SessionCancelDto,
   SessionApprovalDto,
-  TaskRecord,
   UpdateChatSessionDto
-} from '@agent/shared';
-import { ContextStrategy } from '@agent/config';
-import type { ILLMProvider as LlmProvider } from '@agent/core';
+} from '@agent/core';
 import { RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
 import { AgentOrchestrator } from '../graphs/main/main.graph';
@@ -38,6 +36,7 @@ import {
 import { completeInlineCapabilitySession, dedupeById } from './session-coordinator-inline';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
+import type { SessionTaskAggregate } from './session-task.types';
 import {
   buildTaskContextHints,
   compressConversationIfNeeded,
@@ -45,6 +44,8 @@ import {
   runSessionTurn,
   shouldDeriveSessionTitle
 } from './session-coordinator-turns';
+
+type ChatEventType = ChatEventRecord['type'];
 
 export class SessionCoordinator {
   private readonly store: SessionCoordinatorStore;
@@ -353,7 +354,7 @@ export class SessionCoordinator {
     );
   }
 
-  private syncTask(sessionId: string, task: TaskRecord): void {
+  private syncTask(sessionId: string, task: SessionTaskAggregate): void {
     syncSessionTask({ orchestrator: this.orchestrator, store: this.store, thinking: this.thinking }, sessionId, task);
   }
 

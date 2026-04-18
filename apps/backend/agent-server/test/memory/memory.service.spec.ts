@@ -10,7 +10,7 @@ import type {
   RollbackMemoryDto,
   SearchMemoryDto,
   SupersedeKnowledgeDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { MemoryService } from '../../src/memory/memory.service';
 

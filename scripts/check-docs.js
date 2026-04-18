@@ -20,7 +20,7 @@ const REQUIRED_INDEX_DIRS = [
   'docs/frontend/agent-chat',
   'docs/integration',
   'docs/memory',
-  'docs/model',
+  'docs/archive/model',
   'docs/report-kit',
   'docs/shared',
   'docs/skills',

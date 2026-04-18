@@ -1,7 +1,7 @@
 import { applyReactiveCompactRetry, buildContextCompressionResult } from '../../utils/context-compression-pipeline';
-import type { TaskRecord } from '@agent/shared';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 
-export function resolveExecutionSummaryForPersistence(task: TaskRecord, executionSummary: string) {
+export function resolveExecutionSummaryForPersistence(task: RuntimeTaskRecord, executionSummary: string) {
   const shouldCompact =
     executionSummary.length > 1200 || /(stderr|stdout|stack|trace|error|failed|exception)/i.test(executionSummary);
   const existingSlice = task.contextFilterState?.filteredContextSlice;

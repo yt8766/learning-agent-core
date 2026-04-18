@@ -1,6 +1,32 @@
-import { AgentRole, type ManagerPlan, type TaskRecord } from '@agent/shared';
+import type { ManagerPlan } from '@agent/core';
+import { AgentRole } from './supervisor-architecture-helpers';
 
-export function compileSkillContractIntoPlan(task: TaskRecord, plan: ManagerPlan): ManagerPlan {
+interface SkillContractTaskLike {
+  capabilityAttachments?: Array<{
+    id: string;
+    kind: string;
+    enabled?: boolean;
+    displayName: string;
+    sourceId?: string;
+    owner: {
+      ownerType: string;
+    };
+    metadata?: {
+      steps?: Array<{
+        title: string;
+        instruction: string;
+        toolNames?: string[];
+      }>;
+      requiredConnectors?: string[];
+      approvalSensitiveTools?: string[];
+    };
+  }>;
+  requestedHints?: {
+    requestedSkill?: string;
+  };
+}
+
+export function compileSkillContractIntoPlan(task: SkillContractTaskLike, plan: ManagerPlan): ManagerPlan {
   const attachment = resolveCompiledSkillAttachment(task);
   const skillSteps = attachment?.metadata?.steps ?? [];
   if (!attachment || skillSteps.length === 0) {
@@ -27,7 +53,7 @@ export function compileSkillContractIntoPlan(task: TaskRecord, plan: ManagerPlan
   };
 }
 
-export function resolveCompiledSkillAttachment(task: TaskRecord) {
+export function resolveCompiledSkillAttachment(task: SkillContractTaskLike) {
   const attachments = task.capabilityAttachments ?? [];
   const requestedSkill = task.requestedHints?.requestedSkill?.toLowerCase();
   return (

@@ -88,14 +88,6 @@ const rootOnlyPackagePatterns = [
     message: '请统一改用 @agent/memory 根入口导入。'
   },
   {
-    group: ['@agent/model/*'],
-    message: '请统一改用 @agent/model 根入口导入。'
-  },
-  {
-    group: ['@agent/runtime/*'],
-    message: '请统一改用 @agent/runtime 根入口导入。'
-  },
-  {
     group: ['@agent/adapters/*'],
     message: '请统一改用 @agent/adapters 根入口导入。'
   },
@@ -118,13 +110,6 @@ const memoryPublicEntryDeepImportPatterns = [
   {
     group: ['../src/*', '../../src/*'],
     message: '请改用 @agent/memory 的公开子域入口（repositories/search/vector/embeddings）。'
-  }
-];
-
-const modelPublicEntryDeepImportPatterns = [
-  {
-    group: ['../src', '../src/*', '../../src', '../../src/*'],
-    message: '请改用 @agent/model 的公开子域入口（chat/embeddings/providers）。'
   }
 ];
 
@@ -187,7 +172,6 @@ export default tseslint.config(
           paths: [
             { name: '@agent/runtime', message: 'core/shared 是契约层，禁止依赖 runtime。' },
             { name: '@agent/tools', message: 'shared 是契约层，禁止依赖 tools。' },
-            { name: '@agent/model', message: 'shared 是契约层，禁止依赖 model。' },
             { name: '@agent/adapters', message: 'core/shared 是契约层，禁止依赖 adapters。' },
             { name: '@agent/memory', message: 'shared 是契约层，禁止依赖 memory。' },
             { name: '@agent/skill-runtime', message: 'shared 是契约层，禁止依赖 skill-runtime。' }
@@ -267,12 +251,12 @@ export default tseslint.config(
     }
   },
   {
-    files: ['packages/{model,adapters}/test/**/*.{ts,tsx}'],
+    files: ['packages/adapters/test/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: modelPublicEntryDeepImportPatterns
+          patterns: []
         }
       ]
     }
