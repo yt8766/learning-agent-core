@@ -174,8 +174,8 @@ flowchart TD
   - supervisor 主图、路由、delivery、ministries 与专项提示词/结构化约束
 - `agents/data-report/src/graphs`、`src/flows`
   - data-report / data-report-json graph、preview/runtime facade、报表专项节点
-- `packages/adapters/src/shared/prompts` 与各宿主 `src/utils/prompts`
-  - 结构化 prompt helper、JSON safety 附加和宿主内部复用模板
+- `packages/adapters/src/prompts`、`src/structured-output` 与各宿主 `src/utils/prompts`
+  - JSON safety 附加、结构化 prompt helper 和宿主内部复用模板
 
 收敛原则：
 

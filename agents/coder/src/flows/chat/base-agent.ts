@@ -1,1 +1,1 @@
-export { BaseAgent } from '@agent/runtime';
+export { BaseAgent } from '@agent/agent-kit';

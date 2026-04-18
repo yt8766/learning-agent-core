@@ -15,14 +15,15 @@
 包边界：
 
 - 职责：
-  - memory/rule/runtime-state repository、vector index、semantic cache 与搜索
+  - memory/rule/runtime-state repository、semantic cache 与 memory 自身搜索
 - 允许：
   - repository
   - search contract
-  - vector / cache 基础设施
+  - cache 基础设施
 - 禁止：
   - agent 主链编排
   - review / delivery / research 流程控制
+  - knowledge chunking / retrieval / citation
 - 依赖方向：
   - 只依赖 `@agent/core`、`@agent/config`、`@agent/adapters`
   - 被 backend、runtime、agents 消费
@@ -30,7 +31,7 @@
   - 根入口：`@agent/memory`
 - 约定：
   - 统一只从 `@agent/memory` 根入口导入
-  - `repositories/*`、`search/*`、`vector/*`、`embeddings/*` 是当前真实宿主目录
+  - `repositories/*`、`search/*`、`embeddings/*` 是当前真实宿主目录
   - helper 的 canonical host 已收敛到：
     - `normalization/memory-record-helpers.ts`
     - `governance/memory-repository-governance.ts`
@@ -50,3 +51,7 @@
 - [package-structure-guidelines.md](/docs/memory/package-structure-guidelines.md)
 - [agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
 - [storage-and-search.md](/docs/memory/storage-and-search.md)
+
+补充：
+
+- RAG knowledge ingestion / retrieval / citation 从 `2026-04-18` 起开始收口到 `packages/knowledge`

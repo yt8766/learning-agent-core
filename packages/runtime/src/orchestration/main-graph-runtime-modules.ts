@@ -6,16 +6,18 @@ import { LearningFlow } from '../flows/learning';
 import type { PendingExecutionContext } from '../flows/approval';
 import { createDefaultWorkerRegistry, WorkerRegistry } from '../governance/worker-registry';
 import { ModelRoutingPolicy } from '../governance/model-routing-policy';
-import { MainGraphBackgroundRuntime } from '../graphs/main/background/main-graph-background';
-import { MainGraphLearningJobsRuntime } from '../graphs/main/background/main-graph-learning-jobs';
-import { MainGraphLifecycle } from '../graphs/main/lifecycle/main-graph-lifecycle';
-import { MainGraphBridge } from '../graphs/main/orchestration/main-graph-bridge';
-import { MainGraphExecutionHelpers } from '../graphs/main/orchestration/main-graph-execution-helpers';
-import { createApprovalRecoveryMinistry } from '../graphs/main/orchestration/main-graph-pipeline-orchestrator-graph';
-import { MainGraphTaskContextRuntime } from '../graphs/main/task/main-graph-task-context';
-import { MainGraphTaskDrafts } from '../graphs/main/task/main-graph-task-drafts';
-import { MainGraphTaskFactory } from '../graphs/main/task/main-graph-task-factory';
-import { MainGraphTaskRuntime } from '../graphs/main/task/main-graph-task-runtime';
+import { MainGraphBackgroundRuntime } from '../graphs/main/runtime/background/main-graph-background';
+import { MainGraphLearningJobsRuntime } from '../graphs/main/runtime/background/main-graph-learning-jobs';
+import { MainGraphLifecycle } from '../graphs/main/runtime/lifecycle';
+import { MainGraphBridge } from '../graphs/main/execution/orchestration/bridge';
+import { MainGraphExecutionHelpers } from '../graphs/main/execution/orchestration/recovery';
+import { createApprovalRecoveryMinistry } from '../graphs/main/execution/orchestration/pipeline/main-graph-pipeline-orchestrator-graph';
+import {
+  MainGraphTaskContextRuntime,
+  MainGraphTaskDrafts,
+  MainGraphTaskFactory,
+  MainGraphTaskRuntime
+} from '../graphs/main/tasking';
 import type {
   AgentOrchestratorDependencies,
   AgentRuntimeSettings,
@@ -23,7 +25,7 @@ import type {
   PreExecutionSkillInterventionResolver,
   RuntimeSkillInterventionResolver,
   SkillInstallApprovalResolver
-} from '../graphs/main/main-graph.types';
+} from '../graphs/main/contracts/main-graph.types';
 import type { RuntimeLearningJob, RuntimeLearningQueueItem } from '../runtime/runtime-learning.types';
 import type { RuntimeTaskRecord as TaskRecord } from '../runtime/runtime-task.types';
 

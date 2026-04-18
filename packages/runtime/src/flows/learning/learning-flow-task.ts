@@ -1,31 +1,14 @@
 import {
-  EvidenceRecord,
   EvaluationResult,
   LearningCandidateRecord,
   LearningEvaluationRecord,
-  MemoryRecord,
   ReviewRecord,
-  RuleRecord,
-  SkillCard,
   TaskStatus
 } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
-
-export function isDiagnosisTask(task: Pick<TaskRecord, 'goal' | 'context'>): boolean {
-  const normalizedGoal = String(task.goal ?? '')
-    .trim()
-    .toLowerCase();
-  const normalizedContext = String(task.context ?? '')
-    .trim()
-    .toLowerCase();
-  return (
-    normalizedContext.includes('diagnosis_for:') ||
-    normalizedGoal.includes('请诊断任务') ||
-    normalizedGoal.includes('agent 错误') ||
-    normalizedGoal.includes('恢复方案') ||
-    normalizedGoal.includes('diagnose task')
-  );
-}
+import { isDiagnosisTask } from './shared/learning-task-diagnosis';
+import { deriveEvidence, mergeEvidence, normalizeInstalledSkillId } from './shared/learning-task-evidence';
+import { shouldExtractSkillForTask } from './shared/learning-skill-extraction';
 
 export function prepareTaskLearning(
   task: TaskRecord,
@@ -249,37 +232,6 @@ export function ensureCandidates(task: TaskRecord): LearningCandidateRecord[] {
   return task.learningCandidates;
 }
 
-export function shouldExtractSkillForTask(
-  task: Pick<TaskRecord, 'goal' | 'context' | 'result'>,
-  evaluation?: Pick<EvaluationResult, 'shouldExtractSkill'>
-) {
-  if (!evaluation?.shouldExtractSkill) {
-    return false;
-  }
-
-  const corpus = `${task.goal ?? ''}\n${task.context ?? ''}\n${task.result ?? ''}`.toLowerCase();
-  const blockedPatterns = [
-    /周报/,
-    /日报/,
-    /月报/,
-    /年报/,
-    /工作总结/,
-    /总结一下/,
-    /生成.*周报/,
-    /撰写.*周报/,
-    /写.*周报/,
-    /润色/,
-    /改写/,
-    /翻译/,
-    /邮件/,
-    /文案/,
-    /汇报/,
-    /稿子/,
-    /草稿/
-  ];
-  return !blockedPatterns.some(pattern => pattern.test(corpus));
-}
-
 function buildPreferenceMemoryCandidates(
   task: TaskRecord,
   now: string,
@@ -378,95 +330,11 @@ function isHighValueTask(task: Pick<TaskRecord, 'goal' | 'externalSources'>) {
   return (task.externalSources?.length ?? 0) >= 3 || /发布|架构|测试|review|诊断/i.test(task.goal);
 }
 
-export function deriveEvidence(task: TaskRecord): EvidenceRecord[] {
-  const sources = task.trace
-    .map((trace, index) => {
-      const data = trace.data ?? {};
-      const sourceUrl = typeof data.sourceUrl === 'string' ? data.sourceUrl : undefined;
-      const sourceType = typeof data.sourceType === 'string' ? data.sourceType : sourceUrl ? 'web' : 'trace';
-      const trustClass = sourceUrl ? inferTrustClass(sourceUrl) : ('internal' as const);
-
-      return {
-        id: `${task.id}:evidence:${index}`,
-        taskId: task.id,
-        sourceType,
-        sourceUrl,
-        trustClass,
-        summary: trace.summary,
-        detail: data,
-        linkedRunId: task.runId,
-        createdAt: trace.at
-      } satisfies EvidenceRecord;
-    })
-    .filter((item, index, list) => {
-      const key = `${item.sourceType}:${item.sourceUrl ?? item.summary}`;
-      return (
-        list.findIndex(candidate => `${candidate.sourceType}:${candidate.sourceUrl ?? candidate.summary}` === key) ===
-        index
-      );
-    });
-
-  const installedSkillEvidence = (task.usedInstalledSkills ?? []).map((workerId, index) => ({
-    id: `${task.id}:installed-skill:${index}`,
-    taskId: task.id,
-    sourceId: normalizeInstalledSkillId(workerId),
-    sourceType: 'installed_skill',
-    trustClass: 'internal' as const,
-    summary: `本轮执行命中了已安装技能 ${normalizeInstalledSkillId(workerId)}。`,
-    detail: { workerId },
-    linkedRunId: task.runId,
-    createdAt: task.updatedAt
-  }));
-
-  const companyWorkerEvidence = (task.usedCompanyWorkers ?? []).map((workerId, index) => ({
-    id: `${task.id}:company-worker:${index}`,
-    taskId: task.id,
-    sourceId: workerId,
-    sourceType: 'company_worker',
-    trustClass: 'internal' as const,
-    summary: `本轮执行调用了公司专员 ${workerId}。`,
-    detail: { workerId },
-    linkedRunId: task.runId,
-    createdAt: task.updatedAt
-  }));
-
-  return [...sources, ...installedSkillEvidence, ...companyWorkerEvidence].slice(-12);
-}
-
-export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {
-  const merged = [...existing];
-  for (const item of incoming) {
-    const key = `${item.sourceType}:${item.sourceUrl ?? item.summary}`;
-    if (!merged.some(candidate => `${candidate.sourceType}:${candidate.sourceUrl ?? candidate.summary}` === key)) {
-      merged.push(item);
-    }
-  }
-  return merged;
-}
-
-export function inferTrustClass(sourceUrl: string): EvidenceRecord['trustClass'] {
-  try {
-    const host = new URL(sourceUrl).hostname.toLowerCase();
-    if (
-      host.includes('openai.com') ||
-      host.includes('anthropic.com') ||
-      host.includes('deepseek.com') ||
-      host.includes('openclaw.ai') ||
-      host.includes('open-claw.org') ||
-      host.includes('npmjs.com') ||
-      host.includes('developer.mozilla.org')
-    ) {
-      return 'official';
-    }
-    if (host.includes('github.com')) {
-      return 'curated';
-    }
-    return 'community';
-  } catch {
-    return 'unverified';
-  }
-}
-
-export function normalizeInstalledSkillId(workerId: string): string {
-  return workerId.startsWith('installed-skill:') ? workerId.replace('installed-skill:', '') : workerId;
-}
+export { isDiagnosisTask } from './shared/learning-task-diagnosis';
+export {
+  deriveEvidence,
+  inferTrustClass,
+  mergeEvidence,
+  normalizeInstalledSkillId
+} from './shared/learning-task-evidence';
+export { shouldExtractSkillForTask } from './shared/learning-skill-extraction';

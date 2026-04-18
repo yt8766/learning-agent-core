@@ -3,52 +3,60 @@ import type {
   DataReportJsonGenerationMode,
   DataReportJsonGenerationNode,
   DataReportJsonGraphState,
+  DataReportJsonNodeModelSelector,
   DataReportJsonNodeModelPolicy
 } from '../../types/data-report-json';
+import { resolveModelSelectorCandidateIds } from '../../utils/model-selection';
+
+function isNodeModelSelector(
+  value: DataReportJsonNodeModelSelector | undefined
+): value is DataReportJsonNodeModelSelector {
+  return Boolean(value);
+}
 
 export const DATA_REPORT_JSON_DEFAULT_MODEL_POLICY: DataReportJsonNodeModelPolicy = {
   analysisNode: {
-    primary: 'GLM-4.7-FlashX'
+    primary: { tier: 'fast', role: 'manager' }
   },
   patchIntentNode: {
-    primary: 'GLM-4.7-FlashX'
+    primary: { tier: 'fast', role: 'manager' }
   },
   schemaSpecNode: {
-    primary: 'glm-5.1'
+    primary: { tier: 'quality', role: 'research' }
   },
   filterSchemaNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   dataSourceNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   sectionPlanNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   metricsBlockNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   chartBlockNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   tableBlockNode: {
-    primary: 'GLM-4.7-FlashX',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   sectionSchemaNode: {
-    primary: 'GLM-4.7-FlashX',
-    complex: 'glm-5.1',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    complex: { tier: 'quality', role: 'research' },
+    fallback: { tier: 'quality', role: 'research' }
   },
   patchSchemaNode: {
-    primary: 'GLM-4.7-FlashX',
-    complex: 'glm-5.1',
-    fallback: 'glm-5.1'
+    primary: { tier: 'fast', role: 'manager' },
+    complex: { tier: 'quality', role: 'research' },
+    fallback: { tier: 'quality', role: 'research' }
   }
 };
 
@@ -135,7 +143,7 @@ export function resolveDataReportJsonNodeModelCandidates(
   const override = state.nodeModelOverrides?.[node];
   const complexity = resolveDataReportJsonComplexity(state);
 
-  let defaults: string[] = [];
+  let defaults: DataReportJsonNodeModelSelector[] = [];
   switch (node) {
     case 'planningNode':
       defaults = [policy.schemaSpecNode.primary];
@@ -150,22 +158,22 @@ export function resolveDataReportJsonNodeModelCandidates(
       defaults = [policy.schemaSpecNode.primary];
       break;
     case 'filterSchemaNode':
-      defaults = [policy.filterSchemaNode.primary, policy.filterSchemaNode.fallback ?? ''];
+      defaults = [policy.filterSchemaNode.primary, policy.filterSchemaNode.fallback].filter(isNodeModelSelector);
       break;
     case 'dataSourceNode':
-      defaults = [policy.dataSourceNode.primary, policy.dataSourceNode.fallback ?? ''];
+      defaults = [policy.dataSourceNode.primary, policy.dataSourceNode.fallback].filter(isNodeModelSelector);
       break;
     case 'sectionPlanNode':
-      defaults = [policy.sectionPlanNode.primary, policy.sectionPlanNode.fallback ?? ''];
+      defaults = [policy.sectionPlanNode.primary, policy.sectionPlanNode.fallback].filter(isNodeModelSelector);
       break;
     case 'metricsBlockNode':
-      defaults = [policy.metricsBlockNode.primary, policy.metricsBlockNode.fallback ?? ''];
+      defaults = [policy.metricsBlockNode.primary, policy.metricsBlockNode.fallback].filter(isNodeModelSelector);
       break;
     case 'chartBlockNode':
-      defaults = [policy.chartBlockNode.primary, policy.chartBlockNode.fallback ?? ''];
+      defaults = [policy.chartBlockNode.primary, policy.chartBlockNode.fallback].filter(isNodeModelSelector);
       break;
     case 'tableBlockNode':
-      defaults = [policy.tableBlockNode.primary, policy.tableBlockNode.fallback ?? ''];
+      defaults = [policy.tableBlockNode.primary, policy.tableBlockNode.fallback].filter(isNodeModelSelector);
       break;
     case 'sectionSchemaNode':
       defaults =
@@ -173,18 +181,26 @@ export function resolveDataReportJsonNodeModelCandidates(
           ? [policy.sectionSchemaNode.complex ?? policy.sectionSchemaNode.primary, policy.sectionSchemaNode.primary]
           : [
               policy.sectionSchemaNode.primary,
-              policy.sectionSchemaNode.complex ?? policy.sectionSchemaNode.fallback ?? ''
-            ];
+              policy.sectionSchemaNode.complex ?? policy.sectionSchemaNode.fallback
+            ].filter(isNodeModelSelector);
       break;
     case 'patchSchemaNode':
       defaults =
         complexity === 'complex'
           ? [policy.patchSchemaNode.complex ?? policy.patchSchemaNode.primary, policy.patchSchemaNode.primary]
-          : [policy.patchSchemaNode.primary, policy.patchSchemaNode.complex ?? policy.patchSchemaNode.fallback ?? ''];
+          : [policy.patchSchemaNode.primary, policy.patchSchemaNode.complex ?? policy.patchSchemaNode.fallback].filter(
+              isNodeModelSelector
+            );
       break;
   }
 
-  return Array.from(new Set([override, ...defaults].filter((value): value is string => Boolean(value))));
+  return Array.from(
+    new Set(
+      [override, ...defaults]
+        .filter((value): value is DataReportJsonNodeModelSelector => Boolean(value))
+        .flatMap(selector => resolveModelSelectorCandidateIds({ llm: state.llm, selector, explicitModelId: override }))
+    )
+  );
 }
 
 export function classifyDataReportJsonPatchMode(state: DataReportJsonGraphState) {

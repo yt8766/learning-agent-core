@@ -35,6 +35,7 @@
 - `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
+- `packages/knowledge` 负责 RAG knowledge ingestion / retrieval / citation / context assembly
 - `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
 - 第一阶段 compat 根文件收缩已完成：
   - `packages/evals`
@@ -64,8 +65,12 @@
   - `packages/*`、`agents/*` 的声明文件与声明映射只允许输出到各自的 `build/types`
   - 不允许把 `.d.ts`、`.d.ts.map` 回写到 `src/` 源码目录
   - 如果工作区出现误生成到源码目录的声明映射，必须在本轮直接清理并同步修正忽略规则或构建配置
+- TypeScript 导入约束：
+  - 默认使用顶层静态 `import` / `import type`
+  - 不要把 `import('pkg').Foo`、`import('zod/v4').ZodType<T>` 这类 inline import type 写法当成静态导入替代；只要模块可在文件顶层声明，就必须改用 `import type { Foo } from 'pkg'`
+  - 动态 `import('...')` 只用于真实的代码分割、运行时隔离或浏览器专属重资产加载；不要为了偷懒引类型、规避循环依赖排查或临时消除报错而写成 inline import type
 - “子 Agent”必须同时具备 graph 入口与 flow 节点：
-  - `packages/runtime/src/graphs/<domain>.graph.ts` 或 `agents/<domain>/src/graphs/<domain>.graph.ts` 只放 `Annotation / StateGraph / node wiring / edge wiring / graph state`，作为子 Agent 可观测入口
+  - `packages/runtime/src/graphs/<domain>/<domain>.graph.ts` 或 `agents/<domain>/src/graphs/<domain>.graph.ts` 只放 `Annotation / StateGraph / node wiring / edge wiring / graph state`，作为子 Agent 可观测入口；当专项 agent 图继续扩张时，也优先升级为 `src/graphs/<domain>/<domain>.graph.ts`
   - 对应宿主的 `src/flows/<domain>/` 放节点实现、prompt、schema、解析、校验、重试策略；跨节点复用或 graph 共享的领域类型优先收敛到 `packages/core/src` 或宿主包 `src/types/`
   - 对应宿主的 `src/flows/<domain>/prompts/` 只放提示词与提示词格式化逻辑
   - 对应宿主的 `src/flows/<domain>/schemas/` 必须承载模型输出的显式结构约束；稳定 JSON 契约禁止仅靠 `JSON.parse` 和零散正则校验
@@ -76,7 +81,8 @@
   - `data-report` 的领域类型文件统一放在 `packages/core/src` 或 `agents/data-report/src/types/`，不要继续放在 `flows/data-report/` 下
   - `data-report` 的确定性生成资产分层必须固定：`packages/report-kit` 只承载 blueprint/scaffold/routes/assembly/write；`agents/data-report` 与 `packages/runtime` 只承载 preview flow、graph/runtime facade 与 LLM 节点编排；`apps/backend/*` 只能做 HTTP/SSE 装配并调用 facade，禁止在 service 中直接串 `report-kit` 流程、直接 `graph.compile().invoke()`，或复制 preview/report-schema/sandpack 子链
 - `packages/runtime/src/graphs` 进一步约束为：
-  - 顶层 `chat.graph.ts / learning.graph.ts / recovery.graph.ts / main-route.graph.ts`
+  - 顶层按能力域分组：`chat/`、`learning/`、`approval/`、`main/`
+  - 轻量 graph 默认落在 `chat/chat.graph.ts`、`learning/learning.graph.ts`、`approval/approval-recovery.graph.ts`
   - graph 文件默认只承载 `Annotation / StateGraph / edge / conditional edge / state type`
   - graph 节点的默认实现、handler fallback、业务分支逻辑优先下沉到 `flows/*`
   - `main/` 只保留主入口与装配层
@@ -86,6 +92,13 @@
   - `main/knowledge/` 承载 freshness / citation / diagnosis evidence 语义
   - `main/orchestration/` 承载 bridge 与 execution helper
   - `main/pipeline/` 承载阶段编排与 interrupt graph
+- `packages/runtime/src/flows` 进一步约束为：
+  - `chat/`：聊天主图节点与 `direct-reply` interrupt flow
+  - `approval/`：风险审批、恢复执行、skill install interrupt
+  - `learning/`：learning orchestration、候选确认、共享提炼 helper
+  - `runtime-stage/`：runtime 研究/执行阶段节点与 helper
+  - `review-stage/`：刑部终审、治理评分、交付前状态收口
+  - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
 - 本地运行数据统一放仓库根级 `data/`
 - 运行时技能相关本地数据默认优先使用 `data/skill-runtime/`
 - 本地可重建产物统一放仓库根级 `artifacts/`
@@ -108,6 +121,8 @@
 - main 流水线允许在五层验证之后对附加 job 做条件化触发：当前 docs-only push 默认跳过 `build-main` 与 `coverage-main`，`prompt-regression` 只在 prompt-sensitive 或代码相关改动时尝试运行
 - 不要再把 CI 五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
 - GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
+- 只要新增 workspace 包，或修改任何 `package.json` 中的依赖、开发依赖、peer 依赖、optional 依赖、workspace 引用或会影响依赖图的包管理配置，就必须在同一轮改动里同步更新 `pnpm-lock.yaml`；禁止把 manifest 变更与 lockfile 修复拆到后续提交
+- 新增 workspace 包时，提交前必须显式确认 `pnpm-lock.yaml` 的 `importers` 中已经出现该包；如果 importer 缺失，即使本地代码可运行，也视为交付不完整
 - `.github/workflows/*` 中重复的 pnpm / Node / 依赖安装步骤，默认优先收敛到仓库内可复用 action；当前统一入口为 `/.github/actions/setup-pnpm-workspace/action.yml`
 - 复用 setup action 的默认安装命令应优先使用 `pnpm install --frozen-lockfile --prefer-offline`，在保证 lockfile 严格性的前提下尽量减少重复网络拉取
 - 对 `check-docs`、`check-lockfile-sync`、`check-terminology` 这类只依赖 Node 内建模块或仓库源码的轻量 job，默认优先使用 `/.github/actions/setup-node-runtime/action.yml`，不要为其额外执行 pnpm setup 或依赖安装；该 action 也必须显式关闭 `setup-node` 的自动 package manager cache，避免因根级 `packageManager: pnpm` 触发误探测
@@ -128,8 +143,8 @@
 - 共享类型里仍存在 `manager / research / executor / reviewer` 等兼容字段时，文档应显式标注“过渡兼容”，不要把旧模型继续当成目标架构
 - 大模型执行链上的关键阶段必须可观察，不能只靠最终答案让用户猜测流程。至少要为 `plan / route / research / execution / review / delivery / interrupt / recover / learning` 这些阶段输出结构化 trace、事件或 checkpoint 摘要，并保证 `agent-chat` 的 Think / ThoughtChain 或运行态面板可见
 - 所有要求模型输出 JSON / Schema / 结构化对象的调用，必须统一走带重试的结构化入口，例如 `generateObjectWithRetry` 或 `safeGenerateObject`，禁止直接裸调 `llm.generateObject`
-- 所有结构化输出 prompt 必须固定追加 `packages/adapters/src/shared/prompts/json-safety-prompt.ts` 的内容；推荐统一使用 `buildStructuredPrompt(..., json: true)` 或 `appendJsonSafetyToMessages`
-- 模型降级、候选模型重试、JSON 安全附加、结构化重试反馈这类跨流程能力，优先沉淀到 `shared/` 或 `utils/`，不要继续散落在单个 agent/node 内部
+- 所有结构化输出 prompt 必须固定追加 `packages/adapters/src/prompts/json-safety-prompt.ts` 的内容；推荐统一使用 `buildStructuredPrompt(..., json: true)` 或 `appendJsonSafetyToMessages`
+- 模型降级、候选模型重试、JSON 安全附加、结构化重试反馈这类跨流程能力，优先沉淀到明确语义目录，例如 `prompts/`、`retry/`、`structured-output/`、`support/` 或窄化后的 `utils/`，不要继续散落在单个 agent/node 内部
 - 涉及 `packages/*` 的改动，优先执行 `pnpm build:lib`，再验证应用层
 - `packages/*` 与 `agents/*` 的 `tsup` 默认只允许以稳定公开入口 `src/index.ts` 作为构建入口；除非某个子路径已通过 `package.json` 的 `exports` 显式对外发布，否则不要把 `src/**/*.ts` 或零散内部模块当成多入口打包，避免 `build:lib` 被内部实现膨胀拖慢
 - `.github/workflows/*` 中的 JavaScript actions 默认优先使用 Node 24-ready 主版本；当 GitHub 公告提示某个 action 仍运行在 Node 20 时，应优先升级到支持 `runs.using: node24` 的版本，并显式用 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` 提前验证兼容性
@@ -144,6 +159,7 @@
 - 前端副作用必须可证明收敛：`useEffect`、轮询、SSE fallback、定时器必须有明确触发条件、停止条件和清理逻辑，禁止形成无限循环或隐式自激刷新
 - 前端禁止空 `catch`：`catch` 内需日志、用户可见错误、明确降级或说明性处理，详见[前端规范](/docs/frontend-conventions.md)
 - 前端默认禁止动态导入；`apps/frontend/*` 中的依赖一般必须使用顶层静态 `import`。只有在明确代码分割、运行时隔离或重资产浏览器专属加载场景下，才允许 `import('...')`，且必须在代码旁写明理由
+- 前端类型位置同样遵守静态导入规则：不要写 `import('pkg').Foo` 充当“伪静态导入”；可静态声明时一律使用顶层 `import type`
 - 前端路径别名必须统一：`apps/frontend/agent-chat/src` 与 `apps/frontend/agent-admin/src` 下跨目录引用一律使用 `@/...`，禁止新增 `../../hooks/use-chat-session`、`../../../src/...` 这类指回本应用 `src/` 的相对路径；测试引用本应用 `src/` 时也同样使用 `@/...`
 - 每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试；从现在起不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
 - 全仓测试现已统一收敛到各项目 `test/` 目录，`src/` 下不再保留测试文件
@@ -209,9 +225,12 @@
   - `packages/config`
     - 只允许放 profile、settings schema、feature flags、storage/path policy、budget/source policy 默认值
     - 禁止放业务流程、graph、flow、工具执行逻辑
-  - `packages/memory`
-    - 只允许放 memory/rule/runtime-state repository、vector index、semantic cache、search contract
-    - 禁止放 agent 主链编排、delivery/review/research 流程控制
+- `packages/memory`
+  - 只允许放 memory/rule/runtime-state repository、semantic cache 与 memory 自身查询 contract
+  - 禁止放 agent 主链编排、delivery/review/research 流程控制
+- `packages/knowledge`
+  - 只允许放 knowledge source/chunk repository、indexing、retrieval、citation/context assembly
+  - 禁止放回答生成、chat/workflow 主链编排、provider SDK 具体实现
   - `packages/tools`
     - 只允许放 tool registry、tool definition、sandbox executor、approval preflight、MCP transport
     - 禁止放 agent orchestration、chat/review/research prompt、graph/ministry 主逻辑
@@ -235,6 +254,7 @@
     - 跨端共享且稳定的数据结构：放 `core`
     - 运行时默认策略与配置：放 `config`
     - 模型/provider/embedding 装配：放 `adapters`
+    - RAG 知识接入、检索与 citation：放 `knowledge`
     - memory/rule/vector/cache 存取与搜索：放 `memory`
     - executor/registry/sandbox/MCP：放 `tools`
     - data-report 生成资产与拼装：放 `report-kit`

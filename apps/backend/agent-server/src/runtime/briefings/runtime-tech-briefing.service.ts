@@ -1,3 +1,4 @@
+import type { RuntimeSettings } from '@agent/config';
 import { ActionIntent } from '@agent/core';
 
 import { BRIEFING_CATEGORY_TITLES } from './runtime-tech-briefing-sources';
@@ -48,25 +49,10 @@ import type {
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export interface RuntimeTechBriefingContext {
-  settings: {
-    workspaceRoot: string;
-    zhipuApiKey?: string;
-    zhipuApiBaseUrl?: string;
-    zhipuModels?: {
-      manager: string;
-      research: string;
-      executor: string;
-      reviewer: string;
-    };
-    providers?: Array<{
-      id: string;
-      type: 'zhipu' | 'openai' | 'openai-compatible' | 'ollama' | 'anthropic' | 'minimax';
-      displayName?: string;
-      apiKey?: string;
-      baseUrl?: string;
-      models: string[];
-      roleModels?: Partial<Record<'manager' | 'research' | 'executor' | 'reviewer', string>>;
-    }>;
+  settings: Pick<
+    RuntimeSettings,
+    'workspaceRoot' | 'zhipuApiKey' | 'zhipuApiBaseUrl' | 'zhipuModels' | 'providers' | 'dailyTechBriefing'
+  > & {
     dailyTechBriefing: BriefingSettings;
   };
   fetchImpl?: typeof fetch;

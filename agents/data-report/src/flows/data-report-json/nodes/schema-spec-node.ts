@@ -1,4 +1,5 @@
 import type { DataReportJsonGraphHandlers, DataReportJsonGraphState } from '../../../types/data-report-json';
+import { resolveFirstModelSelectorCandidate } from '../../../utils/model-selection';
 import {
   emitJsonNodeStage,
   buildDeterministicSchemaSpec,
@@ -50,7 +51,10 @@ export async function runJsonSchemaSpecNode(
   emitJsonNodeStage(state, {
     node: 'schemaSpecNode',
     status: 'success',
-    modelId: state.nodeModelPolicy?.schemaSpecNode.primary,
+    modelId: resolveFirstModelSelectorCandidate({
+      llm: state.llm,
+      selector: state.nodeModelPolicy?.schemaSpecNode.primary
+    }),
     cacheHit: scaffold.cacheHit,
     details: {
       scope: scaffold.meta.scope,

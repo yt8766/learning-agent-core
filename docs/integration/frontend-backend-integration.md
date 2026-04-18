@@ -65,10 +65,7 @@
 
 - 首条消息现在也统一通过 `POST /api/chat/messages` 提交
 - `POST /api/chat/sessions` 只负责创建空会话并返回 `sessionId`
-- `agent-chat` 当前已支持在发送前一键切换模型：
-  - 默认值为“自动选择”，保持治理路由自动选模
-  - 用户手动选择模型后，仅覆盖当前消息触发的这一轮执行
-  - 下拉项由 `GET /api/chat/models` 动态返回，适配运行时新增 provider 或模型
+- `agent-chat` 当前前线发送框不再暴露模型切换 UI，聊天默认交回 Runtime 治理路由自动选模
 
 ---
 
@@ -87,7 +84,7 @@
 - `GET /api/chat/models`
   - 获取当前运行时可选模型列表
   - 返回值来自后端实际挂载的 LLM provider，前端不再硬编码模型枚举
-  - `agent-chat` 聊天输入框的“切换模型”下拉框默认消费这条接口
+  - 当前主要保留给治理视图、调试入口或后续非聊天前线场景使用
 - `GET /api/chat/sessions/:id`
   - 获取会话详情
 - `GET /api/chat/messages?sessionId=...`
@@ -146,8 +143,8 @@
 
 - `POST /api/chat/messages`
   - 在已有会话中继续发消息
-  - 当前请求体除 `sessionId`、`message` 外，还可选传 `modelId`
-  - 当传入 `modelId` 时，本轮消息会把该模型写入 `requestedHints.preferredModelId`
+  - 当前前线聊天默认只传 `sessionId` 与 `message`
+  - 若其他入口显式传入 `modelId`，本轮消息仍会把该模型写入 `requestedHints.preferredModelId`
   - Runtime 会优先按该显式模型路由，并同步覆盖当前 worker 的实际调用模型
 - `POST /api/chat/approve`
   - 审批通过或恢复中断

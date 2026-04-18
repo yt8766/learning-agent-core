@@ -1,6 +1,6 @@
 import { TaskStatus } from '@agent/core';
 
-import { createLearningGraph } from '../graphs/learning.graph';
+import { createLearningGraph } from '../graphs/learning/learning.graph';
 import type { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 import type { SessionTaskLike } from './session-task.types';

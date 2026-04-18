@@ -10,30 +10,36 @@ export type {
 } from '@agent/core';
 export * from './chat';
 export * from './embeddings';
+export { createDefaultRuntimeLlmProvider, type DefaultRuntimeLlmProviderOptions } from './factories/runtime';
+export { AnthropicProvider, MiniMaxProvider, OpenAICompatibleProvider } from './providers/llm';
 export {
-  createDefaultRuntimeLlmProvider,
-  type DefaultRuntimeLlmProviderOptions
-} from './runtime/runtime-provider-factory';
-export { MiniMaxProvider } from './llm/minimax-provider';
-export { OpenAICompatibleProvider } from './llm/openai-compatible-provider';
-export type { ChatMessage, GenerateTextOptions, LlmProvider, LlmUsageMetadata } from './contracts/llm-provider';
-export { jsonObjectInstruction } from './contracts/llm-provider';
+  createLlmProviderFactory,
+  LlmProviderFactoryRegistry,
+  registerDefaultLlmProviderFactories
+} from './providers/llm';
+export type { ChatMessage, GenerateTextOptions, LlmProvider, LlmUsageMetadata } from './contracts/llm';
+export type { LlmProviderFactory } from './providers/llm';
 export {
-  JSON_SAFETY_PROMPT,
-  appendJsonSafety,
-  appendJsonSafetyIfMissing,
-  appendJsonSafetyToMessages
-} from './shared/prompts/json-safety-prompt';
-export { buildStructuredPrompt } from './utils/prompts/prompt-template';
-export { generateObjectWithRetry, generateTextWithRetry, streamTextWithRetry } from './utils/llm-retry';
+  createModelCapabilities,
+  jsonObjectInstruction,
+  modelSupportsCapabilities,
+  MODEL_CAPABILITIES
+} from './contracts/llm';
+export { JSON_SAFETY_PROMPT, appendJsonSafety, appendJsonSafetyIfMissing, appendJsonSafetyToMessages } from './prompts';
+export { buildStructuredPrompt, safeGenerateObject } from './structured-output';
+export type {
+  SafeGenerateObjectResult,
+  SafeGenerateObjectRetryOptions,
+  StructuredContractMeta,
+  StructuredParseStatus
+} from './structured-output';
+export type { LlmRetryOptions } from './retry/retry';
 export {
-  safeGenerateObject,
-  type SafeGenerateObjectResult,
-  type SafeGenerateObjectRetryOptions,
-  type StructuredContractMeta,
-  type StructuredParseStatus
-} from './utils/schemas/safe-generate-object';
+  generateObjectWithRetry,
+  generateTextWithRetry,
+  streamTextWithRetry,
+  withLlmRetry,
+  withReactiveContextRetry
+} from './retry';
 export { shouldFallbackModel, withFallbackModel } from './utils/model-fallback';
-export { withLlmRetry } from './utils/retry';
-export { withReactiveContextRetry } from './utils/reactive-context-retry';
-export { normalizeEmbeddingBaseUrl, normalizeModelBaseUrl } from './providers/base-url';
+export { normalizeEmbeddingBaseUrl, normalizeModelBaseUrl } from './support';

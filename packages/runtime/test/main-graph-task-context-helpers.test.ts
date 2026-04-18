@@ -5,7 +5,7 @@ import {
   resolveCompiledSkillAttachment,
   resolveExecutionMode,
   roundUsageCost
-} from '../src/graphs/main/task/main-graph-task-context-helpers';
+} from '../src/graphs/main/tasking/context/main-graph-task-context-helpers';
 
 describe('main graph task context helpers', () => {
   it('prefers execution plan mode before legacy execution mode fallbacks', () => {

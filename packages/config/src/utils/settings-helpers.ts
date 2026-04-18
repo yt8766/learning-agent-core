@@ -205,6 +205,25 @@ export function parseProvidersConfig(
     });
   }
 
+  if (runtimeEnv.ANTHROPIC_API_KEY || runtimeEnv.ANTHROPIC_BASE_URL) {
+    const anthropicRoleModels = {
+      manager: runtimeEnv.ANTHROPIC_MANAGER_MODEL ?? 'claude-3-7-sonnet-latest',
+      research: runtimeEnv.ANTHROPIC_RESEARCH_MODEL ?? 'claude-3-5-sonnet-latest',
+      executor: runtimeEnv.ANTHROPIC_EXECUTOR_MODEL ?? 'claude-3-5-haiku-latest',
+      reviewer: runtimeEnv.ANTHROPIC_REVIEWER_MODEL ?? 'claude-3-7-sonnet-latest'
+    } satisfies NonNullable<ProviderSettingsRecord['roleModels']>;
+
+    providers.push({
+      id: runtimeEnv.ANTHROPIC_PROVIDER_ID ?? 'anthropic',
+      type: 'anthropic',
+      displayName: runtimeEnv.ANTHROPIC_PROVIDER_NAME ?? 'Anthropic',
+      apiKey: runtimeEnv.ANTHROPIC_API_KEY ?? '',
+      baseUrl: normalizeProviderBaseUrl(runtimeEnv.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com/v1', 'anthropic'),
+      models: Array.from(new Set(Object.values(anthropicRoleModels))),
+      roleModels: anthropicRoleModels
+    });
+  }
+
   if (runtimeEnv.MINIMAX_API_KEY || runtimeEnv.MINIMAX_BASE_URL) {
     const minimaxRoleModels = {
       manager: runtimeEnv.MINIMAX_MANAGER_MODEL ?? 'MiniMax-M2.7',
@@ -240,7 +259,8 @@ export function parseProvidersConfig(
 
 export function parseRoutingConfig(
   runtimeEnv: NodeJS.ProcessEnv,
-  zhipuModels: RuntimeSettings['zhipuModels']
+  zhipuModels: RuntimeSettings['zhipuModels'],
+  providers: ProviderSettingsRecord[]
 ): Partial<Record<'manager' | 'research' | 'executor' | 'reviewer', RoutingPolicyRecord>> {
   const fallback = (value?: string): string[] | undefined =>
     value
@@ -248,21 +268,35 @@ export function parseRoutingConfig(
       .map(item => item.trim())
       .filter(Boolean);
 
+  const activeProvider = runtimeEnv.ACTIVE_MODEL_PROVIDER?.trim();
+  const activeProviderConfig =
+    activeProvider && activeProvider.length > 0
+      ? providers.find(provider => provider.id === activeProvider)
+      : undefined;
+
+  const resolvePrimaryModel = (role: 'manager' | 'research' | 'executor' | 'reviewer', zhipuModel: string): string => {
+    const activeRoleModel = activeProviderConfig?.roleModels?.[role];
+    if (activeProviderConfig?.id && activeRoleModel) {
+      return `${activeProviderConfig.id}/${activeRoleModel}`;
+    }
+    return `zhipu/${zhipuModel}`;
+  };
+
   return {
     manager: {
-      primary: runtimeEnv.MODEL_ROUTE_MANAGER_PRIMARY ?? `zhipu/${zhipuModels.manager}`,
+      primary: runtimeEnv.MODEL_ROUTE_MANAGER_PRIMARY ?? resolvePrimaryModel('manager', zhipuModels.manager),
       fallback: fallback(runtimeEnv.MODEL_ROUTE_MANAGER_FALLBACK)
     },
     research: {
-      primary: runtimeEnv.MODEL_ROUTE_RESEARCH_PRIMARY ?? `zhipu/${zhipuModels.research}`,
+      primary: runtimeEnv.MODEL_ROUTE_RESEARCH_PRIMARY ?? resolvePrimaryModel('research', zhipuModels.research),
       fallback: fallback(runtimeEnv.MODEL_ROUTE_RESEARCH_FALLBACK)
     },
     executor: {
-      primary: runtimeEnv.MODEL_ROUTE_EXECUTOR_PRIMARY ?? `zhipu/${zhipuModels.executor}`,
+      primary: runtimeEnv.MODEL_ROUTE_EXECUTOR_PRIMARY ?? resolvePrimaryModel('executor', zhipuModels.executor),
       fallback: fallback(runtimeEnv.MODEL_ROUTE_EXECUTOR_FALLBACK)
     },
     reviewer: {
-      primary: runtimeEnv.MODEL_ROUTE_REVIEWER_PRIMARY ?? `zhipu/${zhipuModels.reviewer}`,
+      primary: runtimeEnv.MODEL_ROUTE_REVIEWER_PRIMARY ?? resolvePrimaryModel('reviewer', zhipuModels.reviewer),
       fallback: fallback(runtimeEnv.MODEL_ROUTE_REVIEWER_FALLBACK)
     }
   };

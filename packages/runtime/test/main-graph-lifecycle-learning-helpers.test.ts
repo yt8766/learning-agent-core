@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   shouldEnqueueDreamTask,
   summarizeLearningCandidates
-} from '../src/graphs/main/lifecycle/main-graph-lifecycle-learning-queue';
+} from '../src/graphs/main/runtime/lifecycle/learning/main-graph-lifecycle-learning-queue';
 
 describe('main graph lifecycle learning helpers', () => {
   it('enqueues dream tasks for blocked or high-signal learning outcomes', () => {

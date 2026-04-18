@@ -63,6 +63,7 @@
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
+    "@agent/agent-kit": "workspace:*",
     "@agent/adapters": "workspace:*",
     "@agent/agents-coder": "workspace:*",
     "@agent/agents-data-report": "workspace:*",

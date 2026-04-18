@@ -31,7 +31,7 @@ describe('FileRuntimeStateRepository', () => {
   });
 
   it('在文件不存在时返回空快照', async () => {
-    const { FileRuntimeStateRepository } = await import('@agent/memory');
+    const { FileRuntimeStateRepository } = await import('../src/repositories/runtime-state-repository');
     const repository = new FileRuntimeStateRepository();
 
     await expect(repository.load()).resolves.toEqual({
@@ -74,7 +74,7 @@ describe('FileRuntimeStateRepository', () => {
   });
 
   it('保存后可以完整读回快照', async () => {
-    const { FileRuntimeStateRepository } = await import('@agent/memory');
+    const { FileRuntimeStateRepository } = await import('../src/repositories/runtime-state-repository');
     const repository = new FileRuntimeStateRepository();
     const snapshot = {
       tasks: [
@@ -132,7 +132,7 @@ describe('FileRuntimeStateRepository', () => {
   });
 
   it('保留任务快照中的运行态 overlay 字段', async () => {
-    const { FileRuntimeStateRepository } = await import('@agent/memory');
+    const { FileRuntimeStateRepository } = await import('../src/repositories/runtime-state-repository');
     const repository = new FileRuntimeStateRepository();
     const snapshot = {
       tasks: [

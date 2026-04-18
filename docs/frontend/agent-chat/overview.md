@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-chat`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 `agent-chat` 是前线作战面，不是普通聊天壳子。
 
@@ -14,6 +14,10 @@
 - Think / ThoughtChain / Event Timeline 运行态可视化
 - Evidence / Sources / Learning suggestions 展示
 - Runtime panel、session list 等执行辅助视图
+
+当前约束：
+
+- 前线发送框不再暴露模型切换下拉框；聊天模型选择统一交给 Runtime 路由与治理策略决定
 
 ## 当前目录职责
 

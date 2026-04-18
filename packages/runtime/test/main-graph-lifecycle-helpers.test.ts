@@ -6,11 +6,11 @@ import {
   buildSkillInstallPendingExecution,
   enforceInterruptControllerPolicy,
   finalizeLifecycleTaskState
-} from '../src/graphs/main/lifecycle/main-graph-lifecycle-persistence';
+} from '../src/graphs/main/runtime/lifecycle/state/main-graph-lifecycle-persistence';
 import {
   isSkillInstallApprovalPending,
   resolveCreatedTaskDispatch
-} from '../src/graphs/main/lifecycle/main-graph-lifecycle-routing';
+} from '../src/graphs/main/runtime/lifecycle/state/main-graph-lifecycle-routing';
 
 describe('main graph lifecycle helpers', () => {
   it('routes created tasks by waiting approval, session flow, and background flow', () => {

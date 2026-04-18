@@ -53,6 +53,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@agent/agent-kit': resolvePath('./packages/agent-kit/src'),
       '@agent/runtime/base-agent': resolvePath('./packages/runtime/src/agents/base-agent.ts'),
       '@agent/runtime/agent-runtime-context': resolvePath('./packages/runtime/src/runtime/agent-runtime-context.ts'),
       '@agent/runtime/streaming-execution': resolvePath('./packages/runtime/src/runtime/streaming-execution.ts'),

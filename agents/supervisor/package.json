@@ -34,10 +34,10 @@
   },
   "dependencies": {
     "@agent/adapters": "workspace:*",
+    "@agent/agent-kit": "workspace:*",
     "@agent/agents-coder": "workspace:*",
     "@agent/agents-reviewer": "workspace:*",
     "@agent/core": "workspace:*",
-    "@agent/runtime": "workspace:*",
     "@langchain/langgraph": "^1.2.5",
     "zod": "^4.3.6"
   }

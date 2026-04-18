@@ -58,7 +58,8 @@ agents/reviewer/
 - 根入口
   - 只暴露稳定 reviewer 公共面
 - `runtime` 依赖边界
-  - 仅允许通过 `@agent/runtime` 根入口消费稳定 runtime facade
+  - 共享 agent foundation 仅允许通过 `@agent/agent-kit` 根入口消费
+  - runtime facade 仅允许通过 `@agent/runtime` 根入口消费
   - 不允许直接依赖 `packages/runtime/src/*`，也不允许依赖 `runtime/agent-bridges/*` 这类 runtime 内部过渡层
 
 后续继续收敛时：

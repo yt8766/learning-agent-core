@@ -47,8 +47,8 @@
 
 - 这里的“子 Agent”不是普通 helper，也不是 `workflows/*` 里的提示词函数。
 - 子 Agent 必须有稳定 graph 入口，默认放在对应真实宿主：
-  - runtime 主链图：`packages/runtime/src/graphs/<domain>.graph.ts`
-  - 专项 agent 图：`agents/<domain>/src/graphs/<domain>.graph.ts`
+  - runtime 主链图：`packages/runtime/src/graphs/<domain>/<domain>.graph.ts`
+  - 专项 agent 图：`agents/<domain>/src/graphs/<domain>.graph.ts`；当专项 agent 的 graph 继续扩张时，同样优先升级为 `src/graphs/<domain>/<domain>.graph.ts`
 - 子 Agent 的节点、prompt、schema、解析、校验、重试策略放在对应宿主的 `src/flows/<domain>/`；跨节点复用或 graph 共享的领域类型优先放在 `packages/core/src` 或宿主包的 `src/types/`。
 - `src/flows/<domain>/prompts/` 只放提示词与提示词格式化函数，不要再把长系统提示词散落在 service、workflow 或 graph 文件里。
 - `src/flows/<domain>/schemas/` 必须承载模型输出的结构约束；只要子 Agent 有稳定 JSON 契约，就必须用 schema 显式校验，不能只靠 `JSON.parse` + 手写 if。
@@ -66,6 +66,7 @@
 
 - 默认使用顶层静态 `import`
 - 一般不允许写 `import('mermaid').then(...)`、`import('xxx')` 这类动态导入
+- 类型位置同样不允许把 `import('pkg').Foo`、`import('zod/v4').ZodType<T>` 当成静态导入替代品；可静态声明时，必须改用顶层 `import type { Foo } from 'pkg'`
 - 常规 UI、业务组件、Mermaid、图表、状态模块都应优先静态导入
 - 只有在明确代码分割、运行时隔离或重资产浏览器专属加载时，才允许动态导入
 - 如果确实需要动态导入，必须在代码旁写明原因，不能把它当成常规前端写法
@@ -159,6 +160,8 @@ skills/
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
+- 只要新增 workspace 包，或修改任何 `package.json` 中的依赖、开发依赖、peer 依赖、optional 依赖、workspace 引用或脚本里会影响依赖图的包管理配置，就必须立刻同步更新 `pnpm-lock.yaml`，禁止把 manifest 变更与 lockfile 修复拆到后续提交
+- 新增 workspace 包后，必须在提交前确认 `pnpm-lock.yaml` 的 `importers` 已出现对应条目；缺少 importer 视为未完成的依赖收口，不能提交
 - 不允许使用本地 `.pnpm-store` 安装、通过 `--store-dir <local-path>` 指向本地 store 安装，或把 `.pnpm-store` 放在仓库内
 - 依赖安装时不要手动指定本地 `store-dir`；pnpm 会通过软链接管理依赖，直接使用 `pnpm add` 即可
 - 共享包构建输出：

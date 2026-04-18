@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyTimeoutPlanDefaults } from '../src/graphs/main/lifecycle/main-graph-lifecycle-approval-timeout';
+import { applyTimeoutPlanDefaults } from '../src/graphs/main/runtime/lifecycle/approval/main-graph-lifecycle-approval-timeout';
 
 describe('main graph lifecycle approval helpers', () => {
   it('applies recommended plan defaults and records timeout continuation metadata', () => {

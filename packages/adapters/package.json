@@ -18,6 +18,9 @@
     }
   },
   "scripts": {
+    "demo:custom-provider-factory": "node --import tsx demo/custom-provider-factory.ts",
+    "demo:routing-capabilities": "node --import tsx demo/routing-capabilities.ts",
+    "demo:retry-structured-output": "node --import tsx demo/retry-structured-output.ts",
     "build:transpile": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",

@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
+      "@agent/agent-kit": ["../../../packages/agent-kit/src/index.ts"],
       "@agent/core": ["../../../packages/core/src/index.ts"],
       "@agent/config": ["../../../packages/config/src/index.ts"],
       "@agent/runtime": ["../../../packages/runtime/src/index.ts"],

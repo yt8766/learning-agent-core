@@ -62,6 +62,16 @@ packages/runtime/
 - `session/` 放 checkpoint、事件持久化、恢复与压缩
 - 测试统一放 `packages/runtime/test/`，不要继续在 `src/` 下新增 `*.test.ts` 或 `*.int-spec.ts`
 
+对 `packages/runtime/src/graphs/` 额外约束：
+
+- 顶层目录按能力域分组：
+  - `chat/chat.graph.ts`
+  - `learning/learning.graph.ts`
+  - `approval/approval-recovery.graph.ts`
+  - `main/*`
+- `graphs/<domain>/index.ts` 可以作为该域的轻量聚合入口，但不要把业务逻辑重新塞回 `index.ts`
+- 不要再把 `chat.graph.ts`、`learning.graph.ts`、`recovery.graph.ts` 这类文件平铺回 `graphs/` 根目录
+
 对 `packages/runtime/src/session/` 额外约束：
 
 - `session-coordinator.ts`
@@ -78,23 +88,41 @@ packages/runtime/
 
 对 `packages/runtime/src/graphs/main/` 额外约束：
 
-- `main.graph.ts`
-  - 只保留 `AgentOrchestrator` facade、resolver setter、订阅入口与稳定对外 API
-- `main-graph-runtime-modules.ts`
-  - 承载 runtime 主链 wiring、实例装配与 bridge/lifecycle 的闭环初始化
-- `main-graph.types.ts`
+- `contracts/main-graph.types.ts`
   - 承载 orchestrator 依赖、resolver、runtime bundle 的稳定类型边界
-- `orchestration/main-graph-pipeline-orchestrator.ts`
+- `runtime/`
+  - 只承载主链运行态能力：
+  - `background/`
+  - `knowledge/`
+  - `lifecycle/`
+    - 顶层只保留 lifecycle facade 与参数类型
+    - `approval/`
+    - `learning/`
+    - `governance/`
+    - `state/`
+- `execution/orchestration/bridge/main-graph-bridge.ts`
+  - 只保留 runtime callback relay、graph thread 封装与主链桥接入口
+- `execution/orchestration/pipeline/main-graph-pipeline-orchestrator.ts`
   - 只保留 task pipeline / approval recovery 的流程骨架、阶段切换与错误收口
-- `orchestration/main-graph-pipeline-orchestrator.types.ts`
+- `execution/orchestration/pipeline/main-graph-pipeline-orchestrator.types.ts`
   - 承载 pipeline callback、resume/run 参数与 approval recovery 契约
-- `orchestration/main-graph-pipeline-orchestrator-graph.ts`
+- `execution/orchestration/pipeline/main-graph-pipeline-orchestrator-graph.ts`
   - 承载 ministry 实例装配、direct-reply graph 与 task pipeline graph 的 callback wiring
-- `task/main-graph-task-runtime.ts`
+- `execution/orchestration/recovery/main-graph-execution-helpers.ts`
+  - 只保留恢复、失败回填与 execution helper 聚合逻辑
+- `execution/pipeline/`
+  - 只承载 interrupt graph 与 task pipeline graph，不再与 orchestration facade 混放
+- `tasking/context/`
+  - 只承载 task context runtime、上下文装配与 context helper
+- `tasking/factory/`
+  - 只承载 task factory、entry decision、execution plan、workflow resolution 与 skill intervention
+- `tasking/runtime/main-graph-task-runtime.ts`
   - 只保留 task runtime facade，不再承担错误类型导出或大段 wiring
-- `task/main-graph-task-runtime-errors.ts`
+- `tasking/runtime/main-graph-task-runtime-errors.ts`
   - 承载 runtime cancel / budget exceed 等错误契约
-- 不要再把 runtime 主链 wiring、resolver 类型定义、graph callback map 或错误契约重新堆回 `main.graph.ts` 或 `main-graph-pipeline-orchestrator.ts`
+- `tasking/drafts/`
+  - 只承载 memory/rule/skill draft 构造
+- 不要再把 contracts、runtime state、execution orchestration、tasking helper 重新堆回同一层目录
 
 ### `agents/coder` / `agents/supervisor` / `agents/data-report`
 
@@ -313,46 +341,57 @@ apps/frontend/agent-admin/
 - 专项 agent 图放在 `agents/<domain>/src/graphs/`
 - app 层只依赖稳定公开入口，例如 `@agent/runtime` 与对应 agent facade，不直连源码目录
 
-对 `packages/runtime/src/graphs/main/task/` 额外约束：
+对 `packages/runtime/src/graphs/main/tasking/` 额外约束：
 
-- `main-graph-task-factory.ts`
+- `factory/main-graph-task-factory.ts`
   - 只保留 task 创建 facade、依赖注入与最终装配
-- `task-entry-decision.ts`
+- `factory/task-entry-decision.ts`
   - 承载 `requestedMode`、群辅 selector、entry decision 这类纯规则选择
-- `task-execution-plan.ts`
+- `factory/task-execution-plan.ts`
   - 承载 execution plan、治理补偿、dispatch/capability 纯计算
-- `task-workflow-resolution.ts`
+- `factory/task-workflow-resolution.ts`
   - 承载 workflow preset、data-report context enrich、specialist route、初始 chat route 解析
-- `task-record-builder.ts`
+- `factory/task-record-builder.ts`
   - 承载 `TaskRecord` 初始化、默认预算/状态切片与队列快照装配
-- `task-skill-intervention.ts`
+- `factory/task-skill-intervention.ts`
   - 承载本地 skill suggestion、pre-execution intervention、审批等待态注入
-- 不要再把上述规则重新堆回 `main-graph-task-factory.ts`
+- `context/main-graph-task-context.ts`
+  - 承载 task 上下文 runtime、agent context 装配、预算和 capability 使用上下文
+- `runtime/main-graph-task-runtime.ts`
+  - 承载 task 运行态 facade、queue/runtime trace/tool usage 更新
+- `drafts/main-graph-task-drafts.ts`
+  - 承载 memory / rule / skill draft 构造
+- 不要再把上述规则重新堆回 `factory/main-graph-task-factory.ts`
 
-对 `packages/runtime/src/graphs/main/lifecycle/` 额外约束：
+对 `packages/runtime/src/graphs/main/runtime/lifecycle/` 额外约束：
 
 - `main-graph-lifecycle.ts`
   - 只保留 lifecycle facade、主链 wiring 与阶段衔接
-- `main-graph-lifecycle-routing.ts`
-  - 承载 approval / recovery / background / learning 等路由判断
-- `main-graph-lifecycle-persistence.ts`
-  - 承载 snapshot、queue、lease、trace 这类持久化更新封装
-- `main-graph-lifecycle-queries.ts`
-  - 承载 task state 查询、恢复判断和 query helper
-- `main-graph-lifecycle-governance.ts`
-  - 承载 knowledge reuse、counselor selector、auto approval 相关治理决策
-- `main-graph-lifecycle-learning.ts`
+- `approval/`
+  - `index.ts`
+    - 只保留 approval lifecycle 的公开入口与模块聚合
+  - `main-graph-lifecycle-approval-action.ts`
+    - 承载 approval action、skill install 恢复、pending execution resume
+  - `main-graph-lifecycle-approval-timeout.ts`
+    - 承载 interrupt timeout、plan-question 默认继续、timeout 统计更新
+  - `main-graph-lifecycle-approval.types.ts`
+    - 承载 approval lifecycle callback contract 与依赖边界
+- `learning/main-graph-lifecycle-learning.ts`
   - 只保留 learning lifecycle facade、conflict scan、jobs runtime 入口
-- `main-graph-lifecycle-learning-queue.ts`
+- `learning/main-graph-lifecycle-learning-queue.ts`
   - 承载 learning queue 处理、task-learning / dream-task 入队策略和候选统计
-- `main-graph-lifecycle-approval.ts`
-  - 只保留 approval lifecycle 的公开入口与模块聚合
-- `main-graph-lifecycle-approval-action.ts`
-  - 承载 approval action、skill install 恢复、pending execution resume
-- `main-graph-lifecycle-approval-timeout.ts`
-  - 承载 interrupt timeout、plan-question 默认继续、timeout 统计更新
-- `main-graph-lifecycle-approval.types.ts`
-  - 承载 approval lifecycle callback contract 与依赖边界
+- `governance/main-graph-lifecycle-governance.ts`
+  - 承载 knowledge reuse、counselor selector、auto approval 相关治理决策
+- `state/main-graph-lifecycle-routing.ts`
+  - 承载 approval / recovery / background / learning 等路由判断
+- `state/main-graph-lifecycle-persistence.ts`
+  - 承载 snapshot、queue、lease、trace 这类持久化更新封装
+- `state/main-graph-lifecycle-queries.ts`
+  - 承载 task state 查询、恢复判断和 query helper
+- `state/main-graph-lifecycle-state.ts`
+  - 承载 snapshot hydrate/persist 与 learning queue state 存取
+- `state/main-graph-lifecycle-background.ts`
+  - 承载 background runner 相关 query helper
 - 不要把生命周期判断、状态写回和治理补偿重新堆回 `main-graph-lifecycle.ts`
 
 对 `packages/runtime/src/capabilities/` 额外约束：
@@ -414,10 +453,10 @@ apps/frontend/agent-admin/
   - 负责“图状态如何存储和合并”
   - 用于定义 LangGraph state 中每个字段如何进入图、如何在节点之间传递、如何在多步执行中累积
   - 典型位置：
-    - `graphs/chat.graph.ts`
+    - `graphs/chat/chat.graph.ts`
     - `graphs/main-route.graph.ts`
-    - `graphs/recovery.graph.ts`
-    - `graphs/learning.graph.ts`
+    - `graphs/approval/approval-recovery.graph.ts`
+    - `graphs/learning/learning.graph.ts`
 
 判断规则：
 

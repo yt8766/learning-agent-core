@@ -3,7 +3,12 @@ import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const FORBIDDEN_RUNTIME_IMPORT_PATTERNS = [/packages\/runtime\/src/, /@agent\/runtime\//, /runtime\/agent-bridges/];
+const FORBIDDEN_RUNTIME_IMPORT_PATTERNS = [
+  /packages\/runtime\/src/,
+  /@agent\/runtime\//,
+  /runtime\/agent-bridges/,
+  /from ['"]@agent\/runtime['"]/
+];
 
 async function collectTsFiles(rootDir: string): Promise<string[]> {
   const entries = await readdir(rootDir, { withFileTypes: true });
@@ -23,22 +28,14 @@ async function collectTsFiles(rootDir: string): Promise<string[]> {
   return files.flat();
 }
 
-describe('@agent/agents-data-report runtime boundary', () => {
-  it('depends on runtime only through the @agent/runtime root entry', async () => {
+describe('@agent/agents-data-report shared agent foundation boundary', () => {
+  it('does not depend on runtime internals or a direct @agent/runtime root import', async () => {
     const srcRoot = join(process.cwd(), 'agents', 'data-report', 'src');
     const files = await collectTsFiles(srcRoot);
     const violations: string[] = [];
 
     for (const file of files) {
       const content = await readFile(file, 'utf8');
-      if (content.includes("from '@agent/runtime'") || content.includes('from "@agent/runtime"')) {
-        const sanitized = content.replaceAll("from '@agent/runtime'", '').replaceAll('from "@agent/runtime"', '');
-        if (FORBIDDEN_RUNTIME_IMPORT_PATTERNS.some(pattern => pattern.test(sanitized))) {
-          violations.push(relative(srcRoot, file));
-        }
-        continue;
-      }
-
       if (FORBIDDEN_RUNTIME_IMPORT_PATTERNS.some(pattern => pattern.test(content))) {
         violations.push(relative(srcRoot, file));
       }

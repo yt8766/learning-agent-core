@@ -1,4 +1,5 @@
 import type { DataReportJsonGraphHandlers, DataReportJsonGraphState } from '../../../types/data-report-json';
+import { resolveFirstModelSelectorCandidate } from '../../../utils/model-selection';
 import {
   buildDataReportJsonNodeContexts,
   buildStructuredSchemaArtifacts,
@@ -54,7 +55,10 @@ export async function runJsonAnalysisNode(
     emitJsonNodeStage(state, {
       node: 'analysisNode',
       status: 'success',
-      modelId: defaults.nodeModelPolicy.analysisNode.primary,
+      modelId: resolveFirstModelSelectorCandidate({
+        llm: state.llm,
+        selector: defaults.nodeModelPolicy.analysisNode.primary
+      }),
       details: {
         source: 'structured-input',
         modificationMode: false,
@@ -86,7 +90,10 @@ export async function runJsonAnalysisNode(
     emitJsonNodeStage(state, {
       node: 'analysisNode',
       status: 'success',
-      modelId: defaults.nodeModelPolicy.analysisNode.primary,
+      modelId: resolveFirstModelSelectorCandidate({
+        llm: state.llm,
+        selector: defaults.nodeModelPolicy.analysisNode.primary
+      }),
       details: {
         templateRef: analysis.templateRef,
         scope: analysis.scope,
@@ -118,7 +125,10 @@ export async function runJsonAnalysisNode(
   emitJsonNodeStage(state, {
     node: 'analysisNode',
     status: 'success',
-    modelId: defaults.nodeModelPolicy.analysisNode.primary,
+    modelId: resolveFirstModelSelectorCandidate({
+      llm: state.llm,
+      selector: defaults.nodeModelPolicy.analysisNode.primary
+    }),
     cacheHit: derived.cacheHit,
     details: {
       source: 'heuristic',

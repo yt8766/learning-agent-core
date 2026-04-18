@@ -77,6 +77,10 @@
   - 承载 impact/action/type/check-command 这类内容生成规则
 - `runtime-tech-briefing-delivery.ts`
   - 承载 digest 投递、history 持久化、run record 组装
+- `bree` 调度开关
+  - `RuntimeScheduleService` 只在 `dailyTechBriefing.enabled === true` 时初始化 `bree`
+  - 本地停用定时 briefing 的首选入口是项目根 `.env` 里的 `DAILY_TECH_BRIEFING_ENABLED=false`
+  - 已落盘的 `data/runtime/schedules/*.json` 需要同步切到 `PAUSED`，避免控制台继续展示为活动态
 - 后续继续拆分时，`category processor`、`collector`、`delivery`、`history/schedule persistence` 也应继续下沉到独立子模块
 - 不要再把 adaptive interval、category config、cron 计算重新塞回 `runtime-tech-briefing.service.ts`
 - 不要把 MCP supplemental search、偏好打分、动作元信息推断重新回填到 `runtime-tech-briefing.service.ts` 或单一 collector 大文件
