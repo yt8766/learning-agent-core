@@ -52,7 +52,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Restore Turbo Cache
         uses: actions/cache@v4
@@ -123,7 +122,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install Dependencies
         if: steps.promptfoo.outputs.ready == 'true'
