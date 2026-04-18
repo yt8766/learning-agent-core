@@ -38,7 +38,7 @@
     "test:demo:affected": "node ./scripts/run-turbo-affected.js demo",
     "test:integration:affected": "node ./scripts/run-turbo-affected.js turbo:test:integration",
     "eval:prompts:affected": "node ./scripts/run-affected-prompt-regression.js",
-    "verify:affected": "pnpm verify:governance && pnpm lint:prettier:affected && pnpm lint:eslint:affected && pnpm test:spec:affected && pnpm eval:prompts:affected && pnpm typecheck:affected && pnpm test:unit:affected && pnpm test:demo:affected && pnpm test:integration:affected",
+    "verify:affected": "pnpm verify:governance && pnpm lint:prettier:affected && pnpm lint:eslint:affected && pnpm test:spec:affected && pnpm typecheck:affected && pnpm test:unit:affected && pnpm test:demo:affected && pnpm test:integration:affected",
     "check:terminology": "pnpm exec tsc --pretty false --outDir /tmp/agent-terminology-check scripts/check-terminology.ts && node /tmp/agent-terminology-check/check-terminology.js",
     "typecheck": "pnpm lint:tsc",
     "lint:tsc": "node scripts/typecheck.js",

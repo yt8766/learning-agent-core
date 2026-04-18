@@ -93,7 +93,7 @@
   - `Demo`
   - `Integration`
 - 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
-- 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + eval:prompts:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
 - 每次改动文件时，禁止绕过 [验证体系规范](/docs/evals/verification-system-guidelines.md) 自行裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成对应层级验证或明确记录 blocker
 - GitHub PR 流水线对代码改动默认执行 `pnpm verify:affected`，并将 `VERIFY_BASE_REF` 对齐到 PR 的 base branch；纯文档改动仍至少执行 `pnpm check:docs`
 - GitHub main 流水线默认执行根级 `pnpm verify`；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口

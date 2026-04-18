@@ -105,7 +105,7 @@
 - `pnpm test:demo:affected` 会通过 `node ./scripts/run-turbo-affected.js demo` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
 - `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
 - `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 working tree 改动自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
-- `pnpm eval:prompts:affected` 会在受影响范围内命中 prompt 敏感路径时才执行 prompt regression；未命中时自动跳过
+- `pnpm eval:prompts:affected` 仍保留为独立入口，会在受影响范围内命中 prompt 敏感路径时执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
 - 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
@@ -113,9 +113,9 @@
   - `package-lib` 需要验证最小类型闭环与 integration 闭环
   - `agent-basic` 需要验证 integration 闭环与最小类型闭环
 - `pnpm verify` 是根级聚合入口，当前串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
-- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + eval:prompts:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
 - `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
-- GitHub PR 校验当前默认执行受影响范围主入口：代码改动执行 `pnpm verify:affected`，并将 `VERIFY_BASE_REF` 对齐到 PR 的 base branch；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
+- GitHub PR 校验当前默认执行受影响范围主入口：代码改动执行 `pnpm verify:affected`，并将 `VERIFY_BASE_REF` 对齐到 PR 的 base branch；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
 - GitHub main 校验当前默认执行全量主入口：`pnpm verify`；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - 当前不要把根级 `typecheck`、`test:unit`、`test:integration` 直接改成 Turbo 任务入口；仓库仍存在 `runtime <-> agents/*` 的循环依赖，直接沿 package graph 编排会报错
 - 后续二阶段迁移默认采用“新增 Turbo-only 包级任务”而不是直接篡改现有主入口，详见 [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)

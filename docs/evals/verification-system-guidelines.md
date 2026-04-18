@@ -149,7 +149,8 @@
   - `pnpm test:integration:affected`
   - `pnpm eval:prompts:affected`
   - `pnpm verify:affected`
-- `verify:affected` 默认先执行治理门槛与受影响范围 Spec / Eval，再执行受影响包的 Type / Unit / Demo / Integration
+- `verify:affected` 默认先执行治理门槛与受影响范围 Spec，再执行受影响包的 Type / Unit / Demo / Integration
+- `Eval` 当前保留为独立入口：`pnpm eval:prompts:affected`
 - 受影响范围入口默认读取环境变量 `VERIFY_BASE_REF`；未显式配置时回落到 `origin/main`
 - `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
