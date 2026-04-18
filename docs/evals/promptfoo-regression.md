@@ -111,7 +111,8 @@ pnpm dlx promptfoo@latest
 
 - 仓库脚本当前统一以 `promptfoo eval --no-write` 运行回归
 - 回归结果以 JSON 输出文件和派生 summary 为准，不依赖 promptfoo 的 sqlite 持久化
-- 这样可以避免 CI 因 `better-sqlite3` native binding 缺失而在 prompt regression 阶段失败
+- 但 `promptfoo` 启动时仍会加载其内部数据库依赖，因此 CI 安装阶段仍必须允许 `better-sqlite3` 执行 native build
+- 当前仓库已在根 `package.json` 通过 `pnpm.onlyBuiltDependencies` 显式放行 `better-sqlite3`，避免 GitHub Actions 因缺失 binding 而在 prompt regression 阶段失败
 
 ## 维护规则
 
