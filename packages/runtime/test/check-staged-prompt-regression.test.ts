@@ -113,6 +113,7 @@ describe('workflow setup reuse', () => {
     expect(prWorkflow).toContain('uses: ./.github/actions/fetch-pr-base-ref');
     expect(setupAction).toContain('pnpm install --frozen-lockfile --prefer-offline');
     expect(nodeSetupAction).toContain('actions/setup-node@v5');
+    expect(nodeSetupAction).toContain('package-manager-cache: false');
     expect(fetchBaseAction).toContain('git fetch --no-tags --prune --depth=');
     expect(mainWorkflow).toContain('coverage-main:');
     expect(mainWorkflow).toContain('- name: Setup Workspace');

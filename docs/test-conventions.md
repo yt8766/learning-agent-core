@@ -118,7 +118,7 @@
 - GitHub PR 校验当前默认执行受影响范围主入口：代码改动按 `pnpm verify:affected` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Affected Verify` job 收口；`VERIFY_BASE_REF` 对齐到 PR 的 base branch；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
 - GitHub main 校验当前默认执行全量主入口：按 `pnpm verify` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Verify Main` job 收口；`Build Main` 与非阻塞的 `Coverage Main` 在验证通过后独立执行；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - PR / main workflow 的共享环境准备当前统一走 `/.github/actions/setup-pnpm-workspace/action.yml`；默认使用 `pnpm install --frozen-lockfile --prefer-offline`，以减少重复配置和重复下载成本
-- 对只执行仓库内 Node 脚本、且不依赖 workspace 安装产物的轻量 job，当前统一走 `/.github/actions/setup-node-runtime/action.yml`，避免为 `docs`、`lockfile`、`terminology` 之类的检查额外执行 pnpm setup
+- 对只执行仓库内 Node 脚本、且不依赖 workspace 安装产物的轻量 job，当前统一走 `/.github/actions/setup-node-runtime/action.yml`，避免为 `docs`、`lockfile`、`terminology` 之类的检查额外执行 pnpm setup；同时显式关闭 `setup-node` 的自动 package manager cache，避免误探测根级 `pnpm`
 - PR 中需要 affected 计算的 job 当前统一走“浅 checkout + `/.github/actions/fetch-pr-base-ref/action.yml` 定向浅 fetch base branch”，以减少 checkout 和 git 历史下载成本
 - 根级治理校验与受影响范围 Turbo 包装脚本当前统一复用 `scripts/turbo-runner.js`；它会把 Turbo `--cache-dir` 与 `TMPDIR` / `TMP` / `TEMP` 指向系统临时卷下的 `learning-agent-core-turbo/`，并在 CI 中自动切到 `--cache=local:r,remote:r`，减少无复用价值的本地缓存写入
 - 当前不要把根级 `typecheck`、`test:unit`、`test:integration` 直接改成 Turbo 任务入口；仓库仍存在 `runtime <-> agents/*` 的循环依赖，直接沿 package graph 编排会报错

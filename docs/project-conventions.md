@@ -102,7 +102,7 @@
 - GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
 - `.github/workflows/*` 中重复的 pnpm / Node / 依赖安装步骤，默认优先收敛到仓库内可复用 action；当前统一入口为 `/.github/actions/setup-pnpm-workspace/action.yml`
 - 复用 setup action 的默认安装命令应优先使用 `pnpm install --frozen-lockfile --prefer-offline`，在保证 lockfile 严格性的前提下尽量减少重复网络拉取
-- 对 `check-docs`、`check-lockfile-sync`、`check-terminology` 这类只依赖 Node 内建模块或仓库源码的轻量 job，默认优先使用 `/.github/actions/setup-node-runtime/action.yml`，不要为其额外执行 pnpm setup 或依赖安装
+- 对 `check-docs`、`check-lockfile-sync`、`check-terminology` 这类只依赖 Node 内建模块或仓库源码的轻量 job，默认优先使用 `/.github/actions/setup-node-runtime/action.yml`，不要为其额外执行 pnpm setup 或依赖安装；该 action 也必须显式关闭 `setup-node` 的自动 package manager cache，避免因根级 `packageManager: pnpm` 触发误探测
 - PR 中需要 affected 计算的 job，默认优先采用“浅 checkout + 定向浅 fetch base branch”的模式；当前统一复用 `/.github/actions/fetch-pr-base-ref/action.yml`，不要再用 `fetch-depth: 0` 无差别拉完整历史
 - 只要 workflow job 会执行 `pnpm build`、`pnpm test:*`、`pnpm typecheck`、`pnpm lint:*` 或任何依赖 workspace 安装产物的命令，即使它是非阻塞附加检查，也必须走 `/.github/actions/setup-pnpm-workspace/action.yml`，不要误用轻量 Node-only setup
 - `scripts/turbo-runner.js` 当前统一承载根级治理校验与受影响范围 Turbo 包装：默认把 Turbo `--cache-dir` 与 `TMPDIR` / `TMP` / `TEMP` 收敛到系统临时卷下的 `learning-agent-core-turbo/`，并在 CI 中自动切到 `--cache=local:r,remote:r`；后续新增 Turbo 包装脚本时，也应复用这条规则，避免一次性 runner 为本地缓存做额外磁盘写入

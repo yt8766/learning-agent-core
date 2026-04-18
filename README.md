@@ -238,7 +238,7 @@
 - 原因：仓库根 `package.json` 声明了 `"packageManager": "pnpm@10.32.1"`；`setup-node@v5` 会基于该字段自动探测包管理器缓存，如果这一步发生在 `pnpm` 安装之前，会直接报 `Unable to locate executable file: pnpm`
 - 两套 workflow 的邮件通知当前统一固定在 `dawidd6/action-send-mail@v6`，用于规避 GitHub Actions 对 Node 20 JavaScript action 的弃用告警
 - 两套 workflow 的 pnpm/Node/安装模板当前统一复用 [`.github/actions/setup-pnpm-workspace/action.yml`](./.github/actions/setup-pnpm-workspace/action.yml)，默认使用 `pnpm install --frozen-lockfile --prefer-offline`，以减少重复配置并尽量利用缓存
-- 对不需要 pnpm 依赖安装的轻量 job，PR / main workflow 当前统一复用 [`.github/actions/setup-node-runtime/action.yml`](./.github/actions/setup-node-runtime/action.yml)，避免为纯 Node 脚本额外做 pnpm setup
+- 对不需要 pnpm 依赖安装的轻量 job，PR / main workflow 当前统一复用 [`.github/actions/setup-node-runtime/action.yml`](./.github/actions/setup-node-runtime/action.yml)，并显式关闭 `setup-node` 的自动 package manager cache，避免它在只装 Node 的场景下误探测根级 `pnpm` 配置
 - PR 中需要 affected 计算的 job 当前统一改为“浅 checkout + 复用 [`.github/actions/fetch-pr-base-ref/action.yml`](./.github/actions/fetch-pr-base-ref/action.yml) 定向浅 fetch base branch”，不再默认拉整段 git 历史
 - `Coverage Main` 虽然保留为非阻塞基线检查，但因为实际执行 `pnpm test:coverage`，仍必须走完整 workspace setup，而不是轻量 Node-only setup
 - 根级治理校验与受影响范围 Turbo 入口当前统一复用 [scripts/turbo-runner.js](./scripts/turbo-runner.js)：会把 `--cache-dir` 与 `TMPDIR` / `TMP` / `TEMP` 显式切到系统临时卷下的 `learning-agent-core-turbo/`，并在 CI 中自动切到 `--cache=local:r,remote:r`，避免一次性 runner 写入无复用价值的本地 Turbo 缓存
