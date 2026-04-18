@@ -13,56 +13,165 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    name: Detect Changed Areas Main
+    runs-on: ubuntu-latest
+    outputs:
+      prompts: ${{ steps.filter.outputs.prompts }}
+      docs: ${{ steps.filter.outputs.docs }}
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+      any_code: ${{ steps.filter.outputs.any_code }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Classify Changed Paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            prompts:
+              - 'agents/**/prompts/**'
+              - 'packages/**/prompts/**'
+              - 'apps/**/prompts/**'
+              - 'packages/evals/promptfoo/**'
+              - 'scripts/run-prompt-regression.js'
+              - 'scripts/prompt-regression.js'
+              - 'scripts/prompt-regression.d.ts'
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+            docs_only:
+              - 'docs/**'
+              - '**/*.md'
+            any_code:
+              - 'apps/**'
+              - 'agents/**'
+              - 'packages/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - 'scripts/**'
+              - 'tsconfig*.json'
+              - 'eslint.config.js'
+              - 'prettier.config.js'
+              - 'vitest.config.*'
+
   lockfile:
     name: Lockfile Sync Main
     runs-on: ubuntu-latest
+    needs: detect-changes
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          package-manager-cache: false
+      - name: Setup Workspace Tooling
+        uses: ./.github/actions/setup-node-runtime
 
       - name: Check pnpm lockfile sync
         run: node ./scripts/check-lockfile-sync.js
 
-  verify-and-build:
-    name: Verify And Build Main
+  verify-foundation:
+    name: Verify Main / Governance And Spec
     runs-on: ubuntu-latest
-    needs: lockfile
+    needs:
+      - detect-changes
+      - lockfile
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          run_install: false
+      - name: Setup Workspace
+        uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          package-manager-cache: false
+      - name: Run Governance Verify
+        run: pnpm verify:governance
 
-      - name: Restore Turbo Cache
-        id: turbo-cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: .turbo/cache
-          key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'apps/**/package.json', 'packages/**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+      - name: Run Full Spec Verify
+        run: pnpm test:spec
+
+  verify-parallel:
+    name: Verify Main / ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - lockfile
+      - verify-foundation
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Prettier
+            command: pnpm lint:prettier:check
+          - label: ESLint
+            command: pnpm lint:eslint:check
+          - label: Typecheck
+            command: pnpm typecheck
+          - label: Unit
+            command: pnpm test:unit
+          - label: Demo
+            command: pnpm test:demo
+          - label: Integration
+            command: pnpm test:integration
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Run ${{ matrix.label }}
+        run: ${{ matrix.command }}
+
+  verify-main:
+    name: Verify Main
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - lockfile
+      - verify-foundation
+      - verify-parallel
+    if: ${{ always() }}
+
+    steps:
+      - name: Verify Main Gate Summary
+        env:
+          LOCKFILE_RESULT: ${{ needs.lockfile.result }}
+          VERIFY_FOUNDATION_RESULT: ${{ needs.verify-foundation.result }}
+          VERIFY_PARALLEL_RESULT: ${{ needs.verify-parallel.result }}
+        run: |
+          echo "lockfile=${LOCKFILE_RESULT}"
+          echo "verify-foundation=${VERIFY_FOUNDATION_RESULT}"
+          echo "verify-parallel=${VERIFY_PARALLEL_RESULT}"
+
+          if [ "$LOCKFILE_RESULT" != "success" ] || [ "$VERIFY_FOUNDATION_RESULT" != "success" ] || [ "$VERIFY_PARALLEL_RESULT" != "success" ]; then
+            echo "Main verify prerequisites did not complete successfully."
+            exit 1
+          fi
+
+  build-main:
+    name: Build Main
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - lockfile
+      - verify-main
+    if: needs.detect-changes.outputs.any_code == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Workspace
+        uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Restore Build Artifacts Cache
         id: build-artifacts-cache-restore
@@ -75,28 +184,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-artifacts-
 
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run Full Verify
-        run: pnpm verify
-
-      - name: Run Terminology Check (Non-blocking)
-        run: pnpm check:terminology || true
-
-      - name: Run Coverage (Non-blocking Baseline Check)
-        continue-on-error: true
-        run: pnpm test:coverage
-
       - name: Run Full Build
         run: pnpm build
-
-      - name: Save Turbo Cache
-        if: success() && hashFiles('.turbo/cache/**') != ''
-        uses: actions/cache/save@v4
-        with:
-          path: .turbo/cache
-          key: ${{ steps.turbo-cache-restore.outputs.cache-primary-key }}
 
       - name: Save Build Artifacts Cache
         if: success() && (hashFiles('apps/**/dist/**') != '' || hashFiles('packages/**/build/**') != '')
@@ -107,10 +196,36 @@ jobs:
             packages/**/build
           key: ${{ steps.build-artifacts-cache-restore.outputs.cache-primary-key }}
 
+  coverage-main:
+    name: Coverage Main
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - lockfile
+      - verify-main
+    if: needs.detect-changes.outputs.any_code == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Run Terminology Check (Non-blocking)
+        run: node ./scripts/check-terminology.js || true
+
+      - name: Run Coverage (Non-blocking Baseline Check)
+        continue-on-error: true
+        run: pnpm test:coverage
+
   prompt-regression:
     name: Prompt Regression Main
     runs-on: ubuntu-latest
-    needs: lockfile
+    needs:
+      - detect-changes
+      - lockfile
+    if: needs.detect-changes.outputs.prompts == 'true' || needs.detect-changes.outputs.any_code == 'true'
 
     steps:
       - name: Checkout
@@ -131,22 +246,9 @@ jobs:
         if: steps.promptfoo.outputs.ready != 'true'
         run: echo "Skipping prompt regression because OPENAI_API_KEY is not configured."
 
-      - name: Setup pnpm
+      - name: Setup Workspace
         if: steps.promptfoo.outputs.ready == 'true'
-        uses: pnpm/action-setup@v5
-        with:
-          run_install: false
-
-      - name: Setup Node.js
-        if: steps.promptfoo.outputs.ready == 'true'
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          package-manager-cache: false
-
-      - name: Install Dependencies
-        if: steps.promptfoo.outputs.ready == 'true'
-        run: pnpm install --frozen-lockfile
+        uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Run Prompt Regression
         if: steps.promptfoo.outputs.ready == 'true'
@@ -168,8 +270,13 @@ jobs:
     name: Send Email Notification
     runs-on: ubuntu-latest
     needs:
+      - detect-changes
       - lockfile
-      - verify-and-build
+      - verify-foundation
+      - verify-parallel
+      - verify-main
+      - build-main
+      - coverage-main
       - prompt-regression
     # job/step 的 if 表达式不能使用 secrets；用 run + env 注入后再写 outputs，供后续 if 使用
     if: always()
@@ -196,22 +303,47 @@ jobs:
         id: failure_focus
         if: always()
         env:
+          DETECT_CHANGES_RESULT: ${{ needs.detect-changes.result }}
           LOCKFILE_RESULT: ${{ needs.lockfile.result }}
-          VERIFY_AND_BUILD_RESULT: ${{ needs.verify-and-build.result }}
+          VERIFY_FOUNDATION_RESULT: ${{ needs.verify-foundation.result }}
+          VERIFY_PARALLEL_RESULT: ${{ needs.verify-parallel.result }}
+          VERIFY_MAIN_RESULT: ${{ needs.verify-main.result }}
+          BUILD_MAIN_RESULT: ${{ needs.build-main.result }}
+          COVERAGE_MAIN_RESULT: ${{ needs.coverage-main.result }}
           PROMPT_REGRESSION_RESULT: ${{ needs.prompt-regression.result }}
         run: |
           first_job="none"
           first_result="success"
           next_hint="No failed or cancelled jobs were detected."
 
-          if [ "$LOCKFILE_RESULT" = "failure" ] || [ "$LOCKFILE_RESULT" = "cancelled" ]; then
+          if [ "$DETECT_CHANGES_RESULT" = "failure" ] || [ "$DETECT_CHANGES_RESULT" = "cancelled" ]; then
+            first_job="detect-changes"
+            first_result="$DETECT_CHANGES_RESULT"
+            next_hint="Inspect changed-path classification first to confirm the push was routed into the expected main jobs."
+          elif [ "$LOCKFILE_RESULT" = "failure" ] || [ "$LOCKFILE_RESULT" = "cancelled" ]; then
             first_job="lockfile"
             first_result="$LOCKFILE_RESULT"
             next_hint="Review package manifests and pnpm-lock.yaml drift first."
-          elif [ "$VERIFY_AND_BUILD_RESULT" = "failure" ] || [ "$VERIFY_AND_BUILD_RESULT" = "cancelled" ]; then
-            first_job="verify-and-build"
-            first_result="$VERIFY_AND_BUILD_RESULT"
-            next_hint="Open verify-and-build and inspect verify, coverage, and build logs in order."
+          elif [ "$VERIFY_FOUNDATION_RESULT" = "failure" ] || [ "$VERIFY_FOUNDATION_RESULT" = "cancelled" ]; then
+            first_job="verify-foundation"
+            first_result="$VERIFY_FOUNDATION_RESULT"
+            next_hint="Open verify-foundation and inspect governance plus full spec logs first."
+          elif [ "$VERIFY_PARALLEL_RESULT" = "failure" ] || [ "$VERIFY_PARALLEL_RESULT" = "cancelled" ]; then
+            first_job="verify-parallel"
+            first_result="$VERIFY_PARALLEL_RESULT"
+            next_hint="Open the failing verify-parallel matrix leg and inspect prettier, eslint, type, unit, demo, or integration output."
+          elif [ "$VERIFY_MAIN_RESULT" = "failure" ] || [ "$VERIFY_MAIN_RESULT" = "cancelled" ]; then
+            first_job="verify-main"
+            first_result="$VERIFY_MAIN_RESULT"
+            next_hint="Open verify-main for the aggregate gate summary."
+          elif [ "$BUILD_MAIN_RESULT" = "failure" ] || [ "$BUILD_MAIN_RESULT" = "cancelled" ]; then
+            first_job="build-main"
+            first_result="$BUILD_MAIN_RESULT"
+            next_hint="Open build-main and inspect the full build logs."
+          elif [ "$COVERAGE_MAIN_RESULT" = "failure" ] || [ "$COVERAGE_MAIN_RESULT" = "cancelled" ]; then
+            first_job="coverage-main"
+            first_result="$COVERAGE_MAIN_RESULT"
+            next_hint="Open coverage-main and inspect the non-blocking coverage baseline output."
           elif [ "$PROMPT_REGRESSION_RESULT" = "failure" ] || [ "$PROMPT_REGRESSION_RESULT" = "cancelled" ]; then
             first_job="prompt-regression"
             first_result="$PROMPT_REGRESSION_RESULT"
@@ -223,85 +355,97 @@ jobs:
           echo "next_hint=$next_hint" >> "$GITHUB_OUTPUT"
 
       - name: Send Success Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && needs.lockfile.result == 'success' && needs.verify-and-build.result == 'success' && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
-        uses: dawidd6/action-send-mail@v3
+        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && needs.lockfile.result == 'success' && needs.verify-foundation.result == 'success' && needs.verify-parallel.result == 'success' && needs.verify-main.result == 'success' && (needs.build-main.result == 'success' || needs.build-main.result == 'skipped') && (needs.coverage-main.result == 'success' || needs.coverage-main.result == 'skipped') && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
+        uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT }}
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: '[Main Success] ${{ github.repository }} @ ${{ github.ref_name }}'
+          subject: '✅ [Main Success] ${{ github.repository }} @ ${{ github.ref_name }}'
           to: ${{ secrets.SMTP_TO }}
           from: ${{ secrets.SMTP_FROM }}
           secure: ${{ secrets.SMTP_SECURE == 'true' }}
           body: |
-            Main branch full validation succeeded.
+            ✅ Main validation succeeded
 
-            Repository: ${{ github.repository }}
-            Workflow: ${{ github.workflow }}
-            Event: ${{ github.event_name }}
-            Branch: ${{ github.ref_name }}
-            Actor: ${{ github.actor }}
-            Commit: ${{ github.sha }}
-            Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-            Compare URL: ${{ github.event.compare }}
-            Run Attempt: ${{ github.run_attempt }}
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Summary:
+            - Repository: ${{ github.repository }}
+            - Branch: ${{ github.ref_name }}
+            - Actor: ${{ github.actor }}
+            - Commit: ${{ github.sha }}
+            - Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            Job Summary:
+            Scope:
+            - any_code: ${{ needs.detect-changes.outputs.any_code }}
+            - prompts: ${{ needs.detect-changes.outputs.prompts }}
+            - docs: ${{ needs.detect-changes.outputs.docs }}
+            - docs_only: ${{ needs.detect-changes.outputs.docs_only }}
+
+            Checks:
+            - detect-changes: ${{ needs.detect-changes.result }}
             - lockfile: ${{ needs.lockfile.result }}
-            - verify-and-build: ${{ needs.verify-and-build.result }}
+            - verify-foundation: ${{ needs.verify-foundation.result }}
+            - verify-parallel: ${{ needs.verify-parallel.result }}
+            - verify-main: ${{ needs.verify-main.result }}
+            - build-main: ${{ needs.build-main.result }}
+            - coverage-main: ${{ needs.coverage-main.result }}
             - prompt-regression: ${{ needs.prompt-regression.result }}
 
-            Failure Focus:
-            - first non-success job: ${{ steps.failure_focus.outputs.first_job }}
-            - result: ${{ steps.failure_focus.outputs.first_result }}
-
-            Validation Coverage:
-            - verify-and-build includes `pnpm verify`, non-blocking coverage, and `pnpm build`.
-            - prompt-regression runs when OPENAI_API_KEY is configured; otherwise it is expected to be skipped.
+            Notes:
+            - build-main and coverage-main are skipped automatically when the push is docs-only.
+            - prompt-regression runs only when prompt-sensitive or code-related changes require it.
 
             Next step:
-            No action is needed unless you want to review artifacts or logs for this run.
+            - ✅ No action is needed unless you want to review logs or artifacts.
 
       - name: Send Failure Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.lockfile.result == 'failure' || needs.lockfile.result == 'cancelled' || needs.verify-and-build.result == 'failure' || needs.verify-and-build.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
-        uses: dawidd6/action-send-mail@v3
+        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lockfile.result == 'failure' || needs.lockfile.result == 'cancelled' || needs.verify-foundation.result == 'failure' || needs.verify-foundation.result == 'cancelled' || needs.verify-parallel.result == 'failure' || needs.verify-parallel.result == 'cancelled' || needs.verify-main.result == 'failure' || needs.verify-main.result == 'cancelled' || needs.build-main.result == 'failure' || needs.build-main.result == 'cancelled' || needs.coverage-main.result == 'failure' || needs.coverage-main.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
+        uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT }}
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: '[Main Failure] ${{ github.repository }} @ ${{ github.ref_name }}'
+          subject: '❌ [Main Failure] ${{ github.repository }} @ ${{ github.ref_name }}'
           to: ${{ secrets.SMTP_TO }}
           from: ${{ secrets.SMTP_FROM }}
           secure: ${{ secrets.SMTP_SECURE == 'true' }}
           body: |
-            Main branch full validation failed or was cancelled.
+            ❌ Main validation failed or was cancelled
 
-            Repository: ${{ github.repository }}
-            Workflow: ${{ github.workflow }}
-            Event: ${{ github.event_name }}
-            Branch: ${{ github.ref_name }}
-            Actor: ${{ github.actor }}
-            Commit: ${{ github.sha }}
-            Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-            Compare URL: ${{ github.event.compare }}
-            Run Attempt: ${{ github.run_attempt }}
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Summary:
+            - Repository: ${{ github.repository }}
+            - Branch: ${{ github.ref_name }}
+            - Actor: ${{ github.actor }}
+            - Commit: ${{ github.sha }}
+            - Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-            Job Summary:
+            Scope:
+            - any_code: ${{ needs.detect-changes.outputs.any_code }}
+            - prompts: ${{ needs.detect-changes.outputs.prompts }}
+            - docs: ${{ needs.detect-changes.outputs.docs }}
+            - docs_only: ${{ needs.detect-changes.outputs.docs_only }}
+
+            Checks:
+            - detect-changes: ${{ needs.detect-changes.result }}
             - lockfile: ${{ needs.lockfile.result }}
-            - verify-and-build: ${{ needs.verify-and-build.result }}
+            - verify-foundation: ${{ needs.verify-foundation.result }}
+            - verify-parallel: ${{ needs.verify-parallel.result }}
+            - verify-main: ${{ needs.verify-main.result }}
+            - build-main: ${{ needs.build-main.result }}
+            - coverage-main: ${{ needs.coverage-main.result }}
             - prompt-regression: ${{ needs.prompt-regression.result }}
 
-            Failure Focus:
+            Focus:
             - first non-success job: ${{ steps.failure_focus.outputs.first_job }}
             - result: ${{ steps.failure_focus.outputs.first_result }}
             - next hint: ${{ steps.failure_focus.outputs.next_hint }}
 
             First places to inspect:
-            - Open the run page above and inspect the first failed or cancelled job.
-            - If lockfile failed, review package manifest and pnpm-lock.yaml drift first.
-            - If verify-and-build failed, check verify, coverage, and build in order.
+            - ❌ Open the run page above and inspect the first failed or cancelled job.
+            - If verify-parallel failed, inspect the failing prettier, eslint, type, unit, demo, or integration matrix leg.
+            - If verify-main failed, inspect the aggregate gate summary.
+            - If build-main failed, inspect the full build logs.
+            - If coverage-main failed, inspect the non-blocking coverage logs.
             - If prompt-regression failed, inspect prompt regression logs and uploaded artifacts.
