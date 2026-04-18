@@ -95,10 +95,17 @@
 - 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
 - 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
 - 每次改动文件时，禁止绕过 [验证体系规范](/docs/evals/verification-system-guidelines.md) 自行裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成对应层级验证或明确记录 blocker
-- GitHub PR 流水线对代码改动默认执行 `pnpm verify:affected`，并将 `VERIFY_BASE_REF` 对齐到 PR 的 base branch；纯文档改动仍至少执行 `pnpm check:docs`
-- GitHub main 流水线默认执行根级 `pnpm verify`；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口
+- GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
+- GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口
+- main 流水线允许在五层验证之后对附加 job 做条件化触发：当前 docs-only push 默认跳过 `build-main` 与 `coverage-main`，`prompt-regression` 只在 prompt-sensitive 或代码相关改动时尝试运行
 - 不要再把 CI 五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
 - GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
+- `.github/workflows/*` 中重复的 pnpm / Node / 依赖安装步骤，默认优先收敛到仓库内可复用 action；当前统一入口为 `/.github/actions/setup-pnpm-workspace/action.yml`
+- 复用 setup action 的默认安装命令应优先使用 `pnpm install --frozen-lockfile --prefer-offline`，在保证 lockfile 严格性的前提下尽量减少重复网络拉取
+- 对 `check-docs`、`check-lockfile-sync`、`check-terminology` 这类只依赖 Node 内建模块或仓库源码的轻量 job，默认优先使用 `/.github/actions/setup-node-runtime/action.yml`，不要为其额外执行 pnpm setup 或依赖安装
+- PR 中需要 affected 计算的 job，默认优先采用“浅 checkout + 定向浅 fetch base branch”的模式；当前统一复用 `/.github/actions/fetch-pr-base-ref/action.yml`，不要再用 `fetch-depth: 0` 无差别拉完整历史
+- 只要 workflow job 会执行 `pnpm build`、`pnpm test:*`、`pnpm typecheck`、`pnpm lint:*` 或任何依赖 workspace 安装产物的命令，即使它是非阻塞附加检查，也必须走 `/.github/actions/setup-pnpm-workspace/action.yml`，不要误用轻量 Node-only setup
+- `scripts/turbo-runner.js` 当前统一承载根级治理校验与受影响范围 Turbo 包装：默认把 Turbo `--cache-dir` 与 `TMPDIR` / `TMP` / `TEMP` 收敛到系统临时卷下的 `learning-agent-core-turbo/`，并在 CI 中自动切到 `--cache=local:r,remote:r`；后续新增 Turbo 包装脚本时，也应复用这条规则，避免一次性 runner 为本地缓存做额外磁盘写入
 - 不要用 `pnpm install --no-frozen-lockfile` 作为常规修复手段；正确做法是本地执行 `pnpm install` 更新 lockfile，并把 `pnpm-lock.yaml` 与 manifest 变更一起提交
 - 根级治理校验现已提供 Turbo 入口：`pnpm check:docs:turbo`、`pnpm check:architecture:turbo`、`pnpm verify:governance`
 - 上述 Turbo 入口当前只覆盖治理门槛，不替代五层验证主入口；在仓库循环依赖清理前，不要把根级 `typecheck`、`build` 或 `test:*` 直接改写为依赖 package graph 的 Turbo 任务

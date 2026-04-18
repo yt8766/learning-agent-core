@@ -1,0 +1,20 @@
+name: Fetch PR Base Ref
+description: Fetch the current pull request base branch with a shallow history for affected checks.
+
+inputs:
+  base-ref:
+    description: Pull request base branch name.
+    required: true
+  fetch-depth:
+    description: Depth to fetch for the PR base branch.
+    required: false
+    default: '1'
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch Base Branch
+      shell: bash
+      run: |
+        git fetch --no-tags --prune --depth="${{ inputs.fetch-depth }}" origin \
+          "+refs/heads/${{ inputs.base-ref }}:refs/remotes/origin/${{ inputs.base-ref }}"

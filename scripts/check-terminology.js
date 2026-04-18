@@ -1,14 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-type TerminologyRule = {
-  canonical: string;
-  aliases: string[];
-  paths: string[];
-  severity: 'warn' | 'error';
-};
-
-const RULES: TerminologyRule[] = [
+const RULES = [
   {
     canonical: '通政司 / EntryRouter',
     aliases: ['entry router', 'entrydecision', 'entry decision'],
@@ -37,8 +30,8 @@ const RULES: TerminologyRule[] = [
 
 async function main() {
   const files = await collectFiles(process.cwd(), ['packages', 'apps', 'docs']);
-  const warnings: string[] = [];
-  const errors: string[] = [];
+  const warnings = [];
+  const errors = [];
 
   for (const file of files) {
     const content = await readFile(file, 'utf8').catch(() => '');
@@ -80,15 +73,15 @@ async function main() {
   }
 }
 
-async function collectFiles(root: string, targets: string[]) {
-  const files: string[] = [];
+async function collectFiles(root, targets) {
+  const files = [];
   for (const target of targets) {
     await walk(join(root, target), files);
   }
-  return files.filter(file => /\.(ts|tsx|md)$/.test(file));
+  return files.filter(file => /\.(js|ts|tsx|md)$/.test(file));
 }
 
-async function walk(dir: string, files: string[]) {
+async function walk(dir, files) {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     // `dist` is intentionally skipped because generated, non-tracked build output should not define canonical terminology.
