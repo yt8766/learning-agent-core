@@ -234,6 +234,8 @@
 
 - `PR 检查`：对应 [`.github/workflows/pr-check.yml`](./.github/workflows/pr-check.yml)
 - `main 检查`：对应 [`.github/workflows/main-check.yml`](./.github/workflows/main-check.yml)
+- 两套 workflow 都必须先执行 `pnpm/action-setup@v5`，再执行 `actions/setup-node@v5`
+- 原因：仓库根 `package.json` 声明了 `"packageManager": "pnpm@10.32.1"`；`setup-node@v5` 会基于该字段自动探测包管理器缓存，如果这一步发生在 `pnpm` 安装之前，会直接报 `Unable to locate executable file: pnpm`
 
 ## Runtime Interrupts
 
@@ -249,9 +251,8 @@
 
 - `Detect Changed Areas`
 - `Lockfile Sync`
-- `Full Lint`
 - `Docs Check`
-- `Full Verify`
+- `Affected Verify`
 - `Prompt Regression`
 
 这套检查会结合 `changed-files` 做路径过滤：

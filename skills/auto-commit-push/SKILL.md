@@ -1,7 +1,7 @@
 ---
 name: auto-commit-push
-description: Use this skill when the user asks Codex to generate an English git commit message, create a local commit, fix commit-hook failures until the commit succeeds, and push the current branch to the remote in learning-agent-core.
-version: '1.0.0'
+description: Use this skill when the user asks Codex to stage all current changes with `git add .`, generate a commit message from the current modifications according to github-flow.md, create a local commit, fix commit-hook failures until the commit succeeds, and push the current branch to the remote in learning-agent-core.
+version: '1.2.0'
 publisher: workspace
 license: Proprietary
 compatibility: Requires repository access and a configured git remote. Push or history-rewrite steps must still follow the user's explicit request and repository branch policy.
@@ -31,17 +31,19 @@ allowed-tools:
 execution-hints:
   - Inspect git status and current branch before staging or committing.
   - Generate a concise English commit message from the real diff instead of copying the user request literally.
-  - If commit hooks fail, fix the reported issue, restage, and retry until the commit succeeds or a real blocker remains.
+  - Stage all current local changes with `git add .` before committing.
+  - Generate the commit message from the current modifications and keep it aligned with docs/github-flow.md.
+  - If commit hooks fail, fix the reported issue, restage with `git add .`, and retry until the commit succeeds or a real blocker remains.
   - Push the current branch after a successful commit; if remote rejects because the branch is behind, rebase carefully and use force-with-lease only when history was rewritten on the same branch.
 compression-hints:
-  - Summarize commit, hook, verification, and push outcomes instead of pasting raw git output.
+  - Summarize commit message, hook-failure recovery, and push outcomes instead of pasting raw git output.
 approval-policy: high-risk-only
 risk-level: high
 ---
 
 # Auto Commit Push
 
-本 skill 用于把“自动生成英文提交信息、本地提交、处理失败并最终推送”收敛成一个稳定的仓库工作流。
+本 skill 用于把“先 `git add .` 暂存当前所有更改、根据当前修改生成符合 GitHub Flow 规范的提交信息、本地提交、提交失败则修复直到成功、最终推送”收敛成一个稳定的仓库工作流。
 
 ## 何时使用
 
@@ -49,6 +51,7 @@ risk-level: high
 
 - 用户明确要求自动生成英文 commit message
 - 用户要求自动本地提交
+- 用户要求先把当前所有更改放进暂存区再提交
 - 用户要求提交失败后自动修复并重试
 - 用户要求把当前分支自动推送到远端
 
@@ -77,21 +80,19 @@ risk-level: high
    - 如果在 `main`，先创建或切换到合规分支
    - 分支名按仓库规范与改动性质命名，不要临时发明风格
 3. 生成英文提交信息
-   - 基于真实 diff 总结“做了什么”和“为什么”
+   - 基于当前修改生成提交信息，不要照抄用户原话
+   - 提交信息必须遵守 [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
    - 优先使用简洁、可读、目的明确的英文
-   - 默认保持单行主题，除非仓库流程明确需要正文
-4. 提交前收口最小必要验证
-   - 至少确认没有明显的未解决冲突
-   - 如果本轮刚完成代码改动，优先引用已完成的验证结果
-   - 如果用户要求“直接提交”，也要尊重仓库 hook，不跳过本地校验
-5. 执行提交
-   - `git add` 仅包含当前任务需要的文件
+   - 默认保持单行主题，必要时再补正文
+4. 暂存当前所有更改
+   - 执行 `git add .`
+5. 执行本地提交
    - 运行 `git commit -m "<english message>"`
 6. 如果提交失败，进入自动修复循环
    - 阅读 hook、lint、typecheck、test 或格式化报错
    - 先修复根因，不要只改表面现象
-   - 修复后重新运行最小必要验证
-   - 重新 `git add` 并再次提交
+   - 修复后重新执行 `git add .`
+   - 再次执行 `git commit -m "<english message>"`
    - 同一阻断最多连续自修复 `3` 次；超过后再报告 blocker
 7. 提交成功后推送
    - 默认 `git push origin <current-branch>`
@@ -104,7 +105,8 @@ risk-level: high
 
 ## 英文提交信息规则
 
-- 优先使用 Conventional Commit 风格：
+- 优先使用与 [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md) 一致的提交信息
+- 默认优先采用 Conventional Commit 风格：
   - `feat: ...`
   - `fix: ...`
   - `refactor: ...`
@@ -116,20 +118,20 @@ risk-level: high
   - `update files`
   - `fix stuff`
   - `changes`
-- 结合仓库改动范围选择最合适的类型；如果主要是仓库技能或文档，一般优先 `docs:` 或 `chore:`，只有真正新增用户能力时才用 `feat:`
+- 结合仓库改动范围选择最合适的类型；如果主要是仓库技能、CI 或文档，一般优先 `docs:` 或 `chore:`，只有真正新增用户能力时才用 `feat:`
 
 ## 失败修复策略
 
 优先按失败来源处理：
 
 - `prettier` / 格式化失败
-  - 先运行仓库建议的格式化或针对文件修正
+  - 修复格式问题后重新 `git add .`
 - `eslint` 失败
-  - 修复真实规则问题，不靠禁用规则绕过
+  - 修复真实规则问题后重新 `git add .`，不靠禁用规则绕过
 - `tsc` / 类型失败
-  - 修复类型、contract 或导入问题后再提交
+  - 修复类型、contract 或导入问题后重新 `git add .`
 - `test` 失败
-  - 先确认是否由本轮改动引起，再修复或补齐验证
+  - 先确认是否由本轮改动引起，再修复后重新 `git add .`
 - `rebase` / `push` 冲突
   - 理解远端变化后做最小必要冲突解决，不盲目覆盖
 
@@ -139,7 +141,7 @@ risk-level: high
 
 - 最终使用的英文 commit message
 - 是否发生过 hook 失败，以及如何修复
-- 实际执行的验证或重试
+- 本地提交是否重试过，以及最终如何成功
 - 最终推送到哪个分支
 - 如果仍有风险或未完成项，要明确说明
 
@@ -147,5 +149,4 @@ risk-level: high
 
 - [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
 - [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
-- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
 - [Checklist](./references/commit-checklist.md)

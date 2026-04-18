@@ -6,11 +6,12 @@
 - Inspect the working tree with `git status --short`
 - Ensure the branch is not `main`
 - Review the diff summary before generating a message
-- Generate a concise English commit subject from the real changes
+- Generate a concise English commit subject from the current changes
+- Keep the message aligned with `docs/github-flow.md`
+- Run `git add .`
 
 ## 2. Commit attempt
 
-- Stage only the files that belong to the current task
 - Run `git commit -m "<message>"`
 - Capture hook or validation failures if the commit is rejected
 
@@ -18,8 +19,8 @@
 
 - Read the exact failing command
 - Fix the root cause instead of bypassing the hook
-- Re-run the smallest validation that proves the fix
-- Re-stage changed files
+- Re-run `git add .`
+- Retry `git commit -m "<message>"`
 - Retry the commit
 - Stop only after three unsuccessful repair attempts for the same blocker
 
@@ -39,4 +40,5 @@
 - Final English commit message
 - Branch pushed to remote
 - Hook failures encountered and fixed
+- Whether the local commit needed retries before succeeding
 - Remaining risks or blockers
