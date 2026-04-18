@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import { TaskStatus } from '@agent/core';
+import { evaluateBenchmarks } from '@agent/evals';
 
-import { evaluateBenchmarks } from '../src/benchmarks';
+import { evaluateBenchmarks as canonicalEvaluateBenchmarks } from '../src/benchmarks/benchmarks';
+import { evaluateExecution as canonicalEvaluateExecution } from '../src/regressions/execution-evaluator';
+import { evaluateSkillForPromotion as canonicalEvaluateSkillForPromotion } from '../src/quality-gates/skill-promotion-gate';
+import { evaluateExecution, evaluateSkillForPromotion } from '../src';
 
 describe('evaluateBenchmarks', () => {
+  it('keeps benchmark evaluation routed through the package root to the canonical benchmarks host', () => {
+    expect(evaluateBenchmarks).toBe(canonicalEvaluateBenchmarks);
+  });
+
+  it('keeps package root regression and quality gate exports wired to canonical hosts', () => {
+    expect(evaluateExecution).toBe(canonicalEvaluateExecution);
+    expect(evaluateSkillForPromotion).toBe(canonicalEvaluateSkillForPromotion);
+  });
+
   it('生成 review 与 research reuse 的 benchmark 汇总', () => {
     const summary = evaluateBenchmarks([
       {

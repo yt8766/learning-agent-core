@@ -27,13 +27,13 @@ import {
   replaceMemoryEvidenceLinks,
   rollbackMemory,
   type MemoryFeedbackKind
-} from '../memory-repository-governance';
+} from '../governance/memory-repository-governance';
 import {
   buildStructuredSearchResult,
   isTaskSummaryQuery,
   nextVersion,
   normalizeMemoryRecord
-} from '../memory-record-helpers';
+} from '../normalization/memory-record-helpers';
 import { FileReflectionRepository, type ReflectionRepository } from './reflection.repository';
 import {
   FileResolutionCandidateRepository,

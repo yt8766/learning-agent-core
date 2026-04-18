@@ -3,7 +3,7 @@ import { ApprovalDecision, TaskStatus } from '@agent/core';
 import type { ChatSessionRecord, SessionApprovalDto } from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
-import type { AgentOrchestrator } from '../graphs/main/main.graph';
+import type { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import {
   buildApprovalScopeMatchInput,
   findRuntimeApprovalScopePolicy,

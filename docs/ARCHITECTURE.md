@@ -529,7 +529,7 @@ profile 影响范围至少包括：
 ### 包依赖规则
 
 - 应用层只通过 `@agent/*` 依赖共享包
-- 不要从应用层直连 `packages/*/src`
+- 不要从应用层直连 `packages/*/src`、`agents/*/src`，也不要把 `@agent/<pkg>/<subpath>` 当成应用层稳定接口
 
 ### 构建规则
 

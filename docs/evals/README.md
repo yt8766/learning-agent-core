@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/evals/`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本目录用于沉淀 `packages/evals` 相关文档。
 
@@ -39,6 +39,7 @@
 
 - 职责：
   - bench、prompt 回归、质量评测基建
+  - 统一评测 contract 与质量证明入口
 - 允许：
   - evaluator
   - benchmark
@@ -55,9 +56,18 @@
 - `packages/evals` 的专项文档统一放在 `docs/evals/`
 - 新增评测链路、评测用例、评测协议或基线变化后，需同步更新本目录文档
 - 如果当前只有索引文件，后续可在本目录继续补充专题文档
+- 当前推荐终态结构已定义为 `contracts / schemas / prompt-regression / benchmarks / quality-gates / runtime / shared`
+- `src/contracts/evals-facade.ts` 当前作为包根稳定导出的 facade contract
+- 当前真实宿主已先收敛到：
+  - `src/regressions/execution-evaluator.ts`
+  - `src/quality-gates/skill-promotion-gate.ts`
+  - `src/benchmarks/benchmarks.ts`
+- `src/prompt-regression/evaluators.ts` 当前仅保留过渡 compat 职责
+- `@agent/evals` 根入口当前先通过 `contracts/evals-facade.ts` 导出上述 canonical host；legacy 根文件 `src/evaluators.ts` 与 `src/benchmarks.ts` 已删除
 
 当前文档：
 
+- [package-structure-guidelines.md](/docs/evals/package-structure-guidelines.md)
 - [test-conventions.md](/docs/test-conventions.md)
 - [verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
 - [turbo-verification-stage-two-plan.md](/docs/evals/turbo-verification-stage-two-plan.md)

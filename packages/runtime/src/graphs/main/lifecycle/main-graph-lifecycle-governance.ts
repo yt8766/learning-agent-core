@@ -7,11 +7,11 @@ import type {
   RuleRecord,
   WorkerDefinition
 } from '@agent/core';
-import { resolveSpecialistRoute, type resolveWorkflowPreset } from '@agent/agents-supervisor';
 import type { MemoryRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
 import { archivalMemorySearchByParams } from '../../../memory/active-memory-tools';
 import { flattenStructuredMemories } from '../../../memory/runtime-memory-search';
+import { resolveSpecialistRoute, type resolveWorkflowPreset } from '../../../bridges/supervisor-runtime-bridge';
 
 type WorkflowResolution = ReturnType<typeof resolveWorkflowPreset>;
 

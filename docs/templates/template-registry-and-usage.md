@@ -70,7 +70,7 @@
   - `pages/dataDashboard/bonusCenterData/config.tsx`
   - `routes.ts`
 - 原因：
-  - `packages/report-kit/src/data-report-blueprint.ts` 会从 `services/data/bonusCenter.ts` 解析接口注释与函数名，生成单报表/多报表 blueprint
+  - `packages/report-kit/src/blueprints/data-report-blueprint.ts` 会从 `services/data/bonusCenter.ts` 解析接口注释与函数名，生成单报表/多报表 blueprint
   - sandbox preview、backend sandpack preview、assembly/write 测试都把这些文件视为稳定模板契约
   - 如果删掉共享 service/types 文件，CI 会在 blueprint、sandbox、chat sandpack 相关链路同时报错，而不是只影响模板包本身
 

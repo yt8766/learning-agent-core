@@ -22,7 +22,7 @@ import {
   createDefaultToolRegistry
 } from '@agent/tools';
 
-import { AgentOrchestrator } from '../graphs/main/main.graph';
+import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { XingbuClassifier } from './xingbu-classifier';
 import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
 import { SessionCoordinator } from '../session/session-coordinator';

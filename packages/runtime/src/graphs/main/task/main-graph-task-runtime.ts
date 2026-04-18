@@ -14,12 +14,12 @@ import type {
 } from '@agent/core';
 import { TaskStatus } from '@agent/core';
 import { McpClientManager, ToolRegistry } from '@agent/tools';
-import { resolveWorkflowRoute } from '@agent/agents-supervisor';
 import { buildWorkerSelectionPreferences } from '../../../capabilities/capability-pool';
 import { normalizeMinistryId } from '../../../capabilities/capability-pool.shared';
 import { WorkerRegistry, WorkerSelectionConstraints } from '../../../governance/worker-registry';
 import { ModelRoutingPolicy } from '../../../governance/model-routing-policy';
 import { describeConnectorProfilePolicy } from '../../../governance/profile-policy';
+import { resolveWorkflowRoute } from '../../../bridges/supervisor-runtime-bridge';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 import { AgentRole } from './task-architecture-helpers';

@@ -1,7 +1,7 @@
 import { ApprovalDecision, TaskStatus } from '@agent/core';
 import type { ChatSessionRecord, RecoverToCheckpointDto, SessionCancelDto } from '@agent/core';
 
-import { AgentOrchestrator } from '../graphs/main/main.graph';
+import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { syncCoordinatorTask } from './session-coordinator-sync';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';

@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/tools/`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本目录用于沉淀 `packages/tools` 相关文档。
 
@@ -30,6 +30,11 @@
 - 约定：
   - 所有消费侧统一只从 `@agent/tools` 根入口导入
   - `approval / connectors / data-report / filesystem / mcp / registry / runtime-governance / sandbox / scheduling / watchdog` 这些目录作为包内组织结构保留，但不再作为推荐导入入口
+  - `registry/tool-registry.ts` 与 `registry/tool-risk-classifier.ts` 是 registry 语义的真实宿主
+  - 包根 `tool-registry.ts` 与 `tool-risk-classifier.ts` 已删除
+  - `executors/*` 是 filesystem / connectors / runtime-governance / scaffold / scheduling executor 的真实宿主
+  - `filesystem/filesystem-executor.ts` 与 `connectors/connectors-executor.ts` 已删除
+  - `scaffold/scaffold-executor.ts`、`scheduling/scheduling-executor.ts`、`runtime-governance/runtime-governance-executor.ts` 已删除
   - 根入口优先使用显式命名导出维护稳定 API；不要回到整包 `export *` 把内部实现一次性透传出去
   - `packages/report-kit` 现在是 data-report 的真实实现承载层，`@agent/tools` 负责统一聚合导出
 
@@ -41,5 +46,6 @@
 
 当前文档：
 
+- [package-structure-guidelines.md](/docs/tools/package-structure-guidelines.md)
 - [runtime-governance-and-sandbox.md](/docs/tools/runtime-governance-and-sandbox.md)
 - [scaffold-generation.md](/docs/tools/scaffold-generation.md)

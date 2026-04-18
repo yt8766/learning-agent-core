@@ -8,11 +8,11 @@ import {
   writeDataReportBundle
 } from '@agent/report-kit';
 
-import { executeConnectorTool } from '../connectors/connectors-executor';
-import { executeFilesystemTool } from '../filesystem/filesystem-executor';
-import { executeRuntimeGovernanceTool } from '../runtime-governance/runtime-governance-executor';
-import { executeScaffoldTool } from '../scaffold/scaffold-executor';
-import { executeSchedulingTool } from '../scheduling/scheduling-executor';
+import { executeConnectorTool } from '../executors/connectors/connectors-executor';
+import { executeFilesystemTool } from '../executors/filesystem/filesystem-executor';
+import { executeRuntimeGovernanceTool } from '../executors/runtime-governance/runtime-governance-executor';
+import { executeScaffoldTool } from '../executors/scaffold/scaffold-executor';
+import { executeSchedulingTool } from '../executors/scheduling/scheduling-executor';
 import { executeBrowsePage } from './sandbox-executor-browser';
 import { executeFindSkills } from './sandbox-executor-skill-search';
 

@@ -7,13 +7,13 @@ import type {
   ReviewMinistryLike,
   RouterMinistryLike
 } from '@agent/core';
-import { HubuSearchMinistry, LibuDocsMinistry, LibuRouterMinistry } from '@agent/agents-supervisor';
-import { BingbuOpsMinistry, GongbuCodeMinistry } from '@agent/agents-coder';
-import { XingbuReviewMinistry as XingbuReviewMinistryImpl } from '@agent/agents-reviewer';
 
 import { buildDirectReplyInterruptGraph } from '../pipeline/direct-reply-interrupt-graph';
 import { buildTaskPipelineGraph } from '../pipeline/main-graph-pipeline-graph';
 import type { PendingExecutionContext } from '../../../flows/approval';
+import { BingbuOpsMinistry, GongbuCodeMinistry } from '../../../bridges/coder-runtime-bridge';
+import { HubuSearchMinistry, LibuDocsMinistry, LibuRouterMinistry } from '../../../bridges/supervisor-runtime-bridge';
+import { XingbuReviewMinistry as XingbuReviewMinistryImpl } from '../../../bridges/reviewer-runtime-bridge';
 import type { RunTaskPipelineParams, TaskMode, TaskPipelineCallbacks } from './main-graph-pipeline-orchestrator.types';
 
 export function createPipelineMinistries(

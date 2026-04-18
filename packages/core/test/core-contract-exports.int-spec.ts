@@ -40,6 +40,16 @@ import {
   type DataReportSandpackPayload
 } from '../src';
 import { type SharedPlatformConsoleRecord, type RuntimeAgentGraphState, type AgentGraphHandlers } from '../src';
+import {
+  type ApprovedExecutionAgentLike,
+  type PendingExecutionContext,
+  type ProviderBudgetState,
+  type ProviderHealthSnapshot,
+  type ProviderUsage,
+  type IEmbeddingProvider,
+  type ILLMProvider,
+  type IToolProvider
+} from '../src';
 import { ChatMessageRecordSchema as DirectChatMessageRecordSchema } from '../src/tasking/schemas/chat';
 import { TaskRecordSchema as DirectTaskRecordSchema } from '../src/tasking/schemas/task-record';
 import { DataReportJsonSchemaSchema as DirectDataReportJsonSchemaSchema } from '../src/data-report/schemas/data-report-json-schema';
@@ -62,6 +72,8 @@ import { type DataReportSandpackGenerateInput as DirectDataReportSandpackGenerat
 import { type DataReportJsonGenerateInput as DirectDataReportJsonGenerateInput } from '../src/contracts/data-report/data-report-json';
 import { type ArchitectureDescriptorRegistryEntry as DirectArchitectureDescriptorRegistryEntry } from '../src/contracts/architecture/architecture-records';
 import { type SharedPlatformConsoleRecord as DirectSharedPlatformConsoleRecord } from '../src/contracts/platform-console/platform-console';
+import { type PendingExecutionContext as DirectPendingExecutionContext } from '../src/contracts/approval/pending-execution-context';
+import { type ApprovedExecutionAgentLike as DirectApprovedExecutionAgentLike } from '../src/contracts/execution/approved-execution-agent';
 import {
   type RuntimeAgentGraphState as DirectRuntimeAgentGraphState,
   type AgentGraphHandlers as DirectAgentGraphHandlers
@@ -86,6 +98,12 @@ import { type TaskRecord as DirectTaskRecord } from '../src/tasking/types/task-r
 import { type DataReportJsonSchema as DirectDataReportJsonSchema } from '../src/data-report/types/data-report-json-schema';
 import { type DataReportSandpackPayload as DirectDataReportSandpackPayload } from '../src/data-report/types/data-report';
 import { type SkillCard as DirectSkillCard } from '../src/skills/types/skills.types';
+import { type ProviderBudgetState as DirectProviderBudgetState } from '../src/providers/provider.types';
+import { type ProviderHealthSnapshot as DirectProviderHealthSnapshot } from '../src/providers/provider.types';
+import { type ProviderUsage as DirectProviderUsage } from '../src/providers/provider.types';
+import { type ILLMProvider as DirectILLMProvider } from '../src/providers/llm-provider.interface';
+import { type IEmbeddingProvider as DirectIEmbeddingProvider } from '../src/providers/embedding-provider.interface';
+import { type IToolProvider as DirectIToolProvider } from '../src/providers/tool-provider.interface';
 
 describe('@agent/core contract export integration', () => {
   it('keeps tasking and report schemas aligned across root and direct domain barrels', () => {
@@ -192,5 +210,16 @@ describe('@agent/core contract export integration', () => {
     expectTypeOf<import('../src').DeliveryMinistryLike>().toEqualTypeOf<DirectDeliveryMinistryLike>();
     expectTypeOf<import('../src').CodeExecutionMinistryLike>().toEqualTypeOf<DirectCodeExecutionMinistryLike>();
     expectTypeOf<import('../src').OpsExecutionMinistryLike>().toEqualTypeOf<DirectOpsExecutionMinistryLike>();
+  });
+
+  it('keeps approval, execution, and provider contracts aligned across root and physical hosts', () => {
+    expectTypeOf<PendingExecutionContext>().toEqualTypeOf<DirectPendingExecutionContext>();
+    expectTypeOf<ApprovedExecutionAgentLike>().toEqualTypeOf<DirectApprovedExecutionAgentLike>();
+    expectTypeOf<ProviderBudgetState>().toEqualTypeOf<DirectProviderBudgetState>();
+    expectTypeOf<ProviderUsage>().toEqualTypeOf<DirectProviderUsage>();
+    expectTypeOf<ProviderHealthSnapshot>().toEqualTypeOf<DirectProviderHealthSnapshot>();
+    expectTypeOf<ILLMProvider>().toEqualTypeOf<DirectILLMProvider>();
+    expectTypeOf<IEmbeddingProvider>().toEqualTypeOf<DirectIEmbeddingProvider>();
+    expectTypeOf<IToolProvider>().toEqualTypeOf<DirectIToolProvider>();
   });
 });

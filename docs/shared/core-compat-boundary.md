@@ -1,20 +1,26 @@
 # Shared Core Compat Boundary
 
-状态：current
+状态：history
 文档类型：reference
-适用范围：`packages/shared/src/types/*`、`packages/core/src/*`
-最后核对：2026-04-16
+适用范围：`packages/shared` 退场历史、`packages/core` compat 边界迁移参考
+最后核对：2026-04-18
 
 ## 1. 这篇文档说明什么
 
-本文档记录 `packages/shared` 与 `packages/core` 当前已经形成的真实边界：
+本文档记录 `packages/shared` 退场前后，`packages/shared` 与 `packages/core` 之间曾经形成的真实边界：
 
 - `packages/core`
   - 作为稳定主 contract 宿主
 - `packages/shared`
-  - 作为 compat re-export、前端默认组合、展示友好别名层
+  - 当时作为 compat re-export、前端默认组合、展示友好别名层
 
-同时列出当前仍然保留在 `shared` 的 compat 文件，避免后续把“兼容层仍存在”误判成“主定义还没收口”，或者反过来把本该继续迁到 `core` 的内容重新塞回 `shared`。
+同时列出当时保留在 `shared` 的 compat 文件，用于解释为什么历史迁移会留下这些台账；不要把它再理解成当前还能继续写回 `shared` 的目录建议。
+
+当前补充说明：
+
+- `packages/shared` 已删除
+- 本文只保留为迁移历史参考
+- 当前稳定主 contract 默认以 `@agent/core` 为唯一公共宿主
 
 ## 2. 当前已明确的边界
 
@@ -35,7 +41,7 @@
 
 ## 3. 当前保留的 compat 文件
 
-以下文件当前保留在 `packages/shared/src/types/*`，但它们的主 contract 已经在 `@agent/core`：
+以下文件在 `packages/shared` 删除前保留于 `packages/shared/src/types/*`，但它们的主 contract 已经在 `@agent/core`：
 
 - `knowledge-evidence.ts`
   - 仅转发 `EvidenceRecord` 与 `isCitationEvidenceSource`
@@ -62,14 +68,14 @@
 - `governance.ts`
   - 保留 shared 本地展示约束，同时对 `@agent/core` 的 policy / health / capability 主 contract 做 compat 包装
 
-这些文件当前不视为“边界违规”，前提是：
+这些文件在当时不视为“边界违规”，前提是：
 
 - 不再新增与 `@agent/core` 平行的第二份主定义
 - 不把新的稳定公共 contract 再次直接落在 `shared`
 
 ## 4. 仍然值得继续收口的点
 
-下面这些方向仍值得后续继续优化，但不属于本轮必须立即清零的问题：
+下面这些方向是在当时仍值得继续优化的点，保留它们是为了帮助理解后续为什么会继续把主 contract 收到 `core`：
 
 1. `knowledge-memory.ts`
    - 可以继续评估 `ReflectionResult` 是否仍应留在 `shared`，还是需要拆到更明确的展示组合文件
@@ -87,21 +93,20 @@
 - `packages/shared/src/index.ts`
   - 删除重复的 `platform-console` 根入口导出
 - `docs/shared/README.md`
-  - 更新为“shared 允许依赖 core，但仅作为 compat 层”的真实规则
+  - 当时更新为“shared 允许依赖 core，但仅作为 compat 层”的真实规则
 - `docs/packages-overview.md`
-  - 同步 shared 的 compat / 默认组合定位
+  - 同步了 shared 的 compat / 默认组合定位
 
 ## 6. 后续修改规则
 
-以后改动 `packages/shared` 与 `packages/core` 时，默认遵守：
+历史上改动 `packages/shared` 与 `packages/core` 时，默认遵守：
 
 1. 先判断主 contract 是否应位于 `@agent/core`
 2. 如果只是兼容旧消费方，优先新增 compat re-export，而不是复制一份主定义
 3. 如果 shared 文件开始同时承担“主定义 + 展示组合 + compat 包装”三种职责，应继续拆分
-4. 改完后至少执行：
+4. 当时改完后至少执行：
 
 ```bash
-pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
 pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 ```

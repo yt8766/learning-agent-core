@@ -1,3 +1,11 @@
-export type { FrontendTemplateDefinition, ScaffoldTemplateDefinition } from './types';
-export { getFrontendTemplate, listFrontendTemplates, resolveFrontendTemplateDir } from './template-registry';
-export { getScaffoldTemplate, listScaffoldTemplates, resolveScaffoldTemplateDir } from './scaffold-template-registry';
+export type { FrontendTemplateDefinition, ScaffoldTemplateDefinition } from './contracts/template-definitions';
+export {
+  getFrontendTemplate,
+  listFrontendTemplates,
+  resolveFrontendTemplateDir
+} from './registries/frontend-template-registry';
+export {
+  getScaffoldTemplate,
+  listScaffoldTemplates,
+  resolveScaffoldTemplateDir
+} from './registries/scaffold-template-registry';

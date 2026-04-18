@@ -1,10 +1,10 @@
 import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus, type AgentRoleValue } from '@agent/core';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type { PendingExecutionContext } from './types';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '../../bridges/supervisor-runtime-bridge';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
 
 type PipelineRuntimeCallbacks = {

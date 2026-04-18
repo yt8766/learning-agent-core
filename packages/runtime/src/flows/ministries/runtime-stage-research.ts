@@ -7,15 +7,15 @@ import type {
   TaskRecord as CoreTaskRecord
 } from '@agent/core';
 import { ActionIntent, AgentRole } from '@agent/core';
+import { normalizeSpecialistFinding } from '@agent/core';
+import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
 import {
   buildResearchSourcePlan,
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted,
   mergeEvidence
-} from '@agent/agents-supervisor';
-import { normalizeSpecialistFinding } from '@agent/core';
-import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
+} from '../../bridges/supervisor-runtime-bridge';
 
 import { handleResearchSkillIntervention } from '../approval/research-skill-interruption';
 import type { RuntimeSpecialistFindingRecord as SpecialistFindingRecord } from '../../runtime/runtime-specialist-finding.types';

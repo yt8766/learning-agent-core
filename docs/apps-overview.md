@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/*`
-最后核对：2026-04-15
+最后核对：2026-04-18
 
 `apps/` 放可直接运行的应用进程，是仓库最上层的交付面。
 
@@ -32,6 +32,13 @@
   - 后台指挥面，负责治理与运营
 - `apps/worker`
   - 独立后台 worker，消费异步任务、恢复和学习相关作业
+
+依赖边界：
+
+- `apps/*` 统一只通过 `@agent/*` 包根入口消费共享能力
+- 不直接依赖 `packages/*/src`、`agents/*/src`
+- 不把 `@agent/<pkg>/<subpath>` 当成应用层稳定接口
+- 当前已通过 `apps/worker/test/app-dependency-boundary.test.ts` 对 `backend`、`agent-chat`、`agent-admin`、`worker` 四个应用统一执行依赖边界校验
 
 建议阅读顺序：
 

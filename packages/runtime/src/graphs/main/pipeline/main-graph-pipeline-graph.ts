@@ -9,10 +9,15 @@ import type {
 } from '@agent/core';
 import { BaseCheckpointSaver } from '@langchain/langgraph';
 
-import { runDispatchStage, runGoalIntakeStage, runManagerPlanStage, runRouteStage } from '@agent/agents-supervisor';
 import { PendingExecutionContext } from '../../../flows/approval';
 import { runReviewStage } from '../../../flows/ministries/review-stage-nodes';
 import { runExecuteStage, runResearchStage } from '../../../flows/ministries/runtime-stage-nodes';
+import {
+  runDispatchStage,
+  runGoalIntakeStage,
+  runManagerPlanStage,
+  runRouteStage
+} from '../../../bridges/supervisor-runtime-bridge';
 import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 import { createAgentGraph } from '../../chat.graph';

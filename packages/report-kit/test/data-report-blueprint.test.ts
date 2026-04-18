@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildDataReportBlueprint, inferSingleReportStructure } from '../src';
+import {
+  buildDataReportBlueprint as canonicalBuildDataReportBlueprint,
+  inferSingleReportStructure as canonicalInferSingleReportStructure
+} from '../src/blueprints/data-report-blueprint';
 
 describe('@agent/report-kit data report blueprint', () => {
+  it('keeps the root blueprint export wired to the canonical blueprints host', () => {
+    expect(buildDataReportBlueprint).toBe(canonicalBuildDataReportBlueprint);
+    expect(inferSingleReportStructure).toBe(canonicalInferSingleReportStructure);
+  });
+
   it('keeps table-only goals in page-only mode', () => {
     expect(inferSingleReportStructure({ goal: '生成一个只有查询和表格的日报页面', routeName: 'dailyReport' })).toEqual({
       mode: 'page-only',

@@ -1,7 +1,7 @@
 import { TaskStatus, type CreateTaskDto } from '@agent/core';
-import { initializeTaskExecutionSteps, LibuRouterMinistry } from '@agent/agents-supervisor';
 
 import { TaskBudgetExceededError, TaskCancelledError } from '../task/main-graph-task-runtime-errors';
+import { initializeTaskExecutionSteps, LibuRouterMinistry } from '../../../bridges/supervisor-runtime-bridge';
 import {
   buildDirectReplyGraphRunner,
   buildTaskPipelineRunner,

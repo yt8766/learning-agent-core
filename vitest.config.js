@@ -104,7 +104,8 @@ export default defineConfig({
       '**/coverage/**',
       '**/data/**',
       '**/e2e/**',
-      'packages/templates/src/scaffold/**'
+      'packages/templates/src/scaffold/**',
+      'packages/templates/src/scaffolds/**'
     ],
     watchExclude: [
       '**/node_modules/**',
@@ -113,7 +114,8 @@ export default defineConfig({
       '**/.turbo/**',
       '**/coverage/**',
       '**/data/**',
-      'packages/templates/src/scaffold/**'
+      'packages/templates/src/scaffold/**',
+      'packages/templates/src/scaffolds/**'
     ],
     reporters: ['default'],
     coverage: {
@@ -146,6 +148,7 @@ export default defineConfig({
         '**/data/**',
         '**/assets/**',
         'packages/templates/src/scaffold/**',
+        'packages/templates/src/scaffolds/**',
         '**/*.stories.*',
         '**/vite-env.d.ts',
         '**/src/main.ts',

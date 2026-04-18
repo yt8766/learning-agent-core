@@ -1,7 +1,7 @@
 import { CreateTaskDto, QueueStateRecord, ToolUsageSummaryRecord, CapabilityOwnerType } from '@agent/core';
-import { initializeTaskExecutionSteps } from '@agent/agents-supervisor';
 
 import { buildInitialCapabilityState } from '../../../capabilities/capability-pool';
+import { initializeTaskExecutionSteps } from '../../../bridges/supervisor-runtime-bridge';
 import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 import type { SubgraphIdValue as SubgraphId } from './task-architecture-helpers';
 import { resolveCounselorSelection, resolveRequestedMode } from './task-entry-decision';

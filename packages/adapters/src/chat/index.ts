@@ -1,1 +1,1 @@
-export * from './chat-model-factory';
+export * from '../runtime/chat-model-factory';

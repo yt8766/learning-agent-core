@@ -8,7 +8,6 @@ import {
   ReviewRecord,
   TaskStatus
 } from '@agent/core';
-import { markExecutionStepCompleted, markExecutionStepResumed } from '@agent/agents-supervisor';
 import type { EvaluationResult } from '@agent/core';
 import type { WorkflowPresetDefinition } from '@agent/core';
 import { normalizeSpecialistFinding } from '@agent/core';
@@ -19,6 +18,7 @@ import type {
   RouterMinistryLike
 } from '@agent/core';
 import { getMinistryDisplayName } from '../../../runtime/runtime-architecture-helpers';
+import { markExecutionStepCompleted, markExecutionStepResumed } from '../../../bridges/supervisor-runtime-bridge';
 
 import { buildMinistryStagePreferences } from '../../../capabilities/capability-pool';
 import { executeApprovedAction, PendingExecutionContext } from '../../../flows/approval';

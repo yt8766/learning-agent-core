@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/memory/`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本目录用于沉淀 `packages/memory` 相关文档。
 
@@ -30,7 +30,14 @@
   - 根入口：`@agent/memory`
 - 约定：
   - 统一只从 `@agent/memory` 根入口导入
-  - `repositories/*`、`search/*`、`vector/*`、`embeddings/*` 作为包内组织目录保留，但不作为消费侧导入入口
+  - `repositories/*`、`search/*`、`vector/*`、`embeddings/*` 是当前真实宿主目录
+  - helper 的 canonical host 已收敛到：
+    - `normalization/memory-record-helpers.ts`
+    - `governance/memory-repository-governance.ts`
+  - 包根 `memory-record-helpers.ts`、`memory-repository-governance.ts` 已删除
+  - 内部过渡薄层 `shared/memory-record-helpers.ts` 与 `repositories/memory-repository-governance.ts` 也已删除
+  - `contracts/*` 当前仅保留稳定 facade 入口，便于调用方使用显式 contract import
+  - 消费侧默认继续从 `@agent/memory` 根入口导入，不依赖包内物理路径
 
 约定：
 
@@ -40,5 +47,6 @@
 
 当前文档：
 
+- [package-structure-guidelines.md](/docs/memory/package-structure-guidelines.md)
 - [agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
 - [storage-and-search.md](/docs/memory/storage-and-search.md)

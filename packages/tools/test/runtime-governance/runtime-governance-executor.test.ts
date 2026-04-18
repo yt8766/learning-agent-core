@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/core';
 
-import { executeRuntimeGovernanceTool } from '../../src/runtime-governance/runtime-governance-executor';
+import { executeRuntimeGovernanceTool } from '../../src/executors/runtime-governance/runtime-governance-executor';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeRuntimeGovernanceTool', () => {

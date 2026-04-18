@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/core';
 
-import { executeConnectorTool } from '../../src/connectors/connectors-executor';
+import { executeConnectorTool } from '../../src/executors/connectors/connectors-executor';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeConnectorTool', () => {

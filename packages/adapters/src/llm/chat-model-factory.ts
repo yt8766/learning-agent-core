@@ -2,7 +2,7 @@
 
 import { loadSettings } from '@agent/config';
 
-import { createZhipuChatModel } from '../chat/chat-model-factory';
+import { createZhipuChatModel } from '../runtime/chat-model-factory';
 import { AgentModelRole } from './llm-provider';
 
 interface ZhipuRuntimeSettings {

@@ -36,6 +36,14 @@
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
 - `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+- 第一阶段 compat 根文件收缩已完成：
+  - `packages/evals`
+  - `packages/skill-runtime`
+  - `packages/report-kit`
+  - `packages/templates`
+  - `packages/config` 的纯 compat `settings.*`
+  - 其中 `packages/config`、`packages/skill-runtime`、`packages/evals` 已继续补出 facade contract，作为包根稳定导出层
+  - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移和兼容分析保留在 `docs/shared/*`
 - 稳定主 contract 默认收口到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 应落到真实宿主或应用本地，不再新增 `@agent/shared`
 - `packages/core` 默认采用 schema-first：
@@ -221,7 +229,7 @@
     - `adapters / memory / tools / skill-runtime` 只允许依赖 `config`、`core` 和必要第三方库
     - `runtime` 可以依赖 `config / core / adapters / memory / tools / skill-runtime`
     - `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill-runtime`
-    - `apps/*` 只能依赖各包公开入口，禁止依赖 `packages/*/src`
+    - `apps/*` 只能依赖各包公开入口，禁止依赖 `packages/*/src`、`agents/*/src` 或 `@agent/<pkg>/<subpath>`
     - 禁止 `adapters / tools / memory / skill-runtime` 反向依赖 `runtime` 或 `agents/*`
   - 新增代码默认按以下规则落位：
     - 跨端共享且稳定的数据结构：放 `core`

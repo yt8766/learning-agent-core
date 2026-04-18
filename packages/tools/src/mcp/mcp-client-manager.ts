@@ -10,7 +10,7 @@ import {
   McpTransportDiscovery,
   McpTransportHandler,
   StdioTransportHandler
-} from './mcp-transport-handlers';
+} from '../transports/mcp-transport-handlers';
 
 interface McpServerDiscoveryRecord {
   sessionState: 'stateless' | 'disconnected' | 'connected' | 'error';

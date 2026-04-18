@@ -345,6 +345,8 @@ packages/core/
 - `types/*` 仅保留少量兼容入口与历史过渡 alias，避免再次出现“schema 在一处、类型在另一处且难以对齐”
 - `contracts/*` 只承载技术契约，不与 schema-first DTO 混放
 - `contracts/*` 优先通过领域聚合入口暴露，例如 `contracts/ministries/index.ts`、`contracts/chat/index.ts`、`contracts/approval/index.ts`
+- `contracts/approval/*`、`contracts/execution/*`
+  - 默认承接审批恢复、批准执行等非 JSON-safe 技术契约，不要把这类 interface 再塞回 domain `types/*`
 - `tasking`、`data-report` 当前已采用独立 top-level domain folder，内部再分 `schemas / types`
 - `skills` 当前也采用独立 top-level domain folder，内部再分 `schemas / types`
 - `review` 当前采用独立 domain folder，内部再分 `schemas / helpers`
@@ -403,6 +405,17 @@ packages/core/
 ### `providers/`
 
 只放 provider interface、provider shared type，不放任何 provider 实现。
+
+当前真实宿主包括：
+
+- `providers/provider.types.ts`
+  - `ProviderBudgetState`、`ProviderUsage`、`ProviderHealthSnapshot`
+- `providers/llm-provider.interface.ts`
+  - `ILLMProvider` 及其消息 / 角色 / model info / options contract
+- `providers/embedding-provider.interface.ts`
+  - `IEmbeddingProvider`
+- `providers/tool-provider.interface.ts`
+  - `IToolProvider`
 
 ### 领域目录下的辅助逻辑
 

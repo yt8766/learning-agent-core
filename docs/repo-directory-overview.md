@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：仓库顶层目录
-最后核对：2026-04-15
+最后核对：2026-04-18
 
 本文件说明仓库当前主要目录“现在在做什么”，用于补足各目录 README 只讲规范、不讲现实职责的问题。
 
@@ -21,6 +21,7 @@
 
 - `apps/`
   - 可运行应用。包括主 API、前线作战面、后台指挥面、独立 worker。
+  - 应用层统一只通过 `@agent/*` 公共入口消费共享能力，不应直接依赖 `packages/*/src`、`agents/*/src` 或 `@agent/*` 子路径。
 - `packages/`
   - 共享库与运行时基础能力。应用层统一通过 `@agent/*` 公开入口消费。
 - `agents/`
@@ -46,15 +47,19 @@
   - 平台主 API 服务。
   - 当前负责聊天会话、SSE 流式返回、runtime/approval/learning/evidence/connectors 治理接口，以及任务创建/审批/恢复入口。
   - `src/runtime/*` 是后台治理与运行态聚合的主要实现区。
+  - 对共享能力的依赖统一经 `@agent/*` 根入口接入，不直接引用 workspace 内部源码路径。
 - `apps/frontend/agent-chat`
   - OpenClaw 风格前线作战面。
   - 当前负责聊天、审批卡、ThoughtChain、Evidence、Learning suggestions、运行态面板。
+  - 仅消费面向前端稳定暴露的 API contract、DTO 与应用本地适配层，不直接越过 `@agent/*` 公开边界。
 - `apps/frontend/agent-admin`
   - 六大中心后台指挥面。
   - 当前负责 Runtime、Approvals、Learning、Skill Lab、Evidence、Connector & Policy 等治理中心。
+  - 与 `agent-chat` 一样，只通过 `@agent/*` 包根入口消费共享契约与能力。
 - `apps/worker`
   - 独立 background worker。
   - 当前消费 queued background tasks，处理 lease、interrupt timeout、learning queue 和恢复相关作业。
+  - 与主 API 一样通过 `@agent/*` 根入口接入 runtime、tools、memory、skill-runtime 等共享宿主。
 
 ## `packages/`
 
@@ -76,9 +81,11 @@
   - data-report 智能体公开入口。
   - 当前承载 data-report graph、preview、JSON graph 相关导出。
 - `agents/coder`
-  - coder agent 包入口占位。
+  - coder 智能体公开入口。
+  - 当前承载 coder graph、节点装配与根导出契约。
 - `agents/reviewer`
-  - reviewer agent 包入口占位。
+  - reviewer 智能体公开入口。
+  - 当前承载 reviewer graph、节点装配与根导出契约。
 - `packages/agent-core`
   - 已删除。
   - 原多 Agent 主链已迁入 `packages/runtime`、`packages/adapters` 与 `agents/*`。
@@ -87,6 +94,7 @@
   - `packages/shared` 退场过程的历史迁移文档归档。
 - `packages/config`
   - settings schema、profile、路径和默认策略。
+  - 包根稳定导出当前先通过 `contracts/settings-facade.ts` 收口。
 - `packages/memory`
   - repositories、search、vector、embeddings、semantic cache。
 - `packages/tools`
@@ -94,12 +102,18 @@
 - `packages/skill-runtime`
   - 运行时技能注册、manifest 解析、source sync 的真实宿主。
   - 新代码统一通过 `@agent/skill-runtime` 消费。
+  - 包根稳定导出当前先通过 `contracts/skill-runtime-facade.ts` 收口。
 - `packages/report-kit`
   - data-report 的确定性蓝图、骨架、组装和落盘能力。
 - `packages/templates`
   - 前端模板资产与通用 scaffold 模板资产；当前有 `react-ts`、`single-report-table`、`bonus-center-data`、`scaffold/package-lib`、`scaffold/agent-basic`。
 - `packages/evals`
   - prompt 回归和质量评测基建。
+  - 包根稳定导出当前先通过 `contracts/evals-facade.ts` 收口。
+- 补充：
+  - `packages/evals`、`packages/skill-runtime`、`packages/report-kit`、`packages/templates` 的 legacy 根文件已删除
+  - `packages/config` 已删除纯 compat `settings.*` 文件，当前只保留 `src/settings.ts` 与 `src/settings/index.ts` 作为人工可读聚合入口
+  - `packages/config`、`packages/skill-runtime`、`packages/evals` 已补出 facade contract，再由包根入口导出
 
 ## `data/`
 
@@ -117,6 +131,8 @@
 
 - `artifacts/*`
   - 统一承载覆盖率、日志、临时目录等可重建产物，默认不提交 Git。
+- `apps/*`
+  - 只通过 `@agent/*` 公共入口依赖共享包与 agent 包；不应直接引用 `packages/*/src`、`agents/*/src`，也不应把 `@agent/<pkg>/<subpath>` 当成应用层稳定接口。
 - `skills/*`
   - 只表示仓库级代理技能。
 - `packages/skill-runtime`
@@ -134,6 +150,12 @@
   - 前后端接口与联调约定。
 - `docs/archive/agent-core/`
   - `packages/agent-core` 专项实现文档。
+- `docs/adapters/`
+  - `packages/adapters` 专项文档。
+- `docs/agents/`
+  - root 级 `agents/*` 专项文档。
+- `docs/config/`
+  - `packages/config` 专项文档。
 - `docs/core/`
   - `packages/core` 稳定 contract facade 文档。
 - `docs/backend/`
@@ -144,8 +166,12 @@
   - `agent-admin` 专项文档。
 - `docs/integration/`
   - 跨模块链路说明。
-- `docs/shared`、`docs/config`、`docs/memory`、`docs/report-kit`、`docs/skills`、`docs/tools`、`docs/evals`、`docs/templates`
+- `docs/memory/`、`docs/report-kit/`、`docs/runtime/`、`docs/skill-runtime/`、`docs/tools/`、`docs/evals/`、`docs/templates/`
   - 对应各 `packages/*` 的模块文档目录。
+- `docs/shared/`
+  - 已删除 `packages/shared` 的历史归档目录。
+- `docs/skills/`
+  - 仓库级 `skills/*` 代理技能文档目录；不对应 `packages/skill-runtime`。
 
 ## `skills/`
 
