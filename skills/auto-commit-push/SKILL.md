@@ -1,0 +1,151 @@
+---
+name: auto-commit-push
+description: Use this skill when the user asks Codex to generate an English git commit message, create a local commit, fix commit-hook failures until the commit succeeds, and push the current branch to the remote in learning-agent-core.
+version: '1.0.0'
+publisher: workspace
+license: Proprietary
+compatibility: Requires repository access and a configured git remote. Push or history-rewrite steps must still follow the user's explicit request and repository branch policy.
+metadata:
+  author: learning-agent-core
+  ministry: bingbu-ops
+triggers:
+  - commit
+  - git commit
+  - push
+  - commit message
+  - auto commit
+  - local commit
+  - remote push
+recommended-ministries:
+  - bingbu-ops
+  - xingbu-review
+  - libu-delivery
+recommended-specialists:
+  - technical-architecture
+  - risk-compliance
+allowed-tools:
+  - read_local_file
+  - list_directory
+  - run_terminal
+  - apply_patch
+execution-hints:
+  - Inspect git status and current branch before staging or committing.
+  - Generate a concise English commit message from the real diff instead of copying the user request literally.
+  - If commit hooks fail, fix the reported issue, restage, and retry until the commit succeeds or a real blocker remains.
+  - Push the current branch after a successful commit; if remote rejects because the branch is behind, rebase carefully and use force-with-lease only when history was rewritten on the same branch.
+compression-hints:
+  - Summarize commit, hook, verification, and push outcomes instead of pasting raw git output.
+approval-policy: high-risk-only
+risk-level: high
+---
+
+# Auto Commit Push
+
+本 skill 用于把“自动生成英文提交信息、本地提交、处理失败并最终推送”收敛成一个稳定的仓库工作流。
+
+## 何时使用
+
+在这些场景下优先使用：
+
+- 用户明确要求自动生成英文 commit message
+- 用户要求自动本地提交
+- 用户要求提交失败后自动修复并重试
+- 用户要求把当前分支自动推送到远端
+
+如果用户只是要 review 改动，不要直接触发提交，优先改用 `skills/code-review`。
+
+## 仓库特定约束
+
+- 优先遵守 [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
+- 不要直接向 `main` 提交或推送
+- 当前分支如果是 `main`，必须先按改动性质切到合规分支：
+  - `feature/*`
+  - `fix/*`
+  - `hotfix/*`
+  - `chore/*`
+- 不要使用破坏性命令，例如 `git reset --hard`
+- 除非用户明确要求，否则不要 `git commit --amend`
+- 推送时优先推当前分支，不要擅自推其他分支
+
+## 默认执行步骤
+
+1. 读取当前 git 上下文
+   - 运行 `git status --short`
+   - 运行 `git branch --show-current`
+   - 必要时查看 `git diff --stat` 和目标 diff
+2. 判断分支是否合法
+   - 如果在 `main`，先创建或切换到合规分支
+   - 分支名按仓库规范与改动性质命名，不要临时发明风格
+3. 生成英文提交信息
+   - 基于真实 diff 总结“做了什么”和“为什么”
+   - 优先使用简洁、可读、目的明确的英文
+   - 默认保持单行主题，除非仓库流程明确需要正文
+4. 提交前收口最小必要验证
+   - 至少确认没有明显的未解决冲突
+   - 如果本轮刚完成代码改动，优先引用已完成的验证结果
+   - 如果用户要求“直接提交”，也要尊重仓库 hook，不跳过本地校验
+5. 执行提交
+   - `git add` 仅包含当前任务需要的文件
+   - 运行 `git commit -m "<english message>"`
+6. 如果提交失败，进入自动修复循环
+   - 阅读 hook、lint、typecheck、test 或格式化报错
+   - 先修复根因，不要只改表面现象
+   - 修复后重新运行最小必要验证
+   - 重新 `git add` 并再次提交
+   - 同一阻断最多连续自修复 `3` 次；超过后再报告 blocker
+7. 提交成功后推送
+   - 默认 `git push origin <current-branch>`
+   - 如果是首次推送，也可使用 `git push -u origin <current-branch>`
+   - 如果远端拒绝是因为分支落后，优先：
+     1. `git fetch origin`
+     2. `git rebase origin/<current-branch>`
+     3. 解决冲突、验证、继续 rebase
+     4. `git push --force-with-lease origin <current-branch>` 仅用于本分支 rebase 后的历史改写
+
+## 英文提交信息规则
+
+- 优先使用 Conventional Commit 风格：
+  - `feat: ...`
+  - `fix: ...`
+  - `refactor: ...`
+  - `docs: ...`
+  - `test: ...`
+  - `chore: ...`
+- 主题行要描述结果，不要只写动作
+- 避免无信息量文案：
+  - `update files`
+  - `fix stuff`
+  - `changes`
+- 结合仓库改动范围选择最合适的类型；如果主要是仓库技能或文档，一般优先 `docs:` 或 `chore:`，只有真正新增用户能力时才用 `feat:`
+
+## 失败修复策略
+
+优先按失败来源处理：
+
+- `prettier` / 格式化失败
+  - 先运行仓库建议的格式化或针对文件修正
+- `eslint` 失败
+  - 修复真实规则问题，不靠禁用规则绕过
+- `tsc` / 类型失败
+  - 修复类型、contract 或导入问题后再提交
+- `test` 失败
+  - 先确认是否由本轮改动引起，再修复或补齐验证
+- `rebase` / `push` 冲突
+  - 理解远端变化后做最小必要冲突解决，不盲目覆盖
+
+## 输出要求
+
+完成后输出这些关键信息：
+
+- 最终使用的英文 commit message
+- 是否发生过 hook 失败，以及如何修复
+- 实际执行的验证或重试
+- 最终推送到哪个分支
+- 如果仍有风险或未完成项，要明确说明
+
+## 推荐联动文件
+
+- [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
+- [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
+- [验证体系规范](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
+- [Checklist](./references/commit-checklist.md)
