@@ -15,14 +15,14 @@
 
 - `src/react-ts`
   - 前端页面生成基础模板
-- `src/scaffold/package-lib`
+- `src/scaffolds/package-lib`
   - 通用 `packages/*` 脚手架模板资产
   - 当前默认生成 `src/`、`test/`、schema 与包配置，不再额外生成 `demo/`
-- `src/scaffold/agent-basic`
+- `src/scaffolds/agent-basic`
   - 通用 `agents/*` 脚手架模板资产
-- `src/single-report-table`
+- `src/reports/single-report-table`
   - 单报表表格类模板
-- `src/bonus-center-data`
+- `src/reports/bonus-center-data`
   - 数据大盘 / 业务报表示例模板
 
 ## 3. 模板使用边界
@@ -61,10 +61,10 @@
   - 适用场景
   - 入口文件
   - 是否参与代码生成或报表生成
-- `src/scaffold/*` 当前只承载模板资产与 entry file 元数据；通用生成逻辑固定由 `packages/tools/src/scaffold` 承载
+- `src/scaffolds/*` 当前只承载模板资产与 entry file 元数据；通用生成逻辑固定由 `packages/tools/src/scaffold` 承载
 - `package-lib` 与 `agent-basic` 当前都不单独生成 `demo/`，最小闭环统一由 integration 或其他自动化 smoke 承担
-- `src/bonus-center-data` 这类业务报表模板如果已经由外层模块卡片提供标题，内部图表卡片不要再重复渲染 `common.base.chart` 一类的通用小标题，避免出现双标题
-- `src/bonus-center-data` 必须始终保留这组共享模板资产，不能只剩页面组件目录：
+- `src/reports/bonus-center-data` 这类业务报表模板如果已经由外层模块卡片提供标题，内部图表卡片不要再重复渲染 `common.base.chart` 一类的通用小标题，避免出现双标题
+- `src/reports/bonus-center-data` 必须始终保留这组共享模板资产，不能只剩页面组件目录：
   - `services/data/bonusCenter.ts`
   - `types/data/bonusCenter.ts`
   - `pages/dataDashboard/bonusCenterData/config.tsx`

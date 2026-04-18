@@ -13,11 +13,11 @@
   - 承载可被运行时和代码生成链路复用的模板定义
   - 作为模板资产层维护 manifest、metadata 与 registry
 - 当前模板：
-  - `src/react-ts`
+  - `src/starters/react-ts`
     - 前端页面生成基础模板
-  - `src/scaffold/package-lib`
+  - `src/scaffolds/package-lib`
     - 通用 `packages/*` 脚手架模板资产
-  - `src/scaffold/agent-basic`
+  - `src/scaffolds/agent-basic`
     - 通用 `agents/*` 脚手架模板资产
 - 约束：
   - 模板资产继续放 `packages/templates/src/*`

@@ -16,6 +16,7 @@ describe('check-package-boundaries script', () => {
   const tempDirs: string[] = [];
   const coreSubpathImport = '@agent/core/contracts/execution';
   const runtimeSubpathImport = '@agent/runtime/streaming-execution';
+  const templatesSubpathImport = '@agent/templates/registries/scaffold-template-registry';
 
   afterEach(async () => {
     await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })));
@@ -79,6 +80,27 @@ describe('check-package-boundaries script', () => {
     expect(findBoundaryViolations(rootDir)).toEqual([
       'packages/runtime/test/example.test.ts imports subpath entry "@agent/core/contracts/execution" where the package root entry should be used',
       'agents/supervisor/test/example.test.ts imports subpath entry "@agent/runtime/streaming-execution" where the package root entry should be used'
+    ]);
+  });
+
+  it('blocks subpath imports from additional package and app hosts that should consume package roots only', async () => {
+    const rootDir = await mkdtemp(path.join(tmpdir(), 'package-boundaries-'));
+    tempDirs.push(rootDir);
+
+    await writeWorkspaceFile(
+      rootDir,
+      'packages/report-kit/test/example.test.ts',
+      `import { listScaffoldTemplates } from '${templatesSubpathImport}';`
+    );
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/worker/src/example.ts',
+      `import { listScaffoldTemplates } from '${templatesSubpathImport}';`
+    );
+
+    expect(findBoundaryViolations(rootDir)).toEqual([
+      'packages/report-kit/test/example.test.ts imports subpath entry "@agent/templates/registries/scaffold-template-registry" where the package root entry should be used',
+      'apps/worker/src/example.ts imports package subpath "@agent/templates/registries/scaffold-template-registry" from app code'
     ]);
   });
 });

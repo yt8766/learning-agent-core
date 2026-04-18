@@ -20,10 +20,18 @@ const appRoots = [
 const publicEntryRoots = [
   'packages/core/test',
   'packages/core/src',
+  'packages/config/test',
+  'packages/config/src',
   'packages/runtime/test',
   'packages/runtime/src',
   'packages/adapters/test',
   'packages/adapters/src',
+  'packages/evals/test',
+  'packages/evals/src',
+  'packages/report-kit/test',
+  'packages/report-kit/src',
+  'packages/templates/test',
+  'packages/templates/src',
   'agents/supervisor/test',
   'agents/supervisor/src',
   'agents/data-report/test',
@@ -39,7 +47,9 @@ const publicEntryRoots = [
   'packages/skill-runtime/src',
   'packages/skill-runtime/test',
   'apps/backend/agent-server/src',
-  'apps/backend/agent-server/test'
+  'apps/backend/agent-server/test',
+  'apps/worker/src',
+  'apps/worker/test'
 ];
 
 const forbiddenSubpathPrefixes = [
@@ -49,6 +59,9 @@ const forbiddenSubpathPrefixes = [
   '@agent/adapters/',
   '@agent/tools/',
   '@agent/core/',
+  '@agent/evals/',
+  '@agent/report-kit/',
+  '@agent/templates/',
   '@agent/agents-supervisor/',
   '@agent/agents-data-report/',
   '@agent/agents-coder/',
@@ -135,7 +148,9 @@ export function findBoundaryViolations(scanRoot = rootDir) {
     const sources = extractImportSources(text);
 
     for (const source of sources) {
-      if (isUnderRoots(repoPath, appRoots)) {
+      const isAppFile = isUnderRoots(repoPath, appRoots);
+
+      if (isAppFile) {
         if (isWorkspaceSourcePath(source)) {
           violations.push(`${repoPath} imports workspace source path "${source}" from app code`);
         }
@@ -146,6 +161,7 @@ export function findBoundaryViolations(scanRoot = rootDir) {
       }
 
       if (
+        !isAppFile &&
         isUnderRoots(repoPath, publicEntryRoots) &&
         forbiddenSubpathPrefixes.some(prefix => source.startsWith(prefix))
       ) {

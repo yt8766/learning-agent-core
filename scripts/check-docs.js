@@ -6,6 +6,7 @@ const DOCS_ROOT = path.resolve('docs');
 const EXTRA_LINK_CHECK_FILES = [path.resolve('README.md'), path.resolve('AGENTS.md')];
 const REQUIRED_TOP_LEVEL_DIRS = ['archive', 'agents'];
 const REQUIRED_INDEX_DIRS = [
+  'docs/adapters',
   'docs/archive',
   'docs/archive/agent-core',
   'docs/archive/agent-core/archive',
@@ -22,7 +23,9 @@ const REQUIRED_INDEX_DIRS = [
   'docs/memory',
   'docs/archive/model',
   'docs/report-kit',
+  'docs/runtime',
   'docs/shared',
+  'docs/skill-runtime',
   'docs/skills',
   'docs/templates',
   'docs/tools'
