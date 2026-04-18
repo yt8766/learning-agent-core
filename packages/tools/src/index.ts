@@ -15,10 +15,10 @@ export {
   mergeGovernanceDecisions,
   type ToolPermissionChecker
 } from './approval/preflight-governance';
-export { CONNECTOR_TOOL_DEFINITIONS } from './connectors/connector-tool-definitions';
-export { executeConnectorTool } from './connectors/connectors-executor';
-export { FILESYSTEM_TOOL_DEFINITIONS } from './filesystem/filesystem-tool-definitions';
-export { executeFilesystemTool } from './filesystem/filesystem-executor';
+export { CONNECTOR_TOOL_DEFINITIONS } from './definitions/connector-tool-definitions';
+export { executeConnectorTool } from './executors/connectors/connectors-executor';
+export { FILESYSTEM_TOOL_DEFINITIONS } from './definitions/filesystem-tool-definitions';
+export { executeFilesystemTool } from './executors/filesystem/filesystem-executor';
 export {
   McpCapabilityRegistry,
   type McpCapabilityDefinition,
@@ -33,12 +33,12 @@ export {
   type McpTransportDiscovery,
   type McpTransportHandler,
   type McpTransportHealth
-} from './mcp/mcp-transport-handlers';
+} from './transports/mcp-transport-handlers';
 export { DEFAULT_TOOL_FAMILIES } from './registry/tool-families';
-export { DEFAULT_TOOLS, ToolRegistry, createDefaultToolRegistry } from './registry/tool-registry';
-export { ToolRiskClassifier } from './registry/tool-risk-classifier';
-export { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from './runtime-governance/runtime-governance-tool-definitions';
-export { executeRuntimeGovernanceTool } from './runtime-governance/runtime-governance-executor';
+export { DEFAULT_TOOLS, ToolRegistry, createDefaultToolRegistry } from './contracts/tool-registry';
+export { ToolRiskClassifier } from './contracts/tool-risk-classifier';
+export { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from './definitions/runtime-governance-tool-definitions';
+export { executeRuntimeGovernanceTool } from './executors/runtime-governance/runtime-governance-executor';
 export {
   buildAgentScaffold,
   buildPackageScaffold,
@@ -52,8 +52,8 @@ export {
   type ScaffoldWriteResult
 } from './scaffold/scaffold-core';
 export { SCAFFOLD_TOOL_DEFINITIONS } from './scaffold/scaffold-tool-definitions';
-export { executeScaffoldTool } from './scaffold/scaffold-executor';
+export { executeScaffoldTool } from './executors/scaffold/scaffold-executor';
 export { LocalSandboxExecutor, StubSandboxExecutor, type SandboxExecutor } from './sandbox/sandbox-executor';
-export { SCHEDULING_TOOL_DEFINITIONS } from './scheduling/scheduling-tool-definitions';
-export { executeSchedulingTool } from './scheduling/scheduling-executor';
+export { SCHEDULING_TOOL_DEFINITIONS } from './definitions/scheduling-tool-definitions';
+export { executeSchedulingTool } from './executors/scheduling/scheduling-executor';
 export { ExecutionWatchdog, type ExecutionWatchdogObservation } from './watchdog/execution-watchdog';

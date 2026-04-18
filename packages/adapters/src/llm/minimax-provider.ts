@@ -1,6 +1,6 @@
 import { ProviderSettingsRecord } from '@agent/config';
 
-import { createMiniMaxChatModel } from '../chat/chat-model-factory';
+import { createMiniMaxChatModel } from '../runtime/chat-model-factory';
 import { normalizeModelBaseUrl } from '../providers/base-url';
 import {
   ChatMessage,

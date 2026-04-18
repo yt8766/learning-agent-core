@@ -1,11 +1,11 @@
 import { ActionIntent, AgentRole, TaskStatus, type ApprovalResumeInput, type RouterMinistryLike } from '@agent/core';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type {
   DirectReplyInterruptGraphCallbacks,
   DirectReplyInterruptGraphState
 } from '../../graphs/main/pipeline/direct-reply-interrupt-graph';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '../../bridges/supervisor-runtime-bridge';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../approval/risk-interrupts';
 function shouldAttemptRuntimeSkillIntervention(
   task: Parameters<DirectReplyInterruptGraphCallbacks['persistAndEmitTask']>[0]

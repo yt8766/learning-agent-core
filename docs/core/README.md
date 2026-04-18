@@ -93,6 +93,10 @@
   - 当前除 capability / attachment / governance profile 外，也已开始承接 `SkillTriggerReason`、`LocalSkillSuggestionRecord`、`SkillSearchStateRecord` 这组稳定 skill search 主契约；`tasking-checkpoint.ts` 与 `tasking-task-record.ts` 已开始直接复用
 - `packages/core/src/contracts/platform-console/index.ts`
   - 当前 contracts 出口已开始按 `chat / ministries / execution / architecture / platform-console / approval / data-report` 聚合；`SharedPlatformConsoleRecord` 这类 generic aggregation shell 仍属于 contracts 终态例外，除非后续确认它本身要进入稳定 JSON/API 边界，否则不应强行 schema-first 化
+- `packages/core/src/providers/*`
+  - 当前继续作为非 JSON-safe provider 技术契约的真实宿主，承接 `ILLMProvider`、`IEmbeddingProvider`、`IToolProvider` 以及 provider budget / usage / health 共享类型；这层属于稳定 interface contract，不是 provider 实现
+- `packages/core/src/contracts/approval/*` 与 `packages/core/src/contracts/execution/*`
+  - 当前分别承接审批恢复上下文与已批准执行代理等技术契约；它们应继续作为 `contracts/*` 下的真实宿主，而不是再退回平铺 compat 入口
 - 仍然存在部分 contract 从 `shared` 向 `core` 继续迁移的债务，但 `core` 本身已经是当前真实生效的稳定 contract 宿主之一
 - 后续稳定公共 contract 仍应按 `core` 边界思考，而不是继续把 `core` 当“任何共用代码都能放”的杂物层
 

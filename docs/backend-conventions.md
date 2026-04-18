@@ -16,8 +16,9 @@
 - 后端统一使用 `NestJS + TypeScript`
 - 所有后端源码文件使用 `.ts`
 - 应用层只通过 `@agent/*` 使用共享包
-- 禁止应用层直连 `packages/*/src`
+- 禁止应用层直连 `packages/*/src`、`agents/*/src`，也禁止依赖 `@agent/<pkg>/<subpath>`
 - 禁止应用层依赖其他应用的 `dist` 或 package 的 `build` 路径
+- 当前仓库已通过 `apps/worker/test/app-dependency-boundary.test.ts` 对 `apps/backend/agent-server`、`apps/frontend/*` 与 `apps/worker` 统一执行应用层依赖边界校验
 
 ## 2. 目录与模块规范
 

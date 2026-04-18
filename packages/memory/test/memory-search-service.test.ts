@@ -18,6 +18,16 @@ describe('DefaultMemorySearchService', () => {
     }
   });
 
+  it('keeps the canonical search service host aligned with the package export', async () => {
+    const canonicalExports = (await import(
+      new URL('../src/contracts/memory-search-service.ts', import.meta.url).href
+    )) as {
+      DefaultMemorySearchService: unknown;
+    };
+
+    expect(DefaultMemorySearchService).toBe(canonicalExports.DefaultMemorySearchService);
+  });
+
   it('merges text search results from memories and rules', async () => {
     const memoryRecord: MemoryRecord = {
       id: 'mem_1',

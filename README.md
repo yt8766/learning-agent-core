@@ -25,8 +25,8 @@
 - `packages/tools`：工具注册、审批规则、执行器
 - `agents/supervisor`：主控路由、workflow preset、subgraph 描述等 supervisor 入口
 - `agents/data-report`：数据报表生成智能体入口
-- `agents/coder`：代码生成智能体入口占位
-- `agents/reviewer`：质量审核智能体入口占位
+- `agents/coder`：代码生成智能体公开入口，承载 coder graph 与节点装配
+- `agents/reviewer`：质量审核智能体公开入口，承载 reviewer graph 与节点装配
 - `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
 - `packages/skill-runtime`：运行时技能注册与技能卡领域包；是 `@agent/skill-runtime` 的真实物理宿主
 - `packages/evals`：评估与复盘
@@ -41,6 +41,16 @@
 - [`docs/apps-overview.md`](./docs/apps-overview.md)
 - [`docs/packages-overview.md`](./docs/packages-overview.md)
 - [`docs/data-overview.md`](./docs/data-overview.md)
+
+当前目录收敛状态补充：
+
+- `packages/*` 与 `agents/*` 的职责、统一目录语法、root export / runtime boundary 规则已经统一沉淀到 `docs/*`
+- 第一阶段 compat 根文件收缩已完成，`packages/evals`、`packages/skill-runtime`、`packages/report-kit`、`packages/templates` 以及 `packages/config` 的纯 compat `settings.*` 已切到“包根直出 canonical host”
+- 一部分扁平包已经继续补出明确的 facade contract：
+  - `packages/config/src/contracts/settings-facade.ts`
+  - `packages/skill-runtime/src/contracts/skill-runtime-facade.ts`
+  - `packages/evals/src/contracts/evals-facade.ts`
+- 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/package-compat-sunset-candidates.md`](./docs/package-compat-sunset-candidates.md)
 
 根目录不再维护单独的 `TODO.md`。后续 roadmap、联调结论和模块待办统一沉淀到对应的 `docs/<module>/` 文档，并直接按最新实现更新原文档。
 

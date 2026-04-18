@@ -60,8 +60,8 @@ describe('@agent/templates scaffold template registry', () => {
     const packageDir = resolveScaffoldTemplateDir('package-lib');
     const agentDir = resolveScaffoldTemplateDir('agent-basic');
 
-    expect(packageDir).toContain('packages/templates/src/scaffold/package-lib');
-    expect(agentDir).toContain('packages/templates/src/scaffold/agent-basic');
+    expect(packageDir).toContain('packages/templates/src/scaffolds/package-lib');
+    expect(agentDir).toContain('packages/templates/src/scaffolds/agent-basic');
     expect(existsSync(join(packageDir!, 'src/index.ts'))).toBe(true);
     expect(existsSync(join(packageDir!, 'src/package.json'))).toBe(true);
     expect(existsSync(join(agentDir!, 'src/graphs/__NAME__.graph.ts'))).toBe(true);

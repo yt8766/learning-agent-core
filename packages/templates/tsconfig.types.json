@@ -7,5 +7,10 @@
     "emitDeclarationOnly": true,
     "declarationMap": true
   },
-  "include": ["src/index.ts", "src/types.ts", "src/template-registry.ts", "src/scaffold-template-registry.ts"]
+  "include": [
+    "src/index.ts",
+    "src/types.ts",
+    "src/registries/frontend-template-registry.ts",
+    "src/registries/scaffold-template-registry.ts"
+  ]
 }

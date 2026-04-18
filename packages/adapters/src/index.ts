@@ -10,11 +10,14 @@ export type {
 } from '@agent/core';
 export * from './chat';
 export * from './embeddings';
-export { createDefaultRuntimeLlmProvider, type DefaultRuntimeLlmProviderOptions } from './llm/runtime-provider-factory';
+export {
+  createDefaultRuntimeLlmProvider,
+  type DefaultRuntimeLlmProviderOptions
+} from './runtime/runtime-provider-factory';
 export { MiniMaxProvider } from './llm/minimax-provider';
 export { OpenAICompatibleProvider } from './llm/openai-compatible-provider';
-export type { ChatMessage, GenerateTextOptions, LlmProvider, LlmUsageMetadata } from './llm/llm-provider';
-export { jsonObjectInstruction } from './llm/llm-provider';
+export type { ChatMessage, GenerateTextOptions, LlmProvider, LlmUsageMetadata } from './contracts/llm-provider';
+export { jsonObjectInstruction } from './contracts/llm-provider';
 export {
   JSON_SAFETY_PROMPT,
   appendJsonSafety,

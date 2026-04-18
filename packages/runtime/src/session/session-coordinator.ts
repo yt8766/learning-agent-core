@@ -18,7 +18,7 @@ import type {
 } from '@agent/core';
 import { RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
-import { AgentOrchestrator } from '../graphs/main/main.graph';
+import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { autoConfirmLearningIfNeeded, runLearningConfirmation } from './session-coordinator-learning';
 import {
   cancelSessionRun,

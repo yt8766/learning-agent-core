@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/core';
 
-import { executeFilesystemTool } from '../../src/filesystem/filesystem-executor';
+import { executeFilesystemTool } from '../../src/executors/filesystem/filesystem-executor';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('executeFilesystemTool', () => {

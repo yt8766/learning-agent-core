@@ -5,12 +5,12 @@ import type {
   TaskRecord as CoreTaskRecord
 } from '@agent/core';
 import { AgentRole, ApprovalDecision } from '@agent/core';
+import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
 import {
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted
-} from '@agent/agents-supervisor';
-import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
+} from '../../bridges/supervisor-runtime-bridge';
 
 import { PendingExecutionContext } from '../approval';
 import { resolveCapabilityRedirect } from '../../capabilities/capability-pool';

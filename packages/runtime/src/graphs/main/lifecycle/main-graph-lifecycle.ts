@@ -6,7 +6,6 @@ import type {
   SkillSearchStateRecord
 } from '@agent/core';
 import { ActionIntent, ApprovalDecision } from '@agent/core';
-import { resolveWorkflowPreset } from '@agent/agents-supervisor';
 import { PendingExecutionRecord } from '@agent/memory';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
@@ -16,6 +15,7 @@ import {
   buildFreshnessSourceSummary,
   recordAgentError
 } from '../knowledge/main-graph-knowledge';
+import { resolveWorkflowPreset } from '../../../bridges/supervisor-runtime-bridge';
 import { enqueueTaskLearningItem, listLearningQueueItems } from './main-graph-lifecycle-state';
 import { applyApprovalAction, handleLifecycleInterruptTimeout } from './main-graph-lifecycle-approval';
 import {

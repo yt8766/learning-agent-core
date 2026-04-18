@@ -1,7 +1,7 @@
 import type { CurrentSkillExecutionRecord, DispatchInstruction, EvidenceRecord } from '@agent/core';
 import { AgentRole, type AgentRoleValue } from '@agent/core';
-import { mergeEvidence } from '@agent/agents-supervisor';
 import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
+import { mergeEvidence } from '../../bridges/supervisor-runtime-bridge';
 
 type SkillStage = 'research' | 'execute';
 

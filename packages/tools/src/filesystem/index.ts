@@ -1,2 +1,2 @@
-export * from './filesystem-executor';
-export * from './filesystem-tool-definitions';
+export * from '../executors/filesystem/filesystem-executor';
+export { FILESYSTEM_TOOL_DEFINITIONS } from '../definitions/filesystem-tool-definitions';

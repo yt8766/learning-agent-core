@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本目录用于沉淀仓库级规范、模块文档、联调结论与后续 AI 接手所需上下文。
 
@@ -18,6 +18,12 @@
 
 - [项目规范总览](/docs/project-conventions.md)
 - [目录地图](/docs/repo-directory-overview.md)
+- [packages 目录说明](/docs/packages-overview.md)
+- [Packages 分层与职责矩阵](/docs/packages-overview.md#按包职责矩阵)
+- [目录聚合入口分级](/docs/packages-overview.md#目录聚合入口分级)
+- [Packages 阶段收官报告](/docs/package-finalization-report.md)
+- [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
 - [前后端对接文档](/docs/integration/frontend-backend-integration.md)
 - [本地联调指南](/docs/local-development-guide.md)
 
@@ -44,12 +50,19 @@
 2. 再看“全局规则是什么”：
    - [项目规范总览](/docs/project-conventions.md)
    - [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+   - [Packages 分层与职责矩阵](/docs/packages-overview.md#按包职责矩阵)
+   - [目录聚合入口分级](/docs/packages-overview.md#目录聚合入口分级)
+   - [Packages 阶段收官报告](/docs/package-finalization-report.md)
+   - [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
    - [测试规范](/docs/test-conventions.md)
 3. 如果你要改具体模块：
    - 后端：先看 [docs/backend/README.md](/docs/backend/README.md)
    - 前端：先看 [docs/frontend/README.md](/docs/frontend/README.md)
    - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
    - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
+   - runtime / session / graph：先看 [docs/runtime/README.md](/docs/runtime/README.md)
+   - root 级 agents：先看 [docs/agents/README.md](/docs/agents/README.md)
+   - 运行时技能：先看 [docs/skill-runtime/README.md](/docs/skill-runtime/README.md)
    - 跨模块联调：先看 [docs/integration/README.md](/docs/integration/README.md)
    - 运行时质量与评测：先看 [docs/evals/README.md](/docs/evals/README.md)
 4. 只有在需要追迁移背景时，再看：
@@ -112,7 +125,7 @@
 - 已删除的 `packages/model` 历史说明 -> `docs/archive/model/`
 - `packages/report-kit` -> `docs/report-kit/`
 - `packages/shared` -> `docs/shared/`
-- `packages/skill-runtime` -> `docs/skills/`
+- `packages/skill-runtime` -> `docs/skill-runtime/`
 - `packages/templates` -> `docs/templates/`
 - `packages/tools` -> `docs/tools/`
 

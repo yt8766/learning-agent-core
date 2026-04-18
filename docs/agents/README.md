@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/agents/`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 本目录用于沉淀 root 级 `agents/*` 的专项文档。
 
@@ -15,10 +15,18 @@
 
 当前文档：
 
+- [supervisor 文档目录](/docs/agents/supervisor/README.md)
+- [supervisor 包结构规范](/docs/agents/supervisor/package-structure-guidelines.md)
 - [data-report 文档目录](/docs/agents/data-report/README.md)
+- [data-report 包结构规范](/docs/agents/data-report/package-structure-guidelines.md)
 - [data-report 类型导出说明](/docs/agents/data-report/type-barrel-notes.md)
+- [coder 文档目录](/docs/agents/coder/README.md)
+- [coder 包结构规范](/docs/agents/coder/package-structure-guidelines.md)
+- [reviewer 文档目录](/docs/agents/reviewer/README.md)
+- [reviewer 包结构规范](/docs/agents/reviewer/package-structure-guidelines.md)
 
-后续建议：
+补充说明：
 
-- `agents/supervisor` 补 `README` 或 graph/flow 专题说明
-- `agents/coder`、`agents/reviewer` 一旦不再只是占位，也应补对应文档
+- `agents/*` 当前都已经不是占位目录
+- root 级 `agents/*` 默认只通过 `@agent/runtime` 根入口消费稳定 runtime facade，不直接依赖 `packages/runtime/src/*` 或 `runtime/agent-bridges/*`
+- 后续涉及 graph / flow / root export 调整时，应同步更新对应 `docs/agents/<domain>/*`

@@ -1,2 +1,2 @@
-export * from './scheduling-executor';
-export * from './scheduling-tool-definitions';
+export * from '../executors/scheduling/scheduling-executor';
+export { SCHEDULING_TOOL_DEFINITIONS } from '../definitions/scheduling-tool-definitions';

@@ -5,7 +5,7 @@ import type {
   RequestedExecutionHints
 } from '@agent/core';
 import { TaskStatus } from '@agent/core';
-import { AgentOrchestrator } from '../graphs/main/main.graph';
+import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
 import type { SessionTaskAggregate } from './session-task.types';

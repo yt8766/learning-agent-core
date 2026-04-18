@@ -2,12 +2,12 @@ import { ActionIntent, type ToolDefinition, type ToolFamilyRecord } from '@agent
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
-import { CONNECTOR_TOOL_DEFINITIONS } from '../connectors/connector-tool-definitions';
-import { FILESYSTEM_TOOL_DEFINITIONS } from '../filesystem/filesystem-tool-definitions';
+import { CONNECTOR_TOOL_DEFINITIONS } from '../definitions/connector-tool-definitions';
+import { FILESYSTEM_TOOL_DEFINITIONS } from '../definitions/filesystem-tool-definitions';
 import { DEFAULT_TOOL_FAMILIES } from './tool-families';
-import { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from '../runtime-governance/runtime-governance-tool-definitions';
+import { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from '../definitions/runtime-governance-tool-definitions';
 import { SCAFFOLD_TOOL_DEFINITIONS } from '../scaffold/scaffold-tool-definitions';
-import { SCHEDULING_TOOL_DEFINITIONS } from '../scheduling/scheduling-tool-definitions';
+import { SCHEDULING_TOOL_DEFINITIONS } from '../definitions/scheduling-tool-definitions';
 
 const KNOWLEDGE_TOOL_DEFINITIONS: ToolDefinition[] = [
   {

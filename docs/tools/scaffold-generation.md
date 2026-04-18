@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`packages/tools/src/scaffold/*`、`packages/templates/src/scaffold/*`
+适用范围：`packages/tools/src/scaffold/*`、`packages/templates/src/scaffolds/*`
 最后核对：2026-04-16
 
 ## 1. 当前宿主
@@ -11,7 +11,7 @@
 
 当前固定分层为：
 
-- `packages/templates/src/scaffold/*`
+- `packages/templates/src/scaffolds/*`
   - 只承载模板资产与模板 registry 元数据
 - `packages/tools/src/scaffold/*`
   - 承载 scaffold 的 list / preview / inspect / write 实现

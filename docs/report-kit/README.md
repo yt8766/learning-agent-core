@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/report-kit/`
-最后核对：2026-04-15
+最后核对：2026-04-18
 
 本目录用于沉淀 `packages/report-kit` 相关文档。
 
@@ -11,6 +11,7 @@
 
 - 职责：
   - 承载 data-report 生成链路的 blueprint、scaffold、routes、assembly、write 等领域能力
+  - 作为报表领域的确定性生成引擎
 - 允许：
   - report blueprint / scaffold / assembly
   - sandpack post-process
@@ -23,6 +24,20 @@
 - 依赖方向：
   - 只依赖模板资产与必要第三方库
   - 由 `@agent/tools` 作为工具平台 facade 暴露给上层
+  - 长期继续与 `agents/data-report`、`packages/runtime` 的编排层分离
+
+当前真实源码入口：
+
+- 正式宿主目录：
+  - `src/blueprints/`
+  - `src/scaffold/`
+  - `src/assembly/`
+  - `src/writers/`
+- 稳定 facade：
+  - `src/contracts/data-report-facade.ts`
+- 根导出：
+  - `src/index.ts` 当前通过 `src/contracts/data-report-facade.ts` 暴露稳定出口
+  - legacy 根文件 `src/data-report-*.ts` 已删除
 
 约定：
 
@@ -32,4 +47,5 @@
 
 当前文档：
 
+- [package-structure-guidelines.md](/docs/report-kit/package-structure-guidelines.md)
 - [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)

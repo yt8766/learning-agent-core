@@ -6,8 +6,8 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadSettings } from '@agent/config';
-import { parseDotEnvFile } from '../src/settings/settings.helpers';
-import { loadSettings as directLoadSettings } from '../src/settings/settings.loader';
+import { parseDotEnvFile } from '../src/utils/settings-helpers';
+import { loadSettings as directLoadSettings } from '../src/loaders/settings-loader';
 import * as settingsExports from '../src/settings';
 
 /** 与 settings.findWorkspaceRoot 一致：从启动时的 cwd 向上找 pnpm-workspace.yaml（避免硬编码盘符与目录名） */

@@ -6,9 +6,8 @@ import type {
   WorkerDomain,
   WorkflowPresetDefinition
 } from '@agent/core';
-import { listBootstrapSkills } from '@agent/agents-supervisor';
-import type { BootstrapSkillRecord } from '@agent/agents-supervisor';
 import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
+import { listBootstrapSkills, type BootstrapSkillRecord } from '../bridges/supervisor-runtime-bridge';
 
 import {
   CONNECTOR_TEMPLATE_TO_DISPLAY,

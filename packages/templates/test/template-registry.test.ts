@@ -31,11 +31,11 @@ describe('@agent/templates frontend template registry', () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: 'react-ts',
-          directoryName: 'react-ts'
+          directoryName: 'starters/react-ts'
         }),
         expect.objectContaining({
           id: 'bonus-center-data',
-          directoryName: 'bonus-center-data'
+          directoryName: 'reports/bonus-center-data'
         })
       ])
     );
@@ -56,7 +56,7 @@ describe('@agent/templates frontend template registry', () => {
   it('resolves the actual react-ts template directory from the package', () => {
     const templateDir = resolveFrontendTemplateDir('react-ts');
 
-    expect(templateDir).toContain('packages/templates/src/react-ts');
+    expect(templateDir).toContain('packages/templates/src/starters/react-ts');
   });
 
   it('resolves the template directory even when cwd is the backend app', () => {
@@ -65,7 +65,7 @@ describe('@agent/templates frontend template registry', () => {
 
     try {
       const templateDir = resolveFrontendTemplateDir('react-ts');
-      expect(templateDir).toContain('packages/templates/src/react-ts');
+      expect(templateDir).toContain('packages/templates/src/starters/react-ts');
     } finally {
       process.chdir(previousCwd);
     }
@@ -95,13 +95,13 @@ describe('@agent/templates frontend template registry', () => {
         ])
       })
     );
-    expect(templateDir).toContain('packages/templates/src/bonus-center-data');
+    expect(templateDir).toContain('packages/templates/src/reports/bonus-center-data');
   });
 
   it('keeps the react-ts template ready as a minimal runnable frontend scaffold', () => {
     const templateDir = resolveFrontendTemplateDir('react-ts');
 
-    expect(templateDir).toContain('packages/templates/src/react-ts');
+    expect(templateDir).toContain('packages/templates/src/starters/react-ts');
     expect(existsSync(join(templateDir!, 'App.tsx'))).toBe(true);
     expect(existsSync(join(templateDir!, 'index.tsx'))).toBe(true);
     expect(existsSync(join(templateDir!, 'styles.css'))).toBe(true);

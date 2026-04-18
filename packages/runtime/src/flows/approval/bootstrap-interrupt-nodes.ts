@@ -1,11 +1,11 @@
 import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus } from '@agent/core';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type {
   TaskBootstrapCallbacks,
   TaskBootstrapGraphState
 } from '../../graphs/main/pipeline/task-bootstrap-interrupt-graph';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '../../bridges/supervisor-runtime-bridge';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
 
 export async function runPreExecutionSkillGateNode(

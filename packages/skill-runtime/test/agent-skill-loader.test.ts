@@ -5,10 +5,15 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { SkillSourceRecord } from '@agent/core';
+import { loadAgentSkillManifests } from '@agent/skill-runtime';
 
-import { loadAgentSkillManifests } from '../src/agent-skill-loader';
+import { loadAgentSkillManifests as canonicalLoadAgentSkillManifests } from '../src/sources/agent-skill-loader';
 
 describe('loadAgentSkillManifests', () => {
+  it('keeps the package root export routed to the canonical host', () => {
+    expect(loadAgentSkillManifests).toBe(canonicalLoadAgentSkillManifests);
+  });
+
   it('loads Deep Agents style SKILL.md frontmatter into manifests', async () => {
     const root = await mkdtemp(join(tmpdir(), 'agent-skill-loader-'));
     const skillDir = join(root, 'code-review');

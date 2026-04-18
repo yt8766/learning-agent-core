@@ -1,3 +1,3 @@
-export { LibuRouterMinistry, HubuSearchMinistry, LibuDocsMinistry } from '@agent/agents-supervisor';
-export { GongbuCodeMinistry, BingbuOpsMinistry } from '@agent/agents-coder';
-export { XingbuReviewMinistry } from '@agent/agents-reviewer';
+export { LibuRouterMinistry, HubuSearchMinistry, LibuDocsMinistry } from '../../bridges/supervisor-runtime-bridge';
+export { GongbuCodeMinistry, BingbuOpsMinistry } from '../../bridges/coder-runtime-bridge';
+export { XingbuReviewMinistry } from '../../bridges/reviewer-runtime-bridge';

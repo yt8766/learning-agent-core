@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.json",
   "include": [
     "src/index.ts",
-    "src/template-registry.ts",
-    "src/scaffold-template-registry.ts",
+    "src/registries/frontend-template-registry.ts",
+    "src/registries/scaffold-template-registry.ts",
     "src/types.ts",
     "test/**/*"
   ],

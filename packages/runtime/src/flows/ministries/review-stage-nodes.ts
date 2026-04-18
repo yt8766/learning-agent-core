@@ -5,13 +5,13 @@ import type {
   TaskRecord as CoreTaskRecord
 } from '@agent/core';
 import { AgentRole, EvaluationResult, ReviewRecord, TaskStatus } from '@agent/core';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
+import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted
-} from '@agent/agents-supervisor';
-import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
-import type { RuntimeAgentGraphState } from '../../types/chat-graph';
+} from '../../bridges/supervisor-runtime-bridge';
 import {
   applyCapabilityTrustFromGovernance,
   buildGovernanceReport,

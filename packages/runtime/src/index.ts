@@ -1,4 +1,4 @@
-export type { AgentRuntimeContext, AgentLike } from './runtime/agent-runtime-context';
+export type { AgentRuntimeContext, AgentLike } from './contracts/agent-runtime-context';
 export { BaseAgent } from './agents/base-agent';
 export {
   StreamingExecutionCoordinator,
@@ -8,9 +8,11 @@ export {
   type StreamingExecutionEvent,
   type StreamingExecutionTask
 } from './runtime/streaming-execution';
-export { SessionCoordinator } from './session/session-coordinator';
-export { WorkerRegistry, createDefaultWorkerRegistry } from './governance/worker-registry';
-export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './governance/profile-policy';
+export { SessionCoordinator } from './contracts/session-coordinator';
+export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts/worker-registry';
+export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts/profile-policy';
+export { ModelRoutingPolicy } from './contracts/model-routing-policy';
+export type { SessionStoreSnapshot } from './contracts/session-store';
 export {
   buildFreshnessAnswerInstruction,
   buildTemporalContextBlock,
@@ -20,8 +22,7 @@ export { createAgentGraph, createInitialState } from './graphs/chat.graph';
 export { createApprovalRecoveryGraph } from './graphs/recovery.graph';
 export { createLearningGraph } from './graphs/learning.graph';
 export { LearningFlow } from './flows/learning/learning-flow';
-export { AgentRuntime } from './runtime/agent-runtime';
-export type { AgentRuntimeOptions } from './runtime/agent-runtime';
+export { AgentRuntime, type AgentRuntimeOptions } from './contracts/agent-runtime';
 export {
   archivalMemorySearch,
   archivalMemorySearchByParams,
