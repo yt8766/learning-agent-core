@@ -107,6 +107,12 @@ pnpm dlx promptfoo@latest
 
 其中 `latest-summary.json` 会被 admin 的 `Evals Center` 读取，用于展示最近一次 prompt 回归结果摘要。
 
+补充说明：
+
+- 仓库脚本当前统一以 `promptfoo eval --no-write` 运行回归
+- 回归结果以 JSON 输出文件和派生 summary 为准，不依赖 promptfoo 的 sqlite 持久化
+- 这样可以避免 CI 因 `better-sqlite3` native binding 缺失而在 prompt regression 阶段失败
+
 ## 维护规则
 
 新增样例时，优先满足这些原则：

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildPromptfooEvalArgs,
   buildPromptRegressionSkipSummary,
   derivePromptRegressionSummary,
   enforcePromptRegressionGate,
@@ -172,5 +173,21 @@ describe('prompt regression summary helpers', () => {
       detectedNodeVersion: '22.21.1',
       requiredNodeRange: '^20.20.0 || >=22.22.0'
     });
+  });
+
+  it('builds promptfoo eval args in no-write mode so CI does not require sqlite persistence', () => {
+    expect(
+      buildPromptfooEvalArgs(
+        '/workspace/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml',
+        '/workspace/packages/evals/promptfoo/latest-promptfoo-results.json'
+      )
+    ).toEqual([
+      'eval',
+      '-c',
+      '/workspace/packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml',
+      '--output',
+      '/workspace/packages/evals/promptfoo/latest-promptfoo-results.json',
+      '--no-write'
+    ]);
   });
 });
