@@ -1,4 +1,5 @@
-import { AgentRole, type DispatchInstruction, type TaskRecord } from '@agent/shared';
+import type { DispatchInstruction } from '@agent/core';
+import { AgentRole } from './supervisor-architecture-helpers';
 
 const DISPATCH_KIND_ORDER: Record<DispatchInstruction['kind'], number> = {
   strategy: 0,
@@ -32,7 +33,7 @@ export function orderRuntimeDispatches(dispatches: DispatchInstruction[]): Dispa
   });
 }
 
-export function buildContextFilterAudienceSlices(task: TaskRecord, dispatches: DispatchInstruction[]) {
+export function buildContextFilterAudienceSlices(dispatches: DispatchInstruction[]) {
   return {
     strategy: summarizeDispatchObjectives(dispatches, 'strategy', '当前未单列群辅票拟，由六部直接承接执行。'),
     ministry: summarizeDispatchObjectives(dispatches, 'ministry', '当前未形成六部执行票拟。'),

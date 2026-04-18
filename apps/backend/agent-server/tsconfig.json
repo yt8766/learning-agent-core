@@ -5,13 +5,11 @@
     "baseUrl": "./",
     "paths": {
       "@agent/core": ["../../../packages/core/src/index.ts"],
-      "@agent/shared": ["../../../packages/shared/src/index.ts"],
       "@agent/config": ["../../../packages/config/src/index.ts"],
       "@agent/runtime": ["../../../packages/runtime/src/index.ts"],
       "@agent/adapters": ["../../../packages/adapters/src/index.ts"],
       "@agent/tools": ["../../../packages/tools/src/index.ts"],
       "@agent/memory": ["../../../packages/memory/src/index.ts"],
-      "@agent/model": ["../../../packages/model/src/index.ts"],
       "@agent/report-kit": ["../../../packages/report-kit/src/index.ts"],
       "@agent/skill-runtime": ["../../../packages/skill-runtime/src/index.ts"],
       "@agent/templates": ["../../../packages/templates/src/index.ts"],

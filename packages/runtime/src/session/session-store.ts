@@ -1,4 +1,4 @@
-import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/core';
 
 export interface SessionStoreSnapshot {
   chatSessions: ChatSessionRecord[];

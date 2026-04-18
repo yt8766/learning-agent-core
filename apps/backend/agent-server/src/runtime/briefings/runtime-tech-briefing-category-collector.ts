@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import {
   FEED_SOURCES,
@@ -13,6 +13,8 @@ import { translateBriefingItems } from './runtime-tech-briefing-translate';
 import { computePreferenceScore, enrichActionMetadata } from './runtime-tech-briefing-item-enrichment';
 import type { BriefingSettings } from './runtime-tech-briefing-schedule';
 import type { TechBriefingCategory, TechBriefingItem } from './runtime-tech-briefing.types';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export interface RuntimeTechBriefingCollectorContext {
   workspaceRoot: string;
@@ -27,7 +29,7 @@ export interface RuntimeTechBriefingCollectorContext {
       request: {
         taskId: string;
         toolName: string;
-        intent: ActionIntent;
+        intent: ActionIntentValue;
         input: Record<string, unknown>;
         requestedBy: 'agent' | 'user';
       }

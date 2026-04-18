@@ -7,7 +7,7 @@ import {
   CreateDocumentLearningJobDto,
   CreateResearchLearningJobDto,
   CreateTaskDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { buildTraceAnalytics } from '../../modules/runtime-metrics/services/runtime-analytics';
 import { extractBrowserReplay } from '../helpers/runtime-connector-utils';

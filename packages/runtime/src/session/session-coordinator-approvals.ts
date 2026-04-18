@@ -1,13 +1,6 @@
-import {
-  ApprovalDecision,
-  TaskStatus,
-  matchesApprovalScopePolicy,
-  type ChatEventType,
-  type ApprovalScopePolicyRecord,
-  type ChatSessionRecord,
-  type SessionApprovalDto,
-  type TaskRecord
-} from '@agent/shared';
+import { matchesApprovalScopePolicy, type ApprovalScopePolicyRecord } from '@agent/core';
+import { ApprovalDecision, TaskStatus } from '@agent/core';
+import type { ChatSessionRecord, SessionApprovalDto } from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
 import type { AgentOrchestrator } from '../graphs/main/main.graph';
@@ -18,10 +11,18 @@ import {
   recordPolicyAutoAllow
 } from './session-coordinator-approval-policy';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
+import type { SessionTaskAggregate, SessionTaskLike } from './session-task.types';
+
+type ChatEventType =
+  | 'run_cancelled'
+  | 'interrupt_resumed'
+  | 'approval_resolved'
+  | 'interrupt_rejected_with_feedback'
+  | 'approval_rejected_with_feedback';
 
 export function resolveApprovalEventType(
-  decision: ApprovalDecision,
-  currentTask: TaskRecord | undefined,
+  decision: (typeof ApprovalDecision)[keyof typeof ApprovalDecision],
+  currentTask: SessionTaskLike | undefined,
   dto: SessionApprovalDto
 ): ChatEventType {
   if (decision === ApprovalDecision.APPROVED) {
@@ -43,7 +44,7 @@ export function resolveApprovalEventType(
   return currentTask?.activeInterrupt ? 'interrupt_resumed' : 'approval_resolved';
 }
 
-export function resolveApprovalInteractionKind(task: TaskRecord, dto: SessionApprovalDto): unknown {
+export function resolveApprovalInteractionKind(task: SessionTaskLike, dto: SessionApprovalDto): unknown {
   if (task.activeInterrupt?.payload && typeof task.activeInterrupt.payload === 'object') {
     return (task.activeInterrupt.payload as { interactionKind?: unknown }).interactionKind;
   }
@@ -56,7 +57,7 @@ export function resolveApprovalInteractionKind(task: TaskRecord, dto: SessionApp
 export async function resolveSessionAutoApprovalPolicy(
   runtimeStateRepository: RuntimeStateRepository,
   session: ChatSessionRecord,
-  task: TaskRecord
+  task: SessionTaskLike
 ): Promise<
   | {
       actor: string;
@@ -107,7 +108,7 @@ export async function bindSessionCoordinatorSubscriptions(params: {
   store: SessionCoordinatorStore;
   runtimeStateRepository: RuntimeStateRepository;
   autoApprovingTaskIds: Set<string>;
-  syncTask: (sessionId: string, task: TaskRecord) => void;
+  syncTask: (sessionId: string, task: SessionTaskAggregate) => void;
 }) {
   params.orchestrator.subscribe(task => {
     if (!task.sessionId || !params.store.sessions.has(task.sessionId)) {
@@ -181,7 +182,7 @@ export async function bindSessionCoordinatorSubscriptions(params: {
 export async function persistSessionApprovalScopePolicy(params: {
   runtimeStateRepository: RuntimeStateRepository;
   session: ChatSessionRecord;
-  task: TaskRecord | undefined;
+  task: SessionTaskLike | undefined;
   dto: SessionApprovalDto;
 }) {
   await persistApprovalScopePolicy(params);

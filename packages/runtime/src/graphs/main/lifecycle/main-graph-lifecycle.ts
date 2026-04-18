@@ -1,17 +1,14 @@
-import {
-  ActionIntent,
+import type {
   AgentExecutionState,
-  AgentRole,
   ApprovalActionDto,
-  ApprovalDecision,
   CreateTaskDto,
   ReviewRecord,
-  SkillSearchStateRecord,
-  SubgraphId,
-  TaskRecord
-} from '@agent/shared';
-import { resolveWorkflowPreset } from '@agent/shared';
+  SkillSearchStateRecord
+} from '@agent/core';
+import { ActionIntent, ApprovalDecision } from '@agent/core';
+import { resolveWorkflowPreset } from '@agent/agents-supervisor';
 import { PendingExecutionRecord } from '@agent/memory';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 import {
   appendDiagnosisEvidence,
@@ -161,7 +158,7 @@ export class MainGraphLifecycle extends MainGraphLifecycleQueries {
   async applyApproval(
     taskId: string,
     dto: ApprovalActionDto,
-    decision: ApprovalDecision
+    decision: (typeof ApprovalDecision)[keyof typeof ApprovalDecision]
   ): Promise<TaskRecord | undefined> {
     await this.initialize();
     return applyApprovalAction(
@@ -222,7 +219,7 @@ export class MainGraphLifecycle extends MainGraphLifecycleQueries {
       goal?: string;
       routeFlow?: string;
       toolName?: string;
-      intent?: ActionIntent;
+      intent?: (typeof ActionIntent)[keyof typeof ActionIntent];
     }
   ): void {
     recordAgentError(task, error, context, {

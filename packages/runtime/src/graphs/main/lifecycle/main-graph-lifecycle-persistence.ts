@@ -1,11 +1,12 @@
-import { ActionIntent, TaskRecord, TaskStatus } from '@agent/shared';
+import { ActionIntent, TaskStatus } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 
 import { appendDiagnosisEvidence, upsertFreshnessEvidence } from '../knowledge/main-graph-knowledge';
 import { hydrateLifecycleSnapshot, persistLifecycleSnapshot } from './main-graph-lifecycle-state';
 
 export function enforceInterruptControllerPolicy(params: {
-  task: TaskRecord;
-  addTrace: (trace: TaskRecord['trace'], node: string, summary: string, data?: Record<string, unknown>) => void;
+  task: RuntimeTaskRecord;
+  addTrace: (trace: RuntimeTaskRecord['trace'], node: string, summary: string, data?: Record<string, unknown>) => void;
 }): void {
   const interrupt = params.task.activeInterrupt;
   if (!interrupt) {
@@ -48,7 +49,7 @@ export function enforceInterruptControllerPolicy(params: {
   }
 }
 
-export function finalizeLifecycleTaskState(task: TaskRecord): void {
+export function finalizeLifecycleTaskState(task: RuntimeTaskRecord): void {
   if (task.partialAggregation) {
     if (
       task.status === TaskStatus.COMPLETED ||
@@ -66,14 +67,14 @@ export function finalizeLifecycleTaskState(task: TaskRecord): void {
 }
 
 export function upsertLifecycleFreshnessEvidence(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   isFreshnessSensitiveGoal: (goal: string) => boolean,
   freshnessSummary: string | undefined
 ): void {
   upsertFreshnessEvidence(task, isFreshnessSensitiveGoal(task.goal), freshnessSummary);
 }
 
-export function buildSkillInstallPendingExecution(task: TaskRecord, normalizedGoal: string) {
+export function buildSkillInstallPendingExecution(task: RuntimeTaskRecord, normalizedGoal: string) {
   if (task.pendingApproval?.intent !== ActionIntent.INSTALL_SKILL) {
     return undefined;
   }

@@ -3,12 +3,13 @@ import {
   EvaluationResult,
   LearningCandidateRecord,
   LearningEvaluationRecord,
+  MemoryRecord,
   ReviewRecord,
   RuleRecord,
   SkillCard,
-  TaskRecord,
   TaskStatus
-} from '@agent/shared';
+} from '@agent/core';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 
 export function isDiagnosisTask(task: Pick<TaskRecord, 'goal' | 'context'>): boolean {
   const normalizedGoal = String(task.goal ?? '')

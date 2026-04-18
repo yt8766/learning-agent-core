@@ -6,7 +6,7 @@ import {
   MemoryRecord,
   ResolutionCandidateRecord,
   UserProfileRecord
-} from '@agent/shared';
+} from '@agent/core';
 
 import type { MemoryEventRepository } from './repositories/memory-event-repository';
 import type { MemoryEvidenceLinkRepository } from './repositories/memory-evidence-link.repository';

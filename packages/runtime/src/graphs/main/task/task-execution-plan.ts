@@ -1,4 +1,6 @@
-import type { ExecutionPlanRecord, ExecutionPlanMode, SpecialistDomain, TaskRecord } from '@agent/shared';
+import type { ExecutionPlanMode, SpecialistDomain } from '@agent/core';
+import type { TaskExecutionPlanRecord as ExecutionPlanRecord } from './task-architecture-helpers';
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 
 export function buildExecutionPlan(
   mode: ExecutionPlanMode,

@@ -1,16 +1,16 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import {
+import type {
   LocalSkillSuggestionRecord,
   RequestedExecutionHints,
-  RuntimeProfile,
   SkillCard,
   SkillManifestRecord,
   SkillSourceRecord,
   SkillTriggerReason,
   SpecialistDomain
-} from '@agent/shared';
+} from '@agent/core';
+import type { RuntimeProfile } from '@agent/config';
 
 import { buildLocalSkillSuggestions } from './local-skill-search';
 import { buildSkillsAddArgs, buildSkillsAddCommand } from './runtime-skill-cli';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { InvalidateKnowledgeDto, RetireKnowledgeDto, SupersedeKnowledgeDto } from '@agent/shared';
+import { InvalidateKnowledgeDto, RetireKnowledgeDto, SupersedeKnowledgeDto } from '@agent/core';
 
 import { RuntimeKnowledgeService } from '../runtime/services/runtime-knowledge.service';
 

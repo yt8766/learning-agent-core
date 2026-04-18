@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 
-import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
+import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
 
 import { LearningService } from '../services/learning.service';
 

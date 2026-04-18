@@ -6,6 +6,36 @@
   "types": "build/types/agent-core/src/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
+    "./agent-runtime-context": {
+      "import": {
+        "types": "./build/types/runtime/agent-runtime-context.d.ts",
+        "default": "./build/esm/runtime/agent-runtime-context.mjs"
+      },
+      "require": {
+        "types": "./build/types/runtime/agent-runtime-context.d.ts",
+        "default": "./build/cjs/runtime/agent-runtime-context.js"
+      }
+    },
+    "./base-agent": {
+      "import": {
+        "types": "./build/types/agents/base-agent.d.ts",
+        "default": "./build/esm/agents/base-agent.mjs"
+      },
+      "require": {
+        "types": "./build/types/agents/base-agent.d.ts",
+        "default": "./build/cjs/agents/base-agent.js"
+      }
+    },
+    "./streaming-execution": {
+      "import": {
+        "types": "./build/types/runtime/streaming-execution.d.ts",
+        "default": "./build/esm/runtime/streaming-execution.mjs"
+      },
+      "require": {
+        "types": "./build/types/runtime/streaming-execution.d.ts",
+        "default": "./build/cjs/runtime/streaming-execution.js"
+      }
+    },
     ".": {
       "import": {
         "types": "./build/types/agent-core/src/index.d.ts",
@@ -41,8 +71,6 @@
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/memory": "workspace:*",
-    "@agent/model": "workspace:*",
-    "@agent/shared": "workspace:*",
     "@agent/skill-runtime": "workspace:*",
     "@agent/tools": "workspace:*",
     "@langchain/langgraph": "^1.2.5",

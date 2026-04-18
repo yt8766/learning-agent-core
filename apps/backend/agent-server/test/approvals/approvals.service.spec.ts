@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ApprovalActionDto } from '@agent/shared';
+import type { ApprovalActionDto } from '@agent/core';
 
 import { ApprovalsService } from '../../src/modules/approvals/services/approvals.service';
 

@@ -1,8 +1,23 @@
-import type { ChatRouteRecord, TaskRecord } from '@agent/shared';
-import { TaskStatus } from '@agent/shared';
+import { TaskStatus } from '@agent/core';
+import type { ChatRouteRecord, ExecutionStepRecord } from '@agent/core';
 import type { MainRouteGraphHandlers, MainRouteGraphState } from '../../graphs/main-route.graph';
 import { markExecutionStepCompleted } from '../../workflows/execution-steps';
 import { resolveWorkflowRoute } from '../../workflows/workflow-route-registry';
+
+type MainRoutePreviewTask = {
+  id: string;
+  goal: string;
+  status: (typeof TaskStatus)[keyof typeof TaskStatus];
+  trace: [];
+  approvals: [];
+  agentStates: [];
+  messages: [];
+  createdAt: string;
+  updatedAt: string;
+  executionSteps?: ExecutionStepRecord[];
+  currentExecutionStep?: ExecutionStepRecord;
+  chatRoute?: ChatRouteRecord;
+};
 
 export async function runMainRouteNode(
   state: MainRouteGraphState,
@@ -20,7 +35,7 @@ export async function runMainRouteNode(
   });
 
   const timestamp = new Date().toISOString();
-  const routeState: TaskRecord = {
+  const routeState: MainRoutePreviewTask = {
     id: 'main-route-preview',
     goal: state.goal,
     status: TaskStatus.QUEUED,

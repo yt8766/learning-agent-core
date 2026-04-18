@@ -1,4 +1,4 @@
-import type { CreateTaskDto, ExecutionPlanMode } from '@agent/shared';
+import type { CreateTaskDto, ExecutionPlanMode } from '@agent/core';
 
 export function resolveRequestedMode(dto: CreateTaskDto): ExecutionPlanMode {
   if (dto.requestedMode) {

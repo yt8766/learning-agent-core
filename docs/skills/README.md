@@ -20,8 +20,8 @@
   - 仓库级 `skills/*` 代理技能文档
   - agent graph / flow
 - 依赖方向：
-  - 只依赖 `@agent/shared`、`@agent/config`
-  - 被 backend、agent-core 消费
+  - 只依赖 `@agent/core`、`@agent/config`
+  - 被 backend、runtime、agents 消费
 
 约定：
 

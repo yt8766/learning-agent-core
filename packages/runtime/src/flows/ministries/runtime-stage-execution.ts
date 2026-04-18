@@ -1,18 +1,20 @@
-import {
-  AgentRole,
-  ApprovalDecision,
+import type {
   CodeExecutionMinistryLike,
   DeliveryMinistryLike,
-  markExecutionStepBlocked,
   OpsExecutionMinistryLike,
+  TaskRecord as CoreTaskRecord
+} from '@agent/core';
+import { AgentRole, ApprovalDecision } from '@agent/core';
+import {
+  markExecutionStepBlocked,
   markExecutionStepCompleted,
-  markExecutionStepStarted,
-  TaskRecord,
-  normalizeExecutionMode
-} from '@agent/shared';
+  markExecutionStepStarted
+} from '@agent/agents-supervisor';
+import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
 
 import { PendingExecutionContext } from '../approval';
 import { resolveCapabilityRedirect } from '../../capabilities/capability-pool';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {
   announceSkillStep,
@@ -114,7 +116,7 @@ export async function runExecuteStage(
 
   const execution =
     executionMinistry === 'libu-delivery'
-      ? await libuDocs.execute(task, state.executionSummary ?? state.researchSummary ?? '')
+      ? await libuDocs.execute(task as CoreTaskRecord, state.executionSummary ?? state.researchSummary ?? '')
       : await executionMinistryRunner.execute(
           resolveExecutionDispatchObjective(state.dispatches) ??
             (executionMinistry === 'bingbu-ops'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { createDefaultToolRegistry, ToolRegistry } from '../../src/registry/tool-registry';
 

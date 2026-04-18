@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/shared';
+import { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/runtime';
 
 import { TASK_MESSAGE_EVENT_MAP, TRACE_EVENT_MAP } from '../src/utils/event-maps';
 import { buildContextCompressionResult } from '../src/utils/context-compression-pipeline';

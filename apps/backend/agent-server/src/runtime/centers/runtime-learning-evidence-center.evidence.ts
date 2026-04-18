@@ -1,4 +1,4 @@
-import { ChatCheckpointRecord, TaskRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, TaskRecord } from '@agent/core';
 
 import { extractBrowserReplay } from '../helpers/runtime-connector-utils';
 import { buildCheckpointRef } from '../helpers/runtime-derived-records';

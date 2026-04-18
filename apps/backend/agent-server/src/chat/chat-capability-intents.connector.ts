@@ -1,4 +1,4 @@
-import type { AppendChatMessageDto, ChatMessageRecord } from '@agent/shared';
+import type { AppendChatMessageDto, ChatMessageRecord } from '@agent/core';
 
 import { buildDefaultConnectorConfig, buildTemplatePlaceholder } from './chat-capability-intents.helpers';
 

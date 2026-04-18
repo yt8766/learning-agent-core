@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Post, Query } from '@nestjs/common';
 
-import { SkillStatus, SkillStatusValues } from '@agent/shared';
+import { SkillStatus, SkillStatusValues } from '@agent/core';
 
 import { SkillsService } from './skills.service';
 

@@ -1,12 +1,13 @@
-import { AgentRole, CurrentSkillExecutionRecord, DispatchInstruction, EvidenceRecord, TaskRecord } from '@agent/shared';
-
-import { mergeEvidence } from '@agent/shared';
+import type { CurrentSkillExecutionRecord, DispatchInstruction, EvidenceRecord } from '@agent/core';
+import { AgentRole, type AgentRoleValue } from '@agent/core';
+import { mergeEvidence } from '@agent/agents-supervisor';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 
 type SkillStage = 'research' | 'execute';
 
 type SkillStepTraceCallbacks = {
-  addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+  addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+  addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRoleValue) => void;
 };
 
 function findDispatchObjective(
@@ -33,7 +34,7 @@ export function resolveExecutionDispatchObjective(dispatches: DispatchInstructio
   );
 }
 
-export function announceSkillStep(task: TaskRecord, stage: SkillStage, callbacks: SkillStepTraceCallbacks) {
+export function announceSkillStep(task: RuntimeTaskRecord, stage: SkillStage, callbacks: SkillStepTraceCallbacks) {
   const currentSkillExecution = buildCurrentSkillExecution(task, stage);
   task.currentSkillExecution = currentSkillExecution;
   if (!currentSkillExecution) {
@@ -76,7 +77,7 @@ export function announceSkillStep(task: TaskRecord, stage: SkillStage, callbacks
   );
 }
 
-export function completeSkillStep(task: TaskRecord, stage: SkillStage) {
+export function completeSkillStep(task: RuntimeTaskRecord, stage: SkillStage) {
   if (!task.currentSkillExecution || task.currentSkillExecution.phase !== stage) {
     return;
   }
@@ -84,7 +85,7 @@ export function completeSkillStep(task: TaskRecord, stage: SkillStage) {
 }
 
 export function buildCurrentSkillExecution(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   stage: SkillStage,
   now = new Date().toISOString()
 ): CurrentSkillExecutionRecord | undefined {
@@ -115,7 +116,7 @@ export function buildCurrentSkillExecution(
 }
 
 export function setSkillStepStatus(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   stage: SkillStage,
   status: 'pending' | 'running' | 'completed' | 'blocked'
 ) {
@@ -141,7 +142,7 @@ export function setSkillStepStatus(
 }
 
 export function appendExecutionEvidence(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   toolName: string | undefined,
   executionResult: { outputSummary: string; rawOutput?: unknown } | undefined
 ) {
@@ -169,10 +170,10 @@ export function appendExecutionEvidence(
 }
 
 function resolveNextSkillStepIndex(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   attachmentId: string,
   stage: SkillStage,
-  steps: NonNullable<NonNullable<NonNullable<TaskRecord['capabilityAttachments']>[number]['metadata']>['steps']>
+  steps: NonNullable<NonNullable<NonNullable<RuntimeTaskRecord['capabilityAttachments']>[number]['metadata']>['steps']>
 ) {
   const preferredAssignedTo = stage === 'research' ? AgentRole.RESEARCH : AgentRole.EXECUTOR;
   const plannedSkillSubTasks = (task.plan?.subTasks ?? []).filter(
@@ -209,7 +210,7 @@ function parseSkillSubTaskStepIndex(subTaskId?: string) {
   return Number.isFinite(value) ? value : undefined;
 }
 
-function resolveCompiledSkillAttachment(task: TaskRecord) {
+function resolveCompiledSkillAttachment(task: RuntimeTaskRecord) {
   const attachments = task.capabilityAttachments ?? [];
   const requestedSkill = task.requestedHints?.requestedSkill?.toLowerCase();
   return (
@@ -233,7 +234,7 @@ function resolveCompiledSkillAttachment(task: TaskRecord) {
 }
 
 function buildExecutionEvidenceRecord(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   toolName: string,
   executionResult: { outputSummary: string; rawOutput?: unknown },
   payload: unknown,

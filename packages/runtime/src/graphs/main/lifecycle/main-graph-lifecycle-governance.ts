@@ -1,14 +1,13 @@
 import type {
-  CapabilityGovernanceProfileRecord,
   CapabilityAttachmentRecord,
   CreateTaskDto,
+  CapabilityGovernanceProfileRecord,
   GovernanceProfileRecord,
   RequestedExecutionHints,
   RuleRecord,
-  SkillSearchStateRecord,
   WorkerDefinition
-} from '@agent/shared';
-import { resolveSpecialistRoute, type resolveWorkflowPreset } from '@agent/shared';
+} from '@agent/core';
+import { resolveSpecialistRoute, type resolveWorkflowPreset } from '@agent/agents-supervisor';
 import type { MemoryRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
 import { archivalMemorySearchByParams } from '../../../memory/active-memory-tools';

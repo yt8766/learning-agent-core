@@ -1,14 +1,14 @@
 import type {
-  BootstrapSkillRecord,
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
-  MinistryId,
   RequestedExecutionHints,
   SpecialistLeadRecord,
-  TaskRecord,
+  WorkerDomain,
   WorkflowPresetDefinition
-} from '@agent/shared';
-import { listBootstrapSkills } from '@agent/shared';
+} from '@agent/core';
+import { listBootstrapSkills } from '@agent/agents-supervisor';
+import type { BootstrapSkillRecord } from '@agent/agents-supervisor';
+import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
 
 import {
   CONNECTOR_TEMPLATE_TO_DISPLAY,
@@ -27,7 +27,7 @@ export function buildInitialCapabilityState(params: {
   requestedHints?: RequestedExecutionHints;
   seedCapabilityAttachments?: CapabilityAttachmentRecord[];
   seedCapabilityAugmentations?: CapabilityAugmentationRecord[];
-}): Pick<TaskRecord, 'capabilityAttachments' | 'capabilityAugmentations'> {
+}): Pick<RuntimeTaskRecord, 'capabilityAttachments' | 'capabilityAugmentations'> {
   const attachments: CapabilityAttachmentRecord[] = [
     ...listBootstrapSkills().map(
       (skill: BootstrapSkillRecord): CapabilityAttachmentRecord => ({
@@ -60,10 +60,14 @@ export function buildInitialCapabilityState(params: {
 
   if (params.workflow) {
     for (const ministry of params.workflow.requiredMinistries) {
-      const canonicalMinistry = (normalizeMinistryId(ministry) ?? ministry) as MinistryId;
+      const normalizedMinistry = normalizeMinistryId(ministry);
+      if (!normalizedMinistry) {
+        continue;
+      }
+      const canonicalMinistry = normalizedMinistry as WorkerDomain;
       attachments.push({
         id: `ministry:${ministry}`,
-        displayName: resolveMinistryDisplay(ministry),
+        displayName: resolveMinistryDisplay(canonicalMinistry),
         kind: 'skill',
         owner: {
           ownerType: 'ministry-owned',
@@ -72,7 +76,7 @@ export function buildInitialCapabilityState(params: {
           capabilityType: 'skill',
           scope: 'task',
           trigger: 'workflow_required',
-          consumedByMinistry: ministry
+          consumedByMinistry: canonicalMinistry
         },
         enabled: true,
         permission:

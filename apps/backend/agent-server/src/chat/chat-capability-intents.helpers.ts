@@ -1,4 +1,4 @@
-import type { ConfigureConnectorDto } from '@agent/shared';
+import type { ConfigureConnectorDto } from '@agent/core';
 
 export type CapabilityIntent =
   | { kind: 'none' }

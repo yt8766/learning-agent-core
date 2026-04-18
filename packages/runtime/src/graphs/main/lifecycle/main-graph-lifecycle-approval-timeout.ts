@@ -1,13 +1,14 @@
-import { TaskRecord, TaskStatus } from '@agent/shared';
+import { TaskStatus } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 
 import type { LifecycleApprovalParams, LifecyclePersistCallbacks } from './main-graph-lifecycle-approval.types';
 
 export async function handleLifecycleInterruptTimeout(
   params: Pick<LifecycleApprovalParams, 'addTrace' | 'addProgressDelta' | 'transitionQueueState' | 'runTaskPipeline'> &
     LifecyclePersistCallbacks,
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   now: string
-): Promise<TaskRecord | undefined> {
+): Promise<RuntimeTaskRecord | undefined> {
   const interrupt = task.activeInterrupt;
   if (!interrupt || interrupt.status !== 'pending') {
     return undefined;
@@ -108,7 +109,7 @@ export async function handleLifecycleInterruptTimeout(
   return undefined;
 }
 
-export function applyTimeoutPlanDefaults(task: TaskRecord, now: string) {
+export function applyTimeoutPlanDefaults(task: RuntimeTaskRecord, now: string) {
   const questions = task.planDraft?.questions ?? [];
   const previousPlanMode = task.planMode;
   if (task.planDraft) {

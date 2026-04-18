@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
+import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
 
 import { LearningService } from '../../src/modules/learning/services/learning.service';
 

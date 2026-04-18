@@ -9,7 +9,7 @@ import {
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { RuntimeHost } from '../runtime/core/runtime.host';
 import { RuntimeSessionService } from '../runtime/services/runtime-session.service';

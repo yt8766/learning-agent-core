@@ -1,16 +1,14 @@
-import type {
-  CreateDocumentLearningJobDto,
-  CreateResearchLearningJobDto,
-  LearningConflictRecord,
-  LearningJob,
-  LearningQueueItem,
-  RuleRecord,
-  TaskRecord
-} from '@agent/shared';
+import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
+import type { LearningConflictRecord, RuleRecord } from '@agent/core';
 import type { MemoryRepository, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 
 import type { LearningFlow } from '../../../flows/learning';
 import type { MainGraphLearningJobsRuntime } from '../background/main-graph-learning-jobs';
+import type {
+  RuntimeLearningJob as LearningJob,
+  RuntimeLearningQueueItem as LearningQueueItem
+} from '../../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 export {
   enqueueLifecycleTaskLearning,
   listLifecycleLearningQueue,

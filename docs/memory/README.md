@@ -24,8 +24,8 @@
   - agent 主链编排
   - review / delivery / research 流程控制
 - 依赖方向：
-  - 只依赖 `@agent/shared`、`@agent/config`、`@agent/model`
-  - 被 backend、agent-core 消费
+  - 只依赖 `@agent/core`、`@agent/config`、`@agent/adapters`
+  - 被 backend、runtime、agents 消费
 - 公开入口：
   - 根入口：`@agent/memory`
 - 约定：

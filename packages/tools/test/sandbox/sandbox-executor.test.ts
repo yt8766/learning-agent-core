@@ -8,7 +8,7 @@ import {
   buildDataReportModuleScaffold,
   buildDataReportScaffold
 } from '@agent/report-kit';
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { LocalSandboxExecutor } from '../../src/sandbox/sandbox-executor';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';

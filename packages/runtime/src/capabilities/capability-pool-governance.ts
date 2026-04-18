@@ -1,5 +1,6 @@
-import type { CapabilityAttachmentRecord, TaskRecord, WorkerDomain, WorkflowPresetDefinition } from '@agent/shared';
-import { normalizeMinistryId } from '@agent/shared';
+import type { CapabilityAttachmentRecord, WorkflowPresetDefinition, WorkerDomain } from '@agent/core';
+import { normalizeMinistryId } from '../runtime/runtime-architecture-helpers';
+import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
 
 import {
   getAttachmentTrust,
@@ -11,7 +12,7 @@ import {
 } from './capability-pool.shared';
 
 export function buildWorkerSelectionPreferences(
-  task: Pick<TaskRecord, 'capabilityAttachments' | 'specialistLead' | 'requestedHints' | 'usedInstalledSkills'>
+  task: Pick<RuntimeTaskRecord, 'capabilityAttachments' | 'specialistLead' | 'requestedHints' | 'usedInstalledSkills'>
 ) {
   const preferredConnectorTags = new Set<string>();
   const preferredTags = new Set<string>();
@@ -70,7 +71,7 @@ export function buildWorkerSelectionPreferences(
 
 export function buildMinistryStagePreferences(
   task: Pick<
-    TaskRecord,
+    RuntimeTaskRecord,
     | 'capabilityAttachments'
     | 'capabilityAugmentations'
     | 'requestedHints'

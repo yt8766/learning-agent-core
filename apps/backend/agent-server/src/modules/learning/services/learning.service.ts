@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/shared';
+import { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
 
 import { RuntimeCentersService } from '../../../runtime/centers/runtime-centers.service';
 import { RuntimeTaskService } from '../../../runtime/services/runtime-task.service';

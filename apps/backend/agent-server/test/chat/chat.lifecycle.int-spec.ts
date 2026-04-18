@@ -6,7 +6,7 @@ import type {
   ChatSessionRecord,
   LearningConfirmationDto,
   SessionApprovalDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { ChatController } from '../../src/chat/chat.controller';
 import { ChatService } from '../../src/chat/chat.service';

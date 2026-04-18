@@ -1,4 +1,5 @@
-import { RuntimeProfile, WorkerDefinition } from '@agent/shared';
+import type { RuntimeProfile } from '@agent/config';
+import type { WorkerDefinition } from '@agent/core';
 
 import { describeWorkerProfilePolicy } from './profile-policy';
 

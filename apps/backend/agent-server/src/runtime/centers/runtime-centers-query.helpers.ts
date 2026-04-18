@@ -1,4 +1,4 @@
-import { normalizeExecutionMode } from '@agent/shared';
+import { normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
 
 export function resolveInterruptPayloadField(
   interrupt: any,

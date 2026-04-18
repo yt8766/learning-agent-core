@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
 
-import { SemanticCacheRepository } from '@agent/memory';
-
 import { ChatMessage, GenerateTextOptions, LlmProvider, ModelInfo } from './llm-provider';
 import { ModelRouter } from './model-router';
 import { ProviderRegistry } from './provider-registry';
+import { SemanticCacheRepository } from './semantic-cache';
 import { withLlmRetry } from '../utils/retry';
 
 function buildSemanticCacheKey(messages: ChatMessage[], options: GenerateTextOptions, resolvedModelId: string): string {

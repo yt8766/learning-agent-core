@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { ResolutionCandidateRecord } from '@agent/shared';
+import type { ResolutionCandidateRecord } from '@agent/core';
 
 export interface ResolutionCandidateRepository {
   append(record: ResolutionCandidateRecord): Promise<void>;

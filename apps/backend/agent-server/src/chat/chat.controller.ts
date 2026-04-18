@@ -21,7 +21,7 @@ import {
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto
-} from '@agent/shared';
+} from '@agent/core';
 
 import { DirectChatRequestDto } from './chat.direct.dto';
 import { ChatService } from './chat.service';

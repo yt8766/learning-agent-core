@@ -1,26 +1,29 @@
 import {
   AgentRole,
+  type AgentRoleValue,
   ApprovalDecision,
   ApprovalResumeInput,
-  CodeExecutionMinistryLike,
   CreateTaskDto,
-  EvaluationResult,
-  MinistryContractMeta,
-  markExecutionStepCompleted,
-  markExecutionStepResumed,
   QueueStateRecord,
-  ReviewMinistryLike,
   ReviewRecord,
-  RouterMinistryLike,
-  TaskRecord,
-  TaskStatus,
-  WorkflowPresetDefinition
-} from '@agent/shared';
-import { getMinistryDisplayName } from '@agent/shared';
+  TaskStatus
+} from '@agent/core';
+import { markExecutionStepCompleted, markExecutionStepResumed } from '@agent/agents-supervisor';
+import type { EvaluationResult } from '@agent/core';
+import type { WorkflowPresetDefinition } from '@agent/core';
+import { normalizeSpecialistFinding } from '@agent/core';
+import type {
+  CodeExecutionMinistryLike,
+  MinistryContractMeta,
+  ReviewMinistryLike,
+  RouterMinistryLike
+} from '@agent/core';
+import { getMinistryDisplayName } from '../../../runtime/runtime-architecture-helpers';
 
 import { buildMinistryStagePreferences } from '../../../capabilities/capability-pool';
 import { executeApprovedAction, PendingExecutionContext } from '../../../flows/approval';
 import { createApprovalRecoveryGraph } from '../../recovery.graph';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 import { TaskCancelledError } from '../task/main-graph-task-runtime-errors';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 import { createInitialState } from '../../chat.graph';
@@ -28,35 +31,35 @@ import { createInitialState } from '../../chat.graph';
 export class MainGraphExecutionHelpers {
   constructor(
     private readonly createAgentContext: (taskId: string, goal: string, flow: 'chat' | 'approval' | 'learning') => any,
-    private readonly persistAndEmitTask: (task: TaskRecord) => Promise<void>,
-    private readonly ensureTaskNotCancelled: (task: TaskRecord) => void,
+    private readonly persistAndEmitTask: (task: RuntimeTaskRecord) => Promise<void>,
+    private readonly ensureTaskNotCancelled: (task: RuntimeTaskRecord) => void,
     private readonly syncTaskRuntime: (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       state: Pick<RuntimeAgentGraphState, 'currentStep' | 'retryCount' | 'maxRetries'>
     ) => void,
-    private readonly transitionQueueState: (task: TaskRecord, status: QueueStateRecord['status']) => void,
+    private readonly transitionQueueState: (task: RuntimeTaskRecord, status: QueueStateRecord['status']) => void,
     private readonly setSubTaskStatus: (
-      task: TaskRecord,
-      role: AgentRole,
+      task: RuntimeTaskRecord,
+      role: AgentRoleValue,
       status: 'pending' | 'running' | 'completed' | 'blocked'
     ) => void,
-    private readonly upsertAgentState: (task: TaskRecord, nextState: any) => void,
+    private readonly upsertAgentState: (task: RuntimeTaskRecord, nextState: any) => void,
     private readonly addMessage: (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       type: 'summary' | 'review_result' | 'execution_result',
       content: string,
-      from: AgentRole
+      from: AgentRoleValue
     ) => void,
     private readonly addTrace: (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       node: string,
       summary: string,
       data?: Record<string, unknown>
     ) => void,
-    private readonly addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void,
+    private readonly addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRoleValue) => void,
     private readonly createApprovalRecoveryMinistry: (taskId: string, goal: string) => CodeExecutionMinistryLike,
     private readonly getRunTaskPipeline: () => (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       dto: CreateTaskDto,
       options: {
         mode: 'initial' | 'retry' | 'approval_resume' | 'interrupt_resume';
@@ -66,7 +69,7 @@ export class MainGraphExecutionHelpers {
     ) => Promise<void>
   ) {}
 
-  async runDirectReplyTask(task: TaskRecord, libu: RouterMinistryLike): Promise<void> {
+  async runDirectReplyTask(task: RuntimeTaskRecord, libu: RouterMinistryLike): Promise<void> {
     this.syncTaskRuntime(task, {
       currentStep: 'direct_reply',
       retryCount: task.retryCount ?? 0,
@@ -123,7 +126,7 @@ export class MainGraphExecutionHelpers {
   }
 
   async runApprovalRecoveryPipeline(
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     dto: CreateTaskDto,
     pending: PendingExecutionContext
   ): Promise<void> {
@@ -208,7 +211,7 @@ export class MainGraphExecutionHelpers {
   }
 
   createGraphStartState(
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     dto: CreateTaskDto,
     libu: RouterMinistryLike,
     options: { mode: 'initial' | 'retry' | 'approval_resume' | 'interrupt_resume'; pending?: PendingExecutionContext }
@@ -232,15 +235,15 @@ export class MainGraphExecutionHelpers {
   }
 
   async reviewExecution(
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     xingbu: ReviewMinistryLike,
     executionResult: RuntimeAgentGraphState['executionResult'],
     executionSummary: string
   ): Promise<{
     review: ReviewRecord;
     evaluation: EvaluationResult;
-    critiqueResult?: TaskRecord['critiqueResult'];
-    specialistFinding?: NonNullable<TaskRecord['specialistFindings']>[number];
+    critiqueResult?: RuntimeTaskRecord['critiqueResult'];
+    specialistFinding?: NonNullable<RuntimeTaskRecord['specialistFindings']>[number];
     contractMeta: MinistryContractMeta;
   }> {
     this.setSubTaskStatus(task, AgentRole.REVIEWER, 'running');
@@ -257,10 +260,20 @@ export class MainGraphExecutionHelpers {
       parseStatus: reviewed.contractMeta.parseStatus
     });
     this.setSubTaskStatus(task, AgentRole.REVIEWER, 'completed');
-    return reviewed;
+    return {
+      ...reviewed,
+      specialistFinding: reviewed.specialistFinding
+        ? (normalizeSpecialistFinding(
+            reviewed.specialistFinding as Parameters<typeof normalizeSpecialistFinding>[0]
+          ) as NonNullable<RuntimeTaskRecord['specialistFindings']>[number])
+        : undefined
+    };
   }
 
-  resolveResearchMinistry(task: TaskRecord, workflow?: WorkflowPresetDefinition): 'hubu-search' | 'libu-delivery' {
+  resolveResearchMinistry(
+    task: RuntimeTaskRecord,
+    workflow?: WorkflowPresetDefinition
+  ): 'hubu-search' | 'libu-delivery' {
     return buildMinistryStagePreferences({
       capabilityAttachments: task.capabilityAttachments,
       capabilityAugmentations: task.capabilityAugmentations,
@@ -273,7 +286,7 @@ export class MainGraphExecutionHelpers {
   }
 
   resolveExecutionMinistry(
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     workflow?: WorkflowPresetDefinition
   ): 'gongbu-code' | 'bingbu-ops' | 'libu-delivery' {
     return buildMinistryStagePreferences({
@@ -287,7 +300,10 @@ export class MainGraphExecutionHelpers {
     }).execution;
   }
 
-  resolveReviewMinistry(task: TaskRecord, workflow?: WorkflowPresetDefinition): 'xingbu-review' | 'libu-delivery' {
+  resolveReviewMinistry(
+    task: RuntimeTaskRecord,
+    workflow?: WorkflowPresetDefinition
+  ): 'xingbu-review' | 'libu-delivery' {
     return buildMinistryStagePreferences({
       capabilityAttachments: task.capabilityAttachments,
       capabilityAugmentations: task.capabilityAugmentations,

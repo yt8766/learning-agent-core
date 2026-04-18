@@ -1,4 +1,4 @@
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/shared';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
 
 export interface ExecutionWatchdogObservation {
   taskId: string;

@@ -1,37 +1,21 @@
 export * from './providers';
-export * from './spec/governance';
-export * from './spec/platform-console';
-export * from './spec/workflow-route';
-export * from './spec/delivery';
-export * from './spec/execution-trace';
-export * from './spec/architecture-records';
-export * from './spec/data-report';
-export * from './spec/data-report-json';
-export * from './spec/data-report-json-schema';
-export * from './spec/connectors';
-export * from './spec/tasking-chat';
-export * from './spec/tasking-planning';
-export * from './spec/tasking-orchestration';
-export * from './spec/tasking-runtime-state';
-export * from './spec/tasking-checkpoint';
-export * from './spec/tasking-task-record';
-export * from './spec/tasking-session';
-export * from './spec/skills';
-export type { SharedPlatformConsoleRecord } from './contracts/platform-console';
-export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture-records';
+export * from './contracts/chat/index';
+export * from './contracts/ministries/index';
+export * from './contracts/execution/index';
+export type { SharedPlatformConsoleRecord } from './contracts/platform-console/index';
+export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture/index';
 export type {
   DataReportSandpackGenerateInput,
   DataReportSandpackGenerateResult,
   DataReportSandpackGraphHandlers,
   DataReportSandpackGraphState
-} from './contracts/data-report';
+} from './contracts/data-report/index';
 export type {
   DataReportJsonGenerateInput,
   DataReportJsonGraphHandlers,
   DataReportJsonGraphState,
   DataReportJsonNodeModelPolicy
-} from './contracts/data-report-json';
-export * from './helpers/governance';
+} from './contracts/data-report/index';
 export {
   ActionIntent,
   ActionIntentSchema,
@@ -43,6 +27,8 @@ export {
   ChatRoleSchema,
   ChatRoleValues,
   ChatRouteRecordSchema,
+  ExecutionModeSchema,
+  ExecutionModeValues,
   ExecutionPlanModeSchema,
   ExecutionPlanModeValues,
   ExecutionStepRecordSchema,
@@ -64,39 +50,24 @@ export {
   TaskStatusSchema,
   TrustClassSchema,
   TrustClassValues,
-  WorkflowPresetDefinitionSchema
-} from './spec/primitives';
-export * from './types/workflow-route';
-export * from './types/chat-graph';
-export * from './types/data-report';
-export * from './types/data-report-json';
-export * from './types/data-report-json-schema';
-export * from './types/llm-provider-like';
+  WorkflowPresetDefinitionSchema,
+  WorkflowVersionRecordSchema
+} from './primitives';
+export { AgentRole, AgentRoleSchema, SubgraphIdSchema, SubgraphIdValues } from './primitives';
+export type { AgentRole as AgentRoleValue, SubgraphId as SubgraphIdValue } from './primitives';
 export * from './memory';
-export * from './types/architecture-records';
-export * from './types/knowledge';
-export * from './types/skills';
-export * from './types/execution-trace';
-export * from './types/connectors';
-export * from './types/delivery';
-export * from './types/governance';
-export * from './types/platform-console';
-export * from './types/tasking';
-export * from './types/tasking-planning';
-export * from './types/tasking-orchestration';
-export * from './types/tasking-chat';
-export * from './types/tasking-runtime-state';
-export * from './types/tasking-session';
-export * from './types/tasking-thought-graph';
-export * from './types/tasking-checkpoint';
-export * from './types/tasking-task-record';
 export type {
   ApprovalScope,
   ApprovalStatus,
   ChatRole,
   ChatRouteRecord,
+  ExecutionMode,
   ExecutionPlanMode,
+  ExecutionStepOwner,
   ExecutionStepRecord,
+  ExecutionStepRoute,
+  ExecutionStepStage,
+  ExecutionStepStatus,
   LearningSourceType,
   LlmUsageModelRecord,
   LlmUsageRecord,
@@ -108,8 +79,22 @@ export type {
   RiskLevel,
   SkillStatus,
   TrustClass,
-  WorkflowPresetDefinition
-} from './types/primitives';
-export * from './shared/schemas/specialist-finding-schema';
-export * from './shared/schemas/critique-result-schema';
-export * from './approval/pending-execution-context';
+  WorkflowPresetDefinition,
+  WorkflowVersionRecord
+} from './primitives/types/primitives.types';
+export * from './review';
+export * from './governance';
+export * from './knowledge';
+export * from './channels';
+export * from './connectors';
+export * from './workflow-route';
+export * from './delivery';
+export * from './execution-trace';
+export * from './skills';
+export * from './skills-search';
+export * from './platform-console';
+export * from './architecture';
+export * from './primitives';
+export * from './tasking';
+export * from './data-report';
+export * from './contracts/approval/index';

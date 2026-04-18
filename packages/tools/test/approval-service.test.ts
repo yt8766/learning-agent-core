@@ -1,7 +1,8 @@
 ﻿import { describe, expect, it, vi } from 'vitest';
 
 import { loadSettings } from '@agent/config';
-import { ActionIntent, type ToolDefinition } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
+import type { ToolDefinition } from '@agent/core';
 
 import { ApprovalService } from '../src/approval/approval-service';
 import * as approvalExports from '../src/approval';

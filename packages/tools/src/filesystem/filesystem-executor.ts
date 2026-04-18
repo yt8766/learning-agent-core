@@ -1,7 +1,7 @@
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, relative, resolve } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/shared';
+import type { ToolExecutionRequest } from '@agent/core';
 
 import { collectFiles, toWorkspacePath } from '../sandbox/sandbox-executor-utils';
 

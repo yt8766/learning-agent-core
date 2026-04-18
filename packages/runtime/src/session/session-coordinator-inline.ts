@@ -1,4 +1,4 @@
-import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/core';
 
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 

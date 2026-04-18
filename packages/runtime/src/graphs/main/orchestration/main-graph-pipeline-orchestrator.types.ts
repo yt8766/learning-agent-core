@@ -1,19 +1,12 @@
-import type {
-  ActionIntent,
-  AgentRole,
-  ApprovalResumeInput,
-  CreateTaskDto,
-  ReviewMinistryLike,
-  RouterMinistryLike,
-  SourcePolicyMode,
-  TaskRecord,
-  ToolUsageSummaryRecord,
-  WorkflowPresetDefinition
-} from '@agent/shared';
+import type { AgentRoleValue as AgentRole, SourcePolicyMode } from '@agent/core';
+import type { ApprovalResumeInput, CreateTaskDto, ToolUsageSummaryRecord, WorkflowPresetDefinition } from '@agent/core';
+import { ActionIntent } from '@agent/core';
+import type { ReviewMinistryLike, RouterMinistryLike } from '@agent/core';
 import type { BaseCheckpointSaver } from '@langchain/langgraph';
 
 import type { PendingExecutionContext } from '../../../flows/approval';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
 
 export type TaskMode = 'initial' | 'retry' | 'approval_resume';
@@ -167,7 +160,7 @@ export interface TaskPipelineCallbacks {
       goal?: string;
       routeFlow?: string;
       toolName?: string;
-      intent?: ActionIntent;
+      intent?: (typeof ActionIntent)[keyof typeof ActionIntent];
     }
   ) => void;
 }

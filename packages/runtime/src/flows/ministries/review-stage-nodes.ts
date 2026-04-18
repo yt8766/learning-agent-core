@@ -1,16 +1,16 @@
-import {
-  AgentRole,
+import type {
   DeliveryMinistryLike,
-  EvaluationResult,
   ReviewMinistryLike,
-  ReviewRecord,
   RouterMinistryLike,
-  TaskRecord,
-  TaskStatus,
+  TaskRecord as CoreTaskRecord
+} from '@agent/core';
+import { AgentRole, EvaluationResult, ReviewRecord, TaskStatus } from '@agent/core';
+import {
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted
-} from '@agent/shared';
+} from '@agent/agents-supervisor';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {
   applyCapabilityTrustFromGovernance,
@@ -57,7 +57,10 @@ export async function runReviewStage(
   const reviewed: NormalizedReviewResult =
     reviewMinistry === 'libu-delivery'
       ? {
-          ...libuDocs.review(task, state.executionSummary ?? task.result ?? 'No execution summary available.'),
+          ...libuDocs.review(
+            task as CoreTaskRecord,
+            state.executionSummary ?? task.result ?? 'No execution summary available.'
+          ),
           critiqueResult: undefined,
           specialistFinding: undefined,
           contractMeta: {
@@ -262,7 +265,10 @@ export async function runReviewStage(
   applyCapabilityTrustFromGovernance(task);
   const docsSummary =
     finalReviewState.decision === 'pass' && callbacks.shouldRunLibuDocsDelivery(task.resolvedWorkflow)
-      ? libuDocs.buildDelivery(task, state.executionSummary ?? task.result ?? 'No execution summary available.')
+      ? libuDocs.buildDelivery(
+          task as CoreTaskRecord,
+          state.executionSummary ?? task.result ?? 'No execution summary available.'
+        )
       : undefined;
   if (docsSummary) {
     callbacks.addTrace(task, 'ministry_reported', docsSummary, { ministry: 'libu-delivery' });

@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
 
 import { RuntimeProfile } from '@agent/config';
-import { RuntimeProfile as SharedRuntimeProfile, SkillManifestRecord, SkillSourceRecord } from '@agent/shared';
+import { type SkillManifestRecord, type SkillSourceRecord } from '@agent/core';
 
 interface SyncContext {
   workspaceRoot: string;
@@ -143,7 +143,7 @@ export class SkillSourceSyncService {
       sourceId: manifest.sourceId || sourceId,
       metadata: {
         ...(manifest.metadata ?? {}),
-        syncedProfile: this.context.profile as SharedRuntimeProfile
+        syncedProfile: this.context.profile as RuntimeProfile
       }
     }));
   }

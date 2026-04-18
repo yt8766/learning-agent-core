@@ -1,4 +1,4 @@
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { withReactiveContextRetry } from '../../../utils/reactive-context-retry';
@@ -6,8 +6,10 @@ import { generateObjectWithRetry } from '../../../utils/llm-retry';
 import { GONGBU_EXECUTION_SYSTEM_PROMPT } from './prompts/execution-prompts';
 import { ExecutionActionSchema } from './schemas/execution-action-schema';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 export type GongbuExecutionSelection = {
-  intent: ActionIntent;
+  intent: ActionIntentValue;
   toolName: string;
   rationale: string;
   actionPrompt: string;

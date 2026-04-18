@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const createOpenAIEmbeddingModelMock = vi.fn();
 const createRuntimeEmbeddingProviderMock = vi.fn();
 
-vi.mock('@agent/model', () => ({
+vi.mock('@agent/adapters', () => ({
   createOpenAIEmbeddingModel: (...args: unknown[]) => createOpenAIEmbeddingModelMock(...args),
   createRuntimeEmbeddingProvider: (...args: unknown[]) => createRuntimeEmbeddingProviderMock(...args)
 }));
@@ -16,7 +16,7 @@ describe('HttpEmbeddingProvider', () => {
     createRuntimeEmbeddingProviderMock.mockReset();
   });
 
-  it('delegates embedding model creation to @agent/model', async () => {
+  it('delegates embedding model creation to @agent/adapters', async () => {
     const delegated = {
       embedQuery: vi.fn(async () => [0.1, 0.2, 0.3]),
       embedDocuments: vi.fn(async () => [[0.1, 0.2, 0.3]])
@@ -42,7 +42,7 @@ describe('HttpEmbeddingProvider', () => {
     });
   });
 
-  it('creates providers from runtime-like settings through @agent/model', () => {
+  it('creates providers from runtime-like settings through @agent/adapters', () => {
     const delegated = {
       embedQuery: vi.fn(),
       embedDocuments: vi.fn()

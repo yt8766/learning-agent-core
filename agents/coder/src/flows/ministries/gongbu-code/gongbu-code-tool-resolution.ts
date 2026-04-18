@@ -1,11 +1,13 @@
-import { ActionIntent, type ToolDefinition } from '@agent/shared';
+import { ActionIntent, type ToolDefinition } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { isToolAllowedInExecutionMode } from '../../../capabilities/execution-mode-guard';
 import type { GongbuExecutionSelection } from './gongbu-code-selection-service';
 import { buildScaffoldWorkflowToolInput, resolveScaffoldToolName } from './gongbu-code-scaffold';
 
-export function selectGongbuIntent(goal: string): ActionIntent {
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
+export function selectGongbuIntent(goal: string): ActionIntentValue {
   const normalizedGoal = goal.toLowerCase();
   if (
     normalizedGoal.includes('delete') ||
@@ -201,7 +203,7 @@ export function selectPreferredResearchSource(context: AgentRuntimeContext) {
 export function resolveGongbuToolSelection(params: {
   context: AgentRuntimeContext;
   llmSelection: GongbuExecutionSelection | null;
-  intent: ActionIntent;
+  intent: ActionIntentValue;
   candidateTools: ToolDefinition[];
 }): ToolDefinition | undefined {
   const { context, llmSelection, intent, candidateTools } = params;

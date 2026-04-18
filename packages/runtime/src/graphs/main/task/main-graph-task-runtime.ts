@@ -1,28 +1,29 @@
 import { randomUUID } from 'node:crypto';
 
-import {
+import { loadSettings } from '@agent/config';
+import type {
   AgentExecutionState,
-  AgentMessage,
-  AgentRole,
+  AgentMessageRecord as AgentMessage,
   CapabilityOwnerType,
   ExecutionTrace,
-  MinistryId,
   ModelRouteDecision,
   QueueStateRecord,
-  SubgraphId,
-  TaskRecord,
-  TaskStatus,
   ToolUsageSummaryRecord,
+  WorkerDomain,
   WorkflowPresetDefinition
-} from '@agent/shared';
-import { loadSettings } from '@agent/config';
+} from '@agent/core';
+import { TaskStatus } from '@agent/core';
 import { McpClientManager, ToolRegistry } from '@agent/tools';
-import { resolveWorkflowRoute } from '@agent/shared';
+import { resolveWorkflowRoute } from '@agent/agents-supervisor';
 import { buildWorkerSelectionPreferences } from '../../../capabilities/capability-pool';
+import { normalizeMinistryId } from '../../../capabilities/capability-pool.shared';
 import { WorkerRegistry, WorkerSelectionConstraints } from '../../../governance/worker-registry';
 import { ModelRoutingPolicy } from '../../../governance/model-routing-policy';
 import { describeConnectorProfilePolicy } from '../../../governance/profile-policy';
 import type { RuntimeAgentGraphState } from '../../../types/chat-graph';
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
+import { AgentRole } from './task-architecture-helpers';
+import type { SubgraphIdValue as SubgraphId } from './task-architecture-helpers';
 import {
   assertTaskBudgetAllowsProgress,
   createTaskQueueState,
@@ -117,12 +118,15 @@ export class MainGraphTaskRuntime {
   }
 
   resolveWorkflowRoutes(task: TaskRecord, workflow?: WorkflowPresetDefinition): ModelRouteDecision[] {
-    const ministries: MinistryId[] = workflow?.requiredMinistries ?? [
-      'libu-governance',
-      'hubu-search',
-      'gongbu-code',
-      'xingbu-review'
-    ];
+    const ministries: WorkerDomain[] = workflow?.requiredMinistries
+      ? workflow.requiredMinistries.reduce<WorkerDomain[]>((list, ministry) => {
+          const normalized = normalizeMinistryId(ministry);
+          if (normalized) {
+            list.push(normalized);
+          }
+          return list;
+        }, [])
+      : ['libu-governance', 'hubu-search', 'gongbu-code', 'xingbu-review'];
     const selectionConstraints = this.buildWorkerSelectionConstraints(task);
     const routes = ministries
       .map(ministry =>

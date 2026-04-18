@@ -8,6 +8,7 @@
 - [项目规范总览](/docs/project-conventions.md)
 - [架构总览](/docs/ARCHITECTURE.md)
 - [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [验证体系规范](/docs/evals/verification-system-guidelines.md)
 
 ## 1. 产品定位
 
@@ -48,7 +49,7 @@
 - 子 Agent 必须有稳定 graph 入口，默认放在对应真实宿主：
   - runtime 主链图：`packages/runtime/src/graphs/<domain>.graph.ts`
   - 专项 agent 图：`agents/<domain>/src/graphs/<domain>.graph.ts`
-- 子 Agent 的节点、prompt、schema、解析、校验、重试策略放在对应宿主的 `src/flows/<domain>/`；跨节点复用或 graph 共享的领域类型优先放在 `packages/core/src`、`packages/shared/src` 或宿主包的 `src/types/`。
+- 子 Agent 的节点、prompt、schema、解析、校验、重试策略放在对应宿主的 `src/flows/<domain>/`；跨节点复用或 graph 共享的领域类型优先放在 `packages/core/src` 或宿主包的 `src/types/`。
 - `src/flows/<domain>/prompts/` 只放提示词与提示词格式化函数，不要再把长系统提示词散落在 service、workflow 或 graph 文件里。
 - `src/flows/<domain>/schemas/` 必须承载模型输出的结构约束；只要子 Agent 有稳定 JSON 契约，就必须用 schema 显式校验，不能只靠 `JSON.parse` + 手写 if。
 - 当 `flows/<domain>/` 下节点数量或单文件复杂度继续增长时，必须拆到 `src/flows/<domain>/nodes/`，graph 只做 wiring，不要把几十个节点继续堆回单文件。
@@ -56,7 +57,7 @@
 - `agents/supervisor/src/workflows/` 只放 workflow 路由、预设、轻量契约和分类策略，不放可执行子 Agent 主链。
 - 后端 controller/service 只做 HTTP/SSE/鉴权/运行时装配，不允许直接内联子 Agent 的系统提示词、模型输出解析、结构校验或长流程节点。
 - 报表生成默认走 `graphs/data-report.graph.ts` + `flows/data-report/*`，不能退回 `chat.service.ts` 或 `workflows/*` 胶水实现。
-- `data-report` 的领域类型统一放在 `packages/core/src`、`packages/shared/src` 或 `agents/data-report/src/types/`，不要继续放在零散 flow 文件下。
+- `data-report` 的领域类型统一放在 `packages/core/src` 或 `agents/data-report/src/types/`，不要继续放在零散 flow 文件下。
 - `data-report` 的确定性蓝图/骨架/路由/组装能力只允许放在 `packages/report-kit`；Graph 编译、节点编排、preview/runtime facade 只允许放在 `agents/data-report` 与 `packages/runtime`；`apps/backend/*/service` 只能调用这些 facade，不得直接拼 `report-kit` 流程、直接 `compile().invoke()` graph，或在 service 内重建 preview/sandpack/report-schema 子流程。
 
 ## 3. 前端实现原则
@@ -172,9 +173,12 @@ skills/
 ## 6.0 接口稳定性与可扩展封装规范
 
 - 所有新增或修改实现，默认优先面向稳定接口编程，而不是面向具体调用方、临时页面或单次流程硬编码。
-- `packages/core` 与 `packages/shared` 如果承载同一类稳定 contract，默认继续把主 contract 收到 `packages/core`；`packages/shared` 只保留展示组合、默认类型参数和 compat re-export，不允许长期双轨维护。
+- `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移台账保留在 `docs/shared/*`，后续不要再新增 `@agent/shared` 或 `packages/shared/*`。
+- 稳定 contract 默认收敛到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 主实现必须落在真实宿主，不允许重新引入第二个 shared 包层。
 - `packages/core` 默认采用 schema-first：所有稳定 JSON / DTO / event / payload contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型；不要继续在 `core` 新增只有 interface/type、没有 schema 的长期公共 contract。
-- 一旦发现 `packages/shared` 与 `packages/core` 存在“同功能、同语义、同消费边界”的 contract，必须以 `packages/core` 为唯一主宿主，并把 `packages/shared` 改成 compat re-export；禁止长期保留两份平行主定义。
+- 发现稳定 contract 与运行时聚合/展示类型混放时，必须继续拆成 `core stable contract + 宿主本地 aggregate/facade`，禁止把 compat 重新堆回公共包。
+- `helper / workflow / prompt / bootstrap registry` 的主实现必须落在真实宿主，不允许迁进 `packages/core` 伪共享；默认落点为 `agents/supervisor`、`packages/runtime`、`packages/skill-runtime` 等真实业务包。
+- 如需兼容历史入口，只允许在真实宿主或应用本地保留 thin compat re-export，不允许恢复 `@agent/shared` 包名。
 - 对外暴露的模块必须先定义清晰边界：输入、输出、错误语义、版本兼容策略，再落具体实现；禁止先把实现写散，再事后补接口包装。
 - 涉及跨包、跨模块、前后端、graph 与 tool、service 与 repository 之间的协作时，优先抽象稳定 `contract / adapter / facade`，避免调用方直接耦合底层细节。
 - 高变动逻辑与稳定契约必须分离：易变部分下沉到 `flows/`、`runtime/`、`adapters/`、`repositories/` 等内部实现；稳定部分通过 `@agent/*` 根入口、DTO、schema、facade 对外暴露。
@@ -238,6 +242,7 @@ pnpm --dir apps/backend/agent-server build
 
 ## 7. 完成后验证
 
+- [验证体系规范](/docs/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须按该文档执行验证，不允许跳过为“局部小改”“只改一个文件”或“只是重构”。
 - 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前就必须补齐五层验证，不允许只改代码不校验。
 - 五层验证固定为：
   - `Type`：TypeScript 静态类型检查
@@ -246,7 +251,8 @@ pnpm --dir apps/backend/agent-server build
 - `Demo`：最小可运行闭环
 - `Integration`：跨模块、跨包、跨节点协同验证
 - 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
-- 当前根级 `pnpm verify` 必须覆盖 `pnpm test:spec` 与 `pnpm test:demo`，确保 `Spec` 和 `Demo` 两层都不是只停留在口头约定或目录存在。
+- 当前根级 `pnpm verify` 必须覆盖 `pnpm lint:prettier:check`、`pnpm lint:eslint:check`、`pnpm test:spec` 与 `pnpm test:demo`，确保治理门槛、`Spec` 和 `Demo` 都不是只停留在口头约定或目录存在。
+- 每次改动文件时，都必须先按 [验证体系规范](/docs/evals/verification-system-guidelines.md) 判断本轮需要补齐的层级、门槛和命令；禁止凭经验只跑 `test`、只跑 `build`、只跑单个 `tsc` 或只做手工验证后直接交付。
 - 如果 `pnpm verify` 被与本轮无关的既有红灯、外部服务、凭据、网络或环境问题阻断，仍必须对受影响范围逐层补齐五层验证，并在交付中明确说明：
   - 实际执行了哪些命令
   - 哪一层因什么 blocker 未能完成
@@ -255,8 +261,6 @@ pnpm --dir apps/backend/agent-server build
 
 ## 7.1 最低检查
 
-- shared：
-  - `pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
 - runtime：
   - `pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`
 - backend：
@@ -269,9 +273,24 @@ pnpm --dir apps/backend/agent-server build
 ## 8. Codex 执行补充规范
 
 - 给定计划后，默认连续执行，不要停下来反复询问“是否继续”。
+- 只要用户要求“实现整个计划”“继续执行计划”“按计划收尾”，就必须把该计划视为单一连续任务，默认一直执行到整套计划完成；不允许只做完一个阶段、一个子模块或一轮收口后就停下来把“继续”重新交还给用户，除非遇到真实阻断、隐含高风险决策，或用户明确改写计划边界。
 - 同一阻断优先自修复，最多连续尝试 `3` 次；只有达到上限才允许报告阻塞。
 - 每次改动完成后都必须补齐五层验证，或明确记录阻断原因；不要只改代码不校验。
 - 默认采用 **TDD（Test-Driven Development）** 推进新增功能、修复和重构：先写失败测试，再写最小实现，最后在测试保护下重构。
+- 对“实现需求 / 修复缺陷 / 重构收敛 / 需要可交付结果”的任务，默认按 `skills/task-delivery-loop` 的闭环执行：
+  - 任务定级与完成条件
+  - 需求与影响面分析
+  - Red
+  - Green
+  - Refactor
+  - Cleanup
+  - Verification
+  - Docs
+  - Delivery
+- `Cleanup` 不是可选优化，而是默认动作：
+  - 删除已无调用、无兼容价值的旧文件、旧规范、旧导出、废弃 helper 与死代码
+  - 清理未接线 graph 分支、过渡态中转文件、已经失效的旧说明
+  - 如果某个旧文件仍需保留兼容职责，必须明确标注其过渡用途，而不是静默残留
 - **当一轮计划中的任务已全部完成时，必须明确告知用户“计划已完成”或等价结论。**
 
 ## 8. Codex 执行规则
@@ -281,13 +300,18 @@ pnpm --dir apps/backend/agent-server build
 ### 执行循环
 
 - 当用户已经给出计划，或仓库中存在明确执行清单时，必须进入连续执行循环：
+  - 先确定本轮任务属于 `feature`、`fix`、`refactor`、`docs-only` 或 `review-only`
+  - 明确本轮完成条件与交付边界
   - 读取下一个未完成任务
   - 先为该任务补一个能失败的最小测试，优先从使用者视角定义接口、输入和预期输出
   - 直接修改代码、运行命令、完成实现
+  - 在实现转绿后主动执行 cleanup，删除无用文件与过时说明，避免新旧实现并存
   - 立即做验证：先确认新测试转绿，再补充类型检查、构建或最小可证明检查
+  - 同步更新文档、规范与索引入口，避免知识分叉
   - 更新计划状态或在内部状态中推进
-  - 自动进入下一项，不要反复询问“是否继续”
+- 自动进入下一项，不要反复询问“是否继续”
 - 除非遇到真实阻断，否则不要停在“分析完成，等待确认”
+- 即使已经完成某一阶段、某一批文件或某一条子清单，只要原计划还有未完成项，也必须继续推进下一项；阶段性完成只能作为进度汇报，不能当作停止条件。
 
 ### TDD 规则
 
@@ -324,6 +348,7 @@ pnpm --dir apps/backend/agent-server build
 - 长流程中要保持阶段性收口，避免上下文漂移
 - 优先精准修改，不要无必要整文件重写
 - 新增、重构或替换实现后，必须主动清理本轮改动引入或遗留的未使用节点、未接线 graph 分支、未引用导出、废弃 helper 与死代码；不要把“已经没用到”的实现继续留在仓库里
+- 每次任务收尾时，必须检查本轮涉及的旧文件、旧规范、旧脚手架、旧 README、旧中转 re-export 是否仍有保留价值；如果没有，默认本轮直接删除，而不是留给后续继续误导
 - 每次任务收尾时，必须回看本轮涉及的规范是否仍与真实实现一致；若发现规范过期，必须立即更新或显式标注过时，不能在明知失效的情况下结束任务
 - 修改任何主链逻辑时，必须默认遵守：
   - 不破坏现有功能
@@ -339,3 +364,4 @@ pnpm --dir apps/backend/agent-server build
 - 只有在计划项全部完成，且必要验证通过后，才允许真正停止
 - 如果用户明确要求“实现整套方案”，默认目标是完成到可运行、可验证、可交付，而不是只落一半骨架
 - 完成条件默认包含“代码、测试、文档”三者同时收口；文档未更新或旧文档未清理，不算真正完成
+- 对多阶段计划，真正的“完成”只指整个计划闭环结束；“完成第一阶段/第二阶段”不等于任务完成，除非用户明确把阶段性交付定义为本轮终点

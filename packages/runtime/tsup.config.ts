@@ -1,6 +1,11 @@
 ﻿import { defineConfig } from 'tsup';
 
-const entry = ['src/index.ts'];
+const entry = [
+  'src/index.ts',
+  'src/agents/base-agent.ts',
+  'src/runtime/agent-runtime-context.ts',
+  'src/runtime/streaming-execution.ts'
+];
 
 export default defineConfig([
   {

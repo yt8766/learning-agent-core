@@ -1,7 +1,8 @@
-import { EvaluationResult, EvidenceRecord, ReviewRecord, TaskRecord } from '@agent/shared';
+import type { EvaluationResult, EvidenceRecord, ReviewRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 
 export function isDiagnosisTask(
-  target: Pick<TaskRecord, 'goal' | 'context'> | { goal?: string; context?: string }
+  target: Pick<RuntimeTaskRecord, 'goal' | 'context'> | { goal?: string; context?: string }
 ): boolean {
   const normalizedGoal = String(target.goal ?? '')
     .trim()
@@ -19,7 +20,7 @@ export function isDiagnosisTask(
 }
 
 export function appendDiagnosisEvidence(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   review: ReviewRecord,
   executionSummary: string,
   finalAnswer: string
@@ -50,7 +51,7 @@ export function appendDiagnosisEvidence(
   }
 }
 
-export function buildFreshnessSourceSummary(task: TaskRecord, freshnessSensitive: boolean): string | undefined {
+export function buildFreshnessSourceSummary(task: RuntimeTaskRecord, freshnessSensitive: boolean): string | undefined {
   if (!freshnessSensitive) {
     return undefined;
   }
@@ -71,7 +72,7 @@ export function buildFreshnessSourceSummary(task: TaskRecord, freshnessSensitive
     .join('；');
 }
 
-export function buildCitationSourceSummary(task: TaskRecord): string | undefined {
+export function buildCitationSourceSummary(task: RuntimeTaskRecord): string | undefined {
   const sources = (task.externalSources ?? []).filter(source => {
     if (
       source.sourceType === 'freshness_meta' ||
@@ -101,7 +102,7 @@ export function buildCitationSourceSummary(task: TaskRecord): string | undefined
 }
 
 export function upsertFreshnessEvidence(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   freshnessSensitive: boolean,
   sourceSummary: string | undefined
 ): void {
@@ -233,7 +234,7 @@ export function inferAgentRoleFromMinistry(ministry?: string) {
 }
 
 export function recordAgentError(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   error: unknown,
   context: {
     phase: 'task_pipeline' | 'approval_recovery' | 'background_runner';
@@ -245,9 +246,9 @@ export function recordAgentError(
   },
   callbacks: {
     getMinistryLabel: (ministry: string) => string;
-    addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-    addProgressDelta: (task: TaskRecord, content: string) => void;
-    upsertAgentState: (task: TaskRecord, state: Record<string, unknown>) => void;
+    addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+    addProgressDelta: (task: RuntimeTaskRecord, content: string) => void;
+    upsertAgentState: (task: RuntimeTaskRecord, state: Record<string, unknown>) => void;
   }
 ): void {
   const normalized = normalizeAgentError(error);

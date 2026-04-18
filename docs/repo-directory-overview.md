@@ -83,14 +83,10 @@
   - 已删除。
   - 原多 Agent 主链已迁入 `packages/runtime`、`packages/adapters` 与 `agents/*`。
   - 相关历史说明统一保留在 `docs/archive/agent-core/`，不要把它当成当前代码宿主。
-- `packages/shared`
-  - 跨端共享 DTO、Record、Enum 和纯 contract。
-  - 当前仍作为迁移兼容实现保留。
+- `docs/shared/`
+  - `packages/shared` 退场过程的历史迁移文档归档。
 - `packages/config`
   - settings schema、profile、路径和默认策略。
-- `packages/model`
-  - 模型 provider 适配、chat/embedding factory。
-  - 当前仍作为迁移兼容实现保留。
 - `packages/memory`
   - repositories、search、vector、embeddings、semantic cache。
 - `packages/tools`
@@ -148,7 +144,7 @@
   - `agent-admin` 专项文档。
 - `docs/integration/`
   - 跨模块链路说明。
-- `docs/shared`、`docs/config`、`docs/model`、`docs/memory`、`docs/report-kit`、`docs/skills`、`docs/tools`、`docs/evals`、`docs/templates`
+- `docs/shared`、`docs/config`、`docs/memory`、`docs/report-kit`、`docs/skills`、`docs/tools`、`docs/evals`、`docs/templates`
   - 对应各 `packages/*` 的模块文档目录。
 
 ## `skills/`

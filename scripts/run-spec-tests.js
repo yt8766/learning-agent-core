@@ -4,6 +4,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { readChangedPaths as readAffectedWorkspacePaths } from './affected-workspace.js';
+
 const SKIP_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.turbo', 'build', 'dist', 'coverage', 'data']);
 const SPEC_FILE_NAME_PATTERN = /(schema|schemas|contract|contracts|parser|parsers|normalization|normalizer)/i;
 const SPEC_SOURCE_PATTERN = /from\s+['"]zod(?:\/v4)?['"]|(?:[A-Za-z0-9_]*Schema)\.(?:parse|safeParse)\(|\bsafeParse\(/;
@@ -58,7 +60,7 @@ function normalizeExplicitTargets(targets) {
 }
 
 function resolveAffectedWorkspaceRoots(workspaceRoots) {
-  const changedPaths = readChangedPaths();
+  const changedPaths = readChangedPathsForSpecScope();
 
   if (!changedPaths) {
     return workspaceRoots;
@@ -84,51 +86,19 @@ function resolveAffectedWorkspaceRoots(workspaceRoots) {
   return [...impactedRoots].sort((left, right) => left.localeCompare(right));
 }
 
-function readChangedPaths() {
-  const changedPaths = new Set();
-  let hasReadableSignal = false;
+function readChangedPathsForSpecScope() {
+  const changed = readChangedPathsFromWorkspace();
 
-  for (const args of [
-    ['diff', '--name-only', 'origin/main...HEAD'],
-    ['diff', '--name-only'],
-    ['diff', '--name-only', '--cached'],
-    ['ls-files', '--others', '--exclude-standard']
-  ]) {
-    const output = readGitPathSet(args);
-
-    if (!output) {
-      continue;
-    }
-
-    hasReadableSignal = true;
-
-    for (const relativePath of output) {
-      changedPaths.add(relativePath);
-    }
-  }
-
-  if (!hasReadableSignal) {
+  if (!changed.hasReadableSignal) {
     console.warn('[spec] unable to resolve affected files from git; falling back to full workspace');
     return null;
   }
 
-  return [...changedPaths].sort((left, right) => left.localeCompare(right));
+  return changed.paths;
 }
 
-function readGitPathSet(args) {
-  const result = spawnSync('git', args, {
-    cwd: repoRoot,
-    encoding: 'utf8'
-  });
-
-  if (result.status !== 0) {
-    return null;
-  }
-
-  return String(result.stdout)
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean);
+function readChangedPathsFromWorkspace() {
+  return readAffectedWorkspacePaths({ repoRoot });
 }
 
 function isGlobalSpecImpactPath(relativePath) {

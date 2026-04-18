@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import type { AppendChatMessageDto, ChatMessageRecord } from '@agent/shared';
+import type { AppendChatMessageDto, ChatMessageRecord } from '@agent/core';
 
 import { RuntimeCentersService } from '../runtime/centers/runtime-centers.service';
 import { RuntimeSessionService } from '../runtime/services/runtime-session.service';

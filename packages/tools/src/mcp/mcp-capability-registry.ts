@@ -1,4 +1,4 @@
-import { RiskLevel, ToolDefinition } from '@agent/shared';
+import { RiskLevel, type ToolDefinition } from '@agent/core';
 
 export interface McpCapabilityDefinition {
   id: string;

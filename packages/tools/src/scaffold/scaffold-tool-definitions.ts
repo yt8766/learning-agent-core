@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/shared';
+import type { ToolDefinition } from '@agent/core';
 
 const SCAFFOLD_PREFERRED_MINISTRIES = ['libu-governance', 'gongbu-code', 'libu-delivery'] as const;
 

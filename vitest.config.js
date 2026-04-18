@@ -53,14 +53,15 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@agent/runtime/base-agent': resolvePath('./packages/runtime/src/agents/base-agent.ts'),
+      '@agent/runtime/agent-runtime-context': resolvePath('./packages/runtime/src/runtime/agent-runtime-context.ts'),
+      '@agent/runtime/streaming-execution': resolvePath('./packages/runtime/src/runtime/streaming-execution.ts'),
       '@agent/core': resolvePath('./packages/core/src'),
-      '@agent/shared': resolvePath('./packages/shared/src'),
       '@agent/config': resolvePath('./packages/config/src'),
       '@agent/runtime': resolvePath('./packages/runtime/src'),
       '@agent/adapters': resolvePath('./packages/adapters/src'),
       '@agent/tools': resolvePath('./packages/tools/src'),
       '@agent/memory': resolvePath('./packages/memory/src'),
-      '@agent/model': resolvePath('./packages/model/src'),
       '@agent/report-kit': resolvePath('./packages/report-kit/src'),
       '@agent/skill-runtime': resolvePath('./packages/skill-runtime/src'),
       '@agent/templates': resolvePath('./packages/templates/src'),

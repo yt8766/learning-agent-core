@@ -79,7 +79,7 @@ pnpm --dir apps/frontend/agent-admin dev
   - `MiniMax-M2.5`
   - `MiniMax-M2.5-highspeed`
   - `M2-her`
-- `minimax` 现在会通过独立的 `MiniMaxProvider` 适配器注册，再由路由层按 `minimax/<modelId>` 选择具体模型；provider 内部直接调用 `@agent/model` 的 `createMiniMaxChatModel(...)`
+- `minimax` 现在会通过独立的 `MiniMaxProvider` 适配器注册，再由路由层按 `minimax/<modelId>` 选择具体模型；provider 内部直接调用 `@agent/adapters` 的 `createMiniMaxChatModel(...)`
 - embedding 与 BigModel MCP endpoints 也不再有代码默认值，需要通过 `.env` 显式提供
 - 未配置 research MCP endpoint 时，研究来源会退回本地或 sandbox 能力
 
@@ -166,7 +166,6 @@ pnpm check:terminology
 pnpm test
 pnpm test:integration
 pnpm exec tsc -p packages/config/tsconfig.json --noEmit
-pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
 pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm exec tsc -p apps/worker/tsconfig.json --noEmit

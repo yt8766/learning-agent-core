@@ -1,5 +1,13 @@
-import { ActionIntent, AgentExecutionState, AgentRole, ToolDefinition, ToolExecutionResult } from '@agent/shared';
-import type { PendingExecutionContext } from '@agent/core';
+import {
+  ActionIntent,
+  AgentRole,
+  AgentExecutionState,
+  type ToolDefinition,
+  type ToolExecutionResult,
+  type PendingExecutionContext
+} from '@agent/core';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 import type { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { filterToolsForExecutionMode } from '../../capabilities/execution-mode-guard';
@@ -43,7 +51,7 @@ export class GongbuCodeMinistry {
     subTask: string,
     researchSummary: string
   ): Promise<{
-    intent: ActionIntent;
+    intent: ActionIntentValue;
     toolName: string;
     requiresApproval: boolean;
     tool?: ToolDefinition;
@@ -201,14 +209,14 @@ export class GongbuCodeMinistry {
 
   protected async executeSingleTool(
     tool: ToolDefinition,
-    intent: ActionIntent,
+    intent: ActionIntentValue,
     toolInput: Record<string, unknown>
   ): Promise<ToolExecutionResult> {
     return executeGongbuToolRequest(this.context, tool, intent, toolInput);
   }
 
   protected async executeDataReportPipeline(researchSummary: string): Promise<{
-    intent: ActionIntent;
+    intent: ActionIntentValue;
     toolName: string;
     requiresApproval: boolean;
     tool?: ToolDefinition;
@@ -335,7 +343,7 @@ export class GongbuCodeMinistry {
   }
 
   protected async executeScaffoldWorkflow(researchSummary: string): Promise<{
-    intent: ActionIntent;
+    intent: ActionIntentValue;
     toolName: string;
     requiresApproval: boolean;
     tool?: ToolDefinition;
@@ -350,7 +358,7 @@ export class GongbuCodeMinistry {
     toolInput?: Record<string, unknown>;
   }> {
     let toolName: string;
-    let intent: ActionIntent;
+    let intent: ActionIntentValue;
     let toolInput: Record<string, unknown>;
 
     try {
@@ -468,7 +476,7 @@ export class GongbuCodeMinistry {
     return this.state;
   }
 
-  protected selectIntent(goal: string): ActionIntent {
+  protected selectIntent(goal: string): ActionIntentValue {
     return selectGongbuIntent(goal);
   }
 

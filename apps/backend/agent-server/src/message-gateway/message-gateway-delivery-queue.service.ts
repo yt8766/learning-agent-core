@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import type { ChannelOutboundMessage } from '@agent/shared';
+import type { ChannelOutboundMessage } from '@agent/core';
 
 import { RuntimeHost } from '../runtime/core/runtime.host';
 import type { ChannelDeliveryReceipt } from './interfaces/message-gateway.interface';

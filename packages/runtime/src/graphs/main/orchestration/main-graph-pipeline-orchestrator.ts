@@ -1,5 +1,5 @@
-import { TaskStatus, initializeTaskExecutionSteps, type CreateTaskDto, type TaskRecord } from '@agent/shared';
-import { LibuRouterMinistry } from '@agent/agents-supervisor';
+import { TaskStatus, type CreateTaskDto } from '@agent/core';
+import { initializeTaskExecutionSteps, LibuRouterMinistry } from '@agent/agents-supervisor';
 
 import { TaskBudgetExceededError, TaskCancelledError } from '../task/main-graph-task-runtime-errors';
 import {
@@ -13,6 +13,7 @@ import type {
   RunTaskPipelineParams,
   TaskMode
 } from './main-graph-pipeline-orchestrator.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 
 export type {
   ApprovalRecoveryCallbacks,

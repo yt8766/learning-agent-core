@@ -4,15 +4,14 @@ import {
   CreateDocumentLearningJobDto,
   CreateResearchLearningJobDto,
   EvidenceRecord,
-  LearningJob,
-  SkillCard,
-  buildResearchSourcePlan
-} from '@agent/shared';
-import { resolveWorkflowPreset } from '@agent/shared';
+  SkillCard
+} from '@agent/core';
+import { buildResearchSourcePlan, resolveWorkflowPreset } from '@agent/agents-supervisor';
 import { SkillRegistry } from '@agent/skill-runtime';
 import { McpClientManager } from '@agent/tools';
 
 import { LearningFlow } from '../../../flows/learning';
+import type { RuntimeLearningJob as LearningJob } from '../../../runtime/runtime-learning.types';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 

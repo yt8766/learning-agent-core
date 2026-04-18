@@ -1,1 +1,1 @@
-export { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/shared';
+export { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/runtime';

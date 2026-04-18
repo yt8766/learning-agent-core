@@ -1,6 +1,8 @@
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import type { RuntimeSkillContract } from './executor-node-skill';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export function resolveWorkerToolAllowlist(context: AgentRuntimeContext): Set<string> | undefined {
   const capabilities = context.currentWorker?.supportedCapabilities;
@@ -91,7 +93,7 @@ export function resolveWorkerToolAllowlist(context: AgentRuntimeContext): Set<st
   return toolNames.size ? toolNames : undefined;
 }
 
-export function selectIntent(goal: string): ActionIntent {
+export function selectIntent(goal: string): ActionIntentValue {
   const normalizedGoal = goal.toLowerCase();
   if (
     normalizedGoal.includes('delete') ||

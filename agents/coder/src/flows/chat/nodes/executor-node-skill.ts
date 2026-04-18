@@ -1,4 +1,4 @@
-import type { SkillCard } from '@agent/shared';
+import type { SkillCard } from '@agent/core';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 
 export type RuntimeSkillContract = {

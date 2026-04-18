@@ -141,7 +141,7 @@
 
 - 默认 schema-first
 - 类型通过 `z.infer` 推导
-- `packages/shared` 只保留 compat re-export 或前端展示组合
+- 历史上的 `packages/shared` 只承担过 compat re-export 或前端展示组合；当前这类职责应落到真实宿主本地
 
 ### 4.2 Storage 层
 
@@ -442,7 +442,7 @@ Core Memory 只保留任务成功所必需的高价值信息：
 - `packages/core/src/memory/schemas/*`
 - `packages/core/src/memory/index.ts`
 
-`packages/shared` 只保留 compat re-export 或前端展示组合，不再作为长期主定义。
+历史上的 `packages/shared` 只承担 compat re-export 或前端展示组合，不再作为长期主定义；当前请以 `packages/core + 宿主本地 facade` 为准。
 
 ### 9.2 建议核心模型
 

@@ -1,14 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { AgentRole } from '@agent/shared';
 import type {
   AgentExecutionState,
-  AgentMessage,
+  AgentMessageRecord as AgentMessage,
+  CapabilityOwnerType,
   ExecutionTrace,
-  TaskRecord,
   ToolUsageSummaryRecord
-} from '@agent/shared';
+} from '@agent/core';
 import type { ToolRegistry } from '@agent/tools';
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
+import { AgentRole } from './task-architecture-helpers';
 
 export function addRuntimeMessage(
   task: TaskRecord,
@@ -111,7 +112,7 @@ export function attachRuntimeTool(
     attachedBy: 'bootstrap' | 'user' | 'runtime' | 'workflow' | 'specialist';
     preferred?: boolean;
     reason?: string;
-    ownerType?: import('@agent/shared').CapabilityOwnerType;
+    ownerType?: CapabilityOwnerType;
     ownerId?: string;
     family?: string;
   }

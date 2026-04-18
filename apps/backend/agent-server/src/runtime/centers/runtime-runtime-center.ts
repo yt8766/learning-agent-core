@@ -1,23 +1,139 @@
 import { listSubgraphDescriptors, listWorkflowVersions } from '@agent/agents-supervisor';
-import {
-  ApprovalScopePolicyRecord,
-  ChatCheckpointRecord,
-  ChatSessionRecord,
-  getMinistryDisplayName,
-  getSpecialistDisplayName,
-  RuntimeCenterRecord,
-  RuntimeProfile,
-  TaskRecord
-} from '@agent/shared';
+import type { RuntimeProfile } from '@agent/config';
+import type { ApprovalScopePolicyRecord, ChatCheckpointRecord, ChatSessionRecord } from '@agent/core';
+import { getMinistryDisplayName, getSpecialistDisplayName } from '../helpers/runtime-architecture-helpers';
 
 import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
 import { buildModelHeatmap } from '../../modules/runtime-metrics/services/runtime-analytics';
 import { summarizeAndPersistUsageAnalytics } from '../../modules/runtime-metrics/services/runtime-metrics-store';
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 
+export interface RuntimeCenterTaskLike {
+  id: string;
+  goal: string;
+  context?: string;
+  createdAt: string;
+  updatedAt: string;
+  status?: string;
+  sessionId?: string;
+  currentNode?: string;
+  currentStep?: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  mainChainNode?: string;
+  microLoopCount?: number;
+  maxMicroLoops?: number;
+  microLoopState?: unknown;
+  modeGateState?: unknown;
+  budgetGateState?: unknown;
+  complexTaskPlan?: unknown;
+  blackboardState?: unknown;
+  contextFilterState?: {
+    filteredContextSlice?: {
+      summary?: string;
+    };
+  };
+  criticState?: unknown;
+  guardrailState?: unknown;
+  sandboxState?: unknown;
+  finalReviewState?: unknown;
+  knowledgeIndexState?: unknown;
+  revisionState?: unknown;
+  governanceScore?: {
+    status?: string;
+    score?: number;
+    summary?: string;
+    trustAdjustment?: string;
+    recommendedLearningTargets?: string[];
+  };
+  governanceReport?: {
+    summary?: string;
+    reviewOutcome: {
+      decision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval' | 'blocked' | 'approved' | 'retry';
+      summary?: string;
+    };
+    evidenceSufficiency?: unknown;
+    sandboxReliability?: unknown;
+  };
+  evaluationReport?: {
+    id?: string;
+    score?: number;
+    summary?: string;
+  };
+  learningEvaluation?: {
+    recommendedCandidateIds?: string[];
+    autoConfirmCandidateIds?: string[];
+    governanceWarnings?: string[];
+  };
+  executionPlan?: {
+    strategyCounselors?: string[];
+    executionMinistries?: string[];
+  };
+  dispatches?: Array<{
+    kind?: string;
+  }>;
+  queueState?: {
+    backgroundRun?: boolean;
+    leaseOwner?: string;
+    leaseExpiresAt?: string;
+    status?: string;
+  };
+  interruptHistory?: Array<{
+    timedOutAt?: string;
+  }>;
+  activeInterrupt?: {
+    status?: string;
+    createdAt: string;
+  };
+  entryDecision?: unknown;
+  externalSources?: Array<{
+    sourceType?: string;
+    summary?: string;
+  }>;
+  trace?: Array<{
+    node?: string;
+    summary?: string;
+    at: string;
+    data?: Record<string, unknown>;
+  }>;
+  approvals: Array<{
+    decision?: string;
+  }>;
+  reusedMemories?: unknown[];
+  skillId?: string;
+  result?: string;
+  plan?: {
+    summary?: string;
+  };
+  messages?: Array<{
+    content?: string;
+  }>;
+  retryCount?: number;
+  modelRoute?: Array<{
+    ministry?: string;
+    selectedModel?: string;
+  }>;
+  llmUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    measuredCallCount?: number;
+    estimatedCallCount?: number;
+    updatedAt?: string;
+    models: Array<{
+      model: string;
+      totalTokens: number;
+      costUsd?: number;
+      costCny?: number;
+      pricingSource?: string;
+      callCount: number;
+    }>;
+  };
+}
+
 function toCritiqueStyleReviewOutcome(
-  reviewOutcome: NonNullable<NonNullable<TaskRecord['governanceReport']>['reviewOutcome']>
-): NonNullable<NonNullable<RuntimeCenterRecord['governanceScorecards']>[number]['governanceReport']>['reviewOutcome'] {
+  reviewOutcome: NonNullable<NonNullable<RuntimeCenterTaskLike['governanceReport']>['reviewOutcome']>
+) {
   return {
     ...reviewOutcome,
     decision:
@@ -42,15 +158,31 @@ export function buildRuntimeCenter(input: {
       sourceBudget: number;
     };
   };
-  tasks: TaskRecord[];
+  tasks: RuntimeCenterTaskLike[];
   sessions: ChatSessionRecord[];
   pendingApprovals: Array<{ id: string }>;
   usageAnalytics: Awaited<ReturnType<typeof summarizeAndPersistUsageAnalytics>>;
-  recentGovernanceAudit?: RuntimeCenterRecord['recentGovernanceAudit'];
+  recentGovernanceAudit?: Array<{
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+    scope:
+      | 'skill-source'
+      | 'company-worker'
+      | 'skill-install'
+      | 'connector'
+      | 'approval-policy'
+      | 'counselor-selector'
+      | 'learning-conflict';
+    targetId: string;
+    outcome: 'success' | 'rejected' | 'pending';
+    reason?: string;
+  }>;
   approvalScopePolicies?: ApprovalScopePolicyRecord[];
   backgroundWorkerPoolSize: number;
   backgroundWorkerSlots: Map<string, { taskId: string; startedAt: string }>;
-  filteredRecentRuns: TaskRecord[];
+  filteredRecentRuns: RuntimeCenterTaskLike[];
   getCheckpoint: (sessionId: string) => ChatCheckpointRecord | undefined;
   knowledgeOverview?: {
     stores: Array<{
@@ -77,7 +209,7 @@ export function buildRuntimeCenter(input: {
     }>;
   };
   dailyTechBriefing?: DailyTechBriefingStatusRecord;
-}): RuntimeCenterRecord {
+}) {
   // task.entryDecision is the persisted 通政司 / EntryRouter projection.
   // task.activeInterrupt and task.interruptHistory are persisted 司礼监 / InterruptController projections.
   const activeTasks = input.tasks.filter(task =>

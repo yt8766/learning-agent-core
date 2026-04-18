@@ -1,4 +1,4 @@
-import { AgentRole, RouterMinistryLike, TaskRecord, ToolUsageSummaryRecord } from '@agent/shared';
+import { AgentRole, type ToolUsageSummaryRecord, type AgentRoleValue, type RouterMinistryLike } from '@agent/core';
 import { Annotation, BaseCheckpointSaver, END, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../flows/approval';
@@ -7,6 +7,7 @@ import {
   runDirectReplyNode,
   runDirectReplySkillGateNode
 } from '../../../flows/chat/direct-reply-interrupt-nodes';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across direct-reply resumes.
 export interface DirectReplyInterruptGraphState {
   taskId: string;
@@ -16,9 +17,9 @@ export interface DirectReplyInterruptGraphState {
 }
 
 export interface DirectReplyInterruptGraphCallbacks {
-  ensureTaskNotCancelled: (task: TaskRecord) => void;
+  ensureTaskNotCancelled: (task: RuntimeTaskRecord) => void;
   attachTool: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       attachedBy: 'bootstrap' | 'user' | 'runtime' | 'workflow' | 'specialist';
@@ -30,7 +31,7 @@ export interface DirectReplyInterruptGraphCallbacks {
     }
   ) => void;
   recordToolUsage: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     params: {
       toolName: string;
       status: ToolUsageSummaryRecord['status'];
@@ -44,28 +45,28 @@ export interface DirectReplyInterruptGraphCallbacks {
       capabilityType?: ToolUsageSummaryRecord['capabilityType'];
     }
   ) => void;
-  addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+  addTrace: (task: RuntimeTaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
+  addProgressDelta: (task: RuntimeTaskRecord, content: string, from?: AgentRoleValue) => void;
   setSubTaskStatus: (
-    task: TaskRecord,
-    role: AgentRole,
+    task: RuntimeTaskRecord,
+    role: AgentRoleValue,
     status: 'pending' | 'running' | 'completed' | 'blocked'
   ) => void;
-  persistAndEmitTask: (task: TaskRecord) => Promise<void>;
+  persistAndEmitTask: (task: RuntimeTaskRecord) => Promise<void>;
   transitionQueueState: (
-    task: TaskRecord,
+    task: RuntimeTaskRecord,
     status: 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'blocked'
   ) => void;
   registerPendingExecution: (taskId: string, pending: PendingExecutionContext) => void;
   resolveRuntimeSkillIntervention: (params: {
-    task: TaskRecord;
+    task: RuntimeTaskRecord;
     goal: string;
     currentStep: 'direct_reply' | 'research';
-    skillSearch: NonNullable<TaskRecord['skillSearch']>;
+    skillSearch: NonNullable<RuntimeTaskRecord['skillSearch']>;
     usedInstalledSkills?: string[];
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         progressSummary?: string;
         traceSummary?: string;
@@ -85,21 +86,21 @@ export interface DirectReplyInterruptGraphCallbacks {
     | undefined
   >;
   resolveSkillInstallInterruptResume: (params: {
-    task: TaskRecord;
+    task: RuntimeTaskRecord;
     receiptId: string;
     skillDisplayName?: string;
     usedInstalledSkills?: string[];
     actor?: string;
   }) => Promise<
     | {
-        skillSearch?: NonNullable<TaskRecord['skillSearch']>;
+        skillSearch?: NonNullable<RuntimeTaskRecord['skillSearch']>;
         usedInstalledSkills?: string[];
         traceSummary?: string;
         progressSummary?: string;
       }
     | undefined
   >;
-  runDirectReplyTask: (task: TaskRecord, libu: RouterMinistryLike) => Promise<void>;
+  runDirectReplyTask: (task: RuntimeTaskRecord, libu: RouterMinistryLike) => Promise<void>;
 }
 
 const DirectReplyInterruptAnnotation = Annotation.Root({
@@ -110,7 +111,7 @@ const DirectReplyInterruptAnnotation = Annotation.Root({
 });
 
 interface BuildDirectReplyInterruptGraphParams {
-  task: TaskRecord;
+  task: RuntimeTaskRecord;
   libu: RouterMinistryLike;
   callbacks: DirectReplyInterruptGraphCallbacks;
   checkpointer: BaseCheckpointSaver;

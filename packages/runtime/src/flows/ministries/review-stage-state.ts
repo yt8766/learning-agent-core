@@ -1,9 +1,13 @@
 import { normalizeCritiqueResult, normalizeSpecialistFinding } from '@agent/core';
-import type { SpecialistFindingRecord, TaskRecord } from '@agent/shared';
+import type { RuntimeSpecialistFindingRecord as SpecialistFindingRecord } from '../../runtime/runtime-specialist-finding.types';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 import { buildFinalReviewSummary, deriveFinalReviewDecision } from './review-stage-helpers';
 import type { NormalizedReviewResult } from './review-stage.types';
 
-function upsertRuntimeSpecialistFinding(task: TaskRecord, input: Parameters<typeof normalizeSpecialistFinding>[0]) {
+function upsertRuntimeSpecialistFinding(
+  task: RuntimeTaskRecord,
+  input: Parameters<typeof normalizeSpecialistFinding>[0]
+) {
   const finding = normalizeSpecialistFinding(input) as SpecialistFindingRecord;
   const current: SpecialistFindingRecord[] = task.specialistFindings ?? [];
   task.specialistFindings = [
@@ -14,7 +18,7 @@ function upsertRuntimeSpecialistFinding(task: TaskRecord, input: Parameters<type
 }
 
 export function applyReviewOutcomeState(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   reviewed: NormalizedReviewResult,
   reviewMinistry: 'xingbu-review' | 'libu-delivery'
 ) {
@@ -88,7 +92,7 @@ export function applyReviewOutcomeState(
 }
 
 export function recordReviewSpecialistFindings(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   reviewed: NormalizedReviewResult,
   executionSummary: string
 ) {

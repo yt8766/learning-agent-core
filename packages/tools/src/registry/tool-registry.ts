@@ -1,4 +1,6 @@
-import { ActionIntent, type ToolDefinition, type ToolFamilyRecord } from '@agent/shared';
+import { ActionIntent, type ToolDefinition, type ToolFamilyRecord } from '@agent/core';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 import { CONNECTOR_TOOL_DEFINITIONS } from '../connectors/connector-tool-definitions';
 import { FILESYSTEM_TOOL_DEFINITIONS } from '../filesystem/filesystem-tool-definitions';
@@ -440,7 +442,7 @@ export class ToolRegistry {
     return this.list().filter(tool => tool.family === familyId);
   }
 
-  getForIntent(intent: ActionIntent): ToolDefinition | undefined {
+  getForIntent(intent: ActionIntentValue): ToolDefinition | undefined {
     switch (intent) {
       case ActionIntent.WRITE_FILE:
         return this.get('write_local_file');

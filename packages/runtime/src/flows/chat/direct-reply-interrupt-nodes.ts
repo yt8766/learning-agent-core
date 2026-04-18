@@ -1,5 +1,5 @@
-import { ActionIntent, AgentRole, ApprovalResumeInput, RouterMinistryLike, TaskStatus } from '@agent/shared';
-import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/shared';
+import { ActionIntent, AgentRole, TaskStatus, type ApprovalResumeInput, type RouterMinistryLike } from '@agent/core';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type {

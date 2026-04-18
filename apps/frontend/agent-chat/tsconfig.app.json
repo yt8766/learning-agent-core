@@ -26,8 +26,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@agent/core": ["../../../packages/core/src/index.ts"],
-      "@agent/shared": ["../../../packages/shared/src/index.ts"]
+      "@agent/core": ["../../../packages/core/src/index.ts"]
     }
   },
   "include": ["src", "test"]

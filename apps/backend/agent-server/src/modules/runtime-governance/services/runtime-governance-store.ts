@@ -3,9 +3,8 @@ import {
   ApprovalScopePolicyRecord,
   CapabilityGovernanceProfileRecord,
   GovernanceProfileRecord,
-  TaskRecord,
   buildApprovalScopeMatchKey
-} from '@agent/shared';
+} from '@agent/core';
 import { McpClientManager } from '@agent/tools';
 
 import { defaultConnectorSessionState } from '../../../runtime/helpers/runtime-derived-records';
@@ -33,6 +32,42 @@ type GovernanceAuditEntry = {
 type DiscoveryRecord = NonNullable<
   NonNullable<RuntimeStateSnapshot['governance']>['connectorDiscoveryHistory']
 >[number];
+
+interface GovernanceStoreTaskLike {
+  id: string;
+  currentMinistry?: string;
+  currentWorker?: string;
+  specialistLead?: {
+    domain?: string;
+    displayName: string;
+  };
+  governanceReport?: {
+    reviewOutcome: {
+      decision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval' | 'blocked' | 'approved' | 'retry';
+      summary?: string;
+    };
+    trustAdjustment?: 'promote' | 'hold' | 'downgrade';
+    summary?: string;
+    updatedAt: string;
+  };
+  capabilityAttachments?: Array<{
+    id: string;
+    displayName: string;
+    owner: {
+      ownerType: CapabilityGovernanceProfileRecord['ownerType'];
+    };
+    kind: CapabilityGovernanceProfileRecord['kind'];
+    capabilityTrust?: {
+      trustLevel?: 'high' | 'medium' | 'low';
+      trustTrend?: 'up' | 'steady' | 'down';
+      lastReason?: string;
+      lastGovernanceSummary?: string;
+    };
+    governanceProfile?: Partial<CapabilityGovernanceProfileRecord> & {
+      updatedAt: string;
+    };
+  }>;
+}
 
 export function toConnectorDiscoveryHistoryRecord(
   connectorId: string,
@@ -116,7 +151,7 @@ export async function syncCapabilityGovernanceProfiles(
     load: () => Promise<RuntimeStateSnapshot>;
     save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
   },
-  tasks: TaskRecord[]
+  tasks: GovernanceStoreTaskLike[]
 ) {
   const snapshot = await runtimeStateRepository.load();
   const aggregated = aggregateCapabilityGovernanceProfiles(

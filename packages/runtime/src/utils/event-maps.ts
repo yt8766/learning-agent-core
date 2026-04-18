@@ -1,4 +1,4 @@
-import { AgentMessage, ChatEventRecord } from '@agent/shared';
+import type { AgentMessageRecord, ChatEventRecord } from '@agent/core';
 
 export const TRACE_EVENT_MAP: Record<string, ChatEventRecord['type']> = {
   decree_received: 'decree_received',
@@ -28,7 +28,10 @@ export const TRACE_EVENT_MAP: Record<string, ChatEventRecord['type']> = {
   skill_extract: 'learning_pending_confirmation'
 };
 
-export const TASK_MESSAGE_EVENT_MAP: Record<Exclude<AgentMessage['type'], 'summary_delta'>, ChatEventRecord['type']> = {
+export const TASK_MESSAGE_EVENT_MAP: Record<
+  Exclude<AgentMessageRecord['type'], 'summary_delta'>,
+  ChatEventRecord['type']
+> = {
   dispatch: 'subtask_dispatched',
   research_result: 'research_progress',
   execution_result: 'tool_called',

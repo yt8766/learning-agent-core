@@ -1,7 +1,8 @@
-import type { EvaluationResult, GovernanceReportRecord, TaskRecord } from '@agent/shared';
+import type { EvaluationResult, GovernanceReportRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 
 function toGovernanceReviewDecision(
-  decision: NonNullable<TaskRecord['critiqueResult']>['decision']
+  decision: NonNullable<RuntimeTaskRecord['critiqueResult']>['decision']
 ): GovernanceReportRecord['reviewOutcome']['decision'] {
   return decision === 'block' ? 'blocked' : decision;
 }
@@ -23,9 +24,9 @@ function clampGovernanceScore(score: number): number {
 }
 
 export function buildGovernanceScore(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   evaluation: EvaluationResult
-): NonNullable<TaskRecord['governanceScore']> {
+): NonNullable<RuntimeTaskRecord['governanceScore']> {
   let score = task.learningEvaluation?.score ?? 72;
   const rationale: string[] = [];
   const recommendedLearningTargets: Array<'memory' | 'rule' | 'skill'> = [];
@@ -92,9 +93,9 @@ export function buildGovernanceScore(
 }
 
 export function buildGovernanceReport(
-  task: TaskRecord,
+  task: RuntimeTaskRecord,
   evaluation: EvaluationResult,
-  governanceScore: NonNullable<TaskRecord['governanceScore']>
+  governanceScore: NonNullable<RuntimeTaskRecord['governanceScore']>
 ): GovernanceReportRecord {
   const reviewDecision = toGovernanceReviewDecision(task.critiqueResult?.decision ?? 'pass');
   const interruptCount = task.interruptHistory?.length ?? 0;
@@ -165,7 +166,7 @@ export function buildGovernanceReport(
   };
 }
 
-export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
+export function applyCapabilityTrustFromGovernance(task: RuntimeTaskRecord) {
   if (!task.capabilityAttachments?.length || !task.governanceReport) {
     return;
   }
@@ -204,7 +205,7 @@ export function applyCapabilityTrustFromGovernance(task: TaskRecord) {
 }
 
 function mergeCapabilityGovernanceProfile(
-  current: NonNullable<TaskRecord['capabilityAttachments']>[number]['governanceProfile'] | undefined,
+  current: NonNullable<RuntimeTaskRecord['capabilityAttachments']>[number]['governanceProfile'] | undefined,
   next: {
     taskId: string;
     reviewDecision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';

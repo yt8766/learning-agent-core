@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { CreateChatSessionDto, InboundChannelMessage } from '@agent/shared';
+import { CreateChatSessionDto, InboundChannelMessage } from '@agent/core';
 
 import {
   RuntimeMessageGatewayFacade,

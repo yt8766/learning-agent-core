@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/shared';
+import type { ToolExecutionRequest } from '@agent/core';
 
 import { toWorkspacePath } from './sandbox-executor-utils';
 

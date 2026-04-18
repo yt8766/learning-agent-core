@@ -1,11 +1,12 @@
-import type { CreateTaskDto, PlanDraftRecord, TaskRecord } from '@agent/shared';
-import type { PlanningCallbacks } from './pipeline-stage-node.types';
+import type { CreateTaskDto } from '@agent/core';
+import type { PlanDraftRecord } from '@agent/core';
+import type { PlanningCallbacks, SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
 
-export function applyPlanningMicroBudget(
-  task: TaskRecord,
+export function applyPlanningMicroBudget<TTask extends SupervisorPlanningTaskLike>(
+  task: TTask,
   planDraft: PlanDraftRecord,
   dto: CreateTaskDto,
-  callbacks: PlanningCallbacks,
+  callbacks: PlanningCallbacks<TTask>,
   compiledSkillAttachment?: {
     displayName?: string;
     id: string;

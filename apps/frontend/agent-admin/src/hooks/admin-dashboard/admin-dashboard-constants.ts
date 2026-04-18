@@ -1,5 +1,4 @@
-﻿import { RUNTIME_CENTER_PAGE_TITLES } from '@agent/shared';
-import type { ApprovalCenterItem, DashboardPageKey, PlatformConsoleRecord, TaskRecord } from '@/types/admin';
+﻿import type { ApprovalCenterItem, DashboardPageKey, PlatformConsoleRecord, TaskRecord } from '@/types/admin';
 import { getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
 
 // Dashboard hash filters normalize legacy aliases into canonical executionPlan.mode values.
@@ -38,8 +37,21 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'companyAgents'
 ];
 
+const ADMIN_RUNTIME_PAGE_TITLES = {
+  runtime: 'Runtime Center',
+  approvals: 'Approvals Center',
+  learning: 'Learning Center',
+  evals: 'Evals',
+  archives: 'Archive Center',
+  skills: 'Skill Lab',
+  evidence: 'Evidence Center',
+  connectors: 'Connector & Policy Center',
+  skillSources: 'Skill Sources / Marketplace',
+  companyAgents: 'Company Agents'
+} as const;
+
 export const PAGE_TITLES = {
-  ...RUNTIME_CENTER_PAGE_TITLES,
+  ...ADMIN_RUNTIME_PAGE_TITLES,
   memory: 'Memory Center',
   profiles: 'Profile Center'
 } satisfies Record<DashboardPageKey, string>;

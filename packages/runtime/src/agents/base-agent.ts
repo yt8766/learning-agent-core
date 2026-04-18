@@ -1,7 +1,11 @@
 import { z } from 'zod/v4';
 
-import type { LlmProviderMessage as ChatMessage } from '@agent/core';
-import { AgentExecutionState, AgentRole } from '@agent/shared';
+import {
+  AgentRole,
+  type AgentExecutionState,
+  type AgentRoleValue,
+  type LlmProviderMessage as ChatMessage
+} from '@agent/core';
 import {
   generateObjectWithRetry,
   generateTextWithRetry,
@@ -16,7 +20,7 @@ export abstract class BaseAgent {
   protected readonly state: AgentExecutionState;
 
   constructor(
-    protected readonly role: AgentRole,
+    protected readonly role: AgentRoleValue,
     protected readonly context: AgentRuntimeContext
   ) {
     this.state = {

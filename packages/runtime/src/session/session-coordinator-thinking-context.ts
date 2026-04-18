@@ -1,4 +1,4 @@
-import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, ChatMessageRecord, ChatSessionRecord } from '@agent/core';
 import type { ContextStrategy } from '@agent/config';
 import type { MemorySearchService } from '@agent/memory';
 

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import { LocalSandboxExecutor } from '../../src/sandbox/sandbox-executor';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';

@@ -25,11 +25,11 @@
 
 补充硬规则：
 
-- 如果 `packages/shared` 与 `packages/core` 出现职责重叠，默认以 `packages/core` 为准，继续把稳定主 contract 迁入 `core`
-- `packages/shared` 不再作为稳定主 contract 的长期宿主
+- 历史上如果 `packages/shared` 与 `packages/core` 出现职责重叠，默认以 `packages/core` 为准，继续把稳定主 contract 迁入 `core`
+- `packages/shared` 已退场，不再作为稳定主 contract 的长期宿主
 - `packages/core` 默认采用 schema-first；稳定公共 contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型
 - 没有 schema 的结构，不应作为 `core` 的长期公共边界继续扩张
-- 迁移完成后的目标形态是：`core` 拥有唯一主定义，`shared` 最多只保留 compat re-export 或前端默认组合；不允许把“shared 与 core 双主定义”当成稳定状态
+- 迁移完成后的目标形态是：`core` 拥有唯一主定义，compat/默认组合落到真实宿主本地；不允许把“shared 与 core 双主定义”当成稳定状态
 
 ## 2. core 负责什么
 
@@ -208,12 +208,11 @@
 - 面向外部暴露稳定 contract facade
 - 优先承接跨包共享模型、schema、errors、pipeline contract
 
-### `packages/shared`
+### 历史 `packages/shared`
 
-- 当前仍承载大量历史 DTO / Record / Enum
-- 在迁移期可以继续作为 compat 出口与默认组合层
-- 但只要某个能力被认定为“公共稳定边界”，就必须继续向 `core` 收口，不允许长期在 `shared` 与 `core` 双写
-- 如果 `shared` 与 `core` 都暴露了同一个稳定 contract，评审时应默认判定为“边界未收口”，需要继续迁移，而不是接受双定义
+- 已退场，相关历史说明保留在 `docs/shared/*`
+- 对应职责现在应拆分到 `packages/core` 与真实宿主本地 compat/facade 层
+- 如果评审中再次出现“第二份 shared 公共包壳”，应默认判定为边界回退
 
 ### `packages/runtime` / `agents/*`
 
@@ -221,7 +220,7 @@
 - 不是 `core` contract 层
 - 不要把 runtime / agents 内部 state 或节点细节错误上提为 `core` 公共协议
 
-### `packages/runtime` / `packages/tools` / `packages/memory` / `packages/model`
+### `packages/runtime` / `packages/tools` / `packages/memory` / `packages/adapters`
 
 - 负责真实实现与适配
 - 通过 `core` contract 解耦

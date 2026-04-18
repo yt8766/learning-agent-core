@@ -1,4 +1,4 @@
-import { LearningJob, LearningQueueItem, TaskRecord } from '@agent/shared';
+import type { AgentTokenEvent } from '@agent/core';
 import { createDefaultToolRegistry } from '@agent/tools';
 import { MemorySaver } from '@langchain/langgraph';
 
@@ -24,17 +24,19 @@ import type {
   RuntimeSkillInterventionResolver,
   SkillInstallApprovalResolver
 } from './main-graph.types';
+import type { RuntimeLearningJob, RuntimeLearningQueueItem } from '../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 
 interface MainGraphRuntimeModuleParams {
   dependencies: AgentOrchestratorDependencies;
   settings: AgentOrchestratorDependencies['settings'] & AgentRuntimeSettings;
   llm: AgentOrchestratorDependencies['llmProvider'];
   tasks: Map<string, TaskRecord>;
-  learningJobs: Map<string, LearningJob>;
-  learningQueue: Map<string, LearningQueueItem>;
+  learningJobs: Map<string, RuntimeLearningJob>;
+  learningQueue: Map<string, RuntimeLearningQueueItem>;
   pendingExecutions: Map<string, PendingExecutionContext>;
   cancelledTasks: Set<string>;
-  emitToken: (event: import('@agent/shared').AgentTokenEvent) => void;
+  emitToken: (event: AgentTokenEvent) => void;
   emitTaskUpdate: (task: TaskRecord) => void;
   getLocalSkillSuggestionResolver: () => LocalSkillSuggestionResolver | undefined;
   getPreExecutionSkillInterventionResolver: () => PreExecutionSkillInterventionResolver | undefined;

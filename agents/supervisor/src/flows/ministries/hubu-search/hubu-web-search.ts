@@ -1,5 +1,5 @@
-import type { ToolExecutionResult, EvidenceRecord } from '@agent/shared';
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent, type ToolExecutionResult } from '@agent/core';
+import type { EvidenceRecord } from '@agent/core';
 import type { ExecutionStepRecord } from '@agent/runtime';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';

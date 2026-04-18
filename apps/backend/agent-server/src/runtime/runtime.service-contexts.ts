@@ -1,4 +1,4 @@
-import { SkillCard } from '@agent/shared';
+import { SkillCard } from '@agent/core';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from './helpers/runtime-connector-registry';
 import {

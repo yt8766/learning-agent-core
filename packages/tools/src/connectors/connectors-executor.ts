@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/shared';
+import type { ToolExecutionRequest } from '@agent/core';
 
 import { toWorkspacePath } from '../sandbox/sandbox-executor-utils';
 

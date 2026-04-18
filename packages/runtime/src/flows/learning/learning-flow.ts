@@ -3,16 +3,10 @@ import { z } from 'zod/v4';
 import type { ILLMProvider as LlmProvider } from '@agent/core';
 import { MemoryRepository, RuleRepository, MemorySearchService } from '@agent/memory';
 import { generateObjectWithRetry } from '@agent/adapters';
-import {
-  EvaluationResult,
-  LearningEvaluationRecord,
-  LearningJob,
-  ReviewRecord,
-  RuleRecord,
-  SkillCard,
-  TaskRecord
-} from '@agent/shared';
+import { EvaluationResult, LearningEvaluationRecord, ReviewRecord, RuleRecord, SkillCard } from '@agent/core';
 import { SkillRegistry } from '@agent/skill-runtime';
+import type { RuntimeLearningJob as LearningJob } from '../../runtime/runtime-learning.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 
 import { archivalMemorySearchByParams } from '../../memory/active-memory-tools';
 import { flattenStructuredMemories } from '../../memory/runtime-memory-search';

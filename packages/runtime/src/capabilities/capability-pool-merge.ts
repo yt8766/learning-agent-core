@@ -1,4 +1,5 @@
-import type { ChatCheckpointRecord, SkillSearchStateRecord, SpecialistLeadRecord, TaskRecord } from '@agent/shared';
+import type { ChatCheckpointRecord, SkillSearchStateRecord, SpecialistLeadRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
 
 import {
   CONNECTOR_TEMPLATE_TO_DISPLAY,
@@ -10,7 +11,7 @@ import {
 
 export function mergeCapabilityStateFromSkillSearch(
   task: Pick<
-    TaskRecord,
+    RuntimeTaskRecord,
     'capabilityAttachments' | 'capabilityAugmentations' | 'usedInstalledSkills' | 'sessionId' | 'specialistLead'
   >,
   now: string,
@@ -103,7 +104,7 @@ export function mergeCapabilityStateFromSkillSearch(
 
 export function syncCheckpointCapabilityState(
   checkpoint: ChatCheckpointRecord,
-  task: Pick<TaskRecord, 'capabilityAttachments' | 'capabilityAugmentations'>
+  task: Pick<RuntimeTaskRecord, 'capabilityAttachments' | 'capabilityAugmentations'>
 ) {
   checkpoint.capabilityAttachments = task.capabilityAttachments;
   checkpoint.capabilityAugmentations = task.capabilityAugmentations;

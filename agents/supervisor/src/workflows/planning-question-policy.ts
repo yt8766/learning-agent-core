@@ -1,11 +1,12 @@
-import type {
-  CreateTaskDto,
-  PlanDraftRecord,
-  PlanMode,
-  PlanQuestionRecord,
-  TaskRecord,
-  WorkflowPresetDefinition
-} from '@agent/shared';
+import type { CreateTaskDto, PlanMode, PlanDraftRecord, PlanQuestionRecord } from '@agent/core';
+import type { WorkflowPresetDefinition } from '@agent/core';
+
+interface PlanningPolicyTaskLike {
+  resolvedWorkflow?: WorkflowPresetDefinition;
+  specialistLead?: {
+    displayName: string;
+  };
+}
 
 type PlanningScenario =
   | 'ceo-review'
@@ -33,7 +34,7 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-function resolveScenario(task: TaskRecord, dto: CreateTaskDto): PlanningScenario {
+function resolveScenario(task: PlanningPolicyTaskLike, dto: CreateTaskDto): PlanningScenario {
   const workflowId = task.resolvedWorkflow?.id;
   if (workflowId === 'plan-ceo-review') return 'ceo-review';
   if (workflowId === 'plan-eng-review') return 'engineering-review';
@@ -54,7 +55,7 @@ function resolveScenario(task: TaskRecord, dto: CreateTaskDto): PlanningScenario
   return 'general-plan';
 }
 
-function buildBaseAutoResolved(task: TaskRecord, workflow?: WorkflowPresetDefinition, dto?: CreateTaskDto) {
+function buildBaseAutoResolved(task: PlanningPolicyTaskLike, workflow?: WorkflowPresetDefinition, dto?: CreateTaskDto) {
   return [
     workflow ? `已命中流程模板：${workflow.displayName}` : '',
     workflow?.requiredMinistries?.length ? `默认会调动：${workflow.requiredMinistries.join(' / ')}` : '',
@@ -323,7 +324,7 @@ function buildScenarioQuestions(scenario: PlanningScenario): PlanQuestionRecord[
   }
 }
 
-export function buildPlanningPolicy(task: TaskRecord, dto: CreateTaskDto): PlanningPolicy {
+export function buildPlanningPolicy(task: PlanningPolicyTaskLike, dto: CreateTaskDto): PlanningPolicy {
   const scenario = resolveScenario(task, dto);
   const workflow = task.resolvedWorkflow;
   const questionSetTitle =

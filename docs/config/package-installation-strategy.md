@@ -185,7 +185,7 @@ pnpm --dir <package-path> add -D <pkg>
 
 例如：
 
-- 新增 provider 适配能力，优先考虑 `packages/adapters` 或 `packages/model`
+- 新增 provider 适配能力，优先考虑 `packages/adapters`
 - 新增 memory 或向量检索能力，优先考虑 `packages/memory`
 - 新增工具执行或 sandbox 能力，优先考虑 `packages/tools`
 - 新增 graph、flow、session、governance 编排能力，优先考虑 `packages/runtime` 或对应 `agents/*`
@@ -244,7 +244,6 @@ pnpm --dir <package-path> add -D <pkg>
 
 ```bash
 pnpm build:lib
-pnpm exec tsc -p packages/shared/tsconfig.json --noEmit
 pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 ```

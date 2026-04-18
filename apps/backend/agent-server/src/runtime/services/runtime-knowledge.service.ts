@@ -16,7 +16,7 @@ import {
   SearchMemoryDto,
   UserProfileRecord,
   SupersedeKnowledgeDto
-} from '@agent/shared';
+} from '@agent/core';
 import { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
 
 export interface RuntimeKnowledgeContext {

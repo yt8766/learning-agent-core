@@ -1,11 +1,12 @@
-import { ExecutionTrace, TaskRecord } from '@agent/shared';
+import type { ExecutionTrace } from '@agent/core';
 import { WorkerRegistry } from '../../../governance/worker-registry';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 import { MainGraphBackgroundRuntime } from '../background/main-graph-background';
 
 type BackgroundLifecycleDeps = {
   workerRegistry: WorkerRegistry;
   backgroundRuntime: MainGraphBackgroundRuntime;
-  listTasks: () => TaskRecord[];
+  listTasks: () => RuntimeTaskRecord[];
   initialize: () => Promise<void>;
 };
 
@@ -30,7 +31,7 @@ export function isLifecycleWorkerEnabled(workerRegistry: WorkerRegistry, workerI
 
 export function listQueuedLifecycleBackgroundTasks(
   backgroundRuntime: MainGraphBackgroundRuntime,
-  listTasks: () => TaskRecord[]
+  listTasks: () => RuntimeTaskRecord[]
 ) {
   return backgroundRuntime.listQueuedBackgroundTasks(listTasks);
 }
@@ -62,7 +63,7 @@ export async function releaseLifecycleBackgroundLease(deps: BackgroundLifecycleD
 
 export function listExpiredLifecycleBackgroundLeases(
   backgroundRuntime: MainGraphBackgroundRuntime,
-  listTasks: () => TaskRecord[]
+  listTasks: () => RuntimeTaskRecord[]
 ) {
   return backgroundRuntime.listExpiredBackgroundLeases(listTasks);
 }
@@ -105,6 +106,6 @@ export async function deleteLifecycleSessionState(deps: BackgroundLifecycleDeps,
   await deps.backgroundRuntime.deleteSessionState(sessionId);
 }
 
-export function listLifecycleTaskTraces(tasks: Map<string, TaskRecord>, taskId: string): ExecutionTrace[] {
+export function listLifecycleTaskTraces(tasks: Map<string, RuntimeTaskRecord>, taskId: string): ExecutionTrace[] {
   return tasks.get(taskId)?.trace ?? [];
 }

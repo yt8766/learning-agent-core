@@ -1,6 +1,19 @@
-import type { ApprovalDecisionRecord, RuntimeCenterPageKey, TaskRecord as SharedTaskRecord } from '@agent/shared';
+import type { ApprovalDecisionRecord, EvidenceRecord as CoreEvidenceRecord } from '@agent/core';
+import type { AdminTaskAggregate } from './tasking-task.types';
 
-export type DashboardPageKey = RuntimeCenterPageKey | 'memory' | 'profiles';
+export type DashboardPageKey =
+  | 'runtime'
+  | 'approvals'
+  | 'learning'
+  | 'evals'
+  | 'archives'
+  | 'skills'
+  | 'evidence'
+  | 'connectors'
+  | 'skillSources'
+  | 'companyAgents'
+  | 'memory'
+  | 'profiles';
 
 export interface SpecialistLeadRecord {
   id: string;
@@ -70,7 +83,7 @@ export interface ExecutionStepRecord {
 }
 
 export type TaskRecord = Omit<
-  SharedTaskRecord,
+  AdminTaskAggregate,
   | 'status'
   | 'currentMinistry'
   | 'approvals'
@@ -83,9 +96,9 @@ export type TaskRecord = Omit<
   status: string;
   currentMinistry?: string;
   approvals: ApprovalDecisionRecord[];
-  trace?: SharedTaskRecord['trace'];
-  agentStates?: SharedTaskRecord['agentStates'];
-  messages?: SharedTaskRecord['messages'];
+  trace?: AdminTaskAggregate['trace'];
+  agentStates?: AdminTaskAggregate['agentStates'];
+  messages?: AdminTaskAggregate['messages'];
   resolvedWorkflow?: {
     id: string;
     displayName: string;
@@ -274,6 +287,4 @@ export interface ApprovalCenterItem {
   }>;
 }
 
-import type { EvidenceRecord as SharedEvidenceRecord } from '@agent/shared';
-
-export type EvidenceRecord = SharedEvidenceRecord;
+export type EvidenceRecord = CoreEvidenceRecord;

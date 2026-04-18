@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { AgentRole, EvaluationResult, ReviewDecision, ReviewRecord, ToolExecutionResult } from '@agent/shared';
+import { AgentRole, EvaluationResult, ReviewDecision, ReviewRecord, ToolExecutionResult } from '@agent/core';
 import { evaluateExecution } from '@agent/evals';
 
 import { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';

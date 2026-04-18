@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { AgentRole } from '@agent/shared';
+import { AgentRole } from '../supervisor-architecture-helpers';
 
 export const SupervisorPlanSubTaskSchema = z.object({
   title: z.string().describe('子任务标题'),

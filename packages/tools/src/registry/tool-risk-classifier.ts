@@ -1,4 +1,4 @@
-import { type RiskLevel } from '@agent/shared';
+import { type RiskLevel } from '@agent/core';
 
 import { type McpCapabilityDefinition } from '../mcp/mcp-capability-registry';
 

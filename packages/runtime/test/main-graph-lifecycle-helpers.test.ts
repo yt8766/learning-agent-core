@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ActionIntent, TaskStatus } from '@agent/shared';
+import { ActionIntent, TaskStatus } from '@agent/core';
 
 import {
   buildSkillInstallPendingExecution,

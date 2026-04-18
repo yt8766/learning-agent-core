@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/shared';
+import { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/core';
 
 import { RuntimeTaskService } from '../../../runtime/services/runtime-task.service';
 

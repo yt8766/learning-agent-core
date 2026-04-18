@@ -1,6 +1,7 @@
+import type { RuntimeProfile } from '@agent/config';
 import { describeConnectorProfilePolicy } from '@agent/runtime';
 import { RuntimeStateSnapshot } from '@agent/memory';
-import { ApprovalPolicyRecord, ConnectorHealthRecord, RuntimeProfile, TaskRecord, TaskStatus } from '@agent/shared';
+import { ApprovalPolicyRecord, ConnectorHealthRecord, TaskStatus } from '@agent/core';
 import { McpClientManager } from '@agent/tools';
 
 import {
@@ -12,10 +13,26 @@ import { groupConnectorDiscoveryHistory, groupGovernanceAuditByTarget } from '..
 
 type ConnectorsCenterItem = ReturnType<McpClientManager['describeServers']>[number];
 
+interface ConnectorsCenterTaskLike {
+  id: string;
+  goal: string;
+  status?: string;
+  approvals?: unknown[];
+  connectorRefs?: string[];
+  createdAt: string;
+  updatedAt: string;
+  result?: string;
+  trace: Array<{
+    summary?: string;
+    node?: string;
+    data?: unknown;
+  }>;
+}
+
 export function buildConnectorsCenter(input: {
   profile: RuntimeProfile;
   snapshot: RuntimeStateSnapshot;
-  tasks: TaskRecord[];
+  tasks: ConnectorsCenterTaskLike[];
   connectors: ConnectorsCenterItem[];
   knowledgeOverview?: {
     sourceCount: number;

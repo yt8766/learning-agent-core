@@ -1,11 +1,55 @@
-import { TaskRecord } from '@agent/shared';
+interface LearningCenterTaskLike {
+  id: string;
+  goal: string;
+  status?: string;
+  interruptHistory?: unknown[];
+  executionPlan?: {
+    selectedCounselorId?: string;
+    selectedVersion?: string;
+  };
+  entryDecision?: {
+    counselorSelector?: {
+      selectedCounselorId?: string;
+      selectedVersion?: string;
+    };
+  };
+  critiqueResult?: {
+    decision?: string;
+  };
+  llmUsage?: {
+    totalTokens?: number;
+  };
+  budgetState?: {
+    costConsumedUsd?: number;
+  };
+  capabilityAttachments?: Array<{
+    id: string;
+    displayName: string;
+    capabilityTrust?: {
+      trustLevel?: 'high' | 'medium' | 'low';
+      trustTrend?: 'up' | 'steady' | 'down';
+      lastReason?: string;
+      updatedAt?: string;
+    };
+    governanceProfile?: {
+      reportCount?: number;
+      promoteCount?: number;
+      holdCount?: number;
+      downgradeCount?: number;
+      lastTaskId?: string;
+      lastReviewDecision?: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';
+      updatedAt?: string;
+    };
+    updatedAt?: string;
+  }>;
+}
 
 export function queuePriorityScore(priority?: string) {
   return priority === 'high' ? 2 : 1;
 }
 
 export function summarizeCounselorExperiments(
-  tasks: TaskRecord[],
+  tasks: LearningCenterTaskLike[],
   learningQueue: Array<{
     taskId: string;
     selectedCounselorId?: string;
@@ -99,7 +143,7 @@ export function toGovernanceProfileSummary(profile: {
 }
 
 export function buildCapabilityTrustProfiles(
-  tasks: TaskRecord[],
+  tasks: LearningCenterTaskLike[],
   persistedCapabilityProfiles: Array<{
     capabilityId: string;
     displayName: string;

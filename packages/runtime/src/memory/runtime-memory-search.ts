@@ -1,5 +1,5 @@
 import type { MemorySearchService } from '@agent/memory';
-import type { MemoryRecord, MemorySearchRequest, MemorySearchResult, RuleRecord } from '@agent/shared';
+import type { MemoryRecord, MemorySearchRequest, MemorySearchResult, RuleRecord } from '@agent/core';
 
 interface RuntimeMemorySearchParams {
   query: string;

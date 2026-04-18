@@ -1,10 +1,12 @@
 import { UnauthorizedException } from '@nestjs/common';
 
-import { ActionIntent, ChannelIdentity, InboundChannelMessage } from '@agent/shared';
+import { ActionIntent, ChannelIdentity, InboundChannelMessage } from '@agent/core';
 
 import { FeishuWebhookDto } from './dto/feishu-webhook.dto';
 import { TelegramWebhookDto } from './dto/telegram-webhook.dto';
 import type { ChannelInboundHeaderMap, ParsedGatewayCommand } from './interfaces/message-gateway.interface';
+
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
 export function parseGatewayCommand(command?: string): ParsedGatewayCommand {
   const [rawCommand, ...args] = (command ?? '').split(/\s+/).filter(Boolean);
@@ -14,7 +16,7 @@ export function parseGatewayCommand(command?: string): ParsedGatewayCommand {
   };
 }
 
-export function parseActionIntent(intent: string): ActionIntent {
+export function parseActionIntent(intent: string): ActionIntentValue {
   const normalized = intent.toLowerCase();
   const entry = Object.values(ActionIntent).find(value => value === normalized);
   return entry ?? ActionIntent.CALL_EXTERNAL_API;

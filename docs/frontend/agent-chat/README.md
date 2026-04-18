@@ -25,8 +25,6 @@
   - 学习建议与复用提示
 - `src/features/session-list`
   - 会话列表
-- `src/features/report-schema`
-  - 报表结构化视图
 - `src/components`、`src/hooks`、`src/store`
   - 通用组件、hooks、状态管理
 

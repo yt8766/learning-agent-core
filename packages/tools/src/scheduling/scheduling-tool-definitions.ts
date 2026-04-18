@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/shared';
+import type { ToolDefinition } from '@agent/core';
 
 export const SCHEDULING_TOOL_DEFINITIONS: ToolDefinition[] = [
   {

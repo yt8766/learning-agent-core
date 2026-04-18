@@ -200,7 +200,7 @@
 
 共享类型定义：
 
-- `packages/shared/src/types.ts`
+- 当前以 `packages/core` 与各宿主本地 facade/compat 类型层为准；`packages/shared` 已退场
 
 ### 3.1 ChatSessionRecord
 

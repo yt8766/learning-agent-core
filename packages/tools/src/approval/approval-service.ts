@@ -1,5 +1,5 @@
 import { loadSettings, type RuntimeSettings } from '@agent/config';
-import { ActionIntent, ApprovalDecision, ApprovalStatus, ToolDefinition } from '@agent/shared';
+import { ActionIntent, ApprovalDecision, ApprovalStatus, type ToolDefinition } from '@agent/core';
 import {
   defaultPreflightStaticRules,
   evaluatePermissionCheckers,
@@ -19,8 +19,10 @@ import {
   shouldInvokeClassifier
 } from './approval-rules';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 export interface ApprovalEvaluationInput {
-  intent?: ActionIntent | string;
+  intent?: ActionIntentValue | string;
   executionMode?: string;
   currentMinistry?: string;
   currentWorker?: string;
@@ -53,7 +55,7 @@ export interface ApprovalEvaluationResult {
 }
 
 export interface ApprovalClassifierInput {
-  intent: ActionIntent;
+  intent: ActionIntentValue;
   tool?: ToolDefinition;
   input?: ApprovalEvaluationInput;
 }
@@ -81,7 +83,11 @@ export class ApprovalService {
     this.classifier = options?.classifier;
   }
 
-  evaluate(intent: ActionIntent, tool?: ToolDefinition, input?: ApprovalEvaluationInput): ApprovalEvaluationResult {
+  evaluate(
+    intent: ActionIntentValue,
+    tool?: ToolDefinition,
+    input?: ApprovalEvaluationInput
+  ): ApprovalEvaluationResult {
     const governanceDecision = mergeGovernanceDecisions(
       evaluateStaticPolicy(this.staticRules, tool, { ...input, intent }, this.settings),
       evaluatePermissionCheckers(this.permissionCheckers, tool, { ...input, intent })
@@ -320,16 +326,20 @@ export class ApprovalService {
     };
   }
 
-  requiresApproval(intent: ActionIntent, tool?: ToolDefinition, input?: ApprovalEvaluationInput): boolean {
+  requiresApproval(intent: ActionIntentValue, tool?: ToolDefinition, input?: ApprovalEvaluationInput): boolean {
     return this.evaluate(intent, tool, input).requiresApproval;
   }
 
-  getDefaultDecision(intent: ActionIntent, tool?: ToolDefinition, input?: ApprovalEvaluationInput): ApprovalStatus {
+  getDefaultDecision(
+    intent: ActionIntentValue,
+    tool?: ToolDefinition,
+    input?: ApprovalEvaluationInput
+  ): ApprovalStatus {
     return this.requiresApproval(intent, tool, input) ? 'pending' : ApprovalDecision.APPROVED;
   }
 
   async evaluateWithClassifier(
-    intent: ActionIntent,
+    intent: ActionIntentValue,
     tool?: ToolDefinition,
     input?: ApprovalEvaluationInput
   ): Promise<ApprovalEvaluationResult> {

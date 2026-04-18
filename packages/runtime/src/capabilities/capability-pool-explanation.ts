@@ -1,7 +1,8 @@
-import type { CapabilityAttachmentRecord, TaskRecord } from '@agent/shared';
+import type { CapabilityAttachmentRecord } from '@agent/core';
+import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';
 
 export function resolveCapabilityRedirect(
-  task: Pick<TaskRecord, 'capabilityAttachments' | 'executionMode'>,
+  task: Pick<RuntimeTaskRecord, 'capabilityAttachments' | 'executionMode'>,
   target?: string
 ): {
   requestedTarget?: string;

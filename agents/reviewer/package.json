@@ -37,7 +37,6 @@
     "@agent/core": "workspace:*",
     "@agent/evals": "workspace:*",
     "@agent/runtime": "workspace:*",
-    "@agent/shared": "workspace:*",
     "zod": "^4.3.6"
   }
 }

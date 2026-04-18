@@ -1,7 +1,7 @@
 import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 
-import { SkillManifestRecord, SkillSourceRecord } from '@agent/shared';
+import type { SkillManifestRecord, SkillSourceRecord } from '@agent/core';
 
 export interface SkillArtifactFetchResult {
   stagingDir: string;

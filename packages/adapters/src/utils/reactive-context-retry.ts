@@ -1,4 +1,4 @@
-import type { ContextFilterRecord, TaskRecord } from '@agent/shared';
+import type { ContextFilterRecord, TaskRecord } from '@agent/core';
 
 import type { ChatMessage } from '../llm/llm-provider';
 

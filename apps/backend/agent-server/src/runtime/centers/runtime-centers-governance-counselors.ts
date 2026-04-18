@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import { CounselorSelectorConfig } from '@agent/shared';
+import type { CounselorSelectorConfig } from '@agent/core';
 
 import { appendGovernanceAudit } from '../../modules/runtime-governance/services/runtime-governance-store';
 

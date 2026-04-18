@@ -4,13 +4,13 @@ import type {
   CapabilityOwnershipRecord,
   LocalSkillSuggestionRecord,
   WorkerDomain
-} from '@agent/shared';
+} from '@agent/core';
 import {
   getMinistryDisplayName,
   getSpecialistDisplayName,
   normalizeMinistryId,
   normalizeSpecialistDomain
-} from '@agent/shared';
+} from '../runtime/runtime-architecture-helpers';
 
 export const MINISTRY_LABELS: Record<WorkerDomain, string> = {
   'libu-governance': '吏部能力池',

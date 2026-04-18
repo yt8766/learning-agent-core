@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
-最后核对：2026-04-16
+最后核对：2026-04-18
 
 配套现状文档：
 
@@ -75,6 +75,11 @@
 - `pnpm test:coverage`
 - `pnpm test:watch`
 - `pnpm eval:prompts`
+- `pnpm eval:prompts:affected`
+- `pnpm lint:prettier:check`
+- `pnpm lint:eslint:check`
+- `pnpm lint:prettier:affected`
+- `pnpm lint:eslint:affected`
 - `pnpm verify`
 - `pnpm check:docs:turbo`
 - `pnpm check:architecture:turbo`
@@ -96,18 +101,22 @@
   - `packages/*` 与 `agents/*` 可以不再维护显式 `demo/` 与 `demo` 脚本
   - `apps/*` 与 `server` 当前同样允许由 integration 或等价自动化闭环承担 Demo 层责任
 - `pnpm test:demo` 会动态发现仍保留 `demo/` 与 `demo` 脚本的宿主；没有独立 `demo/` 的宿主由 integration 或等价 smoke 承担最小闭环
-- `pnpm test:spec:affected` 会基于 `origin/main...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
-- `pnpm test:demo:affected` 会通过 `turbo run demo --filter='...[origin/main]'` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
+- `pnpm test:spec:affected` 会基于 `VERIFY_BASE_REF...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；未显式配置时默认使用 `origin/main`。当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
+- `pnpm test:demo:affected` 会通过 `node ./scripts/run-turbo-affected.js demo` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
+- `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
+- `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 working tree 改动自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
+- `pnpm eval:prompts:affected` 会在受影响范围内命中 prompt 敏感路径时才执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
 - 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
 - 对脚手架链路，`Demo` 不只指生成器自身能跑，还包括“生成出的目标至少存在最小可运行闭环”：
   - `package-lib` 需要验证最小类型闭环与 integration 闭环
   - `agent-basic` 需要验证 integration 闭环与最小类型闭环
-- `pnpm verify` 是根级聚合入口，当前串联 `check:docs + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
-- `pnpm verify:affected` 当前串联 `verify:governance + test:spec:affected + turbo:typecheck + turbo:test:unit + demo + turbo:test:integration`
+- `pnpm verify` 是根级聚合入口，当前串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
+- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + eval:prompts:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
 - `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
-- GitHub PR 校验当前直接复用根级主入口：代码改动默认执行 `pnpm verify`，纯文档改动默认执行 `pnpm check:docs`
+- GitHub PR 校验当前默认执行受影响范围主入口：代码改动执行 `pnpm verify:affected`，并将 `VERIFY_BASE_REF` 对齐到 PR 的 base branch；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
+- GitHub main 校验当前默认执行全量主入口：`pnpm verify`；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - 当前不要把根级 `typecheck`、`test:unit`、`test:integration` 直接改成 Turbo 任务入口；仓库仍存在 `runtime <-> agents/*` 的循环依赖，直接沿 package graph 编排会报错
 - 后续二阶段迁移默认采用“新增 Turbo-only 包级任务”而不是直接篡改现有主入口，详见 [Turbo 验证二阶段迁移方案](/docs/evals/turbo-verification-stage-two-plan.md)
 - 当前 Phase 2A 已落地的 Turbo-only 包级命令为：
@@ -124,14 +133,18 @@
 
 ## 1.1 强制执行要求
 
+- [验证体系规范](/docs/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；每次改动文件时，都必须先按该文档判断本轮需要补齐的验证层级、治理门槛与命令组合。
 - 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前就必须补齐五层验证，不允许只跑其中一层就结束。
 - 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
+- 禁止因为“只是单文件改动”“只是重构”“只是补测试”“只是调模板”而跳过 [验证体系规范](/docs/evals/verification-system-guidelines.md) 要求的 Type / Spec / Unit / Demo / Integration / Eval / 治理门槛判断。
 - 如果 `pnpm verify` 被与本轮无关的既有红灯、网络、凭据、外部服务或环境问题阻断，仍必须对受影响范围逐层补齐以下验证：
+  - `Governance`：`pnpm lint:prettier:check`、`pnpm lint:eslint:check`，或受影响范围的 `pnpm lint:prettier:affected`、`pnpm lint:eslint:affected`
   - `Type`：`pnpm typecheck` 或受影响项目的 `tsc --noEmit`
   - `Spec`：`pnpm test:spec`、`pnpm test:spec:affected` 或受影响项目的 schema parse / safeParse 回归
   - `Unit`：`pnpm test:unit` 或受影响项目的 unit tests
   - `Demo`：根级优先 `pnpm test:demo`；受影响范围优先 `pnpm test:demo:affected`，也可执行等价最小闭环，例如 integration、build 或宿主自定义 smoke
   - `Integration`：`pnpm test:integration` 或受影响项目的 integration tests
+  - `Eval`：涉及 prompt 敏感路径时执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - 只要本轮触达模板、脚手架、CLI、工具 adapter、workflow preset、审批恢复或最小闭环相关实现，这五层验证依旧全部生效，不能因为“只是生成链路”就跳过 Demo / Integration
 - 纯文档改动至少执行 `pnpm check:docs`；如果文档与代码同轮变更，仍按五层验证执行。
 - 如果只想预览治理校验会执行哪些 Turbo 任务，可运行 `pnpm exec turbo run check:docs check:architecture --dry-run=json` 或 `pnpm exec turbo run check:docs check:architecture --graph=turbo-verify-governance.html`。

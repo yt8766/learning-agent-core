@@ -33,8 +33,7 @@
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/config": "workspace:*",
-    "@agent/model": "workspace:*",
-    "@agent/shared": "workspace:*"
+    "@agent/adapters": "workspace:*",
+    "@agent/config": "workspace:*"
   }
 }

@@ -1,6 +1,4 @@
-import { ActionIntent, ApprovalDecision } from '@agent/shared';
-
-import type { AgentGraphHandlers, RuntimeAgentGraphState } from '@agent/core';
+import { ActionIntent, ApprovalDecision, type AgentGraphHandlers, type RuntimeAgentGraphState } from '@agent/core';
 
 export async function runGoalIntakeNode(
   state: RuntimeAgentGraphState,

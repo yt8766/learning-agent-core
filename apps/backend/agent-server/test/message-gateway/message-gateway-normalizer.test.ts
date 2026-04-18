@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 
-import { ActionIntent } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
 
 import {
   normalizeFeishuWebhook,

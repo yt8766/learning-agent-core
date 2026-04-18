@@ -9,8 +9,7 @@
 
 ## 类型检查
 
-- `pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
-- `pnpm exec tsc -p packages/agent-core/tsconfig.json --noEmit`
+- `pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`
 - `pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`
 - `pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit`
 - `pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit`

@@ -1,40 +1,42 @@
-import { QueueStateRecord, SubgraphId, TaskRecord, TaskStatus } from '@agent/shared';
+import { TaskStatus } from '@agent/core';
+import type { ApprovalResumeInput, QueueStateRecord, SubgraphIdValue as SubgraphId } from '@agent/core';
 
 import type { PendingExecutionContext } from '../../../flows/approval';
+import type { RuntimeTaskRecord } from '../../../runtime/runtime-task.types';
 
 export class MainGraphBackgroundRuntime {
   constructor(
-    private readonly tasks: Map<string, TaskRecord>,
+    private readonly tasks: Map<string, RuntimeTaskRecord>,
     private readonly pendingExecutions: Map<string, PendingExecutionContext>,
     private readonly cancelledTasks: Set<string>,
     private readonly updateBudgetState: (
-      task: TaskRecord,
-      overrides: Partial<NonNullable<TaskRecord['budgetState']>>
-    ) => NonNullable<TaskRecord['budgetState']>,
-    private readonly transitionQueueState: (task: TaskRecord, status: QueueStateRecord['status']) => void,
+      task: RuntimeTaskRecord,
+      overrides: Partial<NonNullable<RuntimeTaskRecord['budgetState']>>
+    ) => NonNullable<RuntimeTaskRecord['budgetState']>,
+    private readonly transitionQueueState: (task: RuntimeTaskRecord, status: QueueStateRecord['status']) => void,
     private readonly addTrace: (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       node: string,
       summary: string,
       data?: Record<string, unknown>
     ) => void,
-    private readonly addProgressDelta: (task: TaskRecord, content: string) => void,
-    private readonly markSubgraph: (task: TaskRecord, subgraphId: SubgraphId) => void,
-    private readonly persistAndEmitTask: (task: TaskRecord) => Promise<void>,
+    private readonly addProgressDelta: (task: RuntimeTaskRecord, content: string) => void,
+    private readonly markSubgraph: (task: RuntimeTaskRecord, subgraphId: SubgraphId) => void,
+    private readonly persistAndEmitTask: (task: RuntimeTaskRecord) => Promise<void>,
     private readonly persistRuntimeState: () => Promise<void>,
     private readonly getRunBootstrapGraph: () => (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       dto: { goal: string; context?: string; constraints: string[] },
-      options: { mode: 'initial' | 'interrupt_resume'; resume?: import('@agent/shared').ApprovalResumeInput }
+      options: { mode: 'initial' | 'interrupt_resume'; resume?: ApprovalResumeInput }
     ) => Promise<void>,
     private readonly getRunTaskPipeline: () => (
-      task: TaskRecord,
+      task: RuntimeTaskRecord,
       dto: { goal: string; context?: string; constraints: string[] },
       options: { mode: 'initial' | 'retry' | 'approval_resume' }
     ) => Promise<void>
   ) {}
 
-  listQueuedBackgroundTasks(listTasks: () => TaskRecord[]): TaskRecord[] {
+  listQueuedBackgroundTasks(listTasks: () => RuntimeTaskRecord[]): RuntimeTaskRecord[] {
     const now = Date.now();
     return listTasks().filter(task => {
       const queueState = task.queueState;
@@ -48,7 +50,7 @@ export class MainGraphBackgroundRuntime {
     });
   }
 
-  listExpiredBackgroundLeases(listTasks: () => TaskRecord[]): TaskRecord[] {
+  listExpiredBackgroundLeases(listTasks: () => RuntimeTaskRecord[]): RuntimeTaskRecord[] {
     const now = Date.now();
     return listTasks().filter(task => {
       const queueState = task.queueState;
@@ -62,7 +64,7 @@ export class MainGraphBackgroundRuntime {
     });
   }
 
-  async acquireBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<TaskRecord | undefined> {
+  async acquireBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun || task.queueState.status !== 'queued') {
       return undefined;
@@ -86,7 +88,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async heartbeatBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<TaskRecord | undefined> {
+  async heartbeatBackgroundLease(taskId: string, owner: string, ttlMs: number): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun || task.queueState.leaseOwner !== owner) {
       return undefined;
@@ -103,7 +105,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async releaseBackgroundLease(taskId: string, owner: string): Promise<TaskRecord | undefined> {
+  async releaseBackgroundLease(taskId: string, owner: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun || task.queueState.leaseOwner !== owner) {
       return undefined;
@@ -120,7 +122,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async reclaimExpiredBackgroundLease(taskId: string, owner: string): Promise<TaskRecord | undefined> {
+  async reclaimExpiredBackgroundLease(taskId: string, owner: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun || task.queueState.status !== 'running') {
       return undefined;
@@ -198,7 +200,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async runBackgroundTask(taskId: string): Promise<TaskRecord | undefined> {
+  async runBackgroundTask(taskId: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun || task.queueState.status !== 'queued') {
       return undefined;
@@ -219,7 +221,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async markBackgroundTaskRunnerFailure(taskId: string, reason: string): Promise<TaskRecord | undefined> {
+  async markBackgroundTaskRunnerFailure(taskId: string, reason: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task?.queueState?.backgroundRun) {
       return undefined;
@@ -238,7 +240,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async retryTask(taskId: string): Promise<TaskRecord | undefined> {
+  async retryTask(taskId: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task) {
       return undefined;
@@ -269,7 +271,7 @@ export class MainGraphBackgroundRuntime {
     return task;
   }
 
-  async cancelTask(taskId: string, reason?: string): Promise<TaskRecord | undefined> {
+  async cancelTask(taskId: string, reason?: string): Promise<RuntimeTaskRecord | undefined> {
     const task = this.tasks.get(taskId);
     if (!task) {
       return undefined;

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import type { ConfigureConnectorDto } from '@agent/shared';
+import type { ConfigureConnectorDto } from '@agent/core';
 
 import { buildConnectorsCenter } from '../centers/runtime-connectors-center';
 import {

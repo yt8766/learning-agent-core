@@ -1,4 +1,5 @@
-import type { ActionIntent, ChannelIdentity, ChannelOutboundMessage } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
+import type { ChannelIdentity, ChannelOutboundMessage } from '@agent/core';
 
 export interface ChannelDeliveryReceipt {
   id: string;
@@ -35,4 +36,4 @@ export interface ParsedGatewayCommand {
   args: string[];
 }
 
-export type ParsedActionIntent = ActionIntent;
+export type ParsedActionIntent = (typeof ActionIntent)[keyof typeof ActionIntent];

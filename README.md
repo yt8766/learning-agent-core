@@ -30,7 +30,7 @@
 - `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
 - `packages/skill-runtime`：运行时技能注册与技能卡领域包；是 `@agent/skill-runtime` 的真实物理宿主
 - `packages/evals`：评估与复盘
-- `packages/shared` / `packages/model`：共享契约与模型接入层
+- `docs/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
   - 运行时技能数据默认落在 `data/skill-runtime`
 - `docs/*`：项目规范、模块说明、联调结论与当前实现沉淀
@@ -169,7 +169,9 @@
 - Demo 闭环：`pnpm test:demo`
 - 协同层测试：`pnpm test:integration`
 - 受影响范围 Spec：`pnpm test:spec:affected`
+- 受影响范围 Lint：`pnpm lint:prettier:affected`、`pnpm lint:eslint:affected`
 - 受影响范围 Demo：`pnpm test:demo:affected`
+- 受影响范围 Prompt 回归：`pnpm eval:prompts:affected`
 - 覆盖率测试：`pnpm test:coverage`
 - 测试监听：`pnpm test:watch`
 - Prompt 回归：`pnpm eval:prompts`
@@ -243,12 +245,14 @@
 
 ### PR 检查
 
-`pull_request -> main` 时会触发 `PR 检查`，并拆成 4 个独立状态：
+`pull_request -> main` 时会触发 `PR 检查`，当前主要状态包括：
 
-- `Lint`
-- `Typecheck`
-- `Test`
-- `Build`
+- `Detect Changed Areas`
+- `Lockfile Sync`
+- `Full Lint`
+- `Docs Check`
+- `Full Verify`
+- `Prompt Regression`
 
 这套检查会结合 `changed-files` 做路径过滤：
 
@@ -302,11 +306,10 @@
 - 禁止直接推送到 `main`
 - 必须通过 Pull Request 合并
 - 必须等待状态检查通过后才能合并
-- 必须通过以下 4 个 PR 检查：
-  - `Lint`
-  - `Typecheck`
-  - `Test`
-  - `Build`
+- 必须通过当前配置的 PR 关键检查，至少包括：
+  - `Lockfile Sync`
+  - `Full Lint`
+  - `Full Verify`
 - 建议开启“需要分支为最新状态后才能合并”
 - 建议开启“新提交后自动失效旧审批”
 
@@ -364,12 +367,12 @@
 ## 最低检查
 
 - 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前默认先跑 `pnpm verify`
-- `pnpm verify` 当前会串联 `check:docs + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`
-- `pnpm verify:affected` 当前会串联 `verify:governance + test:spec:affected + turbo:typecheck + turbo:test:unit + demo + turbo:test:integration`
+- `pnpm verify` 当前会串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`
+- `pnpm verify:affected` 当前会串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + eval:prompts:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- 所有 `*:affected` 入口默认基于 `VERIFY_BASE_REF` 判定受影响范围；未显式配置时回落到 `origin/main`
 - GitHub PR 校验当前也以这条主入口为准：代码改动默认跑 `pnpm verify`，纯文档改动默认跑 `pnpm check:docs`
 - 如果 `pnpm verify` 被与本轮无关的既有红灯或环境问题阻断，仍必须对受影响范围补齐 `Type / Spec / Unit / Demo / Integration` 五层验证，并在交付说明中写明 blocker
 - 纯文档改动至少执行 `pnpm check:docs`
-- shared：`pnpm exec tsc -p packages/shared/tsconfig.json --noEmit`
 - runtime：`pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`
 - backend：`pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`
 - agent-chat：`pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit`

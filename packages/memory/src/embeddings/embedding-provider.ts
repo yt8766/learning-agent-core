@@ -4,7 +4,7 @@ import {
   type EmbeddingProvider,
   type EmbeddingRuntimeSettings,
   type OpenAIEmbeddingModelOptions
-} from '@agent/model';
+} from '@agent/adapters';
 
 export type { EmbeddingProvider, EmbeddingRuntimeSettings };
 

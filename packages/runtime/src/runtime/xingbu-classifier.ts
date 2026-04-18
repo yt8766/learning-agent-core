@@ -1,10 +1,13 @@
 import { z } from 'zod/v4';
-import type { ActionIntent, ToolDefinition } from '@agent/shared';
+import { ActionIntent } from '@agent/core';
+import type { ToolDefinition } from '@agent/core';
 import type { ILLMProvider as LlmProvider } from '@agent/core';
 import { generateObjectWithRetry } from '../utils/llm-retry';
 
+type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+
 export interface XingbuClassifierInput {
-  intent: ActionIntent;
+  intent: ActionIntentValue;
   tool: ToolDefinition;
   input?: {
     executionMode?: string;

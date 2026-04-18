@@ -1,5 +1,6 @@
-import type { QueueStateRecord, TaskRecord } from '@agent/shared';
+import type { QueueStateRecord } from '@agent/core';
 
+import type { MainGraphTaskAggregate as TaskRecord } from './main-graph-task.types';
 import { TaskBudgetExceededError } from './main-graph-task-runtime-errors';
 
 export function updateTaskBudgetState(

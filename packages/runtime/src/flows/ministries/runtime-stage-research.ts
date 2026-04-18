@@ -1,26 +1,25 @@
-import {
-  ActionIntent,
-  AgentExecutionState,
+import { EvidenceRecord, MemoryRecord, SkillCard, SpecialistLeadRecord, type AgentExecutionState } from '@agent/core';
+import type {
   DeliveryMinistryLike,
-  AgentRole,
-  EvidenceRecord,
-  MemoryRecord,
   MinistryContractMeta,
   ResearchMinistryLike,
-  SkillCard,
   SourcePolicyMode,
-  SpecialistFindingRecord,
-  TaskRecord,
+  TaskRecord as CoreTaskRecord
+} from '@agent/core';
+import { ActionIntent, AgentRole } from '@agent/core';
+import {
   buildResearchSourcePlan,
   markExecutionStepBlocked,
   markExecutionStepCompleted,
   markExecutionStepStarted,
-  mergeEvidence,
-  normalizeExecutionMode
-} from '@agent/shared';
+  mergeEvidence
+} from '@agent/agents-supervisor';
 import { normalizeSpecialistFinding } from '@agent/core';
+import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
 
 import { handleResearchSkillIntervention } from '../approval/research-skill-interruption';
+import type { RuntimeSpecialistFindingRecord as SpecialistFindingRecord } from '../../runtime/runtime-specialist-finding.types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { announceSkillStep, completeSkillStep, resolveResearchDispatchObjective } from './runtime-stage-helpers';
 import type { PipelineRuntimeCallbacks } from './runtime-stage-types';
@@ -139,10 +138,10 @@ export async function runResearchStage(
   callbacks.addProgressDelta(task, '户部已开始检索资料与上下文。', AgentRole.RESEARCH);
   callbacks.setSubTaskStatus(task, AgentRole.RESEARCH, 'running');
   announceSkillStep(task, 'research', callbacks);
-  const researchResult: NormalizedResearchResult =
+  const researchResultRaw =
     researchMinistry === 'libu-delivery'
       ? {
-          ...(await libuDocs.research(task)),
+          ...(await libuDocs.research(task as CoreTaskRecord)),
           knowledgeEvidence: [],
           specialistFinding: undefined,
           contractMeta: {
@@ -150,9 +149,17 @@ export async function runResearchStage(
             contractVersion: 'research-evidence.v1',
             parseStatus: 'success',
             fallbackUsed: false
-          }
+          } satisfies MinistryContractMeta
         }
       : await hubu.research(resolveResearchDispatchObjective(state.dispatches));
+  const researchResult: NormalizedResearchResult = {
+    summary: researchResultRaw.summary,
+    memories: researchResultRaw.memories,
+    knowledgeEvidence: researchResultRaw.knowledgeEvidence,
+    skills: researchResultRaw.skills,
+    specialistFinding: researchResultRaw.specialistFinding as SpecialistFindingRecord | undefined,
+    contractMeta: researchResultRaw.contractMeta
+  };
   callbacks.ensureTaskNotCancelled(task);
   if (researchResult.knowledgeEvidence.length) {
     task.externalSources = mergeEvidence(task.externalSources ?? [], researchResult.knowledgeEvidence);
@@ -195,8 +202,8 @@ export async function runResearchStage(
   if (task.specialistLead) {
     upsertRuntimeSpecialistFinding(
       task,
-      researchResult.specialistFinding ?? {
-        specialistId: task.specialistLead.id,
+      (researchResult.specialistFinding ?? {
+        specialistId: task.specialistLead.domain,
         role: 'lead',
         source: 'research',
         stage: 'research',
@@ -205,13 +212,13 @@ export async function runResearchStage(
         suggestions: [task.specialistLead.reason ?? '结合研究结果继续形成统一判断。'],
         evidenceRefs: researchEvidenceRefs,
         confidence: task.routeConfidence
-      }
+      }) as Parameters<typeof normalizeSpecialistFinding>[0]
     );
   }
   for (const support of task.supportingSpecialists ?? []) {
     const slice = task.contextSlicesBySpecialist?.find(item => item.specialistId === support.id);
     upsertRuntimeSpecialistFinding(task, {
-      specialistId: support.id,
+      specialistId: support.domain,
       role: 'support',
       source: 'research',
       stage: 'research',

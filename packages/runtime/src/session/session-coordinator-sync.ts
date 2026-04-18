@@ -1,10 +1,12 @@
-import type { AgentRole, ChatCheckpointRecord, ExecutionStepRecord, TaskRecord } from '@agent/shared';
-import { TaskStatus } from '@agent/shared';
+import type { ChatCheckpointRecord, ExecutionStepRecord } from '@agent/core';
+import { TaskStatus } from '@agent/core';
 
 import { TASK_MESSAGE_EVENT_MAP, TRACE_EVENT_MAP } from '../utils/event-maps';
+import type { AgentRoleValue as AgentRole } from './session-architecture-helpers';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 import type { SessionCoordinatorThinking } from './session-coordinator-thinking';
 import { emitNodeStatusEvent } from './session-node-events';
+import type { SessionTaskAggregate } from './session-task.types';
 
 const CHAT_VISIBLE_MESSAGE_TYPES = new Set(['summary']);
 const PROGRESS_STREAM_MESSAGE_PREFIX = 'progress_stream_';
@@ -28,7 +30,7 @@ function bindAssistantResultMessage(
   store: SessionCoordinatorStore,
   sessionId: string,
   sessionMessages: ReturnType<SessionCoordinatorStore['getMessages']>,
-  task: TaskRecord,
+  task: SessionTaskAggregate,
   content: string,
   linkedAgent?: AgentRole
 ) {
@@ -72,9 +74,9 @@ export function syncCoordinatorTask(
   store: SessionCoordinatorStore,
   thinking: SessionCoordinatorThinking,
   sessionId: string,
-  task: TaskRecord,
-  ensureLearningCandidates: (task: TaskRecord) => void,
-  onAutoConfirmLearning: (sessionId: string, task: TaskRecord) => void
+  task: SessionTaskAggregate,
+  ensureLearningCandidates: (task: SessionTaskAggregate) => void,
+  onAutoConfirmLearning: (sessionId: string, task: SessionTaskAggregate) => void
 ): void {
   const session = store.requireSession(sessionId);
   // task.activeInterrupt / task.interruptHistory are persisted 司礼监 / InterruptController projections.
@@ -312,7 +314,7 @@ export function syncCoordinatorTask(
 function updateCheckpoint(
   checkpoint: ChatCheckpointRecord,
   channelIdentity: ChatCheckpointRecord['channelIdentity'],
-  task: TaskRecord,
+  task: SessionTaskAggregate,
   thinking: SessionCoordinatorThinking,
   messageId?: string
 ) {
@@ -413,7 +415,7 @@ function updateCheckpoint(
 function emitExecutionStepEvents(
   store: SessionCoordinatorStore,
   sessionId: string,
-  task: TaskRecord,
+  task: SessionTaskAggregate,
   previousExecutionSteps: ExecutionStepRecord[]
 ) {
   const previousById = new Map(previousExecutionSteps.map(step => [step.id, step]));
@@ -458,7 +460,7 @@ function resolveExecutionStepEventType(
   return 'execution_step_started' as const;
 }
 
-function buildExecutionStepPayload(task: TaskRecord, step: ExecutionStepRecord) {
+function buildExecutionStepPayload(task: SessionTaskAggregate, step: ExecutionStepRecord) {
   return {
     taskId: task.id,
     route: step.route,

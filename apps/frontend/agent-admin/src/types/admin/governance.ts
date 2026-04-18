@@ -216,12 +216,12 @@ export interface SkillManifestRecord {
 }
 
 import type {
-  CompanyAgentRecord as SharedCompanyAgentRecord,
-  InstalledSkillRecord as SharedInstalledSkillRecord,
-  SkillInstallReceipt as SharedSkillInstallReceipt
-} from '@agent/shared';
+  CompanyAgentRecord as CoreCompanyAgentRecord,
+  InstalledSkillRecord as CoreInstalledSkillRecord,
+  SkillInstallReceipt as CoreSkillInstallReceipt
+} from '@agent/core';
 
-export type InstalledSkillRecord = SharedInstalledSkillRecord & {
+export type InstalledSkillRecord = CoreInstalledSkillRecord & {
   governanceRecommendation?: string;
   allowedTools?: string[];
   compatibility?: string;
@@ -242,12 +242,12 @@ export type InstalledSkillRecord = SharedInstalledSkillRecord & {
   }>;
 };
 
-export type SkillInstallReceipt = SharedSkillInstallReceipt & {
+export type SkillInstallReceipt = CoreSkillInstallReceipt & {
   status: string;
   result?: string;
 };
 
-export type CompanyAgentRecord = SharedCompanyAgentRecord & {
+export type CompanyAgentRecord = CoreCompanyAgentRecord & {
   activeTaskCount?: number;
   totalTaskCount?: number;
   successRate?: number;
@@ -256,6 +256,13 @@ export type CompanyAgentRecord = SharedCompanyAgentRecord & {
   recentTaskGoals?: string[];
   governanceStatus?: string;
 };
+
+export interface SkillSourcesCenterRecord {
+  sources: SkillSourceRecord[];
+  manifests: SkillManifestRecord[];
+  installed: InstalledSkillRecord[];
+  receipts: SkillInstallReceipt[];
+}
 
 export interface SessionRecord {
   id: string;

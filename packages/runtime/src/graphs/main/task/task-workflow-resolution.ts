@@ -1,17 +1,7 @@
-import type {
-  CreateTaskDto,
-  EvidenceRecord,
-  ExecutionPlanMode,
-  RequestedExecutionHints,
-  SpecialistDomain
-} from '@agent/shared';
-import {
-  appendDataReportContext,
-  buildDataReportContract,
-  resolveSpecialistRoute,
-  resolveWorkflowPreset,
-  resolveWorkflowRoute
-} from '@agent/shared';
+import type { ExecutionPlanMode, RequestedExecutionHints, CreateTaskDto, SpecialistDomain } from '@agent/core';
+import type { EvidenceRecord } from '@agent/core';
+import { resolveSpecialistRoute, resolveWorkflowPreset, resolveWorkflowRoute } from '@agent/agents-supervisor';
+import { appendDataReportContext, buildDataReportContract } from './task-architecture-helpers';
 
 export function resolveTaskWorkflowResolution(params: {
   dto: CreateTaskDto;

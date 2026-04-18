@@ -1,4 +1,4 @@
-import { SkillCard, TaskStatus } from '@agent/shared';
+import { SkillCard, TaskStatus } from '@agent/core';
 
 export function buildSkillSourcesCenter(input: {
   sources: any[];

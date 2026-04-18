@@ -1,7 +1,5 @@
-import { ApprovedExecutionAgentLike, ToolExecutionResult } from '@agent/shared';
-
 import type { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
-import type { PendingExecutionContext } from '@agent/core';
+import type { ApprovedExecutionAgentLike, PendingExecutionContext, ToolExecutionResult } from '@agent/core';
 
 export async function executeApprovedAction(
   context: Pick<AgentRuntimeContext, 'taskId' | 'goal' | 'sandbox'>,

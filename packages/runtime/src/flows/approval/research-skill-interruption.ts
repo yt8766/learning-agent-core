@@ -1,15 +1,9 @@
-import {
-  ActionIntent,
-  AgentRole,
-  ApprovalResumeInput,
-  TaskRecord,
-  TaskStatus,
-  markExecutionStepBlocked,
-  markExecutionStepResumed
-} from '@agent/shared';
+import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus, type AgentRoleValue } from '@agent/core';
+import { markExecutionStepBlocked, markExecutionStepResumed } from '@agent/agents-supervisor';
 import { interrupt } from '@langchain/langgraph';
 
 import type { PendingExecutionContext } from './types';
+import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
 
@@ -42,10 +36,10 @@ type PipelineRuntimeCallbacks = {
     }
   ) => void;
   addTrace: (task: TaskRecord, node: string, summary: string, data?: Record<string, unknown>) => void;
-  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRole) => void;
+  addProgressDelta: (task: TaskRecord, content: string, from?: AgentRoleValue) => void;
   setSubTaskStatus: (
     task: TaskRecord,
-    role: AgentRole,
+    role: AgentRoleValue,
     status: 'pending' | 'running' | 'completed' | 'blocked'
   ) => void;
   persistAndEmitTask: (task: TaskRecord) => Promise<void>;

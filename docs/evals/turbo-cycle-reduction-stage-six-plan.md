@@ -140,7 +140,7 @@
 这些 contract 更适合落在：
 
 - `packages/core`
-- `packages/shared`
+- 历史迁移期的 compat 层
 - 或一个更稳定、无反向依赖的 runtime-facing contract 包
 
 ### 4.3 `coder` / `reviewer` 之后更像第二层拆分
@@ -170,7 +170,7 @@
 - 被谁使用
 - 应迁移到哪里
 
-当前状态：
+阶段性状态：
 
 - 本步骤已完成，产出见 [Runtime-Agent 循环依赖消费清单](/docs/evals/runtime-agent-cycle-audit.md)
 
@@ -185,41 +185,10 @@
 
 当前状态：
 
-- 第一批小切口 `listBootstrapSkills` 已下沉到 `@agent/shared`
-- 第二批纯 workflow preset contract 已下沉到 `@agent/shared`
-  - `resolveWorkflowPreset`
-  - `buildWorkflowPresetPlan`
-  - `GENERAL_PRESET`
-  - `WORKFLOW_PRESETS`
-- 第三批研究来源规划 contract 已下沉到 `@agent/shared`
-  - `buildResearchSourcePlan`
-  - `mergeEvidence`
-  - `buildTemporalContextBlock`
-  - `isFreshnessSensitiveGoal`
-  - `buildFreshnessAnswerInstruction`
-- 第四批 workflow route contract 已下沉到 `@agent/shared`
-  - `resolveWorkflowRoute`
-  - `applyRoutingProfile`
-  - `classifyIntent`
-  - `deriveRoutingProfile`
-  - `evaluateExecutionReadiness`
-- 第五批 specialist routing contract 已下沉到 `@agent/shared`
-  - `resolveSpecialistRoute`
-- 第六批 execution-step contract 已下沉到 `@agent/shared`
-  - `initializeTaskExecutionSteps`
-  - `markExecutionStepStarted`
-  - `markExecutionStepBlocked`
-  - `markExecutionStepCompleted`
-  - `markExecutionStepResumed`
-  - `buildExecutionStepSummary`
-- 第七批 runtime-facing router facade 已建立在 `@agent/shared`
-  - `RouterMinistryLike`
-- 第八批 supervisor ministry facade 已建立在 `@agent/shared`
-  - `ResearchMinistryLike`
-  - `DeliveryMinistryLike`
-- runtime 的 research / execute / review / pipeline graph 参数位已切到 shared contract
+- 当时已经按批次把 bootstrap、workflow preset、research planning、workflow route、specialist route、execution-step、router facade 与 supervisor ministry facade 这几组 runtime-facing contract 下沉到 `@agent/shared`
+- runtime 的 research / execute / review / pipeline graph 参数位当时也已切到 shared contract
 - `HubuSearchMinistry` / `LibuDocsMinistry` 具体类创建继续只保留在 orchestration 装配点
-- `supervisor` 当前保留 compat re-export
+- `supervisor` 当时保留 compat re-export
 - 后续仍需继续迁移实现级依赖
 
 ### 5.3 第三步：把 runtime 改成依赖 contract / registry，而不是依赖 agent 实现
@@ -229,14 +198,14 @@
 - 用 descriptor / adapter / facade 替换直接实现依赖
 - 让注册发生在更外层的装配点，而不是在 runtime 包内部硬连 agent 包
 
-当前状态：
+阶段性状态：
 
 - `LibuRouterMinistry` 的 runtime-facing 参数位已基本完成 contract 化
 - `HubuSearchMinistry` / `LibuDocsMinistry` 的 runtime-facing 参数位已完成第一轮 contract 化
 - `XingbuReviewMinistry` 的 runtime-facing 参数位已完成第一轮 contract 化
 - `GongbuCodeMinistry` / `BingbuOpsMinistry` 的 runtime-facing 参数位已完成第一轮 contract 化
 - `ExecutorAgent` 的 recovery-only 消费面已缩到 `ApprovedExecutionAgentLike`
-- `appendDataReportContext` / `buildDataReportContract` 已下沉到 `@agent/shared`
+- `appendDataReportContext` / `buildDataReportContract` 当时已下沉到 `@agent/shared`
 - runtime 对 `@agent/agents-supervisor` 的剩余直接引用，已明显收缩到装配点、本地 compat barrel 和少量 graph wiring
 - runtime 对 `@agent/agents-reviewer` 的剩余直接引用，已收缩到装配点与本地 compat barrel
 - runtime 对 `@agent/agents-coder` 的剩余直接引用，已收缩到装配点与本地 compat barrel
@@ -281,13 +250,7 @@ pnpm exec turbo run build --filter=@agent/runtime --dry-run=json
 
 - 已完成：
   - workflow / helper / route contract 下沉到 `@agent/shared`
-  - `RouterMinistryLike`
-  - `ResearchMinistryLike`
-  - `DeliveryMinistryLike`
-  - `ReviewMinistryLike`
-  - `CodeExecutionMinistryLike`
-  - `OpsExecutionMinistryLike`
-  - `ApprovedExecutionAgentLike`
+  - router / ministry / execution facade 的第一轮 contract 化
   - data-report runtime-facing contract helper 下沉到 `@agent/shared`
   - runtime 对 supervisor 三个主要 Ministry 的参数位 contract 化
   - runtime 对 reviewer/coder 主要 Ministry 参数位的第一轮 contract 化
