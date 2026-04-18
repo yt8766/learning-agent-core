@@ -444,37 +444,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/config: {}
-
-  packages/core:
-    dependencies:
-      '@agent/report-kit':
-        specifier: workspace:*
-        version: link:../report-kit
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-
-  packages/evals: {}
-
-  packages/memory:
-    dependencies:
-      '@agent/adapters':
-        specifier: workspace:*
-        version: link:../adapters
-      '@agent/config':
-        specifier: workspace:*
-        version: link:../config
-
-  packages/report-kit:
-    dependencies:
-      '@agent/templates':
-        specifier: workspace:*
-        version: link:../templates
-      typescript:
-        specifier: ^5.8.2
-        version: 5.9.3
-
   packages/agent-kit:
     dependencies:
       '@agent/adapters':
@@ -499,14 +468,51 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/runtime:
+  packages/config: {}
+
+  packages/core:
     dependencies:
-      '@agent/agent-kit':
+      '@agent/report-kit':
         specifier: workspace:*
-        version: link:../agent-kit
+        version: link:../report-kit
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+
+  packages/evals: {}
+
+  packages/knowledge:
+    dependencies:
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/memory:
+    dependencies:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../adapters
+      '@agent/config':
+        specifier: workspace:*
+        version: link:../config
+
+  packages/report-kit:
+    dependencies:
+      '@agent/templates':
+        specifier: workspace:*
+        version: link:../templates
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/runtime:
+    dependencies:
+      '@agent/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      '@agent/agent-kit':
+        specifier: workspace:*
+        version: link:../agent-kit
       '@agent/agents-coder':
         specifier: workspace:*
         version: link:../../agents/coder

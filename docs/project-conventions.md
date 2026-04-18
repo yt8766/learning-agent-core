@@ -121,6 +121,8 @@
 - main 流水线允许在五层验证之后对附加 job 做条件化触发：当前 docs-only push 默认跳过 `build-main` 与 `coverage-main`，`prompt-regression` 只在 prompt-sensitive 或代码相关改动时尝试运行
 - 不要再把 CI 五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
 - GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
+- 只要新增 workspace 包，或修改任何 `package.json` 中的依赖、开发依赖、peer 依赖、optional 依赖、workspace 引用或会影响依赖图的包管理配置，就必须在同一轮改动里同步更新 `pnpm-lock.yaml`；禁止把 manifest 变更与 lockfile 修复拆到后续提交
+- 新增 workspace 包时，提交前必须显式确认 `pnpm-lock.yaml` 的 `importers` 中已经出现该包；如果 importer 缺失，即使本地代码可运行，也视为交付不完整
 - `.github/workflows/*` 中重复的 pnpm / Node / 依赖安装步骤，默认优先收敛到仓库内可复用 action；当前统一入口为 `/.github/actions/setup-pnpm-workspace/action.yml`
 - 复用 setup action 的默认安装命令应优先使用 `pnpm install --frozen-lockfile --prefer-offline`，在保证 lockfile 严格性的前提下尽量减少重复网络拉取
 - 对 `check-docs`、`check-lockfile-sync`、`check-terminology` 这类只依赖 Node 内建模块或仓库源码的轻量 job，默认优先使用 `/.github/actions/setup-node-runtime/action.yml`，不要为其额外执行 pnpm setup 或依赖安装；该 action 也必须显式关闭 `setup-node` 的自动 package manager cache，避免因根级 `packageManager: pnpm` 触发误探测

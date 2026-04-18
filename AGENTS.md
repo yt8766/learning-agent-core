@@ -160,6 +160,8 @@ skills/
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`
+- 只要新增 workspace 包，或修改任何 `package.json` 中的依赖、开发依赖、peer 依赖、optional 依赖、workspace 引用或脚本里会影响依赖图的包管理配置，就必须立刻同步更新 `pnpm-lock.yaml`，禁止把 manifest 变更与 lockfile 修复拆到后续提交
+- 新增 workspace 包后，必须在提交前确认 `pnpm-lock.yaml` 的 `importers` 已出现对应条目；缺少 importer 视为未完成的依赖收口，不能提交
 - 不允许使用本地 `.pnpm-store` 安装、通过 `--store-dir <local-path>` 指向本地 store 安装，或把 `.pnpm-store` 放在仓库内
 - 依赖安装时不要手动指定本地 `store-dir`；pnpm 会通过软链接管理依赖，直接使用 `pnpm add` 即可
 - 共享包构建输出：
