@@ -31,14 +31,15 @@
 - 公开入口：
   - 根入口：`@agent/adapters`
 - 当前真实宿主：
-  - `src/runtime/chat-model-factory.ts`
-  - `src/runtime/runtime-provider-factory.ts`
-  - `src/embeddings/runtime-embedding-provider.ts`
-  - `src/llm/llm-provider.ts`
+  - `src/chat/*`
+  - `src/embeddings/*`
+  - `src/factories/runtime/default-runtime-llm-provider.factory.ts`
+  - `src/providers/llm/*`
+  - `src/contracts/llm/index.ts`
 - 边界约定：
-  - `contracts/llm-provider.ts` 当前仅保留稳定 facade re-export
-  - `chat/chat-model-factory.ts` 与 `llm/runtime-provider-factory.ts` 已删除
-  - `chat/index.ts` 当前直接聚合到 `runtime/chat-model-factory.ts`
+  - `contracts/llm-provider.ts` 作为稳定 compat facade 保留
+  - `chat/index.ts` 与 `embeddings/index.ts` 同时承担稳定入口与对应 factory 聚合
+  - `prompts/`、`retry/`、`structured-output/`、`support/` 分别承载共享提示、安全重试、结构化输出和底层支撑 helper
 
 约定：
 
@@ -47,4 +48,10 @@
 
 当前文档：
 
+- [custom-provider-example.md](/docs/adapters/custom-provider-example.md)
 - [package-structure-guidelines.md](/docs/adapters/package-structure-guidelines.md)
+- [provider-extension-sdk-guidelines.md](/docs/adapters/provider-extension-sdk-guidelines.md)
+
+当前最小示例：
+
+- [packages/adapters/demo/README.md](/Users/dev/Desktop/learning-agent-core/packages/adapters/demo/README.md)

@@ -33,10 +33,10 @@ import type {
   PreExecutionSkillInterventionResolver,
   RuntimeSkillInterventionResolver,
   SkillInstallApprovalResolver
-} from '../graphs/main/main-graph.types';
+} from '../graphs/main/contracts/main-graph.types';
 import type { MainGraphRuntimeModuleBundle } from './main-graph-runtime-modules';
 
-export type { AgentOrchestratorDependencies } from '../graphs/main/main-graph.types';
+export type { AgentOrchestratorDependencies } from '../graphs/main/contracts/main-graph.types';
 
 export class AgentOrchestrator {
   private readonly tasks = new Map<string, TaskRecord>();

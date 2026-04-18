@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { CreateTaskDto } from '@agent/core';
 
-import { buildExecutionPlan, deriveOrchestrationGovernance } from '../src/graphs/main/task/task-execution-plan';
-import { resolveCounselorSelection, resolveRequestedMode } from '../src/graphs/main/task/task-entry-decision';
-import { resolveTaskWorkflowResolution } from '../src/graphs/main/task/task-workflow-resolution';
+import {
+  buildExecutionPlan,
+  deriveOrchestrationGovernance
+} from '../src/graphs/main/tasking/factory/task-execution-plan';
+import {
+  resolveCounselorSelection,
+  resolveRequestedMode
+} from '../src/graphs/main/tasking/factory/task-entry-decision';
+import { resolveTaskWorkflowResolution } from '../src/graphs/main/tasking/factory/task-workflow-resolution';
 
 describe('main graph task factory helpers', () => {
   it('resolves requested mode with explicit, imperial-direct, and /plan priorities', () => {

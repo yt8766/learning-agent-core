@@ -11,8 +11,9 @@
 
 1. [package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
 2. [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
-3. [report-kit 文档目录](/docs/report-kit/README.md)
-4. [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
+3. [model-selection-guidelines.md](/docs/agents/data-report/model-selection-guidelines.md)
+4. [report-kit 文档目录](/docs/report-kit/README.md)
+5. [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
 
 改 `agents/data-report` 前，优先确认：
 
@@ -25,6 +26,7 @@
 
 - `agents/data-report` 包结构规范：[package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
 - `agents/data-report` 类型入口约束：[type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
+- `agents/data-report` 语义化选模规则：[model-selection-guidelines.md](/docs/agents/data-report/model-selection-guidelines.md)
 
 当前职责：
 
@@ -39,3 +41,4 @@
 
 - [package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
 - [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
+- [model-selection-guidelines.md](/docs/agents/data-report/model-selection-guidelines.md)

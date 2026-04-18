@@ -3,4 +3,4 @@ export {
   type ExecutionStepRecord,
   type StreamingExecutionEvent,
   type StreamingExecutionTask
-} from '@agent/runtime';
+} from '@agent/agent-kit';

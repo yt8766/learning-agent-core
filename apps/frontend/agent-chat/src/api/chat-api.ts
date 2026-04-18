@@ -135,20 +135,6 @@ export function appendMessage(sessionId: string, message: string, options?: { mo
   });
 }
 
-export interface ChatModelOption {
-  id: string;
-  displayName: string;
-  providerId: string;
-}
-
-export function listAvailableChatModels() {
-  return request<ChatModelOption[]>('/chat/models', {
-    dedupeKey: 'GET:/chat/models',
-    cacheWindowMs: 1000,
-    timeoutMs: 5000
-  });
-}
-
 export function approveSession(
   sessionId: string,
   intent: string,

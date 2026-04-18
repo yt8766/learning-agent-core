@@ -54,6 +54,7 @@ pnpm --dir apps/frontend/agent-admin dev
 - `MINIMAX_EXECUTOR_MODEL`
 - `MINIMAX_REVIEWER_MODEL`
 - `MINIMAX_DIALOG_MODEL`
+- `ACTIVE_MODEL_PROVIDER`
 - `KNOWLEDGE_EMBEDDING_ENDPOINT`
 - `MCP_BIGMODEL_WEB_SEARCH_ENDPOINT`
 - `MCP_BIGMODEL_WEB_READER_ENDPOINT`
@@ -79,6 +80,12 @@ pnpm --dir apps/frontend/agent-admin dev
   - `MiniMax-M2.5`
   - `MiniMax-M2.5-highspeed`
   - `M2-her`
+- `ACTIVE_MODEL_PROVIDER=zhipu|minimax` 可一键切换默认路由主模型：
+  - `zhipu` 会把默认 `manager / research / executor / reviewer` 主路由指向 `zhipu/<roleModel>`
+  - `minimax` 会把默认 `manager / research / executor / reviewer` 主路由指向 `minimax/<roleModel>`
+  - 该开关只影响“未显式声明 `MODEL_ROUTE_*_PRIMARY` 时”的默认主路由
+  - 若请求里显式传了 `modelId`，仍以本轮请求指定模型为准
+  - 若某个 provider 未注册或没有对应 `roleModels`，系统会回退到默认 `zhipu/<roleModel>` 路由
 - `minimax` 现在会通过独立的 `MiniMaxProvider` 适配器注册，再由路由层按 `minimax/<modelId>` 选择具体模型；provider 内部直接调用 `@agent/adapters` 的 `createMiniMaxChatModel(...)`
 - embedding 与 BigModel MCP endpoints 也不再有代码默认值，需要通过 `.env` 显式提供
 - 未配置 research MCP endpoint 时，研究来源会退回本地或 sandbox 能力

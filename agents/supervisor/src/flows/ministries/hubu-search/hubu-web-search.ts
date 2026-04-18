@@ -1,6 +1,6 @@
 import { ActionIntent, type ToolExecutionResult } from '@agent/core';
 import type { EvidenceRecord } from '@agent/core';
-import type { ExecutionStepRecord } from '@agent/runtime';
+import type { ExecutionStepRecord } from '@agent/agent-kit';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 

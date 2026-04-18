@@ -59,7 +59,8 @@ agents/data-report/
 - `agents/data-report`
   - 只承载 graph / runtime facade / LLM 节点编排
 - `runtime` 依赖边界
-  - 仅允许通过 `@agent/runtime` 根入口消费稳定 runtime facade
+  - 如需共享 agent foundation，默认仅允许通过 `@agent/agent-kit` 根入口消费
+  - runtime facade 仅允许通过 `@agent/runtime` 根入口消费
   - 不允许直接依赖 `packages/runtime/src/*`，也不允许依赖 `runtime/agent-bridges/*` 这类 runtime 内部过渡层
 
 后续继续收敛时：

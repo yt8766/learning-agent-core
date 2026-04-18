@@ -78,6 +78,47 @@ packages/runtime/
 
 - `contracts/` 主要承载 `AgentRuntime`、`SessionCoordinator`、`WorkerRegistry`、`profile policy` 这类 runtime-facing 稳定边界
 - `llm retry / structured generation` 这类更接近 runtime helper 的 facade，当前直接以 `runtime/llm-facade.ts` 作为真实宿主，不再额外保留 `contracts/llm-facade.ts`
+- `graphs/` 当前已继续拆分为：
+  - `chat/chat.graph.ts`：轻量聊天主图
+  - `learning/learning.graph.ts`：learning confirm graph
+  - `approval/approval-recovery.graph.ts`：审批恢复 graph
+  - `main/`：主链 task/lifecycle/background/orchestration/pipeline
+- `flows/` 当前已继续拆分为：
+  - `chat/`：聊天主图节点与 `direct-reply/` interrupt flow
+  - `approval/`：恢复执行、风险审批、bootstrap interrupt
+  - `learning/`：learning orchestration 与候选确认
+  - `runtime-stage/`：研究/执行阶段节点与 helper
+  - `review-stage/`：终审、治理评分、review persistence/state
+  - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper
+- `flows/learning/` 当前已继续拆分为：
+  - `learning-flow.ts`：learning orchestration facade
+  - `learning-flow-task.ts`：task learning assembly
+  - `nodes/`：候选确认等可独立节点/阶段逻辑
+  - `shared/`：诊断判定、evidence merge、skill extraction 这类学习域共享 helper
+- `graphs/main/` 当前已继续按四个主域收敛：
+  - `contracts/`
+    - `main-graph.types.ts` 等稳定类型边界
+  - `runtime/`
+    - `background/`
+    - `knowledge/`
+    - `lifecycle/`
+      - `approval/`
+      - `learning/`
+      - `governance/`
+      - `state/`
+  - `execution/`
+    - `orchestration/`
+      - `bridge/`
+      - `pipeline/`
+      - `recovery/`
+    - `pipeline/`
+  - `tasking/`
+    - `context/`
+    - `factory/`
+    - `runtime/`
+    - `drafts/`
+    - `main-graph-task.types.ts` 与 `task-architecture-helpers.ts`
+- `graphs/main/runtime/knowledge/`、`graphs/main/runtime/lifecycle/` 与 `graphs/main/tasking/` 当前允许保留局部 `index.ts` 作为子域聚合入口，方便内部导入从“具体文件名”收口到“子域语义”
 
 后续再逐步推进：
 
@@ -104,7 +145,8 @@ packages/runtime/
 补充：
 
 - `src/flows/ministries/index.ts` 当前仍保留为目录聚合入口，用于把 ministry 名义上的对外消费收口到 `bridges/*`
-- 这类目录聚合入口不视为纯 compat 源文件，但也不应再承接真实桥接实现
+- `src/flows/ministries/governance-stage-helpers.ts` 当前保留为跨 `review-stage/` 复用的治理 helper 宿主
+- 这类目录聚合入口不视为纯 compat 源文件，但也不应再承接真实桥接实现或 runtime / review 主节点
 
 ## 4. 当前最需要避免的误收敛
 

@@ -2,12 +2,14 @@ import type { ZodType } from 'zod/v4';
 
 import { generateObjectWithRetry } from '../../../utils/llm-retry';
 import type { ChatMessage } from '@agent/adapters';
+import type { DataReportJsonNodeModelSelector } from '@agent/core';
 import type { DataReportGenerationNode, DataReportSandpackGraphState } from '../../../types/data-report';
+import { resolveFirstModelSelectorCandidate } from '../../../utils/model-selection';
 
-const DEFAULT_NODE_MODEL_CANDIDATES: Partial<Record<DataReportGenerationNode, string[]>> = {
-  analysisNode: ['glm-4.7-flash'],
-  intentNode: ['glm-4.7-flash'],
-  styleGenNode: ['glm-4.7-flash']
+const DEFAULT_NODE_MODEL_SELECTORS: Partial<Record<DataReportGenerationNode, DataReportJsonNodeModelSelector>> = {
+  analysisNode: { tier: 'fast', role: 'manager' },
+  intentNode: { tier: 'fast', role: 'manager' },
+  styleGenNode: { tier: 'fast', role: 'manager' }
 };
 
 function resolveNodeModelId(state: DataReportSandpackGraphState, node: DataReportGenerationNode) {
@@ -16,16 +18,13 @@ function resolveNodeModelId(state: DataReportSandpackGraphState, node: DataRepor
     return override;
   }
 
-  const supportedModels = new Set(
-    typeof state.llm?.supportedModels === 'function' ? state.llm.supportedModels().map(model => model.id) : []
+  return (
+    resolveFirstModelSelectorCandidate({
+      llm: state.llm,
+      selector: DEFAULT_NODE_MODEL_SELECTORS[node],
+      explicitModelId: state.modelId
+    }) ?? state.modelId
   );
-  for (const candidate of DEFAULT_NODE_MODEL_CANDIDATES[node] ?? []) {
-    if (supportedModels.has(candidate)) {
-      return candidate;
-    }
-  }
-
-  return state.modelId;
 }
 
 export async function generateDataReportNodeObject<T>(params: {

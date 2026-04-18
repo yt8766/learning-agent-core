@@ -13,7 +13,7 @@
 
 - `packages/runtime/src/flows/**/prompts/*`
 - `agents/*/src/flows/**/prompts/*`
-- `packages/adapters/src/shared/prompts/*`
+- `packages/adapters/src/prompts/*`
 - 需要进入模型的系统提示词、结构化输出提示词、few-shot 示例与提示词格式化 helper
 
 本文不适用于：
@@ -47,7 +47,8 @@
 
 - runtime 主链提示词：`packages/runtime/src/flows/<domain>/prompts/`
 - 专项 agent 提示词：`agents/<domain>/src/flows/<domain>/prompts/`
-- 跨宿主共享的 JSON 安全附加、通用模板 helper：`packages/adapters/src/shared/prompts/` 或对应宿主的 `src/utils/prompts/`
+- 跨宿主共享的 JSON 安全附加：`packages/adapters/src/prompts/`
+- 通用结构化模板 helper：`packages/adapters/src/structured-output/` 或对应宿主的 `src/utils/prompts/`
 
 不要再把长系统提示词散落到：
 
@@ -75,8 +76,8 @@
 
 当前推荐方式：
 
-- 优先复用 [packages/adapters/src/utils/prompts/prompt-template.ts](/packages/adapters/src/utils/prompts/prompt-template.ts)
-- 所有结构化输出默认追加 [packages/adapters/src/shared/prompts/json-safety-prompt.ts](/packages/adapters/src/shared/prompts/json-safety-prompt.ts)
+- 优先复用 [packages/adapters/src/structured-output/prompt-template.ts](/packages/adapters/src/structured-output/prompt-template.ts)
+- 所有结构化输出默认追加 [packages/adapters/src/prompts/json-safety-prompt.ts](/packages/adapters/src/prompts/json-safety-prompt.ts)
 - 优先使用 `buildStructuredPrompt(..., json: true)`、`appendJsonSafetyToMessages` 或同等封装
 
 为什么这样优化：结构化失败通常不是单一 prompt 问题，而是“提示词 + schema + 重试反馈”没有成套。  

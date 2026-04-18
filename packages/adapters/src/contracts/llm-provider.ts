@@ -1,1 +1,1 @@
-export * from '../llm/llm-provider';
+export * from './llm';

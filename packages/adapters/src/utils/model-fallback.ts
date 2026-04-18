@@ -1,4 +1,4 @@
-import type { AgentModelRole } from '../llm/llm-provider';
+import type { AgentModelRole } from '../providers/llm/base/llm-provider.types';
 
 export function shouldFallbackModel(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '');

@@ -1,6 +1,11 @@
-import type { ChatMessage, GenerateTextOptions } from '@agent/adapters';
+import {
+  MODEL_CAPABILITIES,
+  createModelCapabilities,
+  withLlmRetry,
+  type ChatMessage,
+  type GenerateTextOptions
+} from '@agent/adapters';
 import type { DataReportSandpackFiles, DataReportSandpackGraphState } from '../../../types/data-report';
-import { withLlmRetry } from '../../../utils/retry';
 
 export interface SingleReportFilePlan {
   path: string;
@@ -688,29 +693,36 @@ async function generateSingleFile(state: DataReportSandpackGraphState, plan: Sin
     role: 'manager',
     modelId: state.modelId,
     temperature: typeof state.temperature === 'number' ? state.temperature : 0.1,
-    maxTokens: state.maxTokens
+    maxTokens: state.maxTokens,
+    requiredCapabilities: createModelCapabilities(MODEL_CAPABILITIES.TEXT)
   };
+  const llm = state.llm;
 
-  const invokeText = (currentMessages: ChatMessage[]) => {
-    if (typeof state.llm?.generateText === 'function') {
-      return state.llm.generateText(currentMessages, options);
-    }
-
-    if (typeof state.llm?.streamText === 'function') {
-      let content = '';
-      return Promise.resolve(
-        state.llm.streamText(currentMessages, options, (token: string) => {
-          content += token;
-        })
-      ).then(result => result || content);
-    }
-
+  if (!llm) {
     throw new Error('Configured LLM provider does not support text generation.');
-  };
+  }
 
-  const code: string = await withLlmRetry(currentMessages => invokeText(currentMessages), messages, {
-    onRetry: state.onRetry
-  });
+  const code: string = await withLlmRetry(
+    async currentMessages => {
+      if (typeof llm.generateText === 'function') {
+        return llm.generateText(currentMessages, options);
+      }
+
+      if (typeof llm.streamText === 'function') {
+        let content = '';
+        const streamed = await llm.streamText(currentMessages, options, (token: string) => {
+          content += token;
+        });
+        return streamed || content;
+      }
+
+      throw new Error('Configured LLM provider does not support text generation.');
+    },
+    messages,
+    {
+      onRetry: state.onRetry
+    }
+  );
 
   state.onFileStage?.({ phase: plan.phase, path: plan.path, status: 'success' });
   return [plan.path, code.trim()] as const;

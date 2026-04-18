@@ -144,6 +144,56 @@ describe('loadSettings', () => {
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'tmp', 'personal-skills')));
   });
 
+  it('allows custom provider types through explicit overrides for SDK-style extensions', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {} as NodeJS.ProcessEnv,
+      overrides: {
+        providers: [
+          {
+            id: 'anthropic-custom',
+            type: 'anthropic-custom',
+            displayName: 'Anthropic Custom',
+            apiKey: 'anthropic-key',
+            models: ['claude-custom']
+          }
+        ]
+      }
+    });
+
+    expect(settings.providers).toEqual([
+      expect.objectContaining({
+        id: 'anthropic-custom',
+        type: 'anthropic-custom',
+        models: ['claude-custom']
+      })
+    ]);
+  });
+
+  it('supports Anthropic provider defaults through env-backed provider discovery', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        ANTHROPIC_API_KEY: 'anthropic-key',
+        ANTHROPIC_MANAGER_MODEL: 'claude-3-7-sonnet',
+        ANTHROPIC_RESEARCH_MODEL: 'claude-3-5-sonnet',
+        ANTHROPIC_EXECUTOR_MODEL: 'claude-3-5-haiku',
+        ANTHROPIC_REVIEWER_MODEL: 'claude-3-7-sonnet'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(settings.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'anthropic',
+          type: 'anthropic',
+          apiKey: 'anthropic-key',
+          models: ['claude-3-7-sonnet', 'claude-3-5-sonnet', 'claude-3-5-haiku']
+        })
+      ])
+    );
+  });
+
   it('显式传入后端子目录作为 workspaceRoot 时，仍会自动提升到 monorepo 根并读取根 .env', () => {
     return (async () => {
       const workspaceRoot = await mkdtemp(join(tmpdir(), 'agent-config-root-'));
@@ -327,10 +377,95 @@ describe('loadSettings', () => {
     expect(minimaxProvider?.models).toEqual(['MiniMax-M2.7-highspeed', 'MiniMax-M2.7', 'MiniMax-M2.5', 'M2-her']);
   });
 
+  it('supports ACTIVE_MODEL_PROVIDER=minimax to switch default routed models', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        ZHIPU_API_KEY: 'zhipu-key',
+        MINIMAX_API_KEY: 'minimax-key',
+        ACTIVE_MODEL_PROVIDER: 'minimax'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(settings.routing).toEqual({
+      manager: {
+        primary: 'minimax/MiniMax-M2.7',
+        fallback: undefined
+      },
+      research: {
+        primary: 'minimax/MiniMax-M2.5',
+        fallback: undefined
+      },
+      executor: {
+        primary: 'minimax/MiniMax-M2.5-highspeed',
+        fallback: undefined
+      },
+      reviewer: {
+        primary: 'minimax/MiniMax-M2.7-highspeed',
+        fallback: undefined
+      }
+    });
+  });
+
+  it('keeps explicit MODEL_ROUTE_* values ahead of ACTIVE_MODEL_PROVIDER', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        ZHIPU_API_KEY: 'zhipu-key',
+        MINIMAX_API_KEY: 'minimax-key',
+        ACTIVE_MODEL_PROVIDER: 'minimax',
+        MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(settings.routing.manager?.primary).toBe('zhipu/glm-5.1');
+    expect(settings.routing.research?.primary).toBe('minimax/MiniMax-M2.5');
+  });
+
   it('支持每日技术情报简报配置与 env override', () => {
     const defaults = loadSettings({
       workspaceRoot: REPO_ROOT,
-      env: {} as NodeJS.ProcessEnv
+      env: {
+        DAILY_TECH_BRIEFING_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_SCHEDULE: undefined,
+        DAILY_TECH_BRIEFING_SEND_EMPTY_DIGEST: undefined,
+        DAILY_TECH_BRIEFING_MAX_ITEMS_PER_CATEGORY: undefined,
+        DAILY_TECH_BRIEFING_DUPLICATE_WINDOW_DAYS: undefined,
+        DAILY_TECH_BRIEFING_MAX_NON_CRITICAL_ITEMS_PER_CATEGORY: undefined,
+        DAILY_TECH_BRIEFING_MAX_CRITICAL_ITEMS_PER_CATEGORY: undefined,
+        DAILY_TECH_BRIEFING_MAX_TOTAL_ITEMS_PER_CATEGORY: undefined,
+        DAILY_TECH_BRIEFING_SEND_ONLY_DELTA: undefined,
+        DAILY_TECH_BRIEFING_RESEND_ONLY_ON_MATERIAL_CHANGE: undefined,
+        DAILY_TECH_BRIEFING_LARK_DIGEST_MODE: undefined,
+        DAILY_TECH_BRIEFING_LARK_DETAIL_MODE: undefined,
+        DAILY_TECH_BRIEFING_SOURCE_POLICY: undefined,
+        DAILY_TECH_BRIEFING_WEBHOOK_ENV_VAR: undefined,
+        DAILY_TECH_BRIEFING_TRANSLATION_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_TRANSLATION_MODEL: undefined,
+        DAILY_TECH_BRIEFING_AI_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_SECURITY_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_SECURITY_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_SECURITY_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_SECURITY_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_GENERAL_SECURITY_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_GENERAL_SECURITY_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_GENERAL_SECURITY_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_DEVTOOL_SECURITY_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_DEVTOOL_SECURITY_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_DEVTOOL_SECURITY_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_AI_TECH_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_AI_TECH_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_TECH_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_FRONTEND_TECH_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_BACKEND_TECH_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_BACKEND_TECH_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_BACKEND_TECH_LOOKBACK_DAYS: undefined,
+        DAILY_TECH_BRIEFING_CLOUD_INFRA_TECH_ENABLED: undefined,
+        DAILY_TECH_BRIEFING_CLOUD_INFRA_TECH_INTERVAL_HOURS: undefined,
+        DAILY_TECH_BRIEFING_CLOUD_INFRA_TECH_LOOKBACK_DAYS: undefined,
+        LARK_BOT_WEBHOOK_URL: undefined
+      } as NodeJS.ProcessEnv
     });
 
     expect(defaults.dailyTechBriefing).toEqual(

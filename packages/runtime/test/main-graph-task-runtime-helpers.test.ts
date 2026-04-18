@@ -6,8 +6,8 @@ import {
   estimateRuntimeStepsConsumed,
   transitionTaskQueueState,
   updateTaskBudgetState
-} from '../src/graphs/main/task/main-graph-task-runtime-budget';
-import { addRuntimeTrace } from '../src/graphs/main/task/main-graph-task-runtime-trace';
+} from '../src/graphs/main/tasking/runtime/main-graph-task-runtime-budget';
+import { addRuntimeTrace } from '../src/graphs/main/tasking/runtime/main-graph-task-runtime-trace';
 
 describe('main graph task runtime helpers', () => {
   it('marks budget interrupt when soft threshold is crossed', () => {

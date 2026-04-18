@@ -132,7 +132,7 @@
 - `promptfoo` 用于模型层评测，不替代 `Vitest`
 - 结构化输出与 schema 校验默认优先 `zod`
 - 当前 Turbo 只安全接入了根级治理校验入口：`check:docs` 与 `check:architecture`
-- 根级 `typecheck`、`build` 与基于包图的 `test` 任务暂不直接切到 Turbo pipeline；仓库现存 `@agent/runtime` 与多个 `agents/*` 的循环依赖，直接运行对应 Turbo task 会触发 cyclic dependency 错误
+- 根级 `typecheck`、`build` 与基于包图的 `test` 任务仍以根级脚本为主；虽然 `@agent/runtime <- @agent/agent-kit -> agents/*` 已拆掉历史主循环，但 Turbo 主链收敛仍需继续按阶段方案推进
 - 根级 `start:dev` 也不应继续经由 `turbo start:dev` 走 package graph；当前根级入口固定代理到 `apps/backend/agent-server`，避免开发启动被现有循环依赖阻断
 - 当前已新增 Turbo-only 包级验证通道：
   - `turbo:typecheck`
@@ -155,7 +155,7 @@
 - `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
 - 对存在额外模板或脚手架依赖的宿主，应使用宿主级例外补充 `inputs`；当前仓库里的 scaffold 回归已迁回 `packages/tools` 测试与 integration，不再保留独立 demo 例外
-- 更深的 Turbo 主链收敛当前仍被 `runtime <-> agents/*` 循环依赖簇阻断；下一阶段治理路线见 [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- 更深的 Turbo 主链收敛仍需继续清理剩余任务边界与 `dependsOn` 编排；下一阶段治理路线见 [Turbo 循环依赖治理六阶段方案](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 
 ## 4.1 当前 Turbo 接入边界
 

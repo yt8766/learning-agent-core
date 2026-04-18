@@ -2,6 +2,7 @@ import {
   executeDataReportJsonGraph,
   DATA_REPORT_JSON_DEFAULT_MODEL_POLICY,
   type DataReportJsonGenerateResult,
+  type DataReportJsonNodeModelSelector,
   type DataReportJsonNodeModelPolicy,
   type DataReportJsonSchema,
   type DataReportJsonNodeStageEvent
@@ -149,6 +150,9 @@ function resolveReportSchemaNodeModelPolicy(
   dto: DirectChatRequestDto,
   strictLlmBrandNew = false
 ): DataReportJsonNodeModelPolicy {
+  const fastSelector = createReportSchemaNodeSelector('fast', runtimeHost, dto);
+  const qualitySelector = createReportSchemaNodeSelector('quality', runtimeHost, dto);
+
   if (dto.modelId) {
     return {
       analysisNode: { primary: dto.modelId },
@@ -165,40 +169,68 @@ function resolveReportSchemaNodeModelPolicy(
     };
   }
 
-  const heavyModelId =
-    runtimeHost.settings?.zhipuModels?.research ??
-    runtimeHost.settings?.policy?.budget?.fallbackModelId ??
-    DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary;
-  const fastModelId = DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary;
-
   if (strictLlmBrandNew) {
     return {
-      analysisNode: { primary: fastModelId },
-      schemaSpecNode: { primary: heavyModelId },
-      filterSchemaNode: { primary: fastModelId, fallback: heavyModelId },
-      dataSourceNode: { primary: fastModelId, fallback: heavyModelId },
-      sectionPlanNode: { primary: heavyModelId, fallback: fastModelId },
-      metricsBlockNode: { primary: fastModelId, fallback: heavyModelId },
-      chartBlockNode: { primary: heavyModelId, fallback: fastModelId },
-      tableBlockNode: { primary: fastModelId, fallback: heavyModelId },
-      sectionSchemaNode: { primary: fastModelId, complex: heavyModelId, fallback: heavyModelId },
-      patchIntentNode: { primary: fastModelId },
-      patchSchemaNode: { primary: fastModelId, complex: heavyModelId, fallback: heavyModelId }
+      analysisNode: { primary: fastSelector },
+      schemaSpecNode: { primary: qualitySelector },
+      filterSchemaNode: { primary: fastSelector, fallback: qualitySelector },
+      dataSourceNode: { primary: fastSelector, fallback: qualitySelector },
+      sectionPlanNode: { primary: qualitySelector, fallback: fastSelector },
+      metricsBlockNode: { primary: fastSelector, fallback: qualitySelector },
+      chartBlockNode: { primary: qualitySelector, fallback: fastSelector },
+      tableBlockNode: { primary: fastSelector, fallback: qualitySelector },
+      sectionSchemaNode: { primary: fastSelector, complex: qualitySelector, fallback: qualitySelector },
+      patchIntentNode: { primary: fastSelector },
+      patchSchemaNode: { primary: fastSelector, complex: qualitySelector, fallback: qualitySelector }
     };
   }
 
   return {
-    analysisNode: { primary: fastModelId },
-    schemaSpecNode: { primary: heavyModelId },
-    filterSchemaNode: { primary: fastModelId, fallback: heavyModelId },
-    dataSourceNode: { primary: fastModelId, fallback: heavyModelId },
-    sectionPlanNode: { primary: fastModelId, fallback: heavyModelId },
-    metricsBlockNode: { primary: fastModelId, fallback: heavyModelId },
-    chartBlockNode: { primary: fastModelId, fallback: heavyModelId },
-    tableBlockNode: { primary: fastModelId, fallback: heavyModelId },
-    sectionSchemaNode: { primary: fastModelId, complex: heavyModelId, fallback: heavyModelId },
-    patchIntentNode: { primary: fastModelId },
-    patchSchemaNode: { primary: fastModelId, complex: heavyModelId, fallback: heavyModelId }
+    analysisNode: { primary: fastSelector },
+    schemaSpecNode: { primary: qualitySelector },
+    filterSchemaNode: { primary: fastSelector, fallback: qualitySelector },
+    dataSourceNode: { primary: fastSelector, fallback: qualitySelector },
+    sectionPlanNode: { primary: fastSelector, fallback: qualitySelector },
+    metricsBlockNode: { primary: fastSelector, fallback: qualitySelector },
+    chartBlockNode: { primary: fastSelector, fallback: qualitySelector },
+    tableBlockNode: { primary: fastSelector, fallback: qualitySelector },
+    sectionSchemaNode: { primary: fastSelector, complex: qualitySelector, fallback: qualitySelector },
+    patchIntentNode: { primary: fastSelector },
+    patchSchemaNode: { primary: fastSelector, complex: qualitySelector, fallback: qualitySelector }
+  };
+}
+
+function createReportSchemaNodeSelector(
+  tier: 'fast' | 'quality',
+  runtimeHost: RuntimeHost,
+  dto: DirectChatRequestDto
+): DataReportJsonNodeModelSelector {
+  const settings = runtimeHost.settings;
+  const preferredModelIds =
+    tier === 'fast'
+      ? [
+          settings?.zhipuModels?.manager,
+          settings?.zhipuModels?.executor,
+          settings?.policy?.budget?.fallbackModelId,
+          typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary === 'string'
+            ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary
+            : undefined
+        ]
+      : [
+          settings?.zhipuModels?.research,
+          settings?.zhipuModels?.reviewer,
+          settings?.policy?.budget?.fallbackModelId,
+          typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary === 'string'
+            ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary
+            : undefined
+        ];
+
+  return {
+    tier,
+    role: tier === 'fast' ? 'manager' : 'research',
+    preferredModelIds: Array.from(
+      new Set([dto.modelId, ...preferredModelIds].filter((value): value is string => Boolean(value)))
+    )
   };
 }
 
@@ -210,11 +242,15 @@ export function resolveReportSchemaArtifactCacheKey(runtimeHost: RuntimeHost, dt
     dto.modelId ??
     runtimeHost.settings?.zhipuModels?.research ??
     runtimeHost.settings?.policy?.budget?.fallbackModelId ??
-    DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary;
+    (typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary === 'string'
+      ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary
+      : 'quality');
   const fastModelId =
     dto.modelId ??
     runtimeHost.settings?.zhipuModels?.manager ??
-    DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary;
+    (typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary === 'string'
+      ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary
+      : 'fast');
   const reportId = dto.reportSchemaInput?.meta.reportId?.trim();
 
   if (reportId) {

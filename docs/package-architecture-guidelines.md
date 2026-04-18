@@ -89,6 +89,7 @@ packages/<pkg>/
 
 - `packages/runtime`
 - `packages/adapters`
+- `packages/knowledge`
 - `packages/memory`
 - `packages/tools`
 - `packages/skill-runtime`
@@ -109,7 +110,7 @@ packages/<pkg>/
 
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除，历史台账保留在 `docs/shared/`
 - 已删除的 `packages/agent-core` 历史说明统一保留在 `docs/archive/agent-core/`
-- 新消费侧优先改用 `@agent/runtime`、`@agent/adapters` 与对应 `agents/*` 公开入口
+- 新消费侧优先改用 `@agent/agent-kit`、`@agent/runtime`、`@agent/adapters` 与对应 `agents/*` 公开入口
 
 ## 每个包允许放什么
 
@@ -160,9 +161,14 @@ packages/<pkg>/
   - `config` 当前已经补出 `contracts/settings-facade.ts` 作为包根稳定导出层；`settings.ts` / `settings/index.ts` 则保留为人工可读聚合入口
   - 不应继续把“读环境变量”和“系统默认策略”混成一个平铺目录
 
+### `packages/knowledge`
+
+- 允许：knowledge source/chunk repository、indexing pipeline、retrieval、citation/context assembly、knowledge search contract
+- 禁止：最终回答生成、agent 主链编排、provider SDK 具体实现、app view model
+
 ### `packages/memory`
 
-- 允许：memory/rule/runtime-state repository、vector index、semantic cache、search contract
+- 允许：memory/rule/runtime-state repository、semantic cache、memory search contract
 - 禁止：agent 主链编排、delivery/review/research 流程控制
 
 ### `packages/tools`

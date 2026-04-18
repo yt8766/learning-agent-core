@@ -1,6 +1,9 @@
+export type KnownProviderType = 'zhipu' | 'openai' | 'openai-compatible' | 'ollama' | 'anthropic' | 'minimax';
+export type ProviderType = KnownProviderType | (string & {});
+
 export interface ProviderSettingsRecord {
   id: string;
-  type: 'zhipu' | 'openai' | 'openai-compatible' | 'ollama' | 'anthropic' | 'minimax';
+  type: ProviderType;
   displayName?: string;
   apiKey?: string;
   baseUrl?: string;

@@ -6,6 +6,7 @@ export type LlmProviderRole = 'system' | 'user' | 'assistant';
 export type LlmProviderAgentRole = 'manager' | 'research' | 'executor' | 'reviewer';
 export type LlmProviderCapability =
   | 'text'
+  | 'embedding'
   | 'vision'
   | 'audio'
   | 'image-gen'
@@ -38,6 +39,7 @@ export interface LlmProviderModelInfo {
 export interface LlmProviderOptions {
   role: LlmProviderAgentRole;
   modelId?: string;
+  requiredCapabilities?: LlmProviderCapability[];
   taskId?: string;
   temperature?: number;
   maxTokens?: number;

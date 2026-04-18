@@ -1,1 +1,1 @@
-export { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/runtime';
+export { buildFreshnessAnswerInstruction, buildTemporalContextBlock, isFreshnessSensitiveGoal } from '@agent/agent-kit';

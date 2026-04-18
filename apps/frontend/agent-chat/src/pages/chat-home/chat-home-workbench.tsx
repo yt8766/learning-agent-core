@@ -3,7 +3,6 @@ import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
 import { useEffect, useMemo, useState } from 'react';
 
-import { listAvailableChatModels, type ChatModelOption } from '@/api/chat-api';
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { CHAT_ROLE_CONFIG, buildProjectContextSnapshot } from './chat-home-helpers';
 import { SessionMissionControl } from './chat-home-mission-control';
@@ -174,10 +173,7 @@ function ChatComposer({
   const [draft, setDraft] = useState('');
   const [suggestedPayload, setSuggestedPayload] = useState<string | null>(null);
   const [planModeEnabled, setPlanModeEnabled] = useState(false);
-  const [availableModels, setAvailableModels] = useState<ChatModelOption[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState('');
   const secondaryMenuItems = buildQuickActionMenuItems(quickActionChips) satisfies MenuProps['items'];
-  const latestModelRoute = chat.checkpoint?.modelRoute?.at(-1);
 
   useEffect(() => {
     const nextState = resetComposerState();
@@ -185,59 +181,6 @@ function ChatComposer({
     setSuggestedPayload(nextState.suggestedPayload);
     setPlanModeEnabled(nextState.planModeEnabled);
   }, [chat.activeSessionId]);
-
-  useEffect(() => {
-    let disposed = false;
-    void listAvailableChatModels()
-      .then(models => {
-        if (!disposed) {
-          setAvailableModels(models);
-        }
-      })
-      .catch(() => {
-        if (!disposed) {
-          setAvailableModels([]);
-        }
-      });
-    return () => {
-      disposed = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const currentModel = latestModelRoute?.selectedModel ?? latestModelRoute?.defaultModel ?? '';
-    if (!currentModel) {
-      return;
-    }
-    setSelectedModelId(current => {
-      if (current) {
-        return current;
-      }
-      const matched = availableModels.find(
-        model =>
-          model.id === currentModel || model.displayName === currentModel || model.id.endsWith(`/${currentModel}`)
-      );
-      return matched?.id ?? currentModel;
-    });
-  }, [availableModels, latestModelRoute?.defaultModel, latestModelRoute?.selectedModel]);
-
-  const modelOptions = useMemo(() => {
-    const preferred = availableModels.map(model => ({
-      value: model.id,
-      label: `${model.displayName} · ${model.providerId}`
-    }));
-    const currentModel = latestModelRoute?.selectedModel ?? latestModelRoute?.defaultModel;
-    if (
-      currentModel &&
-      !preferred.some(option => option.value === currentModel || option.label.startsWith(`${currentModel} ·`))
-    ) {
-      preferred.unshift({
-        value: currentModel,
-        label: `${currentModel} · current`
-      });
-    }
-    return preferred;
-  }, [availableModels, latestModelRoute?.defaultModel, latestModelRoute?.selectedModel]);
 
   return (
     <>
@@ -253,10 +196,7 @@ function ChatComposer({
           setDraft('');
           const outbound = resolveComposerSubmit(value, suggestedPayload, planModeEnabled);
           setSuggestedPayload(null);
-          void chat.sendMessage({
-            ...outbound,
-            modelId: selectedModelId || undefined
-          });
+          void chat.sendMessage(outbound);
         }}
         loading={chat.activeSession?.status === 'running' || Boolean(chat.checkpoint?.thinkState?.loading)}
         onCancel={() => void chat.cancelActiveSession()}
@@ -291,24 +231,6 @@ function ChatComposer({
                   />
                 </Dropdown>
               ) : null}
-              <label className="chatx-model-picker">
-                <span className="chatx-model-picker__label">模型</span>
-                <select
-                  className="chatx-model-picker__select"
-                  aria-label="切换模型"
-                  value={selectedModelId}
-                  onChange={event => {
-                    setSelectedModelId(event.target.value);
-                  }}
-                >
-                  <option value="">自动选择</option>
-                  {modelOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </Flex>
             <Flex align="center" className="chatx-sender-footer__right">
               <div className={`chatx-plan-mode-inline ${planModeEnabled ? 'is-active' : ''}`}>

@@ -3,7 +3,12 @@ import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const FORBIDDEN_RUNTIME_IMPORT_PATTERNS = [/packages\/runtime\/src/, /@agent\/runtime\//, /runtime\/agent-bridges/];
+const FORBIDDEN_RUNTIME_IMPORT_PATTERNS = [
+  /packages\/runtime\/src/,
+  /@agent\/runtime\//,
+  /runtime\/agent-bridges/,
+  /from ['"]@agent\/runtime['"]/
+];
 
 async function collectTsFiles(rootDir: string): Promise<string[]> {
   const entries = await readdir(rootDir, { withFileTypes: true });
@@ -23,16 +28,16 @@ async function collectTsFiles(rootDir: string): Promise<string[]> {
   return files.flat();
 }
 
-describe('@agent/agents-supervisor runtime boundary', () => {
-  it('depends on runtime only through the @agent/runtime root entry', async () => {
+describe('@agent/agents-supervisor shared agent foundation boundary', () => {
+  it('depends on shared agent foundations only through the @agent/agent-kit root entry', async () => {
     const srcRoot = join(process.cwd(), 'agents', 'supervisor', 'src');
     const files = await collectTsFiles(srcRoot);
     const violations: string[] = [];
 
     for (const file of files) {
       const content = await readFile(file, 'utf8');
-      if (content.includes("from '@agent/runtime'") || content.includes('from "@agent/runtime"')) {
-        const sanitized = content.replaceAll("from '@agent/runtime'", '').replaceAll('from "@agent/runtime"', '');
+      if (content.includes("from '@agent/agent-kit'") || content.includes('from "@agent/agent-kit"')) {
+        const sanitized = content.replaceAll("from '@agent/agent-kit'", '').replaceAll('from "@agent/agent-kit"', '');
         if (FORBIDDEN_RUNTIME_IMPORT_PATTERNS.some(pattern => pattern.test(sanitized))) {
           violations.push(relative(srcRoot, file));
         }

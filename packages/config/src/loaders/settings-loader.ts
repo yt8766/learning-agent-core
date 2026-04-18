@@ -26,7 +26,7 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
     reviewer: runtimeEnv.ZHIPU_REVIEWER_MODEL ?? 'glm-4.7'
   };
   const providers = overrides.providers ?? parseProvidersConfig(runtimeEnv, workspaceRoot, zhipuModels);
-  const routing = overrides.routing ?? parseRoutingConfig(runtimeEnv, zhipuModels);
+  const routing = overrides.routing ?? parseRoutingConfig(runtimeEnv, zhipuModels, providers);
 
   return {
     profile,

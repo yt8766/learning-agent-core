@@ -1,4 +1,4 @@
-import type { LlmProviderLike } from '../../providers/llm-provider-like';
+import type { LlmProviderLike, LlmProviderLikeAgentRole } from '../../providers/llm-provider-like';
 import type {
   DataReportJsonAnalysisArtifact,
   DataReportJsonBlock,
@@ -24,18 +24,36 @@ import type {
   DataReportJsonGenerationError
 } from '../../data-report/types/data-report-json';
 
+export type DataReportJsonModelSelectorTier = 'fast' | 'balanced' | 'quality';
+
+export interface DataReportJsonModelSelectorPreference {
+  tier: DataReportJsonModelSelectorTier;
+  role?: LlmProviderLikeAgentRole;
+  preferredModelIds?: string[];
+}
+
+export type DataReportJsonNodeModelSelector = string | DataReportJsonModelSelectorPreference;
+
 export interface DataReportJsonNodeModelPolicy {
-  analysisNode: { primary: string };
-  patchIntentNode: { primary: string };
-  schemaSpecNode: { primary: string };
-  filterSchemaNode: { primary: string; fallback?: string };
-  dataSourceNode: { primary: string; fallback?: string };
-  sectionPlanNode: { primary: string; fallback?: string };
-  metricsBlockNode: { primary: string; fallback?: string };
-  chartBlockNode: { primary: string; fallback?: string };
-  tableBlockNode: { primary: string; fallback?: string };
-  sectionSchemaNode: { primary: string; complex?: string; fallback?: string };
-  patchSchemaNode: { primary: string; complex?: string; fallback?: string };
+  analysisNode: { primary: DataReportJsonNodeModelSelector };
+  patchIntentNode: { primary: DataReportJsonNodeModelSelector };
+  schemaSpecNode: { primary: DataReportJsonNodeModelSelector };
+  filterSchemaNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  dataSourceNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  sectionPlanNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  metricsBlockNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  chartBlockNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  tableBlockNode: { primary: DataReportJsonNodeModelSelector; fallback?: DataReportJsonNodeModelSelector };
+  sectionSchemaNode: {
+    primary: DataReportJsonNodeModelSelector;
+    complex?: DataReportJsonNodeModelSelector;
+    fallback?: DataReportJsonNodeModelSelector;
+  };
+  patchSchemaNode: {
+    primary: DataReportJsonNodeModelSelector;
+    complex?: DataReportJsonNodeModelSelector;
+    fallback?: DataReportJsonNodeModelSelector;
+  };
 }
 
 export interface DataReportJsonGenerateInput {

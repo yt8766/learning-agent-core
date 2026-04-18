@@ -21,6 +21,7 @@
 - `packages/config`：运行时配置与路径解析
 - `packages/runtime`：执行引擎、会话驱动、运行时 facade
 - `packages/adapters`：LLM/provider 等适配器隔离层
+- `packages/knowledge`：RAG 知识接入、chunking、retrieval、citation/context 组装
 - `packages/memory`：memory、rules、runtime state 本地存储
 - `packages/tools`：工具注册、审批规则、执行器
 - `agents/supervisor`：主控路由、workflow preset、subgraph 描述等 supervisor 入口
@@ -129,6 +130,11 @@
   - 作为后续向量库接入点
   - 当前默认先接本地 `LocalVectorIndexRepository`
   - 通过 token overlap 做轻量排序，再为后续向量库留出替换位
+
+- `KnowledgeSearchService`
+  - 面向 runtime / session / ministries 提供统一知识检索入口
+  - 承载知识源检索、citation 组装与 RAG context 准备
+  - 作为 `packages/knowledge` 的稳定宿主能力，不再继续混放进 `packages/memory`
 
 本地 skill 安装前的安全评估当前已经结构化，至少会产出：
 

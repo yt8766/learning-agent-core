@@ -14,6 +14,9 @@ export type {
   DataReportJsonGenerateInput,
   DataReportJsonGraphHandlers,
   DataReportJsonGraphState,
+  DataReportJsonModelSelectorPreference,
+  DataReportJsonModelSelectorTier,
+  DataReportJsonNodeModelSelector,
   DataReportJsonNodeModelPolicy
 } from './contracts/data-report/index';
 export {

@@ -47,8 +47,8 @@
 
 - 这里的“子 Agent”不是普通 helper，也不是 `workflows/*` 里的提示词函数。
 - 子 Agent 必须有稳定 graph 入口，默认放在对应真实宿主：
-  - runtime 主链图：`packages/runtime/src/graphs/<domain>.graph.ts`
-  - 专项 agent 图：`agents/<domain>/src/graphs/<domain>.graph.ts`
+  - runtime 主链图：`packages/runtime/src/graphs/<domain>/<domain>.graph.ts`
+  - 专项 agent 图：`agents/<domain>/src/graphs/<domain>.graph.ts`；当专项 agent 的 graph 继续扩张时，同样优先升级为 `src/graphs/<domain>/<domain>.graph.ts`
 - 子 Agent 的节点、prompt、schema、解析、校验、重试策略放在对应宿主的 `src/flows/<domain>/`；跨节点复用或 graph 共享的领域类型优先放在 `packages/core/src` 或宿主包的 `src/types/`。
 - `src/flows/<domain>/prompts/` 只放提示词与提示词格式化函数，不要再把长系统提示词散落在 service、workflow 或 graph 文件里。
 - `src/flows/<domain>/schemas/` 必须承载模型输出的结构约束；只要子 Agent 有稳定 JSON 契约，就必须用 schema 显式校验，不能只靠 `JSON.parse` + 手写 if。
@@ -66,6 +66,7 @@
 
 - 默认使用顶层静态 `import`
 - 一般不允许写 `import('mermaid').then(...)`、`import('xxx')` 这类动态导入
+- 类型位置同样不允许把 `import('pkg').Foo`、`import('zod/v4').ZodType<T>` 当成静态导入替代品；可静态声明时，必须改用顶层 `import type { Foo } from 'pkg'`
 - 常规 UI、业务组件、Mermaid、图表、状态模块都应优先静态导入
 - 只有在明确代码分割、运行时隔离或重资产浏览器专属加载时，才允许动态导入
 - 如果确实需要动态导入，必须在代码旁写明原因，不能把它当成常规前端写法

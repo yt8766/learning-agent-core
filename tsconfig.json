@@ -29,6 +29,7 @@
     "baseUrl": ".",
     "typeRoots": ["./types", "./node_modules/@types"],
     "paths": {
+      "@agent/agent-kit": ["packages/agent-kit/src/index.ts"],
       "@agent/core": ["packages/core/src/index.ts"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],

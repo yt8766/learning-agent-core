@@ -1,5 +1,10 @@
-import type { ChatMessage, GenerateTextOptions } from '@agent/adapters';
-import { withLlmRetry } from '../../utils/retry';
+import {
+  MODEL_CAPABILITIES,
+  createModelCapabilities,
+  withLlmRetry,
+  type ChatMessage,
+  type GenerateTextOptions
+} from '@agent/adapters';
 import { DATA_REPORT_SANDPACK_SYSTEM_PROMPT, formatDataReportSandpackRetryFeedback } from './prompts';
 import { parseDataReportSandpackPayload } from './schemas';
 import type {
@@ -47,19 +52,18 @@ export class DataReportSandpackAgent {
       role: 'manager',
       modelId: input.modelId,
       temperature: typeof input.temperature === 'number' ? input.temperature : 0.2,
-      maxTokens: typeof input.maxTokens === 'number' ? input.maxTokens : undefined
+      maxTokens: typeof input.maxTokens === 'number' ? input.maxTokens : undefined,
+      requiredCapabilities: createModelCapabilities(MODEL_CAPABILITIES.TEXT)
     };
 
-    return withLlmRetry(
+    const content = await withLlmRetry(
       async currentMessages => {
-        const content = await input.llm.streamText(currentMessages, options, token => {
+        const response = await input.llm.streamText(currentMessages, options, token => {
           input.onToken?.(token);
         });
 
-        return {
-          content,
-          payload: this.parsePayload(content)
-        };
+        this.parsePayload(response);
+        return response;
       },
       messages,
       {
@@ -67,6 +71,11 @@ export class DataReportSandpackAgent {
         formatErrorFeedback: formatDataReportSandpackRetryFeedback
       }
     );
+
+    return {
+      content,
+      payload: this.parsePayload(content)
+    };
   }
 
   parsePayload(content: string): DataReportSandpackPayload {

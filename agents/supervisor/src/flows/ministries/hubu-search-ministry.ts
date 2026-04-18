@@ -6,9 +6,9 @@
   SkillCard,
   SpecialistFindingRecord
 } from '@agent/core';
+import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '@agent/agent-kit';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
-import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '@agent/runtime';
 import { type StructuredContractMeta } from '@agent/adapters';
 import { AgentRole } from '../supervisor/supervisor-architecture-helpers';
 import { isChatPersonaGoal, MinistryToolCallDecision, ResearchToolId } from './hubu-search/hubu-search-helpers';

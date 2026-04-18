@@ -170,6 +170,8 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('直接输入你的目标');
     expect(html).toContain('更多建议');
     expect(html).toContain('计划模式');
+    expect(html).not.toContain('切换模型');
+    expect(html).not.toContain('自动选择');
   });
 
   it('renders workspace shell, alerts, sections and follow-up actions when workbench is open', () => {
@@ -288,18 +290,6 @@ describe('chat-home-workbench component', () => {
   it('submits sender payloads for direct mode, plan mode and cancel actions', async () => {
     const sendMessage = vi.fn(async () => undefined);
     const cancelActiveSession = vi.fn(async () => undefined);
-    let stateCallIndex = 0;
-
-    useStateOverride = (actualUseState, initial) => {
-      stateCallIndex += 1;
-      if (stateCallIndex === 4) {
-        return [[{ id: 'minimax/MiniMax-M2.7', displayName: 'MiniMax-M2.7', providerId: 'minimax' }], vi.fn()];
-      }
-      if (stateCallIndex === 5) {
-        return ['minimax/MiniMax-M2.7', vi.fn()];
-      }
-      return actualUseState(initial);
-    };
 
     renderToStaticMarkup(
       <ChatHomeWorkbench
@@ -334,8 +324,7 @@ describe('chat-home-workbench component', () => {
 
     expect(sendMessage).toHaveBeenCalledWith({
       display: '直接回答这个问题',
-      payload: '直接回答这个问题',
-      modelId: 'minimax/MiniMax-M2.7'
+      payload: '直接回答这个问题'
     });
     expect(cancelActiveSession).toHaveBeenCalled();
 
@@ -344,23 +333,15 @@ describe('chat-home-workbench component', () => {
     renderedSwitches.length = 0;
     renderedSenders.length = 0;
 
-    stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
-      stateCallIndex += 1;
-      if (stateCallIndex === 1) {
+      if (initial === '') {
         return ['给我一个实现方案', vi.fn()];
       }
-      if (stateCallIndex === 2) {
+      if (initial === null) {
         return [null, vi.fn()];
       }
-      if (stateCallIndex === 3) {
+      if (initial === false) {
         return [true, vi.fn()];
-      }
-      if (stateCallIndex === 4) {
-        return [[], vi.fn()];
-      }
-      if (stateCallIndex === 5) {
-        return ['', vi.fn()];
       }
       return actualUseState(initial);
     };
@@ -395,8 +376,7 @@ describe('chat-home-workbench component', () => {
 
     expect(sendMessage).toHaveBeenLastCalledWith({
       display: '给我一个实现方案',
-      payload: '/plan 给我一个实现方案',
-      modelId: undefined
+      payload: '/plan 给我一个实现方案'
     });
   });
 });

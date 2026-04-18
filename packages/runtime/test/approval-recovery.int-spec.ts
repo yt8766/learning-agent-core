@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ActionIntent, ApprovalDecision } from '@agent/core';
 
-import { createApprovalRecoveryGraph } from '../src/graphs/recovery.graph';
+import { createApprovalRecoveryGraph } from '../src/graphs/approval/approval-recovery.graph';
 
 describe('@agent/runtime approval recovery integration', () => {
   it('marks pending approval flows as approved by default', async () => {

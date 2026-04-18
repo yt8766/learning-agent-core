@@ -338,6 +338,17 @@
 - 这里已经有部分 contract-like 使用方式
 - 后续可以对比 supervisor 侧依赖，看看是否可以统一成更薄的 runtime-facing contract
 
+2026-04-18 补充约束：
+
+- `BaseAgent` 已确认不能再通过 `@agent/runtime` 根入口回引
+- 原因是 `packages/runtime` 的根入口会在 CJS 构建中联动加载 `bridges/*`，而 bridge 会继续 `require('@agent/agents-coder')` / `require('@agent/agents-reviewer')`
+- `agents/coder` 与 `agents/reviewer` 侧若再从 `@agent/runtime` 根入口取 `BaseAgent`，会形成 `runtime -> agent -> runtime(root)` 的循环，导致 `runtime.BaseAgent` 在模块未完成初始化前为 `undefined`
+- 当前稳定约束已收敛为：
+  - `BaseAgent` 必须通过 `@agent/runtime/base-agent` 消费
+  - `StreamingExecutionCoordinator` 继续通过 `@agent/runtime` 根入口或稳定子路径消费
+  - 各 agent 的 runtime boundary test 必须防止 `base-agent.ts` 回退到根入口导入
+- 已通过 Node CJS 复现命令确认修复后 `require('./packages/runtime/build/cjs/index.js')` 与 `require('./agents/coder/build/cjs/index.js')` 可同时成功加载
+
 ## 7. 第一批最值得落地的切口
 
 如果下一轮要真正开始改代码，当前推荐优先级如下：
