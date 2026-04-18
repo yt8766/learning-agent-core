@@ -83,14 +83,14 @@ shared 退场后，后续默认按下面边界继续收敛：
 
 后续 AI 如果要理解这次退场，优先阅读：
 
-- [docs/shared/README.md](/Users/dev/Desktop/learning-agent-core/docs/shared/README.md)
-- [docs/shared/shared-removal-completed.md](/Users/dev/Desktop/learning-agent-core/docs/shared/shared-removal-completed.md)
-- [docs/project-conventions.md](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-- [docs/package-architecture-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
-- [docs/core/current-core-package-audit.md](/Users/dev/Desktop/learning-agent-core/docs/core/current-core-package-audit.md)
+- [docs/shared/README.md](/docs/shared/README.md)
+- [docs/shared/shared-removal-completed.md](/docs/shared/shared-removal-completed.md)
+- [docs/project-conventions.md](/docs/project-conventions.md)
+- [docs/package-architecture-guidelines.md](/docs/package-architecture-guidelines.md)
+- [docs/core/current-core-package-audit.md](/docs/core/current-core-package-audit.md)
 
 如需追历史迁移过程，再回看：
 
-- [docs/shared/shared-removal-feasibility.md](/Users/dev/Desktop/learning-agent-core/docs/shared/shared-removal-feasibility.md)
-- [docs/evals/runtime-agent-cycle-audit.md](/Users/dev/Desktop/learning-agent-core/docs/evals/runtime-agent-cycle-audit.md)
-- [docs/evals/turbo-cycle-reduction-stage-six-plan.md](/Users/dev/Desktop/learning-agent-core/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
+- [docs/shared/shared-removal-feasibility.md](/docs/shared/shared-removal-feasibility.md)
+- [docs/evals/runtime-agent-cycle-audit.md](/docs/evals/runtime-agent-cycle-audit.md)
+- [docs/evals/turbo-cycle-reduction-stage-six-plan.md](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
