@@ -54,7 +54,8 @@ jobs:
           node-version: 22
 
       - name: Restore Turbo Cache
-        uses: actions/cache@v4
+        id: turbo-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: .turbo/cache
           key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'apps/**/package.json', 'packages/**/package.json') }}
@@ -62,7 +63,8 @@ jobs:
             ${{ runner.os }}-turbo-
 
       - name: Restore Build Artifacts Cache
-        uses: actions/cache@v4
+        id: build-artifacts-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: |
             apps/**/dist
@@ -86,6 +88,22 @@ jobs:
 
       - name: Run Full Build
         run: pnpm build
+
+      - name: Save Turbo Cache
+        if: success() && hashFiles('.turbo/cache/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .turbo/cache
+          key: ${{ steps.turbo-cache-restore.outputs.cache-primary-key }}
+
+      - name: Save Build Artifacts Cache
+        if: success() && (hashFiles('apps/**/dist/**') != '' || hashFiles('packages/**/build/**') != '')
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            apps/**/dist
+            packages/**/build
+          key: ${{ steps.build-artifacts-cache-restore.outputs.cache-primary-key }}
 
   prompt-regression:
     name: Prompt Regression Main

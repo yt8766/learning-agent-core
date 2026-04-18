@@ -287,6 +287,7 @@
 - 构建产物缓存：
   - `apps/**/dist`
   - `packages/**/build`
+- `main` 工作流中的缓存采用 `actions/cache/restore` + `actions/cache/save` 显式分离；只有在对应目录实际生成后才保存，避免 post-job cleanup 因路径不存在而报错
 
 ### Prompt Regression CI
 
