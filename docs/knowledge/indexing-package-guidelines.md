@@ -112,8 +112,8 @@ packages/knowledge/src/indexing/
 
 当前最重要的入口文件：
 
-- [packages/knowledge/src/indexing/index.ts](/Users/dev/Desktop/learning-agent-core/packages/knowledge/src/indexing/index.ts)
-- [packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts](/Users/dev/Desktop/learning-agent-core/packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts)
+- [packages/knowledge/src/indexing/index.ts](/packages/knowledge/src/indexing/index.ts)
+- [packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts](/packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts)
 - 所有规范文档统一放在 `docs/knowledge/*`，不要在 `packages/knowledge/*` 下继续新增 handoff README 或重复说明
 
 当前默认实现：

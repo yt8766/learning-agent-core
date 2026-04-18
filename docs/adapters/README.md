@@ -54,4 +54,4 @@
 
 当前最小示例：
 
-- [packages/adapters/demo/README.md](/Users/dev/Desktop/learning-agent-core/packages/adapters/demo/README.md)
+- [packages/adapters/demo/README.md](/packages/adapters/demo/README.md)

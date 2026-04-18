@@ -20,7 +20,7 @@
 
 仓库中的最小样板在这里：
 
-- [packages/adapters/test/fixtures/custom-http-provider.fixture.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/test/fixtures/custom-http-provider.fixture.ts)
+- [packages/adapters/test/fixtures/custom-http-provider.fixture.ts](/packages/adapters/test/fixtures/custom-http-provider.fixture.ts)
 
 它演示了最小需要实现的几项能力：
 
@@ -82,7 +82,7 @@ const llm = createDefaultRuntimeLlmProvider({
 
 可直接运行的 smoke 参考在这里：
 
-- [packages/adapters/test/sdk-custom-provider-smoke.test.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/test/sdk-custom-provider-smoke.test.ts)
+- [packages/adapters/test/sdk-custom-provider-smoke.test.ts](/packages/adapters/test/sdk-custom-provider-smoke.test.ts)
 
 这条测试完整覆盖了：
 

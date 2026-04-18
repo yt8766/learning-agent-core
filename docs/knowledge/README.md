@@ -35,4 +35,4 @@
 
 当前文档：
 
-- [indexing-package-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/knowledge/indexing-package-guidelines.md)
+- [indexing-package-guidelines.md](/docs/knowledge/indexing-package-guidelines.md)

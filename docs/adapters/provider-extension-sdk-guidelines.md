@@ -98,8 +98,8 @@ const llm = createDefaultRuntimeLlmProvider({
 
 仓库里还有一条可直接参考的 smoke 示例：
 
-- [packages/adapters/test/sdk-custom-provider-smoke.test.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/test/sdk-custom-provider-smoke.test.ts)
-- [packages/adapters/test/fixtures/custom-http-provider.fixture.ts](/Users/dev/Desktop/learning-agent-core/packages/adapters/test/fixtures/custom-http-provider.fixture.ts)
+- [packages/adapters/test/sdk-custom-provider-smoke.test.ts](/packages/adapters/test/sdk-custom-provider-smoke.test.ts)
+- [packages/adapters/test/fixtures/custom-http-provider.fixture.ts](/packages/adapters/test/fixtures/custom-http-provider.fixture.ts)
 - [custom-provider-example.md](/docs/adapters/custom-provider-example.md)
 
 ## 4. 什么时候只改配置
