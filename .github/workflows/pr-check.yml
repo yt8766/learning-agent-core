@@ -94,6 +94,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR Base Ref
+        run: git fetch --no-tags --prune origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
@@ -151,6 +156,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR Base Ref
+        run: git fetch --no-tags --prune origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
@@ -185,6 +195,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR Base Ref
+        run: git fetch --no-tags --prune origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
 
       - name: Check prompt regression secrets are configured
         id: promptfoo
