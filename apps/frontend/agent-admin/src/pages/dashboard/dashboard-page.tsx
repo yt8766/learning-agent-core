@@ -15,62 +15,62 @@ export function DashboardPage() {
   const headerConfig = {
     runtime: {
       icon: <Radar className="h-4 w-4" />,
-      description: 'Build Your Application',
-      badges: []
+      description: '治理控制台',
+      badges: buildHeaderBadges(consoleData)
     },
     approvals: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
-      badges: []
+      description: '治理控制台',
+      badges: buildHeaderBadges(consoleData)
     },
     learning: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     memory: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     profiles: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     evals: {
       icon: <Radar className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     archives: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     skills: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     evidence: {
       icon: <AlertCircle className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     connectors: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     skillSources: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     },
     companyAgents: {
       icon: <ClipboardCheck className="h-4 w-4" />,
-      description: 'Build Your Application',
+      description: '治理控制台',
       badges: []
     }
   }[dashboard.page];
@@ -100,6 +100,12 @@ export function DashboardPage() {
       value: `${consoleData?.runtime.recentRuns.length ?? 0}`,
       description: '最近回流到控制台的任务与治理面板入口。',
       icon: ArrowRightLeft
+    },
+    {
+      title: '控制台趋势',
+      value: buildPlatformConsoleTrendValue(dashboard.platformConsoleLogAnalysis),
+      description: buildPlatformConsoleTrendDescription(dashboard.platformConsoleLogAnalysis),
+      icon: Activity
     }
   ];
 
@@ -137,12 +143,13 @@ export function DashboardPage() {
           description={headerConfig.description}
           badges={headerConfig.badges}
           onRefresh={dashboard.refreshAll}
+          onRefreshMetrics={dashboard.handleRefreshMetricsSnapshots}
           onQuickCreate={dashboard.handleQuickCreate}
           onCopyShareLink={() => void navigator.clipboard.writeText(dashboard.shareUrl)}
         />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-4 p-4 pt-3 md:p-5 md:pt-3">
-            <SectionCards items={summaryCards.slice(0, 3)} />
+            <SectionCards items={summaryCards} />
             <div className="min-h-[calc(100vh-8rem)] flex-1 rounded-[1.75rem] bg-[#f8f8f6] p-4 md:min-h-min md:p-5">
               {dashboard.error ? (
                 <div className="mb-4">
@@ -165,4 +172,39 @@ export function DashboardPage() {
       </SidebarInset>
     </SidebarProvider>
   );
+}
+
+function buildHeaderBadges(consoleData: ReturnType<typeof useAdminDashboard>['consoleData']) {
+  const totalMs = consoleData?.diagnostics?.timingsMs.total;
+  const cacheStatus = consoleData?.diagnostics?.cacheStatus;
+  const badges: string[] = [];
+  if (typeof totalMs === 'number') {
+    badges.push(`控制台 ${totalMs}ms`);
+  }
+  if (cacheStatus) {
+    badges.push(`缓存 ${cacheStatus === 'hit' ? '命中' : cacheStatus === 'miss' ? '未命中' : cacheStatus}`);
+  }
+  return badges;
+}
+
+function buildPlatformConsoleTrendValue(analysis: ReturnType<typeof useAdminDashboard>['platformConsoleLogAnalysis']) {
+  const slow = analysis?.byEvent['runtime.platform_console.slow'];
+  if (!analysis?.sampleCount) {
+    return '无样本';
+  }
+  const statusLabel =
+    analysis.summary.status === 'healthy' ? '健康' : analysis.summary.status === 'warning' ? '预警' : '严重';
+  if (!slow) {
+    return `${statusLabel} / 0 slow`;
+  }
+  return `${statusLabel} / ${slow.count} slow / P95 ${slow.totalDurationMs.p95}ms`;
+}
+
+function buildPlatformConsoleTrendDescription(
+  analysis: ReturnType<typeof useAdminDashboard>['platformConsoleLogAnalysis']
+) {
+  if (!analysis?.sampleCount) {
+    return '最近日志里还没有可用的 console 趋势样本。';
+  }
+  return analysis.summary.reasons[0] ?? '最近日志样本未发现需要关注的趋势异常。';
 }

@@ -1,4 +1,5 @@
-import type { PlatformConsoleRecord, RuntimeArchitectureRecord } from '@/types/admin';
+import type { RunBundleRecord, WorkflowPresetDefinition } from '@agent/core';
+import type { PlatformConsoleLogAnalysisRecord, PlatformConsoleRecord, RuntimeArchitectureRecord } from '@/types/admin';
 import { request, type ChannelDeliveryRecord } from './admin-api-core';
 import { normalizeExecutionMode } from '@/lib/runtime-semantics';
 
@@ -39,6 +40,53 @@ export async function getApprovalsCenter(params?: { executionMode?: string; inte
   const suffix = search.toString() ? `?${search.toString()}` : '';
   return request<PlatformConsoleRecord['approvals']>(`/platform/approvals-center${suffix}`, {
     cancelKey: 'approvals-center',
+    cancelPrevious: true
+  });
+}
+
+export async function getRunObservatory(params?: {
+  status?: string;
+  model?: string;
+  pricingSource?: string;
+  executionMode?: string;
+  interactionKind?: string;
+  q?: string;
+  hasInterrupt?: boolean;
+  hasFallback?: boolean;
+  hasRecoverableCheckpoint?: boolean;
+  limit?: number;
+}) {
+  const search = new URLSearchParams();
+  if (params?.status) search.set('status', params.status);
+  if (params?.model) search.set('model', params.model);
+  if (params?.pricingSource) search.set('pricingSource', params.pricingSource);
+  const executionMode = normalizeExecutionMode(params?.executionMode) ?? params?.executionMode;
+  if (executionMode) search.set('executionMode', executionMode);
+  if (params?.interactionKind) search.set('interactionKind', params.interactionKind);
+  if (params?.q) search.set('q', params.q);
+  if (typeof params?.hasInterrupt === 'boolean') search.set('hasInterrupt', String(params.hasInterrupt));
+  if (typeof params?.hasFallback === 'boolean') search.set('hasFallback', String(params.hasFallback));
+  if (typeof params?.hasRecoverableCheckpoint === 'boolean') {
+    search.set('hasRecoverableCheckpoint', String(params.hasRecoverableCheckpoint));
+  }
+  if (typeof params?.limit === 'number') search.set('limit', String(Math.max(1, Math.floor(params.limit))));
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return request<RunBundleRecord['run'][]>(`/platform/run-observatory${suffix}`, {
+    cancelKey: 'run-observatory',
+    cancelPrevious: true
+  });
+}
+
+export async function getRunObservatoryDetail(taskId: string) {
+  return request<RunBundleRecord>(`/platform/run-observatory/${encodeURIComponent(taskId)}`, {
+    cancelKey: `run-observatory:${taskId}`,
+    cancelPrevious: true
+  });
+}
+
+export async function getWorkflowPresets() {
+  return request<WorkflowPresetDefinition[]>('/platform/workflow-presets', {
+    cancelKey: 'workflow-presets',
     cancelPrevious: true
   });
 }
@@ -179,6 +227,22 @@ export async function getSkillSourcesCenter() {
 export async function getCompanyAgentsCenter() {
   return request<PlatformConsoleRecord['companyAgents']>('/platform/company-agents-center', {
     cancelKey: 'company-agents-center',
+    cancelPrevious: true
+  });
+}
+
+export async function refreshMetricsSnapshots(days = 30) {
+  return request<{
+    days: number;
+    refreshedAt: string;
+  }>(`/platform/console/refresh-metrics?days=${days}`, {
+    method: 'POST'
+  });
+}
+
+export async function getPlatformConsoleLogAnalysis(days = 7) {
+  return request<PlatformConsoleLogAnalysisRecord>(`/platform/console/log-analysis?days=${days}`, {
+    cancelKey: 'platform-console-log-analysis',
     cancelPrevious: true
   });
 }

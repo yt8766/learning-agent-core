@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-16
+最后核对：2026-04-19
 
 本主题主文档：
 
@@ -20,12 +20,33 @@
 - `SSE / chat session` 细节： [chat-session-sse.md](/docs/integration/chat-session-sse.md)
 - `approval / reject / recover` 细节： [approval-recovery.md](/docs/integration/approval-recovery.md)
 - `runtime center / admin API` 细节： [runtime-centers-api.md](/docs/integration/runtime-centers-api.md)
+- `run observability detail` 细节： [run-observatory-api.md](/docs/integration/run-observatory-api.md)
 
 当前专题拆分：
 
 - [Chat Session And SSE](/docs/integration/chat-session-sse.md)
 - [Runtime Centers API](/docs/integration/runtime-centers-api.md)
 - [Approval Recovery](/docs/integration/approval-recovery.md)
+
+## 0. 前端请求层约定
+
+当前两个前端的 HTTP 请求层已经统一到 `axios + @tanstack/react-query`：
+
+- `agent-chat`
+  - `/api/chat/*` 与 `/platform/*` 请求继续通过 `axios` API 模块发起
+  - 会话激活阶段的 `session detail` 读取默认经由 `react-query QueryClient.fetchQuery(...)` 收口，便于后续和 SSE / checkpoint 兜底链路共享缓存与去重语义
+  - `EventSource` 仍然保留为聊天流主通道；`react-query` 不替代 SSE，只负责常规 HTTP 数据请求与缓存
+- `agent-admin`
+  - 原有 `fetch` 风格核心请求层已切换为 `axios`
+  - dashboard 的 `health / platform console / runtime center / approvals center / evals / task bundle` 等读取默认经由 `react-query` 的 query client 统一调度
+  - 分中心 refresh 与 task refresh 仍保留原有显式刷新语义，但底层改为 `fetchQuery(...)`，因此能复用 query key、并发去重和后续失效策略
+
+后续新增前端接口时，默认遵守：
+
+- 统一在各自应用的 `src/api/*` 中声明 `axios` 请求函数
+- 统一通过 `QueryClientProvider` 提供 query client
+- 常规 HTTP 数据读取优先走 `useQuery(...)` 或 `queryClient.fetchQuery(...)`
+- 只有流式聊天、SSE、浏览器原生事件源这类长连接链路才继续绕开 `react-query`
 
 ## 1. 总体链路
 
@@ -96,11 +117,39 @@
 
 平台治理与导出接口补充：
 
+- `GET /platform/console-shell?days=30&status=&model=&pricingSource=&runtimeExecutionMode=&runtimeInteractionKind=&approvalsExecutionMode=&approvalsInteractionKind=`
+  - 获取 dashboard shell 级别的轻量 Platform Console 数据
+  - `agent-admin` 当前默认优先用它驱动 `refreshAll`
+  - `refreshAll / refreshTask` 当前会并行拉取 shell 与当前页面 center，再在前端合并结果，避免把 shell 拆分后的收益又耗在串行等待里
+  - `runtime` 片段当前也只保留首页/侧栏所需的 summary 级字段；Runtime 页面详情仍需继续通过 `GET /platform/runtime-center` 获取
+  - `learning` 片段当前也只保留 summary 级字段；学习中枢详情仍需继续通过 `GET /learning/center` 获取
+  - `evals` 片段当前也只保留 summary 级字段；评测基线详情仍需继续通过 `GET /platform/evals-center` 获取
+  - `archives` 页面当前也不再依赖 shell 内的 runtime/evals 历史详情，而是主动并行请求 `GET /platform/runtime-center` 与 `GET /platform/evals-center`
+  - `skills` 页面当前也不再依赖 shell 内的 `skills / rules` 全量列表，而是主动并行请求 `GET /skills` 与 `GET /rules`
+  - `tasks / sessions / checkpoints` 当前也不再作为 shell 主流程依赖；默认 task 选择已优先收敛到 active task / current bundle / runtime recent run
+  - `evidence / connectors / skillSources / companyAgents` 在 shell 中只保留空占位，相关页面需继续通过独立 center 接口补拉详情
+
 - `GET /platform/console?days=30&status=&model=&pricingSource=&runtimeExecutionMode=&runtimeInteractionKind=&approvalsExecutionMode=&approvalsInteractionKind=`
   - 获取整包 Platform Console 数据
   - 当前只会对 `runtime` 与 `approvals` 两块做过滤裁剪
   - 其他 center 仍保持全量返回
   - 用于让 admin 的 `refreshAll` / `refreshTask` 与分中心 refresh 保持同一组筛选语义
+  - 后端当前会对同一 runtime 进程内的同参数请求做 `15s` 短 TTL 缓存，并对并发相同请求做 in-flight 去重；这层优化不改变返回 contract，只减少重复聚合带来的慢请求
+  - 返回体当前附带 `diagnostics`，其中包含 `cacheStatus`、`generatedAt` 与分片 `timingsMs`；`agent-admin` 可把它作为控制面诊断信息展示，但不要拿它替代具体中心数据
+  - `connectors` 片段当前默认读取最近一次已知 discovery / governance 状态，不会在该读接口里自动触发全量 connector discovery refresh；如需主动刷新，前端应调用现有 `POST /platform/connectors-center/:connectorId/refresh`
+  - `runtime / evals` 片段当前在该聚合接口内部优先读取 persisted metrics snapshot；如果快照为空，会回退一次 live 聚合补齐首屏数据。因此 dashboard 刷新不再默认顺手触发 usage/eval metrics 写盘，但新环境首开也不会长期停在空历史；如果需要稳定拿最新 live 聚合，前端仍可使用对应的分中心接口
+  - 该整包接口当前更适合诊断、比对或兼容场景；首页刷新默认不再强依赖它
+- `POST /platform/console/refresh-metrics?days=30`
+  - 显式刷新 runtime / evals 的 persisted metrics snapshot
+  - 当前主要面向后端后台任务、治理动作或后续 admin 手动刷新入口；不要求前端再通过读取控制台接口来兜底生产快照
+  - 后端默认还会在 runtime bootstrap 完成后非阻塞预热一次 `30d` snapshot，因此前端首开控制台更容易直接命中 persisted metrics，而不是临时回退 live 聚合
+  - runtime schedule runner 之后还会每 `30` 分钟复用同一刷新入口保温一次快照；因此前端不需要为了“保持热数据”去周期性重刷整包 console
+  - `agent-admin` 当前已接入显式 `Metrics Snapshot` 按钮；当运营侧需要手动拉齐 persisted metrics 时，应优先调用该入口，然后再走一次 `refreshAll`
+- `GET /platform/console/log-analysis?days=7`
+  - 返回 platform console 的日志趋势统计
+  - `agent-admin` 当前会单独 query 这条接口，并在 dashboard 摘要区展示“控制台趋势”卡片
+  - 返回体当前还带统一的 `summary.status / summary.reasons / summary.budgetsMs`，前端直接消费这套预算判断，不再在 UI 层重复维护另一组阈值
+  - 这张卡片与 `refreshAll` 解耦：即使平台控制台主数据暂时失败，趋势统计仍可独立展示或独立降级
 - `GET /platform/runtime-center?days=30&status=&model=&pricingSource=&executionMode=&interactionKind=`
   - 获取 Runtime Center 数据
   - `executionMode` 的 canonical 写出始终对应 `executionPlan.mode`：
@@ -138,6 +187,13 @@
     - `filterInteractionKind`
     - 每条审批项的 `executionMode`
     - 每条审批项的 `interactionKind`
+- `GET /platform/run-observatory`
+  - 返回 run observability summary 列表
+  - 当前主要服务 admin 侧第二阶段的 run 检索与筛选能力
+- `GET /platform/run-observatory/:taskId`
+  - 返回单次 run 的 observability detail
+  - 当前主要服务 `agent-admin` Runtime Center 右侧 `Execution Observatory` 区块
+  - 返回结构已归一为 timeline / traces / checkpoints / diagnostics，不建议前端再次从 raw task 自行推导
 
 会话动作：
 

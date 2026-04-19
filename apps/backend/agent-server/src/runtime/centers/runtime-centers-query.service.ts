@@ -1,57 +1,45 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-
-import { NotFoundException } from '@nestjs/common';
 import type { PlatformApprovalRecord } from '@agent/core';
 
-import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
-import { buildConnectorsCenter } from './runtime-connectors-center';
-import { buildEvidenceCenter, buildLearningCenter } from './runtime-learning-evidence-center';
-import { buildRuntimeCenter } from './runtime-runtime-center';
-import { buildSkillSourcesCenter } from './runtime-skill-sources-center';
-import { buildToolsCenter } from '../tools/runtime-tools-center';
-import { getDisabledCompanyWorkerIds } from '../helpers/runtime-connector-registry';
-import {
-  summarizeAndPersistEvalHistory,
-  summarizeAndPersistUsageAnalytics
-} from '../../modules/runtime-metrics/services/runtime-metrics-store';
-import {
-  buildPlatformConsole,
-  exportApprovalsCenter,
-  exportEvalsCenter,
-  exportRuntimeCenter
-} from '../helpers/runtime-platform-console';
-import { loadPromptRegressionConfigSummary } from '../helpers/prompt-regression-summary';
-import {
-  getRecentGovernanceAudit,
-  listApprovalScopePolicies,
-  syncCapabilityGovernanceProfiles
-} from '../../modules/runtime-governance/services/runtime-governance-store';
-import {
-  appendBriefingFeedback,
-  readDailyTechBriefingRuns,
-  readDailyTechBriefingStatus
-} from '../briefings/runtime-tech-briefing-storage';
-import type { BriefingFeedbackRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
-import { readInstalledSkillRecords, readSkillInstallReceipts } from '../skills/runtime-skill-install.service';
-import {
-  listSkillManifests,
-  listSkillSources,
-  searchLocalSkillSuggestions
-} from '../skills/runtime-skill-sources.service';
 import { RuntimeCentersContext } from './runtime-centers.types';
-import {
-  resolveInterruptPayloadField,
-  resolveLocalSkillSuggestionsWithTimeout,
-  resolveTaskExecutionMode,
-  resolveTaskInteractionKind
-} from './runtime-centers-query.helpers';
+import { RuntimeCentersCatalogQueryService } from './runtime-centers-catalog.query-service';
+import { RuntimeCentersLearningQueryService } from './runtime-centers-learning.query-service';
+import { RuntimeCentersObservabilityQueryService } from './runtime-centers-observability.query-service';
+import { RuntimeCentersRuntimeQueryService } from './runtime-centers-runtime.query-service';
 import type { EvalsCenterRecord, LearningCenterRecord } from './runtime-centers.records';
-import { ingestLocalKnowledge, readKnowledgeOverview } from '../knowledge/runtime-knowledge-store';
-import { getMinistryDisplayName, normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
+import type { TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
+import { exportApprovalsCenter, exportEvalsCenter, exportRuntimeCenter } from '../helpers/runtime-platform-console';
 
 export class RuntimeCentersQueryService {
-  constructor(private readonly getContext: () => RuntimeCentersContext) {}
+  private readonly observabilityQueryService: RuntimeCentersObservabilityQueryService;
+  private readonly runtimeQueryService: RuntimeCentersRuntimeQueryService;
+  private readonly learningQueryService: RuntimeCentersLearningQueryService;
+  private readonly catalogQueryService: RuntimeCentersCatalogQueryService;
+
+  constructor(private readonly getContext: () => RuntimeCentersContext) {
+    this.observabilityQueryService = new RuntimeCentersObservabilityQueryService(getContext);
+    this.runtimeQueryService = new RuntimeCentersRuntimeQueryService(getContext);
+    this.learningQueryService = new RuntimeCentersLearningQueryService(getContext);
+    this.catalogQueryService = new RuntimeCentersCatalogQueryService(getContext);
+  }
+
+  async getRunObservatory(filters?: {
+    status?: string;
+    model?: string;
+    pricingSource?: string;
+    executionMode?: string;
+    interactionKind?: string;
+    q?: string;
+    hasInterrupt?: string;
+    hasFallback?: string;
+    hasRecoverableCheckpoint?: string;
+    limit?: string | number;
+  }) {
+    return this.observabilityQueryService.getRunObservatory(filters);
+  }
+
+  async getRunObservatoryDetail(taskId: string) {
+    return this.observabilityQueryService.getRunObservatoryDetail(taskId);
+  }
 
   async getRuntimeCenter(
     days = 30,
@@ -61,90 +49,31 @@ export class RuntimeCentersQueryService {
       pricingSource?: string;
       executionMode?: string;
       interactionKind?: string;
+      metricsMode?: 'live' | 'snapshot-preferred';
     }
   ) {
-    const ctx = this.ctx();
-    const tasks = ctx.orchestrator.listTasks();
-    const sessions = ctx.wenyuanFacade.listHistory();
-    const pendingApprovals = ctx.orchestrator.listPendingApprovals();
-    const usageAnalytics = await summarizeAndPersistUsageAnalytics({
-      runtimeStateRepository: ctx.runtimeStateRepository,
-      tasks,
-      days,
-      filters,
-      fetchProviderUsageAudit: (auditDays: number) => ctx.fetchProviderUsageAudit(auditDays)
-    });
-    await syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, tasks);
-    const approvalScopePolicies = await listApprovalScopePolicies(ctx.runtimeStateRepository);
-    const knowledgeOverview = await ingestLocalKnowledge(ctx.settings);
-    const dailyTechBriefing = await readDailyTechBriefingStatus(ctx.settings.workspaceRoot, {
-      enabled: ctx.settings.dailyTechBriefing.enabled,
-      schedule: ctx.settings.dailyTechBriefing.schedule
-    });
+    return this.runtimeQueryService.getRuntimeCenter(days, filters);
+  }
 
-    const filteredRecentRuns = tasks
-      .filter((task: any) => !filters?.status || String(task.status) === filters.status)
-      .filter(
-        (task: any) =>
-          !filters?.executionMode ||
-          resolveTaskExecutionMode(task) === (normalizeExecutionMode(filters.executionMode) ?? filters.executionMode)
-      )
-      .filter((task: any) => !filters?.interactionKind || resolveTaskInteractionKind(task) === filters.interactionKind)
-      .slice()
-      .sort((left: any, right: any) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-      .slice(0, 10);
-
-    return {
-      ...buildRuntimeCenter({
-        profile: ctx.settings.profile,
-        policy: {
-          approvalMode: ctx.settings.policy.approvalMode,
-          skillInstallMode: ctx.settings.policy.skillInstallMode,
-          learningMode: ctx.settings.policy.learningMode,
-          sourcePolicyMode: ctx.settings.policy.sourcePolicyMode,
-          budget: ctx.settings.policy.budget
-        },
-        tasks,
-        sessions,
-        pendingApprovals,
-        usageAnalytics,
-        recentGovernanceAudit: await getRecentGovernanceAudit(ctx.runtimeStateRepository),
-        approvalScopePolicies,
-        backgroundWorkerPoolSize: ctx.settings.runtimeBackground?.workerPoolSize ?? 2,
-        backgroundWorkerSlots: ctx.getBackgroundWorkerSlots(),
-        filteredRecentRuns,
-        getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
-        knowledgeOverview,
-        dailyTechBriefing
-      }),
-      tools: buildToolsCenter({
-        toolRegistry: ctx.toolRegistry,
-        tasks
-      }),
-      appliedFilters: {
-        status: filters?.status,
-        model: filters?.model,
-        pricingSource: filters?.pricingSource,
-        executionMode: filters?.executionMode,
-        interactionKind: filters?.interactionKind
-      }
-    };
+  async getRuntimeCenterSummary(
+    days = 30,
+    filters?: {
+      status?: string;
+      model?: string;
+      pricingSource?: string;
+      executionMode?: string;
+      interactionKind?: string;
+    }
+  ) {
+    return this.runtimeQueryService.getRuntimeCenterSummary(days, filters);
   }
 
   async getBriefingRuns(days = 7, category?: TechBriefingCategory) {
-    const runs = await readDailyTechBriefingRuns(this.ctx().settings.workspaceRoot);
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return runs
-      .filter(run => new Date(run.runAt).getTime() >= cutoff)
-      .map(run => ({
-        ...run,
-        categories: category ? run.categories.filter(item => item.category === category) : run.categories
-      }))
-      .filter(run => run.categories.length > 0);
+    return this.observabilityQueryService.getBriefingRuns(days, category);
   }
 
   async forceBriefingRun(category: TechBriefingCategory) {
-    return this.ctx().techBriefingService?.forceRun(category);
+    return this.observabilityQueryService.forceBriefingRun(category);
   }
 
   async recordBriefingFeedback(input: {
@@ -153,212 +82,57 @@ export class RuntimeCentersQueryService {
     feedbackType: 'helpful' | 'notHelpful';
     reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
   }) {
-    const payload: BriefingFeedbackRecord = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      messageKey: input.messageKey,
-      category: input.category,
-      feedbackType: input.feedbackType,
-      reasonTag: input.reasonTag,
-      createdAt: new Date().toISOString()
-    };
-    await appendBriefingFeedback(this.ctx().settings.workspaceRoot, payload);
-    return { ok: true, payload };
+    return this.observabilityQueryService.recordBriefingFeedback(input);
   }
 
   getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }): PlatformApprovalRecord[] {
-    return this.ctx()
-      .orchestrator.listPendingApprovals()
-      .filter(
-        (task: any) =>
-          !filters?.executionMode ||
-          resolveTaskExecutionMode(task) === (normalizeExecutionMode(filters.executionMode) ?? filters.executionMode)
-      )
-      .filter((task: any) => !filters?.interactionKind || resolveTaskInteractionKind(task) === filters.interactionKind)
-      .map((task: any) => ({
-        taskId: task.id,
-        goal: task.goal,
-        status: task.status,
-        sessionId: task.sessionId,
-        currentMinistry: getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry,
-        currentWorker: task.currentWorker,
-        executionMode: resolveTaskExecutionMode(task),
-        streamStatus: task.streamStatus,
-        contextFilterState: task.contextFilterState,
-        pendingApproval: task.pendingApproval,
-        // activeInterrupt is the persisted 司礼监 / InterruptController projection for approval-center compatibility.
-        activeInterrupt: task.activeInterrupt,
-        // entryDecision is the persisted 通政司 / EntryRouter projection for approval-center compatibility.
-        entryRouterState: task.entryDecision,
-        interruptControllerState: {
-          activeInterrupt: task.activeInterrupt,
-          interruptHistory: task.interruptHistory ?? []
-        },
-        planDraft: task.planDraft,
-        approvals: task.approvals ?? []
-      }))
-      .map((task: any) => ({
-        ...task,
-        commandPreview: resolveInterruptPayloadField(task.activeInterrupt, 'commandPreview'),
-        riskReason: resolveInterruptPayloadField(task.activeInterrupt, 'riskReason'),
-        riskCode: resolveInterruptPayloadField(task.activeInterrupt, 'riskCode') || task.pendingApproval?.reasonCode,
-        approvalScope: resolveInterruptPayloadField(task.activeInterrupt, 'approvalScope'),
-        policyMatchStatus: 'manual-pending',
-        policyMatchSource: 'manual',
-        lastStreamStatusAt: task.streamStatus?.updatedAt
-      }));
+    return this.observabilityQueryService.getApprovalsCenter(filters);
   }
 
   getLearningCenter(): Promise<LearningCenterRecord> {
-    const ctx = this.ctx();
-    const tasks = ctx.orchestrator.listTasks();
-    const jobs = ctx.orchestrator.listLearningJobs();
-    const learningQueue = ctx.orchestrator.listLearningQueue?.() ?? [];
-    const capabilityGovernanceSyncPromise = syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, tasks);
-    const crossCheckEvidencePromise = ctx.wenyuanFacade.listCrossCheckEvidence();
-    const memoryStatsPromise = ctx.wenyuanFacade.listMemories().then((items: any[]) => {
-      const invalidated = items.filter(item => item.status === 'invalidated').length;
-      const quarantinedItems = items
-        .filter(item => item.quarantined)
-        .sort(
-          (left, right) =>
-            new Date(right.quarantinedAt ?? right.updatedAt ?? right.createdAt ?? 0).getTime() -
-            new Date(left.quarantinedAt ?? left.updatedAt ?? left.createdAt ?? 0).getTime()
-        );
-      return {
-        invalidated,
-        quarantined: quarantinedItems.length,
-        recentQuarantined: quarantinedItems.slice(0, 8).map(item => ({
-          id: item.id,
-          summary: item.summary,
-          quarantineReason: item.quarantineReason,
-          quarantineCategory: item.quarantineCategory,
-          quarantineReasonDetail: item.quarantineReasonDetail,
-          quarantineRestoreSuggestion: item.quarantineRestoreSuggestion,
-          quarantinedAt: item.quarantinedAt
-        }))
-      };
-    });
-    const invalidatedRulesPromise = ctx.ruleRepository
-      .list()
-      .then((items: any[]) => items.filter(item => item.status === 'invalidated').length);
-    return buildLearningCenter({
-      tasks,
-      jobs,
-      wenyuanOverviewPromise: ctx.wenyuanFacade.getOverview(),
-      knowledgeOverviewPromise: ingestLocalKnowledge(ctx.settings),
-      learningQueue,
-      memoryStatsPromise,
-      invalidatedRulesPromise,
-      crossCheckEvidencePromise,
-      governanceSnapshotPromise: capabilityGovernanceSyncPromise.then(() => ctx.runtimeStateRepository.load()),
-      resolutionCandidatesPromise: ctx.wenyuanFacade.listResolutionCandidates?.() ?? Promise.resolve([]),
-      resolveLocalSkillSuggestions: (task: any) =>
-        resolveLocalSkillSuggestionsWithTimeout(() =>
-          searchLocalSkillSuggestions(ctx.getSkillSourcesContext(), task.goal, {
-            usedInstalledSkills: task.usedInstalledSkills,
-            limit: 3
-          })
-        )
-    }) as Promise<LearningCenterRecord>;
+    return this.learningQueryService.getLearningCenter();
+  }
+
+  getLearningCenterSummary(): Promise<LearningCenterRecord> {
+    return this.learningQueryService.getLearningCenterSummary();
   }
 
   getEvidenceCenter() {
-    const ctx = this.ctx();
-    const tasks = ctx.orchestrator.listTasks();
-    const jobs = ctx.orchestrator.listLearningJobs();
-    return Promise.all([ctx.wenyuanFacade.getOverview(), ingestLocalKnowledge(ctx.settings)]).then(
-      ([wenyuanOverview, knowledgeOverview]) =>
-        buildEvidenceCenter({
-          tasks,
-          jobs,
-          getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
-          wenyuanOverview,
-          knowledgeOverview
-        })
-    );
+    return this.learningQueryService.getEvidenceCenter();
   }
 
   async getConnectorsCenter() {
-    const ctx = this.ctx();
-    await ctx.mcpClientManager.sweepIdleSessions(ctx.settings.mcp.stdioSessionIdleTtlMs);
-    await ctx.mcpClientManager.refreshAllServerDiscovery({ includeStdio: false }).catch(() => undefined);
-    const [snapshot, knowledgeOverview] = await Promise.all([
-      ctx.runtimeStateRepository.load(),
-      readKnowledgeOverview(ctx.settings)
-    ]);
-    const tasks = ctx.orchestrator.listTasks();
-    return buildConnectorsCenter({
-      profile: ctx.settings.profile,
-      snapshot,
-      tasks,
-      connectors: ctx.mcpClientManager.describeServers(),
-      knowledgeOverview
-    });
+    return this.catalogQueryService.getConnectorsCenter();
   }
 
   getToolsCenter() {
-    const ctx = this.ctx();
-    return buildToolsCenter({
-      toolRegistry: ctx.toolRegistry,
-      tasks: ctx.orchestrator.listTasks()
-    });
+    return this.catalogQueryService.getToolsCenter();
   }
 
   async getBrowserReplay(sessionId: string) {
-    const replayPath = join(this.ctx().settings.workspaceRoot, 'data', 'browser-replays', sessionId, 'replay.json');
-    try {
-      const raw = await readFile(replayPath, 'utf8');
-      return JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      throw new NotFoundException(`Browser replay ${sessionId} not found`);
-    }
+    return this.observabilityQueryService.getBrowserReplay(sessionId);
   }
 
   async getSkillSourcesCenter() {
-    const ctx = this.ctx();
-    const [sources, manifests, installed, receipts] = await Promise.all([
-      listSkillSources(ctx.getSkillSourcesContext()),
-      listSkillManifests(ctx.getSkillSourcesContext()),
-      readInstalledSkillRecords(ctx.getSkillInstallContext()),
-      readSkillInstallReceipts(ctx.getSkillInstallContext())
-    ]);
-    const skillCards = await ctx.skillRegistry.list();
-    const tasks = ctx.orchestrator.listTasks();
-    return buildSkillSourcesCenter({
-      sources,
-      manifests,
-      installed,
-      receipts,
-      skillCards,
-      tasks
-    });
+    return this.catalogQueryService.getSkillSourcesCenter();
   }
 
   getCompanyAgentsCenter() {
-    const ctx = this.ctx();
-    return buildCompanyAgentsCenter({
-      tasks: ctx.orchestrator.listTasks(),
-      workers: ctx.orchestrator.listWorkers(),
-      disabledWorkerIds: new Set(getDisabledCompanyWorkerIds(ctx.getConnectorRegistryContext()))
-    });
+    return this.catalogQueryService.getCompanyAgentsCenter();
   }
 
-  async getEvalsCenter(days = 30, filters?: { scenarioId?: string; outcome?: string }): Promise<EvalsCenterRecord> {
-    const ctx = this.ctx();
-    const [evals, promptRegression] = await Promise.all([
-      summarizeAndPersistEvalHistory({
-        runtimeStateRepository: ctx.runtimeStateRepository,
-        tasks: ctx.orchestrator.listTasks(),
-        days,
-        filters
-      }),
-      loadPromptRegressionConfigSummary(ctx.settings.workspaceRoot)
-    ]);
+  async getEvalsCenter(
+    days = 30,
+    filters?: { scenarioId?: string; outcome?: string; metricsMode?: 'live' | 'snapshot-preferred' }
+  ): Promise<EvalsCenterRecord> {
+    return this.catalogQueryService.getEvalsCenter(days, filters);
+  }
 
-    return {
-      ...evals,
-      promptRegression
-    };
+  async getEvalsCenterSummary(
+    days = 30,
+    filters?: { scenarioId?: string; outcome?: string; metricsMode?: 'live' | 'snapshot-preferred' }
+  ): Promise<EvalsCenterRecord> {
+    return this.catalogQueryService.getEvalsCenterSummary(days, filters);
   }
 
   async getPlatformConsole(
@@ -373,7 +147,26 @@ export class RuntimeCentersQueryService {
       approvalsInteractionKind?: string;
     }
   ) {
-    return buildPlatformConsole(this.ctx().getPlatformConsoleContext(), days, filters);
+    return this.observabilityQueryService.getPlatformConsole(days, filters);
+  }
+
+  async getPlatformConsoleShell(
+    days = 30,
+    filters?: {
+      status?: string;
+      model?: string;
+      pricingSource?: string;
+      runtimeExecutionMode?: string;
+      runtimeInteractionKind?: string;
+      approvalsExecutionMode?: string;
+      approvalsInteractionKind?: string;
+    }
+  ) {
+    return this.observabilityQueryService.getPlatformConsoleShell(days, filters);
+  }
+
+  async getPlatformConsoleLogAnalysis(days = 7) {
+    return this.observabilityQueryService.getPlatformConsoleLogAnalysis(days);
   }
 
   async exportRuntimeCenter(options?: {
@@ -394,9 +187,5 @@ export class RuntimeCentersQueryService {
 
   async exportEvalsCenter(options?: { days?: number; scenarioId?: string; outcome?: string; format?: string }) {
     return exportEvalsCenter(this, options);
-  }
-
-  private ctx() {
-    return this.getContext();
   }
 }

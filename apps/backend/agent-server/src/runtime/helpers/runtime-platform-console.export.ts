@@ -1,0 +1,183 @@
+import { getMinistryDisplayName, normalizeExecutionMode } from './runtime-architecture-helpers';
+import type {
+  PlatformConsoleRecord,
+  PlatformConsoleRuntimeTaskRecord,
+  RuntimePlatformConsoleContext
+} from '../centers/runtime-platform-console.records';
+import {
+  normalizePlatformConsoleEvalsRecord,
+  normalizePlatformConsoleRuntimeRecord
+} from './runtime-platform-console.normalize';
+
+export async function exportRuntimeCenter(
+  context: {
+    getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => Promise<PlatformConsoleRecord['runtime']>;
+  },
+  options?: {
+    days?: number;
+    status?: string;
+    model?: string;
+    pricingSource?: string;
+    executionMode?: string;
+    interactionKind?: string;
+    format?: string;
+  }
+) {
+  const runtime = normalizePlatformConsoleRuntimeRecord(await context.getRuntimeCenter(options?.days ?? 30, options));
+  const usageAnalytics = runtime.usageAnalytics ?? {};
+  const persistedDailyHistory = usageAnalytics.persistedDailyHistory ?? usageAnalytics.daily ?? [];
+  const recentRuns = runtime.recentRuns ?? [];
+  const dailyTechCategories = runtime.dailyTechBriefing?.categories ?? [];
+  const format = options?.format === 'json' ? 'json' : 'csv';
+  if (format === 'json') {
+    return {
+      filename: `runtime-center-${options?.days ?? 30}d.json`,
+      mimeType: 'application/json',
+      content: JSON.stringify(runtime, null, 2)
+    };
+  }
+
+  const lines = [
+    'day,tokens,costUsd,costCny,runs,overBudget',
+    ...persistedDailyHistory.map(
+      point =>
+        `${point.day},${point.tokens},${point.costUsd},${point.costCny},${point.runs},${point.overBudget ? 'true' : 'false'}`
+    ),
+    '',
+    `filters,${csv(options?.status ?? '')},${csv(options?.model ?? '')},${csv(options?.pricingSource ?? '')},${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
+    'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind',
+    '',
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt',
+    ...recentRuns.map(
+      task =>
+        `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(task))},${csv(task.currentWorker)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`
+    ),
+    '',
+    'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt',
+    `dailyTechScheduler,${csv(runtime.dailyTechBriefing?.scheduler ?? '')},${csv(runtime.dailyTechBriefing?.schedule ?? '')},${csv(runtime.dailyTechBriefing?.cron ?? '')},${csv(runtime.dailyTechBriefing?.scheduleValid ?? '')},${csv(runtime.dailyTechBriefing?.jobKey ?? '')},${csv(runtime.dailyTechBriefing?.lastRegisteredAt ?? '')}`,
+    '',
+    'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError',
+    ...(dailyTechCategories.map(
+      item =>
+        `${csv(item.category)},${csv(item.status)},${csv(item.itemCount)},${csv(item.emptyDigest)},${csv(item.sentAt ?? '')},${csv(item.error ?? '')}`
+    ) as string[])
+  ];
+
+  return {
+    filename: `runtime-center-${options?.days ?? 30}d.csv`,
+    mimeType: 'text/csv',
+    content: lines.join('\n')
+  };
+}
+
+export async function exportApprovalsCenter(
+  context: Pick<RuntimePlatformConsoleContext, 'getApprovalsCenter'>,
+  options?: {
+    executionMode?: string;
+    interactionKind?: string;
+    format?: string;
+  }
+) {
+  const approvals = context.getApprovalsCenter(options);
+  const format = options?.format === 'json' ? 'json' : 'csv';
+  if (format === 'json') {
+    return {
+      filename: 'approvals-center.json',
+      mimeType: 'application/json',
+      content: JSON.stringify(approvals, null, 2)
+    };
+  }
+
+  const lines = [
+    `filters,${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
+    'filterExecutionMode,filterInteractionKind',
+    '',
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt',
+    ...approvals.map(
+      item =>
+        `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(item))},${csv(item.currentWorker)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')},${csv(resolveInterruptPayloadField(item, 'commandPreview'))},${csv(resolveInterruptPayloadField(item, 'riskReason'))},${csv(resolveInterruptPayloadField(item, 'riskCode'))},${csv(resolveInterruptPayloadField(item, 'approvalScope'))},${csv(item.policyMatchStatus ?? '')},${csv(item.policyMatchSource ?? '')},${csv(item.lastStreamStatusAt ?? '')}`
+    )
+  ];
+
+  return {
+    filename: 'approvals-center.csv',
+    mimeType: 'text/csv',
+    content: lines.join('\n')
+  };
+}
+
+export async function exportEvalsCenter(
+  context: Pick<RuntimePlatformConsoleContext, 'getEvalsCenter'>,
+  options?: { days?: number; scenarioId?: string; outcome?: string; format?: string }
+) {
+  const evals = normalizePlatformConsoleEvalsRecord(await context.getEvalsCenter(options?.days ?? 30, options));
+  const persistedDailyHistory = evals.persistedDailyHistory ?? [];
+  const dailyTrend = evals.dailyTrend ?? [];
+  const recentRuns = evals.recentRuns ?? [];
+  const promptSuites = evals.promptRegression?.suites ?? [];
+  const format = options?.format === 'json' ? 'json' : 'csv';
+  if (format === 'json') {
+    return {
+      filename: `evals-center-${options?.days ?? 30}d.json`,
+      mimeType: 'application/json',
+      content: JSON.stringify(evals, null, 2)
+    };
+  }
+
+  const lines = [
+    'day,runCount,passCount,passRate',
+    ...((persistedDailyHistory.length > 0 ? persistedDailyHistory : dailyTrend).map(
+      point =>
+        `${csv((point as Record<string, unknown>).day)},${csv((point as Record<string, unknown>).runCount)},${csv((point as Record<string, unknown>).passCount)},${csv((point as Record<string, unknown>).passRate)}`
+    ) as string[]),
+    '',
+    'taskId,createdAt,success,scenarioIds',
+    ...(recentRuns.map(
+      run =>
+        `${csv(run.taskId)},${csv(run.createdAt)},${run.success ? 'pass' : 'fail'},${csv((run.scenarioIds ?? []).join('|'))}`
+    ) as string[]),
+    '',
+    'promptSuiteId,promptSuiteLabel,promptCount,versions',
+    ...(promptSuites.map(
+      suite =>
+        `${csv(suite.suiteId)},${csv(suite.label)},${csv(suite.promptCount)},${csv((suite.versions ?? []).join('|'))}`
+    ) as string[])
+  ];
+
+  return {
+    filename: `evals-center-${options?.days ?? 30}d.csv`,
+    mimeType: 'text/csv',
+    content: lines.join('\n')
+  };
+}
+
+function resolveInteractionKind(task: Pick<PlatformConsoleRuntimeTaskRecord, 'pendingApproval' | 'activeInterrupt'>) {
+  if (typeof task.activeInterrupt?.interactionKind === 'string') {
+    return task.activeInterrupt.interactionKind;
+  }
+  const payload = task.activeInterrupt?.payload;
+  if (payload && typeof payload === 'object' && typeof payload.interactionKind === 'string') {
+    return payload.interactionKind;
+  }
+  if (task.activeInterrupt?.kind === 'user-input') {
+    return 'plan-question';
+  }
+  return task.pendingApproval || task.activeInterrupt ? 'approval' : '';
+}
+
+function resolveInterruptPayloadField(
+  task: Pick<PlatformConsoleRuntimeTaskRecord, 'activeInterrupt'>,
+  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
+) {
+  const payload = task.activeInterrupt?.payload;
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
+  const value = payload[field];
+  return typeof value === 'string' ? value : '';
+}
+
+function csv(value: unknown): string {
+  const text = value == null ? '' : String(value);
+  return `"${text.split('"').join('""')}"`;
+}

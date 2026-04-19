@@ -22,12 +22,17 @@ import {
   getEvalsCenterFiltered,
   getEvidenceCenter,
   getLearningCenter,
+  getPlatformConsoleLogAnalysis,
+  getRunObservatory,
+  getRunObservatoryDetail,
   getRuntimeArchitecture,
   getRuntimeCenter,
   getRuntimeCenterFiltered,
   getSkillSourcesCenter,
   getToolsCenter,
+  getWorkflowPresets,
   recoverToCheckpoint,
+  refreshMetricsSnapshots,
   revokeApprovalScopePolicy,
   submitBriefingFeedback
 } from '@/api/admin-api-platform';
@@ -52,6 +57,19 @@ describe('admin-api-platform', () => {
       executionMode: 'imperial-direct',
       interactionKind: 'approval'
     });
+    await getRunObservatory({
+      status: 'running',
+      model: 'gpt-5.4-mini',
+      pricingSource: 'estimated',
+      executionMode: 'imperial-direct',
+      interactionKind: 'approval',
+      q: 'regression',
+      hasInterrupt: true,
+      hasFallback: false,
+      hasRecoverableCheckpoint: true,
+      limit: 25
+    });
+    await getRunObservatoryDetail('task-1');
     await exportRuntimeCenter({
       days: 7,
       executionMode: 'imperial-direct',
@@ -81,10 +99,20 @@ describe('admin-api-platform', () => {
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       4,
-      '/platform/runtime-center/export?days=7&executionMode=imperial-direct&interactionKind=plan-question&format=json'
+      '/platform/run-observatory?status=running&model=gpt-5.4-mini&pricingSource=estimated&executionMode=imperial-direct&interactionKind=approval&q=regression&hasInterrupt=true&hasFallback=false&hasRecoverableCheckpoint=true&limit=25',
+      expect.objectContaining({ cancelKey: 'run-observatory', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       5,
+      '/platform/run-observatory/task-1',
+      expect.objectContaining({ cancelKey: 'run-observatory:task-1', cancelPrevious: true })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      6,
+      '/platform/runtime-center/export?days=7&executionMode=imperial-direct&interactionKind=plan-question&format=json'
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      7,
       '/platform/approvals-center/export?executionMode=imperial-direct&interactionKind=approval&format=json'
     );
   });
@@ -105,6 +133,7 @@ describe('admin-api-platform', () => {
     await getConnectorsCenter();
     await getToolsCenter();
     await getRuntimeArchitecture();
+    await getWorkflowPresets();
     await getBriefingRuns({ days: 7, category: 'general-security' });
     await forceBriefingRun('backend-tech');
     await submitBriefingFeedback({
@@ -117,6 +146,8 @@ describe('admin-api-platform', () => {
     await getCompanyAgentsCenter();
     await getEvalsCenter();
     await getEvalsCenterFiltered({ days: 10, scenarioId: 'scenario-1', outcome: 'passed' });
+    await getPlatformConsoleLogAnalysis(7);
+    await refreshMetricsSnapshots(14);
     await exportEvalsCenter({ days: 10, scenarioId: 'scenario-1', outcome: 'passed', format: 'json' });
 
     expect(requestMock).toHaveBeenNthCalledWith(
@@ -141,12 +172,17 @@ describe('admin-api-platform', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(6, '/platform/browser-replays/session-1');
-    expect(requestMock).toHaveBeenNthCalledWith(11, '/platform/briefings/runs?days=7&category=general-security');
-    expect(requestMock).toHaveBeenNthCalledWith(12, '/platform/briefings/backend-tech/force-run', {
+    expect(requestMock).toHaveBeenNthCalledWith(
+      11,
+      '/platform/workflow-presets',
+      expect.objectContaining({ cancelKey: 'workflow-presets', cancelPrevious: true })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(12, '/platform/briefings/runs?days=7&category=general-security');
+    expect(requestMock).toHaveBeenNthCalledWith(13, '/platform/briefings/backend-tech/force-run', {
       method: 'POST'
     });
     expect(requestMock).toHaveBeenNthCalledWith(
-      13,
+      14,
       '/platform/briefings/feedback',
       expect.objectContaining({
         method: 'POST',
@@ -159,17 +195,27 @@ describe('admin-api-platform', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      16,
+      17,
       '/platform/evals-center?days=30',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      17,
+      18,
       '/platform/evals-center?days=10&scenarioId=scenario-1&outcome=passed',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      18,
+      19,
+      '/platform/console/log-analysis?days=7',
+      expect.objectContaining({ cancelKey: 'platform-console-log-analysis', cancelPrevious: true })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      20,
+      '/platform/console/refresh-metrics?days=14',
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      21,
       '/platform/evals-center/export?days=10&scenarioId=scenario-1&outcome=passed&format=json'
     );
   });

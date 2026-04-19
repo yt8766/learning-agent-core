@@ -32,6 +32,16 @@ describe('agent-status-panel', () => {
               totalSteps: 4,
               title: '打开控制台'
             },
+            currentExecutionStep: {
+              stage: 'execution'
+            },
+            activeInterrupt: {
+              status: 'pending'
+            },
+            chatRoute: {
+              adapter: 'fallback',
+              reason: '主模型限流，已切到后备模型'
+            },
             graphState: {
               retryCount: 1,
               maxRetries: 3,
@@ -50,6 +60,9 @@ describe('agent-status-panel', () => {
     expect(html).toContain('Executor');
     expect(html).toContain('正在执行工具（72%）');
     expect(html).toContain('Browser · 2/4 · 打开控制台');
+    expect(html).toContain('interrupt');
+    expect(html).toContain('存在待恢复中断，可在确认后继续');
+    expect(html).toContain('主模型限流，已切到后备模型');
     expect(html).toContain('1/3');
     expect(html).toContain('formatted:2026-04-01T10:00:00.000Z');
     expect(html).toContain('恢复会话');
@@ -65,6 +78,9 @@ describe('agent-status-panel', () => {
     expect(html).toContain('尚未开始');
     expect(html).toContain('当前还没有新的节点战报');
     expect(html).toContain('当前未进入 Skill 合同步骤');
+    expect(html).toContain('execution');
+    expect(html).toContain('当前没有可恢复中断');
+    expect(html).toContain('当前未观察到 fallback');
     expect(html).toContain('0/0');
     expect(html).toContain('disabled');
   });

@@ -1,23 +1,39 @@
 import { NotFoundException } from '@nestjs/common';
+import type { RuntimeStateSnapshot } from '@agent/memory';
 
-import { ConfigureConnectorDto } from '@agent/core';
-
+import { ConfigureConnectorDto, type ConfiguredConnectorRecord } from '@agent/core';
+import type { RuntimeProfile } from '@agent/config';
+import type { McpClientManager } from '@agent/tools';
 import {
   appendGovernanceAudit,
+  describeConnectorProfilePolicy,
   persistConnectorDiscoverySnapshot
-} from '../../modules/runtime-governance/services/runtime-governance-store';
+} from '@agent/runtime';
+
+type RuntimeStateRepositoryLike = {
+  load: () => Promise<RuntimeStateSnapshot>;
+  save: (snapshot: RuntimeStateSnapshot) => Promise<void>;
+};
+type ConnectorRegistryRecord = {
+  id: string;
+};
+type CapabilityRecord = {
+  id: string;
+  serverId: string;
+};
+type ConnectorViewLoader<TConnectorView> = (connectorId: string) => Promise<TConnectorView>;
 
 export async function setConnectorEnabledWithGovernance(input: {
   connectorId: string;
   enabled: boolean;
-  profile: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
+  profile: RuntimeProfile;
+  runtimeStateRepository: RuntimeStateRepositoryLike;
   mcpServerRegistry: {
-    get: (connectorId: string) => any;
+    get: (connectorId: string) => ConnectorRegistryRecord | undefined;
     setEnabled: (connectorId: string, enabled: boolean) => void;
   };
   mcpClientManager: { closeServerSession: (connectorId: string) => Promise<boolean> };
-  describeConnectorProfilePolicy: (connectorId: string, profile: any) => { enabledByProfile: boolean; reason?: string };
+  describeConnectorProfilePolicy: typeof describeConnectorProfilePolicy;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -55,15 +71,20 @@ export async function setConnectorEnabledWithGovernance(input: {
   return input.mcpServerRegistry.get(input.connectorId)!;
 }
 
-export async function setConnectorApprovalPolicyWithGovernance(input: {
+export async function setConnectorApprovalPolicyWithGovernance<TConnectorView>(input: {
   connectorId: string;
   effect: 'allow' | 'deny' | 'require-approval' | 'observe';
   actor: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpServerRegistry: { get: (connectorId: string) => any };
-  mcpCapabilityRegistry: { setServerApprovalOverride: (connectorId: string, effect?: any) => void };
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpServerRegistry: { get: (connectorId: string) => ConnectorRegistryRecord | undefined };
+  mcpCapabilityRegistry: {
+    setServerApprovalOverride: (
+      connectorId: string,
+      effect?: 'allow' | 'deny' | 'require-approval' | 'observe'
+    ) => void;
+  };
   mcpClientManager: { closeServerSession: (connectorId: string) => Promise<boolean> };
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -71,7 +92,7 @@ export async function setConnectorApprovalPolicyWithGovernance(input: {
   }
   const snapshot = await input.runtimeStateRepository.load();
   const overrides = (snapshot.governance?.connectorPolicyOverrides ?? []).filter(
-    (item: any) => item.connectorId !== input.connectorId
+    item => item.connectorId !== input.connectorId
   );
   overrides.push({
     connectorId: input.connectorId,
@@ -100,13 +121,18 @@ export async function setConnectorApprovalPolicyWithGovernance(input: {
   return input.loadConnectorView(input.connectorId);
 }
 
-export async function clearConnectorApprovalPolicyWithGovernance(input: {
+export async function clearConnectorApprovalPolicyWithGovernance<TConnectorView>(input: {
   connectorId: string;
   actor: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpServerRegistry: { get: (connectorId: string) => any };
-  mcpCapabilityRegistry: { setServerApprovalOverride: (connectorId: string, effect?: any) => void };
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpServerRegistry: { get: (connectorId: string) => ConnectorRegistryRecord | undefined };
+  mcpCapabilityRegistry: {
+    setServerApprovalOverride: (
+      connectorId: string,
+      effect?: 'allow' | 'deny' | 'require-approval' | 'observe'
+    ) => void;
+  };
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -116,7 +142,7 @@ export async function clearConnectorApprovalPolicyWithGovernance(input: {
   snapshot.governance = {
     ...(snapshot.governance ?? {}),
     connectorPolicyOverrides: (snapshot.governance?.connectorPolicyOverrides ?? []).filter(
-      (item: any) => item.connectorId !== input.connectorId
+      item => item.connectorId !== input.connectorId
     )
   };
   await input.runtimeStateRepository.save(snapshot);
@@ -131,18 +157,21 @@ export async function clearConnectorApprovalPolicyWithGovernance(input: {
   return input.loadConnectorView(input.connectorId);
 }
 
-export async function setCapabilityApprovalPolicyWithGovernance(input: {
+export async function setCapabilityApprovalPolicyWithGovernance<TConnectorView>(input: {
   connectorId: string;
   capabilityId: string;
   effect: 'allow' | 'deny' | 'require-approval' | 'observe';
   actor: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpServerRegistry: { get: (connectorId: string) => any };
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpServerRegistry: { get: (connectorId: string) => ConnectorRegistryRecord | undefined };
   mcpCapabilityRegistry: {
-    get: (capabilityId: string) => any;
-    setCapabilityApprovalOverride: (capabilityId: string, effect?: any) => void;
+    get: (capabilityId: string) => CapabilityRecord | undefined;
+    setCapabilityApprovalOverride: (
+      capabilityId: string,
+      effect?: 'allow' | 'deny' | 'require-approval' | 'observe'
+    ) => void;
   };
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -154,7 +183,7 @@ export async function setCapabilityApprovalPolicyWithGovernance(input: {
   }
   const snapshot = await input.runtimeStateRepository.load();
   const overrides = (snapshot.governance?.capabilityPolicyOverrides ?? []).filter(
-    (item: any) => item.capabilityId !== input.capabilityId
+    item => item.capabilityId !== input.capabilityId
   );
   overrides.push({
     capabilityId: input.capabilityId,
@@ -181,17 +210,20 @@ export async function setCapabilityApprovalPolicyWithGovernance(input: {
   return input.loadConnectorView(input.connectorId);
 }
 
-export async function clearCapabilityApprovalPolicyWithGovernance(input: {
+export async function clearCapabilityApprovalPolicyWithGovernance<TConnectorView>(input: {
   connectorId: string;
   capabilityId: string;
   actor: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpServerRegistry: { get: (connectorId: string) => any };
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpServerRegistry: { get: (connectorId: string) => ConnectorRegistryRecord | undefined };
   mcpCapabilityRegistry: {
-    get: (capabilityId: string) => any;
-    setCapabilityApprovalOverride: (capabilityId: string, effect?: any) => void;
+    get: (capabilityId: string) => CapabilityRecord | undefined;
+    setCapabilityApprovalOverride: (
+      capabilityId: string,
+      effect?: 'allow' | 'deny' | 'require-approval' | 'observe'
+    ) => void;
   };
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -205,7 +237,7 @@ export async function clearCapabilityApprovalPolicyWithGovernance(input: {
   snapshot.governance = {
     ...(snapshot.governance ?? {}),
     capabilityPolicyOverrides: (snapshot.governance?.capabilityPolicyOverrides ?? []).filter(
-      (item: any) => item.capabilityId !== input.capabilityId
+      item => item.capabilityId !== input.capabilityId
     )
   };
   await input.runtimeStateRepository.save(snapshot);
@@ -223,7 +255,7 @@ export async function clearCapabilityApprovalPolicyWithGovernance(input: {
 
 export async function closeConnectorSessionWithGovernance(input: {
   connectorId: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
+  runtimeStateRepository: RuntimeStateRepositoryLike;
   mcpClientManager: { closeServerSession: (connectorId: string) => Promise<boolean> };
 }) {
   const closed = await input.mcpClientManager.closeServerSession(input.connectorId);
@@ -241,16 +273,13 @@ export async function closeConnectorSessionWithGovernance(input: {
   };
 }
 
-export async function refreshConnectorDiscoveryWithGovernance(input: {
+export async function refreshConnectorDiscoveryWithGovernance<TConnectorView>(input: {
   connectorId: string;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpServerRegistry: { get: (connectorId: string) => any };
-  mcpClientManager: {
-    refreshServerDiscovery: (connectorId: string) => Promise<void>;
-    describeServers: () => any[];
-  };
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpServerRegistry: { get: (connectorId: string) => ConnectorRegistryRecord | undefined };
+  mcpClientManager: Pick<McpClientManager, 'refreshServerDiscovery' | 'describeServers'>;
   registerDiscoveredCapabilities: (connectorId: string) => void;
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connector = input.mcpServerRegistry.get(input.connectorId);
   if (!connector) {
@@ -259,11 +288,7 @@ export async function refreshConnectorDiscoveryWithGovernance(input: {
   try {
     await input.mcpClientManager.refreshServerDiscovery(input.connectorId);
     input.registerDiscoveredCapabilities(input.connectorId);
-    await persistConnectorDiscoverySnapshot(
-      input.runtimeStateRepository,
-      input.mcpClientManager as any,
-      input.connectorId
-    );
+    await persistConnectorDiscoverySnapshot(input.runtimeStateRepository, input.mcpClientManager, input.connectorId);
     await appendGovernanceAudit(input.runtimeStateRepository, {
       actor: 'agent-admin-user',
       action: 'connector.discovery.refreshed',
@@ -275,7 +300,7 @@ export async function refreshConnectorDiscoveryWithGovernance(input: {
   } catch (error) {
     await persistConnectorDiscoverySnapshot(
       input.runtimeStateRepository,
-      input.mcpClientManager as any,
+      input.mcpClientManager,
       input.connectorId,
       error
     );
@@ -291,13 +316,13 @@ export async function refreshConnectorDiscoveryWithGovernance(input: {
   }
 }
 
-export async function configureConnectorWithGovernance(input: {
+export async function configureConnectorWithGovernance<TConnectorView>(input: {
   dto: ConfigureConnectorDto;
-  runtimeStateRepository: { load: () => Promise<any>; save: (snapshot: any) => Promise<void> };
-  mcpClientManager: { refreshServerDiscovery: (connectorId: string) => Promise<void>; describeServers: () => any[] };
-  registerConfiguredConnector: (config: any) => void;
+  runtimeStateRepository: RuntimeStateRepositoryLike;
+  mcpClientManager: Pick<McpClientManager, 'refreshServerDiscovery' | 'describeServers'>;
+  registerConfiguredConnector: (config: ConfiguredConnectorRecord) => void;
   registerDiscoveredCapabilities: (connectorId: string) => void;
-  loadConnectorView: (connectorId: string) => Promise<any>;
+  loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
   const connectorId =
     input.dto.templateId === 'github-mcp-template'
@@ -307,7 +332,7 @@ export async function configureConnectorWithGovernance(input: {
         : 'lark-mcp';
   const snapshot = await input.runtimeStateRepository.load();
   const configuredConnectors = (snapshot.governance?.configuredConnectors ?? []).filter(
-    (item: any) => item.connectorId !== connectorId
+    item => item.connectorId !== connectorId
   );
   configuredConnectors.push({
     ...input.dto,
@@ -323,11 +348,9 @@ export async function configureConnectorWithGovernance(input: {
   input.registerConfiguredConnector(configuredConnectors[configuredConnectors.length - 1]!);
   await input.mcpClientManager.refreshServerDiscovery(connectorId).catch(() => undefined);
   input.registerDiscoveredCapabilities(connectorId);
-  await persistConnectorDiscoverySnapshot(
-    input.runtimeStateRepository,
-    input.mcpClientManager as any,
-    connectorId
-  ).catch(() => undefined);
+  await persistConnectorDiscoverySnapshot(input.runtimeStateRepository, input.mcpClientManager, connectorId).catch(
+    () => undefined
+  );
   await appendGovernanceAudit(input.runtimeStateRepository, {
     actor: input.dto.actor ?? 'agent-admin-user',
     action: 'connector.configured',

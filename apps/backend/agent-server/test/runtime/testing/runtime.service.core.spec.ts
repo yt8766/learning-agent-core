@@ -251,6 +251,38 @@ describe('RuntimeService core', () => {
     expect(evalsExport.content).toContain('day,runCount,passCount,passRate');
   }, 15000);
 
+  it('platform console context 直接依赖 centers service，而不是回调 RuntimeService compat 方法', async () => {
+    const service = createService();
+    const centersService = (service as any).centersService as {
+      getRuntimeCenter: ReturnType<typeof vi.fn>;
+      getConnectorsCenter: ReturnType<typeof vi.fn>;
+    };
+    const contextFactory = (service as any).contextFactory as {
+      getPlatformConsoleContext: () => {
+        getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => Promise<unknown>;
+        getConnectorsCenter: () => Promise<unknown>;
+      };
+    };
+    const runtimeCenterValue = { source: 'centers-service' };
+    const connectorsValue = [{ id: 'connector-from-centers-service' }];
+
+    centersService.getRuntimeCenter = vi.fn(async () => runtimeCenterValue);
+    centersService.getConnectorsCenter = vi.fn(async () => connectorsValue);
+    (service as any).getRuntimeCenter = vi.fn(async () => {
+      throw new Error('compat facade should not be used by platform console context');
+    });
+    (service as any).getConnectorsCenter = vi.fn(async () => {
+      throw new Error('compat facade should not be used by platform console context');
+    });
+
+    await expect(contextFactory.getPlatformConsoleContext().getRuntimeCenter(7, { status: 'completed' })).resolves.toBe(
+      runtimeCenterValue
+    );
+    await expect(contextFactory.getPlatformConsoleContext().getConnectorsCenter()).resolves.toBe(connectorsValue);
+    expect(centersService.getRuntimeCenter).toHaveBeenCalledWith(7, { status: 'completed' });
+    expect(centersService.getConnectorsCenter).toHaveBeenCalledTimes(1);
+  });
+
   it('支持创建 agent diagnosis task', async () => {
     const service = createService();
     const c = collaborators(service);

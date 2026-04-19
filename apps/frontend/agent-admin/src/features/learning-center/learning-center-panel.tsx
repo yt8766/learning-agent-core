@@ -66,7 +66,7 @@ export function LearningCenterPanel({
 
   return (
     <DashboardCenterShell
-      title="Learning Center"
+      title="学习中枢"
       description="治理 learning queue、冲突扫描、RLAIF 评分卡与群辅 selector，让学习沉淀真正可观察可干预。"
       count={learning.totalCandidates}
       actions={

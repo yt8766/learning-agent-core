@@ -1,3 +1,5 @@
+import type { CreateTaskDto } from '@agent/core';
+
 import type {
   AgentMessageRecord,
   AgentStateRecord,
@@ -45,10 +47,10 @@ export async function getTaskBundle(taskId: string): Promise<TaskBundle> {
   return { task, plan, agents, messages, review: review ?? undefined, traces, audit };
 }
 
-export async function createTask(goal: string) {
+export async function createTask(input: string | CreateTaskDto) {
   return request<TaskRecord>('/tasks', {
     method: 'POST',
-    body: JSON.stringify({ goal })
+    body: JSON.stringify(typeof input === 'string' ? { goal: input } : input)
   });
 }
 

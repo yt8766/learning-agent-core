@@ -34,6 +34,9 @@ vi.mock('@/api/admin-api', () => ({
 vi.mock('@/features/runtime-overview/components/runtime-summary-overview', () => ({
   RuntimeSummaryOverview: () => <div>overview-block</div>
 }));
+vi.mock('@/features/runtime-overview/components/runtime-workflow-catalog-card', () => ({
+  RuntimeWorkflowCatalogCard: () => <div>workflow-catalog-block</div>
+}));
 vi.mock('@/features/runtime-overview/components/runtime-summary-budget', () => ({
   RuntimeSummaryBudget: () => <div>budget-block</div>
 }));
@@ -87,6 +90,7 @@ function buildProps() {
     interactionKindFilter: 'all' as const,
     onInteractionKindFilterChange: vi.fn(),
     onCopyShareLink: vi.fn(),
+    onLaunchWorkflowTask: vi.fn(),
     onSelectTask: vi.fn(),
     onRetryTask: vi.fn(),
     onRefreshRuntime: vi.fn(),
@@ -125,6 +129,7 @@ describe('RuntimeSummarySection', () => {
     await Promise.resolve();
 
     expect(html).toContain('overview-block');
+    expect(html).toContain('workflow-catalog-block');
     expect(html).toContain('budget-block');
     expect(html).toContain('governance-block');
     expect(html).toContain('tools-block');

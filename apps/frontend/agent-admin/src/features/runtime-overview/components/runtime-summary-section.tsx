@@ -10,6 +10,7 @@ import { RuntimeSummaryOverview } from './runtime-summary-overview';
 import { RuntimeSummaryTools } from './runtime-summary-tools';
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
 import { RuntimeSummaryVisuals } from './runtime-summary-visuals';
+import { RuntimeWorkflowCatalogCard } from './runtime-workflow-catalog-card';
 
 export function RuntimeSummarySection({
   runtime,
@@ -20,6 +21,7 @@ export function RuntimeSummarySection({
   onCopyShareLink,
   onSelectTask,
   onRetryTask,
+  onLaunchWorkflowTask,
   onRefreshRuntime,
   onCreateDiagnosisTask,
   onRevokeApprovalPolicy
@@ -79,6 +81,7 @@ export function RuntimeSummarySection({
   return (
     <>
       <RuntimeSummaryOverview runtime={runtime} onRevokeApprovalPolicy={onRevokeApprovalPolicy} />
+      <RuntimeWorkflowCatalogCard onLaunchWorkflowTask={onLaunchWorkflowTask} />
       <RuntimeSummaryBudget runtime={runtime} />
       <RuntimeSummaryGovernance runtime={runtime} />
       <RuntimeSummaryTools

@@ -8,6 +8,7 @@ import {
   RequestedExecutionHintsSchema
 } from '../../skills/schemas/capability';
 import { ChannelIdentitySchema, ChatSessionCompressionRecordSchema } from '../../tasking/schemas/session';
+import { TaskLineageRecordSchema } from '../../tasking/schemas/task-lineage';
 import { MemoryScopeTypeSchema, MemoryTypeSchema } from '../../memory';
 
 export const CreateTaskCounselorSelectorSchema = z.object({
@@ -35,6 +36,7 @@ export const CreateTaskDtoSchema = z.object({
   goal: z.string(),
   context: z.string().optional(),
   constraints: z.array(z.string()).optional(),
+  lineage: TaskLineageRecordSchema.optional(),
   sessionId: z.string().optional(),
   requestedMode: ExecutionPlanModeSchema.optional(),
   counselorSelector: CreateTaskCounselorSelectorSchema.optional(),

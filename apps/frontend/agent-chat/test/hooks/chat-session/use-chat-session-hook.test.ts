@@ -348,6 +348,9 @@ describe('use-chat-session hook coverage', () => {
 
   it('bootstraps empty sessions and then creates a new session', async () => {
     const harness = createReactHookHarness();
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshSessions: vi.fn().mockResolvedValue(undefined),
       createNewSession: vi.fn().mockResolvedValue(undefined),
@@ -367,6 +370,9 @@ describe('use-chat-session hook coverage', () => {
     };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),
@@ -442,6 +448,9 @@ describe('use-chat-session hook coverage', () => {
         }
       ]
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshSessions: vi.fn().mockResolvedValue(undefined),
       createNewSession: vi.fn().mockResolvedValue(undefined),
@@ -461,6 +470,9 @@ describe('use-chat-session hook coverage', () => {
     };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),
@@ -536,6 +548,9 @@ describe('use-chat-session hook coverage', () => {
       ],
       1: 'session-1'
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshSessions: vi.fn().mockResolvedValue(undefined),
       createNewSession: vi.fn().mockResolvedValue(undefined),
@@ -555,6 +570,9 @@ describe('use-chat-session hook coverage', () => {
     };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),
@@ -617,6 +635,9 @@ describe('use-chat-session hook coverage', () => {
         })
     );
     const harness = createReactHookHarness();
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshSessions,
       createNewSession: vi.fn().mockResolvedValue(undefined),
@@ -636,6 +657,9 @@ describe('use-chat-session hook coverage', () => {
     };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),
@@ -800,8 +824,14 @@ describe('use-chat-session hook coverage', () => {
         graphState: { status: 'running' }
       }
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
 
     const { useChatSession } = await import('@/hooks/use-chat-session');
 
@@ -875,6 +905,9 @@ describe('use-chat-session hook coverage', () => {
         10: { 'session-1': 'pending-user' }
       }
     );
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshSessions: vi.fn().mockResolvedValue(undefined),
       createNewSession: vi.fn().mockResolvedValue(undefined),
@@ -901,6 +934,9 @@ describe('use-chat-session hook coverage', () => {
     const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(() => stream),
@@ -1069,8 +1105,14 @@ describe('use-chat-session hook coverage', () => {
         }
       }
     );
+    const queryClient = {
+      fetchQuery: vi.fn(async ({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn())
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage,
       createSessionStream,
@@ -1177,8 +1219,14 @@ describe('use-chat-session hook coverage', () => {
       ],
       1: 'session-1'
     });
+    const queryClient = {
+      fetchQuery: vi.fn(async ({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn())
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream,
@@ -1269,8 +1317,14 @@ describe('use-chat-session hook coverage', () => {
       ],
       1: 'session-1'
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),
@@ -1369,8 +1423,14 @@ describe('use-chat-session hook coverage', () => {
       ],
       1: 'session-1'
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(() => stream),
@@ -1485,8 +1545,14 @@ describe('use-chat-session hook coverage', () => {
       ],
       1: 'session-1'
     });
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(() => stream),
@@ -1591,8 +1657,14 @@ describe('use-chat-session hook coverage', () => {
       deleteSessionById: vi.fn(),
       deleteActiveSession: vi.fn()
     };
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
     vi.doMock('@/api/chat-api', () => ({
       appendMessage: vi.fn(),
       createSessionStream: vi.fn(),

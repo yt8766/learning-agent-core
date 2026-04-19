@@ -15,7 +15,7 @@
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
-- `artifacts/*`：覆盖率、日志、临时目录等可重建产物，默认不提交 Git
+- `artifacts/*`：仓库级可重建产物目录；当前主要承载覆盖率与共享临时输出，默认不提交 Git
 - `packages/core`：稳定 contract、共享 DTO、接口边界入口
 - `packages/core/src/providers`：运行时对外依赖的 provider 抽象接口层
 - `packages/config`：运行时配置与路径解析

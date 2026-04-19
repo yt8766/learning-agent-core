@@ -64,12 +64,12 @@ describe('ArchiveCenterPanel render smoke', () => {
       />
     );
 
-    expect(html).toContain('Runtime Archive');
+    expect(html).toContain('运行归档');
     expect(html).toContain('执行模式 计划模式');
     expect(html).toContain('交互类型 plan-question');
-    expect(html).toContain('Runtime 导出会沿用当前 runtime 视图中的筛选条件');
-    expect(html).toContain('Approvals Archive');
-    expect(html).toContain('导出 approvals');
+    expect(html).toContain('运行归档会沿用当前运行视图中的筛选条件');
+    expect(html).toContain('审批归档');
+    expect(html).toContain('导出审批');
   });
 
   it('routes archive export and history window actions through callbacks', () => {
@@ -115,13 +115,13 @@ describe('ArchiveCenterPanel render smoke', () => {
       />
     );
 
-    renderedButtons.find(item => getButtonText(item.children) === '导出 runtime')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === '导出 approvals')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === '导出 evals')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '导出运行数据')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '导出审批')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '导出评测')?.onClick?.();
     renderedButtons.filter(item => getButtonText(item.children) === '7d')[0]?.onClick?.();
     renderedButtons.filter(item => getButtonText(item.children) === '90d')[0]?.onClick?.();
-    renderedButtons.filter(item => getButtonText(item.children) === '7d')[1]?.onClick?.();
-    renderedButtons.filter(item => getButtonText(item.children) === '90d')[1]?.onClick?.();
+    renderedButtons.filter(item => getButtonText(item.children) === '7天')[0]?.onClick?.();
+    renderedButtons.filter(item => getButtonText(item.children) === '90天')[0]?.onClick?.();
 
     expect(onExportRuntime).toHaveBeenCalledTimes(1);
     expect(onExportApprovals).toHaveBeenCalledTimes(1);

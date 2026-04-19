@@ -1,5 +1,8 @@
-import type { ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 
+import type { RunBundleRecord } from '@agent/core';
+
+import { getRunObservatory, isAbortedAdminRequestError } from '@/api/admin-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +10,11 @@ import { DashboardToolbar } from '@/components/dashboard-center-shell';
 
 import type { RuntimeOverviewPanelProps } from './runtime-overview-types';
 import { buildRouteReason, formatRouteConfidence, summarizeExecutionSteps } from './runtime-queue-section-support';
+import {
+  buildFallbackRunsFromRuntime,
+  filterObservabilityRunsWithRuntimeTasks,
+  type RuntimeQueueRunFilters
+} from './runtime-queue-run-list-support';
 
 type RuntimeQueueRunListProps = Pick<
   RuntimeOverviewPanelProps,
@@ -17,6 +25,11 @@ type RuntimeQueueRunListProps = Pick<
   | 'onModelFilterChange'
   | 'pricingSourceFilter'
   | 'onPricingSourceFilterChange'
+  | 'executionModeFilter'
+  | 'onExecutionModeFilterChange'
+  | 'interactionKindFilter'
+  | 'onInteractionKindFilterChange'
+  | 'onSelectTask'
   | 'onExport'
 >;
 
@@ -29,15 +42,66 @@ export function RuntimeQueueRunList(props: RuntimeQueueRunListProps) {
     onModelFilterChange,
     pricingSourceFilter,
     onPricingSourceFilterChange,
+    executionModeFilter,
+    onExecutionModeFilterChange,
+    interactionKindFilter,
+    onInteractionKindFilterChange,
+    onSelectTask,
     onExport
   } = props;
+  const [observabilityRuns, setObservabilityRuns] = useState<RunBundleRecord['run'][]>([]);
+  const [observabilityError, setObservabilityError] = useState('');
+  const [observabilityLoaded, setObservabilityLoaded] = useState(false);
+
+  const filters: RuntimeQueueRunFilters = {
+    statusFilter,
+    modelFilter,
+    pricingSourceFilter,
+    executionModeFilter,
+    interactionKindFilter
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void getRunObservatory({
+      status: statusFilter || undefined,
+      model: modelFilter || undefined,
+      pricingSource: pricingSourceFilter || undefined,
+      executionMode: executionModeFilter === 'all' ? undefined : executionModeFilter,
+      interactionKind: interactionKindFilter === 'all' ? undefined : interactionKindFilter,
+      limit: 100
+    })
+      .then(items => {
+        if (!cancelled) {
+          setObservabilityRuns(items);
+          setObservabilityError('');
+          setObservabilityLoaded(true);
+        }
+      })
+      .catch(error => {
+        if (!cancelled && !isAbortedAdminRequestError(error)) {
+          setObservabilityRuns([]);
+          setObservabilityError(error instanceof Error ? error.message : '加载 observability list 失败。');
+          setObservabilityLoaded(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, modelFilter, pricingSourceFilter, executionModeFilter, interactionKindFilter]);
+
+  const runs =
+    observabilityLoaded && !observabilityError
+      ? filterObservabilityRunsWithRuntimeTasks(observabilityRuns, runtime, filters)
+      : buildFallbackRunsFromRuntime(runtime, filters);
 
   return (
     <Card className="border-border/70 bg-card/90 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold text-foreground">Run Queue</CardTitle>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{runtime.recentRuns.length}</Badge>
+          <Badge variant="outline">{runs.length}</Badge>
           <Button type="button" size="sm" onClick={onExport}>
             导出
           </Button>
@@ -58,7 +122,7 @@ export function RuntimeQueueRunList(props: RuntimeQueueRunListProps) {
           </div>
         ) : null}
         <DashboardToolbar title="Queue Filters" description="保留现有筛选逻辑，只统一成 dashboard 工具栏样式。">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 xl:grid-cols-5">
             <label className="grid gap-1 text-xs text-muted-foreground">
               状态筛选
               <select
@@ -102,10 +166,70 @@ export function RuntimeQueueRunList(props: RuntimeQueueRunListProps) {
                 <option value="estimated">estimated</option>
               </select>
             </label>
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              执行模式
+              <select
+                value={executionModeFilter}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                  onExecutionModeFilterChange(event.target.value as RuntimeQueueRunFilters['executionModeFilter'])
+                }
+                className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="all">全部</option>
+                <option value="plan">plan</option>
+                <option value="execute">execute</option>
+                <option value="imperial_direct">imperial_direct</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              中断类型
+              <select
+                value={interactionKindFilter}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                  onInteractionKindFilterChange(event.target.value as RuntimeQueueRunFilters['interactionKindFilter'])
+                }
+                className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="all">全部</option>
+                <option value="approval">approval</option>
+                <option value="plan-question">plan-question</option>
+                <option value="supplemental-input">supplemental-input</option>
+                <option value="revise-required">revise-required</option>
+                <option value="micro-loop-exhausted">micro-loop-exhausted</option>
+                <option value="mode-transition">mode-transition</option>
+              </select>
+            </label>
           </div>
         </DashboardToolbar>
+        {observabilityError ? <p className="text-xs text-muted-foreground">{observabilityError}</p> : null}
 
-        {runtime.recentRuns.map(task => {
+        {runs.map(run => {
+          const task = runtime.recentRuns.find(item => item.id === run.taskId);
+          if (!task) {
+            return (
+              <article key={run.taskId} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{run.goal}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{run.taskId}</p>
+                  </div>
+                  <Badge variant="outline">{run.status}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {run.currentStage ? <Badge variant="secondary">{run.currentStage}</Badge> : null}
+                  {run.hasInterrupt ? <Badge variant="outline">interrupt</Badge> : null}
+                  {run.hasFallback ? <Badge variant="outline">fallback</Badge> : null}
+                  {run.hasRecoverableCheckpoint ? <Badge variant="outline">recoverable</Badge> : null}
+                </div>
+                <div className="mt-3">
+                  <Button type="button" size="sm" onClick={() => void onSelectTask(run.taskId)}>
+                    查看观测详情
+                  </Button>
+                </div>
+              </article>
+            );
+          }
+
           const executionSummary = summarizeExecutionSteps(task);
           return (
             <article key={task.id} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
@@ -135,9 +259,18 @@ export function RuntimeQueueRunList(props: RuntimeQueueRunListProps) {
                 {task.currentMinistry ? <Badge variant="secondary">{task.currentMinistry}</Badge> : null}
                 {task.currentWorker ? <Badge variant="secondary">{task.currentWorker}</Badge> : null}
                 {task.currentStep ? <Badge variant="secondary">{task.currentStep}</Badge> : null}
+                {run.currentStage ? <Badge variant="secondary">{run.currentStage}</Badge> : null}
                 {task.queueState ? <Badge variant="outline">{task.queueState.mode}</Badge> : null}
                 {task.queueState ? <Badge variant="outline">attempt {task.queueState.attempt}</Badge> : null}
                 {executionSummary ? <Badge variant="secondary">{executionSummary.currentCopy}</Badge> : null}
+                {run.hasInterrupt ? <Badge variant="outline">interrupt</Badge> : null}
+                {run.hasFallback ? <Badge variant="outline">fallback</Badge> : null}
+                {run.hasRecoverableCheckpoint ? <Badge variant="outline">recoverable</Badge> : null}
+                {run.diagnosticFlags.slice(0, 2).map(flag => (
+                  <span key={`${task.id}-${flag}`}>
+                    <Badge variant="outline">{flag}</Badge>
+                  </span>
+                ))}
                 {task.subgraphTrail?.map((subgraph: string) => (
                   <span key={`${task.id}-${subgraph}`}>
                     <Badge variant="outline">{subgraph}</Badge>
@@ -163,6 +296,11 @@ export function RuntimeQueueRunList(props: RuntimeQueueRunListProps) {
                   ) : null}
                 </div>
               ) : null}
+              <div className="mt-3">
+                <Button type="button" size="sm" onClick={() => void onSelectTask(task.id)}>
+                  查看观测详情
+                </Button>
+              </div>
             </article>
           );
         })}

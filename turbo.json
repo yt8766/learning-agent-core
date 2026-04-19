@@ -62,7 +62,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**/*"]
+      "outputs": ["artifacts/coverage/**/*"]
     },
     "demo": {
       "dependsOn": ["build:lib", "^build:lib"],

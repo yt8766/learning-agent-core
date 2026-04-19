@@ -1,7 +1,18 @@
+import type { LocalSkillSuggestionRecord, PlatformApprovalRecord, TaskRecord } from '@agent/core';
+
 import { normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
 
+type InterruptLike = TaskRecord['activeInterrupt'] | PlatformApprovalRecord['activeInterrupt'];
+type ExecutionPlanLike = {
+  mode?: string;
+};
+type TaskInteractionLike = Pick<TaskRecord, 'activeInterrupt' | 'pendingApproval'>;
+type TaskExecutionLike = Pick<TaskRecord, 'executionMode' | 'planMode'> & {
+  executionPlan?: ExecutionPlanLike;
+};
+
 export function resolveInterruptPayloadField(
-  interrupt: any,
+  interrupt: InterruptLike,
   field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
 ) {
   const payload = interrupt?.payload;
@@ -12,22 +23,24 @@ export function resolveInterruptPayloadField(
   return typeof value === 'string' ? value : undefined;
 }
 
-export function resolveTaskInteractionKind(task: any) {
+export function resolveTaskInteractionKind(task: TaskInteractionLike) {
   // activeInterrupt is the persisted 司礼监 / InterruptController projection for center filtering.
-  if (typeof task.activeInterrupt?.interactionKind === 'string') {
-    return task.activeInterrupt.interactionKind;
+  const interrupt = task.activeInterrupt;
+  const extendedInterrupt = asRecord(interrupt);
+  if (typeof extendedInterrupt?.interactionKind === 'string') {
+    return extendedInterrupt.interactionKind;
   }
-  const payload = task.activeInterrupt?.payload;
+  const payload = interrupt?.payload;
   if (payload && typeof payload === 'object' && typeof payload.interactionKind === 'string') {
     return payload.interactionKind;
   }
-  if (task.activeInterrupt?.kind === 'user-input') {
+  if (interrupt?.kind === 'user-input') {
     return 'plan-question';
   }
   return task.pendingApproval || task.activeInterrupt ? 'approval' : undefined;
 }
 
-export function resolveTaskExecutionMode(task: any) {
+export function resolveTaskExecutionMode(task: TaskExecutionLike) {
   return String(
     normalizeExecutionMode(
       task.executionMode ??
@@ -39,7 +52,7 @@ export function resolveTaskExecutionMode(task: any) {
 
 export async function resolveLocalSkillSuggestionsWithTimeout(
   resolver: () => Promise<{
-    suggestions: unknown[];
+    suggestions: LocalSkillSuggestionRecord[];
     gapSummary?: string;
     profile?: string;
     usedInstalledSkills?: string[];
@@ -59,4 +72,8 @@ export async function resolveLocalSkillSuggestionsWithTimeout(
       setTimeout(() => resolve(timeoutResult), timeoutMs);
     })
   ]);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
 }

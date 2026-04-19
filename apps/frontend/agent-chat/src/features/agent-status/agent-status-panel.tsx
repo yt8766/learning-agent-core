@@ -1,6 +1,58 @@
 import type { ChatCheckpointRecord, ChatSessionRecord } from '@/types/chat';
 import { formatSessionTime, getSessionStatusLabel } from '@/hooks/use-chat-session';
 
+function getCheckpointStageLabel(checkpoint?: ChatCheckpointRecord) {
+  if (checkpoint?.activeInterrupt?.status === 'pending') {
+    return 'interrupt';
+  }
+
+  switch (checkpoint?.currentExecutionStep?.stage) {
+    case 'task-planning':
+      return 'plan';
+    case 'route-selection':
+      return 'route';
+    case 'research':
+      return 'research';
+    case 'execution':
+      return 'execution';
+    case 'review':
+      return 'review';
+    case 'delivery':
+      return 'delivery';
+    case 'approval-interrupt':
+      return 'interrupt';
+    case 'recovery':
+      return 'recover';
+    default:
+      return checkpoint?.executionMode === 'plan' ? 'plan' : 'execution';
+  }
+}
+
+function getFallbackSummary(checkpoint?: ChatCheckpointRecord) {
+  const specialistFallback = checkpoint?.dispatches?.some(item => item.kind === 'fallback');
+  if (specialistFallback) {
+    return '当前调度链已启用 fallback dispatch。';
+  }
+
+  if (checkpoint?.chatRoute?.adapter === 'fallback' || checkpoint?.chatRoute?.adapter === 'readiness-fallback') {
+    return checkpoint.chatRoute.reason || '当前路由已进入 fallback 分支。';
+  }
+
+  return '当前未观察到 fallback。';
+}
+
+function getRecoverabilitySummary(checkpoint?: ChatCheckpointRecord) {
+  if (!checkpoint?.activeInterrupt && !checkpoint?.interruptHistory?.length) {
+    return '当前没有可恢复中断。';
+  }
+
+  if (checkpoint.activeInterrupt?.status === 'pending') {
+    return '存在待恢复中断，可在确认后继续。';
+  }
+
+  return '当前中断已处理，可继续检查历史恢复链路。';
+}
+
 function getAgentStateLabel(status?: string) {
   switch (status) {
     case 'completed':
@@ -65,6 +117,20 @@ export function AgentStatusPanel(props: AgentStatusPanelProps) {
             ? `${checkpoint.currentSkillExecution.displayName} · ${checkpoint.currentSkillExecution.stepIndex}/${checkpoint.currentSkillExecution.totalSteps} · ${checkpoint.currentSkillExecution.title}`
             : '当前未进入 Skill 合同步骤'}
         </p>
+      </div>
+      <div className="panel-section two-column">
+        <div>
+          <strong>当前阶段</strong>
+          <p>{getCheckpointStageLabel(checkpoint)}</p>
+        </div>
+        <div>
+          <strong>恢复状态</strong>
+          <p>{getRecoverabilitySummary(checkpoint)}</p>
+        </div>
+      </div>
+      <div className="panel-section">
+        <strong>Fallback 摘要</strong>
+        <p>{getFallbackSummary(checkpoint)}</p>
       </div>
       <div className="panel-section two-column">
         <div>

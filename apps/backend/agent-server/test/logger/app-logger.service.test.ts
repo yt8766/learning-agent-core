@@ -38,7 +38,7 @@ describe.sequential('AppLoggerService', () => {
     delete process.env.NODE_ENV;
   });
 
-  it('writes pretty logs to console and the daily app log by default', async () => {
+  it('writes pretty logs to console and skips persisting ordinary info logs by default', async () => {
     process.env.NODE_ENV = 'test';
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -50,37 +50,32 @@ describe.sequential('AppLoggerService', () => {
     expect(mkdirSyncMock).toHaveBeenCalledWith(expect.stringContaining('/logs'), { recursive: true });
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[RuntimeController] hello world'));
     expect(errorSpy).not.toHaveBeenCalled();
-    expect(appendFileSyncMock).toHaveBeenCalledTimes(1);
-    expect(appendFileSyncMock).toHaveBeenCalledWith(
-      expect.stringContaining('/logs/app-'),
-      expect.stringContaining('"message":"hello world"'),
-      'utf8'
-    );
+    expect(appendFileSyncMock).not.toHaveBeenCalled();
   });
 
   it('writes logs into the backend logs directory even when cwd points elsewhere', async () => {
     process.env.NODE_ENV = 'test';
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/tmp/codex-test-root');
     const { AppLoggerService } = await loadLoggerModule();
 
     const logger = new AppLoggerService();
-    logger.log('fixed path', 'RuntimeController');
+    logger.warn({ event: 'runtime.schedule.tick_failed', statusCode: 503 }, { context: 'RuntimeScheduleService' });
 
     const expectedLogsDirSuffix = '/apps/backend/agent-server/logs';
     expect(cwdSpy).toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(mkdirSyncMock).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${expectedLogsDirSuffix}$`)), {
       recursive: true
     });
     expect(appendFileSyncMock).toHaveBeenCalledWith(
-      expect.stringMatching(new RegExp(`${expectedLogsDirSuffix}/app-`)),
-      expect.stringContaining('"message":"fixed path"'),
+      expect.stringMatching(new RegExp(`${expectedLogsDirSuffix}/warn-`)),
+      expect.stringContaining('"level":"warn"'),
       'utf8'
     );
   });
 
-  it('writes json errors, truncates stack, and duplicates error lines into the error log', async () => {
+  it('writes json errors, truncates stack, and routes error lines into the error log', async () => {
     process.env.LOG_FORMAT = 'json';
     process.env.LOG_STACK_MAX = '10';
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -107,16 +102,16 @@ describe.sequential('AppLoggerService', () => {
         stack: '0123456789...<truncated 10 chars>'
       })
     );
-    expect(appendFileSyncMock).toHaveBeenCalledTimes(2);
+    expect(appendFileSyncMock).toHaveBeenCalledTimes(1);
     expect(appendFileSyncMock).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('.error.log'),
+      1,
+      expect.stringContaining('/logs/error-'),
       expect.stringContaining('"level":"error"'),
       'utf8'
     );
   });
 
-  it('respects level filtering and normalizes nested metadata values', async () => {
+  it('routes audit and performance events into dedicated log files and normalizes nested metadata values', async () => {
     process.env.NODE_ENV = 'test';
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -126,7 +121,7 @@ describe.sequential('AppLoggerService', () => {
     logger.setLogLevels(['warn']);
     logger.debug('skip me', { context: 'DebugContext' });
     logger.warn(
-      { event: 'request.warned' },
+      { event: 'approval-policy.revoked' },
       {
         context: 'LoggerMiddleware',
         extra: 'x'.repeat(4505),
@@ -147,7 +142,7 @@ describe.sequential('AppLoggerService', () => {
       expect.objectContaining({
         level: 'warn',
         context: 'LoggerMiddleware',
-        message: '{"event":"request.warned"}',
+        message: '{"event":"approval-policy.revoked"}',
         extra: expect.stringContaining('...<truncated 505 chars>'),
         nested: {
           error: expect.objectContaining({
@@ -155,6 +150,29 @@ describe.sequential('AppLoggerService', () => {
             message: 'downstream failed'
           })
         }
+      })
+    );
+    expect(String(appendFileSyncMock.mock.calls[0]?.[0])).toContain('/logs/audit-');
+
+    appendFileSyncMock.mockReset();
+    logger.setLogLevels(['log']);
+    logger.log(
+      {
+        event: 'runtime.platform_console.fresh_aggregate',
+        totalDurationMs: 480,
+        timingsMs: { total: 480 }
+      },
+      { context: 'RuntimeCentersQueryService' }
+    );
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(String(appendFileSyncMock.mock.calls[0]?.[0])).toContain('/logs/performance-');
+    expect(appendFileSyncMock.mock.calls[0]?.[2]).toBe('utf8');
+    expect(JSON.parse(String(appendFileSyncMock.mock.calls[0]?.[1]).trim())).toEqual(
+      expect.objectContaining({
+        level: 'info',
+        context: 'RuntimeCentersQueryService',
+        message: expect.stringContaining('"event":"runtime.platform_console.fresh_aggregate"')
       })
     );
   });

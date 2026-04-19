@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   appendGovernanceAuditMock,
-  listApprovalScopePoliciesMock,
-  revokeApprovalScopePolicyMock,
+  listActiveApprovalScopePoliciesMock,
+  revokeApprovalScopePolicyWithAuditMock,
   listSkillSourcesMock,
   buildCompanyAgentsCenterMock,
   setConnectorEnabledWithGovernanceMock,
@@ -35,8 +35,8 @@ const {
   registerDiscoveredCapabilitiesMock
 } = vi.hoisted(() => ({
   appendGovernanceAuditMock: vi.fn(async () => undefined),
-  listApprovalScopePoliciesMock: vi.fn(async () => [{ id: 'policy-1' }]),
-  revokeApprovalScopePolicyMock: vi.fn(async () => true),
+  listActiveApprovalScopePoliciesMock: vi.fn(async () => [{ id: 'policy-1' }]),
+  revokeApprovalScopePolicyWithAuditMock: vi.fn(async () => true),
   listSkillSourcesMock: vi.fn(async () => [{ id: 'source-1' }]),
   buildCompanyAgentsCenterMock: vi.fn(() => [{ id: 'worker-1', enabled: false }]),
   setConnectorEnabledWithGovernanceMock: vi.fn(async () => ({ id: 'connector-1' })),
@@ -112,11 +112,15 @@ const {
   registerDiscoveredCapabilitiesMock: vi.fn(async () => undefined)
 }));
 
-vi.mock('../../../src/modules/runtime-governance/services/runtime-governance-store', () => ({
-  appendGovernanceAudit: appendGovernanceAuditMock,
-  listApprovalScopePolicies: listApprovalScopePoliciesMock,
-  revokeApprovalScopePolicy: revokeApprovalScopePolicyMock
-}));
+vi.mock('@agent/runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/runtime')>();
+  return {
+    ...actual,
+    appendGovernanceAudit: appendGovernanceAuditMock,
+    listActiveApprovalScopePolicies: listActiveApprovalScopePoliciesMock,
+    revokeApprovalScopePolicyWithAudit: revokeApprovalScopePolicyWithAuditMock
+  };
+});
 
 vi.mock('../../../src/runtime/skills/runtime-skill-sources.service', () => ({
   listSkillSources: listSkillSourcesMock,
@@ -180,7 +184,7 @@ import { RuntimeCentersGovernanceService } from '../../../src/runtime/centers/ru
 describe('RuntimeCentersGovernanceService extra branches', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    revokeApprovalScopePolicyMock.mockResolvedValue(true);
+    revokeApprovalScopePolicyWithAuditMock.mockResolvedValue(true);
     listSkillSourcesMock.mockResolvedValue([{ id: 'source-1' }]);
     buildCompanyAgentsCenterMock.mockReturnValue([{ id: 'worker-1', enabled: false }]);
   });
@@ -229,15 +233,12 @@ describe('RuntimeCentersGovernanceService extra branches', () => {
     await expect(service.listApprovalScopePolicies()).resolves.toEqual([{ id: 'policy-1' }]);
     await expect(service.revokeApprovalScopePolicy('policy-1')).resolves.toBe(true);
 
-    revokeApprovalScopePolicyMock.mockResolvedValueOnce(false);
+    revokeApprovalScopePolicyWithAuditMock.mockResolvedValueOnce(undefined);
     await expect(service.revokeApprovalScopePolicy('missing-policy')).rejects.toBeInstanceOf(NotFoundException);
-    expect(appendGovernanceAuditMock).toHaveBeenCalledWith(
+    expect(revokeApprovalScopePolicyWithAuditMock).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({
-        action: 'approval-policy.revoked',
-        targetId: 'missing-policy',
-        outcome: 'rejected'
-      })
+      'missing-policy',
+      'agent-admin-user'
     );
   });
 

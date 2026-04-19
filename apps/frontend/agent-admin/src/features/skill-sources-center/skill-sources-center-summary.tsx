@@ -36,38 +36,34 @@ export function SkillSourcesCenterSummary({ skillSources }: { skillSources: Plat
     <>
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
-          label="Installed Effectiveness"
+          label="安装效果"
           value={installedAvgSuccessRate == null ? 'N/A' : `${Math.round(installedAvgSuccessRate * 100)}%`}
           detail="已安装 skill 的平均成功率。"
         />
-        <SummaryCard label="Skill Usage" value={installedUsageCount} detail="已安装 skill 参与过的任务总次数。" />
-        <SummaryCard
-          label="Governance Coverage"
-          value={governedSkills}
-          detail="已有治理建议的 installed skills 数量。"
-        />
+        <SummaryCard label="技能使用量" value={installedUsageCount} detail="已安装 skill 参与过的任务总次数。" />
+        <SummaryCard label="治理覆盖" value={governedSkills} detail="已有治理建议的 installed skills 数量。" />
       </div>
 
       {highLeverageSkills.length || reviewNeededSkills.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <HighlightCard
-            title="High Leverage Skills"
+            title="高杠杆技能"
             emptyText="当前还没有足够运行数据。"
             items={highLeverageSkills.map(item => ({
               id: `top-skill-${item.skillId}`,
               title: item.skillId,
               badge: <Badge variant="success">{Math.round((item.successRate ?? 0) * 100)}%</Badge>,
-              detail: `used ${item.totalTaskCount ?? 0} · source ${item.sourceId}`
+              detail: `使用 ${item.totalTaskCount ?? 0} · 来源 ${item.sourceId}`
             }))}
           />
           <HighlightCard
-            title="Review Needed"
+            title="需要复核"
             emptyText="当前没有明显异常 skill。"
             items={reviewNeededSkills.map(item => ({
               id: `review-skill-${item.skillId}`,
               title: item.skillId,
               badge: <Badge variant="warning">{item.governanceRecommendation ?? 'review'}</Badge>,
-              detail: `success ${item.successRate == null ? 'N/A' : `${Math.round(item.successRate * 100)}%`}`,
+              detail: `成功率 ${item.successRate == null ? 'N/A' : `${Math.round(item.successRate * 100)}%`}`,
               note: item.recentFailureReason
             }))}
           />

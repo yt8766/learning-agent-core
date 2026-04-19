@@ -204,4 +204,54 @@ describe('runtime-learning-evidence-center evidence', () => {
       })
     ]);
   });
+
+  it('reuses the session checkpoint binding for all evidence items of the same task', () => {
+    const getCheckpoint = vi.fn(() => ({
+      taskId: 'task-1',
+      checkpointId: 'ck-1',
+      traceCursor: 5,
+      recoverability: 'full'
+    }));
+
+    const result = buildEvidenceCenter({
+      tasks: [
+        {
+          id: 'task-1',
+          goal: '聚合同一 session 的证据',
+          sessionId: 'session-1',
+          trace: [
+            {
+              at: '2026-04-08T09:00:00.000Z',
+              summary: 'trace-1',
+              data: {}
+            },
+            {
+              at: '2026-04-08T09:01:00.000Z',
+              summary: 'trace-2',
+              data: {}
+            }
+          ]
+        }
+      ] as any,
+      jobs: [],
+      getCheckpoint
+    });
+
+    expect(result).toHaveLength(2);
+    expect(getCheckpoint).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkpointRef: {
+            sessionId: 'session-1',
+            taskId: 'task-1',
+            checkpointId: 'ck-1',
+            checkpointCursor: 5,
+            recoverability: 'full'
+          },
+          recoverable: true
+        })
+      ])
+    );
+  });
 });

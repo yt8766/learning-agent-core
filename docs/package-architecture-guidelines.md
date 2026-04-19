@@ -12,10 +12,13 @@
 - `packages/core` 不是“其他包都要模仿成 contract 包”
 - 其他包要参考的是 `core` 的治理方式，而不是复制 `core` 的内容
 - 也就是：每个包都要先定义稳定边界、公开入口、允许内容、禁止内容，再承载真实实现
+- 当某段能力开始被多个地方复用、逻辑复杂度持续上升、并且需要独立演进时，可以新建 `packages/<pkg>` 子包先收敛边界
+- `packages/` 下的每一个目录必须包含 `package.json`
+- 新建 `packages/<pkg>` 时不要求立即提供实现代码，不要求立即创建 `src/` 目录，也不要求先放任何业务逻辑；`package.json` 是最低门槛，其余目录按演进需要逐步补齐
 
 ## 统一目录语法
 
-除 `packages/core` 继续按自身 domain-host + schema-first 结构推进外，其他 `packages/*` 默认参考以下统一目录语法设计。不是每个包都必须拥有全部目录，但如果某个语义存在，命名应保持一致。
+除 `packages/core` 继续按自身 domain-host + schema-first 结构推进外，其他 `packages/*` 在进入实现阶段后默认参考以下统一目录语法设计。不是每个包都必须拥有全部目录，但如果某个语义存在，命名应保持一致。
 
 ```text
 packages/<pkg>/
@@ -62,6 +65,7 @@ packages/<pkg>/
 
 补充约束：
 
+- `package.json` 是 `packages/<pkg>` 唯一强制的最低结构要求；`src/`、`test/` 和其他分组目录只在对应语义真正出现后再补
 - 目录语法统一后，后续新增包内目录优先复用这些名称，不要每个包单独发明新术语
 - `contracts/` 不应反向依赖 `runtime/`、`providers/`、`repositories/` 这类重实现目录
 - `schemas/` 不应耦合外部 SDK 或执行态 wiring

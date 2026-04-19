@@ -1,4 +1,5 @@
 export * from './tasking';
+export * from './run-observability-semantics';
 export * from './chat';
 export * from './planning';
 export * from './orchestration';
@@ -6,4 +7,6 @@ export * from './runtime-state';
 export * from './session';
 export * from './checkpoint';
 export * from './task-record';
+export * from './task-lineage';
 export * from './thought-graph';
+export * from './run-observability';

@@ -85,7 +85,7 @@ export function MemoryInsightCard(props: {
               {expanded ? '收起证据' : '查看证据'}
             </Button>
             <Button size="sm" variant="ghost" onClick={handleOpenEvidenceCenter}>
-              去 Evidence Center
+              去证据中心
             </Button>
           </>
         ) : null}

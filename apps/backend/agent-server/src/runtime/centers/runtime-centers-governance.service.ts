@@ -1,7 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
-
-import { ConfigureConnectorDto, InstallRemoteSkillDto, InstallSkillDto, ResolveSkillInstallDto } from '@agent/core';
-
+import {
+  ConfigureConnectorDto,
+  InstallRemoteSkillDto,
+  InstallSkillDto,
+  ResolveSkillInstallDto,
+  SkillManifestRecord,
+  SkillSourceRecord
+} from '@agent/core';
+import { appendGovernanceAudit } from '@agent/runtime';
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import {
   clearCapabilityApprovalPolicyWithGovernance,
@@ -25,15 +31,14 @@ import {
   registerDiscoveredCapabilities
 } from '../helpers/runtime-connector-registry';
 import {
-  appendGovernanceAudit,
-  listApprovalScopePolicies as loadApprovalScopePolicies,
-  revokeApprovalScopePolicy as persistApprovalScopePolicyRevocation
-} from '../../modules/runtime-governance/services/runtime-governance-store';
-import {
-  getCounselorSelectorConfigs as loadCounselorSelectorConfigs,
-  setCounselorSelectorEnabled as persistCounselorSelectorEnabled,
-  upsertCounselorSelectorConfig as persistCounselorSelectorConfig
-} from './runtime-centers-governance-counselors';
+  getCounselorSelectorConfigs as getCounselorSelectorConfigsWithPolicy,
+  listApprovalScopePolicies as listApprovalScopePoliciesWithPolicy,
+  revokeApprovalScopePolicy as revokeApprovalScopePolicyWithPolicy,
+  setCounselorSelectorEnabled as setCounselorSelectorEnabledWithPolicy,
+  setLearningConflictStatus as setLearningConflictStatusWithPolicy,
+  upsertCounselorSelectorConfig as upsertCounselorSelectorConfigWithPolicy
+} from './runtime-centers-governance-policy';
+import { refreshMetricsSnapshots as refreshMetricsSnapshotsWithGovernance } from './runtime-centers-governance-metrics';
 import {
   checkInstalledSkills,
   finalizeRemoteSkillInstall,
@@ -47,43 +52,32 @@ import { evaluateSkillManifestSafety } from '../skills/runtime-skill-safety';
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadConnectorView } from './runtime-centers-governance-connectors';
 
+interface CompanyWorkerRecord {
+  id: string;
+  kind?: string;
+}
+
 export class RuntimeCentersGovernanceService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
 
   async listApprovalScopePolicies() {
-    return loadApprovalScopePolicies(this.ctx().runtimeStateRepository);
+    return listApprovalScopePoliciesWithPolicy(this.ctx());
   }
 
   async revokeApprovalScopePolicy(policyId: string) {
-    const ctx = this.ctx();
-    const revoked = await persistApprovalScopePolicyRevocation(
-      ctx.runtimeStateRepository,
-      policyId,
-      'agent-admin-user'
-    );
-    await appendGovernanceAudit(ctx.runtimeStateRepository, {
-      actor: 'agent-admin-user',
-      action: 'approval-policy.revoked',
-      scope: 'approval-policy',
-      targetId: policyId,
-      outcome: revoked ? 'success' : 'rejected'
-    });
-    if (!revoked) {
-      throw new NotFoundException(`Approval policy ${policyId} not found`);
-    }
-    return revoked;
+    return revokeApprovalScopePolicyWithPolicy(this.ctx(), policyId);
   }
 
   async getCounselorSelectorConfigs() {
-    return loadCounselorSelectorConfigs(this.ctx().runtimeStateRepository);
+    return getCounselorSelectorConfigsWithPolicy(this.ctx());
   }
 
-  async upsertCounselorSelectorConfig(input: Parameters<typeof persistCounselorSelectorConfig>[1]) {
-    return persistCounselorSelectorConfig(this.ctx().runtimeStateRepository, input);
+  async upsertCounselorSelectorConfig(input: Parameters<typeof upsertCounselorSelectorConfigWithPolicy>[1]) {
+    return upsertCounselorSelectorConfigWithPolicy(this.ctx(), input);
   }
 
   async setCounselorSelectorEnabled(selectorId: string, enabled: boolean) {
-    return persistCounselorSelectorEnabled(this.ctx().runtimeStateRepository, selectorId, enabled);
+    return setCounselorSelectorEnabledWithPolicy(this.ctx(), selectorId, enabled);
   }
 
   async setLearningConflictStatus(
@@ -91,25 +85,14 @@ export class RuntimeCentersGovernanceService {
     status: 'open' | 'merged' | 'dismissed' | 'escalated',
     preferredMemoryId?: string
   ) {
-    const ctx = this.ctx();
-    const updated = await ctx.orchestrator.updateLearningConflictStatus?.(conflictId, status, preferredMemoryId);
-    await appendGovernanceAudit(ctx.runtimeStateRepository, {
-      actor: 'agent-admin-user',
-      action: `learning-conflict.${status}`,
-      scope: 'learning-conflict',
-      targetId: conflictId,
-      outcome: updated ? 'success' : 'rejected',
-      reason: preferredMemoryId
-    });
-    if (!updated) {
-      throw new NotFoundException(`Learning conflict ${conflictId} not found`);
-    }
-    return updated;
+    return setLearningConflictStatusWithPolicy(this.ctx(), conflictId, status, preferredMemoryId);
   }
 
   async syncSkillSource(sourceId: string) {
     const ctx = this.ctx();
-    const source = (await listSkillSources(ctx.getSkillSourcesContext())).find((item: any) => item.id === sourceId);
+    const source = (await listSkillSources(ctx.getSkillSourcesContext())).find(
+      (item: SkillSourceRecord) => item.id === sourceId
+    );
     if (!source) {
       throw new NotFoundException(`Skill source ${sourceId} not found`);
     }
@@ -122,7 +105,9 @@ export class RuntimeCentersGovernanceService {
       outcome: result.status === 'failed' ? 'rejected' : 'success',
       reason: result.error ?? `manifestCount=${result.manifestCount}`
     });
-    return (await listSkillSources(ctx.getSkillSourcesContext())).find((item: any) => item.id === sourceId)!;
+    return (await listSkillSources(ctx.getSkillSourcesContext())).find(
+      (item: SkillSourceRecord) => item.id === sourceId
+    )!;
   }
 
   async installSkill(dto: InstallSkillDto) {
@@ -132,10 +117,10 @@ export class RuntimeCentersGovernanceService {
       runtimeStateRepository: ctx.runtimeStateRepository,
       listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
       listSkillManifests: () => listSkillManifests(ctx.getSkillSourcesContext()),
-      evaluateSkillManifestSafety: (manifest: any, source: any) =>
+      evaluateSkillManifestSafety: (manifest: SkillManifestRecord, source: SkillSourceRecord | undefined) =>
         evaluateSkillManifestSafety(ctx.getSkillSourcesContext(), manifest, source),
-      writeSkillInstallReceipt: (receipt: any) => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeSkillInstall: async (manifest: any, source: any, receipt: any) => {
+      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
+      finalizeSkillInstall: async (manifest, source, receipt) => {
         await finalizeSkillInstall(ctx.getSkillInstallContext(), manifest, source, receipt);
       }
     });
@@ -147,8 +132,8 @@ export class RuntimeCentersGovernanceService {
       dto,
       runtimeStateRepository: ctx.runtimeStateRepository,
       listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
-      writeSkillInstallReceipt: (receipt: any) => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeRemoteSkillInstall: async (receipt: any) => {
+      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
+      finalizeRemoteSkillInstall: async receipt => {
         await finalizeRemoteSkillInstall(ctx.getSkillInstallContext(), receipt);
       }
     });
@@ -196,11 +181,11 @@ export class RuntimeCentersGovernanceService {
       getSkillInstallReceipt: (id: string) => getSkillInstallReceipt(ctx.getSkillInstallContext(), id),
       listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
       listSkillManifests: () => listSkillManifests(ctx.getSkillSourcesContext()),
-      writeSkillInstallReceipt: (receipt: any) => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeSkillInstall: async (manifest: any, source: any, receipt: any) => {
+      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
+      finalizeSkillInstall: async (manifest, source, receipt) => {
         await finalizeSkillInstall(ctx.getSkillInstallContext(), manifest, source, receipt);
       },
-      finalizeRemoteSkillInstall: async (receipt: any) => {
+      finalizeRemoteSkillInstall: async receipt => {
         await finalizeRemoteSkillInstall(ctx.getSkillInstallContext(), receipt);
       }
     });
@@ -213,14 +198,14 @@ export class RuntimeCentersGovernanceService {
       dto,
       runtimeStateRepository: ctx.runtimeStateRepository,
       getSkillInstallReceipt: (id: string) => getSkillInstallReceipt(ctx.getSkillInstallContext(), id),
-      writeSkillInstallReceipt: (receipt: any) => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt)
+      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt)
     });
   }
 
   async setSkillSourceEnabled(sourceId: string, enabled: boolean) {
     const ctx = this.ctx();
     const sources = await listSkillSources(ctx.getSkillSourcesContext());
-    const source = sources.find((item: any) => item.id === sourceId);
+    const source = sources.find((item: SkillSourceRecord) => item.id === sourceId);
     if (!source) {
       throw new NotFoundException(`Skill source ${sourceId} not found`);
     }
@@ -243,12 +228,16 @@ export class RuntimeCentersGovernanceService {
       targetId: sourceId,
       outcome: 'success'
     });
-    return (await listSkillSources(ctx.getSkillSourcesContext())).find((item: any) => item.id === sourceId)!;
+    return (await listSkillSources(ctx.getSkillSourcesContext())).find(
+      (item: SkillSourceRecord) => item.id === sourceId
+    )!;
   }
 
   async setCompanyAgentEnabled(workerId: string, enabled: boolean) {
     const ctx = this.ctx();
-    const worker = ctx.orchestrator.listWorkers().find((item: any) => item.id === workerId && item.kind === 'company');
+    const worker = ctx.orchestrator
+      .listWorkers()
+      .find((item: CompanyWorkerRecord) => item.id === workerId && item.kind === 'company');
     if (!worker) {
       throw new NotFoundException(`Company worker ${workerId} not found`);
     }
@@ -276,7 +265,7 @@ export class RuntimeCentersGovernanceService {
       tasks: ctx.orchestrator.listTasks(),
       workers: ctx.orchestrator.listWorkers(),
       disabledWorkerIds: new Set(getDisabledCompanyWorkerIds(ctx.getConnectorRegistryContext()))
-    }).find((item: any) => item.id === workerId)!;
+    }).find((item: { id: string }) => item.id === workerId)!;
   }
 
   async setConnectorEnabled(connectorId: string, enabled: boolean) {
@@ -382,12 +371,15 @@ export class RuntimeCentersGovernanceService {
       dto,
       runtimeStateRepository: ctx.runtimeStateRepository,
       mcpClientManager: ctx.mcpClientManager,
-      registerConfiguredConnector: (config: any) =>
-        registerConfiguredConnector(ctx.getConnectorRegistryContext(), config),
+      registerConfiguredConnector: config => registerConfiguredConnector(ctx.getConnectorRegistryContext(), config),
       registerDiscoveredCapabilities: (id: string) =>
         registerDiscoveredCapabilities(ctx.getConnectorRegistryContext(), id),
       loadConnectorView: (id: string) => loadConnectorView(ctx, id)
     });
+  }
+
+  async refreshMetricsSnapshots(days = 30) {
+    return refreshMetricsSnapshotsWithGovernance(this.ctx(), days);
   }
 
   private ctx() {

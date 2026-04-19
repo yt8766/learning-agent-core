@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CreateAgentDiagnosisTaskDto, CreateTaskDto } from '@agent/core';
 
-import { TasksService } from '../../src/modules/tasks/services/tasks.service';
+import { TasksService } from '../../src/tasks/tasks.service';
 
 describe('TasksService', () => {
   it('delegates task actions to RuntimeTaskService', () => {

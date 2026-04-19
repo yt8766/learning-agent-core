@@ -342,3 +342,25 @@ export function buildBrowserReplayPath(sessionId: string) {
 export function buildBrowserReplayUrl(sessionId: string) {
   return toApiUrl(buildBrowserReplayPath(sessionId));
 }
+
+export function buildAdminRuntimeObservatoryPath(params: {
+  taskId: string;
+  executionMode?: string;
+  interactionKind?: string;
+}) {
+  const search = new URLSearchParams();
+  search.set('runtimeTaskId', params.taskId);
+  const executionMode = normalizeExecutionMode(params.executionMode) ?? params.executionMode;
+  if (executionMode) search.set('runtimeExecutionMode', executionMode);
+  if (params.interactionKind) search.set('runtimeInteractionKind', params.interactionKind);
+  return `#/runtime?${search.toString()}`;
+}
+
+export function buildAdminRuntimeObservatoryUrl(params: {
+  taskId: string;
+  executionMode?: string;
+  interactionKind?: string;
+}) {
+  const base = window.location.origin.replace(/\/$/, '');
+  return `${base}/admin/${buildAdminRuntimeObservatoryPath(params)}`;
+}

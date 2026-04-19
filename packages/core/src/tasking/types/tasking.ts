@@ -12,3 +12,4 @@ export * from './session';
 export * from './thought-graph';
 export * from './checkpoint';
 export * from './task-record';
+export * from './run-observability';

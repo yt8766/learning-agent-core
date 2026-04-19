@@ -11,5 +11,5 @@ export async function loadConnectorView(ctx: RuntimeCentersContext, connectorId:
     snapshot,
     tasks,
     connectors: ctx.mcpClientManager.describeServers()
-  }).find((item: any) => item.id === connectorId)!;
+  }).find((item: ReturnType<typeof buildConnectorsCenter>[number]) => item.id === connectorId)!;
 }

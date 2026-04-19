@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/backend/`
-最后核对：2026-04-15
+最后核对：2026-04-19
 
 本目录用于沉淀 `apps/backend/*` 相关文档。
 
@@ -49,3 +49,16 @@
 - [agent-server-overview.md](/docs/backend/agent-server-overview.md)
 - [worker-overview.md](/docs/backend/worker-overview.md)
 - [runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
+- [platform-console-performance-baseline.md](/docs/backend/platform-console-performance-baseline.md)
+- [platform-console-staging-acceptance-template.md](/docs/backend/platform-console-staging-acceptance-template.md)
+
+当前 `agent-server` 维护补充：
+
+- 平台后台接口正在按 center 拆分 controller，优先查看 `apps/backend/agent-server/src/platform/*-controller.ts`
+- `platform console` 的 runtime/evals/evidence/diagnostics 聚合 contract 已开始转为 schema-first normalizer，优先查看 `apps/backend/agent-server/src/runtime/centers/runtime-platform-console.schemas.ts`
+- `src/common/*` 只承载 Nest HTTP 边界公共件，不放业务逻辑
+- `apps/backend/agent-server/logs` 与遗留 `apps/backend/agent-server/data` 的过期内容建议定期执行：
+  - `pnpm --dir apps/backend/agent-server cleanup:artifacts`
+  - `pnpm --dir apps/backend/agent-server cleanup:artifacts:dry-run`
+- `apps/backend/agent-server/logs/app-YYYY-MM-DD.log` 属于旧日志策略遗留文件；当前实现默认只持续写 `error / warn / audit / performance` 四类通道
+- `cleanup-agent-server-artifacts` 相关测试临时目录统一落在仓库根级 `tmp/` 下，不再在根目录生成随机 `tmp-agent-server-cleanup-*` 目录

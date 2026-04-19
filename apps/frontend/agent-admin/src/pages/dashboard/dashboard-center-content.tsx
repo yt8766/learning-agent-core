@@ -41,6 +41,12 @@ export function renderDashboardCenter(
           onExecutionModeFilterChange={dashboard.setRuntimeExecutionModeFilter}
           interactionKindFilter={dashboard.runtimeInteractionKindFilter}
           onInteractionKindFilterChange={dashboard.setRuntimeInteractionKindFilter}
+          observatoryFocusTarget={dashboard.observatoryFocusTarget}
+          onObservatoryFocusTargetChange={dashboard.setObservatoryFocusTarget}
+          compareTaskId={dashboard.runtimeCompareTaskId}
+          onCompareTaskIdChange={dashboard.setRuntimeCompareTaskId}
+          graphNodeId={dashboard.runtimeGraphNodeId}
+          onGraphNodeIdChange={dashboard.setRuntimeGraphNodeId}
           onCopyShareLink={copyShareUrl}
           onHistoryDaysChange={days => {
             dashboard.setRuntimeHistoryDays(days);
@@ -49,6 +55,7 @@ export function renderDashboardCenter(
           onExport={dashboard.downloadRuntimeExport}
           onSelectTask={dashboard.selectTask}
           onRetryTask={dashboard.handleRetryTask}
+          onLaunchWorkflowTask={dashboard.handleLaunchWorkflowTask}
           onRefreshRuntime={() => dashboard.refreshPageCenter('runtime')}
           onCreateDiagnosisTask={dashboard.handleCreateDiagnosisTask}
           onRevokeApprovalPolicy={dashboard.handleRevokeApprovalPolicy}

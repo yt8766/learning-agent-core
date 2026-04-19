@@ -8,10 +8,15 @@ describe('RuntimeCentersService', () => {
   it('binds query and governance service methods onto the facade', async () => {
     const queryService = {
       getPlatformConsole: vi.fn(async () => ({ scope: 'console' })),
+      getPlatformConsoleShell: vi.fn(async () => ({ scope: 'console-shell' })),
       getRuntimeCenter: vi.fn(async () => ({ scope: 'runtime' })),
+      getRuntimeCenterSummary: vi.fn(async () => ({ scope: 'runtime-summary' })),
+      getRunObservatory: vi.fn(async () => [{ taskId: 'task-1' }]),
+      getRunObservatoryDetail: vi.fn(async () => ({ scope: 'run-observatory-detail' })),
       getApprovalsCenter: vi.fn(() => ({ scope: 'approvals' })),
       exportApprovalsCenter: vi.fn(() => ({ scope: 'approvals-export' })),
       getLearningCenter: vi.fn(async () => ({ scope: 'learning' })),
+      getLearningCenterSummary: vi.fn(async () => ({ scope: 'learning-summary' })),
       getEvidenceCenter: vi.fn(async () => ({ scope: 'evidence' })),
       getConnectorsCenter: vi.fn(async () => ({ scope: 'connectors' })),
       getToolsCenter: vi.fn(() => ({ scope: 'tools' })),
@@ -19,6 +24,8 @@ describe('RuntimeCentersService', () => {
       getSkillSourcesCenter: vi.fn(async () => ({ scope: 'skill-sources' })),
       getCompanyAgentsCenter: vi.fn(() => ({ scope: 'company-agents' })),
       getEvalsCenter: vi.fn(async () => ({ scope: 'evals' })),
+      getEvalsCenterSummary: vi.fn(async () => ({ scope: 'evals-summary' })),
+      getPlatformConsoleLogAnalysis: vi.fn(async () => ({ sampleCount: 2 })),
       exportRuntimeCenter: vi.fn(() => ({ scope: 'runtime-export' })),
       exportEvalsCenter: vi.fn(() => ({ scope: 'evals-export' }))
     } as unknown as RuntimeCentersQueryService;
@@ -46,14 +53,20 @@ describe('RuntimeCentersService', () => {
       clearCapabilityApprovalPolicy: vi.fn(() => ({ capabilityPolicyCleared: true })),
       closeConnectorSession: vi.fn(async () => ({ closed: true })),
       refreshConnectorDiscovery: vi.fn(() => ({ refreshed: true })),
+      refreshMetricsSnapshots: vi.fn(() => ({ metricsRefreshed: true })),
       configureConnector: vi.fn(() => ({ configured: true }))
     } as unknown as RuntimeCentersGovernanceService;
 
     const service = new RuntimeCentersService(() => ({}) as any, queryService, governanceService);
 
     await expect(service.getPlatformConsole()).resolves.toEqual({ scope: 'console' });
+    await expect(service.getPlatformConsoleShell()).resolves.toEqual({ scope: 'console-shell' });
+    await expect(service.getPlatformConsoleLogAnalysis()).resolves.toEqual({ sampleCount: 2 });
     await expect(service.getRuntimeCenter()).resolves.toEqual({ scope: 'runtime' });
+    await expect(service.getRunObservatory()).resolves.toEqual([{ taskId: 'task-1' }]);
+    await expect(service.getRunObservatoryDetail('task-1')).resolves.toEqual({ scope: 'run-observatory-detail' });
     await expect(service.getConnectorsCenter()).resolves.toEqual({ scope: 'connectors' });
     expect(service.setConnectorEnabled('conn-1', true)).toEqual({ connectorId: 'conn-1', enabled: true });
+    expect(service.refreshMetricsSnapshots(14)).toEqual({ metricsRefreshed: true });
   });
 });

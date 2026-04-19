@@ -30,13 +30,16 @@
 - 系统主线是开发自治，按“Human / Supervisor / 六部”方向演进
 - 仓库级代理技能统一放在 `skills/*/SKILL.md`
 - `packages/skill-runtime` 承载运行时 skill 领域，不承载 Codex/Claude 技能说明
-- `artifacts/*` 统一承载覆盖率、日志、临时目录等可重建产物，默认不提交 Git
+- `artifacts/*` 默认承载仓库级覆盖率、共享调试输出和部分可重建临时产物，默认不提交 Git
 - 后端单 API + 独立 worker
 - `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
 - `packages/knowledge` 负责 RAG knowledge ingestion / retrieval / citation / context assembly
 - `packages/*` 默认按“契约层 / 基础能力层 / Agent 编排层 / 质量与资产层”治理，详见 [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+- 当某段能力开始被多个地方使用、逻辑复杂度持续上升、并且需要独立演进时，允许优先新建 `packages/<pkg>` 子包来收敛边界；新包的最低要求是目录内必须有 `package.json`
+- `packages/` 下的每一个目录必须包含 `package.json`
+- 新建包时不要求同步提供 `src/`、实现代码或任何业务逻辑；允许先立包、后补实现
 - 第一阶段 compat 根文件收缩已完成：
   - `packages/evals`
   - `packages/skill-runtime`
@@ -101,7 +104,8 @@
   - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
 - 本地运行数据统一放仓库根级 `data/`
 - 运行时技能相关本地数据默认优先使用 `data/skill-runtime/`
-- 本地可重建产物统一放仓库根级 `artifacts/`
+- 仓库级可重建产物优先放仓库根级 `artifacts/`
+- 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
 - 规范以文档为主，少量根级配置为辅
 - 每次任务完成后，必须顺手检查本轮涉及的规范文档是否已经过期；如果真实实现、流程边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不能把失效规范留到后续任务

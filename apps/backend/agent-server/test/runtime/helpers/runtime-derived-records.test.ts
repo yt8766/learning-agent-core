@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCheckpointRef,
   buildInstalledSkillTags,
-  buildRuleCandidates,
+  buildRuleCandidates
+} from '../../../src/runtime/helpers/runtime-derived-records';
+import {
   defaultConnectorSessionState,
   groupConnectorDiscoveryHistory,
   groupGovernanceAuditByTarget
-} from '../../../src/runtime/helpers/runtime-derived-records';
+} from '../../../src/runtime/domain/connectors/runtime-connector-governance-records';
 
 describe('runtime-derived-records', () => {
   it('会从重复 agent 错误生成 rule candidates', () => {

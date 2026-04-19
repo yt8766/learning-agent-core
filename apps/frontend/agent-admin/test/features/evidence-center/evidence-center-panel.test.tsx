@@ -91,12 +91,12 @@ describe('EvidenceCenterPanel', () => {
       />
     );
 
-    expect(html).toContain('Evidence Center');
-    expect(html).toContain('Diagnosis Evidence');
-    expect(html).toContain('Browser Replay');
-    expect(html).toContain('Checkpoint Replay');
-    expect(html).toContain('Wenyuan Overview');
-    expect(html).toContain('Freshness Baseline');
+    expect(html).toContain('证据中心');
+    expect(html).toContain('诊断证据');
+    expect(html).toContain('浏览器回放');
+    expect(html).toContain('检查点回放');
+    expect(html).toContain('文渊概览');
+    expect(html).toContain('时效基线');
     expect(html).toContain('决策 pass');
     expect(html).toContain('信息基准日期');
   });
@@ -269,7 +269,7 @@ describe('EvidenceCenterPanel', () => {
     );
 
     expect(html.indexOf('被高亮 evidence')).toBeLessThan(html.indexOf('普通 evidence'));
-    expect(html).toContain('Memory Link Highlight');
+    expect(html).toContain('记忆关联高亮');
     expect(html).toContain('命中 1 条来自 Memory Insight 的证据高亮。');
 
     await renderedButtons.find(item => item.children === '清除高亮')?.onClick?.();

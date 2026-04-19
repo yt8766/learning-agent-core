@@ -8,10 +8,14 @@ const governanceStoreMocks = vi.hoisted(() => ({
 export const appendGovernanceAuditMock = governanceStoreMocks.appendGovernanceAuditMock;
 export const persistConnectorDiscoverySnapshotMock = governanceStoreMocks.persistConnectorDiscoverySnapshotMock;
 
-vi.mock('../../../src/modules/runtime-governance/services/runtime-governance-store', () => ({
-  appendGovernanceAudit: appendGovernanceAuditMock,
-  persistConnectorDiscoverySnapshot: persistConnectorDiscoverySnapshotMock
-}));
+vi.mock('@agent/runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/runtime')>();
+  return {
+    ...actual,
+    appendGovernanceAudit: appendGovernanceAuditMock,
+    persistConnectorDiscoverySnapshot: persistConnectorDiscoverySnapshotMock
+  };
+});
 
 export function createSnapshot() {
   return {

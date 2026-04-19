@@ -49,7 +49,7 @@ export function RuntimeSummaryOverview({
             value: runtime.diagnosisEvidenceCount ?? 0,
             detail:
               (runtime.diagnosisEvidenceCount ?? 0) > 0
-                ? '已有 diagnosis_result 可在 Evidence Center 复用'
+                ? '已有 diagnosis_result 可在证据中心复用'
                 : '当前还没有形成可复用的诊断结果'
           },
           {

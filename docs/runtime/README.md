@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/runtime/`
-最后核对：2026-04-18
+最后核对：2026-04-19
 
 本目录用于沉淀 `packages/runtime` 相关文档。
 
@@ -34,6 +34,22 @@
   - 当前仍存在对 `agents/*` 的编排依赖，后续应继续向 contract / registry 方向收敛
 - 公开入口：
   - 根入口：`@agent/runtime`
+
+与 `apps/backend/agent-server/src/runtime` 的边界：
+
+- `packages/runtime`
+  - canonical runtime host
+  - 负责主链编排、session lifecycle、approval/recover、background semantics、runtime-facing facade
+  - `runtime/provider-audit.ts`、`runtime/runtime-analytics.ts`、`runtime/runtime-metrics-store.ts` 已作为 metrics 子域主宿主
+  - `runtime/runtime-metrics-refresh.ts` 当前作为 runtime/evals persisted snapshot refresh facade 主宿主；这层默认顺序写入同一份 `RuntimeStateSnapshot`，避免 usage/eval history 并发落盘时互相覆盖
+  - `governance/runtime-governance-store.ts`、`governance/runtime-governance-aggregation.ts`、`governance/runtime-counselor-selector-store.ts`、`governance/runtime-approval-scope-policy-store.ts` 已作为 governance 子域主宿主
+  - `runtime/runtime-center-projection*.ts`、`runtime/runtime-company-agents-center.ts`、`runtime/runtime-connectors-center.ts`、`runtime/runtime-skill-sources-center.ts` 当前作为 admin/runtime center projection 主宿主
+  - `runtime/runtime-learning-center*.ts` 当前作为 learning center full/summary projection 主宿主
+  - backend 需要使用 metrics / governance / center projection helper 时，默认应从 `@agent/runtime` 根入口消费
+- `agent-server/src/runtime`
+  - backend-specific host / BFF adapter
+  - 不应长期沉积稳定 runtime 主逻辑
+  - 若 backend 暂时需要局部 runtime domain helper，应明确标记为 app-local 过渡收口层，而不是第二套 runtime canonical host
 
 约定：
 

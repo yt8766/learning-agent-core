@@ -58,7 +58,7 @@ export function SkillSourcesManifestCard(props: {
           variant="outline"
           onClick={() => props.onInstallSkill(manifest.id, manifest.sourceId)}
         >
-          安装到 Skill Lab
+          安装到技能工坊
         </Button>
       </div>
     </article>

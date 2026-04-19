@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RuntimeCentersQueryService } from '../../../src/runtime/centers/runtime-centers-query.service';
 import { buildPlatformConsole } from '../../../src/runtime/helpers/runtime-platform-console';
 import { getDisabledCompanyWorkerIds } from '../../../src/runtime/helpers/runtime-connector-registry';
-import { summarizeAndPersistEvalHistory } from '../../../src/modules/runtime-metrics/services/runtime-metrics-store';
+import { summarizeAndPersistEvalHistory } from '@agent/runtime';
 import { loadPromptRegressionConfigSummary } from '../../../src/runtime/helpers/prompt-regression-summary';
 import {
   readInstalledSkillRecords,
@@ -38,10 +38,14 @@ vi.mock('../../../src/runtime/helpers/runtime-platform-console', () => ({
   exportRuntimeCenter: vi.fn(async () => ({ scope: 'runtime-export' }))
 }));
 
-vi.mock('../../../src/modules/runtime-metrics/services/runtime-metrics-store', () => ({
-  summarizeAndPersistEvalHistory: vi.fn(async () => ({ total: 2, outcomes: ['passed'] })),
-  summarizeAndPersistUsageAnalytics: vi.fn(async () => ({ summaries: [] }))
-}));
+vi.mock('@agent/runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/runtime')>();
+  return {
+    ...actual,
+    summarizeAndPersistEvalHistory: vi.fn(async () => ({ total: 2, outcomes: ['passed'] })),
+    summarizeAndPersistUsageAnalytics: vi.fn(async () => ({ summaries: [] }))
+  };
+});
 
 vi.mock('../../../src/runtime/helpers/prompt-regression-summary', () => ({
   loadPromptRegressionConfigSummary: vi.fn(async () => ({ promptCount: 3, suiteCount: 1 }))
@@ -271,7 +275,12 @@ describe('RuntimeCentersQueryService', () => {
   });
 
   it('combines eval history with prompt regression metadata and delegates platform console building', async () => {
+    const appLogger = {
+      log: vi.fn(),
+      warn: vi.fn()
+    };
     const context = {
+      appLogger,
       getPlatformConsoleContext: () => ({ runtime: 'context' }),
       orchestrator: {
         listTasks: () => [{ id: 'task-1' }]
@@ -284,6 +293,23 @@ describe('RuntimeCentersQueryService', () => {
         workspaceRoot: '/workspace'
       }
     };
+    vi.mocked(buildPlatformConsole).mockResolvedValueOnce({
+      scope: 'console',
+      tasks: [{ id: 'task-1' }],
+      sessions: [],
+      diagnostics: {
+        cacheStatus: 'miss',
+        generatedAt: '2026-04-01T09:00:00.000Z',
+        timingsMs: {
+          total: 420,
+          runtime: 150,
+          approvals: 10,
+          evals: 180,
+          tasks: 5,
+          checkpoints: 1
+        }
+      }
+    } as any);
     const service = new RuntimeCentersQueryService(() => context as any);
 
     await expect(service.getEvalsCenter(14, { scenarioId: 'scenario-1', outcome: 'passed' })).resolves.toEqual({
@@ -305,12 +331,118 @@ describe('RuntimeCentersQueryService', () => {
         runtimeExecutionMode: 'plan',
         approvalsInteractionKind: 'approval'
       })
-    ).resolves.toEqual({ scope: 'console' });
+    ).resolves.toEqual(
+      expect.objectContaining({
+        scope: 'console'
+      })
+    );
     expect(buildPlatformConsole).toHaveBeenCalledWith({ runtime: 'context' }, 7, {
       status: 'running',
       runtimeExecutionMode: 'plan',
       approvalsInteractionKind: 'approval'
     });
+    expect(appLogger.log).toHaveBeenCalledWith(
+      {
+        event: 'runtime.platform_console.fresh_aggregate',
+        days: 7,
+        filters: {
+          status: 'running',
+          runtimeExecutionMode: 'plan',
+          approvalsInteractionKind: 'approval'
+        },
+        cacheStatus: 'miss',
+        timingsMs: {
+          total: 420,
+          runtime: 150,
+          approvals: 10,
+          evals: 180,
+          tasks: 5,
+          checkpoints: 1
+        },
+        taskCount: 1,
+        sessionCount: 0,
+        totalDurationMs: 420,
+        thresholdMs: 300
+      },
+      {
+        context: 'RuntimeCentersQueryService'
+      }
+    );
+    expect(appLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('warns when platform console aggregation crosses the slow threshold', async () => {
+    const appLogger = {
+      log: vi.fn(),
+      warn: vi.fn()
+    };
+    vi.mocked(buildPlatformConsole).mockResolvedValueOnce({
+      scope: 'console',
+      tasks: [{ id: 'task-1' }, { id: 'task-2' }],
+      sessions: [{ id: 'session-1' }],
+      diagnostics: {
+        cacheStatus: 'miss',
+        generatedAt: '2026-04-01T09:00:00.000Z',
+        timingsMs: {
+          total: 1_280,
+          runtime: 480,
+          approvals: 18,
+          evals: 510,
+          tasks: 7,
+          checkpoints: 3
+        }
+      }
+    } as any);
+    const service = new RuntimeCentersQueryService(
+      () =>
+        ({
+          appLogger,
+          getPlatformConsoleContext: () => ({ runtime: 'context' })
+        }) as any
+    );
+
+    await expect(service.getPlatformConsole(30)).resolves.toEqual(
+      expect.objectContaining({
+        scope: 'console'
+      })
+    );
+    expect(appLogger.warn).toHaveBeenCalledWith(
+      {
+        event: 'runtime.platform_console.slow',
+        days: 30,
+        filters: undefined,
+        cacheStatus: 'miss',
+        timingsMs: {
+          total: 1_280,
+          runtime: 480,
+          approvals: 18,
+          evals: 510,
+          tasks: 7,
+          checkpoints: 3
+        },
+        taskCount: 2,
+        sessionCount: 1,
+        totalDurationMs: 1_280,
+        thresholdMs: 1_000
+      },
+      {
+        context: 'RuntimeCentersQueryService',
+        days: 30,
+        filters: undefined,
+        cacheStatus: 'miss',
+        timingsMs: {
+          total: 1_280,
+          runtime: 480,
+          approvals: 18,
+          evals: 510,
+          tasks: 7,
+          checkpoints: 3
+        },
+        taskCount: 2,
+        sessionCount: 1
+      }
+    );
+    expect(appLogger.log).not.toHaveBeenCalled();
   });
 
   it('builds skill sources and tools centers, and delegates export helpers', async () => {
@@ -568,5 +700,201 @@ describe('RuntimeCentersQueryService', () => {
     ]);
     expect(result.invalidatedMemories).toBe(1);
     expect(result.quarantinedMemories).toBe(1);
+  });
+
+  it('builds a run observability detail bundle from task and checkpoint state', async () => {
+    const service = new RuntimeCentersQueryService(
+      () =>
+        ({
+          orchestrator: {
+            listTasks: () => [
+              {
+                id: 'task-1',
+                goal: 'Diagnose execution regression',
+                status: 'failed',
+                sessionId: 'session-1',
+                currentNode: 'approval_interrupt',
+                currentMinistry: 'gongbu',
+                currentWorker: 'worker-1',
+                createdAt: '2026-04-19T09:59:00.000Z',
+                updatedAt: '2026-04-19T10:03:00.000Z',
+                trace: [
+                  {
+                    spanId: 'span-1',
+                    node: 'gongbu_execute',
+                    at: '2026-04-19T10:01:00.000Z',
+                    summary: '工部执行并触发回退',
+                    status: 'failed',
+                    isFallback: true,
+                    fallbackReason: 'budget guard triggered'
+                  }
+                ],
+                activeInterrupt: {
+                  id: 'interrupt-1',
+                  kind: 'approval',
+                  status: 'pending',
+                  createdAt: '2026-04-19T10:02:00.000Z'
+                },
+                learningEvaluation: {
+                  governanceWarnings: ['Need stronger evidence before auto delivery']
+                },
+                externalSources: [{ id: 'ev-1', summary: 'CI log points to retry storm', sourceType: 'runtime-log' }]
+              }
+            ]
+          },
+          wenyuanFacade: {
+            getCheckpoint: () => ({
+              checkpointId: 'cp-1',
+              sessionId: 'session-1',
+              taskId: 'task-1',
+              recoverability: 'safe',
+              graphState: {
+                status: 'failed',
+                currentStep: 'approval_interrupt'
+              },
+              pendingApprovals: [{ id: 'approval-1' }],
+              agentStates: [{ id: 'agent-1' }],
+              createdAt: '2026-04-19T10:02:30.000Z',
+              updatedAt: '2026-04-19T10:02:45.000Z'
+            })
+          }
+        }) as any
+    );
+
+    await expect(service.getRunObservatoryDetail('task-1')).resolves.toMatchObject({
+      run: {
+        taskId: 'task-1',
+        currentStage: 'interrupt',
+        hasFallback: true,
+        hasRecoverableCheckpoint: true
+      },
+      checkpoints: [expect.objectContaining({ checkpointId: 'cp-1', recoverability: 'safe' })],
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ kind: 'approval_blocked' }),
+        expect.objectContaining({ kind: 'recoverable_failure' })
+      ])
+    });
+  });
+
+  it('builds a filtered run observability list from task summaries', async () => {
+    const service = new RuntimeCentersQueryService(
+      () =>
+        ({
+          orchestrator: {
+            listTasks: () => [
+              {
+                id: 'task-1',
+                goal: 'Diagnose regression',
+                status: 'running',
+                sessionId: 'session-1',
+                currentNode: 'approval_interrupt',
+                executionPlan: { mode: 'plan' },
+                activeInterrupt: {
+                  id: 'interrupt-1',
+                  kind: 'approval',
+                  status: 'pending',
+                  createdAt: '2026-04-19T10:02:00.000Z'
+                },
+                trace: [
+                  {
+                    spanId: 'span-1',
+                    node: 'gongbu_execute',
+                    at: '2026-04-19T10:01:00.000Z',
+                    summary: '工部执行并触发回退',
+                    status: 'failed',
+                    isFallback: true,
+                    modelUsed: 'gpt-5.4-mini'
+                  }
+                ],
+                llmUsage: {
+                  promptTokens: 10,
+                  completionTokens: 20,
+                  totalTokens: 30,
+                  estimated: true,
+                  measuredCallCount: 0,
+                  estimatedCallCount: 1,
+                  updatedAt: '2026-04-19T10:03:00.000Z',
+                  models: [
+                    {
+                      model: 'gpt-5.4-mini',
+                      promptTokens: 10,
+                      completionTokens: 20,
+                      totalTokens: 30,
+                      callCount: 1,
+                      pricingSource: 'estimated'
+                    }
+                  ]
+                },
+                createdAt: '2026-04-19T09:59:00.000Z',
+                updatedAt: '2026-04-19T10:03:00.000Z'
+              },
+              {
+                id: 'task-2',
+                goal: 'Draft plan',
+                status: 'completed',
+                sessionId: 'session-2',
+                executionPlan: { mode: 'execute' },
+                trace: [],
+                createdAt: '2026-04-19T08:59:00.000Z',
+                updatedAt: '2026-04-19T09:03:00.000Z'
+              }
+            ]
+          },
+          wenyuanFacade: {
+            getCheckpoint: (sessionId: string) =>
+              sessionId === 'session-1'
+                ? {
+                    checkpointId: 'cp-1',
+                    sessionId,
+                    taskId: 'task-1',
+                    recoverability: 'safe',
+                    graphState: {
+                      status: 'running'
+                    },
+                    pendingApprovals: [],
+                    agentStates: [],
+                    createdAt: '2026-04-19T10:02:30.000Z',
+                    updatedAt: '2026-04-19T10:02:45.000Z'
+                  }
+                : undefined
+          }
+        }) as any
+    );
+
+    await expect(
+      service.getRunObservatory({
+        status: 'running',
+        model: 'gpt-5.4-mini',
+        pricingSource: 'estimated',
+        executionMode: 'plan',
+        hasInterrupt: 'true',
+        hasFallback: 'true',
+        hasRecoverableCheckpoint: 'true',
+        q: 'regression'
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        taskId: 'task-1',
+        hasInterrupt: true,
+        hasFallback: true,
+        hasRecoverableCheckpoint: true
+      })
+    ]);
+  });
+
+  it('raises not found when the run observability detail task does not exist', async () => {
+    const service = new RuntimeCentersQueryService(
+      () =>
+        ({
+          orchestrator: {
+            listTasks: () => []
+          },
+          wenyuanFacade: {
+            getCheckpoint: () => undefined
+          }
+        }) as any
+    );
+
+    await expect(service.getRunObservatoryDetail('missing-task')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

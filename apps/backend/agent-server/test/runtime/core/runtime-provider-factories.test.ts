@@ -121,9 +121,19 @@ const {
         filters,
         scope: 'runtime'
       })),
+      getRuntimeCenterSummary: vi.fn((days?: number, filters?: Record<string, unknown>) => ({
+        days,
+        filters,
+        scope: 'runtime-summary'
+      })),
       getApprovalsCenter: vi.fn(() => ({ scope: 'approvals' })),
       getLearningCenter: vi.fn(() => ({ scope: 'learning' })),
       getEvalsCenter: vi.fn((days?: number, filters?: Record<string, unknown>) => ({ days, filters, scope: 'evals' })),
+      getEvalsCenterSummary: vi.fn((days?: number, filters?: Record<string, unknown>) => ({
+        days,
+        filters,
+        scope: 'evals-summary'
+      })),
       getEvidenceCenter: vi.fn(() => ({ scope: 'evidence' })),
       getToolsCenter: vi.fn(() => ({ scope: 'tools' })),
       getConnectorsCenter: vi.fn(() => ({ scope: 'connectors' })),
@@ -158,9 +168,13 @@ vi.mock('../../../src/runtime/helpers/runtime-connector-registry', () => ({
   applyGovernanceOverrides: applyGovernanceOverridesMock,
   registerInstalledSkillWorker: registerInstalledSkillWorkerMock
 }));
-vi.mock('../../../src/modules/runtime-metrics/services/provider-audit', () => ({
-  fetchProviderUsageAudit: fetchProviderUsageAuditMock
-}));
+vi.mock('@agent/runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/runtime')>();
+  return {
+    ...actual,
+    fetchProviderUsageAudit: fetchProviderUsageAuditMock
+  };
+});
 vi.mock('../../../src/runtime/services/runtime-knowledge.service', () => ({
   RuntimeKnowledgeService: RuntimeKnowledgeServiceMock
 }));
@@ -257,13 +271,17 @@ describe('runtime-provider-factories', () => {
         ])
       },
       runtimeStateRepository: {
-        load: vi.fn(async () => ({ governance: { disabledSkillSourceIds: ['blocked-source'] } }))
+        load: vi.fn(async () => ({ governance: { disabledSkillSourceIds: ['blocked-source'] } })),
+        save: vi.fn(async () => undefined)
       },
       toolRegistry: { kind: 'tools' },
       mcpServerRegistry: { kind: 'servers' },
       mcpCapabilityRegistry: { kind: 'capabilities' },
       mcpClientManager: { kind: 'mcp-client-manager' },
-      orchestrator: { kind: 'orchestrator' },
+      orchestrator: {
+        kind: 'orchestrator',
+        listTasks: vi.fn(() => [])
+      },
       sessionCoordinator: { kind: 'session-coordinator' },
       skillSourceSyncService: { kind: 'skill-source-sync-service' },
       remoteSkillDiscoveryService: {
@@ -316,6 +334,11 @@ describe('runtime-provider-factories', () => {
         kind: 'gateway',
         runtimeSessionService: sessionService,
         runtimeTaskService: taskService
+      })
+    );
+    expect(scheduleService.factory()).toEqual(
+      expect.objectContaining({
+        refreshMetricsSnapshots: expect.any(Function)
       })
     );
     expect(knowledgeService).toEqual(expect.objectContaining({ kind: 'knowledge' }));

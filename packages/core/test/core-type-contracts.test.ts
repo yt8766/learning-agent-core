@@ -1208,6 +1208,13 @@ describe('@agent/core type contracts', () => {
 
     const dto = CreateTaskDtoSchema.parse({
       goal: 'audit runtime task bootstrap',
+      lineage: {
+        parentTaskId: 'task-origin',
+        launchReason: 'replay',
+        replaySourceLabel: 'trace · gongbu-code',
+        replayScoped: true,
+        baselineTaskId: 'task-origin'
+      },
       capabilityAugmentations: [augmentation]
     });
 
@@ -1231,6 +1238,7 @@ describe('@agent/core type contracts', () => {
     });
 
     expect(dto.capabilityAugmentations?.[0]?.target).toBe('runtime-audit-skill');
+    expect(dto.lineage?.launchReason).toBe('replay');
     expect(checkpoint.capabilityAugmentations?.[0]?.owner.capabilityType).toBe('skill');
   });
 

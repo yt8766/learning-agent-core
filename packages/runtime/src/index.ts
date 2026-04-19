@@ -14,6 +14,32 @@ export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from
 export { ModelRoutingPolicy } from './contracts/model-routing-policy';
 export type { SessionStoreSnapshot } from './contracts/session-store';
 export {
+  listActiveApprovalScopePolicies,
+  revokeApprovalScopePolicyWithAudit
+} from './governance/runtime-approval-scope-policy-store';
+export {
+  appendGovernanceAudit,
+  getRecentGovernanceAudit,
+  listApprovalScopePolicies,
+  listCapabilityGovernanceProfiles,
+  listGovernanceProfiles,
+  persistConnectorDiscoverySnapshot,
+  recordApprovalScopePolicyMatch,
+  revokeApprovalScopePolicy,
+  syncCapabilityGovernanceProfiles,
+  toConnectorDiscoveryHistoryRecord,
+  upsertApprovalScopePolicy
+} from './governance/runtime-governance-store';
+export {
+  listCounselorSelectorConfigs,
+  setCounselorSelectorEnabled,
+  upsertCounselorSelectorConfig
+} from './governance/runtime-counselor-selector-store';
+export {
+  aggregateCapabilityGovernanceProfiles,
+  aggregateNamedGovernanceProfiles
+} from './governance/runtime-governance-aggregation';
+export {
   buildFreshnessAnswerInstruction,
   buildTemporalContextBlock,
   isFreshnessSensitiveGoal
@@ -30,6 +56,53 @@ export {
   coreMemoryReplace
 } from './memory/active-memory-tools';
 export {
+  fetchProviderUsageAudit,
+  fetchProviderUsageAuditFromAdapter,
+  normalizeProviderAuditResponse,
+  summarizeProviderBilling,
+  type ProviderAuditAdapterConfig,
+  type ProviderAuditDailyRecord,
+  type ProviderAuditSyncResult
+} from './runtime/provider-audit';
+export {
+  buildModelHeatmap,
+  buildTraceAnalytics,
+  formatDay,
+  roundCurrency,
+  summarizeUsageAnalytics
+} from './runtime/runtime-analytics';
+export {
+  buildRuntimeCenterProjection,
+  buildRuntimeCenterSummaryProjection,
+  toCritiqueStyleReviewOutcome,
+  type RuntimeCenterTaskLike
+} from './runtime/runtime-center-projection';
+export {
+  buildLearningCenter,
+  buildLearningCenterSummary,
+  type BuildLearningCenterInput,
+  type CrossCheckEvidenceEntry,
+  type LearningCenterTaskLike,
+  type LocalSkillSuggestionsRecord,
+  type RecentQuarantinedMemory,
+  type RuntimeGovernanceSnapshotRecord
+} from './runtime/runtime-learning-center';
+export { buildCompanyAgentsCenter } from './runtime/runtime-company-agents-center';
+export { buildConnectorsCenter, type RuntimeConnectorsCenterRecord } from './runtime/runtime-connectors-center';
+export {
+  buildSkillSourcesCenter,
+  type InstalledSkillRecord,
+  type SkillInstallReceiptRecord
+} from './runtime/runtime-skill-sources-center';
+export {
+  readPersistedEvalHistory,
+  readPersistedUsageAnalytics,
+  summarizeAndPersistEvalHistory,
+  summarizeAndPersistUsageAnalytics
+} from './runtime/runtime-metrics-store';
+export { refreshMetricsSnapshots } from './runtime/runtime-metrics-refresh';
+export type { RuntimeMetricsRefreshContext } from './runtime/runtime-metrics-refresh';
+export {
   generateObjectWithRetry,
   generateTextWithRetry,
   streamTextWithRetry,
@@ -39,3 +112,4 @@ export {
   type StructuredContractMeta,
   type StructuredParseStatus
 } from './runtime/llm-facade';
+export * from './runtime-observability';

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { AppLoggerService } from '../logger/app-logger.service';
+import { LoggerModule } from '../logger/logger.module';
 
 import { RuntimeController } from './runtime.controller';
 import { RuntimeArchitectureService } from './architecture/runtime-architecture.service';
@@ -29,6 +31,7 @@ import { RuntimeToolsService } from './services/runtime-tools.service';
 import { RuntimeService } from './runtime.service';
 
 @Module({
+  imports: [LoggerModule],
   controllers: [RuntimeController],
   providers: [
     RuntimeHost,
@@ -50,9 +53,10 @@ import { RuntimeService } from './runtime.service';
       useFactory: (
         runtimeHost: RuntimeHost,
         operationalState: RuntimeOperationalStateService,
-        techBriefingService: RuntimeTechBriefingService
-      ) => createRuntimeCentersService(runtimeHost, operationalState, techBriefingService),
-      inject: [RuntimeHost, RuntimeOperationalStateService, RuntimeTechBriefingService]
+        techBriefingService: RuntimeTechBriefingService,
+        appLogger: AppLoggerService
+      ) => createRuntimeCentersService(runtimeHost, operationalState, techBriefingService, appLogger),
+      inject: [RuntimeHost, RuntimeOperationalStateService, RuntimeTechBriefingService, AppLoggerService]
     },
     {
       provide: RuntimeSessionService,
@@ -106,8 +110,7 @@ import { RuntimeService } from './runtime.service';
     RuntimeArchitectureService,
     RuntimeTaskService,
     RuntimeToolsService,
-    RuntimeMessageGatewayFacadeService,
-    RuntimeService
+    RuntimeMessageGatewayFacadeService
   ]
 })
 export class RuntimeModule {}

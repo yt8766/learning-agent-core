@@ -10,6 +10,7 @@ import type {
   SkillSearchStatus,
   SkillSourceRecord
 } from '@agent/core';
+import type { SkillSourceSyncResult } from './skill-source-sync.service';
 
 import {
   buildConnectorTemplateSuggestions,
@@ -44,7 +45,7 @@ export interface RuntimeSkillSourcesContext {
       | undefined
     >;
     readCachedManifests: (source: SkillSourceRecord) => Promise<SkillManifestRecord[]>;
-    syncSource: (source: SkillSourceRecord) => Promise<unknown>;
+    syncSource: (source: SkillSourceRecord) => Promise<SkillSourceSyncResult>;
   };
   remoteSkillDiscoveryService: {
     discover: (options: any) =>

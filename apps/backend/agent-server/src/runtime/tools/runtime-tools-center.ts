@@ -1,6 +1,12 @@
-import type { ToolAttachmentRecord, ToolDefinition, ToolFamilyRecord, ToolUsageSummaryRecord } from '@agent/core';
+import type {
+  TaskRecord,
+  ToolAttachmentRecord,
+  ToolDefinition,
+  ToolFamilyRecord,
+  ToolUsageSummaryRecord
+} from '@agent/core';
 
-function summarizeToolUsage(tasks: any[]): ToolUsageSummaryRecord[] {
+function summarizeToolUsage(tasks: TaskRecord[]): ToolUsageSummaryRecord[] {
   const items: ToolUsageSummaryRecord[] = [];
 
   for (const task of tasks) {
@@ -52,7 +58,7 @@ function summarizeToolUsage(tasks: any[]): ToolUsageSummaryRecord[] {
     .slice(0, 40);
 }
 
-function summarizeToolAttachments(tasks: any[]): ToolAttachmentRecord[] {
+function summarizeToolAttachments(tasks: TaskRecord[]): ToolAttachmentRecord[] {
   const attachments = tasks.flatMap(task => task.toolAttachments ?? []);
   return Array.from(
     new Map(attachments.map(item => [`${item.toolName}:${item.ownerType}:${item.ownerId ?? ''}`, item])).values()
@@ -64,7 +70,7 @@ export function buildToolsCenter(params: {
     list: () => ToolDefinition[];
     listFamilies: () => ToolFamilyRecord[];
   };
-  tasks: any[];
+  tasks: TaskRecord[];
 }) {
   const tools = params.toolRegistry.list();
   const families = params.toolRegistry.listFamilies();

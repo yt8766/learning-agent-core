@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ApprovalActionDto } from '@agent/core';
 
-import { ApprovalsService } from '../../src/modules/approvals/services/approvals.service';
+import { ApprovalsService } from '../../src/approvals/approvals.service';
 
 describe('ApprovalsService', () => {
   it('delegates listPending to RuntimeTaskService', () => {

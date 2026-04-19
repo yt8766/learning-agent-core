@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：后端工程规范
-最后核对：2026-04-15
+最后核对：2026-04-19
 
 适用范围：
 
@@ -35,7 +35,7 @@
 - `app/`：健康检查与轻量应用级信息
 - `chat/`：会话、消息、SSE、恢复
 - `message-gateway/`：消息网关相关 DTO、接口与规范化逻辑
-- `tasks/`：内部执行观测与调试接口；当前已开始向 `modules/tasks/*` 试点收敛
+- `tasks/`：内部执行观测与调试接口
 - `approvals/`：审批接口
 - `learning/`：学习确认与文档学习入口
 - `evidence/`：evidence API 门面
@@ -43,7 +43,7 @@
 - `rules/`：rules API 门面
 - `skills/`：skills API 门面
 - `templates/`：模板查询与模板接口
-- `platform/`：平台视图与整包 console 相关接口
+- `platform/`：平台视图与整包 console 相关接口；`platform console` 默认拆成 per-center controller，不再堆单一总 controller
 - `runtime/`：后端运行时门面
 - `cors/`：跨域配置
 - `logger/`：日志模块、filter、middleware、interceptor
@@ -92,12 +92,15 @@
   - `interfaces/`
 - 其中 `dto/`、`interfaces/` 直接对齐 NestJS 官方 feature module 示例；`entities/` 是在实际工程中针对数据库/持久化层补充的扩展目录
 - `app/`、`logger/`、`runtime/` 作为现阶段基础设施/遗留目录，可暂不完全遵循这套业务模块模板
-- `tasks/`、`approvals/`、`learning/` 当前已开始把 `controller/service` 下沉到 `src/modules/<domain>/{controllers,services}`；后续其它低风险业务域沿同一方式收敛
+- `tasks/`、`approvals/`、`learning/` 已统一回到标准 Nest feature module 布局：`src/<domain>/<domain>.controller.ts` + `src/<domain>/<domain>.service.ts`
 - `pnpm check:backend-structure` 当前同时接受两种布局：
   - 经典平铺布局：`src/<domain>/<domain>.controller.ts` + `src/<domain>/<domain>.service.ts`
   - 下沉收敛布局：`src/<domain>/<domain>.module.ts` + `src/modules/<domain>/controllers|services/*`
 - `runtime/` 中的纯计算/持久化辅助片段，优先继续抽到 `src/modules/<domain>/services/*`；当前 `runtime-metrics` 已开始承接 usage/eval analytics 与 provider audit 真实实现，`runtime-governance` 也已开始承接治理快照聚合与持久化读取
 - 其他新增或被修改的业务模块，应按上面的目录模板收敛，不再继续扩散 `types/`、`constants/`、`helpers/` 等随意命名子目录
+- `common/` 不作为业务杂项收纳层，只承载 Nest HTTP 边界通用件：
+  - 可放：query/body DTO、通用 parse pipe、装饰器、filter、interceptor、少量 HTTP 侧通用类型
+  - 不可放：runtime 编排、业务 service、面向单一模块的 helper、临时兜底逻辑
 
 ### `apps/worker/src`
 
@@ -140,10 +143,6 @@
   - Runtime / Learning / Evidence / Connectors / Skill Sources / Platform Console
 - `RuntimeService`
   - 仅作为兼容 facade 与少量聚合入口
-- `modules/runtime-metrics`
-  - usage analytics、eval history、provider audit、runtime metrics 持久化与聚合
-- `modules/runtime-governance`
-  - connector / skill source 治理快照、聚合视图与持久化读取
 
 当前 `runtime/` 下的主要组织目录包括：
 
@@ -162,11 +161,17 @@
 - `tools/`
 - `wenyuan/`
 
+额外约束：
+
+- 稳定 runtime metrics / governance 主实现统一放在 `packages/runtime`
+- backend 应直接依赖 `@agent/runtime` 根入口，不再恢复 `modules/runtime-metrics`、`modules/runtime-governance` compat 双轨
+
 约束：
 
 - 新增业务模块默认直接依赖最窄 provider，不要优先注入 `RuntimeService`
 - `RuntimeService` 的测试重点应是 facade 聚合和兼容行为，而不是替代各 provider 自测
 - `runtime/` 下如果出现再次逼近 400 行的 provider，应继续按领域边界拆分，而不是回到“大 service”
+- `platform console` 这类跨中心聚合 payload，默认需要显式 schema/normalizer，不能再让 `any` / `unknown` 直接穿透到 controller、export helper 或前端边界
 
 ## 3.1 文件长度规范
 
@@ -233,6 +238,8 @@
 - 禁止把 memory、rules、skills、runtime state 等运行数据放进具体 app 目录
 - 禁止新增 `apps/backend/agent-server/data` 这类应用内数据目录作为长期方案
 - 后端读取和写入本地数据时，默认以仓库根级 `data/` 为准
+- `apps/backend/agent-server/logs` 与历史遗留 `apps/backend/agent-server/data` 只允许承载可清理产物；需要定期清理时，优先使用 `pnpm --dir apps/backend/agent-server cleanup:artifacts`
+- 清理策略默认只删除过期日志和 app-local 遗留数据；不要对根级 `data/memory`、`data/runtime`、`data/knowledge`、`data/skills` 做无差别删除
 
 推荐结构示例：
 

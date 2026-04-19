@@ -78,12 +78,12 @@ describe('RuntimeSummaryAgentErrors render smoke', () => {
       />
     );
 
-    expect(html).toContain('Diagnosis Evidence Ready');
-    expect(html).toContain('Error Filters');
+    expect(html).toContain('诊断证据已就绪');
+    expect(html).toContain('错误筛选');
     expect(html).toContain('research provider timeout');
     expect(html).toContain('provider_transient_error');
-    expect(html).toContain('Diagnosis Hint');
-    expect(html).toContain('Recovery Playbook');
+    expect(html).toContain('诊断提示');
+    expect(html).toContain('恢复手册');
     expect(html).toContain('创建诊断任务');
     expect(html).toContain('TimeoutError: research provider timeout');
   });
@@ -108,7 +108,7 @@ describe('RuntimeSummaryAgentErrors render smoke', () => {
       />
     );
 
-    expect(html).toContain('Recent Agent Errors');
+    expect(html).toContain('近期代理错误');
     expect(html).toContain('当前没有最近的 agent 级错误。');
     expect(html).not.toContain('Diagnosis Evidence Ready');
   });

@@ -41,45 +41,45 @@ export function RuntimeSummaryAgentErrors({
   return (
     <Card className="border-border/70 bg-card/90 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-foreground">Recent Agent Errors</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">近期代理错误</CardTitle>
         <Badge variant="outline">{filteredAgentErrors.length}</Badge>
       </CardHeader>
       <CardContent className="grid gap-3">
         {(runtime.diagnosisEvidenceCount ?? 0) > 0 ? (
           <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-4 text-sm text-emerald-950">
-            <p className="font-semibold">Diagnosis Evidence Ready</p>
+            <p className="font-semibold">诊断证据已就绪</p>
             <p className="mt-1">
-              当前已有 {runtime.diagnosisEvidenceCount} 条诊断结论沉淀，可在 Evidence Center 查看
+              当前已有 {runtime.diagnosisEvidenceCount} 条诊断结论沉淀，可在证据中心查看
               <code className="mx-1 rounded bg-emerald-100 px-1 py-0.5 text-[11px]">diagnosis_result</code>
               记录。
             </p>
           </div>
         ) : null}
 
-        <DashboardToolbar title="Error Filters" description="按 error code、部属与是否可重试收窄错误列表。">
+        <DashboardToolbar title="错误筛选" description="按错误码、部属与是否可重试收窄错误列表。">
           <div className="grid gap-3 md:grid-cols-3">
             <FilterSelect
-              label="Error Code"
+              label="错误码"
               value={errorCodeFilter}
               options={errorCodeOptions}
               onChange={event => onErrorCodeFilterChange(event.target.value)}
             />
             <FilterSelect
-              label="Ministry"
+              label="所属部"
               value={ministryFilter}
               options={ministryOptions}
               onChange={event => onMinistryFilterChange(event.target.value)}
             />
             <label className="grid gap-1 text-xs text-muted-foreground">
-              Retryability
+              可重试性
               <select
                 value={retryableFilter}
                 onChange={(event: ChangeEvent<HTMLSelectElement>) => onRetryableFilterChange(event.target.value)}
                 className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
               >
                 <option value="">全部</option>
-                <option value="retryable">retryable</option>
-                <option value="fatal">fatal</option>
+                <option value="retryable">可重试</option>
+                <option value="fatal">致命</option>
               </select>
             </label>
           </div>
@@ -97,9 +97,7 @@ export function RuntimeSummaryAgentErrors({
                     {item.taskId} / {item.goal}
                   </p>
                 </div>
-                <Badge variant={item.retryable ? 'warning' : 'destructive'}>
-                  {item.retryable ? 'retryable' : 'fatal'}
-                </Badge>
+                <Badge variant={item.retryable ? 'warning' : 'destructive'}>{item.retryable ? '可重试' : '致命'}</Badge>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="secondary">{item.errorCode}</Badge>
@@ -111,17 +109,17 @@ export function RuntimeSummaryAgentErrors({
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{new Date(item.at).toLocaleString()}</p>
               {item.diagnosisHint ? (
-                <InfoBlock title="Diagnosis Hint" tone="amber">
+                <InfoBlock title="诊断提示" tone="amber">
                   {item.diagnosisHint}
                 </InfoBlock>
               ) : null}
               {item.recommendedAction ? (
-                <InfoBlock title="Recommended Action" tone="blue">
+                <InfoBlock title="建议动作" tone="blue">
                   {item.recommendedAction}
                 </InfoBlock>
               ) : null}
               {item.recoveryPlaybook?.length ? (
-                <InfoBlock title="Recovery Playbook" tone="emerald">
+                <InfoBlock title="恢复手册" tone="emerald">
                   <div className="mt-2 grid gap-1">
                     {item.recoveryPlaybook.map(step => (
                       <p key={`${item.id}-${step}`}>{step}</p>

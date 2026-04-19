@@ -77,7 +77,7 @@ describe('runtime summary support panels', () => {
       />
     );
 
-    expect(companyAgentsHtml).toContain('Company Agents');
+    expect(companyAgentsHtml).toContain('公司专员编排');
     expect(companyAgentsHtml).toContain('Repo Reviewer');
     expect(companyAgentsHtml).toContain('成功率 94%');
     expect(companyAgentsHtml).toContain('github-mcp');

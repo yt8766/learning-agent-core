@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { RuntimeModule } from '../runtime/runtime.module';
-import { ApprovalsController } from '../modules/approvals/controllers/approvals.controller';
-import { ApprovalsService } from '../modules/approvals/services/approvals.service';
+import { ApprovalsController } from './approvals.controller';
+import { ApprovalsService } from './approvals.service';
 
 @Module({
   imports: [RuntimeModule],

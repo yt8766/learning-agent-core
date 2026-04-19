@@ -15,9 +15,30 @@ import {
   SessionCancelDto,
   UpdateChatSessionDto
 } from '@agent/core';
+import type { SessionCoordinator } from '@agent/runtime';
 
 export interface RuntimeSessionContext {
-  sessionCoordinator: any;
+  sessionCoordinator: Pick<
+    SessionCoordinator,
+    | 'listSessions'
+    | 'createSession'
+    | 'deleteSession'
+    | 'updateSession'
+    | 'getSession'
+    | 'getMessages'
+    | 'getEvents'
+    | 'getCheckpoint'
+    | 'appendMessage'
+    | 'appendInlineCapabilityResponse'
+    | 'attachSessionCapabilities'
+    | 'approve'
+    | 'reject'
+    | 'confirmLearning'
+    | 'recover'
+    | 'recoverToCheckpoint'
+    | 'cancel'
+    | 'subscribe'
+  >;
 }
 
 export class RuntimeSessionService {

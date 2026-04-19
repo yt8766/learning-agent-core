@@ -3,6 +3,26 @@ import { describe, expect, it, vi } from 'vitest';
 import { ConnectorsCenterItem, collaborators, createService } from './runtime.service.test-helpers';
 
 describe('RuntimeService connectors', () => {
+  it('读取 connectors center 时不会触发全量 discovery refresh', async () => {
+    const service = createService();
+    const c = collaborators(service);
+    c.mcpClientManager = {
+      sweepIdleSessions: vi.fn(async () => []),
+      refreshAllServerDiscovery: vi.fn(async () => undefined),
+      describeServers: vi.fn(() => [])
+    };
+    c.runtimeStateRepository = {
+      load: vi.fn(async () => ({})),
+      save: vi.fn(async () => undefined)
+    };
+    c.orchestrator.listTasks = vi.fn(() => []);
+
+    await expect(service.getConnectorsCenter()).resolves.toEqual([]);
+
+    expect(c.mcpClientManager.sweepIdleSessions).toHaveBeenCalledTimes(1);
+    expect(c.mcpClientManager.refreshAllServerDiscovery).not.toHaveBeenCalled();
+  });
+
   it('支持关闭 connector session', async () => {
     const service = createService();
     collaborators(service).mcpClientManager = {

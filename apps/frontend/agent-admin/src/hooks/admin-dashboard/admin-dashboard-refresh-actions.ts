@@ -1,16 +1,18 @@
+import { isAbortedAdminRequestError } from '@/api/admin-api';
 import {
-  getApprovalsCenter,
-  getCompanyAgentsCenter,
-  getConnectorsCenter,
-  getEvidenceCenter,
-  getEvalsCenterFiltered,
-  getLearningCenter,
-  getPlatformConsole,
-  getRuntimeCenterFiltered,
-  getSkillSourcesCenter,
-  getTaskBundle,
-  isAbortedAdminRequestError
-} from '@/api/admin-api';
+  fetchApprovalsCenter,
+  fetchCompanyAgentsCenter,
+  fetchConnectorsCenter,
+  fetchEvidenceCenter,
+  fetchEvalsCenter,
+  fetchLearningCenter,
+  fetchPlatformConsoleShell,
+  fetchRules,
+  fetchRuntimeCenter,
+  fetchSkills,
+  fetchSkillSourcesCenter,
+  fetchTaskBundle
+} from '@/api/admin-query';
 import type { DashboardPageKey } from '@/types/admin';
 import type { AdminDashboardActionContext } from './admin-dashboard-actions.types';
 
@@ -31,6 +33,21 @@ export function createAdminDashboardRefreshActions(context: AdminDashboardAction
   let inFlightRefreshAll: Promise<void> | null = null;
   let lastRefreshAllAt = 0;
   const refreshThrottleMs = 400;
+
+  const getPlatformConsoleShellFilters = () => {
+    const runtimeFilters = context.getRuntimeFilters();
+    const approvalFilters = context.getApprovalFilters();
+
+    return {
+      status: runtimeFilters.status || undefined,
+      model: runtimeFilters.model || undefined,
+      pricingSource: runtimeFilters.pricingSource || undefined,
+      runtimeExecutionMode: runtimeFilters.executionMode === 'all' ? undefined : runtimeFilters.executionMode,
+      runtimeInteractionKind: runtimeFilters.interactionKind === 'all' ? undefined : runtimeFilters.interactionKind,
+      approvalsExecutionMode: approvalFilters.executionMode === 'all' ? undefined : approvalFilters.executionMode,
+      approvalsInteractionKind: approvalFilters.interactionKind === 'all' ? undefined : approvalFilters.interactionKind
+    };
+  };
 
   const refreshAll = async () => {
     context.reportRefresh({
@@ -62,27 +79,21 @@ export function createAdminDashboardRefreshActions(context: AdminDashboardAction
       try {
         context.setLoading(true);
         context.setError('');
-        const runtimeFilters = context.getRuntimeFilters();
-        const approvalFilters = context.getApprovalFilters();
-        const nextConsole = await getPlatformConsole(
-          Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()),
-          {
-            status: runtimeFilters.status || undefined,
-            model: runtimeFilters.model || undefined,
-            pricingSource: runtimeFilters.pricingSource || undefined,
-            runtimeExecutionMode: runtimeFilters.executionMode === 'all' ? undefined : runtimeFilters.executionMode,
-            runtimeInteractionKind:
-              runtimeFilters.interactionKind === 'all' ? undefined : runtimeFilters.interactionKind,
-            approvalsExecutionMode: approvalFilters.executionMode === 'all' ? undefined : approvalFilters.executionMode,
-            approvalsInteractionKind:
-              approvalFilters.interactionKind === 'all' ? undefined : approvalFilters.interactionKind
-          }
-        );
+        const [nextShell, nextCenter] = await Promise.all([
+          fetchPlatformConsoleShell(
+            context.queryClient,
+            Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()),
+            getPlatformConsoleShellFilters()
+          ),
+          loadPageCenter(context.getPage(), context)
+        ]);
+        const nextConsole = nextCenter ? { ...nextShell, ...nextCenter } : nextShell;
         context.setConsoleData(nextConsole);
 
         const nextTaskId =
-          context.getBundle()?.task.id ?? nextConsole.runtime.recentRuns[0]?.id ?? nextConsole.tasks[0]?.id;
-        context.setBundle(nextTaskId ? await getTaskBundle(nextTaskId) : null);
+          context.getActiveTaskId() ?? context.getBundle()?.task.id ?? nextConsole.runtime.recentRuns[0]?.id;
+        context.setActiveTaskId(nextTaskId);
+        context.setBundle(nextTaskId ? await fetchTaskBundle(context.queryClient, nextTaskId) : null);
       } catch (nextError) {
         if (isAbortedAdminRequestError(nextError)) {
           context.reportRefresh({
@@ -244,23 +255,17 @@ export function createAdminDashboardRefreshActions(context: AdminDashboardAction
           context.setLoading(true);
         }
         context.setError('');
-        const runtimeFilters = context.getRuntimeFilters();
-        const approvalFilters = context.getApprovalFilters();
-        const [nextConsole, nextBundle] = await Promise.all([
-          getPlatformConsole(Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()), {
-            status: runtimeFilters.status || undefined,
-            model: runtimeFilters.model || undefined,
-            pricingSource: runtimeFilters.pricingSource || undefined,
-            runtimeExecutionMode: runtimeFilters.executionMode === 'all' ? undefined : runtimeFilters.executionMode,
-            runtimeInteractionKind:
-              runtimeFilters.interactionKind === 'all' ? undefined : runtimeFilters.interactionKind,
-            approvalsExecutionMode: approvalFilters.executionMode === 'all' ? undefined : approvalFilters.executionMode,
-            approvalsInteractionKind:
-              approvalFilters.interactionKind === 'all' ? undefined : approvalFilters.interactionKind
-          }),
-          getTaskBundle(taskId)
+        const [nextShell, nextBundle, nextCenter] = await Promise.all([
+          fetchPlatformConsoleShell(
+            context.queryClient,
+            Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()),
+            getPlatformConsoleShellFilters()
+          ),
+          fetchTaskBundle(context.queryClient, taskId),
+          loadPageCenter(context.getPage(), context)
         ]);
-        context.setConsoleData(nextConsole);
+        context.setConsoleData(nextCenter ? { ...nextShell, ...nextCenter } : nextShell);
+        context.setActiveTaskId(taskId);
         context.setBundle(nextBundle);
       } catch (nextError) {
         if (isAbortedAdminRequestError(nextError)) {
@@ -321,7 +326,7 @@ async function loadPageCenter(
   switch (targetPage) {
     case 'runtime':
       return {
-        runtime: await getRuntimeCenterFiltered({
+        runtime: await fetchRuntimeCenter(context.queryClient, {
           days: options?.runtimeDays ?? context.getRuntimeHistoryDays(),
           status: runtimeFilters.status || undefined,
           model: runtimeFilters.model || undefined,
@@ -332,7 +337,7 @@ async function loadPageCenter(
       };
     case 'approvals':
       return {
-        approvals: await getApprovalsCenter({
+        approvals: await fetchApprovalsCenter(context.queryClient, {
           executionMode:
             context.getApprovalFilters().executionMode === 'all'
               ? undefined
@@ -344,28 +349,48 @@ async function loadPageCenter(
         })
       };
     case 'learning':
-      return { learning: await getLearningCenter() };
+      return { learning: await fetchLearningCenter(context.queryClient) };
     case 'memory':
     case 'profiles':
-    case 'archives':
-    case 'skills':
       return null;
+    case 'skills': {
+      const [skills, rules] = await Promise.all([fetchSkills(context.queryClient), fetchRules(context.queryClient)]);
+      return { skills, rules };
+    }
+    case 'archives': {
+      const [runtime, evals] = await Promise.all([
+        fetchRuntimeCenter(context.queryClient, {
+          days: options?.runtimeDays ?? context.getRuntimeHistoryDays(),
+          status: runtimeFilters.status || undefined,
+          model: runtimeFilters.model || undefined,
+          pricingSource: runtimeFilters.pricingSource || undefined,
+          executionMode: runtimeFilters.executionMode === 'all' ? undefined : runtimeFilters.executionMode,
+          interactionKind: runtimeFilters.interactionKind === 'all' ? undefined : runtimeFilters.interactionKind
+        }),
+        fetchEvalsCenter(context.queryClient, {
+          days: options?.evalsDays ?? context.getEvalsHistoryDays(),
+          scenarioId: evalFilters.scenario || undefined,
+          outcome: evalFilters.outcome || undefined
+        })
+      ]);
+      return { runtime, evals };
+    }
     case 'evals':
       return {
-        evals: await getEvalsCenterFiltered({
+        evals: await fetchEvalsCenter(context.queryClient, {
           days: options?.evalsDays ?? context.getEvalsHistoryDays(),
           scenarioId: evalFilters.scenario || undefined,
           outcome: evalFilters.outcome || undefined
         })
       };
     case 'evidence':
-      return { evidence: await getEvidenceCenter() };
+      return { evidence: await fetchEvidenceCenter(context.queryClient) };
     case 'connectors':
-      return { connectors: await getConnectorsCenter() };
+      return { connectors: await fetchConnectorsCenter(context.queryClient) };
     case 'skillSources':
-      return { skillSources: await getSkillSourcesCenter() };
+      return { skillSources: await fetchSkillSourcesCenter(context.queryClient) };
     case 'companyAgents':
-      return { companyAgents: await getCompanyAgentsCenter() };
+      return { companyAgents: await fetchCompanyAgentsCenter(context.queryClient) };
     default:
       return null;
   }

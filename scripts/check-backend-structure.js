@@ -9,7 +9,7 @@ const backendRoot = path.join(rootDir, 'apps/backend/agent-server/src');
 const backendTestRoot = path.join(rootDir, 'apps/backend/agent-server/test');
 const allowedModuleSubdirs = new Set(['dto', 'entities', 'interfaces']);
 const allowedNestedModuleSubdirs = new Set(['controllers', 'services', 'dto', 'entities', 'interfaces']);
-const legacyModuleDirs = new Set(['app', 'cors', 'logger', 'platform', 'runtime', 'templates']);
+const legacyModuleDirs = new Set(['app', 'common', 'cors', 'logger', 'platform', 'runtime', 'templates']);
 const maxBackendLines = 400;
 const temporaryOversizeAllowlist = new Set([
   'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-localize.ts',
