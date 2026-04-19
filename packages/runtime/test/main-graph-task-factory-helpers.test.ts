@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { CreateTaskDto } from '@agent/core';
+import { createOfficialRuntimeAgentDependencies } from '@agent/platform-runtime';
 
+import { configureRuntimeAgentDependencies } from '../src';
 import {
   buildExecutionPlan,
   deriveOrchestrationGovernance
@@ -13,6 +15,10 @@ import {
 import { resolveTaskWorkflowResolution } from '../src/graphs/main/tasking/factory/task-workflow-resolution';
 
 describe('main graph task factory helpers', () => {
+  beforeAll(() => {
+    configureRuntimeAgentDependencies(createOfficialRuntimeAgentDependencies());
+  });
+
   it('resolves requested mode with explicit, imperial-direct, and /plan priorities', () => {
     expect(
       resolveRequestedMode({
@@ -66,6 +72,25 @@ describe('main graph task factory helpers', () => {
     expect(selection.defaultCounselorId).toBe('fallback-counselor');
   });
 
+  it('prefers official specialist agent candidates when no explicit counselor selector is provided', () => {
+    const selection = resolveCounselorSelection(
+      {
+        goal: 'build a report',
+        context: 'dashboard'
+      } as CreateTaskDto,
+      {
+        specialistDomain: 'technical-architecture',
+        preferredCounselorIds: ['official.coder', 'official.reviewer', 'official.data-report'],
+        normalizedGoal: 'build a report',
+        sessionId: 'session-2'
+      }
+    );
+
+    expect(selection.selectedCounselorId).toBe('official.coder');
+    expect(selection.defaultCounselorId).toBe('official.coder');
+    expect(selection.selector.candidateIds).toEqual(['official.coder', 'official.reviewer', 'official.data-report']);
+  });
+
   it('builds an escalated execution plan without temporary assignment capabilities', () => {
     const governance = deriveOrchestrationGovernance({
       capabilityAttachments: [
@@ -111,22 +136,26 @@ describe('main graph task factory helpers', () => {
     expect(plan.selectedCounselorId).toBe('frontend-v2');
   });
 
-  it('resolves workflow state and enriches data-report context before routing', () => {
+  it('resolves workflow state and enriches specialist routing with official agent candidates', () => {
     const result = resolveTaskWorkflowResolution({
       dto: {
-        goal: '做一个销售数据报表',
-        context: '按月统计 GMV，并且需要多个 tab'
+        goal: '请帮我重构这个报表 dashboard 的技术架构和实现方案',
+        context: '需要明确代码改造路径、review 风险和报表生成边界。'
       } as CreateTaskDto,
       evidence: [],
       requestedMode: 'execute'
     });
 
-    expect(result.workflowResolution.preset.id).toBe('data-report');
-    expect(result.dataReportContract).toBeDefined();
-    expect(result.enrichedTaskContext).toContain('数据报表任务契约');
+    expect(result.workflowResolution.preset.id).toBeTruthy();
     expect(result.initialChatRoute.flow).toBe('supervisor');
     expect(result.initialChatRoute.graph).toBe('workflow');
-    expect(result.specialistRoute.specialistLead.domain).toBeTruthy();
+    expect(result.specialistRoute.specialistLead.domain).toBe('technical-architecture');
+    expect(result.specialistRoute.specialistLead.agentId).toBe('official.coder');
+    expect(result.specialistRoute.specialistLead.candidateAgentIds).toEqual([
+      'official.coder',
+      'official.reviewer',
+      'official.data-report'
+    ]);
   });
 
   it('keeps scaffold workflow explicit and avoids implicit data-report enrichment', () => {

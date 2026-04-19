@@ -24,6 +24,8 @@ import {
   shouldExecuteAfterPlanning,
   syncTaskExecutionMode
 } from './planning-stage-helpers';
+import { derivePlannerStrategyRecord } from './contracts/supervisor-plan-contract';
+import { enrichPlanningDispatches } from './planning-stage-dispatches';
 import { applyPlanningMicroBudget } from './planning-stage-budget';
 import { compileSkillContractIntoPlan, resolveCompiledSkillAttachment } from './planning-stage-skill-contract';
 import type { PlanningCallbacks, SupervisorPlanningTaskLike } from './pipeline-stage-node.types';
@@ -79,6 +81,16 @@ export async function runManagerPlanStage<TTask extends SupervisorPlanningTaskLi
   }
   const plan = compileSkillContractIntoPlan(task, basePlan);
   task.plan = plan;
+  task.plannerStrategy = derivePlannerStrategyRecord({
+    specialistLead: task.specialistLead
+      ? {
+          displayName: task.specialistLead.displayName,
+          domain: task.specialistLead.domain ?? 'general-assistant',
+          requiredCapabilities: task.specialistLead.requiredCapabilities,
+          candidateAgentIds: task.specialistLead.candidateAgentIds
+        }
+      : undefined
+  });
   const subGoals = Array.from(
     new Set([plan.summary, ...(plan.steps ?? []), ...(plan.subTasks ?? []).map(item => item.title)].filter(Boolean))
   );
@@ -316,7 +328,7 @@ export async function runManagerPlanStage<TTask extends SupervisorPlanningTaskLi
   return {
     currentStep: 'manager_plan',
     currentPlan: plan.steps,
-    dispatches: libu.dispatch(plan),
+    dispatches: enrichPlanningDispatches(task, libu.dispatch(plan)),
     shouldRetry: false,
     approvalRequired: false,
     approvalStatus: undefined,

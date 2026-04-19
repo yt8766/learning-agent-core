@@ -19,6 +19,7 @@ export interface RuntimeCentersContext {
   settings: RuntimeHost['settings'];
   appLogger?: AppLoggerService;
   techBriefingService?: RuntimeTechBriefingService;
+  runtimeHost: RuntimeHost;
   wenyuanFacade: RuntimeWenyuanFacade;
   sessionCoordinator: RuntimeHost['sessionCoordinator'];
   orchestrator: RuntimeHost['orchestrator'];

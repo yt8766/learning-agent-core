@@ -19,12 +19,13 @@ export function resolveCounselorSelection(
     specialistDomain: string;
     normalizedGoal: string;
     sessionId?: string;
+    preferredCounselorIds?: string[];
   }
 ) {
   const selector = dto.counselorSelector ?? {
     strategy: 'task-type' as const,
-    key: context.specialistDomain,
-    candidateIds: [context.specialistDomain]
+    key: context.preferredCounselorIds?.[0] ?? context.specialistDomain,
+    candidateIds: context.preferredCounselorIds?.length ? context.preferredCounselorIds : [context.specialistDomain]
   };
   const candidates =
     selector.candidateIds && selector.candidateIds.length > 0

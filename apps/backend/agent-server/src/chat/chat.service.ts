@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { type DataReportJsonGenerateResult, type DataReportSandpackFiles } from '@agent/agents-data-report';
-import { resolveWorkflowPreset } from '@agent/agents-supervisor';
+import {
+  type DataReportJsonGenerateResult,
+  type DataReportSandpackFiles
+} from '../runtime/core/runtime-data-report-facade';
 import {
   AppendChatMessageDto,
   CreateChatSessionDto,
@@ -133,7 +135,7 @@ export class ChatService {
     }
 
     const goal = this.extractDirectGoal(dto);
-    const workflow = resolveWorkflowPreset(goal);
+    const workflow = this.runtimeHost.platformRuntime.agentDependencies.resolveWorkflowPreset(goal);
     return workflow.preset.id === 'data-report' ? 'sandpack' : 'stream';
   }
 

@@ -145,6 +145,7 @@ import {
   PlanDraftQuestionSetSchema,
   PlanQuestionChatMessageCardSchema,
   PlanQuestionRecordSchema,
+  PlannerStrategyRecordSchema,
   PreflightGovernanceDecisionSchema,
   RequestedExecutionHintsSchema,
   SkillInstallReceiptSchema,
@@ -1474,9 +1475,41 @@ describe('@agent/core type contracts', () => {
         from: 'manager',
         to: 'research',
         kind: 'strategy',
-        objective: '先补证据'
-      }).kind
-    ).toBe('strategy');
+        objective: '先补证据',
+        specialistDomain: 'technical-architecture',
+        requiredCapabilities: ['specialist.technical-architecture'],
+        agentId: 'official.coder',
+        candidateAgentIds: ['official.coder', 'official.reviewer'],
+        selectedAgentId: 'official.coder',
+        selectionSource: 'specialist-lead'
+      }).selectedAgentId
+    ).toBe('official.coder');
+
+    expect(
+      DispatchInstructionSchema.parse({
+        taskId: 'task-1',
+        subTaskId: 'sub-1',
+        from: 'manager',
+        to: 'research',
+        kind: 'strategy',
+        objective: '先补证据',
+        selectionSource: 'strategy-counselor'
+      }).selectionSource
+    ).toBe('strategy-counselor');
+
+    expect(
+      PlannerStrategyRecordSchema.parse({
+        mode: 'rich-candidates',
+        summary: '当前存在多个候选官方 Agent，规划将优先并行研究后再收敛。',
+        leadDomain: 'technical-architecture',
+        requiredCapabilities: ['specialist.technical-architecture'],
+        preferredAgentId: 'official.coder',
+        candidateAgentIds: ['official.coder', 'official.reviewer'],
+        candidateCount: 2,
+        gapDetected: false,
+        updatedAt: '2026-04-19T00:00:00.000Z'
+      }).mode
+    ).toBe('rich-candidates');
 
     expect(
       SpecialistLeadRecordSchema.parse({

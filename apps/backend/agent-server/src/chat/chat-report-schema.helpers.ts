@@ -6,7 +6,7 @@ import {
   type DataReportJsonNodeModelPolicy,
   type DataReportJsonSchema,
   type DataReportJsonNodeStageEvent
-} from '@agent/agents-data-report';
+} from '../runtime/core/runtime-data-report-facade';
 
 import type { RuntimeHost } from '../runtime/core/runtime.host';
 import type { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';

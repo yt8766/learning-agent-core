@@ -71,7 +71,14 @@ export class LibuRouterMinistry {
             },
             {
               role: 'user',
-              content: appendTaskContext(buildSupervisorPlanUserPrompt(this.context.goal), this.context.taskContext)
+              content: appendTaskContext(
+                buildSupervisorPlanUserPrompt(this.context.goal, {
+                  specialistLead: this.context.specialistLead,
+                  supportingSpecialists: this.context.supportingSpecialists,
+                  routeConfidence: this.context.routeConfidence
+                }),
+                this.context.taskContext
+              )
             }
           ],
           invoke: async messages =>
@@ -98,8 +105,19 @@ export class LibuRouterMinistry {
             })
         });
         llmPlan = toManagerPlan(
-          { taskId: this.context.taskId, goal: this.context.goal },
-          output ?? buildFallbackSupervisorPlan({ taskId: this.context.taskId, goal: this.context.goal })
+          {
+            taskId: this.context.taskId,
+            goal: this.context.goal,
+            specialistLead: this.context.specialistLead,
+            supportingSpecialists: this.context.supportingSpecialists
+          },
+          output ??
+            buildFallbackSupervisorPlan({
+              taskId: this.context.taskId,
+              goal: this.context.goal,
+              specialistLead: this.context.specialistLead,
+              supportingSpecialists: this.context.supportingSpecialists
+            })
         );
       } catch (error) {
         this.rememberIssue(`LLM plan fallback: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -112,8 +130,18 @@ export class LibuRouterMinistry {
     const plan =
       llmPlan ??
       toManagerPlan(
-        { taskId: this.context.taskId, goal: this.context.goal },
-        buildFallbackSupervisorPlan({ taskId: this.context.taskId, goal: this.context.goal })
+        {
+          taskId: this.context.taskId,
+          goal: this.context.goal,
+          specialistLead: this.context.specialistLead,
+          supportingSpecialists: this.context.supportingSpecialists
+        },
+        buildFallbackSupervisorPlan({
+          taskId: this.context.taskId,
+          goal: this.context.goal,
+          specialistLead: this.context.specialistLead,
+          supportingSpecialists: this.context.supportingSpecialists
+        })
       );
 
     this.state.plan = plan.steps;
@@ -131,7 +159,8 @@ export class LibuRouterMinistry {
       from: AgentRole.MANAGER,
       to: subTask.assignedTo,
       kind: inferDispatchKind(subTask),
-      objective: subTask.description
+      objective: subTask.description,
+      requiredCapabilities: subTask.requiredCapabilities
     }));
   }
 

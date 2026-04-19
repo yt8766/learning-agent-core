@@ -102,6 +102,15 @@ export function TaskDetailPanel({ bundle }: TaskDetailPanelProps) {
               <ReviewTag review={bundle?.review} />
             </li>
             <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
+              <strong className="text-foreground">Dispatch Agent</strong>
+              <span>
+                {bundle?.task.dispatches
+                  ?.map(item => item.selectedAgentId ?? item.agentId)
+                  .filter((item, index, items): item is string => Boolean(item) && items.indexOf(item) === index)
+                  .join(' / ') ?? '暂无'}
+              </span>
+            </li>
+            <li className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
               <strong className="text-foreground">文书科压缩</strong>
               <span>
                 {bundle?.task.contextFilterState?.filteredContextSlice.compressionApplied

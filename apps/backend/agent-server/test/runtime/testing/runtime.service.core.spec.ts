@@ -232,7 +232,7 @@ describe('RuntimeService core', () => {
       'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind'
     );
     expect(runtimeExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,selectedAgents,selectionSources,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt'
     );
     expect(runtimeExport.content).toContain(
       'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError'
@@ -244,7 +244,7 @@ describe('RuntimeService core', () => {
     expect(approvalsExport.mimeType).toBe('text/csv');
     expect(approvalsExport.content).toContain('filterExecutionMode,filterInteractionKind');
     expect(approvalsExport.content).toContain(
-      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt'
+      'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,selectedAgents,selectionSources,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt'
     );
     expect(evalsExport.filename).toContain('evals-center-7d');
     expect(evalsExport.mimeType).toBe('text/csv');

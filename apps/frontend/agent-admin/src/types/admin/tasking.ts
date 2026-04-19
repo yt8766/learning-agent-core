@@ -20,6 +20,9 @@ export interface SpecialistLeadRecord {
   displayName: string;
   domain: string;
   reason: string;
+  requiredCapabilities?: string[];
+  agentId?: string;
+  candidateAgentIds?: string[];
 }
 
 export interface SpecialistSupportRecord {
@@ -27,6 +30,21 @@ export interface SpecialistSupportRecord {
   displayName: string;
   domain: string;
   reason?: string;
+  requiredCapabilities?: string[];
+  agentId?: string;
+  candidateAgentIds?: string[];
+}
+
+export interface PlannerStrategyRecord {
+  mode: 'default' | 'capability-gap' | 'rich-candidates';
+  summary: string;
+  leadDomain?: string;
+  requiredCapabilities?: string[];
+  preferredAgentId?: string;
+  candidateAgentIds?: string[];
+  candidateCount: number;
+  gapDetected: boolean;
+  updatedAt: string;
 }
 
 export interface CritiqueResultRecord {
@@ -112,6 +130,7 @@ export type TaskRecord = Omit<
     progressPercent?: number;
     updatedAt: string;
   };
+  plannerStrategy?: PlannerStrategyRecord;
 };
 
 export interface TaskPlan {

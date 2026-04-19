@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/knowledge/`
-最后核对：2026-04-18
+最后核对：2026-04-20
 
 本目录用于沉淀 `packages/knowledge` 相关文档。
 
@@ -11,18 +11,20 @@
 
 - 职责：
   - RAG 知识源接入、文档标准化、chunking、索引写入、检索、重排、citation/context 组装
+  - 本地知识 ingestion / overview / artifact snapshot facade
 - 允许：
   - knowledge source / chunk repository
   - retrieval contract
   - citation contract
   - indexing / retrieval runtime
+  - 本地 docs/package manifest ingestion、chunk/embedding receipt 持久化
 - 禁止：
   - chat / workflow 主链编排
   - 最终回答生成
   - app view model
   - provider SDK 具体实现
 - 依赖方向：
-  - 只依赖 `@agent/core`
+  - 允许依赖 `@agent/core`、`@agent/config`、`@agent/adapters`
   - 被 `runtime`、`agents/*` 与 backend 消费
 - 公开入口：
   - 根入口：`@agent/knowledge`
@@ -36,3 +38,13 @@
 当前文档：
 
 - [indexing-package-guidelines.md](/docs/knowledge/indexing-package-guidelines.md)
+
+当前实现补充：
+
+- `packages/knowledge/src/runtime/local-knowledge-store.ts`
+  - 是当前本地知识摄取与概览读取的真实宿主
+  - 负责 `ingestLocalKnowledge`、`readKnowledgeOverview`、`listKnowledgeArtifacts`、`buildKnowledgeDescriptor`
+  - backend 的 `apps/backend/agent-server/src/runtime/knowledge/runtime-knowledge-store.ts` 仅保留 thin compat re-export
+- `packages/knowledge/src/runtime/local-knowledge-store.helpers.ts`
+  - 承载本地 docs/package manifest 枚举、chunk 切分、embedding 写盘与 snapshot 读写
+  - 如果继续增长，应优先拆到 `packages/knowledge/src/runtime/` 下的更细 helper，而不是把逻辑再放回 backend

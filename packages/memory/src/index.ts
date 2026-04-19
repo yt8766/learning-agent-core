@@ -2,3 +2,4 @@
 export * from './search';
 export * from './vector';
 export * from './embeddings';
+export * from './governance';

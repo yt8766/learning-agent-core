@@ -13,8 +13,10 @@ import type { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { filterToolsForExecutionMode } from '../../capabilities/execution-mode-guard';
 import { StreamingExecutionCoordinator } from '../../runtime/streaming-execution';
 import { buildGongbuApprovalPreview, evaluateGongbuApprovalGate } from './gongbu-code/gongbu-code-approval-gate';
+import { runGongbuDataReportPipeline } from './gongbu-code/gongbu-code-data-report-pipeline';
 import { executeGongbuToolRequest, maybeReadGongbuSearchResult } from './gongbu-code/gongbu-code-execution-runner';
 import { executeReadonlyBatch } from './gongbu-code/gongbu-code-readonly-batch';
+import { runGongbuScaffoldWorkflow } from './gongbu-code/gongbu-code-scaffold-workflow';
 import { selectGongbuExecution } from './gongbu-code/gongbu-code-selection-service';
 import {
   buildGongbuToolInput,
@@ -23,11 +25,6 @@ import {
   selectPreferredResearchSource,
   selectPreferredToolNameByWorkflow
 } from './gongbu-code/gongbu-code-tool-resolution';
-import {
-  inspectScaffoldWriteCommand,
-  resolveScaffoldIntent,
-  resolveScaffoldToolName
-} from './gongbu-code/gongbu-code-scaffold';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;
@@ -215,250 +212,21 @@ export class GongbuCodeMinistry {
     return executeGongbuToolRequest(this.context, tool, intent, toolInput);
   }
 
-  protected async executeDataReportPipeline(researchSummary: string): Promise<{
-    intent: ActionIntentValue;
-    toolName: string;
-    requiresApproval: boolean;
-    tool?: ToolDefinition;
-    executionResult?: ToolExecutionResult;
-    summary: string;
-    approvalReason?: string;
-    approvalReasonCode?: string;
-    approvalPreview?: Array<{
-      label: string;
-      value: string;
-    }>;
-    toolInput?: Record<string, unknown>;
-  }> {
-    const intent = ActionIntent.READ_FILE;
-    const stageToolNames = [
-      'plan_data_report_structure',
-      'generate_data_report_module',
-      'generate_data_report_scaffold',
-      'generate_data_report_routes',
-      'assemble_data_report_bundle'
-    ] as const;
-    const blueprintTool = this.context.toolRegistry.get('plan_data_report_structure');
-    const moduleTool = this.context.toolRegistry.get('generate_data_report_module');
-    const sharedTool = this.context.toolRegistry.get('generate_data_report_scaffold');
-    const routeTool = this.context.toolRegistry.get('generate_data_report_routes');
-    const assembleTool = this.context.toolRegistry.get('assemble_data_report_bundle');
-
-    if (!blueprintTool || !moduleTool || !sharedTool || !routeTool || !assembleTool) {
-      const summary = '工部无法完成数据报表分阶段生成，缺少必要的只读工具。';
-      this.state.status = 'failed';
-      this.state.finalOutput = summary;
-      return {
-        intent,
-        toolName: 'unresolved_data_report_pipeline',
-        requiresApproval: false,
-        summary
-      };
-    }
-
-    const actionPrompt = `目标：${this.context.goal}；任务上下文：${this.context.taskContext ?? '无'}；研究摘要：${researchSummary}`;
-    this.state.plan = ['规划报表蓝图', '按模块生成报表文件', '生成共享骨架', '生成预览路由', '组装 Sandpack 预览'];
-
-    const blueprintResult = await this.executeSingleTool(
-      blueprintTool,
-      intent,
-      this.buildToolInput(blueprintTool.name, actionPrompt, researchSummary)
-    );
-    const blueprint = blueprintResult.rawOutput as
-      | {
-          templateId?: string;
-          moduleIds?: string[];
-          modules?: Array<{ id: string }>;
-        }
-      | undefined;
-    const moduleIds =
-      blueprint?.moduleIds ?? blueprint?.modules?.map(module => module.id).filter(Boolean) ?? ([] as string[]);
-
-    const moduleResults: ToolExecutionResult[] = [];
-    for (const moduleId of moduleIds) {
-      moduleResults.push(
-        await this.executeSingleTool(
-          moduleTool,
-          intent,
-          this.buildToolInput(moduleTool.name, actionPrompt, researchSummary, { moduleId })
-        )
-      );
-    }
-
-    const sharedResult = await this.executeSingleTool(
-      sharedTool,
-      intent,
-      this.buildToolInput(sharedTool.name, actionPrompt, researchSummary)
-    );
-    const sharedFiles = Array.isArray((sharedResult.rawOutput as { files?: unknown[] } | undefined)?.files)
-      ? (((sharedResult.rawOutput as { files?: unknown[] }).files ?? []) as unknown[])
-      : [];
-    const routeResult = await this.executeSingleTool(
-      routeTool,
-      intent,
-      this.buildToolInput(routeTool.name, actionPrompt, researchSummary, {
-        blueprint
-      })
-    );
-    const routeFiles = Array.isArray((routeResult.rawOutput as { files?: unknown[] } | undefined)?.files)
-      ? (((routeResult.rawOutput as { files?: unknown[] }).files ?? []) as unknown[])
-      : [];
-    const assemblyResult = await this.executeSingleTool(
-      assembleTool,
-      intent,
-      this.buildToolInput(assembleTool.name, actionPrompt, researchSummary, {
-        blueprint,
-        moduleResults: moduleResults.map(item => item.rawOutput),
-        sharedFiles,
-        routeFiles
-      })
-    );
-
-    const stageSummary = [
-      blueprintResult.outputSummary,
-      ...moduleResults.map(item => item.outputSummary),
-      sharedResult.outputSummary,
-      routeResult.outputSummary,
-      assemblyResult.outputSummary
-    ].join('；');
-    this.state.toolCalls.push(...stageToolNames.map(toolName => `tool:${toolName}`));
-    this.state.observations.push(
-      `数据报表流程已完成 blueprint/module/shared/routes/assembly 五段执行。模块数：${moduleIds.length || moduleResults.length}。`
-    );
-    if (blueprint?.templateId) {
-      this.state.observations.push(`模板来源：${blueprint.templateId}`);
-    }
-    this.state.shortTermMemory = [researchSummary, stageSummary];
-    this.state.finalOutput = stageSummary;
-    this.state.status = 'completed';
-
-    return {
-      intent,
-      toolName: assembleTool.name,
-      tool: assembleTool,
-      requiresApproval: false,
-      executionResult: assemblyResult,
-      summary: assemblyResult.outputSummary
-    };
+  protected executeDataReportPipeline(researchSummary: string) {
+    return runGongbuDataReportPipeline(this.context, this.state, researchSummary, {
+      executeSingleTool: (tool, intent, toolInput) => this.executeSingleTool(tool, intent, toolInput),
+      buildToolInput: (toolName, actionPrompt, summary, overrides) =>
+        this.buildToolInput(toolName, actionPrompt, summary, overrides)
+    });
   }
 
-  protected async executeScaffoldWorkflow(researchSummary: string): Promise<{
-    intent: ActionIntentValue;
-    toolName: string;
-    requiresApproval: boolean;
-    tool?: ToolDefinition;
-    executionResult?: ToolExecutionResult;
-    summary: string;
-    approvalReason?: string;
-    approvalReasonCode?: string;
-    approvalPreview?: Array<{
-      label: string;
-      value: string;
-    }>;
-    toolInput?: Record<string, unknown>;
-  }> {
-    let toolName: string;
-    let intent: ActionIntentValue;
-    let toolInput: Record<string, unknown>;
-
-    try {
-      toolName = resolveScaffoldToolName(this.context.goal);
-      intent = resolveScaffoldIntent(this.context.goal);
-      toolInput = this.buildToolInput(toolName, `脚手架流程：${this.context.goal}`, researchSummary);
-    } catch (error) {
-      const summary = error instanceof Error ? error.message : '无法解析 /scaffold 命令。';
-      this.state.status = 'failed';
-      this.state.finalOutput = summary;
-      return {
-        intent: ActionIntent.READ_FILE,
-        toolName: 'invalid_scaffold_command',
-        requiresApproval: false,
-        summary
-      };
-    }
-
-    const tool = this.context.toolRegistry.get(toolName);
-    if (!tool) {
-      const summary = `工部无法找到 /scaffold 所需工具 ${toolName}。`;
-      this.state.status = 'failed';
-      this.state.finalOutput = summary;
-      return {
-        intent,
-        toolName,
-        requiresApproval: false,
-        summary,
-        toolInput
-      };
-    }
-
-    this.state.plan = ['解析 /scaffold 命令', '生成脚手架预览或预检', '在需要时执行审批与写入'];
-    this.state.toolCalls.push(`intent:${intent}`, `tool:${tool.name}`);
-    this.state.observations.push(`已进入 ${this.context.workflowPreset?.displayName ?? '脚手架'} 显式流程。`);
-
-    if (tool.name === 'write_scaffold') {
-      const { bundle, inspection } = await inspectScaffoldWriteCommand(this.context.goal);
-      if (!inspection.canWriteSafely && toolInput.force !== true) {
-        const summary = `Scaffold target is not empty: ${inspection.targetRoot}`;
-        const executionResult: ToolExecutionResult = {
-          ok: true,
-          outputSummary: summary,
-          rawOutput: {
-            blocked: true,
-            inspection,
-            bundle
-          },
-          exitCode: 0,
-          durationMs: 0
-        };
-        this.state.observations.push(summary);
-        this.state.shortTermMemory = [researchSummary, summary];
-        this.state.finalOutput = summary;
-        this.state.status = 'completed';
-        return {
-          intent,
-          toolName: tool.name,
-          tool,
-          requiresApproval: false,
-          executionResult,
-          summary,
-          toolInput
-        };
-      }
-    }
-
-    const approvalEvaluation = await evaluateGongbuApprovalGate(this.context, intent, tool, toolInput);
-    if (approvalEvaluation.requiresApproval) {
-      this.state.status = 'waiting_approval';
-      const summary = `执行已暂停：${intent} 使用 ${tool.name} 需要人工审批。${approvalEvaluation.reason}`;
-      this.state.finalOutput = summary;
-      return {
-        intent,
-        toolName: tool.name,
-        tool,
-        requiresApproval: true,
-        summary,
-        toolInput,
-        approvalPreview: this.buildApprovalPreview(tool.name, toolInput),
-        approvalReason: approvalEvaluation.reason,
-        approvalReasonCode: approvalEvaluation.reasonCode
-      };
-    }
-
-    const executionResult = await this.executeSingleTool(tool, intent, toolInput);
-    this.state.observations.push(executionResult.outputSummary);
-    this.state.shortTermMemory = [researchSummary, executionResult.outputSummary];
-    this.state.finalOutput = executionResult.outputSummary;
-    this.state.status = 'completed';
-
-    return {
-      intent,
-      toolName: tool.name,
-      tool,
-      requiresApproval: false,
-      executionResult,
-      summary: executionResult.outputSummary,
-      toolInput
-    };
+  protected executeScaffoldWorkflow(researchSummary: string) {
+    return runGongbuScaffoldWorkflow(this.context, this.state, researchSummary, {
+      executeSingleTool: (tool, intent, toolInput) => this.executeSingleTool(tool, intent, toolInput),
+      buildToolInput: (toolName, actionPrompt, summary, overrides) =>
+        this.buildToolInput(toolName, actionPrompt, summary, overrides),
+      buildApprovalPreview: (toolName, input) => this.buildApprovalPreview(toolName, input)
+    });
   }
 
   buildApprovedState(executionResult: ToolExecutionResult, pending: PendingExecutionContext): AgentExecutionState {

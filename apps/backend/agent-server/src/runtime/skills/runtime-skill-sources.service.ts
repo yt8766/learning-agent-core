@@ -11,6 +11,11 @@ import type {
   SkillSourceRecord
 } from '@agent/core';
 import type { SkillSourceSyncResult } from './skill-source-sync.service';
+import {
+  buildSkillSearchMcpRecommendation,
+  buildSkillSearchSafetyNotes,
+  resolveSkillSearchStatus
+} from '../domain/skills/runtime-skill-search-resolution';
 
 import {
   buildConnectorTemplateSuggestions,
@@ -253,27 +258,8 @@ export async function resolveTaskSkillSearch(
     ...searchResult,
     suggestions: [...enrichedSuggestions, ...buildConnectorTemplateSuggestions(goal)].slice(0, 6)
   };
-
-  const safetyNotes = searchResult.suggestions.slice(0, 3).map(suggestion => {
-    const safety = suggestion.safety;
-    return safety
-      ? `${suggestion.displayName}：${suggestion.availability}，${safety.verdict}，trust=${safety.trustScore}，${safety.reasons.join('；')}`
-      : `${suggestion.displayName}：${suggestion.availability}`;
-  });
-
-  if (searchResult.remoteSearch) {
-    safetyNotes.unshift(
-      `已通过 ${searchResult.remoteSearch.discoverySource} 远程检索 ${searchResult.remoteSearch.results.length} 个候选。`
-    );
-  }
-
-  let status: SkillSearchStatus = searchResult.capabilityGapDetected
-    ? searchResult.suggestions.some(item =>
-        ['installable', 'installable-local', 'installable-remote', 'approval-required'].includes(item.availability)
-      )
-      ? 'suggested'
-      : 'blocked'
-    : 'not-needed';
+  let status: SkillSearchStatus = resolveSkillSearchStatus(searchResult);
+  let autoInstalledManifestId: string | undefined;
 
   if (
     context.settings.policy.skillInstallMode === 'low-risk-auto' &&
@@ -290,9 +276,16 @@ export async function resolveTaskSkillSearch(
         limit: 5
       });
       status = 'auto-installed';
-      safetyNotes.unshift(`已按当前 profile=${context.settings.profile} 自动安装低风险技能 ${manifest.id}。`);
+      autoInstalledManifestId = manifest.id;
     }
   }
+
+  const safetyNotes = buildSkillSearchSafetyNotes({
+    suggestions: searchResult.suggestions,
+    remoteSearch: searchResult.remoteSearch,
+    profile: String(context.settings.profile),
+    autoInstalledManifestId
+  });
 
   return {
     capabilityGapDetected: searchResult.capabilityGapDetected,
@@ -309,7 +302,7 @@ export async function resolveTaskSkillSearch(
           executedAt: searchResult.remoteSearch.executedAt
         }
       : undefined,
-    mcpRecommendation: buildMcpRecommendation(goal, searchResult.suggestions, searchResult.capabilityGapDetected)
+    mcpRecommendation: buildSkillSearchMcpRecommendation(goal, searchResult.suggestions, searchResult.capabilityGapDetected)
   } as const;
 }
 
@@ -321,48 +314,4 @@ export async function syncEnabledRemoteSkillSources(context: RuntimeSkillSources
   for (const source of remoteSources) {
     await context.skillSourceSyncService.syncSource(source).catch(() => undefined);
   }
-}
-
-function buildMcpRecommendation(
-  goal: string,
-  suggestions: LocalSkillSuggestionRecord[],
-  capabilityGapDetected: boolean
-) {
-  const connectorSuggestion = suggestions.find(item => item.kind === 'connector-template');
-  if (connectorSuggestion?.id === 'github-mcp-template') {
-    return {
-      kind: 'connector' as const,
-      summary: '当前更缺 GitHub MCP connector，不只是 skill。',
-      reason: connectorSuggestion.reason,
-      connectorTemplateId: 'github-mcp-template' as const
-    };
-  }
-  if (connectorSuggestion?.id === 'browser-mcp-template') {
-    return {
-      kind: 'connector' as const,
-      summary: '当前更缺 Browser MCP connector，不只是 skill。',
-      reason: connectorSuggestion.reason,
-      connectorTemplateId: 'browser-mcp-template' as const
-    };
-  }
-  if (connectorSuggestion?.id === 'lark-mcp-template') {
-    return {
-      kind: 'connector' as const,
-      summary: '当前更缺 Lark MCP connector，不只是 skill。',
-      reason: connectorSuggestion.reason,
-      connectorTemplateId: 'lark-mcp-template' as const
-    };
-  }
-  if (capabilityGapDetected) {
-    return {
-      kind: 'skill' as const,
-      summary: '当前能力链路存在缺口，优先建议补 skill。',
-      reason: `目标“${goal}”当前没有足够的 ready skill。`
-    };
-  }
-  return {
-    kind: 'not-needed' as const,
-    summary: '当前没有明显的 MCP 或 skill 缺口。',
-    reason: '本轮已有本地能力可继续推进。'
-  };
 }

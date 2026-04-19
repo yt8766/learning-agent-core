@@ -23,6 +23,7 @@ import {
   KnowledgeIngestionStateRecordSchema,
   ManagerPlanSchema,
   MicroLoopStateRecordSchema,
+  PlannerStrategyRecordSchema,
   ReviewRecordSchema,
   SandboxStateRecordSchema,
   SpecialistFindingRecordSchema,
@@ -37,6 +38,7 @@ export type SubTaskRecord = z.infer<typeof SubTaskRecordSchema>;
 export type ManagerPlan = z.infer<typeof ManagerPlanSchema>;
 export type ReviewRecord = z.infer<typeof ReviewRecordSchema>;
 export type DispatchInstruction = z.infer<typeof DispatchInstructionSchema>;
+export type PlannerStrategyRecord = z.infer<typeof PlannerStrategyRecordSchema>;
 export type SpecialistLeadRecord = z.infer<typeof SpecialistLeadRecordSchema>;
 export type SpecialistSupportRecord = z.infer<typeof SpecialistSupportRecordSchema>;
 export type SpecialistFindingRecord = z.infer<typeof SpecialistFindingRecordSchema>;

@@ -97,6 +97,17 @@ export interface ChatCheckpointRecord {
     to: string;
     kind: 'strategy' | 'ministry' | 'fallback';
     objective: string;
+    specialistDomain?: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
+    selectedAgentId?: string;
+    selectionSource?:
+      | 'explicit-agent'
+      | 'strategy-counselor'
+      | 'specialist-lead'
+      | 'supporting-specialist'
+      | 'candidate-first';
   }>;
   critiqueResult?: {
     decision: 'pass' | 'revise_required' | 'block' | 'needs_human_approval';

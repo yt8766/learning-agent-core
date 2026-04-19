@@ -6,8 +6,10 @@
     "paths": {
       "@agent/agent-kit": ["../../../packages/agent-kit/src/index.ts"],
       "@agent/core": ["../../../packages/core/src/index.ts"],
+      "@agent/knowledge": ["../../../packages/knowledge/src/index.ts"],
       "@agent/config": ["../../../packages/config/src/index.ts"],
       "@agent/runtime": ["../../../packages/runtime/src/index.ts"],
+      "@agent/platform-runtime": ["../../../packages/platform-runtime/src/index.ts"],
       "@agent/adapters": ["../../../packages/adapters/src/index.ts"],
       "@agent/tools": ["../../../packages/tools/src/index.ts"],
       "@agent/memory": ["../../../packages/memory/src/index.ts"],

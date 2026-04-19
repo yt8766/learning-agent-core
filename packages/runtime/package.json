@@ -48,6 +48,7 @@
     }
   },
   "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
     "build:transpile": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",
@@ -65,10 +66,6 @@
   "dependencies": {
     "@agent/agent-kit": "workspace:*",
     "@agent/adapters": "workspace:*",
-    "@agent/agents-coder": "workspace:*",
-    "@agent/agents-data-report": "workspace:*",
-    "@agent/agents-reviewer": "workspace:*",
-    "@agent/agents-supervisor": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/memory": "workspace:*",

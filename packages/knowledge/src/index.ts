@@ -29,5 +29,6 @@ export * from './repositories/knowledge-source.repository';
 export * from './repositories/knowledge-chunk.repository';
 export * from './retrieval/knowledge-search-service';
 export * from './runtime/local-knowledge-facade';
+export * from './runtime/local-knowledge-store';
 export * from './shared/knowledge-text-scoring';
 export * from './indexing';

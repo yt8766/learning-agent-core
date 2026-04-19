@@ -1,4 +1,4 @@
-import type { EvaluationResult, EvidenceRecord, ReviewRecord } from '@agent/core';
+import type { DispatchInstruction, EvaluationResult, EvidenceRecord, ReviewRecord } from '@agent/core';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
 
 export function isDiagnosisTask(
@@ -223,7 +223,35 @@ export function normalizeAgentError(error: unknown): {
   };
 }
 
-export function inferAgentRoleFromMinistry(ministry?: string) {
+function findLatestResolvedDispatch(dispatches: DispatchInstruction[] | undefined) {
+  return [...(dispatches ?? [])]
+    .reverse()
+    .find(dispatch => dispatch.kind !== 'fallback' && (dispatch.selectedAgentId || dispatch.agentId));
+}
+
+function inferAgentRoleFromDispatch(dispatch?: DispatchInstruction) {
+  if (!dispatch) {
+    return undefined;
+  }
+  if (
+    dispatch.specialistDomain === 'risk-compliance' ||
+    dispatch.requiredCapabilities?.includes('specialist.risk-compliance') ||
+    dispatch.selectedAgentId?.includes('reviewer') ||
+    dispatch.agentId?.includes('reviewer')
+  ) {
+    return 'reviewer' as const;
+  }
+  if (dispatch.kind === 'strategy' || dispatch.selectionSource === 'strategy-counselor') {
+    return 'research' as const;
+  }
+  return 'executor' as const;
+}
+
+export function inferAgentRoleFromMinistry(ministry?: string, dispatches?: DispatchInstruction[]) {
+  const dispatchRole = inferAgentRoleFromDispatch(findLatestResolvedDispatch(dispatches));
+  if (dispatchRole) {
+    return dispatchRole;
+  }
   if (ministry === 'hubu-search' || ministry === 'libu-delivery' || ministry === 'libu-docs') {
     return 'research' as const;
   }
@@ -231,6 +259,17 @@ export function inferAgentRoleFromMinistry(ministry?: string) {
     return 'reviewer' as const;
   }
   return 'executor' as const;
+}
+
+function resolveAgentErrorBoundaryId(task: RuntimeTaskRecord) {
+  const dispatch = findLatestResolvedDispatch(task.dispatches);
+  return (
+    task.currentWorker ??
+    dispatch?.selectedAgentId ??
+    dispatch?.agentId ??
+    task.currentMinistry ??
+    'agent-error-boundary'
+  );
 }
 
 export function recordAgentError(
@@ -278,8 +317,8 @@ export function recordAgentError(
   });
   callbacks.addProgressDelta(task, `执行遇到异常：${normalized.message}`);
   callbacks.upsertAgentState(task, {
-    agentId: task.currentWorker ?? task.currentMinistry ?? 'agent-error-boundary',
-    role: inferAgentRoleFromMinistry(task.currentMinistry),
+    agentId: resolveAgentErrorBoundaryId(task),
+    role: inferAgentRoleFromMinistry(task.currentMinistry, task.dispatches),
     goal: task.goal,
     plan: [],
     toolCalls: [],

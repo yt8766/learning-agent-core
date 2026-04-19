@@ -61,9 +61,11 @@ describe('loadSettings', () => {
     );
     const expectedSkillsRoot = join(
       REPO_ROOT,
-      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skill-runtime'
+      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skills'
     );
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(expectedSkillsRoot));
+    expect(toPosixPath(settings.skillPackagesRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'installed')));
+    expect(toPosixPath(settings.skillReceiptsRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'receipts')));
   });
 
   it('保留显式传入的绝对路径配置', () => {
@@ -216,7 +218,7 @@ describe('loadSettings', () => {
         expect(toPosixPath(settings.tasksStateFilePath)).toBe(
           toPosixPath(join(workspaceRoot, 'data', 'runtime', 'tasks-state.json'))
         );
-        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skill-runtime')));
+        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skills')));
       } finally {
         await rm(workspaceRoot, { recursive: true, force: true });
       }
@@ -249,6 +251,7 @@ describe('loadSettings', () => {
     expect(settings.policy.budget.fallbackModelId).toBe('glm-5.1');
     expect(settings.contextStrategy.ragTopK).toBe(4);
     expect(settings.contextStrategy.recentTurns).toBe(10);
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-personal', 'skills')));
   });
 
   it('company profile keeps learning and approval defaults conservative', () => {
@@ -266,6 +269,7 @@ describe('loadSettings', () => {
     expect(settings.policy.approvalPolicy.destructiveActionRequireApproval).toBe(true);
     expect(settings.policy.suggestionPolicy.expertAdviceDefault).toBe(true);
     expect(settings.policy.suggestionPolicy.autoSearchSkillsOnGap).toBe(true);
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-work', 'skills')));
   });
 
   it('context strategy applies conversation compression defaults and supports env overrides', () => {

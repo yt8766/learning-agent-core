@@ -13,7 +13,7 @@ import {
   type DataReportPreviewStageEvent,
   type DataReportSandpackFiles,
   type DataReportSandpackStage
-} from '@agent/agents-data-report';
+} from '../runtime/core/runtime-data-report-facade';
 import { withLlmRetry } from '@agent/runtime';
 
 import type { RuntimeHost } from '../runtime/core/runtime.host';

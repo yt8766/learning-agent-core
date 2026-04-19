@@ -11,6 +11,7 @@ import type { RuntimeSkillSourcesContext } from '../../skills/runtime-skill-sour
 
 export interface RuntimeCentersContextInput {
   settings: () => RuntimeHost['settings'];
+  runtimeHost: () => RuntimeHost;
   appLogger?: () => AppLoggerService | undefined;
   techBriefingService?: () => RuntimeTechBriefingService | undefined;
   wenyuanFacade: () => RuntimeWenyuanFacade;
@@ -38,6 +39,7 @@ export interface RuntimeCentersContextInput {
 export function createCentersContext(input: RuntimeCentersContextInput): RuntimeCentersContext {
   return {
     settings: input.settings(),
+    runtimeHost: input.runtimeHost(),
     appLogger: input.appLogger?.(),
     techBriefingService: input.techBriefingService?.(),
     wenyuanFacade: input.wenyuanFacade(),

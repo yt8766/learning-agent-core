@@ -430,9 +430,13 @@ export function buildCounselorProxyInterrupt(
 export function collectCounselorIds(task: SupervisorPlanningTaskLike) {
   return Array.from(
     new Set(
-      [task.specialistLead?.id, ...(task.supportingSpecialists?.map(item => item.id) ?? [])].filter(
-        (item): item is NonNullable<SupervisorPlanningTaskLike['specialistLead']>['id'] => Boolean(item)
-      )
+      [
+        task.specialistLead?.agentId,
+        ...(task.specialistLead?.candidateAgentIds ?? []),
+        ...(task.supportingSpecialists?.flatMap(item => [item.agentId, ...(item.candidateAgentIds ?? [])]) ?? []),
+        task.specialistLead?.id,
+        ...(task.supportingSpecialists?.map(item => item.id) ?? [])
+      ].filter((item): item is string => Boolean(item))
     )
   );
 }

@@ -103,7 +103,7 @@
   - `review-stage/`：刑部终审、治理评分、交付前状态收口
   - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
 - 本地运行数据统一放仓库根级 `data/`
-- 运行时技能相关本地数据默认优先使用 `data/skill-runtime/`
+- 运行时技能相关本地数据默认优先使用 `data/skills/`
 - 仓库级可重建产物优先放仓库根级 `artifacts/`
 - 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
@@ -119,6 +119,7 @@
   - `Integration`
 - 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
 - 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- `packages/*` 默认应维护显式 `demo/` 与 `demo` 脚本，并让根级 `pnpm test:demo` / `pnpm test:demo:affected` 能直接覆盖；不要把包级最小闭环长期只留给人工运行才发现
 - 每次改动文件时，禁止绕过 [验证体系规范](/docs/evals/verification-system-guidelines.md) 自行裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成对应层级验证或明确记录 blocker
 - GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
 - GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口

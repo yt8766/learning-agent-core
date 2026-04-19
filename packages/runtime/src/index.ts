@@ -12,6 +12,15 @@ export { SessionCoordinator } from './contracts/session-coordinator';
 export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts/worker-registry';
 export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts/profile-policy';
 export { ModelRoutingPolicy } from './contracts/model-routing-policy';
+export {
+  configureRuntimeAgentDependencies,
+  getRuntimeAgentDependencies,
+  type BootstrapSkillRecord,
+  type DataReportContract,
+  type RuntimeAgentDependencies,
+  type RuntimeSpecialistRoute,
+  type RuntimeWorkflowResolution
+} from './contracts/runtime-agent-dependencies';
 export type { SessionStoreSnapshot } from './contracts/session-store';
 export {
   listActiveApprovalScopePolicies,
@@ -87,8 +96,18 @@ export {
   type RecentQuarantinedMemory,
   type RuntimeGovernanceSnapshotRecord
 } from './runtime/runtime-learning-center';
+export { buildLearningMemoryStats } from './runtime/runtime-learning-memory-stats';
+export {
+  normalizeLearningCenterJobs,
+  normalizeLearningCenterTasks
+} from './runtime/runtime-learning-center-normalization';
 export { buildCompanyAgentsCenter } from './runtime/runtime-company-agents-center';
 export { buildConnectorsCenter, type RuntimeConnectorsCenterRecord } from './runtime/runtime-connectors-center';
+export {
+  loadConnectorCenterProjection,
+  loadConnectorProjectionById,
+  type RuntimeConnectorCenterLoaderInput
+} from './runtime/runtime-connectors-center-loader';
 export {
   buildSkillSourcesCenter,
   type InstalledSkillRecord,
@@ -100,8 +119,13 @@ export {
   summarizeAndPersistEvalHistory,
   summarizeAndPersistUsageAnalytics
 } from './runtime/runtime-metrics-store';
+export {
+  shouldUsePersistedEvalSnapshot,
+  shouldUsePersistedUsageSnapshot
+} from './runtime/runtime-metrics-snapshot-preference';
 export { refreshMetricsSnapshots } from './runtime/runtime-metrics-refresh';
 export type { RuntimeMetricsRefreshContext } from './runtime/runtime-metrics-refresh';
+export { filterAndSortRecentRuntimeRuns } from './runtime/runtime-recent-runs';
 export {
   generateObjectWithRetry,
   generateTextWithRetry,

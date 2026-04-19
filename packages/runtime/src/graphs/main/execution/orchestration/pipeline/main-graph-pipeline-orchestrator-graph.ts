@@ -11,13 +11,13 @@ import type {
 import { buildDirectReplyInterruptGraph } from '../../pipeline/direct-reply-interrupt-graph';
 import { buildTaskPipelineGraph } from '../../pipeline/main-graph-pipeline-graph';
 import type { PendingExecutionContext } from '../../../../../flows/approval';
-import { BingbuOpsMinistry, GongbuCodeMinistry } from '../../../../../bridges/coder-runtime-bridge';
+import { createBingbuOpsMinistry, createGongbuCodeMinistry } from '../../../../../bridges/coder-runtime-bridge';
 import {
-  HubuSearchMinistry,
-  LibuDocsMinistry,
-  LibuRouterMinistry
+  createHubuSearchMinistry,
+  createLibuDocsMinistry,
+  createLibuRouterMinistry
 } from '../../../../../bridges/supervisor-runtime-bridge';
-import { XingbuReviewMinistry as XingbuReviewMinistryImpl } from '../../../../../bridges/reviewer-runtime-bridge';
+import { createXingbuReviewMinistry } from '../../../../../bridges/reviewer-runtime-bridge';
 import type { RunTaskPipelineParams, TaskMode, TaskPipelineCallbacks } from './main-graph-pipeline-orchestrator.types';
 
 export function createPipelineMinistries(
@@ -33,12 +33,12 @@ export function createPipelineMinistries(
   libuDocs: DeliveryMinistryLike;
 } {
   return {
-    libu: new LibuRouterMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
-    hubu: new HubuSearchMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
-    gongbu: new GongbuCodeMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
-    bingbu: new BingbuOpsMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
-    xingbu: new XingbuReviewMinistryImpl(callbacks.createAgentContext(taskId, goal, 'chat')),
-    libuDocs: new LibuDocsMinistry(callbacks.createAgentContext(taskId, goal, 'chat'))
+    libu: createLibuRouterMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
+    hubu: createHubuSearchMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
+    gongbu: createGongbuCodeMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
+    bingbu: createBingbuOpsMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
+    xingbu: createXingbuReviewMinistry(callbacks.createAgentContext(taskId, goal, 'chat')),
+    libuDocs: createLibuDocsMinistry(callbacks.createAgentContext(taskId, goal, 'chat'))
   };
 }
 
@@ -47,7 +47,7 @@ export function createApprovalRecoveryMinistry(
   taskId: string,
   goal: string
 ): CodeExecutionMinistryLike {
-  return new GongbuCodeMinistry(callbacks.createAgentContext(taskId, goal, 'approval'));
+  return createGongbuCodeMinistry(callbacks.createAgentContext(taskId, goal, 'approval'));
 }
 
 export function buildDirectReplyGraphRunner(

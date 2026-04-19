@@ -9,6 +9,7 @@ import type {
   ILLMProvider,
   LlmProviderAgentRole as AgentModelRole,
   SkillStep,
+  SpecialistDomain,
   WorkflowPresetDefinition
 } from '@agent/core';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
@@ -51,6 +52,25 @@ export interface AgentRuntimeContext {
   approvalService: ApprovalService;
   toolRegistry: ToolRegistry;
   workflowPreset?: WorkflowPresetDefinition;
+  specialistLead?: {
+    id: SpecialistDomain;
+    displayName: string;
+    domain: SpecialistDomain;
+    reason?: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
+  };
+  supportingSpecialists?: Array<{
+    id: SpecialistDomain;
+    displayName: string;
+    domain: SpecialistDomain;
+    reason?: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
+  }>;
+  routeConfidence?: number;
   currentWorker?: WorkerDefinition;
   compiledSkill?: {
     id: string;

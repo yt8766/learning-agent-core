@@ -394,6 +394,17 @@ export interface RuntimeCenterImperialChainRecord {
     to: string;
     kind: 'strategy' | 'ministry' | 'fallback';
     objective: string;
+    specialistDomain?: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
+    selectedAgentId?: string;
+    selectionSource?:
+      | 'explicit-agent'
+      | 'strategy-counselor'
+      | 'specialist-lead'
+      | 'supporting-specialist'
+      | 'candidate-first';
   }>;
   governanceScore?: {
     ministry: 'libu-governance';
@@ -439,6 +450,22 @@ export interface RuntimeCenterInterruptLedgerRecord {
     interruptHistory: unknown[];
   };
   revisionState?: string;
+}
+
+export interface RuntimeCenterPlannerStrategyRecord {
+  taskId: string;
+  goal: string;
+  strategy?: {
+    mode?: 'default' | 'capability-gap' | 'rich-candidates';
+    summary?: string;
+    leadDomain?: string;
+    requiredCapabilities: string[];
+    preferredAgentId?: string;
+    candidateAgentIds: string[];
+    candidateCount: number;
+    gapDetected: boolean;
+    updatedAt?: string;
+  };
 }
 
 export interface RuntimeCenterGovernanceScorecardRecord {
@@ -662,6 +689,7 @@ export interface RuntimeCenterRecord {
       displayName: string;
     }>;
   }>;
+  plannerStrategies?: RuntimeCenterPlannerStrategyRecord[];
   executionSpans?: RuntimeCenterExecutionSpanRecord[];
   interruptLedger?: RuntimeCenterInterruptLedgerRecord[];
   libuScorecards?: Array<{

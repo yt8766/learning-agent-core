@@ -48,6 +48,23 @@ export const PlatformConsoleContextFilterStateSchema = z
   })
   .partial();
 
+export const PlatformConsoleDispatchRecordSchema = z
+  .object({
+    taskId: z.string().optional(),
+    subTaskId: z.string().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    kind: z.enum(['strategy', 'ministry', 'fallback']).optional(),
+    objective: z.string().optional(),
+    specialistDomain: z.string().optional(),
+    requiredCapabilities: z.array(z.string()).optional(),
+    agentId: z.string().optional(),
+    candidateAgentIds: z.array(z.string()).optional(),
+    selectedAgentId: z.string().optional(),
+    selectionSource: z.string().optional()
+  })
+  .partial();
+
 export const PlatformConsoleRuntimeTaskRecordSchema = z
   .object({
     id: z.string().optional(),
@@ -57,6 +74,7 @@ export const PlatformConsoleRuntimeTaskRecordSchema = z
     pendingApproval: PlatformConsolePendingApprovalSchema.optional(),
     activeInterrupt: PlatformConsoleActiveInterruptSchema.optional(),
     currentWorker: z.string().optional(),
+    dispatches: z.array(PlatformConsoleDispatchRecordSchema).optional(),
     streamStatus: PlatformConsoleStreamStatusSchema.optional(),
     contextFilterState: PlatformConsoleContextFilterStateSchema.optional(),
     updatedAt: z.string().optional()

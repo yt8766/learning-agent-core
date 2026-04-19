@@ -131,6 +131,23 @@ export function buildRuntimeCenterProjection(input: BuildRuntimeCenterProjection
         displayName: input.getSpecialistDisplayName({ domain, goal: task.goal, context: task.context }) ?? domain
       }))
     })),
+    plannerStrategies: input.filteredRecentRuns.slice(0, 20).map(task => ({
+      taskId: task.id,
+      goal: task.goal,
+      strategy: task.plannerStrategy
+        ? {
+            mode: task.plannerStrategy.mode,
+            summary: task.plannerStrategy.summary,
+            leadDomain: task.plannerStrategy.leadDomain,
+            requiredCapabilities: task.plannerStrategy.requiredCapabilities ?? [],
+            preferredAgentId: task.plannerStrategy.preferredAgentId,
+            candidateAgentIds: task.plannerStrategy.candidateAgentIds ?? [],
+            candidateCount: task.plannerStrategy.candidateCount ?? 0,
+            gapDetected: task.plannerStrategy.gapDetected ?? false,
+            updatedAt: task.plannerStrategy.updatedAt
+          }
+        : undefined
+    })),
     executionSpans: input.filteredRecentRuns.slice(0, 20).map(task => ({
       taskId: task.id,
       ministries: (task.executionPlan?.executionMinistries ?? [])

@@ -221,6 +221,15 @@ export class MainGraphTaskContextRuntime {
       get workflowPreset() {
         return resolveTask()?.resolvedWorkflow;
       },
+      get specialistLead() {
+        return resolveTask()?.specialistLead;
+      },
+      get supportingSpecialists() {
+        return resolveTask()?.supportingSpecialists;
+      },
+      get routeConfidence() {
+        return resolveTask()?.routeConfidence;
+      },
       get taskContext() {
         return resolveTask()?.context;
       },

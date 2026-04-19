@@ -1,0 +1,48 @@
+{
+  "name": "@agent/platform-runtime",
+  "version": "0.1.0",
+  "main": "build/cjs/index.js",
+  "module": "build/esm/index.mjs",
+  "types": "build/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/esm/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/cjs/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
+    "build:transpile": "tsup",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:watch": "tsup --watch",
+    "build:watch:types": "tsc -p tsconfig.types.json --watch",
+    "watch": "pnpm build:watch & pnpm build:watch:types",
+    "build:lib": "pnpm build:transpile && pnpm build:types",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/platform-runtime",
+    "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/platform-runtime/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:test:unit": "pnpm test",
+    "test:integration": "node ../../scripts/run-package-integration-tests.js packages/platform-runtime",
+    "turbo:test:integration": "pnpm test:integration",
+    "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
+  },
+  "dependencies": {
+    "@agent/adapters": "workspace:*",
+    "@agent/agent-kit": "workspace:*",
+    "@agent/agents-coder": "workspace:*",
+    "@agent/agents-data-report": "workspace:*",
+    "@agent/agents-reviewer": "workspace:*",
+    "@agent/agents-supervisor": "workspace:*",
+    "@agent/config": "workspace:*",
+    "@agent/core": "workspace:*",
+    "@agent/runtime": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

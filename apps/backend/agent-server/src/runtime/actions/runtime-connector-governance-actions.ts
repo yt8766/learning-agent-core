@@ -9,6 +9,15 @@ import {
   describeConnectorProfilePolicy,
   persistConnectorDiscoverySnapshot
 } from '@agent/runtime';
+import {
+  clearCapabilityPolicyOverride,
+  clearConnectorPolicyOverride,
+  resolveConfiguredConnectorId,
+  setCapabilityPolicyOverride,
+  setConfiguredConnectorRecord,
+  setConnectorEnabledState,
+  setConnectorPolicyOverride
+} from '../domain/connectors/runtime-connector-governance-state';
 
 type RuntimeStateRepositoryLike = {
   load: () => Promise<RuntimeStateSnapshot>;
@@ -46,16 +55,7 @@ export async function setConnectorEnabledWithGovernance(input: {
     );
   }
   const snapshot = await input.runtimeStateRepository.load();
-  const disabled = new Set(snapshot.governance?.disabledConnectorIds ?? []);
-  if (input.enabled) {
-    disabled.delete(input.connectorId);
-  } else {
-    disabled.add(input.connectorId);
-  }
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    disabledConnectorIds: Array.from(disabled)
-  };
+  setConnectorEnabledState(snapshot, input.connectorId, input.enabled);
   await input.runtimeStateRepository.save(snapshot);
   input.mcpServerRegistry.setEnabled(input.connectorId, input.enabled);
   if (!input.enabled) {
@@ -91,20 +91,12 @@ export async function setConnectorApprovalPolicyWithGovernance<TConnectorView>(i
     throw new NotFoundException(`Connector ${input.connectorId} not found`);
   }
   const snapshot = await input.runtimeStateRepository.load();
-  const overrides = (snapshot.governance?.connectorPolicyOverrides ?? []).filter(
-    item => item.connectorId !== input.connectorId
-  );
-  overrides.push({
+  setConnectorPolicyOverride(snapshot, {
     connectorId: input.connectorId,
     effect: input.effect,
-    reason: `updated_from_admin:${input.effect}`,
-    updatedAt: new Date().toISOString(),
-    updatedBy: input.actor
+    actor: input.actor,
+    updatedAt: new Date().toISOString()
   });
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    connectorPolicyOverrides: overrides
-  };
   await input.runtimeStateRepository.save(snapshot);
   input.mcpCapabilityRegistry.setServerApprovalOverride(input.connectorId, input.effect);
   if (input.effect === 'deny') {
@@ -139,12 +131,7 @@ export async function clearConnectorApprovalPolicyWithGovernance<TConnectorView>
     throw new NotFoundException(`Connector ${input.connectorId} not found`);
   }
   const snapshot = await input.runtimeStateRepository.load();
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    connectorPolicyOverrides: (snapshot.governance?.connectorPolicyOverrides ?? []).filter(
-      item => item.connectorId !== input.connectorId
-    )
-  };
+  clearConnectorPolicyOverride(snapshot, input.connectorId);
   await input.runtimeStateRepository.save(snapshot);
   input.mcpCapabilityRegistry.setServerApprovalOverride(input.connectorId, undefined);
   await appendGovernanceAudit(input.runtimeStateRepository, {
@@ -182,21 +169,13 @@ export async function setCapabilityApprovalPolicyWithGovernance<TConnectorView>(
     throw new NotFoundException(`Capability ${input.capabilityId} not found for connector ${input.connectorId}`);
   }
   const snapshot = await input.runtimeStateRepository.load();
-  const overrides = (snapshot.governance?.capabilityPolicyOverrides ?? []).filter(
-    item => item.capabilityId !== input.capabilityId
-  );
-  overrides.push({
-    capabilityId: input.capabilityId,
+  setCapabilityPolicyOverride(snapshot, {
     connectorId: input.connectorId,
+    capabilityId: input.capabilityId,
     effect: input.effect,
-    reason: `updated_from_admin:${input.effect}`,
-    updatedAt: new Date().toISOString(),
-    updatedBy: input.actor
+    actor: input.actor,
+    updatedAt: new Date().toISOString()
   });
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    capabilityPolicyOverrides: overrides
-  };
   await input.runtimeStateRepository.save(snapshot);
   input.mcpCapabilityRegistry.setCapabilityApprovalOverride(input.capabilityId, input.effect);
   await appendGovernanceAudit(input.runtimeStateRepository, {
@@ -234,12 +213,7 @@ export async function clearCapabilityApprovalPolicyWithGovernance<TConnectorView
     throw new NotFoundException(`Capability ${input.capabilityId} not found for connector ${input.connectorId}`);
   }
   const snapshot = await input.runtimeStateRepository.load();
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    capabilityPolicyOverrides: (snapshot.governance?.capabilityPolicyOverrides ?? []).filter(
-      item => item.capabilityId !== input.capabilityId
-    )
-  };
+  clearCapabilityPolicyOverride(snapshot, input.capabilityId);
   await input.runtimeStateRepository.save(snapshot);
   input.mcpCapabilityRegistry.setCapabilityApprovalOverride(input.capabilityId, undefined);
   await appendGovernanceAudit(input.runtimeStateRepository, {
@@ -324,28 +298,13 @@ export async function configureConnectorWithGovernance<TConnectorView>(input: {
   registerDiscoveredCapabilities: (connectorId: string) => void;
   loadConnectorView: ConnectorViewLoader<TConnectorView>;
 }) {
-  const connectorId =
-    input.dto.templateId === 'github-mcp-template'
-      ? 'github-mcp'
-      : input.dto.templateId === 'browser-mcp-template'
-        ? 'browser-mcp'
-        : 'lark-mcp';
+  const connectorId = resolveConfiguredConnectorId(input.dto.templateId);
   const snapshot = await input.runtimeStateRepository.load();
-  const configuredConnectors = (snapshot.governance?.configuredConnectors ?? []).filter(
-    item => item.connectorId !== connectorId
-  );
-  configuredConnectors.push({
-    ...input.dto,
-    connectorId,
-    configuredAt: new Date().toISOString(),
-    enabled: input.dto.enabled ?? true
-  });
-  snapshot.governance = {
-    ...(snapshot.governance ?? {}),
-    configuredConnectors
-  };
+  setConfiguredConnectorRecord(snapshot, input.dto, new Date().toISOString());
   await input.runtimeStateRepository.save(snapshot);
-  input.registerConfiguredConnector(configuredConnectors[configuredConnectors.length - 1]!);
+  input.registerConfiguredConnector(
+    snapshot.governance?.configuredConnectors?.find(item => item.connectorId === connectorId)!
+  );
   await input.mcpClientManager.refreshServerDiscovery(connectorId).catch(() => undefined);
   input.registerDiscoveredCapabilities(connectorId);
   await persistConnectorDiscoverySnapshot(input.runtimeStateRepository, input.mcpClientManager, connectorId).catch(

@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 
+import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
+import { loadSettings } from '@agent/config';
 import type {
   KnowledgeChunkRecord,
   KnowledgeEmbeddingRecord,
@@ -9,8 +11,6 @@ import type {
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
 } from '@agent/core';
-import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
-import { loadSettings } from '@agent/config';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 

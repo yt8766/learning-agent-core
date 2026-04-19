@@ -21,8 +21,20 @@ export async function executeSupervisorPlan(context: AgentRuntimeContext) {
         {
           role: 'user',
           content: sanitizedTaskContext
-            ? [buildSupervisorPlanUserPrompt(context.goal), '以下是当前任务上下文：', sanitizedTaskContext].join('\n\n')
-            : buildSupervisorPlanUserPrompt(context.goal)
+            ? [
+                buildSupervisorPlanUserPrompt(context.goal, {
+                  specialistLead: context.specialistLead,
+                  supportingSpecialists: context.supportingSpecialists,
+                  routeConfidence: context.routeConfidence
+                }),
+                '以下是当前任务上下文：',
+                sanitizedTaskContext
+              ].join('\n\n')
+            : buildSupervisorPlanUserPrompt(context.goal, {
+                specialistLead: context.specialistLead,
+                supportingSpecialists: context.supportingSpecialists,
+                routeConfidence: context.routeConfidence
+              })
         }
       ],
       schema: SupervisorPlanSchema,
@@ -46,7 +58,18 @@ export async function executeSupervisorPlan(context: AgentRuntimeContext) {
   }
 
   return toManagerPlan(
-    { taskId: context.taskId, goal: context.goal },
-    result ?? buildFallbackSupervisorPlan({ taskId: context.taskId, goal: context.goal })
+    {
+      taskId: context.taskId,
+      goal: context.goal,
+      specialistLead: context.specialistLead,
+      supportingSpecialists: context.supportingSpecialists
+    },
+    result ??
+      buildFallbackSupervisorPlan({
+        taskId: context.taskId,
+        goal: context.goal,
+        specialistLead: context.specialistLead,
+        supportingSpecialists: context.supportingSpecialists
+      })
   );
 }

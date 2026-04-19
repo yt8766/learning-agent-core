@@ -1,15 +1,15 @@
-import { listSubgraphDescriptors } from '@agent/agents-supervisor';
 import type {
   ArchitectureDescriptor,
   ArchitectureDescriptorRegistryEntry,
   ArchitectureEdgeDescriptor,
   ArchitectureNodeDescriptor
 } from '@agent/core';
+import type { RuntimeHost } from '../core/runtime.host';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 
 export function buildProjectArchitectureDescriptor(input: {
-  subgraphs: ReturnType<typeof listSubgraphDescriptors>;
+  subgraphs: ReturnType<RuntimeHost['listSubgraphDescriptors']>;
   knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;
 }): ArchitectureDescriptor {
   const nodes: ArchitectureNodeDescriptor[] = [
@@ -75,7 +75,7 @@ export function buildProjectArchitectureDescriptor(input: {
 }
 
 export function createProjectArchitectureRegistryEntry(input: {
-  subgraphs: ReturnType<typeof listSubgraphDescriptors>;
+  subgraphs: ReturnType<RuntimeHost['listSubgraphDescriptors']>;
   knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;
 }): ArchitectureDescriptorRegistryEntry {
   const sourceDescriptors = [

@@ -3,9 +3,13 @@
 状态：current
 文档类型：overview
 适用范围：仓库顶层目录
-最后核对：2026-04-18
+最后核对：2026-04-19
 
 本文件说明仓库当前主要目录“现在在做什么”，用于补足各目录 README 只讲规范、不讲现实职责的问题。
+
+如果你是为了判断 `runtime / platform-runtime / apps` 三层谁该承载什么，先补读：
+
+- [Runtime 分层 ADR](/docs/runtime-layering-adr.md)
 
 本主题主文档：
 
@@ -68,8 +72,12 @@
   - 当前作为 `shared` 的迁移 facade，用于后续把 DTO / contract 收敛到新结构。
   - `src/providers/*` 承载 provider 抽象接口，供 runtime 与 agents 依赖。
 - `packages/runtime`
-  - 运行时 facade。
-  - 当前对外暴露 `AgentRuntime`、`SessionCoordinator`、worker registry 与 profile policy。
+  - Runtime Kernel。
+  - 当前对外暴露 `AgentRuntime`、`SessionCoordinator`、worker registry、profile policy、graph/session/checkpoint/approval/recovery 能力。
+  - `src/bridges/*` 仍是官方 Agent 过渡出口，后续应通过 runtime 依赖注入 contract 迁出。
+- `packages/platform-runtime`
+  - 官方平台装配层 / Composition Root。
+  - 当前对外暴露 backend/worker 共享的默认 runtime 创建线、官方 Agent/workflow 出口与可注入 registry contract。
 - `packages/adapters`
   - 适配器隔离层 facade。
   - 当前对外暴露模型/provider 与 LLM retry / structured output 能力入口。
@@ -123,9 +131,9 @@
   - 本地 memory / rule 存储。
 - `data/knowledge`
   - 受控知识源及其 ingestion、catalog、chunks、vectors 产物。
-- `data/skill-runtime`
+- `data/skills`
   - 运行时技能的 installed、stable、lab、receipts 数据。
-  - 新默认路径已统一为 `data/skill-runtime`。
+  - 新默认路径已统一为 `data/skills`。
 
 ## 目录与术语补充约束
 
@@ -141,6 +149,8 @@
   - 承载 graph、flow、session、governance 等运行时内核能力。
 - `apps/backend/agent-server/src/runtime`
   - 只应承载 HTTP/SSE/鉴权/聚合装配，不应继续沉淀 graph、prompt、schema 主逻辑。
+- `apps/backend/agent-server/data`
+  - 仅保留为待清理历史遗留目录，不再承载 canonical runtime 数据。
 
 ## `docs/`
 

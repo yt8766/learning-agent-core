@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/memory/`
-最后核对：2026-04-18
+最后核对：2026-04-20
 
 本目录用于沉淀 `packages/memory` 相关文档。
 
@@ -35,6 +35,9 @@
   - helper 的 canonical host 已收敛到：
     - `normalization/memory-record-helpers.ts`
     - `governance/memory-repository-governance.ts`
+    - `governance/memory-usage-insights.ts`
+    - `governance/memory-version-compare.ts`
+    - `governance/cross-check-evidence.ts`
   - 包根 `memory-record-helpers.ts`、`memory-repository-governance.ts` 已删除
   - 内部过渡薄层 `shared/memory-record-helpers.ts` 与 `repositories/memory-repository-governance.ts` 也已删除
   - `contracts/*` 当前仅保留稳定 facade 入口，便于调用方使用显式 contract import

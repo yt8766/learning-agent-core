@@ -5,6 +5,10 @@ import {
   summarizeAndPersistUsageAnalytics
 } from '@agent/runtime';
 import type { RuntimeCentersContext } from './runtime-centers.types';
+import {
+  shouldUsePersistedEvalSnapshot,
+  shouldUsePersistedUsageSnapshot
+} from '../domain/metrics/runtime-metrics-snapshot-preference';
 
 type RuntimeMetricsTasks = Parameters<typeof summarizeAndPersistUsageAnalytics>[0]['tasks'];
 
@@ -28,7 +32,7 @@ export async function loadRuntimeUsageAnalytics(
       days,
       filters
     });
-    if (hasPersistedUsageSnapshot(persisted, tasks)) {
+    if (shouldUsePersistedUsageSnapshot(persisted, tasks)) {
       return persisted;
     }
   }
@@ -55,7 +59,7 @@ export async function loadEvalsCenterMetrics(
       days,
       filters
     });
-    if (hasPersistedEvalSnapshot(persisted, tasks)) {
+    if (shouldUsePersistedEvalSnapshot(persisted, tasks)) {
       return persisted;
     }
   }
@@ -66,27 +70,4 @@ export async function loadEvalsCenterMetrics(
     days,
     filters
   });
-}
-
-function hasPersistedUsageSnapshot(
-  persisted: Awaited<ReturnType<typeof readPersistedUsageAnalytics>>,
-  tasks: RuntimeMetricsTasks
-) {
-  if ((persisted.persistedDailyHistory?.length ?? 0) > 0) {
-    return true;
-  }
-  if ((persisted.recentUsageAudit?.length ?? 0) > 0) {
-    return true;
-  }
-  return tasks.length === 0;
-}
-
-function hasPersistedEvalSnapshot(
-  persisted: Awaited<ReturnType<typeof readPersistedEvalHistory>>,
-  tasks: RuntimeMetricsTasks
-) {
-  if ((persisted.persistedDailyHistory?.length ?? 0) > 0) {
-    return true;
-  }
-  return tasks.length === 0;
 }

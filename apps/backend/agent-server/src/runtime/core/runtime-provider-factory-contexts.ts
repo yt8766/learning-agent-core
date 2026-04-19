@@ -122,6 +122,7 @@ function createBootstrapCentersContext(
 ) {
   return createCentersContext({
     settings: () => runtimeHost.settings,
+    runtimeHost: () => runtimeHost,
     wenyuanFacade: () => createProviderFactoryWenyuanFacade(runtimeHost),
     sessionCoordinator: () => runtimeHost.sessionCoordinator,
     orchestrator: () => runtimeHost.orchestrator,
@@ -200,6 +201,7 @@ export function createProviderFactoryCentersService(
   const centersServiceRef: { current?: RuntimeCentersService } = {};
   const context = createCentersContext({
     settings: () => runtimeHost.settings,
+    runtimeHost: () => runtimeHost,
     appLogger: () => appLogger,
     techBriefingService: () => techBriefingService,
     wenyuanFacade: () => wenyuanFacade,

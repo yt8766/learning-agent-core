@@ -93,7 +93,10 @@ describe('RuntimeQueueSection render smoke', () => {
               id: 'product-strategy',
               displayName: '产品策略专家',
               domain: 'product-strategy',
-              reason: '当前问题涉及产品优先级和商业闭环。'
+              reason: '当前问题涉及产品优先级和商业闭环。',
+              requiredCapabilities: ['specialist.product-strategy'],
+              agentId: 'official.supervisor',
+              candidateAgentIds: ['official.supervisor']
             },
             supportingSpecialists: [
               {
@@ -104,6 +107,17 @@ describe('RuntimeQueueSection render smoke', () => {
               }
             ],
             routeConfidence: 0.91,
+            plannerStrategy: {
+              mode: 'default',
+              summary: '当前已形成默认单路径规划。',
+              leadDomain: 'product-strategy',
+              requiredCapabilities: ['specialist.product-strategy'],
+              preferredAgentId: 'official.supervisor',
+              candidateAgentIds: ['official.supervisor'],
+              candidateCount: 1,
+              gapDetected: false,
+              updatedAt: '2026-03-28T00:00:00.000Z'
+            },
             critiqueResult: {
               decision: 'needs_human_approval',
               summary: '涉及高风险执行，需确认。',
@@ -264,6 +278,9 @@ describe('RuntimeQueueSection render smoke', () => {
 
     expect(html).toContain('产品策略专家');
     expect(html).toContain('当前问题涉及产品优先级和商业闭环');
+    expect(html).toContain('Planner Strategy');
+    expect(html).toContain('specialist.product-strategy');
+    expect(html).toContain('official.supervisor');
     expect(html).toContain('置信 91% / high');
     expect(html).toContain('JackPot 玩法存在资金池穿透风险');
     expect(html).toContain('需设置赔付上限');

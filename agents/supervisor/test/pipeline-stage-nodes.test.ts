@@ -2,6 +2,7 @@ import { AgentRole } from '@agent/core';
 import { describe, expect, it } from 'vitest';
 
 import { compileSkillContractIntoPlan } from '../src/flows/supervisor/pipeline-stage-nodes';
+import { collectCounselorIds } from '../src/flows/supervisor/planning-stage-helpers';
 import type { TaskRecord } from '@agent/core';
 
 describe('pipeline stage nodes', () => {
@@ -40,6 +41,7 @@ describe('pipeline stage nodes', () => {
           title: '研究需求',
           description: '先完成背景调查',
           assignedTo: AgentRole.RESEARCH,
+          requiredCapabilities: ['specialist.technical-architecture'],
           status: 'pending'
         }
       ]
@@ -72,5 +74,29 @@ describe('pipeline stage nodes', () => {
       ])
     );
     expect(plan.subTasks[0]?.description).toContain('技能步骤：检索消息(先读取发布渠道状态)');
+    expect(plan.subTasks[0]?.requiredCapabilities).toEqual(['specialist.technical-architecture']);
+  });
+
+  it('prefers official agent ids when collecting counselor participants', () => {
+    const counselorIds = collectCounselorIds({
+      specialistLead: {
+        id: 'technical-architecture',
+        displayName: '技术架构专家',
+        domain: 'technical-architecture',
+        agentId: 'official.coder',
+        candidateAgentIds: ['official.coder', 'official.reviewer']
+      },
+      supportingSpecialists: [
+        {
+          id: 'risk-compliance',
+          displayName: '风控合规专家',
+          domain: 'risk-compliance',
+          agentId: 'official.reviewer',
+          candidateAgentIds: ['official.reviewer']
+        }
+      ]
+    } as unknown as TaskRecord);
+
+    expect(counselorIds).toEqual(['official.coder', 'official.reviewer', 'technical-architecture', 'risk-compliance']);
   });
 });

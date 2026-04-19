@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
     "demo:custom-provider-factory": "node --import tsx demo/custom-provider-factory.ts",
     "demo:routing-capabilities": "node --import tsx demo/routing-capabilities.ts",
     "demo:retry-structured-output": "node --import tsx demo/retry-structured-output.ts",

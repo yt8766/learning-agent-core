@@ -8,6 +8,7 @@ import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-t
 import type { WorkerRegistry } from '../../../governance/worker-registry';
 import type { LlmProvider } from '@agent/adapters';
 import type { PendingExecutionContext } from '../../../flows/approval';
+import type { RuntimeAgentDependencies } from '../../../contracts/runtime-agent-dependencies';
 
 export interface AgentRuntimeSettings {
   zhipuModels: {
@@ -38,6 +39,7 @@ export interface AgentOrchestratorDependencies {
   workerRegistry?: WorkerRegistry;
   mcpClientManager?: McpClientManager;
   settings?: ReturnType<typeof loadSettings> & AgentRuntimeSettings;
+  agentDependencies: RuntimeAgentDependencies;
 }
 
 export type LocalSkillSuggestionResolver = (params: {

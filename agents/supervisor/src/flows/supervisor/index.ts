@@ -2,6 +2,7 @@ export { executeSupervisorPlan } from './nodes/supervisor-plan-node';
 export { SupervisorPlanSchema, type SupervisorPlanOutput } from './schemas/supervisor-plan-schema';
 export {
   buildFallbackSupervisorPlan,
+  derivePlannerStrategyRecord,
   inferDispatchKind,
   toManagerPlan,
   type SupervisorPlanContext

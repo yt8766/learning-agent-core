@@ -26,6 +26,10 @@ import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { XingbuClassifier } from './xingbu-classifier';
 import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
 import { SessionCoordinator } from '../session/session-coordinator';
+import {
+  configureRuntimeAgentDependencies,
+  type RuntimeAgentDependencies
+} from '../contracts/runtime-agent-dependencies';
 
 export interface AgentRuntimeOptions {
   settings?: RuntimeSettings;
@@ -37,6 +41,7 @@ export interface AgentRuntimeOptions {
     semanticCacheRepository: FileSemanticCacheRepository;
   }) => ILLMProvider;
   sandboxExecutor?: SandboxExecutor;
+  agentDependencies?: RuntimeAgentDependencies;
 }
 
 export class AgentRuntime {
@@ -60,6 +65,8 @@ export class AgentRuntime {
   readonly sessionCoordinator: SessionCoordinator;
 
   constructor(options: AgentRuntimeOptions = {}) {
+    const agentDependencies = options.agentDependencies ?? failMissingAgentDependencies();
+    configureRuntimeAgentDependencies(agentDependencies);
     this.settings =
       options.settings ??
       loadSettings({
@@ -127,7 +134,8 @@ export class AgentRuntime {
       sandboxExecutor: this.sandboxExecutor,
       toolRegistry: this.toolRegistry,
       mcpClientManager: this.mcpClientManager,
-      settings: this.settings
+      settings: this.settings,
+      agentDependencies
     });
     this.sessionCoordinator = new SessionCoordinator(
       this.orchestrator,
@@ -370,6 +378,12 @@ export class AgentRuntime {
       allowedProfiles: ['platform', 'company', 'personal', 'cli']
     });
   }
+}
+
+function failMissingAgentDependencies(): never {
+  throw new Error(
+    'AgentRuntime requires agentDependencies to be supplied by the composition root. Use @agent/platform-runtime or pass agentDependencies explicitly.'
+  );
 }
 
 function failMissingLlmProvider(): never {

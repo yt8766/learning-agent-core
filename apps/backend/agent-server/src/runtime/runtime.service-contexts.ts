@@ -174,6 +174,7 @@ export class RuntimeServiceContextFactory {
 
   getSkillCatalogContext() {
     return createSkillCatalogContext({
+      runtimeHost: this.params.runtimeHost,
       skillRegistry: this.params.skillRegistry,
       llmProvider: this.params.llmProvider,
       registerSkillWorker: (skill: SkillCard) => registerInstalledSkillWorker(this.getConnectorRegistryContext(), skill)
@@ -192,6 +193,7 @@ export class RuntimeServiceContextFactory {
   getCentersContext() {
     return createCentersContext({
       settings: this.params.settings,
+      runtimeHost: this.params.runtimeHost,
       appLogger: this.params.appLogger,
       wenyuanFacade: this.params.wenyuanFacade,
       sessionCoordinator: this.params.sessionCoordinator,

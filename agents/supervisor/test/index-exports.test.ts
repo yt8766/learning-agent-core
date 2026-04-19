@@ -18,6 +18,7 @@ import { LibuRouterMinistry as canonicalLibuRouterMinistry } from '../src/flows/
 import { buildResearchSourcePlan as canonicalBuildResearchSourcePlan } from '../src/workflows/research-source-planner';
 import { resolveWorkflowPreset as canonicalResolveWorkflowPreset } from '../src/workflows/workflow-preset-registry';
 import { resolveWorkflowRoute as canonicalResolveWorkflowRoute } from '../src/workflows/workflow-route-registry';
+import * as supervisorExports from '../src';
 
 describe('@agent/agents-supervisor root exports', () => {
   it('keeps stable supervisor exports wired to canonical hosts', () => {
@@ -29,5 +30,11 @@ describe('@agent/agents-supervisor root exports', () => {
     expect(LibuRouterMinistry).toBe(canonicalLibuRouterMinistry);
     expect(HubuSearchMinistry).toBe(canonicalHubuSearchMinistry);
     expect(LibuDocsMinistry).toBe(canonicalLibuDocsMinistry);
+  });
+
+  it('does not re-export specialist ministry implementations from sibling agent packages', () => {
+    expect('GongbuCodeMinistry' in supervisorExports).toBe(false);
+    expect('BingbuOpsMinistry' in supervisorExports).toBe(false);
+    expect('XingbuReviewMinistry' in supervisorExports).toBe(false);
   });
 });

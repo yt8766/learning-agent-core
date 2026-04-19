@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import {
   ConfigureConnectorDto,
   InstallRemoteSkillDto,
@@ -8,7 +7,6 @@ import {
   SkillSourceRecord
 } from '@agent/core';
 import { appendGovernanceAudit } from '@agent/runtime';
-import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import {
   clearCapabilityApprovalPolicyWithGovernance,
   clearConnectorApprovalPolicyWithGovernance,
@@ -26,7 +24,6 @@ import {
   rejectSkillInstallWithGovernance
 } from '../actions/runtime-skill-install-actions';
 import {
-  getDisabledCompanyWorkerIds,
   registerConfiguredConnector,
   registerDiscoveredCapabilities
 } from '../helpers/runtime-connector-registry';
@@ -41,21 +38,24 @@ import {
 import { refreshMetricsSnapshots as refreshMetricsSnapshotsWithGovernance } from './runtime-centers-governance-metrics';
 import {
   checkInstalledSkills,
-  finalizeRemoteSkillInstall,
-  finalizeSkillInstall,
   getSkillInstallReceipt,
   updateInstalledSkills,
-  writeSkillInstallReceipt
 } from '../skills/runtime-skill-install.service';
 import { listSkillManifests, listSkillSources } from '../skills/runtime-skill-sources.service';
-import { evaluateSkillManifestSafety } from '../skills/runtime-skill-safety';
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadConnectorView } from './runtime-centers-governance-connectors';
-
-interface CompanyWorkerRecord {
-  id: string;
-  kind?: string;
-}
+import {
+  setCompanyWorkerEnabledWithGovernance,
+  setSkillSourceEnabledWithGovernance,
+  syncSkillSourceWithGovernance
+} from '../domain/governance/runtime-governance-actions';
+import { loadCompanyAgentView } from '../domain/governance/runtime-company-agents-view';
+import {
+  createApproveSkillInstallGovernanceContext,
+  createInstallRemoteSkillGovernanceContext,
+  createInstallSkillGovernanceContext,
+  createRejectSkillInstallGovernanceContext
+} from '../domain/skills/runtime-skill-governance-context';
 
 export class RuntimeCentersGovernanceService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
@@ -90,53 +90,24 @@ export class RuntimeCentersGovernanceService {
 
   async syncSkillSource(sourceId: string) {
     const ctx = this.ctx();
-    const source = (await listSkillSources(ctx.getSkillSourcesContext())).find(
-      (item: SkillSourceRecord) => item.id === sourceId
-    );
-    if (!source) {
-      throw new NotFoundException(`Skill source ${sourceId} not found`);
-    }
-    const result = await ctx.getSkillSourcesContext().skillSourceSyncService.syncSource(source);
-    await appendGovernanceAudit(ctx.runtimeStateRepository, {
-      actor: 'agent-admin-user',
-      action: 'skill-source.synced',
-      scope: 'skill-source',
-      targetId: sourceId,
-      outcome: result.status === 'failed' ? 'rejected' : 'success',
-      reason: result.error ?? `manifestCount=${result.manifestCount}`
+    return syncSkillSourceWithGovernance({
+      sourceId,
+      runtimeStateRepository: ctx.runtimeStateRepository,
+      listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
+      skillSourceSyncService: {
+        syncSource: source => ctx.getSkillSourcesContext().skillSourceSyncService.syncSource(source)
+      }
     });
-    return (await listSkillSources(ctx.getSkillSourcesContext())).find(
-      (item: SkillSourceRecord) => item.id === sourceId
-    )!;
   }
 
   async installSkill(dto: InstallSkillDto) {
     const ctx = this.ctx();
-    return installSkillWithGovernance({
-      dto,
-      runtimeStateRepository: ctx.runtimeStateRepository,
-      listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
-      listSkillManifests: () => listSkillManifests(ctx.getSkillSourcesContext()),
-      evaluateSkillManifestSafety: (manifest: SkillManifestRecord, source: SkillSourceRecord | undefined) =>
-        evaluateSkillManifestSafety(ctx.getSkillSourcesContext(), manifest, source),
-      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeSkillInstall: async (manifest, source, receipt) => {
-        await finalizeSkillInstall(ctx.getSkillInstallContext(), manifest, source, receipt);
-      }
-    });
+    return installSkillWithGovernance(createInstallSkillGovernanceContext(ctx, dto));
   }
 
   async installRemoteSkill(dto: InstallRemoteSkillDto) {
     const ctx = this.ctx();
-    return installRemoteSkillWithGovernance({
-      dto,
-      runtimeStateRepository: ctx.runtimeStateRepository,
-      listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
-      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeRemoteSkillInstall: async receipt => {
-        await finalizeRemoteSkillInstall(ctx.getSkillInstallContext(), receipt);
-      }
-    });
+    return installRemoteSkillWithGovernance(createInstallRemoteSkillGovernanceContext(ctx, dto));
   }
 
   async checkInstalledSkills() {
@@ -174,98 +145,33 @@ export class RuntimeCentersGovernanceService {
 
   async approveSkillInstall(receiptId: string, dto: ResolveSkillInstallDto) {
     const ctx = this.ctx();
-    return approveSkillInstallWithGovernance({
-      receiptId,
-      dto,
-      runtimeStateRepository: ctx.runtimeStateRepository,
-      getSkillInstallReceipt: (id: string) => getSkillInstallReceipt(ctx.getSkillInstallContext(), id),
-      listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext()),
-      listSkillManifests: () => listSkillManifests(ctx.getSkillSourcesContext()),
-      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt),
-      finalizeSkillInstall: async (manifest, source, receipt) => {
-        await finalizeSkillInstall(ctx.getSkillInstallContext(), manifest, source, receipt);
-      },
-      finalizeRemoteSkillInstall: async receipt => {
-        await finalizeRemoteSkillInstall(ctx.getSkillInstallContext(), receipt);
-      }
-    });
+    return approveSkillInstallWithGovernance(createApproveSkillInstallGovernanceContext(ctx, receiptId, dto));
   }
 
   async rejectSkillInstall(receiptId: string, dto: ResolveSkillInstallDto) {
     const ctx = this.ctx();
-    return rejectSkillInstallWithGovernance({
-      receiptId,
-      dto,
-      runtimeStateRepository: ctx.runtimeStateRepository,
-      getSkillInstallReceipt: (id: string) => getSkillInstallReceipt(ctx.getSkillInstallContext(), id),
-      writeSkillInstallReceipt: receipt => writeSkillInstallReceipt(ctx.getSkillInstallContext(), receipt)
-    });
+    return rejectSkillInstallWithGovernance(createRejectSkillInstallGovernanceContext(ctx, receiptId, dto));
   }
 
   async setSkillSourceEnabled(sourceId: string, enabled: boolean) {
     const ctx = this.ctx();
-    const sources = await listSkillSources(ctx.getSkillSourcesContext());
-    const source = sources.find((item: SkillSourceRecord) => item.id === sourceId);
-    if (!source) {
-      throw new NotFoundException(`Skill source ${sourceId} not found`);
-    }
-    const snapshot = await ctx.runtimeStateRepository.load();
-    const disabled = new Set(snapshot.governance?.disabledSkillSourceIds ?? []);
-    if (enabled) {
-      disabled.delete(sourceId);
-    } else {
-      disabled.add(sourceId);
-    }
-    snapshot.governance = {
-      ...(snapshot.governance ?? {}),
-      disabledSkillSourceIds: Array.from(disabled)
-    };
-    await ctx.runtimeStateRepository.save(snapshot);
-    await appendGovernanceAudit(ctx.runtimeStateRepository, {
-      actor: 'agent-admin-user',
-      action: enabled ? 'skill-source.enabled' : 'skill-source.disabled',
-      scope: 'skill-source',
-      targetId: sourceId,
-      outcome: 'success'
+    return setSkillSourceEnabledWithGovernance({
+      sourceId,
+      enabled,
+      runtimeStateRepository: ctx.runtimeStateRepository,
+      listSkillSources: () => listSkillSources(ctx.getSkillSourcesContext())
     });
-    return (await listSkillSources(ctx.getSkillSourcesContext())).find(
-      (item: SkillSourceRecord) => item.id === sourceId
-    )!;
   }
 
   async setCompanyAgentEnabled(workerId: string, enabled: boolean) {
     const ctx = this.ctx();
-    const worker = ctx.orchestrator
-      .listWorkers()
-      .find((item: CompanyWorkerRecord) => item.id === workerId && item.kind === 'company');
-    if (!worker) {
-      throw new NotFoundException(`Company worker ${workerId} not found`);
-    }
-    const snapshot = await ctx.runtimeStateRepository.load();
-    const disabled = new Set(snapshot.governance?.disabledCompanyWorkerIds ?? []);
-    if (enabled) {
-      disabled.delete(workerId);
-    } else {
-      disabled.add(workerId);
-    }
-    snapshot.governance = {
-      ...(snapshot.governance ?? {}),
-      disabledCompanyWorkerIds: Array.from(disabled)
-    };
-    await ctx.runtimeStateRepository.save(snapshot);
-    ctx.orchestrator.setWorkerEnabled(workerId, enabled);
-    await appendGovernanceAudit(ctx.runtimeStateRepository, {
-      actor: 'agent-admin-user',
-      action: enabled ? 'company-worker.enabled' : 'company-worker.disabled',
-      scope: 'company-worker',
-      targetId: workerId,
-      outcome: 'success'
+    return setCompanyWorkerEnabledWithGovernance({
+      workerId,
+      enabled,
+      runtimeStateRepository: ctx.runtimeStateRepository,
+      orchestrator: ctx.orchestrator,
+      loadCompanyWorkerView: async id => (await loadCompanyAgentView(ctx, id))!
     });
-    return buildCompanyAgentsCenter({
-      tasks: ctx.orchestrator.listTasks(),
-      workers: ctx.orchestrator.listWorkers(),
-      disabledWorkerIds: new Set(getDisabledCompanyWorkerIds(ctx.getConnectorRegistryContext()))
-    }).find((item: { id: string }) => item.id === workerId)!;
   }
 
   async setConnectorEnabled(connectorId: string, enabled: boolean) {

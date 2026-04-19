@@ -1,6 +1,6 @@
-import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
 import type { ArchitectureDescriptorRegistryEntry, RuntimeArchitectureRecord } from '@agent/core';
+import type { RuntimeHost } from '../core/runtime.host';
 
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 import { createAgentAdminArchitectureRegistryEntry } from './admin-page-architecture.registry';
@@ -10,8 +10,8 @@ import { createKnowledgeArchitectureRegistry } from './knowledge-architecture.re
 import { createProjectArchitectureRegistryEntry } from './project-architecture.registry';
 
 export function createArchitectureDescriptorRegistry(input: {
-  subgraphs: ReturnType<typeof listSubgraphDescriptors>;
-  workflows: ReturnType<typeof listWorkflowPresets>;
+  subgraphs: ReturnType<RuntimeHost['listSubgraphDescriptors']>;
+  workflows: ReturnType<RuntimeHost['listWorkflowPresets']>;
   workers: ReturnType<WorkerRegistry['list']>;
   knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;
 }): Record<keyof RuntimeArchitectureRecord, ArchitectureDescriptorRegistryEntry> {
@@ -26,8 +26,8 @@ export function createArchitectureDescriptorRegistry(input: {
 
 function discoverArchitectureDescriptorEntries(
   input: {
-    subgraphs: ReturnType<typeof listSubgraphDescriptors>;
-    workflows: ReturnType<typeof listWorkflowPresets>;
+    subgraphs: ReturnType<RuntimeHost['listSubgraphDescriptors']>;
+    workflows: ReturnType<RuntimeHost['listWorkflowPresets']>;
     workers: ReturnType<WorkerRegistry['list']>;
     knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;
   },

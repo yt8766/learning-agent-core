@@ -1,5 +1,9 @@
-import { createDefaultRuntimeLlmProvider } from '@agent/adapters';
-import { AgentRuntime } from '@agent/runtime';
+import {
+  createDefaultPlatformRuntime,
+  createDefaultPlatformRuntimeOptions,
+  type PlatformRuntimeFacade
+} from '@agent/platform-runtime';
+import type { AgentRuntime } from '@agent/runtime';
 
 import {
   runBackgroundRunnerTick,
@@ -8,34 +12,33 @@ import {
 } from './background-runner';
 
 export interface WorkerProcessHandle {
+  platformRuntime: PlatformRuntimeFacade<AgentRuntime>;
   runtime: AgentRuntime;
   context: WorkerBackgroundRunnerContext;
   stop: () => Promise<void>;
 }
 
-export async function startWorkerProcess(): Promise<WorkerProcessHandle> {
-  const runtime = new AgentRuntime({
-    profile: 'platform',
-    settingsOptions: {
+function createWorkerPlatformRuntime(): PlatformRuntimeFacade<AgentRuntime> {
+  return createDefaultPlatformRuntime({
+    ...createDefaultPlatformRuntimeOptions({
       workspaceRoot: process.cwd(),
-      overrides: {
-        runtimeBackground: {
-          enabled: true,
-          runnerIdPrefix: 'worker'
+      settingsOptions: {
+        overrides: {
+          runtimeBackground: {
+            enabled: true,
+            runnerIdPrefix: 'worker'
+          }
         }
       }
-    },
-    createLlmProvider: ({ settings, semanticCacheRepository }) =>
-      createDefaultRuntimeLlmProvider({
-        settings,
-        semanticCacheRepository
-      })
+    })
   });
-  await runtime.start();
+}
 
+function createWorkerBackgroundContext(runtime: AgentRuntime): WorkerBackgroundRunnerContext {
   const backgroundWorkerSlots = new Map<string, { taskId: string; startedAt: string }>();
   let sweepInFlight = false;
-  const context: WorkerBackgroundRunnerContext = {
+
+  return {
     enabled: runtime.settings.runtimeBackground.enabled,
     orchestrator: runtime.orchestrator,
     runnerId: `${runtime.settings.runtimeBackground.runnerIdPrefix}-${process.pid}`,
@@ -49,10 +52,16 @@ export async function startWorkerProcess(): Promise<WorkerProcessHandle> {
       sweepInFlight = value;
     }
   };
+}
 
+export function createWorkerRuntimeHost(): WorkerProcessHandle {
+  const platformRuntime = createWorkerPlatformRuntime();
+  const runtime = platformRuntime.runtime;
+  const context = createWorkerBackgroundContext(runtime);
   const timer = startBackgroundRunnerLoop(context, () => runBackgroundRunnerTick(context));
 
   return {
+    platformRuntime,
     runtime,
     context,
     stop: async () => {
@@ -60,4 +69,11 @@ export async function startWorkerProcess(): Promise<WorkerProcessHandle> {
       await runtime.stop();
     }
   };
+}
+
+export async function startWorkerProcess(): Promise<WorkerProcessHandle> {
+  const host = createWorkerRuntimeHost();
+  await host.runtime.start();
+
+  return host;
 }

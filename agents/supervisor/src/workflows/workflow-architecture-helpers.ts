@@ -10,6 +10,7 @@ export interface WorkflowSpecialistLeadRecord {
   displayName: string;
   domain: SpecialistDomain;
   reason?: string;
+  requiredCapabilities?: string[];
 }
 
 export interface WorkflowSpecialistSupportRecord {
@@ -17,6 +18,7 @@ export interface WorkflowSpecialistSupportRecord {
   displayName: string;
   domain: SpecialistDomain;
   reason?: string;
+  requiredCapabilities?: string[];
 }
 
 const SPECIALIST_ALIAS_MAP = {

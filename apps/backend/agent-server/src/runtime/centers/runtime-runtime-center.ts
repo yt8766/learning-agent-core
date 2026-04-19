@@ -1,4 +1,3 @@
-import { listSubgraphDescriptors, listWorkflowVersions } from '@agent/agents-supervisor';
 import type { RuntimeProfile } from '@agent/config';
 import type { ApprovalScopePolicyRecord, ChatCheckpointRecord, ChatSessionRecord } from '@agent/core';
 import {
@@ -13,6 +12,7 @@ import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
 export { buildRuntimeCenterSummaryProjection as buildRuntimeCenterSummary } from '@agent/runtime';
 export type { RuntimeCenterTaskLike } from '@agent/runtime';
+import type { RuntimeHost } from '../core/runtime.host';
 
 export function buildRuntimeCenter(input: {
   profile: RuntimeProfile;
@@ -53,6 +53,7 @@ export function buildRuntimeCenter(input: {
   backgroundWorkerSlots: Map<string, { taskId: string; startedAt: string }>;
   filteredRecentRuns: RuntimeCenterTaskLike[];
   getCheckpoint: (sessionId: string) => ChatCheckpointRecord | undefined;
+  runtimeHost: Pick<RuntimeHost, 'listSubgraphDescriptors' | 'listWorkflowVersions'>;
   knowledgeOverview?: {
     stores: Array<{
       id: string;
@@ -84,7 +85,7 @@ export function buildRuntimeCenter(input: {
     getMinistryDisplayName,
     getSpecialistDisplayName,
     deriveRecentAgentErrors,
-    listSubgraphDescriptors,
-    listWorkflowVersions
+    listSubgraphDescriptors: () => input.runtimeHost.listSubgraphDescriptors(),
+    listWorkflowVersions: () => input.runtimeHost.listWorkflowVersions()
   });
 }

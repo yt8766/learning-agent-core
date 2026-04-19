@@ -3,6 +3,9 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyCrossCheckEvidenceRecords,
+  buildMemoryUsageInsights,
+  buildMemoryVersionComparison,
   DefaultMemorySearchService,
   FileMemoryRepository,
   LocalEmbeddingProvider,
@@ -23,11 +26,19 @@ describe('@agent/memory root exports', () => {
     const embeddingExports = (await import(new URL('../src/embeddings/index.ts', import.meta.url).href)) as {
       LocalEmbeddingProvider: unknown;
     };
+    const governanceExports = (await import(new URL('../src/governance/index.ts', import.meta.url).href)) as {
+      applyCrossCheckEvidenceRecords: unknown;
+      buildMemoryUsageInsights: unknown;
+      buildMemoryVersionComparison: unknown;
+    };
 
     expect(FileMemoryRepository).toBe(repositoryExports.FileMemoryRepository);
     expect(DefaultMemorySearchService).toBe(searchExports.DefaultMemorySearchService);
     expect(LocalVectorIndexRepository).toBe(vectorExports.LocalVectorIndexRepository);
     expect(LocalEmbeddingProvider).toBe(embeddingExports.LocalEmbeddingProvider);
+    expect(applyCrossCheckEvidenceRecords).toBe(governanceExports.applyCrossCheckEvidenceRecords);
+    expect(buildMemoryUsageInsights).toBe(governanceExports.buildMemoryUsageInsights);
+    expect(buildMemoryVersionComparison).toBe(governanceExports.buildMemoryVersionComparison);
   });
 
   it('keeps contract facades aligned with their canonical hosts', async () => {

@@ -51,6 +51,7 @@ describe('runtime-platform-console export helpers', () => {
                 compressedMessageCount: 12
               }
             },
+            dispatches: [{ selectedAgentId: 'official.coder', selectionSource: 'strategy-counselor' }],
             updatedAt: '2026-04-01T09:00:00.000Z'
           }
         ],
@@ -90,6 +91,8 @@ describe('runtime-platform-console export helpers', () => {
     expect(csvExport.filename).toBe('runtime-center-7d.csv');
     expect(csvExport.content).toContain('day,tokens,costUsd,costCny,runs,overBudget');
     expect(csvExport.content).toContain('"plan"');
+    expect(csvExport.content).toContain('official.coder');
+    expect(csvExport.content).toContain('strategy-counselor');
     expect(csvExport.content).toContain('dailyTechScheduler');
     expect(csvExport.content).toContain('task-1');
   });
@@ -103,6 +106,7 @@ describe('runtime-platform-console export helpers', () => {
           executionMode: 'planning-readonly',
           currentMinistry: 'gongbu',
           currentWorker: 'gongbu-code',
+          dispatches: [{ selectedAgentId: 'official.reviewer', selectionSource: 'supporting-specialist' }],
           pendingApproval: {
             requestedBy: 'gongbu',
             intent: 'write_file',
@@ -149,6 +153,7 @@ describe('runtime-platform-console export helpers', () => {
     expect(approvalsJson.filename).toBe('approvals-center.json');
     expect(approvalsJson.content).toContain('task-approval');
     expect(approvalsCsv.content).toContain('"plan"');
+    expect(approvalsCsv.content).toContain('official.reviewer');
     expect(approvalsCsv.content).toContain('rm -rf dist');
     expect(evalsJson.filename).toBe('evals-center-30d.json');
     expect(evalsJson.content).toContain('runtime-smoke');

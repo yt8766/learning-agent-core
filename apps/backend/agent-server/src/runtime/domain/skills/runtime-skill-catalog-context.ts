@@ -2,6 +2,7 @@ import type { SkillCard } from '@agent/core';
 import type { RuntimeHost } from '../../core/runtime.host';
 
 export interface RuntimeSkillCatalogContextInput {
+  runtimeHost: () => RuntimeHost;
   skillRegistry: () => RuntimeHost['skillRegistry'];
   llmProvider: () => RuntimeHost['llmProvider'];
   registerSkillWorker: (skill: SkillCard) => void;
@@ -9,6 +10,7 @@ export interface RuntimeSkillCatalogContextInput {
 
 export function createSkillCatalogContext(input: RuntimeSkillCatalogContextInput) {
   return {
+    runtimeHost: input.runtimeHost(),
     skillRegistry: input.skillRegistry(),
     llmProvider: input.llmProvider(),
     registerSkillWorker: input.registerSkillWorker

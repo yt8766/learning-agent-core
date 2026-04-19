@@ -61,6 +61,9 @@ export function getWorkflowAlertDescriptors(
   }
 
   if (checkpoint?.dispatches?.length) {
+    const selectedAgents = Array.from(
+      new Set(checkpoint.dispatches.map(item => item.selectedAgentId).filter((item): item is string => Boolean(item)))
+    );
     alerts.push({
       key: 'dispatches',
       type: 'info',
@@ -68,7 +71,7 @@ export function getWorkflowAlertDescriptors(
       description: `本轮共记录 ${checkpoint.dispatches.length} 条分发：${
         checkpoint.contextFilterState?.dispatchOrder?.join(' -> ') ??
         Array.from(new Set(checkpoint.dispatches.map(item => item.kind))).join(' / ')
-      }。`
+      }${selectedAgents.length ? `；已收敛 Agent ${selectedAgents.join(' / ')}` : ''}。`
     });
   }
 

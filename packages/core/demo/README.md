@@ -4,6 +4,7 @@
 
 可用脚本：
 
+- `pnpm --filter @agent/core demo`
 - `pnpm --filter @agent/core demo:schema-parse`
 - `pnpm --filter @agent/core demo:tasking-planning`
 - `pnpm --filter @agent/core demo:tasking-runtime-state`
@@ -19,6 +20,8 @@
 
 当前示例围绕本项目实际契约组织：
 
+- `smoke.ts`
+  - 验证 specialist finding / critique result 这类 schema-first helper 与 parse contract。
 - `schema-parse.ts`
   - 验证 session / skill / workflow / approval 这类基础 schema 可直接消费。
 - `tasking-planning.ts`

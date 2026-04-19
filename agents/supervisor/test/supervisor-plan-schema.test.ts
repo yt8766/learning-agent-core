@@ -11,7 +11,8 @@ describe('@agent/agents-supervisor supervisor plan schema', () => {
         {
           title: '研究验证缺口',
           description: '梳理包级验证缺口与阻塞项',
-          assignedTo: 'research'
+          assignedTo: 'research',
+          requiredCapabilities: ['specialist.technical-architecture']
         },
         {
           title: '补脚本和测试',
@@ -28,6 +29,7 @@ describe('@agent/agents-supervisor supervisor plan schema', () => {
 
     expect(parsed.steps).toHaveLength(3);
     expect(parsed.subTasks.map(item => item.assignedTo)).toEqual(['research', 'executor', 'reviewer']);
+    expect(parsed.subTasks[0]?.requiredCapabilities).toEqual(['specialist.technical-architecture']);
   });
 
   it('rejects plans with too few steps', () => {

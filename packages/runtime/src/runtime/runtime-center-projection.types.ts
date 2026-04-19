@@ -14,6 +14,17 @@ export interface RuntimeCenterTaskLike {
   currentStep?: string;
   currentMinistry?: string;
   currentWorker?: string;
+  plannerStrategy?: {
+    mode?: 'default' | 'capability-gap' | 'rich-candidates';
+    summary?: string;
+    leadDomain?: string;
+    requiredCapabilities?: string[];
+    preferredAgentId?: string;
+    candidateAgentIds?: string[];
+    candidateCount?: number;
+    gapDetected?: boolean;
+    updatedAt?: string;
+  };
   mainChainNode?: string;
   microLoopCount?: number;
   maxMicroLoops?: number;

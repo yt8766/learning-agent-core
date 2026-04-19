@@ -35,6 +35,7 @@ export type SessionTaskLike = Pick<
   | 'pendingApproval'
   | 'plan'
   | 'planDraft'
+  | 'plannerStrategy'
   | 'queueState'
   | 'result'
   | 'review'

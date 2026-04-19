@@ -52,7 +52,10 @@ describe('RuntimeSummaryVisuals', () => {
                 budgetGateState: { status: 'closed', summary: '预算吃紧', queueDepth: 3 },
                 complexTaskPlan: { summary: '拆成 2 个子目标', subGoals: ['A', 'B'] },
                 blackboardState: { refs: { traceCount: 4, evidenceCount: 2 } },
-                dispatches: [{ kind: 'hubu' }, { kind: 'gongbu' }],
+                dispatches: [
+                  { kind: 'hubu', selectedAgentId: 'official.coder' },
+                  { kind: 'gongbu', selectedAgentId: 'official.reviewer' }
+                ],
                 contextFilterState: {
                   filteredContextSlice: { summary: '保留关键上下文', historyTraceCount: 5 },
                   audienceSlices: {
@@ -123,6 +126,22 @@ describe('RuntimeSummaryVisuals', () => {
                 counselors: [{ displayName: '首辅票拟官' }]
               }
             ],
+            plannerStrategies: [
+              {
+                taskId: 'task-1',
+                goal: '推进治理链',
+                strategy: {
+                  mode: 'rich-candidates',
+                  summary: '多个候选官方 Agent，可先并行研究后再收敛。',
+                  leadDomain: 'technical-architecture',
+                  requiredCapabilities: ['specialist.technical-architecture'],
+                  preferredAgentId: 'official.coder',
+                  candidateAgentIds: ['official.coder', 'official.reviewer'],
+                  candidateCount: 2,
+                  gapDetected: false
+                }
+              }
+            ],
             libuScorecards: [{ taskId: 'task-1', summary: '礼部建议可直接交付' }],
             governanceScorecards: [{ taskId: 'task-1', summary: '治理评分稳定' }],
             shiluAdjustments: [{ taskId: 'task-1', recommendedCandidateIds: ['memory-1', 'rule-2'] }],
@@ -151,6 +170,7 @@ describe('RuntimeSummaryVisuals', () => {
     expect(html).toContain('Imperial Chain');
     expect(html).toContain('预算门: closed / 预算吃紧 / queue 3');
     expect(html).toContain('军机处: 拆成 2 个子目标 / subGoals 2');
+    expect(html).toContain('已收敛 official.coder / official.reviewer');
     expect(html).toContain('受众切片: 策略 1 / 六部 2 / 兜底 1');
     expect(html).toContain('司礼监账本: 有待恢复中断 / history 1');
     expect(html).toContain('Visual ThoughtChain');
@@ -161,6 +181,9 @@ describe('RuntimeSummaryVisuals', () => {
     expect(html).toContain('retryRate: 15%');
     expect(html).toContain('Strategy &amp; Learning');
     expect(html).toContain('首辅票拟官');
+    expect(html).toContain('规划策略: rich-candidates');
+    expect(html).toContain('specialist.technical-architecture');
+    expect(html).toContain('official.coder / official.reviewer');
     expect(html).toContain('memory-1 / rule-2');
     expect(html).toContain('Wenyuan &amp; Cangjing');
     expect(html).toContain('主知识库');

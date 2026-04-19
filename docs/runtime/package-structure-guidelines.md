@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/runtime`
-最后核对：2026-04-19
+最后核对：2026-04-20
 
 本文档说明 `packages/runtime` 如何继续按“运行时编排层”而不是“全能 shared 层”收敛。
 
@@ -68,8 +68,9 @@ packages/runtime/
 - `capabilities/`
   - capability pool 与 runtime capability 相关宿主
 - `bridges/`
-  - runtime 与 `agents/*` 的桥接层
-  - 仅作为过渡收敛宿主，不对外暴露为稳定公共 API
+  - runtime 内部 agent dependency adapter
+  - 只消费 `RuntimeAgentDependencies` contract，不对外暴露为稳定公共 API
+  - 包括已经由 `platform-runtime` enrich 过的 specialist route / official agent match 线索
 - `utils/`
   - 纯函数工具
 
@@ -132,12 +133,13 @@ packages/runtime/
 1. `session/*` facade 与实现进一步分离
 2. `governance/*` contract 与 helper 分离
 3. `graphs/main/*` 与 `runtime/*` 中的编排语义继续收敛到 `orchestration/`
-4. `runtime <-> agents/*` 依赖从实现级收敛到 `bridges/` + contract / registry
+4. `runtime <-> 官方 agent assembly` 依赖固定收敛到 `RuntimeAgentDependencies` + `bridges/`
+5. specialist route 的官方 agent 匹配与 registry enrich 固定收敛到 `platform-runtime -> RuntimeAgentDependencies`，不要让 runtime 节点自行反查 registry
 
 当前已落地：
 
 - `src/bridges/*`
-  - 已作为 runtime 直连 `agents/*` 的真实宿主
+  - 已作为 runtime 内部 agent dependency adapter 宿主
 - `src/orchestration/agent-orchestrator.ts`
   - 已作为 `AgentOrchestrator` 的新宿主
 - `src/orchestration/main-graph-runtime-modules.ts`
@@ -154,6 +156,35 @@ packages/runtime/
   - 已成为 runtime metrics analytics 的 canonical host
 - `src/runtime/runtime-metrics-store.ts`
   - 已成为 usage/eval metrics persistence 的 canonical host
+- `src/runtime/runtime-connectors-center-loader.ts`
+  - 已成为 connectors center projection loader 的 canonical host
+  - backend 的 `runtime/domain/connectors/runtime-connector-view-reader.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-learning-center-normalization.ts`
+  - 已成为 learning center task/job normalization 的 canonical host
+  - backend 的 `runtime/domain/learning/runtime-learning-center-normalization.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-learning-memory-stats.ts`
+  - 已成为 learning center memory governance stats projection 的 canonical host
+  - backend 的 `runtime/domain/learning/runtime-learning-memory-stats.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-metrics-snapshot-preference.ts`
+  - 已成为 usage/eval persisted snapshot preference helper 的 canonical host
+  - backend 的 `runtime/domain/metrics/runtime-metrics-snapshot-preference.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-recent-runs.ts`
+  - 已成为 runtime center recent runs filter/sort helper 的 canonical host
+  - backend 的 `runtime/domain/metrics/runtime-recent-runs.ts` 当前只保留 compat re-export
+- `src/runtime-observability/runtime-observability-filters.ts`
+  - 已成为 execution mode / interaction kind / interrupt payload 等 observability filter helper 的 canonical host
+  - backend 相关 center/query helper 应优先复用，不再各自维护兼容分支
+- `src/runtime-observability/runtime-observability-task-filters.ts`
+  - 已成为 run observatory task-level model / pricing-source filter 的 canonical host
+- `src/runtime-observability/runtime-run-observatory.ts`
+  - 已成为 run observatory list / detail bundle filter 的 canonical host
+  - backend 的 `runtime/domain/observability/runtime-run-observatory.ts` 当前只保留 compat re-export
+- `src/runtime-observability/runtime-briefing-runs.ts`
+  - 已成为 briefing run lookback / category projection helper 的 canonical host
+  - backend 的 `runtime/domain/observability/runtime-briefing-runs.ts` 当前只保留 compat re-export
+- `src/runtime-observability/runtime-approvals-center.ts`
+  - 已成为 approvals center filter / projection helper 的 canonical host
+  - backend 的 `runtime/domain/observability/runtime-approvals-center.ts` 当前只保留 compat re-export
 - `src/governance/runtime-governance-store.ts`
   - 已成为 governance store 的 canonical host
 - `src/governance/runtime-governance-aggregation.ts`
@@ -161,7 +192,7 @@ packages/runtime/
 
 补充：
 
-- `src/flows/ministries/index.ts` 当前仍保留为目录聚合入口，用于把 ministry 名义上的对外消费收口到 `bridges/*`
+- `src/flows/ministries/index.ts` 当前仍保留为目录聚合入口，用于把 ministry 名义上的内部消费收口到 `bridges/*`
 - `src/flows/ministries/governance-stage-helpers.ts` 当前保留为跨 `review-stage/` 复用的治理 helper 宿主
 - 这类目录聚合入口不视为纯 compat 源文件，但也不应再承接真实桥接实现或 runtime / review 主节点
 
@@ -170,7 +201,7 @@ packages/runtime/
 - 不要因为 `runtime` 是大包，就把所有跨 flow helper 都回塞进 `utils/`
 - 不要把 graph wiring、执行编排、运行态 facade 三种不同语义都继续堆在 `runtime/`
 - 不要让 `session/` 重新退化成零散 helper；它已经是一个独立大域
-- 不要把 `bridges/` 当成长期公共 API；它只负责运行时过渡桥接
+- 不要把 `bridges/` 当成长期公共 API；它只负责 runtime 内部 adapter 语义
 
 ## 5. 第一批执行清单
 

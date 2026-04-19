@@ -50,18 +50,21 @@
 
 ### 2.5 Demo / 最小闭环验证
 
-当前不再要求 `packages/*` 与 `agents/*` 默认维护与 `src/` 同级的 `demo/` 目录，但仍强制要求“每轮改动都要补一个最小可证明闭环”。闭环形式可以是：
+当前要求 `packages/*` 默认维护与 `src/` 同级的 `demo/` 目录和可直接运行的 `demo` 脚本，并继续强制“每轮改动都要补一个最小可证明闭环”。闭环形式可以是：
 
 - 可直接运行的包级 demo
 - 集成测试中的最小 happy path
 - 面向 CLI / script / build 流程的最小命令验证
 - 前端或后端的最小真实链路验证
 
-换句话说，本仓库要求每个宿主都要有自动化最小闭环；如果不单独生成 `demo/`，则必须由 integration 或等价 smoke 验证承担这层责任。
+换句话说，本仓库要求每个宿主都要有自动化最小闭环；packages 优先通过显式 `demo/` 尽早暴露包级构建产物和公开入口问题，其他宿主若不单独生成 `demo/`，则必须由 integration 或等价 smoke 验证承担这层责任。
 
 当前默认宿主规则：
 
-- `packages/*`：默认允许由 integration、build 或其他自动化 smoke 承担最小闭环
+- `packages/*`：默认维护显式 `demo/` 与 `demo` 脚本，并纳入 `pnpm test:demo` / `pnpm test:demo:affected`
+- 根级 `pnpm test:demo` 当前会先校验 `packages/*` 的 `demo/` 与 `demo` 脚本覆盖率，再执行各包 demo，防止“包存在但没人跑”的回退
+- `packages/*` 当前默认至少提供 `demo/smoke.ts`；如需更深闭环，可继续补 `demo/contract.ts` 与 `demo/flow.ts`，根级 `pnpm test:demo` 会自动串行执行这些分层入口
+- 需要收敛单包 Demo 时，可使用 `pnpm test:demo -- packages/<package-name>`；根级 runner 会忽略 CLI 参数中的 `--` 分隔符
 - `agents/*`：默认允许由 integration、build 或其他自动化 smoke 承担最小闭环
 - `apps/*` 与 `apps/backend/agent-server`：当前允许由 integration 或其他自动化最小闭环承担 Demo 层责任，但如果后续引入显式 demo，它必须明显比 integration 更轻
 
@@ -275,10 +278,11 @@ LangGraph 相关额外要求：
 
 ## 5.5 Demo / 最小闭环验证
 
-原始需求强调“每个包必须有 demo”。在本仓库中，统一改写为：
+原始需求强调“每个包必须有 demo”。在当前仓库中，packages 层按该要求落地，其他宿主保留等价自动化闭环豁免：
 
 - 每轮改动都必须给出一个最小闭环证明
 - 证明优先自动化，不接受只靠手工点点点
+- `packages/*` 的默认入口是显式 `demo/` + `demo` 脚本；如果某个包暂时无法提供，必须在文档中说明由哪条 integration / smoke 负责替代
 
 可接受形式：
 

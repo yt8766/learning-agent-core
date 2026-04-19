@@ -48,6 +48,17 @@ describe('runtime-center-projection', () => {
         sessionId: 'session-1',
         currentMinistry: 'gongbu',
         currentWorker: 'gongbu-code',
+        plannerStrategy: {
+          mode: 'rich-candidates',
+          summary: '多个候选官方 Agent，可先并行研究后再收敛。',
+          leadDomain: 'technical-architecture',
+          requiredCapabilities: ['specialist.technical-architecture'],
+          preferredAgentId: 'official.coder',
+          candidateAgentIds: ['official.coder', 'official.reviewer'],
+          candidateCount: 2,
+          gapDetected: false,
+          updatedAt: '2026-04-19T01:00:00.000Z'
+        },
         executionPlan: {
           strategyCounselors: ['safety'],
           executionMinistries: ['gongbu']
@@ -119,6 +130,23 @@ describe('runtime-center-projection', () => {
         taskId: 'task-1',
         goal: 'Investigate provider timeout',
         counselors: [{ id: 'safety', displayName: '礼部审校' }]
+      }
+    ]);
+    expect(result.plannerStrategies).toEqual([
+      {
+        taskId: 'task-1',
+        goal: 'Investigate provider timeout',
+        strategy: {
+          mode: 'rich-candidates',
+          summary: '多个候选官方 Agent，可先并行研究后再收敛。',
+          leadDomain: 'technical-architecture',
+          requiredCapabilities: ['specialist.technical-architecture'],
+          preferredAgentId: 'official.coder',
+          candidateAgentIds: ['official.coder', 'official.reviewer'],
+          candidateCount: 2,
+          gapDetected: false,
+          updatedAt: '2026-04-19T01:00:00.000Z'
+        }
       }
     ]);
     expect(result.recentAgentErrors).toEqual([{ taskId: 'task-1' }]);

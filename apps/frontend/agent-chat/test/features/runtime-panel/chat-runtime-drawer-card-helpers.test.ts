@@ -23,7 +23,10 @@ describe('chat-runtime-drawer-card-helpers', () => {
     const alerts = getWorkflowAlertDescriptors(
       {
         specialistLead: { domain: 'general-assistant' },
-        dispatches: [{ kind: 'hubu' }, { kind: 'gongbu' }],
+        dispatches: [
+          { kind: 'hubu', selectedAgentId: 'official.coder' },
+          { kind: 'gongbu', selectedAgentId: 'official.reviewer' }
+        ],
         contextFilterState: {
           dispatchOrder: ['hubu', 'gongbu'],
           audienceSlices: {
@@ -101,7 +104,7 @@ describe('chat-runtime-drawer-card-helpers', () => {
         }),
         expect.objectContaining({
           key: 'dispatches',
-          description: expect.stringContaining('hubu -> gongbu')
+          description: expect.stringContaining('已收敛 Agent official.coder / official.reviewer')
         }),
         expect.objectContaining({
           key: 'budget-gate',

@@ -75,11 +75,4 @@ export {
   shapeFinalUserReply
 } from './flows/delivery';
 export type { DeliverySummaryOutput } from './flows/delivery';
-export {
-  BingbuOpsMinistry,
-  GongbuCodeMinistry,
-  HubuSearchMinistry,
-  LibuDocsMinistry,
-  LibuRouterMinistry,
-  XingbuReviewMinistry
-} from './flows/ministries';
+export { HubuSearchMinistry, LibuDocsMinistry, LibuRouterMinistry } from './flows/ministries';

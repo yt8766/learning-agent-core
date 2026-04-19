@@ -62,6 +62,16 @@ export function RuntimeSummaryVisuals({
                     <p>
                       票拟分发: {Array.from(new Set(item.dispatches.map(dispatch => dispatch.kind))).join(' / ')} / 共{' '}
                       {item.dispatches.length} 条
+                      {(() => {
+                        const selectedAgents = Array.from(
+                          new Set(
+                            item.dispatches
+                              .map(dispatch => dispatch.selectedAgentId)
+                              .filter((value): value is string => Boolean(value))
+                          )
+                        );
+                        return selectedAgents.length ? ` / 已收敛 ${selectedAgents.join(' / ')}` : '';
+                      })()}
                     </p>
                   ) : null}
                   {item.contextFilterState?.filteredContextSlice ? (
@@ -266,37 +276,59 @@ export function RuntimeSummaryVisuals({
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg font-semibold text-foreground">Strategy & Learning</CardTitle>
-          <Badge variant="outline">{runtime.strategyCounselors?.length ?? 0}</Badge>
+          <Badge variant="outline">
+            {Math.max(runtime.strategyCounselors?.length ?? 0, runtime.plannerStrategies?.length ?? 0)}
+          </Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {!runtime.strategyCounselors?.length ? (
+          {!runtime.strategyCounselors?.length && !runtime.plannerStrategies?.length ? (
             <DashboardEmptyState message="当前还没有群辅票拟与学习联动样本。" />
           ) : (
-            runtime.strategyCounselors.slice(0, 3).map(item => (
-              <article key={item.taskId} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
-                <p className="text-sm font-semibold text-foreground">{item.goal}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  群辅: {item.counselors.map(counselor => counselor.displayName).join(' / ') || '通才阁臣兜底'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  吏部评分:{' '}
-                  {runtime.libuScorecards?.find(scorecard => scorecard.taskId === item.taskId)?.summary ??
-                    '暂无评分摘要'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  治理信号:{' '}
-                  {runtime.governanceScorecards?.find(scorecard => scorecard.taskId === item.taskId)?.summary ??
-                    '暂无治理评分'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Shilu:{' '}
-                  {(
-                    runtime.shiluAdjustments?.find(adjustment => adjustment.taskId === item.taskId)
-                      ?.recommendedCandidateIds ?? []
-                  ).join(' / ') || '暂无调整建议'}
-                </p>
-              </article>
-            ))
+            (runtime.strategyCounselors ?? runtime.plannerStrategies ?? []).slice(0, 3).map(item => {
+              const strategyCounselor = runtime.strategyCounselors?.find(value => value.taskId === item.taskId);
+              const plannerStrategy = runtime.plannerStrategies?.find(value => value.taskId === item.taskId)?.strategy;
+
+              return (
+                <article key={item.taskId} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
+                  <p className="text-sm font-semibold text-foreground">{item.goal}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    群辅:{' '}
+                    {strategyCounselor?.counselors.map(counselor => counselor.displayName).join(' / ') ||
+                      '通才阁臣兜底'}
+                  </p>
+                  {plannerStrategy ? (
+                    <>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        规划策略: {plannerStrategy.mode} / {plannerStrategy.summary}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        能力需求: {plannerStrategy.requiredCapabilities.join(' / ') || '无显式能力约束'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        官方候选: {plannerStrategy.candidateAgentIds.join(' / ') || '暂无命中'}
+                      </p>
+                    </>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    吏部评分:{' '}
+                    {runtime.libuScorecards?.find(scorecard => scorecard.taskId === item.taskId)?.summary ??
+                      '暂无评分摘要'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    治理信号:{' '}
+                    {runtime.governanceScorecards?.find(scorecard => scorecard.taskId === item.taskId)?.summary ??
+                      '暂无治理评分'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Shilu:{' '}
+                    {(
+                      runtime.shiluAdjustments?.find(adjustment => adjustment.taskId === item.taskId)
+                        ?.recommendedCandidateIds ?? []
+                    ).join(' / ') || '暂无调整建议'}
+                  </p>
+                </article>
+              );
+            })
           )}
         </CardContent>
       </Card>

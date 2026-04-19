@@ -1,22 +1,17 @@
-import { createDefaultRuntimeLlmProvider } from '@agent/adapters';
-import { AgentRuntime } from '@agent/runtime';
+import { createDefaultPlatformRuntime, createDefaultPlatformRuntimeOptions } from '@agent/platform-runtime';
+import { SkillArtifactFetcher } from '@agent/skill-runtime';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
-import { SkillArtifactFetcher } from '../skills/skill-artifact-fetcher';
 import { SkillSourceSyncService } from '../skills/skill-source-sync.service';
 
 export class RuntimeHost {
-  readonly runtime = new AgentRuntime({
-    profile: 'platform',
-    settingsOptions: {
+  readonly platformRuntime = createDefaultPlatformRuntime({
+    ...createDefaultPlatformRuntimeOptions({
       workspaceRoot: process.cwd()
-    },
-    createLlmProvider: ({ settings, semanticCacheRepository }) =>
-      createDefaultRuntimeLlmProvider({
-        settings,
-        semanticCacheRepository
-      })
+    })
   });
+
+  readonly runtime = this.platformRuntime.runtime;
 
   readonly settings = this.runtime.settings;
   readonly memoryRepository = this.runtime.memoryRepository;
@@ -36,4 +31,16 @@ export class RuntimeHost {
   });
   readonly remoteSkillDiscoveryService = new RemoteSkillDiscoveryService();
   readonly skillArtifactFetcher = new SkillArtifactFetcher(this.settings.workspaceRoot);
+
+  listWorkflowPresets() {
+    return this.platformRuntime.metadata.listWorkflowPresets();
+  }
+
+  listSubgraphDescriptors() {
+    return this.platformRuntime.metadata.listSubgraphDescriptors();
+  }
+
+  listWorkflowVersions() {
+    return this.platformRuntime.metadata.listWorkflowVersions();
+  }
 }

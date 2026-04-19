@@ -18,6 +18,7 @@ export const SubTaskRecordSchema = z.object({
   title: z.string(),
   description: z.string(),
   assignedTo: z.enum(['manager', 'research', 'executor', 'reviewer']),
+  requiredCapabilities: z.array(z.string()).optional(),
   status: z.enum(['pending', 'running', 'completed', 'blocked'])
 });
 
@@ -43,7 +44,27 @@ export const DispatchInstructionSchema = z.object({
   from: z.enum(['manager', 'research', 'executor', 'reviewer']),
   to: z.enum(['manager', 'research', 'executor', 'reviewer']),
   kind: z.enum(['strategy', 'ministry', 'fallback']),
-  objective: z.string()
+  objective: z.string(),
+  specialistDomain: z.string().optional(),
+  requiredCapabilities: z.array(z.string()).optional(),
+  agentId: z.string().optional(),
+  candidateAgentIds: z.array(z.string()).optional(),
+  selectedAgentId: z.string().optional(),
+  selectionSource: z
+    .enum(['explicit-agent', 'strategy-counselor', 'specialist-lead', 'supporting-specialist', 'candidate-first'])
+    .optional()
+});
+
+export const PlannerStrategyRecordSchema = z.object({
+  mode: z.enum(['default', 'capability-gap', 'rich-candidates']),
+  summary: z.string(),
+  leadDomain: z.string().optional(),
+  requiredCapabilities: z.array(z.string()).optional(),
+  preferredAgentId: z.string().optional(),
+  candidateAgentIds: z.array(z.string()).optional(),
+  candidateCount: z.number().int().nonnegative(),
+  gapDetected: z.boolean(),
+  updatedAt: z.string()
 });
 
 export const AgentTokenEventSchema = z.object({
@@ -59,14 +80,20 @@ export const SpecialistLeadRecordSchema = z.object({
   id: z.string(),
   displayName: z.string(),
   domain: z.string(),
-  reason: z.string().optional()
+  reason: z.string().optional(),
+  requiredCapabilities: z.array(z.string()).optional(),
+  agentId: z.string().optional(),
+  candidateAgentIds: z.array(z.string()).optional()
 });
 
 export const SpecialistSupportRecordSchema = z.object({
   id: z.string(),
   displayName: z.string(),
   domain: z.string(),
-  reason: z.string().optional()
+  reason: z.string().optional(),
+  requiredCapabilities: z.array(z.string()).optional(),
+  agentId: z.string().optional(),
+  candidateAgentIds: z.array(z.string()).optional()
 });
 
 export const SpecialistFindingRecordSchema = z.object({

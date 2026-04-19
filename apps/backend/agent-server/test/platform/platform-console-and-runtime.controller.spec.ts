@@ -4,13 +4,17 @@ import { PlatformConsoleController } from '../../src/platform/platform-console.c
 import { PlatformBriefingsController } from '../../src/platform/platform-briefings.controller';
 import { RuntimeCenterController } from '../../src/platform/runtime-center.controller';
 import { createPlatformControllerDeps } from './platform-controller.test-helpers';
+import { RuntimeHost } from '../../src/runtime/core/runtime.host';
 
 describe('platform console and runtime controllers', () => {
   it('delegates console, observability and briefing routes', async () => {
     const { runtimeCentersService } = createPlatformControllerDeps();
+    const runtimeHost = {
+      listWorkflowPresets: () => [{ id: 'general', displayName: 'General' }]
+    } as Pick<RuntimeHost, 'listWorkflowPresets'> as RuntimeHost;
     const consoleController = new PlatformConsoleController(runtimeCentersService as never);
     const runtimeController = new RuntimeCenterController(runtimeCentersService as never);
-    const briefingController = new PlatformBriefingsController(runtimeCentersService as never);
+    const briefingController = new PlatformBriefingsController(runtimeCentersService as never, runtimeHost);
 
     await expect(
       consoleController.getConsole(

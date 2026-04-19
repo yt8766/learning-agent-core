@@ -194,6 +194,21 @@ describe('agent-admin runtime contract smoke', () => {
                 counselors: [{ id: 'risk-compliance', displayName: '风控合规阁臣' }]
               }
             ],
+            plannerStrategies: [
+              {
+                taskId: 'task-1',
+                goal: '整理运行纪律',
+                strategy: {
+                  mode: 'capability-gap',
+                  summary: '当前尚未命中官方 Agent，需要先确认能力缺口与替代路径。',
+                  leadDomain: 'risk-compliance',
+                  requiredCapabilities: ['specialist.risk-compliance'],
+                  candidateAgentIds: [],
+                  candidateCount: 0,
+                  gapDetected: true
+                }
+              }
+            ],
             libuScorecards: [{ taskId: 'task-1', summary: '吏部已完成评分摘要。' }],
             governanceScorecards: [
               {
@@ -276,6 +291,8 @@ describe('agent-admin runtime contract smoke', () => {
     expect(runtimeHtml).toContain('provider timeout');
     expect(visualsHtml).toContain('票拟分发');
     expect(visualsHtml).toContain('治理评分稳定');
+    expect(visualsHtml).toContain('capability-gap');
+    expect(visualsHtml).toContain('specialist.risk-compliance');
     expect(visualsHtml).toContain('分发类型');
     expect(visualsHtml).toContain('微循环状态');
     expect(visualsHtml).toContain('交付 delivered');

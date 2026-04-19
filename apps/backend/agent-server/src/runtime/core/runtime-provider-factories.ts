@@ -71,6 +71,7 @@ export function createRuntimeSessionService(runtimeHost: RuntimeHost) {
 
 export function createRuntimeSkillCatalogService(runtimeHost: RuntimeHost) {
   return new RuntimeSkillCatalogService(() => ({
+    runtimeHost,
     skillRegistry: runtimeHost.skillRegistry
   }));
 }

@@ -334,6 +334,7 @@ function updateCheckpoint(
   checkpoint.supportingSpecialists = task.supportingSpecialists;
   checkpoint.specialistFindings = task.specialistFindings;
   checkpoint.routeConfidence = task.routeConfidence;
+  checkpoint.plannerStrategy = task.plannerStrategy;
   checkpoint.contextSlicesBySpecialist =
     task.contextSlicesBySpecialist as ChatCheckpointRecord['contextSlicesBySpecialist'];
   checkpoint.dispatches = task.dispatches;

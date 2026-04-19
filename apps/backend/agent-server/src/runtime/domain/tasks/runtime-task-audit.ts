@@ -141,20 +141,46 @@ export function buildFallbackTaskPlan(task: TaskRecord): ManagerPlan {
         id: `${task.id}:fallback-subtask`,
         title: task.chatRoute?.flow === 'direct-reply' ? '会话直答' : '执行摘要',
         description: routeSummary,
-        assignedTo: mapTaskAssignedRole(task.currentMinistry),
+        assignedTo: mapTaskAssignedRole(task),
         status: mapTaskPlanStatus(task.status)
       }
     ]
   };
 }
 
-function mapTaskAssignedRole(currentMinistry?: string): ManagerPlan['subTasks'][number]['assignedTo'] {
+function mapTaskAssignedRole(task: TaskRecord): ManagerPlan['subTasks'][number]['assignedTo'] {
+  const currentMinistry = task.currentMinistry?.toLowerCase();
+  const latestDispatch = [...(task.dispatches ?? [])].reverse().find(dispatch => dispatch.kind !== 'fallback');
+
+  if (
+    latestDispatch?.specialistDomain === 'risk-compliance' ||
+    latestDispatch?.requiredCapabilities?.includes('specialist.risk-compliance') ||
+    latestDispatch?.selectedAgentId?.includes('reviewer') ||
+    latestDispatch?.agentId?.includes('reviewer')
+  ) {
+    return 'reviewer';
+  }
+
+  if (latestDispatch?.kind === 'strategy') {
+    return 'research';
+  }
+
+  if (latestDispatch?.kind === 'ministry') {
+    return 'executor';
+  }
+
   switch (currentMinistry) {
     case 'research':
+    case 'hubu-search':
+    case 'libu-delivery':
+    case 'libu-docs':
       return 'research';
     case 'review':
+    case 'xingbu-review':
       return 'reviewer';
     case 'execution':
+    case 'gongbu-code':
+    case 'bingbu-ops':
       return 'executor';
     default:
       return 'manager';

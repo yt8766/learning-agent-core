@@ -96,18 +96,29 @@
 - `pnpm typecheck` 对应五层验证里的 `Type`
 - `pnpm test:spec` 对应五层验证里的 `Spec`
 - `pnpm test:spec` 会扫描各宿主 `test/` 目录下与 schema、contract、parser、normalization 相关，或显式使用 `zod` / `Schema.parse` / `safeParse` 的测试文件，并作为结构校验回归的统一入口
-- `Demo` 在本仓库中指“最小可运行闭环”；当前不再要求 `packages/*` 与 `agents/*` 默认维护与 `src/` 同级的 `demo/`，优先使用 integration、build 或其他自动化 smoke 承担这层责任
+- `Demo` 在本仓库中指“最小可运行闭环”；当前 `packages/*` 默认应维护与 `src/` 同级的 `demo/` 目录和可直接运行的 `demo` 脚本，优先用包级 smoke 尽早暴露构建产物与公开入口断裂
 - 当前默认规则是：
-  - `packages/*` 与 `agents/*` 可以不再维护显式 `demo/` 与 `demo` 脚本
+  - `packages/*` 默认需要显式 `demo/` 与 `demo` 脚本
+  - `agents/*` 可以继续由 integration、build 或其他自动化 smoke 承担 Demo 层责任
   - `apps/*` 与 `server` 当前同样允许由 integration 或等价自动化闭环承担 Demo 层责任
-- `pnpm test:demo` 会动态发现仍保留 `demo/` 与 `demo` 脚本的宿主；没有独立 `demo/` 的宿主由 integration 或等价 smoke 承担最小闭环
+- `pnpm test:demo` 会动态发现并执行保留 `demo/` 与 `demo` 脚本的宿主；当前 packages 层默认应被这条链路覆盖
+- 根级 `scripts/run-package-demos.js` 当前会强制校验 `packages/*` 是否同时具备 `demo/` 与 `demo` 脚本；缺任一项都会直接让 `pnpm test:demo` 失败
+- `packages/*` 的 demo 分层当前统一采用：
+  - `demo/smoke.ts`
+    必备；负责最小可运行 smoke，默认由包级 `demo` 脚本执行
+  - `demo/contract.ts`
+    可选；负责 schema、DTO、facade、registry 等 contract 闭环
+  - `demo/flow.ts`
+    可选；负责更贴近包职责的 happy path / workflow 闭环
+- 根级 `pnpm test:demo` 当前在执行包级 `demo` 脚本后，会继续自动执行存在的 `demo/contract.ts` 与 `demo/flow.ts`
+- 需要只跑单个包时，当前可直接使用 `pnpm test:demo -- packages/<package-name>`；根级 runner 会忽略参数分隔符 `--`，避免把它误判成宿主路径
 - `pnpm test:spec:affected` 会基于 `VERIFY_BASE_REF...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；未显式配置时默认使用 `origin/main`。当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
 - `pnpm test:demo:affected` 会通过 `node ./scripts/run-turbo-affected.js demo` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
 - `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
 - `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 working tree 改动自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
 - `pnpm eval:prompts:affected` 仍保留为独立入口，会在受影响范围内命中 prompt 敏感路径时执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
-- 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
+- 当前 Turbo `demo` 任务默认服务于显式 `demo/**` 宿主；packages 新增或重构时，应优先把最小闭环接进这条链路
 - 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
 - 对脚手架链路，`Demo` 不只指生成器自身能跑，还包括“生成出的目标至少存在最小可运行闭环”：
   - `package-lib` 需要验证最小类型闭环与 integration 闭环
@@ -180,12 +191,13 @@
 ### Demo（最小闭环）
 
 - 负责证明模块或链路“至少能跑通一次”
-- 当前 `packages/*` 与 `agents/*` 不再默认维护与 `src/` 同级的 `demo/`
+- `packages/*` 默认维护与 `src/` 同级的 `demo/` 和 `demo` 脚本，至少覆盖“构建产物可加载 + 包根公开入口可运行”这一层 smoke
+- `agents/*`、`apps/*` 与 `server` 仍可用 integration、build 或其他自动化闭环承担 Demo 层责任，但要能明确指出承担入口
 - `package-lib` 与 `agent-basic` 脚手架都默认使用 integration 作为最小可运行闭环
 - 可接受形式包括：
   - 一条最小 happy path integration test
   - 一个 build / CLI / API / UI 最小链路验证
-  - 仍保留历史 demo 脚本的宿主可以继续复用它
+  - 一个可直接运行的包级 `demo` 脚本
 - 对不单独生成 `demo/` 的宿主，必须明确由 integration 或其他自动化闭环承担这层责任
 
 ### Integration（协同层）

@@ -31,6 +31,7 @@ describe('@agent/agents-supervisor workflow routing integration', () => {
     });
 
     expect(specialistRoute.specialistLead.domain).toBe('technical-architecture');
+    expect(specialistRoute.specialistLead.requiredCapabilities).toEqual(['specialist.technical-architecture']);
     expect(specialistRoute.contextSlicesBySpecialist[0]).toEqual(
       expect.objectContaining({
         specialistId: specialistRoute.specialistLead.id,
