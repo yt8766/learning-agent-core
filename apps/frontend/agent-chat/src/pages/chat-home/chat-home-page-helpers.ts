@@ -1,6 +1,11 @@
 import type { ChatCheckpointRecord, ChatEventRecord, ChatThoughtChainItem } from '@/types/chat';
 
-import { buildApprovalsCenterExportUrl, buildBrowserReplayUrl, buildRuntimeCenterExportUrl } from '@/api/chat-api';
+import {
+  buildAdminRuntimeObservatoryUrl,
+  buildApprovalsCenterExportUrl,
+  buildBrowserReplayUrl,
+  buildRuntimeCenterExportUrl
+} from '@/api/chat-api';
 import { getRuntimeDrawerExportFilters } from '@/features/runtime-panel/chat-runtime-drawer';
 import { formatSessionTime } from '@/hooks/use-chat-session';
 import { buildEventSummary } from './chat-home-helpers';
@@ -56,11 +61,17 @@ export function getWorkbenchToggleLabel(showWorkbench: boolean) {
   return showWorkbench ? '收起工作区' : '打开工作区';
 }
 
-export function buildShareLinksText(urls: { runtimeUrl: string; approvalsUrl: string; replayUrl?: string }) {
+export function buildShareLinksText(urls: {
+  runtimeUrl: string;
+  approvalsUrl: string;
+  observatoryUrl?: string;
+  replayUrl?: string;
+}) {
   return [
     '当前运行视角链接',
     `runtime: ${urls.runtimeUrl}`,
     `approvals: ${urls.approvalsUrl}`,
+    urls.observatoryUrl ? `observatory: ${urls.observatoryUrl}` : undefined,
     urls.replayUrl ? `replay: ${urls.replayUrl}` : undefined
   ]
     .filter(Boolean)
@@ -90,6 +101,13 @@ export function buildChatHomeShareLinks(checkpoint: ChatCheckpointRecord | undef
   return {
     runtimeUrl: buildRuntimeCenterExportUrl({ ...filters, format: 'json' }),
     approvalsUrl: buildApprovalsCenterExportUrl({ ...filters, format: 'json' }),
+    observatoryUrl: checkpoint?.taskId
+      ? buildAdminRuntimeObservatoryUrl({
+          taskId: checkpoint.taskId,
+          executionMode: filters.executionMode,
+          interactionKind: filters.interactionKind
+        })
+      : '',
     replayUrl: activeSessionId ? buildBrowserReplayUrl(activeSessionId) : ''
   };
 }

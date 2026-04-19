@@ -1,5 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
-import { MemoryScrubberService, type MemoryScrubberValidator } from '@agent/memory';
+import {
+  MemoryScrubberService,
+  type MemoryScrubberValidator,
+  type MemoryRepository,
+  type RuleRepository,
+  type RuntimeStateSnapshot
+} from '@agent/memory';
 
 import {
   EvidenceRecord,
@@ -17,13 +23,17 @@ import {
   UserProfileRecord,
   SupersedeKnowledgeDto
 } from '@agent/core';
+import type { RuntimeHost } from '../core/runtime.host';
+import { applyCrossCheckEvidenceRecords } from '../domain/knowledge/runtime-cross-check-evidence';
+import { buildMemoryUsageInsights } from '../domain/knowledge/runtime-memory-usage-insights';
+import { buildMemoryVersionComparison } from '../domain/knowledge/runtime-memory-version-compare';
 import { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
 
 export interface RuntimeKnowledgeContext {
   wenyuanFacade: RuntimeWenyuanFacade;
-  ruleRepository: any;
-  orchestrator: any;
-  runtimeStateRepository: any;
+  ruleRepository: RuleRepository;
+  orchestrator: RuntimeHost['orchestrator'];
+  runtimeStateRepository: RuntimeHost['runtimeStateRepository'];
 }
 
 export class RuntimeKnowledgeService {
@@ -112,111 +122,23 @@ export class RuntimeKnowledgeService {
 
   async getMemoryUsageInsights() {
     const memories = await this.ctx().wenyuanFacade.listMemories();
-    const totals = memories.reduce(
-      (summary, memory) => {
-        summary.totalMemories += 1;
-        summary.retrieved += memory.usageMetrics?.retrievedCount ?? 0;
-        summary.injected += memory.usageMetrics?.injectedCount ?? 0;
-        summary.adopted += memory.usageMetrics?.adoptedCount ?? 0;
-        summary.dismissed += memory.usageMetrics?.dismissedCount ?? 0;
-        summary.corrected += memory.usageMetrics?.correctedCount ?? 0;
-        const memoryType = memory.memoryType ?? 'unknown';
-        summary.byMemoryType[memoryType] =
-          (summary.byMemoryType[memoryType] ?? 0) + (memory.usageMetrics?.adoptedCount ?? 0);
-        const status = memory.status ?? 'unknown';
-        summary.byStatus[status] = (summary.byStatus[status] ?? 0) + 1;
-        return summary;
-      },
-      {
-        totalMemories: 0,
-        retrieved: 0,
-        injected: 0,
-        adopted: 0,
-        dismissed: 0,
-        corrected: 0,
-        byMemoryType: {} as Record<string, number>,
-        byStatus: {} as Record<string, number>
-      }
-    );
-
-    const rankBy = (selector: (memory: MemoryRecord) => number) =>
-      memories
-        .slice()
-        .sort((left, right) => selector(right) - selector(left))
-        .filter(memory => selector(memory) > 0)
-        .slice(0, 5)
-        .map(memory => ({
-          id: memory.id,
-          summary: memory.summary,
-          memoryType: memory.memoryType,
-          status: memory.status,
-          value: selector(memory)
-        }));
-
-    return {
-      totalMemories: totals.totalMemories,
-      totalRetrieved: totals.retrieved,
-      totalInjected: totals.injected,
-      totalAdopted: totals.adopted,
-      totalDismissed: totals.dismissed,
-      totalCorrected: totals.corrected,
-      adoptionRate: totals.injected > 0 ? Number((totals.adopted / totals.injected).toFixed(4)) : 0,
-      topAdoptedMemories: rankBy(memory => memory.usageMetrics?.adoptedCount ?? 0),
-      topDismissedMemories: rankBy(memory => memory.usageMetrics?.dismissedCount ?? 0),
-      topCorrectedMemories: rankBy(memory => memory.usageMetrics?.correctedCount ?? 0),
-      adoptionByMemoryType: Object.entries(totals.byMemoryType).map(([memoryType, adoptedCount]) => ({
-        memoryType,
-        adoptedCount
-      })),
-      countByStatus: Object.entries(totals.byStatus).map(([status, count]) => ({
-        status,
-        count
-      }))
-    };
+    return buildMemoryUsageInsights(memories);
   }
 
   async compareMemoryVersions(memoryId: string, leftVersion: number, rightVersion: number) {
     const history = await this.getMemoryHistory(memoryId);
-    const current = history.memory;
-    if (!current) {
-      throw new NotFoundException(`Memory ${memoryId} not found`);
-    }
-
-    const resolveSnapshot = (version: number) => {
-      if (current.version === version) {
-        return buildMemoryCompareSnapshot(current);
-      }
-      const event = history.events
-        .filter(item => item.version === version)
-        .sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
-      const snapshot = event?.payload?.snapshot as Record<string, unknown> | undefined;
-      if (!snapshot) {
-        return undefined;
-      }
-      return buildMemoryCompareSnapshot({
-        ...current,
-        ...snapshot,
-        id: current.id
-      } as MemoryRecord);
-    };
-
-    const left = resolveSnapshot(leftVersion);
-    const right = resolveSnapshot(rightVersion);
-    if (!left || !right) {
+    const comparison = buildMemoryVersionComparison({
+      memoryId,
+      history,
+      leftVersion,
+      rightVersion
+    });
+    if (!comparison) {
       throw new NotFoundException(
         `Unable to compare versions ${leftVersion} and ${rightVersion} for memory ${memoryId}`
       );
     }
-
-    return {
-      memoryId,
-      currentVersion: current.version ?? rightVersion,
-      leftVersion,
-      rightVersion,
-      left,
-      right,
-      latestEventType: history.events.slice().sort((a, b) => b.version - a.version)[0]?.type
-    };
+    return comparison;
   }
 
   async overrideMemory(
@@ -290,7 +212,7 @@ export class RuntimeKnowledgeService {
   }
 
   createMemoryScrubber(validator: MemoryScrubberValidator) {
-    return new MemoryScrubberService(this.ctx().wenyuanFacade.getMemoryRepository() as any, validator);
+    return new MemoryScrubberService(this.ctx().wenyuanFacade.getMemoryRepository() as MemoryRepository, validator);
   }
 
   async recordCrossCheckEvidence(memoryId: string, records: EvidenceRecord[]) {
@@ -299,21 +221,7 @@ export class RuntimeKnowledgeService {
     }
 
     const snapshot = await this.ctx().runtimeStateRepository.load();
-    const current = snapshot.crossCheckEvidence ?? [];
-    const next = [...current];
-
-    for (const record of records) {
-      const index = next.findIndex(item => item.record.id === record.id);
-      const entry = { memoryId, record };
-      if (index >= 0) {
-        next[index] = entry;
-      } else {
-        next.push(entry);
-      }
-    }
-
-    snapshot.crossCheckEvidence = next.slice(-200);
-    await this.ctx().runtimeStateRepository.save(snapshot);
+    await this.ctx().runtimeStateRepository.save(applyCrossCheckEvidenceRecords(snapshot, memoryId, records));
     return records;
   }
 
@@ -360,16 +268,4 @@ export class RuntimeKnowledgeService {
   private ctx() {
     return this.getContext();
   }
-}
-
-function buildMemoryCompareSnapshot(memory: MemoryRecord) {
-  return {
-    summary: memory.summary,
-    content: memory.content,
-    status: memory.status,
-    scopeType: memory.scopeType,
-    memoryType: memory.memoryType,
-    usageMetrics: memory.usageMetrics,
-    sourceEvidenceIds: memory.sourceEvidenceIds ?? []
-  };
 }

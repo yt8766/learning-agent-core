@@ -60,13 +60,13 @@ export function EvalsCenterPanel({
     [evals.promptRegression?.suites]
   );
   const passRateData = useMemo(
-    () => [{ key: 'passRate', label: 'Pass Rate', value: evals.overallPassRate, fill: 'var(--color-passRate)' }],
+    () => [{ key: 'passRate', label: '通过率', value: evals.overallPassRate, fill: 'var(--color-passRate)' }],
     [evals.overallPassRate]
   );
 
   return (
     <DashboardCenterShell
-      title="Evals Center"
+      title="评测基线"
       description="跟踪 benchmark、prompt regression 与最近命中运行的表现。"
       count={evals.scenarioCount}
       actions={
@@ -89,11 +89,7 @@ export function EvalsCenterPanel({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-lg font-semibold text-foreground">
-                {activeChart === 'trend'
-                  ? 'Daily Trend'
-                  : activeChart === 'suites'
-                    ? 'Prompt Suite Coverage'
-                    : 'Overall Pass Rate'}
+                {activeChart === 'trend' ? '每日趋势' : activeChart === 'suites' ? 'Prompt 套件覆盖' : '总体通过率'}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 {activeChart === 'trend'
@@ -112,7 +108,7 @@ export function EvalsCenterPanel({
                   variant={historyDays === option ? 'default' : 'secondary'}
                   onClick={() => onHistoryDaysChange(option)}
                 >
-                  {option}d
+                  {option}天
                 </Button>
               ))}
               <Badge variant="outline">
@@ -129,21 +125,21 @@ export function EvalsCenterPanel({
               variant={activeChart === 'trend' ? 'default' : 'ghost'}
               onClick={() => setActiveChart('trend')}
             >
-              Trend
+              趋势
             </Button>
             <Button
               size="sm"
               variant={activeChart === 'suites' ? 'default' : 'ghost'}
               onClick={() => setActiveChart('suites')}
             >
-              Suites
+              套件
             </Button>
             <Button
               size="sm"
               variant={activeChart === 'passRate' ? 'default' : 'ghost'}
               onClick={() => setActiveChart('passRate')}
             >
-              Pass Rate
+              通过率
             </Button>
           </div>
         </CardHeader>

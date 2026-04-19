@@ -157,6 +157,9 @@ skills/
 
 - 应用层只通过 `@agent/*` 依赖共享包
 - 不要从应用层直连 `packages/*/src`、`agents/*/src`，也不要把 `@agent/<pkg>/<subpath>` 当成应用层稳定接口
+- 如果某段能力已经需要被多个地方复用、逻辑开始变复杂、并且预计要独立演进，可以新建 `packages/<pkg>` 子包收敛边界；这类新包的最低结构要求只有 `package.json`
+- `packages/` 下的每一个目录必须包含 `package.json`
+- 新建 `packages/<pkg>` 时不要求立即提供实现代码，不要求立即创建 `src/` 目录，也不要求先塞入任何逻辑；可以先以 manifest 立包，再逐步补实现
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`

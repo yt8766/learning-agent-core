@@ -136,6 +136,25 @@ export async function promoteSkill(skillId: string) {
   return request<SkillRecord>(`/skills/${skillId}/promote`, { method: 'POST' });
 }
 
+export async function getSkills(status?: string) {
+  const search = new URLSearchParams();
+  if (status) {
+    search.set('status', status);
+  }
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return request<PlatformConsoleRecord['skills']>(`/skills${suffix}`, {
+    cancelKey: 'skills',
+    cancelPrevious: true
+  });
+}
+
+export async function getRules() {
+  return request<PlatformConsoleRecord['rules']>('/rules', {
+    cancelKey: 'rules',
+    cancelPrevious: true
+  });
+}
+
 export async function disableSkill(skillId: string) {
   return request<SkillRecord>(`/skills/${skillId}/disable`, { method: 'POST' });
 }

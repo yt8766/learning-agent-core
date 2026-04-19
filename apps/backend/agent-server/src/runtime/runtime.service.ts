@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { describeConnectorProfilePolicy } from '@agent/runtime';
-import { resolveTaskSkillSearch, syncEnabledRemoteSkillSources } from './skills/runtime-skill-sources.service';
+import { AppLoggerService } from '../logger/app-logger.service';
+import { syncEnabledRemoteSkillSources } from './skills/runtime-skill-sources.service';
 import { RuntimeHost } from './core/runtime.host';
 import { RuntimeCentersService } from './centers/runtime-centers.service';
 import { RuntimeBootstrapService } from './services/runtime-bootstrap.service';
@@ -13,14 +14,11 @@ import { RuntimeWenyuanFacade } from './wenyuan/runtime-wenyuan-facade';
 import { RuntimeTechBriefingService } from './briefings/runtime-tech-briefing.service';
 import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
 import { RuntimeServiceContextFactory } from './runtime.service-contexts';
+import { registerRuntimeServiceSkillResolvers } from './domain/skills/runtime-skill-runtime-resolvers';
 import {
   bindServiceMethods,
   CENTER_METHOD_NAMES,
   KNOWLEDGE_METHOD_NAMES,
-  type RuntimeSkillSearchPayload,
-  resolvePreExecutionSkillIntervention,
-  resolveRuntimeSkillIntervention,
-  resolveSkillInstallApproval,
   SESSION_METHOD_NAMES,
   SKILL_CATALOG_METHOD_NAMES,
   TASK_METHOD_NAMES
@@ -60,6 +58,7 @@ export class RuntimeService implements OnModuleInit {
   private readonly techBriefingService: RuntimeTechBriefingService;
   private readonly scheduleService: RuntimeScheduleService;
   private readonly contextFactory: RuntimeServiceContextFactory;
+  private readonly appLogger?: AppLoggerService;
 
   constructor(
     private readonly runtimeHost: RuntimeHost = new RuntimeHost(),
@@ -71,7 +70,8 @@ export class RuntimeService implements OnModuleInit {
     sessionService?: RuntimeSessionService,
     knowledgeService?: RuntimeKnowledgeService,
     skillCatalogService?: RuntimeSkillCatalogService,
-    taskService?: RuntimeTaskService
+    taskService?: RuntimeTaskService,
+    appLogger?: AppLoggerService
   ) {
     this.settings = runtimeHost.settings;
     this.memoryRepository = runtimeHost.memoryRepository;
@@ -91,6 +91,7 @@ export class RuntimeService implements OnModuleInit {
     this.backgroundHeartbeatMs = this.settings.runtimeBackground.heartbeatMs;
     this.backgroundPollMs = this.settings.runtimeBackground.pollMs;
     this.skillSourceSyncService = runtimeHost.skillSourceSyncService;
+    this.appLogger = appLogger;
     this.techBriefingService =
       techBriefingService ??
       new RuntimeTechBriefingService(() => ({
@@ -102,7 +103,8 @@ export class RuntimeService implements OnModuleInit {
       scheduleService ??
       new RuntimeScheduleService(() => ({
         settings: this.settings,
-        techBriefingService: this.techBriefingService
+        techBriefingService: this.techBriefingService,
+        refreshMetricsSnapshots: (days: number) => this.centersService.refreshMetricsSnapshots(days)
       }));
     this.wenyuanFacade = new RuntimeWenyuanFacade(() => ({
       settings: this.settings,
@@ -115,6 +117,7 @@ export class RuntimeService implements OnModuleInit {
     this.centersService = centersService ?? new RuntimeCentersService(() => this.contextFactory.getCentersContext());
     this.contextFactory = new RuntimeServiceContextFactory({
       settings: () => this.settings,
+      appLogger: () => this.appLogger,
       runtimeHost: () => this.runtimeHost,
       skillRegistry: () => this.skillRegistry,
       toolRegistry: () => this.toolRegistry,
@@ -131,16 +134,8 @@ export class RuntimeService implements OnModuleInit {
       skillArtifactFetcher: () => this.runtimeHost.skillArtifactFetcher,
       describeConnectorProfilePolicy: this.describeConnectorProfilePolicy,
       operationalState: () => this.operationalState,
-      centersService: () => this.centersService,
       wenyuanFacade: () => this.wenyuanFacade,
-      getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => this.getRuntimeCenter(days, filters),
-      getApprovalsCenter: (filters?: Record<string, unknown>) => this.getApprovalsCenter(filters),
-      getLearningCenter: () => this.getLearningCenter(),
-      getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => this.getEvalsCenter(days, filters),
-      getEvidenceCenter: () => this.getEvidenceCenter(),
-      getConnectorsCenter: () => this.getConnectorsCenter(),
-      getSkillSourcesCenter: () => this.getSkillSourcesCenter(),
-      getCompanyAgentsCenter: () => this.getCompanyAgentsCenter(),
+      centersService: () => this.centersService,
       backgroundRunnerId: this.backgroundRunnerId,
       backgroundWorkerPoolSize: this.backgroundWorkerPoolSize,
       backgroundLeaseTtlMs: this.backgroundLeaseTtlMs,
@@ -155,6 +150,7 @@ export class RuntimeService implements OnModuleInit {
         getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
         syncInstalledSkillWorkers: () => this.contextFactory.syncInstalledSkillWorkers(),
         applyStoredGovernanceOverrides: () => this.contextFactory.applyStoredGovernanceOverrides(),
+        initializeMetricsSnapshots: () => this.centersService.refreshMetricsSnapshots(30).then(() => undefined),
         initializeDailyTechBriefing: () => this.techBriefingService.initializeSchedule().then(() => undefined),
         initializeScheduleRunner: () => this.scheduleService.initialize(),
         getBackgroundRunnerContext: () => this.contextFactory.getBackgroundRunnerContext()
@@ -175,111 +171,11 @@ export class RuntimeService implements OnModuleInit {
 
   async onModuleInit() {
     await this.bootstrapService.initialize();
-    if ('setLocalSkillSuggestionResolver' in this.orchestrator) {
-      type LocalSkillSuggestionResolverInput = {
-        goal: string;
-        usedInstalledSkills?: string[];
-        requestedHints?: Record<string, unknown>;
-        specialistDomain?: string;
-      };
-      type PreExecutionSkillResolverInput = {
-        goal: string;
-        skillSearch?: RuntimeSkillSearchPayload;
-        usedInstalledSkills?: string[];
-      };
-      type RuntimeSkillResolverInput = {
-        task: { id: string };
-        goal: string;
-        currentStep: 'direct_reply' | 'research';
-        skillSearch?: RuntimeSkillSearchPayload;
-        usedInstalledSkills?: string[];
-      };
-      type SkillInstallApprovalResolverInput = {
-        task: { goal: string; usedInstalledSkills?: string[] };
-        pending: {
-          receiptId?: string;
-          usedInstalledSkills?: string[];
-          skillDisplayName?: string;
-        };
-        actor?: string;
-      };
-
-      this.orchestrator.setLocalSkillSuggestionResolver(
-        async ({ goal, usedInstalledSkills, requestedHints, specialistDomain }: LocalSkillSuggestionResolverInput) =>
-          resolveTaskSkillSearch(this.contextFactory.getSkillSourcesContext(), goal, {
-            usedInstalledSkills,
-            requestedHints,
-            specialistDomain
-          })
-      );
-      this.orchestrator.setPreExecutionSkillInterventionResolver(
-        async ({ goal, skillSearch, usedInstalledSkills }: PreExecutionSkillResolverInput) =>
-          this.resolvePreExecutionSkillIntervention(goal, skillSearch, usedInstalledSkills)
-      );
-      this.orchestrator.setRuntimeSkillInterventionResolver(
-        async ({ task, goal, currentStep, skillSearch, usedInstalledSkills }: RuntimeSkillResolverInput) =>
-          this.resolveRuntimeSkillIntervention(task, goal, currentStep, skillSearch, usedInstalledSkills)
-      );
-      this.orchestrator.setSkillInstallApprovalResolver(
-        async ({ task, pending, actor }: SkillInstallApprovalResolverInput) =>
-          this.resolveSkillInstallApproval(task, pending, actor)
-      );
-    }
-  }
-
-  private async resolveSkillInstallApproval(
-    task: { goal: string; usedInstalledSkills?: string[] },
-    pending: {
-      receiptId?: string;
-      usedInstalledSkills?: string[];
-      skillDisplayName?: string;
-    },
-    actor?: string
-  ) {
-    return resolveSkillInstallApproval({
-      centersService: this.centersService,
-      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
-      task,
-      pending,
-      actor
-    });
-  }
-
-  private async resolveRuntimeSkillIntervention(
-    task: { id: string },
-    goal: string,
-    currentStep: 'direct_reply' | 'research',
-    skillSearch?: RuntimeSkillSearchPayload,
-    usedInstalledSkills?: string[]
-  ) {
-    return resolveRuntimeSkillIntervention({
+    registerRuntimeServiceSkillResolvers(this.orchestrator as RuntimeHost['orchestrator'] & Record<string, unknown>, {
       settings: this.settings,
       centersService: this.centersService,
-      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
-      goal,
-      currentStep,
-      skillSearch,
-      usedInstalledSkills
+      contextFactory: this.contextFactory
     });
-  }
-
-  private async resolvePreExecutionSkillIntervention(
-    goal: string,
-    skillSearch?: RuntimeSkillSearchPayload,
-    usedInstalledSkills?: string[]
-  ) {
-    return resolvePreExecutionSkillIntervention({
-      settings: this.settings,
-      centersService: this.centersService,
-      getSkillSourcesContext: () => this.contextFactory.getSkillSourcesContext(),
-      goal,
-      skillSearch,
-      usedInstalledSkills
-    });
-  }
-
-  private resolveTaskSkillSuggestions(goal: string, options?: { usedInstalledSkills?: string[]; limit?: number }) {
-    return this.contextFactory.resolveTaskSkillSuggestions(goal, options);
   }
 }
 

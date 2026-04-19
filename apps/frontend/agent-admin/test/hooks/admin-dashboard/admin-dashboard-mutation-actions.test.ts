@@ -28,6 +28,7 @@ const apiMocks = vi.hoisted(() => ({
   rejectSkillInstall: vi.fn(),
   closeConnectorSession: vi.fn(),
   refreshConnectorDiscovery: vi.fn(),
+  refreshMetricsSnapshots: vi.fn(),
   enableConnector: vi.fn(),
   disableConnector: vi.fn(),
   setConnectorPolicy: vi.fn(),
@@ -69,7 +70,12 @@ function createContext(
   page: 'runtime' | 'approvals' | 'learning' | 'connectors' | 'skillSources' | 'companyAgents' = 'runtime'
 ) {
   return {
+    queryClient: {
+      fetchQuery: vi.fn(),
+      invalidateQueries: vi.fn(async () => undefined)
+    },
     getPage: () => page,
+    getActiveTaskId: () => undefined,
     getRuntimeHistoryDays: () => 30,
     getEvalsHistoryDays: () => 14,
     getRuntimeFilters: () => ({
@@ -87,6 +93,11 @@ function createContext(
     getBundle: () => null,
     getConsoleData: () => null,
     setPage: vi.fn(),
+    setActiveTaskId: vi.fn(),
+    setObservatoryFocusTarget: vi.fn(),
+    setRuntimeCompareTaskId: vi.fn(),
+    setRuntimeGraphNodeId: vi.fn(),
+    setRuntimeReplayReceipt: vi.fn(),
     setLoading: vi.fn(),
     setError: vi.fn(),
     setConsoleData: vi.fn(),
@@ -139,6 +150,13 @@ describe('admin-dashboard-mutation-actions', () => {
     await actions.updateApproval('reject', 'task-2', 'delete_file');
     await actions.handleRetryTask('task-3');
     await actions.handleQuickCreate();
+    await actions.handleLaunchWorkflowTask({
+      goal: 'trace the runtime pipeline',
+      workflowCommand: '/review',
+      baselineTaskId: 'task-3',
+      replaySourceLabel: 'trace · xingbu-review',
+      replayScoped: true
+    });
     await actions.handleCreateDiagnosisTask({
       taskId: 'task-4',
       goal: '诊断',
@@ -150,6 +168,16 @@ describe('admin-dashboard-mutation-actions', () => {
     expect(apiMocks.rejectTask).toHaveBeenCalledWith('task-2', 'delete_file');
     expect(apiMocks.retryTask).toHaveBeenCalledWith('task-3');
     expect(apiMocks.createTask).toHaveBeenCalled();
+    expect(apiMocks.createTask).toHaveBeenCalledWith({
+      goal: '/review trace the runtime pipeline',
+      lineage: {
+        parentTaskId: 'task-3',
+        baselineTaskId: 'task-3',
+        launchReason: 'replay',
+        replaySourceLabel: 'trace · xingbu-review',
+        replayScoped: true
+      }
+    });
     expect(apiMocks.createAgentDiagnosisTask).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: 'task-4', errorCode: 'E_RUNTIME' })
     );
@@ -157,6 +185,16 @@ describe('admin-dashboard-mutation-actions', () => {
     expect(refreshActions.refreshTask).toHaveBeenCalledWith('task-3', false);
     expect(refreshActions.refreshTask).toHaveBeenCalledWith('task-quick', false);
     expect(refreshActions.refreshTask).toHaveBeenCalledWith('task-diagnosis', false);
+    expect(context.setActiveTaskId).toHaveBeenCalledWith('task-quick');
+    expect(context.setActiveTaskId).toHaveBeenCalledWith('task-diagnosis');
+    expect(context.setObservatoryFocusTarget).toHaveBeenCalledWith(undefined);
+    expect(context.setRuntimeCompareTaskId).toHaveBeenCalledWith('task-3');
+    expect(context.setRuntimeGraphNodeId).toHaveBeenCalledWith(undefined);
+    expect(context.setRuntimeReplayReceipt).toHaveBeenCalledWith({
+      sourceLabel: 'trace · xingbu-review',
+      scoped: true,
+      baselineTaskId: 'task-3'
+    });
     expect(context.setPage).toHaveBeenCalledWith('runtime');
   });
 
@@ -233,6 +271,20 @@ describe('admin-dashboard-mutation-actions', () => {
     expect(downloadTextMock).toHaveBeenCalledTimes(3);
     expect(refreshActions.refreshPageCenter).toHaveBeenCalledWith('learning');
     expect(refreshActions.refreshPageCenter).toHaveBeenCalledWith('skillSources');
+  });
+
+  it('refreshes metrics snapshots explicitly before reloading the dashboard', async () => {
+    const context = createContext('runtime');
+    const refreshActions = createRefreshActions();
+    const actions = createAdminDashboardMutationActions(context as any, refreshActions);
+
+    await actions.handleRefreshMetricsSnapshots();
+
+    expect(apiMocks.refreshMetricsSnapshots).toHaveBeenCalledWith(30);
+    expect(context.queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['admin', 'platform-console-log-analysis', 7]
+    });
+    expect(refreshActions.refreshAll).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes targeted centers for governance mutations and surfaces errors', async () => {

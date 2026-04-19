@@ -7,7 +7,9 @@ type EffectSlot = {
 };
 
 type CapturedDashboardContext = {
+  queryClient: { fetchQuery: ReturnType<typeof vi.fn> };
   getPage: () => string;
+  getActiveTaskId: () => string | undefined;
   getRuntimeFilters: () => Record<string, unknown>;
   getApprovalFilters: () => Record<string, unknown>;
   getRuntimeHistoryDays: () => number;
@@ -15,6 +17,10 @@ type CapturedDashboardContext = {
   getEvalFilters: () => Record<string, unknown>;
   getBundle: () => unknown;
   getConsoleData: () => unknown;
+  setActiveTaskId: (taskId?: string) => void;
+  setObservatoryFocusTarget: (target?: { kind: 'checkpoint' | 'span' | 'evidence'; id: string }) => void;
+  setRuntimeCompareTaskId: (taskId?: string) => void;
+  setRuntimeGraphNodeId: (nodeId?: string) => void;
   reportRefresh: (event: { scope: 'all'; target: string; reason: string; outcome: string }) => void;
 };
 
@@ -122,6 +128,9 @@ describe('use-admin-dashboard hook coverage', () => {
     const listeners = new Map<string, EventListener>();
     const replaceState = vi.fn();
     let capturedContext: CapturedDashboardContext | undefined;
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshAll: vi.fn().mockResolvedValue(undefined),
       refreshPageCenter: vi.fn().mockResolvedValue(undefined),
@@ -129,6 +138,14 @@ describe('use-admin-dashboard hook coverage', () => {
     };
     const initialHashState = {
       page: 'runtime',
+      runtimeTaskId: 'task-selected-1',
+      runtimeFocusKind: 'checkpoint',
+      runtimeFocusId: 'cp-1',
+      runtimeCompareTaskId: 'task-compare-1',
+      runtimeGraphNodeId: 'worker-gongbu-code',
+      runtimeStatusFilter: 'running',
+      runtimeModelFilter: 'gpt-5.4',
+      runtimePricingSourceFilter: 'provider',
       runtimeExecutionModeFilter: 'plan',
       runtimeInteractionKindFilter: 'approval',
       approvalsExecutionModeFilter: 'all',
@@ -136,6 +153,14 @@ describe('use-admin-dashboard hook coverage', () => {
     };
     const changedHashState = {
       page: 'approvals',
+      runtimeTaskId: 'task-selected-2',
+      runtimeFocusKind: 'span',
+      runtimeFocusId: 'span-2',
+      runtimeCompareTaskId: 'task-compare-2',
+      runtimeGraphNodeId: 'worker-hubu-search',
+      runtimeStatusFilter: 'failed',
+      runtimeModelFilter: 'gpt-5.4-mini',
+      runtimePricingSourceFilter: 'estimated',
       runtimeExecutionModeFilter: 'execute',
       runtimeInteractionKindFilter: 'mode-transition',
       approvalsExecutionModeFilter: 'imperial_direct',
@@ -160,8 +185,19 @@ describe('use-admin-dashboard hook coverage', () => {
     });
 
     vi.doMock('react', () => harness.reactModule);
-    vi.doMock('@/api/admin-api', () => ({
-      getHealth: vi.fn().mockResolvedValue({ status: 'healthy', now: '12:00' })
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient,
+      useQuery: () => ({
+        data: { status: 'healthy', now: '12:00' },
+        error: null
+      })
+    }));
+    vi.doMock('@/api/admin-query', () => ({
+      adminQueryKeys: {
+        platformConsoleLogAnalysis: vi.fn((days: number) => ['admin', 'platform-console-log-analysis', days])
+      },
+      fetchAdminHealth: vi.fn(),
+      fetchPlatformConsoleLogAnalysis: vi.fn()
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-actions', () => ({
       createAdminDashboardActions: (context: CapturedDashboardContext) => {
@@ -171,10 +207,13 @@ describe('use-admin-dashboard hook coverage', () => {
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-constants', () => ({
       PAGE_TITLES: {
-        runtime: 'Runtime Center',
-        approvals: 'Approvals Center'
+        runtime: '运行中枢',
+        approvals: '审批中枢'
       },
-      buildDashboardHash: vi.fn(() => '#/runtime?runtimeExecutionMode=plan'),
+      buildDashboardHash: vi.fn(
+        () =>
+          '#/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
+      ),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/runtime'),
       readDashboardStateFromHash,
       shouldPollTask: vi.fn(() => false),
@@ -189,8 +228,16 @@ describe('use-admin-dashboard hook coverage', () => {
 
     expect(actions.refreshAll).toHaveBeenCalledTimes(1);
     expect(harness.stateSlots[1]).toBe('healthy 路 12:00');
-    expect(replaceState).toHaveBeenCalledWith(null, '', '#/runtime?runtimeExecutionMode=plan');
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      '',
+      '#/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
+    );
     expect(result.pendingApprovals).toEqual(['approval-1']);
+    expect(result.activeTaskId).toBe('task-selected-1');
+    expect(result.observatoryFocusTarget).toEqual({ kind: 'checkpoint', id: 'cp-1' });
+    expect(result.runtimeCompareTaskId).toBe('task-compare-1');
+    expect(result.runtimeGraphNodeId).toBe('worker-gongbu-code');
 
     currentHashState = changedHashState;
     listeners.get('hashchange')?.(new Event('hashchange'));
@@ -198,14 +245,23 @@ describe('use-admin-dashboard hook coverage', () => {
     await harness.runEffects();
 
     expect(result.page).toBe('approvals');
+    expect(result.activeTaskId).toBe('task-selected-2');
+    expect(result.observatoryFocusTarget).toEqual({ kind: 'span', id: 'span-2' });
+    expect(result.runtimeCompareTaskId).toBe('task-compare-2');
+    expect(result.runtimeGraphNodeId).toBe('worker-hubu-search');
+    expect(result.runtimeStatusFilter).toBe('failed');
+    expect(result.runtimeModelFilter).toBe('gpt-5.4-mini');
+    expect(result.runtimePricingSourceFilter).toBe('estimated');
     expect(result.runtimeExecutionModeFilter).toBe('execute');
     expect(result.approvalsExecutionModeFilter).toBe('imperial_direct');
     expect(result.approvalsInteractionKindFilter).toBe('plan-question');
     expect(capturedContext?.getPage()).toBe('approvals');
+    expect(capturedContext?.queryClient).toBe(queryClient);
+    expect(capturedContext?.getActiveTaskId()).toBe('task-selected-2');
     expect(capturedContext?.getRuntimeFilters()).toEqual({
-      status: '',
-      model: '',
-      pricingSource: '',
+      status: 'failed',
+      model: 'gpt-5.4-mini',
+      pricingSource: 'estimated',
       executionMode: 'execute',
       interactionKind: 'mode-transition'
     });
@@ -266,6 +322,9 @@ describe('use-admin-dashboard hook coverage', () => {
       13: 'approval'
     });
     const intervalCallbacks: Array<() => void> = [];
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
     const actions = {
       refreshAll: vi.fn().mockResolvedValue(undefined),
       refreshPageCenter: vi.fn().mockResolvedValue(undefined),
@@ -291,20 +350,39 @@ describe('use-admin-dashboard hook coverage', () => {
     });
 
     vi.doMock('react', () => harness.reactModule);
-    vi.doMock('@/api/admin-api', () => ({
-      getHealth: vi.fn().mockResolvedValue({ status: 'healthy', now: '12:00' })
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient,
+      useQuery: () => ({
+        data: { status: 'healthy', now: '12:00' },
+        error: null
+      })
+    }));
+    vi.doMock('@/api/admin-query', () => ({
+      adminQueryKeys: {
+        platformConsoleLogAnalysis: vi.fn((days: number) => ['admin', 'platform-console-log-analysis', days])
+      },
+      fetchAdminHealth: vi.fn(),
+      fetchPlatformConsoleLogAnalysis: vi.fn()
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-actions', () => ({
       createAdminDashboardActions: () => actions
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-constants', () => ({
       PAGE_TITLES: {
-        runtime: 'Runtime Center'
+        runtime: '运行中枢'
       },
       buildDashboardHash: vi.fn(() => '#/runtime'),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/runtime'),
       readDashboardStateFromHash: vi.fn(() => ({
         page: 'runtime',
+        runtimeTaskId: 'task-1',
+        runtimeFocusKind: undefined,
+        runtimeFocusId: undefined,
+        runtimeCompareTaskId: undefined,
+        runtimeGraphNodeId: undefined,
+        runtimeStatusFilter: '',
+        runtimeModelFilter: '',
+        runtimePricingSourceFilter: '',
         runtimeExecutionModeFilter: 'all',
         runtimeInteractionKindFilter: 'all',
         approvalsExecutionModeFilter: 'all',
@@ -325,7 +403,6 @@ describe('use-admin-dashboard hook coverage', () => {
 
     intervalCallbacks[0]?.();
     expect(actions.refreshTask).toHaveBeenCalledWith('task-1', false);
-    expect(harness.stateSlots[5]).toBe(true);
 
     harness.unmount();
     expect(window.clearInterval).toHaveBeenCalled();
@@ -357,6 +434,12 @@ describe('use-admin-dashboard hook coverage', () => {
       refreshPageCenter: vi.fn().mockResolvedValue(undefined),
       refreshTask: vi.fn().mockResolvedValue(undefined)
     };
+    const approvalsQueryClient = {
+      fetchQuery: vi.fn()
+    };
+    const evalsQueryClient = {
+      fetchQuery: vi.fn()
+    };
 
     vi.stubGlobal('window', {
       location: {
@@ -374,21 +457,40 @@ describe('use-admin-dashboard hook coverage', () => {
     });
 
     vi.doMock('react', () => approvalsHarness.reactModule);
-    vi.doMock('@/api/admin-api', () => ({
-      getHealth: vi.fn().mockRejectedValue(new Error('offline'))
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => approvalsQueryClient,
+      useQuery: () => ({
+        data: undefined,
+        error: new Error('offline')
+      })
+    }));
+    vi.doMock('@/api/admin-query', () => ({
+      adminQueryKeys: {
+        platformConsoleLogAnalysis: vi.fn((days: number) => ['admin', 'platform-console-log-analysis', days])
+      },
+      fetchAdminHealth: vi.fn(),
+      fetchPlatformConsoleLogAnalysis: vi.fn()
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-actions', () => ({
       createAdminDashboardActions: () => actions
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-constants', () => ({
       PAGE_TITLES: {
-        approvals: 'Approvals Center',
-        evals: 'Evals'
+        approvals: '审批中枢',
+        evals: '评测基线'
       },
       buildDashboardHash: vi.fn(() => '#/approvals'),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/approvals'),
       readDashboardStateFromHash: vi.fn(() => ({
         page: 'approvals',
+        runtimeTaskId: undefined,
+        runtimeFocusKind: undefined,
+        runtimeFocusId: undefined,
+        runtimeCompareTaskId: undefined,
+        runtimeGraphNodeId: undefined,
+        runtimeStatusFilter: '',
+        runtimeModelFilter: '',
+        runtimePricingSourceFilter: '',
         runtimeExecutionModeFilter: 'all',
         runtimeInteractionKindFilter: 'all',
         approvalsExecutionModeFilter: 'all',
@@ -406,21 +508,40 @@ describe('use-admin-dashboard hook coverage', () => {
 
     vi.resetModules();
     vi.doMock('react', () => evalsHarness.reactModule);
-    vi.doMock('@/api/admin-api', () => ({
-      getHealth: vi.fn().mockRejectedValue(new Error('offline'))
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => evalsQueryClient,
+      useQuery: () => ({
+        data: undefined,
+        error: new Error('offline')
+      })
+    }));
+    vi.doMock('@/api/admin-query', () => ({
+      adminQueryKeys: {
+        platformConsoleLogAnalysis: vi.fn((days: number) => ['admin', 'platform-console-log-analysis', days])
+      },
+      fetchAdminHealth: vi.fn(),
+      fetchPlatformConsoleLogAnalysis: vi.fn()
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-actions', () => ({
       createAdminDashboardActions: () => actions
     }));
     vi.doMock('@/hooks/admin-dashboard/admin-dashboard-constants', () => ({
       PAGE_TITLES: {
-        approvals: 'Approvals Center',
-        evals: 'Evals'
+        approvals: '审批中枢',
+        evals: '评测基线'
       },
       buildDashboardHash: vi.fn(() => '#/evals'),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/evals'),
       readDashboardStateFromHash: vi.fn(() => ({
         page: 'evals',
+        runtimeTaskId: undefined,
+        runtimeFocusKind: undefined,
+        runtimeFocusId: undefined,
+        runtimeCompareTaskId: undefined,
+        runtimeGraphNodeId: undefined,
+        runtimeStatusFilter: '',
+        runtimeModelFilter: '',
+        runtimePricingSourceFilter: '',
         runtimeExecutionModeFilter: 'all',
         runtimeInteractionKindFilter: 'all',
         approvalsExecutionModeFilter: 'all',

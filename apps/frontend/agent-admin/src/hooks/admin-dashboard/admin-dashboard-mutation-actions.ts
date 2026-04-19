@@ -25,6 +25,7 @@ import {
   invalidateRule,
   promoteSkill,
   refreshConnectorDiscovery,
+  refreshMetricsSnapshots,
   rejectSkillInstall,
   rejectTask,
   restoreMemory,
@@ -43,6 +44,7 @@ import {
   supersedeRule,
   syncSkillSource
 } from '@/api/admin-api';
+import { adminQueryKeys } from '@/api/admin-query';
 import { downloadText } from './admin-dashboard-constants';
 import type { AdminDashboardActionContext } from './admin-dashboard-actions.types';
 import {
@@ -83,8 +85,12 @@ export function createAdminDashboardMutationActions(
 
   return {
     selectTask: async (taskId: string) => {
+      context.setActiveTaskId(taskId);
+      context.setObservatoryFocusTarget(undefined);
+      context.setRuntimeCompareTaskId(undefined);
+      context.setRuntimeGraphNodeId(undefined);
+      context.setRuntimeReplayReceipt(undefined);
       await refreshActions.refreshTask(taskId);
-      window.location.hash = '/runtime';
       context.setPage('runtime');
     },
     updateApproval: async (decision: 'approve' | 'reject', taskId: string, intent: string) =>
@@ -185,10 +191,46 @@ export function createAdminDashboardMutationActions(
     handleQuickCreate: async () =>
       runMutation(async () => {
         const task = await createTask('审计当前平台控制台、运行态和学习沉淀状态，并给出下一步建议');
+        context.setActiveTaskId(task.id);
+        context.setObservatoryFocusTarget(undefined);
+        context.setRuntimeCompareTaskId(undefined);
+        context.setRuntimeGraphNodeId(undefined);
+        context.setRuntimeReplayReceipt(undefined);
         await refreshActions.refreshTask(task.id, false);
-        window.location.hash = '/runtime';
         context.setPage('runtime');
       }, '快速创建任务失败'),
+    handleLaunchWorkflowTask: async (params: {
+      goal: string;
+      workflowCommand?: string;
+      baselineTaskId?: string;
+      replaySourceLabel?: string;
+      replayScoped?: boolean;
+    }) =>
+      runMutation(async () => {
+        const task = await createTask({
+          goal: params.workflowCommand ? `${params.workflowCommand} ${params.goal}`.trim() : params.goal.trim(),
+          lineage: params.baselineTaskId
+            ? {
+                parentTaskId: params.baselineTaskId,
+                baselineTaskId: params.baselineTaskId,
+                launchReason: 'replay',
+                replaySourceLabel: params.replaySourceLabel,
+                replayScoped: params.replayScoped ?? false
+              }
+            : undefined
+        });
+        context.setActiveTaskId(task.id);
+        context.setObservatoryFocusTarget(undefined);
+        context.setRuntimeCompareTaskId(params.baselineTaskId);
+        context.setRuntimeGraphNodeId(undefined);
+        context.setRuntimeReplayReceipt({
+          sourceLabel: params.replaySourceLabel,
+          scoped: params.replayScoped ?? false,
+          baselineTaskId: params.baselineTaskId
+        });
+        await refreshActions.refreshTask(task.id, false);
+        context.setPage('runtime');
+      }, '启动 workflow 任务失败'),
     handleCreateDiagnosisTask: async (params: {
       taskId: string;
       goal: string;
@@ -202,8 +244,12 @@ export function createAdminDashboardMutationActions(
     }) =>
       runMutation(async () => {
         const task = await createAgentDiagnosisTask(params);
+        context.setActiveTaskId(task.id);
+        context.setObservatoryFocusTarget(undefined);
+        context.setRuntimeCompareTaskId(undefined);
+        context.setRuntimeGraphNodeId(undefined);
+        context.setRuntimeReplayReceipt(undefined);
         await refreshActions.refreshTask(task.id, false);
-        window.location.hash = '/runtime';
         context.setPage('runtime');
       }, '创建诊断任务失败'),
     downloadRuntimeExport: async () =>
@@ -248,6 +294,14 @@ export function createAdminDashboardMutationActions(
         await refreshConnectorDiscovery(connectorId);
         await refreshActions.refreshPageCenter('connectors');
       }, '刷新 connector discovery 失败'),
+    handleRefreshMetricsSnapshots: async () =>
+      runMutation(async () => {
+        await refreshMetricsSnapshots(Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()));
+        await context.queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.platformConsoleLogAnalysis(7)
+        });
+        await refreshActions.refreshAll();
+      }, '刷新 metrics snapshot 失败'),
     handleEnableConnector: async (connectorId: string) =>
       runMutation(async () => {
         await enableConnector(connectorId);

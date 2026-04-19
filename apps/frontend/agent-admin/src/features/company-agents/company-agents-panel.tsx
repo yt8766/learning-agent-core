@@ -13,7 +13,7 @@ interface CompanyAgentsPanelProps {
 export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: CompanyAgentsPanelProps) {
   return (
     <DashboardCenterShell
-      title="Company Agents"
+      title="公司专员编排"
       description="查看专员治理状态、能力依赖与最近目标。"
       count={agents.length}
     >
@@ -37,10 +37,10 @@ export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: Co
                 <Badge variant="secondary">{agent.defaultModel}</Badge>
                 {agent.owner ? <Badge variant="secondary">{agent.owner}</Badge> : null}
                 {typeof agent.activeTaskCount === 'number' ? (
-                  <Badge variant="outline">active {agent.activeTaskCount}</Badge>
+                  <Badge variant="outline">活跃 {agent.activeTaskCount}</Badge>
                 ) : null}
                 {typeof agent.totalTaskCount === 'number' ? (
-                  <Badge variant="outline">used {agent.totalTaskCount}</Badge>
+                  <Badge variant="outline">累计 {agent.totalTaskCount}</Badge>
                 ) : null}
                 {typeof agent.successRate === 'number' ? (
                   <Badge variant="secondary">成功率 {(agent.successRate * 100).toFixed(0)}%</Badge>
@@ -57,11 +57,11 @@ export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: Co
                 </div>
               ) : null}
               {agent.requiredConnectors?.length ? (
-                <p className="mt-3 text-xs text-muted-foreground">connectors: {agent.requiredConnectors.join(', ')}</p>
+                <p className="mt-3 text-xs text-muted-foreground">连接器：{agent.requiredConnectors.join(', ')}</p>
               ) : null}
               {agent.recentTaskGoals?.length ? (
                 <div className="mt-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Recent Goals</p>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">近期目标</p>
                   <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                     {agent.recentTaskGoals.map(goal => (
                       <li key={`${agent.id}-${goal}`}>{goal}</li>
@@ -71,7 +71,7 @@ export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: Co
               ) : null}
               {agent.sourceRuns?.length ? (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  source runs: {agent.sourceRuns.slice(0, 3).join(', ')}
+                  来源运行：{agent.sourceRuns.slice(0, 3).join(', ')}
                 </p>
               ) : null}
               <div className="mt-3">

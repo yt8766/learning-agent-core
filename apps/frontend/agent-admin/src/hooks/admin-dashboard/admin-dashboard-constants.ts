@@ -11,9 +11,18 @@ type InteractionKindFilter =
   | 'revise-required'
   | 'micro-loop-exhausted'
   | 'mode-transition';
+type ObservatoryFocusKind = 'checkpoint' | 'span' | 'evidence';
 
 export interface DashboardHashState {
   page: DashboardPageKey;
+  runtimeTaskId?: string;
+  runtimeFocusKind?: ObservatoryFocusKind;
+  runtimeFocusId?: string;
+  runtimeCompareTaskId?: string;
+  runtimeGraphNodeId?: string;
+  runtimeStatusFilter: string;
+  runtimeModelFilter: string;
+  runtimePricingSourceFilter: string;
   runtimeExecutionModeFilter: ExecutionModeFilter;
   runtimeInteractionKindFilter: InteractionKindFilter;
   approvalsExecutionModeFilter: ExecutionModeFilter;
@@ -38,22 +47,22 @@ export const PAGE_KEYS: DashboardPageKey[] = [
 ];
 
 const ADMIN_RUNTIME_PAGE_TITLES = {
-  runtime: 'Runtime Center',
-  approvals: 'Approvals Center',
-  learning: 'Learning Center',
-  evals: 'Evals',
-  archives: 'Archive Center',
-  skills: 'Skill Lab',
-  evidence: 'Evidence Center',
-  connectors: 'Connector & Policy Center',
-  skillSources: 'Skill Sources / Marketplace',
-  companyAgents: 'Company Agents'
+  runtime: '运行中枢',
+  approvals: '审批中枢',
+  learning: '学习中枢',
+  evals: '评测基线',
+  archives: '归档中心',
+  skills: '技能工坊',
+  evidence: '证据中心',
+  connectors: '连接器与策略',
+  skillSources: '技能来源治理',
+  companyAgents: '公司专员编排'
 } as const;
 
 export const PAGE_TITLES = {
   ...ADMIN_RUNTIME_PAGE_TITLES,
-  memory: 'Memory Center',
-  profiles: 'Profile Center'
+  memory: '记忆中枢',
+  profiles: '画像中枢'
 } satisfies Record<DashboardPageKey, string>;
 
 function isExecutionModeFilter(value: string | null): value is ExecutionModeFilter {
@@ -82,10 +91,22 @@ function normalizeExecutionModeFilter(value: string | null): ExecutionModeFilter
   return isExecutionModeFilter(value) ? value : (normalizeExecutionMode(value) ?? 'all');
 }
 
+function isObservatoryFocusKind(value: string | null): value is ObservatoryFocusKind {
+  return value === 'checkpoint' || value === 'span' || value === 'evidence';
+}
+
 export function readDashboardStateFromHash(locationLike: HashLocationLike = window.location): DashboardHashState {
   const [rawPage = '', rawQuery = ''] = locationLike.hash.replace(/^#\//, '').split('?');
   const page = PAGE_KEYS.includes(rawPage as DashboardPageKey) ? (rawPage as DashboardPageKey) : 'runtime';
   const params = new URLSearchParams(rawQuery);
+  const runtimeTaskId = params.get('runtimeTaskId');
+  const runtimeFocusKind = params.get('runtimeFocusKind');
+  const runtimeFocusId = params.get('runtimeFocusId');
+  const runtimeCompareTaskId = params.get('runtimeCompareTaskId');
+  const runtimeGraphNodeId = params.get('runtimeGraphNodeId');
+  const runtimeStatus = params.get('runtimeStatus');
+  const runtimeModel = params.get('runtimeModel');
+  const runtimePricingSource = params.get('runtimePricingSource');
   const runtimeExecutionMode = params.get('runtimeExecutionMode');
   const runtimeInteractionKind = params.get('runtimeInteractionKind');
   const approvalsExecutionMode = params.get('approvalsExecutionMode');
@@ -93,6 +114,14 @@ export function readDashboardStateFromHash(locationLike: HashLocationLike = wind
 
   return {
     page,
+    runtimeTaskId: runtimeTaskId ?? undefined,
+    runtimeFocusKind: isObservatoryFocusKind(runtimeFocusKind) ? runtimeFocusKind : undefined,
+    runtimeFocusId: runtimeFocusId ?? undefined,
+    runtimeCompareTaskId: runtimeCompareTaskId ?? undefined,
+    runtimeGraphNodeId: runtimeGraphNodeId ?? undefined,
+    runtimeStatusFilter: runtimeStatus ?? '',
+    runtimeModelFilter: runtimeModel ?? '',
+    runtimePricingSourceFilter: runtimePricingSource ?? '',
     runtimeExecutionModeFilter: normalizeExecutionModeFilter(runtimeExecutionMode),
     runtimeInteractionKindFilter: isInteractionKindFilter(runtimeInteractionKind) ? runtimeInteractionKind : 'all',
     approvalsExecutionModeFilter: normalizeExecutionModeFilter(approvalsExecutionMode),
@@ -106,6 +135,28 @@ export function readPageFromHash(): DashboardPageKey {
 
 export function buildDashboardHash(state: DashboardHashState): string {
   const params = new URLSearchParams();
+  if (state.page === 'runtime' && state.runtimeTaskId) {
+    params.set('runtimeTaskId', state.runtimeTaskId);
+  }
+  if (state.page === 'runtime' && state.runtimeFocusKind && state.runtimeFocusId) {
+    params.set('runtimeFocusKind', state.runtimeFocusKind);
+    params.set('runtimeFocusId', state.runtimeFocusId);
+  }
+  if (state.page === 'runtime' && state.runtimeCompareTaskId) {
+    params.set('runtimeCompareTaskId', state.runtimeCompareTaskId);
+  }
+  if (state.page === 'runtime' && state.runtimeGraphNodeId) {
+    params.set('runtimeGraphNodeId', state.runtimeGraphNodeId);
+  }
+  if (state.runtimeStatusFilter) {
+    params.set('runtimeStatus', state.runtimeStatusFilter);
+  }
+  if (state.runtimeModelFilter) {
+    params.set('runtimeModel', state.runtimeModelFilter);
+  }
+  if (state.runtimePricingSourceFilter) {
+    params.set('runtimePricingSource', state.runtimePricingSourceFilter);
+  }
   if (state.runtimeExecutionModeFilter !== 'all') {
     params.set('runtimeExecutionMode', state.runtimeExecutionModeFilter);
   }

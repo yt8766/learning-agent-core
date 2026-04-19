@@ -4,16 +4,33 @@ import {
   type RuntimeBackgroundRunnerContext
 } from '../helpers/runtime-background-runner';
 import {
+  resolveTaskSkillSearch,
   syncEnabledRemoteSkillSources,
   type RuntimeSkillSourcesContext
 } from '../skills/runtime-skill-sources.service';
 
+interface RuntimeBootstrapSessionCoordinator {
+  initialize: () => Promise<void>;
+}
+
+interface LocalSkillSuggestionResolverInput {
+  goal: string;
+  usedInstalledSkills?: string[];
+  requestedHints?: Record<string, unknown>;
+  specialistDomain?: string;
+}
+
+interface RuntimeBootstrapOrchestrator {
+  setLocalSkillSuggestionResolver?: (resolver: (input: LocalSkillSuggestionResolverInput) => Promise<unknown>) => void;
+}
+
 export interface RuntimeBootstrapContext {
-  sessionCoordinator: any;
-  orchestrator: any;
+  sessionCoordinator: RuntimeBootstrapSessionCoordinator;
+  orchestrator: RuntimeBootstrapOrchestrator;
   getSkillSourcesContext: () => RuntimeSkillSourcesContext;
   syncInstalledSkillWorkers: () => Promise<void>;
   applyStoredGovernanceOverrides: () => Promise<void>;
+  initializeMetricsSnapshots: () => Promise<void>;
   initializeDailyTechBriefing: () => Promise<void>;
   initializeScheduleRunner: () => Promise<void>;
   getBackgroundRunnerContext: () => RuntimeBackgroundRunnerContext;
@@ -37,10 +54,16 @@ export class RuntimeBootstrapService {
     await ctx.applyStoredGovernanceOverrides();
     await ctx.initializeDailyTechBriefing();
     await ctx.initializeScheduleRunner();
+    void ctx.initializeMetricsSnapshots().catch(() => undefined);
 
-    if ('setLocalSkillSuggestionResolver' in ctx.orchestrator) {
-      ctx.orchestrator.setLocalSkillSuggestionResolver(async ({ goal, usedInstalledSkills }: any) =>
-        syncEnabledRemoteSkillSources ? undefined : { goal, usedInstalledSkills }
+    if (typeof ctx.orchestrator.setLocalSkillSuggestionResolver === 'function') {
+      ctx.orchestrator.setLocalSkillSuggestionResolver(
+        async ({ goal, usedInstalledSkills, requestedHints, specialistDomain }: LocalSkillSuggestionResolverInput) =>
+          resolveTaskSkillSearch(ctx.getSkillSourcesContext(), goal, {
+            usedInstalledSkills,
+            requestedHints,
+            specialistDomain
+          })
       );
     }
 

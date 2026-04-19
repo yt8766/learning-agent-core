@@ -56,6 +56,7 @@ import {
   WorkflowPresetDefinitionSchema
 } from '../../primitives';
 import { ExecutionTraceSchema } from '../../execution-trace';
+import { TaskLineageRecordSchema } from './task-lineage';
 
 export const TaskRecordExecutionStateSchema = z.object({
   currentStep: z.string().optional(),
@@ -89,6 +90,7 @@ export const TaskRecordSchema = z.object({
   id: z.string(),
   goal: z.string(),
   context: z.string().optional(),
+  lineage: TaskLineageRecordSchema.optional(),
   status: TaskStatusSchema,
   sessionId: z.string().optional(),
   runId: z.string().optional(),

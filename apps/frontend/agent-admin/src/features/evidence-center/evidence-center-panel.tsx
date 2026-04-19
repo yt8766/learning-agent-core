@@ -60,17 +60,17 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
 
   return (
     <DashboardCenterShell
-      title="Evidence Center"
+      title="证据中心"
       description="统一查看 diagnosis、freshness、browser replay 与 recoverable checkpoint。"
       count={evidence.length}
-      actions={<Badge variant="secondary">Diagnosis & Replay</Badge>}
+      actions={<Badge variant="secondary">诊断与回放</Badge>}
     >
       <div className="grid gap-4">
         {highlightedEvidenceList.length > 0 ? (
           <div className="rounded-2xl border border-sky-200/70 bg-sky-50/80 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-sky-950">Memory Link Highlight</p>
+                <p className="text-sm font-semibold text-sky-950">记忆关联高亮</p>
                 <p className="mt-1 text-xs text-sky-900">
                   命中 {highlightedEvidenceList.length} 条来自 Memory Insight 的证据高亮。
                 </p>
@@ -85,7 +85,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
           <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-emerald-950">Diagnosis Evidence</p>
+                <p className="text-sm font-semibold text-emerald-950">诊断证据</p>
                 <p className="mt-1 text-xs text-emerald-900">
                   已沉淀 {diagnosisEvidence.length} 条 agent 故障诊断结论，可直接复用根因与恢复步骤。
                 </p>
@@ -152,7 +152,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               </div>
               {item.sourceType === 'diagnosis_result' ? (
                 <div className="mt-3 rounded-xl border border-emerald-200/70 bg-background px-3 py-3 text-xs text-emerald-950">
-                  <p className="font-medium">Diagnosis Summary</p>
+                  <p className="font-medium">诊断摘要</p>
                   <div className="mt-2 grid gap-1">
                     {Array.isArray(item.detail?.reviewNotes) && item.detail.reviewNotes.length ? (
                       <p>审查说明：{item.detail.reviewNotes.join('；')}</p>
@@ -166,7 +166,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               ) : null}
               {item.sourceStore === 'wenyuan' ? (
                 <div className="mt-3 rounded-xl border border-sky-200/70 bg-sky-50/80 px-3 py-3 text-xs text-sky-950">
-                  <p className="font-medium">Wenyuan Overview</p>
+                  <p className="font-medium">文渊概览</p>
                   <div className="mt-2 grid gap-1">
                     {typeof item.detail?.traceCount === 'number' ? <p>trace: {item.detail.traceCount}</p> : null}
                     {typeof item.detail?.governanceHistoryCount === 'number' ? (
@@ -177,7 +177,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               ) : null}
               {item.sourceStore === 'cangjing' ? (
                 <div className="mt-3 rounded-xl border border-indigo-200/70 bg-indigo-50/80 px-3 py-3 text-xs text-indigo-950">
-                  <p className="font-medium">Knowledge Index</p>
+                  <p className="font-medium">知识索引</p>
                   <div className="mt-2 grid gap-1">
                     {typeof item.detail?.sourceCount === 'number' ? <p>source: {item.detail.sourceCount}</p> : null}
                     {typeof item.detail?.searchableDocumentCount === 'number' ? (
@@ -194,7 +194,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               ) : null}
               {item.sourceType === 'freshness_meta' ? (
                 <div className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50/80 px-3 py-3 text-xs text-amber-900">
-                  <p className="font-medium">Freshness Baseline</p>
+                  <p className="font-medium">时效基线</p>
                   <div className="mt-2 grid gap-1">
                     {typeof item.detail?.referenceDate === 'string' ? (
                       <p>信息基准日期：{item.detail.referenceDate}</p>
@@ -214,9 +214,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               {item.replay ? (
                 <div className="mt-3 rounded-xl border border-border/70 bg-background px-3 py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Browser Replay
-                    </p>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">浏览器回放</p>
                     {item.replay.sessionId ? (
                       <Button type="button" size="sm" variant="outline" onClick={() => void handleReplayOpen(item)}>
                         {expandedReplayId === item.id ? '收起回放' : '打开回放'}
@@ -241,7 +239,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
                     ) : null}
                     {item.replay.steps?.length ? (
                       <div className="mt-2">
-                        <p className="font-medium text-foreground">Replay Steps</p>
+                        <p className="font-medium text-foreground">回放步骤</p>
                         <div className="mt-2 grid gap-2">
                           {item.replay.steps.map(step => (
                             <div
@@ -265,7 +263,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
                     {expandedReplayId === item.id ? (
                       // Intentionally keep the replay payload viewer dark for raw JSON readability.
                       <div className="mt-3 rounded-lg border border-stone-200 bg-stone-950 px-3 py-3 text-[11px] text-stone-100">
-                        <p className="font-medium text-stone-200">Replay Payload</p>
+                        <p className="font-medium text-stone-200">回放载荷</p>
                         {loadingReplayId === item.id ? (
                           <p className="mt-2 text-stone-400">加载中…</p>
                         ) : item.replay.sessionId && replayPayloadMap[item.replay.sessionId] ? (
@@ -283,7 +281,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
               {item.recoverable && item.checkpointRef ? (
                 <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-sky-200/70 bg-sky-50/80 px-3 py-3">
                   <div className="text-xs text-sky-950">
-                    <p className="font-medium">Checkpoint Replay</p>
+                    <p className="font-medium">检查点回放</p>
                     <p className="mt-1">
                       逻辑回溯到 {item.checkpointRef.checkpointId} / cursor {item.checkpointRef.checkpointCursor}
                     </p>

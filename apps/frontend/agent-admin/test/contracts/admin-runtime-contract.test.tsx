@@ -287,11 +287,11 @@ describe('agent-admin runtime contract smoke', () => {
     expect(runtimeHtml).toContain('daily 11:00');
     expect(runtimeHtml).toContain('前端安全情报');
 
-    expect(evidenceHtml).toContain('Checkpoint Replay');
+    expect(evidenceHtml).toContain('检查点回放');
     expect(evidenceHtml).toContain('cp-1');
     expect(evidenceHtml).toContain('cursor 7');
 
-    expect(archiveHtml).toContain('Runtime Archive');
+    expect(archiveHtml).toContain('运行归档');
     expect(archiveHtml).toContain('执行模式 计划模式');
     expect(archiveHtml).toContain('交互类型 plan-question');
   });

@@ -1,9 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { requestMock } = vi.hoisted(() => ({
+  requestMock: vi.fn()
+}));
+
+vi.mock('axios', () => {
+  class CanceledError extends Error {
+    code = 'ERR_CANCELED';
+  }
+
+  return {
+    default: {
+      create: vi.fn(() => ({
+        request: requestMock
+      })),
+      isCancel: vi.fn((error: unknown) => error instanceof CanceledError),
+      isAxiosError: vi.fn((error: unknown) => typeof error === 'object' && error !== null && 'response' in error),
+      CanceledError
+    }
+  };
+});
+
 import {
   ABORTED_REQUEST_ERROR,
   getHealth,
   getPlatformConsole,
+  getPlatformConsoleShell,
   isAbortedAdminRequestError,
   request
 } from '@/api/admin-api-core';
@@ -11,17 +33,30 @@ import {
 describe('admin-api-core', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    requestMock.mockReset();
   });
 
   it('sends json requests with the default api base and returns parsed payloads', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ status: 'ok', now: '12:00' })
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    requestMock
+      .mockResolvedValueOnce({ data: { status: 'ok', now: '12:00' } })
+      .mockResolvedValueOnce({ data: { ok: true } })
+      .mockResolvedValueOnce({ data: { ok: true } });
 
     await expect(getHealth()).resolves.toEqual({ status: 'ok', now: '12:00' });
-    await getPlatformConsole(14, {
+    await getPlatformConsole(
+      14,
+      {
+        status: 'running',
+        model: 'gpt-5.4',
+        pricingSource: 'provider',
+        runtimeExecutionMode: 'plan',
+        runtimeInteractionKind: 'approval',
+        approvalsExecutionMode: 'execute',
+        approvalsInteractionKind: 'plan-question'
+      },
+      'full'
+    );
+    await getPlatformConsoleShell(14, {
       status: 'running',
       model: 'gpt-5.4',
       pricingSource: 'provider',
@@ -31,39 +66,38 @@ describe('admin-api-core', () => {
       approvalsInteractionKind: 'plan-question'
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
+    expect(requestMock).toHaveBeenNthCalledWith(
       1,
-      'http://localhost:3000/api/health',
       expect.objectContaining({
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        url: '/health',
+        method: 'GET'
       })
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
+    expect(requestMock).toHaveBeenNthCalledWith(
       2,
-      'http://localhost:3000/api/platform/console?days=14&status=running&model=gpt-5.4&pricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=approval&approvalsExecutionMode=execute&approvalsInteractionKind=plan-question',
       expect.objectContaining({
-        cancelKey: 'platform-console',
-        cancelPrevious: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        url: '/platform/console?days=14&view=full&status=running&model=gpt-5.4&pricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=approval&approvalsExecutionMode=execute&approvalsInteractionKind=plan-question',
+        method: 'GET'
+      })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        url: '/platform/console-shell?days=14&status=running&model=gpt-5.4&pricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=approval&approvalsExecutionMode=execute&approvalsInteractionKind=plan-question',
+        method: 'GET'
       })
     );
   });
 
   it('normalizes non-ok and abort failures', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce({
-          ok: false,
+    const { default: axios } = await import('axios');
+    requestMock
+      .mockRejectedValueOnce({
+        response: {
           status: 503
-        })
-        .mockRejectedValueOnce(new DOMException('aborted', 'AbortError'))
-    );
+        }
+      })
+      .mockRejectedValueOnce(new axios.CanceledError('aborted'));
 
     await expect(request('/boom')).rejects.toThrow('Request failed: 503');
     await expect(request('/abort')).rejects.toThrow(ABORTED_REQUEST_ERROR);
@@ -73,21 +107,19 @@ describe('admin-api-core', () => {
   });
 
   it('aborts the previous in-flight request when cancelPrevious is enabled for the same key', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockImplementationOnce((_url: string, init?: RequestInit) => {
-        const signal = init?.signal;
+    const { default: axios } = await import('axios');
+    requestMock
+      .mockImplementationOnce((config?: { signal?: AbortSignal }) => {
+        const signal = config?.signal;
         return new Promise((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true });
+          signal?.addEventListener('abort', () => reject(new axios.CanceledError('aborted')), { once: true });
         });
       })
       .mockImplementationOnce(() =>
         Promise.resolve({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ ok: true })
+          data: { ok: true }
         })
       );
-    vi.stubGlobal('fetch', fetchMock);
 
     const first = request('/platform/console?days=30', {
       cancelKey: 'platform-console',
@@ -100,6 +132,6 @@ describe('admin-api-core', () => {
 
     await expect(first).rejects.toThrow(ABORTED_REQUEST_ERROR);
     await expect(second).resolves.toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requestMock).toHaveBeenCalledTimes(2);
   });
 });

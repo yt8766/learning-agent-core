@@ -3,6 +3,7 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import * as chalk from 'chalk';
+import { resolvePersistedLogChannels, type RuntimeLevel } from './log-persistence';
 
 export interface LogMeta {
   context?: string;
@@ -12,7 +13,6 @@ export interface LogMeta {
   [key: string]: unknown;
 }
 
-type RuntimeLevel = 'error' | 'warn' | 'info' | 'debug' | 'verbose';
 type LogFormat = 'pretty' | 'json';
 const DEFAULT_MAX_STACK_LENGTH = 8000;
 
@@ -76,7 +76,7 @@ export class AppLoggerService implements LoggerService {
 
     const meta =
       typeof contextOrMeta === 'string' ? { context: contextOrMeta } : (contextOrMeta ?? { context: 'Application' });
-    const normalizedMessage = typeof message === 'string' ? message : JSON.stringify(message);
+    const normalizedMessage = typeof message === 'string' ? message : JSON.stringify(normalizeLogValue(message));
     const timestamp = formatTimestamp(now);
     const context = meta.context ?? 'Application';
     const requestId = meta.requestId ? ` [requestId=${String(meta.requestId)}]` : '';
@@ -103,14 +103,18 @@ export class AppLoggerService implements LoggerService {
         : `[Nest] ${String(process.pid).padStart(5, ' ')}  - ${timestamp} ${levelLabel} [${context}] ${normalizedMessage}${requestId}${traceId} +${deltaMs}ms${stack}`;
 
     writeConsole(level, levelLabel, context, normalizedMessage, requestId, traceId, deltaMs, stack, line, this.format);
-    this.writeFile(level, JSON.stringify(record));
+    this.writeFile(level, message, meta, JSON.stringify(record));
   }
 
-  private writeFile(level: RuntimeLevel, line: string): void {
+  private writeFile(level: RuntimeLevel, message: unknown, meta: LogMeta, line: string): void {
+    const channels = resolvePersistedLogChannels({ level, message, meta });
+    if (channels.length === 0) {
+      return;
+    }
+
     const date = formatDate(new Date());
-    appendFileSync(join(this.logsDir, `app-${date}.log`), `${line}\n`, 'utf8');
-    if (level === 'error') {
-      appendFileSync(join(this.logsDir, `app-${date}.error.log`), `${line}\n`, 'utf8');
+    for (const channel of channels) {
+      appendFileSync(join(this.logsDir, `${channel}-${date}.log`), `${line}\n`, 'utf8');
     }
   }
 

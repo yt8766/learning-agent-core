@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +18,7 @@ interface SiteHeaderProps {
   health: string;
   badges: string[];
   onRefresh: () => void;
+  onRefreshMetrics: () => void;
   onQuickCreate: () => void;
   onCopyShareLink: () => void;
 }
@@ -30,7 +32,7 @@ export function SiteHeader(props: SiteHeaderProps) {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="#">{props.description || 'Build Your Application'}</BreadcrumbLink>
+              <BreadcrumbLink href="#">{props.description || '治理控制台'}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
@@ -38,6 +40,22 @@ export function SiteHeader(props: SiteHeaderProps) {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+      </div>
+      <div className="ml-auto flex items-center gap-2">
+        {props.badges.map(badge => (
+          <span
+            key={badge}
+            className="hidden rounded-full border border-border/80 bg-[#f6f6f4] px-2.5 py-1 text-xs text-muted-foreground md:inline-flex"
+          >
+            {badge}
+          </span>
+        ))}
+        <Button type="button" variant="outline" size="sm" onClick={props.onRefreshMetrics}>
+          指标快照
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={props.onRefresh}>
+          刷新
+        </Button>
       </div>
     </header>
   );

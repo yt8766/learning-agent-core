@@ -140,7 +140,7 @@ describe('Skill source cards', () => {
       />
     );
 
-    renderedButtons.find(item => item.children === '安装到 Skill Lab')?.onClick?.();
+    renderedButtons.find(item => item.children === '安装到技能工坊')?.onClick?.();
 
     expect(html).toContain('Browser Replay Skill');
     expect(html).toContain('v1.2.3');

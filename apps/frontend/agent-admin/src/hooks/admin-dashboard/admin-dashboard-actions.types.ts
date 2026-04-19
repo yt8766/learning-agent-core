@@ -1,7 +1,12 @@
+import type { QueryClient } from '@tanstack/react-query';
+
 import type { DashboardPageKey, PlatformConsoleRecord, TaskBundle } from '@/types/admin';
+import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/components/runtime-run-workbench-support';
 
 export interface AdminDashboardActionContext {
+  queryClient: QueryClient;
   getPage: () => DashboardPageKey;
+  getActiveTaskId: () => string | undefined;
   getRuntimeHistoryDays: () => number;
   getEvalsHistoryDays: () => number;
   getRuntimeFilters: () => {
@@ -26,6 +31,11 @@ export interface AdminDashboardActionContext {
   getBundle: () => TaskBundle | null;
   getConsoleData: () => PlatformConsoleRecord | null;
   setPage: (page: DashboardPageKey) => void;
+  setActiveTaskId: (taskId?: string) => void;
+  setObservatoryFocusTarget: (target?: { kind: 'checkpoint' | 'span' | 'evidence'; id: string }) => void;
+  setRuntimeCompareTaskId: (taskId?: string) => void;
+  setRuntimeGraphNodeId: (nodeId?: string) => void;
+  setRuntimeReplayReceipt: (receipt?: RuntimeReplayLaunchReceipt) => void;
   setLoading: (value: boolean) => void;
   setError: (value: string) => void;
   setConsoleData: (

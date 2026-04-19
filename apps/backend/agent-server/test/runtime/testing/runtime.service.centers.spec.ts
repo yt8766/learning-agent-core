@@ -30,7 +30,9 @@ describe('RuntimeService centers', () => {
 
   it('platform console 在 connectors center 拉取失败时会降级返回', async () => {
     const service = createService();
-    vi.spyOn(service, 'getConnectorsCenter').mockRejectedValue(new Error('connector discovery failed'));
+    vi.spyOn((service as any).centersService, 'getConnectorsCenter').mockRejectedValue(
+      new Error('connector discovery failed')
+    );
 
     const consoleRecord = await service.getPlatformConsole(30);
 
@@ -263,5 +265,26 @@ describe('RuntimeService centers', () => {
         categories: expect.any(Array)
       })
     );
+  });
+
+  it('supports explicitly refreshing persisted runtime and eval metrics snapshots', async () => {
+    const service = createService();
+
+    const refreshed = await service.refreshMetricsSnapshots(14);
+
+    expect(refreshed).toEqual(
+      expect.objectContaining({
+        days: 14,
+        runtime: expect.objectContaining({
+          historyDays: expect.any(Number),
+          persistedDailyHistoryCount: expect.any(Number)
+        }),
+        evals: expect.objectContaining({
+          historyDays: expect.any(Number),
+          persistedDailyHistoryCount: expect.any(Number)
+        })
+      })
+    );
+    expect(collaborators(service).runtimeStateRepository.save).toHaveBeenCalled();
   });
 });

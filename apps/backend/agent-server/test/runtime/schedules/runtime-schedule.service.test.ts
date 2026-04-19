@@ -178,4 +178,23 @@ describe('RuntimeScheduleService', () => {
 
     await service.dispose();
   });
+
+  it('会透传 metrics snapshot refresh 到治理回调', async () => {
+    const refreshMetricsSnapshots = vi.fn(async () => ({ refreshed: true }));
+    const service = new RuntimeScheduleService(() => ({
+      settings: {
+        workspaceRoot: '/tmp/workspace',
+        dailyTechBriefing: {
+          enabled: false,
+          schedule: 'daily 11:00'
+        }
+      },
+      techBriefingService: { runScheduled: vi.fn(async () => null) } as never,
+      refreshMetricsSnapshots
+    }));
+
+    await service.syncMetricsSnapshots(14);
+
+    expect(refreshMetricsSnapshots).toHaveBeenCalledWith(14);
+  });
 });

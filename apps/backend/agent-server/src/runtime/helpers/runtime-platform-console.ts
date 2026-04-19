@@ -1,28 +1,27 @@
-import { getMinistryDisplayName, normalizeExecutionMode } from './runtime-architecture-helpers';
-import type { ChatCheckpointRecord, ChatSessionRecord, PlatformApprovalRecord } from '@agent/core';
-import type { EvalsCenterRecord, LearningCenterRecord } from '../centers/runtime-centers.records';
+import type { ChatCheckpointRecord, ChatSessionRecord } from '@agent/core';
+import type {
+  PlatformConsoleDiagnosticsRecord,
+  PlatformConsoleRecord,
+  RuntimePlatformConsoleContext
+} from '../centers/runtime-platform-console.records';
+import { PlatformConsoleDiagnosticsRecordSchema } from '../centers/runtime-platform-console.schemas';
+import {
+  buildPlatformConsoleCacheKey,
+  persistPlatformConsoleCache,
+  readPlatformConsoleCache,
+  readPlatformConsoleInFlight,
+  setPlatformConsoleInFlight,
+  withPlatformConsoleCacheStatus
+} from './runtime-platform-console.cache';
+export { resetPlatformConsoleCacheForTest } from './runtime-platform-console.cache';
+export { exportApprovalsCenter, exportEvalsCenter, exportRuntimeCenter } from './runtime-platform-console.export';
+import {
+  normalizePlatformConsoleEvalsRecord,
+  normalizePlatformConsoleEvidenceRecord,
+  normalizePlatformConsoleRuntimeRecord
+} from './runtime-platform-console.normalize';
 
-export interface RuntimePlatformConsoleContext {
-  skillRegistry: {
-    list: () => Promise<unknown[]>;
-  };
-  orchestrator: {
-    listRules: () => Promise<unknown[]>;
-    listTasks: () => unknown[];
-  };
-  sessionCoordinator: {
-    listSessions: () => ChatSessionRecord[];
-    getCheckpoint: (sessionId: string) => ChatCheckpointRecord | undefined;
-  };
-  getRuntimeCenter: (days?: number, filters?: Record<string, unknown>) => Promise<any>;
-  getApprovalsCenter: (filters?: Record<string, unknown>) => PlatformApprovalRecord[];
-  getLearningCenter: () => Promise<LearningCenterRecord>;
-  getEvalsCenter: (days?: number, filters?: Record<string, unknown>) => Promise<EvalsCenterRecord>;
-  getEvidenceCenter: () => Promise<unknown>;
-  getConnectorsCenter: () => Promise<unknown[]>;
-  getSkillSourcesCenter: () => Promise<unknown>;
-  getCompanyAgentsCenter: () => unknown;
-}
+const PLATFORM_CONSOLE_CENTER_TIMEOUT_MS = 5_000;
 
 export async function buildPlatformConsole(
   context: RuntimePlatformConsoleContext,
@@ -37,241 +36,307 @@ export async function buildPlatformConsole(
     approvalsInteractionKind?: string;
   }
 ) {
-  const [skills, rules, learning, skillSources, connectors, companyAgents, runtime, approvals, evals, evidence] =
-    await Promise.all([
-      context.skillRegistry.list().catch(() => []),
-      context.orchestrator.listRules().catch(() => []),
-      context.getLearningCenter().catch(() => ({
-        totalCandidates: 0,
-        pendingCandidates: 0,
-        confirmedCandidates: 0,
-        candidates: []
-      })),
-      context.getSkillSourcesCenter().catch(() => ({
-        sources: [],
-        manifests: [],
-        installed: [],
-        receipts: []
-      })),
-      context.getConnectorsCenter().catch(() => []),
-      Promise.resolve()
-        .then(() => context.getCompanyAgentsCenter())
-        .catch(() => []),
-      context
-        .getRuntimeCenter(days, {
-          status: filters?.status,
-          model: filters?.model,
-          pricingSource: filters?.pricingSource,
-          executionMode: filters?.runtimeExecutionMode,
-          interactionKind: filters?.runtimeInteractionKind
-        })
-        .catch(() => ({
-          recentRuns: [],
-          usageAnalytics: { daily: [], persistedDailyHistory: [] }
-        })),
-      Promise.resolve()
-        .then(() =>
-          context.getApprovalsCenter({
-            executionMode: filters?.approvalsExecutionMode,
-            interactionKind: filters?.approvalsInteractionKind
-          })
-        )
-        .catch(() => []),
-      context.getEvalsCenter(days).catch(() => ({
-        dailyTrend: [],
-        persistedDailyHistory: [],
-        recentRuns: [],
-        promptRegression: { suites: [] }
-      })),
-      context.getEvidenceCenter().catch(() => ({
-        totalEvidenceCount: 0,
-        recentEvidence: []
-      }))
-    ]);
-  const tasks = context.orchestrator.listTasks();
-  const sessions = context.sessionCoordinator.listSessions();
-  const checkpoints = sessions
-    .map(session => {
-      const checkpoint = context.sessionCoordinator.getCheckpoint(session.id);
-      return checkpoint ? { session, checkpoint } : undefined;
-    })
-    .filter((item): item is { session: ChatSessionRecord; checkpoint: ChatCheckpointRecord } => Boolean(item));
-
-  return {
-    runtime,
-    approvals,
-    learning,
-    evals,
-    skills,
-    evidence,
-    connectors,
-    skillSources,
-    companyAgents,
-    rules,
-    tasks,
-    sessions,
-    checkpoints
-  };
+  return buildPlatformConsoleWithMode(context, days, filters, 'full');
 }
 
-export async function exportRuntimeCenter(
-  context: Pick<RuntimePlatformConsoleContext, 'getRuntimeCenter'>,
-  options?: {
-    days?: number;
+export async function buildPlatformConsoleShell(
+  context: RuntimePlatformConsoleContext,
+  days = 30,
+  filters?: {
     status?: string;
     model?: string;
     pricingSource?: string;
-    executionMode?: string;
-    interactionKind?: string;
-    format?: string;
+    runtimeExecutionMode?: string;
+    runtimeInteractionKind?: string;
+    approvalsExecutionMode?: string;
+    approvalsInteractionKind?: string;
   }
 ) {
-  const runtime = await context.getRuntimeCenter(options?.days ?? 30, options);
-  const format = options?.format === 'json' ? 'json' : 'csv';
-  if (format === 'json') {
-    return {
-      filename: `runtime-center-${options?.days ?? 30}d.json`,
-      mimeType: 'application/json',
-      content: JSON.stringify(runtime, null, 2)
-    };
+  return buildPlatformConsoleWithMode(context, days, filters, 'shell');
+}
+
+async function buildPlatformConsoleWithMode(
+  context: RuntimePlatformConsoleContext,
+  days: number,
+  filters:
+    | {
+        status?: string;
+        model?: string;
+        pricingSource?: string;
+        runtimeExecutionMode?: string;
+        runtimeInteractionKind?: string;
+        approvalsExecutionMode?: string;
+        approvalsInteractionKind?: string;
+      }
+    | undefined,
+  mode: 'full' | 'shell'
+) {
+  const cacheKey = buildPlatformConsoleCacheKey(context, days, filters, mode);
+  const cached = readPlatformConsoleCache(cacheKey);
+  if (cached) {
+    return cached;
   }
 
-  const lines = [
-    'day,tokens,costUsd,costCny,runs,overBudget',
-    ...(runtime.usageAnalytics.persistedDailyHistory ?? runtime.usageAnalytics.daily).map(
-      point =>
-        `${point.day},${point.tokens},${point.costUsd},${point.costCny},${point.runs},${point.overBudget ? 'true' : 'false'}`
-    ),
-    '',
-    `filters,${csv(options?.status ?? '')},${csv(options?.model ?? '')},${csv(options?.pricingSource ?? '')},${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
-    'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind',
-    '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt',
-    ...runtime.recentRuns.map(
-      task =>
-        `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(task))},${csv(task.currentWorker)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`
-    ),
-    '',
-    'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt',
-    `dailyTechScheduler,${csv(runtime.dailyTechBriefing?.scheduler ?? '')},${csv(runtime.dailyTechBriefing?.schedule ?? '')},${csv(runtime.dailyTechBriefing?.cron ?? '')},${csv(runtime.dailyTechBriefing?.scheduleValid ?? '')},${csv(runtime.dailyTechBriefing?.jobKey ?? '')},${csv(runtime.dailyTechBriefing?.lastRegisteredAt ?? '')}`,
-    '',
-    'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError',
-    ...((runtime.dailyTechBriefing?.categories ?? []).map(
-      item =>
-        `${csv(item.category)},${csv(item.status)},${csv(item.itemCount)},${csv(item.emptyDigest)},${csv(item.sentAt ?? '')},${csv(item.error ?? '')}`
-    ) as string[])
-  ];
+  const inFlight = readPlatformConsoleInFlight(cacheKey);
+  if (inFlight) {
+    return inFlight.then(record => withPlatformConsoleCacheStatus(record, 'deduped'));
+  }
+
+  const request = buildPlatformConsoleRecord(context, days, filters, mode).then(record =>
+    persistPlatformConsoleCache(cacheKey, record)
+  );
+  setPlatformConsoleInFlight(cacheKey, request);
+
+  return request;
+}
+
+async function buildPlatformConsoleRecord(
+  context: RuntimePlatformConsoleContext,
+  days = 30,
+  filters?: {
+    status?: string;
+    model?: string;
+    pricingSource?: string;
+    runtimeExecutionMode?: string;
+    runtimeInteractionKind?: string;
+    approvalsExecutionMode?: string;
+    approvalsInteractionKind?: string;
+  },
+  mode: 'full' | 'shell' = 'full'
+) {
+  const startedAt = Date.now();
+  const [skills, rules, learning, skillSources, connectors, companyAgents, runtime, approvals, evals, evidence] =
+    await Promise.all([
+      measureAsync(() => context.skillRegistry.list().catch(() => [])),
+      measureAsync(() => context.orchestrator.listRules().catch(() => [])),
+      measureAsync(() =>
+        withPlatformConsoleTimeout(
+          () =>
+            mode === 'shell'
+              ? (context.getLearningCenterSummary?.() ?? context.getLearningCenter())
+              : context.getLearningCenter(),
+          () => ({
+            totalCandidates: 0,
+            pendingCandidates: 0,
+            confirmedCandidates: 0,
+            candidates: [],
+            recentJobs: [],
+            localSkillSuggestions: [],
+            recentSkillGovernance: [],
+            recentGovernanceReports: [],
+            capabilityTrustProfiles: [],
+            ministryGovernanceProfiles: [],
+            workerGovernanceProfiles: [],
+            specialistGovernanceProfiles: [],
+            ministryScorecards: [],
+            budgetEfficiencyWarnings: [],
+            learningQueue: [],
+            counselorSelectorConfigs: [],
+            recentQuarantinedMemories: [],
+            recentCrossCheckEvidence: [],
+            quarantineCategoryStats: {},
+            quarantineRestoreSuggestions: []
+          })
+        )
+      ),
+      measureAsync(() =>
+        mode === 'shell'
+          ? Promise.resolve(buildEmptySkillSourcesCenter())
+          : context.getSkillSourcesCenter().catch(() => buildEmptySkillSourcesCenter())
+      ),
+      measureAsync(() => (mode === 'shell' ? Promise.resolve([]) : context.getConnectorsCenter().catch(() => []))),
+      measureAsync(() =>
+        mode === 'shell'
+          ? Promise.resolve([])
+          : Promise.resolve()
+              .then(() => context.getCompanyAgentsCenter())
+              .catch(() => [])
+      ),
+      measureAsync(() =>
+        withPlatformConsoleTimeout(
+          () =>
+            (mode === 'shell'
+              ? (context.getRuntimeCenterSummary?.bind(context) ?? context.getRuntimeCenter)
+              : context.getRuntimeCenter)(days, {
+              status: filters?.status,
+              model: filters?.model,
+              pricingSource: filters?.pricingSource,
+              executionMode: filters?.runtimeExecutionMode,
+              interactionKind: filters?.runtimeInteractionKind,
+              metricsMode: 'snapshot-preferred'
+            }),
+          () => ({
+            taskCount: 0,
+            activeTaskCount: 0,
+            queueDepth: 0,
+            blockedRunCount: 0,
+            pendingApprovalCount: 0,
+            sessionCount: 0,
+            activeSessionCount: 0,
+            activeMinistries: [],
+            activeWorkers: [],
+            recentRuns: [],
+            usageAnalytics: {
+              totalEstimatedPromptTokens: 0,
+              totalEstimatedCompletionTokens: 0,
+              totalEstimatedTokens: 0,
+              totalEstimatedCostUsd: 0,
+              totalEstimatedCostCny: 0,
+              providerMeasuredCostUsd: 0,
+              providerMeasuredCostCny: 0,
+              estimatedFallbackCostUsd: 0,
+              estimatedFallbackCostCny: 0,
+              measuredRunCount: 0,
+              estimatedRunCount: 0,
+              daily: [],
+              models: [],
+              budgetPolicy: {
+                dailyTokenWarning: 100_000,
+                dailyCostCnyWarning: 5,
+                totalCostCnyWarning: 20
+              },
+              persistedDailyHistory: [],
+              recentUsageAudit: [],
+              alerts: []
+            }
+          })
+        )
+      ),
+      measureAsync(() =>
+        Promise.resolve()
+          .then(() =>
+            context.getApprovalsCenter({
+              executionMode: filters?.approvalsExecutionMode,
+              interactionKind: filters?.approvalsInteractionKind
+            })
+          )
+          .catch(() => [])
+      ),
+      measureAsync(() =>
+        (mode === 'shell'
+          ? (context.getEvalsCenterSummary?.bind(context) ?? context.getEvalsCenter)
+          : context.getEvalsCenter)(days, {
+          metricsMode: 'snapshot-preferred'
+        }).catch(() => ({
+          dailyTrend: [],
+          persistedDailyHistory: [],
+          recentRuns: [],
+          scenarioTrends: [],
+          scenarios: [],
+          scenarioCount: 0,
+          runCount: 0,
+          overallPassRate: 0,
+          promptRegression: { suites: [] }
+        }))
+      ),
+      measureAsync(() =>
+        mode === 'shell'
+          ? Promise.resolve<unknown>([])
+          : withPlatformConsoleTimeout(
+              () => context.getEvidenceCenter(),
+              () => ({
+                totalEvidenceCount: 0,
+                recentEvidence: []
+              })
+            )
+      )
+    ]);
+  const tasks =
+    mode === 'shell' ? { value: [] as unknown[], durationMs: 0 } : measureSync(() => context.orchestrator.listTasks());
+  const sessions =
+    mode === 'shell'
+      ? { value: [] as ChatSessionRecord[], durationMs: 0 }
+      : measureSync(() => context.sessionCoordinator.listSessions());
+  const checkpointsMeasured =
+    mode === 'shell'
+      ? { value: [] as Array<{ session: ChatSessionRecord; checkpoint: ChatCheckpointRecord }>, durationMs: 0 }
+      : measureSync(() =>
+          sessions.value
+            .map(session => {
+              const checkpoint = context.sessionCoordinator.getCheckpoint(session.id);
+              return checkpoint ? { session, checkpoint } : undefined;
+            })
+            .filter((item): item is { session: ChatSessionRecord; checkpoint: ChatCheckpointRecord } => Boolean(item))
+        );
+
+  const diagnostics: PlatformConsoleDiagnosticsRecord = PlatformConsoleDiagnosticsRecordSchema.parse({
+    cacheStatus: 'miss',
+    generatedAt: new Date().toISOString(),
+    timingsMs: {
+      total: Date.now() - startedAt,
+      skills: skills.durationMs,
+      rules: rules.durationMs,
+      learning: learning.durationMs,
+      skillSources: skillSources.durationMs,
+      connectors: connectors.durationMs,
+      companyAgents: companyAgents.durationMs,
+      runtime: runtime.durationMs,
+      approvals: approvals.durationMs,
+      evals: evals.durationMs,
+      evidence: evidence.durationMs,
+      tasks: tasks.durationMs,
+      sessions: sessions.durationMs,
+      checkpoints: checkpointsMeasured.durationMs
+    }
+  });
 
   return {
-    filename: `runtime-center-${options?.days ?? 30}d.csv`,
-    mimeType: 'text/csv',
-    content: lines.join('\n')
+    runtime: normalizePlatformConsoleRuntimeRecord(runtime.value),
+    approvals: approvals.value,
+    learning: learning.value,
+    evals: normalizePlatformConsoleEvalsRecord(evals.value),
+    skills: skills.value,
+    evidence: normalizePlatformConsoleEvidenceRecord(evidence.value),
+    connectors: connectors.value,
+    skillSources: skillSources.value,
+    companyAgents: companyAgents.value,
+    rules: rules.value,
+    tasks: tasks.value,
+    sessions: sessions.value,
+    checkpoints: checkpointsMeasured.value,
+    diagnostics
+  } as PlatformConsoleRecord;
+}
+
+function buildEmptySkillSourcesCenter() {
+  return {
+    sources: [],
+    manifests: [],
+    installed: [],
+    receipts: []
   };
 }
 
-export async function exportApprovalsCenter(
-  context: Pick<RuntimePlatformConsoleContext, 'getApprovalsCenter'>,
-  options?: {
-    executionMode?: string;
-    interactionKind?: string;
-    format?: string;
+async function withPlatformConsoleTimeout<T>(loader: () => Promise<T>, fallback: () => T): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      loader().catch(() => fallback()),
+      new Promise<T>(resolve => {
+        timeoutHandle = setTimeout(() => resolve(fallback()), PLATFORM_CONSOLE_CENTER_TIMEOUT_MS);
+      })
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
   }
-) {
-  const approvals = context.getApprovalsCenter(options);
-  const format = options?.format === 'json' ? 'json' : 'csv';
-  if (format === 'json') {
-    return {
-      filename: 'approvals-center.json',
-      mimeType: 'application/json',
-      content: JSON.stringify(approvals, null, 2)
-    };
-  }
+}
 
-  const lines = [
-    `filters,${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
-    'filterExecutionMode,filterInteractionKind',
-    '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt',
-    ...approvals.map(
-      item =>
-        `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(item))},${csv(item.currentWorker)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')},${csv(resolveInterruptPayloadField(item, 'commandPreview'))},${csv(resolveInterruptPayloadField(item, 'riskReason'))},${csv(resolveInterruptPayloadField(item, 'riskCode'))},${csv(resolveInterruptPayloadField(item, 'approvalScope'))},${csv(item.policyMatchStatus ?? '')},${csv(item.policyMatchSource ?? '')},${csv(item.lastStreamStatusAt ?? '')}`
-    )
-  ];
-
+async function measureAsync<T>(loader: () => Promise<T>) {
+  const startedAt = Date.now();
+  const value = await loader();
   return {
-    filename: 'approvals-center.csv',
-    mimeType: 'text/csv',
-    content: lines.join('\n')
+    value,
+    durationMs: Date.now() - startedAt
   };
 }
 
-function resolveInteractionKind(task: any) {
-  // activeInterrupt is the persisted 司礼监 / InterruptController projection for export compatibility.
-  if (typeof task.activeInterrupt?.interactionKind === 'string') {
-    return task.activeInterrupt.interactionKind;
-  }
-  const payload = task.activeInterrupt?.payload;
-  if (payload && typeof payload === 'object' && typeof payload.interactionKind === 'string') {
-    return payload.interactionKind;
-  }
-  if (task.activeInterrupt?.kind === 'user-input') {
-    return 'plan-question';
-  }
-  return task.pendingApproval || task.activeInterrupt ? 'approval' : '';
-}
-
-function resolveInterruptPayloadField(
-  task: any,
-  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
-) {
-  const payload = task.activeInterrupt?.payload;
-  if (!payload || typeof payload !== 'object') {
-    return '';
-  }
-  const value = payload[field];
-  return typeof value === 'string' ? value : '';
-}
-
-export async function exportEvalsCenter(
-  context: Pick<RuntimePlatformConsoleContext, 'getEvalsCenter'>,
-  options?: { days?: number; scenarioId?: string; outcome?: string; format?: string }
-) {
-  const evals = await context.getEvalsCenter(options?.days ?? 30, options);
-  const format = options?.format === 'json' ? 'json' : 'csv';
-  if (format === 'json') {
-    return {
-      filename: `evals-center-${options?.days ?? 30}d.json`,
-      mimeType: 'application/json',
-      content: JSON.stringify(evals, null, 2)
-    };
-  }
-
-  const lines = [
-    'day,runCount,passCount,passRate',
-    ...(evals.persistedDailyHistory ?? evals.dailyTrend).map(
-      point => `${point.day},${point.runCount},${point.passCount},${point.passRate}`
-    ),
-    '',
-    'taskId,createdAt,success,scenarioIds',
-    ...evals.recentRuns.map(
-      run =>
-        `${csv(run.taskId)},${csv(run.createdAt)},${run.success ? 'pass' : 'fail'},${csv(run.scenarioIds.join('|'))}`
-    ),
-    '',
-    'promptSuiteId,promptSuiteLabel,promptCount,versions',
-    ...((evals.promptRegression?.suites ?? []).map(
-      suite => `${csv(suite.suiteId)},${csv(suite.label)},${suite.promptCount},${csv(suite.versions.join('|'))}`
-    ) as string[])
-  ];
-
+function measureSync<T>(loader: () => T) {
+  const startedAt = Date.now();
+  const value = loader();
   return {
-    filename: `evals-center-${options?.days ?? 30}d.csv`,
-    mimeType: 'text/csv',
-    content: lines.join('\n')
+    value,
+    durationMs: Date.now() - startedAt
   };
-}
-
-function csv(value: unknown): string {
-  const text = value == null ? '' : String(value);
-  return `"${text.split('"').join('""')}"`;
 }

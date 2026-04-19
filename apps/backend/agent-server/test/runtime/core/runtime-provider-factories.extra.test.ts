@@ -40,9 +40,12 @@ const {
       queryService,
       governanceService,
       getRuntimeCenter: vi.fn(() => 'runtime'),
+      getRuntimeCenterSummary: vi.fn(() => 'runtime-summary'),
       getApprovalsCenter: vi.fn(() => 'approvals'),
       getLearningCenter: vi.fn(() => 'learning'),
+      getLearningCenterSummary: vi.fn(() => 'learning-summary'),
       getEvalsCenter: vi.fn(() => 'evals'),
+      getEvalsCenterSummary: vi.fn(() => 'evals-summary'),
       getEvidenceCenter: vi.fn(() => 'evidence'),
       getToolsCenter: vi.fn(() => 'tools'),
       getConnectorsCenter: vi.fn(() => 'connectors'),
@@ -167,9 +170,16 @@ describe('runtime-provider-factories extra branches', () => {
       runtimeScheduleService as any
     ) as any;
     const context = bootstrapService.factory();
+    runtimeHost.orchestrator.listTasks = vi.fn(() => []);
+    runtimeHost.settings.providerAudit = {
+      adapters: [],
+      primaryProvider: 'zhipu'
+    };
+    runtimeHost.runtimeStateRepository.save = vi.fn(async () => undefined);
 
     await context.syncInstalledSkillWorkers();
     await context.applyStoredGovernanceOverrides();
+    await context.initializeMetricsSnapshots();
     await context.initializeDailyTechBriefing();
     await context.initializeScheduleRunner();
 
@@ -178,6 +188,7 @@ describe('runtime-provider-factories extra branches', () => {
     expect(applyGovernanceOverridesMock).toHaveBeenCalledWith(expect.any(Object), {
       governance: { disabledSkillSourceIds: ['source-x'] }
     });
+    expect(runtimeHost.runtimeStateRepository.save).toHaveBeenCalled();
     expect(techBriefingService.initializeSchedule).toHaveBeenCalled();
     expect(runtimeScheduleService.initialize).toHaveBeenCalled();
     expect(background.enabled).toBe(false);
@@ -230,8 +241,11 @@ describe('runtime-provider-factories extra branches', () => {
     const updateResult = await skillInstallContext.remoteSkillCli.update();
     const listedSkillSources = await skillInstallContext.listSkillSources?.();
     skillInstallContext.registerInstalledSkillWorker({ id: 'skill-1' } as any);
+    expect(platformConsoleContext.getRuntimeCenterSummary()).toBe('runtime-summary');
     expect(platformConsoleContext.getLearningCenter()).toBe('learning');
+    expect(platformConsoleContext.getLearningCenterSummary()).toBe('learning-summary');
     expect(platformConsoleContext.getEvalsCenter()).toBe('evals');
+    expect(platformConsoleContext.getEvalsCenterSummary()).toBe('evals-summary');
     expect(platformConsoleContext.getEvidenceCenter()).toBe('evidence');
     expect(platformConsoleContext.getToolsCenter()).toBe('tools');
     expect(platformConsoleContext.getConnectorsCenter()).toBe('connectors');

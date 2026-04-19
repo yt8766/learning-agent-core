@@ -1,6 +1,13 @@
+import axios from 'axios';
+import type { AxiosRequestConfig, AxiosRequestHeaders, Method } from 'axios';
+
 import type { PlatformConsoleRecord } from '@/types/admin';
 
-export type AdminRequestInit = RequestInit & {
+export type AdminRequestInit = {
+  method?: Method;
+  body?: BodyInit | null;
+  headers?: AxiosRequestHeaders | Record<string, string>;
+  signal?: AbortSignal;
   cancelKey?: string;
   cancelPrevious?: boolean;
 };
@@ -8,6 +15,14 @@ export type AdminRequestInit = RequestInit & {
 export const ABORTED_REQUEST_ERROR = '__ADMIN_REQUEST_ABORTED__';
 const requestControllers = new Map<string, AbortController>();
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
+const http = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+  timeout: 12000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 export interface ChannelDeliveryRecord {
   id: string;
@@ -23,6 +38,8 @@ export interface ChannelDeliveryRecord {
   deliveredAt?: string;
   failureReason?: string;
 }
+
+export type PlatformConsoleView = 'shell' | 'full';
 
 export function isAbortedAdminRequestError(error: unknown): boolean {
   return (
@@ -51,23 +68,27 @@ export async function request<T>(path: string, init?: AdminRequestInit): Promise
   }
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init?.headers ?? {})
-      },
-      ...init,
+    const config: AxiosRequestConfig = {
+      url: path,
+      method: init?.method ?? 'GET',
+      headers: init?.headers,
       signal: abortController?.signal ?? init?.signal
-    });
+    };
 
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
+    if (typeof init?.body === 'string') {
+      config.data = init.body;
+    } else if (init?.body !== undefined && init.body !== null) {
+      config.data = init.body;
     }
 
-    return response.json() as Promise<T>;
+    const response = await http.request<T>(config);
+    return response.data;
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
+    if (axios.isCancel(error) || (error instanceof axios.CanceledError && error.code === 'ERR_CANCELED')) {
       throw new Error(ABORTED_REQUEST_ERROR);
+    }
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(`Request failed: ${error.response.status}`);
     }
     throw error;
   } finally {
@@ -91,6 +112,35 @@ export async function getPlatformConsole(
     runtimeInteractionKind?: string;
     approvalsExecutionMode?: string;
     approvalsInteractionKind?: string;
+  },
+  view: PlatformConsoleView = 'shell'
+) {
+  const search = new URLSearchParams();
+  search.set('days', String(days));
+  if (view === 'full') search.set('view', 'full');
+  if (filters?.status) search.set('status', filters.status);
+  if (filters?.model) search.set('model', filters.model);
+  if (filters?.pricingSource) search.set('pricingSource', filters.pricingSource);
+  if (filters?.runtimeExecutionMode) search.set('runtimeExecutionMode', filters.runtimeExecutionMode);
+  if (filters?.runtimeInteractionKind) search.set('runtimeInteractionKind', filters.runtimeInteractionKind);
+  if (filters?.approvalsExecutionMode) search.set('approvalsExecutionMode', filters.approvalsExecutionMode);
+  if (filters?.approvalsInteractionKind) search.set('approvalsInteractionKind', filters.approvalsInteractionKind);
+  return request<PlatformConsoleRecord>(`/platform/console?${search.toString()}`, {
+    cancelKey: 'platform-console',
+    cancelPrevious: true
+  });
+}
+
+export async function getPlatformConsoleShell(
+  days = 30,
+  filters?: {
+    status?: string;
+    model?: string;
+    pricingSource?: string;
+    runtimeExecutionMode?: string;
+    runtimeInteractionKind?: string;
+    approvalsExecutionMode?: string;
+    approvalsInteractionKind?: string;
   }
 ) {
   const search = new URLSearchParams();
@@ -102,8 +152,8 @@ export async function getPlatformConsole(
   if (filters?.runtimeInteractionKind) search.set('runtimeInteractionKind', filters.runtimeInteractionKind);
   if (filters?.approvalsExecutionMode) search.set('approvalsExecutionMode', filters.approvalsExecutionMode);
   if (filters?.approvalsInteractionKind) search.set('approvalsInteractionKind', filters.approvalsInteractionKind);
-  return request<PlatformConsoleRecord>(`/platform/console?${search.toString()}`, {
-    cancelKey: 'platform-console',
+  return request<PlatformConsoleRecord>(`/platform/console-shell?${search.toString()}`, {
+    cancelKey: 'platform-console-shell',
     cancelPrevious: true
   });
 }

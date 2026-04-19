@@ -68,13 +68,13 @@ describe('SkillSourcesCenterPanel', () => {
       />
     );
 
-    expect(html).toContain('Skill Sources');
-    expect(html).toContain('Skill Sources / Marketplace');
-    expect(html).toContain('Available Manifests');
-    expect(html).toContain('Installed Skills');
-    expect(html).toContain('Install Receipts');
-    expect(html).toContain('当前还没有 skill source。');
-    expect(html).toContain('当前没有可安装的 skill manifests。');
+    expect(html).toContain('技能来源治理');
+    expect(html).toContain('技能来源 / 市场');
+    expect(html).toContain('可安装清单');
+    expect(html).toContain('已安装技能');
+    expect(html).toContain('安装回执');
+    expect(html).toContain('当前还没有技能来源。');
+    expect(html).toContain('当前没有可安装的技能清单。');
     expect(html).toContain('当前没有已安装技能。');
     expect(html).toContain('当前没有待处理的安装回执。');
   });

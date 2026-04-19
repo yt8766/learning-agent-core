@@ -8,8 +8,8 @@ import {
   ResolveSkillInstallDto,
   type SkillSourceRecord
 } from '@agent/core';
+import { appendGovernanceAudit } from '@agent/runtime';
 
-import { appendGovernanceAudit } from '../../modules/runtime-governance/services/runtime-governance-store';
 import { buildSkillsAddCommand, normalizeRepoForInstall } from '../skills/runtime-skill-cli';
 
 export async function installSkillWithGovernance(input: {

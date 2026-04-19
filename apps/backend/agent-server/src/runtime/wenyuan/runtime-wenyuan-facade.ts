@@ -88,7 +88,7 @@ export class RuntimeWenyuanFacade {
     return this.ctx().memoryRepository.search(query, limit);
   }
 
-  searchMemoryStructured(request: any) {
+  searchMemoryStructured(request: MemorySearchRequest) {
     return this.ctx().memoryRepository.searchStructured?.(request);
   }
 

@@ -151,12 +151,12 @@ describe('ConnectorsCenterPanel', () => {
 
     const html = renderToStaticMarkup(<ConnectorsCenterPanel connectors={[]} {...baseProps} />);
 
-    expect(html).toContain('Connector &amp; Policy Center');
+    expect(html).toContain('连接器与策略');
     expect(html).toContain('统一查看 connector 注册、模板配置与 policy 覆盖情况。');
     expect(html).toContain('count:0');
-    expect(html).toContain('MCP Connectors');
+    expect(html).toContain('MCP 连接器');
     expect(html).toContain('summary:');
-    expect(html).toContain('当前没有已注册的 MCP connectors。');
+    expect(html).toContain('当前没有已注册的 MCP 连接器。');
     expect(html).not.toContain('template-form:');
   });
 

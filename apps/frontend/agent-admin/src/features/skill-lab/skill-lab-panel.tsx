@@ -33,11 +33,11 @@ export function SkillLabPanel({
   onRetireRule
 }: SkillLabPanelProps) {
   return (
-    <DashboardCenterShell title="Skill Lab" description="治理技能资产与规则沉淀。" count={skills.length}>
+    <DashboardCenterShell title="技能工坊" description="治理技能资产与规则沉淀。" count={skills.length}>
       <div className="grid gap-6">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-foreground">Skill Lab</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">技能工坊</CardTitle>
             <Badge variant="outline">{skills.length}</Badge>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -101,7 +101,7 @@ export function SkillLabPanel({
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-foreground">Rules Governance</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">规则治理</CardTitle>
             <Badge variant="outline">{rules.length}</Badge>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">

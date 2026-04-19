@@ -1,8 +1,10 @@
 import { join } from 'node:path';
 
+import type { RuntimeProfile } from '@agent/config';
 import { describeSkillSourceProfilePolicy } from '@agent/runtime';
 import { ConfiguredConnectorRecord } from '@agent/core';
-import type { SkillCard } from '@agent/core';
+import type { SkillCard, WorkerDefinition } from '@agent/core';
+import type { McpServerDefinition } from '@agent/tools';
 
 import {
   inferCapabilityCategory,
@@ -12,25 +14,39 @@ import {
   resolveInstalledSkillModel,
   toCapabilityDisplayName
 } from './runtime-worker-utils';
-import { buildInstalledSkillTags } from './runtime-derived-records';
+import { buildInstalledSkillTags } from '../domain/learning/runtime-learning-derived-records';
+
+type InstalledSkillModelConfig = Parameters<typeof resolveInstalledSkillModel>[0];
+type McpCapabilityRegistryRecord = {
+  id: string;
+  toolName: string;
+  serverId: string;
+  displayName: string;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  requiresApproval: boolean;
+  category: 'knowledge' | 'system' | 'action' | 'memory';
+  dataScope?: string;
+  writeScope?: string;
+};
+type RegisteredCapabilityTemplate = Omit<McpCapabilityRegistryRecord, 'serverId'>;
 
 export interface RuntimeConnectorRegistryContext {
   settings: {
     workspaceRoot: string;
     skillsRoot: string;
     skillSourcesRoot: string;
-    profile: any;
+    profile: RuntimeProfile;
     policy: {
       sourcePolicyMode: string;
     };
-    zhipuModels?: unknown;
+    zhipuModels?: InstalledSkillModelConfig;
   };
   mcpServerRegistry: {
-    register: (server: any) => void;
+    register: (server: McpServerDefinition) => void;
     setEnabled: (connectorId: string, enabled: boolean) => void;
   };
   mcpCapabilityRegistry: {
-    register: (capability: any) => void;
+    register: (capability: McpCapabilityRegistryRecord) => void;
     listByServer: (connectorId: string) => Array<{ toolName: string }>;
     setServerApprovalOverride: (connectorId: string, effect: string) => void;
     setCapabilityApprovalOverride: (capabilityId: string, effect: string) => void;
@@ -47,7 +63,7 @@ export interface RuntimeConnectorRegistryContext {
     setWorkerEnabled: (workerId: string, enabled: boolean) => void;
     listWorkers: () => Array<{ id: string; kind?: string }>;
     isWorkerEnabled?: (workerId: string) => boolean;
-    registerWorker: (worker: any) => void;
+    registerWorker: (worker: WorkerDefinition) => void;
   };
 }
 
@@ -116,7 +132,7 @@ export function registerConfiguredConnector(
     allowedProfiles: ['platform', 'company', 'personal', 'cli']
   });
 
-  const capabilities = isGithub
+  const capabilities: RegisteredCapabilityTemplate[] = isGithub
     ? [
         {
           id: `${serverId}:github.search_repos`,
@@ -237,7 +253,7 @@ export function registerDiscoveredCapabilities(context: RuntimeConnectorRegistry
     if (existingToolNames.has(toolName)) {
       continue;
     }
-    context.mcpCapabilityRegistry.register({
+    const capability: McpCapabilityRegistryRecord = {
       id: `${connectorId}:${toolName}`,
       toolName,
       serverId: connectorId,
@@ -247,7 +263,8 @@ export function registerDiscoveredCapabilities(context: RuntimeConnectorRegistry
       category: inferCapabilityCategory(toolName),
       dataScope: server.dataScope,
       writeScope: inferCapabilityRequiresApproval(toolName) ? (server.writeScope ?? 'connector action') : 'none'
-    });
+    };
+    context.mcpCapabilityRegistry.register(capability);
   }
 }
 
@@ -260,12 +277,15 @@ export function getDisabledCompanyWorkerIds(context: RuntimeConnectorRegistryCon
 }
 
 export function registerInstalledSkillWorker(context: RuntimeConnectorRegistryContext, skill: SkillCard): void {
+  if (!context.settings.zhipuModels) {
+    return;
+  }
   context.orchestrator.registerWorker({
     id: `installed-skill:${skill.id}`,
     ministry: resolveInstalledSkillMinistry(skill),
     kind: 'installed-skill',
     displayName: `${skill.name} 已安装技能`,
-    defaultModel: resolveInstalledSkillModel(context.settings.zhipuModels as any, skill),
+    defaultModel: resolveInstalledSkillModel(context.settings.zhipuModels, skill),
     supportedCapabilities: skill.requiredCapabilities ?? skill.requiredTools,
     reviewPolicy: 'self-check',
     sourceId: skill.sourceId,

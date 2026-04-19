@@ -67,16 +67,16 @@ describe('PromptRegressionSection', () => {
   it('renders prompt regression run details, suite notes and prompt results', () => {
     const html = renderToStaticMarkup(<PromptRegressionSection evals={createEvalsRecord()} />);
 
-    expect(html).toContain('Prompt Regressions');
+    expect(html).toContain('Prompt 回归');
     expect(html).toContain('/tmp/prompts');
     expect(html).toContain('配置更新时间 2026-03-30T09:00:00.000Z');
-    expect(html).toContain('Latest Prompt Run');
+    expect(html).toContain('最近一次 Prompt 运行');
     expect(html).toContain('/tmp/prompts/latest.json');
-    expect(html).toContain('partial');
+    expect(html).toContain('部分通过');
     expect(html).toContain('通过率 67%');
     expect(html).toContain('需要复核提示词 A');
-    expect(html).toContain('v1 pass');
-    expect(html).toContain('v2 fail');
+    expect(html).toContain('v1 通过');
+    expect(html).toContain('v2 失败');
   });
 
   it('renders empty states when prompt regression data or latest run summary is missing', () => {
@@ -115,18 +115,18 @@ describe('BenchmarkSections', () => {
       />
     );
 
-    expect(html).toContain('Benchmark Scenarios');
-    expect(html).toContain('Benchmark Filters');
+    expect(html).toContain('基准场景');
+    expect(html).toContain('基准筛选');
     expect(html).toContain('场景筛选');
     expect(html).toContain('结果筛选');
     expect(html).toContain('VIP retention');
     expect(html).toContain('命中 4');
     expect(html).toContain('通过 3');
     expect(html).toContain('失败 1');
-    expect(html).toContain('Recent Benchmark Runs');
+    expect(html).toContain('近期基准运行');
     expect(html).toContain('task-eval-1');
     expect(html).toContain('vip-retention');
-    expect(html).toContain('pass');
+    expect(html).toContain('通过');
   });
 
   it('renders the recent-run empty state when no benchmark runs are available', () => {

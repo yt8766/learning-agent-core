@@ -40,7 +40,7 @@ export function ProfileCenterPanel() {
         privacyFlags: (loadedProfile?.privacyFlags ?? []).join(', ')
       });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '加载 profile 失败');
+      setError(nextError instanceof Error ? nextError.message : '加载画像失败');
     } finally {
       setLoadingKey('');
     }
@@ -70,9 +70,9 @@ export function ProfileCenterPanel() {
         actor: 'agent-admin-user'
       });
       setProfile(patched as Awaited<ReturnType<typeof getProfile>>);
-      setSuccess(`已更新 profile：${profile.userId}`);
+      setSuccess(`已更新画像：${profile.userId}`);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : '更新 profile 失败');
+      setError(nextError instanceof Error ? nextError.message : '更新画像失败');
     } finally {
       setLoadingKey('');
     }
@@ -81,8 +81,8 @@ export function ProfileCenterPanel() {
   return (
     <Card className="border-border/70 bg-card/90 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-foreground">Profile Center</CardTitle>
-        <Badge variant="outline">profile lookup / patch</Badge>
+        <CardTitle className="text-lg font-semibold text-foreground">画像中枢</CardTitle>
+        <Badge variant="outline">画像查询 / 修改</Badge>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="flex gap-2">
@@ -102,16 +102,16 @@ export function ProfileCenterPanel() {
           <article className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4 text-sm text-muted-foreground">
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{profile.userId}</Badge>
-              <Badge variant="outline">actor agent-admin-user</Badge>
-              {profile.updatedAt ? <Badge variant="outline">updated {profile.updatedAt}</Badge> : null}
+              <Badge variant="outline">操作人 agent-admin-user</Badge>
+              {profile.updatedAt ? <Badge variant="outline">更新时间 {profile.updatedAt}</Badge> : null}
             </div>
-            <p className="mt-2">communication: {profile.communicationStyle ?? 'n/a'}</p>
-            <p>execution: {profile.executionStyle ?? 'n/a'}</p>
-            <p>approval: {profile.approvalStyle ?? 'n/a'}</p>
-            <p>risk: {profile.riskTolerance ?? 'n/a'}</p>
-            <p>coding: {(profile.codingPreferences ?? []).join(', ') || 'n/a'}</p>
-            <p>do not do: {(profile.doNotDo ?? []).join(', ') || 'n/a'}</p>
-            <p>privacy flags: {(profile.privacyFlags ?? []).join(', ') || 'n/a'}</p>
+            <p className="mt-2">沟通风格：{profile.communicationStyle ?? '未设置'}</p>
+            <p>执行风格：{profile.executionStyle ?? '未设置'}</p>
+            <p>审批风格：{profile.approvalStyle ?? '未设置'}</p>
+            <p>风险偏好：{profile.riskTolerance ?? '未设置'}</p>
+            <p>编码偏好：{(profile.codingPreferences ?? []).join(', ') || '未设置'}</p>
+            <p>禁止事项：{(profile.doNotDo ?? []).join(', ') || '未设置'}</p>
+            <p>隐私标记：{(profile.privacyFlags ?? []).join(', ') || '未设置'}</p>
           </article>
         ) : null}
         {profile ? (
@@ -119,32 +119,32 @@ export function ProfileCenterPanel() {
             <Input
               value={profileDraft.communicationStyle}
               onChange={event => setProfileDraft(current => ({ ...current, communicationStyle: event.target.value }))}
-              placeholder="communication style"
+              placeholder="沟通风格"
             />
             <Input
               value={profileDraft.executionStyle}
               onChange={event => setProfileDraft(current => ({ ...current, executionStyle: event.target.value }))}
-              placeholder="execution style"
+              placeholder="执行风格"
             />
             <Input
               value={profileDraft.approvalStyle}
               onChange={event => setProfileDraft(current => ({ ...current, approvalStyle: event.target.value }))}
-              placeholder="approval style"
+              placeholder="审批风格"
             />
             <Input
               value={profileDraft.riskTolerance}
               onChange={event => setProfileDraft(current => ({ ...current, riskTolerance: event.target.value }))}
-              placeholder="risk tolerance"
+              placeholder="风险偏好"
             />
             <Input
               value={profileDraft.doNotDo}
               onChange={event => setProfileDraft(current => ({ ...current, doNotDo: event.target.value }))}
-              placeholder="do not do (comma separated)"
+              placeholder="禁止事项（逗号分隔）"
             />
             <Input
               value={profileDraft.privacyFlags}
               onChange={event => setProfileDraft(current => ({ ...current, privacyFlags: event.target.value }))}
-              placeholder="privacy flags (comma separated)"
+              placeholder="隐私标记（逗号分隔）"
             />
             <div className="flex justify-end">
               <Button

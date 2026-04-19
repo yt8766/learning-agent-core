@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { fetchChatSession } from '@/api/chat-query';
 import { createSessionStream, selectSession, appendMessage } from '@/api/chat-api';
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 import {
@@ -32,6 +35,7 @@ import { createChatSessionActions } from './chat-session/use-chat-session-action
 export { formatSessionTime, getMessageRoleLabel, getSessionStatusLabel };
 
 export function useChatSession() {
+  const queryClient = useQueryClient();
   const bootstrapFinished = useRef(false);
   const [sessions, setSessions] = useState<ChatSessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
@@ -153,7 +157,7 @@ export function useChatSession() {
           pendingInitialMessageContent: pendingInitialMessage.current?.content,
           isDisposed: () => disposed,
           plan,
-          selectSession,
+          selectSession: sessionId => fetchChatSession(queryClient, sessionId),
           hydrateSessionSnapshot: chatActions.hydrateSessionSnapshot,
           createSessionStream,
           bindStream: (nextStream, nextSessionId) =>
@@ -197,7 +201,7 @@ export function useChatSession() {
       }
       stopSessionPolling(activeSessionId);
     };
-  }, [activeSessionId, streamReconnectNonce]);
+  }, [activeSessionId, chatActions.hydrateSessionSnapshot, queryClient, streamReconnectNonce]);
 
   function scheduleCheckpointRefresh() {
     if (checkpointRefreshTimer.current) {

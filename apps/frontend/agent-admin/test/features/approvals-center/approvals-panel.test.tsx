@@ -55,8 +55,8 @@ describe('ApprovalsPanel render smoke', () => {
       />
     );
 
-    expect(html).toContain('Approvals Center');
-    expect(html).toContain('导出 approvals');
+    expect(html).toContain('审批中枢');
+    expect(html).toContain('导出审批');
     expect(html).toContain('计划模式');
     expect(html).toContain('操作确认');
     expect(html).toContain('write_file');
@@ -188,7 +188,7 @@ describe('ApprovalsPanel render smoke', () => {
     );
 
     renderedButtons.find(item => item.children === '复制视角链接')?.onClick?.();
-    renderedButtons.find(item => item.children === '导出 approvals')?.onClick?.();
+    renderedButtons.find(item => item.children === '导出审批')?.onClick?.();
     renderedButtons.find(item => item.children === '计划模式')?.onClick?.();
     renderedButtons.find(item => item.children === '补充输入')?.onClick?.();
     renderedButtons.find(item => item.children === '按推荐继续')?.onClick?.();

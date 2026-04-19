@@ -10,7 +10,7 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
   return (
     <Card className="border-border/70 bg-card/90 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-foreground">Prompt Regressions</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">Prompt 回归</CardTitle>
         <Badge variant="outline">{evals.promptRegression?.promptSuiteCount ?? 0}</Badge>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -19,10 +19,10 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">suite {evals.promptRegression.promptSuiteCount}</Badge>
-              <Badge variant="secondary">prompt {evals.promptRegression.promptCount}</Badge>
-              <Badge variant="secondary">tests {evals.promptRegression.testCount}</Badge>
-              <Badge variant="secondary">providers {evals.promptRegression.providerCount}</Badge>
+              <Badge variant="secondary">套件 {evals.promptRegression.promptSuiteCount}</Badge>
+              <Badge variant="secondary">Prompt {evals.promptRegression.promptCount}</Badge>
+              <Badge variant="secondary">测试 {evals.promptRegression.testCount}</Badge>
+              <Badge variant="secondary">Provider {evals.promptRegression.providerCount}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">{evals.promptRegression.configPath}</p>
             {evals.promptRegression.updatedAt ? (
@@ -32,7 +32,7 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
               <article className="rounded-2xl border border-border/70 bg-background px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Latest Prompt Run</p>
+                    <p className="text-sm font-semibold text-foreground">最近一次 Prompt 运行</p>
                     <p className="mt-1 text-xs text-muted-foreground">{evals.promptRegression.latestRun.summaryPath}</p>
                   </div>
                   <Badge
@@ -44,13 +44,17 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
                           : 'destructive'
                     }
                   >
-                    {evals.promptRegression.latestRun.overallStatus}
+                    {evals.promptRegression.latestRun.overallStatus === 'pass'
+                      ? '通过'
+                      : evals.promptRegression.latestRun.overallStatus === 'partial'
+                        ? '部分通过'
+                        : '失败'}
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge variant="secondary">{evals.promptRegression.latestRun.runAt}</Badge>
                   {typeof evals.promptRegression.latestRun.passRate === 'number' ? (
-                    <Badge variant="secondary">pass {evals.promptRegression.latestRun.passRate}%</Badge>
+                    <Badge variant="secondary">通过率 {evals.promptRegression.latestRun.passRate}%</Badge>
                   ) : null}
                   {evals.promptRegression.latestRun.providerIds.map(providerId => (
                     <span key={providerId}>
@@ -75,7 +79,7 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
                                 : 'destructive'
                           }
                         >
-                          {result.status}
+                          {result.status === 'pass' ? '通过' : result.status === 'partial' ? '部分通过' : '失败'}
                         </Badge>
                       </div>
                       {typeof result.passRate === 'number' ? (
@@ -94,7 +98,7 @@ export function PromptRegressionSection({ evals }: { evals: EvalsCenterRecord })
                                 }
                               >
                                 {prompt.version}{' '}
-                                {prompt.pass === true ? 'pass' : prompt.pass === false ? 'fail' : 'n/a'}
+                                {prompt.pass === true ? '通过' : prompt.pass === false ? '失败' : '未评估'}
                               </Badge>
                             </span>
                           ))}
@@ -153,11 +157,11 @@ export function BenchmarkSections({
     <>
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-foreground">Benchmark Scenarios</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">基准场景</CardTitle>
           <Badge variant="outline">{evals.scenarios.length}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <DashboardToolbar title="Benchmark Filters" description="按场景和结果筛选 benchmark 视图。">
+          <DashboardToolbar title="基准筛选" description="按场景和结果筛选基准视图。">
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-xs text-muted-foreground">
                 场景筛选
@@ -182,8 +186,8 @@ export function BenchmarkSections({
                   className="rounded-2xl border border-input bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">全部</option>
-                  <option value="pass">pass</option>
-                  <option value="fail">fail</option>
+                  <option value="pass">通过</option>
+                  <option value="fail">失败</option>
                 </select>
               </label>
             </div>
@@ -213,7 +217,7 @@ export function BenchmarkSections({
 
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-foreground">Recent Benchmark Runs</CardTitle>
+          <CardTitle className="text-lg font-semibold text-foreground">近期基准运行</CardTitle>
           <Badge variant="outline">{evals.recentRuns.length}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -230,7 +234,7 @@ export function BenchmarkSections({
                     <p className="text-sm font-semibold text-foreground">{run.taskId}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{run.createdAt}</p>
                   </div>
-                  <Badge variant={run.success ? 'success' : 'destructive'}>{run.success ? 'pass' : 'fail'}</Badge>
+                  <Badge variant={run.success ? 'success' : 'destructive'}>{run.success ? '通过' : '失败'}</Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {run.scenarioIds.map(scenarioId => (

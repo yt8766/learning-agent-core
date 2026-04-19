@@ -56,10 +56,10 @@ export function ConnectorsCenterPanel({
 
   return (
     <DashboardCenterShell
-      title="Connector & Policy Center"
+      title="连接器与策略"
       description="统一查看 connector 注册、模板配置与 policy 覆盖情况。"
       count={connectors.length}
-      actions={<Badge variant="secondary">MCP Connectors</Badge>}
+      actions={<Badge variant="secondary">MCP 连接器</Badge>}
     >
       <div className="grid gap-4">
         <ConnectorsCenterSummary connectors={connectors} />
@@ -86,7 +86,7 @@ export function ConnectorsCenterPanel({
           />
         ) : null}
         {connectors.length === 0 ? (
-          <DashboardEmptyState message="当前没有已注册的 MCP connectors。" />
+          <DashboardEmptyState message="当前没有已注册的 MCP 连接器。" />
         ) : (
           connectors.map(connector => (
             <div key={connector.id}>

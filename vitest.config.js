@@ -121,7 +121,7 @@ export default defineConfig({
     reporters: ['default'],
     coverage: {
       provider: 'v8',
-      reportsDirectory: './coverage/vitest',
+      reportsDirectory: './artifacts/coverage/vitest',
       reporter: ['text', 'json-summary', 'html'],
       all: true,
       reportOnFailure: true,

@@ -6,7 +6,7 @@ import { ChatCapabilityIntentsService } from '../../../src/chat/chat-capability-
 import { ChatService } from '../../../src/chat/chat.service';
 import { MemoryService } from '../../../src/memory/memory.service';
 import { SkillsService } from '../../../src/skills/skills.service';
-import { TasksService } from '../../../src/modules/tasks/services/tasks.service';
+import { TasksService } from '../../../src/tasks/tasks.service';
 import { RuntimeCentersService } from '../../../src/runtime/centers/runtime-centers.service';
 import { RuntimeArchitectureService } from '../../../src/runtime/architecture/runtime-architecture.service';
 import { RuntimeKnowledgeService } from '../../../src/runtime/services/runtime-knowledge.service';
@@ -25,7 +25,6 @@ describe('RuntimeModule', () => {
       providers: [AppService, ChatCapabilityIntentsService, ChatService, TasksService, MemoryService, SkillsService]
     }).compile();
 
-    expect(moduleRef.get(RuntimeService)).toBeInstanceOf(RuntimeService);
     expect(moduleRef.get(RuntimeTaskService)).toBeInstanceOf(RuntimeTaskService);
     expect(moduleRef.get(RuntimeSessionService)).toBeInstanceOf(RuntimeSessionService);
     expect(moduleRef.get(RuntimeKnowledgeService)).toBeInstanceOf(RuntimeKnowledgeService);
@@ -41,5 +40,20 @@ describe('RuntimeModule', () => {
     expect(moduleRef.get(TasksService)).toBeInstanceOf(TasksService);
     expect(moduleRef.get(MemoryService)).toBeInstanceOf(MemoryService);
     expect(moduleRef.get(SkillsService)).toBeInstanceOf(SkillsService);
+  });
+
+  it('不再把 RuntimeService 作为 RuntimeModule 的默认对外 export', () => {
+    const exportedProviders = Reflect.getMetadata('exports', RuntimeModule) as unknown[];
+
+    expect(exportedProviders).not.toContain(RuntimeService);
+    expect(exportedProviders).toEqual(
+      expect.arrayContaining([
+        RuntimeTaskService,
+        RuntimeSessionService,
+        RuntimeKnowledgeService,
+        RuntimeSkillCatalogService,
+        RuntimeCentersService
+      ])
+    );
   });
 });

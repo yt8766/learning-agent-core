@@ -21,7 +21,7 @@ export function SkillSourcesCenterPanel({
 }: SkillSourcesCenterPanelProps) {
   return (
     <DashboardCenterShell
-      title="Skill Sources"
+      title="技能来源治理"
       description="统一管理 marketplace、可安装 manifests、已安装技能与安装回执。"
       count={skillSources.sources.length}
     >
@@ -30,12 +30,12 @@ export function SkillSourcesCenterPanel({
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-foreground">Skill Sources / Marketplace</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">技能来源 / 市场</CardTitle>
             <Badge variant="outline">{skillSources.sources.length}</Badge>
           </CardHeader>
           <CardContent className="grid gap-4">
             {skillSources.sources.length === 0 ? (
-              <DashboardEmptyState message="当前还没有 skill source。" />
+              <DashboardEmptyState message="当前还没有技能来源。" />
             ) : (
               skillSources.sources.map(source => (
                 <div key={source.id}>
@@ -53,12 +53,12 @@ export function SkillSourcesCenterPanel({
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-foreground">Available Manifests</CardTitle>
+            <CardTitle className="text-lg font-semibold text-foreground">可安装清单</CardTitle>
             <Badge variant="outline">{skillSources.manifests.length}</Badge>
           </CardHeader>
           <CardContent className="grid gap-4">
             {skillSources.manifests.length === 0 ? (
-              <DashboardEmptyState message="当前没有可安装的 skill manifests。" />
+              <DashboardEmptyState message="当前没有可安装的技能清单。" />
             ) : (
               skillSources.manifests.map(manifest => (
                 <div key={manifest.id}>
@@ -72,7 +72,7 @@ export function SkillSourcesCenterPanel({
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/70 bg-card/90 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-foreground">Installed Skills</CardTitle>
+              <CardTitle className="text-lg font-semibold text-foreground">已安装技能</CardTitle>
               <Badge variant="outline">{skillSources.installed.length}</Badge>
             </CardHeader>
             <CardContent className="grid gap-3">
@@ -90,7 +90,7 @@ export function SkillSourcesCenterPanel({
 
           <Card className="border-border/70 bg-card/90 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-foreground">Install Receipts</CardTitle>
+              <CardTitle className="text-lg font-semibold text-foreground">安装回执</CardTitle>
               <Badge variant="outline">{skillSources.receipts.length}</Badge>
             </CardHeader>
             <CardContent className="grid gap-3">

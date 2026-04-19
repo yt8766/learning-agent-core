@@ -1,7 +1,7 @@
 ---
 name: auto-commit-push
 description: Use this skill when the user asks Codex to stage all current changes with `git add .`, generate a commit message from the current modifications according to github-flow.md, create a local commit, fix commit-hook failures until the commit succeeds, and push the current branch to the remote in learning-agent-core.
-version: '1.2.0'
+version: '1.3.0'
 publisher: workspace
 license: Proprietary
 compatibility: Requires repository access and a configured git remote. Push or history-rewrite steps must still follow the user's explicit request and repository branch policy.
@@ -34,6 +34,7 @@ execution-hints:
   - Stage all current local changes with `git add .` before committing.
   - Generate the commit message from the current modifications and keep it aligned with docs/github-flow.md.
   - If commit hooks fail, fix the reported issue, restage with `git add .`, and retry until the commit succeeds or a real blocker remains.
+  - Before any remote push, run a code-review risk gate against the committed diff; fix every confirmed risk or defect, recommit the fixes, and only push after the review gate is clean.
   - Push the current branch after a successful commit; if remote rejects because the branch is behind, rebase carefully and use force-with-lease only when history was rewritten on the same branch.
 compression-hints:
   - Summarize commit message, hook-failure recovery, and push outcomes instead of pasting raw git output.
@@ -94,7 +95,13 @@ risk-level: high
    - 修复后重新执行 `git add .`
    - 再次执行 `git commit -m "<english message>"`
    - 同一阻断最多连续自修复 `3` 次；超过后再报告 blocker
-7. 提交成功后推送
+7. 推送前执行 code-review 风险门
+   - 在任何远程推送前，必须对本次已提交 diff 做一次 code-review
+   - 默认按 `skills/code-review` 的审查口径检查 bug、行为回归、缺失验证、接口兼容性、数据/安全风险和仓库规范偏离
+   - 如发现确认成立的风险或缺陷，必须先修复、重新 `git add .`、补充提交或按用户要求 amend，并重新执行必要验证
+   - 修复后必须再次执行 code-review 风险门，直到没有必须阻断推送的问题
+   - 只有 code-review 结论为无阻断风险时，才允许进入远程推送
+8. 提交成功且 code-review 风险门通过后推送
    - 默认 `git push origin <current-branch>`
    - 如果是首次推送，也可使用 `git push -u origin <current-branch>`
    - 如果远端拒绝是因为分支落后，优先：
@@ -132,6 +139,10 @@ risk-level: high
   - 修复类型、contract 或导入问题后重新 `git add .`
 - `test` 失败
   - 先确认是否由本轮改动引起，再修复后重新 `git add .`
+- `code-review` 发现阻断风险
+  - 修复所有确认成立的 bug、回归风险、缺失验证或安全/兼容性问题
+  - 修复后重新提交并再次执行 code-review 风险门
+  - 不允许带着已确认阻断风险推送远端
 - `rebase` / `push` 冲突
   - 理解远端变化后做最小必要冲突解决，不盲目覆盖
 
@@ -142,6 +153,7 @@ risk-level: high
 - 最终使用的英文 commit message
 - 是否发生过 hook 失败，以及如何修复
 - 本地提交是否重试过，以及最终如何成功
+- 推送前 code-review 是否发现风险；若发现，说明修复结果与复审结论
 - 最终推送到哪个分支
 - 如果仍有风险或未完成项，要明确说明
 
@@ -149,4 +161,5 @@ risk-level: high
 
 - [AGENTS.md](/Users/dev/Desktop/learning-agent-core/AGENTS.md)
 - [GitHub Flow 规范](/Users/dev/Desktop/learning-agent-core/docs/github-flow.md)
+- [Code Review Skill](/Users/dev/Desktop/learning-agent-core/skills/code-review/SKILL.md)
 - [Checklist](./references/commit-checklist.md)

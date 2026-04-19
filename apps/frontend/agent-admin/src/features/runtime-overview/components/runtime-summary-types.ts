@@ -10,6 +10,7 @@ export type RuntimeSummarySectionProps = Pick<
   | 'onCopyShareLink'
   | 'onSelectTask'
   | 'onRetryTask'
+  | 'onLaunchWorkflowTask'
   | 'onRefreshRuntime'
   | 'onCreateDiagnosisTask'
   | 'onRevokeApprovalPolicy'

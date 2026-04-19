@@ -18,6 +18,14 @@ describe('admin-dashboard-constants', () => {
       } as Location)
     ).toEqual({
       page: 'approvals',
+      runtimeTaskId: undefined,
+      runtimeFocusKind: undefined,
+      runtimeFocusId: undefined,
+      runtimeCompareTaskId: undefined,
+      runtimeGraphNodeId: undefined,
+      runtimeStatusFilter: '',
+      runtimeModelFilter: '',
+      runtimePricingSourceFilter: '',
       runtimeExecutionModeFilter: 'plan',
       runtimeInteractionKindFilter: 'plan-question',
       approvalsExecutionModeFilter: 'execute',
@@ -29,17 +37,35 @@ describe('admin-dashboard-constants', () => {
     expect(
       buildDashboardHash({
         page: 'runtime',
+        runtimeTaskId: 'task-42',
+        runtimeFocusKind: 'span',
+        runtimeFocusId: 'span-9',
+        runtimeCompareTaskId: 'task-7',
+        runtimeGraphNodeId: 'worker-xingbu-review',
+        runtimeStatusFilter: 'running',
+        runtimeModelFilter: 'gpt-5.4',
+        runtimePricingSourceFilter: 'provider',
         runtimeExecutionModeFilter: 'plan',
         runtimeInteractionKindFilter: 'plan-question',
         approvalsExecutionModeFilter: 'all',
         approvalsInteractionKindFilter: 'all'
       })
-    ).toBe('#/runtime?runtimeExecutionMode=plan&runtimeInteractionKind=plan-question');
+    ).toBe(
+      '#/runtime?runtimeTaskId=task-42&runtimeFocusKind=span&runtimeFocusId=span-9&runtimeCompareTaskId=task-7&runtimeGraphNodeId=worker-xingbu-review&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=plan-question'
+    );
 
     expect(
       buildDashboardShareUrl(
         {
           page: 'approvals',
+          runtimeTaskId: 'task-42',
+          runtimeFocusKind: 'span',
+          runtimeFocusId: 'span-9',
+          runtimeCompareTaskId: 'task-7',
+          runtimeGraphNodeId: 'worker-xingbu-review',
+          runtimeStatusFilter: '',
+          runtimeModelFilter: '',
+          runtimePricingSourceFilter: '',
           runtimeExecutionModeFilter: 'all',
           runtimeInteractionKindFilter: 'all',
           approvalsExecutionModeFilter: 'plan',

@@ -159,7 +159,7 @@ export function ApprovalsPanel({
 
   return (
     <DashboardCenterShell
-      title="Approvals Center"
+      title="审批中枢"
       description="统一处理高风险动作、计划问题和补充输入，不让审批流散落在不同视图里。"
       count={approvals.length}
       actions={
@@ -168,7 +168,7 @@ export function ApprovalsPanel({
             复制视角链接
           </Button>
           <Button size="sm" variant="outline" onClick={onExport} disabled={loading}>
-            导出 approvals
+            导出审批
           </Button>
         </>
       }
@@ -183,7 +183,7 @@ export function ApprovalsPanel({
           { label: '运行时治理', value: runtimeGovernanceCount, note: '兵部卡在超时、等待输入或交互阻塞' }
         ]}
       />
-      <DashboardToolbar title="Filter Bar" description="按 execution mode 与 interaction kind 收窄当前审批视图。">
+      <DashboardToolbar title="筛选栏" description="按执行模式与交互类型收窄当前审批视图。">
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">操作确认 {operationApprovalCount}</Badge>
           <Badge variant="outline">计划提问 {planQuestionCount}</Badge>
@@ -193,7 +193,7 @@ export function ApprovalsPanel({
         </div>
         <div className="grid gap-4 xl:grid-cols-2">
           <div className="grid gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Execution Mode</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">执行模式</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -219,7 +219,7 @@ export function ApprovalsPanel({
             </div>
           </div>
           <div className="grid gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Interaction Kind</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">交互类型</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"

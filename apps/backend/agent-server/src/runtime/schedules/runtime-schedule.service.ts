@@ -15,6 +15,7 @@ import {
 import type { DailyTechBriefingScheduleRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
 
 const SCHEDULE_REFRESH_MS = 30_000;
+const METRICS_SNAPSHOT_REFRESH_MS = 30 * 60 * 1000;
 const BRIEFING_CATEGORIES: TechBriefingCategory[] = [
   'frontend-security',
   'general-security',
@@ -43,12 +44,14 @@ export interface RuntimeScheduleContext {
     };
   };
   techBriefingService: RuntimeTechBriefingService;
+  refreshMetricsSnapshots?: (days: number) => Promise<unknown>;
 }
 
 export class RuntimeScheduleService {
   private bree?: Bree;
   private initialized = false;
   private refreshTimer?: NodeJS.Timeout;
+  private metricsRefreshTimer?: NodeJS.Timeout;
 
   constructor(private readonly getContext: () => RuntimeScheduleContext) {}
 
@@ -56,23 +59,22 @@ export class RuntimeScheduleService {
     if (this.initialized) {
       return;
     }
-    if (!this.ctx().settings.dailyTechBriefing.enabled) {
-      this.initialized = true;
-      return;
+    this.startMetricsRefreshLoop();
+
+    if (this.ctx().settings.dailyTechBriefing.enabled) {
+      this.bree = new Bree({
+        root: false,
+        jobs: [],
+        logger: false
+      });
+      await ensureDailyTechBriefingSchedules(this.ctx().settings.workspaceRoot, buildCategorySchedules(this.ctx()));
+      await this.syncSchedules();
+
+      this.refreshTimer = setInterval(() => {
+        void this.syncSchedules();
+      }, SCHEDULE_REFRESH_MS);
+      this.refreshTimer.unref?.();
     }
-
-    this.bree = new Bree({
-      root: false,
-      jobs: [],
-      logger: false
-    });
-    await ensureDailyTechBriefingSchedules(this.ctx().settings.workspaceRoot, buildCategorySchedules(this.ctx()));
-    await this.syncSchedules();
-
-    this.refreshTimer = setInterval(() => {
-      void this.syncSchedules();
-    }, SCHEDULE_REFRESH_MS);
-    this.refreshTimer.unref?.();
     this.initialized = true;
   }
 
@@ -80,6 +82,10 @@ export class RuntimeScheduleService {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = undefined;
+    }
+    if (this.metricsRefreshTimer) {
+      clearInterval(this.metricsRefreshTimer);
+      this.metricsRefreshTimer = undefined;
     }
     if (this.bree) {
       await this.bree.stop().catch(() => undefined);
@@ -92,6 +98,13 @@ export class RuntimeScheduleService {
     for (const schedule of schedules) {
       await this.syncScheduleRecord(schedule, now);
     }
+  }
+
+  async syncMetricsSnapshots(days = 30) {
+    if (!this.ctx().refreshMetricsSnapshots) {
+      return;
+    }
+    await this.ctx().refreshMetricsSnapshots(days);
   }
 
   private async syncScheduleRecord(schedule: DailyTechBriefingScheduleRecord, now: Date) {
@@ -166,6 +179,16 @@ export class RuntimeScheduleService {
       throw new Error('RuntimeScheduleService has not been initialized.');
     }
     return this.bree;
+  }
+
+  private startMetricsRefreshLoop() {
+    if (!this.ctx().refreshMetricsSnapshots || this.metricsRefreshTimer) {
+      return;
+    }
+    this.metricsRefreshTimer = setInterval(() => {
+      void this.syncMetricsSnapshots().catch(() => undefined);
+    }, METRICS_SNAPSHOT_REFRESH_MS);
+    this.metricsRefreshTimer.unref?.();
   }
 
   private ctx() {

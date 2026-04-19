@@ -2,6 +2,7 @@ export {
   ABORTED_REQUEST_ERROR,
   getHealth,
   getPlatformConsole,
+  getPlatformConsoleShell,
   isAbortedAdminRequestError,
   request,
   type AdminRequestInit,

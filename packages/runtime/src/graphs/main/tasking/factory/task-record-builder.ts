@@ -39,6 +39,7 @@ export function buildTaskRecord(params: {
     traceId,
     goal: params.workflowResolution.normalizedGoal,
     context: params.enrichedTaskContext,
+    lineage: params.dto.lineage,
     sessionId,
     status: TaskStatus.QUEUED,
     skillId: params.workflowResolution.preset.id,

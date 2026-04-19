@@ -95,14 +95,14 @@ describe('EvalsCenterPanel', () => {
       />
     );
 
-    expect(html).toContain('Evals Center');
-    expect(html).toContain('Daily Trend');
-    expect(html).toContain('Trend');
-    expect(html).toContain('Suites');
-    expect(html).toContain('Pass Rate');
-    expect(html).toContain('Prompt Regressions');
-    expect(html).toContain('Benchmark Scenarios');
-    expect(html).toContain('Recent Benchmark Runs');
+    expect(html).toContain('评测基线');
+    expect(html).toContain('每日趋势');
+    expect(html).toContain('趋势');
+    expect(html).toContain('套件');
+    expect(html).toContain('通过率');
+    expect(html).toContain('Prompt 回归');
+    expect(html).toContain('基准场景');
+    expect(html).toContain('近期基准运行');
     expect(html).toContain('VIP retention');
   });
 
@@ -142,11 +142,11 @@ describe('EvalsCenterPanel', () => {
 
     renderedButtons.find(item => getButtonText(item.children) === '导出')?.onClick?.();
     renderedButtons.filter(item => getButtonText(item.children) === '导出')[1]?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === '7d')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === '90d')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === 'Trend')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === 'Suites')?.onClick?.();
-    renderedButtons.find(item => getButtonText(item.children) === 'Pass Rate')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '7天')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '90天')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '趋势')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '套件')?.onClick?.();
+    renderedButtons.find(item => getButtonText(item.children) === '通过率')?.onClick?.();
 
     expect(onExport).toHaveBeenCalledTimes(2);
     expect(onHistoryDaysChange).toHaveBeenNthCalledWith(1, 7);

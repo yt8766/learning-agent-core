@@ -9,12 +9,14 @@ vi.mock('@/pages/chat-home/chat-home-helpers', () => ({
 }));
 
 const mockBuildApprovalsCenterExportUrl = vi.fn();
+const mockBuildAdminRuntimeObservatoryUrl = vi.fn();
 const mockBuildBrowserReplayUrl = vi.fn();
 const mockBuildRuntimeCenterExportUrl = vi.fn();
 const mockGetRuntimeDrawerExportFilters = vi.fn();
 
 vi.mock('@/api/chat-api', () => ({
   buildApprovalsCenterExportUrl: (params: Record<string, unknown>) => mockBuildApprovalsCenterExportUrl(params),
+  buildAdminRuntimeObservatoryUrl: (params: { taskId: string }) => mockBuildAdminRuntimeObservatoryUrl(params),
   buildBrowserReplayUrl: (sessionId: string) => mockBuildBrowserReplayUrl(sessionId),
   buildRuntimeCenterExportUrl: (params: Record<string, unknown>) => mockBuildRuntimeCenterExportUrl(params)
 }));
@@ -159,10 +161,17 @@ describe('chat-home-page helpers', () => {
       buildShareLinksText({
         runtimeUrl: '/runtime-export',
         approvalsUrl: '/approvals-export',
+        observatoryUrl: '/admin#/runtime?runtimeTaskId=task-1',
         replayUrl: '/replay'
       })
     ).toBe(
-      ['当前运行视角链接', 'runtime: /runtime-export', 'approvals: /approvals-export', 'replay: /replay'].join('\n')
+      [
+        '当前运行视角链接',
+        'runtime: /runtime-export',
+        'approvals: /approvals-export',
+        'observatory: /admin#/runtime?runtimeTaskId=task-1',
+        'replay: /replay'
+      ].join('\n')
     );
     expect(
       buildShareLinksText({
@@ -181,6 +190,7 @@ describe('chat-home-page helpers', () => {
     });
     mockBuildRuntimeCenterExportUrl.mockReturnValue('/runtime-export');
     mockBuildApprovalsCenterExportUrl.mockReturnValue('/approvals-export');
+    mockBuildAdminRuntimeObservatoryUrl.mockReturnValue('/admin#/runtime?runtimeTaskId=task-1');
     mockBuildBrowserReplayUrl.mockReturnValue('/replay');
 
     expect(buildRuntimeExportRequest({ taskId: 'task-1' } as never)).toEqual({
@@ -196,11 +206,19 @@ describe('chat-home-page helpers', () => {
     expect(buildChatHomeShareLinks({ taskId: 'task-1' } as never, 'session-1')).toEqual({
       runtimeUrl: '/runtime-export',
       approvalsUrl: '/approvals-export',
+      observatoryUrl: '/admin#/runtime?runtimeTaskId=task-1',
       replayUrl: '/replay'
     });
     expect(buildChatHomeShareLinks({ taskId: 'task-1' } as never, '')).toEqual({
       runtimeUrl: '/runtime-export',
       approvalsUrl: '/approvals-export',
+      observatoryUrl: '/admin#/runtime?runtimeTaskId=task-1',
+      replayUrl: ''
+    });
+    expect(buildChatHomeShareLinks(undefined, '')).toEqual({
+      runtimeUrl: '/runtime-export',
+      approvalsUrl: '/approvals-export',
+      observatoryUrl: '',
       replayUrl: ''
     });
     expect(mockBuildRuntimeCenterExportUrl).toHaveBeenCalledWith({
@@ -212,6 +230,11 @@ describe('chat-home-page helpers', () => {
       executionMode: 'plan',
       interactionKind: 'plan-question',
       format: 'json'
+    });
+    expect(mockBuildAdminRuntimeObservatoryUrl).toHaveBeenCalledWith({
+      taskId: 'task-1',
+      executionMode: 'plan',
+      interactionKind: 'plan-question'
     });
     expect(mockBuildBrowserReplayUrl).toHaveBeenCalledWith('session-1');
   });

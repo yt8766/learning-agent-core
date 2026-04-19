@@ -60,8 +60,8 @@ describe('SkillLabPanel', () => {
       />
     );
 
-    expect(html).toContain('Skill Lab');
-    expect(html).toContain('Rules Governance');
+    expect(html).toContain('技能工坊');
+    expect(html).toContain('规则治理');
     expect(html).toContain('Evidence Summarizer');
     expect(html).toContain('成功率 92%');
     expect(html).toContain('No direct publish');

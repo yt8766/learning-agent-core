@@ -249,7 +249,14 @@ describe('RuntimeQueueSection render smoke', () => {
         onCopyShareLink={vi.fn()}
         onExport={vi.fn()}
         onSelectTask={vi.fn()}
+        observatoryFocusTarget={undefined}
+        onObservatoryFocusTargetChange={vi.fn()}
+        compareTaskId={undefined}
+        onCompareTaskIdChange={vi.fn()}
+        graphNodeId={undefined}
+        onGraphNodeIdChange={vi.fn()}
         onRetryTask={vi.fn()}
+        onLaunchWorkflowTask={vi.fn()}
         onRefreshRuntime={vi.fn()}
         onCreateDiagnosisTask={vi.fn()}
       />

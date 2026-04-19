@@ -7,18 +7,18 @@ const mockUseAdminDashboard = vi.fn();
 
 vi.mock('@/hooks/use-admin-dashboard', () => ({
   PAGE_TITLES: {
-    runtime: 'Runtime Center',
-    approvals: 'Approvals Center',
-    learning: 'Learning Center',
-    memory: 'Memory Center',
-    profiles: 'Profile Center',
-    evals: 'Evals',
-    archives: 'Archive Center',
-    skills: 'Skill Lab',
-    evidence: 'Evidence Center',
-    connectors: 'Connector & Policy',
-    skillSources: 'Skill Sources',
-    companyAgents: 'Company Agents'
+    runtime: '运行中枢',
+    approvals: '审批中枢',
+    learning: '学习中枢',
+    memory: '记忆中枢',
+    profiles: '画像中枢',
+    evals: '评测基线',
+    archives: '归档中心',
+    skills: '技能工坊',
+    evidence: '证据中心',
+    connectors: '连接器与策略',
+    skillSources: '技能来源治理',
+    companyAgents: '公司专员编排'
   },
   useAdminDashboard: () => mockUseAdminDashboard()
 }));
@@ -71,8 +71,48 @@ describe('DashboardPage shell', () => {
   function createDashboardOverrides(overrides: Partial<ReturnType<typeof mockUseAdminDashboard>> = {}) {
     return {
       page: 'runtime',
-      title: 'Runtime Center',
+      title: '运行中枢',
       health: 'healthy 路 12:00',
+      platformConsoleLogAnalysis: {
+        sampleCount: 4,
+        summary: {
+          status: 'critical',
+          reasons: ['slow p95 1280ms exceeds 1200ms budget', 'slow event count 1 exceeds 0 budget'],
+          budgetsMs: {
+            freshAggregateP95: 600,
+            slowP95: 1200
+          }
+        },
+        byEvent: {
+          'runtime.platform_console.fresh_aggregate': {
+            count: 3,
+            totalDurationMs: {
+              min: 320,
+              max: 420,
+              avg: 370,
+              p50: 320,
+              p95: 420
+            },
+            timingPercentilesMs: {
+              runtime: { p50: 120, p95: 150, max: 150 }
+            }
+          },
+          'runtime.platform_console.slow': {
+            count: 1,
+            totalDurationMs: {
+              min: 1280,
+              max: 1280,
+              avg: 1280,
+              p50: 1280,
+              p95: 1280
+            },
+            timingPercentilesMs: {
+              runtime: { p50: 480, p95: 480, max: 480 }
+            }
+          }
+        },
+        latestSamples: []
+      },
       consoleData: {
         runtime: {
           activeTaskCount: 3,
@@ -99,10 +139,23 @@ describe('DashboardPage shell', () => {
         rules: [],
         tasks: [],
         sessions: [],
-        approvals: []
+        approvals: [],
+        diagnostics: {
+          cacheStatus: 'miss',
+          generatedAt: '2026-04-01T09:00:00.000Z',
+          timingsMs: {
+            total: 84,
+            runtime: 21,
+            approvals: 4,
+            evals: 17
+          }
+        }
       },
       bundle: null,
       activeTaskId: 'task_12345678',
+      observatoryFocusTarget: undefined,
+      runtimeCompareTaskId: undefined,
+      runtimeGraphNodeId: undefined,
       pendingApprovals: [],
       loading: false,
       polling: false,
@@ -120,6 +173,9 @@ describe('DashboardPage shell', () => {
       setRuntimeExecutionModeFilter: vi.fn(),
       runtimeInteractionKindFilter: 'all',
       setRuntimeInteractionKindFilter: vi.fn(),
+      setObservatoryFocusTarget: vi.fn(),
+      setRuntimeCompareTaskId: vi.fn(),
+      setRuntimeGraphNodeId: vi.fn(),
       approvalsExecutionModeFilter: 'all',
       setApprovalsExecutionModeFilter: vi.fn(),
       approvalsInteractionKindFilter: 'all',
@@ -134,10 +190,12 @@ describe('DashboardPage shell', () => {
       error: '',
       setPage: vi.fn(),
       refreshAll: vi.fn(),
+      handleRefreshMetricsSnapshots: vi.fn(),
       handleQuickCreate: vi.fn(),
       selectTask: vi.fn(),
       refreshPageCenter: vi.fn(),
       handleRetryTask: vi.fn(),
+      handleLaunchWorkflowTask: vi.fn(),
       handleCreateDiagnosisTask: vi.fn(),
       downloadRuntimeExport: vi.fn(),
       downloadApprovalsExport: vi.fn(),
@@ -187,21 +245,30 @@ describe('DashboardPage shell', () => {
 
     const html = renderToStaticMarkup(<DashboardPage />);
 
-    expect(html).toContain('Build Your Application');
-    expect(html).toContain('Runtime Center');
+    expect(html).toContain('治理控制台');
+    expect(html).toContain('运行中枢');
+    expect(html).toContain('六部治理台');
+    expect(html).toContain('审批中枢');
+    expect(html).toContain('专项编排');
     expect(html).toContain('系统健康');
     expect(html).toContain('待审批');
     expect(html).toContain('活跃任务');
+    expect(html).toContain('控制台趋势');
+    expect(html).toContain('严重 / 1 slow / P95 1280ms');
+    expect(html).toContain('slow p95 1280ms exceeds 1200ms budget');
+    expect(html).toContain('指标快照');
+    expect(html).toContain('控制台 84ms');
+    expect(html).toContain('缓存 未命中');
     expect(html).toContain('runtime panel body');
   });
 
   it('renders page-specific center panels for approvals, learning, memory, profiles and evals', () => {
     mockUseAdminDashboard
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'approvals', title: 'Approvals Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'learning', title: 'Learning Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'memory', title: 'Memory Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'profiles', title: 'Profile Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'evals', title: 'Evals' }));
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'approvals', title: '审批中枢' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'learning', title: '学习中枢' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'memory', title: '记忆中枢' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'profiles', title: '画像中枢' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'evals', title: '评测基线' }));
 
     const approvalsHtml = renderToStaticMarkup(<DashboardPage />);
     const learningHtml = renderToStaticMarkup(<DashboardPage />);
@@ -218,12 +285,12 @@ describe('DashboardPage shell', () => {
 
   it('renders archive, skill, evidence, connector, skill source and company agent centers', () => {
     mockUseAdminDashboard
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'archives', title: 'Archive Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'skills', title: 'Skill Lab' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'evidence', title: 'Evidence Center' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'connectors', title: 'Connector & Policy' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'skillSources', title: 'Skill Sources' }))
-      .mockReturnValueOnce(createDashboardOverrides({ page: 'companyAgents', title: 'Company Agents' }));
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'archives', title: '归档中心' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'skills', title: '技能工坊' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'evidence', title: '证据中心' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'connectors', title: '连接器与策略' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'skillSources', title: '技能来源治理' }))
+      .mockReturnValueOnce(createDashboardOverrides({ page: 'companyAgents', title: '公司专员编排' }));
 
     const archivesHtml = renderToStaticMarkup(<DashboardPage />);
     const skillsHtml = renderToStaticMarkup(<DashboardPage />);
@@ -244,7 +311,7 @@ describe('DashboardPage shell', () => {
     mockUseAdminDashboard.mockReturnValue(
       createDashboardOverrides({
         page: 'companyAgents',
-        title: 'Company Agents',
+        title: '公司专员编排',
         error: 'platform console offline',
         consoleData: {
           runtime: {

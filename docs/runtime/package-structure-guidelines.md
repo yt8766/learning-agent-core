@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/runtime`
-最后核对：2026-04-18
+最后核对：2026-04-19
 
 本文档说明 `packages/runtime` 如何继续按“运行时编排层”而不是“全能 shared 层”收敛。
 
@@ -20,6 +20,11 @@
 这些能力装配成可运行、可审批、可恢复、可观测的主链 runtime。
 
 它不负责底层 provider / repository / executor 实现。
+它也不应和 `apps/backend/agent-server/src/runtime` 形成双宿主：
+
+- `packages/runtime` 负责 runtime 主语义
+- `agent-server/src/runtime` 负责 backend 宿主装配与 admin/BFF 适配
+- backend 若出现 `runtime/domain/*` 这类目录，只应视为过渡收口层，不能替代 `packages/runtime` 的长期宿主职责
 
 ## 2. 推荐结构
 
@@ -54,10 +59,12 @@ packages/runtime/
   - 主链流水线、task orchestration、background jobs 等编排宿主
 - `runtime/`
   - runtime 真实装配与运行态 helper
+  - 当前也承载 metrics 子域主实现，例如 `provider-audit`、`runtime-analytics`、`runtime-metrics-store`
 - `session/`
   - checkpoint、事件、会话恢复、压缩
 - `governance/`
   - profile policy、worker registry、runtime governance helper
+  - 当前也承载 approval policy / governance audit / connector discovery / governance profile aggregation 的稳定 store 实现
 - `capabilities/`
   - capability pool 与 runtime capability 相关宿主
 - `bridges/`
@@ -141,6 +148,16 @@ packages/runtime/
   - compat wrapper 已删除
 - `src/graphs/main/main-graph-runtime-modules.ts`
   - compat wrapper 已删除
+- `src/runtime/provider-audit.ts`
+  - 已成为 provider billing / usage audit 的 canonical host
+- `src/runtime/runtime-analytics.ts`
+  - 已成为 runtime metrics analytics 的 canonical host
+- `src/runtime/runtime-metrics-store.ts`
+  - 已成为 usage/eval metrics persistence 的 canonical host
+- `src/governance/runtime-governance-store.ts`
+  - 已成为 governance store 的 canonical host
+- `src/governance/runtime-governance-aggregation.ts`
+  - 已成为 governance aggregation helper 的 canonical host
 
 补充：
 
