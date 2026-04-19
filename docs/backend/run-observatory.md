@@ -66,6 +66,6 @@ detail projection 当前还会补一层轻量关联语义：
 
 ## 5. 相关文件
 
-- [runtime-centers-query.service.ts](/Users/dev/Desktop/learning-agent-core/apps/backend/agent-server/src/runtime/centers/runtime-centers-query.service.ts:1)
-- [runtime-center.controller.ts](/Users/dev/Desktop/learning-agent-core/apps/backend/agent-server/src/platform/runtime-center.controller.ts:1)
-- [packages/runtime/src/runtime-observability/index.ts](/Users/dev/Desktop/learning-agent-core/packages/runtime/src/runtime-observability/index.ts:1)
+- [runtime-centers-query.service.ts](../../apps/backend/agent-server/src/runtime/centers/runtime-centers-query.service.ts:1)
+- [runtime-center.controller.ts](../../apps/backend/agent-server/src/platform/runtime-center.controller.ts:1)
+- [packages/runtime/src/runtime-observability/index.ts](../../packages/runtime/src/runtime-observability/index.ts:1)

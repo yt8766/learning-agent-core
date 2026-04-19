@@ -24,7 +24,19 @@
 - Retry the commit
 - Stop only after three unsuccessful repair attempts for the same blocker
 
-## 4. Push
+## 4. Pre-push code review gate
+
+- Review the committed diff before any remote push
+- Use the `skills/code-review` stance: prioritize bugs, regressions, missing validation, compatibility breaks, security/data risks, and repository policy violations
+- If any confirmed risk or defect is found:
+  - fix every confirmed blocking issue
+  - re-run required validation
+  - re-run `git add .`
+  - create a follow-up commit or amend only when the user explicitly allows it
+  - repeat the review gate until no blocking risks remain
+- Do not push while confirmed blocking risks remain
+
+## 5. Push
 
 - Push the current branch to `origin`
 - If the branch is new, prefer `git push -u origin <branch>`
@@ -35,10 +47,11 @@
   - validate
   - `git push --force-with-lease origin <branch>` when rebase rewrote history
 
-## 5. Final report
+## 6. Final report
 
 - Final English commit message
 - Branch pushed to remote
 - Hook failures encountered and fixed
 - Whether the local commit needed retries before succeeding
+- Pre-push code-review result, including fixed risks if any
 - Remaining risks or blockers

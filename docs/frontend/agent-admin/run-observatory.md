@@ -192,16 +192,15 @@
 
 当前实现文件：
 
-- [run-observatory-panel.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/run-observatory/run-observatory-panel.tsx:1)
-- [runtime-queue-selected-run.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-queue-selected-run.tsx:1)
-- [runtime-queue-selected-run.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-queue-selected-run.tsx:1)
-- [runtime-workflow-catalog-card.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-workflow-catalog-card.tsx:1)
-- [runtime-execution-story-card.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-execution-story-card.tsx:1)
-- [runtime-workflow-execution-map-card.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-workflow-execution-map-card.tsx:1)
-- [runtime-node-activity-ledger-card.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-node-activity-ledger-card.tsx:1)
-- [runtime-agent-graph-overlay-card.tsx](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-agent-graph-overlay-card.tsx:1)
-- [admin-api-platform.ts](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/api/admin-api-platform.ts:1)
-- [admin-api-tasks.ts](/Users/dev/Desktop/learning-agent-core/apps/frontend/agent-admin/src/api/admin-api-tasks.ts:1)
+- [run-observatory-panel.tsx](../../../apps/frontend/agent-admin/src/features/run-observatory/run-observatory-panel.tsx:1)
+- [runtime-queue-selected-run.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-queue-selected-run.tsx:1)
+- [runtime-workflow-catalog-card.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-workflow-catalog-card.tsx:1)
+- [runtime-execution-story-card.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-execution-story-card.tsx:1)
+- [runtime-workflow-execution-map-card.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-workflow-execution-map-card.tsx:1)
+- [runtime-node-activity-ledger-card.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-node-activity-ledger-card.tsx:1)
+- [runtime-agent-graph-overlay-card.tsx](../../../apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-agent-graph-overlay-card.tsx:1)
+- [admin-api-platform.ts](../../../apps/frontend/agent-admin/src/api/admin-api-platform.ts:1)
+- [admin-api-tasks.ts](../../../apps/frontend/agent-admin/src/api/admin-api-tasks.ts:1)
 
 ## 4. 当前约束
 
