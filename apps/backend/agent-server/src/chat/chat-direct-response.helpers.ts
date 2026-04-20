@@ -6,7 +6,6 @@ import {
   DATA_REPORT_SANDPACK_STAGE_META,
   executeDataReportSandpackGraph,
   generateDataReportPreview,
-  resolveWorkflowPreset,
   type DataReportFileGenerationEvent,
   type DataReportGenerationNode,
   type DataReportNodeStageEvent,
@@ -22,6 +21,7 @@ import type { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto
 
 type SandpackFiles = Record<string, { code: string }>;
 type SandpackStringFiles = DataReportSandpackFiles;
+type ResolveWorkflowPresetFn = Parameters<typeof generateDataReportPreview>[0]['resolveWorkflowPreset'];
 
 export function normalizeDirectMessages(dto: DirectChatRequestDto) {
   const normalizedMessages = Array.isArray(dto.messages)
@@ -62,13 +62,17 @@ export function extractDirectGoal(dto: DirectChatRequestDto) {
     .trim();
 }
 
-export async function generateSandpackPreview(dto: DirectChatRequestDto): Promise<SandpackFiles> {
-  return streamSandpackPreview(dto, () => undefined);
+export async function generateSandpackPreview(
+  dto: DirectChatRequestDto,
+  resolveWorkflowPreset: ResolveWorkflowPresetFn
+): Promise<SandpackFiles> {
+  return streamSandpackPreview(dto, () => undefined, resolveWorkflowPreset);
 }
 
 export async function streamSandpackPreview(
   dto: DirectChatRequestDto,
-  onEvent: (event: DirectChatSseEvent) => void
+  onEvent: (event: DirectChatSseEvent) => void,
+  resolveWorkflowPreset: ResolveWorkflowPresetFn
 ): Promise<SandpackFiles> {
   const preview = generateDataReportPreview({
     goal: extractDirectGoal(dto),

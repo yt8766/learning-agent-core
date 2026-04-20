@@ -140,14 +140,16 @@ export class ChatService {
   }
 
   async generateSandpackPreview(dto: DirectChatRequestDto): Promise<SandpackFiles> {
-    return generateSandpackPreview(dto);
+    const resolve = this.runtimeHost.platformRuntime.agentDependencies.resolveWorkflowPreset;
+    return generateSandpackPreview(dto, resolve as Parameters<typeof generateSandpackPreview>[1]);
   }
 
   async streamSandpackPreview(
     dto: DirectChatRequestDto,
     onEvent: (event: DirectChatSseEvent) => void
   ): Promise<SandpackFiles> {
-    return streamSandpackPreview(dto, onEvent);
+    const resolve = this.runtimeHost.platformRuntime.agentDependencies.resolveWorkflowPreset;
+    return streamSandpackPreview(dto, onEvent, resolve as Parameters<typeof streamSandpackPreview>[2]);
   }
 
   async streamChat(
