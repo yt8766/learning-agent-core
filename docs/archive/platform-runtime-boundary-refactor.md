@@ -101,3 +101,15 @@
 - Barrel layout：`pnpm check:barrel-layout` 通过
 - Package boundaries：`pnpm check:package-boundaries` 通过
 - 无生产源码文件超过 400 行（`packages/templates` 报表模板除外）
+
+### Commit 9: `a1d7fd4c` — P0 高优先级 hooks/service 重构
+
+11 个文件变更，完成 3 个 P0 级架构重构：
+
+| 重构目标                                                        | 原行数 | 拆分后 | 提取文件                                            | 新增测试     |
+| --------------------------------------------------------------- | ------ | ------ | --------------------------------------------------- | ------------ |
+| `use-admin-dashboard.ts` — useReducer 替换 8 个 filter useState | 380    | 356    | `admin-dashboard-filter-state.ts` (74 行)           | 4 spec tests |
+| `use-chat-session.ts` — 流式/轮询逻辑提取                       | 349    | 232    | `use-chat-session-stream-manager.ts` (180 行)       | 5 spec tests |
+| `runtime-tech-briefing.service.ts` — processCategory 提取       | 382    | 290    | `runtime-tech-briefing-category-runner.ts` (107 行) | 3 spec tests |
+
+验证：`pnpm verify` 9 阶段全绿（docs / prettier / eslint / typecheck / spec / unit / demo / integration / architecture）。
