@@ -1,8 +1,11 @@
 # platform-runtime-boundary 重构记录
 
 状态：completed
+文档类型：history
+适用范围：packages/runtime, apps/frontend, apps/backend
+最后核对：2026-04-21
 分支：`chore/platform-runtime-boundary`
-完成日期：2026-04-20
+完成日期：2026-04-20（初始）/ 2026-04-21（深度重构 Phase 1-5）
 
 ## 改动概述
 
@@ -43,3 +46,58 @@
 - Spec tests：113/113 通过
 - Demo tests：13 projects × 3 layers 全部通过
 - Pre-commit staged tests：369/369 通过
+
+### Commit 3: `4512fea6` — 文档更新
+
+3 个文件变更，同步文档。
+
+### Commit 4: `f926689e` — 前端超限文件拆分 + 边界违规修复
+
+15 个文件变更，将 3 个前端超限文件拆分：
+
+| 原文件                                                                                  | 原行数 | 拆分后 | 提取文件                                  |
+| --------------------------------------------------------------------------------------- | ------ | ------ | ----------------------------------------- |
+| `agent-admin/src/hooks/admin-dashboard/admin-dashboard-actions.ts`                      | 550    | 320    | `admin-dashboard-actions.types.ts`        |
+| `agent-admin/src/features/runtime-overview/components/runtime-run-workbench-support.ts` | 430    | 260    | `runtime-run-workbench-support.types.ts`  |
+| `agent-server/src/runtime/domain/data-report/runtime-data-report-facade.ts`             | 410    | 380    | 边界修复：DI 注入 `resolveWorkflowPreset` |
+
+### Commit 5: `c2393de9` — P2 清理
+
+删除空 `store/.gitkeep` 占位目录。
+
+### Commit 6: `5d155a7b` — 前端超限文件深度拆分（Phase 2）
+
+17 个文件变更，将 8 个 >400 行前端生产文件全部拆至阈值以下：
+
+| 原文件                                    | 原行数 | 拆分后 | 提取文件                                                                                                  |
+| ----------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------------------------------- |
+| `use-chat-session-actions.ts`             | 579    | 295    | `chat-session-action-utils.ts` + `chat-session-approval-actions.ts` + `chat-session-lifecycle-actions.ts` |
+| `runtime-run-workbench-card.tsx`          | 489    | 271    | `runtime-run-workbench-replay-draft.tsx`                                                                  |
+| `admin-dashboard-mutation-actions.ts`     | 455    | 296    | `admin-dashboard-mutation-connector-actions.ts`                                                           |
+| `learning-center-record-sections.tsx`     | 440    | 283    | `learning-center-record-candidate-sections.tsx`                                                           |
+| `chat-home-workbench-section-renders.tsx` | 427    | 243    | `chat-home-workbench-cabinet-renders.tsx`                                                                 |
+| `run-observatory-panel.tsx`               | 422    | 131    | `run-observatory-panel-cards.tsx`                                                                         |
+| `use-admin-dashboard.ts`                  | 411    | 380    | `admin-dashboard-hash-sync.ts`                                                                            |
+| `admin-dashboard-constants.ts`            | —      | —      | 导出 `ExecutionModeFilter` / `InteractionKindFilter` 类型                                                 |
+
+拆分模式：
+
+- 工厂函数模式（chat-session-actions, mutation-actions）
+- 子组件提取模式（observatory-panel, workbench-card, learning-sections）
+- Re-export 兼容模式（workbench-section-renders）
+
+### Commit 7: `a11bd58b` — runtime 子域 barrel 索引
+
+3 个文件变更：
+
+- 新建 `packages/runtime/src/governance/index.ts` barrel
+- 新建 `packages/runtime/src/contracts/index.ts` barrel
+- 重构 `packages/runtime/src/index.ts` 从 barrel 导入
+
+## 最终验证结果
+
+- TypeScript：runtime / backend / agent-admin / agent-chat 全部 `--noEmit` 通过
+- Vitest：403 test files, 1336 tests 全部通过
+- Barrel layout：`pnpm check:barrel-layout` 通过
+- Package boundaries：`pnpm check:package-boundaries` 通过
+- 无生产源码文件超过 400 行（`packages/templates` 报表模板除外）
