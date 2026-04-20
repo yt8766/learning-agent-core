@@ -3,9 +3,9 @@
 状态：completed
 文档类型：history
 适用范围：packages/runtime, apps/frontend, apps/backend
-最后核对：2026-04-21
+最后核对：2026-04-22
 分支：`chore/platform-runtime-boundary`
-完成日期：2026-04-20（初始）/ 2026-04-21（深度重构 Phase 1-5）
+完成日期：2026-04-20（初始）/ 2026-04-22（深度重构 Phase 1-5 + 近限文件拆分）
 
 ## 改动概述
 
@@ -127,10 +127,43 @@
 
 Runtime 模块化现状：11 个子域全部具备 barrel index，主入口按域分组 re-export。
 
+### Commit 12: `c5d03da0` — 15 个近限文件拆分（380-400 行）
+
+35 个文件变更，将 15 个接近 400 行阈值的生产文件预防性拆分：
+
+| 原文件                                             | 原行数 | 拆分后 | 提取文件                                                             |
+| -------------------------------------------------- | ------ | ------ | -------------------------------------------------------------------- |
+| `memory-browser-card.tsx`                          | 400    | ~310   | `memory-browser-card-components.tsx`                                 |
+| `orchestration.ts` (core schemas)                  | 397    | ~190   | `orchestration-state-records.ts` (211 行)                            |
+| `agent-runtime.ts`                                 | 391    | ~174   | `agent-runtime-mcp-configuration.ts` (220 行)                        |
+| `chat-capability-intents.service.ts`               | 394    | ~310   | `chat-capability-intents-skills.ts`                                  |
+| `chat-session-control-actions.ts`                  | 389    | ~217   | `chat-session-skill-install-actions.ts` (170 行)                     |
+| `admin-dashboard-refresh-actions.ts`               | 397    | ~310   | `admin-dashboard-page-loaders.ts`                                    |
+| `runtime-tech-briefing-storage.ts`                 | 382    | ~290   | `runtime-tech-briefing-status.ts` + `runtime-tech-briefing-paths.ts` |
+| `memory-repository.ts`                             | 388    | ~304   | `memory-repository-lifecycle.ts` (167 行)                            |
+| `approvals-panel.tsx`                              | 381    | ~310   | `approvals-panel-labels.ts` (70 行)                                  |
+| `runtime-summary-tools.tsx`                        | 380    | ~265   | `runtime-summary-tools-helpers.ts` (115 行)                          |
+| `session-coordinator-turns.ts`                     | 390    | ~300   | `session-coordinator-routing-hints.ts` (90 行)                       |
+| `runtime-analytics.ts`                             | 384    | ~224   | `runtime-analytics-helpers.ts` (160 行)                              |
+| `tool-registry.ts` (knowledge defs)                | 395    | ~310   | `mcp-tool-definitions.ts`                                            |
+| `runtime-tech-briefing-localize-render-content.ts` | 386    | ~236   | `runtime-tech-briefing-category-rules.ts` (150 行)                   |
+| `main-graph-task-context.ts`                       | 384    | ~285   | `main-graph-task-context-usage.ts` (134 行)                          |
+
+拆分模式：
+
+- 依赖注入委托模式（`*Deps` 接口 + private `*Deps()` 方法）：agent-runtime, memory-repository, task-context, analytics, coordinator-turns
+- 纯函数/常量提取模式：approvals-panel-labels, summary-tools-helpers, mcp-tool-definitions, category-rules, orchestration-state-records
+- Re-export 兼容模式：所有 15 个拆分均从原文件 re-export 以保持向后兼容
+
+### Commit 13: `3bb505b1` — 文档更新
+
+更新重构记录文档。
+
 ## 最终验证结果（更新）
 
 - `pnpm verify` 9 阶段全绿
 - 零生产源码文件超过 400 行（`packages/templates` 报表模板除外）
+- 仅 1 个生产文件保持 380-400 行（`run-observatory-compare-support.ts` 385 行，评估为高内聚无需拆分）
 - runtime 主入口从 139 行精简至 49 行
 - 共 12 个新增 spec 测试覆盖 3 个 P0 重构
-- 分支共 14 个提交，全部独立验证通过
+- 分支共 16 个提交，全部独立验证通过

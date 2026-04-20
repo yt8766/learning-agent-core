@@ -3,7 +3,7 @@
 状态：current
 文档类型：architecture
 适用范围：仓库长期架构方向
-最后核对：2026-04-19
+最后核对：2026-04-22
 
 本文件描述当前仓库面向代码代理和开发者的长期架构方向。它不是逐文件 API 文档，而是帮助在实现细节变化时仍保持同一条演进主线。
 
@@ -233,6 +233,28 @@ flowchart TD
 - `flows` 目录优先表达六部/首辅的执行语义
 - `runtime` 与 `session` 不应回填 graph 内部细节实现
 - `src/index.ts` 只导出稳定公共入口，不继续暴露 `graphs/main/*` 内部碎片
+
+### runtime 内部模块化
+
+`packages/runtime/src` 当前按子域 barrel 索引组织，所有 11 个子域均有 `index.ts` 入口：
+
+```text
+packages/runtime/src/
+├── agents/           # base-agent
+├── bridges/          # contract wrapper for official agents
+├── capabilities/     # capability bridges
+├── contracts/        # AgentRuntime, SessionCoordinator, WorkerRegistry, governance policies
+├── flows/            # LearningFlow
+├── governance/       # approval policies, governance audit, counselor selector
+├── graphs/           # chat/approval/learning graph creators
+├── memory/           # active-memory-tools
+├── runtime/          # streaming execution, analytics, projections, metrics, LLM facade
+├── runtime-observability/  # observability helpers
+├── session/          # session coordinator, routing hints
+└── utils/            # temporal context prompts
+```
+
+主入口 `src/index.ts` 只有 49 行，通过 barrel 按域分组 re-export。新增模块时优先放入对应子域并更新其 barrel，而不是直接修改主入口。
 
 ## 3. 运行闭环
 
