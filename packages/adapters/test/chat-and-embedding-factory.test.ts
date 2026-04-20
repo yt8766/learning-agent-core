@@ -237,4 +237,49 @@ describe('@agent/adapters chat and embedding factories', () => {
       })
     ).toBe('mcp-key');
   });
+
+  it('creates siliconflow embedding models with correct dimensions', async () => {
+    const model = createOpenAIEmbeddingModel({
+      model: 'BAAI/bge-large-zh-v1.5',
+      apiKey: 'sf-key',
+      baseUrl: 'https://api.siliconflow.cn/v1/embeddings',
+      dimensions: 1024,
+      batchSize: 16
+    });
+
+    await expect(model.embedQuery('测试文本')).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(openAIEmbeddingsInstances.at(-1)?.config).toEqual({
+      model: 'BAAI/bge-large-zh-v1.5',
+      dimensions: 1024,
+      apiKey: 'sf-key',
+      batchSize: 16,
+      encodingFormat: 'float',
+      configuration: {
+        baseURL: 'https://api.siliconflow.cn/v1'
+      }
+    });
+  });
+
+  it('creates siliconflow runtime embedding providers from runtime settings', async () => {
+    const provider = createRuntimeEmbeddingProvider({
+      embeddings: {
+        endpoint: 'https://api.siliconflow.cn/v1/embeddings',
+        model: 'BAAI/bge-large-zh-v1.5',
+        dimensions: 1024,
+        apiKey: 'sf-runtime-key'
+      }
+    });
+
+    await expect(provider.embedQuery('测试')).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(openAIEmbeddingsInstances.at(-1)?.config).toEqual({
+      model: 'BAAI/bge-large-zh-v1.5',
+      dimensions: 1024,
+      apiKey: 'sf-runtime-key',
+      batchSize: 16,
+      encodingFormat: 'float',
+      configuration: {
+        baseURL: 'https://api.siliconflow.cn/v1'
+      }
+    });
+  });
 });

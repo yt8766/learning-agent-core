@@ -99,8 +99,8 @@ export const LearningEvaluationRecordSchema = z.object({
 const KnowledgeStoreSchema = z.enum(['wenyuan', 'cangjing']);
 const KnowledgeSourceTypeSchema = z.enum(['workspace-docs', 'repo-docs', 'connector-manifest', 'catalog-sync']);
 const KnowledgeStoreStatusSchema = z.enum(['active', 'degraded', 'readonly']);
-const EmbeddingProviderSchema = z.enum(['glm']);
-const EmbeddingModelSchema = z.enum(['Embedding-3']);
+const EmbeddingProviderSchema = z.string();
+const EmbeddingModelSchema = z.string();
 
 export const KnowledgeStoreRecordSchema = z.object({
   id: z.string(),

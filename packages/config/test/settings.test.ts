@@ -125,6 +125,29 @@ describe('loadSettings', () => {
     );
   });
 
+  it('supports siliconflow embedding provider via env vars', () => {
+    const settings = loadSettings({
+      KNOWLEDGE_EMBEDDING_PROVIDER: 'siliconflow',
+      KNOWLEDGE_EMBEDDING_MODEL: 'BAAI/bge-large-zh-v1.5',
+      KNOWLEDGE_EMBEDDING_ENDPOINT: 'https://api.siliconflow.cn/v1/embeddings',
+      KNOWLEDGE_EMBEDDING_API_KEY: 'sf-test-key',
+      KNOWLEDGE_EMBEDDING_DIMENSIONS: '1024'
+    } as NodeJS.ProcessEnv);
+
+    expect(settings.embeddings.provider).toBe('siliconflow');
+    expect(settings.embeddings.model).toBe('BAAI/bge-large-zh-v1.5');
+    expect(settings.embeddings.endpoint).toBe('https://api.siliconflow.cn/v1/embeddings');
+    expect(settings.embeddings.apiKey).toBe('sf-test-key');
+    expect(settings.embeddings.dimensions).toBe(1024);
+  });
+
+  it('defaults embedding provider to glm when env var is not set', () => {
+    const settings = loadSettings({} as NodeJS.ProcessEnv);
+
+    expect(settings.embeddings.provider).toBe('glm');
+    expect(settings.embeddings.model).toBe('Embedding-3');
+  });
+
   it('支持显式 workspaceRoot 和 overrides 注入', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,

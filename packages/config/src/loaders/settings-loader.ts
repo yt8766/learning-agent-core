@@ -126,8 +126,8 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
     },
     dailyTechBriefing: buildDailyTechBriefingConfig(runtimeEnv, overrides, zhipuModels),
     embeddings: {
-      provider: 'glm',
-      model: 'Embedding-3',
+      provider: runtimeEnv.KNOWLEDGE_EMBEDDING_PROVIDER ?? 'glm',
+      model: runtimeEnv.KNOWLEDGE_EMBEDDING_MODEL ?? 'Embedding-3',
       dimensions: Number(runtimeEnv.KNOWLEDGE_EMBEDDING_DIMENSIONS ?? 0),
       endpoint: runtimeEnv.KNOWLEDGE_EMBEDDING_ENDPOINT ?? '',
       apiKey:
