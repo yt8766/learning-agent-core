@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EvidenceRecord, MemoryEventRecord, MemoryRecord } from '@agent/core';
 import type { RuntimeStateSnapshot } from '@agent/memory';
-import {
-  applyCrossCheckEvidenceRecords,
-  buildMemoryUsageInsights,
-  buildMemoryVersionComparison
-} from '@agent/memory';
+import { applyCrossCheckEvidenceRecords, buildMemoryUsageInsights, buildMemoryVersionComparison } from '@agent/memory';
 
 describe('memory governance insights', () => {
   it('builds memory usage insights from stable memory records', () => {

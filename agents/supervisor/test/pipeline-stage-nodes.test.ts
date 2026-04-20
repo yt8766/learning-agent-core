@@ -2,7 +2,7 @@ import { AgentRole } from '@agent/core';
 import { describe, expect, it } from 'vitest';
 
 import { compileSkillContractIntoPlan } from '../src/flows/supervisor/pipeline-stage-nodes';
-import { collectCounselorIds } from '../src/flows/supervisor/planning-stage-helpers';
+import { collectCounselorIds } from '../src/flows/supervisor/planning-stage-interrupt-helpers';
 import type { TaskRecord } from '@agent/core';
 
 describe('pipeline stage nodes', () => {

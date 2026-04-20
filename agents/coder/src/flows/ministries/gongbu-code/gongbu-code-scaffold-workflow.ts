@@ -1,17 +1,8 @@
-import {
-  ActionIntent,
-  type AgentExecutionState,
-  type ToolDefinition,
-  type ToolExecutionResult
-} from '@agent/core';
+import { ActionIntent, type AgentExecutionState, type ToolDefinition, type ToolExecutionResult } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { evaluateGongbuApprovalGate } from './gongbu-code-approval-gate';
-import {
-  inspectScaffoldWriteCommand,
-  resolveScaffoldIntent,
-  resolveScaffoldToolName
-} from './gongbu-code-scaffold';
+import { inspectScaffoldWriteCommand, resolveScaffoldIntent, resolveScaffoldToolName } from './gongbu-code-scaffold';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
@@ -27,10 +18,7 @@ export interface ScaffoldWorkflowDeps {
     researchSummary: string,
     overrides?: Record<string, unknown>
   ): Record<string, unknown>;
-  buildApprovalPreview(
-    toolName: string,
-    input: Record<string, unknown>
-  ): Array<{ label: string; value: string }>;
+  buildApprovalPreview(toolName: string, input: Record<string, unknown>): Array<{ label: string; value: string }>;
 }
 
 export async function runGongbuScaffoldWorkflow(

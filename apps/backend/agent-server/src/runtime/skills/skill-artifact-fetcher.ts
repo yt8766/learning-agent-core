@@ -1,4 +1,1 @@
-export {
-  SkillArtifactFetcher,
-  type SkillArtifactFetchResult
-} from '@agent/skill-runtime';
+export { SkillArtifactFetcher, type SkillArtifactFetchResult } from '@agent/skill-runtime';

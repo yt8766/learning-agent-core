@@ -59,7 +59,7 @@ describe('runtime governance actions', () => {
 
   it('syncs a skill source through the domain action and records the governance audit result', async () => {
     const runtimeStateRepository = {
-      load: vi.fn(async () => ({ governance: {}, governanceAudit: [] } as any)),
+      load: vi.fn(async () => ({ governance: {}, governanceAudit: [] }) as any),
       save: vi.fn(async () => undefined)
     };
     const listSkillSources = vi.fn(async () => [{ id: 'source-1', enabled: true }]);

@@ -6,9 +6,8 @@ export function buildLearningMemoryStats(items: MemoryRecord[]) {
     .filter(item => item.quarantined)
     .sort(
       (left, right) =>
-        new Date(
-          right.quarantinedAt ?? right.lastVerifiedAt ?? right.lastUsedAt ?? right.createdAt ?? 0
-        ).getTime() - new Date(left.quarantinedAt ?? left.lastVerifiedAt ?? left.lastUsedAt ?? left.createdAt ?? 0).getTime()
+        new Date(right.quarantinedAt ?? right.lastVerifiedAt ?? right.lastUsedAt ?? right.createdAt ?? 0).getTime() -
+        new Date(left.quarantinedAt ?? left.lastVerifiedAt ?? left.lastUsedAt ?? left.createdAt ?? 0).getTime()
     );
 
   return {

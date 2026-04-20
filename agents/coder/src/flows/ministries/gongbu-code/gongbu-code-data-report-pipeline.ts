@@ -1,9 +1,4 @@
-import {
-  ActionIntent,
-  type AgentExecutionState,
-  type ToolDefinition,
-  type ToolExecutionResult
-} from '@agent/core';
+import { ActionIntent, type AgentExecutionState, type ToolDefinition, type ToolExecutionResult } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 

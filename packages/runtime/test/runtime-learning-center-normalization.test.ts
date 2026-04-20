@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeLearningCenterJobs, normalizeLearningCenterTasks } from '../src/runtime/runtime-learning-center-normalization';
+import {
+  normalizeLearningCenterJobs,
+  normalizeLearningCenterTasks
+} from '../src/runtime/runtime-learning-center-normalization';
 
 describe('runtime learning center normalization', () => {
   it('normalizes task learning evaluation confidence to numbers when possible', () => {

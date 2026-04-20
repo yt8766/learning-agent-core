@@ -39,7 +39,7 @@
 按需参考入口：
 
 - [历史归档目录](/docs/archive/README.md)
-- [Docs 重构计划（已完成）](/docs/docs-refactor-plan.md)
+- [Docs 重构计划（已归档）](/docs/archive/docs-refactor-plan.md)
 - [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
 
 ## 0.1 阅读路径

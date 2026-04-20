@@ -36,11 +36,10 @@ export class RuntimeCentersObservabilityQueryService {
   }) {
     const ctx = this.ctx();
     const limit = parseRunObservatoryLimit(filters?.limit);
-    const runs = filterAndSortRunObservatoryTasks(ctx.orchestrator.listTasks(), filters)
-      .map(
-        (task: TaskRecord) =>
-          buildRunBundle(task, task.sessionId ? ctx.wenyuanFacade.getCheckpoint(task.sessionId) : undefined).run
-      );
+    const runs = filterAndSortRunObservatoryTasks(ctx.orchestrator.listTasks(), filters).map(
+      (task: TaskRecord) =>
+        buildRunBundle(task, task.sessionId ? ctx.wenyuanFacade.getCheckpoint(task.sessionId) : undefined).run
+    );
     return filterAndSortRunObservatoryRuns(runs, filters, limit);
   }
 

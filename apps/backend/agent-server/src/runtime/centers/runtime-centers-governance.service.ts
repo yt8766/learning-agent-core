@@ -23,10 +23,7 @@ import {
   installRemoteSkillWithGovernance,
   rejectSkillInstallWithGovernance
 } from '../actions/runtime-skill-install-actions';
-import {
-  registerConfiguredConnector,
-  registerDiscoveredCapabilities
-} from '../helpers/runtime-connector-registry';
+import { registerConfiguredConnector, registerDiscoveredCapabilities } from '../helpers/runtime-connector-registry';
 import {
   getCounselorSelectorConfigs as getCounselorSelectorConfigsWithPolicy,
   listApprovalScopePolicies as listApprovalScopePoliciesWithPolicy,
@@ -39,7 +36,7 @@ import { refreshMetricsSnapshots as refreshMetricsSnapshotsWithGovernance } from
 import {
   checkInstalledSkills,
   getSkillInstallReceipt,
-  updateInstalledSkills,
+  updateInstalledSkills
 } from '../skills/runtime-skill-install.service';
 import { listSkillManifests, listSkillSources } from '../skills/runtime-skill-sources.service';
 import { RuntimeCentersContext } from './runtime-centers.types';

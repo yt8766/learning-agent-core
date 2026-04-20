@@ -61,5 +61,5 @@ export const baseRoutes = [
         component: './activity/index'
       }
     ]
-  },
+  }
 ];

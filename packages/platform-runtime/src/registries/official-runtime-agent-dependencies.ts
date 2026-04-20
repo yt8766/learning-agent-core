@@ -26,9 +26,7 @@ function requireOfficialAgentModule<TAgentModule extends OfficialPlatformAgentMo
     (input.fallbackAgentId ? registry.findAgentById(input.fallbackAgentId) : undefined);
 
   if (!provider) {
-    throw new Error(
-      `Missing ${input.displayName} platform agent registration for capability "${input.capabilityId}".`
-    );
+    throw new Error(`Missing ${input.displayName} platform agent registration for capability "${input.capabilityId}".`);
   }
 
   return provider.createAgent() as TAgentModule;

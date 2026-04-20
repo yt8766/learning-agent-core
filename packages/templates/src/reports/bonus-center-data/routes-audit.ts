@@ -141,5 +141,5 @@ export const auditRoutes = [
         hideInMenu: true
       }
     ]
-  },
+  }
 ];

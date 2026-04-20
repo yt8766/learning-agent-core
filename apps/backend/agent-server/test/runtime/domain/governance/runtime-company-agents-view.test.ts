@@ -26,7 +26,9 @@ describe('runtime company agents view', () => {
         ],
         listWorkers: () => [{ id: 'worker-1', kind: 'company', requiredConnectors: [] }]
       },
-      getConnectorRegistryContext: () => ({ orchestrator: { listWorkers: () => [{ id: 'worker-1', kind: 'company' }] } })
+      getConnectorRegistryContext: () => ({
+        orchestrator: { listWorkers: () => [{ id: 'worker-1', kind: 'company' }] }
+      })
     } as any;
 
     expect(loadCompanyAgentsCenterRecord(ctx)).toEqual([expect.objectContaining({ id: 'worker-1' })]);

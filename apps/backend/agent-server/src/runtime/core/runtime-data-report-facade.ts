@@ -6,7 +6,8 @@ import {
   DATA_REPORT_SANDPACK_STAGE_META,
   executeDataReportJsonGraph,
   executeDataReportSandpackGraph,
-  generateDataReportPreview
+  generateDataReportPreview,
+  resolveWorkflowPreset
 } from '@agent/platform-runtime';
 
 export {
@@ -17,7 +18,8 @@ export {
   DATA_REPORT_SANDPACK_STAGE_META,
   executeDataReportJsonGraph,
   executeDataReportSandpackGraph,
-  generateDataReportPreview
+  generateDataReportPreview,
+  resolveWorkflowPreset
 };
 
 export type {

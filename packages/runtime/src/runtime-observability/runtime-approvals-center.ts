@@ -24,7 +24,9 @@ export function buildApprovalsCenterRecords(input: {
         resolveTaskExecutionMode(task) ===
           (normalizeExecutionMode(input.filters.executionMode) ?? input.filters.executionMode)
     )
-    .filter(task => !input.filters?.interactionKind || resolveTaskInteractionKind(task) === input.filters.interactionKind)
+    .filter(
+      task => !input.filters?.interactionKind || resolveTaskInteractionKind(task) === input.filters.interactionKind
+    )
     .map(task => ({
       taskId: task.id,
       goal: task.goal,

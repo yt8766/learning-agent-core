@@ -5,7 +5,11 @@ import { tmpdir } from 'node:os';
 import { loadSettings } from '@agent/config';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ingestLocalKnowledge, listKnowledgeArtifacts, readKnowledgeOverview } from '../src/runtime/local-knowledge-store';
+import {
+  ingestLocalKnowledge,
+  listKnowledgeArtifacts,
+  readKnowledgeOverview
+} from '../src/runtime/local-knowledge-store';
 
 const tempRoots: string[] = [];
 

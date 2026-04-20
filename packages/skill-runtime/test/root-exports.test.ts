@@ -3,8 +3,11 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildSkillSearchMcpRecommendation,
+  buildSkillSearchSafetyNotes,
   findInstallableManifestSuggestion,
   loadAgentSkillManifests,
+  resolveSkillSearchStatus,
   sanitizeListedSkills,
   shouldAutoInstallManifest,
   SkillRegistry
@@ -17,6 +20,11 @@ import {
 } from '../src/install/skill-auto-install';
 import { SkillRegistry as canonicalSkillRegistry } from '../src/registry/skill-registry';
 import { loadAgentSkillManifests as canonicalLoadAgentSkillManifests } from '../src/sources/agent-skill-loader';
+import {
+  buildSkillSearchMcpRecommendation as canonicalBuildSkillSearchMcpRecommendation,
+  buildSkillSearchSafetyNotes as canonicalBuildSkillSearchSafetyNotes,
+  resolveSkillSearchStatus as canonicalResolveSkillSearchStatus
+} from '../src/sources/skill-search-resolution';
 
 describe('@agent/skill-runtime root exports', () => {
   it('keeps root exports wired to canonical hosts', () => {
@@ -25,6 +33,9 @@ describe('@agent/skill-runtime root exports', () => {
     expect(sanitizeListedSkills).toBe(canonicalSanitizeListedSkills);
     expect(findInstallableManifestSuggestion).toBe(canonicalFindInstallableManifestSuggestion);
     expect(shouldAutoInstallManifest).toBe(canonicalShouldAutoInstallManifest);
+    expect(resolveSkillSearchStatus).toBe(canonicalResolveSkillSearchStatus);
+    expect(buildSkillSearchSafetyNotes).toBe(canonicalBuildSkillSearchSafetyNotes);
+    expect(buildSkillSearchMcpRecommendation).toBe(canonicalBuildSkillSearchMcpRecommendation);
   });
 
   it('keeps the package root aligned with the stable skill-runtime facade contract', () => {

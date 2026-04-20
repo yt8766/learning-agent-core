@@ -8,14 +8,12 @@ import {
 
 describe('runtime task service helpers', () => {
   it('builds recent trace summary lines for diagnosis follow-up', () => {
-    const lines = buildRecentTraceSummaryLines(
-      {
-        trace: [
-          { at: '2026-04-19T10:00:00.000Z', node: 'research', summary: 'start' },
-          { at: '2026-04-19T10:01:00.000Z', node: 'review', summary: 'validate' }
-        ]
-      } as any
-    );
+    const lines = buildRecentTraceSummaryLines({
+      trace: [
+        { at: '2026-04-19T10:00:00.000Z', node: 'research', summary: 'start' },
+        { at: '2026-04-19T10:01:00.000Z', node: 'review', summary: 'validate' }
+      ]
+    } as any);
 
     expect(lines).toEqual([
       '2026-04-19T10:00:00.000Z / research / start',

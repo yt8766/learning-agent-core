@@ -37,7 +37,9 @@ describe('runtime observability filters', () => {
   });
 
   it('falls back to timeout result when local skill suggestion resolution rejects', async () => {
-    await expect(resolveLocalSkillSuggestionsWithTimeout(async () => Promise.reject(new Error('timeout')))).resolves.toEqual(
+    await expect(
+      resolveLocalSkillSuggestionsWithTimeout(async () => Promise.reject(new Error('timeout')))
+    ).resolves.toEqual(
       expect.objectContaining({
         suggestions: [],
         gapSummary: 'local-skill-suggestions-timeout'

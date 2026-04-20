@@ -61,8 +61,12 @@ export class RuntimeCentersLearningQueryService {
     const learningQueue = ctx.orchestrator.listLearningQueue?.() ?? [];
     const capabilityGovernanceSyncPromise = syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, rawTasks);
     const crossCheckEvidencePromise = ctx.wenyuanFacade.listCrossCheckEvidence();
-    const memoryStatsPromise = ctx.wenyuanFacade.listMemories().then((items: MemoryRecord[]) => buildLearningMemoryStats(items));
-    const invalidatedRulesPromise = ctx.ruleRepository.list().then((items: RuleRecord[]) => countInvalidatedRules(items));
+    const memoryStatsPromise = ctx.wenyuanFacade
+      .listMemories()
+      .then((items: MemoryRecord[]) => buildLearningMemoryStats(items));
+    const invalidatedRulesPromise = ctx.ruleRepository
+      .list()
+      .then((items: RuleRecord[]) => countInvalidatedRules(items));
     const input: BuildLearningCenterInput = {
       tasks,
       jobs,

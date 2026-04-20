@@ -289,5 +289,5 @@ export const dashboardAnalyticsRoutes = [
         component: './dataDashboard/gameData/liveGameAnalysis'
       }
     ]
-  },
+  }
 ];

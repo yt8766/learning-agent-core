@@ -45,5 +45,5 @@ export const resellerRoutes = [
       //   component: './game/gameRecords',
       // },
     ]
-  },
+  }
 ];

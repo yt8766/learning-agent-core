@@ -41,8 +41,9 @@
     - `src/install/skill-auto-install.ts`
     - `src/install/skill-artifact-fetcher.ts`
     - `src/install/remote-skill-install-paths.ts`
+    - `src/sources/skill-search-resolution.ts`
   - `@agent/skill-runtime` 根入口当前先通过 `contracts/skill-runtime-facade.ts` 导出上述 canonical host；legacy 根文件 `src/skill-registry.ts` 与 `src/agent-skill-loader.ts` 已删除
-  - backend 的 `runtime/domain/skills/runtime-skill-card-listing.ts` 与 `runtime/domain/skills/runtime-skill-auto-install.ts` 当前只保留 compat re-export
+  - backend 的 `runtime/domain/skills/runtime-skill-card-listing.ts`、`runtime/domain/skills/runtime-skill-auto-install.ts` 与 `runtime/domain/skills/runtime-skill-search-resolution.ts` 当前只保留 compat re-export
 
 约定：
 

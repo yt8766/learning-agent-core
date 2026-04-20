@@ -32,14 +32,17 @@ describe('runtime skill search resolution', () => {
 
   it('builds connector-first MCP recommendations before falling back to skill or not-needed guidance', () => {
     expect(
-      buildSkillSearchMcpRecommendation('need github connector', [
-        {
-          id: 'github-mcp-template',
-          kind: 'connector-template',
-          reason: 'needs github'
-        }
-      ] as any,
-      true)
+      buildSkillSearchMcpRecommendation(
+        'need github connector',
+        [
+          {
+            id: 'github-mcp-template',
+            kind: 'connector-template',
+            reason: 'needs github'
+          }
+        ] as any,
+        true
+      )
     ).toEqual({
       kind: 'connector',
       summary: '当前更缺 GitHub MCP connector，不只是 skill。',

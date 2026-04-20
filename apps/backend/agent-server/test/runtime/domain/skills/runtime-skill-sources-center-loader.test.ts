@@ -1,20 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const {
-  listSkillSourcesMock,
-  listSkillManifestsMock,
-  readInstalledSkillRecordsMock,
-  readSkillInstallReceiptsMock
-} = vi.hoisted(() => ({
-  listSkillSourcesMock: vi.fn(async () => [{ id: 'workspace-skills' }]),
-  listSkillManifestsMock: vi.fn(async () => [{ id: 'find-skills', displayName: 'find-skills' }]),
-  readInstalledSkillRecordsMock: vi.fn(async () => [
-    { skillId: 'remote-vercel-labs-skills-find-skills', installedAt: '2026-04-01T09:00:00.000Z' }
-  ]),
-  readSkillInstallReceiptsMock: vi.fn(async () => [
-    { receiptId: 'receipt-1', installedAt: '2026-04-01T09:00:00.000Z' }
-  ])
-}));
+const { listSkillSourcesMock, listSkillManifestsMock, readInstalledSkillRecordsMock, readSkillInstallReceiptsMock } =
+  vi.hoisted(() => ({
+    listSkillSourcesMock: vi.fn(async () => [{ id: 'workspace-skills' }]),
+    listSkillManifestsMock: vi.fn(async () => [{ id: 'find-skills', displayName: 'find-skills' }]),
+    readInstalledSkillRecordsMock: vi.fn(async () => [
+      { skillId: 'remote-vercel-labs-skills-find-skills', installedAt: '2026-04-01T09:00:00.000Z' }
+    ]),
+    readSkillInstallReceiptsMock: vi.fn(async () => [
+      { receiptId: 'receipt-1', installedAt: '2026-04-01T09:00:00.000Z' }
+    ])
+  }));
 
 vi.mock('../../../../src/runtime/skills/runtime-skill-sources.service', () => ({
   listSkillSources: listSkillSourcesMock,

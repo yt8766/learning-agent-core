@@ -60,5 +60,5 @@ export const userRoutes = [
         component: './user/event-tracking'
       }
     ]
-  },
+  }
 ];

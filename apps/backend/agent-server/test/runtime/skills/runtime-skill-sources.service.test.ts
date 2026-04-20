@@ -22,9 +22,13 @@ vi.mock('@agent/runtime', () => ({
   describeSkillSourceProfilePolicy: describeSkillSourceProfilePolicyMock
 }));
 
-vi.mock('@agent/skill-runtime', () => ({
-  loadAgentSkillManifests: loadAgentSkillManifestsMock
-}));
+vi.mock('@agent/skill-runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/skill-runtime')>();
+  return {
+    ...actual,
+    loadAgentSkillManifests: loadAgentSkillManifestsMock
+  };
+});
 
 vi.mock('../../../src/runtime/skills/runtime-skill-safety', () => ({
   buildConnectorTemplateSuggestions: buildConnectorTemplateSuggestionsMock,

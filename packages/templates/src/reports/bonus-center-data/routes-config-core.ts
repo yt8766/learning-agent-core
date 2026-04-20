@@ -317,5 +317,5 @@ export const configCoreRoutes = [
         component: './config/payment/anchorGameWhite'
       }
     ]
-  },
+  }
 ];

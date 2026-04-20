@@ -10,20 +10,24 @@ import {
 import { buildWorkflowPresetPlan } from '../../workflows/workflow-preset-registry';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {
-  applyDefaultPlanAssumptions,
-  applyRecommendedPlanAnswers,
-  applyUserPlanAnswers,
-  buildCounselorProxyInterrupt,
-  buildInternalSubAgentResults,
   buildPartialAggregationPreview,
-  buildPlanningFinalAnswer,
-  collectCounselorIds,
   ensurePlanDraft,
-  finalizePlanInterrupt,
   resolveInteractivePlanMode,
-  shouldExecuteAfterPlanning,
   syncTaskExecutionMode
 } from './planning-stage-helpers';
+import {
+  applyDefaultPlanAssumptions,
+  applyRecommendedPlanAnswers,
+  applyUserPlanAnswers
+} from './planning-stage-answer-appliers';
+import {
+  buildCounselorProxyInterrupt,
+  buildInternalSubAgentResults,
+  buildPlanningFinalAnswer,
+  collectCounselorIds,
+  finalizePlanInterrupt,
+  shouldExecuteAfterPlanning
+} from './planning-stage-interrupt-helpers';
 import { derivePlannerStrategyRecord } from './contracts/supervisor-plan-contract';
 import { enrichPlanningDispatches } from './planning-stage-dispatches';
 import { applyPlanningMicroBudget } from './planning-stage-budget';

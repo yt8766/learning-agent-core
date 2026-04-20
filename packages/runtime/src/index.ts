@@ -101,8 +101,16 @@ export {
   normalizeLearningCenterJobs,
   normalizeLearningCenterTasks
 } from './runtime/runtime-learning-center-normalization';
+export { countInvalidatedRules } from './runtime/runtime-learning-rule-stats';
 export { buildCompanyAgentsCenter } from './runtime/runtime-company-agents-center';
 export { buildConnectorsCenter, type RuntimeConnectorsCenterRecord } from './runtime/runtime-connectors-center';
+export {
+  defaultConnectorSessionState,
+  groupConnectorDiscoveryHistory,
+  groupGovernanceAuditByTarget,
+  type RuntimeConnectorDiscoveryRecord,
+  type RuntimeConnectorGovernanceAuditRecord
+} from './runtime/runtime-connector-governance-records';
 export {
   loadConnectorCenterProjection,
   loadConnectorProjectionById,
@@ -126,6 +134,8 @@ export {
 export { refreshMetricsSnapshots } from './runtime/runtime-metrics-refresh';
 export type { RuntimeMetricsRefreshContext } from './runtime/runtime-metrics-refresh';
 export { filterAndSortRecentRuntimeRuns } from './runtime/runtime-recent-runs';
+export { buildCheckpointRef } from './runtime/runtime-checkpoint-ref';
+export { buildRecentTraceSummaryLines } from './runtime/runtime-task-trace-summary';
 export {
   generateObjectWithRetry,
   generateTextWithRetry,

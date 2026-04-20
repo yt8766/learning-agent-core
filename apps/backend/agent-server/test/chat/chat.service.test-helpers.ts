@@ -151,5 +151,12 @@ export const createRuntimeHost = () =>
         onToken('好');
         return '你好';
       })
+    },
+    platformRuntime: {
+      agentDependencies: {
+        resolveWorkflowPreset: vi.fn((goal: string) => ({
+          preset: { id: /报表|bonusCenterData|data.?report/i.test(goal) ? 'data-report' : 'general' }
+        }))
+      }
     }
   }) as unknown as RuntimeHost;

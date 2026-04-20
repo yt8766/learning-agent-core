@@ -165,12 +165,24 @@ packages/runtime/
 - `src/runtime/runtime-learning-memory-stats.ts`
   - 已成为 learning center memory governance stats projection 的 canonical host
   - backend 的 `runtime/domain/learning/runtime-learning-memory-stats.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-learning-rule-stats.ts`
+  - 已成为 learning center invalidated rule stats helper 的 canonical host
+  - backend 的 `runtime/domain/learning/runtime-learning-rule-stats.ts` 当前只保留 compat re-export
 - `src/runtime/runtime-metrics-snapshot-preference.ts`
   - 已成为 usage/eval persisted snapshot preference helper 的 canonical host
   - backend 的 `runtime/domain/metrics/runtime-metrics-snapshot-preference.ts` 当前只保留 compat re-export
 - `src/runtime/runtime-recent-runs.ts`
   - 已成为 runtime center recent runs filter/sort helper 的 canonical host
   - backend 的 `runtime/domain/metrics/runtime-recent-runs.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-checkpoint-ref.ts`
+  - 已成为 session checkpoint projection helper 的 canonical host
+  - backend 的 `runtime/domain/session/runtime-checkpoint-ref.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-connector-governance-records.ts`
+  - 已成为 connector discovery history / governance audit projection helper 的 canonical host
+  - backend 的 `runtime/domain/connectors/runtime-connector-governance-records.ts` 当前只保留 compat re-export
+- `src/runtime/runtime-task-trace-summary.ts`
+  - 已成为 task recent trace summary formatter 的 canonical host
+  - backend 的 `runtime/domain/tasks/runtime-task-service-helpers.ts` 当前只通过 compat re-export 暴露该纯 helper
 - `src/runtime-observability/runtime-observability-filters.ts`
   - 已成为 execution mode / interaction kind / interrupt payload 等 observability filter helper 的 canonical host
   - backend 相关 center/query helper 应优先复用，不再各自维护兼容分支

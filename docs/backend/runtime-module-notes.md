@@ -36,7 +36,7 @@
   - 远程安装路径规则与 skill artifact staging/promote 能力已上提到 `@agent/skill-runtime`；backend 当前只保留薄 compat 入口，不再作为这两类长期规则的真实宿主
 - `runtime/domain/connectors/*`
   - 当前承载 connector/governance 侧的 app-local 聚合 helper
-  - `groupConnectorDiscoveryHistory`、`groupGovernanceAuditByTarget`、`defaultConnectorSessionState` 已从 `runtime-derived-records.ts` 拆出，避免继续把 connectors 治理语义混进通用 records helper
+  - `groupConnectorDiscoveryHistory`、`groupGovernanceAuditByTarget`、`defaultConnectorSessionState` 已从 `runtime-derived-records.ts` 拆出；其真实宿主现已迁到 `@agent/runtime` 的 `runtime/runtime-connector-governance-records.ts`，backend 当前只保留 compat re-export，避免继续把 connectors 治理语义混进通用 records helper
 - `runtime/centers/runtime-centers-governance-counselors.ts`
   - 当前已退化为 backend error-mapping wrapper
   - counselor selector config 的排序、写盘与 audit 主逻辑已迁到 `packages/runtime/src/governance/runtime-counselor-selector-store.ts`
@@ -54,7 +54,7 @@
 - `RuntimeTaskService`
   - task 创建、诊断、审批、audit、learning job
   - `runtime-task.service.ts` 当前默认对齐显式 orchestrator / runtime-state contract：task audit 里的 `governance / trace / approval / usage` 聚合记录应直接基于 `TaskRecord` 与 `RuntimeStateSnapshot` 推导，`fallback plan` 也要补齐 `ManagerPlan` 的完整字段，不要再靠 `any` 和宽松字面量拼返回
-  - task diagnosis follow-up 的 recent trace 摘要格式化与 task action 空结果断言现在已下沉到 `runtime/domain/tasks/runtime-task-service-helpers.ts`；`RuntimeTaskService` 应更多保留 orchestrator facade、NotFound guard 与 audit/diagnosis 调用顺序，而不是继续内联这类 service-local 规则
+  - task diagnosis follow-up 的 recent trace 摘要格式化真实宿主现已迁到 `@agent/runtime` 的 `runtime/runtime-task-trace-summary.ts`；backend 的 `runtime/domain/tasks/runtime-task-service-helpers.ts` 仅保留 `NotFoundException` 风格的 task action 空结果断言与 compat re-export。`RuntimeTaskService` 应更多保留 orchestrator facade、NotFound guard 与 audit/diagnosis 调用顺序，而不是继续内联这类 service-local 规则
 - `runtime/core/runtime.host.ts`
   - 当前已经作为 backend 默认官方组合根宿主
   - 除 `runtime / orchestrator / sessionCoordinator` 外，也开始承接 `listWorkflowPresets()`、`listSubgraphDescriptors()`、`listWorkflowVersions()` 这类 metadata 读取，以及 chat 侧 data-report runtime facade 的本地接线入口
@@ -63,6 +63,7 @@
 - `RuntimeSessionService`
   - chat session、message、event、checkpoint、recover、subscribe
   - session message 的流式 assistant / 最终 assistant 去重规则现在已下沉到 `runtime/domain/session/runtime-session-message-dedupe.ts`；`RuntimeSessionService` 应更多保留 session existence guard、NotFound 映射与 coordinator facade，不再把消息去重细节继续内联在 service 文件底部
+  - checkpoint ref 投影 helper 的真实宿主现已迁到 `@agent/runtime` 的 `runtime/runtime-checkpoint-ref.ts`；backend 的 `runtime/domain/session/runtime-checkpoint-ref.ts` 当前只保留 compat re-export，session/evidence center 不应再在 app 层重写这类纯 checkpoint 归一化逻辑
 - `RuntimeKnowledgeService`
   - memory / rule 查询与治理
   - `runtime-knowledge.service.ts` 当前应直接依赖 `RuntimeWenyuanFacade + RuleRepository + RuntimeStateSnapshot + MemoryRepository` 这组真实 contract；像 compare snapshot、scrubber、cross-check evidence 这类路径不要再回退到 `ruleRepository/orchestrator/runtimeStateRepository: any`
@@ -74,7 +75,7 @@
     - `runtime/domain/knowledge/runtime-memory-usage-insights.ts`
     - `runtime/domain/knowledge/runtime-memory-version-compare.ts`
     - `runtime/domain/knowledge/runtime-cross-check-evidence.ts`
-    当前只保留 compat re-export，不再作为这三类纯记忆治理规则的真实宿主
+      当前只保留 compat re-export，不再作为这三类纯记忆治理规则的真实宿主
   - 本地知识 ingestion / overview / artifact snapshot facade 现已迁到 `@agent/knowledge` 的 `runtime/local-knowledge-store.ts`；backend 的 `runtime/knowledge/runtime-knowledge-store.ts` 当前只保留 compat re-export，不再作为本地知识落盘规则的真实宿主
   - `RuntimeKnowledgeService` 只保留 facade 入口、调用顺序与 `NotFoundException` 语义，不再继续内联这类稳定领域规则
 - `RuntimeSkillCatalogService`
@@ -134,7 +135,7 @@
 - `RuntimeCentersContext` 现在还显式带上 `runtimeHost`，用于 runtime center / architecture 侧读取 workflow/subgraph/version metadata；这些 metadata 也已经继续收口到 `PlatformRuntimeFacade.metadata`，避免 backend 宿主再一半走 facade、一半直接依赖 `@agent/platform-runtime`
 - `runtime/domain/governance/` 现在开始承接可复用的治理状态动作；例如 `syncSkillSource`、skill source / company worker 的 enable/disable 状态切换已经先从 `RuntimeCentersGovernanceService` 下沉到 `runtime-governance-actions.ts`，service 只负责组合 context 与返回 admin 视图，后续 connector / skill governance 的更多通用状态变更也应优先沿这条边界继续收敛
 - `runtime/domain/governance/` 当前也开始承接 company agents center 的共享 view loader；`runtime-company-agents-view.ts` 已统一收走 company agents center 构造与单 worker view 查找，`RuntimeCentersCatalogQueryService` 与 `RuntimeCentersGovernanceService` 不应再各自手写 `buildCompanyAgentsCenter(...) + find(...)` 组合
-- `runtime/domain/skills/` 也开始承接 skill search 的纯领域决策；`runtime-skill-search-resolution.ts` 已先收走 capability gap 对应的 status、safety note 与 MCP recommendation 规则，`runtime-skill-sources.service.ts` 应继续往“装配 sources/manifests/search result，再委托 domain helper 判定”收敛，而不是把 recommendation/status 规则继续堆回 service
+- `runtime/domain/skills/` 的 skill search 纯领域决策也已退化为 compat re-export；真实宿主现已迁到 `@agent/skill-runtime` 的 `sources/skill-search-resolution.ts`。`runtime-skill-sources.service.ts` 应继续往“装配 sources/manifests/search result，再委托 domain helper 判定”收敛，而不是把 capability gap 对应的 status、safety note 与 MCP recommendation 规则继续堆回 service
 - `runtime/domain/skills/` 现在还开始承接 auto-install eligibility 规则；`runtime-skill-auto-install.ts` 已收走“哪些 suggestion 才算可安装 manifest”以及“什么 safety/trust 条件下允许 low-risk auto install”的纯判断，`runtime-skill-safety.ts` 保留 manifest safety 评估与兼容出口，不要再把这类 eligibility 分支继续塞回 safety/service 文件
 - `runtime/domain/skills/` 也应继续承接 skill install 的纯路径/命名规则；`runtime-skill-install-paths.ts` 已收走 remote skill display name、optional skill name normalize、install path sanitize/build 等纯 helper，`runtime-skill-install.service.ts` 应更多保留 receipt 持久化、artifact promote、CLI 调用和失败回写，不要再把这类 deterministic helper 长期堆在 service 文件底部
 - `runtime/domain/skills/` 现在还开始承接 skill card 列表清洗规则；`runtime-skill-card-listing.ts` 已收走 accidental prompt-like card 过滤、重复 skill 去重与 stable/lab 优先级排序，`RuntimeSkillCatalogService` 应更多保留 catalog facade、NotFound 映射与 draft 发布入口，而不是继续在 service 文件底部堆这类 listing 规则
@@ -160,14 +161,14 @@
 - `runtime/domain/metrics/` 当前这两类纯规则也已退化为 compat re-export；真实宿主现已迁到 `@agent/runtime` 的：
   - `runtime/runtime-metrics-snapshot-preference.ts`
   - `runtime/runtime-recent-runs.ts`
-  backend 不应再把 persisted snapshot preference 或 recent-runs filter/sort 规则重新长回 app 层
+    backend 不应再把 persisted snapshot preference 或 recent-runs filter/sort 规则重新长回 app 层
 - `runtime/domain/observability/` 当前大部分纯投影/过滤 helper 已退化为 compat re-export；真实宿主已迁到 `@agent/runtime` 的：
   - `runtime-observability/runtime-approvals-center.ts`
   - `runtime-observability/runtime-run-observatory.ts`
   - `runtime-observability/runtime-briefing-runs.ts`
   - `runtime-observability/runtime-observability-filters.ts`
   - `runtime-observability/runtime-observability-task-filters.ts`
-  backend 的同名文件不应再承接长期主逻辑
+    backend 的同名文件不应再承接长期主逻辑
 - `runtime/domain/observability/` 的 approvals center 规则已迁到 `@agent/runtime`；`runtime-approvals-center.ts` 当前只保留 compat re-export。`runtime-centers-observability.query-service.ts` 应更多保留 observability 入口编排，而不是继续内联 pending approvals 的 filter、字段映射、planDraft/interrupt payload 归一化与 policyMatch 补全
 - `runtime/domain/observability/` 的 run observatory 规则已迁到 `@agent/runtime`；`runtime-run-observatory.ts` 当前只保留 compat re-export。`runtime-centers-observability.query-service.ts` 现在应更多聚焦在 `buildRunBundle(...)` 结果过滤、detail not-found 与 platform console / briefing 入口，而不是继续内联 status/model/pricing/executionMode/interactionKind/q 过滤与 limit 解析
 - `runtime/domain/observability/` 的 briefing run lookback/category projection 已迁到 `@agent/runtime`；`runtime-briefing-runs.ts` 当前只保留 compat re-export。`runtime-centers-observability.query-service.ts` 应继续保留入口编排而不是回填这类 map/filter 逻辑
@@ -181,8 +182,17 @@
   - `domain/learning/*`
   - `domain/session/*`
   - 后续如果新增逻辑主要表现为“读取 context/task/snapshot -> 返回派生结果、过滤结果、normalized view 或新 snapshot”，默认先评估是否直接进入这些 domain 子域，而不是继续堆到 `RuntimeCenters*QueryService` / `RuntimeCenters*Service`
+- 本轮清理后，以下文件当前应明确保留在 backend 宿主，不建议为了“包化”而继续硬迁：
+  - `runtime/domain/tasks/runtime-task-context.ts`
+  - `runtime/domain/metrics/runtime-provider-audit-context.ts`
+  - `runtime/domain/governance/runtime-company-agents-view.ts`
+  - `runtime/domain/skills/runtime-skill-contexts.ts`
+  - `runtime/domain/skills/runtime-skill-catalog-context.ts`
+  - `runtime/domain/skills/runtime-skill-sources-center-loader.ts`
+    这些文件的主要职责是 `RuntimeHost` / Nest / app-local service/context 装配，不属于稳定共享 contract 或纯投影 helper
 - `runtime/domain/learning/` 当前也开始承接 learning center 的输入归一化；`runtime-learning-center-normalization.ts` 的真实宿主现已迁到 `@agent/runtime`，backend 当前只保留 compat re-export。`runtime-centers-learning.query-service.ts` 应更多保留 orchestrator/wenyuan/state 的调用编排而不是继续内联 normalize helper
 - `runtime/domain/learning/` 现在还开始承接 memory governance 的纯投影规则；`runtime-learning-memory-stats.ts` 的真实宿主现已迁到 `@agent/runtime`，backend 当前只保留 compat re-export。`runtime-centers-learning.query-service.ts` 应继续保留 promise 组合与 full/summary 分支编排，而不是继续回填这类 memory stats 派生逻辑
+- `runtime/domain/learning/` 的 invalidated rule 计数规则也已迁到 `@agent/runtime`；`runtime-learning-rule-stats.ts` 当前只保留 compat re-export。`runtime-centers-learning.query-service.ts` 应继续保留 query orchestration，而不是继续在 backend domain 持有这类纯统计 helper
 - `chat/*`
   - chat 侧 data-report 相关执行 helper 现在优先通过 `runtime/core/runtime-data-report-facade.ts` 收口，而不是在聊天模块里直接从 `@agent/platform-runtime` import sandpack / report-schema 执行能力
   - `chat.service.ts` 现在也不再直接从 `@agent/platform-runtime` 读取 data-report 类型；backend app 层应优先经由 `RuntimeHost` 或 backend 本地 facade 触达 platform runtime，避免业务 service 继续形成对官方组合层的零散直连

@@ -154,7 +154,9 @@ export class RuntimeTaskService {
   }
 
   retryTask(taskId: string) {
-    return this.ctx().orchestrator.retryTask(taskId).then(task => assertTaskActionResult(taskId, task));
+    return this.ctx()
+      .orchestrator.retryTask(taskId)
+      .then(task => assertTaskActionResult(taskId, task));
   }
 
   approveTaskAction(taskId: string, dto: ApprovalActionDto) {

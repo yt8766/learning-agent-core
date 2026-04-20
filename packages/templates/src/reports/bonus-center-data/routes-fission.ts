@@ -65,5 +65,5 @@ export const fissionRoutes = [
         component: './fission/ugcTeam'
       }
     ]
-  },
+  }
 ];

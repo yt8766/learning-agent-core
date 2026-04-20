@@ -37,7 +37,14 @@ export function filterAndSortRunObservatoryTasks(
         return true;
       }
       const q = filters.q.toLowerCase();
-      return String(task.goal ?? '').toLowerCase().includes(q) || String(task.id ?? '').toLowerCase().includes(q);
+      return (
+        String(task.goal ?? '')
+          .toLowerCase()
+          .includes(q) ||
+        String(task.id ?? '')
+          .toLowerCase()
+          .includes(q)
+      );
     })
     .slice()
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());

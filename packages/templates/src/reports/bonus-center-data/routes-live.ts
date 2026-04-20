@@ -62,5 +62,5 @@ export const liveRoutes = [
         component: './guildmg/photographer'
       }
     ]
-  },
+  }
 ];

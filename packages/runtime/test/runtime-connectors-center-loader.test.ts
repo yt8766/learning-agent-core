@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadConnectorCenterProjection, loadConnectorProjectionById } from '../src/runtime/runtime-connectors-center-loader';
+import {
+  loadConnectorCenterProjection,
+  loadConnectorProjectionById
+} from '../src/runtime/runtime-connectors-center-loader';
 
 describe('runtime connectors center loader', () => {
   it('loads connector projections with optional discovery refresh and knowledge overview', async () => {
@@ -53,12 +56,13 @@ describe('runtime connectors center loader', () => {
       },
       refreshDiscovery: true,
       includeStdioInRefresh: false,
-      loadKnowledgeOverview: async () => ({
-        sourceCount: 1,
-        searchableDocumentCount: 1,
-        blockedDocumentCount: 0,
-        latestReceipts: [{ id: 'receipt-1' }]
-      } as never)
+      loadKnowledgeOverview: async () =>
+        ({
+          sourceCount: 1,
+          searchableDocumentCount: 1,
+          blockedDocumentCount: 0,
+          latestReceipts: [{ id: 'receipt-1' }]
+        }) as never
     });
 
     expect(result).toEqual([

@@ -13,10 +13,7 @@ import {
   persistSkillInstallReceipt
 } from './runtime-skill-orchestration';
 import { evaluateSkillManifestSafety } from '../../skills/runtime-skill-safety';
-import {
-  getSkillInstallReceipt,
-  type RuntimeSkillInstallContext
-} from '../../skills/runtime-skill-install.service';
+import { getSkillInstallReceipt, type RuntimeSkillInstallContext } from '../../skills/runtime-skill-install.service';
 import { listSkillManifests, listSkillSources } from '../../skills/runtime-skill-sources.service';
 
 function getSharedSkillGovernanceContext(ctx: RuntimeCentersContext) {

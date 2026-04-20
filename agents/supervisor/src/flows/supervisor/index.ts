@@ -20,14 +20,24 @@ export {
   resolveResearchDispatchObjective
 } from './dispatch-stage-helpers';
 export {
-  applyDefaultPlanAssumptions,
-  applyRecommendedPlanAnswers,
-  applyUserPlanAnswers,
   buildPartialAggregationPreview,
   ensurePlanDraft,
   resolveInteractivePlanMode,
   syncTaskExecutionMode
 } from './planning-stage-helpers';
+export {
+  applyDefaultPlanAssumptions,
+  applyRecommendedPlanAnswers,
+  applyUserPlanAnswers
+} from './planning-stage-answer-appliers';
+export {
+  buildCounselorProxyInterrupt,
+  buildInternalSubAgentResults,
+  buildPlanningFinalAnswer,
+  collectCounselorIds,
+  finalizePlanInterrupt,
+  shouldExecuteAfterPlanning
+} from './planning-stage-interrupt-helpers';
 export {
   compileSkillContractIntoPlan,
   runDispatchStage,

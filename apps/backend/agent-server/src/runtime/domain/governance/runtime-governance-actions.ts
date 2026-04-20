@@ -91,10 +91,7 @@ export async function setCompanyWorkerEnabledWithGovernance<TCompanyWorkerView>(
   };
   loadCompanyWorkerView: (workerId: string) => Promise<TCompanyWorkerView> | TCompanyWorkerView;
 }) {
-  const worker = input
-    .orchestrator
-    .listWorkers()
-    .find(item => item.id === input.workerId && item.kind === 'company');
+  const worker = input.orchestrator.listWorkers().find(item => item.id === input.workerId && item.kind === 'company');
   if (!worker) {
     throw new NotFoundException(`Company worker ${input.workerId} not found`);
   }

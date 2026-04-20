@@ -302,9 +302,10 @@ export async function configureConnectorWithGovernance<TConnectorView>(input: {
   const snapshot = await input.runtimeStateRepository.load();
   setConfiguredConnectorRecord(snapshot, input.dto, new Date().toISOString());
   await input.runtimeStateRepository.save(snapshot);
-  input.registerConfiguredConnector(
-    snapshot.governance?.configuredConnectors?.find(item => item.connectorId === connectorId)!
-  );
+  const configured = snapshot.governance?.configuredConnectors?.find(item => item.connectorId === connectorId);
+  if (configured) {
+    input.registerConfiguredConnector(configured);
+  }
   await input.mcpClientManager.refreshServerDiscovery(connectorId).catch(() => undefined);
   input.registerDiscoveredCapabilities(connectorId);
   await persistConnectorDiscoverySnapshot(input.runtimeStateRepository, input.mcpClientManager, connectorId).catch(

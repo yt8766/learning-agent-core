@@ -260,9 +260,9 @@ describe('@agent/platform-runtime', () => {
 
     expect(() => dependencies.createGongbuCodeMinistry({} as never)).not.toThrow();
     expect(() => dependencies.createXingbuReviewMinistry({} as never)).not.toThrow();
-    expect(dependencies.resolveSpecialistRoute({ goal: '请给我一个技术架构方案' }).specialistLead.requiredCapabilities).toEqual([
-      'specialist.technical-architecture'
-    ]);
+    expect(
+      dependencies.resolveSpecialistRoute({ goal: '请给我一个技术架构方案' }).specialistLead.requiredCapabilities
+    ).toEqual(['specialist.technical-architecture']);
     expect(dependencies.buildDataReportContract('生成报表').templateRef).toBe('generic-report');
   });
 });

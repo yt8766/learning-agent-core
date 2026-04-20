@@ -11,8 +11,17 @@ import {
   type DataReportScaffoldResult
 } from '@agent/report-kit';
 
-import { resolveWorkflowPreset } from '@agent/agents-supervisor';
+import type { WorkflowPresetDefinition } from '@agent/core';
 import type { DataReportPreviewStage } from '../../types/data-report';
+
+export interface WorkflowPresetResolution {
+  normalizedGoal: string;
+  preset: WorkflowPresetDefinition;
+  source: 'explicit' | 'inferred' | 'default';
+  command?: string;
+}
+
+export type ResolveWorkflowPresetFn = (goal: string) => WorkflowPresetResolution;
 
 export interface DataReportPreviewStageEvent {
   stage: DataReportPreviewStage;
@@ -29,6 +38,7 @@ export interface DataReportPreviewArtifactSummary {
 export interface GenerateDataReportPreviewInput {
   goal: string;
   taskContext?: string;
+  resolveWorkflowPreset: ResolveWorkflowPresetFn;
   onStage?: (event: DataReportPreviewStageEvent) => void;
 }
 
@@ -46,7 +56,7 @@ export interface GenerateDataReportPreviewResult {
 
 export function generateDataReportPreview(params: GenerateDataReportPreviewInput): GenerateDataReportPreviewResult {
   const goal = runPreviewStage(params.onStage, 'analysis', () => params.goal.trim());
-  const workflow = runPreviewStage(params.onStage, 'intent', () => resolveWorkflowPreset(goal));
+  const workflow = runPreviewStage(params.onStage, 'intent', () => params.resolveWorkflowPreset(goal));
 
   runPreviewStage(params.onStage, 'capability', () => ({
     mode: 'preview' as const,

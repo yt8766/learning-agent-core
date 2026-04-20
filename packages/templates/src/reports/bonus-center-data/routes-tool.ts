@@ -59,5 +59,5 @@ export const toolRoutes = [
         component: './tool/ApiCallCount'
       }
     ]
-  },
+  }
 ];

@@ -6,6 +6,7 @@ import {
   DATA_REPORT_SANDPACK_STAGE_META,
   executeDataReportSandpackGraph,
   generateDataReportPreview,
+  resolveWorkflowPreset,
   type DataReportFileGenerationEvent,
   type DataReportGenerationNode,
   type DataReportNodeStageEvent,
@@ -72,6 +73,7 @@ export async function streamSandpackPreview(
   const preview = generateDataReportPreview({
     goal: extractDirectGoal(dto),
     taskContext: dto.projectId,
+    resolveWorkflowPreset,
     onStage: event => handlePreviewStageEvent(onEvent, event)
   });
 

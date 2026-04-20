@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "@agent/adapters": "workspace:*",
-    "@agent/agents-supervisor": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/report-kit": "workspace:*",
     "@langchain/langgraph": "^1.2.5",

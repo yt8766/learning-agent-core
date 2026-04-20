@@ -19,5 +19,5 @@ export const systemRoutes = [
         component: './system/menu'
       }
     ]
-  },
+  }
 ];

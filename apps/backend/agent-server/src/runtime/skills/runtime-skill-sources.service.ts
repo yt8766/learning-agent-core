@@ -302,7 +302,11 @@ export async function resolveTaskSkillSearch(
           executedAt: searchResult.remoteSearch.executedAt
         }
       : undefined,
-    mcpRecommendation: buildSkillSearchMcpRecommendation(goal, searchResult.suggestions, searchResult.capabilityGapDetected)
+    mcpRecommendation: buildSkillSearchMcpRecommendation(
+      goal,
+      searchResult.suggestions,
+      searchResult.capabilityGapDetected
+    )
   } as const;
 }
 

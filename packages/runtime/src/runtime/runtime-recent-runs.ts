@@ -1,7 +1,10 @@
 import type { TaskRecord } from '@agent/core';
 
 import { normalizeExecutionMode } from './runtime-architecture-helpers';
-import { resolveTaskExecutionMode, resolveTaskInteractionKind } from '../runtime-observability/runtime-observability-filters';
+import {
+  resolveTaskExecutionMode,
+  resolveTaskInteractionKind
+} from '../runtime-observability/runtime-observability-filters';
 
 export function filterAndSortRecentRuntimeRuns(
   tasks: TaskRecord[],

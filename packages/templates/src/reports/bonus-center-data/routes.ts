@@ -31,7 +31,7 @@ const routes: MenuDataItem = [
   {
     name: '配置项',
     path: '/config',
-    routes: [...configCoreRoutes, ...configFeaturesRoutes],
+    routes: [...configCoreRoutes, ...configFeaturesRoutes]
   },
   ...toolRoutes,
   ...auditRoutes,
@@ -39,12 +39,12 @@ const routes: MenuDataItem = [
   {
     path: '/dataDashboard',
     name: '数据看板',
-    routes: [...dashboardAnalyticsRoutes, ...dashboardOperationsRoutes],
+    routes: [...dashboardAnalyticsRoutes, ...dashboardOperationsRoutes]
   },
   ...contentRoutes,
   ...fissionRoutes,
   ...aiRoutes,
-  ...imRoutes,
+  ...imRoutes
 ];
 
 export default routes;

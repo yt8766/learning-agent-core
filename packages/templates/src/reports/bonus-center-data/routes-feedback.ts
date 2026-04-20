@@ -40,5 +40,5 @@ export const feedbackRoutes = [
         component: './experiment/dynamicConfig'
       }
     ]
-  },
+  }
 ];
