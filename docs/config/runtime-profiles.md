@@ -65,4 +65,4 @@ profile 不只是数据目录标签，还会影响：
 
 - [config 文档目录](/docs/config/README.md)
 - [README](/README.md)
-- [Runtime State Machine](/docs/runtime-state-machine.md)
+- [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

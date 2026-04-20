@@ -17,8 +17,8 @@
 
 ## 修改前先读
 
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-- [docs/package-architecture-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/package-architecture-guidelines.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/package-architecture-guidelines.md](/docs/package-architecture-guidelines.md)
 
 ## 改动边界
 

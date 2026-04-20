@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/knowledge/README.md](/Users/dev/Desktop/learning-agent-core/docs/knowledge/README.md)
-- [docs/knowledge/indexing-package-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/knowledge/indexing-package-guidelines.md)
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+- [docs/knowledge/README.md](/docs/knowledge/README.md)
+- [docs/knowledge/indexing-package-guidelines.md](/docs/knowledge/indexing-package-guidelines.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
 
 ## 改动边界
 

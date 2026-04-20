@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/evals/README.md](/Users/dev/Desktop/learning-agent-core/docs/evals/README.md)
-- [docs/evals/verification-system-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-- [docs/evals/promptfoo-regression.md](/Users/dev/Desktop/learning-agent-core/docs/evals/promptfoo-regression.md)
+- [docs/evals/README.md](/docs/evals/README.md)
+- [docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
+- [docs/evals/promptfoo-regression.md](/docs/evals/promptfoo-regression.md)
 
 ## 改动边界
 

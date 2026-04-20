@@ -25,8 +25,8 @@
 更细规则请继续看：
 
 - 分层与依赖约定：[package-architecture-guidelines.md](/docs/package-architecture-guidelines.md)
-- 全局 runtime 分层 ADR：[runtime-layering-adr.md](/docs/runtime-layering-adr.md)
-- compat 收缩候选：[package-compat-sunset-candidates.md](/docs/package-compat-sunset-candidates.md)
+- 全局 runtime 分层 ADR：[runtime-layering-adr.md](/docs/runtime/runtime-layering-adr.md)
+- compat 收缩候选：[package-compat-sunset-candidates.md](/docs/core/package-compat-sunset-candidates.md)
 - contract 边界：[core/README.md](/docs/core/README.md)
 - 迁移历史：[archive/agent-core/README.md](/docs/archive/agent-core/README.md)
 
@@ -272,7 +272,7 @@
   - `contracts/*` 这类 contract-first 稳定 facade
   - `packages/config/src/settings.ts` / `src/settings/index.ts` 这类人工可读聚合入口
 - 继续删除前应先看
-  - [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 
 补充说明：
 

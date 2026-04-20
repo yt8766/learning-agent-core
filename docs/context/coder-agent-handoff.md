@@ -18,9 +18,9 @@
 
 ## 修改前先读
 
-- [docs/agents/coder/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/coder/README.md)
-- [docs/agents/coder/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/agents/coder/package-structure-guidelines.md)
-- [docs/project-conventions.md](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
+- [docs/agents/coder/README.md](/docs/agents/coder/README.md)
+- [docs/agents/coder/package-structure-guidelines.md](/docs/agents/coder/package-structure-guidelines.md)
+- [docs/project-conventions.md](/docs/project-conventions.md)
 
 ## 改动边界
 

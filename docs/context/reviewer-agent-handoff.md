@@ -18,9 +18,9 @@
 
 ## 修改前先读
 
-- [docs/agents/reviewer/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/reviewer/README.md)
-- [docs/agents/reviewer/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/agents/reviewer/package-structure-guidelines.md)
-- [docs/evals/README.md](/Users/dev/Desktop/learning-agent-core/docs/evals/README.md)
+- [docs/agents/reviewer/README.md](/docs/agents/reviewer/README.md)
+- [docs/agents/reviewer/package-structure-guidelines.md](/docs/agents/reviewer/package-structure-guidelines.md)
+- [docs/evals/README.md](/docs/evals/README.md)
 
 ## 改动边界
 

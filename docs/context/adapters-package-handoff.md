@@ -21,9 +21,9 @@
 
 ## 修改前先读
 
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-- [docs/adapters/README.md](/Users/dev/Desktop/learning-agent-core/docs/adapters/README.md)
-- [docs/adapters/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/adapters/package-structure-guidelines.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/adapters/README.md](/docs/adapters/README.md)
+- [docs/adapters/package-structure-guidelines.md](/docs/adapters/package-structure-guidelines.md)
 
 ## 改动边界
 

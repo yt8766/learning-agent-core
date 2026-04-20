@@ -18,9 +18,9 @@
 
 ## 修改前先读
 
-- [docs/platform-runtime/README.md](/Users/dev/Desktop/learning-agent-core/docs/platform-runtime/README.md)
-- [docs/platform-runtime/official-composition-root-adr.md](/Users/dev/Desktop/learning-agent-core/docs/platform-runtime/official-composition-root-adr.md)
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+- [docs/platform-runtime/README.md](/docs/platform-runtime/README.md)
+- [docs/platform-runtime/official-composition-root-adr.md](/docs/platform-runtime/official-composition-root-adr.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
 
 ## 改动边界
 

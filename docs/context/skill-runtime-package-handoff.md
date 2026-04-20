@@ -20,9 +20,9 @@
 
 ## 修改前先读
 
-- [docs/skill-runtime/README.md](/Users/dev/Desktop/learning-agent-core/docs/skill-runtime/README.md)
-- [docs/skill-runtime/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/skill-runtime/package-structure-guidelines.md)
-- [docs/skills/runtime-skills-vs-repo-skills.md](/Users/dev/Desktop/learning-agent-core/docs/skills/runtime-skills-vs-repo-skills.md)
+- [docs/skill-runtime/README.md](/docs/skill-runtime/README.md)
+- [docs/skill-runtime/package-structure-guidelines.md](/docs/skill-runtime/package-structure-guidelines.md)
+- [docs/skills/runtime-skills-vs-repo-skills.md](/docs/skills/runtime-skills-vs-repo-skills.md)
 
 ## 改动边界
 

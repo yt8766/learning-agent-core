@@ -9,7 +9,7 @@
 
 如果你是为了判断 `runtime / platform-runtime / apps` 三层谁该承载什么，先补读：
 
-- [Runtime 分层 ADR](/docs/runtime-layering-adr.md)
+- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
 
 本主题主文档：
 

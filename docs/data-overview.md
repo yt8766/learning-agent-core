@@ -38,4 +38,4 @@
 
 - [README](/README.md)
 - [config 文档目录](/docs/config/README.md)
-- [Runtime State Machine](/docs/runtime-state-machine.md)
+- [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

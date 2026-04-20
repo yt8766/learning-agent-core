@@ -51,7 +51,7 @@
   - `packages/config/src/contracts/settings-facade.ts`
   - `packages/skill-runtime/src/contracts/skill-runtime-facade.ts`
   - `packages/evals/src/contracts/evals-facade.ts`
-- 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/package-compat-sunset-candidates.md`](./docs/package-compat-sunset-candidates.md)
+- 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/core/package-compat-sunset-candidates.md`](./docs/core/package-compat-sunset-candidates.md)
 
 根目录不再维护单独的 `TODO.md`。后续 roadmap、联调结论和模块待办统一沉淀到对应的 `docs/<module>/` 文档，并直接按最新实现更新原文档。
 
@@ -263,7 +263,7 @@
 
 审批、skill 安装、connector 治理和高风险工具调用，后续统一按可恢复 interrupt 主链收敛。
 
-- 规范文档：[`docs/runtime-interrupts.md`](./docs/runtime-interrupts.md)
+- 规范文档：[`docs/runtime/runtime-interrupts.md`](./docs/runtime/runtime-interrupts.md)
 - 兼容期内允许同时保留 `pendingApproval`
 - 终态目标是 `interrupt(payload) -> __interrupt__ -> Command({ resume })`
 

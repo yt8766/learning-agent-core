@@ -20,9 +20,9 @@
 
 ## 修改前先读
 
-- [docs/memory/README.md](/Users/dev/Desktop/learning-agent-core/docs/memory/README.md)
-- [docs/memory/agent-memory-architecture.md](/Users/dev/Desktop/learning-agent-core/docs/memory/agent-memory-architecture.md)
-- [docs/memory/storage-and-search.md](/Users/dev/Desktop/learning-agent-core/docs/memory/storage-and-search.md)
+- [docs/memory/README.md](/docs/memory/README.md)
+- [docs/memory/agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
+- [docs/memory/storage-and-search.md](/docs/memory/storage-and-search.md)
 
 ## 改动边界
 

@@ -71,5 +71,5 @@
 ## 6. 继续阅读
 
 - [tools 文档目录](/docs/tools/README.md)
-- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
 - [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)

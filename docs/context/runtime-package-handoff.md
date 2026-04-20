@@ -22,10 +22,10 @@
 
 ## 修改前先读
 
-- [docs/runtime/README.md](/Users/dev/Desktop/learning-agent-core/docs/runtime/README.md)
-- [docs/runtime/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/runtime/package-structure-guidelines.md)
-- [docs/runtime-layering-adr.md](/Users/dev/Desktop/learning-agent-core/docs/runtime-layering-adr.md)
-- [docs/runtime-state-machine.md](/Users/dev/Desktop/learning-agent-core/docs/runtime-state-machine.md)
+- [docs/runtime/README.md](/docs/runtime/README.md)
+- [docs/runtime/package-structure-guidelines.md](/docs/runtime/package-structure-guidelines.md)
+- [docs/runtime/runtime-layering-adr.md](/docs/runtime/runtime-layering-adr.md)
+- [docs/runtime/runtime-state-machine.md](/docs/runtime/runtime-state-machine.md)
 
 ## 改动边界
 

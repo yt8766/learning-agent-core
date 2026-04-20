@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/templates/README.md](/Users/dev/Desktop/learning-agent-core/docs/templates/README.md)
-- [docs/templates/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/templates/package-structure-guidelines.md)
-- [docs/templates/template-registry-and-usage.md](/Users/dev/Desktop/learning-agent-core/docs/templates/template-registry-and-usage.md)
+- [docs/templates/README.md](/docs/templates/README.md)
+- [docs/templates/package-structure-guidelines.md](/docs/templates/package-structure-guidelines.md)
+- [docs/templates/template-registry-and-usage.md](/docs/templates/template-registry-and-usage.md)
 
 ## 改动边界
 

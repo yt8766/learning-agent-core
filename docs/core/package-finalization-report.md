@@ -150,6 +150,6 @@
 
 1. [Packages 目录说明](/docs/packages-overview.md)
 2. [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
-3. [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+3. [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 4. 本文
 5. 各包自己的 `docs/<pkg>/package-structure-guidelines.md`

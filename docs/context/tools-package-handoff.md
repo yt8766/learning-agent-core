@@ -21,9 +21,9 @@
 
 ## 修改前先读
 
-- [docs/tools/README.md](/Users/dev/Desktop/learning-agent-core/docs/tools/README.md)
-- [docs/tools/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/tools/package-structure-guidelines.md)
-- [docs/tools/runtime-governance-and-sandbox.md](/Users/dev/Desktop/learning-agent-core/docs/tools/runtime-governance-and-sandbox.md)
+- [docs/tools/README.md](/docs/tools/README.md)
+- [docs/tools/package-structure-guidelines.md](/docs/tools/package-structure-guidelines.md)
+- [docs/tools/runtime-governance-and-sandbox.md](/docs/tools/runtime-governance-and-sandbox.md)
 
 ## 改动边界
 

@@ -11,7 +11,7 @@
 - [README](/README.md)
 - [架构总览](/docs/ARCHITECTURE.md)
 - [前后端对接文档](/docs/integration/frontend-backend-integration.md)
-- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
 - [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
 - [GitHub Flow 规范](/docs/github-flow.md)
 - [后端规范](/docs/backend-conventions.md)
@@ -47,7 +47,7 @@
   - `packages/templates`
   - `packages/config` 的纯 compat `settings.*`
   - 其中 `packages/config`、`packages/skill-runtime`、`packages/evals` 已继续补出 facade contract，作为包根稳定导出层
-  - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移和兼容分析保留在 `docs/shared/*`
 - 稳定主 contract 默认收口到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 应落到真实宿主或应用本地，不再新增 `@agent/shared`
 - `packages/core` 默认采用 schema-first：

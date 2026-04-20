@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/agents/supervisor/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/supervisor/README.md)
-- [docs/agents/supervisor/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/agents/supervisor/package-structure-guidelines.md)
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
+- [docs/agents/supervisor/README.md](/docs/agents/supervisor/README.md)
+- [docs/agents/supervisor/package-structure-guidelines.md](/docs/agents/supervisor/package-structure-guidelines.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
 
 ## 改动边界
 

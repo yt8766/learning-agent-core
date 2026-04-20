@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/frontend/`
-最后核对：2026-04-16
+最后核对：2026-04-22
 
 本目录用于承接前端总入口，再向下区分 `agent-chat` 与 `agent-admin` 两个独立产品面。
 

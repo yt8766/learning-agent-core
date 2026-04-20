@@ -22,9 +22,9 @@
 
 ## 修改前先读
 
-- [docs/core/README.md](/Users/dev/Desktop/learning-agent-core/docs/core/README.md)
-- [docs/core/current-core-package-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/core/current-core-package-guidelines.md)
-- [docs/core/core-contract-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/core/core-contract-guidelines.md)
+- [docs/core/README.md](/docs/core/README.md)
+- [docs/core/current-core-package-guidelines.md](/docs/core/current-core-package-guidelines.md)
+- [docs/core/core-contract-guidelines.md](/docs/core/core-contract-guidelines.md)
 
 ## 改动边界
 

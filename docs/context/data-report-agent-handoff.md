@@ -18,9 +18,9 @@
 
 ## 修改前先读
 
-- [docs/agents/data-report/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/README.md)
-- [docs/agents/data-report/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/package-structure-guidelines.md)
-- [docs/report-kit/data-report-pipeline.md](/Users/dev/Desktop/learning-agent-core/docs/report-kit/data-report-pipeline.md)
+- [docs/agents/data-report/README.md](/docs/agents/data-report/README.md)
+- [docs/agents/data-report/package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
+- [docs/report-kit/data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
 
 ## 改动边界
 

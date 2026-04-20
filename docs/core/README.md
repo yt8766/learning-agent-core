@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/core/`
-最后核对：2026-04-18
+最后核对：2026-04-22
 
 本目录用于沉淀 `packages/core` 相关文档。
 
@@ -107,6 +107,8 @@
 - 当前项目的 core 包规范：[current-core-package-guidelines.md](/docs/core/current-core-package-guidelines.md)
 - 当前 core 包合规检查：[current-core-package-audit.md](/docs/core/current-core-package-audit.md)
 - contract 边界主文档：[core-contract-guidelines.md](/docs/core/core-contract-guidelines.md)
+- Packages 阶段收官报告：[package-finalization-report.md](/docs/core/package-finalization-report.md)
+- Compat 入口收缩候选：[package-compat-sunset-candidates.md](/docs/core/package-compat-sunset-candidates.md)
 
 当前执行重点：
 

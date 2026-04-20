@@ -11,7 +11,7 @@
 
 - [agent-core runtime current state](/docs/archive/agent-core/runtime-current-state.md)
 - [system flow current state](/docs/integration/system-flow-current-state.md)
-- [Runtime 分层 ADR](/docs/runtime-layering-adr.md)
+- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
 
 ## 1. 产品分工
 
@@ -77,7 +77,7 @@ apps/*                     = 启动适配器，只选择装配方案并暴露入
 
 这组边界的正式决策见：
 
-- [Runtime 分层 ADR](/docs/runtime-layering-adr.md)
+- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
 
 当前实施状态：
 

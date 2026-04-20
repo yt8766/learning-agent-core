@@ -254,5 +254,5 @@ packages/runtime/
 
 - [runtime 文档目录](/docs/runtime/README.md)
 - [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
-- [Runtime Interrupts](/docs/runtime-interrupts.md)
-- [Runtime State Machine](/docs/runtime-state-machine.md)
+- [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
+- [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

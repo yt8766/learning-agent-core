@@ -32,14 +32,14 @@
 
 ## 当前目录阅读顺序
 
-1. 仓库入口：[README.md](/Users/dev/Desktop/learning-agent-core/README.md)
-2. docs 目录规范：[docs/README.md](/Users/dev/Desktop/learning-agent-core/docs/README.md)
-3. 项目规范总览：[docs/project-conventions.md](/Users/dev/Desktop/learning-agent-core/docs/project-conventions.md)
-4. 架构总览：[docs/ARCHITECTURE.md](/Users/dev/Desktop/learning-agent-core/docs/ARCHITECTURE.md)
-5. 包总览：[docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-6. 前后端对接：[docs/integration/frontend-backend-integration.md](/Users/dev/Desktop/learning-agent-core/docs/integration/frontend-backend-integration.md)
-7. 验证体系：[docs/evals/verification-system-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/evals/verification-system-guidelines.md)
-8. 目标包交接文档：[docs/context/README.md](/Users/dev/Desktop/learning-agent-core/docs/context/README.md)
+1. 仓库入口：[README.md](/README.md)
+2. docs 目录规范：[docs/README.md](/docs/README.md)
+3. 项目规范总览：[docs/project-conventions.md](/docs/project-conventions.md)
+4. 架构总览：[docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md)
+5. 包总览：[docs/packages-overview.md](/docs/packages-overview.md)
+6. 前后端对接：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+7. 验证体系：[docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
+8. 目标包交接文档：[docs/context/README.md](/docs/context/README.md)
 
 ## 代码与文档的默认落位
 
@@ -75,9 +75,9 @@
 ## 当前 workspace 包阅读映射
 
 - `packages/*`：
-  - 见 [docs/context/README.md](/Users/dev/Desktop/learning-agent-core/docs/context/README.md) 中的 packages 交接文档列表
+  - 见 [docs/context/README.md](/docs/context/README.md) 中的 packages 交接文档列表
 - `agents/*`：
-  - 同样收录在 [docs/context/README.md](/Users/dev/Desktop/learning-agent-core/docs/context/README.md) 中的 agents 交接文档列表
+  - 同样收录在 [docs/context/README.md](/docs/context/README.md) 中的 agents 交接文档列表
 
 ## 高风险误区
 
@@ -90,19 +90,19 @@
 ## 修改前优先看的专项文档
 
 - runtime / graph / session：
-  - [docs/runtime/README.md](/Users/dev/Desktop/learning-agent-core/docs/runtime/README.md)
+  - [docs/runtime/README.md](/docs/runtime/README.md)
 - backend：
-  - [docs/backend/README.md](/Users/dev/Desktop/learning-agent-core/docs/backend/README.md)
+  - [docs/backend/README.md](/docs/backend/README.md)
 - frontend：
-  - [docs/frontend/README.md](/Users/dev/Desktop/learning-agent-core/docs/frontend/README.md)
+  - [docs/frontend/README.md](/docs/frontend/README.md)
 - supervisor / workflow：
-  - [docs/agents/supervisor/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/supervisor/README.md)
+  - [docs/agents/supervisor/README.md](/docs/agents/supervisor/README.md)
 - data-report：
-  - [docs/agents/data-report/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/data-report/README.md)
+  - [docs/agents/data-report/README.md](/docs/agents/data-report/README.md)
 - coder：
-  - [docs/agents/coder/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/coder/README.md)
+  - [docs/agents/coder/README.md](/docs/agents/coder/README.md)
 - reviewer：
-  - [docs/agents/reviewer/README.md](/Users/dev/Desktop/learning-agent-core/docs/agents/reviewer/README.md)
+  - [docs/agents/reviewer/README.md](/docs/agents/reviewer/README.md)
 
 ## 交接提醒
 

@@ -74,7 +74,7 @@ packages/<pkg>/
   - `utils/` 保留纯工具语义
 - 文档先定义推荐终态结构，不要求本轮立即大规模搬文件；后续源码收敛应以这些目录语义为目标
 - compat / facade / legacy 根入口的后续删除优先参考
-  - [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 - `contracts/*` 与人工可读聚合入口要分开治理：
   - `contracts/*` 默认代表刻意保留的稳定 facade
   - 类似 `config/src/settings.ts` 这样的人工可读聚合入口，默认按“长期保留聚合层”治理
@@ -86,7 +86,7 @@ packages/<pkg>/
 
 这组分层的正式裁决见：
 
-- [Runtime 分层 ADR](/docs/runtime-layering-adr.md)
+- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
 
 当前最重要的三条红线是：
 

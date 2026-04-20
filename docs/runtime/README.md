@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/runtime/`
-最后核对：2026-04-19
+最后核对：2026-04-22
 
 本目录用于沉淀 `packages/runtime` 相关文档。
 
@@ -61,3 +61,6 @@
 当前文档：
 
 - [package-structure-guidelines.md](/docs/runtime/package-structure-guidelines.md)
+- [runtime-interrupts.md](/docs/runtime/runtime-interrupts.md) — 中断控制流规范
+- [runtime-layering-adr.md](/docs/runtime/runtime-layering-adr.md) — Runtime 分层 ADR
+- [runtime-state-machine.md](/docs/runtime/runtime-state-machine.md) — 状态机参考

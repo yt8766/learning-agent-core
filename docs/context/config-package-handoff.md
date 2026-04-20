@@ -20,10 +20,10 @@
 
 ## 修改前先读
 
-- [docs/packages-overview.md](/Users/dev/Desktop/learning-agent-core/docs/packages-overview.md)
-- [docs/config/README.md](/Users/dev/Desktop/learning-agent-core/docs/config/README.md)
-- [docs/config/package-structure-guidelines.md](/Users/dev/Desktop/learning-agent-core/docs/config/package-structure-guidelines.md)
-- [docs/config/runtime-profiles.md](/Users/dev/Desktop/learning-agent-core/docs/config/runtime-profiles.md)
+- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/config/README.md](/docs/config/README.md)
+- [docs/config/package-structure-guidelines.md](/docs/config/package-structure-guidelines.md)
+- [docs/config/runtime-profiles.md](/docs/config/runtime-profiles.md)
 
 ## 改动边界
 
