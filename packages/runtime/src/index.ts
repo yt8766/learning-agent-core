@@ -1,4 +1,4 @@
-export type { AgentRuntimeContext, AgentLike } from './contracts/agent-runtime-context';
+export type { AgentRuntimeContext, AgentLike } from './contracts';
 export { BaseAgent } from './agents/base-agent';
 export {
   StreamingExecutionCoordinator,
@@ -8,10 +8,10 @@ export {
   type StreamingExecutionEvent,
   type StreamingExecutionTask
 } from './runtime/streaming-execution';
-export { SessionCoordinator } from './contracts/session-coordinator';
-export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts/worker-registry';
-export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts/profile-policy';
-export { ModelRoutingPolicy } from './contracts/model-routing-policy';
+export { SessionCoordinator } from './contracts';
+export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts';
+export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts';
+export { ModelRoutingPolicy } from './contracts';
 export {
   configureRuntimeAgentDependencies,
   getRuntimeAgentDependencies,
@@ -20,12 +20,9 @@ export {
   type RuntimeAgentDependencies,
   type RuntimeSpecialistRoute,
   type RuntimeWorkflowResolution
-} from './contracts/runtime-agent-dependencies';
-export type { SessionStoreSnapshot } from './contracts/session-store';
-export {
-  listActiveApprovalScopePolicies,
-  revokeApprovalScopePolicyWithAudit
-} from './governance/runtime-approval-scope-policy-store';
+} from './contracts';
+export type { SessionStoreSnapshot } from './contracts';
+export { listActiveApprovalScopePolicies, revokeApprovalScopePolicyWithAudit } from './governance';
 export {
   appendGovernanceAudit,
   getRecentGovernanceAudit,
@@ -38,16 +35,9 @@ export {
   syncCapabilityGovernanceProfiles,
   toConnectorDiscoveryHistoryRecord,
   upsertApprovalScopePolicy
-} from './governance/runtime-governance-store';
-export {
-  listCounselorSelectorConfigs,
-  setCounselorSelectorEnabled,
-  upsertCounselorSelectorConfig
-} from './governance/runtime-counselor-selector-store';
-export {
-  aggregateCapabilityGovernanceProfiles,
-  aggregateNamedGovernanceProfiles
-} from './governance/runtime-governance-aggregation';
+} from './governance';
+export { listCounselorSelectorConfigs, setCounselorSelectorEnabled, upsertCounselorSelectorConfig } from './governance';
+export { aggregateCapabilityGovernanceProfiles, aggregateNamedGovernanceProfiles } from './governance';
 export {
   buildFreshnessAnswerInstruction,
   buildTemporalContextBlock,
@@ -57,7 +47,7 @@ export { createAgentGraph, createInitialState } from './graphs/chat/chat.graph';
 export { createApprovalRecoveryGraph } from './graphs/approval/approval-recovery.graph';
 export { createLearningGraph } from './graphs/learning/learning.graph';
 export { LearningFlow } from './flows/learning/learning-flow';
-export { AgentRuntime, type AgentRuntimeOptions } from './contracts/agent-runtime';
+export { AgentRuntime, type AgentRuntimeOptions } from './contracts';
 export {
   archivalMemorySearch,
   archivalMemorySearchByParams,
