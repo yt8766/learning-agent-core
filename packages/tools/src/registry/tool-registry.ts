@@ -5,6 +5,7 @@ type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 import { CONNECTOR_TOOL_DEFINITIONS } from '../definitions/connector-tool-definitions';
 import { FILESYSTEM_TOOL_DEFINITIONS } from '../definitions/filesystem-tool-definitions';
 import { KNOWLEDGE_TOOL_DEFINITIONS } from '../definitions/knowledge-tool-definitions';
+import { MCP_TOOL_DEFINITIONS } from '../definitions/mcp-tool-definitions';
 import { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from '../definitions/runtime-governance-tool-definitions';
 import { SCAFFOLD_TOOL_DEFINITIONS } from '../scaffold/scaffold-tool-definitions';
 import { SCHEDULING_TOOL_DEFINITIONS } from '../definitions/scheduling-tool-definitions';
@@ -12,6 +13,7 @@ import { DEFAULT_TOOL_FAMILIES } from './tool-families';
 
 export const DEFAULT_TOOLS: ToolDefinition[] = [
   ...KNOWLEDGE_TOOL_DEFINITIONS,
+  ...MCP_TOOL_DEFINITIONS,
   ...FILESYSTEM_TOOL_DEFINITIONS,
   ...SCAFFOLD_TOOL_DEFINITIONS,
   ...SCHEDULING_TOOL_DEFINITIONS,

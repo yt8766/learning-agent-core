@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { ChatRoleSchema, ReviewDecisionSchema, RiskLevelSchema } from '../../primitives';
-import { PlanQuestionRecordSchema } from './planning';
 
 export const AgentMessageRecordSchema = z.object({
   id: z.string(),
@@ -183,215 +182,25 @@ export const GovernanceReportRecordSchema = z.object({
   updatedAt: z.string()
 });
 
-export const BudgetGateStateRecordSchema = z.object({
-  node: z.literal('budget_gate'),
-  status: z.enum(['open', 'soft_blocked', 'hard_blocked', 'throttled']),
-  summary: z.string(),
-  queueDepth: z.number().optional(),
-  rateLimitKey: z.string().optional(),
-  triggeredAt: z.string().optional(),
-  updatedAt: z.string()
-});
-
-export const ComplexTaskPlanDependencySchema = z.object({
-  from: z.string(),
-  to: z.string()
-});
-
-export const ComplexTaskPlanRecordSchema = z.object({
-  node: z.literal('complex_task_plan'),
-  status: z.enum(['pending', 'completed', 'blocked']),
-  summary: z.string(),
-  subGoals: z.array(z.string()),
-  dependencies: z.array(ComplexTaskPlanDependencySchema),
-  recoveryPoints: z.array(z.string()).optional(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
-
-export const BlackboardRefsSchema = z.object({
-  traceCount: z.number(),
-  evidenceCount: z.number(),
-  checkpointId: z.string().optional(),
-  activeInterruptId: z.string().optional()
-});
-
-export const BlackboardStateRecordSchema = z.object({
-  node: z.literal('blackboard_state'),
-  taskId: z.string(),
-  sessionId: z.string().optional(),
-  visibleScopes: z.array(z.enum(['supervisor', 'strategy', 'ministry', 'fallback', 'governance'])),
-  refs: BlackboardRefsSchema,
-  updatedAt: z.string()
-});
-
-export const MicroLoopStateRecordSchema = z.object({
-  state: z.enum(['idle', 'retrying', 'exhausted', 'completed']),
-  attempt: z.number(),
-  maxAttempts: z.number(),
-  exhaustedReason: z.string().optional(),
-  updatedAt: z.string()
-});
-
-export const CurrentSkillExecutionRecordSchema = z.object({
-  skillId: z.string(),
-  displayName: z.string(),
-  phase: z.enum(['research', 'execute']),
-  stepIndex: z.number(),
-  totalSteps: z.number(),
-  title: z.string(),
-  instruction: z.string(),
-  toolNames: z.array(z.string()).optional(),
-  updatedAt: z.string()
-});
-
-export const ContextFilterPipelineAuditRecordSchema = z.object({
-  stage: z.enum([
-    'large_result_offload',
-    'micro_compression',
-    'history_trim',
-    'projection',
-    'conversation_summary',
-    'reactive_compact_retry'
-  ]),
-  applied: z.boolean(),
-  reason: z.string(),
-  originalSize: z.number().optional(),
-  compactedSize: z.number().optional(),
-  artifactIds: z.array(z.string()).optional(),
-  triggeredBy: z.string().optional()
-});
-
-export const ContextFilterSummaryRecordSchema = z.object({
-  summary: z.string(),
-  historyTraceCount: z.number(),
-  evidenceCount: z.number(),
-  specialistCount: z.number(),
-  ministryCount: z.number(),
-  compressionApplied: z.boolean().optional(),
-  compressionSource: z.enum(['heuristic', 'llm']).optional(),
-  compressedMessageCount: z.number().optional(),
-  artifactCount: z.number().optional(),
-  originalCharacterCount: z.number().optional(),
-  compactedCharacterCount: z.number().optional(),
-  reactiveRetryCount: z.number().optional(),
-  pipelineAudit: z.array(ContextFilterPipelineAuditRecordSchema).optional()
-});
-
-export const ContextFilterAudienceSliceSchema = z.object({
-  summary: z.string(),
-  dispatchCount: z.number()
-});
-
-export const ContextFilterRecordSchema = z.object({
-  node: z.literal('context_filter'),
-  status: z.enum(['pending', 'completed', 'blocked']),
-  filteredContextSlice: ContextFilterSummaryRecordSchema,
-  audienceSlices: z
-    .object({
-      strategy: ContextFilterAudienceSliceSchema,
-      ministry: ContextFilterAudienceSliceSchema,
-      fallback: ContextFilterAudienceSliceSchema
-    })
-    .optional(),
-  dispatchOrder: z.array(z.enum(['strategy', 'ministry', 'fallback'])).optional(),
-  noiseGuards: z.array(z.string()).optional(),
-  hiddenTraceCount: z.number().optional(),
-  redactedKeys: z.array(z.string()).optional(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
-
-export const FinalReviewRecordSchema = z.object({
-  node: z.literal('final_review'),
-  ministry: z.string(),
-  decision: z.enum(['pass', 'revise_required', 'block']),
-  summary: z.string(),
-  interruptRequired: z.boolean(),
-  deliveryStatus: z.enum(['pending', 'delivered', 'interrupted']).optional(),
-  deliveryMinistry: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
-
-export const GuardrailStateRecordSchema = z.object({
-  stage: z.enum(['pre', 'post']),
-  verdict: z.enum(['pass_through', 'rewrite_required', 'block']),
-  summary: z.string(),
-  eventId: z.string().optional(),
-  updatedAt: z.string()
-});
-
-export const CriticStateRecordSchema = z.object({
-  node: z.literal('critic'),
-  decision: z.enum(['pass_through', 'rewrite_required']),
-  summary: z.string(),
-  blockingIssues: z.array(z.string()).optional(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
-
-export const SandboxStateRecordSchema = z.object({
-  node: z.literal('sandbox'),
-  stage: z.enum(['gongbu', 'bingbu', 'review']),
-  status: z.enum(['idle', 'running', 'passed', 'failed', 'exhausted']),
-  attempt: z.number(),
-  maxAttempts: z.number(),
-  verdict: z.enum(['safe', 'unsafe', 'retry']).optional(),
-  exhaustedReason: z.string().optional(),
-  updatedAt: z.string()
-});
-
-export const KnowledgeIngestionStateRecordSchema = z.object({
-  node: z.literal('knowledge_ingestion'),
-  store: z.enum(['wenyuan', 'cangjing']),
-  sourceId: z.string().optional(),
-  receiptId: z.string().optional(),
-  status: z.enum(['idle', 'queued', 'processing', 'completed', 'partial', 'failed']),
-  updatedAt: z.string()
-});
-
-export const KnowledgeIndexStateRecordSchema = z.object({
-  node: z.literal('knowledge_index'),
-  store: z.enum(['wenyuan', 'cangjing']),
-  indexStatus: z.enum(['ready', 'partial', 'building', 'failed']),
-  searchableDocumentCount: z.number().optional(),
-  blockedDocumentCount: z.number().optional(),
-  updatedAt: z.string()
-});
-
-export const EvaluationReportRecordSchema = z.object({
-  id: z.string(),
-  ministry: z.literal('libu-governance'),
-  score: z.number(),
-  summary: z.string(),
-  rlaifNotes: z.array(z.string()),
-  derivedFromTaskId: z.string(),
-  derivedFromTraceId: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string()
-});
-
-export const InternalSubAgentResultSchema = z.object({
-  agentId: z.string(),
-  status: z.enum(['continue', 'needs_user_input', 'needs_revision', 'blocked']),
-  interactionKind: z.enum(['plan-question', 'supplemental-input']).optional(),
-  summary: z.string().optional(),
-  questions: z.array(PlanQuestionRecordSchema).optional(),
-  createdAt: z.string()
-});
-
-export const AgentExecutionStateSchema = z.object({
-  agentId: z.string(),
-  role: z.enum(['manager', 'research', 'executor', 'reviewer']),
-  goal: z.string(),
-  subTask: z.string().optional(),
-  plan: z.array(z.string()),
-  toolCalls: z.array(z.string()),
-  observations: z.array(z.string()),
-  shortTermMemory: z.array(z.string()),
-  longTermMemoryRefs: z.array(z.string()),
-  evaluation: z.unknown().optional(),
-  finalOutput: z.string().optional(),
-  status: z.enum(['idle', 'running', 'waiting_approval', 'completed', 'failed'])
-});
+export {
+  AgentExecutionStateSchema,
+  BlackboardRefsSchema,
+  BlackboardStateRecordSchema,
+  BudgetGateStateRecordSchema,
+  ComplexTaskPlanDependencySchema,
+  ComplexTaskPlanRecordSchema,
+  ContextFilterAudienceSliceSchema,
+  ContextFilterPipelineAuditRecordSchema,
+  ContextFilterRecordSchema,
+  ContextFilterSummaryRecordSchema,
+  CriticStateRecordSchema,
+  CurrentSkillExecutionRecordSchema,
+  EvaluationReportRecordSchema,
+  FinalReviewRecordSchema,
+  GuardrailStateRecordSchema,
+  InternalSubAgentResultSchema,
+  KnowledgeIndexStateRecordSchema,
+  KnowledgeIngestionStateRecordSchema,
+  MicroLoopStateRecordSchema,
+  SandboxStateRecordSchema
+} from './orchestration-state-records';

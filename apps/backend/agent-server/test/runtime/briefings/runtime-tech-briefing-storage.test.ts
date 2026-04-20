@@ -11,9 +11,9 @@ import {
   readBriefingHistory,
   readBriefingScheduleState,
   readDailyTechBriefingRuns,
-  readDailyTechBriefingStatus,
   saveBriefingHistory
 } from '../../../src/runtime/briefings/runtime-tech-briefing-storage';
+import { readDailyTechBriefingStatus } from '../../../src/runtime/briefings/runtime-tech-briefing-status';
 
 describe('runtime-tech-briefing-storage', () => {
   let workspaceRoot = '';

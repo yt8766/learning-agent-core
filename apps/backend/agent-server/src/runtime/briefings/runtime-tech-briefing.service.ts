@@ -20,10 +20,10 @@ import {
   readBriefingFeedback,
   readBriefingHistory,
   readBriefingScheduleState,
-  readDailyTechBriefingStatus,
   saveBriefingScheduleState,
   saveDailyTechBriefingSchedule
 } from './runtime-tech-briefing-storage';
+import { readDailyTechBriefingStatus } from './runtime-tech-briefing-status';
 import type {
   DailyTechBriefingStatusRecord,
   TechBriefingCategory,

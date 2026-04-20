@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
@@ -31,7 +31,6 @@ import {
 import {
   buildStructuredSearchResult,
   isTaskSummaryQuery,
-  nextVersion,
   normalizeMemoryRecord
 } from '../normalization/memory-record-helpers';
 import { FileReflectionRepository, type ReflectionRepository } from './reflection.repository';
@@ -40,6 +39,14 @@ import {
   type ResolutionCandidateRepository
 } from './resolution-candidate.repository';
 import { FileUserProfileRepository, type UserProfileRepository } from './user-profile.repository';
+import {
+  invalidateMemory,
+  quarantineMemory,
+  restoreMemory,
+  retireMemory,
+  supersedeMemory,
+  type MemoryLifecycleDeps
+} from './memory-repository-lifecycle';
 
 export type { MemoryRepository } from './memory-repository.types';
 import type { MemoryRepository } from './memory-repository.types';
@@ -140,123 +147,23 @@ export class FileMemoryRepository implements MemoryRepository {
     detail?: string,
     restoreSuggestion?: string
   ): Promise<MemoryRecord | undefined> {
-    const records = await this.readAll();
-    const target = records.find(record => record.id === id);
-    if (!target) {
-      return undefined;
-    }
-
-    target.quarantined = true;
-    target.quarantineReason = reason;
-    target.quarantineCategory = category;
-    target.quarantineReasonDetail = detail;
-    target.quarantineRestoreSuggestion = restoreSuggestion;
-    target.quarantineEvidenceRefs = evidenceRefs;
-    target.quarantinedAt = new Date().toISOString();
-    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
-    await this.appendEvent(target.id, target.version ?? 1, 'memory.status_changed', {
-      status: 'quarantined',
-      reason,
-      snapshot: buildMemorySnapshotPayload(target)
-    });
-    await this.vectorIndexRepository?.remove('memory', target.id);
-    return target;
+    return quarantineMemory(this.lifecycleDeps(), id, reason, evidenceRefs, category, detail, restoreSuggestion);
   }
 
   async invalidate(id: string, reason: string): Promise<MemoryRecord | undefined> {
-    const records = await this.readAll();
-    const target = records.find(record => record.id === id);
-    if (!target) {
-      return undefined;
-    }
-
-    target.status = 'invalidated';
-    target.invalidatedAt = new Date().toISOString();
-    target.invalidationReason = reason;
-    target.version = nextVersion(target);
-    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
-    await this.appendEvent(target.id, target.version, 'memory.status_changed', {
-      status: 'invalidated',
-      reason,
-      snapshot: buildMemorySnapshotPayload(target)
-    });
-    await this.vectorIndexRepository?.remove('memory', target.id);
-    return target;
+    return invalidateMemory(this.lifecycleDeps(), id, reason);
   }
 
   async supersede(id: string, replacementId: string, reason: string): Promise<MemoryRecord | undefined> {
-    const records = await this.readAll();
-    const target = records.find(record => record.id === id);
-    if (!target) {
-      return undefined;
-    }
-
-    target.status = 'superseded';
-    target.supersededById = replacementId;
-    target.supersededAt = new Date().toISOString();
-    target.invalidationReason = reason;
-    target.version = nextVersion(target);
-    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
-    await this.appendEvent(target.id, target.version, 'memory.status_changed', {
-      status: 'superseded',
-      reason,
-      replacementId,
-      snapshot: buildMemorySnapshotPayload(target)
-    });
-    await this.vectorIndexRepository?.remove('memory', target.id);
-    return target;
+    return supersedeMemory(this.lifecycleDeps(), id, replacementId, reason);
   }
 
   async retire(id: string, reason: string): Promise<MemoryRecord | undefined> {
-    const records = await this.readAll();
-    const target = records.find(record => record.id === id);
-    if (!target) {
-      return undefined;
-    }
-
-    target.status = 'retired';
-    target.retiredAt = new Date().toISOString();
-    target.invalidationReason = reason;
-    target.version = nextVersion(target);
-    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
-    await this.appendEvent(target.id, target.version, 'memory.archived', {
-      status: 'retired',
-      reason,
-      snapshot: buildMemorySnapshotPayload(target)
-    });
-    await this.vectorIndexRepository?.remove('memory', target.id);
-    return target;
+    return retireMemory(this.lifecycleDeps(), id, reason);
   }
 
   async restore(id: string): Promise<MemoryRecord | undefined> {
-    const records = await this.readAll();
-    const target = records.find(record => record.id === id);
-    if (!target) {
-      return undefined;
-    }
-
-    target.status = 'active';
-    target.restoredAt = new Date().toISOString();
-    target.invalidatedAt = undefined;
-    target.invalidationReason = undefined;
-    target.supersededAt = undefined;
-    target.supersededById = undefined;
-    target.retiredAt = undefined;
-    target.quarantined = false;
-    target.quarantineReason = undefined;
-    target.quarantineCategory = undefined;
-    target.quarantineReasonDetail = undefined;
-    target.quarantineRestoreSuggestion = undefined;
-    target.quarantineEvidenceRefs = undefined;
-    target.quarantinedAt = undefined;
-    target.version = nextVersion(target);
-    await writeFile(this.filePath, records.map(item => JSON.stringify(item)).join('\n'));
-    await this.appendEvent(target.id, target.version, 'memory.restored', {
-      status: 'active',
-      snapshot: buildMemorySnapshotPayload(target)
-    });
-    await this.vectorIndexRepository?.upsertMemory(target);
-    return target;
+    return restoreMemory(this.lifecycleDeps(), id);
   }
 
   async listEvents(memoryId?: string): Promise<MemoryEventRecord[]> {
@@ -348,6 +255,15 @@ export class FileMemoryRepository implements MemoryRepository {
 
   async listReflections(): Promise<ReflectionRecord[]> {
     return listMemoryReflections(this.reflectionRepository);
+  }
+
+  private lifecycleDeps(): MemoryLifecycleDeps {
+    return {
+      filePath: this.filePath,
+      readAll: () => this.readAll(),
+      appendEvent: (memoryId, version, type, payload) => this.appendEvent(memoryId, version, type, payload),
+      vectorIndexRepository: this.vectorIndexRepository
+    };
   }
 
   private async readAll(): Promise<MemoryRecord[]> {
