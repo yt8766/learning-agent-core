@@ -14,6 +14,7 @@ import {
   toApprovalItems
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 import { useHashChangeListener, useHashWriter } from '@/hooks/admin-dashboard/admin-dashboard-hash-sync';
+import { useAdminDashboardFilters } from '@/hooks/admin-dashboard/admin-dashboard-filter-state';
 
 export { PAGE_TITLES };
 
@@ -47,37 +48,28 @@ export function useAdminDashboard() {
   const [error, setError] = useState('');
   const [runtimeHistoryDays, setRuntimeHistoryDays] = useState(30);
   const [evalsHistoryDays, setEvalsHistoryDays] = useState(30);
-  const [runtimeStatusFilter, setRuntimeStatusFilter] = useState(() => initialHashState.runtimeStatusFilter);
-  const [runtimeModelFilter, setRuntimeModelFilter] = useState(() => initialHashState.runtimeModelFilter);
-  const [runtimePricingSourceFilter, setRuntimePricingSourceFilter] = useState(
-    () => initialHashState.runtimePricingSourceFilter
-  );
-  const [runtimeExecutionModeFilter, setRuntimeExecutionModeFilter] = useState<
-    'all' | 'plan' | 'execute' | 'imperial_direct'
-  >(() => initialHashState.runtimeExecutionModeFilter);
-  const [runtimeInteractionKindFilter, setRuntimeInteractionKindFilter] = useState<
-    | 'all'
-    | 'approval'
-    | 'plan-question'
-    | 'supplemental-input'
-    | 'revise-required'
-    | 'micro-loop-exhausted'
-    | 'mode-transition'
-  >(() => initialHashState.runtimeInteractionKindFilter);
-  const [approvalsExecutionModeFilter, setApprovalsExecutionModeFilter] = useState<
-    'all' | 'plan' | 'execute' | 'imperial_direct'
-  >(() => initialHashState.approvalsExecutionModeFilter);
-  const [approvalsInteractionKindFilter, setApprovalsInteractionKindFilter] = useState<
-    | 'all'
-    | 'approval'
-    | 'plan-question'
-    | 'supplemental-input'
-    | 'revise-required'
-    | 'micro-loop-exhausted'
-    | 'mode-transition'
-  >(() => initialHashState.approvalsInteractionKindFilter);
-  const [evalScenarioFilter, setEvalScenarioFilter] = useState('');
-  const [evalOutcomeFilter, setEvalOutcomeFilter] = useState('');
+  const {
+    filters,
+    setRuntimeStatusFilter,
+    setRuntimeModelFilter,
+    setRuntimePricingSourceFilter,
+    setRuntimeExecutionModeFilter,
+    setRuntimeInteractionKindFilter,
+    setApprovalsExecutionModeFilter,
+    setApprovalsInteractionKindFilter,
+    setEvalScenarioFilter,
+    setEvalOutcomeFilter
+  } = useAdminDashboardFilters({
+    runtimeStatusFilter: initialHashState.runtimeStatusFilter,
+    runtimeModelFilter: initialHashState.runtimeModelFilter,
+    runtimePricingSourceFilter: initialHashState.runtimePricingSourceFilter,
+    runtimeExecutionModeFilter: initialHashState.runtimeExecutionModeFilter,
+    runtimeInteractionKindFilter: initialHashState.runtimeInteractionKindFilter,
+    approvalsExecutionModeFilter: initialHashState.approvalsExecutionModeFilter,
+    approvalsInteractionKindFilter: initialHashState.approvalsInteractionKindFilter,
+    evalScenarioFilter: '',
+    evalOutcomeFilter: ''
+  });
   const [refreshDiagnostics, setRefreshDiagnostics] = useState<{
     scope: 'all' | 'center' | 'task';
     target: string;
@@ -96,15 +88,7 @@ export function useAdminDashboard() {
   const pageRef = useRef(page);
   const runtimeHistoryDaysRef = useRef(runtimeHistoryDays);
   const evalsHistoryDaysRef = useRef(evalsHistoryDays);
-  const runtimeStatusFilterRef = useRef(runtimeStatusFilter);
-  const runtimeModelFilterRef = useRef(runtimeModelFilter);
-  const runtimePricingSourceFilterRef = useRef(runtimePricingSourceFilter);
-  const runtimeExecutionModeFilterRef = useRef(runtimeExecutionModeFilter);
-  const runtimeInteractionKindFilterRef = useRef(runtimeInteractionKindFilter);
-  const evalScenarioFilterRef = useRef(evalScenarioFilter);
-  const evalOutcomeFilterRef = useRef(evalOutcomeFilter);
-  const approvalsExecutionModeFilterRef = useRef(approvalsExecutionModeFilter);
-  const approvalsInteractionKindFilterRef = useRef(approvalsInteractionKindFilter);
+  const filtersRef = useRef(filters);
   const bundleRef = useRef<TaskBundle | null>(bundle);
   const consoleDataRef = useRef<PlatformConsoleRecord | null>(consoleData);
   const activeTaskIdRef = useRef<string | undefined>(activeTaskIdState);
@@ -112,15 +96,7 @@ export function useAdminDashboard() {
   pageRef.current = page;
   runtimeHistoryDaysRef.current = runtimeHistoryDays;
   evalsHistoryDaysRef.current = evalsHistoryDays;
-  runtimeStatusFilterRef.current = runtimeStatusFilter;
-  runtimeModelFilterRef.current = runtimeModelFilter;
-  runtimePricingSourceFilterRef.current = runtimePricingSourceFilter;
-  runtimeExecutionModeFilterRef.current = runtimeExecutionModeFilter;
-  runtimeInteractionKindFilterRef.current = runtimeInteractionKindFilter;
-  evalScenarioFilterRef.current = evalScenarioFilter;
-  evalOutcomeFilterRef.current = evalOutcomeFilter;
-  approvalsExecutionModeFilterRef.current = approvalsExecutionModeFilter;
-  approvalsInteractionKindFilterRef.current = approvalsInteractionKindFilter;
+  filtersRef.current = filters;
   bundleRef.current = bundle;
   consoleDataRef.current = consoleData;
   activeTaskIdRef.current = activeTaskIdState;
@@ -134,17 +110,20 @@ export function useAdminDashboard() {
         getRuntimeHistoryDays: () => runtimeHistoryDaysRef.current,
         getEvalsHistoryDays: () => evalsHistoryDaysRef.current,
         getRuntimeFilters: () => ({
-          status: runtimeStatusFilterRef.current,
-          model: runtimeModelFilterRef.current,
-          pricingSource: runtimePricingSourceFilterRef.current,
-          executionMode: runtimeExecutionModeFilterRef.current,
-          interactionKind: runtimeInteractionKindFilterRef.current
+          status: filtersRef.current.runtimeStatusFilter,
+          model: filtersRef.current.runtimeModelFilter,
+          pricingSource: filtersRef.current.runtimePricingSourceFilter,
+          executionMode: filtersRef.current.runtimeExecutionModeFilter,
+          interactionKind: filtersRef.current.runtimeInteractionKindFilter
         }),
         getApprovalFilters: () => ({
-          executionMode: approvalsExecutionModeFilterRef.current,
-          interactionKind: approvalsInteractionKindFilterRef.current
+          executionMode: filtersRef.current.approvalsExecutionModeFilter,
+          interactionKind: filtersRef.current.approvalsInteractionKindFilter
         }),
-        getEvalFilters: () => ({ scenario: evalScenarioFilterRef.current, outcome: evalOutcomeFilterRef.current }),
+        getEvalFilters: () => ({
+          scenario: filtersRef.current.evalScenarioFilter,
+          outcome: filtersRef.current.evalOutcomeFilter
+        }),
         getBundle: () => bundleRef.current,
         getConsoleData: () => consoleDataRef.current,
         setPage,
@@ -213,13 +192,13 @@ export function useAdminDashboard() {
     observatoryFocusTarget,
     runtimeCompareTaskId,
     runtimeGraphNodeId,
-    runtimeStatusFilter,
-    runtimeModelFilter,
-    runtimePricingSourceFilter,
-    runtimeExecutionModeFilter,
-    runtimeInteractionKindFilter,
-    approvalsExecutionModeFilter,
-    approvalsInteractionKindFilter
+    runtimeStatusFilter: filters.runtimeStatusFilter,
+    runtimeModelFilter: filters.runtimeModelFilter,
+    runtimePricingSourceFilter: filters.runtimePricingSourceFilter,
+    runtimeExecutionModeFilter: filters.runtimeExecutionModeFilter,
+    runtimeInteractionKindFilter: filters.runtimeInteractionKindFilter,
+    approvalsExecutionModeFilter: filters.approvalsExecutionModeFilter,
+    approvalsInteractionKindFilter: filters.approvalsInteractionKindFilter
   });
 
   useEffect(() => {
@@ -235,24 +214,24 @@ export function useAdminDashboard() {
   }, [
     actions,
     page,
-    runtimeStatusFilter,
-    runtimeModelFilter,
-    runtimePricingSourceFilter,
-    runtimeExecutionModeFilter,
-    runtimeInteractionKindFilter
+    filters.runtimeStatusFilter,
+    filters.runtimeModelFilter,
+    filters.runtimePricingSourceFilter,
+    filters.runtimeExecutionModeFilter,
+    filters.runtimeInteractionKindFilter
   ]);
 
   useEffect(() => {
     if (consoleDataRef.current && page === 'approvals') {
       void actions.refreshPageCenter('approvals');
     }
-  }, [actions, page, approvalsExecutionModeFilter, approvalsInteractionKindFilter]);
+  }, [actions, page, filters.approvalsExecutionModeFilter, filters.approvalsInteractionKindFilter]);
 
   useEffect(() => {
     if (consoleDataRef.current && page === 'evals') {
       void actions.refreshPageCenter('evals');
     }
-  }, [actions, page, evalScenarioFilter, evalOutcomeFilter]);
+  }, [actions, page, filters.evalScenarioFilter, filters.evalOutcomeFilter]);
 
   useEffect(() => {
     if (!initialDashboardRefreshPromise) {
@@ -303,13 +282,13 @@ export function useAdminDashboard() {
         runtimeFocusId: observatoryFocusTarget?.id,
         runtimeCompareTaskId,
         runtimeGraphNodeId,
-        runtimeStatusFilter,
-        runtimeModelFilter,
-        runtimePricingSourceFilter,
-        runtimeExecutionModeFilter,
-        runtimeInteractionKindFilter,
-        approvalsExecutionModeFilter,
-        approvalsInteractionKindFilter
+        runtimeStatusFilter: filters.runtimeStatusFilter,
+        runtimeModelFilter: filters.runtimeModelFilter,
+        runtimePricingSourceFilter: filters.runtimePricingSourceFilter,
+        runtimeExecutionModeFilter: filters.runtimeExecutionModeFilter,
+        runtimeInteractionKindFilter: filters.runtimeInteractionKindFilter,
+        approvalsExecutionModeFilter: filters.approvalsExecutionModeFilter,
+        approvalsInteractionKindFilter: filters.approvalsInteractionKindFilter
       }),
     [
       page,
@@ -317,13 +296,13 @@ export function useAdminDashboard() {
       observatoryFocusTarget,
       runtimeCompareTaskId,
       runtimeGraphNodeId,
-      runtimeStatusFilter,
-      runtimeModelFilter,
-      runtimePricingSourceFilter,
-      runtimeExecutionModeFilter,
-      runtimeInteractionKindFilter,
-      approvalsExecutionModeFilter,
-      approvalsInteractionKindFilter
+      filters.runtimeStatusFilter,
+      filters.runtimeModelFilter,
+      filters.runtimePricingSourceFilter,
+      filters.runtimeExecutionModeFilter,
+      filters.runtimeInteractionKindFilter,
+      filters.approvalsExecutionModeFilter,
+      filters.approvalsInteractionKindFilter
     ]
   );
 
@@ -354,23 +333,23 @@ export function useAdminDashboard() {
     setRuntimeHistoryDays,
     evalsHistoryDays,
     setEvalsHistoryDays,
-    runtimeStatusFilter,
+    runtimeStatusFilter: filters.runtimeStatusFilter,
     setRuntimeStatusFilter,
-    runtimeModelFilter,
+    runtimeModelFilter: filters.runtimeModelFilter,
     setRuntimeModelFilter,
-    runtimePricingSourceFilter,
+    runtimePricingSourceFilter: filters.runtimePricingSourceFilter,
     setRuntimePricingSourceFilter,
-    runtimeExecutionModeFilter,
+    runtimeExecutionModeFilter: filters.runtimeExecutionModeFilter,
     setRuntimeExecutionModeFilter,
-    runtimeInteractionKindFilter,
+    runtimeInteractionKindFilter: filters.runtimeInteractionKindFilter,
     setRuntimeInteractionKindFilter,
-    approvalsExecutionModeFilter,
+    approvalsExecutionModeFilter: filters.approvalsExecutionModeFilter,
     setApprovalsExecutionModeFilter,
-    approvalsInteractionKindFilter,
+    approvalsInteractionKindFilter: filters.approvalsInteractionKindFilter,
     setApprovalsInteractionKindFilter,
-    evalScenarioFilter,
+    evalScenarioFilter: filters.evalScenarioFilter,
     setEvalScenarioFilter,
-    evalOutcomeFilter,
+    evalOutcomeFilter: filters.evalOutcomeFilter,
     setEvalOutcomeFilter,
     refreshDiagnostics,
     activeRefreshTargets,

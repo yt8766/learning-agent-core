@@ -5,32 +5,16 @@ import { fetchChatSession } from '@/api/chat-query';
 import { createSessionStream, selectSession, appendMessage } from '@/api/chat-api';
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 import {
-  CHECKPOINT_REFRESH_EVENT_TYPES,
   buildSessionActivationPlan,
   activateChatSession,
-  deriveSessionStatusFromCheckpoint,
   formatSessionTime,
   getMessageRoleLabel,
   getSessionStatusLabel,
-  bindChatSessionStream,
-  mergeEvent,
   mergeOrAppendMessage,
-  isAssistantContentEvent,
-  createSessionPollingRunner,
-  shouldIgnoreStaleTerminalStreamEvent,
-  shouldSkipStopSessionPolling,
-  shouldStartDetailPollingAfterIdleClose,
-  shouldShowStreamFallbackError,
-  shouldStartDetailPollingAfterStreamError,
-  shouldStopStreamingForEvent,
-  STARTER_PROMPT,
-  STREAM_IDLE_TIMEOUT_MS,
-  syncCheckpointFromStreamEvent,
-  syncMessageFromEvent,
-  syncProcessMessageFromEvent,
-  syncSessionFromEvent
+  STARTER_PROMPT
 } from './chat-session/chat-session-helpers';
 import { createChatSessionActions } from './chat-session/use-chat-session-actions';
+import { useChatSessionStreamManager } from './chat-session/use-chat-session-stream-manager';
 
 export { formatSessionTime, getMessageRoleLabel, getSessionStatusLabel };
 
@@ -46,15 +30,20 @@ export function useChatSession() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
-  const checkpointRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const checkpointRefreshInFlight = useRef(false);
-  const checkpointRefreshQueued = useRef(false);
+
+  // Stream manager refs are declared early to preserve hook call ordering for tests.
   const checkpointRef = useRef<ChatCheckpointRecord | undefined>(undefined);
-  const sessionDetailPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollingSessionRef = useRef<string>('');
-  const pollingModeRef = useRef<'checkpoint' | 'detail' | ''>('');
-  const streamReconnectSessionRef = useRef('');
+  const streamManager = useChatSessionStreamManager({
+    setCheckpoint,
+    setEvents,
+    setMessages,
+    setSessions,
+    setError,
+    checkpointRef
+  });
+
   const [streamReconnectNonce, setStreamReconnectNonce] = useState(0);
+  const streamReconnectSessionRef = useRef('');
   const pendingInitialMessage = useRef<{ sessionId: string; content: string } | null>(null);
   const pendingUserIds = useRef<Record<string, string>>({});
   const pendingAssistantIds = useRef<Record<string, string>>({});
@@ -93,6 +82,8 @@ export function useChatSession() {
     pendingAssistantIds,
     optimisticThinkingStartedAt
   });
+
+  streamManager.setChatActions(chatActions);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,9 +152,14 @@ export function useChatSession() {
           hydrateSessionSnapshot: chatActions.hydrateSessionSnapshot,
           createSessionStream,
           bindStream: (nextStream, nextSessionId) =>
-            bindStream(nextStream, nextSessionId, () => disposed || streamState.intentionalClose, streamState),
-          startSessionPolling,
-          stopSessionPolling,
+            streamManager.bindStream(
+              nextStream,
+              nextSessionId,
+              () => disposed || streamState.intentionalClose,
+              streamState
+            ),
+          startSessionPolling: streamManager.startSessionPolling,
+          stopSessionPolling: streamManager.stopSessionPolling,
           clearStreamReconnectSession: () => {
             streamReconnectSessionRef.current = '';
           },
@@ -195,126 +191,13 @@ export function useChatSession() {
         clearTimeout(streamState.idleTimer);
         streamState.idleTimer = null;
       }
-      if (checkpointRefreshTimer.current) {
-        clearTimeout(checkpointRefreshTimer.current);
-        checkpointRefreshTimer.current = null;
+      if (streamManager.checkpointRefreshTimer.current) {
+        clearTimeout(streamManager.checkpointRefreshTimer.current);
+        streamManager.checkpointRefreshTimer.current = null;
       }
-      stopSessionPolling(activeSessionId);
+      streamManager.stopSessionPolling(activeSessionId);
     };
   }, [activeSessionId, chatActions.hydrateSessionSnapshot, queryClient, streamReconnectNonce]);
-
-  function scheduleCheckpointRefresh() {
-    if (checkpointRefreshTimer.current) {
-      clearTimeout(checkpointRefreshTimer.current);
-    }
-    checkpointRefreshTimer.current = setTimeout(() => {
-      checkpointRefreshTimer.current = null;
-      void flushCheckpointRefresh();
-    }, 220);
-  }
-
-  async function flushCheckpointRefresh() {
-    if (checkpointRefreshInFlight.current) {
-      checkpointRefreshQueued.current = true;
-      return;
-    }
-
-    checkpointRefreshInFlight.current = true;
-    try {
-      await chatActions.refreshCheckpointOnly();
-    } finally {
-      checkpointRefreshInFlight.current = false;
-      if (checkpointRefreshQueued.current) {
-        checkpointRefreshQueued.current = false;
-        scheduleCheckpointRefresh();
-      }
-    }
-  }
-
-  function startSessionPolling(sessionId: string, mode: 'checkpoint' | 'detail') {
-    if (!sessionId) {
-      return;
-    }
-
-    if (pollingSessionRef.current === sessionId && pollingModeRef.current === mode && sessionDetailPollTimer.current) {
-      return;
-    }
-
-    stopSessionPolling();
-    pollingSessionRef.current = sessionId;
-    pollingModeRef.current = mode;
-    sessionDetailPollTimer.current = setInterval(
-      createSessionPollingRunner({
-        mode,
-        sessionId,
-        checkpointRefreshInFlight: checkpointRefreshInFlight.current,
-        hydrateSessionSnapshot: chatActions.hydrateSessionSnapshot,
-        refreshCheckpointOnly: chatActions.refreshCheckpointOnly,
-        deriveSessionStatusFromCheckpoint,
-        stopSessionPolling
-      }),
-      mode === 'detail' ? 1500 : 2500
-    );
-  }
-
-  function stopSessionPolling(sessionId?: string) {
-    if (shouldSkipStopSessionPolling(sessionId, pollingSessionRef.current)) {
-      return;
-    }
-
-    if (sessionDetailPollTimer.current) {
-      clearInterval(sessionDetailPollTimer.current);
-      sessionDetailPollTimer.current = null;
-    }
-    if (!sessionId || pollingSessionRef.current === sessionId) {
-      pollingSessionRef.current = '';
-      pollingModeRef.current = '';
-    }
-  }
-
-  function bindStream(
-    stream: EventSource,
-    sessionId: string,
-    isDisposed: () => boolean,
-    streamState: {
-      intentionalClose: boolean;
-      idleTimer: ReturnType<typeof setTimeout> | null;
-      hasAssistantContent?: boolean;
-    }
-  ) {
-    bindChatSessionStream({
-      stream,
-      sessionId,
-      isDisposed,
-      streamState,
-      checkpointRef,
-      clearPendingUser: chatActions.clearPendingUser,
-      reconcileFinalSnapshot: chatActions.reconcileFinalSnapshot,
-      refreshCheckpointOnly: chatActions.refreshCheckpointOnly,
-      deriveSessionStatusFromCheckpoint,
-      shouldIgnoreStaleTerminalStreamEvent,
-      isAssistantContentEvent,
-      syncCheckpointFromStreamEvent,
-      mergeEvent,
-      syncMessageFromEvent,
-      syncProcessMessageFromEvent,
-      syncSessionFromEvent,
-      checkpointRefreshEventTypes: CHECKPOINT_REFRESH_EVENT_TYPES,
-      shouldStopStreamingForEvent,
-      shouldStartDetailPollingAfterStreamError,
-      shouldShowStreamFallbackError,
-      shouldStartDetailPollingAfterIdleClose,
-      setCheckpoint,
-      setEvents,
-      setMessages,
-      setSessions,
-      setError,
-      startSessionPolling,
-      stopSessionPolling,
-      scheduleCheckpointRefresh,
-      streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS
-    });
-  }
 
   return {
     sessions,
