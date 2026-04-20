@@ -94,14 +94,6 @@
 - 新建 `packages/runtime/src/contracts/index.ts` barrel
 - 重构 `packages/runtime/src/index.ts` 从 barrel 导入
 
-## 最终验证结果
-
-- TypeScript：runtime / backend / agent-admin / agent-chat 全部 `--noEmit` 通过
-- Vitest：403 test files, 1336 tests 全部通过
-- Barrel layout：`pnpm check:barrel-layout` 通过
-- Package boundaries：`pnpm check:package-boundaries` 通过
-- 无生产源码文件超过 400 行（`packages/templates` 报表模板除外）
-
 ### Commit 9: `a1d7fd4c` — P0 高优先级 hooks/service 重构
 
 11 个文件变更，完成 3 个 P0 级架构重构：
@@ -113,3 +105,32 @@
 | `runtime-tech-briefing.service.ts` — processCategory 提取       | 382    | 290    | `runtime-tech-briefing-category-runner.ts` (107 行) | 3 spec tests |
 
 验证：`pnpm verify` 9 阶段全绿（docs / prettier / eslint / typecheck / spec / unit / demo / integration / architecture）。
+
+### Commit 10: `5f57d80f` — 补充 barrel 索引 + 清理死文件
+
+5 个文件变更：
+
+- 新建 `packages/runtime/src/bridges/index.ts` barrel
+- 新建 `packages/runtime/src/capabilities/index.ts` barrel
+- 新建 `packages/runtime/src/utils/index.ts` barrel
+- 删除 `tmp/` 目录、`skills/.DS_Store`、`scripts/run-package-typecheck.js`
+
+### Commit 11: `07970070` — 完成全部 runtime 子域 barrel 并精简主入口
+
+5 个文件变更：
+
+- 新建 `packages/runtime/src/flows/index.ts` barrel
+- 新建 `packages/runtime/src/graphs/index.ts` barrel
+- 新建 `packages/runtime/src/runtime/index.ts` barrel（84 行，覆盖 20+ 模块）
+- 新建 `packages/runtime/src/session/index.ts` barrel
+- 精简 `packages/runtime/src/index.ts`：139 行 → 49 行，所有子域通过 barrel 导入
+
+Runtime 模块化现状：11 个子域全部具备 barrel index，主入口按域分组 re-export。
+
+## 最终验证结果（更新）
+
+- `pnpm verify` 9 阶段全绿
+- 零生产源码文件超过 400 行（`packages/templates` 报表模板除外）
+- runtime 主入口从 139 行精简至 49 行
+- 共 12 个新增 spec 测试覆盖 3 个 P0 重构
+- 分支共 14 个提交，全部独立验证通过
