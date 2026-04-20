@@ -1,56 +1,33 @@
 import {
-  approveSkillInstall,
   approveTask,
-  clearCapabilityPolicy,
-  clearConnectorPolicy,
-  closeConnectorSession,
-  configureConnector,
-  createOrUpdateCounselorSelector,
   createAgentDiagnosisTask,
   createTask,
-  disableCompanyAgent,
-  disableCounselorSelector,
-  disableConnector,
   disableSkill,
-  disableSkillSource,
-  enableCompanyAgent,
-  enableCounselorSelector,
-  enableConnector,
-  enableSkillSource,
   exportEvalsCenter,
   exportApprovalsCenter,
   exportRuntimeCenter,
-  installSkill,
   invalidateMemory,
   invalidateRule,
   promoteSkill,
-  refreshConnectorDiscovery,
   refreshMetricsSnapshots,
-  rejectSkillInstall,
   rejectTask,
+  resolveMemoryResolutionCandidate,
   restoreMemory,
   restoreRule,
   restoreSkill,
-  resolveMemoryResolutionCandidate,
-  revokeApprovalScopePolicy,
   retireMemory,
   retireRule,
   retireSkill,
   retryTask,
+  revokeApprovalScopePolicy,
   setLearningConflictStatus,
-  setCapabilityPolicy,
-  setConnectorPolicy,
   supersedeMemory,
-  supersedeRule,
-  syncSkillSource
+  supersedeRule
 } from '@/api/admin-api';
 import { adminQueryKeys } from '@/api/admin-query';
 import { downloadText } from './admin-dashboard-constants';
 import type { AdminDashboardActionContext } from './admin-dashboard-actions.types';
-import {
-  promptCreateCounselorSelector,
-  promptEditCounselorSelector
-} from './admin-dashboard-counselor-selector-prompts';
+import { createConnectorSkillCounselorMutations } from './admin-dashboard-mutation-connector-actions';
 
 interface RefreshActions {
   refreshAll: () => Promise<void>;
@@ -82,6 +59,11 @@ export function createAdminDashboardMutationActions(
 
   const refreshCenterAfter = (page: 'runtime' | 'approvals' | 'connectors' | 'skillSources' | 'companyAgents') =>
     context.getPage() === page ? refreshActions.refreshPageCenter(page) : Promise.resolve();
+
+  const connectorSkillCounselorActions = createConnectorSkillCounselorMutations({
+    runMutation,
+    refreshPageCenter: refreshActions.refreshPageCenter
+  });
 
   return {
     selectTask: async (taskId: string) => {
@@ -284,16 +266,6 @@ export function createAdminDashboardMutationActions(
         });
         downloadText(exported.filename, exported.mimeType, exported.content);
       }, '导出 evals 数据失败'),
-    handleCloseConnectorSession: async (connectorId: string) =>
-      runMutation(async () => {
-        await closeConnectorSession(connectorId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '关闭 connector session 失败'),
-    handleRefreshConnectorDiscovery: async (connectorId: string) =>
-      runMutation(async () => {
-        await refreshConnectorDiscovery(connectorId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '刷新 connector discovery 失败'),
     handleRefreshMetricsSnapshots: async () =>
       runMutation(async () => {
         await refreshMetricsSnapshots(Math.max(context.getRuntimeHistoryDays(), context.getEvalsHistoryDays()));
@@ -302,138 +274,6 @@ export function createAdminDashboardMutationActions(
         });
         await refreshActions.refreshAll();
       }, '刷新 metrics snapshot 失败'),
-    handleEnableConnector: async (connectorId: string) =>
-      runMutation(async () => {
-        await enableConnector(connectorId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '启用 connector 失败'),
-    handleDisableConnector: async (connectorId: string) =>
-      runMutation(async () => {
-        await disableConnector(connectorId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '停用 connector 失败'),
-    handleSetConnectorPolicy: async (connectorId: string, effect: 'allow' | 'deny' | 'require-approval' | 'observe') =>
-      runMutation(async () => {
-        await setConnectorPolicy(connectorId, effect);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '更新 connector policy 失败'),
-    handleClearConnectorPolicy: async (connectorId: string) =>
-      runMutation(async () => {
-        await clearConnectorPolicy(connectorId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '清除 connector policy 失败'),
-    handleSetCapabilityPolicy: async (
-      connectorId: string,
-      capabilityId: string,
-      effect: 'allow' | 'deny' | 'require-approval' | 'observe'
-    ) =>
-      runMutation(async () => {
-        await setCapabilityPolicy(connectorId, capabilityId, effect);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '更新 capability policy 失败'),
-    handleClearCapabilityPolicy: async (connectorId: string, capabilityId: string) =>
-      runMutation(async () => {
-        await clearCapabilityPolicy(connectorId, capabilityId);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '清除 capability policy 失败'),
-    handleConfigureConnector: async (params: {
-      templateId: 'github-mcp-template' | 'browser-mcp-template' | 'lark-mcp-template';
-      transport: 'stdio' | 'http';
-      displayName?: string;
-      endpoint?: string;
-      command?: string;
-      args?: string[];
-      apiKey?: string;
-    }) =>
-      runMutation(async () => {
-        await configureConnector(params);
-        await refreshActions.refreshPageCenter('connectors');
-      }, '配置 connector 失败'),
-    handleInstallSkill: async (manifestId: string, sourceId?: string) =>
-      runMutation(async () => {
-        await installSkill(manifestId, sourceId);
-        await refreshActions.refreshPageCenter('skillSources');
-        await refreshActions.refreshPageCenter('skills');
-      }, '安装 skill 失败'),
-    handleApproveSkillInstall: async (receiptId: string) =>
-      runMutation(async () => {
-        await approveSkillInstall(receiptId);
-        await refreshActions.refreshPageCenter('skillSources');
-        await refreshActions.refreshPageCenter('skills');
-      }, '批准 skill 安装失败'),
-    handleRejectSkillInstall: async (receiptId: string) => {
-      const reason = window.prompt('输入拒绝安装的原因');
-      await runMutation(async () => {
-        await rejectSkillInstall(receiptId, reason ?? undefined);
-        await refreshActions.refreshPageCenter('skillSources');
-      }, '拒绝 skill 安装失败');
-    },
-    handleEnableSkillSource: async (sourceId: string) =>
-      runMutation(async () => {
-        await enableSkillSource(sourceId);
-        await refreshActions.refreshPageCenter('skillSources');
-      }, '启用 skill source 失败'),
-    handleDisableSkillSource: async (sourceId: string) =>
-      runMutation(async () => {
-        await disableSkillSource(sourceId);
-        await refreshActions.refreshPageCenter('skillSources');
-      }, '停用 skill source 失败'),
-    handleSyncSkillSource: async (sourceId: string) =>
-      runMutation(async () => {
-        await syncSkillSource(sourceId);
-        await refreshActions.refreshPageCenter('skillSources');
-      }, '同步 skill source 失败'),
-    handleEnableCompanyAgent: async (workerId: string) =>
-      runMutation(async () => {
-        await enableCompanyAgent(workerId);
-        await refreshActions.refreshPageCenter('companyAgents');
-      }, '启用 company agent 失败'),
-    handleDisableCompanyAgent: async (workerId: string) =>
-      runMutation(async () => {
-        await disableCompanyAgent(workerId);
-        await refreshActions.refreshPageCenter('companyAgents');
-      }, '停用 company agent 失败'),
-    handleCreateCounselorSelector: async () => {
-      const params = promptCreateCounselorSelector(window);
-      if (!params) {
-        return;
-      }
-      await runMutation(async () => {
-        await createOrUpdateCounselorSelector(params);
-        await refreshActions.refreshPageCenter('learning');
-      }, '创建群辅 selector 失败');
-    },
-    handleEditCounselorSelector: async (selector: {
-      selectorId: string;
-      domain: string;
-      strategy: string;
-      candidateIds: string[];
-      defaultCounselorId: string;
-      featureFlag?: string;
-      weights?: number[];
-      createdAt?: string;
-      updatedAt?: string;
-      enabled: boolean;
-    }) => {
-      const params = promptEditCounselorSelector(window, selector);
-      if (!params) {
-        return;
-      }
-      await runMutation(async () => {
-        await createOrUpdateCounselorSelector(params);
-        await refreshActions.refreshPageCenter('learning');
-      }, '更新群辅 selector 失败');
-    },
-    handleEnableCounselorSelector: async (selectorId: string) =>
-      runMutation(async () => {
-        await enableCounselorSelector(selectorId);
-        await refreshActions.refreshPageCenter('learning');
-      }, '启用群辅 selector 失败'),
-    handleDisableCounselorSelector: async (selectorId: string) =>
-      runMutation(async () => {
-        await disableCounselorSelector(selectorId);
-        await refreshActions.refreshPageCenter('learning');
-      }, '停用群辅 selector 失败'),
     handleSetLearningConflictStatus: async (
       conflictId: string,
       status: 'open' | 'merged' | 'dismissed' | 'escalated',
@@ -450,6 +290,7 @@ export function createAdminDashboardMutationActions(
       runMutation(async () => {
         await resolveMemoryResolutionCandidate(resolutionCandidateId, resolution);
         await refreshActions.refreshPageCenter('learning');
-      }, '更新 memory 决议候选失败')
+      }, '更新 memory 决议候选失败'),
+    ...connectorSkillCounselorActions
   };
 }

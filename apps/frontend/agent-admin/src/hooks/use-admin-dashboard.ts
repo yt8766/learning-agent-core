@@ -8,12 +8,12 @@ import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-o
 import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/components/runtime-run-workbench-support';
 import {
   PAGE_TITLES,
-  buildDashboardHash,
   buildDashboardShareUrl,
   readDashboardStateFromHash,
   shouldPollTask,
   toApprovalItems
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
+import { useHashChangeListener, useHashWriter } from '@/hooks/admin-dashboard/admin-dashboard-hash-sync';
 
 export { PAGE_TITLES };
 
@@ -192,55 +192,24 @@ export function useAdminDashboard() {
     staleTime: 30_000
   });
 
-  useEffect(() => {
-    const onHashChange = () => {
-      const nextState = readDashboardStateFromHash();
-      setPage(nextState.page);
-      setActiveTaskId(nextState.runtimeTaskId);
-      setObservatoryFocusTarget(
-        nextState.runtimeFocusKind && nextState.runtimeFocusId
-          ? {
-              kind: nextState.runtimeFocusKind,
-              id: nextState.runtimeFocusId
-            }
-          : undefined
-      );
-      setRuntimeCompareTaskId(nextState.runtimeCompareTaskId);
-      setRuntimeGraphNodeId(nextState.runtimeGraphNodeId);
-      setRuntimeStatusFilter(nextState.runtimeStatusFilter);
-      setRuntimeModelFilter(nextState.runtimeModelFilter);
-      setRuntimePricingSourceFilter(nextState.runtimePricingSourceFilter);
-      setRuntimeExecutionModeFilter(nextState.runtimeExecutionModeFilter);
-      setRuntimeInteractionKindFilter(nextState.runtimeInteractionKindFilter);
-      setApprovalsExecutionModeFilter(nextState.approvalsExecutionModeFilter);
-      setApprovalsInteractionKindFilter(nextState.approvalsInteractionKindFilter);
-    };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  useHashChangeListener({
+    setPage,
+    setActiveTaskId,
+    setObservatoryFocusTarget,
+    setRuntimeCompareTaskId,
+    setRuntimeGraphNodeId,
+    setRuntimeStatusFilter,
+    setRuntimeModelFilter,
+    setRuntimePricingSourceFilter,
+    setRuntimeExecutionModeFilter,
+    setRuntimeInteractionKindFilter,
+    setApprovalsExecutionModeFilter,
+    setApprovalsInteractionKindFilter
+  });
 
-  useEffect(() => {
-    const nextHash = buildDashboardHash({
-      page,
-      runtimeTaskId: activeTaskIdState,
-      runtimeFocusKind: observatoryFocusTarget?.kind,
-      runtimeFocusId: observatoryFocusTarget?.id,
-      runtimeCompareTaskId,
-      runtimeGraphNodeId,
-      runtimeStatusFilter,
-      runtimeModelFilter,
-      runtimePricingSourceFilter,
-      runtimeExecutionModeFilter,
-      runtimeInteractionKindFilter,
-      approvalsExecutionModeFilter,
-      approvalsInteractionKindFilter
-    });
-    if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash);
-    }
-  }, [
+  useHashWriter({
     page,
-    activeTaskIdState,
+    activeTaskId: activeTaskIdState,
     observatoryFocusTarget,
     runtimeCompareTaskId,
     runtimeGraphNodeId,
@@ -251,7 +220,7 @@ export function useAdminDashboard() {
     runtimeInteractionKindFilter,
     approvalsExecutionModeFilter,
     approvalsInteractionKindFilter
-  ]);
+  });
 
   useEffect(() => {
     if (consoleDataRef.current) {
