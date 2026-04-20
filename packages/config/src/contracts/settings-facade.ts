@@ -9,9 +9,11 @@ export {
   parseDotEnvFile,
   parseProvidersConfig,
   parseRoutingConfig,
+  resolveActiveRoleModels,
   resolveFromWorkspaceRoot,
   resolveRuntimeEnv
 } from '../utils/settings-helpers';
+export type { ActiveRoleModels } from '../utils/settings-helpers';
 export { loadSettings } from '../loaders/settings-loader';
 export type {
   ApprovalPolicyConfig,

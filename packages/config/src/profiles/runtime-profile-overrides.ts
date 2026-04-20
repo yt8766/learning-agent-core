@@ -43,8 +43,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 8,
             retryBudget: 1,
             sourceBudget: 6,
-            maxCostPerTaskUsd: 2,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 2
           }
         }
       };
@@ -89,8 +88,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 12,
             retryBudget: 2,
             sourceBudget: 12,
-            maxCostPerTaskUsd: 1,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 1
           }
         }
       };
@@ -122,8 +120,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 6,
             retryBudget: 1,
             sourceBudget: 4,
-            maxCostPerTaskUsd: 1.5,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 1.5
           }
         }
       };
@@ -156,8 +153,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 8,
             retryBudget: 1,
             sourceBudget: 8,
-            maxCostPerTaskUsd: 2,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 2
           }
         }
       };

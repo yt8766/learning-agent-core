@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadSettings } from '@agent/config';
+import { loadSettings, resolveActiveRoleModels } from '@agent/config';
 import { parseDotEnvFile } from '../src/utils/settings-helpers';
 import { loadSettings as directLoadSettings } from '../src/loaders/settings-loader';
 import * as settingsExports from '../src/settings';
@@ -142,7 +142,14 @@ describe('loadSettings', () => {
   });
 
   it('defaults embedding provider to glm when env var is not set', () => {
-    const settings = loadSettings({} as NodeJS.ProcessEnv);
+    const settings = loadSettings({
+      env: {
+        ACTIVE_MODEL_PROVIDER: '',
+        MINIMAX_API_KEY: '',
+        KNOWLEDGE_EMBEDDING_PROVIDER: '',
+        KNOWLEDGE_EMBEDDING_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
+    });
 
     expect(settings.embeddings.provider).toBe('glm');
     expect(settings.embeddings.model).toBe('Embedding-3');
@@ -252,7 +259,10 @@ describe('loadSettings', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
       profile: 'personal',
-      env: {} as NodeJS.ProcessEnv
+      env: {
+        ACTIVE_MODEL_PROVIDER: '',
+        MINIMAX_API_KEY: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.profile).toBe('personal');
@@ -352,9 +362,17 @@ describe('loadSettings', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
       env: {
+        ACTIVE_MODEL_PROVIDER: '',
         MINIMAX_API_KEY: 'minimax-key',
-        MINIMAX_BASE_URL: 'https://api.minimaxi.com/v1/'
-      } as NodeJS.ProcessEnv
+        MINIMAX_BASE_URL: 'https://api.minimaxi.com/v1/',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: '',
+        MINIMAX_DIALOG_MODEL: '',
+        MINIMAX_PROVIDER_ID: '',
+        MINIMAX_PROVIDER_NAME: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.providers).toEqual(
@@ -410,8 +428,12 @@ describe('loadSettings', () => {
       env: {
         ZHIPU_API_KEY: 'zhipu-key',
         MINIMAX_API_KEY: 'minimax-key',
-        ACTIVE_MODEL_PROVIDER: 'minimax'
-      } as NodeJS.ProcessEnv
+        ACTIVE_MODEL_PROVIDER: 'minimax',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.routing).toEqual({
@@ -441,8 +463,12 @@ describe('loadSettings', () => {
         ZHIPU_API_KEY: 'zhipu-key',
         MINIMAX_API_KEY: 'minimax-key',
         ACTIVE_MODEL_PROVIDER: 'minimax',
-        MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1'
-      } as NodeJS.ProcessEnv
+        MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.routing.manager?.primary).toBe('zhipu/glm-5.1');
@@ -607,6 +633,85 @@ describe('loadSettings', () => {
           adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
         }
       }
+    });
+  });
+
+  describe('resolveActiveRoleModels', () => {
+    it('returns zhipu models when ACTIVE_MODEL_PROVIDER is not set', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          ACTIVE_MODEL_PROVIDER: '',
+          MINIMAX_API_KEY: ''
+        } as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('glm-5');
+      expect(activeModels.research).toBe('glm-5.1');
+      expect(activeModels.executor).toBe('glm-4.6');
+      expect(activeModels.reviewer).toBe('glm-4.7');
+    });
+
+    it('returns minimax models when ACTIVE_MODEL_PROVIDER=minimax', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('MiniMax-M2.7');
+      expect(activeModels.research).toBe('MiniMax-M2.5');
+      expect(activeModels.executor).toBe('MiniMax-M2.5-highspeed');
+      expect(activeModels.reviewer).toBe('MiniMax-M2.7-highspeed');
+    });
+
+    it('respects explicit MODEL_ROUTE_* overrides over ACTIVE_MODEL_PROVIDER', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('glm-5.1');
+      expect(activeModels.research).toBe('MiniMax-M2.5');
+    });
+
+    it('fallbackModelId defaults to active provider model instead of hardcoded glm', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          ZHIPU_API_KEY: '',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).not.toContain('glm');
+      expect(settings.policy.budget.fallbackModelId).toBe('MiniMax-M2.5');
     });
   });
 });

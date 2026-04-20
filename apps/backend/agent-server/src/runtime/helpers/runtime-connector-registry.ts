@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 
 import type { RuntimeProfile } from '@agent/config';
+import { resolveActiveRoleModels, type RuntimeSettings } from '@agent/config';
 import { describeSkillSourceProfilePolicy } from '@agent/runtime';
 import { ConfiguredConnectorRecord } from '@agent/core';
 import type { SkillCard, WorkerDefinition } from '@agent/core';
@@ -277,7 +278,11 @@ export function getDisabledCompanyWorkerIds(context: RuntimeConnectorRegistryCon
 }
 
 export function registerInstalledSkillWorker(context: RuntimeConnectorRegistryContext, skill: SkillCard): void {
-  if (!context.settings.zhipuModels) {
+  const roleModels =
+    'routing' in context.settings
+      ? resolveActiveRoleModels(context.settings as RuntimeSettings)
+      : context.settings.zhipuModels;
+  if (!roleModels) {
     return;
   }
   context.orchestrator.registerWorker({
@@ -285,7 +290,7 @@ export function registerInstalledSkillWorker(context: RuntimeConnectorRegistryCo
     ministry: resolveInstalledSkillMinistry(skill),
     kind: 'installed-skill',
     displayName: `${skill.name} 已安装技能`,
-    defaultModel: resolveInstalledSkillModel(context.settings.zhipuModels, skill),
+    defaultModel: resolveInstalledSkillModel(roleModels, skill),
     supportedCapabilities: skill.requiredCapabilities ?? skill.requiredTools,
     reviewPolicy: 'self-check',
     sourceId: skill.sourceId,

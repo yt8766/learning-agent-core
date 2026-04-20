@@ -226,19 +226,19 @@ export function parseProvidersConfig(
 
   if (runtimeEnv.MINIMAX_API_KEY || runtimeEnv.MINIMAX_BASE_URL) {
     const minimaxRoleModels = {
-      manager: runtimeEnv.MINIMAX_MANAGER_MODEL ?? 'MiniMax-M2.7',
-      research: runtimeEnv.MINIMAX_RESEARCH_MODEL ?? 'MiniMax-M2.5',
-      executor: runtimeEnv.MINIMAX_EXECUTOR_MODEL ?? 'MiniMax-M2.5-highspeed',
-      reviewer: runtimeEnv.MINIMAX_REVIEWER_MODEL ?? 'MiniMax-M2.7-highspeed'
+      manager: runtimeEnv.MINIMAX_MANAGER_MODEL || 'MiniMax-M2.7',
+      research: runtimeEnv.MINIMAX_RESEARCH_MODEL || 'MiniMax-M2.5',
+      executor: runtimeEnv.MINIMAX_EXECUTOR_MODEL || 'MiniMax-M2.5-highspeed',
+      reviewer: runtimeEnv.MINIMAX_REVIEWER_MODEL || 'MiniMax-M2.7-highspeed'
     } satisfies NonNullable<ProviderSettingsRecord['roleModels']>;
 
     providers.push({
-      id: runtimeEnv.MINIMAX_PROVIDER_ID ?? 'minimax',
+      id: runtimeEnv.MINIMAX_PROVIDER_ID || 'minimax',
       type: 'minimax',
-      displayName: runtimeEnv.MINIMAX_PROVIDER_NAME ?? 'MiniMax',
+      displayName: runtimeEnv.MINIMAX_PROVIDER_NAME || 'MiniMax',
       apiKey: runtimeEnv.MINIMAX_API_KEY ?? '',
       baseUrl: normalizeProviderBaseUrl(runtimeEnv.MINIMAX_BASE_URL ?? 'https://api.minimaxi.com/v1', 'minimax'),
-      models: Array.from(new Set([...Object.values(minimaxRoleModels), runtimeEnv.MINIMAX_DIALOG_MODEL ?? 'M2-her'])),
+      models: Array.from(new Set([...Object.values(minimaxRoleModels), runtimeEnv.MINIMAX_DIALOG_MODEL || 'M2-her'])),
       roleModels: minimaxRoleModels
     });
   }
@@ -300,4 +300,28 @@ export function parseRoutingConfig(
       fallback: fallback(runtimeEnv.MODEL_ROUTE_REVIEWER_FALLBACK)
     }
   };
+}
+
+export type ActiveRoleModels = Record<'manager' | 'research' | 'executor' | 'reviewer', string>;
+
+/**
+ * Extracts the active model ID per role from the routing configuration.
+ * When `ACTIVE_MODEL_PROVIDER=minimax`, routing.manager.primary = `minimax/MiniMax-M2.7`,
+ * so this returns `MiniMax-M2.7`. Falls back to zhipuModels when routing is absent.
+ */
+export function resolveActiveRoleModels(settings?: RuntimeSettings | null): ActiveRoleModels {
+  const roles = ['manager', 'research', 'executor', 'reviewer'] as const;
+  const result = {} as ActiveRoleModels;
+
+  for (const role of roles) {
+    const primary = settings?.routing?.[role]?.primary;
+    if (primary) {
+      const slashIndex = primary.indexOf('/');
+      result[role] = slashIndex >= 0 ? primary.slice(slashIndex + 1) : primary;
+    } else {
+      result[role] = settings?.zhipuModels?.[role] ?? '';
+    }
+  }
+
+  return result;
 }

@@ -20,13 +20,22 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
   const workspaceRoot = findWorkspaceRoot(options.workspaceRoot ?? overrides.workspaceRoot ?? process.cwd());
   const runtimeEnv = resolveRuntimeEnv(options.env ?? process.env, workspaceRoot);
   const zhipuModels: RuntimeSettings['zhipuModels'] = {
-    manager: runtimeEnv.ZHIPU_MANAGER_MODEL ?? 'glm-5',
-    research: runtimeEnv.ZHIPU_RESEARCH_MODEL ?? 'glm-5.1',
-    executor: runtimeEnv.ZHIPU_EXECUTOR_MODEL ?? 'glm-4.6',
-    reviewer: runtimeEnv.ZHIPU_REVIEWER_MODEL ?? 'glm-4.7'
+    manager: runtimeEnv.ZHIPU_MANAGER_MODEL || 'glm-5',
+    research: runtimeEnv.ZHIPU_RESEARCH_MODEL || 'glm-5.1',
+    executor: runtimeEnv.ZHIPU_EXECUTOR_MODEL || 'glm-4.6',
+    reviewer: runtimeEnv.ZHIPU_REVIEWER_MODEL || 'glm-4.7'
   };
   const providers = overrides.providers ?? parseProvidersConfig(runtimeEnv, workspaceRoot, zhipuModels);
   const routing = overrides.routing ?? parseRoutingConfig(runtimeEnv, zhipuModels, providers);
+
+  const resolveActiveModel = (role: 'manager' | 'research' | 'executor' | 'reviewer'): string => {
+    const primary = routing[role]?.primary;
+    if (primary) {
+      const slashIndex = primary.indexOf('/');
+      return slashIndex >= 0 ? primary.slice(slashIndex + 1) : primary;
+    }
+    return zhipuModels[role];
+  };
 
   return {
     profile,
@@ -73,7 +82,7 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
         retryBudget: overrides.policy?.budget?.retryBudget ?? 1,
         sourceBudget: overrides.policy?.budget?.sourceBudget ?? 8,
         maxCostPerTaskUsd: overrides.policy?.budget?.maxCostPerTaskUsd ?? 2,
-        fallbackModelId: overrides.policy?.budget?.fallbackModelId ?? 'glm-5.1'
+        fallbackModelId: overrides.policy?.budget?.fallbackModelId ?? resolveActiveModel('research')
       }
     },
     contextStrategy: {
@@ -82,7 +91,9 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
       summaryInterval: Number(runtimeEnv.CONTEXT_SUMMARY_INTERVAL ?? overrides.contextStrategy?.summaryInterval ?? 8),
       ragTopK: Number(runtimeEnv.CONTEXT_RAG_TOP_K ?? overrides.contextStrategy?.ragTopK ?? 4),
       compressionModel:
-        runtimeEnv.CONTEXT_COMPRESSION_MODEL ?? overrides.contextStrategy?.compressionModel ?? zhipuModels.research,
+        runtimeEnv.CONTEXT_COMPRESSION_MODEL ??
+        overrides.contextStrategy?.compressionModel ??
+        resolveActiveModel('research'),
       compressionEnabled:
         runtimeEnv.CONTEXT_COMPRESSION_ENABLED != null
           ? runtimeEnv.CONTEXT_COMPRESSION_ENABLED !== 'false'
@@ -126,8 +137,8 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
     },
     dailyTechBriefing: buildDailyTechBriefingConfig(runtimeEnv, overrides, zhipuModels),
     embeddings: {
-      provider: runtimeEnv.KNOWLEDGE_EMBEDDING_PROVIDER ?? 'glm',
-      model: runtimeEnv.KNOWLEDGE_EMBEDDING_MODEL ?? 'Embedding-3',
+      provider: runtimeEnv.KNOWLEDGE_EMBEDDING_PROVIDER || 'glm',
+      model: runtimeEnv.KNOWLEDGE_EMBEDDING_MODEL || 'Embedding-3',
       dimensions: Number(runtimeEnv.KNOWLEDGE_EMBEDDING_DIMENSIONS ?? 0),
       endpoint: runtimeEnv.KNOWLEDGE_EMBEDDING_ENDPOINT ?? '',
       apiKey:

@@ -7,6 +7,7 @@ import {
   type DataReportJsonSchema,
   type DataReportJsonNodeStageEvent
 } from '../runtime/core/runtime-data-report-facade';
+import { resolveActiveRoleModels } from '@agent/config';
 
 import type { RuntimeHost } from '../runtime/core/runtime.host';
 import type { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';
@@ -206,19 +207,20 @@ function createReportSchemaNodeSelector(
   dto: DirectChatRequestDto
 ): DataReportJsonNodeModelSelector {
   const settings = runtimeHost.settings;
+  const roleModels = resolveActiveRoleModels(settings);
   const preferredModelIds =
     tier === 'fast'
       ? [
-          settings?.zhipuModels?.manager,
-          settings?.zhipuModels?.executor,
+          roleModels.manager,
+          roleModels.executor,
           settings?.policy?.budget?.fallbackModelId,
           typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary === 'string'
             ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary
             : undefined
         ]
       : [
-          settings?.zhipuModels?.research,
-          settings?.zhipuModels?.reviewer,
+          roleModels.research,
+          roleModels.reviewer,
           settings?.policy?.budget?.fallbackModelId,
           typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary === 'string'
             ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary
@@ -238,16 +240,17 @@ export function resolveReportSchemaArtifactCacheKey(runtimeHost: RuntimeHost, dt
   const cacheVersion = 'v3-strict-llm-block-live';
   const latencyStrategy =
     dto.preferLlm === true ? 'strict-llm' : (dto.reportSchemaInput?.generationHints?.targetLatencyClass ?? 'balanced');
+  const roleModels = resolveActiveRoleModels(runtimeHost.settings);
   const heavyModelId =
     dto.modelId ??
-    runtimeHost.settings?.zhipuModels?.research ??
+    roleModels.research ??
     runtimeHost.settings?.policy?.budget?.fallbackModelId ??
     (typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary === 'string'
       ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.schemaSpecNode.primary
       : 'quality');
   const fastModelId =
     dto.modelId ??
-    runtimeHost.settings?.zhipuModels?.manager ??
+    roleModels.manager ??
     (typeof DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary === 'string'
       ? DATA_REPORT_JSON_DEFAULT_MODEL_POLICY.analysisNode.primary
       : 'fast');
