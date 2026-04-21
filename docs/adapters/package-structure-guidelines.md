@@ -3,105 +3,89 @@
 状态：current
 文档类型：convention
 适用范围：`packages/adapters`
-最后核对：2026-04-18
+最后核对：2026-05-09
 
-本文档说明 `packages/adapters` 如何按“稳定 adapter 边界 + provider 实现 + 工厂装配 + 输出安全”收敛目录结构。
+本文档说明 `packages/adapters` 如何按"稳定 adapter 边界 + provider 实现 + 工厂装配 + 输出安全 + 外部生态 indexing 转化"收敛目录结构。
 
 ## 1. 目标定位
 
-`packages/adapters` 负责把外部模型与嵌入能力翻译成系统内部稳定可消费的接口。
+`packages/adapters` 是项目的**外部生态双向转化层**，负责：
+
+```text
+第三方输出 -> 项目稳定契约（@agent/core 类型）
+项目稳定契约 -> 第三方 SDK 输入
+```
 
 它不是：
 
 - agent 业务 prompt 宿主
 - graph 编排层
 - runtime orchestration 层
+- indexing pipeline 编排层（由 `@agent/knowledge` 负责）
 
-## 2. 推荐结构
+## 2. 当前目录结构
 
 ```text
 packages/adapters/
 ├─ src/
-│  ├─ contracts/
-│  ├─ chat/
-│  ├─ embeddings/
-│  ├─ factories/
-│  ├─ providers/
-│  ├─ prompts/
-│  ├─ retry/
-│  ├─ structured-output/
-│  ├─ support/
-│  ├─ utils/
-│  └─ index.ts
+│  ├─ shared/               # 跨生态通用转化工具
+│  │  ├─ metadata/          # normalize-metadata, merge-metadata
+│  │  ├─ ids/               # stable-id, document-id, chunk-id
+│  │  ├─ errors/            # AdapterError
+│  │  └─ validation/        # validateVectorDimensions
+│  │
+│  ├─ langchain/            # LangChain 生态 adapter
+│  │  ├─ shared/            # LangChain 专属 mapper
+│  │  ├─ loaders/           # LangChainLoaderAdapter, createMarkdownDirectoryLoader
+│  │  ├─ chunkers/          # LangChainChunkerAdapter, text splitter factories
+│  │  └─ embedders/         # LangChainEmbedderAdapter
+│  │
+│  ├─ chroma/               # Chroma 生态 adapter
+│  │  ├─ shared/            # chroma-collection, chroma-metadata.mapper
+│  │  └─ stores/            # ChromaVectorStoreAdapter
+│  │
+│  ├─ contracts/            # LLM 稳定 contract facade（compat + canonical）
+│  ├─ chat/                 # chat model factory
+│  ├─ embeddings/           # embedding model factory
+│  ├─ factories/            # runtime provider wiring
+│  ├─ providers/            # LLM provider 实现（openai-compatible, anthropic, minimax, zhipu）
+│  ├─ prompts/              # 共享 prompt 工具
+│  ├─ retry/                # LLM retry 策略
+│  ├─ structured-output/    # 结构化输出安全层
+│  ├─ support/              # URL normalize 等底层工具
+│  ├─ utils/                # 纯工具（model-fallback）
+│  └─ index.ts              # 根入口 barrel
 ├─ test/
+├─ demo/
 └─ package.json
 ```
 
-各目录语义：
+## 3. 一级目录命名规范
 
-- `contracts/`
-  - 对外稳定 contract facade；当前 `contracts/llm-provider.ts` 只保留 compat，canonical host 为 `contracts/llm/index.ts`
-- `chat/`
-  - 包根稳定聊天入口，同时承载 chat model factory 的真实实现
-- `embeddings/`
-  - 包根稳定 embedding 入口，同时承载 embedding factory 的真实实现
-- `factories/`
-  - 当前只保留 `runtime/` 子域，承载 runtime provider wiring
-- `providers/`
-  - 供应商实现、provider routing、factory registry、semantic cache contract 等 LLM adapter 宿主
-- `prompts/`
-  - 共享 JSON safety prompt 等 adapter 级提示词资产
-- `retry/`
-  - LLM retry、reactive retry 等失败恢复能力
-- `structured-output/`
-  - structured prompt builder、safe generate object 等结构化输出安全层
-- `support/`
-  - URL normalize 这类底层支撑 helper
-- `utils/`
-  - 当前仅保留 `model-fallback` 一类纯工具；不再作为通用收纳目录扩张
+外部生态 adapter 目录遵循：
 
-## 3. 当前收敛策略
+```
+一级目录 = 适配哪个外部生态（langchain/ chroma/ pinecone/ pgvector/）
+二级目录 = 转化成项目内部什么角色（loaders/ chunkers/ embedders/ stores/）
+```
 
-本轮采用“新宿主目录 + 稳定入口 compat 保留”的方式完成物理收敛，而不是继续停留在 `runtime/ + llm/ + shared/ + utils/` 混排状态。
+LLM 相关目录遵循功能角色命名：`chat/`、`embeddings/`、`factories/`、`providers/`、`routing/`。
 
-为什么采用这套结构：
+## 4. 契约来源规范
 
-- 需要明确区分“稳定入口”、“工厂装配”、“provider 实现”、“结构化输出安全”
-- 需要避免 `utils/` 与 `shared/` 继续吸附语义明确的实现
-- 需要让新增 provider 时优先新增实现点，而不是回到单一 `llm/` 目录继续堆文件
+- **Indexing 契约**（Document / Chunk / Vector / Loader / Chunker / Embedder / VectorStore）定义在 `@agent/core/src/knowledge/indexing/contracts/`
+- **LLM 契约**（LlmProvider / ModelCapabilities 等）定义在 `packages/adapters/src/contracts/llm/`
 
-当前已落地：
+## 5. 第三方类型隔离原则
 
-- `chat/*`
-  - 作为 chat model factory 的真实宿主
-- `factories/runtime/default-runtime-llm-provider.factory.ts`
-  - 作为 runtime provider wiring 的真实宿主
-- `providers/llm/factories/*`
-  - 作为 SDK 级 provider factory contract、registry 与默认 factory 注册宿主
-- `embeddings/*`
-  - 作为 embedding model / runtime embedding provider 的真实宿主
-- `providers/llm/base/llm-provider.types.ts`
-  - 作为 LLM contract helper 与 JSON instruction 的真实宿主
-- `contracts/llm-provider.ts`
-  - 仅保留稳定 facade re-export，便于 contract-first 导入
-- `chat/index.ts`、`embeddings/index.ts`
-  - 仅保留稳定入口聚合
-- `prompts/json-safety-prompt.ts`
-  - 作为 JSON safety prompt 的真实宿主
-- `retry/*` 与 `structured-output/*`
-  - 分别收口重试策略和结构化输出安全能力
+- 第三方 SDK 类型（`@langchain/*`、`chromadb`）只能出现在对应生态目录内（`langchain/`、`chroma/`）
+- 严禁泄露到 `@agent/core`、`@agent/knowledge`、`@agent/runtime`、`agents/*`、`apps/*`
 
-为什么不再采用其他结构：
-
-- 不继续采用 `runtime/ + llm/ + shared/ + utils/`：
-  - 因为它会把工厂、供应商实现、共享提示、输出安全再次混排
-- 不采用“全部按 vendor 一级分组”：
-  - 因为 structured output、retry、embedding runtime wiring 不属于单一 vendor
-- 不采用 `domain / application / infrastructure`：
-  - 因为 `packages/adapters` 本身已经是防腐层宿主，再套一层 clean architecture 会增加维护成本
-
-## 4. 继续阅读
+## 6. 继续阅读
 
 - [adapters 文档目录](/docs/adapters/README.md)
+- [Indexing Adapter 规范](/docs/adapters/indexing-adapter-guidelines.md)
+- [LangChain Adapter 使用](/docs/adapters/langchain-adapter.md)
+- [Chroma Adapter 使用](/docs/adapters/chroma-adapter.md)
 - [Provider 扩展 SDK 指南](/docs/adapters/provider-extension-sdk-guidelines.md)
-- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
+- [Knowledge Indexing 契约规范](/docs/knowledge/indexing-contract-guidelines.md)

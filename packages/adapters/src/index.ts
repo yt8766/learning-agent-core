@@ -43,3 +43,37 @@ export {
 } from './retry';
 export { shouldFallbackModel, withFallbackModel } from './utils/model-fallback';
 export { normalizeEmbeddingBaseUrl, normalizeModelBaseUrl } from './support';
+
+// Shared utilities
+export {
+  normalizeMetadata,
+  mergeMetadata,
+  stableId,
+  documentId,
+  chunkId,
+  AdapterError,
+  validateVectorDimensions
+} from './shared';
+
+// LangChain adapters
+export {
+  LangChainLoaderAdapter,
+  createMarkdownDirectoryLoader,
+  LangChainChunkerAdapter,
+  createRecursiveTextSplitterChunker,
+  createMarkdownTextSplitterChunker,
+  createTokenTextSplitterChunker,
+  LangChainEmbedderAdapter,
+  mapLangChainDocumentToCoreDocument,
+  mapLangChainSplitToCoreChunk,
+  mapCoreDocumentToLangChainDocument
+} from './langchain';
+
+// Chroma adapter
+export {
+  ChromaVectorStoreAdapter,
+  createChromaClient,
+  getOrCreateChromaCollection,
+  mapVectorMetadataToChromaMetadata
+} from './chroma';
+export type { ChromaVectorStoreOptions, ChromaClientOptions, ChromaClientLike, ChromaCollectionLike } from './chroma';

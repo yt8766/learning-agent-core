@@ -10,7 +10,23 @@ import {
   createOpenAIEmbeddingModel,
   createRuntimeEmbeddingProvider,
   createZhipuChatModel,
-  jsonObjectInstruction
+  jsonObjectInstruction,
+  // Shared utilities
+  normalizeMetadata,
+  mergeMetadata,
+  stableId,
+  documentId,
+  chunkId,
+  AdapterError,
+  validateVectorDimensions,
+  // LangChain adapters
+  LangChainLoaderAdapter,
+  createMarkdownDirectoryLoader,
+  LangChainChunkerAdapter,
+  LangChainEmbedderAdapter,
+  // Chroma adapter
+  ChromaVectorStoreAdapter,
+  mapVectorMetadataToChromaMetadata
 } from '@agent/adapters';
 import * as contractLlmProviderExports from '../src/contracts/llm';
 import * as embeddingExports from '../src/embeddings';
@@ -40,5 +56,27 @@ describe('@agent/adapters root exports', () => {
   it('retains the llm-provider contract facade as a stable contract-first entrypoint', () => {
     expect(existsSync(new URL('../src/contracts/llm-provider.ts', import.meta.url))).toBe(true);
     expect(existsSync(new URL('../src/contracts/llm/index.ts', import.meta.url))).toBe(true);
+  });
+
+  it('exports shared utilities', () => {
+    expect(normalizeMetadata).toBeTypeOf('function');
+    expect(mergeMetadata).toBeTypeOf('function');
+    expect(stableId).toBeTypeOf('function');
+    expect(documentId).toBeTypeOf('function');
+    expect(chunkId).toBeTypeOf('function');
+    expect(AdapterError).toBeTypeOf('function');
+    expect(validateVectorDimensions).toBeTypeOf('function');
+  });
+
+  it('exports LangChain adapters', () => {
+    expect(LangChainLoaderAdapter).toBeTypeOf('function');
+    expect(createMarkdownDirectoryLoader).toBeTypeOf('function');
+    expect(LangChainChunkerAdapter).toBeTypeOf('function');
+    expect(LangChainEmbedderAdapter).toBeTypeOf('function');
+  });
+
+  it('exports Chroma adapter', () => {
+    expect(ChromaVectorStoreAdapter).toBeTypeOf('function');
+    expect(mapVectorMetadataToChromaMetadata).toBeTypeOf('function');
   });
 });
