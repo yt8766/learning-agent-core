@@ -1,5 +1,5 @@
 export type { AgentRuntimeContext, AgentLike } from './contracts';
-export { BaseAgent } from './agents/base-agent';
+export { BaseAgent } from './agents';
 export { SessionCoordinator } from './contracts';
 export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts';
 export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts';
@@ -38,11 +38,6 @@ export {
 } from './utils/prompts/temporal-context';
 export * from './graphs';
 export { LearningFlow } from './flows';
-export {
-  archivalMemorySearch,
-  archivalMemorySearchByParams,
-  coreMemoryAppend,
-  coreMemoryReplace
-} from './memory/active-memory-tools';
+export { archivalMemorySearch, archivalMemorySearchByParams, coreMemoryAppend, coreMemoryReplace } from './memory';
 export * from './runtime';
 export * from './runtime-observability';

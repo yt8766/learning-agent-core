@@ -1,7 +1,7 @@
 # Chroma VectorStore Adapter 使用文档
 
 状态：current
-文档类型：usage
+文档类型：guide
 适用范围：`packages/adapters/src/chroma/`
 最后核对：2026-05-09
 
