@@ -565,6 +565,46 @@ packages/runtime/src/
 - `approvalPolicy`
 - `healthState`
 
+## 8.1 Knowledge Indexing 契约层
+
+`packages/core/src/knowledge/indexing/` 是所有 indexing pipeline 参与方的**唯一共享契约层**。
+
+```text
+@agent/core (定义契约)
+    ↓
+@agent/adapters (实现 — LangChain/Chroma adapter)
+    ↓
+@agent/knowledge (编排 — runKnowledgeIndexing pipeline)
+    ↓
+apps/* / agents/* (使用)
+```
+
+四个稳定接口：
+
+```ts
+interface Loader {
+  load(): Promise<Document[]>;
+}
+interface Chunker {
+  chunk(doc: Document): Promise<Chunk[]>;
+}
+interface Embedder {
+  embed(chunks: Chunk[]): Promise<Vector[]>;
+}
+interface VectorStore {
+  upsert(vectors: Vector[]): Promise<void>;
+}
+```
+
+数据模型（`Document / Chunk / Vector`）均有 Zod schema，通过 `z.infer<>` 派生类型，从 `@agent/core` 根入口导出。
+
+**不允许**：
+
+- `@agent/adapters` 或 `@agent/knowledge` 定义平行的 pipeline 接口
+- 第三方类型（`@langchain/*`、`chromadb`）泄露到 `@agent/core` 或 `@agent/knowledge`
+
+详见：[Knowledge Indexing 契约规范](/docs/knowledge/indexing-contract-guidelines.md)
+
 ## 9. 工程与构建约束
 
 ## 9.1 Runtime Profile
