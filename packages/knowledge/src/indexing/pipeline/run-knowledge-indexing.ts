@@ -1,17 +1,14 @@
-import type { KnowledgeSource } from '@agent/core';
+import type { Chunk, Vector } from '@agent/core';
 
 import {
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
   DEFAULT_KNOWLEDGE_INDEXING_CHUNK_OVERLAP,
   DEFAULT_KNOWLEDGE_INDEXING_CHUNK_SIZE,
-  defaultKnowledgeMetadata,
   defaultKnowledgeShouldIndex
 } from '../defaults/indexing-defaults';
-import { FixedWindowKnowledgeChunker } from '../chunkers/fixed-window-knowledge-chunker';
+import { FixedWindowChunker } from '../chunkers/fixed-window-chunker';
 import type {
-  KnowledgeChunkEnvelope,
   KnowledgeIndexingContext,
-  KnowledgeIndexingDocument,
   KnowledgeIndexingResult,
   KnowledgeIndexingRunOptions
 } from '../types/indexing.types';
@@ -25,82 +22,70 @@ export async function runKnowledgeIndexing(options: KnowledgeIndexingRunOptions)
     batchSize: options.batchSize ?? DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE
   };
 
-  const chunker = options.chunker ?? new FixedWindowKnowledgeChunker();
+  const chunker = options.chunker ?? new FixedWindowChunker(context.chunkSize, context.chunkOverlap);
   const shouldIndex = options.shouldIndex ?? defaultKnowledgeShouldIndex;
   const warnings: string[] = [];
 
-  const loadedDocuments = await options.loader.load(context);
-  const indexedDocuments: KnowledgeIndexingDocument[] = [];
-  const skippedDocuments: KnowledgeIndexingDocument[] = [];
-  const sources = new Map<string, KnowledgeSource>();
-  const envelopes: KnowledgeChunkEnvelope[] = [];
+  const loadedDocuments = await options.loader.load();
+  let indexedCount = 0;
+  let skippedCount = 0;
+  const allChunks: Chunk[] = [];
 
-  for (const rawDocument of loadedDocuments) {
-    let document = rawDocument;
-    for (const transformer of options.transformers ?? []) {
-      document = await transformer.transform(document, context);
-    }
-
-    if (!(await shouldIndex(document, context))) {
-      skippedDocuments.push(document);
-      const warning = `Skipped knowledge document ${document.id}.`;
+  for (const doc of loadedDocuments) {
+    if (!(await shouldIndex(doc))) {
+      skippedCount += 1;
+      const warning = `Skipped knowledge document ${doc.id}.`;
       warnings.push(warning);
-      await options.onWarning?.(warning, context);
+      await options.onWarning?.(warning);
       continue;
     }
 
-    indexedDocuments.push(document);
-    const source = toKnowledgeSource(document);
-    sources.set(source.id, source);
-    const chunks = await chunker.chunk({ source, document, context });
+    indexedCount += 1;
+    const docChunks = await chunker.chunk(doc);
 
-    for (const chunk of chunks) {
-      const metadata =
-        (await options.metadataBuilder?.({ source, document, chunk, context })) ?? defaultKnowledgeMetadata();
-      envelopes.push({
-        source,
-        document,
-        chunk,
-        metadata
+    for (const chunk of docChunks) {
+      allChunks.push({
+        ...chunk,
+        metadata: {
+          ...chunk.metadata,
+          sourceId: resolveField(doc.metadata, 'sourceId') ?? options.sourceConfig.sourceId,
+          documentId: doc.id,
+          title: resolveField(doc.metadata, 'title') ?? doc.id,
+          uri: resolveField(doc.metadata, 'uri') ?? doc.id,
+          sourceType: resolveField(doc.metadata, 'sourceType') ?? options.sourceConfig.sourceType,
+          trustClass: resolveField(doc.metadata, 'trustClass') ?? options.sourceConfig.trustClass,
+          content: chunk.content
+        }
       });
     }
   }
 
-  const embeddings = [];
-  for (let index = 0; index < envelopes.length; index += context.batchSize) {
-    const batch = envelopes.slice(index, index + context.batchSize);
-    const batchEmbeddings = await options.embedder.embed({ chunks: batch, context });
-    embeddings.push(...batchEmbeddings);
+  const allVectors: Vector[] = [];
+  for (let i = 0; i < allChunks.length; i += context.batchSize) {
+    const batch = allChunks.slice(i, i + context.batchSize);
+    const batchVectors = await options.embedder.embed(batch);
+    allVectors.push(...batchVectors);
   }
 
-  await options.writer.write({
-    sources: [...sources.values()],
-    chunks: envelopes,
-    embeddings,
-    context
-  });
+  if (allVectors.length > 0) {
+    await options.vectorStore.upsert(allVectors);
+  }
 
   return {
     runId: context.runId,
     loadedDocumentCount: loadedDocuments.length,
-    indexedDocumentCount: indexedDocuments.length,
-    skippedDocumentCount: skippedDocuments.length,
-    chunkCount: envelopes.length,
-    embeddedChunkCount: embeddings.length,
+    indexedDocumentCount: indexedCount,
+    skippedDocumentCount: skippedCount,
+    chunkCount: allChunks.length,
+    embeddedChunkCount: allVectors.length,
     warningCount: warnings.length,
     warnings
   };
 }
 
-function toKnowledgeSource(document: KnowledgeIndexingDocument): KnowledgeSource {
-  return {
-    id: document.sourceId,
-    sourceType: document.sourceType,
-    uri: document.uri,
-    title: document.title,
-    trustClass: document.trustClass,
-    updatedAt: document.updatedAt
-  };
+function resolveField(metadata: Record<string, unknown>, key: string): string | undefined {
+  const value = metadata[key];
+  return typeof value === 'string' ? value : undefined;
 }
 
 function createRunId(): string {
