@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/adapters`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
 本文档说明 `packages/adapters` 如何按"稳定 adapter 边界 + provider 实现 + 工厂装配 + 输出安全 + 外部生态 indexing 转化"收敛目录结构。
 
@@ -44,16 +44,21 @@ packages/adapters/
 │  │  ├─ shared/            # chroma-collection, chroma-metadata.mapper
 │  │  └─ stores/            # ChromaVectorStoreAdapter
 │  │
-│  ├─ contracts/            # LLM 稳定 contract facade（compat + canonical）
-│  ├─ chat/                 # chat model factory
-│  ├─ embeddings/           # embedding model factory
-│  ├─ factories/            # runtime provider wiring
-│  ├─ providers/            # LLM provider 实现（openai-compatible, anthropic, minimax, zhipu）
-│  ├─ prompts/              # 共享 prompt 工具
-│  ├─ retry/                # LLM retry 策略
-│  ├─ structured-output/    # 结构化输出安全层
-│  ├─ support/              # URL normalize 等底层工具
-│  ├─ utils/                # 纯工具（model-fallback）
+│  ├─ contracts/            # LLM 稳定契约（llm-provider.types, model-capabilities）
+│  ├─ openai-compatible/   # OpenAI 兼容 provider（provider/, chat/, embeddings/）
+│  ├─ anthropic/           # Anthropic provider（provider/）
+│  ├─ minimax/             # MiniMax provider（provider/, chat/）
+│  ├─ zhipu/               # 智谱 provider（provider/, chat/）
+│  ├─ factories/           # LLM 工厂注册表与 runtime wiring（llm/, runtime/）
+│  ├─ routing/             # 模型路由与 provider registry（llm/）
+│  ├─ resilience/          # LLM retry / fallback 策略
+│  ├─ prompts/             # 共享 prompt 工具
+│  ├─ structured-output/   # 结构化输出安全层
+│  ├─ providers/           # ⚠️ compat re-export，勿新增实现
+│  ├─ chat/                # ⚠️ compat re-export，勿新增实现
+│  ├─ retry/               # ⚠️ compat re-export，勿新增实现
+│  ├─ support/             # ⚠️ compat re-export，勿新增实现
+│  ├─ utils/               # ⚠️ compat re-export，勿新增实现
 │  └─ index.ts              # 根入口 barrel
 ├─ test/
 ├─ demo/
@@ -69,7 +74,11 @@ packages/adapters/
 二级目录 = 转化成项目内部什么角色（loaders/ chunkers/ embedders/ stores/）
 ```
 
-LLM 相关目录遵循功能角色命名：`chat/`、`embeddings/`、`factories/`、`providers/`、`routing/`。
+LLM 相关目录按 **provider-first** 命名：`openai-compatible/`、`anthropic/`、`minimax/`、`zhipu/`。
+每个 provider 顶层目录下再按功能角色分子目录：`provider/`、`chat/`、`embeddings/`。
+
+历史路径（`chat/`、`providers/`、`retry/`、`support/`）已降为 compat re-export，不再是规范写入目标。
+新增实现必须写入对应 provider 顶层目录或 `resilience/`、`routing/`、`factories/`。
 
 ## 4. 契约来源规范
 
