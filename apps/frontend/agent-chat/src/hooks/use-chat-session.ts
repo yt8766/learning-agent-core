@@ -83,6 +83,13 @@ export function useChatSession() {
     optimisticThinkingStartedAt
   });
 
+  // hydrateSessionSnapshot is recreated every render (createChatSessionActions is not memoized).
+  // Storing it in a ref prevents it from being listed as a useEffect dependency and causing
+  // an infinite render loop: effect fires → fetches checkpoint → updates state → re-render →
+  // new function reference → effect fires again.
+  const hydrateSnapshotRef = useRef(chatActions.hydrateSessionSnapshot);
+  hydrateSnapshotRef.current = chatActions.hydrateSessionSnapshot;
+
   streamManager.setChatActions(chatActions);
 
   useEffect(() => {
@@ -149,7 +156,8 @@ export function useChatSession() {
           isDisposed: () => disposed,
           plan,
           selectSession: sessionId => fetchChatSession(queryClient, sessionId),
-          hydrateSessionSnapshot: chatActions.hydrateSessionSnapshot,
+          hydrateSessionSnapshot: (sessionId: string, forceRefresh: boolean) =>
+            hydrateSnapshotRef.current(sessionId, forceRefresh),
           createSessionStream,
           bindStream: (nextStream, nextSessionId) =>
             streamManager.bindStream(
@@ -197,7 +205,7 @@ export function useChatSession() {
       }
       streamManager.stopSessionPolling(activeSessionId);
     };
-  }, [activeSessionId, chatActions.hydrateSessionSnapshot, queryClient, streamReconnectNonce]);
+  }, [activeSessionId, queryClient, streamReconnectNonce]);
 
   return {
     sessions,
