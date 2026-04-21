@@ -1,6 +1,6 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 
-import { normalizeEmbeddingBaseUrl } from '../support/urls';
+import { normalizeEmbeddingBaseUrl } from '../../shared/urls';
 
 export interface OpenAIEmbeddingModelOptions {
   model: string;

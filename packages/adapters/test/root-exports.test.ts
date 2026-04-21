@@ -29,7 +29,7 @@ import {
   mapVectorMetadataToChromaMetadata
 } from '@agent/adapters';
 import * as contractLlmProviderExports from '../src/contracts/llm';
-import * as embeddingExports from '../src/embeddings';
+import * as embeddingExports from '../src/openai-compatible/embeddings';
 import { AnthropicProvider as canonicalAnthropicProvider } from '../src/providers/llm/anthropic';
 import { createLlmProviderFactory as canonicalCreateLlmProviderFactory } from '../src/providers/llm/factories/create-llm-provider-factory';
 import {

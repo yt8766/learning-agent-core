@@ -2,7 +2,7 @@ import type { ZodType } from 'zod/v4';
 
 import type { ChatMessage } from '../providers/llm/base/llm-provider.types';
 import { appendJsonSafetyToMessages } from '../prompts';
-import { withLlmRetry } from '../retry';
+import { withLlmRetry } from '../resilience/llm-retry';
 
 export type StructuredParseStatus = 'success' | 'schema_parse_failed' | 'provider_failed' | 'not_configured';
 

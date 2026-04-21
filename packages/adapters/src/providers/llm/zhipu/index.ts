@@ -1,1 +1,1 @@
-export { ZhipuLlmProvider } from './zhipu-provider';
+export * from '../../../zhipu/provider';

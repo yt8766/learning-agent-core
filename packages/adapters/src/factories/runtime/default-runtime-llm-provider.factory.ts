@@ -1,18 +1,9 @@
 import type { RuntimeSettings } from '@agent/config';
 import type { ILLMProvider } from '@agent/core';
 
-import {
-  LlmProviderFactoryRegistry,
-  registerDefaultLlmProviderFactories,
-  type LlmProviderFactory
-} from '../../providers/llm/factories';
-import {
-  ModelRouter,
-  ProviderRegistry,
-  RoutedLlmProvider,
-  type SemanticCacheRepository
-} from '../../providers/llm/routing';
-import { ZhipuLlmProvider } from '../../providers/llm/zhipu';
+import { LlmProviderFactoryRegistry, registerDefaultLlmProviderFactories, type LlmProviderFactory } from '../llm';
+import { ModelRouter, ProviderRegistry, RoutedLlmProvider, type SemanticCacheRepository } from '../../routing/llm';
+import { ZhipuLlmProvider } from '../../zhipu/provider';
 
 export interface DefaultRuntimeLlmProviderOptions {
   settings: RuntimeSettings;
