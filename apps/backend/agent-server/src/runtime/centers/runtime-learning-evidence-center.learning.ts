@@ -1,4 +1,7 @@
-import { buildLearningCenter as buildLearningCenterProjection, type BuildLearningCenterInput } from '@agent/runtime';
+import {
+  buildLearningCenter as buildLearningCenterProjection,
+  type BuildLearningCenterInput
+} from '../core/runtime-centers-facade';
 import { buildRuleCandidates } from '../domain/learning/runtime-learning-derived-records';
 
 export async function buildLearningCenter(input: BuildLearningCenterInput) {

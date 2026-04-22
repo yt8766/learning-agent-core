@@ -1,4 +1,5 @@
-import { describeConnectorProfilePolicy, type ProviderAuditSyncResult } from '@agent/runtime';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
+import type { ProviderAuditSyncResult } from '../../core/runtime-centers-facade';
 
 import type { RuntimeHost } from '../../core/runtime.host';
 import type { RuntimeCentersContext, RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';

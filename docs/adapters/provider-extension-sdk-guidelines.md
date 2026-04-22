@@ -33,7 +33,7 @@
 
 当前稳定 contract 宿主：
 
-- `packages/adapters/src/providers/llm/base/llm-provider.types.ts`
+- `packages/adapters/src/contracts/llm/llm-provider.types.ts`
 
 开发者自定义 Provider 时必须实现：
 

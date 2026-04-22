@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RuntimeCentersQueryService } from '../../../src/runtime/centers/runtime-centers-query.service';
 import { buildPlatformConsole } from '../../../src/runtime/helpers/runtime-platform-console';
 import { getDisabledCompanyWorkerIds } from '../../../src/runtime/helpers/runtime-connector-registry';
-import { summarizeAndPersistEvalHistory } from '@agent/runtime';
+import { summarizeAndPersistEvalHistory } from '@agent/platform-runtime';
 import { loadPromptRegressionConfigSummary } from '../../../src/runtime/helpers/prompt-regression-summary';
 import {
   readInstalledSkillRecords,
@@ -38,8 +38,8 @@ vi.mock('../../../src/runtime/helpers/runtime-platform-console', () => ({
   exportRuntimeCenter: vi.fn(async () => ({ scope: 'runtime-export' }))
 }));
 
-vi.mock('@agent/runtime', async importOriginal => {
-  const actual = await importOriginal<typeof import('@agent/runtime')>();
+vi.mock('@agent/platform-runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/platform-runtime')>();
   return {
     ...actual,
     summarizeAndPersistEvalHistory: vi.fn(async () => ({ total: 2, outcomes: ['passed'] })),

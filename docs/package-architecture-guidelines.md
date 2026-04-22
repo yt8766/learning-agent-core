@@ -94,6 +94,14 @@ packages/<pkg>/
 - `packages/runtime` 是 Runtime Kernel，长期目标是不认识任何具体官方 Agent，只依赖抽象 registry / session / graph / approval / recovery / observability contract
 - `apps/*` 是启动适配器，只选择装配方案并暴露 HTTP/SSE/worker/UI 入口，不内联 agent prompt、graph 装配或 runtime 主链
 
+同时默认遵守一条第三方边界红线：
+
+- 第三方库可以使用，但第三方实现细节不能穿透项目边界
+- `packages/core`、`packages/runtime`、`agents/*`、`apps/*` 对外暴露的 contract、DTO、event、payload、持久化记录、graph state 与错误语义，应优先使用项目自定义 schema/type/facade，不直接暴露第三方对象
+- 第三方 SDK 调用、协议转换、vendor-specific 参数、response/error/event 适配，默认收敛在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界目录
+- 调用方应依赖“项目需要的能力接口”，而不是依赖某个 vendor 当前 API；替换模型、数据库 SDK、图引擎、connector、审批系统时，默认只改边界实现而不是全仓业务调用点
+- 如果某个第三方对象必须短期暴露，必须在相邻文档或代码注释中说明原因、兼容范围与后续收口计划
+
 本轮继续补充一条 backend/runtime 收敛约定：
 
 - `apps/backend/agent-server/src/runtime/*` 下，`centers/`、`services/`、`core/` 默认优先保留宿主装配、Nest facade、query entry、error mapping 与少量 orchestration；

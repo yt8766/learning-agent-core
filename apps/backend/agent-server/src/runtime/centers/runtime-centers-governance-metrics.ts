@@ -1,1 +1,1 @@
-export { refreshMetricsSnapshots } from '@agent/runtime';
+export { refreshMetricsSnapshots } from '../core/runtime-centers-facade';

@@ -15,6 +15,7 @@ import { RuntimeIssueCard } from './chat-message-cards/runtime-issue-card';
 import { SkillSuggestionsCard } from './chat-message-cards/skill-suggestions-card';
 import { SkillReuseCard } from './chat-message-cards/skill-reuse-card';
 import { WorkerDispatchCard } from './chat-message-cards/worker-dispatch-card';
+import { stripThinkTags } from '@/features/chat/chat-message-adapter-helpers';
 
 type EvidenceDigestSource = Extract<
   NonNullable<ChatMessageRecord['card']>,
@@ -260,7 +261,7 @@ export function renderStructuredMessageCard(
     return (
       <div className={`chatx-markdown-shell ${message.role === 'system' ? 'is-system' : 'is-assistant'}`}>
         <XMarkdown
-          content={message.content}
+          content={stripThinkTags(message.content)}
           streaming={streaming ? { hasNextChunk: true, tail: true } : undefined}
           openLinksInNewTab
           escapeRawHtml

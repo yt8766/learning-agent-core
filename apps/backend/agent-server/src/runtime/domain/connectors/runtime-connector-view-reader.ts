@@ -1,2 +1,2 @@
-export { loadConnectorCenterProjection, loadConnectorProjectionById } from '@agent/runtime';
-export type { RuntimeConnectorCenterLoaderInput as ConnectorViewReaderInput } from '@agent/runtime';
+export { loadConnectorCenterProjection, loadConnectorProjectionById } from '../../core/runtime-centers-facade';
+export type { RuntimeConnectorCenterLoaderInput as ConnectorViewReaderInput } from '../../core/runtime-centers-facade';

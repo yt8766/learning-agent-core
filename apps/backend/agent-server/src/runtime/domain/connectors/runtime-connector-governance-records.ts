@@ -2,4 +2,4 @@ export {
   defaultConnectorSessionState,
   groupConnectorDiscoveryHistory,
   groupGovernanceAuditByTarget
-} from '@agent/runtime';
+} from '../../core/runtime-centers-facade';

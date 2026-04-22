@@ -56,7 +56,7 @@
     "watch": "pnpm build:watch & pnpm build:watch:types",
     "build:lib": "pnpm build:transpile && pnpm build:types",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/runtime",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/runtime/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:unit": "pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js packages/runtime",

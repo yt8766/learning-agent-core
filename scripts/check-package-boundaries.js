@@ -118,7 +118,8 @@ const specialistAgentPackageNames = new Set([
 ]);
 const allowedBackendPlatformRuntimeFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime.host.ts',
-  'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts'
+  'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts'
 ]);
 
 function fail(messages) {

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-export { buildRecentTraceSummaryLines } from '@agent/runtime';
+export { buildRecentTraceSummaryLines } from '../../core/runtime-centers-facade';
 
 export function assertTaskActionResult<TTask>(taskId: string, task: TTask | undefined): TTask {
   if (!task) {

@@ -71,10 +71,10 @@
 - 这些脚本专门服务于 Turbo 包级验证通道
 - 默认不替代原有 `typecheck`、`test`、`test:integration`、`verify`
 - `apps/backend/agent-server` 在 Turbo-only 通道中暂时以根级 Vitest 配置作为宿主，原有 Jest 入口继续保留
-- `turbo:typecheck` 当前采用 source-only 语义：
-  - 优先复用各 workspace 原始 `tsconfig` 的 `include`
-  - 自动剔除 `demo/**` 与 `test/**`
-  - 使 `Type` 层不与 `Demo` / `Integration` 层混淆
+- `turbo:typecheck` 当前直接代理到各 workspace 的 `typecheck` 脚本：
+  - 各 workspace 自身声明的 `tsconfig` 是唯一事实来源
+  - `turbo:typecheck` 与日常 `pnpm typecheck` 语义保持一致
+  - 不再依赖额外的 `run-package-typecheck` 包装脚本
 
 当前根级也已补齐受影响范围入口：
 

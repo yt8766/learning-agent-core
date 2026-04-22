@@ -5,11 +5,13 @@ import {
   buildMainThreadMessages,
   buildNodeStreamCognitionSummary,
   containsCitationSection,
+  extractThinkBlocks,
   findSuffixPrefixOverlap,
   formatConnectorTemplateLabel,
   mergeAssistantText,
   normalizeCapabilityMessageForMainThread,
   stripStreamingCursor,
+  stripThinkTags,
   toPlainSummary
 } from '@/features/chat/chat-message-adapter-helpers';
 import type { ChatMessageRecord } from '@/types/chat';
@@ -217,5 +219,18 @@ describe('chat-message-adapter helpers', () => {
     expect(formatConnectorTemplateLabel('lark-mcp-template')).toBe('Lark MCP');
     expect(formatConnectorTemplateLabel()).toBe('相关 MCP');
     expect(stripStreamingCursor('正在输出▌')).toBe('正在输出');
+  });
+
+  it('stripThinkTags 剥离 <think>…</think> 块，保留正文内容', () => {
+    expect(stripThinkTags('<think>这里是推理过程</think>这是最终回复')).toBe('这是最终回复');
+    expect(stripThinkTags('<think>\n多行\n推理\n</think>\n\n正文段落')).toBe('正文段落');
+    expect(stripThinkTags('没有 think 标签的纯文本')).toBe('没有 think 标签的纯文本');
+    expect(stripThinkTags('<think>推理</think>')).toBe('');
+  });
+
+  it('extractThinkBlocks 提取所有 <think>…</think> 内容并拼接', () => {
+    expect(extractThinkBlocks('<think>推理一</think>正文<think>推理二</think>')).toBe('推理一\n\n推理二');
+    expect(extractThinkBlocks('<think>  唯一推理  </think>结论')).toBe('唯一推理');
+    expect(extractThinkBlocks('没有 think 标签')).toBe('');
   });
 });

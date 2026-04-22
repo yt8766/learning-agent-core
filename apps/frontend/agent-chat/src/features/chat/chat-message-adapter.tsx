@@ -8,7 +8,9 @@ import {
   buildCognitionSummary,
   buildMainThreadMessages,
   containsCitationSection,
+  extractThinkBlocks,
   stripStreamingCursor,
+  stripThinkTags,
   toPlainSummary
 } from './chat-message-adapter-helpers';
 
@@ -74,9 +76,11 @@ function renderMessageContent(
     message.role === 'assistant'
       ? {
           ...message,
-          content: stripStreamingCursor(message.content)
+          content: stripThinkTags(stripStreamingCursor(message.content))
         }
       : message;
+  const inlineThinkContent =
+    message.role === 'assistant' ? extractThinkBlocks(stripStreamingCursor(message.content)) : '';
   const evidenceSources =
     options.inlineEvidenceMessage?.card?.type === 'evidence_digest'
       ? options.inlineEvidenceMessage.card.sources
@@ -97,7 +101,7 @@ function renderMessageContent(
   const shouldShowCognition =
     message.role === 'assistant' &&
     message.id === options.cognitionTargetMessageId &&
-    (options.thinkState || (options.thoughtItems?.length ?? 0) > 0);
+    (options.thinkState || (options.thoughtItems?.length ?? 0) > 0 || Boolean(inlineThinkContent));
 
   if (!shouldShowCognition) {
     if (!evidenceContent) {
@@ -177,6 +181,13 @@ function renderMessageContent(
                       ? toPlainSummary(options.thoughtItems[0].description)
                       : options.thinkState.content}
                   </Text>
+                </Think>
+              </div>
+            ) : null}
+            {inlineThinkContent ? (
+              <div className="chatx-inline-think__block">
+                <Think title="模型推理" defaultExpanded>
+                  <Text>{inlineThinkContent}</Text>
                 </Think>
               </div>
             ) : null}

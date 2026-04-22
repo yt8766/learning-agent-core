@@ -5,4 +5,4 @@ export type {
   LocalSkillSuggestionsRecord,
   RecentQuarantinedMemory,
   RuntimeGovernanceSnapshotRecord
-} from '@agent/runtime';
+} from '../core/runtime-centers-facade';

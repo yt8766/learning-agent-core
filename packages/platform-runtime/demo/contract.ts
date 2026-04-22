@@ -1,5 +1,7 @@
 import {
   StaticAgentRegistry,
+  buildRuntimeCenterProjection,
+  buildRuntimeCenterSummaryProjection,
   createDefaultPlatformRuntime,
   createDefaultPlatformRuntimeOptions,
   createOfficialAgentRegistry,
@@ -8,9 +10,11 @@ import {
   createPlatformRuntime,
   createRuntimeAgentProvider,
   listBootstrapSkills,
-  listWorkflowPresets
+  listWorkflowPresets,
+  toCritiqueStyleReviewOutcome
 } from '../src/index.js';
 import * as adapterExports from '../src/adapters/index.js';
+import * as centersExports from '../src/centers/index.js';
 import * as registryExports from '../src/registries/index.js';
 import * as runtimeExports from '../src/runtime/index.js';
 
@@ -28,7 +32,13 @@ console.log(
         createOfficialWorkflowRegistry === registryExports.createOfficialWorkflowRegistry &&
         listBootstrapSkills === registryExports.listBootstrapSkills &&
         listWorkflowPresets === registryExports.listWorkflowPresets,
-      adapterAligned: createRuntimeAgentProvider === adapterExports.createRuntimeAgentProvider
+      adapterAligned: createRuntimeAgentProvider === adapterExports.createRuntimeAgentProvider,
+      centersAligned:
+        buildRuntimeCenterProjection === centersExports.buildRuntimeCenterProjection &&
+        buildRuntimeCenterSummaryProjection === centersExports.buildRuntimeCenterSummaryProjection &&
+        toCritiqueStyleReviewOutcome === centersExports.toCritiqueStyleReviewOutcome,
+      legacyBlockedDecision: toCritiqueStyleReviewOutcome({ decision: 'blocked', summary: 'blocked' }).decision,
+      legacyApprovedDecision: toCritiqueStyleReviewOutcome({ decision: 'approved', summary: 'approved' }).decision
     },
     null,
     2

@@ -1,1 +1,1 @@
-export { buildLearningMemoryStats } from '@agent/runtime';
+export { buildLearningMemoryStats } from '../../core/runtime-centers-facade';

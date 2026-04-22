@@ -61,6 +61,7 @@ export {
   runRouteStage,
   buildSupervisorDirectReplyUserPrompt,
   buildSupervisorPlanUserPrompt,
+  buildSupervisorDirectReplySystemPrompt,
   SUPERVISOR_DIRECT_REPLY_PROMPT,
   SUPERVISOR_PLAN_SYSTEM_PROMPT,
   SupervisorPlanSchema,

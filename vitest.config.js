@@ -97,7 +97,11 @@ export default defineConfig({
       'apps/**/test/**/*.int-spec.ts',
       'apps/**/test/**/*.test.tsx',
       'apps/**/test/**/*.spec.tsx',
-      'apps/**/test/**/*.int-spec.tsx'
+      'apps/**/test/**/*.int-spec.tsx',
+      // workspace-level test host (see test/README.md)
+      'test/integration/**/*.int-spec.ts',
+      'test/smoke/**/*.smoke.ts',
+      'test/acceptance/**/*.acc-spec.ts'
     ],
     exclude: [
       '**/node_modules/**',

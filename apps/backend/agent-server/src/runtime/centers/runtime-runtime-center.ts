@@ -5,13 +5,13 @@ import {
   buildRuntimeCenterSummaryProjection,
   summarizeAndPersistUsageAnalytics,
   type RuntimeCenterTaskLike
-} from '@agent/runtime';
+} from '../core/runtime-centers-facade';
 import { getMinistryDisplayName, getSpecialistDisplayName } from '../helpers/runtime-architecture-helpers';
 
 import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
 import type { DailyTechBriefingStatusRecord } from '../briefings/runtime-tech-briefing.types';
-export { buildRuntimeCenterSummaryProjection as buildRuntimeCenterSummary } from '@agent/runtime';
-export type { RuntimeCenterTaskLike } from '@agent/runtime';
+export { buildRuntimeCenterSummaryProjection as buildRuntimeCenterSummary } from '../core/runtime-centers-facade';
+export type { RuntimeCenterTaskLike } from '../core/runtime-centers-facade';
 import type { RuntimeHost } from '../core/runtime.host';
 
 export function buildRuntimeCenter(input: {

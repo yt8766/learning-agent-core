@@ -1,1 +1,1 @@
-export { shouldUsePersistedEvalSnapshot, shouldUsePersistedUsageSnapshot } from '@agent/runtime';
+export { shouldUsePersistedEvalSnapshot, shouldUsePersistedUsageSnapshot } from '../../core/runtime-centers-facade';

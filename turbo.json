@@ -5,7 +5,6 @@
     "scripts/demo-smoke.js",
     "scripts/demo-smoke.d.ts",
     "scripts/run-package-integration-tests.js",
-    "scripts/run-package-typecheck.js",
     "scripts/typecheck.js"
   ],
   "tasks": {

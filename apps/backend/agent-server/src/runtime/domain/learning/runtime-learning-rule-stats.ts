@@ -1,1 +1,1 @@
-export { countInvalidatedRules } from '@agent/runtime';
+export { countInvalidatedRules } from '../../core/runtime-centers-facade';

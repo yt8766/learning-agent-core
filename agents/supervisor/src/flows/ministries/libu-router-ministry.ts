@@ -10,7 +10,7 @@ import {
 import {
   buildSupervisorDirectReplyUserPrompt,
   buildSupervisorPlanUserPrompt,
-  SUPERVISOR_DIRECT_REPLY_PROMPT,
+  buildSupervisorDirectReplySystemPrompt,
   SUPERVISOR_PLAN_SYSTEM_PROMPT
 } from '../supervisor/prompts/supervisor-plan-prompts';
 import { SupervisorPlanSchema, type SupervisorPlanOutput } from '../supervisor/schemas/supervisor-plan-schema';
@@ -171,7 +171,7 @@ export class LibuRouterMinistry {
     const promptMessages = [
       {
         role: 'system' as const,
-        content: SUPERVISOR_DIRECT_REPLY_PROMPT
+        content: buildSupervisorDirectReplySystemPrompt(this.context.currentWorker?.defaultModel)
       },
       {
         role: 'user' as const,

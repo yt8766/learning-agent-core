@@ -1,1 +1,1 @@
-export { normalizeLearningCenterJobs, normalizeLearningCenterTasks } from '@agent/runtime';
+export { normalizeLearningCenterJobs, normalizeLearningCenterTasks } from '../../core/runtime-centers-facade';

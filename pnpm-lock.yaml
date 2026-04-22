@@ -540,9 +540,18 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../core
+      '@agent/evals':
+        specifier: workspace:*
+        version: link:../evals
+      '@agent/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@agent/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@agent/tools':
+        specifier: workspace:*
+        version: link:../tools
       zod:
         specifier: ^4.3.6
         version: 4.3.6

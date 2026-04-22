@@ -60,6 +60,16 @@
   - `packages/adapters` 负责实现这些 interface
   - `packages/runtime` 与 `agents/*` 只能依赖 `packages/core` 暴露的抽象与 contract，不默认直接依赖 vendor SDK 或具体 adapter 类
   - 具体 adapter 实例默认在 `apps/backend/*/src/app`、`apps/worker/src/bootstrap` 等应用启动层装配
+- 第三方依赖边界默认遵守“允许使用，不允许穿透”：
+  - 项目允许使用第三方库，但业务代码不得直接依赖第三方实现细节
+  - 第三方能力进入主链流程、跨包 contract、前后端协议、graph state、tool result、审批事件、模型输出或持久化记录时，必须先经过项目自定义的稳定 `contract / adapter / facade / provider` 边界
+  - 第三方 SDK 调用、vendor response/error/event 适配、协议转换与 vendor-specific 参数，默认集中在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界层
+  - `flows/`、`graphs/`、`services/`、前端业务组件默认消费项目自定义接口，不直接消费第三方 SDK response、error、event、内部类型或隐式状态机语义
+  - 稳定 JSON / DTO / event / payload contract 继续优先 schema-first，默认落在 `packages/core` 或真实宿主的 `types/`、`schemas/` 中，不直接复用第三方对象作为内部协议或持久化结构
+  - 第三方错误必须先转换为项目自己的错误语义，不允许调用方散落判断 vendor 私有 `code`、`status` 或嵌套错误 shape
+  - 对第三方能力应优先抽象“项目需要的能力接口”，不要机械包一层 vendor API；新增第三方接入时，优先新增 provider/adapter 实现，而不是在业务层复制调用链或追加 `if/else`
+  - 新增第三方依赖或直接接入第三方 SDK 前，至少确认：是否已有项目内 provider/adapter/facade；第三方对象是否会穿透到业务层或公共 contract；是否需要先定义项目 schema/type；错误、重试、超时、取消、恢复、审计语义由哪一层负责；是否已补 adapter 层测试或 contract parse 回归
+  - 允许的例外：React/Vite/zod/测试框架等基础设施在对应技术层直接使用；极薄的启动装配层可创建第三方 client/SDK 实例但不得泄漏到业务调用方；兼容迁移期间可保留带明确标注和清理入口的 thin compat
 - 包分层治理的固定检查入口：
   - `pnpm check:barrel-layout`
   - `pnpm check:package-boundaries`

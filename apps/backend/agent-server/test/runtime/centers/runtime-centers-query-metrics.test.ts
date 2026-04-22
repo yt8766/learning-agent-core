@@ -9,10 +9,10 @@ import {
   readPersistedUsageAnalytics,
   summarizeAndPersistEvalHistory,
   summarizeAndPersistUsageAnalytics
-} from '@agent/runtime';
+} from '@agent/platform-runtime';
 
-vi.mock('@agent/runtime', async importOriginal => {
-  const actual = await importOriginal<typeof import('@agent/runtime')>();
+vi.mock('@agent/platform-runtime', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/platform-runtime')>();
   return {
     ...actual,
     readPersistedUsageAnalytics: vi.fn(),

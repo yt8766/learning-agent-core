@@ -1,4 +1,5 @@
-import { describeConnectorProfilePolicy, fetchProviderUsageAudit } from '@agent/runtime';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
+import { fetchProviderUsageAudit } from './runtime-centers-facade';
 import type { SkillCard } from '@agent/core';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from '../helpers/runtime-connector-registry';

@@ -3,7 +3,7 @@ import {
   readPersistedUsageAnalytics,
   summarizeAndPersistEvalHistory,
   summarizeAndPersistUsageAnalytics
-} from '@agent/runtime';
+} from '../core/runtime-centers-facade';
 import type { RuntimeCentersContext } from './runtime-centers.types';
 import {
   shouldUsePersistedEvalSnapshot,

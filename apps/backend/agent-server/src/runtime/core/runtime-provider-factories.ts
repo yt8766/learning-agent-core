@@ -1,4 +1,5 @@
-import { describeConnectorProfilePolicy, fetchProviderUsageAudit } from '@agent/runtime';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
+import { fetchProviderUsageAudit } from './runtime-centers-facade';
 import { RuntimeCentersGovernanceService } from '../centers/runtime-centers-governance.service';
 import { RuntimeCentersQueryService } from '../centers/runtime-centers-query.service';
 import { RuntimeCentersService } from '../centers/runtime-centers.service';

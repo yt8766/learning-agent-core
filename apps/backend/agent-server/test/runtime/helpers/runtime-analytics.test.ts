@@ -6,7 +6,7 @@ import {
   formatDay,
   roundCurrency,
   summarizeUsageAnalytics
-} from '@agent/runtime';
+} from '@agent/platform-runtime';
 
 describe('runtime-analytics', () => {
   it('会汇总 usage analytics', () => {

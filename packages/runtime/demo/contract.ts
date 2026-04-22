@@ -1,20 +1,17 @@
-import {
-  buildRuntimeCenterProjection,
-  buildRuntimeCenterSummaryProjection,
-  toCritiqueStyleReviewOutcome
-} from '../src/index.js';
-import * as runtimeCenterProjectionExports from '../src/runtime/runtime-center-projection.js';
+import { LearningFlow, listApprovalScopePolicies, listGovernanceProfiles } from '../src/index.js';
+import * as governanceExports from '../src/governance/index.js';
+import * as observabilityExports from '../src/runtime-observability/index.js';
 
 console.log(
   JSON.stringify(
     {
-      projectionAligned: buildRuntimeCenterProjection === runtimeCenterProjectionExports.buildRuntimeCenterProjection,
-      summaryAligned:
-        buildRuntimeCenterSummaryProjection === runtimeCenterProjectionExports.buildRuntimeCenterSummaryProjection,
-      critiqueAdapterAligned:
-        toCritiqueStyleReviewOutcome === runtimeCenterProjectionExports.toCritiqueStyleReviewOutcome,
-      legacyBlockedDecision: toCritiqueStyleReviewOutcome({ decision: 'blocked', summary: 'blocked' }).decision,
-      legacyApprovedDecision: toCritiqueStyleReviewOutcome({ decision: 'approved', summary: 'approved' }).decision
+      governanceAligned:
+        listApprovalScopePolicies === governanceExports.listApprovalScopePolicies &&
+        listGovernanceProfiles === governanceExports.listGovernanceProfiles,
+      learningFlowExported: typeof LearningFlow === 'function',
+      observabilityExported:
+        typeof observabilityExports.resolveTaskExecutionMode === 'function' &&
+        typeof observabilityExports.resolveTaskInteractionKind === 'function'
     },
     null,
     2

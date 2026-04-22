@@ -88,11 +88,14 @@
 
 ## 3. 目录与落位规范
 
-原始需求中的 `__tests__/`、根级 `tests/integration`、根级 `tests/smoke` 目录，不直接套用到本仓库。
+原始需求中的 `__tests__/`、根级 `tests/integration`（复数形式）、根级 `tests/smoke` 目录，不直接套用到本仓库的命名习惯。
+
+仓库级 workspace test host 的正式设计见 [Workspace Test Host 设计](/docs/evals/workspace-test-host-design.md)，其根级落点为 `test/`（单数），与各宿主的 `test/` 语义不同：根级 `test/` 只承载跨包 integration 与 workspace smoke，各宿主 `test/` 仍承载宿主内原子测试。
 
 当前真实规则如下：
 
-- 每个项目统一使用与 `src/` 同级的 `test/` 目录
+- 每个项目统一使用与 `src/` 同级的 `test/` 目录（宿主内测试）
+- 跨包、跨宿主 integration 与 workspace smoke 落在根级 `test/`（workspace test host）
 - 不再新增 `src/**/*.test.ts`
 - 不再新增 `src/**/*.spec.ts`
 - 不再新增 `src/**/*.int-spec.ts`
@@ -142,6 +145,7 @@
   - `turbo:test:unit`
   - `turbo:test:integration`
 - 这条通道用于单包缓存、`--filter` 与执行预览，不替代根级 `pnpm verify`
+- `turbo:typecheck` 当前直接代理到各 workspace 自身的 `typecheck` 脚本；对应 workspace 的 `tsconfig` 现在是唯一事实来源，不再依赖额外的 `run-package-typecheck` 包装脚本
 - 当前已新增根级受影响范围入口：
   - `pnpm lint:prettier:affected`
   - `pnpm lint:eslint:affected`

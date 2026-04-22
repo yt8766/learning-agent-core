@@ -8,7 +8,7 @@
     "build": "tsup src/main.ts --format cjs --dts --out-dir dist",
     "lint": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js apps/worker",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run apps/worker/test",
     "turbo:test:unit": "pnpm test",
     "turbo:test:integration": "node ../../scripts/run-package-integration-tests.js apps/worker"

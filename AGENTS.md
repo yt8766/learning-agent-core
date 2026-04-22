@@ -188,6 +188,13 @@ skills/
 - 对外暴露的模块必须先定义清晰边界：输入、输出、错误语义、版本兼容策略，再落具体实现；禁止先把实现写散，再事后补接口包装。
 - 涉及跨包、跨模块、前后端、graph 与 tool、service 与 repository 之间的协作时，优先抽象稳定 `contract / adapter / facade`，避免调用方直接耦合底层细节。
 - 高变动逻辑与稳定契约必须分离：易变部分下沉到 `flows/`、`runtime/`、`adapters/`、`repositories/` 等内部实现；稳定部分通过 `@agent/*` 根入口、DTO、schema、facade 对外暴露。
+- 第三方依赖边界默认遵守“允许使用，不允许穿透”：
+  - 业务代码不得直接耦合第三方实现细节；第三方能力进入主链流程、跨包 contract、前后端协议、graph state、tool result、审批事件、模型输出或持久化记录时，必须先经过项目自定义的稳定 `contract / adapter / facade / provider` 边界。
+  - 第三方 SDK 调用、vendor response/error/event 适配、协议转换与 vendor-specific 参数，默认集中在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界层；`flows/`、`graphs/`、`services/`、UI 业务组件默认只消费项目自定义接口。
+  - 不允许让第三方类型、错误对象、事件结构、状态机语义直接穿透到业务层、公共 contract 或持久化结构；必须在边界层先转换为项目自己的 schema/type/error 语义，例如 provider error、connector error、tool result、approval record、event record。
+  - 对第三方能力应优先抽象“项目需要的能力接口”，不要机械复刻 vendor API；新增第三方接入时，优先新增 provider/adapter 实现，而不是在业务层复制调用链或追加 `if/else`。
+  - 评估新增第三方依赖或直接接入第三方 SDK 时，至少先确认：是否已有项目内 provider/adapter/facade；第三方对象是否会穿透到业务层或公共 contract；是否需要先定义项目 schema/type；错误、重试、超时、取消、恢复、审计语义由哪一层负责；是否已补 adapter 层测试或 contract parse 回归。
+  - 允许的例外仅限：React/Vite/zod/测试框架等基础设施在对应技术层直接使用；极薄的启动装配层创建第三方 client/SDK 实例但不得泄漏到业务调用方；兼容迁移期间保留带明确标注的 thin compat。
 - 目录分组名与物理落位必须一致：如果已经创建 `repositories/`、`nodes/`、`prompts/`、`schemas/`、`types/`、`adapters/`、`runtime/`、`shared/`、`utils/` 等目录，并在其中使用 `index.ts` 作为分组 barrel，则该目录名对应的主要实现也必须物理放进该目录；不要长期保留“目录里只有 `index.ts`，实现却散在父目录”的半收敛结构。
 - 如果兼容迁移期间不得不保留 barrel-only 目录，必须在相邻文档或代码注释中显式标注“过渡态”，并在本轮或明确后续计划里继续完成物理收敛；不能把这种结构当成终态。
 - 仓库已提供 `pnpm check:barrel-layout` 作为目录 barrel 物理落位的固定检查入口；涉及目录收敛时默认把它纳入本轮验证。

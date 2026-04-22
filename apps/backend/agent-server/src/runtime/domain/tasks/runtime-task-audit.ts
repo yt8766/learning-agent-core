@@ -1,6 +1,6 @@
 import type { RuntimeStateSnapshot } from '@agent/memory';
 import type { ManagerPlan, TaskRecord } from '@agent/core';
-import { buildTraceAnalytics } from '@agent/runtime';
+import { buildTraceAnalytics } from '../../core/runtime-centers-facade';
 
 import { extractBrowserReplay } from '../../helpers/runtime-connector-utils';
 
