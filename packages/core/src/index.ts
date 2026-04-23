@@ -1,4 +1,6 @@
 export * from './providers';
+export * from './intel';
+export * from './runtime-invocation';
 export * from './contracts/chat/index';
 export * from './contracts/ministries/index';
 export * from './contracts/execution/index';
@@ -17,7 +19,17 @@ export type {
   DataReportJsonModelSelectorPreference,
   DataReportJsonModelSelectorTier,
   DataReportJsonNodeModelSelector,
-  DataReportJsonNodeModelPolicy
+  DataReportJsonNodeModelPolicy,
+  ReportBundle,
+  ReportBundleMode,
+  ReportDocument,
+  ReportPatchOperation
+} from './contracts/data-report/index';
+export {
+  ReportBundleSchema,
+  ReportBundleModeSchema,
+  ReportDocumentSchema,
+  ReportPatchOperationSchema
 } from './contracts/data-report/index';
 export {
   ActionIntent,
