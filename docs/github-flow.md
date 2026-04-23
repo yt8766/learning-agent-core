@@ -80,11 +80,14 @@ git checkout -b feature/xxx
 建议在提交前执行：
 
 ```bash
-pnpm lint:eslint:check
-pnpm lint:prettier:check
-pnpm lint:tsc
-pnpm test
+pnpm verify:affected
+pnpm test:workspace:smoke
 ```
+
+本地 hook 分层：
+
+- `pre-commit` 继续执行 `pnpm check:staged`，负责 staged 文件格式化、ESLint、受影响 TypeScript 项目、相关 Vitest 与 prompt 回归，保持单次提交反馈足够快。
+- `pre-push` 执行 `pnpm verify:affected` 与 `pnpm test:workspace:smoke`，负责在推送前补齐集成测试与仓库级冒烟闭环。
 
 ### 第三步：推送分支并创建 PR
 

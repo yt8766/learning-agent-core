@@ -185,6 +185,8 @@ jobs:
             command: pnpm test:integration:affected
           - label: Workspace Integration
             command: pnpm test:workspace:integration:affected
+          - label: Workspace Smoke
+            command: pnpm test:workspace:smoke
 
     steps:
       - name: Checkout

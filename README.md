@@ -286,11 +286,11 @@
 - `Affected Verify`
 - `Prompt Regression`
 
-其中 `Affected Verify` 为聚合状态检查，内部会先串行执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration`，以缩短 PR 关键路径，同时保留 `pnpm verify:affected` 对应的五层验证语义。
+其中 `Affected Verify` 为聚合状态检查，内部会先串行执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，以缩短 PR 关键路径，同时保留 `pnpm verify:affected` 对应的五层验证语义，并把仓库级冒烟提前到 PR 阶段暴露。
 
 PR 中的 terminology 检查现在也拆成了独立轻量 job，不再挂在 `Affected Verify` 聚合 job 末尾，因此分支保护对应的聚合状态会更早收口。
 
-`main 检查` 当前也采用同样的收口思路：先执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration`，随后由聚合的 `Verify Main` 收口，并在验证通过后并发执行 `Build Main` 与非阻塞的 `Coverage Main`。
+`main 检查` 当前也采用同样的收口思路：先执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，随后由聚合的 `Verify Main` 收口，并在验证通过后并发执行 `Build Main` 与非阻塞的 `Coverage Main`。
 
 main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，`build-main` 与 `coverage-main` 会自动跳过；`prompt-regression` 也只会在 prompt-sensitive 或代码相关改动时尝试运行。
 
@@ -412,10 +412,10 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 ## 最低检查
 
 - 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前默认先跑 `pnpm verify`
-- `pnpm verify` 当前会串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`
-- `pnpm verify:affected` 当前会串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- `pnpm verify` 当前会串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke + check:architecture`
+- `pnpm verify:affected` 当前会串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected`
 - 所有 `*:affected` 入口默认基于 `VERIFY_BASE_REF` 判定受影响范围；未显式配置时回落到 `origin/main`
-- GitHub PR 校验当前也以这条主入口为准：代码改动默认按 `pnpm verify:affected` 的层级拆成并发 job 执行，并用聚合的 `Affected Verify` 状态收口；纯文档改动默认跑 `pnpm check:docs`
+- GitHub PR 校验当前也以这条主入口为准：代码改动默认按 `pnpm verify:affected` 的层级拆成并发 job 执行，并额外阻塞执行 `pnpm test:workspace:smoke`，最终用聚合的 `Affected Verify` 状态收口；纯文档改动默认跑 `pnpm check:docs`
 - 如果 `pnpm verify` 被与本轮无关的既有红灯或环境问题阻断，仍必须对受影响范围补齐 `Type / Spec / Unit / Demo / Integration` 五层验证，并在交付说明中写明 blocker
 - 纯文档改动至少执行 `pnpm check:docs`
 - runtime：`pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit`

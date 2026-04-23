@@ -58,7 +58,7 @@
     "eval:prompts": "node ./scripts/run-prompt-regression.js",
     "eval:prompts:view": "pnpm exec promptfoo view",
     "check": "pnpm lint:prettier && pnpm lint:eslint && pnpm test && pnpm lint:tsc && pnpm check:architecture",
-    "verify": "pnpm check:docs && pnpm lint:prettier:check && pnpm lint:eslint:check && pnpm typecheck && pnpm test:spec && pnpm test:unit && pnpm test:demo && pnpm test:integration && pnpm check:architecture"
+    "verify": "pnpm check:docs && pnpm lint:prettier:check && pnpm lint:eslint:check && pnpm typecheck && pnpm test:spec && pnpm test:unit && pnpm test:demo && pnpm test:integration && pnpm test:workspace:integration && pnpm test:workspace:smoke && pnpm check:architecture"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
