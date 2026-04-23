@@ -116,6 +116,8 @@
 - `pnpm test:unit`
 - `pnpm test:demo`
 - `pnpm test:integration`
+- `pnpm test:workspace:integration`
+- `pnpm test:workspace:smoke`
 - `pnpm test:coverage`
 - `pnpm test:watch`
 - `pnpm eval:prompts`
@@ -133,6 +135,7 @@
 - `pnpm test:unit:affected`
 - `pnpm test:demo:affected`
 - `pnpm test:integration:affected`
+- `pnpm test:workspace:integration:affected`
 - `pnpm verify:affected`
 
 说明：
@@ -147,6 +150,10 @@
   - `apps/*` 与 `server` 当前同样允许由 integration 或等价自动化闭环承担 Demo 层责任
 - `pnpm test:demo` 会动态发现并执行保留 `demo/` 与 `demo` 脚本的宿主；当前 packages 层默认应被这条链路覆盖
 - 根级 `scripts/run-package-demos.js` 当前会强制校验 `packages/*` 是否同时具备 `demo/` 与 `demo` 脚本；缺任一项都会直接让 `pnpm test:demo` 失败
+- `pnpm test:workspace:integration` 只执行根级 `test/integration/**` 下的 workspace-level integration 用例，不替代宿主内 `test:integration`
+- `pnpm test:workspace:integration:affected` 会基于 changed paths 映射到受影响的根级 integration 用例；PR CI 已将它作为阻塞项执行，确保跨包/跨宿主契约变更不会绕过仓库级协同验证
+- `pnpm test:workspace:smoke` 只执行根级 `test/smoke/**` 下的 workspace-level smoke 用例；当前 main CI 已将它作为阻塞项执行，PR 阶段暂不阻塞 workspace smoke
+- `pnpm test:unit` 明确排除 `*.int-spec.ts`、`*.int-spec.tsx`、`*.smoke.ts` 与 `*.acc-spec.ts`，避免 workspace integration / smoke / acceptance 被误归入 Unit 层
 - `packages/*` 的 demo 分层当前统一采用：
   - `demo/smoke.ts`
     必备；负责最小可运行 smoke，默认由包级 `demo` 脚本执行
@@ -168,10 +175,10 @@
   - `package-lib` 需要验证最小类型闭环与 integration 闭环
   - `agent-basic` 需要验证 integration 闭环与最小类型闭环
 - `pnpm verify` 是根级聚合入口，当前串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
-- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected`
 - `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
-- GitHub PR 校验当前默认执行受影响范围主入口：代码改动按 `pnpm verify:affected` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Affected Verify` job 收口；`VERIFY_BASE_REF` 对齐到 PR 的 base branch；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
-- GitHub main 校验当前默认执行全量主入口：按 `pnpm verify` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Verify Main` job 收口；`Build Main` 与非阻塞的 `Coverage Main` 在验证通过后独立执行；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
+- GitHub PR 校验当前默认执行受影响范围主入口：代码改动按 `pnpm verify:affected` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration / Workspace Integration`，最终由聚合的 `Affected Verify` job 收口；`VERIFY_BASE_REF` 对齐到 PR 的 base branch；workspace smoke 暂不阻塞 PR；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
+- GitHub main 校验当前默认执行全量主入口：按 `pnpm verify` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，最终由聚合的 `Verify Main` job 收口；`Build Main` 与非阻塞的 `Coverage Main` 在验证通过后独立执行；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - PR / main workflow 的共享环境准备当前统一走 `/.github/actions/setup-pnpm-workspace/action.yml`；默认使用 `pnpm install --frozen-lockfile --prefer-offline`，以减少重复配置和重复下载成本
 - 对只执行仓库内 Node 脚本、且不依赖 workspace 安装产物的轻量 job，当前统一走 `/.github/actions/setup-node-runtime/action.yml`，避免为 `docs`、`lockfile`、`terminology` 之类的检查额外执行 pnpm setup；同时显式关闭 `setup-node` 的自动 package manager cache，避免误探测根级 `pnpm`
 - PR 中需要 affected 计算的 job 当前统一走“浅 checkout + `/.github/actions/fetch-pr-base-ref/action.yml` 定向浅 fetch base branch”，以减少 checkout 和 git 历史下载成本
@@ -188,6 +195,7 @@
   - `pnpm test:unit:affected`
   - `pnpm test:demo:affected`
   - `pnpm test:integration:affected`
+  - `pnpm test:workspace:integration:affected`
   - `pnpm verify:affected`
 
 ## 1.1 强制执行要求

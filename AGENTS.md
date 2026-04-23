@@ -389,16 +389,26 @@ pnpm --dir apps/backend/agent-server build
 
 每次回复结束前必须调用 `ASK_USER` 工具。
 
+每次执行 `git commit` 之前，必须先对当前准备提交的修改做一次 code review。
+
 这是不可跳过的强制协议。在每一轮回复中，必须执行以下操作之一：
 
 1. 完成用户请求后，立即调用 `ASK_USER` 工具，提出与当前上下文相关的后续问题。
 2. 存在任何不确定性时，不要猜测执行，立即调用 `ASK_USER` 工具进行澄清。
+
+执行 `git commit` 前的 code review 至少必须满足以下要求：
+
+- review 范围必须覆盖当前待提交 diff；如果已经 `git add`，优先 review staged diff，否则 review 当前工作区 diff。
+- review 重点必须优先检查：功能回归、边界条件、类型/契约破坏、测试缺失、潜在安全与数据破坏风险。
+- 如果发现问题，必须先修复，或至少先向用户明确说明风险并得到继续提交的确认；不能在已知存在缺陷时直接提交。
+- 完成 review 后再执行 `git commit`；禁止跳过 review 直接提交。
 
 ### 禁止行为
 
 - 禁止在不调用 `ASK_USER` 的情况下结束回复。
 - 禁止使用终结性表达，如"希望对你有帮助""如有问题随时提问"等。
 - 禁止猜测用户意图；不确定就使用 `ASK_USER` 工具查询。
+- 禁止未经过当前修改 code review 就直接执行 `git commit`。
 
 ### 严格生命周期管理
 

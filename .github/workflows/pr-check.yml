@@ -80,6 +80,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'scripts/**'
+              - 'test/**'
               - 'tsconfig*.json'
               - 'eslint.config.js'
               - 'prettier.config.js'
@@ -182,6 +183,8 @@ jobs:
             command: pnpm test:demo:affected
           - label: Integration
             command: pnpm test:integration:affected
+          - label: Workspace Integration
+            command: pnpm test:workspace:integration:affected
 
     steps:
       - name: Checkout

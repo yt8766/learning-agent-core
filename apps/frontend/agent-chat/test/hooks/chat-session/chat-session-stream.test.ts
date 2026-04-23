@@ -118,4 +118,121 @@ describe('chat-session-stream', () => {
 
     expect(shouldIgnoreStaleTerminalStreamEvent(checkpoint, currentTerminalEvent)).toBe(false);
   });
+
+  it('会忽略 running 状态下时间戳更旧的终态事件（事件比 checkpoint 旧）', () => {
+    const checkpoint = buildChatCheckpoint({
+      taskId: 'task-1',
+      graphState: { status: 'running', currentStep: 'executing' },
+      updatedAt: '2026-03-30T00:00:10.000Z'
+    });
+    const staleEvent = {
+      ...buildChatEvent('session_finished', 'session-1'),
+      at: '2026-03-30T00:00:05.000Z', // 比 checkpoint 早 5 秒
+      payload: { taskId: 'task-1' }
+    };
+
+    expect(shouldIgnoreStaleTerminalStreamEvent(checkpoint, staleEvent)).toBe(true);
+  });
+
+  it('non-running 状态下即使事件更旧也不忽略', () => {
+    const checkpoint = buildChatCheckpoint({
+      taskId: 'task-1',
+      graphState: { status: 'completed', currentStep: 'done' },
+      updatedAt: '2026-03-30T00:00:10.000Z'
+    });
+    const staleEvent = {
+      ...buildChatEvent('session_finished', 'session-1'),
+      at: '2026-03-30T00:00:05.000Z',
+      payload: { taskId: 'task-1' }
+    };
+
+    // status 不是 running，不走时间戳忽略逻辑
+    expect(shouldIgnoreStaleTerminalStreamEvent(checkpoint, staleEvent)).toBe(false);
+  });
+
+  it('running 状态下 taskId mismatch 会触发忽略', () => {
+    const checkpoint = buildChatCheckpoint({
+      taskId: 'task-current',
+      graphState: { status: 'running', currentStep: 'executing' },
+      updatedAt: '2026-03-30T00:00:05.000Z'
+    });
+    const mismatchEvent = {
+      ...buildChatEvent('session_finished', 'session-1'),
+      at: '2026-03-30T00:00:06.000Z',
+      payload: { taskId: 'task-old' }
+    };
+
+    expect(shouldIgnoreStaleTerminalStreamEvent(checkpoint, mismatchEvent)).toBe(true);
+  });
+
+  it('final_response_completed 会把 graphState.status 改为 completed', () => {
+    const checkpoint = buildChatCheckpoint({
+      thinkState: {
+        messageId: 'assistant-1',
+        thinkingDurationMs: 500,
+        title: '正在思考',
+        content: 'done',
+        loading: false,
+        blink: false
+      }
+    });
+
+    const next = syncCheckpointFromStreamEvent(checkpoint, buildChatEvent('final_response_completed'));
+
+    expect((next as typeof checkpoint).graphState?.status).toBe('completed');
+  });
+
+  it('session_finished 会把 graphState.status 改为 completed', () => {
+    const checkpoint = buildChatCheckpoint({
+      thinkState: {
+        messageId: 'assistant-1',
+        thinkingDurationMs: 500,
+        title: '正在思考',
+        content: 'done',
+        loading: false,
+        blink: false
+      }
+    });
+
+    const next = syncCheckpointFromStreamEvent(checkpoint, buildChatEvent('session_finished'));
+
+    expect((next as typeof checkpoint).graphState?.status).toBe('completed');
+  });
+
+  it('node_status 事件会更新 streamStatus', () => {
+    const checkpoint = buildChatCheckpoint();
+
+    const nodeStatusEvent = {
+      ...buildChatEvent('node_status'),
+      payload: {
+        nodeId: 'coder',
+        nodeLabel: 'Code Generator',
+        detail: 'generating...',
+        progressPercent: 50
+      }
+    };
+
+    const next = syncCheckpointFromStreamEvent(checkpoint, nodeStatusEvent) as typeof checkpoint;
+
+    expect(next?.streamStatus?.nodeId).toBe('coder');
+    expect(next?.streamStatus?.nodeLabel).toBe('Code Generator');
+    expect(next?.streamStatus?.progressPercent).toBe(50);
+  });
+
+  it('node_progress 事件会更新 streamStatus', () => {
+    const checkpoint = buildChatCheckpoint();
+
+    const nodeProgressEvent = {
+      ...buildChatEvent('node_progress'),
+      payload: {
+        nodeId: 'supervisor',
+        progressPercent: 75
+      }
+    };
+
+    const next = syncCheckpointFromStreamEvent(checkpoint, nodeProgressEvent) as typeof checkpoint;
+
+    expect(next?.streamStatus?.nodeId).toBe('supervisor');
+    expect(next?.streamStatus?.progressPercent).toBe(75);
+  });
 });

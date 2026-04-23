@@ -1,33 +1,32 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { ActionIntent } from '@agent/core';
-import type { ToolDefinition } from '@agent/core';
+import type { ApprovalClassifier, ApprovalClassifierInput } from '@agent/tools';
 import type { ILLMProvider as LlmProvider } from '@agent/core';
-import { generateObjectWithRetry } from '../utils/llm-retry';
+import { generateObjectWithRetry } from '@agent/adapters';
 
-type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
-
-export interface XingbuClassifierInput {
-  intent: ActionIntentValue;
-  tool: ToolDefinition;
-  input?: {
-    executionMode?: string;
-    currentMinistry?: string;
-    currentWorker?: string;
-    profile?: string;
-    command?: string;
-    path?: string;
-    fromPath?: string;
-    toPath?: string;
-    url?: string;
-    method?: string;
-  };
-}
-
+/**
+ * 刑部治理分类器：通过 LLM 对工具调用意图进行 allow/ask/deny 三级风险分类。
+ * 实现 ApprovalClassifier 合约（来自 @agent/tools）。
+ *
+ * 仅在此处（packages/platform-runtime）实例化并注入给 AgentRuntime。
+ * packages/runtime Kernel 通过 AgentRuntimeOptions.approvalClassifier 接口接收，
+ * 不直接依赖本实现。
+ */
 export class XingbuClassifier {
   constructor(private readonly llm: LlmProvider) {}
 
-  async classify(input: XingbuClassifierInput): Promise<{ decision: 'allow' | 'ask' | 'deny'; reason: string }> {
-    const heuristic = classifyHeuristically(input);
+  readonly classify: ApprovalClassifier = async (input: ApprovalClassifierInput) => {
+    if (!input.tool) {
+      return undefined;
+    }
+
+    const classifierInput = {
+      intent: input.intent,
+      tool: input.tool,
+      input: input.input
+    };
+
+    const heuristic = classifyHeuristically(classifierInput);
     if (!this.llm.isConfigured()) {
       return heuristic;
     }
@@ -37,7 +36,7 @@ export class XingbuClassifier {
         decision: z.enum(['allow', 'ask', 'deny']),
         reason: z.string()
       });
-      const result = await generateObjectWithRetry({
+      return await generateObjectWithRetry({
         llm: this.llm,
         contractName: 'xingbu-classifier',
         contractVersion: '1.0.0',
@@ -49,7 +48,7 @@ export class XingbuClassifier {
           },
           {
             role: 'user',
-            content: JSON.stringify(input)
+            content: JSON.stringify(classifierInput)
           }
         ],
         schema,
@@ -60,14 +59,25 @@ export class XingbuClassifier {
           temperature: 0
         }
       });
-      return result;
     } catch {
       return heuristic;
     }
-  }
+  };
 }
 
-function classifyHeuristically(input: XingbuClassifierInput): { decision: 'allow' | 'ask' | 'deny'; reason: string } {
+type ClassifierInput = {
+  intent: (typeof ActionIntent)[keyof typeof ActionIntent];
+  tool: { name: string; family?: string };
+  input?: {
+    command?: string;
+    path?: string;
+    fromPath?: string;
+    toPath?: string;
+    method?: string;
+  };
+};
+
+function classifyHeuristically(input: ClassifierInput): { decision: 'allow' | 'ask' | 'deny'; reason: string } {
   if (input.tool.name === 'run_terminal') {
     const command = String(input.input?.command ?? '');
     if (/\b(curl|wget).*(\||>)\b/i.test(command)) {

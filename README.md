@@ -190,9 +190,12 @@
 - 原子层测试：`pnpm test:unit`
 - Demo 闭环：`pnpm test:demo`
 - 协同层测试：`pnpm test:integration`
+- 仓库级协同测试：`pnpm test:workspace:integration`
+- 仓库级冒烟测试：`pnpm test:workspace:smoke`
 - 受影响范围 Spec：`pnpm test:spec:affected`
 - 受影响范围 Lint：`pnpm lint:prettier:affected`、`pnpm lint:eslint:affected`
 - 受影响范围 Demo：`pnpm test:demo:affected`
+- 受影响范围仓库级协同测试：`pnpm test:workspace:integration:affected`
 - 受影响范围 Prompt 回归：`pnpm eval:prompts:affected`
 - 覆盖率测试：`pnpm test:coverage`
 - 测试监听：`pnpm test:watch`

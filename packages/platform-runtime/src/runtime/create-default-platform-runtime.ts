@@ -8,6 +8,7 @@ import {
   listWorkflowPresets,
   listWorkflowVersions
 } from '../registries';
+import { XingbuClassifier } from '../classifiers';
 import { createPlatformRuntime } from './create-platform-runtime';
 
 export function createDefaultPlatformRuntime(options: AgentRuntimeOptions = {}): PlatformRuntimeFacade<AgentRuntime> {
@@ -17,7 +18,11 @@ export function createDefaultPlatformRuntime(options: AgentRuntimeOptions = {}):
   return createPlatformRuntime({
     runtime: new AgentRuntime({
       ...options,
-      agentDependencies
+      agentDependencies,
+      createApprovalClassifier:
+        options.approvalClassifier || options.createApprovalClassifier
+          ? options.createApprovalClassifier
+          : llm => new XingbuClassifier(llm).classify
     }),
     agentRegistry,
     agentDependencies,

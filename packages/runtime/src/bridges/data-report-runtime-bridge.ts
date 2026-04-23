@@ -1,6 +1,10 @@
 import { getRuntimeAgentDependencies, type RuntimeAgentDependencies } from '../contracts/runtime-agent-dependencies';
 
-// Runtime-internal adapter for data-report contracts wired by the composition root.
+/**
+ * @kernel-boundary Kernel adapter — 只允许通过 getRuntimeAgentDependencies() 转发调用，
+ * 禁止在此文件直接 import agents/* 或 @agent/agents-* 等具体 agent 实现。
+ * 具体实现由 packages/platform-runtime 通过 RuntimeAgentDependencies 注入。
+ */
 export const buildDataReportContract = (...args: Parameters<RuntimeAgentDependencies['buildDataReportContract']>) =>
   getRuntimeAgentDependencies().buildDataReportContract(...args);
 

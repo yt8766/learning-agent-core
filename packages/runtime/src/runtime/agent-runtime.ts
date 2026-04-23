@@ -21,9 +21,9 @@ import {
   ToolRegistry,
   createDefaultToolRegistry
 } from '@agent/tools';
+import type { ApprovalClassifier } from '@agent/tools';
 
 import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
-import { XingbuClassifier } from './xingbu-classifier';
 import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
 import { SessionCoordinator } from '../session/session-coordinator';
 import {
@@ -43,6 +43,14 @@ export interface AgentRuntimeOptions {
   }) => ILLMProvider;
   sandboxExecutor?: SandboxExecutor;
   agentDependencies?: RuntimeAgentDependencies;
+  /** 直接注入已实例化的治理风险分类器。 */
+  approvalClassifier?: ApprovalClassifier;
+  /**
+   * 工厂方法：在 LlmProvider 初始化完成后被调用，返回 ApprovalClassifier。
+   * 优先级低于 approvalClassifier。未注入时 ApprovalService 仅使用静态规则。
+   * 默认实现（XingbuClassifier）由 platform-runtime 通过此工厂注入。
+   */
+  createApprovalClassifier?: (llm: ILLMProvider) => ApprovalClassifier;
 }
 
 export class AgentRuntime {
@@ -106,9 +114,9 @@ export class AgentRuntime {
         semanticCacheRepository: this.semanticCacheRepository
       }) ??
       failMissingLlmProvider();
-    const xingbuClassifier = new XingbuClassifier(this.llmProvider);
+    const approvalClassifier = options.approvalClassifier ?? options.createApprovalClassifier?.(this.llmProvider);
     this.approvalService = new ApprovalService(this.settings, {
-      classifier: input => xingbuClassifier.classify(input as never)
+      classifier: approvalClassifier
     });
     this.mcpServerRegistry = new McpServerRegistry();
     this.mcpCapabilityRegistry = new McpCapabilityRegistry();
