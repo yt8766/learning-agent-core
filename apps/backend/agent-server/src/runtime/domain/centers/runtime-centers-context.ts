@@ -1,4 +1,5 @@
-import { describeConnectorProfilePolicy, type ProviderAuditSyncResult } from '@agent/runtime';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
+import type { ProviderAuditSyncResult } from '../../core/runtime-centers-facade';
 
 import type { RuntimeHost } from '../../core/runtime.host';
 import type { RuntimeCentersContext, RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';
@@ -11,6 +12,7 @@ import type { RuntimeSkillSourcesContext } from '../../skills/runtime-skill-sour
 
 export interface RuntimeCentersContextInput {
   settings: () => RuntimeHost['settings'];
+  runtimeHost: () => RuntimeHost;
   appLogger?: () => AppLoggerService | undefined;
   techBriefingService?: () => RuntimeTechBriefingService | undefined;
   wenyuanFacade: () => RuntimeWenyuanFacade;
@@ -38,6 +40,7 @@ export interface RuntimeCentersContextInput {
 export function createCentersContext(input: RuntimeCentersContextInput): RuntimeCentersContext {
   return {
     settings: input.settings(),
+    runtimeHost: input.runtimeHost(),
     appLogger: input.appLogger?.(),
     techBriefingService: input.techBriefingService?.(),
     wenyuanFacade: input.wenyuanFacade(),

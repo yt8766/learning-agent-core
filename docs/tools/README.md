@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/tools/`
-最后核对：2026-04-18
+最后核对：2026-04-20
 
 本目录用于沉淀 `packages/tools` 相关文档。
 
@@ -33,6 +33,9 @@
   - `registry/tool-registry.ts` 与 `registry/tool-risk-classifier.ts` 是 registry 语义的真实宿主
   - 包根 `tool-registry.ts` 与 `tool-risk-classifier.ts` 已删除
   - `executors/*` 是 filesystem / connectors / runtime-governance / scaffold / scheduling executor 的真实宿主
+  - `runtime-governance/tools-center.ts` 是 tools center 纯投影逻辑的真实宿主；backend 只保留 app-facing compat 入口
+  - `runtime-governance/connector-governance-state.ts` 是 connector governance snapshot mutation 与 template-id 映射规则的真实宿主；backend 只保留 compat 入口
+  - `connectors/connector-draft-config.ts` 是 connector draft 默认模板映射、secret update payload 组装与 configured connector 查找规则的真实宿主；backend 只保留 compat 入口
   - `filesystem/filesystem-executor.ts` 与 `connectors/connectors-executor.ts` 已删除
   - `scaffold/scaffold-executor.ts`、`scheduling/scheduling-executor.ts`、`runtime-governance/runtime-governance-executor.ts` 已删除
   - 根入口优先使用显式命名导出维护稳定 API；不要回到整包 `export *` 把内部实现一次性透传出去

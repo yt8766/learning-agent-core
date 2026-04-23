@@ -2,6 +2,7 @@ import type {
   ChatRouteRecord,
   ExecutionStepRecord,
   InternalSubAgentResult,
+  PlannerStrategyRecord,
   PlanDraftRecord,
   WorkflowPresetDefinition
 } from '@agent/core';
@@ -23,6 +24,7 @@ export interface SupervisorPlanningTaskLike {
   skillStage?: string;
   executionMode?: string;
   routeConfidence?: number;
+  plannerStrategy?: PlannerStrategyRecord;
   resolvedWorkflow?: WorkflowPresetDefinition;
   entryDecision?: {
     requestedMode?: string;
@@ -39,11 +41,17 @@ export interface SupervisorPlanningTaskLike {
     id: string;
     domain?: string;
     displayName: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
   };
   supportingSpecialists?: Array<{
     id: string;
     domain?: string;
     displayName: string;
+    requiredCapabilities?: string[];
+    agentId?: string;
+    candidateAgentIds?: string[];
   }>;
   executionPlan?: {
     mode?: string;
@@ -65,6 +73,7 @@ export interface SupervisorPlanningTaskLike {
       title: string;
       description: string;
       assignedTo: 'manager' | 'research' | 'executor' | 'reviewer';
+      requiredCapabilities?: string[];
       status: 'running' | 'blocked' | 'completed' | 'pending';
     }>;
     createdAt: string;

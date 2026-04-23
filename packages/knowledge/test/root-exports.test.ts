@@ -8,7 +8,10 @@ import {
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
   InMemoryKnowledgeChunkRepository,
   InMemoryKnowledgeSourceRepository,
+  ingestLocalKnowledge,
   LocalKnowledgeFacade,
+  listKnowledgeArtifacts,
+  readKnowledgeOverview,
   RetrievalRequestSchema,
   runKnowledgeIndexing
 } from '../src/index';
@@ -19,6 +22,7 @@ import * as chunkRepositoryExports from '../src/repositories/knowledge-chunk.rep
 import * as sourceRepositoryExports from '../src/repositories/knowledge-source.repository';
 import * as retrievalExports from '../src/retrieval/knowledge-search-service';
 import * as runtimeExports from '../src/runtime/local-knowledge-facade';
+import * as localKnowledgeStoreExports from '../src/runtime/local-knowledge-store';
 
 describe('@agent/knowledge root exports', () => {
   it('re-exports runtime-facing hosts from the canonical domain directories', () => {
@@ -26,6 +30,9 @@ describe('@agent/knowledge root exports', () => {
     expect(InMemoryKnowledgeChunkRepository).toBe(chunkRepositoryExports.InMemoryKnowledgeChunkRepository);
     expect(DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
     expect(LocalKnowledgeFacade).toBe(runtimeExports.LocalKnowledgeFacade);
+    expect(ingestLocalKnowledge).toBe(localKnowledgeStoreExports.ingestLocalKnowledge);
+    expect(readKnowledgeOverview).toBe(localKnowledgeStoreExports.readKnowledgeOverview);
+    expect(listKnowledgeArtifacts).toBe(localKnowledgeStoreExports.listKnowledgeArtifacts);
   });
 
   it('re-exports stable schema-first contracts from @agent/core', () => {

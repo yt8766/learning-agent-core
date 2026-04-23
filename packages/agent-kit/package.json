@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
     "build:transpile": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",
@@ -25,7 +26,7 @@
     "watch": "pnpm build:watch & pnpm build:watch:types",
     "build:lib": "pnpm build:transpile && pnpm build:types",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/agent-kit",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/agent-kit/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:unit": "pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js packages/agent-kit",

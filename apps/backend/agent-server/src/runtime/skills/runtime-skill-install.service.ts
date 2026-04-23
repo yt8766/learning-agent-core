@@ -10,6 +10,11 @@ import type {
   SkillManifestRecord,
   SkillSourceRecord
 } from '@agent/core';
+import {
+  buildRemoteSkillInstallLocation,
+  deriveRemoteSkillDisplayName,
+  normalizeOptionalSkillName
+} from '@agent/skill-runtime';
 
 import {
   buildSkillsAddCommand,
@@ -225,13 +230,12 @@ export async function finalizeRemoteSkillInstall(
 
     const cliResult = await runner({ repo: receipt.repo, skillName: cliSkillName });
     const installedAt = new Date().toISOString();
-    const installLocation = join(
-      context.settings.skillPackagesRoot,
-      'third-party',
-      sanitizePathSegment(receipt.repo),
-      sanitizePathSegment(resolvedSkillName),
+    const installLocation = buildRemoteSkillInstallLocation({
+      skillPackagesRoot: context.settings.skillPackagesRoot,
+      repo: receipt.repo,
+      resolvedSkillName,
       version
-    );
+    });
     const installed: InstalledSkillRecord = {
       skillId: receipt.skillId,
       version,
@@ -318,26 +322,6 @@ async function readJsonArray<T>(filePath: string): Promise<T[]> {
 async function writeJsonFile(filePath: string, payload: unknown): Promise<void> {
   await ensureDir(dirname(filePath));
   await writeFile(filePath, JSON.stringify(payload, null, 2));
-}
-
-function sanitizePathSegment(value: string) {
-  return value.replace(/[^a-zA-Z0-9._-]+/g, '-');
-}
-
-function normalizeOptionalSkillName(value?: string) {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function deriveRemoteSkillDisplayName(repo: string) {
-  return repo
-    .trim()
-    .replace(/^https?:\/\//i, '')
-    .replace(/^github\.com\//i, '')
-    .replace(/\/+$/, '');
 }
 
 async function defaultRemoteSkillInstall(params: { repo: string; skillName?: string }) {

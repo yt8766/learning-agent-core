@@ -1,5 +1,13 @@
 export type { AgentLike, AgentRuntimeContext } from './agent-runtime-context';
 export { BaseAgent } from './base-agent';
+export type {
+  AgentCapability,
+  AgentDescriptor,
+  AgentFactory,
+  AgentProvider,
+  AgentRegistry,
+  PlatformAgentDescriptor
+} from './agent-registry';
 export {
   StreamingExecutionCoordinator,
   StreamingToolScheduler,
@@ -19,6 +27,7 @@ export {
   coreMemoryAppend,
   coreMemoryReplace
 } from './active-memory-tools';
+export { derivePlannerStrategyRecord, type PlannerStrategyContext, type PlannerStrategyLead } from './planner-strategy';
 export {
   buildRuntimeMemorySearchRequest,
   flattenStructuredMemories,

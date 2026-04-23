@@ -899,10 +899,10 @@ describe('use-chat-session hook coverage', () => {
         }
       },
       {
-        2: true,
+        3: true,
         6: 'other-session',
         7: 'checkpoint',
-        10: { 'session-1': 'pending-user' }
+        11: { 'session-1': 'pending-user' }
       }
     );
     const queryClient = {
@@ -1020,7 +1020,7 @@ describe('use-chat-session hook coverage', () => {
       { id: 'evt-user', sessionId: 'session-1', type: 'user_message' },
       { id: 'evt-assistant', sessionId: 'session-1', type: 'assistant_message' }
     ]);
-    expect(harness.refSlots[3]?.current).toBe(true);
+    expect(harness.refSlots[4]?.current).toBe(true);
 
     const clearIntervalCallCountBeforeUnmount = clearIntervalSpy.mock.calls.length;
     harness.refSlots[5]!.current = setInterval(() => undefined, 1000);
@@ -1099,7 +1099,7 @@ describe('use-chat-session hook coverage', () => {
         }
       },
       {
-        9: {
+        10: {
           sessionId: 'session-1',
           content: '首条消息'
         }
@@ -1169,7 +1169,7 @@ describe('use-chat-session hook coverage', () => {
     expect(appendMessage).toHaveBeenCalledWith('session-1', '首条消息');
     expect(actions.clearPendingUser).toHaveBeenCalledWith('session-1');
     expect(actions.markSessionStatus).toHaveBeenCalledWith('session-1', 'running');
-    expect(harness.refSlots[9]?.current).toBeNull();
+    expect(harness.refSlots[10]?.current).toBeNull();
     expect(harness.stateSlots[2]).toEqual([
       {
         id: 'message-1',
@@ -1609,7 +1609,7 @@ describe('use-chat-session hook coverage', () => {
     await vi.advanceTimersByTimeAsync(220);
 
     expect(refreshCheckpointOnly).toHaveBeenCalledTimes(2);
-    expect(harness.refSlots[3]?.current).toBe(false);
+    expect(harness.refSlots[4]?.current).toBe(false);
   });
 
   it('guards polling setup for empty and duplicate sessions', async () => {

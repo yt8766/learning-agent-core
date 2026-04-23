@@ -20,6 +20,7 @@
       "@agent/core": ["packages/core/src/index.ts"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],
+      "@agent/platform-runtime": ["packages/platform-runtime/src/index.ts"],
       "@agent/adapters": ["packages/adapters/src/index.ts"],
       "@agent/tools": ["packages/tools/src"],
       "@agent/memory": ["packages/memory/src"],

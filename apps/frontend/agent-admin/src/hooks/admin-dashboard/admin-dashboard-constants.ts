@@ -2,8 +2,8 @@
 import { getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
 
 // Dashboard hash filters normalize legacy aliases into canonical executionPlan.mode values.
-type ExecutionModeFilter = 'all' | 'plan' | 'execute' | 'imperial_direct';
-type InteractionKindFilter =
+export type ExecutionModeFilter = 'all' | 'plan' | 'execute' | 'imperial_direct';
+export type InteractionKindFilter =
   | 'all'
   | 'approval'
   | 'plan-question'

@@ -17,6 +17,16 @@ const SPECIALIST_DISPLAY_NAMES: Record<SpecialistDomain, string> = {
   'technical-architecture': '技术架构专家'
 };
 
+const SPECIALIST_REQUIRED_CAPABILITIES: Record<SpecialistDomain, string[]> = {
+  'general-assistant': [],
+  'product-strategy': ['specialist.product-strategy'],
+  'growth-marketing': ['specialist.growth-marketing'],
+  'payment-channel': ['specialist.payment-channel'],
+  'live-ops': ['specialist.live-ops'],
+  'risk-compliance': ['specialist.risk-compliance'],
+  'technical-architecture': ['specialist.technical-architecture']
+};
+
 const SPECIALIST_RULES: Array<{
   domain: SpecialistDomain;
   leadTokens: string[];
@@ -62,7 +72,8 @@ function toRecord(domain: SpecialistDomain, reason: string): SpecialistLeadRecor
     id: domain,
     displayName,
     domain,
-    reason
+    reason,
+    requiredCapabilities: SPECIALIST_REQUIRED_CAPABILITIES[domain]
   };
 }
 
@@ -72,7 +83,8 @@ function toSupport(domain: SpecialistDomain, reason: string): SpecialistSupportR
     id: domain,
     displayName,
     domain,
-    reason
+    reason,
+    requiredCapabilities: SPECIALIST_REQUIRED_CAPABILITIES[domain]
   };
 }
 

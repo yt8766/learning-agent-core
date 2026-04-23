@@ -18,10 +18,34 @@ function findDispatchObjective(
   return dispatches?.find(matcher)?.objective ?? fallback;
 }
 
+function isReviewDispatch(dispatch: DispatchInstruction) {
+  return (
+    dispatch.specialistDomain === 'risk-compliance' ||
+    dispatch.requiredCapabilities?.includes('specialist.risk-compliance') ||
+    dispatch.selectedAgentId?.includes('reviewer') ||
+    dispatch.agentId?.includes('reviewer') ||
+    dispatch.to === AgentRole.REVIEWER
+  );
+}
+
+function isResearchDispatch(dispatch: DispatchInstruction) {
+  return (
+    dispatch.kind === 'strategy' ||
+    dispatch.selectionSource === 'strategy-counselor' ||
+    dispatch.selectedAgentId === 'official.supervisor' ||
+    dispatch.agentId === 'official.supervisor' ||
+    dispatch.to === AgentRole.RESEARCH
+  );
+}
+
+function isExecutionDispatch(dispatch: DispatchInstruction) {
+  return (dispatch.kind === 'ministry' && !isReviewDispatch(dispatch)) || dispatch.to === AgentRole.EXECUTOR;
+}
+
 export function resolveResearchDispatchObjective(dispatches: DispatchInstruction[] | undefined) {
   return findDispatchObjective(
     dispatches,
-    dispatch => dispatch.to === AgentRole.RESEARCH && dispatch.kind !== 'fallback',
+    dispatch => dispatch.kind !== 'fallback' && isResearchDispatch(dispatch),
     'Research shared memory and skills'
   );
 }
@@ -29,7 +53,7 @@ export function resolveResearchDispatchObjective(dispatches: DispatchInstruction
 export function resolveExecutionDispatchObjective(dispatches: DispatchInstruction[] | undefined) {
   return findDispatchObjective(
     dispatches,
-    dispatch => dispatch.to === AgentRole.EXECUTOR && dispatch.kind !== 'fallback',
+    dispatch => dispatch.kind !== 'fallback' && isExecutionDispatch(dispatch),
     'Execute the candidate action'
   );
 }

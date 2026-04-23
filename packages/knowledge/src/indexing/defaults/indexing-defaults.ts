@@ -5,7 +5,3 @@ export const DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE = 16;
 export function defaultKnowledgeShouldIndex(document: { content: string }): boolean {
   return document.content.trim().length > 0;
 }
-
-export function defaultKnowledgeMetadata(): Record<string, unknown> {
-  return {};
-}

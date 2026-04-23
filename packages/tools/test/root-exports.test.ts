@@ -4,8 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ApprovalService,
+  buildConnectorDraftConfig,
+  buildConnectorSecretUpdateConfig,
   buildAgentScaffold,
   buildPackageScaffold,
+  clearCapabilityPolicyOverride,
+  clearConnectorPolicyOverride,
   executeConnectorTool,
   executeFilesystemTool,
   executeRuntimeGovernanceTool,
@@ -17,16 +21,24 @@ import {
   McpCapabilityRegistry,
   McpClientManager,
   McpServerRegistry,
+  findConfiguredConnector,
+  resolveConfiguredConnectorId,
   SandboxExecutor,
+  setCapabilityPolicyOverride,
+  setConfiguredConnectorRecord,
+  setConnectorEnabledState,
+  setConnectorPolicyOverride,
   StubSandboxExecutor,
   ToolRiskClassifier,
   ToolRegistry,
+  buildToolsCenter,
   createDefaultToolRegistry,
   writeScaffoldBundle
 } from '../src';
 import * as approvalExports from '../src/approval';
 import * as contractRiskClassifierExports from '../src/contracts/tool-risk-classifier';
 import * as contractRegistryExports from '../src/contracts/tool-registry';
+import * as connectorExports from '../src/connectors';
 import * as executorConnectorExports from '../src/executors/connectors/connectors-executor';
 import * as executorFilesystemExports from '../src/executors/filesystem/filesystem-executor';
 import * as mcpExports from '../src/mcp';
@@ -36,17 +48,29 @@ import * as scaffoldExports from '../src/scaffold/scaffold-core';
 import * as watchdogExports from '../src/watchdog';
 
 describe('@agent/tools root exports', () => {
-  it('re-exports the stable runtime-facing tool contracts explicitly', () => {
+  it('re-exports the stable runtime-facing tool contracts explicitly', async () => {
     expect(ApprovalService).toBe(approvalExports.ApprovalService);
     expect(ExecutionWatchdog).toBe(watchdogExports.ExecutionWatchdog);
     expect(McpCapabilityRegistry).toBe(mcpExports.McpCapabilityRegistry);
     expect(McpClientManager).toBe(mcpExports.McpClientManager);
     expect(McpServerRegistry).toBe(mcpExports.McpServerRegistry);
+    expect(buildConnectorDraftConfig).toBe(connectorExports.buildConnectorDraftConfig);
+    expect(buildConnectorSecretUpdateConfig).toBe(connectorExports.buildConnectorSecretUpdateConfig);
+    expect(findConfiguredConnector).toBe(connectorExports.findConfiguredConnector);
     expect(ToolRegistry).toBe(registryExports.ToolRegistry);
     expect(ToolRegistry).toBe(contractRegistryExports.ToolRegistry);
     expect(createDefaultToolRegistry).toBe(registryExports.createDefaultToolRegistry);
     expect(ToolRiskClassifier).toBe(registryExports.ToolRiskClassifier);
     expect(ToolRiskClassifier).toBe(contractRiskClassifierExports.ToolRiskClassifier);
+    expect(buildToolsCenter).toBe((await import('../src/runtime-governance/tools-center')).buildToolsCenter);
+    const connectorGovernanceState = await import('../src/runtime-governance/connector-governance-state');
+    expect(setConnectorEnabledState).toBe(connectorGovernanceState.setConnectorEnabledState);
+    expect(setConnectorPolicyOverride).toBe(connectorGovernanceState.setConnectorPolicyOverride);
+    expect(clearConnectorPolicyOverride).toBe(connectorGovernanceState.clearConnectorPolicyOverride);
+    expect(setCapabilityPolicyOverride).toBe(connectorGovernanceState.setCapabilityPolicyOverride);
+    expect(clearCapabilityPolicyOverride).toBe(connectorGovernanceState.clearCapabilityPolicyOverride);
+    expect(resolveConfiguredConnectorId).toBe(connectorGovernanceState.resolveConfiguredConnectorId);
+    expect(setConfiguredConnectorRecord).toBe(connectorGovernanceState.setConfiguredConnectorRecord);
     expect(StubSandboxExecutor).toBe(sandboxExports.StubSandboxExecutor);
     expect(buildAgentScaffold).toBe(scaffoldExports.buildAgentScaffold);
     expect(buildPackageScaffold).toBe(scaffoldExports.buildPackageScaffold);

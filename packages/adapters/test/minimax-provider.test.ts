@@ -6,11 +6,11 @@ import { MiniMaxProvider } from '@agent/adapters';
 const createMiniMaxChatModelMock = vi.fn();
 const normalizeModelBaseUrlMock = vi.fn((value: string) => value.replace(/\/$/, ''));
 
-vi.mock('../src/chat', () => ({
+vi.mock('../src/minimax/chat/minimax-chat-model.factory', () => ({
   createMiniMaxChatModel: (options: unknown) => createMiniMaxChatModelMock(options)
 }));
 
-vi.mock('../src/support/urls', () => ({
+vi.mock('../src/shared/urls', () => ({
   normalizeModelBaseUrl: (value: string) => normalizeModelBaseUrlMock(value)
 }));
 

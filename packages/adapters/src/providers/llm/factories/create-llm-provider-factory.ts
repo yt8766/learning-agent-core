@@ -1,5 +1,1 @@
-import type { LlmProviderFactory } from './llm-provider-factory.types';
-
-export function createLlmProviderFactory(factory: LlmProviderFactory): LlmProviderFactory {
-  return factory;
-}
+export * from '../../../factories/llm/create-llm-provider-factory';

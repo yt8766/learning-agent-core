@@ -329,3 +329,14 @@ export function formatConnectorTemplateLabel(
 export function stripStreamingCursor(content: string) {
   return content.replace(/[\u2588\u2589\u258a\u258b\u258c\u258d\u258e\u258f▌▋▊▉]+\s*$/u, '').trimEnd();
 }
+
+/** Strip <think>…</think> reasoning blocks from model output before display. */
+export function stripThinkTags(content: string) {
+  return content.replace(/<think>[\s\S]*?<\/think>/gi, '').trimStart();
+}
+
+/** Extract the combined text of all <think>…</think> blocks in model output. */
+export function extractThinkBlocks(content: string): string {
+  const matches = Array.from(content.matchAll(/<think>([\s\S]*?)<\/think>/gi), m => m[1]?.trim() ?? '').filter(Boolean);
+  return matches.join('\n\n');
+}

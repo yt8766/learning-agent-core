@@ -25,9 +25,8 @@ async function collectTsFiles(rootDir: string): Promise<string[]> {
 }
 
 describe('runtime agent bridge boundary', () => {
-  it('keeps direct @agent/agents-* imports inside runtime bridge files only', async () => {
+  it('keeps runtime source free of direct @agent/agents-* imports', async () => {
     const srcRoot = join(process.cwd(), 'packages', 'runtime', 'src');
-    const bridgeRoot = join(srcRoot, 'bridges');
     const files = await collectTsFiles(srcRoot);
     const violations: string[] = [];
 
@@ -36,15 +35,13 @@ describe('runtime agent bridge boundary', () => {
       if (!DIRECT_AGENT_IMPORT_PATTERN.test(content)) {
         continue;
       }
-      if (!file.startsWith(bridgeRoot)) {
-        violations.push(relative(srcRoot, file));
-      }
+      violations.push(relative(srcRoot, file));
     }
 
     expect(violations).toEqual([]);
   });
 
-  it('removes legacy runtime bridge wrapper files once bridges become canonical hosts', () => {
+  it('keeps legacy pre-bridge wrapper files removed so bridges remain the only internal adapter host', () => {
     expect(existsSync(new URL('../src/runtime/agent-bridges/coder-runtime-bridge.ts', import.meta.url))).toBe(false);
     expect(existsSync(new URL('../src/runtime/agent-bridges/data-report-runtime-bridge.ts', import.meta.url))).toBe(
       false

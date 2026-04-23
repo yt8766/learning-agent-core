@@ -9,13 +9,13 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
         vectorIndexFilePath: 'data/agent-work/memory/vector-index.json',
         tasksStateFilePath: 'data/agent-work/runtime/tasks-state.json',
         semanticCacheFilePath: 'data/agent-work/runtime/semantic-cache.json',
-        skillsRoot: 'data/agent-work/skill-runtime',
-        pluginsLabRoot: 'data/agent-work/skill-runtime/plugins-lab',
-        skillSourcesRoot: 'data/agent-work/skill-runtime/remote-sources',
-        skillPackagesRoot: 'data/agent-work/skill-runtime/installed',
-        skillReceiptsRoot: 'data/agent-work/skill-runtime/receipts',
-        skillInternalRoot: 'data/agent-work/skill-runtime/installed/internal',
-        registryFilePath: 'data/agent-work/skill-runtime/registry.json',
+        skillsRoot: 'data/agent-work/skills',
+        pluginsLabRoot: 'data/agent-work/skills/plugins-lab',
+        skillSourcesRoot: 'data/agent-work/skills/remote-sources',
+        skillPackagesRoot: 'data/agent-work/skills/installed',
+        skillReceiptsRoot: 'data/agent-work/skills/receipts',
+        skillInternalRoot: 'data/agent-work/skills/installed/internal',
+        registryFilePath: 'data/agent-work/skills/registry.json',
         knowledgeRoot: 'data/agent-work/knowledge',
         policy: {
           approvalMode: 'strict',
@@ -43,8 +43,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 8,
             retryBudget: 1,
             sourceBudget: 6,
-            maxCostPerTaskUsd: 2,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 2
           }
         }
       };
@@ -55,13 +54,13 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
         vectorIndexFilePath: 'data/agent-personal/memory/vector-index.json',
         tasksStateFilePath: 'data/agent-personal/runtime/tasks-state.json',
         semanticCacheFilePath: 'data/agent-personal/runtime/semantic-cache.json',
-        skillsRoot: 'data/agent-personal/skill-runtime',
-        pluginsLabRoot: 'data/agent-personal/skill-runtime/plugins-lab',
-        skillSourcesRoot: 'data/agent-personal/skill-runtime/remote-sources',
-        skillPackagesRoot: 'data/agent-personal/skill-runtime/installed',
-        skillReceiptsRoot: 'data/agent-personal/skill-runtime/receipts',
-        skillInternalRoot: 'data/agent-personal/skill-runtime/installed/internal',
-        registryFilePath: 'data/agent-personal/skill-runtime/registry.json',
+        skillsRoot: 'data/agent-personal/skills',
+        pluginsLabRoot: 'data/agent-personal/skills/plugins-lab',
+        skillSourcesRoot: 'data/agent-personal/skills/remote-sources',
+        skillPackagesRoot: 'data/agent-personal/skills/installed',
+        skillReceiptsRoot: 'data/agent-personal/skills/receipts',
+        skillInternalRoot: 'data/agent-personal/skills/installed/internal',
+        registryFilePath: 'data/agent-personal/skills/registry.json',
         knowledgeRoot: 'data/agent-personal/knowledge',
         policy: {
           approvalMode: 'auto',
@@ -89,8 +88,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 12,
             retryBudget: 2,
             sourceBudget: 12,
-            maxCostPerTaskUsd: 1,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 1
           }
         }
       };
@@ -122,8 +120,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 6,
             retryBudget: 1,
             sourceBudget: 4,
-            maxCostPerTaskUsd: 1.5,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 1.5
           }
         }
       };
@@ -156,8 +153,7 @@ export function buildProfileOverrides(profile: RuntimeProfile): RuntimeSettingsO
             stepBudget: 8,
             retryBudget: 1,
             sourceBudget: 8,
-            maxCostPerTaskUsd: 2,
-            fallbackModelId: 'glm-5.1'
+            maxCostPerTaskUsd: 2
           }
         }
       };

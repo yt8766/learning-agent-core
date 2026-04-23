@@ -9,9 +9,15 @@ import {
   buildLearningCenterSummary
 } from './runtime-learning-evidence-center';
 import type { BuildLearningCenterInput } from './runtime-learning-evidence-center';
+import { resolveLocalSkillSuggestionsWithTimeout } from '../domain/observability/runtime-observability-filters';
 import { ingestLocalKnowledge } from '../knowledge/runtime-knowledge-store';
-import { resolveLocalSkillSuggestionsWithTimeout } from './runtime-centers-query.helpers';
 import { searchLocalSkillSuggestions } from '../skills/runtime-skill-sources.service';
+import {
+  normalizeLearningCenterJobs,
+  normalizeLearningCenterTasks
+} from '../domain/learning/runtime-learning-center-normalization';
+import { buildLearningMemoryStats } from '../domain/learning/runtime-learning-memory-stats';
+import { countInvalidatedRules } from '../domain/learning/runtime-learning-rule-stats';
 
 type LocalSkillSuggestionsResult = {
   suggestions: LocalSkillSuggestionRecord[];
@@ -55,34 +61,12 @@ export class RuntimeCentersLearningQueryService {
     const learningQueue = ctx.orchestrator.listLearningQueue?.() ?? [];
     const capabilityGovernanceSyncPromise = syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, rawTasks);
     const crossCheckEvidencePromise = ctx.wenyuanFacade.listCrossCheckEvidence();
-    const memoryStatsPromise = ctx.wenyuanFacade.listMemories().then((items: MemoryRecord[]) => {
-      const invalidated = items.filter(item => item.status === 'invalidated').length;
-      const quarantinedItems = items
-        .filter(item => item.quarantined)
-        .sort(
-          (left, right) =>
-            new Date(
-              right.quarantinedAt ?? right.lastVerifiedAt ?? right.lastUsedAt ?? right.createdAt ?? 0
-            ).getTime() -
-            new Date(left.quarantinedAt ?? left.lastVerifiedAt ?? left.lastUsedAt ?? left.createdAt ?? 0).getTime()
-        );
-      return {
-        invalidated,
-        quarantined: quarantinedItems.length,
-        recentQuarantined: quarantinedItems.slice(0, 8).map(item => ({
-          id: item.id,
-          summary: item.summary,
-          quarantineReason: item.quarantineReason,
-          quarantineCategory: item.quarantineCategory,
-          quarantineReasonDetail: item.quarantineReasonDetail,
-          quarantineRestoreSuggestion: item.quarantineRestoreSuggestion,
-          quarantinedAt: item.quarantinedAt
-        }))
-      };
-    });
+    const memoryStatsPromise = ctx.wenyuanFacade
+      .listMemories()
+      .then((items: MemoryRecord[]) => buildLearningMemoryStats(items));
     const invalidatedRulesPromise = ctx.ruleRepository
       .list()
-      .then((items: RuleRecord[]) => items.filter(item => item.status === 'invalidated').length);
+      .then((items: RuleRecord[]) => countInvalidatedRules(items));
     const input: BuildLearningCenterInput = {
       tasks,
       jobs,
@@ -119,76 +103,4 @@ export class RuntimeCentersLearningQueryService {
   private ctx() {
     return this.getContext();
   }
-}
-
-function normalizeLearningCenterTasks(tasks: unknown[]): BuildLearningCenterInput['tasks'] {
-  return tasks.map(task => {
-    if (!isRecord(task)) {
-      return {} as BuildLearningCenterInput['tasks'][number];
-    }
-
-    const learningEvaluation = isRecord(task.learningEvaluation)
-      ? {
-          ...task.learningEvaluation,
-          confidence: toOptionalNumber(task.learningEvaluation.confidence)
-        }
-      : task.learningEvaluation;
-
-    return {
-      ...task,
-      learningEvaluation
-    } as BuildLearningCenterInput['tasks'][number];
-  });
-}
-
-function normalizeLearningCenterJobs(jobs: unknown[]): BuildLearningCenterInput['jobs'] {
-  return jobs.map(job => {
-    if (!isRecord(job)) {
-      return {} as BuildLearningCenterInput['jobs'][number];
-    }
-
-    const learningEvaluation = isRecord(job.learningEvaluation)
-      ? {
-          ...job.learningEvaluation,
-          confidence: toOptionalNumber(job.learningEvaluation.confidence),
-          candidateReasons: Array.isArray(job.learningEvaluation.candidateReasons)
-            ? job.learningEvaluation.candidateReasons.filter((item): item is string => typeof item === 'string')
-            : undefined,
-          skippedReasons: Array.isArray(job.learningEvaluation.skippedReasons)
-            ? job.learningEvaluation.skippedReasons.filter((item): item is string => typeof item === 'string')
-            : undefined,
-          expertiseSignals: Array.isArray(job.learningEvaluation.expertiseSignals)
-            ? job.learningEvaluation.expertiseSignals.filter((item): item is string => typeof item === 'string')
-            : undefined
-        }
-      : undefined;
-
-    const persistedMemoryIds = Array.isArray(job.persistedMemoryIds)
-      ? job.persistedMemoryIds.filter((item): item is string => typeof item === 'string')
-      : undefined;
-
-    return {
-      ...job,
-      sourceType: typeof job.sourceType === 'string' ? job.sourceType : undefined,
-      persistedMemoryIds,
-      conflictDetected: typeof job.conflictDetected === 'boolean' ? job.conflictDetected : undefined,
-      updatedAt: typeof job.updatedAt === 'string' ? job.updatedAt : undefined,
-      learningEvaluation
-    } as BuildLearningCenterInput['jobs'][number];
-  });
-}
-
-function toOptionalNumber(value: unknown): number | undefined {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : undefined;
-  }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }

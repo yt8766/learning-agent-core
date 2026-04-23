@@ -1,4 +1,5 @@
-import { describeConnectorProfilePolicy, fetchProviderUsageAudit } from '@agent/runtime';
+import { describeConnectorProfilePolicy } from '@agent/runtime';
+import { fetchProviderUsageAudit } from './runtime-centers-facade';
 import type { SkillCard } from '@agent/core';
 
 import { applyGovernanceOverrides, registerInstalledSkillWorker } from '../helpers/runtime-connector-registry';
@@ -122,6 +123,7 @@ function createBootstrapCentersContext(
 ) {
   return createCentersContext({
     settings: () => runtimeHost.settings,
+    runtimeHost: () => runtimeHost,
     wenyuanFacade: () => createProviderFactoryWenyuanFacade(runtimeHost),
     sessionCoordinator: () => runtimeHost.sessionCoordinator,
     orchestrator: () => runtimeHost.orchestrator,
@@ -200,6 +202,7 @@ export function createProviderFactoryCentersService(
   const centersServiceRef: { current?: RuntimeCentersService } = {};
   const context = createCentersContext({
     settings: () => runtimeHost.settings,
+    runtimeHost: () => runtimeHost,
     appLogger: () => appLogger,
     techBriefingService: () => techBriefingService,
     wenyuanFacade: () => wenyuanFacade,

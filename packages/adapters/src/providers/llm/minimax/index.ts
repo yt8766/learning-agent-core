@@ -1,1 +1,1 @@
-export { MiniMaxProvider } from './minimax-provider';
+export * from '../../../minimax/provider';

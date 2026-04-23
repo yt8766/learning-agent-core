@@ -57,7 +57,7 @@ export function resolveInstalledSkillMinistry(skill: SkillCard): WorkerDomain {
 }
 
 export function resolveInstalledSkillModel(
-  zhipuModels: {
+  roleModels: {
     research: string;
     reviewer: string;
     executor: string;
@@ -68,16 +68,16 @@ export function resolveInstalledSkillModel(
   const ministry = resolveInstalledSkillMinistry(skill);
   switch (normalizeMinistryId(ministry)) {
     case 'hubu-search':
-      return zhipuModels.research;
+      return roleModels.research;
     case 'xingbu-review':
-      return zhipuModels.reviewer;
+      return roleModels.reviewer;
     case 'gongbu-code':
     case 'bingbu-ops':
-      return zhipuModels.executor;
+      return roleModels.executor;
     case 'libu-delivery':
     case 'libu-governance':
     default:
-      return zhipuModels.manager;
+      return roleModels.manager;
   }
 }
 

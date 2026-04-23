@@ -26,6 +26,7 @@ import {
   KnowledgeIngestionStateRecordSchema,
   ManagerPlanSchema,
   MicroLoopStateRecordSchema,
+  PlannerStrategyRecordSchema,
   ReviewRecordSchema,
   SandboxStateRecordSchema
 } from './orchestration';
@@ -106,6 +107,7 @@ export const TaskRecordSchema = z.object({
   supportingSpecialists: ChatCheckpointSpecialistStateSchema.shape.supportingSpecialists,
   specialistFindings: ChatCheckpointSpecialistStateSchema.shape.specialistFindings,
   routeConfidence: z.number().optional(),
+  plannerStrategy: PlannerStrategyRecordSchema.optional(),
   contextSlicesBySpecialist: ChatCheckpointSpecialistStateSchema.shape.contextSlicesBySpecialist,
   dispatches: ChatCheckpointSpecialistStateSchema.shape.dispatches,
   critiqueResult: ChatCheckpointSpecialistStateSchema.shape.critiqueResult,

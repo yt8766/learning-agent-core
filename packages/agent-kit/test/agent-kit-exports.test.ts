@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type { AgentCapability, AgentDescriptor, AgentFactory, AgentProvider, AgentRegistry } from '../src';
 
 import {
   BaseAgent,
   StreamingExecutionCoordinator,
   archivalMemorySearchByParams,
   buildFreshnessAnswerInstruction,
-  buildRuntimeMemorySearchRequest
+  buildRuntimeMemorySearchRequest,
+  derivePlannerStrategyRecord
 } from '../src';
 
 describe('@agent/agent-kit', () => {
@@ -15,5 +17,28 @@ describe('@agent/agent-kit', () => {
     expect(archivalMemorySearchByParams).toBeTypeOf('function');
     expect(buildFreshnessAnswerInstruction).toBeTypeOf('function');
     expect(buildRuntimeMemorySearchRequest).toBeTypeOf('function');
+    expect(derivePlannerStrategyRecord).toBeTypeOf('function');
+    expectTypeOf<AgentCapability>().toMatchTypeOf<{
+      id: string;
+      displayName?: string;
+    }>();
+    expectTypeOf<AgentDescriptor>().toMatchTypeOf<{
+      id: string;
+      displayName: string;
+      capabilities: readonly string[];
+      capabilityDescriptors?: readonly AgentCapability[];
+      source: 'official' | 'custom';
+    }>();
+    expectTypeOf<AgentFactory>().toMatchTypeOf<{
+      createAgent: () => unknown;
+    }>();
+    expectTypeOf<AgentProvider>().toMatchTypeOf<{
+      descriptor: AgentDescriptor;
+      createAgent: () => unknown;
+    }>();
+    expectTypeOf<AgentRegistry>().toMatchTypeOf<{
+      listAgents: () => readonly AgentDescriptor[];
+      findAgentById: (agentId: string) => AgentProvider | undefined;
+    }>();
   });
 });

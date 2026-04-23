@@ -103,6 +103,10 @@ const rootOnlyPackagePatterns = [
   {
     group: ['@agent/tools/*'],
     message: '请统一改用 @agent/tools 根入口导入。'
+  },
+  {
+    group: ['@agent/platform-runtime/*'],
+    message: '请统一改用 @agent/platform-runtime 根入口导入。'
   }
 ];
 
@@ -171,6 +175,7 @@ export default tseslint.config(
         {
           paths: [
             { name: '@agent/runtime', message: 'core/shared 是契约层，禁止依赖 runtime。' },
+            { name: '@agent/platform-runtime', message: 'core/shared 是契约层，禁止依赖 platform-runtime。' },
             { name: '@agent/tools', message: 'shared 是契约层，禁止依赖 tools。' },
             { name: '@agent/adapters', message: 'core/shared 是契约层，禁止依赖 adapters。' },
             { name: '@agent/memory', message: 'shared 是契约层，禁止依赖 memory。' },
@@ -187,7 +192,10 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          paths: [{ name: '@agent/runtime', message: '基础能力层禁止反向依赖 runtime。' }],
+          paths: [
+            { name: '@agent/runtime', message: '基础能力层禁止反向依赖 runtime。' },
+            { name: '@agent/platform-runtime', message: '基础能力层禁止反向依赖 platform-runtime。' }
+          ],
           patterns: [
             ...packageSrcDeepImportPatterns,
             {

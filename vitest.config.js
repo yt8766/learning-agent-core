@@ -58,8 +58,10 @@ export default defineConfig({
       '@agent/runtime/agent-runtime-context': resolvePath('./packages/runtime/src/runtime/agent-runtime-context.ts'),
       '@agent/runtime/streaming-execution': resolvePath('./packages/runtime/src/runtime/streaming-execution.ts'),
       '@agent/core': resolvePath('./packages/core/src'),
+      '@agent/knowledge': resolvePath('./packages/knowledge/src'),
       '@agent/config': resolvePath('./packages/config/src'),
       '@agent/runtime': resolvePath('./packages/runtime/src'),
+      '@agent/platform-runtime': resolvePath('./packages/platform-runtime/src'),
       '@agent/adapters': resolvePath('./packages/adapters/src'),
       '@agent/tools': resolvePath('./packages/tools/src'),
       '@agent/memory': resolvePath('./packages/memory/src'),
@@ -95,7 +97,11 @@ export default defineConfig({
       'apps/**/test/**/*.int-spec.ts',
       'apps/**/test/**/*.test.tsx',
       'apps/**/test/**/*.spec.tsx',
-      'apps/**/test/**/*.int-spec.tsx'
+      'apps/**/test/**/*.int-spec.tsx',
+      // workspace-level test host (see test/README.md)
+      'test/integration/**/*.int-spec.ts',
+      'test/smoke/**/*.smoke.ts',
+      'test/acceptance/**/*.acc-spec.ts'
     ],
     exclude: [
       '**/node_modules/**',

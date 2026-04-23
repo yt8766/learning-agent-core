@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadSettings } from '@agent/config';
+import { loadSettings, resolveActiveRoleModels } from '@agent/config';
 import { parseDotEnvFile } from '../src/utils/settings-helpers';
 import { loadSettings as directLoadSettings } from '../src/loaders/settings-loader';
 import * as settingsExports from '../src/settings';
@@ -61,9 +61,11 @@ describe('loadSettings', () => {
     );
     const expectedSkillsRoot = join(
       REPO_ROOT,
-      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skill-runtime'
+      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skills'
     );
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(expectedSkillsRoot));
+    expect(toPosixPath(settings.skillPackagesRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'installed')));
+    expect(toPosixPath(settings.skillReceiptsRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'receipts')));
   });
 
   it('保留显式传入的绝对路径配置', () => {
@@ -121,6 +123,36 @@ describe('loadSettings', () => {
         })
       ])
     );
+  });
+
+  it('supports siliconflow embedding provider via env vars', () => {
+    const settings = loadSettings({
+      KNOWLEDGE_EMBEDDING_PROVIDER: 'siliconflow',
+      KNOWLEDGE_EMBEDDING_MODEL: 'BAAI/bge-large-zh-v1.5',
+      KNOWLEDGE_EMBEDDING_ENDPOINT: 'https://api.siliconflow.cn/v1/embeddings',
+      KNOWLEDGE_EMBEDDING_API_KEY: 'sf-test-key',
+      KNOWLEDGE_EMBEDDING_DIMENSIONS: '1024'
+    } as NodeJS.ProcessEnv);
+
+    expect(settings.embeddings.provider).toBe('siliconflow');
+    expect(settings.embeddings.model).toBe('BAAI/bge-large-zh-v1.5');
+    expect(settings.embeddings.endpoint).toBe('https://api.siliconflow.cn/v1/embeddings');
+    expect(settings.embeddings.apiKey).toBe('sf-test-key');
+    expect(settings.embeddings.dimensions).toBe(1024);
+  });
+
+  it('defaults embedding provider to glm when env var is not set', () => {
+    const settings = loadSettings({
+      env: {
+        ACTIVE_MODEL_PROVIDER: '',
+        MINIMAX_API_KEY: '',
+        KNOWLEDGE_EMBEDDING_PROVIDER: '',
+        KNOWLEDGE_EMBEDDING_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
+    });
+
+    expect(settings.embeddings.provider).toBe('glm');
+    expect(settings.embeddings.model).toBe('Embedding-3');
   });
 
   it('支持显式 workspaceRoot 和 overrides 注入', () => {
@@ -216,7 +248,7 @@ describe('loadSettings', () => {
         expect(toPosixPath(settings.tasksStateFilePath)).toBe(
           toPosixPath(join(workspaceRoot, 'data', 'runtime', 'tasks-state.json'))
         );
-        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skill-runtime')));
+        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skills')));
       } finally {
         await rm(workspaceRoot, { recursive: true, force: true });
       }
@@ -227,7 +259,10 @@ describe('loadSettings', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
       profile: 'personal',
-      env: {} as NodeJS.ProcessEnv
+      env: {
+        ACTIVE_MODEL_PROVIDER: '',
+        MINIMAX_API_KEY: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.profile).toBe('personal');
@@ -249,6 +284,7 @@ describe('loadSettings', () => {
     expect(settings.policy.budget.fallbackModelId).toBe('glm-5.1');
     expect(settings.contextStrategy.ragTopK).toBe(4);
     expect(settings.contextStrategy.recentTurns).toBe(10);
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-personal', 'skills')));
   });
 
   it('company profile keeps learning and approval defaults conservative', () => {
@@ -266,6 +302,7 @@ describe('loadSettings', () => {
     expect(settings.policy.approvalPolicy.destructiveActionRequireApproval).toBe(true);
     expect(settings.policy.suggestionPolicy.expertAdviceDefault).toBe(true);
     expect(settings.policy.suggestionPolicy.autoSearchSkillsOnGap).toBe(true);
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-work', 'skills')));
   });
 
   it('context strategy applies conversation compression defaults and supports env overrides', () => {
@@ -325,9 +362,17 @@ describe('loadSettings', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
       env: {
+        ACTIVE_MODEL_PROVIDER: '',
         MINIMAX_API_KEY: 'minimax-key',
-        MINIMAX_BASE_URL: 'https://api.minimaxi.com/v1/'
-      } as NodeJS.ProcessEnv
+        MINIMAX_BASE_URL: 'https://api.minimaxi.com/v1/',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: '',
+        MINIMAX_DIALOG_MODEL: '',
+        MINIMAX_PROVIDER_ID: '',
+        MINIMAX_PROVIDER_NAME: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.providers).toEqual(
@@ -383,8 +428,12 @@ describe('loadSettings', () => {
       env: {
         ZHIPU_API_KEY: 'zhipu-key',
         MINIMAX_API_KEY: 'minimax-key',
-        ACTIVE_MODEL_PROVIDER: 'minimax'
-      } as NodeJS.ProcessEnv
+        ACTIVE_MODEL_PROVIDER: 'minimax',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.routing).toEqual({
@@ -414,8 +463,12 @@ describe('loadSettings', () => {
         ZHIPU_API_KEY: 'zhipu-key',
         MINIMAX_API_KEY: 'minimax-key',
         ACTIVE_MODEL_PROVIDER: 'minimax',
-        MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1'
-      } as NodeJS.ProcessEnv
+        MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: ''
+      } as unknown as NodeJS.ProcessEnv
     });
 
     expect(settings.routing.manager?.primary).toBe('zhipu/glm-5.1');
@@ -580,6 +633,85 @@ describe('loadSettings', () => {
           adaptivePolicy: { hotThresholdRuns: 2, cooldownEmptyRuns: 6, allowedIntervalHours: [12, 24, 48] }
         }
       }
+    });
+  });
+
+  describe('resolveActiveRoleModels', () => {
+    it('returns zhipu models when ACTIVE_MODEL_PROVIDER is not set', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          ACTIVE_MODEL_PROVIDER: '',
+          MINIMAX_API_KEY: ''
+        } as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('glm-5');
+      expect(activeModels.research).toBe('glm-5.1');
+      expect(activeModels.executor).toBe('glm-4.6');
+      expect(activeModels.reviewer).toBe('glm-4.7');
+    });
+
+    it('returns minimax models when ACTIVE_MODEL_PROVIDER=minimax', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('MiniMax-M2.7');
+      expect(activeModels.research).toBe('MiniMax-M2.5');
+      expect(activeModels.executor).toBe('MiniMax-M2.5-highspeed');
+      expect(activeModels.reviewer).toBe('MiniMax-M2.7-highspeed');
+    });
+
+    it('respects explicit MODEL_ROUTE_* overrides over ACTIVE_MODEL_PROVIDER', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          ZHIPU_API_KEY: 'zhipu-key',
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          MODEL_ROUTE_MANAGER_PRIMARY: 'zhipu/glm-5.1',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).toBe('glm-5.1');
+      expect(activeModels.research).toBe('MiniMax-M2.5');
+    });
+
+    it('fallbackModelId defaults to active provider model instead of hardcoded glm', () => {
+      const settings = loadSettings({
+        workspaceRoot: REPO_ROOT,
+        env: {
+          MINIMAX_API_KEY: 'minimax-key',
+          ACTIVE_MODEL_PROVIDER: 'minimax',
+          ZHIPU_API_KEY: '',
+          MINIMAX_MANAGER_MODEL: '',
+          MINIMAX_RESEARCH_MODEL: '',
+          MINIMAX_EXECUTOR_MODEL: '',
+          MINIMAX_REVIEWER_MODEL: ''
+        } as unknown as NodeJS.ProcessEnv
+      });
+
+      const activeModels = resolveActiveRoleModels(settings);
+      expect(activeModels.manager).not.toContain('glm');
+      expect(settings.policy.budget.fallbackModelId).toBe('MiniMax-M2.5');
     });
   });
 });

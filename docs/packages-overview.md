@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`packages/*`
-最后核对：2026-04-18
+最后核对：2026-04-20
 
 `packages/` 放共享库和运行时基础能力，应用层应只通过 `@agent/*` 公开入口依赖这里的包。
 
@@ -25,7 +25,8 @@
 更细规则请继续看：
 
 - 分层与依赖约定：[package-architecture-guidelines.md](/docs/package-architecture-guidelines.md)
-- compat 收缩候选：[package-compat-sunset-candidates.md](/docs/package-compat-sunset-candidates.md)
+- 全局 runtime 分层 ADR：[runtime-layering-adr.md](/docs/runtime/runtime-layering-adr.md)
+- compat 收缩候选：[package-compat-sunset-candidates.md](/docs/core/package-compat-sunset-candidates.md)
 - contract 边界：[core/README.md](/docs/core/README.md)
 - 迁移历史：[archive/agent-core/README.md](/docs/archive/agent-core/README.md)
 
@@ -33,9 +34,20 @@
 
 - `packages/core`
   - 稳定 contract facade、DTO、Record、Schema、错误模型、接口边界入口
-  - 只负责跨包公共语言，不负责业务实现或外部 SDK
+  - 只负责跨包公共语言，不负责业务实现或外部 SDK；当前依赖保持为 `zod`
 - `packages/runtime`
-  - runtime orchestration、session、worker registry、profile policy 的真实实现入口
+  - Runtime Kernel：graph 执行、session、checkpoint、approval/recovery、interrupt、observability 与抽象 registry contract 的真实实现入口
+  - 当前 `bridges/*` 只保留 runtime 内部 contract wrapper，不再直接 re-export 官方 agents
+  - backend runtime 适配层现在也开始围绕它按 `runtime/domain/*` 拆分纯规则：skills、connectors、metrics、observability 的纯投影/状态变更/helper 已逐步从 centers/services 下沉
+- `packages/platform-runtime`
+  - 官方平台装配层 / Composition Root
+  - 负责官方 Agent/workflow 出口、默认 platform runtime facade、backend/worker 共享启动线、官方 agent registry
+  - 当前 facade 固定暴露 `runtime + agentRegistry + agentDependencies + metadata`，app 层读取官方默认装配能力与只读 metadata 时应优先通过这层组合根
+  - 当前已开始把 specialist route enrich 为官方 agent descriptor 线索，供 runtime 主链继续消费
+  - 不负责 HTTP controller、worker loop、前端 view model 或 Agent graph 主实现
+- `packages/agent-kit`
+  - 编写 Agent 的轻量 SDK：BaseAgent、AgentDescriptor、能力声明与基础执行 helper
+  - 不负责 session/checkpoint/platform center 投射
 - `packages/adapters`
   - 模型 provider normalize、chat/embedding factory、LLM adapter 的真实实现入口
 - `packages/knowledge`
@@ -78,23 +90,25 @@
 3. 哪些内容不应继续塞进这个包
 4. 后续继续收敛时优先看哪里
 
-| 包/目录                  | 核心职责                                                                          | 稳定出口                    | 不应承载                                           | 后续优先收敛                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `packages/core`          | 稳定公共 contract、schema、DTO、record、错误语义                                  | `@agent/core`               | graph、flow、provider、repository 主实现           | 继续坚持 schema-first，清理纯 type 主定义                                             |
-| `packages/runtime`       | runtime 主链 orchestration、session、graph、capability、主链治理                  | `@agent/runtime`            | app view model、controller、provider 细节          | `graphs/main/*`、`session/*`、compat bridge 继续收边界                                |
-| `packages/adapters`      | LLM/embedding adapter、provider normalize、runtime factory、SDK provider 扩展入口 | `@agent/adapters`           | agent prompt、graph orchestration、业务 policy     | `factories/`、`providers/`、`prompts/`、`retry/`、`structured-output/` 的边界继续收紧 |
-| `packages/knowledge`     | knowledge ingestion、retrieval、citation/context assembly                         | `@agent/knowledge`          | 最终回答生成、graph orchestration、provider 细节   | `indexing/`、`retrieval/`、`runtime/` 边界继续收敛                                    |
-| `packages/config`        | settings/profile/policy 的稳定配置 facade 与加载标准化                            | `@agent/config`             | runtime orchestration、provider 实例、repository   | `schemas/`、`profiles/`、`policies/` 继续充实                                         |
-| `packages/memory`        | memory/rule/runtime-state repository、memory search、governance                   | `@agent/memory`             | agent 主链流程、knowledge retrieval、chat prompt   | `repositories/`、`normalization/`、`governance/` 继续拆清                             |
-| `packages/tools`         | tool definition、registry、executor、sandbox、approval preflight、MCP transport   | `@agent/tools`              | agent route、chat/research/review 主流程           | `definitions/`、`transports/`、executor/policy 的落位继续分开                         |
-| `packages/skill-runtime` | 运行时 skill catalog、install、policy、registry                                   | `@agent/skill-runtime`      | 仓库代理技能 `skills/*`、graph 主流程、tool 主编排 | `catalog/`、`install/`、`policies/` 继续补 schema/contract                            |
-| `packages/evals`         | benchmark、regression、quality gate、评测 contract                                | `@agent/evals`              | runtime 主链、provider 适配、app 编排              | `schemas/`、`reporting/`、gate runner 继续沉淀                                        |
-| `packages/report-kit`    | data-report 确定性 blueprint/scaffold/assembly/write 引擎                         | `@agent/report-kit`         | graph 编排、tool registry、backend service 拼流程  | `contracts/`、`schemas/`、`shared/` 的领域封装继续补齐                                |
-| `packages/templates`     | starter/scaffold/report/page 模板资产与 registry                                  | `@agent/templates`          | preview/runtime/execute 逻辑、agent flow           | 模板 manifest、registry contract、类型分层继续完善                                    |
-| `agents/supervisor`      | supervisor 主控、workflow route、specialist/ministry 宿主                         | `@agent/agents-supervisor`  | 通用共享 contract、app 层胶水                      | `flows/`、`graphs/`、`workflows/` 的边界继续收紧                                      |
-| `agents/data-report`     | data-report graph、preview/runtime facade、JSON/report flow 宿主                  | `@agent/agents-data-report` | blueprint/write pipeline 主实现                    | graph/runtime facade 与 report-kit 的边界继续收紧                                     |
-| `agents/coder`           | 代码执行/工部与兵部链路宿主                                                       | `@agent/agents-coder`       | 通用 runtime 共享逻辑                              | `flows/`、`schemas/`、执行节点边界继续收敛                                            |
-| `agents/reviewer`        | review/刑部审查链路宿主                                                           | `@agent/agents-reviewer`    | 通用 contract、runtime 共享编排                    | `flows/`、`schemas/`、decision/gate 边界继续收敛                                      |
+| 包/目录                     | 核心职责                                                                          | 稳定出口                    | 不应承载                                                    | 后续优先收敛                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`             | 稳定公共 contract、schema、DTO、record、错误语义                                  | `@agent/core`               | graph、flow、provider、repository 主实现、业务包依赖        | 继续坚持 schema-first，并保持依赖只含 `zod`                                                                                     |
+| `packages/agent-kit`        | Agent SDK、descriptor、capability 声明、基础执行 helper                           | `@agent/agent-kit`          | session/checkpoint/platform center 投射                     | 为 supervisor capability dispatch 与 planner strategy selector 提供稳定 Agent contract                                          |
+| `packages/runtime`          | Runtime Kernel：graph/session/checkpoint/approval/recovery/observability kernel   | `@agent/runtime`            | 官方 Agent 默认组合、app view model、controller             | `bridges/*` 的官方 Agent re-export 后续迁到依赖注入 contract                                                                    |
+| `packages/platform-runtime` | 官方平台装配层、默认生产装配、backend/worker 共享启动线                           | `@agent/platform-runtime`   | HTTP controller、worker loop、Agent graph 主实现            | 承接 official registry、capability/domain lookup、capability-first `agentDependencies`、只读 metadata 与 default runtime facade |
+| `packages/adapters`         | LLM/embedding adapter、provider normalize、runtime factory、SDK provider 扩展入口 | `@agent/adapters`           | agent prompt、graph orchestration、业务 policy              | `factories/`、`providers/`、`prompts/`、`retry/`、`structured-output/` 的边界继续收紧                                           |
+| `packages/knowledge`        | knowledge ingestion、retrieval、citation/context assembly                         | `@agent/knowledge`          | 最终回答生成、graph orchestration、provider 细节            | `indexing/`、`retrieval/`、`runtime/` 边界继续收敛                                                                              |
+| `packages/config`           | settings/profile/policy 的稳定配置 facade 与加载标准化                            | `@agent/config`             | runtime orchestration、provider 实例、repository            | `schemas/`、`profiles/`、`policies/` 继续充实                                                                                   |
+| `packages/memory`           | memory/rule/runtime-state repository、memory search、governance                   | `@agent/memory`             | agent 主链流程、knowledge retrieval、chat prompt            | `repositories/`、`normalization/`、`governance/` 继续拆清                                                                       |
+| `packages/tools`            | tool definition、registry、executor、sandbox、approval preflight、MCP transport   | `@agent/tools`              | agent route、chat/research/review 主流程                    | `definitions/`、`transports/`、executor/policy 的落位继续分开                                                                   |
+| `packages/skill-runtime`    | 运行时 skill catalog、install、policy、registry                                   | `@agent/skill-runtime`      | 仓库代理技能 `skills/*`、graph 主流程、tool 主编排          | `catalog/`、`install/`、`policies/` 继续补 schema/contract                                                                      |
+| `packages/evals`            | benchmark、regression、quality gate、评测 contract                                | `@agent/evals`              | runtime 主链、provider 适配、app 编排                       | `schemas/`、`reporting/`、gate runner 继续沉淀                                                                                  |
+| `packages/report-kit`       | data-report 确定性 blueprint/scaffold/assembly/write 引擎                         | `@agent/report-kit`         | graph 编排、tool registry、backend service 拼流程           | `contracts/`、`schemas/`、`shared/` 的领域封装继续补齐                                                                          |
+| `packages/templates`        | starter/scaffold/report/page 模板资产与 registry                                  | `@agent/templates`          | preview/runtime/execute 逻辑、agent flow                    | 模板 manifest、registry contract、类型分层继续完善                                                                              |
+| `agents/supervisor`         | supervisor 主控、workflow route、supervisor 自有 specialist/ministry 宿主         | `@agent/agents-supervisor`  | 通用共享 contract、app 层胶水、sibling specialist re-export | `flows/`、`graphs/`、`workflows/` 的边界继续收紧，保持不依赖 coder/reviewer/data-report                                         |
+| `agents/data-report`        | data-report graph、preview/runtime facade、JSON/report flow 宿主                  | `@agent/agents-data-report` | blueprint/write pipeline 主实现                             | graph/runtime facade 与 report-kit 的边界继续收紧                                                                               |
+| `agents/coder`              | 代码执行/工部与兵部链路宿主                                                       | `@agent/agents-coder`       | 通用 runtime 共享逻辑                                       | `flows/`、`schemas/`、执行节点边界继续收敛                                                                                      |
+| `agents/reviewer`           | review/刑部审查链路宿主                                                           | `@agent/agents-reviewer`    | 通用 contract、runtime 共享编排                             | `flows/`、`schemas/`、decision/gate 边界继续收敛                                                                                |
 
 补充判断：
 
@@ -207,11 +221,27 @@
 
 迁移兼容说明：
 
+- `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖；后续不得让 contract 层重新依赖业务实现
+- `packages/platform-runtime` 已作为 workspace 包落地，并承接 backend/worker 默认 runtime 创建线、应用侧官方 Agent 出口，以及 `RuntimeAgentDependencies` 官方装配
+- `apps/backend` 与 `apps/worker` 已不再直接依赖 `@agent/agents-*` package manifest；官方装配统一通过 `@agent/platform-runtime`
+- `packages/runtime` 已移除对官方 `@agent/agents-*` 的直接依赖，内部 bridge 仅保留 contract wrapper 兼容层
 - `packages/runtime` 已承载 `runtime / session / governance` 的真实源码
 - `packages/runtime` 现已继续承载 `chat.graph / recovery.graph / learning.graph / LearningFlow / approval-recovery` 的真实源码
 - `packages/runtime` 现已继续承载 `graphs/main/*` 的真实源码
 - `packages/runtime` 现已继续承载 `event-maps / llm-retry / context-compression / temporal-context / runtime-output-sanitizer` 这些主链共享 util 的真实源码
 - `packages/runtime` 现已继续承载 `capability-pool`、直答/审批 interrupt 节点与 main graph 所需的 ministries stage orchestration 真实源码
+- `packages/runtime/src/bridges/*` 现已只保留 runtime 内部 contract wrapper；runtime 对官方 `@agent/agents-*` 的直接依赖已经移除
+- `packages/platform-runtime` 的 `createOfficialAgentRegistry()` 现已提供默认官方 agent descriptor、capability 与 specialist domain lookup；`createOfficialRuntimeAgentDependencies()` 也会优先按 capability contract 解析官方模块，并把 specialist route enrich 为官方 agent 匹配线索，后续 supervisor capability dispatch 应优先挂到这层 contract
+- `apps/backend/agent-server/src/runtime/domain/*` 现已开始承接 backend runtime 的纯规则宿主：
+  - `domain/skills/*`：skill search/status、auto-install eligibility、install path/naming
+  - `domain/connectors/*`：connector projection reader、governance state mutation
+  - `domain/metrics/*`：persisted snapshot preference、recent runs projection
+  - `domain/observability/*`：approvals center、run observatory list 的纯投影规则
+- `apps/worker` 当前已通过 `createWorkerRuntimeHost()` 持有 `PlatformRuntimeFacade`，worker 继续往“runtime facade + background runner context”的后台适配器模型收口
+- supervisor dispatch 现在还会继续带出 `selectedAgentId`，把“偏好候选是谁”和“本次实际收敛给谁”分开，避免 checkpoint / admin / chat 继续按历史 role 名称猜官方 agent
+- `packages/runtime` 与 `apps/backend` 的 runtime audit / fallback plan / dispatch objective 现在也优先消费 `selectedAgentId` 与 dispatch kind，再回退到历史 role / ministry 语义
+- `packages/agent-kit` 现已承载通用 `AgentDescriptor` / `AgentProvider` / `AgentRegistry` contract；`packages/platform-runtime` 只保留官方 registry 实现与兼容 re-export
+- runtime / admin 现在还能直接观察 `plannerStrategy` contract（`default` / `capability-gap` / `rich-candidates`），不再需要从 specialist route 与 dispatch 明细里手工反推当前规划态
 - `packages/adapters` 已承载 `adapters/llm` 的真实源码
 - `packages/adapters` 现已继续承载 prompt template、LLM retry、safe structured object、model fallback、reactive retry 与 JSON safety prompt 的真实源码
 - `packages/adapters` 现已继续承载 chat model factory、embedding factory 与 provider base-url normalize 的真实源码
@@ -242,7 +272,7 @@
   - `contracts/*` 这类 contract-first 稳定 facade
   - `packages/config/src/settings.ts` / `src/settings/index.ts` 这类人工可读聚合入口
 - 继续删除前应先看
-  - [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 
 补充说明：
 

@@ -3,13 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { RuntimeArchitectureService } from '../../../src/runtime/architecture/runtime-architecture.service';
 import { createArchitectureDescriptorRegistry } from '../../../src/runtime/architecture/runtime-architecture-registries';
 import { loadSettings } from '@agent/config';
-import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
 import { buildKnowledgeDescriptor } from '../../../src/runtime/knowledge/runtime-knowledge-store';
+import { RuntimeHost } from '../../../src/runtime/core/runtime.host';
+
+function createRuntimeHostStub() {
+  const runtimeHost = new RuntimeHost();
+  return {
+    listSubgraphDescriptors: () => runtimeHost.listSubgraphDescriptors(),
+    listWorkflowPresets: () => runtimeHost.listWorkflowPresets()
+  } as Pick<RuntimeHost, 'listSubgraphDescriptors' | 'listWorkflowPresets'> as RuntimeHost;
+}
 
 describe('RuntimeArchitectureService', () => {
   it('returns four architecture diagrams with mermaid content and metadata', () => {
-    const service = new RuntimeArchitectureService();
+    const service = new RuntimeArchitectureService(createRuntimeHostStub());
 
     const diagrams = service.getArchitecture();
 
@@ -37,9 +45,10 @@ describe('RuntimeArchitectureService', () => {
   });
 
   it('builds diagram descriptors from registry entries instead of ad-hoc service constants', () => {
+    const runtimeHost = createRuntimeHostStub();
     const registry = createArchitectureDescriptorRegistry({
-      subgraphs: listSubgraphDescriptors(),
-      workflows: listWorkflowPresets(),
+      subgraphs: runtimeHost.listSubgraphDescriptors(),
+      workflows: runtimeHost.listWorkflowPresets(),
       workers: new WorkerRegistry().list(),
       knowledgeDescriptor: buildKnowledgeDescriptor(loadSettings())
     });

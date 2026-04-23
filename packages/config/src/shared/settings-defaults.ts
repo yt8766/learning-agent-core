@@ -4,13 +4,13 @@ export const DEFAULT_DATA_PATHS = {
   vectorIndexFilePath: 'data/memory/vector-index.json',
   tasksStateFilePath: 'data/runtime/tasks-state.json',
   semanticCacheFilePath: 'data/runtime/semantic-cache.json',
-  skillsRoot: 'data/skill-runtime',
-  pluginsLabRoot: 'data/skill-runtime/plugins-lab',
-  skillSourcesRoot: 'data/skill-runtime/remote-sources',
-  skillPackagesRoot: 'data/skill-runtime/installed',
-  skillReceiptsRoot: 'data/skill-runtime/receipts',
-  skillInternalRoot: 'data/skill-runtime/installed/internal',
-  registryFilePath: 'data/skill-runtime/registry.json',
+  skillsRoot: 'data/skills',
+  pluginsLabRoot: 'data/skills/plugins-lab',
+  skillSourcesRoot: 'data/skills/remote-sources',
+  skillPackagesRoot: 'data/skills/installed',
+  skillReceiptsRoot: 'data/skills/receipts',
+  skillInternalRoot: 'data/skills/installed/internal',
+  registryFilePath: 'data/skills/registry.json',
   knowledgeRoot: 'data/knowledge'
 } as const;
 

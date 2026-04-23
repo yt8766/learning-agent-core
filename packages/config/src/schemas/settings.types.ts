@@ -148,7 +148,7 @@ export interface RuntimeSettingsOverrides {
   zhipuThinking?: RuntimeSettings['zhipuThinking'];
   providers?: ProviderSettingsRecord[];
   routing?: Partial<Record<'manager' | 'research' | 'executor' | 'reviewer', RoutingPolicyRecord>>;
-  policy?: Partial<PolicyConfig>;
+  policy?: Partial<Omit<PolicyConfig, 'budget'>> & { budget?: Partial<BudgetPolicy> };
   contextStrategy?: Partial<ContextStrategy>;
   runtimeBackground?: Partial<RuntimeBackgroundConfig>;
   dailyTechBriefing?: Partial<DailyTechBriefingConfig>;
@@ -200,8 +200,8 @@ export interface RuntimeSettings {
   runtimeBackground: RuntimeBackgroundConfig;
   dailyTechBriefing: DailyTechBriefingConfig;
   embeddings: {
-    provider: 'glm';
-    model: 'Embedding-3';
+    provider: string;
+    model: string;
     dimensions: number;
     endpoint: string;
     apiKey: string;

@@ -1,13 +1,13 @@
-import { listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
 import type {
   ArchitectureDescriptor,
   ArchitectureDescriptorRegistryEntry,
   ArchitectureNodeDescriptor
 } from '@agent/core';
+import type { RuntimeHost } from '../core/runtime.host';
 
 export function buildAgentArchitectureDescriptor(input: {
-  workflows: ReturnType<typeof listWorkflowPresets>;
+  workflows: ReturnType<RuntimeHost['listWorkflowPresets']>;
   workers: ReturnType<WorkerRegistry['list']>;
 }): ArchitectureDescriptor {
   const ministryCounts: Record<string, number> = {};
@@ -100,7 +100,7 @@ export function buildAgentArchitectureDescriptor(input: {
 }
 
 export function createAgentArchitectureRegistryEntry(input: {
-  workflows: ReturnType<typeof listWorkflowPresets>;
+  workflows: ReturnType<RuntimeHost['listWorkflowPresets']>;
   workers: ReturnType<WorkerRegistry['list']>;
 }): ArchitectureDescriptorRegistryEntry {
   const sourceDescriptors = [

@@ -1,5 +1,5 @@
 import type { ILLMProvider } from '@agent/core';
-import type { DataReportJsonStructuredInput } from '@agent/agents-data-report';
+import type { DataReportJsonStructuredInput } from '../runtime/core/runtime-data-report-facade';
 
 export type DirectChatMessages = Parameters<ILLMProvider['streamText']>[0];
 export type DirectStageStatus = 'idle' | 'pending' | 'success' | 'error';

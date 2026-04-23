@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/adapters/`
-最后核对：2026-04-18
+最后核对：2026-05-09
 
 本目录用于沉淀 `packages/adapters` 相关文档。
 
@@ -15,19 +15,34 @@
   - chat / structured generation facade
   - fallback / retry / normalize
   - 通用 prompt 基础设施
+  - **LangChain loader / chunker / embedder 默认 adapter**
+  - **Chroma VectorStore 默认 adapter**
+  - metadata / id / URL / error / retry / fallback 等边界转化
 - 允许：
   - provider adapter
   - runtime provider factory
   - structured prompt helper
   - retry / fallback policy
+  - 第三方生态适配（LangChain / Chroma / 未来 Pinecone / pgvector）
 - 禁止：
   - agent orchestration
   - graph / ministry 主逻辑
   - 业务 prompt
   - memory repository
+  - indexing pipeline 编排（由 `@agent/knowledge` 负责）
 - 依赖方向：
   - 只依赖 `@agent/config`、`@agent/core` 与必要第三方库
-  - 被 `@agent/runtime`、`agents/*` 与 app 装配层消费
+  - 被 `@agent/runtime`、`@agent/knowledge`、`agents/*` 与 app 装配层消费
+
+## 文档列表
+
+- [package-structure-guidelines.md](./package-structure-guidelines.md) — 目录结构与模块规范
+- [provider-extension-sdk-guidelines.md](./provider-extension-sdk-guidelines.md) — 自定义 provider 扩展指南
+- [custom-provider-example.md](./custom-provider-example.md) — 自定义 provider 示例
+- [indexing-adapter-guidelines.md](./indexing-adapter-guidelines.md) — LangChain / Chroma indexing adapter 规范
+- [langchain-adapter.md](./langchain-adapter.md) — LangChain adapter 使用文档
+- [chroma-adapter.md](./chroma-adapter.md) — Chroma VectorStore adapter 使用文档
+
 - 公开入口：
   - 根入口：`@agent/adapters`
 - 当前真实宿主：

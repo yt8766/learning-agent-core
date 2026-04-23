@@ -6,7 +6,7 @@ import {
   readPersistedUsageAnalytics,
   summarizeAndPersistEvalHistory,
   summarizeAndPersistUsageAnalytics
-} from '@agent/runtime';
+} from '@agent/platform-runtime';
 
 describe('runtime-metrics-store', () => {
   it('会持久化 usage analytics', async () => {

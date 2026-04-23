@@ -83,7 +83,7 @@ skills/
 当前已经完成：
 
 - `packages/runtime` 与 backend 上层代码已切到 `@agent/skill-runtime`
-- 运行时数据默认目录已切到 `data/skill-runtime`
+- 运行时数据默认目录已切到 `data/skills`
 - 旧的兼容包与 alias 已删除，仓库只保留 `@agent/skill-runtime`
 
 ## 6. 继续阅读

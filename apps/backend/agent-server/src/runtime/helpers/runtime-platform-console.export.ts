@@ -8,6 +8,10 @@ import {
   normalizePlatformConsoleEvalsRecord,
   normalizePlatformConsoleRuntimeRecord
 } from './runtime-platform-console.normalize';
+import {
+  resolveInterruptPayloadField,
+  resolveTaskInteractionKind
+} from '../domain/observability/runtime-observability-filters';
 
 export async function exportRuntimeCenter(
   context: {
@@ -47,11 +51,11 @@ export async function exportRuntimeCenter(
     `filters,${csv(options?.status ?? '')},${csv(options?.model ?? '')},${csv(options?.pricingSource ?? '')},${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
     'filterStatus,filterModel,filterPricingSource,filterExecutionMode,filterInteractionKind',
     '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt',
-    ...recentRuns.map(
-      task =>
-        `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(task))},${csv(task.currentWorker)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`
-    ),
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,selectedAgents,selectionSources,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt',
+    ...recentRuns.map(task => {
+      const dispatchSelection = summarizeDispatchSelection(task);
+      return `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveTaskInteractionKind(task) ?? '')},${csv(task.currentWorker)},${csv(dispatchSelection.selectedAgents)},${csv(dispatchSelection.selectionSources)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`;
+    }),
     '',
     'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt',
     `dailyTechScheduler,${csv(runtime.dailyTechBriefing?.scheduler ?? '')},${csv(runtime.dailyTechBriefing?.schedule ?? '')},${csv(runtime.dailyTechBriefing?.cron ?? '')},${csv(runtime.dailyTechBriefing?.scheduleValid ?? '')},${csv(runtime.dailyTechBriefing?.jobKey ?? '')},${csv(runtime.dailyTechBriefing?.lastRegisteredAt ?? '')}`,
@@ -92,11 +96,11 @@ export async function exportApprovalsCenter(
     `filters,${csv(normalizeExecutionMode(options?.executionMode) ?? options?.executionMode ?? '')},${csv(options?.interactionKind ?? '')}`,
     'filterExecutionMode,filterInteractionKind',
     '',
-    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt',
-    ...approvals.map(
-      item =>
-        `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveInteractionKind(item))},${csv(item.currentWorker)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')},${csv(resolveInterruptPayloadField(item, 'commandPreview'))},${csv(resolveInterruptPayloadField(item, 'riskReason'))},${csv(resolveInterruptPayloadField(item, 'riskCode'))},${csv(resolveInterruptPayloadField(item, 'approvalScope'))},${csv(item.policyMatchStatus ?? '')},${csv(item.policyMatchSource ?? '')},${csv(item.lastStreamStatusAt ?? '')}`
-    )
+    'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,selectedAgents,selectionSources,intent,toolName,riskLevel,reason,commandPreview,riskReason,riskCode,approvalScope,policyMatchStatus,policyMatchSource,lastStreamStatusAt',
+    ...approvals.map(item => {
+      const dispatchSelection = summarizeDispatchSelection(item);
+      return `${csv(item.taskId)},${csv(item.status)},${csv(normalizeExecutionMode(item.executionMode) ?? item.executionMode ?? '')},${csv(getMinistryDisplayName(item.currentMinistry) ?? item.currentMinistry ?? '')},${csv(getMinistryDisplayName(item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy) ?? item.pendingApproval?.requestedBy ?? item.activeInterrupt?.requestedBy ?? '')},${csv(item.activeInterrupt?.source ?? '')},${csv(resolveTaskInteractionKind(item) ?? '')},${csv(item.currentWorker)},${csv(dispatchSelection.selectedAgents)},${csv(dispatchSelection.selectionSources)},${csv(item.pendingApproval?.intent ?? item.activeInterrupt?.intent ?? '')},${csv(item.pendingApproval?.toolName ?? item.activeInterrupt?.toolName ?? '')},${csv(item.pendingApproval?.riskLevel ?? item.activeInterrupt?.riskLevel ?? '')},${csv(item.pendingApproval?.reason ?? item.activeInterrupt?.reason ?? '')},${csv(resolveInterruptPayloadField(item.activeInterrupt, 'commandPreview') ?? '')},${csv(resolveInterruptPayloadField(item.activeInterrupt, 'riskReason') ?? '')},${csv(resolveInterruptPayloadField(item.activeInterrupt, 'riskCode') ?? '')},${csv(resolveInterruptPayloadField(item.activeInterrupt, 'approvalScope') ?? '')},${csv(item.policyMatchStatus ?? '')},${csv(item.policyMatchSource ?? '')},${csv(item.lastStreamStatusAt ?? '')}`;
+    })
   ];
 
   return {
@@ -151,30 +155,32 @@ export async function exportEvalsCenter(
   };
 }
 
-function resolveInteractionKind(task: Pick<PlatformConsoleRuntimeTaskRecord, 'pendingApproval' | 'activeInterrupt'>) {
-  if (typeof task.activeInterrupt?.interactionKind === 'string') {
-    return task.activeInterrupt.interactionKind;
-  }
-  const payload = task.activeInterrupt?.payload;
-  if (payload && typeof payload === 'object' && typeof payload.interactionKind === 'string') {
-    return payload.interactionKind;
-  }
-  if (task.activeInterrupt?.kind === 'user-input') {
-    return 'plan-question';
-  }
-  return task.pendingApproval || task.activeInterrupt ? 'approval' : '';
-}
+function summarizeDispatchSelection(task: unknown) {
+  const dispatches =
+    typeof task === 'object' &&
+    task !== null &&
+    'dispatches' in task &&
+    Array.isArray((task as { dispatches?: unknown }).dispatches)
+      ? ((
+          task as {
+            dispatches?: Array<{
+              selectedAgentId?: string;
+              selectionSource?: string;
+            }>;
+          }
+        ).dispatches ?? [])
+      : [];
+  const selectedAgents = Array.from(
+    new Set(dispatches.map(dispatch => dispatch.selectedAgentId).filter((value): value is string => Boolean(value)))
+  );
+  const selectionSources = Array.from(
+    new Set(dispatches.map(dispatch => dispatch.selectionSource).filter((value): value is string => Boolean(value)))
+  );
 
-function resolveInterruptPayloadField(
-  task: Pick<PlatformConsoleRuntimeTaskRecord, 'activeInterrupt'>,
-  field: 'commandPreview' | 'riskReason' | 'riskCode' | 'approvalScope'
-) {
-  const payload = task.activeInterrupt?.payload;
-  if (!payload || typeof payload !== 'object') {
-    return '';
-  }
-  const value = payload[field];
-  return typeof value === 'string' ? value : '';
+  return {
+    selectedAgents: selectedAgents.join('|'),
+    selectionSources: selectionSources.join('|')
+  };
 }
 
 function csv(value: unknown): string {

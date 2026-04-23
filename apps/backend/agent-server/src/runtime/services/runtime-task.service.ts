@@ -18,6 +18,7 @@ import {
 
 import { buildTaskAudit, buildFallbackTaskPlan } from '../domain/tasks/runtime-task-audit';
 import { buildAgentDiagnosisTaskInput } from '../domain/tasks/runtime-task-diagnosis';
+import { assertTaskActionResult, buildRecentTraceSummaryLines } from '../domain/tasks/runtime-task-service-helpers';
 
 type ApprovalDecisionValue = (typeof ApprovalDecision)[keyof typeof ApprovalDecision];
 type TaskSkillSuggestionsResult = {
@@ -89,9 +90,7 @@ export class RuntimeTaskService {
 
   createAgentDiagnosisTask(dto: CreateAgentDiagnosisTaskDto) {
     const task = this.getTask(dto.taskId);
-    const recentTraceLines = this.listTaskTraces(dto.taskId)
-      .slice(-5)
-      .map(trace => `${trace.at} / ${trace.node} / ${trace.summary}`);
+    const recentTraceLines = buildRecentTraceSummaryLines(task);
 
     return this.ctx().orchestrator.createTask(buildAgentDiagnosisTaskInput(dto, task, recentTraceLines));
   }
@@ -157,34 +156,19 @@ export class RuntimeTaskService {
   retryTask(taskId: string) {
     return this.ctx()
       .orchestrator.retryTask(taskId)
-      .then(task => {
-        if (!task) {
-          throw new NotFoundException(`Task ${taskId} not found`);
-        }
-        return task;
-      });
+      .then(task => assertTaskActionResult(taskId, task));
   }
 
   approveTaskAction(taskId: string, dto: ApprovalActionDto) {
     return this.ctx()
       .orchestrator.applyApproval(taskId, dto, ApprovalDecision.APPROVED)
-      .then(task => {
-        if (!task) {
-          throw new NotFoundException(`Task ${taskId} not found`);
-        }
-        return task;
-      });
+      .then(task => assertTaskActionResult(taskId, task));
   }
 
   rejectTaskAction(taskId: string, dto: ApprovalActionDto) {
     return this.ctx()
       .orchestrator.applyApproval(taskId, dto, ApprovalDecision.REJECTED)
-      .then(task => {
-        if (!task) {
-          throw new NotFoundException(`Task ${taskId} not found`);
-        }
-        return task;
-      });
+      .then(task => assertTaskActionResult(taskId, task));
   }
 
   createDocumentLearningJob(dto: CreateDocumentLearningJobDto) {

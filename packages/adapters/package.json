@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
     "demo:custom-provider-factory": "node --import tsx demo/custom-provider-factory.ts",
     "demo:routing-capabilities": "node --import tsx demo/routing-capabilities.ts",
     "demo:retry-structured-output": "node --import tsx demo/retry-structured-output.ts",
@@ -28,7 +29,7 @@
     "watch": "pnpm build:watch & pnpm build:watch:types",
     "build:lib": "pnpm build:transpile && pnpm build:types",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/adapters",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/adapters/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:unit": "pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js packages/adapters",
@@ -38,8 +39,12 @@
   "dependencies": {
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
-    "@langchain/core": "^1.1.35",
+    "@langchain/community": "^1.1.27",
+    "@langchain/core": "^1.1.40",
     "@langchain/openai": "^1.3.0",
+    "@langchain/textsplitters": "^1.0.1",
+    "chromadb": "^3.4.3",
+    "langchain": "^1.3.3",
     "zod": "^4.3.6"
   }
 }

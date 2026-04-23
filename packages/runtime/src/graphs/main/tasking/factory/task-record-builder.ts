@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { derivePlannerStrategyRecord } from '@agent/agent-kit';
 import type { CreateTaskDto, EntryDecisionRecord, QueueStateRecord } from '@agent/core';
 import { ExecutionPlanMode, TaskStatus } from '@agent/core';
 
@@ -160,6 +161,12 @@ export function buildTaskRecord(params: {
     supportingSpecialists: params.specialistRoute.supportingSpecialists,
     specialistFindings: [],
     routeConfidence: params.orchestrationGovernance.adjustedRouteConfidence,
+    plannerStrategy: derivePlannerStrategyRecord(
+      {
+        specialistLead: params.specialistRoute.specialistLead
+      },
+      params.now
+    ),
     contextSlicesBySpecialist: params.specialistRoute.contextSlicesBySpecialist,
     chatRoute: params.initialChatRoute,
     requestedHints: params.dto.requestedHints,

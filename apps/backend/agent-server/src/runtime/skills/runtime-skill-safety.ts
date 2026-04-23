@@ -1,5 +1,9 @@
 import { listSkillSourcesSnapshot } from '../helpers/runtime-connector-registry';
 import type { RuntimeSkillSourcesContext } from './runtime-skill-sources.service';
+import {
+  findInstallableManifestSuggestion,
+  shouldAutoInstallManifest
+} from '../domain/skills/runtime-skill-auto-install';
 
 import type { SkillManifestRecord, SkillSourceRecord } from '@agent/core';
 import type { LocalSkillSuggestionRecord, SkillSearchStatus } from '@agent/core';
@@ -188,10 +192,7 @@ export async function findAutoInstallableManifest(
   context: RuntimeSkillSourcesContext,
   suggestions: Array<LocalSkillSuggestionRecord>
 ) {
-  const installable = suggestions.find(
-    item =>
-      item.kind === 'manifest' && ['installable', 'installable-local', 'installable-remote'].includes(item.availability)
-  );
+  const installable = findInstallableManifestSuggestion(suggestions);
   if (!installable) {
     return undefined;
   }
@@ -204,12 +205,7 @@ export async function findAutoInstallableManifest(
   }
 
   const safety = evaluateSkillManifestSafety(context, manifest);
-  if (
-    safety.verdict !== 'allow' ||
-    safety.trustScore < 80 ||
-    !['official', 'curated', 'internal'].includes(safety.sourceTrustClass ?? '') ||
-    !manifest.license
-  ) {
+  if (!shouldAutoInstallManifest({ manifest, safety })) {
     return undefined;
   }
 

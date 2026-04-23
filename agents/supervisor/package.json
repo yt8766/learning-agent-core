@@ -25,7 +25,7 @@
     "watch": "pnpm build:watch & pnpm build:watch:types",
     "build:lib": "pnpm build:transpile && pnpm build:types",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js agents/supervisor",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js agents/supervisor/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:unit": "pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js agents/supervisor",
@@ -35,8 +35,6 @@
   "dependencies": {
     "@agent/adapters": "workspace:*",
     "@agent/agent-kit": "workspace:*",
-    "@agent/agents-coder": "workspace:*",
-    "@agent/agents-reviewer": "workspace:*",
     "@agent/core": "workspace:*",
     "@langchain/langgraph": "^1.2.5",
     "zod": "^4.3.6"

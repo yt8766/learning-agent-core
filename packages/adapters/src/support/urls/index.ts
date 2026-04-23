@@ -1,1 +1,1 @@
-export { normalizeEmbeddingBaseUrl, normalizeModelBaseUrl } from './base-url';
+export * from '../../shared/urls';

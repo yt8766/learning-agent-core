@@ -89,6 +89,11 @@ export class MainGraphTaskFactory {
       });
     const counselorSelection = resolveCounselorSelection(dto, {
       specialistDomain: specialistRoute.specialistLead.domain,
+      preferredCounselorIds: specialistRoute.specialistLead.candidateAgentIds?.length
+        ? specialistRoute.specialistLead.candidateAgentIds
+        : specialistRoute.specialistLead.agentId
+          ? [specialistRoute.specialistLead.agentId]
+          : undefined,
       normalizedGoal: workflowResolution.normalizedGoal,
       sessionId
     });

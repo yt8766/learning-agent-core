@@ -16,6 +16,11 @@ export {
   type ToolPermissionChecker
 } from './approval/preflight-governance';
 export { CONNECTOR_TOOL_DEFINITIONS } from './definitions/connector-tool-definitions';
+export {
+  buildConnectorDraftConfig,
+  buildConnectorSecretUpdateConfig,
+  findConfiguredConnector
+} from './connectors/connector-draft-config';
 export { executeConnectorTool } from './executors/connectors/connectors-executor';
 export { FILESYSTEM_TOOL_DEFINITIONS } from './definitions/filesystem-tool-definitions';
 export { executeFilesystemTool } from './executors/filesystem/filesystem-executor';
@@ -39,6 +44,16 @@ export { DEFAULT_TOOLS, ToolRegistry, createDefaultToolRegistry } from './contra
 export { ToolRiskClassifier } from './contracts/tool-risk-classifier';
 export { RUNTIME_GOVERNANCE_TOOL_DEFINITIONS } from './definitions/runtime-governance-tool-definitions';
 export { executeRuntimeGovernanceTool } from './executors/runtime-governance/runtime-governance-executor';
+export { buildToolsCenter } from './runtime-governance/tools-center';
+export {
+  clearCapabilityPolicyOverride,
+  clearConnectorPolicyOverride,
+  resolveConfiguredConnectorId,
+  setCapabilityPolicyOverride,
+  setConfiguredConnectorRecord,
+  setConnectorEnabledState,
+  setConnectorPolicyOverride
+} from './runtime-governance/connector-governance-state';
 export {
   buildAgentScaffold,
   buildPackageScaffold,

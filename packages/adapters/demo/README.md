@@ -4,6 +4,7 @@
 
 可用脚本：
 
+- `pnpm --filter @agent/adapters demo`
 - `pnpm --filter @agent/adapters demo:custom-provider-factory`
 - `pnpm --filter @agent/adapters demo:routing-capabilities`
 - `pnpm --filter @agent/adapters demo:retry-structured-output`
@@ -24,3 +25,5 @@
   - 验证模型能力声明、能力约束选模与 routed provider 的最小闭环。
 - `retry-structured-output.ts`
   - 验证 `generateObjectWithRetry(...)`、JSON 安全补强与结构化输出重试策略。
+- `smoke.ts`
+  - 验证 provider registry、capability routing 与 routed provider 的最小运行闭环。

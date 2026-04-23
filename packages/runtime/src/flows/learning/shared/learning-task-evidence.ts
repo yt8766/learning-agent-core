@@ -1,6 +1,9 @@
 import type { EvidenceRecord } from '@agent/core';
+import { inferTrustClass, mergeEvidence, normalizeInstalledSkillId } from '@agent/core';
 
 import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
+
+export { mergeEvidence, inferTrustClass, normalizeInstalledSkillId };
 
 export function deriveEvidence(task: TaskRecord): EvidenceRecord[] {
   const sources = task.trace
@@ -55,42 +58,4 @@ export function deriveEvidence(task: TaskRecord): EvidenceRecord[] {
   }));
 
   return [...sources, ...installedSkillEvidence, ...companyWorkerEvidence].slice(-12);
-}
-
-export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {
-  const merged = [...existing];
-  for (const item of incoming) {
-    const key = `${item.sourceType}:${item.sourceUrl ?? item.summary}`;
-    if (!merged.some(candidate => `${candidate.sourceType}:${candidate.sourceUrl ?? candidate.summary}` === key)) {
-      merged.push(item);
-    }
-  }
-  return merged;
-}
-
-export function inferTrustClass(sourceUrl: string): EvidenceRecord['trustClass'] {
-  try {
-    const host = new URL(sourceUrl).hostname.toLowerCase();
-    if (
-      host.includes('openai.com') ||
-      host.includes('anthropic.com') ||
-      host.includes('deepseek.com') ||
-      host.includes('openclaw.ai') ||
-      host.includes('open-claw.org') ||
-      host.includes('npmjs.com') ||
-      host.includes('developer.mozilla.org')
-    ) {
-      return 'official';
-    }
-    if (host.includes('github.com')) {
-      return 'curated';
-    }
-    return 'community';
-  } catch {
-    return 'unverified';
-  }
-}
-
-export function normalizeInstalledSkillId(workerId: string): string {
-  return workerId.startsWith('installed-skill:') ? workerId.replace('installed-skill:', '') : workerId;
 }

@@ -11,7 +11,7 @@
 - [README](/README.md)
 - [架构总览](/docs/ARCHITECTURE.md)
 - [前后端对接文档](/docs/integration/frontend-backend-integration.md)
-- [Runtime Interrupts](/docs/runtime-interrupts.md)
+- [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
 - [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
 - [GitHub Flow 规范](/docs/github-flow.md)
 - [后端规范](/docs/backend-conventions.md)
@@ -47,7 +47,7 @@
   - `packages/templates`
   - `packages/config` 的纯 compat `settings.*`
   - 其中 `packages/config`、`packages/skill-runtime`、`packages/evals` 已继续补出 facade contract，作为包根稳定导出层
-  - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移和兼容分析保留在 `docs/shared/*`
 - 稳定主 contract 默认收口到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 应落到真实宿主或应用本地，不再新增 `@agent/shared`
 - `packages/core` 默认采用 schema-first：
@@ -60,6 +60,16 @@
   - `packages/adapters` 负责实现这些 interface
   - `packages/runtime` 与 `agents/*` 只能依赖 `packages/core` 暴露的抽象与 contract，不默认直接依赖 vendor SDK 或具体 adapter 类
   - 具体 adapter 实例默认在 `apps/backend/*/src/app`、`apps/worker/src/bootstrap` 等应用启动层装配
+- 第三方依赖边界默认遵守“允许使用，不允许穿透”：
+  - 项目允许使用第三方库，但业务代码不得直接依赖第三方实现细节
+  - 第三方能力进入主链流程、跨包 contract、前后端协议、graph state、tool result、审批事件、模型输出或持久化记录时，必须先经过项目自定义的稳定 `contract / adapter / facade / provider` 边界
+  - 第三方 SDK 调用、vendor response/error/event 适配、协议转换与 vendor-specific 参数，默认集中在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界层
+  - `flows/`、`graphs/`、`services/`、前端业务组件默认消费项目自定义接口，不直接消费第三方 SDK response、error、event、内部类型或隐式状态机语义
+  - 稳定 JSON / DTO / event / payload contract 继续优先 schema-first，默认落在 `packages/core` 或真实宿主的 `types/`、`schemas/` 中，不直接复用第三方对象作为内部协议或持久化结构
+  - 第三方错误必须先转换为项目自己的错误语义，不允许调用方散落判断 vendor 私有 `code`、`status` 或嵌套错误 shape
+  - 对第三方能力应优先抽象“项目需要的能力接口”，不要机械包一层 vendor API；新增第三方接入时，优先新增 provider/adapter 实现，而不是在业务层复制调用链或追加 `if/else`
+  - 新增第三方依赖或直接接入第三方 SDK 前，至少确认：是否已有项目内 provider/adapter/facade；第三方对象是否会穿透到业务层或公共 contract；是否需要先定义项目 schema/type；错误、重试、超时、取消、恢复、审计语义由哪一层负责；是否已补 adapter 层测试或 contract parse 回归
+  - 允许的例外：React/Vite/zod/测试框架等基础设施在对应技术层直接使用；极薄的启动装配层可创建第三方 client/SDK 实例但不得泄漏到业务调用方；兼容迁移期间可保留带明确标注和清理入口的 thin compat
 - 包分层治理的固定检查入口：
   - `pnpm check:barrel-layout`
   - `pnpm check:package-boundaries`
@@ -103,7 +113,7 @@
   - `review-stage/`：刑部终审、治理评分、交付前状态收口
   - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
 - 本地运行数据统一放仓库根级 `data/`
-- 运行时技能相关本地数据默认优先使用 `data/skill-runtime/`
+- 运行时技能相关本地数据默认优先使用 `data/skills/`
 - 仓库级可重建产物优先放仓库根级 `artifacts/`
 - 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
@@ -117,11 +127,12 @@
   - `Unit`
   - `Demo`
   - `Integration`
-- 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
-- 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
+- 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected`
+- `packages/*` 默认应维护显式 `demo/` 与 `demo` 脚本，并让根级 `pnpm test:demo` / `pnpm test:demo:affected` 能直接覆盖；不要把包级最小闭环长期只留给人工运行才发现
 - 每次改动文件时，禁止绕过 [验证体系规范](/docs/evals/verification-system-guidelines.md) 自行裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成对应层级验证或明确记录 blocker
-- GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
-- GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口
+- GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected + test:workspace:smoke`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
+- GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口
 - main 流水线允许在五层验证之后对附加 job 做条件化触发：当前 docs-only push 默认跳过 `build-main` 与 `coverage-main`，`prompt-regression` 只在 prompt-sensitive 或代码相关改动时尝试运行
 - 不要再把 CI 五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
 - GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`

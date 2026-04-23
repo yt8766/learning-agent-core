@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-19
+最后核对：2026-04-22
 
 本主题主文档：
 
@@ -511,6 +511,8 @@ SSE 实现位置：
 前端会话 Hook：
 
 - `apps/frontend/agent-chat/src/hooks/use-chat-session.ts`
+  - 流式/轮询/checkpoint 刷新逻辑已提取至 `chat-session/use-chat-session-stream-manager.ts`
+  - 技能安装轮询已提取至 `chat-session/chat-session-skill-install-actions.ts`
 
 ### 5.1 创建会话
 
@@ -607,7 +609,8 @@ new EventSource(`${API_BASE}/chat/stream?sessionId=${sessionId}`);
 
 前端实现文件：
 
-- `apps/frontend/agent-chat/src/hooks/use-chat-session.ts`
+- `apps/frontend/agent-chat/src/hooks/use-chat-session.ts`（主入口）
+- `apps/frontend/agent-chat/src/hooks/chat-session/use-chat-session-stream-manager.ts`（流式/轮询核心）
 
 当前规则：
 

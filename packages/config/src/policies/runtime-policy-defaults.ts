@@ -1,9 +1,11 @@
-import type { PolicyConfig } from '../schemas/settings.types';
+import type { BudgetPolicy, PolicyConfig } from '../schemas/settings.types';
+
+type PartialPolicyInput = Partial<Omit<PolicyConfig, 'budget'>> & { budget?: Partial<BudgetPolicy> };
 
 export function mergeNormalizedPolicy(
-  profilePolicy: Partial<PolicyConfig> | undefined,
-  overridePolicy: Partial<PolicyConfig> | undefined
-): Partial<PolicyConfig> {
+  profilePolicy: PartialPolicyInput | undefined,
+  overridePolicy: PartialPolicyInput | undefined
+): PartialPolicyInput {
   return {
     ...profilePolicy,
     ...overridePolicy,
@@ -53,7 +55,9 @@ export function mergeNormalizedPolicy(
       retryBudget: overridePolicy?.budget?.retryBudget ?? profilePolicy?.budget?.retryBudget ?? 1,
       sourceBudget: overridePolicy?.budget?.sourceBudget ?? profilePolicy?.budget?.sourceBudget ?? 8,
       maxCostPerTaskUsd: overridePolicy?.budget?.maxCostPerTaskUsd ?? profilePolicy?.budget?.maxCostPerTaskUsd ?? 2,
-      fallbackModelId: overridePolicy?.budget?.fallbackModelId ?? profilePolicy?.budget?.fallbackModelId ?? 'glm-5.1'
-    }
+      ...(overridePolicy?.budget?.fallbackModelId || profilePolicy?.budget?.fallbackModelId
+        ? { fallbackModelId: overridePolicy?.budget?.fallbackModelId ?? profilePolicy?.budget?.fallbackModelId }
+        : {})
+    } as BudgetPolicy
   };
 }

@@ -130,13 +130,13 @@ pnpm --dir apps/frontend/agent-admin dev
   - runtime state、任务状态、briefings、schedules 等运行态数据
 - `data/knowledge`
   - 受控知识源、catalog、chunks、ingestion、vectors 产物
-- `data/skill-runtime`
+- `data/skills`
   - 运行时技能安装区、稳定区、实验区和安装回执
 
 建议：
 
 - 不要把临时调试输出混写进 `data/runtime`
-- 清理 `data/knowledge` 与 `data/skill-runtime` 前，先确认 runtime / learning / skill lab 是否仍在引用
+- 清理 `data/knowledge` 与 `data/skills` 前，先确认 runtime / learning / skill lab 是否仍在引用
 - 当切换 runner 模式时，backend 与 worker 应共享同一份 `data/runtime/tasks-state.json`
 
 ## 6. 常见排查

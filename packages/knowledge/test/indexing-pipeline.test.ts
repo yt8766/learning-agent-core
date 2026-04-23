@@ -1,72 +1,92 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  FixedWindowKnowledgeChunker,
-  InMemoryKnowledgeIndexWriter,
-  MockKnowledgeEmbedder,
-  runKnowledgeIndexing,
-  StaticKnowledgeDocumentLoader
-} from '../src';
+import type { Chunk, Document, Embedder, Loader, Vector, VectorStore } from '@agent/core';
+
+import { runKnowledgeIndexing } from '../src';
 
 describe('runKnowledgeIndexing', () => {
-  it('orchestrates load, transform, chunk, embed and write for knowledge documents', async () => {
-    const loader = new StaticKnowledgeDocumentLoader([
-      {
-        id: 'doc-1',
-        sourceId: 'source-1',
-        title: 'Indexing Guide',
-        uri: '/docs/indexing.md',
-        content: 'chunking retrieval citation pipeline for knowledge indexing',
-        sourceType: 'repo-docs',
-        trustClass: 'internal',
-        updatedAt: '2026-04-18T00:00:00.000Z'
+  it('orchestrates load, chunk, embed and upsert using @agent/core contracts', async () => {
+    const capturedVectors: Vector[] = [];
+
+    const loader: Loader = {
+      async load(): Promise<Document[]> {
+        return [
+          {
+            id: 'doc-1',
+            content: 'chunking retrieval citation pipeline for knowledge indexing',
+            metadata: { title: 'Indexing Guide', uri: '/docs/indexing.md' }
+          }
+        ];
       }
-    ]);
-    const writer = new InMemoryKnowledgeIndexWriter();
+    };
+
+    const embedder: Embedder = {
+      async embed(chunks: Chunk[]): Promise<Vector[]> {
+        return chunks.map(chunk => ({
+          id: chunk.id,
+          values: [1, 2, 3, 4],
+          metadata: chunk.metadata,
+          sourceChunkId: chunk.id
+        }));
+      }
+    };
+
+    const vectorStore: VectorStore = {
+      async upsert(vectors: Vector[]): Promise<void> {
+        capturedVectors.push(...vectors);
+      }
+    };
 
     const result = await runKnowledgeIndexing({
       loader,
-      chunker: new FixedWindowKnowledgeChunker(),
-      embedder: new MockKnowledgeEmbedder(),
-      writer,
+      embedder,
+      vectorStore,
+      sourceConfig: { sourceId: 'source-1', sourceType: 'repo-docs', trustClass: 'internal' },
       chunkSize: 18,
-      chunkOverlap: 4,
-      metadataBuilder: ({ chunk }) => ({ preview: chunk.content.slice(0, 10) })
+      chunkOverlap: 4
     });
 
     expect(result.loadedDocumentCount).toBe(1);
     expect(result.indexedDocumentCount).toBe(1);
     expect(result.chunkCount).toBeGreaterThan(1);
     expect(result.embeddedChunkCount).toBe(result.chunkCount);
-    expect(writer.sources[0]?.id).toBe('source-1');
-    expect(writer.chunks[0]?.metadata.preview).toBeTypeOf('string');
-    expect(writer.embeddings).toHaveLength(result.chunkCount);
+    expect(capturedVectors).toHaveLength(result.chunkCount);
+    expect(capturedVectors[0]?.metadata['sourceId']).toBe('source-1');
+    expect(capturedVectors[0]?.metadata['content']).toBeTypeOf('string');
+    expect(capturedVectors[0]?.metadata['title']).toBe('Indexing Guide');
   });
 
-  it('reports skipped documents through the default warning path', async () => {
-    const loader = new StaticKnowledgeDocumentLoader([
-      {
-        id: 'doc-1',
-        sourceId: 'source-1',
-        title: 'Empty Guide',
-        uri: '/docs/empty.md',
-        content: '   ',
-        sourceType: 'repo-docs',
-        trustClass: 'internal',
-        updatedAt: '2026-04-18T00:00:00.000Z'
+  it('reports skipped documents when content is empty', async () => {
+    const capturedVectors: Vector[] = [];
+
+    const loader: Loader = {
+      async load(): Promise<Document[]> {
+        return [{ id: 'doc-1', content: '   ', metadata: {} }];
       }
-    ]);
-    const writer = new InMemoryKnowledgeIndexWriter();
+    };
+
+    const embedder: Embedder = {
+      async embed(_chunks: Chunk[]): Promise<Vector[]> {
+        return [];
+      }
+    };
+
+    const vectorStore: VectorStore = {
+      async upsert(vectors: Vector[]): Promise<void> {
+        capturedVectors.push(...vectors);
+      }
+    };
 
     const result = await runKnowledgeIndexing({
       loader,
-      embedder: new MockKnowledgeEmbedder(),
-      writer
+      embedder,
+      vectorStore,
+      sourceConfig: { sourceId: 'source-1', sourceType: 'repo-docs', trustClass: 'internal' }
     });
 
     expect(result.indexedDocumentCount).toBe(0);
     expect(result.skippedDocumentCount).toBe(1);
     expect(result.warningCount).toBe(1);
-    expect(writer.embeddings).toHaveLength(0);
+    expect(capturedVectors).toHaveLength(0);
   });
 });

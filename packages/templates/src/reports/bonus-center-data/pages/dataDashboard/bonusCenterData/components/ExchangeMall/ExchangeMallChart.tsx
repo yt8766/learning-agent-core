@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { echartsConfig } from '@/config/layout';
-import { ExchangeMallRecord } from '@/types/data/bonusCenter';
+import type { ExchangeMallRecord } from '@/types/data/bonusCenter';
 import { ProCard } from '@ant-design/pro-components';
 import { FormattedMessage, type IntlShape, useIntl } from 'react-intl';
 import { Col, Empty, Row, Spin } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
+import { EXCHANGE_MALL_CHART_GROUP_IDS, EXCHANGE_MALL_CHART_KEYS } from './exchange-mall-chart.keys';
 
 export interface ExchangeMallChartProps {
   data: ExchangeMallRecord[];
@@ -94,210 +95,14 @@ export const ExchangeMallChart = memo(({ data, loading }: ExchangeMallChartProps
       return null;
     }
 
-    // 按日期排序
     const sortedData = [...data].sort((a, b) => new Date(a.dt).getTime() - new Date(b.dt).getTime());
 
-    // 定义所有字段
-    const allKeys: Array<{
-      id: string;
-      key: keyof ExchangeMallRecord;
-    }> = [
-      {
-        id: 'data.bonusCenter.propsAllCnt',
-        key: 'props_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.propsAmount',
-        key: 'props_amount'
-      },
-      {
-        id: 'data.bonusCenter.propsUserCnt',
-        key: 'props_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.coinAllCnt',
-        key: 'coin_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.coinAmount',
-        key: 'coin_amount'
-      },
-      {
-        id: 'data.bonusCenter.coinAssetAmount',
-        key: 'coin_asset_amount'
-      },
-      {
-        id: 'data.bonusCenter.coinUserCnt',
-        key: 'coin_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.voucherAllCnt',
-        key: 'voucher_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.voucherAmount',
-        key: 'voucher_amount'
-      },
-      {
-        id: 'data.bonusCenter.voucherUserCnt',
-        key: 'voucher_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.vipVoucherAllCnt',
-        key: 'vip_voucher_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.vipVoucherAmount',
-        key: 'vip_voucher_amount'
-      },
-      {
-        id: 'data.bonusCenter.vipVoucherUserCnt',
-        key: 'vip_voucher_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.pujaAllCnt',
-        key: 'puja_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.pujaAmount',
-        key: 'puja_amount'
-      },
-      {
-        id: 'data.bonusCenter.pujaUserCnt',
-        key: 'puja_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.systemRetrieveAllCnt',
-        key: 'system_retrieve_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.systemRetrieveAmount',
-        key: 'system_retrieve_amount'
-      },
-      {
-        id: 'data.bonusCenter.systemRetrieveUserCnt',
-        key: 'system_retrieve_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.postTotalAllCnt',
-        key: 'post_total_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.postTotalAmount',
-        key: 'post_total_amount'
-      },
-      {
-        id: 'data.bonusCenter.postTotalUserCnt',
-        key: 'post_total_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post1AllCnt',
-        key: 'post_1_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post1Amount',
-        key: 'post_1_amount'
-      },
-      {
-        id: 'data.bonusCenter.post1UserCnt',
-        key: 'post_1_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post2AllCnt',
-        key: 'post_2_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post2Amount',
-        key: 'post_2_amount'
-      },
-      {
-        id: 'data.bonusCenter.post2UserCnt',
-        key: 'post_2_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post3AllCnt',
-        key: 'post_3_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post3Amount',
-        key: 'post_3_amount'
-      },
-      {
-        id: 'data.bonusCenter.post3UserCnt',
-        key: 'post_3_user_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post4AllCnt',
-        key: 'post_4_all_cnt'
-      },
-      {
-        id: 'data.bonusCenter.post4Amount',
-        key: 'post_4_amount'
-      },
-      {
-        id: 'data.bonusCenter.post4UserCnt',
-        key: 'post_4_user_cnt'
-      }
-    ];
+    const chartGroups = EXCHANGE_MALL_CHART_GROUP_IDS.map(({ titleId, prefix }) => ({
+      title: intl.formatMessage({ id: titleId }),
+      keys: EXCHANGE_MALL_CHART_KEYS.filter(({ key }) => (key as string).startsWith(prefix))
+    })).filter(group => group.keys.length > 0);
 
-    // 按业务逻辑分组
-    const chartGroups = [
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.propsAllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('props_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.coinAllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('coin_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.voucherAllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('voucher_'))
-      },
-      {
-        title: intl.formatMessage({
-          id: 'data.bonusCenter.vipVoucherAllCnt'
-        }),
-        keys: allKeys.filter(({ key }) => key.startsWith('vip_voucher_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.pujaAllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('puja_'))
-      },
-      {
-        title: intl.formatMessage({
-          id: 'data.bonusCenter.systemRetrieveAllCnt'
-        }),
-        keys: allKeys.filter(({ key }) => key.startsWith('system_retrieve_'))
-      },
-      {
-        title: intl.formatMessage({
-          id: 'data.bonusCenter.postTotalAllCnt'
-        }),
-        keys: allKeys.filter(({ key }) => key.startsWith('post_total_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.post1AllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('post_1_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.post2AllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('post_2_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.post3AllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('post_3_'))
-      },
-      {
-        title: intl.formatMessage({ id: 'data.bonusCenter.post4AllCnt' }),
-        keys: allKeys.filter(({ key }) => key.startsWith('post_4_'))
-      }
-    ].filter(group => group.keys.length > 0); // 过滤掉空分组
-
-    return {
-      sortedData,
-      chartGroups
-    };
+    return { sortedData, chartGroups };
   }, [data, intl]);
 
   if (!chartConfig) {

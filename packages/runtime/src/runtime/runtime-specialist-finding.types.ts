@@ -5,6 +5,8 @@ export interface RuntimeSpecialistLeadRecord {
   displayName: string;
   domain: SpecialistDomain;
   reason?: string;
+  agentId?: string;
+  candidateAgentIds?: string[];
 }
 
 export interface RuntimeSpecialistSupportRecord {
@@ -12,6 +14,8 @@ export interface RuntimeSpecialistSupportRecord {
   displayName: string;
   domain: SpecialistDomain;
   reason?: string;
+  agentId?: string;
+  candidateAgentIds?: string[];
 }
 
 export interface RuntimeSpecialistFindingRecord {

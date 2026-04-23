@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+pnpm verify:affected
+pnpm test:workspace:smoke

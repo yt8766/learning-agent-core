@@ -22,6 +22,7 @@
 - runtime 主链 graph 编排与 session 协调
 - app 层 controller / SSE / view model
 - 通用 provider、memory、tools 实现
+- `coder` / `reviewer` / `data-report` 这类 sibling specialist agent 的实现 re-export 或依赖代持
 
 ## 2. 推荐结构
 
@@ -69,12 +70,16 @@ agents/supervisor/
   - 只放 workflow routing、preset、research-source planning、execution steps、specialist routing
 - `flows/supervisor/*`
   - 只放 supervisor 节点、prompt、schema、planning helper
+  - planning / interrupt payload 中的 counselor participants 现已优先暴露官方 agent id；domain 只保留为兼容回退语义
 - `flows/ministries/*`
   - 承载真实 ministry 实现，不再回退到 `packages/runtime`
 - `runtime` 依赖边界
   - 共享 agent foundation 仅允许通过 `@agent/agent-kit` 根入口消费
   - runtime facade 仅允许通过 `@agent/runtime` 根入口消费
   - 不允许直接依赖 `packages/runtime/src/*`，也不允许依赖 `runtime/agent-bridges/*` 这类 runtime 内部过渡层
+- sibling specialist agent 依赖边界
+  - 不允许直接依赖 `@agent/agents-coder`、`@agent/agents-reviewer`、`@agent/agents-data-report`
+  - 需要 specialist 实现时，由 `packages/platform-runtime` 作为官方装配层集中持有
 
 后续继续收敛时：
 
@@ -82,3 +87,4 @@ agents/supervisor/
 2. 不把 ministry 实现重新搬进 `packages/runtime`
 3. 对外继续只通过 `@agent/agents-supervisor` 根入口暴露稳定公共面
 4. 已经纳入根入口边界测试的 bootstrap registry、workflow route/preset、main-route graph 继续保持“根入口稳定 + 真实宿主明确”
+5. 不再从 supervisor 根入口 re-export sibling specialist ministry；外部若需要这些实现，应改从各自 agent 包或 `@agent/platform-runtime` 获取

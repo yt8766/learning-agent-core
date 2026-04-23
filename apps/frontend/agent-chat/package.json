@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "turbo:typecheck": "node ../../../scripts/run-package-typecheck.js apps/frontend/agent-chat",
+    "turbo:typecheck": "pnpm typecheck",
     "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/agent-chat/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:integration": "node ../../../scripts/run-package-integration-tests.js apps/frontend/agent-chat",
     "lint": "eslint .",

@@ -30,6 +30,9 @@ export function RuntimeQueueSelectedRunSummary({ bundle }: { bundle: TaskBundle 
         {bundle.task.supportingSpecialists?.length ? (
           <Badge variant="outline">支撑 {bundle.task.supportingSpecialists.length}</Badge>
         ) : null}
+        {bundle.task.plannerStrategy ? (
+          <Badge variant="outline">规划策略: {bundle.task.plannerStrategy.mode}</Badge>
+        ) : null}
         {formatRouteConfidence(bundle.task.routeConfidence) ? (
           <Badge variant="outline">{formatRouteConfidence(bundle.task.routeConfidence)}</Badge>
         ) : null}
@@ -97,6 +100,13 @@ export function RuntimeQueueSelectedRunSummary({ bundle }: { bundle: TaskBundle 
             <p>Lead: {bundle.task.specialistLead.displayName}</p>
             <p>Domain: {bundle.task.specialistLead.domain}</p>
             {bundle.task.specialistLead.reason ? <p>Reason: {bundle.task.specialistLead.reason}</p> : null}
+            {bundle.task.specialistLead.requiredCapabilities?.length ? (
+              <p>Capabilities: {bundle.task.specialistLead.requiredCapabilities.join(' / ')}</p>
+            ) : null}
+            {bundle.task.specialistLead.agentId ? <p>Preferred Agent: {bundle.task.specialistLead.agentId}</p> : null}
+            {bundle.task.specialistLead.candidateAgentIds?.length ? (
+              <p>Candidates: {bundle.task.specialistLead.candidateAgentIds.join(' / ')}</p>
+            ) : null}
             {bundle.task.supportingSpecialists?.length ? (
               <p>Supports: {bundle.task.supportingSpecialists.map(item => item.displayName).join(' / ')}</p>
             ) : null}
@@ -104,6 +114,53 @@ export function RuntimeQueueSelectedRunSummary({ bundle }: { bundle: TaskBundle 
               <p>{formatRouteConfidence(bundle.task.routeConfidence)}</p>
             ) : null}
             {buildRouteReason(bundle.task) ? <p>Reason: {buildRouteReason(bundle.task)}</p> : null}
+          </div>
+        </div>
+      ) : null}
+      {bundle.task.plannerStrategy ? (
+        <div className="grid gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-3">
+          <p className="text-sm font-semibold text-foreground">Planner Strategy</p>
+          <div className="grid gap-1 text-xs text-muted-foreground">
+            <p>Mode: {bundle.task.plannerStrategy.mode}</p>
+            <p>{bundle.task.plannerStrategy.summary}</p>
+            {bundle.task.plannerStrategy.leadDomain ? (
+              <p>Lead Domain: {bundle.task.plannerStrategy.leadDomain}</p>
+            ) : null}
+            {bundle.task.plannerStrategy.requiredCapabilities?.length ? (
+              <p>Required Capabilities: {bundle.task.plannerStrategy.requiredCapabilities.join(' / ')}</p>
+            ) : null}
+            {bundle.task.plannerStrategy.preferredAgentId ? (
+              <p>Preferred Agent: {bundle.task.plannerStrategy.preferredAgentId}</p>
+            ) : null}
+            {bundle.task.plannerStrategy.candidateAgentIds?.length ? (
+              <p>Candidates: {bundle.task.plannerStrategy.candidateAgentIds.join(' / ')}</p>
+            ) : null}
+            <p>Candidate Count: {bundle.task.plannerStrategy.candidateCount}</p>
+            <p>Gap Detected: {bundle.task.plannerStrategy.gapDetected ? 'yes' : 'no'}</p>
+          </div>
+        </div>
+      ) : null}
+      {bundle.task.dispatches?.length ? (
+        <div className="grid gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-3">
+          <p className="text-sm font-semibold text-foreground">Dispatch Selection</p>
+          <div className="grid gap-2 text-xs text-muted-foreground">
+            {bundle.task.dispatches.map(dispatch => (
+              <div key={`${dispatch.subTaskId}-${dispatch.kind}`} className="grid gap-1">
+                <p>
+                  {dispatch.kind} / {dispatch.to} / {dispatch.objective}
+                </p>
+                {dispatch.specialistDomain ? <p>Domain: {dispatch.specialistDomain}</p> : null}
+                {dispatch.requiredCapabilities?.length ? (
+                  <p>Capabilities: {dispatch.requiredCapabilities.join(' / ')}</p>
+                ) : null}
+                {dispatch.selectedAgentId ? <p>Selected Agent: {dispatch.selectedAgentId}</p> : null}
+                {dispatch.agentId ? <p>Preferred Agent: {dispatch.agentId}</p> : null}
+                {dispatch.candidateAgentIds?.length ? (
+                  <p>Candidates: {dispatch.candidateAgentIds.join(' / ')}</p>
+                ) : null}
+                {dispatch.selectionSource ? <p>Selection Source: {dispatch.selectionSource}</p> : null}
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

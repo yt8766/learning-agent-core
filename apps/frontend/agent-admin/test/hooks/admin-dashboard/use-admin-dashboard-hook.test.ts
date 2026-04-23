@@ -62,6 +62,16 @@ function createReactHookHarness(initialState: Record<number, unknown> = {}) {
       memoCursor += 1;
       return factory();
     },
+    useReducer<S, A>(reducer: (state: S, action: A) => S, initial: S) {
+      const index = stateCursor++;
+      if (!(index in stateSlots)) {
+        stateSlots[index] = initial;
+      }
+      const dispatch = (action: A) => {
+        stateSlots[index] = reducer(stateSlots[index] as S, action);
+      };
+      return [stateSlots[index] as S, dispatch] as const;
+    },
     useEffect(callback: () => void | (() => void), deps?: unknown[]) {
       const index = effectCursor++;
       const previous = effectSlots[index];

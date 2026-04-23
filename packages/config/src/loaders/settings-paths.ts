@@ -1,13 +1,13 @@
 import { DEFAULT_DATA_PATHS, buildProfileOverrides, mergeNormalizedPolicy } from '../shared/settings-defaults';
 import { resolveFromWorkspaceRoot } from '../utils/settings-helpers';
-import type { PolicyConfig, RuntimeSettings, RuntimeSettingsOverrides } from '../schemas/settings.types';
+import type { RuntimeSettings, RuntimeSettingsOverrides } from '../schemas/settings.types';
 
 export function buildMergedOverrides(
   profile: RuntimeSettings['profile'],
   overrides: RuntimeSettingsOverrides | undefined
 ): RuntimeSettingsOverrides {
   const profileOverrides = buildProfileOverrides(profile);
-  const normalizedPolicy: Partial<PolicyConfig> = mergeNormalizedPolicy(profileOverrides.policy, overrides?.policy);
+  const normalizedPolicy = mergeNormalizedPolicy(profileOverrides.policy, overrides?.policy);
 
   return {
     ...profileOverrides,

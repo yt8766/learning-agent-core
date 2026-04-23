@@ -60,5 +60,6 @@
 - `apps/backend/agent-server/logs` 与遗留 `apps/backend/agent-server/data` 的过期内容建议定期执行：
   - `pnpm --dir apps/backend/agent-server cleanup:artifacts`
   - `pnpm --dir apps/backend/agent-server cleanup:artifacts:dry-run`
+- 根级 `data/*` 是 backend / worker 共享的真实运行数据主路径；`apps/backend/agent-server/data/*` 不再承载 canonical runtime 数据
 - `apps/backend/agent-server/logs/app-YYYY-MM-DD.log` 属于旧日志策略遗留文件；当前实现默认只持续写 `error / warn / audit / performance` 四类通道
 - `cleanup-agent-server-artifacts` 相关测试临时目录统一落在仓库根级 `tmp/` 下，不再在根目录生成随机 `tmp-agent-server-cleanup-*` 目录

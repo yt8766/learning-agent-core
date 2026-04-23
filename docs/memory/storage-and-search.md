@@ -251,4 +251,4 @@
 - [memory 文档目录](/docs/memory/README.md)
 - [Agent Memory Architecture](/docs/memory/agent-memory-architecture.md)
 - [目录地图](/docs/repo-directory-overview.md)
-- [Runtime State Machine](/docs/runtime-state-machine.md)
+- [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

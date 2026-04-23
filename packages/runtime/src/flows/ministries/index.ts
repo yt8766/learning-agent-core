@@ -1,3 +1,7 @@
-export { LibuRouterMinistry, HubuSearchMinistry, LibuDocsMinistry } from '../../bridges/supervisor-runtime-bridge';
-export { GongbuCodeMinistry, BingbuOpsMinistry } from '../../bridges/coder-runtime-bridge';
-export { XingbuReviewMinistry } from '../../bridges/reviewer-runtime-bridge';
+export {
+  createHubuSearchMinistry,
+  createLibuDocsMinistry,
+  createLibuRouterMinistry
+} from '../../bridges/supervisor-runtime-bridge';
+export { createBingbuOpsMinistry, createGongbuCodeMinistry } from '../../bridges/coder-runtime-bridge';
+export { createXingbuReviewMinistry } from '../../bridges/reviewer-runtime-bridge';

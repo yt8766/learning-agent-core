@@ -151,5 +151,5 @@
 
 - [前后端对接文档](/docs/integration/frontend-backend-integration.md)
 - [Chat Session And SSE](/docs/integration/chat-session-sse.md)
-- [Runtime Interrupts](/docs/runtime-interrupts.md)
-- [Runtime State Machine](/docs/runtime-state-machine.md)
+- [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
+- [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

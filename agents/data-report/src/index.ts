@@ -14,7 +14,9 @@ export type {
   DataReportPreviewArtifactSummary,
   DataReportPreviewStageEvent,
   GenerateDataReportPreviewInput,
-  GenerateDataReportPreviewResult
+  GenerateDataReportPreviewResult,
+  ResolveWorkflowPresetFn,
+  WorkflowPresetResolution
 } from './flows/data-report/preview';
 export { parseDataReportSandpackPayload } from './flows/data-report/schemas';
 export { normalizeDataReportSandpackFiles } from './flows/data-report/schemas';

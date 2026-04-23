@@ -1,1 +1,1 @@
-export { AnthropicProvider } from './anthropic-provider';
+export * from '../../../anthropic/provider';

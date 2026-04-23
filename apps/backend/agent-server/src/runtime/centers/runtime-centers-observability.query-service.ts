@@ -6,22 +6,18 @@ import type { PlatformApprovalRecord, TaskRecord } from '@agent/core';
 import { buildRunBundle } from '@agent/runtime';
 
 import { getPlatformConsoleLogAnalysis as loadPlatformConsoleLogAnalysis } from './runtime-centers-query-diagnostics';
-import { matchesRunObservatoryTaskFilters } from './runtime-centers-query-observability';
-import {
-  resolveInterruptPayloadField,
-  resolveTaskExecutionMode,
-  resolveTaskInteractionKind
-} from './runtime-centers-query.helpers';
 import { RuntimeCentersContext } from './runtime-centers.types';
-import { getMinistryDisplayName, normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
+import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildPlatformConsole, buildPlatformConsoleShell } from '../helpers/runtime-platform-console';
 import { appendBriefingFeedback, readDailyTechBriefingRuns } from '../briefings/runtime-tech-briefing-storage';
 import type { BriefingFeedbackRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
-
-interface PlatformApprovalCenterRecord extends PlatformApprovalRecord {
-  streamStatus?: unknown;
-  contextFilterState?: unknown;
-}
+import { buildApprovalsCenterRecords } from '../domain/observability/runtime-approvals-center';
+import { filterBriefingRunsByWindow } from '../domain/observability/runtime-briefing-runs';
+import {
+  filterAndSortRunObservatoryRuns,
+  filterAndSortRunObservatoryTasks,
+  parseRunObservatoryLimit
+} from '../domain/observability/runtime-run-observatory';
 
 export class RuntimeCentersObservabilityQueryService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
@@ -39,50 +35,12 @@ export class RuntimeCentersObservabilityQueryService {
     limit?: string | number;
   }) {
     const ctx = this.ctx();
-    const normalizedExecutionMode = normalizeExecutionMode(filters?.executionMode) ?? filters?.executionMode;
-    const limit =
-      typeof filters?.limit === 'number'
-        ? Math.max(1, Math.floor(filters.limit))
-        : typeof filters?.limit === 'string' && filters.limit.trim()
-          ? Math.max(1, Math.floor(Number(filters.limit)))
-          : undefined;
-    return ctx.orchestrator
-      .listTasks()
-      .filter((task: TaskRecord) => !filters?.status || String(task.status) === filters.status)
-      .filter((task: TaskRecord) => matchesRunObservatoryTaskFilters(task, filters))
-      .filter(
-        (task: TaskRecord) => !normalizedExecutionMode || resolveTaskExecutionMode(task) === normalizedExecutionMode
-      )
-      .filter(
-        (task: TaskRecord) => !filters?.interactionKind || resolveTaskInteractionKind(task) === filters.interactionKind
-      )
-      .filter((task: TaskRecord) => {
-        if (!filters?.q) {
-          return true;
-        }
-        const q = filters.q.toLowerCase();
-        return (
-          String(task.goal ?? '')
-            .toLowerCase()
-            .includes(q) ||
-          String(task.id ?? '')
-            .toLowerCase()
-            .includes(q)
-        );
-      })
-      .map(
-        (task: TaskRecord) =>
-          buildRunBundle(task, task.sessionId ? ctx.wenyuanFacade.getCheckpoint(task.sessionId) : undefined).run
-      )
-      .filter(run => (filters?.hasInterrupt ? String(run.hasInterrupt) === filters.hasInterrupt : true))
-      .filter(run => (filters?.hasFallback ? String(run.hasFallback) === filters.hasFallback : true))
-      .filter(run =>
-        filters?.hasRecoverableCheckpoint
-          ? String(run.hasRecoverableCheckpoint) === filters.hasRecoverableCheckpoint
-          : true
-      )
-      .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime())
-      .slice(0, Number.isFinite(limit) ? limit : undefined);
+    const limit = parseRunObservatoryLimit(filters?.limit);
+    const runs = filterAndSortRunObservatoryTasks(ctx.orchestrator.listTasks(), filters).map(
+      (task: TaskRecord) =>
+        buildRunBundle(task, task.sessionId ? ctx.wenyuanFacade.getCheckpoint(task.sessionId) : undefined).run
+    );
+    return filterAndSortRunObservatoryRuns(runs, filters, limit);
   }
 
   async getRunObservatoryDetail(taskId: string) {
@@ -95,49 +53,12 @@ export class RuntimeCentersObservabilityQueryService {
     return buildRunBundle(task, task.sessionId ? ctx.wenyuanFacade.getCheckpoint(task.sessionId) : undefined);
   }
 
-  getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }): PlatformApprovalCenterRecord[] {
-    return this.ctx()
-      .orchestrator.listPendingApprovals()
-      .filter(
-        (task: TaskRecord) =>
-          !filters?.executionMode ||
-          resolveTaskExecutionMode(task) === (normalizeExecutionMode(filters.executionMode) ?? filters.executionMode)
-      )
-      .filter(
-        (task: TaskRecord) => !filters?.interactionKind || resolveTaskInteractionKind(task) === filters.interactionKind
-      )
-      .map((task: TaskRecord) => ({
-        taskId: task.id,
-        goal: task.goal,
-        status: task.status,
-        sessionId: task.sessionId,
-        currentMinistry: getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry,
-        currentWorker: task.currentWorker,
-        executionMode: toPlatformApprovalExecutionMode(resolveTaskExecutionMode(task)),
-        streamStatus: readRecord(task, 'streamStatus'),
-        contextFilterState: task.contextFilterState,
-        pendingApproval: task.pendingApproval,
-        activeInterrupt: task.activeInterrupt,
-        entryRouterState: task.entryDecision,
-        interruptControllerState: {
-          activeInterrupt: task.activeInterrupt,
-          interruptHistory: task.interruptHistory ?? []
-        },
-        planDraft: normalizePlatformApprovalPlanDraft(task.planDraft),
-        approvals: task.approvals ?? [],
-        lastStreamStatusAt: readStreamStatusUpdatedAt(task)
-      }))
-      .map(
-        (task): PlatformApprovalCenterRecord => ({
-          ...task,
-          commandPreview: resolveInterruptPayloadField(task.activeInterrupt, 'commandPreview'),
-          riskReason: resolveInterruptPayloadField(task.activeInterrupt, 'riskReason'),
-          riskCode: resolveInterruptPayloadField(task.activeInterrupt, 'riskCode') || task.pendingApproval?.reasonCode,
-          approvalScope: resolveInterruptPayloadField(task.activeInterrupt, 'approvalScope'),
-          policyMatchStatus: 'manual-pending',
-          policyMatchSource: 'manual'
-        })
-      );
+  getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }): PlatformApprovalRecord[] {
+    return buildApprovalsCenterRecords({
+      tasks: this.ctx().orchestrator.listPendingApprovals(),
+      getMinistryDisplayName,
+      filters
+    });
   }
 
   async getBrowserReplay(sessionId: string) {
@@ -229,14 +150,7 @@ export class RuntimeCentersObservabilityQueryService {
 
   async getBriefingRuns(days = 7, category?: TechBriefingCategory) {
     const runs = await readDailyTechBriefingRuns(this.ctx().settings.workspaceRoot);
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return runs
-      .filter(run => new Date(run.runAt).getTime() >= cutoff)
-      .map(run => ({
-        ...run,
-        categories: category ? run.categories.filter(item => item.category === category) : run.categories
-      }))
-      .filter(run => run.categories.length > 0);
+    return filterBriefingRunsByWindow(runs, { days, category });
   }
 
   async forceBriefingRun(category: TechBriefingCategory) {
@@ -264,50 +178,4 @@ export class RuntimeCentersObservabilityQueryService {
   private ctx() {
     return this.getContext();
   }
-}
-
-function toPlatformApprovalExecutionMode(value: string | undefined): PlatformApprovalRecord['executionMode'] {
-  if (
-    value === 'standard' ||
-    value === 'planning-readonly' ||
-    value === 'plan' ||
-    value === 'execute' ||
-    value === 'imperial_direct'
-  ) {
-    return value;
-  }
-  return undefined;
-}
-
-function normalizePlatformApprovalPlanDraft(value: TaskRecord['planDraft']): PlatformApprovalRecord['planDraft'] {
-  if (!value) {
-    return undefined;
-  }
-
-  return {
-    summary: value.summary,
-    autoResolved: value.autoResolved,
-    openQuestions: value.openQuestions,
-    assumptions: value.assumptions,
-    questionSet: value.questionSet,
-    microBudget: value.microBudget
-      ? {
-          readOnlyToolLimit: value.microBudget.readOnlyToolLimit,
-          readOnlyToolsUsed: value.microBudget.readOnlyToolsUsed,
-          tokenBudgetUsd: value.microBudget.tokenBudgetUsd,
-          budgetTriggered: Boolean(value.microBudget.budgetTriggered)
-        }
-      : undefined
-  };
-}
-
-function readStreamStatusUpdatedAt(task: TaskRecord): string | undefined {
-  const streamStatus = readRecord(task, 'streamStatus');
-  const updatedAt = streamStatus?.updatedAt;
-  return typeof updatedAt === 'string' ? updatedAt : undefined;
-}
-
-function readRecord(task: TaskRecord, key: string): Record<string, unknown> | undefined {
-  const value = (task as unknown as Record<string, unknown>)[key];
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
 }

@@ -1,1 +1,5 @@
-export { buildSkillSourcesCenter, type InstalledSkillRecord, type SkillInstallReceiptRecord } from '@agent/runtime';
+export {
+  buildSkillSourcesCenter,
+  type InstalledSkillRecord,
+  type SkillInstallReceiptRecord
+} from '../core/runtime-centers-facade';

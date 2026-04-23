@@ -1,4 +1,4 @@
-import { fetchProviderUsageAudit, type ProviderAuditSyncResult } from '@agent/runtime';
+import { fetchProviderUsageAudit, type ProviderAuditSyncResult } from '../../core/runtime-centers-facade';
 import type { RuntimeHost } from '../../core/runtime.host';
 
 export function fetchProviderUsageAuditFromSettings(

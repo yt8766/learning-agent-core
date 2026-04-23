@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/skill-runtime`
-最后核对：2026-04-18
+最后核对：2026-04-20
 
 本文档说明 `packages/skill-runtime` 如何按“稳定边界先行”的方式维护当前目录结构，并继续收敛。
 
@@ -92,6 +92,9 @@ packages/skill-runtime/
   - 已作为插件草稿发布宿主
 - `src/policies/skill-governance-policy.ts`
   - 已作为技能状态演进与执行结果裁决宿主
+- `src/sources/skill-search-resolution.ts`
+  - 已作为 skill search status / safety note / MCP recommendation 的 canonical host
+  - backend 的 `runtime/domain/skills/runtime-skill-search-resolution.ts` 当前只保留 compat re-export
 - `src/registry/skill-registry.ts`
   - 当前以装配层为主，不再自己承担当 catalog、install、policy 三类实现
 

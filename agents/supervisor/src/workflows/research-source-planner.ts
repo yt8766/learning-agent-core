@@ -5,6 +5,7 @@ import type {
   TrustClass,
   WorkflowPresetDefinition
 } from '@agent/core';
+import { mergeEvidence } from '@agent/core';
 import { normalizeExecutionMode } from './workflow-architecture-helpers';
 
 import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../utils/prompts/temporal-context';
@@ -132,13 +133,4 @@ function resolveEffectiveSourcePolicyMode(
   return priority[resolvedWorkflowMode] <= priority[runtimeMode] ? resolvedWorkflowMode : runtimeMode;
 }
 
-export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {
-  const merged = [...existing];
-  for (const item of incoming) {
-    const key = `${item.sourceType}:${item.sourceUrl ?? item.summary}`;
-    if (!merged.some(candidate => `${candidate.sourceType}:${candidate.sourceUrl ?? candidate.summary}` === key)) {
-      merged.push(item);
-    }
-  }
-  return merged;
-}
+export { mergeEvidence } from '@agent/core';

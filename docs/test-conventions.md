@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：convention
-适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
-最后核对：2026-04-18
+适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`、根级 `test/`
+最后核对：2026-04-23
 
 配套现状文档：
 
@@ -19,6 +19,7 @@
 - `apps/backend/agent-server`
 - `apps/frontend/agent-chat`
 - `apps/frontend/agent-admin`
+- 根级 `test/`（workspace test host）
 
 测试目录约束：
 
@@ -29,6 +30,10 @@
   - `apps/worker/test`
   - `apps/frontend/agent-chat/test`
   - `apps/frontend/agent-admin/test`
+- 仓库级跨包 integration 与 workspace smoke 写入根级 `test/`（workspace test host）：
+  - `test/integration/`：跨包、跨宿主、跨链路 integration 测试
+  - `test/smoke/`：仓库级最小可运行闭环测试
+  - `test/shared/`：仅限测试用的 fixture、builder、matcher
 - 不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
 - 现有历史测试也已统一迁入 `test/`，根级 `vitest` 不再扫描 `src/` 下的测试文件
 
@@ -57,6 +62,45 @@
 
 因此主图相关测试默认采用“整图测试 + 单节点测试 + 部分执行测试”三层方法，不要只用纯函数单测替代流程验证。
 
+## 0. 根级 `test/` 作为 workspace test host
+
+根级 `test/` 是仓库级（workspace-level）专用测试宿主，与 `packages/`、`apps/`、`agents/` 同级。
+
+完整设计见：[Workspace Test Host 设计](/docs/evals/workspace-test-host-design.md)
+
+### 职责
+
+根级 `test/` 只承载两类内容，不承载宿主内原子测试：
+
+| 目录                | 职责                                     |
+| ------------------- | ---------------------------------------- |
+| `test/integration/` | 跨包、跨宿主、跨链路的 integration 测试  |
+| `test/smoke/`       | 仓库级最小可运行闭环测试                 |
+| `test/shared/`      | 仅限测试的共享 fixture、builder、matcher |
+
+### 命名约定
+
+- integration 测试：`*.int-spec.ts`
+- smoke 测试：`*.smoke.ts`
+
+### 不属于根级 `test/` 的内容
+
+- ❌ 单包单函数 unit 测试 → 放到 `packages/*/test`
+- ❌ schema parse / spec 回归 → 放到宿主内 `test/`
+- ❌ 仅归属某个单一宿主的 integration → 放到该宿主 `test/`
+- ❌ 根级 `test/` 不替代 `packages/*/demo`
+
+### shared/helpers 约束
+
+- `test/shared/` 和 `test/*/helpers/` 只做测试装配与断言辅助
+- 不复制生产逻辑，不构建第二套 runtime
+
+### CI 与 PR 策略
+
+- **第一阶段（当前）**：workspace smoke 不阻塞 PR，作为本地验证补充
+- **后续**：workspace smoke 与 integration 分阶段纳入 CI，main 跑全量 workspace smoke
+- smoke 不依赖脆弱外部服务；必须依赖外部环境时，需要显式 skip / guard
+
 ## 1. 测试框架
 
 - 项目统一使用 `Vitest`
@@ -72,6 +116,8 @@
 - `pnpm test:unit`
 - `pnpm test:demo`
 - `pnpm test:integration`
+- `pnpm test:workspace:integration`
+- `pnpm test:workspace:smoke`
 - `pnpm test:coverage`
 - `pnpm test:watch`
 - `pnpm eval:prompts`
@@ -89,6 +135,7 @@
 - `pnpm test:unit:affected`
 - `pnpm test:demo:affected`
 - `pnpm test:integration:affected`
+- `pnpm test:workspace:integration:affected`
 - `pnpm verify:affected`
 
 说明：
@@ -96,27 +143,42 @@
 - `pnpm typecheck` 对应五层验证里的 `Type`
 - `pnpm test:spec` 对应五层验证里的 `Spec`
 - `pnpm test:spec` 会扫描各宿主 `test/` 目录下与 schema、contract、parser、normalization 相关，或显式使用 `zod` / `Schema.parse` / `safeParse` 的测试文件，并作为结构校验回归的统一入口
-- `Demo` 在本仓库中指“最小可运行闭环”；当前不再要求 `packages/*` 与 `agents/*` 默认维护与 `src/` 同级的 `demo/`，优先使用 integration、build 或其他自动化 smoke 承担这层责任
+- `Demo` 在本仓库中指“最小可运行闭环”；当前 `packages/*` 默认应维护与 `src/` 同级的 `demo/` 目录和可直接运行的 `demo` 脚本，优先用包级 smoke 尽早暴露构建产物与公开入口断裂
 - 当前默认规则是：
-  - `packages/*` 与 `agents/*` 可以不再维护显式 `demo/` 与 `demo` 脚本
+  - `packages/*` 默认需要显式 `demo/` 与 `demo` 脚本
+  - `agents/*` 可以继续由 integration、build 或其他自动化 smoke 承担 Demo 层责任
   - `apps/*` 与 `server` 当前同样允许由 integration 或等价自动化闭环承担 Demo 层责任
-- `pnpm test:demo` 会动态发现仍保留 `demo/` 与 `demo` 脚本的宿主；没有独立 `demo/` 的宿主由 integration 或等价 smoke 承担最小闭环
+- `pnpm test:demo` 会动态发现并执行保留 `demo/` 与 `demo` 脚本的宿主；当前 packages 层默认应被这条链路覆盖
+- 根级 `scripts/run-package-demos.js` 当前会强制校验 `packages/*` 是否同时具备 `demo/` 与 `demo` 脚本；缺任一项都会直接让 `pnpm test:demo` 失败
+- `pnpm test:workspace:integration` 只执行根级 `test/integration/**` 下的 workspace-level integration 用例，不替代宿主内 `test:integration`
+- `pnpm test:workspace:integration:affected` 会基于 changed paths 映射到受影响的根级 integration 用例；PR CI 已将它作为阻塞项执行，确保跨包/跨宿主契约变更不会绕过仓库级协同验证
+- `pnpm test:workspace:smoke` 只执行根级 `test/smoke/**` 下的 workspace-level smoke 用例；当前 PR CI、main CI 与本地 `pre-push` 都已将它作为阻塞项执行
+- `pnpm test:unit` 明确排除 `*.int-spec.ts`、`*.int-spec.tsx`、`*.smoke.ts` 与 `*.acc-spec.ts`，避免 workspace integration / smoke / acceptance 被误归入 Unit 层
+- `packages/*` 的 demo 分层当前统一采用：
+  - `demo/smoke.ts`
+    必备；负责最小可运行 smoke，默认由包级 `demo` 脚本执行
+  - `demo/contract.ts`
+    可选；负责 schema、DTO、facade、registry 等 contract 闭环
+  - `demo/flow.ts`
+    可选；负责更贴近包职责的 happy path / workflow 闭环
+- 根级 `pnpm test:demo` 当前在执行包级 `demo` 脚本后，会继续自动执行存在的 `demo/contract.ts` 与 `demo/flow.ts`
+- 需要只跑单个包时，当前可直接使用 `pnpm test:demo -- packages/<package-name>`；根级 runner 会忽略参数分隔符 `--`，避免把它误判成宿主路径
 - `pnpm test:spec:affected` 会基于 `VERIFY_BASE_REF...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；未显式配置时默认使用 `origin/main`。当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
 - `pnpm test:demo:affected` 会通过 `node ./scripts/run-turbo-affected.js demo` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
 - `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
 - `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 working tree 改动自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
 - `pnpm eval:prompts:affected` 仍保留为独立入口，会在受影响范围内命中 prompt 敏感路径时执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
-- 当前 Turbo `demo` 任务仍兼容历史宿主，但新宿主不再要求以 `demo/**` 作为最小闭环入口
+- 当前 Turbo `demo` 任务默认服务于显式 `demo/**` 宿主；packages 新增或重构时，应优先把最小闭环接进这条链路
 - 如果某个宿主的 Demo 还依赖模板、脚手架或其他外部输入，应按宿主补例外规则，而不是把额外输入粗暴加进所有 Demo；只要宿主保留显式 `demo/` 目录，就必须同步保留 `demo` 脚本并让它可独立运行
 - 对脚手架链路，`Demo` 不只指生成器自身能跑，还包括“生成出的目标至少存在最小可运行闭环”：
   - `package-lib` 需要验证最小类型闭环与 integration 闭环
   - `agent-basic` 需要验证 integration 闭环与最小类型闭环
-- `pnpm verify` 是根级聚合入口，当前串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + architecture`
-- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected`
+- `pnpm verify` 是根级聚合入口，当前串联 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke + architecture`
+- `pnpm verify:affected` 当前串联 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected`
 - `pnpm verify:governance` 是当前已接入 Turbo 的治理校验入口，聚合 `check:docs + check:architecture`，可直接配合 Turbo 缓存、`--dry-run` 与 `--graph` 使用
-- GitHub PR 校验当前默认执行受影响范围主入口：代码改动按 `pnpm verify:affected` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Affected Verify` job 收口；`VERIFY_BASE_REF` 对齐到 PR 的 base branch；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
-- GitHub main 校验当前默认执行全量主入口：按 `pnpm verify` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration`，最终由聚合的 `Verify Main` job 收口；`Build Main` 与非阻塞的 `Coverage Main` 在验证通过后独立执行；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
+- GitHub PR 校验当前默认执行受影响范围主入口：代码改动按 `pnpm verify:affected` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，最终由聚合的 `Affected Verify` job 收口；`VERIFY_BASE_REF` 对齐到 PR 的 base branch；prompt regression 暂时不再内嵌到这条主校验链路里，仍由独立入口承担；命中文档相关路径但没有代码改动时至少执行 `pnpm check:docs`
+- GitHub main 校验当前默认执行全量主入口：按 `pnpm verify` 的层级拆成 CI job，先跑治理门槛与 `Spec`，再并发跑 `Prettier / ESLint / Type / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，最终由聚合的 `Verify Main` job 收口；`Build Main` 与非阻塞的 `Coverage Main` 在验证通过后独立执行；prompt 敏感改动继续通过独立 job 执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - PR / main workflow 的共享环境准备当前统一走 `/.github/actions/setup-pnpm-workspace/action.yml`；默认使用 `pnpm install --frozen-lockfile --prefer-offline`，以减少重复配置和重复下载成本
 - 对只执行仓库内 Node 脚本、且不依赖 workspace 安装产物的轻量 job，当前统一走 `/.github/actions/setup-node-runtime/action.yml`，避免为 `docs`、`lockfile`、`terminology` 之类的检查额外执行 pnpm setup；同时显式关闭 `setup-node` 的自动 package manager cache，避免误探测根级 `pnpm`
 - PR 中需要 affected 计算的 job 当前统一走“浅 checkout + `/.github/actions/fetch-pr-base-ref/action.yml` 定向浅 fetch base branch”，以减少 checkout 和 git 历史下载成本
@@ -133,6 +195,7 @@
   - `pnpm test:unit:affected`
   - `pnpm test:demo:affected`
   - `pnpm test:integration:affected`
+  - `pnpm test:workspace:integration:affected`
   - `pnpm verify:affected`
 
 ## 1.1 强制执行要求
@@ -180,12 +243,13 @@
 ### Demo（最小闭环）
 
 - 负责证明模块或链路“至少能跑通一次”
-- 当前 `packages/*` 与 `agents/*` 不再默认维护与 `src/` 同级的 `demo/`
+- `packages/*` 默认维护与 `src/` 同级的 `demo/` 和 `demo` 脚本，至少覆盖“构建产物可加载 + 包根公开入口可运行”这一层 smoke
+- `agents/*`、`apps/*` 与 `server` 仍可用 integration、build 或其他自动化闭环承担 Demo 层责任，但要能明确指出承担入口
 - `package-lib` 与 `agent-basic` 脚手架都默认使用 integration 作为最小可运行闭环
 - 可接受形式包括：
   - 一条最小 happy path integration test
   - 一个 build / CLI / API / UI 最小链路验证
-  - 仍保留历史 demo 脚本的宿主可以继续复用它
+  - 一个可直接运行的包级 `demo` 脚本
 - 对不单独生成 `demo/` 的宿主，必须明确由 integration 或其他自动化闭环承担这层责任
 
 ### Integration（协同层）

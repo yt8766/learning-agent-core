@@ -107,7 +107,7 @@
 - `bootstrap/`：worker 启动装配
 - `jobs/`：任务与学习任务入口
 - `consumers/`：事件或队列消费
-- `runtime/`：调用 `@agent/runtime` 与对应 agent facade
+- `runtime/`：调用 `@agent/platform-runtime` 创建官方 runtime facade，并通过 `@agent/runtime` 使用 kernel 能力
 - `recovery/`：checkpoint 恢复
 - `health/`：健康与运行状态
 
@@ -118,12 +118,14 @@
 - `module`：只做依赖组织
 - 复杂复用逻辑进入 `packages/*`
 - `RuntimeService` 作为后端运行时门面
+- 官方 Agent 装配统一通过 `@agent/platform-runtime` 进入，backend 只选择装配方案并暴露 Nest 入口
 
 禁止：
 
 - 在 `controller` 中写复杂编排逻辑
 - 在 `module` 中写业务逻辑
 - 将可复用逻辑散落在多个 Nest 模块中复制实现
+- 在 backend service 内直接拼官方 Agent graph、内联 Agent prompt、重建 report generation chain 或复制 worker runtime host
 
 ### Runtime 模块补充
 
@@ -172,6 +174,9 @@
 - `RuntimeService` 的测试重点应是 facade 聚合和兼容行为，而不是替代各 provider 自测
 - `runtime/` 下如果出现再次逼近 400 行的 provider，应继续按领域边界拆分，而不是回到“大 service”
 - `platform console` 这类跨中心聚合 payload，默认需要显式 schema/normalizer，不能再让 `any` / `unknown` 直接穿透到 controller、export helper 或前端边界
+- `runtime/` 可以保留 Nest facade、SSE/HTTP DTO 适配、请求上下文、日志与错误映射
+- `runtime/` 不应继续承接官方 Agent 默认注册、workflow registry、graph compile/invoke 默认装配；这些属于 `packages/platform-runtime`
+- worker 与 backend 需要共享的 runtime 装配，只能上提到 `packages/platform-runtime`，不要让 worker 反向依赖 backend，也不要在两个 app 里复制装配
 
 ## 3.1 文件长度规范
 
@@ -240,12 +245,13 @@
 - 后端读取和写入本地数据时，默认以仓库根级 `data/` 为准
 - `apps/backend/agent-server/logs` 与历史遗留 `apps/backend/agent-server/data` 只允许承载可清理产物；需要定期清理时，优先使用 `pnpm --dir apps/backend/agent-server cleanup:artifacts`
 - 清理策略默认只删除过期日志和 app-local 遗留数据；不要对根级 `data/memory`、`data/runtime`、`data/knowledge`、`data/skills` 做无差别删除
+- 如果 app-local 目录与根级 `data/*` 同时存在同名运行时文件，根级 `data/*` 始终是唯一 canonical 数据源；app-local 副本应在本轮迁移内删除
 
 推荐结构示例：
 
 - `data/memory/`
 - `data/runtime/`
-- `data/skill-runtime/`
+- `data/skills/`
 - `data/knowledge/`
 
 ### Runtime Profile 补充
@@ -372,12 +378,38 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 - 在某个单独 controller 内新增私有 prompt cache
 - 前后端各自发明成本预算字段
 
+### Platform Runtime 补充
+
+`packages/platform-runtime` 已成为 backend 与 worker 的官方装配入口：
+
+- backend：
+  - 加载 Nest provider
+  - 解析 HTTP/SSE 请求
+  - 构造 request auth/context
+  - 通过 `createDefaultPlatformRuntime(...)` 选择官方装配方案
+  - 调用 runtime facade 并映射响应、事件、错误
+- worker：
+  - 加载 settings/profile
+  - 消费后台 job
+  - 通过 `createDefaultPlatformRuntime(...)` 选择官方装配方案
+  - 调用 runtime facade
+  - 写回状态、事件、checkpoint
+
+禁止：
+
+- backend 或 worker 各自内联官方 Agent registry
+- backend 或 worker 自己拼 `supervisor/coder/reviewer/data-report` graph
+- backend 或 worker 直接依赖 `@agent/agents-*`
+- worker 暴露平台 controller
+- backend 复制 worker loop 或长流程后台驱动
+
 ## 8. 包引用规范
 
 推荐：
 
 - `@agent/core`
 - `@agent/runtime`
+- `@agent/platform-runtime`
 - `@agent/memory`
 - `@agent/tools`
 - `@agent/skill-runtime`

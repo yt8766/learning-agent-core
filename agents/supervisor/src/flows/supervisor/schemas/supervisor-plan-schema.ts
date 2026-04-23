@@ -5,7 +5,8 @@ import { AgentRole } from '../supervisor-architecture-helpers';
 export const SupervisorPlanSubTaskSchema = z.object({
   title: z.string().describe('子任务标题'),
   description: z.string().describe('子任务说明'),
-  assignedTo: z.enum([AgentRole.RESEARCH, AgentRole.EXECUTOR, AgentRole.REVIEWER]).describe('子任务分派给的执行角色')
+  assignedTo: z.enum([AgentRole.RESEARCH, AgentRole.EXECUTOR, AgentRole.REVIEWER]).describe('子任务分派给的执行角色'),
+  requiredCapabilities: z.array(z.string()).optional().describe('该子任务必须满足的能力标识')
 });
 
 export const SupervisorPlanSchema = z.object({

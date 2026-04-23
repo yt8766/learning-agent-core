@@ -48,6 +48,7 @@
     }
   },
   "scripts": {
+    "demo": "node --import tsx demo/smoke.ts",
     "build:transpile": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",
@@ -55,7 +56,7 @@
     "watch": "pnpm build:watch & pnpm build:watch:types",
     "build:lib": "pnpm build:transpile && pnpm build:types",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "node ../../scripts/run-package-typecheck.js packages/runtime",
+    "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/runtime/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:test:unit": "pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js packages/runtime",
@@ -65,10 +66,6 @@
   "dependencies": {
     "@agent/agent-kit": "workspace:*",
     "@agent/adapters": "workspace:*",
-    "@agent/agents-coder": "workspace:*",
-    "@agent/agents-data-report": "workspace:*",
-    "@agent/agents-reviewer": "workspace:*",
-    "@agent/agents-supervisor": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/memory": "workspace:*",

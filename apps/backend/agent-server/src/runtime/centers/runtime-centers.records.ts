@@ -1,4 +1,4 @@
-import { summarizeAndPersistEvalHistory } from '@agent/runtime';
+import { summarizeAndPersistEvalHistory } from '../core/runtime-centers-facade';
 import type { PromptRegressionConfigSummary } from '../helpers/prompt-regression-summary';
 import type { buildRuntimeCenter, buildRuntimeCenterSummary } from './runtime-runtime-center';
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';

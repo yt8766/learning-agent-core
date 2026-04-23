@@ -1,12 +1,11 @@
-import type { TaskRecord } from '@agent/core';
 import { getRecentGovernanceAudit, listApprovalScopePolicies, syncCapabilityGovernanceProfiles } from '@agent/runtime';
 
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadRuntimeUsageAnalytics } from './runtime-centers-query-metrics';
 import { ingestLocalKnowledge } from '../knowledge/runtime-knowledge-store';
-import { readDailyTechBriefingStatus } from '../briefings/runtime-tech-briefing-storage';
-import { resolveTaskExecutionMode, resolveTaskInteractionKind } from './runtime-centers-query.helpers';
-import { getMinistryDisplayName, normalizeExecutionMode } from '../helpers/runtime-architecture-helpers';
+import { readDailyTechBriefingStatus } from '../briefings/runtime-tech-briefing-status';
+import { filterAndSortRecentRuntimeRuns } from '../domain/metrics/runtime-recent-runs';
+import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildRuntimeCenter, buildRuntimeCenterSummary } from './runtime-runtime-center';
 import { buildToolsCenter } from '../tools/runtime-tools-center';
 
@@ -37,7 +36,7 @@ export class RuntimeCentersRuntimeQueryService {
       schedule: ctx.settings.dailyTechBriefing.schedule
     });
 
-    const filteredRecentRuns = filterAndSortRuntimeTasks(tasks, filters);
+    const filteredRecentRuns = filterAndSortRecentRuntimeRuns(tasks, filters);
 
     return {
       ...buildRuntimeCenter({
@@ -59,6 +58,7 @@ export class RuntimeCentersRuntimeQueryService {
         backgroundWorkerSlots: ctx.getBackgroundWorkerSlots(),
         filteredRecentRuns,
         getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
+        runtimeHost: ctx.runtimeHost,
         knowledgeOverview,
         dailyTechBriefing
       }),
@@ -91,7 +91,7 @@ export class RuntimeCentersRuntimeQueryService {
     const sessions = ctx.wenyuanFacade.listHistory();
     const pendingApprovals = ctx.orchestrator.listPendingApprovals();
 
-    const filteredRecentRuns = filterAndSortRuntimeTasks(tasks, filters);
+    const filteredRecentRuns = filterAndSortRecentRuntimeRuns(tasks, filters);
 
     return {
       ...buildRuntimeCenterSummary({
@@ -114,29 +114,4 @@ export class RuntimeCentersRuntimeQueryService {
   private ctx() {
     return this.getContext();
   }
-}
-
-function filterAndSortRuntimeTasks(
-  tasks: TaskRecord[],
-  filters?: {
-    status?: string;
-    executionMode?: string;
-    interactionKind?: string;
-  }
-) {
-  return tasks
-    .filter((task: TaskRecord) => !filters?.status || String(task.status) === filters.status)
-    .filter(
-      (task: TaskRecord) =>
-        !filters?.executionMode ||
-        resolveTaskExecutionMode(task) === (normalizeExecutionMode(filters.executionMode) ?? filters.executionMode)
-    )
-    .filter(
-      (task: TaskRecord) => !filters?.interactionKind || resolveTaskInteractionKind(task) === filters.interactionKind
-    )
-    .slice()
-    .sort(
-      (left: TaskRecord, right: TaskRecord) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
-    )
-    .slice(0, 10);
 }

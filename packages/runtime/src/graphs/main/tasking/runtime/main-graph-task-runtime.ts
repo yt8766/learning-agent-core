@@ -156,9 +156,15 @@ export class MainGraphTaskRuntime {
   recordDispatches(task: TaskRecord, dispatches: RuntimeAgentGraphState['dispatches']): void {
     task.dispatches = dispatches;
     for (const dispatch of dispatches) {
+      const dispatchTarget = dispatch.selectedAgentId ?? dispatch.agentId ?? dispatch.to;
       this.addMessage(task, 'dispatch', dispatch.objective, AgentRole.MANAGER, dispatch.to);
-      this.addTrace(task.trace, 'dispatch', `Manager dispatched ${dispatch.to} for ${dispatch.objective}`);
-      this.addProgressDelta(task, `已分派给 ${dispatch.to}：${dispatch.objective}`);
+      this.addTrace(task.trace, 'dispatch', `Manager dispatched ${dispatchTarget} for ${dispatch.objective}`, {
+        to: dispatch.to,
+        selectedAgentId: dispatch.selectedAgentId,
+        agentId: dispatch.agentId,
+        selectionSource: dispatch.selectionSource
+      });
+      this.addProgressDelta(task, `已分派给 ${dispatchTarget}：${dispatch.objective}`);
     }
   }
 

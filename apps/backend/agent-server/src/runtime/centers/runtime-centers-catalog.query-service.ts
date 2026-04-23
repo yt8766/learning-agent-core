@@ -1,14 +1,11 @@
 import { RuntimeCentersContext } from './runtime-centers.types';
-import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import { loadConnectorsCenter } from './runtime-centers-query-connectors';
 import { loadEvalsCenterMetrics } from './runtime-centers-query-metrics';
-import { buildSkillSourcesCenter } from './runtime-skill-sources-center';
 import { buildToolsCenter } from '../tools/runtime-tools-center';
-import { getDisabledCompanyWorkerIds } from '../helpers/runtime-connector-registry';
 import { loadPromptRegressionConfigSummary } from '../helpers/prompt-regression-summary';
-import { readInstalledSkillRecords, readSkillInstallReceipts } from '../skills/runtime-skill-install.service';
-import { listSkillManifests, listSkillSources } from '../skills/runtime-skill-sources.service';
 import type { EvalsCenterRecord } from './runtime-centers.records';
+import { loadCompanyAgentsCenterRecord } from '../domain/governance/runtime-company-agents-view';
+import { loadSkillSourcesCenterRecord } from '../domain/skills/runtime-skill-sources-center-loader';
 
 export class RuntimeCentersCatalogQueryService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
@@ -26,32 +23,11 @@ export class RuntimeCentersCatalogQueryService {
   }
 
   async getSkillSourcesCenter() {
-    const ctx = this.ctx();
-    const [sources, manifests, installed, receipts] = await Promise.all([
-      listSkillSources(ctx.getSkillSourcesContext()),
-      listSkillManifests(ctx.getSkillSourcesContext()),
-      readInstalledSkillRecords(ctx.getSkillInstallContext()),
-      readSkillInstallReceipts(ctx.getSkillInstallContext())
-    ]);
-    const skillCards = await ctx.skillRegistry.list();
-    const tasks = ctx.orchestrator.listTasks();
-    return buildSkillSourcesCenter({
-      sources,
-      manifests,
-      installed,
-      receipts,
-      skillCards,
-      tasks
-    });
+    return loadSkillSourcesCenterRecord(this.ctx());
   }
 
   getCompanyAgentsCenter() {
-    const ctx = this.ctx();
-    return buildCompanyAgentsCenter({
-      tasks: ctx.orchestrator.listTasks(),
-      workers: ctx.orchestrator.listWorkers(),
-      disabledWorkerIds: new Set(getDisabledCompanyWorkerIds(ctx.getConnectorRegistryContext()))
-    });
+    return loadCompanyAgentsCenterRecord(this.ctx());
   }
 
   async getEvalsCenter(

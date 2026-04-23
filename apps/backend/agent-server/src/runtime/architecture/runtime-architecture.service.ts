@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import { listSubgraphDescriptors, listWorkflowPresets } from '@agent/agents-supervisor';
 import { WorkerRegistry } from '@agent/runtime';
 import { loadSettings } from '@agent/config';
 import type { ArchitectureDescriptor, ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@agent/core';
+import { RuntimeHost } from '../core/runtime.host';
 import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
 import { createArchitectureDescriptorRegistry } from './runtime-architecture-registries';
 
@@ -11,12 +11,14 @@ const ARCHITECTURE_VERSION = '2026.03.runtime-architecture.v1';
 
 @Injectable()
 export class RuntimeArchitectureService {
+  constructor(private readonly runtimeHost: RuntimeHost) {}
+
   getArchitecture(): RuntimeArchitectureRecord {
     const generatedAt = new Date().toISOString();
     const settings = loadSettings();
     const workerRegistry = new WorkerRegistry();
-    const subgraphs = listSubgraphDescriptors();
-    const workflows = listWorkflowPresets();
+    const subgraphs = this.runtimeHost.listSubgraphDescriptors();
+    const workflows = this.runtimeHost.listWorkflowPresets();
     const workers = workerRegistry.list();
     const knowledgeDescriptor = buildKnowledgeDescriptor(settings);
     const registry = createArchitectureDescriptorRegistry({

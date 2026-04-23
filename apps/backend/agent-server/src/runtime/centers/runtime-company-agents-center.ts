@@ -1,1 +1,1 @@
-export { buildCompanyAgentsCenter } from '@agent/runtime';
+export { buildCompanyAgentsCenter } from '../core/runtime-centers-facade';

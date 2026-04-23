@@ -1,29 +1,10 @@
-import type { KnowledgeChunk, KnowledgeSource, KnowledgeSourceType, KnowledgeTrustClass } from '@agent/core';
+import type { Chunker, Document, Embedder, Loader, VectorStore } from '@agent/core';
+import type { KnowledgeSourceType, KnowledgeTrustClass } from '@agent/core';
 
-export interface KnowledgeIndexingDocument {
-  id: string;
+export interface KnowledgeSourceConfig {
   sourceId: string;
-  title: string;
-  uri: string;
-  content: string;
   sourceType: KnowledgeSourceType;
   trustClass: KnowledgeTrustClass;
-  updatedAt: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface KnowledgeChunkEnvelope {
-  source: KnowledgeSource;
-  document: KnowledgeIndexingDocument;
-  chunk: KnowledgeChunk;
-  metadata: Record<string, unknown>;
-}
-
-export interface KnowledgeEmbeddingRecord {
-  chunkId: string;
-  vector: number[];
-  modelId?: string;
-  metadata?: Record<string, unknown>;
 }
 
 export interface KnowledgeIndexingContext {
@@ -46,27 +27,14 @@ export interface KnowledgeIndexingResult {
 }
 
 export interface KnowledgeIndexingRunOptions {
-  loader: import('../loaders/knowledge-document-loader').KnowledgeDocumentLoader;
-  chunker?: import('../chunkers/knowledge-document-chunker').KnowledgeDocumentChunker;
-  transformers?: import('../transformers/knowledge-document-transformer').KnowledgeDocumentTransformer[];
-  embedder: import('../embedders/knowledge-embedder').KnowledgeEmbedder;
-  writer: import('../writers/knowledge-index-writer').KnowledgeIndexWriter;
-  metadataBuilder?: KnowledgeIndexMetadataBuilder;
-  shouldIndex?: KnowledgeShouldIndex;
+  loader: Loader;
+  chunker?: Chunker;
+  embedder: Embedder;
+  vectorStore: VectorStore;
+  sourceConfig: KnowledgeSourceConfig;
   chunkSize?: number;
   chunkOverlap?: number;
   batchSize?: number;
-  onWarning?: (warning: string, context: KnowledgeIndexingContext) => void | Promise<void>;
+  shouldIndex?: (doc: Document) => boolean | Promise<boolean>;
+  onWarning?: (warning: string) => void | Promise<void>;
 }
-
-export type KnowledgeShouldIndex = (
-  document: KnowledgeIndexingDocument,
-  context: KnowledgeIndexingContext
-) => boolean | Promise<boolean>;
-
-export type KnowledgeIndexMetadataBuilder = (params: {
-  source: KnowledgeSource;
-  document: KnowledgeIndexingDocument;
-  chunk: KnowledgeChunk;
-  context: KnowledgeIndexingContext;
-}) => Record<string, unknown> | Promise<Record<string, unknown>>;

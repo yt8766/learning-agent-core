@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/core/`
-最后核对：2026-04-18
+最后核对：2026-04-22
 
 本目录用于沉淀 `packages/core` 相关文档。
 
@@ -30,9 +30,11 @@
   - 应尽量保持轻量，默认只承载稳定 contract
   - 其他包可依赖 `@agent/core` 获取公共边界
   - `@agent/core` 不应回填业务编排或基础设施实现
+  - `packages/core/package.json` 当前只允许 `zod` 作为依赖；不得重新依赖 `@agent/report-kit`、`@agent/runtime`、`@agent/agents-*` 或其他业务实现包
 
 当前现实：
 
+- `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖；`DataReportBlueprintResultSchema` 这类稳定结构可留在 core，但 blueprint/scaffold/write/template resolve 实现必须留在 `packages/report-kit`
 - `packages/core` 已经不只是迁移期 facade；当前源码中已经承载 provider interface、memory schema、approval / review schema 以及多组稳定类型入口
 - `packages/core/src/tasking/schemas/planning.ts` + `packages/core/src/tasking/types/planning.ts`
   - 已开始承接 tasking planning 子域的 schema-first 主定义，当前覆盖 plan question / decision / draft / mode transition，以及 `EntryDecisionRecord` / `ExecutionPlanRecord` / `PartialAggregationRecord`；最近一轮已把 counselor selector、imperial direct intent、partial aggregation policy、question set、micro budget 等匿名结构提为具名子 schema
@@ -105,6 +107,8 @@
 - 当前项目的 core 包规范：[current-core-package-guidelines.md](/docs/core/current-core-package-guidelines.md)
 - 当前 core 包合规检查：[current-core-package-audit.md](/docs/core/current-core-package-audit.md)
 - contract 边界主文档：[core-contract-guidelines.md](/docs/core/core-contract-guidelines.md)
+- Packages 阶段收官报告：[package-finalization-report.md](/docs/core/package-finalization-report.md)
+- Compat 入口收缩候选：[package-compat-sunset-candidates.md](/docs/core/package-compat-sunset-candidates.md)
 
 当前执行重点：
 

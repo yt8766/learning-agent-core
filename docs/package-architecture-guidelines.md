@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：packages 分层规范
-最后核对：2026-04-18
+最后核对：2026-04-19
 
 `packages/*` 不是普通公共代码堆放区，而是平台架构边界。所有新增代码都必须先判断其职责归属，再决定进入哪个包。
 
@@ -74,7 +74,7 @@ packages/<pkg>/
   - `utils/` 保留纯工具语义
 - 文档先定义推荐终态结构，不要求本轮立即大规模搬文件；后续源码收敛应以这些目录语义为目标
 - compat / facade / legacy 根入口的后续删除优先参考
-  - [Compat 入口收缩候选](/docs/package-compat-sunset-candidates.md)
+  - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 - `contracts/*` 与人工可读聚合入口要分开治理：
   - `contracts/*` 默认代表刻意保留的稳定 facade
   - 类似 `config/src/settings.ts` 这样的人工可读聚合入口，默认按“长期保留聚合层”治理
@@ -82,39 +82,93 @@ packages/<pkg>/
 
 ## 分层模型
 
-默认按四层理解 `packages/*`：
+默认按“契约层 -> 配置层 -> SDK/内核层 -> 平台装配层 -> 专项 Agent -> 应用适配器”理解仓库边界。
+
+这组分层的正式裁决见：
+
+- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
+
+当前最重要的三条红线是：
+
+- `packages/core` 是 schema-first 契约层，不依赖业务实现包；当前允许依赖 `zod`，后续如需增加纯契约基础库必须先在本文记录理由
+- `packages/runtime` 是 Runtime Kernel，长期目标是不认识任何具体官方 Agent，只依赖抽象 registry / session / graph / approval / recovery / observability contract
+- `apps/*` 是启动适配器，只选择装配方案并暴露 HTTP/SSE/worker/UI 入口，不内联 agent prompt、graph 装配或 runtime 主链
+
+同时默认遵守一条第三方边界红线：
+
+- 第三方库可以使用，但第三方实现细节不能穿透项目边界
+- `packages/core`、`packages/runtime`、`agents/*`、`apps/*` 对外暴露的 contract、DTO、event、payload、持久化记录、graph state 与错误语义，应优先使用项目自定义 schema/type/facade，不直接暴露第三方对象
+- 第三方 SDK 调用、协议转换、vendor-specific 参数、response/error/event 适配，默认收敛在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界目录
+- 调用方应依赖“项目需要的能力接口”，而不是依赖某个 vendor 当前 API；替换模型、数据库 SDK、图引擎、connector、审批系统时，默认只改边界实现而不是全仓业务调用点
+- 如果某个第三方对象必须短期暴露，必须在相邻文档或代码注释中说明原因、兼容范围与后续收口计划
+
+本轮继续补充一条 backend/runtime 收敛约定：
+
+- `apps/backend/agent-server/src/runtime/*` 下，`centers/`、`services/`、`core/` 默认优先保留宿主装配、Nest facade、query entry、error mapping 与少量 orchestration；
+- 稳定、可复用、无 Nest 依赖的纯规则、纯投影、snapshot mutation、路径/命名/selector helper，默认继续往 `runtime/domain/<area>/` 下沉；
+- 当前已经开始按此规则收敛的子域包括：
+  - `runtime/domain/skills/*`
+  - `runtime/domain/connectors/*`
+  - `runtime/domain/metrics/*`
+  - `runtime/domain/observability/*`
+- 后续新增 backend runtime 逻辑时，若实现主要是“输入若干 record/context，返回派生结果/过滤结果/新 snapshot”，应优先落到 `runtime/domain/*`，而不是直接写进 `RuntimeCenters*Service`、`Runtime*QueryService` 或 `runtime/*.service.ts`
+
+当前实施状态：
+
+- `packages/core` 已移除 `@agent/report-kit` 依赖，并由 `pnpm check:package-boundaries` 阻止回退
+- `packages/platform-runtime` 已落地为官方组合根，backend/worker 默认 runtime 创建线已改由它装配
+- `apps/backend` 与 `apps/worker` 禁止直接依赖 `@agent/agents-*`，官方 Agent 能力统一经 `@agent/platform-runtime` 暴露
+- `packages/runtime/src/bridges/*` 已收敛为 runtime 内部 adapter；它们只转发 `RuntimeAgentDependencies` contract，不再直接 re-export 官方 Agent
 
 1. 契约层
 
 - `packages/core`
+
+2. 配置层
+
 - `packages/config`
 
-2. 平台基础能力层
+3. Agent SDK 与 Runtime Kernel 层
 
+- `packages/agent-kit`
 - `packages/runtime`
+
+4. 平台基础能力层
+
 - `packages/adapters`
 - `packages/knowledge`
 - `packages/memory`
 - `packages/tools`
 - `packages/skill-runtime`
+- `packages/report-kit`
+- `packages/templates`
 
-3. Agent 编排层
+5. Platform Assembly 层
+
+- `packages/platform-runtime`
+
+6. 专项 Agent 层
 
 - `agents/supervisor`
 - `agents/data-report`
 - `agents/coder`
 - `agents/reviewer`
 
-4. 质量与资产层
+专项 Agent 层补充边界：
+
+- `agents/supervisor` 只持有 supervisor 自身的 preset / route / dispatch / search/docs/router ministry
+- `agents/supervisor` 不再直接依赖或 re-export `@agent/agents-coder`、`@agent/agents-reviewer`、`@agent/agents-data-report`
+- sibling specialist 的官方组合与默认注入统一通过 `packages/platform-runtime`
+
+7. 质量层
 
 - `packages/evals`
-- `packages/templates`
 
 迁移兼容说明：
 
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除，历史台账保留在 `docs/shared/`
 - 已删除的 `packages/agent-core` 历史说明统一保留在 `docs/archive/agent-core/`
-- 新消费侧优先改用 `@agent/agent-kit`、`@agent/runtime`、`@agent/adapters` 与对应 `agents/*` 公开入口
+- 新消费侧优先改用 `@agent/agent-kit`、`@agent/runtime`、`@agent/platform-runtime`、`@agent/adapters` 与对应稳定公开入口
 
 ## 每个包允许放什么
 
@@ -135,6 +189,8 @@ packages/<pkg>/
   - `knowledge` 中的 `ExecutionTrace`、`EvidenceRecord`、`MemoryRecord`、`RuleRecord`、以及后续可独立稳定的 evidence / trace helper，也应优先从 `shared` 回收到 `core`
   - `primitives` 中像 `QueueStateRecord`、`LlmUsageModelRecord`、`LlmUsageRecord` 这类跨 runtime / backend / frontends 复用的稳定记录结构，也应优先放入 `packages/core`，`packages/shared` 只保留 compat re-export 或前端默认组合
   - `connectors` 中像 `ConnectorKnowledgeIngestionSummary`、`ConnectorCapabilityUsageRecord` 这类稳定摘要 contract，也应以 `packages/core` 为唯一主定义，并优先按 schema-first 维护
+  - `DataReportBlueprintResultSchema` 这类稳定结构可以留在 `core`，但 `buildDataReportBlueprint`、scaffold、write、template resolve 等确定性生成实现必须留在 `report-kit`
+  - `packages/core/package.json` 当前只允许 `zod` 作为依赖；禁止重新加入 `@agent/report-kit`、`@agent/runtime`、`@agent/agents-*` 或任何业务实现包
 
 ### `packages/config`
 
@@ -213,8 +269,57 @@ packages/<pkg>/
 
 ### `packages/runtime`
 
-- 允许：graphs、flows、runtime orchestration、session、governance、主链 shared utils / capabilities
-- 禁止：app controller/view model、前端展示专属 DTO、长期散落的 provider 细节
+- 定位：Runtime Kernel
+- 允许：
+  - graph 执行与 state machine kernel
+  - session、checkpoint、approval interrupt/recovery
+  - task lifecycle kernel
+  - runtime observability kernel
+  - 抽象 registry / worker / session / tool / memory / provider contract
+  - 与主链有关的通用状态机和可恢复执行语义
+- 禁止：
+  - app controller/view model
+  - 前端展示专属 DTO
+  - 长期散落的 provider 细节
+  - 官方 Agent 默认组合
+  - 为当前 backend 页面方便而写入的治理中心展示聚合
+- 迁移说明：
+  - 当前 `src/bridges/*` 仍保留兼容壳，但已经只转发 `RuntimeAgentDependencies` contract，不再直接依赖官方 `@agent/agents-*`
+  - 禁止让 `runtime` 反向 import `@agent/platform-runtime`；官方装配只能从 `platform-runtime -> runtime`
+
+### `packages/platform-runtime`
+
+- 定位：官方平台装配层 / Composition Root
+- 允许：
+  - 官方 Agent / workflow 出口
+  - `PlatformRuntimeFacade` contract
+  - `createOfficialAgentRegistry()`
+  - 基于 capability / domain 的官方 agent descriptor 查询
+  - `createOfficialRuntimeAgentDependencies({ agentRegistry? })`
+  - `createPlatformRuntime({ runtime, agentRegistry })`
+  - `createDefaultPlatformRuntime(options)`
+  - backend 与 worker 可复用的 runtime facade 装配
+- 禁止：
+  - HTTP controller
+  - worker 消费循环
+  - 前端 view model
+  - Agent prompt、graph 节点主实现
+  - report-kit blueprint/scaffold/write 主流程
+  - 变成第二个 `runtime` 或第二个 `backend`
+
+### `packages/agent-kit`
+
+- 定位：Agent SDK 层 / 编写 Agent 的轻量基础宿主
+- 允许：
+  - `BaseAgent`
+  - 流式执行与 runtime-memory helper
+  - 通用 `AgentDescriptor` / `AgentProvider` / `AgentRegistry` contract
+  - planner strategy selector 这类 Agent authoring / orchestration 共用的轻量决策 helper
+  - agent authoring 所需的轻量 helper
+- 禁止：
+  - session/checkpoint/platform center projection
+  - backend/worker 装配
+  - 官方 agent 默认注册表实现
 
 ### `packages/evals`
 
@@ -297,12 +402,20 @@ packages/<pkg>/
 
 必须满足：
 
-- `shared` 不得依赖任何业务包
+- `core` 不得依赖任何 `@agent/*` 业务实现包；当前只允许 `zod`
 - `config` 不得依赖 `runtime` 或任意 `agents/*`
 - `adapters / memory / tools / skill-runtime` 只允许依赖 `config`、`core` 和必要第三方库
-- `runtime` 可以依赖 `config / core / adapters / memory / tools / skill-runtime`
+- `runtime` 可以依赖 `agent-kit / config / core / adapters / memory / tools / skill-runtime`
+- `runtime` 长期不得依赖任何 `agents/*`；当前 `bridges/*` 是 runtime 内部稳定 adapter，而不是官方 Agent 的直接宿主
+- `platform-runtime` 可以依赖 `runtime` 和官方 `agents/*`，但只做官方装配与 facade wiring
+- `platform-runtime` 持有官方 agent descriptor / capability / specialist-domain registry；需要 capability dispatch 时，优先沿这层 contract 扩展，而不是把 dispatch 重新写回 `apps/*` 或 `runtime`
+- `platform-runtime` 负责把 supervisor 返回的 specialist domain 继续 enrich 为官方 agent 匹配线索；runtime 主链消费的是 enrich 后的 route，而不是自行反查 registry
+- `PlatformRuntimeFacade` 应作为 app 层读取官方默认装配能力的首选入口；应用侧不要继续直接 import `resolveWorkflowPreset`、`runDispatchStage`、`createOfficialRuntimeAgentDependencies`、`listWorkflowPresets`、`listSubgraphDescriptors`、`listWorkflowVersions` 这类主链装配 helper
+- dispatch contract 应显式区分 `agentId`（偏好 / 首选 hint）与 `selectedAgentId`（本次 dispatch 实际收敛目标）；不要让 runtime / admin / chat 继续从 `to = executor|reviewer` 这类历史角色名反推官方 agent
+- planner 的策略态应通过稳定 contract 暴露给 runtime / admin（例如 `plannerStrategy.mode = default | capability-gap | rich-candidates`），不要让治理侧继续从自由文本 summary 反推当前规划模式
 - `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill-runtime`
 - `apps/*` 只能依赖各包公开入口
+- `apps/backend` 与 `apps/worker` 不得直接依赖 `@agent/agents-*`，官方装配统一通过 `@agent/platform-runtime`
 - 禁止 `apps/*` 直接依赖 `packages/*/src`、`agents/*/src` 或 `@agent/<pkg>/<subpath>`
 - 禁止基础能力层反向依赖 `runtime` 或 `agents/*`
 
@@ -315,6 +428,9 @@ packages/<pkg>/
   - 阻止应用层把 `@agent/<pkg>/<subpath>` 当成稳定接口
   - 阻止 `@agent/<pkg>/src/*` 这类深层包导入
   - 对 `runtime / agents / backend / tools / skills` 的核心源码与测试，阻止继续从 `@agent/core/*`、`@agent/config/*`、`@agent/memory/*`、`@agent/adapters/*`、`@agent/tools/*` 等子路径导入
+  - 阻止 `packages/core/package.json` 重新依赖 `@agent/*` 业务实现包
+  - 阻止 `apps/backend` 与 `apps/worker` 源码或 package manifest 直接依赖 `@agent/agents-*`
+  - 阻止 `apps/*` 直接从 `@agent/platform-runtime` import 主链装配 helper，要求应用层通过 facade / host adapter 消费官方默认装配
 - `pnpm check:barrel-layout`
   - 扫描 `packages/*`、`agents/*`、`apps/*` 下命名目录的 `index.ts`
   - 阻止 `repositories / search / vector / embeddings / approval / watchdog / settings` 这类目录通过 `../` 回跳父级转发实现
@@ -531,7 +647,7 @@ packages/runtime/
     session/         # turns、compression、sync、thinking
     governance/      # worker、profile、routing、approval lifecycle
     capabilities/
-    bridges/         # runtime <-> agents/* 过渡桥接层
+    bridges/         # runtime 内部 agent dependency adapter
     memory/
     runtime/         # AgentRuntime、streaming execution、assembly facade
     utils/

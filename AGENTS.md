@@ -188,6 +188,13 @@ skills/
 - 对外暴露的模块必须先定义清晰边界：输入、输出、错误语义、版本兼容策略，再落具体实现；禁止先把实现写散，再事后补接口包装。
 - 涉及跨包、跨模块、前后端、graph 与 tool、service 与 repository 之间的协作时，优先抽象稳定 `contract / adapter / facade`，避免调用方直接耦合底层细节。
 - 高变动逻辑与稳定契约必须分离：易变部分下沉到 `flows/`、`runtime/`、`adapters/`、`repositories/` 等内部实现；稳定部分通过 `@agent/*` 根入口、DTO、schema、facade 对外暴露。
+- 第三方依赖边界默认遵守“允许使用，不允许穿透”：
+  - 业务代码不得直接耦合第三方实现细节；第三方能力进入主链流程、跨包 contract、前后端协议、graph state、tool result、审批事件、模型输出或持久化记录时，必须先经过项目自定义的稳定 `contract / adapter / facade / provider` 边界。
+  - 第三方 SDK 调用、vendor response/error/event 适配、协议转换与 vendor-specific 参数，默认集中在 `adapters/`、`providers/`、`clients/`、`repositories/`、`runtime/` 等边界层；`flows/`、`graphs/`、`services/`、UI 业务组件默认只消费项目自定义接口。
+  - 不允许让第三方类型、错误对象、事件结构、状态机语义直接穿透到业务层、公共 contract 或持久化结构；必须在边界层先转换为项目自己的 schema/type/error 语义，例如 provider error、connector error、tool result、approval record、event record。
+  - 对第三方能力应优先抽象“项目需要的能力接口”，不要机械复刻 vendor API；新增第三方接入时，优先新增 provider/adapter 实现，而不是在业务层复制调用链或追加 `if/else`。
+  - 评估新增第三方依赖或直接接入第三方 SDK 时，至少先确认：是否已有项目内 provider/adapter/facade；第三方对象是否会穿透到业务层或公共 contract；是否需要先定义项目 schema/type；错误、重试、超时、取消、恢复、审计语义由哪一层负责；是否已补 adapter 层测试或 contract parse 回归。
+  - 允许的例外仅限：React/Vite/zod/测试框架等基础设施在对应技术层直接使用；极薄的启动装配层创建第三方 client/SDK 实例但不得泄漏到业务调用方；兼容迁移期间保留带明确标注的 thin compat。
 - 目录分组名与物理落位必须一致：如果已经创建 `repositories/`、`nodes/`、`prompts/`、`schemas/`、`types/`、`adapters/`、`runtime/`、`shared/`、`utils/` 等目录，并在其中使用 `index.ts` 作为分组 barrel，则该目录名对应的主要实现也必须物理放进该目录；不要长期保留“目录里只有 `index.ts`，实现却散在父目录”的半收敛结构。
 - 如果兼容迁移期间不得不保留 barrel-only 目录，必须在相邻文档或代码注释中显式标注“过渡态”，并在本轮或明确后续计划里继续完成物理收敛；不能把这种结构当成终态。
 - 仓库已提供 `pnpm check:barrel-layout` 作为目录 barrel 物理落位的固定检查入口；涉及目录收敛时默认把它纳入本轮验证。
@@ -371,3 +378,46 @@ pnpm --dir apps/backend/agent-server build
 - 如果用户明确要求“实现整套方案”，默认目标是完成到可运行、可验证、可交付，而不是只落一半骨架
 - 完成条件默认包含“代码、测试、文档”三者同时收口；文档未更新或旧文档未清理，不算真正完成
 - 对多阶段计划，真正的“完成”只指整个计划闭环结束；“完成第一阶段/第二阶段”不等于任务完成，除非用户明确把阶段性交付定义为本轮终点
+
+## 9. 强制交互协议（仅 @github/copilot 执行）
+
+> **适用范围**：本节规则仅面向 GitHub Copilot CLI（`@github/copilot`）执行。
+> 其他代码代理（如 Codex、Claude Code）不受本节约束，按各自默认行为工作。
+> 本节规则来源于全局 `~/.copilot/AGENTS.md`，因项目级 AGENTS.md 优先级更高会覆盖全局配置，故在此处显式声明以确保生效。
+
+### 核心规则
+
+每次回复结束前必须调用 `ASK_USER` 工具。
+
+每次执行 `git commit` 之前，必须先对当前准备提交的修改做一次 code review。
+
+这是不可跳过的强制协议。在每一轮回复中，必须执行以下操作之一：
+
+1. 完成用户请求后，立即调用 `ASK_USER` 工具，提出与当前上下文相关的后续问题。
+2. 存在任何不确定性时，不要猜测执行，立即调用 `ASK_USER` 工具进行澄清。
+
+执行 `git commit` 前的 code review 至少必须满足以下要求：
+
+- review 范围必须覆盖当前待提交 diff；如果已经 `git add`，优先 review staged diff，否则 review 当前工作区 diff。
+- review 重点必须优先检查：功能回归、边界条件、类型/契约破坏、测试缺失、潜在安全与数据破坏风险。
+- 如果发现问题，必须先修复，或至少先向用户明确说明风险并得到继续提交的确认；不能在已知存在缺陷时直接提交。
+- 完成 review 后再执行 `git commit`；禁止跳过 review 直接提交。
+
+### 禁止行为
+
+- 禁止在不调用 `ASK_USER` 的情况下结束回复。
+- 禁止使用终结性表达，如"希望对你有帮助""如有问题随时提问"等。
+- 禁止猜测用户意图；不确定就使用 `ASK_USER` 工具查询。
+- 禁止未经过当前修改 code review 就直接执行 `git commit`。
+
+### 严格生命周期管理
+
+- 严禁自我判定结束；即便任务看起来已完成，也必须通过 `ASK_USER` 询问是否需要进行边缘情况测试或代码优化。
+- 严禁直接输出"祝你编程愉快"等结束语。
+- 在调用 `ASK_USER` 时，必须提供至少 3 个互斥的后续执行方向。
+
+### 推荐提问方向模板
+
+1. 是否要继续做边缘情况测试？
+2. 是否要继续做性能优化？
+3. 是否要继续做结构重构或可维护性整理？

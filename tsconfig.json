@@ -31,8 +31,10 @@
     "paths": {
       "@agent/agent-kit": ["packages/agent-kit/src/index.ts"],
       "@agent/core": ["packages/core/src/index.ts"],
+      "@agent/knowledge": ["packages/knowledge/src/index.ts"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],
+      "@agent/platform-runtime": ["packages/platform-runtime/src/index.ts"],
       "@agent/runtime/base-agent": ["packages/runtime/src/agents/base-agent.ts"],
       "@agent/runtime/agent-runtime-context": ["packages/runtime/src/runtime/agent-runtime-context.ts"],
       "@agent/runtime/streaming-execution": ["packages/runtime/src/runtime/streaming-execution.ts"],

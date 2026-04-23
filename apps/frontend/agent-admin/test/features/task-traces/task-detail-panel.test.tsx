@@ -16,6 +16,17 @@ const bundle: TaskBundle = {
     result: '已完成初步分析',
     resolvedWorkflow: { id: 'runtime-workflow', displayName: 'Runtime Workflow', version: '2.0.0' },
     subgraphTrail: ['execution', 'review'],
+    dispatches: [
+      {
+        taskId: 'task_001',
+        subTaskId: 'subtask_1',
+        from: 'manager',
+        to: 'reviewer',
+        kind: 'ministry',
+        objective: '汇总风险并确认结论',
+        selectedAgentId: 'official.reviewer'
+      }
+    ],
     approvals: [],
     updatedAt: '2026-03-30T12:00:02Z',
     createdAt: '2026-03-30T11:59:50Z'
@@ -67,6 +78,7 @@ describe('TaskDetailPanel', () => {
     expect(html).toContain('消息流');
     expect(html).toContain('执行轨迹');
     expect(html).toContain('Agent 状态');
+    expect(html).toContain('official.reviewer');
     expect(html).toContain('border-border/70');
   });
 });
