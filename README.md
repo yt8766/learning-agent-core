@@ -34,6 +34,12 @@
 - `docs/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
   - 运行时技能数据默认落在 `data/skill-runtime`
+- `test/*`：仓库级（workspace-level）专用测试宿主
+  - `test/integration/`：跨包、跨宿主、跨链路的 integration 测试
+  - `test/smoke/`：仓库级最小可运行闭环 smoke 测试
+  - `test/shared/`：仅限测试的共享 fixture、builder、matcher
+  - 不承载宿主内 unit / spec；各宿主测试仍留在 `packages/*/test`、`apps/*/test`
+  - 完整设计见 [`docs/evals/workspace-test-host-design.md`](./docs/evals/workspace-test-host-design.md)
 - `docs/*`：项目规范、模块说明、联调结论与当前实现沉淀
 
 如果需要看“当前每个目录现在在做什么”，优先阅读：

@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：convention
-适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`
-最后核对：2026-04-18
+适用范围：`packages/*`、`apps/backend/agent-server`、`apps/frontend/*`、根级 `test/`
+最后核对：2026-04-23
 
 配套现状文档：
 
@@ -19,6 +19,7 @@
 - `apps/backend/agent-server`
 - `apps/frontend/agent-chat`
 - `apps/frontend/agent-admin`
+- 根级 `test/`（workspace test host）
 
 测试目录约束：
 
@@ -29,6 +30,10 @@
   - `apps/worker/test`
   - `apps/frontend/agent-chat/test`
   - `apps/frontend/agent-admin/test`
+- 仓库级跨包 integration 与 workspace smoke 写入根级 `test/`（workspace test host）：
+  - `test/integration/`：跨包、跨宿主、跨链路 integration 测试
+  - `test/smoke/`：仓库级最小可运行闭环测试
+  - `test/shared/`：仅限测试用的 fixture、builder、matcher
 - 不再新增新的 `src/**/*.test.ts`、`src/**/*.spec.ts`、`src/**/*.int-spec.ts`
 - 现有历史测试也已统一迁入 `test/`，根级 `vitest` 不再扫描 `src/` 下的测试文件
 
@@ -56,6 +61,45 @@
 - checkpoint 持久化与恢复
 
 因此主图相关测试默认采用“整图测试 + 单节点测试 + 部分执行测试”三层方法，不要只用纯函数单测替代流程验证。
+
+## 0. 根级 `test/` 作为 workspace test host
+
+根级 `test/` 是仓库级（workspace-level）专用测试宿主，与 `packages/`、`apps/`、`agents/` 同级。
+
+完整设计见：[Workspace Test Host 设计](/docs/evals/workspace-test-host-design.md)
+
+### 职责
+
+根级 `test/` 只承载两类内容，不承载宿主内原子测试：
+
+| 目录                | 职责                                     |
+| ------------------- | ---------------------------------------- |
+| `test/integration/` | 跨包、跨宿主、跨链路的 integration 测试  |
+| `test/smoke/`       | 仓库级最小可运行闭环测试                 |
+| `test/shared/`      | 仅限测试的共享 fixture、builder、matcher |
+
+### 命名约定
+
+- integration 测试：`*.int-spec.ts`
+- smoke 测试：`*.smoke.ts`
+
+### 不属于根级 `test/` 的内容
+
+- ❌ 单包单函数 unit 测试 → 放到 `packages/*/test`
+- ❌ schema parse / spec 回归 → 放到宿主内 `test/`
+- ❌ 仅归属某个单一宿主的 integration → 放到该宿主 `test/`
+- ❌ 根级 `test/` 不替代 `packages/*/demo`
+
+### shared/helpers 约束
+
+- `test/shared/` 和 `test/*/helpers/` 只做测试装配与断言辅助
+- 不复制生产逻辑，不构建第二套 runtime
+
+### CI 与 PR 策略
+
+- **第一阶段（当前）**：workspace smoke 不阻塞 PR，作为本地验证补充
+- **后续**：workspace smoke 与 integration 分阶段纳入 CI，main 跑全量 workspace smoke
+- smoke 不依赖脆弱外部服务；必须依赖外部环境时，需要显式 skip / guard
 
 ## 1. 测试框架
 
