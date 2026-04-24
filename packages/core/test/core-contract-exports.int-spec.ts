@@ -4,6 +4,7 @@ import {
   ChatMessageRecordSchema,
   TaskRecordSchema,
   DataReportJsonSchemaSchema,
+  ReportBundleSchema,
   DataReportSandpackPayloadSchema,
   SkillCardSchema,
   SpecialistFindingSchema,
@@ -37,6 +38,7 @@ import {
   type ChatMessageRecord,
   type TaskRecord,
   type DataReportJsonSchema,
+  type ReportBundle,
   type DataReportSandpackPayload
 } from '../src';
 import { type SharedPlatformConsoleRecord, type RuntimeAgentGraphState, type AgentGraphHandlers } from '../src';
@@ -53,6 +55,7 @@ import {
 import { ChatMessageRecordSchema as DirectChatMessageRecordSchema } from '../src/tasking/schemas/chat';
 import { TaskRecordSchema as DirectTaskRecordSchema } from '../src/tasking/schemas/task-record';
 import { DataReportJsonSchemaSchema as DirectDataReportJsonSchemaSchema } from '../src/data-report/schemas/data-report-json-schema';
+import { ReportBundleSchema as DirectReportBundleSchema } from '../src/data-report/schemas/report-bundle';
 import { DataReportSandpackPayloadSchema as DirectDataReportSandpackPayloadSchema } from '../src/data-report/schemas/data-report';
 import { SkillCardSchema as DirectSkillCardSchema } from '../src/skills/schemas/catalog';
 import { SpecialistFindingSchema as DirectSpecialistFindingSchema } from '../src/review/schemas/specialist-finding.schema';
@@ -96,6 +99,7 @@ import { type RiskLevel as DirectRiskLevel } from '../src/primitives/types/primi
 import { type ChatMessageRecord as DirectChatMessageRecord } from '../src/tasking/types/chat';
 import { type TaskRecord as DirectTaskRecord } from '../src/tasking/types/task-record';
 import { type DataReportJsonSchema as DirectDataReportJsonSchema } from '../src/data-report/types/data-report-json-schema';
+import { type ReportBundle as DirectReportBundle } from '../src/data-report/types/report-bundle';
 import { type DataReportSandpackPayload as DirectDataReportSandpackPayload } from '../src/data-report/types/data-report';
 import { type SkillCard as DirectSkillCard } from '../src/skills/types/skills.types';
 import { type ProviderBudgetState as DirectProviderBudgetState } from '../src/providers/provider.types';
@@ -112,6 +116,8 @@ describe('@agent/core contract export integration', () => {
     expect(TaskRecordSchema).toBe(DirectTaskRecordSchema);
 
     expect(DataReportJsonSchemaSchema).toBe(DirectDataReportJsonSchemaSchema);
+
+    expect(ReportBundleSchema).toBe(DirectReportBundleSchema);
 
     expect(DataReportSandpackPayloadSchema).toBe(DirectDataReportSandpackPayloadSchema);
 
@@ -175,6 +181,7 @@ describe('@agent/core contract export integration', () => {
     expectTypeOf<ChatMessageRecord>().toEqualTypeOf<DirectChatMessageRecord>();
     expectTypeOf<TaskRecord>().toEqualTypeOf<DirectTaskRecord>();
     expectTypeOf<DataReportJsonSchema>().toEqualTypeOf<DirectDataReportJsonSchema>();
+    expectTypeOf<ReportBundle>().toEqualTypeOf<DirectReportBundle>();
     expectTypeOf<DataReportSandpackPayload>().toEqualTypeOf<DirectDataReportSandpackPayload>();
     expectTypeOf<import('../src').SkillCard>().toEqualTypeOf<DirectSkillCard>();
 

@@ -88,6 +88,7 @@ pnpm test:workspace:smoke
 
 - `pre-commit` 继续执行 `pnpm check:staged`，负责 staged 文件格式化、ESLint、受影响 TypeScript 项目、相关 Vitest 与 prompt 回归，保持单次提交反馈足够快。
 - `pre-push` 执行 `pnpm verify:affected` 与 `pnpm test:workspace:smoke`，负责在推送前补齐集成测试与仓库级冒烟闭环。
+  - 当前 `pre-push` 会把 `VERIFY_INCLUDE_WORKTREE=0 VERIFY_INCLUDE_STAGED=0 VERIFY_INCLUDE_UNTRACKED=0` 传给 `verify:affected`，只校验即将推送的提交历史，不把本地未提交并行改动混进这次分支交付。
 
 ### 第三步：推送分支并创建 PR
 

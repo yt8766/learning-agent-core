@@ -43,3 +43,14 @@ export function getScheduleStatePath(workspaceRoot: string) {
 export function getFeedbackPath(workspaceRoot: string) {
   return join(workspaceRoot, 'data', 'runtime', 'briefings', 'daily-tech-briefing-feedback.json');
 }
+
+export function getRawEvidencePath(workspaceRoot: string, category: TechBriefingCategory, date: Date) {
+  return join(
+    workspaceRoot,
+    'data',
+    'runtime',
+    'briefings',
+    'raw',
+    `${date.toISOString().slice(0, 10)}-${category}.json`
+  );
+}

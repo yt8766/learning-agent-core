@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ILLMProvider as LlmProvider } from '@agent/core';
-
 import { ChatService } from '../../src/chat/chat.service';
 import {
   createCapabilityIntentService,
@@ -93,40 +91,96 @@ describe('ChatService', () => {
   });
 
   it('streams direct model output for the SSE chat endpoint', async () => {
-    const service = new ChatService(
-      createRuntimeSessionService(),
-      createCapabilityIntentService(),
-      createRuntimeHost()
-    );
     const runtimeHost = createRuntimeHost();
     const push = vi.fn();
     const chatService = new ChatService(createRuntimeSessionService(), createCapabilityIntentService(), runtimeHost);
 
-    const result = await chatService.streamChat({ message: '你好', systemPrompt: '你是一个助手' }, push);
+    const result = await chatService.streamChat(
+      {
+        message: '你好',
+        systemPrompt: '你是一个助手',
+        modelId: 'glm-4.5',
+        temperature: 0.6,
+        maxTokens: 256
+      },
+      push
+    );
 
     expect(push).toHaveBeenNthCalledWith(1, { type: 'token', data: { content: '你' } });
     expect(push).toHaveBeenNthCalledWith(2, { type: 'token', data: { content: '好' } });
     expect(result).toEqual({ content: '你好' });
-    expect((runtimeHost.llmProvider as unknown as LlmProvider).streamText).toHaveBeenCalled();
-    expect(service).toBeDefined();
+    expect(runtimeHost.modelInvocationFacade.invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modeProfile: 'direct-reply',
+        stage: 'direct_reply',
+        requestedModelId: 'glm-4.5',
+        contextHints: expect.objectContaining({
+          temperature: 0.6,
+          maxTokens: 256,
+          onToken: expect.any(Function)
+        }),
+        budgetSnapshot: expect.objectContaining({
+          costBudgetUsd: 5,
+          fallbackModelId: 'glm-5.1'
+        }),
+        messages: [
+          { role: 'system', content: '你是一个助手' },
+          { role: 'user', content: '你好' }
+        ]
+      })
+    );
+    expect(runtimeHost.llmProvider.streamText).toHaveBeenCalledWith(
+      [
+        { role: 'system', content: 'profile:direct-reply' },
+        { role: 'system', content: '你是一个助手' },
+        { role: 'user', content: '你好' }
+      ],
+      expect.objectContaining({
+        role: 'manager',
+        modelId: 'glm-4.5',
+        temperature: 0.6,
+        maxTokens: 256,
+        budgetState: {
+          costConsumedUsd: undefined,
+          costBudgetUsd: 5,
+          fallbackModelId: 'glm-5.1'
+        }
+      }),
+      expect.any(Function)
+    );
   });
 
   it('retries direct model output when the first attempt fails with a retryable format error', async () => {
     const runtimeHost = createRuntimeHost();
-    const streamText = vi
+    const invoke = vi
       .fn()
       .mockRejectedValueOnce(new Error('invalid json shape'))
-      .mockImplementationOnce(async (_messages, _options, onToken) => {
-        onToken('修');
-        onToken('复');
-        return '修复';
+      .mockResolvedValueOnce({
+        finalOutput: {
+          kind: 'text',
+          text: '修复'
+        },
+        invocationRecordId: 'invoke-direct-reply-retry',
+        traceSummary: {},
+        deliveryMeta: {}
       });
 
-    runtimeHost.llmProvider = { isConfigured: vi.fn(() => true), streamText } as unknown as LlmProvider;
+    runtimeHost.modelInvocationFacade.invoke = invoke;
     const service = new ChatService(createRuntimeSessionService(), createCapabilityIntentService(), runtimeHost);
 
     await expect(service.streamChat({ message: '你好' }, vi.fn())).resolves.toEqual({ content: '修复' });
-    expect(streamText).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: expect.stringContaining('invalid json shape')
+          })
+        ])
+      })
+    );
   });
 
   it('detects data-report direct requests and resolves explicit direct response modes', async () => {
@@ -162,5 +216,6 @@ describe('ChatService', () => {
     expect(sandpackFiles).toHaveProperty('/App.tsx');
     expect(sandpackFiles).toHaveProperty('/src/pages/dataDashboard/bonusCenterData/index.tsx');
     expect((runtimeHost.llmProvider as unknown as LlmProvider).streamText).not.toHaveBeenCalled();
+    expect(runtimeHost.modelInvocationFacade.invoke).not.toHaveBeenCalled();
   });
 });

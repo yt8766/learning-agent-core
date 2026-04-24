@@ -19,6 +19,7 @@
       "@agent/evals": ["../../../packages/evals/src/index.ts"],
       "@agent/agents-supervisor": ["../../../agents/supervisor/src/index.ts"],
       "@agent/agents-data-report": ["../../../agents/data-report/src/index.ts"],
+      "@agent/agents-intel-engine": ["../../../agents/intel-engine/src/index.ts"],
       "@agent/agents-coder": ["../../../agents/coder/src/index.ts"],
       "@agent/agents-reviewer": ["../../../agents/reviewer/src/index.ts"]
     }

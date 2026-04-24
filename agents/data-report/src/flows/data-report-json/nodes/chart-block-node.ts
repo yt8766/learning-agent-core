@@ -20,6 +20,10 @@ function buildCacheKey(state: DataReportJsonGraphState) {
 }
 
 function shouldEscalateChartBlockToLlm(state: DataReportJsonGraphState) {
+  if (state.strictLlmBrandNew) {
+    return true;
+  }
+
   if (!state.llm?.isConfigured()) {
     return false;
   }

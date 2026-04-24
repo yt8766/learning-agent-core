@@ -6,7 +6,6 @@ import type {
   DataReportJsonStructuredInput,
   DataReportJsonSection
 } from '../../../types/data-report-json';
-import { parseDataReportJsonSchema } from '../schemas/report-page-schema';
 
 export function hasStructuredReportInput(
   state: Pick<DataReportJsonGraphState, 'reportSchemaInput'>
@@ -190,61 +189,10 @@ export function buildStructuredSchemaArtifacts(input: DataReportJsonStructuredIn
 }
 
 export function extractEmbeddedSchema(goal: string) {
-  const currentSchemaMatch = goal.match(/CURRENT_SCHEMA:\s*([\s\S]+)/i);
-  if (!currentSchemaMatch?.[1]) {
-    return {
-      currentSchema: undefined,
-      modificationRequest: undefined
-    };
-  }
+  void goal;
 
-  const requestMatch = goal.match(/CHANGE_REQUEST:\s*([\s\S]*?)\nCURRENT_SCHEMA:/i);
-  const rawSchema = currentSchemaMatch[1].trim();
-
-  try {
-    return {
-      currentSchema: parseDataReportJsonSchema(JSON.parse(rawSchema)),
-      modificationRequest: requestMatch?.[1]?.trim()
-    };
-  } catch {
-    try {
-      const parsed = JSON.parse(rawSchema) as DataReportJsonSchema;
-      const normalizedSections = Array.isArray(parsed?.sections)
-        ? parsed.sections.map(section => ({
-            ...section,
-            blocks: Array.isArray(section.blocks)
-              ? section.blocks.map(block =>
-                  block.type === 'table'
-                    ? {
-                        ...block,
-                        columns: Array.isArray(block.columns)
-                          ? block.columns.map(column => ({
-                              ...column,
-                              title:
-                                typeof column.title === 'string'
-                                  ? column.title
-                                  : ((column.title as { text?: string; id?: string; kind?: string })?.text ?? '日期')
-                            }))
-                          : []
-                      }
-                    : block
-                )
-              : []
-          }))
-        : [];
-
-      return {
-        currentSchema: parseDataReportJsonSchema({
-          ...parsed,
-          sections: normalizedSections
-        }),
-        modificationRequest: requestMatch?.[1]?.trim()
-      };
-    } catch {
-      return {
-        currentSchema: undefined,
-        modificationRequest: requestMatch?.[1]?.trim()
-      };
-    }
-  }
+  return {
+    currentSchema: undefined,
+    modificationRequest: undefined
+  };
 }

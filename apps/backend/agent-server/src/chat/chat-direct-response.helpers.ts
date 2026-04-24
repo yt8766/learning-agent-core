@@ -103,25 +103,41 @@ export async function streamChat(
   }
 
   const messages = normalizeDirectMessages(dto);
-  const content = await withLlmRetry(
+  const result = await withLlmRetry(
     currentMessages =>
-      llm.streamText(
-        currentMessages,
-        {
-          role: 'manager',
-          modelId: dto.modelId,
+      runtimeHost.modelInvocationFacade.invoke({
+        invocationId: `direct-reply-${Date.now()}`,
+        modeProfile: 'direct-reply',
+        stage: 'direct_reply',
+        messages: currentMessages,
+        requestedModelId: dto.modelId,
+        contextHints: {
+          systemPrompt: dto.systemPrompt,
           temperature: typeof dto.temperature === 'number' ? dto.temperature : 0.2,
-          maxTokens: typeof dto.maxTokens === 'number' ? dto.maxTokens : undefined
+          maxTokens: typeof dto.maxTokens === 'number' ? dto.maxTokens : undefined,
+          onToken: (token: string) => {
+            onEvent({
+              type: 'token',
+              data: { content: token }
+            });
+          }
         },
-        token => {
-          onEvent({
-            type: 'token',
-            data: { content: token }
-          });
+        capabilityHints: {
+          responseFormat: dto.responseFormat ?? 'text'
+        },
+        budgetSnapshot: {
+          costBudgetUsd: runtimeHost.settings.policy.budget.maxCostPerTaskUsd,
+          fallbackModelId: runtimeHost.settings.policy.budget.fallbackModelId
+        },
+        traceContext: {
+          source: 'chat-direct-reply'
         }
-      ),
+      }),
     messages
   );
+
+  const content =
+    result.finalOutput.kind === 'text' ? result.finalOutput.text : JSON.stringify(result.finalOutput.object);
 
   return { content: String(content) };
 }

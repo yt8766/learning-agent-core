@@ -292,3 +292,10 @@ export interface BriefingFeedbackRecord {
   reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
   createdAt: string;
 }
+
+export interface BriefingRawEvidenceRecord {
+  provider: 'mcp-web-search' | 'feed' | 'security-page' | 'nvd-api';
+  query?: string;
+  capturedAt: string;
+  payload: unknown;
+}

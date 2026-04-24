@@ -12,7 +12,11 @@ import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
 import { AgentRole } from '../task-architecture-helpers';
 import { resolveCompiledSkillAttachment, resolveExecutionMode } from './main-graph-task-context-helpers';
-import { recordTaskUsage, type RecordTaskUsageDeps } from './main-graph-task-context-usage';
+import {
+  recordTaskUsage,
+  recordTaskUsageFromInvocation,
+  type RecordTaskUsageDeps
+} from './main-graph-task-context-usage';
 
 import { WorkerRegistry } from '../../../../governance/worker-registry';
 import type { AgentRuntimeContext } from '../../../../runtime/agent-runtime-context';
@@ -113,6 +117,13 @@ export class MainGraphTaskContextRuntime {
         role: 'manager' | 'research' | 'executor' | 'reviewer';
       }) => {
         this.recordTaskUsage(taskId, payload.usage);
+      },
+      onInvocationUsage: (payload: {
+        role: 'manager' | 'research' | 'executor' | 'reviewer';
+        invocationUsageRecord?: Parameters<typeof recordTaskUsageFromInvocation>[2]['invocationUsageRecord'];
+        taskUsageDelta?: Parameters<typeof recordTaskUsageFromInvocation>[2]['taskUsageDelta'];
+      }) => {
+        this.recordTaskUsageFromInvocation(taskId, payload);
       },
       onModelEvent: (payload: {
         role: 'manager' | 'research' | 'executor' | 'reviewer';
@@ -278,5 +289,12 @@ export class MainGraphTaskContextRuntime {
     }
   ): void {
     recordTaskUsage(this.usageDeps(), taskId, usage);
+  }
+
+  private recordTaskUsageFromInvocation(
+    taskId: string,
+    payload: Parameters<typeof recordTaskUsageFromInvocation>[2]
+  ): void {
+    recordTaskUsageFromInvocation(this.usageDeps(), taskId, payload);
   }
 }

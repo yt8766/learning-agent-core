@@ -79,6 +79,14 @@ const reportSchemaSectionsSpec = [
   }
 ] as const;
 
+const reportSchemaSectionPlanSpec = {
+  id: reportSchemaSectionsSpec[0].id,
+  title: reportSchemaSectionsSpec[0].title,
+  description: reportSchemaSectionsSpec[0].description,
+  dataSourceKey: reportSchemaSectionsSpec[0].dataSourceKey,
+  sectionDefaults: reportSchemaSectionsSpec[0].sectionDefaults
+} as const;
+
 export const createReportSchemaPart = (systemPrompt: string) => {
   if (systemPrompt.includes('生成完整 data-report-json 页面 schema')) {
     return {
@@ -107,6 +115,7 @@ export const createReportSchemaPart = (systemPrompt: string) => {
   if (systemPrompt.includes('当前片段：pageDefaults')) return reportSchemaPageDefaultsSpec;
   if (systemPrompt.includes('当前片段：filterSchema')) return reportSchemaFilterSpec;
   if (systemPrompt.includes('当前片段：dataSources')) return reportSchemaDataSourcesSpec;
+  if (systemPrompt.includes('当前片段：sectionPlan')) return reportSchemaSectionPlanSpec;
   if (systemPrompt.includes('当前片段：sections')) return reportSchemaSectionsSpec;
   if (systemPrompt.includes('当前片段：metricsBlock')) return reportSchemaSectionsSpec[0].blocks[0];
   if (systemPrompt.includes('当前片段：chartBlock')) return reportSchemaSectionsSpec[0].blocks[1];
@@ -138,11 +147,11 @@ export const createRuntimeSessionService = () =>
 export const createCapabilityIntentService = () =>
   ({ tryHandle: vi.fn(async () => undefined) }) as unknown as ChatCapabilityIntentsService;
 
-export const createRuntimeHost = () =>
-  ({
+export const createRuntimeHost = () => {
+  const runtimeHost = {
     settings: {
       zhipuModels: { research: 'glm-5.1' },
-      policy: { budget: { fallbackModelId: 'glm-5.1' } }
+      policy: { budget: { fallbackModelId: 'glm-5.1', maxCostPerTaskUsd: 5 } }
     },
     llmProvider: {
       isConfigured: vi.fn(() => true),
@@ -152,6 +161,36 @@ export const createRuntimeHost = () =>
         return '你好';
       })
     },
+    modelInvocationFacade: {
+      invoke: vi.fn(async request => {
+        const outputText = await runtimeHost.llmProvider.streamText(
+          [{ role: 'system', content: `profile:${request.modeProfile}` }, ...request.messages],
+          {
+            role: request.modeProfile === 'direct-reply' ? 'manager' : 'manager',
+            modelId: request.requestedModelId,
+            temperature:
+              typeof request.contextHints?.temperature === 'number' ? request.contextHints.temperature : undefined,
+            maxTokens: typeof request.contextHints?.maxTokens === 'number' ? request.contextHints.maxTokens : undefined,
+            budgetState: {
+              costConsumedUsd: request.budgetSnapshot?.costConsumedUsd,
+              costBudgetUsd: request.budgetSnapshot?.costBudgetUsd,
+              fallbackModelId: request.budgetSnapshot?.fallbackModelId
+            }
+          },
+          typeof request.contextHints?.onToken === 'function' ? request.contextHints.onToken : () => undefined
+        );
+
+        return {
+          finalOutput: {
+            kind: 'text',
+            text: String(outputText)
+          },
+          invocationRecordId: 'invoke-direct-reply',
+          traceSummary: {},
+          deliveryMeta: {}
+        };
+      })
+    },
     platformRuntime: {
       agentDependencies: {
         resolveWorkflowPreset: vi.fn((goal: string) => ({
@@ -159,4 +198,7 @@ export const createRuntimeHost = () =>
         }))
       }
     }
-  }) as unknown as RuntimeHost;
+  };
+
+  return runtimeHost as unknown as RuntimeHost;
+};

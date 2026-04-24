@@ -12,7 +12,6 @@ import { buildPartialPageSchema } from './nodes/shared';
 import { resolveDataReportJsonNodeModelCandidates } from './model-policy';
 
 export const SPLIT_BLOCK_TIMEOUT_MS = 2_500;
-export const STRICT_LLM_FRAGMENT_TIMEOUT_MS = 30_000;
 
 function resolveExecutionPath(params: {
   input: DataReportJsonGraphState;
@@ -138,8 +137,9 @@ export async function runNodeWithTimeout(
   }
 }
 
-export function resolveStrictFragmentTimeoutMs(state: DataReportJsonGraphState) {
-  return state.strictLlmBrandNew ? STRICT_LLM_FRAGMENT_TIMEOUT_MS : undefined;
+export function resolveStrictFragmentTimeoutMs() {
+  // Strict LLM fragments rely on provider-level cancellation instead of a local graph timer.
+  return undefined;
 }
 
 function buildDeterministicFallbackState(state: DataReportJsonGraphState) {
@@ -161,7 +161,7 @@ export async function runNodeWithTimeoutFallback(
       ? await runNodeWithTimeout(state, node, runner, handlers, timeoutMs)
       : await runNode(state, node, runner, handlers);
   } catch (error) {
-    if (!state.strictLlmBrandNew) {
+    if (state.strictLlmBrandNew) {
       throw error;
     }
     const fallbackReason = error instanceof Error ? error.message : String(error);
@@ -237,30 +237,48 @@ export async function runNodeWithRetry(
 
 export async function runSharedPrelude(input: DataReportJsonGraphState, handlers: DataReportJsonGraphHandlers) {
   input.onStage?.({ node: 'planningNode', status: 'pending' });
-  let state = mergeState(
-    { ...input, warnings: input.warnings ?? [] },
-    await runNode({ ...input, warnings: input.warnings ?? [] }, 'analysisNode', runJsonAnalysisNode, handlers)
-  );
+  const strictFragmentTimeoutMs = resolveStrictFragmentTimeoutMs();
+  try {
+    let state = mergeState(
+      { ...input, warnings: input.warnings ?? [] },
+      await runNode({ ...input, warnings: input.warnings ?? [] }, 'analysisNode', runJsonAnalysisNode, handlers)
+    );
 
-  if (state.currentSchema && state.modificationRequest) {
-    state = mergeState(state, await runNode(state, 'patchIntentNode', runJsonPatchIntentNode, handlers));
-  }
-
-  if (!state.currentSchema) {
-    state = mergeState(state, await runNode(state, 'schemaSpecNode', runJsonSchemaSpecNode, handlers));
-  }
-
-  input.onStage?.({
-    node: 'planningNode',
-    status: 'success',
-    details: {
-      childNodes: [
-        'analysisNode',
-        state.currentSchema && state.modificationRequest ? 'patchIntentNode' : undefined,
-        state.currentSchema ? undefined : 'schemaSpecNode'
-      ].filter(Boolean)
+    if (state.currentSchema && state.modificationRequest) {
+      state = mergeState(state, await runNode(state, 'patchIntentNode', runJsonPatchIntentNode, handlers));
     }
-  });
 
-  return state;
+    if (!state.currentSchema) {
+      state = mergeState(
+        state,
+        strictFragmentTimeoutMs
+          ? await runNodeWithTimeout(state, 'schemaSpecNode', runJsonSchemaSpecNode, handlers, strictFragmentTimeoutMs)
+          : await runNode(state, 'schemaSpecNode', runJsonSchemaSpecNode, handlers)
+      );
+    }
+
+    input.onStage?.({
+      node: 'planningNode',
+      status: 'success',
+      details: {
+        childNodes: [
+          'analysisNode',
+          state.currentSchema && state.modificationRequest ? 'patchIntentNode' : undefined,
+          state.currentSchema ? undefined : 'schemaSpecNode'
+        ].filter(Boolean)
+      }
+    });
+
+    return state;
+  } catch (error) {
+    input.onStage?.({
+      node: 'planningNode',
+      status: 'error',
+      details: {
+        failedPrelude: true,
+        fallbackReason: error instanceof Error ? error.message : String(error)
+      }
+    });
+    throw error;
+  }
 }

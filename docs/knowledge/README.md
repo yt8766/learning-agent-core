@@ -38,8 +38,14 @@
 当前文档：
 
 - [indexing-package-guidelines.md](/docs/knowledge/indexing-package-guidelines.md)
+- [knowledge-retrieval-runtime.md](/docs/knowledge/knowledge-retrieval-runtime.md)
 
 当前实现补充：
+
+- `packages/knowledge/src/runtime/pipeline/run-knowledge-retrieval.ts`
+  - 当前已支持 deterministic query cleanup、轻量 rewrite 与 bounded query variants
+  - 会按 query variants 执行多次检索，再按 `chunkId` 合并命中并保留最高分结果
+  - diagnostics 会暴露 `originalQuery`、`normalizedQuery`、`rewriteApplied`、`rewriteReason`、`queryVariants`、`executedQueries`
 
 - `packages/knowledge/src/runtime/local-knowledge-store.ts`
   - 是当前本地知识摄取与概览读取的真实宿主

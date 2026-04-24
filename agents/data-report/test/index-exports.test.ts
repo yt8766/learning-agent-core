@@ -5,6 +5,8 @@ import {
   buildDataReportContract,
   createDataReportJsonGraph,
   createDataReportSandpackGraph,
+  executeReportBundleEditFlow,
+  executeReportBundleGenerateFlow,
   executeDataReportJsonGraph,
   executeDataReportSandpackGraph,
   generateDataReportPreview,
@@ -20,6 +22,8 @@ import { executeDataReportJsonGraph as canonicalExecuteDataReportJsonGraph } fro
 import { parseDataReportJsonSchema as canonicalParseDataReportJsonSchema } from '../src/flows/data-report-json/schemas';
 import { executeDataReportSandpackGraph as canonicalExecuteDataReportSandpackGraph } from '../src/flows/data-report/runtime';
 import { generateDataReportPreview as canonicalGenerateDataReportPreview } from '../src/flows/data-report/preview';
+import { executeReportBundleEditFlow as canonicalExecuteReportBundleEditFlow } from '../src/flows/report-bundle/edit';
+import { executeReportBundleGenerateFlow as canonicalExecuteReportBundleGenerateFlow } from '../src/flows/report-bundle/generate';
 import { createDataReportJsonGraph as canonicalCreateDataReportJsonGraph } from '../src/graphs/data-report-json.graph';
 import { createDataReportSandpackGraph as canonicalCreateDataReportSandpackGraph } from '../src/graphs/data-report.graph';
 
@@ -32,6 +36,8 @@ describe('@agent/agents-data-report root exports', () => {
     expect(generateDataReportPreview).toBe(canonicalGenerateDataReportPreview);
     expect(executeDataReportSandpackGraph).toBe(canonicalExecuteDataReportSandpackGraph);
     expect(executeDataReportJsonGraph).toBe(canonicalExecuteDataReportJsonGraph);
+    expect(executeReportBundleGenerateFlow).toBe(canonicalExecuteReportBundleGenerateFlow);
+    expect(executeReportBundleEditFlow).toBe(canonicalExecuteReportBundleEditFlow);
     expect(parseDataReportSandpackPayload).toBe(canonicalParseDataReportSandpackPayload);
     expect(parseDataReportJsonSchema).toBe(canonicalParseDataReportJsonSchema);
   });

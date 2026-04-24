@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
-  type DataReportJsonGenerateResult,
+  type DataReportBundleGenerateResult,
   type DataReportSandpackFiles
 } from '../runtime/core/runtime-data-report-facade';
 import {
@@ -169,7 +169,7 @@ export class ChatService {
   async streamReportSchema(
     dto: DirectChatRequestDto,
     onEvent: (event: DirectChatSseEvent) => void
-  ): Promise<DataReportJsonGenerateResult> {
+  ): Promise<DataReportBundleGenerateResult> {
     return streamReportSchema(this.runtimeHost, dto, onEvent);
   }
 

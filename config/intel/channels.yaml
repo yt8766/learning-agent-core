@@ -1,0 +1,16 @@
+channels:
+  security_alert:
+    name: 安全告警群
+    type: lark_webhook
+    webhook_env: LARK_WEBHOOK_SECURITY_ALERT
+    enabled: true
+  frontend_daily:
+    name: 前端情报群
+    type: lark_webhook
+    webhook_env: LARK_WEBHOOK_FRONTEND_DAILY
+    enabled: true
+  ai_daily:
+    name: AI 情报群
+    type: lark_webhook
+    webhook_env: LARK_WEBHOOK_AI_DAILY
+    enabled: true

@@ -97,7 +97,7 @@ export async function runJsonPatchSchemaNode(
             partName: 'schemaPatch',
             outputRules: [
               '当前是修改已有 schema，只生成 meta、pageDefaults、patchOperations、warnings 四个字段组成的 JSON 对象。',
-              'meta 里仅在 CHANGE_REQUEST 明确要求时修改 title、description、route、reportId 等字段，否则保持稳定。',
+              'meta 里仅在 MODIFICATION_REQUEST 明确要求时修改 title、description、route、reportId 等字段，否则保持稳定。',
               'pageDefaults 需要与修改后的 filterSchema、sections 保持一致。',
               'patchOperations 只记录真正发生的修改，summary 用中文描述。'
             ]

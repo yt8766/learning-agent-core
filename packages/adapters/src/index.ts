@@ -97,3 +97,20 @@ export {
   mapVectorMetadataToChromaMetadata
 } from './chroma';
 export type { ChromaVectorStoreOptions, ChromaClientOptions, ChromaClientLike, ChromaCollectionLike } from './chroma';
+
+// MCP skill providers
+export {
+  buildMiniMaxMcpCapabilities,
+  buildZhipuMcpCapabilities,
+  createMiniMaxMcpSkillProvider,
+  createZhipuMcpSkillProvider,
+  registerDefaultMcpSkillProviders
+} from './mcp';
+export type {
+  AdapterMcpCapabilityDefinition,
+  AdapterMcpServerDefinition,
+  AdapterMcpSkillProviderAdapter,
+  AdapterMcpSkillProviderInstallInput,
+  AdapterMcpSkillProviderRegistryLike,
+  AdapterMcpTransport
+} from './mcp';

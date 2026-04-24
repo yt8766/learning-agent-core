@@ -1,9 +1,9 @@
 # packages/knowledge 知识检索运行时设计文档
 
-状态：current  
-文档类型：architecture  
-适用范围：`packages/knowledge/src/runtime/`  
-最后核对：2025-07-14
+状态：current
+文档类型：architecture
+适用范围：`packages/knowledge/src/runtime/`
+最后核对：2026-04-24
 
 ## 背景与定位
 
@@ -15,8 +15,9 @@
 
 ```text
 RetrievalRequest
-  ─→ query normalization   （规范化/改写/决定 topK）
-  ─→ retrieval             （召回候选 hits）
+  ─→ query normalization   （规范化/改写/生成 query variants/决定 topK）
+  ─→ retrieval             （按 query variants 召回候选 hits）
+  ─→ merge                 （按 chunkId 去重并保留最高分命中）
   ─→ post-process          （score 过滤 + limit trim）
   ─→ KnowledgeRetrievalResult（hits + contextBundle? + diagnostics?）
 ```
@@ -37,7 +38,8 @@ packages/knowledge/src/
       post-processor.ts               ← RetrievalPostProcessor 接口
       context-assembler.ts            ← ContextAssembler 接口
     defaults/
-      default-query-normalizer.ts     ← passthrough + topK 推导
+      default-query-normalizer.ts     ← deterministic rewrite + query variant generation
+      default-query-normalizer.helpers.ts
       default-post-processor.ts       ← score > 0 过滤 + topK trim
       default-context-assembler.ts    ← 拼接 [N] title\ncontent
       retrieval-runtime-defaults.ts   ← DEFAULT_RETRIEVAL_LIMIT = 5 等常量
@@ -83,6 +85,17 @@ interface KnowledgeRetrievalResult {
 }
 ```
 
+当前 diagnostics 至少包含：
+
+- `originalQuery`
+- `normalizedQuery`
+- `rewriteApplied`
+- `rewriteReason`
+- `queryVariants`
+- `executedQueries`
+- `preHitCount`
+- `postHitCount`
+
 ## Schema 复用策略
 
 所有稳定 contract（`RetrievalRequest` / `RetrievalResult` / `RetrievalHit` / `Citation`）全部来自 `@agent/core`，不重新定义。运行时专属类型（`KnowledgeRetrievalResult` / `RetrievalDiagnostics` / `NormalizedRetrievalRequest`）放在 `runtime/types/`，不放进 core。
@@ -106,7 +119,7 @@ const result = await facade.retrieve({ query: 'retrieval pipeline' });
 
 // 方式二：runKnowledgeRetrieval 自定义 pipeline + context assembly
 const fullResult = await runKnowledgeRetrieval({
-  request: { query: 'context assembly' },
+  request: { query: 'How do I improve retrieval quality?' },
   searchService: facade.searchService,
   assembleContext: true,
   includeDiagnostics: true,
@@ -118,18 +131,41 @@ const fullResult = await runKnowledgeRetrieval({
 // fullResult.diagnostics  → 运行时诊断信息
 ```
 
+## 当前已实现
+
+默认 runtime 现在已经包含：
+
+- deterministic query cleanup
+- 轻量 query rewrite
+- bounded multi-query retrieval
+- 按 `chunkId` 的命中合并
+- richer retrieval diagnostics
+
+## 仍未实现
+
+当前默认 runtime 还没有实现这些更重的检索前增强：
+
+- query decomposition
+- HyDE
+- LLM-based rewrite
+- semantic rerank beyond the current post-process hook
+
+这些能力仍然建议通过 `QueryNormalizer` / `RetrievalPostProcessor` 的扩展点按需注入。
+
 ## 扩展点
 
-| 场景                   | 注入方式                                                    |
-| ---------------------- | ----------------------------------------------------------- |
-| 接入向量检索           | 替换 `KnowledgeSearchService`                               |
-| 接入 LLM query rewrite | 实现 `QueryNormalizer` 注入 `pipeline.queryNormalizer`      |
-| 接入语义 reranker      | 实现 `RetrievalPostProcessor` 注入 `pipeline.postProcessor` |
-| 自定义 context 格式    | 实现 `ContextAssembler` 注入 `pipeline.contextAssembler`    |
+| 场景                     | 注入方式                                                    |
+| ------------------------ | ----------------------------------------------------------- |
+| 接入向量检索             | 替换 `KnowledgeSearchService`                               |
+| 接入 LLM query rewrite   | 实现 `QueryNormalizer` 注入 `pipeline.queryNormalizer`      |
+| 接入语义 reranker        | 实现 `RetrievalPostProcessor` 注入 `pipeline.postProcessor` |
+| 接入 query decomposition | 在 `QueryNormalizer` 中生成结构化 `queryVariants`           |
+| 自定义 context 格式      | 实现 `ContextAssembler` 注入 `pipeline.contextAssembler`    |
 
 ## 测试
 
-- `packages/knowledge/test/run-knowledge-retrieval.test.ts` — pipeline runner 单元测试（9 个用例）
+- `packages/knowledge/test/default-query-normalizer.test.ts` — 默认 rewrite / query variants 单元测试
+- `packages/knowledge/test/run-knowledge-retrieval.test.ts` — pipeline runner 单元测试（含 multi-query merge 与 diagnostics）
 - `packages/knowledge/test/local-knowledge-facade-retrieve.test.ts` — facade retrieve 集成测试
 - `packages/knowledge/demo/retrieval-runtime.ts` — 最小可运行 demo
 

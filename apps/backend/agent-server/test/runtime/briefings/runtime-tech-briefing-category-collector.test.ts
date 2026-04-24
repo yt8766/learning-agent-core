@@ -29,4 +29,28 @@ describe('runtime tech briefing category collector helpers', () => {
     expect(items).toHaveLength(2);
     expect(items.every(item => item.url.startsWith('https://openai.com'))).toBe(true);
   });
+
+  it('treats supplemental security search results as watch items until confirmed elsewhere', () => {
+    const items = toMcpSearchItems('devtool-security', new Date('2026-04-16T00:00:00.000Z'), {
+      results: [
+        {
+          url: 'https://www.anthropic.com/news/claude-code-security-update',
+          title: 'Claude Code security update mentions workspace trust',
+          summary: 'Official note about Claude Code workspace trust and credential exposure review.',
+          fetchedAt: '2026-04-16T00:00:00.000Z'
+        }
+      ]
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual(
+      expect.objectContaining({
+        sourceName: 'Anthropic News',
+        recommendedAction: 'watch',
+        relevanceLevel: 'watch',
+        fixConfidence: 'unconfirmed',
+        crossVerified: false
+      })
+    );
+  });
 });

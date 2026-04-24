@@ -15,7 +15,8 @@
 4. [turbo-demo-stage-three-plan.md](/docs/evals/turbo-demo-stage-three-plan.md)
 5. [turbo-cycle-reduction-stage-six-plan.md](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 6. [runtime-agent-cycle-audit.md](/docs/evals/runtime-agent-cycle-audit.md)
-7. 再按需要看 `testing-coverage-baseline`、`promptfoo-regression`、`prompt-regression-and-thresholds`
+7. [integration-smoke-completion-plan.md](/docs/evals/integration-smoke-completion-plan.md)
+8. 再按需要看 `testing-coverage-baseline`、`promptfoo-regression`、`prompt-regression-and-thresholds`
 
 改测试策略、质量门禁、覆盖率阈值前，优先阅读：
 
@@ -34,6 +35,7 @@
 - Turbo Demo 三阶段迁移方案：[turbo-demo-stage-three-plan.md](/docs/evals/turbo-demo-stage-three-plan.md)
 - Turbo 循环依赖治理六阶段方案：[turbo-cycle-reduction-stage-six-plan.md](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 - Runtime-Agent 循环依赖消费清单：[runtime-agent-cycle-audit.md](/docs/evals/runtime-agent-cycle-audit.md)
+- Integration / Smoke 完成计划：[integration-smoke-completion-plan.md](/docs/evals/integration-smoke-completion-plan.md)
 
 包边界：
 
@@ -74,6 +76,7 @@
 - [turbo-demo-stage-three-plan.md](/docs/evals/turbo-demo-stage-three-plan.md)
 - [turbo-cycle-reduction-stage-six-plan.md](/docs/evals/turbo-cycle-reduction-stage-six-plan.md)
 - [runtime-agent-cycle-audit.md](/docs/evals/runtime-agent-cycle-audit.md)
+- [integration-smoke-completion-plan.md](/docs/evals/integration-smoke-completion-plan.md)
 - [testing-coverage-baseline.md](/docs/evals/testing-coverage-baseline.md)
 - [promptfoo-regression.md](/docs/evals/promptfoo-regression.md)
 - [prompt-regression-and-thresholds.md](/docs/evals/prompt-regression-and-thresholds.md)

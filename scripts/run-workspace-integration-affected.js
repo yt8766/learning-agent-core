@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { readChangedPaths } from './affected-workspace.js';
 
 export const WORKSPACE_INTEGRATION_TESTS = Object.freeze({
+  backendChatSse: 'test/integration/backend/chat-sse-controller.int-spec.ts',
+  frontendBackendStreamMerge: 'test/integration/frontend-backend/chat-session-stream-merge.int-spec.ts',
   frontendBackendSse: 'test/integration/frontend-backend/sse-payload-contract.int-spec.ts',
   coreRuntimeContract: 'test/integration/packages/core-to-runtime-contract.int-spec.ts',
   platformRuntimeAssembly: 'test/integration/packages/platform-runtime-agent-assembly.int-spec.ts',
   approvalRecover: 'test/integration/runtime/approval-recover-contract.int-spec.ts',
+  approvalRecoverStateMachine: 'test/integration/runtime/approval-recover-state-machine.int-spec.ts',
+  learningConfirmation: 'test/integration/runtime/learning-confirmation.int-spec.ts',
+  runtimeGraphExecution: 'test/integration/runtime/runtime-graph-execution.int-spec.ts',
   runtimeMainChain: 'test/integration/runtime/runtime-main-chain.int-spec.ts'
 });
 
@@ -87,38 +92,52 @@ function addMappedWorkspaceIntegrationTests(changedPath, files) {
   if (changedPath.startsWith('packages/core/')) {
     files.add(WORKSPACE_INTEGRATION_TESTS.coreRuntimeContract);
     files.add(WORKSPACE_INTEGRATION_TESTS.runtimeMainChain);
+    files.add(WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution);
     files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecover);
+    files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecoverStateMachine);
+    files.add(WORKSPACE_INTEGRATION_TESTS.learningConfirmation);
     files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendSse);
+    files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge);
     return;
   }
 
   if (changedPath.startsWith('packages/runtime/')) {
     files.add(WORKSPACE_INTEGRATION_TESTS.coreRuntimeContract);
     files.add(WORKSPACE_INTEGRATION_TESTS.runtimeMainChain);
+    files.add(WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution);
     files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecover);
+    files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecoverStateMachine);
+    files.add(WORKSPACE_INTEGRATION_TESTS.learningConfirmation);
     return;
   }
 
   if (changedPath.startsWith('packages/platform-runtime/')) {
     files.add(WORKSPACE_INTEGRATION_TESTS.platformRuntimeAssembly);
     files.add(WORKSPACE_INTEGRATION_TESTS.runtimeMainChain);
+    files.add(WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution);
     return;
   }
 
   if (changedPath.startsWith('agents/')) {
     files.add(WORKSPACE_INTEGRATION_TESTS.platformRuntimeAssembly);
     files.add(WORKSPACE_INTEGRATION_TESTS.runtimeMainChain);
+    files.add(WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution);
     return;
   }
 
   if (changedPath.startsWith('apps/backend/')) {
+    files.add(WORKSPACE_INTEGRATION_TESTS.backendChatSse);
     files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendSse);
+    files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge);
     files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecover);
+    files.add(WORKSPACE_INTEGRATION_TESTS.approvalRecoverStateMachine);
+    files.add(WORKSPACE_INTEGRATION_TESTS.learningConfirmation);
     return;
   }
 
   if (changedPath.startsWith('apps/frontend/')) {
     files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendSse);
+    files.add(WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge);
   }
 }
 

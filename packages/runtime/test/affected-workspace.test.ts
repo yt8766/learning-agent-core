@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_AFFECTED_BASE_REF,
   buildTurboAffectedFilter,
+  resolveAffectedReadOptions,
   resolveAffectedBaseRef,
   resolveAffectedLintFiles
 } from '../../../scripts/affected-workspace.js';
@@ -20,6 +21,20 @@ describe('affected workspace helpers', () => {
   it('uses VERIFY_BASE_REF when provided', () => {
     expect(resolveAffectedBaseRef({ VERIFY_BASE_REF: 'origin/release' })).toBe('origin/release');
     expect(buildTurboAffectedFilter('origin/release')).toBe('...[origin/release]');
+  });
+
+  it('allows hook callers to ignore staged, unstaged, and untracked noise', () => {
+    expect(
+      resolveAffectedReadOptions({
+        VERIFY_INCLUDE_WORKTREE: '0',
+        VERIFY_INCLUDE_STAGED: '0',
+        VERIFY_INCLUDE_UNTRACKED: '0'
+      })
+    ).toEqual({
+      includeWorkingTree: false,
+      includeStaged: false,
+      includeUntracked: false
+    });
   });
 
   it('falls back to full lint when shared lint config changes', () => {
@@ -54,9 +69,13 @@ describe('affected workspace helpers', () => {
     expect(resolveAffectedWorkspaceIntegrationFiles(['packages/core/src/index.ts'])).toEqual({
       mode: 'targeted',
       files: [
+        WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge,
         WORKSPACE_INTEGRATION_TESTS.frontendBackendSse,
         WORKSPACE_INTEGRATION_TESTS.coreRuntimeContract,
         WORKSPACE_INTEGRATION_TESTS.approvalRecover,
+        WORKSPACE_INTEGRATION_TESTS.approvalRecoverStateMachine,
+        WORKSPACE_INTEGRATION_TESTS.learningConfirmation,
+        WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution,
         WORKSPACE_INTEGRATION_TESTS.runtimeMainChain
       ].sort((left, right) => left.localeCompare(right))
     });
@@ -65,9 +84,41 @@ describe('affected workspace helpers', () => {
   it('maps platform-runtime changes to platform assembly and runtime main chain tests', () => {
     expect(resolveAffectedWorkspaceIntegrationFiles(['packages/platform-runtime/src/index.ts'])).toEqual({
       mode: 'targeted',
-      files: [WORKSPACE_INTEGRATION_TESTS.platformRuntimeAssembly, WORKSPACE_INTEGRATION_TESTS.runtimeMainChain].sort(
-        (left, right) => left.localeCompare(right)
-      )
+      files: [
+        WORKSPACE_INTEGRATION_TESTS.platformRuntimeAssembly,
+        WORKSPACE_INTEGRATION_TESTS.runtimeGraphExecution,
+        WORKSPACE_INTEGRATION_TESTS.runtimeMainChain
+      ].sort((left, right) => left.localeCompare(right))
+    });
+  });
+
+  it('maps backend chat changes to backend SSE and frontend-backend stream consumers', () => {
+    expect(resolveAffectedWorkspaceIntegrationFiles(['apps/backend/agent-server/src/chat/chat.controller.ts'])).toEqual(
+      {
+        mode: 'targeted',
+        files: [
+          WORKSPACE_INTEGRATION_TESTS.backendChatSse,
+          WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge,
+          WORKSPACE_INTEGRATION_TESTS.frontendBackendSse,
+          WORKSPACE_INTEGRATION_TESTS.approvalRecover,
+          WORKSPACE_INTEGRATION_TESTS.approvalRecoverStateMachine,
+          WORKSPACE_INTEGRATION_TESTS.learningConfirmation
+        ].sort((left, right) => left.localeCompare(right))
+      }
+    );
+  });
+
+  it('maps frontend chat stream changes to frontend-backend stream merge coverage', () => {
+    expect(
+      resolveAffectedWorkspaceIntegrationFiles([
+        'apps/frontend/agent-chat/src/hooks/chat-session/chat-session-stream.ts'
+      ])
+    ).toEqual({
+      mode: 'targeted',
+      files: [
+        WORKSPACE_INTEGRATION_TESTS.frontendBackendStreamMerge,
+        WORKSPACE_INTEGRATION_TESTS.frontendBackendSse
+      ].sort((left, right) => left.localeCompare(right))
     });
   });
 

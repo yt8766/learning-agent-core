@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-22
+最后核对：2026-04-23
 
 本主题主文档：
 
@@ -27,6 +27,22 @@
 - [Chat Session And SSE](/docs/integration/chat-session-sse.md)
 - [Runtime Centers API](/docs/integration/runtime-centers-api.md)
 - [Approval Recovery](/docs/integration/approval-recovery.md)
+
+## 0.0 接口文档先行
+
+前后端新增或修改联调能力时，默认执行顺序固定为：
+
+1. 先定义并更新接口文档
+2. 再落 schema / contract
+3. 再分别实现前端与后端
+4. 最后做联调、验证与文档回写
+
+强制要求：
+
+- 只要涉及 API、SSE、checkpoint payload、审批事件、runtime center DTO、admin center 聚合返回、导出字段或其他跨端接口，必须先有接口文档，前后端实现都以该文档为准
+- 接口文档至少写清：入口、方法、请求参数、响应或事件结构、错误语义、兼容策略、字段是否可选、前端消费约束、后端生产约束
+- 正式协议字段必须与 `packages/core` 或真实宿主里的 schema、contract 保持一致；如果 schema 变了，先改文档和 schema，再改调用方
+- 不允许出现“前端按猜测接接口”“后端按当前实现临时返回字段”“联调完成后再补文档”的流程
 
 ## 0. 前端请求层约定
 
@@ -81,6 +97,17 @@
   - 适合不需要会话编排、只需要流式模型回复的简单场景
 
 这是网页聊天场景更稳定的实现方式。
+
+报表 schema 补充：
+
+- `POST /api/chat` 的 `responseFormat=report-schema` 仍是当前唯一稳定外部入口
+- brand-new 报表 schema 请求现在优先走 bundle-first generate flow；`bundle` 是 canonical 结果，`schema` 仅作为单 document 兼容投影
+- bundle-first 编辑请求现在支持直接传：
+  - `currentBundle`
+  - `requestedOperations`
+- `/Users/dev/Desktop/gosh_admin_fe` 当前 patch 场景已优先发送 `currentBundle`，不再依赖把 `CHANGE_REQUEST + CURRENT_SCHEMA` 拼进消息正文
+- 自 `2026-04-24` 起，legacy `CHANGE_REQUEST + CURRENT_SCHEMA` 直传 payload 已从 `/api/chat` report-schema 路径移除；旧调用方必须改为显式发送 `currentBundle`，并通过 `requestedOperations` 或 `messages` 描述修改
+- `schema_ready` 事件与最终 `done` 事件都会携带 canonical `bundle`；`schema` 字段直接来自生成流程的 primaryDocument，不再额外做 bundle->schema 回投影
 
 补充说明：
 

@@ -52,3 +52,4 @@
 - [package-structure-guidelines.md](/docs/tools/package-structure-guidelines.md)
 - [runtime-governance-and-sandbox.md](/docs/tools/runtime-governance-and-sandbox.md)
 - [scaffold-generation.md](/docs/tools/scaffold-generation.md)
+- [minimax-mcp-provider-design.md](/docs/tools/minimax-mcp-provider-design.md)

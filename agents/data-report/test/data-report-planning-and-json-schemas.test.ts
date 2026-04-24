@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
+import { DataReportJsonBundleSchema } from '@agent/core';
 import {
   DataReportAnalysisSchema,
   DataReportComponentPlanSchema,
   DataReportIntentSchema
 } from '../src/flows/data-report/schemas';
+import { extractEmbeddedSchema } from '../src/flows/data-report-json/nodes/structured-input';
+import { createDataReportJsonPatchPartUserPrompt } from '../src/flows/data-report-json/prompts/generate-report-page-part-prompt';
+import { resolveStrictFragmentTimeoutMs } from '../src/flows/data-report-json/runtime-helpers';
 import { dataReportJsonPatchSchema, parseDataReportJsonSchema } from '../src/flows/data-report-json/schemas';
 
 describe('@agent/agents-data-report planning and json contracts', () => {
+  it('does not apply a local timeout to strict llm json fragment generation', () => {
+    expect(resolveStrictFragmentTimeoutMs()).toBeUndefined();
+  });
+
   it('accepts planning contracts for generated report pages', () => {
     expect(
       DataReportAnalysisSchema.parse({
@@ -249,5 +257,152 @@ describe('@agent/agents-data-report planning and json contracts', () => {
       },
       patchOperations: []
     });
+  });
+
+  it('does not parse legacy CHANGE_REQUEST plus CURRENT_SCHEMA markers from raw goals anymore', () => {
+    expect(
+      extractEmbeddedSchema(
+        'CHANGE_REQUEST: 把标题改成运营总览\nCURRENT_SCHEMA:\n{"version":"1.0","kind":"data-report-json"}'
+      )
+    ).toEqual({
+      currentSchema: undefined,
+      modificationRequest: undefined
+    });
+  });
+
+  it('formats patch prompts with explicit modification labels instead of legacy markers', () => {
+    const prompt = createDataReportJsonPatchPartUserPrompt({
+      changeRequest: '把页面标题改成运营总览',
+      currentFragment: { meta: { title: '旧标题' } },
+      currentSchema: { meta: { title: '旧标题' } },
+      partName: 'schemaPatch'
+    });
+
+    expect(prompt).toContain('MODIFICATION_REQUEST:');
+    expect(prompt).toContain('CURRENT_DOCUMENT:');
+    expect(prompt).not.toContain('CHANGE_REQUEST:');
+    expect(prompt).not.toContain('CURRENT_SCHEMA:');
+  });
+
+  it('accepts a gosh_admin_fe multi-report bundle json contract', () => {
+    const parsed = DataReportJsonBundleSchema.parse({
+      version: 'data-report-json.v1',
+      targetProject: '/Users/dev/Desktop/gosh_admin_fe',
+      page: {
+        routePath: '/dataDashboard/bonusCenterGenerated',
+        pageDir: 'src/pages/dataDashboard/bonusCenterGenerated',
+        titleI18nKey: 'data.bonusCenterGenerated.title',
+        mode: 'tabs'
+      },
+      shared: {
+        searchParams: [
+          {
+            name: 'start_dt',
+            label: 'Start date',
+            valueType: 'date',
+            required: true,
+            requestKey: 'start_dt'
+          }
+        ],
+        defaultParams: {
+          page: 1,
+          page_size: 100
+        },
+        formatters: [
+          {
+            name: 'formatPercent',
+            input: 'number',
+            output: 'percent'
+          }
+        ]
+      },
+      reports: [
+        {
+          id: 'taskPagePenetration',
+          componentName: 'TaskPagePenetration',
+          titleI18nKey: 'data.bonusCenterGenerated.taskPagePenetration',
+          service: {
+            serviceKey: 'getTaskPagePenetrationData',
+            lambdaKey: 'get_bc_center_behavioral_event_data',
+            requestTypeName: 'BonusCenterGeneratedSearchParams',
+            responseTypeName: 'TaskPagePenetrationListRes',
+            listPath: 'data.list',
+            totalPath: 'data.total'
+          },
+          dataModel: [
+            {
+              name: 'dt',
+              label: 'Date',
+              valueType: 'date',
+              required: true
+            },
+            {
+              name: 'login_dau',
+              label: 'Login DAU',
+              valueType: 'number',
+              required: false,
+              formatter: 'formatNumber'
+            }
+          ],
+          metrics: [
+            {
+              key: 'loginDau',
+              label: 'Login DAU',
+              field: 'login_dau',
+              format: 'number',
+              aggregate: 'sum'
+            }
+          ],
+          charts: [
+            {
+              key: 'trend',
+              title: 'Trend',
+              chartType: 'line',
+              xField: 'dt',
+              series: [
+                {
+                  key: 'loginDau',
+                  label: 'Login DAU',
+                  field: 'login_dau',
+                  seriesType: 'line'
+                }
+              ]
+            }
+          ],
+          tables: [
+            {
+              key: 'detail',
+              title: 'Detail',
+              exportable: true,
+              columns: [
+                {
+                  title: 'Date',
+                  dataIndex: 'dt',
+                  width: 160
+                }
+              ]
+            }
+          ],
+          components: [
+            {
+              fileName: 'index.tsx',
+              role: 'report-entry',
+              dependsOn: ['TaskPagePenetrationChart.tsx', 'TaskPagePenetrationTable.tsx']
+            }
+          ]
+        }
+      ],
+      files: [
+        {
+          path: 'src/pages/dataDashboard/bonusCenterGenerated/index.tsx',
+          kind: 'page',
+          source: 'bundle-assembly'
+        }
+      ],
+      checks: ['pnpm exec tsc -p tsconfig.json --noEmit']
+    });
+
+    expect(parsed.reports).toHaveLength(1);
+    expect(parsed.page.mode).toBe('tabs');
   });
 });

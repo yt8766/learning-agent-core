@@ -11,6 +11,8 @@ import {
   createOfficialWorkflowRegistry,
   createPlatformRuntime,
   createRuntimeAgentProvider,
+  executeReportBundleEditFlow,
+  executeReportBundleGenerateFlow,
   listBootstrapSkills,
   listWorkflowPresets
 } from '../src';
@@ -36,6 +38,8 @@ describe('@agent/platform-runtime', () => {
     expect(createOfficialRuntimeAgentDependencies).toBeTypeOf('function');
     expect(createOfficialWorkflowRegistry).toBeTypeOf('function');
     expect(createRuntimeAgentProvider).toBeTypeOf('function');
+    expect(executeReportBundleGenerateFlow).toBeTypeOf('function');
+    expect(executeReportBundleEditFlow).toBeTypeOf('function');
     expect(listBootstrapSkills).toBeTypeOf('function');
     expect(listWorkflowPresets).toBeTypeOf('function');
   });

@@ -79,16 +79,6 @@ const ORDERED_BRIEFING_CATEGORIES: TechBriefingCategory[] = [
   'cloud-infra-tech'
 ];
 
-const MCP_DISCOVERY_QUERIES: Record<TechBriefingCategory, string[]> = {
-  'frontend-security': ['frontend security advisory javascript npm chrome node.js'],
-  'general-security': ['linux windows macos docker kubernetes postgres redis security advisory'],
-  'devtool-security': ['claude code cursor mcp security advisory workspace trust'],
-  'ai-tech': ['OpenAI Anthropic Google AI LangChain LangGraph AI release blog'],
-  'frontend-tech': ['React Next.js Vue Vite TypeScript release blog'],
-  'backend-tech': ['Node.js Bun Deno Go Rust Spring .NET release blog'],
-  'cloud-infra-tech': ['Kubernetes Docker Terraform GitHub Actions GitLab CI release blog']
-};
-
 export class RuntimeTechBriefingService {
   private inFlight = false;
 

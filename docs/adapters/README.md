@@ -24,6 +24,7 @@
   - structured prompt helper
   - retry / fallback policy
   - 第三方生态适配（LangChain / Chroma / 未来 Pinecone / pgvector）
+  - MCP provider / MCP skills 适配（MiniMax、智谱等具体供应商能力映射）
 - 禁止：
   - agent orchestration
   - graph / ministry 主逻辑
@@ -42,6 +43,7 @@
 - [indexing-adapter-guidelines.md](./indexing-adapter-guidelines.md) — LangChain / Chroma indexing adapter 规范
 - [langchain-adapter.md](./langchain-adapter.md) — LangChain adapter 使用文档
 - [chroma-adapter.md](./chroma-adapter.md) — Chroma VectorStore adapter 使用文档
+- [mcp-skill-providers.md](./mcp-skill-providers.md) — MCP skills / provider adapter 规范
 
 - 公开入口：
   - 根入口：`@agent/adapters`
@@ -55,15 +57,18 @@
   - `contracts/llm-provider.ts` 作为稳定 compat facade 保留
   - `chat/index.ts` 与 `embeddings/index.ts` 同时承担稳定入口与对应 factory 聚合
   - `prompts/`、`retry/`、`structured-output/`、`support/` 分别承载共享提示、安全重试、结构化输出和底层支撑 helper
+  - `mcp/` 后续作为 MiniMax、智谱等 MCP provider / MCP skills adapter 的真实宿主；`@agent/tools` 只保留 MCP contract、registry 与 transport runtime
 
 约定：
 
 - `packages/adapters` 的专项文档统一放在 `docs/adapters/`
 - 新增 provider、runtime factory、structured output contract 或 retry 策略后，需同步更新本目录文档
+- 新增 MCP provider / MCP skills 适配时，默认落在 `packages/adapters/src/mcp/<provider>/`；不要把供应商实现长期放进 `packages/tools`
 
 当前文档：
 
 - [custom-provider-example.md](/docs/adapters/custom-provider-example.md)
+- [mcp-skill-providers.md](/docs/adapters/mcp-skill-providers.md)
 - [package-structure-guidelines.md](/docs/adapters/package-structure-guidelines.md)
 - [provider-extension-sdk-guidelines.md](/docs/adapters/provider-extension-sdk-guidelines.md)
 

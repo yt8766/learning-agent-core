@@ -199,12 +199,12 @@ export function createDataReportJsonPatchPartUserPrompt(params: {
     '请基于下面的已有 schema 修改当前 JSON 片段：',
     buildPartOutputExample(params.partName ?? 'sections'),
     '',
-    `CHANGE_REQUEST:\n${params.changeRequest?.trim() || '保持现有结构，仅做必要修正。'}`,
+    `MODIFICATION_REQUEST:\n${params.changeRequest?.trim() || '保持现有结构，仅做必要修正。'}`,
     '',
     buildAnalysisContext(params.analysis),
     '',
     'CURRENT_FRAGMENT:',
     JSON.stringify(params.currentFragment, null, 2),
-    ...(params.currentSchema ? ['', 'CURRENT_SCHEMA:', JSON.stringify(params.currentSchema, null, 2)] : [])
+    ...(params.currentSchema ? ['', 'CURRENT_DOCUMENT:', JSON.stringify(params.currentSchema, null, 2)] : [])
   ].join('\n');
 }

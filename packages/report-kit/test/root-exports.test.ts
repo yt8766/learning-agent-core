@@ -7,6 +7,7 @@ import {
   buildDataReportRoutes,
   buildDataReportScaffold,
   postProcessDataReportSandpackFiles,
+  renderDataReportJsonBundleFiles,
   writeDataReportBundle
 } from '../src';
 import * as dataReportFacade from '../src/contracts/data-report-facade';
@@ -16,6 +17,7 @@ import { buildDataReportRoutes as canonicalBuildDataReportRoutes } from '../src/
 import { buildDataReportBlueprint as canonicalBuildDataReportBlueprint } from '../src/blueprints/data-report-blueprint';
 import { buildDataReportModuleScaffold as canonicalBuildDataReportModuleScaffold } from '../src/scaffold/data-report-module-scaffold';
 import { buildDataReportScaffold as canonicalBuildDataReportScaffold } from '../src/scaffold/data-report-scaffold';
+import { renderDataReportJsonBundleFiles as canonicalRenderDataReportJsonBundleFiles } from '../src/json-renderer/data-report-json-renderer';
 import { writeDataReportBundle as canonicalWriteDataReportBundle } from '../src/writers/data-report-write';
 
 describe('@agent/report-kit root exports', () => {
@@ -26,6 +28,7 @@ describe('@agent/report-kit root exports', () => {
     expect(buildDataReportRoutes).toBe(canonicalBuildDataReportRoutes);
     expect(postProcessDataReportSandpackFiles).toBe(canonicalPostProcessDataReportSandpackFiles);
     expect(assembleDataReportBundle).toBe(canonicalAssembleDataReportBundle);
+    expect(renderDataReportJsonBundleFiles).toBe(canonicalRenderDataReportJsonBundleFiles);
     expect(writeDataReportBundle).toBe(canonicalWriteDataReportBundle);
   });
 
@@ -36,6 +39,7 @@ describe('@agent/report-kit root exports', () => {
     expect(buildDataReportRoutes).toBe(dataReportFacade.buildDataReportRoutes);
     expect(postProcessDataReportSandpackFiles).toBe(dataReportFacade.postProcessDataReportSandpackFiles);
     expect(assembleDataReportBundle).toBe(dataReportFacade.assembleDataReportBundle);
+    expect(renderDataReportJsonBundleFiles).toBe(dataReportFacade.renderDataReportJsonBundleFiles);
     expect(writeDataReportBundle).toBe(dataReportFacade.writeDataReportBundle);
   });
 });

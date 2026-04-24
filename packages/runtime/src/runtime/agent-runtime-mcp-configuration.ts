@@ -1,5 +1,11 @@
 import type { RuntimeSettings } from '@agent/config';
-import type { McpCapabilityRegistry, McpServerRegistry } from '@agent/tools';
+import { createMiniMaxMcpSkillProvider } from '@agent/adapters';
+import {
+  installMcpSkillProvider,
+  McpSkillProviderRegistry,
+  type McpCapabilityRegistry,
+  type McpServerRegistry
+} from '@agent/tools';
 
 export interface McpConfigurationDeps {
   settings: RuntimeSettings;
@@ -22,6 +28,25 @@ export function registerBuiltinMcpServers(deps: McpConfigurationDeps): void {
     installationMode: 'builtin',
     allowedProfiles: ['platform', 'company', 'personal', 'cli']
   });
+
+  const miniMaxProviderSettings = settings.providers.find(provider => provider.type === 'minimax' && provider.apiKey);
+  if (miniMaxProviderSettings?.apiKey) {
+    const providerRegistry = new McpSkillProviderRegistry();
+    providerRegistry.register(createMiniMaxMcpSkillProvider());
+    installMcpSkillProvider({
+      providerRegistry,
+      serverRegistry: mcpServerRegistry,
+      capabilityRegistry: mcpCapabilityRegistry,
+      input: {
+        providerId: 'minimax',
+        profile: 'company',
+        secrets: { MINIMAX_API_KEY: miniMaxProviderSettings.apiKey },
+        options: {
+          apiHost: (miniMaxProviderSettings.baseUrl ?? 'https://api.minimaxi.com/v1').replace(/\/v\d+\/?$/, '')
+        }
+      }
+    });
+  }
 
   if (settings.mcp.bigmodelApiKey) {
     const authHeaders = {

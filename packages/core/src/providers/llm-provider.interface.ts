@@ -54,6 +54,7 @@ export interface ILLMProvider {
   readonly displayName: string;
   supportedModels(): LlmProviderModelInfo[];
   isConfigured(): boolean;
+  estimateTokens?(messages: LlmProviderMessage[], options: LlmProviderOptions): Promise<number> | number;
   generateText(messages: LlmProviderMessage[], options: LlmProviderOptions): Promise<string>;
   streamText(
     messages: LlmProviderMessage[],

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -30,6 +31,32 @@ vi.mock('@/components/ui/button', () => ({
     return <button>{children as any}</button>;
   }
 }));
+
+vi.mock('@/components/ui/chart', () => ({
+  ChartContainer: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
+  ChartLegend: ({ content }: { content?: ReactNode }) => <div>{content}</div>,
+  ChartLegendContent: () => <span>legend</span>,
+  ChartTooltip: ({ content }: { content?: ReactNode }) => <div>{content}</div>,
+  ChartTooltipContent: () => <span>tooltip</span>
+}));
+
+vi.mock('recharts', () => {
+  const create =
+    (name: string) =>
+    ({ children }: { children?: ReactNode }) => <div data-chart={name}>{children}</div>;
+  return {
+    Area: create('Area'),
+    AreaChart: create('AreaChart'),
+    Bar: create('Bar'),
+    BarChart: create('BarChart'),
+    CartesianGrid: create('CartesianGrid'),
+    Cell: create('Cell'),
+    Pie: create('Pie'),
+    PieChart: create('PieChart'),
+    XAxis: create('XAxis'),
+    YAxis: create('YAxis')
+  };
+});
 
 import { EvalsCenterPanel } from '@/features/evals-center/evals-center-panel';
 
