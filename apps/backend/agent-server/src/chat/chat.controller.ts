@@ -4,6 +4,7 @@
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
@@ -23,7 +24,7 @@ import {
   UpdateChatSessionDto
 } from '@agent/core';
 
-import { DirectChatRequestDto } from './chat.direct.dto';
+import { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';
 import { ChatService } from './chat.service';
 
 const SESSION_COOKIE_NAME = 'agent_session_id';
@@ -36,8 +37,29 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post()
-  async streamDirectChat(@Body() dto: DirectChatRequestDto, @Res() response: Response) {
+  async streamDirectChat(
+    @Body() dto: DirectChatRequestDto,
+    @Res() response: Response,
+    @Headers('accept') accept?: string
+  ) {
     const directResponseMode = this.chatService.resolveDirectResponseMode(dto);
+    if (directResponseMode === 'report-schema' && shouldReturnJsonReportSchema(dto, accept)) {
+      const events: DirectChatSseEvent[] = [];
+      const result = await this.chatService.streamReportSchema(dto, event => {
+        events.push(event);
+      });
+      response.json({
+        content: result.content,
+        status: result.status,
+        bundle: result.bundle,
+        elapsedMs: result.elapsedMs,
+        reportSummaries: result.reportSummaries,
+        runtime: result.runtime,
+        events
+      });
+      return;
+    }
+
     const sseResponse = response as SseResponse;
     sseResponse.setHeader('Content-Type', 'text/event-stream');
     sseResponse.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -79,6 +101,7 @@ export class ChatController {
           data: {
             content: result.content,
             status: result.status,
+            bundle: result.bundle,
             elapsedMs: result.elapsedMs,
             reportSummaries: result.reportSummaries,
             runtime: result.runtime
@@ -325,4 +348,13 @@ export class ChatController {
       path: '/'
     });
   }
+}
+
+function shouldReturnJsonReportSchema(dto: DirectChatRequestDto, accept?: string) {
+  if (dto.stream === false) {
+    return true;
+  }
+
+  const normalizedAccept = accept?.toLowerCase() ?? '';
+  return normalizedAccept.includes('application/json') && !normalizedAccept.includes('text/event-stream');
 }

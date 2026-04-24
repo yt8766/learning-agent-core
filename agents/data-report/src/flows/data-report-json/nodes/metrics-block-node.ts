@@ -1,5 +1,11 @@
 import type { DataReportJsonGraphHandlers, DataReportJsonGraphState } from '../../../types/data-report-json';
 import {
+  createDataReportJsonPartSystemPrompt,
+  createDataReportJsonPartUserPrompt
+} from '../prompts/generate-report-page-part-prompt';
+import { dataReportJsonMetricsBlockSchema } from '../schemas/report-page-schema';
+import { generateReportJsonPartWithLlm } from './llm-part-helper';
+import {
   buildSplitBlockArtifactCacheKey,
   buildSingleReportMetricsBlock,
   emitJsonNodeStage,
@@ -40,11 +46,46 @@ export async function runJsonMetricsBlockNode(
     };
   }
 
-  const sectionMetricsBlock = buildSingleReportMetricsBlock(state);
+  let sectionMetricsBlock = buildSingleReportMetricsBlock(state);
   let modelId: string | undefined;
-  const attemptedLlm = false;
+  let attemptedLlm = false;
   const degraded = false;
   const fallbackReason: string | undefined = undefined;
+
+  if (state.strictLlmBrandNew) {
+    attemptedLlm = true;
+    const result = await generateReportJsonPartWithLlm({
+      state,
+      node: 'metricsBlockNode',
+      schema: dataReportJsonMetricsBlockSchema,
+      contractName: 'data-report-json-metrics-block',
+      messages: [
+        {
+          role: 'system',
+          content: createDataReportJsonPartSystemPrompt({
+            partName: 'metricsBlock',
+            outputRules: [
+              '只生成 metrics block。',
+              'items 必须来自用户需求中的核心指标或字段含义。',
+              '字段名必须能与表格/图表/dataSource 返回字段稳定对应。'
+            ]
+          })
+        },
+        {
+          role: 'user',
+          content: createDataReportJsonPartUserPrompt({
+            context: state.nodeContexts?.metricsBlockNode ?? state.goal,
+            analysis: state.analysis,
+            partName: 'metricsBlock',
+            rawGoal: state.goal
+          })
+        }
+      ],
+      partName: 'metricsBlock'
+    });
+    sectionMetricsBlock = result.object;
+    modelId = result.modelId;
+  }
 
   if (!state.strictLlmBrandNew) {
     setSplitBlockArtifactCache(cacheKey, sectionMetricsBlock, state.disableCache);

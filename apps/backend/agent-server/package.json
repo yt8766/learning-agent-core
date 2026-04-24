@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@agent/adapters": "workspace:*",
+    "@agent/agents-intel-engine": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/evals": "workspace:*",

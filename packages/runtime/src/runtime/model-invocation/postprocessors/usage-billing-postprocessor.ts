@@ -4,24 +4,35 @@ import type {
   UsageBillingPostprocessorResult
 } from '../model-invocation.types';
 
+const USD_TO_CNY_RATE = 7.2;
+
 const readNumber = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
 const readUsage = (context: ModelInvocationPostprocessorContext) => {
   const usage = context.providerResult.usage;
+  const costUsd = readNumber(usage?.costUsd);
+  const providerCostCny = normalizeOptionalNumber(usage?.costCny);
+  const costCny = providerCostCny ?? roundCurrency(costUsd * USD_TO_CNY_RATE);
   return {
     promptTokens: readNumber(usage?.promptTokens),
     completionTokens: readNumber(usage?.completionTokens),
     totalTokens: readNumber(usage?.totalTokens),
-    costUsd: readNumber(usage?.costUsd),
-    costCny: readNumber(usage?.costCny)
+    costUsd,
+    costCny
   };
 };
 
 const roundCurrency = (value: number): number => Number(value.toFixed(6));
+const normalizeOptionalNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
 const readBudgetCostCny = (context: ModelInvocationPostprocessorContext): number => {
   const budgetSnapshot = context.request.budgetSnapshot as Record<string, unknown>;
-  return readNumber(budgetSnapshot.costConsumedCny);
+  const explicitCostCny = normalizeOptionalNumber(budgetSnapshot.costConsumedCny);
+  if (typeof explicitCostCny === 'number') {
+    return explicitCostCny;
+  }
+  return roundCurrency(readNumber(budgetSnapshot.costConsumedUsd) * USD_TO_CNY_RATE);
 };
 
 export class UsageBillingPostprocessor implements ModelInvocationPostprocessor<UsageBillingPostprocessorResult> {

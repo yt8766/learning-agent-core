@@ -42,6 +42,8 @@ export { DefaultQueryNormalizer } from './runtime/defaults/default-query-normali
 export { DefaultRetrievalPostProcessor } from './runtime/defaults/default-post-processor';
 export {
   DEFAULT_CONTEXT_SEPARATOR,
+  DEFAULT_QUERY_KEYWORD_LIMIT,
+  DEFAULT_QUERY_VARIANT_LIMIT,
   DEFAULT_RETRIEVAL_LIMIT,
   DEFAULT_RETRIEVAL_MIN_SCORE
 } from './runtime/defaults/retrieval-runtime-defaults';

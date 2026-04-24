@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-pnpm verify:affected
+VERIFY_INCLUDE_WORKTREE=0 VERIFY_INCLUDE_STAGED=0 VERIFY_INCLUDE_UNTRACKED=0 pnpm verify:affected
 pnpm test:workspace:smoke

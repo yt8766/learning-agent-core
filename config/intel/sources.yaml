@@ -1,0 +1,31 @@
+defaults:
+  recency_hours: 48
+topics:
+  - key: frontend_security
+    enabled: true
+    mode: patrol
+    priority_default: P1
+    queries:
+      - axios vulnerability
+      - Apifox security issue
+  - key: ai_security
+    enabled: true
+    mode: patrol
+    priority_default: P1
+    queries:
+      - Claude Code source code leak
+      - LLM prompt leak
+  - key: frontend_tech
+    enabled: true
+    mode: ingest
+    priority_default: P2
+    queries:
+      - React release
+      - Vite changelog
+  - key: ai_release
+    enabled: true
+    mode: ingest
+    priority_default: P2
+    queries:
+      - OpenAI new model release
+      - Anthropic new model

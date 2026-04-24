@@ -1,0 +1,26 @@
+{
+  "name": "llm-gateway",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "turbo:typecheck": "pnpm typecheck",
+    "turbo:test:unit": "pnpm --dir ../.. exec vitest run --config vitest.config.js apps/llm-gateway/test --exclude '**/*.int-spec.ts'",
+    "turbo:test:integration": "pnpm --dir ../.. exec vitest run --config vitest.config.js apps/llm-gateway/test --include '**/*.int-spec.ts'",
+    "lint": "eslint --ignore-pattern .next --ignore-pattern node_modules ."
+  },
+  "dependencies": {
+    "@next/env": "^16.0.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

@@ -6,9 +6,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   appendBriefingFeedback,
+  appendBriefingRawEvidence,
   appendDailyTechBriefingRun,
   readBriefingFeedback,
   readBriefingHistory,
+  readBriefingRawEvidence,
   readBriefingScheduleState,
   readDailyTechBriefingRuns,
   saveBriefingHistory
@@ -193,5 +195,34 @@ describe('runtime-tech-briefing-storage', () => {
     expect(category?.preferredTopicLabels).toContain('node.js');
     expect(category?.focusAreas).toContain('运行时');
     expect(category?.trendHighlights?.[0]).toContain('连续 2 轮');
+  });
+
+  it('保存 MCP 搜索 raw evidence 以支持后续误报追溯', async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), 'runtime-tech-briefing-raw-evidence-'));
+
+    await appendBriefingRawEvidence(workspaceRoot, 'devtool-security', new Date('2026-04-03T02:00:00.000Z'), [
+      {
+        provider: 'mcp-web-search',
+        query: 'Claude Code security incident source code leak latest',
+        capturedAt: '2026-04-03T02:00:00.000Z',
+        payload: {
+          url: 'https://www.anthropic.com/news/claude-code-security-update',
+          title: 'Claude Code security update'
+        }
+      }
+    ]);
+
+    const records = await readBriefingRawEvidence(
+      workspaceRoot,
+      'devtool-security',
+      new Date('2026-04-03T02:00:00.000Z')
+    );
+    expect(records).toHaveLength(1);
+    expect(records[0]?.query).toContain('Claude Code');
+    expect(records[0]?.payload).toEqual(
+      expect.objectContaining({
+        url: 'https://www.anthropic.com/news/claude-code-security-update'
+      })
+    );
   });
 });

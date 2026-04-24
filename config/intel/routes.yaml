@@ -1,0 +1,29 @@
+defaults:
+  suppress_duplicate_hours: 24
+rules:
+  - id: frontend-security-critical
+    enabled: true
+    when:
+      category_in:
+        - frontend_security
+      priority_in:
+        - P0
+      status_in:
+        - confirmed
+    send_to:
+      - security_alert
+      - frontend_daily
+    template: security_alert_full
+  - id: ai-security-critical
+    enabled: true
+    when:
+      category_in:
+        - ai_security
+      priority_in:
+        - P0
+      status_in:
+        - confirmed
+    send_to:
+      - security_alert
+      - ai_daily
+    template: security_alert_full

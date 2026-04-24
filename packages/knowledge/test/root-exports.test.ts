@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DefaultKnowledgeSearchService,
+  DefaultQueryNormalizer,
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
   InMemoryKnowledgeChunkRepository,
   InMemoryKnowledgeSourceRepository,
@@ -29,6 +30,7 @@ describe('@agent/knowledge root exports', () => {
     expect(InMemoryKnowledgeSourceRepository).toBe(sourceRepositoryExports.InMemoryKnowledgeSourceRepository);
     expect(InMemoryKnowledgeChunkRepository).toBe(chunkRepositoryExports.InMemoryKnowledgeChunkRepository);
     expect(DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
+    expect(DefaultQueryNormalizer).toBe(rootExports.DefaultQueryNormalizer);
     expect(LocalKnowledgeFacade).toBe(runtimeExports.LocalKnowledgeFacade);
     expect(ingestLocalKnowledge).toBe(localKnowledgeStoreExports.ingestLocalKnowledge);
     expect(readKnowledgeOverview).toBe(localKnowledgeStoreExports.readKnowledgeOverview);
@@ -43,6 +45,7 @@ describe('@agent/knowledge root exports', () => {
   it('retains the contract facade file as a stable contract-first entrypoint', () => {
     expect(existsSync(resolve(__dirname, '../src/contracts/knowledge-facade.ts'))).toBe(true);
     expect(rootExports.DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
+    expect(rootExports.DefaultQueryNormalizer).toBe(DefaultQueryNormalizer);
     expect(rootExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);
     expect(rootExports.DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE).toBe(DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE);
     expect(indexingExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);

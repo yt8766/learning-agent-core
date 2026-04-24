@@ -166,6 +166,49 @@ describe('UsageBillingPostprocessor', () => {
     });
   });
 
+  it('derives CNY totals from USD usage when upstream provider billing omits costCny', async () => {
+    const postprocessor = new UsageBillingPostprocessor();
+
+    const result = await postprocessor.run({
+      request: createRequest({
+        budgetSnapshot: {
+          costConsumedUsd: 1.25,
+          costConsumedCny: undefined,
+          costBudgetUsd: 10,
+          tokenConsumed: 1200,
+          tokenBudget: 20000,
+          fallbackModelId: 'gpt-4.1-mini'
+        }
+      }),
+      decision: createDecision({
+        budgetDecision: {
+          status: 'allow',
+          estimatedInputTokens: 18
+        }
+      }),
+      providerResult: createProviderResult({
+        usage: createUsage({
+          costUsd: 0.13,
+          costCny: undefined
+        })
+      })
+    });
+
+    expect(result.invocationUsageRecord.costUsd).toBe(0.13);
+    expect(result.invocationUsageRecord.costCny).toBe(0.936);
+    expect(result.taskUsageDelta).toEqual({
+      taskId: 'task-usage-1',
+      sessionId: 'session-usage-1',
+      invocationId: 'invoke-usage-1',
+      tokenDelta: 52,
+      costUsdDelta: 0.13,
+      costCnyDelta: 0.936,
+      totalTokenConsumed: 1252,
+      totalCostConsumedUsd: 1.38,
+      totalCostConsumedCny: 9.936
+    });
+  });
+
   it('rounds accumulated currency totals to six decimal places', async () => {
     const postprocessor = new UsageBillingPostprocessor();
 

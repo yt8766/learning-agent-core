@@ -97,8 +97,8 @@
 
 ### CI 与 PR 策略
 
-- **第一阶段（当前）**：workspace smoke 不阻塞 PR，作为本地验证补充
-- **后续**：workspace smoke 与 integration 分阶段纳入 CI，main 跑全量 workspace smoke
+- **当前阶段**：workspace integration 与 workspace smoke 都已纳入 PR / main 阻塞校验；新增 smoke 必须保持轻量、稳定、无外部服务依赖
+- **后续**：继续按 backend、apps、packages 三类 smoke matrix 扩展，不把依赖真实第三方服务的用例放进无 guard 的阻塞链路
 - smoke 不依赖脆弱外部服务；必须依赖外部环境时，需要显式 skip / guard
 
 ## 1. 测试框架
@@ -153,6 +153,7 @@
 - `pnpm test:workspace:integration` 只执行根级 `test/integration/**` 下的 workspace-level integration 用例，不替代宿主内 `test:integration`
 - `pnpm test:workspace:integration:affected` 会基于 changed paths 映射到受影响的根级 integration 用例；PR CI 已将它作为阻塞项执行，确保跨包/跨宿主契约变更不会绕过仓库级协同验证
 - `pnpm test:workspace:smoke` 只执行根级 `test/smoke/**` 下的 workspace-level smoke 用例；当前 PR CI、main CI 与本地 `pre-push` 都已将它作为阻塞项执行
+- backend HTTP app smoke 会真实创建 Nest app 并通过 `supertest` 验证 `/health` contract；该用例不依赖外部服务，但需要本地临时监听权限，受限沙箱可能因 `listen EPERM` 阻断，应在正常本地或 CI 环境执行
 - `pnpm test:unit` 明确排除 `*.int-spec.ts`、`*.int-spec.tsx`、`*.smoke.ts` 与 `*.acc-spec.ts`，避免 workspace integration / smoke / acceptance 被误归入 Unit 层
 - `packages/*` 的 demo 分层当前统一采用：
   - `demo/smoke.ts`
@@ -166,7 +167,9 @@
 - `pnpm test:spec:affected` 会基于 `VERIFY_BASE_REF...HEAD` 与本地 working tree 改动的并集，只执行受影响宿主的 spec 回归；未显式配置时默认使用 `origin/main`。当根级 `package.json`、`vitest.config.js` 或 spec runner 自身发生变化时，会自动提升为全仓 spec 回归
 - `pnpm test:demo:affected` 会通过 `node ./scripts/run-turbo-affected.js demo` 只执行受影响宿主的 `demo`，并通过 Turbo task 依赖先补齐当前宿主及其工作空间依赖的 `build:lib`
 - `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
-- `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 working tree 改动自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
+- `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 changed paths 自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
+  - 默认 changed paths 会合并 `VERIFY_BASE_REF...HEAD`、本地 working tree、staged 与 untracked 改动，便于本地提前发现未提交问题
+  - `.husky/pre-push` 会显式关闭 working tree / staged / untracked 扫描，只验证即将推送的提交历史，避免范围外并行改动污染分支交付
 - `pnpm eval:prompts:affected` 仍保留为独立入口，会在受影响范围内命中 prompt 敏感路径时执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/evals/turbo-demo-stage-three-plan.md)
 - 当前 Turbo `demo` 任务默认服务于显式 `demo/**` 宿主；packages 新增或重构时，应优先把最小闭环接进这条链路

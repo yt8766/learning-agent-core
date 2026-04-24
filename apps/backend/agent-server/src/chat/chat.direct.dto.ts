@@ -1,4 +1,4 @@
-import type { ILLMProvider } from '@agent/core';
+import type { ILLMProvider, ReportBundle, ReportPatchOperation } from '@agent/core';
 import type { DataReportJsonStructuredInput } from '../runtime/core/runtime-data-report-facade';
 
 export type DirectChatMessages = Parameters<ILLMProvider['streamText']>[0];
@@ -13,9 +13,12 @@ export interface DirectChatRequestDto {
   disableCache?: boolean;
   temperature?: number;
   maxTokens?: number;
+  stream?: boolean;
   projectId?: string;
   mockConfig?: Record<string, unknown>;
   reportSchemaInput?: DataReportJsonStructuredInput;
+  currentBundle?: ReportBundle;
+  requestedOperations?: ReportPatchOperation[];
   responseFormat?: 'text' | 'sandpack' | 'preview' | 'report-schema';
 }
 

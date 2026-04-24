@@ -32,9 +32,25 @@ describe('ChatService', () => {
     );
 
     expect(llmResult.status).toBe('success');
-    expect(llmResult.schema).toEqual(expect.objectContaining({ kind: 'data-report-json' }));
+    expect(llmResult.schema).toBeUndefined();
+    expect(llmResult.bundle).toEqual(
+      expect.objectContaining({
+        kind: 'report-bundle',
+        documents: [expect.objectContaining({ kind: 'data-report-json' })]
+      })
+    );
     expect(llmResult.runtime).toEqual(expect.objectContaining({ executionPath: 'llm', llmAttempted: true }));
     expect(llmPush).toHaveBeenCalledWith(expect.objectContaining({ type: 'schema_ready' }));
+    expect(llmPush).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          bundle: expect.objectContaining({ kind: 'report-bundle' })
+        })
+      })
+    );
+    expect(llmPush.mock.calls.find(([event]) => event?.type === 'schema_ready')?.[0]?.data).not.toHaveProperty(
+      'schema'
+    );
 
     const structuredResult = await service.streamReportSchema(
       {
@@ -99,10 +115,12 @@ describe('ChatService', () => {
 
     expect(generateObject).toHaveBeenCalled();
     expect(structuredResult.status).toBe('success');
+    expect(structuredResult.bundle?.kind).toBe('report-bundle');
+    expect(structuredResult.schema).toBeUndefined();
     expect(structuredResult.runtime).toEqual(
       expect.objectContaining({ executionPath: 'structured-fast-lane', cacheHit: false })
     );
-    expect(structuredResult.schema?.sections[0]?.blocks.map(block => block.type)).toEqual([
+    expect(structuredResult.bundle?.documents[0]?.sections[0]?.blocks.map(block => block.type)).toEqual([
       'metrics',
       'chart',
       'table'
@@ -173,9 +191,11 @@ describe('ChatService', () => {
 
     expect(partial.status).toBe('partial');
     expect(partial.partialSchema).toEqual(expect.objectContaining({ dataSources: expect.any(Object) }));
+    expect(partial.bundle).toBeUndefined();
+    expect(partial.schema).toBeUndefined();
   });
 
-  it('supports patched schema requests and cache-key switching for preferLlm', async () => {
+  it('rejects legacy CHANGE_REQUEST plus CURRENT_SCHEMA payloads and still switches cache keys for preferLlm', async () => {
     const runtimeHost = createRuntimeHost();
     runtimeHost.llmProvider = {
       isConfigured: vi.fn(() => false),
@@ -195,11 +215,15 @@ describe('ChatService', () => {
       vi.fn()
     );
 
-    expect(result.status).toBe('success');
-    expect(result.schema.meta.title).toBe('Bonus Center 驾驶舱');
-    expect(result.schema.patchOperations).toEqual(
-      expect.arrayContaining([expect.objectContaining({ op: 'replace-meta-title' })])
+    expect(result.status).toBe('failed');
+    expect(result.error).toEqual(
+      expect.objectContaining({
+        errorCode: 'report_schema_generation_failed',
+        errorMessage: expect.stringContaining('currentBundle')
+      })
     );
+    expect(result.bundle).toBeUndefined();
+    expect(result.schema).toBeUndefined();
 
     const standardKey = service['resolveReportSchemaArtifactCacheKey']({
       message: '标题：Bonus Center数据\n报表名称：银币兑换记录\n大数据接口：get_bc_amount_record_data',

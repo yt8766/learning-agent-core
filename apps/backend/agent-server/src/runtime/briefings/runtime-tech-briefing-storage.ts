@@ -6,6 +6,7 @@ import { computeNextRunAt, resolveRuntimeSchedule } from '../schedules/runtime-s
 import type {
   BriefingFeedbackRecord,
   BriefingHistoryRecord,
+  BriefingRawEvidenceRecord,
   DailyTechBriefingScheduleRecord,
   TechBriefingCategory,
   TechBriefingCategoryScheduleState,
@@ -15,6 +16,7 @@ import {
   BRIEFING_CATEGORIES,
   getFeedbackPath,
   getHistoryPath,
+  getRawEvidencePath,
   getRunsPath,
   getSchedulePath,
   getScheduleStatePath,
@@ -171,6 +173,34 @@ export async function appendBriefingFeedback(workspaceRoot: string, feedback: Br
 
 export async function readBriefingFeedback(workspaceRoot: string): Promise<BriefingFeedbackRecord[]> {
   const filePath = getFeedbackPath(workspaceRoot);
+  if (!(await pathExists(filePath))) {
+    return [];
+  }
+  return readJsonFileOrDefault(filePath, []);
+}
+
+export async function appendBriefingRawEvidence(
+  workspaceRoot: string,
+  category: TechBriefingCategory,
+  capturedForDate: Date,
+  evidence: BriefingRawEvidenceRecord[]
+): Promise<void> {
+  if (evidence.length === 0) {
+    return;
+  }
+  const records = await readBriefingRawEvidence(workspaceRoot, category, capturedForDate);
+  await ensureDir(join(workspaceRoot, 'data', 'runtime', 'briefings', 'raw'));
+  await writeJson(getRawEvidencePath(workspaceRoot, category, capturedForDate), records.concat(evidence), {
+    spaces: 2
+  });
+}
+
+export async function readBriefingRawEvidence(
+  workspaceRoot: string,
+  category: TechBriefingCategory,
+  capturedForDate: Date
+): Promise<BriefingRawEvidenceRecord[]> {
+  const filePath = getRawEvidencePath(workspaceRoot, category, capturedForDate);
   if (!(await pathExists(filePath))) {
     return [];
   }

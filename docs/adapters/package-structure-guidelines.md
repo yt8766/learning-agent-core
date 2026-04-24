@@ -49,6 +49,7 @@ packages/adapters/
 │  ├─ anthropic/           # Anthropic provider（provider/）
 │  ├─ minimax/             # MiniMax provider（provider/, chat/）
 │  ├─ zhipu/               # 智谱 provider（provider/, chat/）
+│  ├─ mcp/                 # MCP skill providers（minimax/, zhipu/, future figma/）
 │  ├─ factories/           # LLM 工厂注册表与 runtime wiring（llm/, runtime/）
 │  ├─ routing/             # 模型路由与 provider registry（llm/）
 │  ├─ resilience/          # LLM retry / fallback 策略
@@ -76,6 +77,8 @@ packages/adapters/
 
 LLM 相关目录按 **provider-first** 命名：`openai-compatible/`、`anthropic/`、`minimax/`、`zhipu/`。
 每个 provider 顶层目录下再按功能角色分子目录：`provider/`、`chat/`、`embeddings/`。
+
+MCP skills / provider adapter 统一写入 `mcp/<provider>/`。`minimax/`、`zhipu/` 顶层目录继续承载 LLM provider 与 chat factory；`mcp/minimax/`、`mcp/zhipu/` 承载 MCP server 安装计划、capability 风险分级与 secret requirements。后续 Figma 等 MCP skills 也按 `mcp/figma/` 新增，不写进 `@agent/tools`。
 
 历史路径（`chat/`、`providers/`、`retry/`、`support/`）已降为 compat re-export，不再是规范写入目标。
 新增实现必须写入对应 provider 顶层目录或 `resilience/`、`routing/`、`factories/`。

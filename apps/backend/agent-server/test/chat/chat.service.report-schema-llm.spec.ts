@@ -42,6 +42,7 @@ describe('ChatService', () => {
     );
 
     expect(result.runtime).toEqual(expect.objectContaining({ executionPath: 'llm', llmAttempted: true }));
+    expect(result.schema).toBeUndefined();
     expect(push).toHaveBeenCalledWith(expect.objectContaining({ type: 'schema_progress' }));
     expect(push).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -68,6 +69,17 @@ describe('ChatService', () => {
           options?.modelId === 'GLM-4.7-FlashX'
       )
     ).toBe(true);
+    const strictLlmParts = generateObject.mock.calls.flatMap(([messages]) =>
+      Array.isArray(messages)
+        ? messages.map(message => message?.content).filter((content): content is string => typeof content === 'string')
+        : []
+    );
+    expect(strictLlmParts.some(content => content.includes('当前片段：meta'))).toBe(true);
+    expect(strictLlmParts.some(content => content.includes('当前片段：pageDefaults'))).toBe(true);
+    expect(strictLlmParts.some(content => content.includes('当前片段：sectionPlan'))).toBe(true);
+    expect(strictLlmParts.some(content => content.includes('当前片段：metricsBlock'))).toBe(true);
+    expect(strictLlmParts.some(content => content.includes('当前片段：chartBlock'))).toBe(true);
+    expect(strictLlmParts.some(content => content.includes('当前片段：tableBlock'))).toBe(true);
   });
 
   it('falls back cleanly when block-level or whole-schema llm generation fails for simple single reports', async () => {
@@ -101,7 +113,8 @@ describe('ChatService', () => {
       vi.fn()
     );
     expect(blockFailure.status).toBe('success');
-    expect(blockFailure.schema?.registries?.blockTypes).toEqual(['metrics', 'chart', 'table']);
+    expect(blockFailure.schema).toBeUndefined();
+    expect(blockFailure.bundle?.documents[0]?.registries?.blockTypes).toEqual(['metrics', 'chart', 'table']);
 
     runtimeHost.llmProvider.generateObject = vi.fn(async () => {
       throw new Error('provider exploded');
@@ -115,7 +128,12 @@ describe('ChatService', () => {
       vi.fn()
     );
     expect(providerFailure.status).toBe('success');
-    expect(providerFailure.schema?.sections[0]?.blocks.map(block => block.type)).toEqual(['metrics', 'chart', 'table']);
+    expect(providerFailure.schema).toBeUndefined();
+    expect(providerFailure.bundle?.documents[0]?.sections[0]?.blocks.map(block => block.type)).toEqual([
+      'metrics',
+      'chart',
+      'table'
+    ]);
   });
 
   it('keeps reportSchemaInput and simple single-report requests on the deterministic fast lane when llm is skipped', async () => {
@@ -185,6 +203,7 @@ describe('ChatService', () => {
     expect(structuredFastLane.runtime).toEqual(
       expect.objectContaining({ executionPath: 'structured-fast-lane', llmAttempted: false })
     );
+    expect(structuredFastLane.schema).toBeUndefined();
 
     const simpleFastLane = await service.streamReportSchema(
       {
@@ -195,6 +214,11 @@ describe('ChatService', () => {
       vi.fn()
     );
     expect(simpleFastLane.status).toBe('success');
-    expect(simpleFastLane.schema?.sections[0]?.blocks.map(block => block.type)).toEqual(['metrics', 'chart', 'table']);
+    expect(simpleFastLane.schema).toBeUndefined();
+    expect(simpleFastLane.bundle?.documents[0]?.sections[0]?.blocks.map(block => block.type)).toEqual([
+      'metrics',
+      'chart',
+      'table'
+    ]);
   });
 });

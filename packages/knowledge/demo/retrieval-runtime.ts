@@ -1,8 +1,8 @@
 /**
  * Demo：knowledge retrieval runtime 最小闭环
  *
- * 演示三阶段流程：
- *   query normalization → retrieval → post-process + context assembly
+ * 演示检索运行时流程：
+ *   query normalization / rewrite / multi-query → retrieval → post-process + context assembly
  *
  * 运行：pnpm --dir packages/knowledge exec tsx demo/retrieval-runtime.ts
  */
@@ -43,6 +43,17 @@ async function main(): Promise<void> {
     updatedAt: new Date().toISOString()
   });
 
+  await facade.chunkRepository.upsert({
+    id: 'chunk-3',
+    sourceId: 'src-1',
+    documentId: 'doc-1',
+    chunkIndex: 2,
+    content:
+      'Improving retrieval quality often starts with query rewrite, query variants, rerank, and metadata filters.',
+    searchable: true,
+    updatedAt: new Date().toISOString()
+  });
+
   // 直接使用 facade.retrieve（走默认 pipeline）
   console.log('=== facade.retrieve ===');
   const simpleResult = await facade.retrieve({ query: 'query normalization recall' });
@@ -52,7 +63,7 @@ async function main(): Promise<void> {
   // 使用 runKnowledgeRetrieval 并开启 context assembly + diagnostics
   console.log('\n=== runKnowledgeRetrieval (with context + diagnostics) ===');
   const fullResult = await runKnowledgeRetrieval({
-    request: { query: 'context assembly citation bundle' },
+    request: { query: 'How do I improve retrieval quality for citation bundle?' },
     searchService: facade.searchService,
     assembleContext: true,
     includeDiagnostics: true
@@ -61,6 +72,7 @@ async function main(): Promise<void> {
   console.log(`Hits after post-processing: ${fullResult.total}`);
   console.log(`\nContext bundle:\n${fullResult.contextBundle}`);
   console.log('\nDiagnostics:', fullResult.diagnostics);
+  console.log(`\nExecuted query variants: ${fullResult.diagnostics?.executedQueries.join(' | ')}`);
 }
 
 main().catch(err => {

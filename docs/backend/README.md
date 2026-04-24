@@ -51,6 +51,7 @@
 - [runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
 - [platform-console-performance-baseline.md](/docs/backend/platform-console-performance-baseline.md)
 - [platform-console-staging-acceptance-template.md](/docs/backend/platform-console-staging-acceptance-template.md)
+- [frontend-ai-intel-system-design.md](/docs/backend/frontend-ai-intel-system-design.md)
 
 当前 `agent-server` 维护补充：
 

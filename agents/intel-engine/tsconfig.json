@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src/**/*", "demo/**/*", "test/**/*"],
+  "compilerOptions": {
+    "outDir": "./build/tmp",
+    "types": ["node"],
+    "lib": ["DOM", "ESNext"],
+    "noEmit": true
+  }
+}

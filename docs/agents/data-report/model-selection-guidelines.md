@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`agents/data-report`、`apps/backend/agent-server/src/chat/chat-report-schema.helpers.ts`
-最后核对：2026-04-18
+最后核对：2026-04-23
 
 ## 背景
 
@@ -22,6 +22,20 @@
   - 可选 `preferredModelIds`
 - 真正的 model id 由运行时根据当前 `llm.supportedModels()` 和后端传入的偏好一起解析
 - 显式 `dto.modelId` 仍然优先级最高，会直接覆盖节点默认策略
+
+## `preferLlm=true` 的强制 LLM 语义
+
+前端报表 JSON 生成会通过 `/api/chat` 传 `responseFormat: 'report-schema'` 与 `preferLlm: true`。后端会把它收敛为 `strictLlmBrandNew`，用于 brand-new 报表 JSON 生成。
+
+`strictLlmBrandNew` 不是“允许 LLM 有机会参与”，而是“关键 JSON 片段必须由大模型生成”：
+
+- `schemaSpecNode` 必须用 LLM 分别生成 `meta` 与 `pageDefaults`
+- `filterSchemaNode` 必须用 LLM 生成 `filterSchema`
+- `dataSourceNode` 必须用 LLM 生成 `dataSources`
+- 单报表 split lane 中，`sectionPlanNode`、`metricsBlockNode`、`chartBlockNode`、`tableBlockNode` 必须用 LLM 生成对应片段
+- 如果 LLM 未配置或片段生成/校验失败，strict 模式不得静默降级成本地 deterministic builder，必须快速失败并暴露具体节点；strict LLM 片段当前不再设置本地超时时间，避免长耗时模型在 `filterSchemaNode` 等关键节点被本地计时器提前中断
+
+非 strict 场景仍保留本地 deterministic fast lane，用于低延迟预览、结构化输入和已有 schema 的简单 patch。
 
 ## 默认语义
 
@@ -49,3 +63,4 @@
 - 语义策略定义：`agents/data-report/src/flows/data-report-json/model-policy.ts`
 - 通用解析 helper：`agents/data-report/src/utils/model-selection.ts`
 - 后端运行时偏好注入：`apps/backend/agent-server/src/chat/chat-report-schema.helpers.ts`
+- strict LLM 回归测试：`apps/backend/agent-server/test/chat/chat.service.report-schema-llm.spec.ts`

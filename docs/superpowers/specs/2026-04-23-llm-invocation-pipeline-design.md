@@ -1,9 +1,9 @@
 # LLM Invocation Pipeline Design
 
-状态：proposed
-文档类型：design-spec
+状态：snapshot
+文档类型：note
 适用范围：`packages/runtime`、`packages/core`、`apps/backend/agent-server`
-最后更新：2026-04-23
+最后核对：2026-04-23
 
 ## 1. 背景
 

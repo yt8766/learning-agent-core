@@ -19,6 +19,9 @@ import {
   chunkId,
   AdapterError,
   validateVectorDimensions,
+  createMiniMaxMcpSkillProvider,
+  createZhipuMcpSkillProvider,
+  registerDefaultMcpSkillProviders,
   // LangChain adapters
   LangChainLoaderAdapter,
   createMarkdownDirectoryLoader,
@@ -78,5 +81,11 @@ describe('@agent/adapters root exports', () => {
   it('exports Chroma adapter', () => {
     expect(ChromaVectorStoreAdapter).toBeTypeOf('function');
     expect(mapVectorMetadataToChromaMetadata).toBeTypeOf('function');
+  });
+
+  it('exports default MCP skill providers', () => {
+    expect(createMiniMaxMcpSkillProvider).toBeTypeOf('function');
+    expect(createZhipuMcpSkillProvider).toBeTypeOf('function');
+    expect(registerDefaultMcpSkillProviders).toBeTypeOf('function');
   });
 });

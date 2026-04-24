@@ -31,6 +31,17 @@ export {
 } from './mcp/mcp-capability-registry';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { McpServerRegistry, type McpServerDefinition } from './mcp/mcp-server-registry';
+export { installMcpSkillProvider, type InstallMcpSkillProviderResult } from './mcp/mcp-skill-provider-installer';
+export { McpSkillProviderRegistry } from './mcp/mcp-skill-provider-registry';
+export type {
+  McpSkillProviderAdapter,
+  McpSkillProviderDescriptor,
+  McpSkillProviderInstallInput,
+  McpSkillProviderInstallPlan,
+  McpSkillProviderSecretRequirement,
+  McpSkillProviderTransport,
+  McpSkillProviderValidationResult
+} from './mcp/mcp-skill-provider-types';
 export {
   HttpTransportHandler,
   LocalAdapterTransportHandler,

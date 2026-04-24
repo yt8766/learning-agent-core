@@ -179,6 +179,9 @@ skills/
 ## 6.0 接口稳定性与可扩展封装规范
 
 - 所有新增或修改实现，默认优先面向稳定接口编程，而不是面向具体调用方、临时页面或单次流程硬编码。
+- 只要本轮改动涉及前后端联调、跨包 API、SSE payload、DTO、事件、tool result、graph state 切片或其他会被多个模块消费的接口，必须先定义接口文档，再开始前后端实现；禁止前端和后端各自先写代码、再事后倒推协议。
+- 接口文档必须先明确：接口目的、入口路径或调用方式、请求参数、响应或事件 schema、错误语义、兼容策略、字段演进约束，以及前后端各自负责的实现边界；能落 schema 的内容，必须与 `packages/core` 或宿主 `schemas/` 中的正式定义保持一致。
+- 前端开发、后端开发、联调、测试与文档更新都必须以同一份接口文档为准；接口发生变更时，先更新接口文档与 schema/contract，再同步修改前后端实现和验证，禁止让文档长期落后于真实协议。
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移台账保留在 `docs/shared/*`，后续不要再新增 `@agent/shared` 或 `packages/shared/*`。
 - 稳定 contract 默认收敛到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 主实现必须落在真实宿主，不允许重新引入第二个 shared 包层。
 - `packages/core` 默认采用 schema-first：所有稳定 JSON / DTO / event / payload contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型；不要继续在 `core` 新增只有 interface/type、没有 schema 的长期公共 contract。

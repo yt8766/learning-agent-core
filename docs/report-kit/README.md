@@ -12,8 +12,10 @@
 - 职责：
   - 承载 data-report 生成链路的 blueprint、scaffold、routes、assembly、write 等领域能力
   - 作为报表领域的确定性生成引擎
+  - 承载 `data-report-json.v1` bundle 到前端文件计划的确定性 renderer
 - 允许：
   - report blueprint / scaffold / assembly
+  - JSON bundle renderer
   - sandpack post-process
   - report file materialization
 - 禁止：
@@ -22,7 +24,7 @@
   - MCP transport
   - agent orchestration
 - 依赖方向：
-  - 只依赖模板资产与必要第三方库
+  - 可依赖 `@agent/core` 的稳定 data-report contract 与模板资产
   - 由 `@agent/tools` 作为工具平台 facade 暴露给上层
   - 长期继续与 `agents/data-report`、`packages/runtime` 的编排层分离
 
@@ -32,6 +34,7 @@
   - `src/blueprints/`
   - `src/scaffold/`
   - `src/assembly/`
+  - `src/json-renderer/`
   - `src/writers/`
 - 稳定 facade：
   - `src/contracts/data-report-facade.ts`
@@ -49,3 +52,4 @@
 
 - [package-structure-guidelines.md](/docs/report-kit/package-structure-guidelines.md)
 - [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
+- [data-report-json-bundle.md](/docs/report-kit/data-report-json-bundle.md)

@@ -32,7 +32,7 @@ export async function runSplitSingleReportLane(
   handlers: DataReportJsonGraphHandlers,
   startedAt: number
 ): Promise<DataReportJsonGenerateResult> {
-  const strictFragmentTimeoutMs = resolveStrictFragmentTimeoutMs(state);
+  const strictFragmentTimeoutMs = resolveStrictFragmentTimeoutMs();
   const preSectionResults = await Promise.all([
     runNodeWithTimeoutFallback(state, 'filterSchemaNode', runJsonFilterSchemaNode, handlers, strictFragmentTimeoutMs),
     runNodeWithTimeoutFallback(state, 'dataSourceNode', runJsonDataSourceNode, handlers, strictFragmentTimeoutMs)
@@ -51,7 +51,7 @@ export async function runSplitSingleReportLane(
         node as 'metricsBlockNode' | 'chartBlockNode' | 'tableBlockNode',
         index === 0 ? runJsonMetricsBlockNode : index === 1 ? runJsonChartBlockNode : runJsonTableBlockNode,
         handlers,
-        state.strictLlmBrandNew ? undefined : SPLIT_BLOCK_TIMEOUT_MS
+        state.strictLlmBrandNew ? strictFragmentTimeoutMs : SPLIT_BLOCK_TIMEOUT_MS
       )
         .then(value => {
           state = mergeState(state, value);

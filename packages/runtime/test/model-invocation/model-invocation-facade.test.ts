@@ -259,6 +259,51 @@ describe('ModelInvocationFacade', () => {
     });
   });
 
+  it('prefers provider token estimates over the character heuristic when available', async () => {
+    const providerExecute = createProviderExecute();
+    const estimateTokens = vi.fn().mockResolvedValue(11);
+    const facade = new ModelInvocationFacade({
+      provider: {
+        execute: providerExecute,
+        estimateTokens
+      }
+    });
+
+    await facade.invoke(
+      createRequest({
+        messages: [{ role: 'user', content: 'ok' }],
+        budgetSnapshot: {
+          costConsumedUsd: 0,
+          costBudgetUsd: 1,
+          tokenConsumed: 0,
+          tokenBudget: 10,
+          fallbackModelId: 'gpt-fallback'
+        }
+      })
+    );
+
+    expect(estimateTokens).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelId: 'gpt-test',
+        messages: [
+          { role: 'system', content: 'profile:runtime-task' },
+          { role: 'user', content: 'ok' }
+        ]
+      })
+    );
+    expect(providerExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelId: 'gpt-fallback',
+        decision: expect.objectContaining({
+          budgetDecision: expect.objectContaining({
+            status: 'fallback',
+            estimatedInputTokens: 11
+          })
+        })
+      })
+    );
+  });
+
   it('keeps composed preprocessor message rewrites instead of resetting to the raw request', async () => {
     const providerExecute = createProviderExecute();
     const rewritePreprocessor: ModelInvocationPreprocessor = {

@@ -10,6 +10,7 @@ export interface ModelInvocationProfile {
 export interface ModelInvocationPreprocessorContext {
   request: ModelInvocationRequest;
   profile: ModelInvocationProfile;
+  provider: ModelInvocationProvider;
 }
 
 export interface ModelInvocationPreprocessor {
@@ -28,6 +29,14 @@ export interface ModelInvocationProviderExecuteParams {
   messages: InvocationMessage[];
 }
 
+export interface ModelInvocationProviderTokenEstimateParams {
+  request: ModelInvocationRequest;
+  decision: PreprocessDecision;
+  profile: ModelInvocationProfile;
+  modelId: string;
+  messages: InvocationMessage[];
+}
+
 export interface ModelInvocationProviderExecuteResult {
   providerId?: string;
   outputText: string;
@@ -38,6 +47,7 @@ export interface ModelInvocationProviderExecuteResult {
 
 export interface ModelInvocationProvider {
   execute(params: ModelInvocationProviderExecuteParams): Promise<ModelInvocationProviderExecuteResult>;
+  estimateTokens?(params: ModelInvocationProviderTokenEstimateParams): Promise<number> | number;
 }
 
 export interface ModelInvocationPipelineOptions {

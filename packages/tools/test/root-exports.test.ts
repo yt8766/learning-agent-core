@@ -16,11 +16,13 @@ import {
   executeScaffoldTool,
   executeSchedulingTool,
   ExecutionWatchdog,
+  installMcpSkillProvider,
   inspectScaffoldTarget,
   listScaffoldTemplates,
   McpCapabilityRegistry,
   McpClientManager,
   McpServerRegistry,
+  McpSkillProviderRegistry,
   findConfiguredConnector,
   resolveConfiguredConnectorId,
   SandboxExecutor,
@@ -54,6 +56,8 @@ describe('@agent/tools root exports', () => {
     expect(McpCapabilityRegistry).toBe(mcpExports.McpCapabilityRegistry);
     expect(McpClientManager).toBe(mcpExports.McpClientManager);
     expect(McpServerRegistry).toBe(mcpExports.McpServerRegistry);
+    expect(McpSkillProviderRegistry).toBe(mcpExports.McpSkillProviderRegistry);
+    expect(installMcpSkillProvider).toBe(mcpExports.installMcpSkillProvider);
     expect(buildConnectorDraftConfig).toBe(connectorExports.buildConnectorDraftConfig);
     expect(buildConnectorSecretUpdateConfig).toBe(connectorExports.buildConnectorSecretUpdateConfig);
     expect(findConfiguredConnector).toBe(connectorExports.findConfiguredConnector);

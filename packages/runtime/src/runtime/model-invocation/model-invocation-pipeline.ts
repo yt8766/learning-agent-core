@@ -85,7 +85,7 @@ export class FixedModelInvocationPipeline implements ModelInvocationPipeline {
     const profile = this.resolveProfile(request);
 
     let decision = createInitialDecision(request);
-    const context = { request, profile };
+    const context = { request, profile, provider: this.options.provider };
 
     for (const preprocessor of this.preprocessors) {
       decision = await preprocessor.run(decision, context);

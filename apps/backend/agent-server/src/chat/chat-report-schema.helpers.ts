@@ -1,10 +1,11 @@
 import {
+  executeReportBundleEditFlow,
   executeDataReportJsonGraph,
+  executeReportBundleGenerateFlow,
   DATA_REPORT_JSON_DEFAULT_MODEL_POLICY,
-  type DataReportJsonGenerateResult,
+  type DataReportBundleGenerateResult,
   type DataReportJsonNodeModelSelector,
   type DataReportJsonNodeModelPolicy,
-  type DataReportJsonSchema,
   type DataReportJsonNodeStageEvent
 } from '../runtime/core/runtime-data-report-facade';
 import { resolveActiveRoleModels } from '@agent/config';
@@ -17,9 +18,20 @@ export async function streamReportSchema(
   runtimeHost: RuntimeHost,
   dto: DirectChatRequestDto,
   onEvent: (event: DirectChatSseEvent) => void
-): Promise<DataReportJsonGenerateResult> {
+): Promise<DataReportBundleGenerateResult> {
   const llm = runtimeHost.llmProvider;
-  const goal = extractDirectGoal(dto);
+  const goal = resolveReportSchemaGoal(dto);
+  if (isLegacyPatchRequest(goal)) {
+    const legacyUnsupportedResult = buildLegacyPatchUnsupportedResult();
+    onEvent({
+      type: 'schema_failed',
+      data: {
+        error: legacyUnsupportedResult.error
+      }
+    });
+    return legacyUnsupportedResult;
+  }
+
   const stageStartedAt = new Map<string, number>();
   const pendingStages = new Set<string>();
   const strictLlmBrandNew =
@@ -46,60 +58,104 @@ export async function streamReportSchema(
   let graphResult;
   try {
     const disableCache = dto.disableCache ?? true;
-    graphResult = await executeDataReportJsonGraph({
-      llm,
-      goal,
-      reportSchemaInput: dto.reportSchemaInput,
-      strictLlmBrandNew,
-      temperature: dto.temperature,
-      maxTokens: dto.maxTokens,
-      disableCache,
-      artifactCacheKey: disableCache ? undefined : resolveReportSchemaArtifactCacheKey(runtimeHost, dto),
-      nodeModelPolicy,
-      nodeModelOverrides: dto.modelId
-        ? {
-            schemaSpecNode: dto.modelId,
-            filterSchemaNode: dto.modelId,
-            dataSourceNode: dto.modelId,
-            sectionPlanNode: dto.modelId,
-            metricsBlockNode: dto.modelId,
-            chartBlockNode: dto.modelId,
-            tableBlockNode: dto.modelId,
-            sectionSchemaNode: dto.modelId,
-            patchSchemaNode: dto.modelId
-          }
-        : undefined,
-      onStage: (event: DataReportJsonNodeStageEvent) => {
-        if (event.status === 'pending') {
-          stageStartedAt.set(event.node, Date.now());
-          pendingStages.add(event.node);
-        } else {
-          pendingStages.delete(event.node);
-        }
-        const startedAt = stageStartedAt.get(event.node);
-        onEvent({
-          type: 'stage',
-          data: {
-            stage: event.node,
-            status: event.status,
-            details: {
-              ...event.details,
-              elapsedMs: event.status === 'pending' || !startedAt ? undefined : Date.now() - startedAt
-            }
-          }
-        });
-      },
-      onArtifact: event => {
-        onEvent({
-          type: 'schema_progress',
-          data: {
-            phase: event.phase,
-            blockType: event.blockType,
-            schema: event.schema
-          }
-        });
+    const stageHandler = (event: DataReportJsonNodeStageEvent) => {
+      if (event.status === 'pending') {
+        stageStartedAt.set(event.node, Date.now());
+        pendingStages.add(event.node);
+      } else {
+        pendingStages.delete(event.node);
       }
-    });
+      const startedAt = stageStartedAt.get(event.node);
+      onEvent({
+        type: 'stage',
+        data: {
+          stage: event.node,
+          status: event.status,
+          details: {
+            ...event.details,
+            elapsedMs: event.status === 'pending' || !startedAt ? undefined : Date.now() - startedAt
+          }
+        }
+      });
+    };
+    const artifactHandler = (event: { phase: string; blockType?: string; schema: unknown }) => {
+      onEvent({
+        type: 'schema_progress',
+        data: {
+          phase: event.phase,
+          blockType: event.blockType,
+          schema: event.schema
+        }
+      });
+    };
+
+    graphResult = dto.currentBundle
+      ? await executeReportBundleEditFlow({
+          currentBundle: dto.currentBundle,
+          requestedOperations: dto.requestedOperations,
+          messages: resolveReportBundleMessages(dto, goal),
+          llm,
+          modelId: dto.modelId,
+          temperature: dto.temperature,
+          maxTokens: dto.maxTokens,
+          disableCache,
+          artifactCacheKey: disableCache ? undefined : resolveReportSchemaArtifactCacheKey(runtimeHost, dto),
+          nodeModelPolicy,
+          nodeModelOverrides: dto.modelId
+            ? {
+                schemaSpecNode: dto.modelId,
+                filterSchemaNode: dto.modelId,
+                dataSourceNode: dto.modelId,
+                sectionPlanNode: dto.modelId,
+                metricsBlockNode: dto.modelId,
+                chartBlockNode: dto.modelId,
+                tableBlockNode: dto.modelId,
+                sectionSchemaNode: dto.modelId,
+                patchSchemaNode: dto.modelId
+              }
+            : undefined,
+          onStage: stageHandler,
+          onArtifact: artifactHandler
+        }).then(result => {
+          const { primaryDocument: _primaryDocument, runtime, ...rest } = result;
+          return {
+            ...rest,
+            runtime
+          };
+        })
+      : await executeReportBundleGenerateFlow({
+          llm,
+          messages: resolveReportBundleMessages(dto, goal),
+          structuredSeed: dto.reportSchemaInput,
+          strictLlmBrandNew,
+          modelId: dto.modelId,
+          temperature: dto.temperature,
+          maxTokens: dto.maxTokens,
+          disableCache,
+          artifactCacheKey: disableCache ? undefined : resolveReportSchemaArtifactCacheKey(runtimeHost, dto),
+          nodeModelPolicy,
+          nodeModelOverrides: dto.modelId
+            ? {
+                schemaSpecNode: dto.modelId,
+                filterSchemaNode: dto.modelId,
+                dataSourceNode: dto.modelId,
+                sectionPlanNode: dto.modelId,
+                metricsBlockNode: dto.modelId,
+                chartBlockNode: dto.modelId,
+                tableBlockNode: dto.modelId,
+                sectionSchemaNode: dto.modelId,
+                patchSchemaNode: dto.modelId
+              }
+            : undefined,
+          onStage: stageHandler,
+          onArtifact: artifactHandler
+        }).then(result => {
+          const { primaryDocument: _primaryDocument, runtime, ...rest } = result;
+          return {
+            ...rest,
+            runtime: runtime.jsonRuntime ?? undefined
+          };
+        });
   } finally {
     clearInterval(heartbeat);
   }
@@ -132,18 +188,58 @@ export async function streamReportSchema(
   onEvent({
     type: 'schema_ready',
     data: {
-      schema: graphResult.schema,
+      ...(graphResult.bundle ? { bundle: graphResult.bundle } : {}),
       reportSummaries: graphResult.reportSummaries,
       runtime: graphResult.runtime
     }
   });
 
+  return graphResult;
+}
+
+function buildLegacyPatchUnsupportedResult(): DataReportBundleGenerateResult {
   return {
-    ...graphResult,
-    schema: graphResult.schema as DataReportJsonSchema,
-    content: graphResult.content,
-    elapsedMs: graphResult.elapsedMs
+    status: 'failed',
+    error: {
+      errorCode: 'report_schema_generation_failed',
+      errorMessage:
+        'Legacy CHANGE_REQUEST + CURRENT_SCHEMA payloads are no longer supported. Use currentBundle with requestedOperations or messages.',
+      retryable: false
+    },
+    content: '',
+    elapsedMs: 0
   };
+}
+
+function isLegacyPatchRequest(goal: string) {
+  return goal.includes('CHANGE_REQUEST:') && goal.includes('CURRENT_SCHEMA:');
+}
+
+function resolveReportSchemaGoal(dto: DirectChatRequestDto) {
+  if (dto.message?.trim() || dto.messages?.length) {
+    return extractDirectGoal(dto);
+  }
+
+  if (dto.requestedOperations?.length) {
+    return dto.requestedOperations
+      .map(operation => operation.summary.trim())
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (dto.currentBundle) {
+    return dto.currentBundle.meta.title;
+  }
+
+  return extractDirectGoal(dto);
+}
+
+function resolveReportBundleMessages(dto: DirectChatRequestDto, goal: string) {
+  if (dto.messages?.length) {
+    return dto.messages as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  }
+
+  return [{ role: 'user' as const, content: goal }];
 }
 
 function resolveReportSchemaNodeModelPolicy(

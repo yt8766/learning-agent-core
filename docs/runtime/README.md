@@ -60,8 +60,8 @@
 - `runtime/model-invocation` 当前已收敛两条最小语义：
   - `CapabilityInjectionPreprocessor` 对 `direct-reply` 维持保守按需注入，默认不放行 MCP；若 hint 显式请求 MCP，会写入 `rejectedCandidates / reasons` 并拒绝执行
   - invocation pipeline 会在全部 preprocess 完成后检查 `cacheDecision`；当状态为 `hit` 且携带缓存文本时，直接返回缓存结果，不再进入 provider.execute
-  - `BudgetEstimatePreprocessor` 会按最终组装后的消息估算 token；超预算时优先切到 `fallbackModelId`，无 fallback 时直接返回 deny 结果，不继续调用 provider
-  - `UsageBillingPostprocessor` 会产出稳定的 invocation usage ledger 与 `taskUsageDelta`，主链 `recordTaskUsageFromInvocation(...)` 负责做去重落盘并回写 task `llmUsage / budgetState`
+  - `BudgetEstimatePreprocessor` 会按最终组装后的消息优先调用 provider token estimate；provider 未提供估算器时才回退到轻量字符估算。超预算时优先切到 `fallbackModelId`，无 fallback 时直接返回 deny 结果，不继续调用 provider
+  - `UsageBillingPostprocessor` 会产出稳定的 invocation usage ledger 与 `taskUsageDelta`；当上游 usage 只回传 `costUsd` 时，会在 pipeline 内补算 `costCny`，避免 task `budgetState.costConsumedCny` 长期缺口。主链 `recordTaskUsageFromInvocation(...)` 负责做去重落盘并回写 task `llmUsage / budgetState`
 
 当前文档：
 

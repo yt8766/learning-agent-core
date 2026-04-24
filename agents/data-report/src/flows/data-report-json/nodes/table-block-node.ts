@@ -1,5 +1,11 @@
 import type { DataReportJsonGraphHandlers, DataReportJsonGraphState } from '../../../types/data-report-json';
 import {
+  createDataReportJsonPartSystemPrompt,
+  createDataReportJsonPartUserPrompt
+} from '../prompts/generate-report-page-part-prompt';
+import { dataReportJsonTableBlockSchema } from '../schemas/report-page-schema';
+import { generateReportJsonPartWithLlm } from './llm-part-helper';
+import {
   buildSplitBlockArtifactCacheKey,
   buildSingleReportTableBlock,
   emitJsonNodeStage,
@@ -40,11 +46,46 @@ export async function runJsonTableBlockNode(
     };
   }
 
-  const sectionTableBlock = buildSingleReportTableBlock(state);
+  let sectionTableBlock = buildSingleReportTableBlock(state);
   let modelId: string | undefined;
-  const attemptedLlm = false;
+  let attemptedLlm = false;
   const degraded = false;
   const fallbackReason: string | undefined = undefined;
+
+  if (state.strictLlmBrandNew) {
+    attemptedLlm = true;
+    const result = await generateReportJsonPartWithLlm({
+      state,
+      node: 'tableBlockNode',
+      schema: dataReportJsonTableBlockSchema,
+      contractName: 'data-report-json-table-block',
+      messages: [
+        {
+          role: 'system',
+          content: createDataReportJsonPartSystemPrompt({
+            partName: 'tableBlock',
+            outputRules: [
+              '只生成 table block。',
+              'columns 必须覆盖用户需求中的字段列表和关键维度。',
+              'dataIndex 必须保持接口字段名或清晰的前端展示字段名。'
+            ]
+          })
+        },
+        {
+          role: 'user',
+          content: createDataReportJsonPartUserPrompt({
+            context: state.nodeContexts?.tableBlockNode ?? state.goal,
+            analysis: state.analysis,
+            partName: 'tableBlock',
+            rawGoal: state.goal
+          })
+        }
+      ],
+      partName: 'tableBlock'
+    });
+    sectionTableBlock = result.object;
+    modelId = result.modelId;
+  }
 
   if (!state.strictLlmBrandNew) {
     setSplitBlockArtifactCache(cacheKey, sectionTableBlock, state.disableCache);

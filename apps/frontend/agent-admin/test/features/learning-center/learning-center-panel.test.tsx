@@ -53,6 +53,39 @@ vi.mock('@/components/ui/input', () => ({
   }
 }));
 
+vi.mock('@/features/learning-center/learning-center-charts-card', () => ({
+  LearningChartsCard: ({
+    activeChart,
+    onChartChange
+  }: {
+    activeChart: string;
+    onChartChange: (value: string) => void;
+  }) => {
+    const titleMap: Record<string, string> = {
+      queue: 'Learning Queue Structure',
+      conflict: 'Conflict Governance',
+      ministry: 'Ministry Scorecards',
+      trust: 'Capability Trust Distribution'
+    };
+    learningCenterTestState.renderedButtons.push(
+      { children: 'Queue', onClick: () => onChartChange('queue') },
+      { children: 'Conflict', onClick: () => onChartChange('conflict') },
+      { children: 'Ministry', onClick: () => onChartChange('ministry') },
+      { children: 'Trust', onClick: () => onChartChange('trust') }
+    );
+
+    return (
+      <section data-learning-chart={activeChart}>
+        <h2>{titleMap[activeChart] ?? activeChart}</h2>
+        <button>Queue</button>
+        <button>Conflict</button>
+        <button>Ministry</button>
+        <button>Trust</button>
+      </section>
+    );
+  }
+}));
+
 import { LearningCenterPanel } from '@/features/learning-center/learning-center-panel';
 import type { LearningCenterRecord } from '@/types/admin';
 

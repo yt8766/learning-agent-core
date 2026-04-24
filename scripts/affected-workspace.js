@@ -37,6 +37,14 @@ export function resolveAffectedBaseRef(env = process.env) {
   return configured || DEFAULT_AFFECTED_BASE_REF;
 }
 
+export function resolveAffectedReadOptions(env = process.env) {
+  return {
+    includeWorkingTree: env.VERIFY_INCLUDE_WORKTREE !== '0',
+    includeStaged: env.VERIFY_INCLUDE_STAGED !== '0',
+    includeUntracked: env.VERIFY_INCLUDE_UNTRACKED !== '0'
+  };
+}
+
 export function buildTurboAffectedFilter(baseRef = resolveAffectedBaseRef()) {
   return `...[${baseRef}]`;
 }
@@ -44,15 +52,27 @@ export function buildTurboAffectedFilter(baseRef = resolveAffectedBaseRef()) {
 export function readChangedPaths(options = {}) {
   const repoRoot = options.repoRoot ?? defaultRepoRoot;
   const baseRef = options.baseRef ?? resolveAffectedBaseRef();
+  const readOptions = {
+    ...resolveAffectedReadOptions(options.env),
+    ...(typeof options.includeWorkingTree === 'boolean' ? { includeWorkingTree: options.includeWorkingTree } : {}),
+    ...(typeof options.includeStaged === 'boolean' ? { includeStaged: options.includeStaged } : {}),
+    ...(typeof options.includeUntracked === 'boolean' ? { includeUntracked: options.includeUntracked } : {})
+  };
   const changedPaths = new Set();
   let hasReadableSignal = false;
 
-  for (const args of [
-    ['diff', '--name-only', `${baseRef}...HEAD`],
-    ['diff', '--name-only'],
-    ['diff', '--name-only', '--cached'],
-    ['ls-files', '--others', '--exclude-standard']
-  ]) {
+  const gitPathReads = [['diff', '--name-only', `${baseRef}...HEAD`]];
+  if (readOptions.includeWorkingTree) {
+    gitPathReads.push(['diff', '--name-only']);
+  }
+  if (readOptions.includeStaged) {
+    gitPathReads.push(['diff', '--name-only', '--cached']);
+  }
+  if (readOptions.includeUntracked) {
+    gitPathReads.push(['ls-files', '--others', '--exclude-standard']);
+  }
+
+  for (const args of gitPathReads) {
     const output = readGitPathSet(repoRoot, args);
     if (!output) {
       continue;

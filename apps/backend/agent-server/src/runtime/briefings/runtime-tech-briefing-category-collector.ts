@@ -11,7 +11,9 @@ import { collectFeedItems, collectNvdItems, collectSecurityPageItems } from './r
 import { finalizeItemsForRanking, rankItems } from './runtime-tech-briefing-ranking';
 import { translateBriefingItems } from './runtime-tech-briefing-translate';
 import { computePreferenceScore, enrichActionMetadata } from './runtime-tech-briefing-item-enrichment';
+import { MCP_DISCOVERY_QUERIES, resolveMcpSearchSourceMeta } from './runtime-tech-briefing-mcp-search-policy';
 import type { BriefingSettings } from './runtime-tech-briefing-schedule';
+import { appendBriefingRawEvidence } from './runtime-tech-briefing-storage';
 import type { TechBriefingCategory, TechBriefingItem } from './runtime-tech-briefing.types';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
@@ -54,16 +56,6 @@ export interface RuntimeTechBriefingCollectorContext {
     }>
   >;
 }
-
-const MCP_DISCOVERY_QUERIES: Record<TechBriefingCategory, string[]> = {
-  'frontend-security': ['frontend security advisory javascript npm chrome node.js'],
-  'general-security': ['linux windows macos docker kubernetes postgres redis security advisory'],
-  'devtool-security': ['claude code cursor mcp security advisory workspace trust'],
-  'ai-tech': ['OpenAI Anthropic Google AI LangChain LangGraph AI release blog'],
-  'frontend-tech': ['React Next.js Vue Vite TypeScript release blog'],
-  'backend-tech': ['Node.js Bun Deno Go Rust Spring .NET release blog'],
-  'cloud-infra-tech': ['Kubernetes Docker Terraform GitHub Actions GitLab CI release blog']
-};
 
 export async function collectBriefingCategoryItems(params: {
   category: TechBriefingCategory;
@@ -139,6 +131,7 @@ async function collectSearchMcpItems(
   }
 
   const candidates: TechBriefingItem[] = [];
+  const rawEvidence: Array<{ provider: 'mcp-web-search'; query: string; capturedAt: string; payload: unknown }> = [];
   for (const query of MCP_DISCOVERY_QUERIES[category] ?? []) {
     const result = await mcpClientManager.invokeTool('webSearchPrime', {
       taskId: `briefing-${category}-${now.getTime()}`,
@@ -154,8 +147,15 @@ async function collectSearchMcpItems(
     if (!result.ok) {
       continue;
     }
+    rawEvidence.push({
+      provider: 'mcp-web-search',
+      query,
+      capturedAt: now.toISOString(),
+      payload: result.rawOutput
+    });
     candidates.push(...toMcpSearchItems(category, now, result.rawOutput));
   }
+  await appendBriefingRawEvidence(context.workspaceRoot, category, now, rawEvidence);
 
   return dedupeMcpSearchItems(candidates);
 }
@@ -251,10 +251,12 @@ function toMcpSearchItem(category: TechBriefingCategory, now: Date, result: unkn
     return undefined;
   }
 
-  const sourceMeta = resolveSearchSourceMeta(category, url);
+  const sourceMeta = resolveMcpSearchSourceMeta(category, url);
   if (!sourceMeta) {
     return undefined;
   }
+  const isSupplementalSecurity =
+    category === 'frontend-security' || category === 'general-security' || category === 'devtool-security';
 
   return {
     id: createHash('sha1').update(`mcp:${category}:${url}`).digest('hex').slice(0, 12),
@@ -272,47 +274,13 @@ function toMcpSearchItem(category: TechBriefingCategory, now: Date, result: unkn
     summary,
     confidence: 0.72,
     sourceLabel: `${sourceMeta.name} / MCP Search`,
-    relevanceReason: `由 BigModel Web Search MCP 补充发现，命中 ${category} 白名单来源`,
+    relevanceReason: `由 Web Search MCP 补充发现，命中 ${category} 白名单来源`,
     technicalityScore: 3,
-    crossVerified: false
+    crossVerified: false,
+    recommendedAction: isSupplementalSecurity ? 'watch' : 'evaluate',
+    relevanceLevel: isSupplementalSecurity ? 'watch' : 'team',
+    fixConfidence: isSupplementalSecurity ? 'unconfirmed' : undefined
   };
-}
-
-function resolveSearchSourceMeta(category: TechBriefingCategory, url: string) {
-  const hostname = safeHostname(url);
-  if (!hostname) {
-    return undefined;
-  }
-
-  const allSources = [
-    ...FEED_SOURCES.filter(source => source.category === category).map(source => ({
-      name: source.name,
-      sourceUrl: source.sourceUrl,
-      authorityTier: source.authorityTier,
-      sourceGroup: source.sourceGroup,
-      contentKind: source.contentKind
-    })),
-    ...FRONTEND_SECURITY_PAGE_SOURCES.filter(source => source.category === category).map(source => ({
-      name: source.name,
-      sourceUrl: source.sourceUrl,
-      authorityTier: source.authorityTier,
-      sourceGroup: source.sourceGroup,
-      contentKind: source.contentKind
-    }))
-  ];
-
-  return allSources.find(source => {
-    const sourceHost = safeHostname(source.sourceUrl);
-    return sourceHost ? hostname === sourceHost || hostname.endsWith(`.${sourceHost}`) : false;
-  });
-}
-
-function safeHostname(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return undefined;
-  }
 }
 
 function dedupeMcpSearchItems(items: TechBriefingItem[]) {

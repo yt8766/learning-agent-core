@@ -106,6 +106,8 @@ export {
   parseDataReportJsonSchema
 } from './flows/data-report-json/schemas';
 export { executeDataReportJsonGraph } from './flows/data-report-json/runtime';
+export { executeReportBundleGenerateFlow } from './flows/report-bundle/generate';
+export { executeReportBundleEditFlow } from './flows/report-bundle/edit';
 export {
   DATA_REPORT_JSON_DEFAULT_MODEL_POLICY,
   classifyDataReportJsonPatchMode,
@@ -125,5 +127,7 @@ export {
   createDataReportJsonSpecSystemPrompt,
   createDataReportJsonSpecUserPrompt
 } from './flows/data-report-json/prompts';
+export type { ReportBundleGenerateInput, ReportBundleGenerateResult } from './flows/report-bundle/generate';
+export type { ReportBundleEditInput, ReportBundleEditResult } from './flows/report-bundle/edit';
 
 export type { DataReportBlueprintResult } from '@agent/report-kit';

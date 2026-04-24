@@ -3,6 +3,7 @@ export * from '../assembly/data-report-ast-postprocess';
 export * from '../assembly/data-report-routes';
 export * from '../blueprints/data-report-blueprint';
 export * from '../blueprints/data-report-blueprint-template';
+export * from '../json-renderer/data-report-json-renderer';
 export * from '../scaffold/data-report-module-scaffold';
 export * from '../scaffold/data-report-scaffold';
 export * from '../writers/data-report-write';

@@ -7,7 +7,6 @@ import {
   deriveAnalysisFromGoalWithCacheControl,
   deriveAnalysisFromSchema,
   emitJsonNodeStage,
-  extractEmbeddedSchema,
   hasStructuredReportInput,
   type DataReportJsonNodePatch
 } from './shared';
@@ -20,13 +19,10 @@ export async function runJsonAnalysisNode(
     return handlers.analysisNode(state);
   }
 
-  const embedded = extractEmbeddedSchema(state.goal);
   const defaults = decorateStateDefaults({
-    ...state,
-    currentSchema: embedded.currentSchema ?? state.currentSchema,
-    modificationRequest: embedded.modificationRequest ?? state.modificationRequest
+    ...state
   });
-  if (hasStructuredReportInput(state) && !embedded.currentSchema) {
+  if (hasStructuredReportInput(state) && !state.currentSchema) {
     const structured = buildStructuredSchemaArtifacts(state.reportSchemaInput);
     const analysis = deriveAnalysisFromSchema({
       version: '1.0',
@@ -85,8 +81,8 @@ export async function runJsonAnalysisNode(
     };
   }
 
-  if (embedded.currentSchema) {
-    const analysis = deriveAnalysisFromSchema(embedded.currentSchema);
+  if (state.currentSchema) {
+    const analysis = deriveAnalysisFromSchema(state.currentSchema);
     emitJsonNodeStage(state, {
       node: 'analysisNode',
       status: 'success',
@@ -98,7 +94,7 @@ export async function runJsonAnalysisNode(
         templateRef: analysis.templateRef,
         scope: analysis.scope,
         route: analysis.route,
-        source: 'embedded-schema',
+        source: 'current-schema',
         modificationMode: true,
         mode: defaults.mode,
         complexity: defaults.complexity,
@@ -111,8 +107,8 @@ export async function runJsonAnalysisNode(
         goal: state.goal,
         analysis
       }),
-      currentSchema: embedded.currentSchema,
-      modificationRequest: embedded.modificationRequest,
+      currentSchema: state.currentSchema,
+      modificationRequest: state.modificationRequest,
       mode: defaults.mode,
       complexity: defaults.complexity,
       fastLane: defaults.fastLane,
@@ -149,8 +145,8 @@ export async function runJsonAnalysisNode(
       goal: state.goal,
       analysis: derived.analysis
     }),
-    currentSchema: embedded.currentSchema ?? state.currentSchema,
-    modificationRequest: embedded.modificationRequest ?? state.modificationRequest,
+    currentSchema: state.currentSchema,
+    modificationRequest: state.modificationRequest,
     mode: defaults.mode,
     complexity: defaults.complexity,
     fastLane: defaults.fastLane,
