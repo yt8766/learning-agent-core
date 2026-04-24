@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "turbo:typecheck": "pnpm typecheck",
     "turbo:test:unit": "pnpm --dir ../.. exec vitest run --config vitest.config.js apps/llm-gateway/test --exclude '**/*.int-spec.ts'",
-    "turbo:test:integration": "pnpm --dir ../.. exec vitest run --config vitest.config.js apps/llm-gateway/test --include '**/*.int-spec.ts'",
+    "turbo:test:integration": "node ../../scripts/run-package-integration-tests.js apps/llm-gateway",
     "lint": "eslint --ignore-pattern .next --ignore-pattern node_modules ."
   },
   "dependencies": {
