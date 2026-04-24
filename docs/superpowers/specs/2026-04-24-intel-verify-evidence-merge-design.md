@@ -60,6 +60,7 @@ Digest 链路已经通过 `signalSources.listBySignalIds()` 构造 `signalEviden
 
 - `createIntelDatabase(databaseFile)` 仍负责创建目录、打开 SQLite、初始化表结构。
 - 当 `new Database(databaseFile)` 抛出 native binding / ABI mismatch 错误时，包装成项目可读错误。
+- ABI 判断优先落在可单测的纯函数，例如 `normalizeIntelDatabaseOpenError(error)`，避免在测试里强行 mock `better-sqlite3` 静态 import。
 - 新错误必须包含：
   - `better-sqlite3`
   - 当前错误属于 native module / Node ABI mismatch
@@ -75,9 +76,11 @@ Patrol 证据归并在现有节点和 repository 之上补齐，不改变 digest
 
 数据规则：
 
-- 每条 `PatrolSearchResult` 都解析出稳定 `contentHash`。
+- 每条 `PatrolSearchResult` 都解析出稳定 `contentHash`。本轮必须收敛为一个共享 helper，避免继续保留 `run-web-search`、`persist-raw-events` 与 service 中三套 fallback 规则。
 - `normalizeSignalsNode` 继续用 `dedupeKey` 识别事件同一性。
-- `dedupeAndMergeNode` 继续负责把 incoming signal 合并到 existing signal。
+- `dedupeAndMergeNode` 继续负责把 incoming signal 合并到 existing signal，并必须支持同一 patrol run 内多个 incoming signal 命中同一 `dedupeKey` 时合并为一个 final signal。
+- 本轮不要求新增跨运行历史 signal 查询；`existingSignals` 仍可由调用方传入。当前 service 先保持 `existingSignals: []`，但节点必须正确处理同批次 dedupe。
+- 节点或新增 helper 必须产出 `incomingSignalId -> finalSignalId` 或 `dedupeKey -> finalSignalId` 的稳定映射，供 source 写入最终 signal id。
 - 新增或扩展一个 patrol evidence persistence 步骤，把 raw result 映射为 `IntelSignalSource` 并写入 `signal_sources`。
 - 写入维持当前幂等约束：`signal_id + content_hash`。
 - 同一 merged signal 可关联多个来源。
@@ -86,13 +89,26 @@ Patrol 证据归并在现有节点和 repository 之上补齐，不改变 digest
 映射策略：
 
 - `signalId` 使用最终 merged/scored signal 的 `id`。
-- `contentHash` 使用 raw result 的显式 `contentHash`，缺省时沿用当前 raw event hash 生成规则。
+- `contentHash` 使用 raw result 的显式 `contentHash`，缺省时使用本轮统一 helper 生成的 deterministic hash。
+- `id` 使用 `signalId + contentHash` 派生的确定性 source id，避免同一 signal 多来源时主键冲突。
 - `sourceName`、`sourceType`、`title`、`url`、`snippet`、`publishedAt`、`fetchedAt` 来自 raw result。
 - `createdAt` 使用当前 job 的可测试时间输入，避免测试依赖真实时钟。
 
 如果一个 raw result 的 normalized signal 被合并到既有 signal，source 必须挂到既有 signal 的 `id`，而不是临时 incoming id。
 
-### 5.3 Digest 复用
+现有 `executePatrolIntelRun()` 中按 `normalizedSignals[index]` 写 source 的轻量绑定必须替换为上述 final signal 映射，避免 digest 通过 final signal id 查询时读不到 evidence。
+
+### 5.3 Raw Events 幂等
+
+`raw_events.content_hash` 当前是唯一键。为了让重复 patrol 不在 raw event 阶段提前失败，本轮需要让 raw event 持久化与 `signal_sources` 一样具备幂等语义。
+
+规则：
+
+- 重复 `content_hash` 不应抛出 SQLite unique constraint。
+- 重复 raw event 可以返回既有 row id，或执行 `ON CONFLICT(content_hash) DO UPDATE` 后返回稳定 id。
+- raw event 幂等行为必须有 repository 或 node 层回归测试覆盖。
+
+### 5.4 Digest 复用
 
 Digest 不新增 storage 查询方式。它继续通过：
 
@@ -110,6 +126,7 @@ daily digest collected signals
 - ABI mismatch：抛出带明确诊断的新错误，并保留 `cause`。
 - SQLite 路径或权限错误：保持失败，不做自动 fallback。
 - source 写入冲突：沿用当前 `ON CONFLICT(signal_id, content_hash) DO UPDATE`，保证重复 patrol 不制造重复 evidence。
+- raw event 写入冲突：同一 `content_hash` 必须幂等处理，不允许重复 patrol 在 raw event 阶段失败。
 - raw result 缺少 `contentHash`：使用确定性 fallback hash，不使用随机值。
 - merge 后找不到对应 signal：视为实现错误，应由测试覆盖并失败，而不是静默丢 evidence。
 
@@ -118,6 +135,8 @@ daily digest collected signals
 ### Spec / Unit
 
 - `intel-db` 或 repository storage 层：模拟 ABI mismatch，断言错误信息可行动且保留 cause。
+- `raw_events` repository 或 node：重复 `content_hash` 不抛错，并返回可追踪的 persisted id。
+- `dedupeAndMergeNode`：同批次两个 incoming signal 共享 `dedupeKey` 时只产出一个 final signal，并提供 source 可用的 final id 映射。
 - `normalize / dedupe / evidence`：两个 raw result 归并到同一个 signal 后，写入两条 `signal_sources`。
 - `repository`：重复写入相同 `signal_id + content_hash` 时保持幂等更新。
 - `digest`：多个 source refs 能生成正确 source count、official/community count 与 references。
