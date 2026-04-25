@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import type { AdminCredential, AdminPrincipal, AdminTokenPair, AdminAuthErrorCode } from '../contracts/admin-auth';
 import { createMemoryAdminAuthRepository, type AdminAuthRepository } from '../repositories/admin-auth';
@@ -285,6 +286,51 @@ function createBootstrapAdminAuthService(): AdminAuthService {
   const jwtSecret = process.env.LLM_GATEWAY_ADMIN_JWT_SECRET;
   const bootstrapPassword = process.env.LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD;
   const databaseUrl = process.env.DATABASE_URL;
+  redirect('/admin/login?reason=browser-token-required');
+}
+
+export function getAdminSessionCookieName(): string {
+  return '';
+}
+
+export class AdminAuthError extends Error {
+  readonly code: AdminAuthErrorCode;
+  readonly status: number;
+
+  constructor(code: AdminAuthErrorCode, message: string, status: number) {
+    super(message);
+    this.name = 'AdminAuthError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export function adminAuthErrorResponse(error: unknown): Response {
+  const authError = toAdminAuthError(error);
+  return Response.json(
+    {
+      error: {
+        code: authError.code,
+        message: authError.message,
+        type: 'admin_auth_error'
+      }
+    },
+    { status: authError.status }
+  );
+}
+
+function toAdminAuthError(error: unknown): AdminAuthError {
+  if (error instanceof AdminAuthError) {
+    return error;
+  }
+
+  return new AdminAuthError('admin_auth_bad_request', 'Admin auth request failed.', 400);
+}
+
+function createBootstrapAdminAuthService(): AdminAuthService {
+  const jwtSecret = process.env.LLM_GATEWAY_ADMIN_JWT_SECRET;
+  const bootstrapPassword = process.env.LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD;
+  const databaseUrl = process.env.DATABASE_URL;
 
   if (!isConfiguredSecret(jwtSecret)) {
     throw new AdminAuthError('admin_auth_not_configured', 'Set LLM_GATEWAY_ADMIN_JWT_SECRET.', 503);
@@ -318,6 +364,59 @@ function verifyJwt(token: string, secret: string): AdminTokenPayload {
     throw new AdminAuthError('admin_access_token_invalid', 'Admin token is invalid.', 401);
   }
 
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const expectedSignature = sign(signingInput, secret);
+  if (!constantTimeEqual(signature, expectedSignature)) {
+    throw new AdminAuthError('admin_access_token_invalid', 'Admin token is invalid.', 401);
+  }
+
+  const header = decodeJson(encodedHeader) as { alg?: unknown; typ?: unknown };
+  const payload = decodeJson(encodedPayload) as Partial<AdminTokenPayload>;
+  if (header.alg !== 'HS256' || header.typ !== 'JWT' || !isTokenPayload(payload)) {
+    throw new AdminAuthError('admin_access_token_invalid', 'Admin token is invalid.', 401);
+  }
+
+  return payload;
+}
+
+function encodeJson(value: unknown): string {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function decodeJson(value: string): unknown {
+  try {
+    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+  } catch {
+    throw new AdminAuthError('admin_access_token_invalid', 'Admin token is invalid.', 401);
+  }
+}
+
+function sign(value: string, secret: string): string {
+  return createHmac('sha256', secret).update(value).digest('base64url');
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function isTokenPayload(payload: Partial<AdminTokenPayload>): payload is AdminTokenPayload {
+  return (
+    typeof payload.sub === 'string' &&
+    payload.role === 'owner' &&
+    (payload.typ === 'access' || payload.typ === 'refresh') &&
+    typeof payload.atv === 'number' &&
+    typeof payload.rtv === 'number' &&
+    typeof payload.iat === 'number' &&
+    typeof payload.exp === 'number'
+  );
+}
+
+function readBearerToken(authorization: string | null): string {
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]) {
+    throw new AdminAuthError('admin_access_token_missing', 'Admin access token is required.', 401);
   const signingInput = `${encodedHeader}.${encodedPayload}`;
   const expectedSignature = sign(signingInput, secret);
   if (!constantTimeEqual(signature, expectedSignature)) {
