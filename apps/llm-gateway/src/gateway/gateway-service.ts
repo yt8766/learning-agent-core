@@ -247,6 +247,12 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
     );
   }
 
+  async function buildGatewayFallbackChain(requestedAlias: string): Promise<GatewayModelRecord[]> {
+    const models = await options.modelRegistry.list();
+    const modelsByAlias = new Map(models.map(model => [model.alias, model]));
+    return buildFallbackChain(requestedAlias, alias => modelsByAlias.get(alias), 5);
+  }
+
   return {
     async dispose() {
       await options.repository.dispose?.();
@@ -255,7 +261,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
       const prepared = await prepare(input.authorization, body);
-      const candidates = buildFallbackChain(prepared.model.alias, alias => options.modelRegistry.resolve(alias), 5);
+      const candidates = await buildGatewayFallbackChain(prepared.model.alias);
       let lastError: unknown;
 
       for (const [attemptIndex, candidate] of candidates.entries()) {
@@ -300,7 +306,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
       const prepared = await prepare(input.authorization, body);
-      const candidates = buildFallbackChain(prepared.model.alias, alias => options.modelRegistry.resolve(alias), 5);
+      const candidates = await buildGatewayFallbackChain(prepared.model.alias);
 
       return streamWithFallbackAttempts(
         candidates.map((candidate, attemptIndex) => ({

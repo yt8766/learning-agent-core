@@ -42,7 +42,8 @@ interface RuntimeGatewayFactoryOptions {
   fetch?: UpstashFetch;
 }
 
-export function setGatewayServiceForRoutes(service: GatewayService | null): void {
+export async function setGatewayServiceForRoutes(service: GatewayService | null): Promise<void> {
+  const previousService = gatewayService;
   gatewayService = service;
 
   if (previousService && previousService !== service) {
@@ -185,6 +186,9 @@ function createPostgresBackedGatewayService(
   }
 
   return {
+    async dispose() {
+      await repository.dispose?.();
+    },
     async complete(input) {
       return (await createDelegate()).complete(input);
     },
