@@ -99,5 +99,9 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
     expect(compose).toContain('LLM_GATEWAY_PROVIDER_MODE: mock');
     expect(compose).not.toContain('container_name: learning-agent-llm-gateway-postgres');
     expect(compose).not.toContain('./.db/postgres');
+
+    const e2eDocs = readRepoFile('docs/integration/llm-gateway-e2e.md');
+    expect(e2eDocs).toContain('pnpm --dir apps/llm-gateway test:e2e');
+    expect(e2eDocs).toContain('docker-compose.e2e.yml');
   });
 });

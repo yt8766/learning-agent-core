@@ -27,6 +27,8 @@ apps/llm-gateway/.db/postgres:/var/lib/postgresql/data
 
 `.db` 是本地数据目录，已由根级 `.gitignore` 忽略；不要提交其中任何数据库文件。
 
+容器化 E2E 使用独立的 `apps/llm-gateway/docker-compose.e2e.yml`，不复用本地开发数据库、固定容器名或 `.db/postgres` 数据目录；E2E 细节见 `docs/integration/llm-gateway-e2e.md`。
+
 默认连接串：
 
 ```text
