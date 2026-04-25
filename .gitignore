@@ -71,6 +71,7 @@ pnpm-debug.log*
 /data/knowledge
 /data/skills
 /data/skill-runtime
+.db
 data/**/*.tmp
 packages/templates/src/*.d.ts
 packages/templates/src/*.d.ts.map
@@ -86,5 +87,6 @@ packages/*/src/**/*.d.ts.map
 # 操作系统杂项
 # -----------------------------------------------------------------------------
 .DS_Store
+.worktrees
 Thumbs.db
 Desktop.ini

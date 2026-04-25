@@ -22,6 +22,7 @@
 
 - 前后端集成链路：[frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 - 系统运行闭环：[system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
+- LLM Gateway 登录 PostgreSQL 部署：[llm-gateway-postgres-login.md](/docs/integration/llm-gateway-postgres-login.md)
 
 约定：
 
@@ -40,6 +41,7 @@
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/integration/system-flow-current-state.md)
 - [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
+- [LLM Gateway 登录 PostgreSQL 部署](/docs/integration/llm-gateway-postgres-login.md)
 
 说明：
 

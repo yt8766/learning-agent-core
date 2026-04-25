@@ -1,13 +1,13 @@
+import { AdminLoginForm } from '../../../src/admin/admin-login-form';
+
 export default function AdminLoginPage() {
   return (
     <main className="admin-shell">
-      <section className="panel">
-        <h1>需要管理员会话</h1>
-        <p>
-          当前私用网关不会开放后台匿名访问。请在部署环境配置
-          <code> LLM_GATEWAY_ADMIN_SESSION_TOKEN </code>
-          并设置管理员会话 Cookie 后再进入控制台。
-        </p>
+      <section className="panel login-panel">
+        <p className="eyebrow">Private LLM Gateway</p>
+        <h1>管理员登录</h1>
+        <p>使用后台密码进入私有网关控制台。</p>
+        <AdminLoginForm />
       </section>
     </main>
   );
