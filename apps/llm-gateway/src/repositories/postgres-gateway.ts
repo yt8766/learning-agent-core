@@ -6,6 +6,7 @@ import { createVirtualApiKeyForPlaintext, verifyVirtualApiKey } from '../keys/ap
 
 type PgQueryable = {
   query(text: string, values?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
+  end?(): Promise<void>;
 };
 
 const { Pool } = pg;
@@ -32,6 +33,7 @@ export type PostgresGatewayRepository = GatewayRepository & {
   findModelByAlias(alias: string): Promise<GatewayModelRecord | undefined>;
   saveModel(model: GatewayModelRecord): Promise<void>;
   saveSeedApiKey(input: SeedApiKeyInput): Promise<void>;
+  dispose(): Promise<void>;
 };
 
 export function createPostgresGatewayRepository(
@@ -48,11 +50,17 @@ export function createPostgresGatewayRepositoryForClient(
   let schemaReady: Promise<void> | null = null;
 
   async function ensureSchema(): Promise<void> {
-    schemaReady ??= createSchema(client);
+    schemaReady ??= createSchema(client).catch(error => {
+      schemaReady = null;
+      throw error;
+    });
     await schemaReady;
   }
 
   return {
+    async dispose() {
+      await client.end?.();
+    },
     async verifyApiKey(plaintext) {
       await ensureSchema();
       const prefix = plaintext.slice(0, 16);

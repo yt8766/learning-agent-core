@@ -6,8 +6,13 @@ import { createPostgresGatewayRepository } from '../repositories/postgres-gatewa
 
 let gatewayService: GatewayService | null = null;
 
-export function setGatewayServiceForRoutes(service: GatewayService | null): void {
+export async function setGatewayServiceForRoutes(service: GatewayService | null): Promise<void> {
+  const previousService = gatewayService;
   gatewayService = service;
+
+  if (previousService && previousService !== service) {
+    await previousService.dispose?.();
+  }
 }
 
 export function getGatewayServiceForRoutes(): GatewayService {

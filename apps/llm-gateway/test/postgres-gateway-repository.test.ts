@@ -11,9 +11,16 @@ class FakePgClient {
   readonly usageRows: Record<string, { used_tokens_today: number; used_cost_today: number }> = {};
   readonly logs: unknown[] = [];
   readonly usageRecords: unknown[] = [];
+  endCalls = 0;
+  failNextSchemaCreate = false;
 
   async query(text: string, values?: unknown[]) {
     this.calls.push({ text, values });
+
+    if (this.failNextSchemaCreate && text.includes('create table if not exists gateway_api_keys')) {
+      this.failNextSchemaCreate = false;
+      throw new Error('schema unavailable');
+    }
 
     if (text.includes('select * from gateway_api_keys where key_prefix = $1')) {
       const row = this.apiKeys.get(String(values?.[0]));
@@ -76,6 +83,10 @@ class FakePgClient {
     }
 
     return { rows: [] };
+  }
+
+  async end() {
+    this.endCalls += 1;
   }
 }
 
@@ -146,5 +157,27 @@ describe('postgres gateway repository', () => {
     expect(client.usageRecords).toHaveLength(1);
     expect(client.logs).toHaveLength(1);
     expect(client.apiKeys.get(prefix)?.key_hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('retries schema initialization after a transient schema creation failure', async () => {
+    const client = new FakePgClient();
+    client.failNextSchemaCreate = true;
+    const repository = createPostgresGatewayRepositoryForClient(client, { apiKeySecret: secret });
+
+    await expect(repository.listModels()).rejects.toThrow('schema unavailable');
+    await expect(repository.listModels()).resolves.toEqual([]);
+
+    expect(client.calls.filter(call => call.text.includes('create table if not exists gateway_api_keys'))).toHaveLength(
+      2
+    );
+  });
+
+  it('closes the underlying postgres client when disposed', async () => {
+    const client = new FakePgClient();
+    const repository = createPostgresGatewayRepositoryForClient(client, { apiKeySecret: secret });
+
+    await repository.dispose();
+
+    expect(client.endCalls).toBe(1);
   });
 });

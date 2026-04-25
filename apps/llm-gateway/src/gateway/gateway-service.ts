@@ -47,6 +47,7 @@ export interface GatewayRepository {
   getUsageForToday?(keyId: string): Promise<{ usedTokensToday?: number; usedCostToday?: number }>;
   writeRequestLog?(log: unknown): Promise<void>;
   recordUsage?(usage: unknown): Promise<void>;
+  dispose?(): Promise<void>;
 }
 
 export interface GatewayModelRegistry {
@@ -68,6 +69,7 @@ export interface GatewayService {
     authorization?: string | null;
     body: GatewayChatBody;
   }): Promise<AsyncIterable<GatewayChatStreamChunk>>;
+  dispose?(): Promise<void>;
   listModels(input: { authorization?: string | null }): Promise<{
     object: 'list';
     data: Array<{ id: string; object: 'model'; owned_by: 'llm-gateway' }>;
@@ -227,6 +229,9 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
   }
 
   return {
+    async dispose() {
+      await options.repository.dispose?.();
+    },
     async complete(input) {
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
