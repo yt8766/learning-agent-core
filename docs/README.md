@@ -26,14 +26,16 @@
 - [Packages 阶段收官报告](/docs/core/package-finalization-report.md)
 - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
 - [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [本地联调指南](/docs/local-development-guide.md)
 
 本目录主文档：
 
 - 仓库阅读入口：[repo-directory-overview.md](/docs/repo-directory-overview.md)
 - 全局规范入口：[project-conventions.md](/docs/project-conventions.md)
-- 跨模块对接入口：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+- API 契约入口：[api/README.md](/docs/api/README.md)
+- 跨模块集成链路：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 - AI / 包交接入口：[context/README.md](/docs/context/README.md)
 
 按需参考入口：
@@ -65,6 +67,7 @@
    - 前端：先看 [docs/frontend/README.md](/docs/frontend/README.md)
    - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
    - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
+   - API 契约：先看 [docs/api/README.md](/docs/api/README.md)
    - runtime / session / graph：先看 [docs/runtime/README.md](/docs/runtime/README.md)
    - root 级 agents：先看 [docs/agents/README.md](/docs/agents/README.md)
    - 运行时技能：先看 [docs/skill-runtime/README.md](/docs/skill-runtime/README.md)

@@ -15,7 +15,8 @@
 - [验证体系规范](/docs/evals/verification-system-guidelines.md)
 - [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
 - [架构总览](/docs/ARCHITECTURE.md)
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/integration/system-flow-current-state.md)
 
 ## 1. 背景

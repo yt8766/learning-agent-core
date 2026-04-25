@@ -144,5 +144,6 @@ Few-shot 只在这两种情况优先考虑：
 
 - [架构总览](/docs/ARCHITECTURE.md)
 - [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [验证体系规范](/docs/evals/verification-system-guidelines.md)

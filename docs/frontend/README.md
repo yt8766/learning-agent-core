@@ -13,7 +13,8 @@
 2. [agent-admin 文档目录](/docs/frontend/agent-admin/README.md)
 3. [llm-gateway 文档目录](/docs/frontend/llm-gateway/README.md)
 4. [前端规范](/docs/frontend-conventions.md)
-5. [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+5. [API 文档目录](/docs/api/README.md)
+6. [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 
 改前端前先确认：
 
@@ -26,6 +27,7 @@
 - 前线执行面入口：[agent-chat/README.md](/docs/frontend/agent-chat/README.md)
 - 后台治理面入口：[agent-admin/README.md](/docs/frontend/agent-admin/README.md)
 - 私用中转站入口：[llm-gateway/README.md](/docs/frontend/llm-gateway/README.md)
+- API 契约入口：[api/README.md](/docs/api/README.md)
 - 跨端协作入口：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 
 当前文档：

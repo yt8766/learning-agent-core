@@ -758,9 +758,10 @@ skills/
 
 1. [AGENTS.md](/AGENTS.md)
 2. [README.md](/README.md)
-3. [前后端对接文档](/docs/integration/frontend-backend-integration.md)
-4. [后端规范](/docs/backend-conventions.md)
-5. [前端规范](/docs/frontend-conventions.md)
+3. [API 文档目录](/docs/api/README.md)
+4. [前后端集成链路](/docs/integration/frontend-backend-integration.md)
+5. [后端规范](/docs/backend-conventions.md)
+6. [前端规范](/docs/frontend-conventions.md)
 
 ## 13. 最低检查
 

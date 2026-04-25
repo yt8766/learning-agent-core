@@ -15,8 +15,9 @@
 
 改接口、SSE、审批恢复前，优先同时阅读：
 
+- [docs/api/README.md](/docs/api/README.md)
 - [docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-- [docs/integration/approval-recovery.md](/docs/integration/approval-recovery.md)
+- [docs/api/approvals.md](/docs/api/approvals.md)
 
 本目录主文档：
 
@@ -41,7 +42,7 @@
 
 约定：
 
-- 后端 controller、service、SSE、运行时装配、鉴权和接口契约相关文档统一放在 `docs/backend/`
+- 后端 controller、service、SSE、运行时装配和鉴权说明放在 `docs/backend/`；接口契约统一放在 `docs/api/`
 - 新增接口、修改流协议、调整运行时装配或兼容策略后，需同步更新本目录文档
 
 当前文档：

@@ -10,7 +10,8 @@
 相关入口：
 
 - [runtime-module-notes.md](/docs/backend/runtime-module-notes.md)
-- [runtime-centers-api.md](/docs/integration/runtime-centers-api.md)
+- [agent-admin.md](/docs/api/agent-admin.md)
+- [runtime.md](/docs/api/runtime.md)
 - [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 - [platform-console-staging-acceptance-template.md](/docs/backend/platform-console-staging-acceptance-template.md)
 

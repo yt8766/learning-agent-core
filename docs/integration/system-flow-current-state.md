@@ -149,7 +149,8 @@
 
 ## 8. 继续阅读
 
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
-- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
+- [Agent Chat API](/docs/api/agent-chat.md)
 - [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
 - [Runtime State Machine](/docs/runtime/runtime-state-machine.md)

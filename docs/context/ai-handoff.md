@@ -37,9 +37,10 @@
 3. 项目规范总览：[docs/project-conventions.md](/docs/project-conventions.md)
 4. 架构总览：[docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md)
 5. 包总览：[docs/packages-overview.md](/docs/packages-overview.md)
-6. 前后端对接：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-7. 验证体系：[docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
-8. 目标包交接文档：[docs/context/README.md](/docs/context/README.md)
+6. API 契约：[docs/api/README.md](/docs/api/README.md)
+7. 前后端集成链路：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+8. 验证体系：[docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
+9. 目标包交接文档：[docs/context/README.md](/docs/context/README.md)
 
 ## 代码与文档的默认落位
 
