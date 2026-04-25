@@ -357,3 +357,5 @@ export function useAdminDashboard() {
     ...actions
   };
 }
+
+export type AdminDashboardState = ReturnType<typeof useAdminDashboard>;
