@@ -131,13 +131,17 @@ describe('check-package-boundaries script', () => {
     await writeWorkspaceFile(
       rootDir,
       'apps/backend/agent-server/src/example.ts',
-      "import { listWorkflowPresets } from '@agent/agents-supervisor';"
+      [
+        "import { listWorkflowPresets } from '@agent/agents-supervisor';",
+        "import { executeIntelRun } from '@agent/agents-intel-engine';"
+      ].join('\n')
     );
     await writeWorkspaceFile(
       rootDir,
       'apps/backend/agent-server/package.json',
       JSON.stringify({
         dependencies: {
+          '@agent/agents-intel-engine': 'workspace:*',
           '@agent/agents-supervisor': 'workspace:*',
           '@agent/platform-runtime': 'workspace:*'
         }
@@ -145,8 +149,10 @@ describe('check-package-boundaries script', () => {
     );
 
     expect(findBoundaryViolations(rootDir)).toEqual([
+      'apps/backend/agent-server/package.json depends on official agent package "@agent/agents-intel-engine"; app packages should depend on @agent/platform-runtime for official assembly',
       'apps/backend/agent-server/package.json depends on official agent package "@agent/agents-supervisor"; app packages should depend on @agent/platform-runtime for official assembly',
-      'apps/backend/agent-server/src/example.ts imports official agent package "@agent/agents-supervisor" from app code; use @agent/platform-runtime instead'
+      'apps/backend/agent-server/src/example.ts imports official agent package "@agent/agents-supervisor" from app code; use @agent/platform-runtime instead',
+      'apps/backend/agent-server/src/example.ts imports official agent package "@agent/agents-intel-engine" from app code; use @agent/platform-runtime instead'
     ]);
   });
 

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -71,6 +71,16 @@ describe('FileRuntimeStateRepository', () => {
       evalHistory: [],
       usageAudit: []
     });
+  });
+
+  it('在快照 JSON 损坏时抛出带路径上下文的错误', async () => {
+    const { FileRuntimeStateRepository } = await import('../src/repositories/runtime-state-repository');
+    await mkdir(join(tempDir, 'runtime'), { recursive: true });
+    await writeFile(mocked.tasksStateFilePath, '{ "tasks": [', 'utf8');
+    const repository = new FileRuntimeStateRepository();
+
+    await expect(repository.load()).rejects.toThrow(/Failed to load runtime state snapshot/);
+    await expect(repository.load()).rejects.toThrow(mocked.tasksStateFilePath);
   });
 
   it('保存后可以完整读回快照', async () => {

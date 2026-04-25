@@ -10,10 +10,22 @@ import type {
 } from '@agent/core';
 import type { MemoryFeedbackKind } from '../governance/memory-repository-governance';
 
+export interface MemoryRepositoryMalformedLine {
+  lineNumber: number;
+  reason: string;
+}
+
+export interface MemoryRepositoryHealthStatus {
+  filePath: string;
+  malformedLineCount: number;
+  malformedLines: MemoryRepositoryMalformedLine[];
+}
+
 export interface MemoryRepository {
   append(record: MemoryRecord): Promise<void>;
   list(): Promise<MemoryRecord[]>;
   search(query: string, limit: number): Promise<MemoryRecord[]>;
+  getHealthStatus?(): MemoryRepositoryHealthStatus;
   searchStructured?(request: MemorySearchRequest): Promise<MemorySearchResult>;
   getById(id: string): Promise<MemoryRecord | undefined>;
   quarantine(

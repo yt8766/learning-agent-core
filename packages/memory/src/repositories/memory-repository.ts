@@ -48,8 +48,16 @@ import {
   type MemoryLifecycleDeps
 } from './memory-repository-lifecycle';
 
-export type { MemoryRepository } from './memory-repository.types';
-import type { MemoryRepository } from './memory-repository.types';
+export type {
+  MemoryRepository,
+  MemoryRepositoryHealthStatus,
+  MemoryRepositoryMalformedLine
+} from './memory-repository.types';
+import type {
+  MemoryRepository,
+  MemoryRepositoryHealthStatus,
+  MemoryRepositoryMalformedLine
+} from './memory-repository.types';
 
 export class FileMemoryRepository implements MemoryRepository {
   private readonly filePath: string;
@@ -59,9 +67,11 @@ export class FileMemoryRepository implements MemoryRepository {
   private readonly resolutionCandidateRepository: ResolutionCandidateRepository;
   private readonly evidenceLinkRepository: MemoryEvidenceLinkRepository;
   private readonly reflectionRepository: ReflectionRepository;
+  private lastHealthStatus: MemoryRepositoryHealthStatus;
 
   constructor(filePath = loadSettings().memoryFilePath) {
     this.filePath = resolve(filePath);
+    this.lastHealthStatus = this.createHealthyStatus();
     const memoryBaseName = basename(this.filePath, '.jsonl');
     this.eventRepository = new FileMemoryEventRepository(
       deriveMemorySiblingPath(this.filePath, `${memoryBaseName}.events.jsonl`)
@@ -80,6 +90,13 @@ export class FileMemoryRepository implements MemoryRepository {
 
   setVectorIndexRepository(repository: VectorIndexRepository) {
     this.vectorIndexRepository = repository;
+  }
+
+  getHealthStatus(): MemoryRepositoryHealthStatus {
+    return {
+      ...this.lastHealthStatus,
+      malformedLines: [...this.lastHealthStatus.malformedLines]
+    };
   }
 
   async append(record: MemoryRecord): Promise<void> {
@@ -269,20 +286,42 @@ export class FileMemoryRepository implements MemoryRepository {
   private async readAll(): Promise<MemoryRecord[]> {
     try {
       const raw = await readFile(this.filePath, 'utf8');
-      return raw
-        .split('\n')
-        .map(line => line.trim())
-        .filter(Boolean)
-        .flatMap(line => {
-          try {
-            return [normalizeMemoryRecord(JSON.parse(line) as MemoryRecord)];
-          } catch {
-            return [];
-          }
-        });
+      const records: MemoryRecord[] = [];
+      const malformedLines: MemoryRepositoryMalformedLine[] = [];
+
+      raw.split('\n').forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return;
+        }
+        try {
+          records.push(normalizeMemoryRecord(JSON.parse(trimmed) as MemoryRecord));
+        } catch (error) {
+          malformedLines.push({
+            lineNumber: index + 1,
+            reason: `JSONL line parse or normalize failed: ${error instanceof Error ? error.message : String(error)}`
+          });
+        }
+      });
+
+      this.lastHealthStatus = {
+        filePath: this.filePath,
+        malformedLineCount: malformedLines.length,
+        malformedLines
+      };
+      return records;
     } catch {
+      this.lastHealthStatus = this.createHealthyStatus();
       return [];
     }
+  }
+
+  private createHealthyStatus(): MemoryRepositoryHealthStatus {
+    return {
+      filePath: this.filePath,
+      malformedLineCount: 0,
+      malformedLines: []
+    };
   }
 
   private async appendEvent(

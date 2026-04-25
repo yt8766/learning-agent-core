@@ -318,6 +318,18 @@
 - refresh token 不应进入 `localStorage`。
 - API Key 管理文档应准确区分“contract/service 已就绪”和“HTTP route 已接线”。
 - Postgres auth schema 需要迁移版本策略。
+
+## 修复进展
+
+截至 `2026-04-25`，已完成第一批与第二批可安全收口项：
+
+- 已修复源码产物检查缺口：`check-source-artifacts` 现在覆盖 `agents/*/src/**/*.d.ts.map`，并清理 `agents/supervisor/src/workflows/workflow-preset-registry.d.ts.map`。
+- 已修复 `agent-chat` malformed SSE payload 风险：事件解析失败会进入 checkpoint/detail fallback，不再从 `onmessage` 抛出未捕获 `SyntaxError`。
+- 已修复 `agent-admin` inline import type，并将侧栏分组文案改为“治理中心与专项入口”。
+- 已补齐 `agent-chat` / `approvals` / `agent-admin` 中 Approval resume、SSE 事件与 briefing API 的关键文档缺口；这些文档文件当前仍混有既有未提交改动，后续应单独收口。
+- 已把 `@agent/agents-intel-engine` 纳入 official agent 边界检查，并将 backend intel 定时任务执行收口到 `@agent/platform-runtime` facade，backend 仅保留 `runtime/core/runtime-intel-facade.ts` 入口。
+- 已修复 runtime state snapshot 损坏静默清空问题：缺文件保持空状态兼容，损坏 JSON/normalize 失败改为带路径上下文抛错；保存改为同目录临时文件 + rename，避免并发读到半写 JSON。
+- 已为 memory JSONL 坏行增加 repository health 状态，合法行继续读取，坏行行号与原因可通过 `getHealthStatus()` 观察。
 - 现有 `package.json` 与 `pnpm-lock.yaml` 已在工作区修改，提交前必须确认 lockfile importer 与依赖声明同步。
 
 ## Watchlist

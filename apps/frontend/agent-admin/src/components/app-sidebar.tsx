@@ -172,7 +172,7 @@ export function AppSidebar(
           <div className="space-y-8 pb-4">
             <div className="space-y-3">
               <div className="px-2">
-                <p className="text-sm font-semibold tracking-[0.08em] text-[#7d725f]">六大中心</p>
+                <p className="text-sm font-semibold tracking-[0.08em] text-[#7d725f]">治理中心与专项入口</p>
                 <p className="mt-1 text-xs text-[#9b8e78]">先看主治理面，再进入专项与策略。</p>
               </div>
               <div className="space-y-1">
