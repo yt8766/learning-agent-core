@@ -9,7 +9,7 @@
 
 ## 1. 目标
 
-`apps/llm-gateway` 的 E2E 测试使用独立 `docker-compose.e2e.yml`，启动 PostgreSQL、llm-gateway app 和测试 runner。该栈不复用本地开发 compose，不写入 `.db/postgres`，测试结束后默认删除 volume。
+`apps/llm-gateway` 的 E2E 测试使用独立 `docker-compose.e2e.yml`，启动 PostgreSQL、llm-gateway app 和测试 runner。该栈不复用本地开发 compose，不写入 `.db/postgres`，测试结束后默认删除 volume 和本地 E2E 构建镜像。
 
 ## 2. 命令
 
@@ -47,6 +47,8 @@ E2E seed 会创建：
 ```bash
 pnpm --dir apps/llm-gateway test:e2e:down
 ```
+
+该命令会执行 `down -v --remove-orphans --rmi local`，同时清理容器、network、volume 与本次 compose 构建出的本地 app/runner 镜像。
 
 ## 6. CI 边界
 

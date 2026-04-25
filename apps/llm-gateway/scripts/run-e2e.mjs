@@ -54,7 +54,7 @@ function printLogs() {
 }
 
 function cleanupCommand() {
-  return `docker compose -p ${projectName} -f apps/llm-gateway/docker-compose.e2e.yml down -v --remove-orphans`;
+  return `docker compose -p ${projectName} -f apps/llm-gateway/docker-compose.e2e.yml down -v --remove-orphans --rmi local`;
 }
 
 function runVitestE2e(env = process.env) {
@@ -134,7 +134,7 @@ try {
   }
 } finally {
   if (runner !== 'direct' && !keepUp) {
-    docker(['down', '-v', '--remove-orphans']);
+    docker(['down', '-v', '--remove-orphans', '--rmi', 'local']);
   } else if (runner !== 'direct') {
     console.log(`[llm-gateway:e2e] keeping compose project ${projectName} up for debugging`);
     console.log(`[llm-gateway:e2e] cleanup with: ${cleanupCommand()}`);

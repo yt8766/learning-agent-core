@@ -88,7 +88,7 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
       'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app'
     );
     expect(packageJson.scripts?.['test:e2e:down']).toBe(
-      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml down -v --remove-orphans'
+      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml down -v --remove-orphans --rmi local'
     );
 
     const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
@@ -134,6 +134,7 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
     expect(runner).toContain('apps/llm-gateway/test/e2e/**/*.e2e-spec.ts');
     expect(runner).toContain('docker compose -p');
     expect(runner).toContain('test:e2e:down');
+    expect(runner).toContain("'--rmi', 'local'");
 
     const seed = readRepoFile('apps/llm-gateway/test/e2e/seed.ts');
     expect(seed).toContain('assertE2eDatabaseUrl');
