@@ -1,0 +1,46 @@
+services:
+  llm-gateway-e2e-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: llm_gateway_e2e
+      POSTGRES_USER: llm_gateway_e2e
+      POSTGRES_PASSWORD: llm_gateway_e2e_password
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  llm-gateway-e2e-app:
+    build:
+      context: ../..
+      dockerfile: apps/llm-gateway/Dockerfile.e2e
+    depends_on:
+      llm-gateway-e2e-postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      PORT: 3000
+      DATABASE_URL: postgresql://llm_gateway_e2e:llm_gateway_e2e_password@llm-gateway-e2e-postgres:5432/llm_gateway_e2e
+      LLM_GATEWAY_RUNTIME: postgres
+      LLM_GATEWAY_PROVIDER_MODE: mock
+      LLM_GATEWAY_API_KEY_SECRET: llm-gateway-e2e-api-key-secret
+      LLM_GATEWAY_ADMIN_JWT_SECRET: llm-gateway-e2e-admin-jwt-secret
+    command: >
+      sh -c "pnpm exec tsx test/e2e/seed.ts &&
+             pnpm dev --hostname 0.0.0.0 --port 3000"
+    ports:
+      - '${LLM_GATEWAY_E2E_PORT:-3100}:3000'
+
+  llm-gateway-e2e-runner:
+    build:
+      context: ../..
+      dockerfile: apps/llm-gateway/Dockerfile.e2e
+    depends_on:
+      llm-gateway-e2e-app:
+        condition: service_started
+    environment:
+      LLM_GATEWAY_E2E_BASE_URL: http://llm-gateway-e2e-app:3000
+    command: >
+      sh -c "node apps/llm-gateway/scripts/run-e2e.mjs --runner=direct"
+    working_dir: /repo

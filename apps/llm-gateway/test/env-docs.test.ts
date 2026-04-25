@@ -76,4 +76,28 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
 
     expect(gitignore).toMatch(/(^|\n)\.db(\n|$)/);
   });
+
+  it('exposes the isolated E2E compose stack through package scripts and config', () => {
+    const packageJson = JSON.parse(readRepoFile('apps/llm-gateway/package.json')) as {
+      scripts?: Record<string, string>;
+    };
+
+    expect(packageJson.scripts?.['test:e2e']).toBe('node scripts/run-e2e.mjs --runner=container');
+    expect(packageJson.scripts?.['test:e2e:local']).toBe('node scripts/run-e2e.mjs --runner=host');
+    expect(packageJson.scripts?.['test:e2e:up']).toBe(
+      'docker compose -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app'
+    );
+    expect(packageJson.scripts?.['test:e2e:down']).toBe(
+      'docker compose -f docker-compose.e2e.yml down -v --remove-orphans'
+    );
+
+    const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
+    expect(compose).toContain('llm-gateway-e2e-postgres:');
+    expect(compose).toContain('llm-gateway-e2e-app:');
+    expect(compose).toContain('llm-gateway-e2e-runner:');
+    expect(compose).toContain('LLM_GATEWAY_RUNTIME: postgres');
+    expect(compose).toContain('LLM_GATEWAY_PROVIDER_MODE: mock');
+    expect(compose).not.toContain('container_name: learning-agent-llm-gateway-postgres');
+    expect(compose).not.toContain('./.db/postgres');
+  });
 });
