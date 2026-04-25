@@ -29,8 +29,6 @@ services:
     command: >
       sh -c "pnpm exec tsx test/e2e/seed.ts &&
              pnpm dev --hostname 0.0.0.0 --port 3000"
-    ports:
-      - '${LLM_GATEWAY_E2E_PORT:-3100}:3000'
 
   llm-gateway-e2e-runner:
     build:

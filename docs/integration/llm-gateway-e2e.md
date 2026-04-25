@@ -19,9 +19,9 @@ pnpm --dir apps/llm-gateway test:e2e:local
 pnpm --dir apps/llm-gateway test:e2e -- --keep-up
 ```
 
-`test:e2e` 是 CI 权威入口，runner 在 compose 网络内访问 `http://llm-gateway-e2e-app:3000`。
+`test:e2e` 是 CI 权威入口，runner 在 compose 网络内访问 `http://llm-gateway-e2e-app:3000`。该入口不绑定宿主机端口，避免 CI 并发时抢占 `3100`。
 
-`test:e2e:local` 用于本地调试，宿主机通过 `http://127.0.0.1:3100` 访问 app。
+`test:e2e:local` 用于本地调试，脚本会临时追加端口映射，宿主机通过 `http://127.0.0.1:3100` 访问 app。需要换端口时设置 `LLM_GATEWAY_E2E_PORT`。
 
 ## 3. Seed 数据
 
@@ -40,7 +40,9 @@ E2E seed 会创建：
 
 ## 5. 排障
 
-失败时 `scripts/run-e2e.mjs` 会打印 app logs 和 compose 状态。需要保留现场时使用 `--keep-up`，调试完成后执行：
+失败时 `scripts/run-e2e.mjs` 会打印 app logs 和 compose 状态。需要保留现场时使用 `--keep-up`；此时脚本会保持 PostgreSQL 和 app 运行，并打印完整 cleanup 命令。默认 compose project 是 `llm-gateway-e2e`，需要并发调试时设置 `LLM_GATEWAY_E2E_PROJECT`。
+
+调试完成后执行：
 
 ```bash
 pnpm --dir apps/llm-gateway test:e2e:down

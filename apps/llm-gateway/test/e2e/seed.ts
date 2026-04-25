@@ -1,6 +1,6 @@
-import { createAdminAuthService } from '../../src/auth/admin-auth';
 import pg from 'pg';
 
+import { createAdminAuthService } from '../../src/auth/admin-auth';
 import { createPostgresAdminAuthRepositoryForClient } from '../../src/repositories/postgres-admin-auth';
 import { createPostgresGatewayRepository } from '../../src/repositories/postgres-gateway';
 import { E2E_ADMIN_JWT_SECRET, E2E_API_KEY_SECRET, E2E_KEYS, E2E_OWNER_PASSWORD } from './fixtures';
@@ -11,6 +11,8 @@ export async function seedLlmGatewayE2e(): Promise<void> {
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required for llm-gateway E2E seed');
   }
+
+  assertE2eDatabaseUrl(databaseUrl);
 
   const adminPool = new pg.Pool({ connectionString: databaseUrl });
   const adminRepository = createPostgresAdminAuthRepositoryForClient(adminPool);
@@ -107,4 +109,20 @@ export async function seedLlmGatewayE2e(): Promise<void> {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   await seedLlmGatewayE2e();
+}
+
+function assertE2eDatabaseUrl(databaseUrl: string): void {
+  if (process.env.LLM_GATEWAY_ALLOW_E2E_SEED === '1') {
+    return;
+  }
+
+  const parsed = new URL(databaseUrl);
+  const parts = [parsed.hostname, parsed.username, parsed.pathname.replace(/^\//, '')];
+  if (parts.every(part => part.toLowerCase().includes('e2e'))) {
+    return;
+  }
+
+  throw new Error(
+    'Refusing to seed llm-gateway E2E data into a non-E2E database. Use an E2E database URL or set LLM_GATEWAY_ALLOW_E2E_SEED=1.'
+  );
 }

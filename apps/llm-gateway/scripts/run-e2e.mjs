@@ -11,8 +11,9 @@ const repoRoot = path.resolve(appRoot, '../..');
 const runnerArg = process.argv.find(arg => arg.startsWith('--runner='));
 const runner = runnerArg?.split('=')[1] ?? 'container';
 const keepUp = process.argv.includes('--keep-up');
-const projectName = `llm-gateway-e2e-${Date.now()}`;
+const projectName = process.env.LLM_GATEWAY_E2E_PROJECT ?? 'llm-gateway-e2e';
 const composeArgs = ['compose', '-p', projectName, '-f', 'docker-compose.e2e.yml'];
+const e2eSpecGlob = 'apps/llm-gateway/test/e2e/**/*.e2e-spec.ts';
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -26,9 +27,34 @@ function docker(args) {
   return run('docker', [...composeArgs, ...args]);
 }
 
+function dockerWithHostPort(args) {
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'llm-gateway-e2e-compose-'));
+  const overridePath = path.join(tempDir, 'docker-compose.host-port.yml');
+  const port = process.env.LLM_GATEWAY_E2E_PORT ?? '3100';
+
+  try {
+    writeFileSync(
+      overridePath,
+      `services:
+  llm-gateway-e2e-app:
+    ports:
+      - '${port}:3000'
+`
+    );
+
+    return run('docker', [...composeArgs, '-f', overridePath, ...args]);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 function printLogs() {
   docker(['logs', '--no-color', 'llm-gateway-e2e-app']);
   docker(['ps']);
+}
+
+function cleanupCommand() {
+  return `docker compose -p ${projectName} -f apps/llm-gateway/docker-compose.e2e.yml down -v --remove-orphans`;
 }
 
 function runVitestE2e(env = process.env) {
@@ -44,7 +70,7 @@ export default {
   ...baseConfig,
   test: {
     ...baseConfig.test,
-    include: ['apps/llm-gateway/test/e2e/llm-gateway-http.e2e-spec.ts'],
+    include: [${JSON.stringify(e2eSpecGlob)}],
     exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.turbo/**', '**/coverage/**', '**/data/**'],
     passWithNoTests: false
   }
@@ -52,14 +78,10 @@ export default {
 `
     );
 
-    return run(
-      'pnpm',
-      ['exec', 'vitest', 'run', '--config', configPath, 'apps/llm-gateway/test/e2e/llm-gateway-http.e2e-spec.ts'],
-      {
-        cwd: repoRoot,
-        env
-      }
-    );
+    return run('pnpm', ['exec', 'vitest', 'run', '--config', configPath], {
+      cwd: repoRoot,
+      env
+    });
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -69,17 +91,27 @@ let status = 1;
 
 try {
   if (runner === 'container') {
-    const result = docker([
-      'up',
-      '--build',
-      '--abort-on-container-exit',
-      '--exit-code-from',
-      'llm-gateway-e2e-runner',
-      'llm-gateway-e2e-runner'
-    ]);
-    status = typeof result.status === 'number' ? result.status : 1;
+    if (keepUp) {
+      const up = docker(['up', '--build', '-d', 'llm-gateway-e2e-postgres', 'llm-gateway-e2e-app']);
+      if (up.status !== 0) {
+        status = up.status ?? 1;
+      } else {
+        const result = docker(['run', '--rm', 'llm-gateway-e2e-runner']);
+        status = typeof result.status === 'number' ? result.status : 1;
+      }
+    } else {
+      const result = docker([
+        'up',
+        '--build',
+        '--abort-on-container-exit',
+        '--exit-code-from',
+        'llm-gateway-e2e-runner',
+        'llm-gateway-e2e-runner'
+      ]);
+      status = typeof result.status === 'number' ? result.status : 1;
+    }
   } else if (runner === 'host') {
-    const up = docker(['up', '--build', '-d', 'llm-gateway-e2e-postgres', 'llm-gateway-e2e-app']);
+    const up = dockerWithHostPort(['up', '--build', '-d', 'llm-gateway-e2e-postgres', 'llm-gateway-e2e-app']);
     if (up.status !== 0) {
       status = up.status ?? 1;
     } else {
@@ -105,6 +137,8 @@ try {
     docker(['down', '-v', '--remove-orphans']);
   } else if (runner !== 'direct') {
     console.log(`[llm-gateway:e2e] keeping compose project ${projectName} up for debugging`);
+    console.log(`[llm-gateway:e2e] cleanup with: ${cleanupCommand()}`);
+    console.log('[llm-gateway:e2e] package cleanup alias: pnpm --dir apps/llm-gateway test:e2e:down');
   }
 }
 

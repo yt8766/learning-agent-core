@@ -85,10 +85,10 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
     expect(packageJson.scripts?.['test:e2e']).toBe('node scripts/run-e2e.mjs --runner=container');
     expect(packageJson.scripts?.['test:e2e:local']).toBe('node scripts/run-e2e.mjs --runner=host');
     expect(packageJson.scripts?.['test:e2e:up']).toBe(
-      'docker compose -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app'
+      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app'
     );
     expect(packageJson.scripts?.['test:e2e:down']).toBe(
-      'docker compose -f docker-compose.e2e.yml down -v --remove-orphans'
+      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml down -v --remove-orphans'
     );
 
     const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
@@ -103,5 +103,41 @@ describe('llm-gateway local PostgreSQL deployment docs', () => {
     const e2eDocs = readRepoFile('docs/integration/llm-gateway-e2e.md');
     expect(e2eDocs).toContain('pnpm --dir apps/llm-gateway test:e2e');
     expect(e2eDocs).toContain('docker-compose.e2e.yml');
+  });
+
+  it('keeps E2E Docker context, runner, and seed guarded for isolated execution', () => {
+    const dockerignore = readRepoFile('.dockerignore');
+    for (const pattern of [
+      '.env',
+      '.env.*',
+      '**/.env',
+      '**/.env.*',
+      '**/.db/**',
+      '**/node_modules/**',
+      '.git',
+      '.worktrees',
+      'artifacts',
+      'coverage',
+      '**/.next/**',
+      '**/.turbo/**'
+    ]) {
+      expect(dockerignore).toContain(pattern);
+    }
+
+    const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
+    expect(compose).not.toContain('ports:');
+    expect(compose).not.toContain('${LLM_GATEWAY_E2E_PORT:-3100}:3000');
+
+    const runner = readRepoFile('apps/llm-gateway/scripts/run-e2e.mjs');
+    expect(runner).toContain('LLM_GATEWAY_E2E_PROJECT');
+    expect(runner).toContain('llm-gateway-e2e');
+    expect(runner).toContain('apps/llm-gateway/test/e2e/**/*.e2e-spec.ts');
+    expect(runner).toContain('docker compose -p');
+    expect(runner).toContain('test:e2e:down');
+
+    const seed = readRepoFile('apps/llm-gateway/test/e2e/seed.ts');
+    expect(seed).toContain('assertE2eDatabaseUrl');
+    expect(seed).toContain('LLM_GATEWAY_ALLOW_E2E_SEED=1');
+    expect(seed).toContain('Refusing to seed llm-gateway E2E data');
   });
 });
