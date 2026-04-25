@@ -19,6 +19,14 @@ export async function createVirtualApiKey(secret: string): Promise<CreatedVirtua
   };
 }
 
+export function createVirtualApiKeyForPlaintext(plaintext: string, secret: string): CreatedVirtualApiKey {
+  return {
+    plaintext,
+    prefix: plaintext.slice(0, STORED_PREFIX_LENGTH),
+    hash: hashVirtualApiKey(plaintext, secret)
+  };
+}
+
 export async function verifyVirtualApiKey(plaintext: string, hash: string, secret: string): Promise<boolean> {
   if (!plaintext.startsWith(KEY_PREFIX) || hash.length === 0) {
     return false;

@@ -2,6 +2,7 @@ import { GatewayError } from './errors';
 import { createGatewayService, type GatewayRepository, type GatewayService } from './gateway-service';
 import { createMockProviderAdapter } from '../providers/mock-provider-adapter';
 import { createMemoryRateLimiter } from '../rate-limit/memory-rate-limiter';
+import { createPostgresGatewayRepository } from '../repositories/postgres-gateway';
 
 let gatewayService: GatewayService | null = null;
 
@@ -11,10 +12,52 @@ export function setGatewayServiceForRoutes(service: GatewayService | null): void
 
 export function getGatewayServiceForRoutes(): GatewayService {
   if (!gatewayService) {
-    gatewayService = createBootstrapGatewayService();
+    gatewayService =
+      process.env.LLM_GATEWAY_RUNTIME === 'postgres' ? createPostgresGatewayService() : createBootstrapGatewayService();
   }
 
   return gatewayService;
+}
+
+function createPostgresGatewayService(): GatewayService {
+  const databaseUrl = process.env.DATABASE_URL;
+  const apiKeySecret = process.env.LLM_GATEWAY_API_KEY_SECRET;
+
+  if (!databaseUrl || !apiKeySecret) {
+    throw new GatewayError(
+      'UPSTREAM_UNAVAILABLE',
+      'Gateway postgres runtime is not configured. Set DATABASE_URL and LLM_GATEWAY_API_KEY_SECRET.',
+      503
+    );
+  }
+
+  const repository = createPostgresGatewayRepository(databaseUrl, { apiKeySecret });
+  const providerMode = process.env.LLM_GATEWAY_PROVIDER_MODE ?? 'mock';
+
+  if (providerMode !== 'mock') {
+    throw new GatewayError(
+      'UPSTREAM_UNAVAILABLE',
+      'Only mock provider mode is enabled for the current postgres runtime.',
+      503
+    );
+  }
+
+  return createGatewayService({
+    repository,
+    modelRegistry: {
+      async resolve(alias) {
+        return repository.findModelByAlias(alias);
+      },
+      async list() {
+        return repository.listModels();
+      }
+    },
+    providers: {
+      mock: createMockProviderAdapter({ content: 'llm-gateway e2e response' })
+    },
+    rpmLimiter: createMemoryRateLimiter(),
+    tpmLimiter: createMemoryRateLimiter()
+  });
 }
 
 function createBootstrapGatewayService(): GatewayService {

@@ -50,8 +50,8 @@ export interface GatewayRepository {
 }
 
 export interface GatewayModelRegistry {
-  resolve(alias: string): GatewayModelRecord | undefined;
-  list(): GatewayModelRecord[];
+  resolve(alias: string): GatewayModelRecord | undefined | Promise<GatewayModelRecord | undefined>;
+  list(): GatewayModelRecord[] | Promise<GatewayModelRecord[]>;
 }
 
 export interface GatewayChatBody {
@@ -148,7 +148,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
   async function prepare(authorization: string | null | undefined, body: GatewayChatBody): Promise<PreparedRequest> {
     const parsedBody = normalizeBody(body);
     const key = await authenticate(authorization);
-    const model = options.modelRegistry.resolve(parsedBody.model);
+    const model = await options.modelRegistry.resolve(parsedBody.model);
 
     if (!model || !model.enabled) {
       throw new GatewayError('MODEL_NOT_FOUND', 'Model alias is not available', 404);
@@ -291,8 +291,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
     },
     async listModels(input) {
       const key = await authenticate(input.authorization);
-      const models = options.modelRegistry
-        .list()
+      const models = (await options.modelRegistry.list())
         .filter(model => model.enabled && isModelAllowed(key.models, model.alias))
         .map(model => ({
           id: model.alias,
