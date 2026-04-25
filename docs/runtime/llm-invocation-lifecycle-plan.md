@@ -767,7 +767,8 @@ pnpm --dir apps/backend/agent-server build
 - [Runtime Interrupts](/docs/runtime/runtime-interrupts.md)
 - [skill-runtime 文档目录](/docs/skill-runtime/README.md)
 - [tools runtime governance](/docs/tools/runtime-governance-and-sandbox.md)
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 
 后续实现必须保持：
 

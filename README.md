@@ -373,7 +373,8 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 - [测试规范](./docs/test-conventions.md)
 - [agent-core 历史结构报告（归档）](./docs/archive/agent-core/archive/agent-core-structure-report.md)
 - [架构总览](./docs/ARCHITECTURE.md)
-- [前后端对接文档](./docs/integration/frontend-backend-integration.md)
+- [API 文档目录](./docs/api/README.md)
+- [前后端集成链路](./docs/integration/frontend-backend-integration.md)
 - [仓库目录概览](./docs/repo-directory-overview.md)
 - [规范总览](./docs/project-conventions.md)
 
@@ -384,7 +385,8 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 1. [AGENTS.md](./AGENTS.md)
 2. [README.md](./README.md)
 3. [架构总览](./docs/ARCHITECTURE.md)
-4. [前后端对接文档](./docs/integration/frontend-backend-integration.md)
+4. [API 文档目录](./docs/api/README.md)
+5. [前后端集成链路](./docs/integration/frontend-backend-integration.md)
 
 最重要的当前约束：
 

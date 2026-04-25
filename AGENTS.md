@@ -7,7 +7,8 @@
 - [README](/README.md)
 - [项目规范总览](/docs/project-conventions.md)
 - [架构总览](/docs/ARCHITECTURE.md)
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [验证体系规范](/docs/evals/verification-system-guidelines.md)
 
 ## 1. 产品定位

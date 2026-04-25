@@ -82,9 +82,9 @@
 ### 4.1 拆大文档
 
 - [x] 将前后端联调文档拆成：
-  - `docs/integration/chat-session-sse.md`
-  - `docs/integration/runtime-centers-api.md`
-  - `docs/integration/approval-recovery.md`
+  - `docs/integration/chat-session-sse.md`（历史路径；当前 API 契约已迁到 `docs/api/agent-chat.md`）
+  - `docs/integration/runtime-centers-api.md`（历史路径；当前 API 契约已拆到 `docs/api/agent-admin.md` 与 `docs/api/runtime.md`）
+  - `docs/integration/approval-recovery.md`（历史路径；当前 API 契约已迁到 `docs/api/approvals.md`）
 - [x] 将架构文档拆成：
   - `docs/ARCHITECTURE.md` 只保留长期方向
   - `docs/archive/agent-core/runtime-current-state.md`

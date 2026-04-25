@@ -5,28 +5,28 @@
 适用范围：`docs/integration/`
 最后核对：2026-04-24
 
-本目录用于沉淀跨模块链路、前后端对接、运行时协同与协议集成类文档。
+本目录用于沉淀跨模块链路、运行时协同与联调说明。API 契约统一放在 [docs/api](/docs/api/README.md)。
 
 首次接手建议按这个顺序阅读：
 
-1. [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-2. [system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
-3. 按专题继续看 `chat-session-sse`、`approval-recovery`、`runtime-centers-api`
+1. [API 文档目录](/docs/api/README.md)
+2. [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+3. [system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
 
 改前后端协议、SSE、审批恢复前，优先阅读：
 
-- [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-- [chat-session-sse.md](/docs/integration/chat-session-sse.md)
-- [approval-recovery.md](/docs/integration/approval-recovery.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 
 本目录主文档：
 
-- 总对接主文档：[frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+- 前后端集成链路：[frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 - 系统运行闭环：[system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
 
 约定：
 
 - 涉及多个模块共同参与的链路说明，优先放在 `docs/integration/`
+- API 路径、参数、响应、SSE 事件和兼容规则统一放在 `docs/api/`
 - 当主题无法明确归属单一 package 或单一 app 时，使用本目录
 - 当前 runtime invocation integration 额外约束：
   - `direct-reply` 模式下 capability hint 即使显式请求 MCP，也不会静默注入；runtime 会把拒绝结果写回 invocation trace
@@ -36,13 +36,11 @@
 
 当前优先阅读：
 
-- [前后端对接文档](/docs/integration/frontend-backend-integration.md)
+- [API 文档目录](/docs/api/README.md)
+- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/integration/system-flow-current-state.md)
-- [Chat Session And SSE](/docs/integration/chat-session-sse.md)
-- [Runtime Centers API](/docs/integration/runtime-centers-api.md)
-- [Approval Recovery](/docs/integration/approval-recovery.md)
 - [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
 
 说明：
 
-- 旧的 `docs/chat-stream-protocol.md` 已删除，相关 SSE / chat stream 内容统一并入主文档 `docs/integration/frontend-backend-integration.md`
+- 旧的 API 专题文档已从 `docs/integration/` 迁到 `docs/api/`
