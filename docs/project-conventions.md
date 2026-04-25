@@ -58,6 +58,7 @@
   - 如果某个 contract 出现“稳定协议 + 运行态聚合”混放，后续迁移目标必须是“core 唯一主定义 + 宿主本地 compat/facade”，不允许重新恢复 shared 双轨
 - 前后端协作默认采用“接口文档先行”：
   - API 契约统一维护在 [docs/api](/docs/api/README.md)；`docs/integration` 只保留链路、联调和跨模块协作说明
+  - 新增或修改后端接口前，必须先按 [接口风格选择指南](/docs/api/interface-style-guidelines.md) 判断接口形态。默认使用 RESTful JSON API + schema-first contract + SSE streaming；GraphQL、tRPC 和 WebSocket 都不是默认选项，只有满足指南中的重新评估条件时才允许另行设计。
   - 只要需求会新增或修改 API、SSE event、DTO、payload、tool result、graph state 切片、审批事件或其他跨模块接口，必须先产出并确认接口文档，再进入前后端实现
   - 接口文档至少应写清：目的、调用入口、请求参数、响应或事件 schema、错误语义、兼容策略、字段演进规则、前后端职责边界
   - 接口文档中的正式结构定义必须与 `packages/core` 或宿主 `schemas/`、`contracts/` 中的 schema-first contract 对齐；禁止文档一套、代码一套
