@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/integration/`
-最后核对：2026-04-24
+最后核对：2026-04-25
 
 本目录用于沉淀跨模块链路、运行时协同与联调说明。API 契约统一放在 [docs/api](/docs/api/README.md)。
 
