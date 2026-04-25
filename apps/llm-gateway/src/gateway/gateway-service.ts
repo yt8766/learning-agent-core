@@ -52,11 +52,12 @@ export interface GatewayRepository {
   getUsageForToday?(keyId: string): Promise<{ usedTokensToday?: number; usedCostToday?: number }>;
   writeRequestLog?(log: unknown): Promise<void>;
   recordUsage?(usage: unknown): Promise<void>;
+  dispose?(): Promise<void>;
 }
 
 export interface GatewayModelRegistry {
-  resolve(alias: string): GatewayModelRecord | undefined;
-  list(): GatewayModelRecord[];
+  resolve(alias: string): GatewayModelRecord | undefined | Promise<GatewayModelRecord | undefined>;
+  list(): GatewayModelRecord[] | Promise<GatewayModelRecord[]>;
 }
 
 export interface GatewayChatBody {
@@ -73,6 +74,7 @@ export interface GatewayService {
     authorization?: string | null;
     body: GatewayChatBody;
   }): Promise<AsyncIterable<GatewayChatStreamChunk>>;
+  dispose?(): Promise<void>;
   listModels(input: { authorization?: string | null }): Promise<{
     object: 'list';
     data: Array<{ id: string; object: 'model'; owned_by: 'llm-gateway' }>;
@@ -157,7 +159,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
   async function prepare(authorization: string | null | undefined, body: GatewayChatBody): Promise<PreparedRequest> {
     const parsedBody = normalizeBody(body);
     const key = await authenticate(authorization);
-    const model = options.modelRegistry.resolve(parsedBody.model);
+    const model = await options.modelRegistry.resolve(parsedBody.model);
 
     if (!model || !model.enabled) {
       throw new GatewayError('MODEL_NOT_FOUND', 'Model alias is not available', 404);
@@ -246,6 +248,9 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
   }
 
   return {
+    async dispose() {
+      await options.repository.dispose?.();
+    },
     async complete(input) {
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
@@ -330,8 +335,7 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
     },
     async listModels(input) {
       const key = await authenticate(input.authorization);
-      const models = options.modelRegistry
-        .list()
+      const models = (await options.modelRegistry.list())
         .filter(model => model.enabled && isModelAllowed(key.models, model.alias))
         .map(model => ({
           id: model.alias,

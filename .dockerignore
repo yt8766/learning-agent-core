@@ -1,0 +1,12 @@
+.env
+.env.*
+**/.env
+**/.env.*
+**/.db/**
+**/node_modules/**
+.git
+.worktrees
+artifacts
+coverage
+**/.next/**
+**/.turbo/**

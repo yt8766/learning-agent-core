@@ -44,6 +44,10 @@ interface RuntimeGatewayFactoryOptions {
 
 export function setGatewayServiceForRoutes(service: GatewayService | null): void {
   gatewayService = service;
+
+  if (previousService && previousService !== service) {
+    await previousService.dispose?.();
+  }
 }
 
 export function getGatewayServiceForRoutes(): GatewayService {
