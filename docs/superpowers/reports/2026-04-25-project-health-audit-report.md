@@ -318,6 +318,7 @@
 - refresh token 不应进入 `localStorage`。
 - API Key 管理文档应准确区分“contract/service 已就绪”和“HTTP route 已接线”。
 - Postgres auth schema 需要迁移版本策略。
+<<<<<<< HEAD
 
 ## 修复进展
 
@@ -330,6 +331,8 @@
 - 已把 `@agent/agents-intel-engine` 纳入 official agent 边界检查，并将 backend intel 定时任务执行收口到 `@agent/platform-runtime` facade，backend 仅保留 `runtime/core/runtime-intel-facade.ts` 入口。
 - 已修复 runtime state snapshot 损坏静默清空问题：缺文件保持空状态兼容，损坏 JSON/normalize 失败改为带路径上下文抛错；保存改为同目录临时文件 + rename，避免并发读到半写 JSON。
 - 已为 memory JSONL 坏行增加 repository health 状态，合法行继续读取，坏行行号与原因可通过 `getHealthStatus()` 观察。
+=======
+>>>>>>> fa3e0f19 (docs: add project health audit report)
 - 现有 `package.json` 与 `pnpm-lock.yaml` 已在工作区修改，提交前必须确认 lockfile importer 与依赖声明同步。
 
 ## Watchlist
