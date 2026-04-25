@@ -15,7 +15,7 @@
 
 ## 审计模式
 
-采用风险分层综合审计，覆盖架构边界、工程质量、产品链路、前后端/API 一致性与重复实现，但按风险排序，不追求一次扫完每个角落。
+采用风险分层综合审计，覆盖架构边界、工程质量、产品链路、前后端/API 一致性、重复实现、安全与凭据、数据持久化、可观察恢复和依赖治理，但按风险排序，不追求一次扫完每个角落。
 
 风险分级：
 
@@ -128,6 +128,50 @@
 - `pnpm verify:affected` 是否包含治理门槛、Spec、Demo 和 Integration。
 - 新增实现是否有对应 docs 沉淀，旧文档是否仍误导后续 AI。
 
+### 9. 安全与凭据边界
+
+检查配置、鉴权、密钥、日志、错误响应与外部 provider 调用是否泄露敏感信息，或把安全语义散落到业务层。
+
+重点关注：
+
+- `.env`、`.env.example`、docker compose、示例配置是否区分真实密钥与占位值。
+- API key、admin auth、cookie/session、password hash、provider secret 是否有清晰边界和测试覆盖。
+- 日志、SSE、error response、provider error mapping 是否可能输出 token、secret、原始上游凭据或内部堆栈。
+- `apps/llm-gateway` 中 auth、provider、rate-limit、secrets 相关未提交改动是否引入 P0/P1 风险。
+
+### 10. 数据持久化与迁移风险
+
+检查本地数据、数据库、缓存、运行态 checkpoint、memory/evidence/task record 的 schema 演进与兼容读取。
+
+重点关注：
+
+- `data/*`、repository、Postgres、Redis、本地 JSON 存储是否有明确职责边界。
+- 新旧 schema 字段是否有默认值、兼容读取、迁移或回滚策略。
+- checkpoint、interrupt history、memory、evidence、task record 的失败恢复是否可证明。
+- 清理策略是否会误删用户运行数据、学习记录、审批记录或审计证据。
+
+### 11. 运行时可观察性与可恢复性
+
+检查长流程是否满足项目要求的 `cancel / recover / observe`，以及用户和管理员能否看清任务卡在哪里。
+
+重点关注：
+
+- 关键阶段是否输出 trace、checkpoint、event、interrupt、错误归因或后台任务状态。
+- `agent-chat` 是否能展示 Think、ThoughtChain、Evidence、Approval、Learning 与 recover 状态。
+- `agent-admin` 是否能从 Runtime / Approvals / Evidence / Learning 视角定位失败原因。
+- 后台 worker、scheduler、briefing、provider 调用失败后是否有可恢复路径或明确降级语义。
+
+### 12. 依赖与供应链治理
+
+检查依赖声明、vendor 边界、重复依赖和工具链使用是否符合仓库规则。
+
+重点关注：
+
+- 子包源码直接 import 的依赖是否声明在对应 `package.json`，而不是只依赖根包偶然存在。
+- 是否存在重复声明、未使用依赖、重资产依赖或过时依赖。
+- 第三方 SDK、provider response/error/event 是否被 adapter/facade 转成项目自定义语义，避免穿透业务层。
+- lockfile、workspace importer、CI 安装入口和本地安装策略是否一致。
+
 ## 报告结构
 
 审计报告按问题条目输出，每条包含：
@@ -138,6 +182,7 @@
 - `影响`：会影响交付、架构边界、前后端一致性、可维护性还是体验。
 - `建议`：应该收敛到哪里，是否需要测试或文档。
 - `确定性`：已确认 / 需进一步验证。
+- `处理类型`：`quick win`、`structural` 或 `blocked`。
 
 报告必须单列以下章节：
 
@@ -145,6 +190,15 @@
 - 前后端实现和 `docs/api` 的一致性。
 - 未提交 `apps/llm-gateway` 改动带来的临时风险。
 - 生成物、声明产物、模板目录等边界问题。
+- 安全与凭据边界。
+- 数据持久化、迁移和恢复风险。
+- 依赖与供应链治理。
+
+处理类型说明：
+
+- `quick win`：低风险、低耦合，通常半天内可以通过小改动清理。
+- `structural`：需要设计、测试、迁移或跨模块协作，不能直接当作顺手修。
+- `blocked`：需要人工决策、凭据、外部环境、产品取舍或历史上下文确认。
 
 ## 后续修复计划格式
 
