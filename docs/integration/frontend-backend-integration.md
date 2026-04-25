@@ -28,6 +28,8 @@
 3. 再分别实现后端与前端。
 4. 最后做联调、验证与文档回写。
 
+接口风格选择以 [docs/api/interface-style-guidelines.md](/docs/api/interface-style-guidelines.md) 为准。
+
 涉及 API、SSE、checkpoint payload、审批事件、runtime center DTO、admin center 聚合返回、导出字段或其他跨端接口时，不允许先按实现猜字段再补文档。
 
 ## API 入口
