@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：协作流程规范
-最后核对：2026-04-18
+最后核对：2026-04-25
 
 本文档定义本项目的 GitHub Flow 协作方式。核心目标只有两个：
 
@@ -25,6 +25,7 @@
 - 禁止直接提交到 `main`
 - 所有变更必须先进入分支，再通过 Pull Request 合入 `main`
 - 分支应短生命周期，小步提交，尽快合并
+- 本项目不使用 `git worktree`；分支创建、切换、rebase、验证与收尾都在当前 checkout 中完成，不创建 `.worktrees/` 或其他 worktree 目录。
 
 建议命名：
 
