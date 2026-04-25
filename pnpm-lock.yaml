@@ -174,9 +174,6 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../../../packages/adapters
-      '@agent/agents-intel-engine':
-        specifier: workspace:*
-        version: link:../../../agents/intel-engine
       '@agent/config':
         specifier: workspace:*
         version: link:../../../packages/config
@@ -587,6 +584,9 @@ importers:
       '@agent/agents-data-report':
         specifier: workspace:*
         version: link:../../agents/data-report
+      '@agent/agents-intel-engine':
+        specifier: workspace:*
+        version: link:../../agents/intel-engine
       '@agent/agents-reviewer':
         specifier: workspace:*
         version: link:../../agents/reviewer

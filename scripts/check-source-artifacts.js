@@ -6,7 +6,13 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scanRoots = ['packages', 'agents'];
 const ignoredDirs = new Set(['node_modules', 'build', 'dist', '.git', '.turbo']);
-const generatedSourcePattern = /\.(?:d\.ts|js|js\.map)$/;
+const generatedSourcePattern = /\.(?:d\.ts\.map|d\.ts|js\.map|js)$/;
+const sourcePackagePattern = /^(?:packages|agents)\/[^/]+\/src\//;
+const ambientDeclarationPattern = /(?:^|\/)(?:global|globals|ambient|env|vite-env)\.d\.ts$/;
+
+function isAllowedAmbientDeclaration(repoPath) {
+  return ambientDeclarationPattern.test(repoPath);
+}
 
 function walk(dir, results = []) {
   if (!fs.existsSync(dir)) {
@@ -25,11 +31,15 @@ function walk(dir, results = []) {
     }
 
     const repoPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
-    if (!repoPath.includes('/src/')) {
+    if (!sourcePackagePattern.test(repoPath)) {
       continue;
     }
 
     if (generatedSourcePattern.test(entry.name)) {
+      if (entry.name.endsWith('.d.ts') && isAllowedAmbientDeclaration(repoPath)) {
+        continue;
+      }
+
       results.push(repoPath);
     }
   }

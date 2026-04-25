@@ -38,6 +38,7 @@
     "@agent/agent-kit": "workspace:*",
     "@agent/agents-coder": "workspace:*",
     "@agent/agents-data-report": "workspace:*",
+    "@agent/agents-intel-engine": "workspace:*",
     "@agent/agents-reviewer": "workspace:*",
     "@agent/agents-supervisor": "workspace:*",
     "@agent/config": "workspace:*",

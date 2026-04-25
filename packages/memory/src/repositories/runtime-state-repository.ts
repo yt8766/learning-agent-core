@@ -1,4 +1,4 @@
-﻿import { mkdir, readFile, writeFile } from 'node:fs/promises';
+﻿import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
@@ -203,6 +203,15 @@ export interface RuntimeStateRepository {
   save(snapshot: RuntimeStateSnapshot): Promise<void>;
 }
 
+function isFileNotFoundError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+function formatRuntimeStateLoadError(filePath: string, error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(`Failed to load runtime state snapshot from ${filePath}: ${message}`);
+}
+
 export class FileRuntimeStateRepository implements RuntimeStateRepository {
   private readonly filePath: string;
 
@@ -280,7 +289,11 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         evalHistory: Array.isArray(parsed.evalHistory) ? parsed.evalHistory : [],
         usageAudit: Array.isArray(parsed.usageAudit) ? parsed.usageAudit : []
       };
-    } catch {
+    } catch (error) {
+      if (!isFileNotFoundError(error)) {
+        throw formatRuntimeStateLoadError(this.filePath, error);
+      }
+
       return {
         tasks: [],
         learningJobs: [],
@@ -323,6 +336,8 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
 
   async save(snapshot: RuntimeStateSnapshot): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(snapshot, null, 2), 'utf8');
+    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+    await writeFile(tempPath, JSON.stringify(snapshot, null, 2), 'utf8');
+    await rename(tempPath, this.filePath);
   }
 }

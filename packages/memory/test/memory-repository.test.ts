@@ -68,4 +68,46 @@ describe('FileMemoryRepository', () => {
     expect(vectorIndexRepository.upsertMemory).toHaveBeenCalledTimes(2);
     expect(vectorIndexRepository.remove).toHaveBeenCalledTimes(1);
   });
+
+  it('读取 JSONL 时记录坏行健康状态且保留合法记录', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'memory-repo-health-'));
+    const filePath = join(dir, 'records.jsonl');
+    await writeFile(
+      filePath,
+      [
+        JSON.stringify({
+          id: 'mem-safe',
+          type: 'fact',
+          summary: '合法记录',
+          content: 'valid memory survives bad jsonl lines',
+          tags: ['health'],
+          createdAt: '2026-03-28T00:00:00.000Z'
+        }),
+        '{bad json',
+        JSON.stringify({
+          id: 'mem-after-bad',
+          type: 'fact',
+          summary: '坏行之后的合法记录',
+          content: 'valid memory after bad jsonl line',
+          tags: ['health'],
+          createdAt: '2026-03-28T00:00:00.000Z'
+        })
+      ].join('\n'),
+      'utf8'
+    );
+
+    const repository = new FileMemoryRepository(filePath);
+
+    await expect(repository.list()).resolves.toHaveLength(2);
+    expect(repository.getHealthStatus()).toMatchObject({
+      filePath,
+      malformedLineCount: 1,
+      malformedLines: [
+        {
+          lineNumber: 2
+        }
+      ]
+    });
+    expect(repository.getHealthStatus().malformedLines[0]?.reason).toContain('JSON');
+  });
 });

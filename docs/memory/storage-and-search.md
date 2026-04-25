@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`packages/memory`、`data/memory`、`data/knowledge`
-最后核对：2026-04-16
+最后核对：2026-04-25
 
 ## 1. 这篇文档说明什么
 
@@ -32,12 +32,15 @@
 
 - `memory-repository.ts`
   - 主 memory 持久化入口，负责 append / search / history / governance 协作
+  - 读取 JSONL 时会保留合法记录，同时把坏行行号与原因记录到 `getHealthStatus()`，不再把坏行静默吞掉到不可观测状态
 - `memory-event-repository.ts`
   - 记录 memory create/update/status/override/rollback 事件历史
 - `rule-repository.ts`
   - 承载 rule 存储、检索与状态流转
 - `runtime-state-repository.ts`
   - 承载 runtime 快照持久化
+  - 缺失快照文件仍按空状态兼容；快照 JSON 损坏或 normalize 失败时会抛出带路径上下文的错误，避免把损坏文件误读成“任务全部消失”
+  - 保存快照时先写入同目录临时文件，再通过 rename 替换目标文件，避免并发读到半写 JSON
 - `semantic-cache-repository.ts`
   - 承载语义缓存记录
 - `user-profile.repository.ts`

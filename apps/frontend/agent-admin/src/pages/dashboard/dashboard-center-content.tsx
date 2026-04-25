@@ -12,11 +12,10 @@ import { ProfileCenterPanel } from '@/features/learning-center/profile-center-pa
 import { RuntimeOverviewPanel } from '@/features/runtime-overview/runtime-overview-panel';
 import { SkillLabPanel } from '@/features/skill-lab/skill-lab-panel';
 import { SkillSourcesCenterPanel } from '@/features/skill-sources-center/skill-sources-center-panel';
+import type { AdminDashboardState } from '@/hooks/use-admin-dashboard';
 import { DashboardLoadingState } from './dashboard-loading-state';
 
-export function renderDashboardCenter(
-  dashboard: ReturnType<typeof import('@/hooks/use-admin-dashboard').useAdminDashboard>
-) {
+export function renderDashboardCenter(dashboard: AdminDashboardState) {
   const consoleData = dashboard.consoleData;
   const copyShareUrl = () => void navigator.clipboard.writeText(dashboard.shareUrl);
 

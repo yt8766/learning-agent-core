@@ -68,7 +68,8 @@ const forbiddenSubpathPrefixes = [
   '@agent/agents-supervisor/',
   '@agent/agents-data-report/',
   '@agent/agents-coder/',
-  '@agent/agents-reviewer/'
+  '@agent/agents-reviewer/',
+  '@agent/agents-intel-engine/'
 ];
 const corePackageManifestPath = 'packages/core/package.json';
 const runtimePackageManifestPath = 'packages/runtime/package.json';
@@ -79,7 +80,8 @@ const officialAgentPackageNames = new Set([
   '@agent/agents-supervisor',
   '@agent/agents-data-report',
   '@agent/agents-coder',
-  '@agent/agents-reviewer'
+  '@agent/agents-reviewer',
+  '@agent/agents-intel-engine'
 ]);
 const forbiddenAppPlatformRuntimeImports = new Set([
   'createOfficialAgentRegistry',
@@ -119,7 +121,8 @@ const specialistAgentPackageNames = new Set([
 const allowedBackendPlatformRuntimeFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime.host.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
-  'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts'
+  'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-intel-facade.ts'
 ]);
 
 function fail(messages) {

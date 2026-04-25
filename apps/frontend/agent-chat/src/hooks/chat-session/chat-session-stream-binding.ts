@@ -100,7 +100,11 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
       return;
     }
     resetIdleCloseTimer();
-    const nextEvent = JSON.parse(raw.data) as ChatEventRecord;
+    const nextEvent = parseChatStreamEvent(raw.data);
+    if (!nextEvent) {
+      handleRecoverableStreamFailure();
+      return;
+    }
     if (shouldIgnoreStaleTerminalStreamEvent(checkpointRef.current, nextEvent)) {
       return;
     }
@@ -135,6 +139,10 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
   };
 
   stream.onerror = () => {
+    handleRecoverableStreamFailure();
+  };
+
+  function handleRecoverableStreamFailure() {
     if (isDisposed()) {
       return;
     }
@@ -170,7 +178,7 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
       }
       stopSessionPolling(sessionId);
     });
-  };
+  }
 
   function resetIdleCloseTimer() {
     clearIdleCloseTimer();
@@ -203,5 +211,13 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
       clearTimeout(streamState.idleTimer);
       streamState.idleTimer = null;
     }
+  }
+}
+
+function parseChatStreamEvent(data: string): ChatEventRecord | undefined {
+  try {
+    return JSON.parse(data) as ChatEventRecord;
+  } catch {
+    return undefined;
   }
 }

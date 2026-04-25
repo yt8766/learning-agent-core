@@ -92,5 +92,11 @@ export { createDefaultPlatformRuntime, createDefaultPlatformRuntimeOptions, crea
 export type { DefaultPlatformRuntimeOptionsInput } from './runtime';
 export { createRuntimeAgentProvider } from './adapters';
 export type { RuntimeAgentAdapterOptions } from './adapters';
+export { runIntelScheduledJob } from './intel/scheduled-job-runner';
+export type {
+  IntelScheduledJobName,
+  IntelScheduledJobRunResult,
+  RunIntelScheduledJobInput
+} from './intel/scheduled-job-runner';
 
 export * from './centers';

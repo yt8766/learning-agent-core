@@ -254,6 +254,67 @@ describe('chat-session-stream-binding', () => {
     expect(scheduleCheckpointRefresh).not.toHaveBeenCalled();
   });
 
+  it('routes malformed stream event data through fallback handling without throwing', async () => {
+    const stream = {
+      close: vi.fn(),
+      onopen: undefined as (() => void) | undefined,
+      onmessage: undefined as ((event: { data: string }) => void) | undefined,
+      onerror: undefined as (() => void) | undefined
+    };
+    const state = createState();
+    const setError = vi.fn();
+    const startSessionPolling = vi.fn();
+    const scheduleCheckpointRefresh = vi.fn();
+    const refreshCheckpointOnly = vi.fn().mockResolvedValue({
+      sessionId: 'session-1',
+      graphState: { status: 'running' }
+    } as ChatCheckpointRecord);
+
+    bindChatSessionStream({
+      stream: stream as unknown as EventSource,
+      sessionId: 'session-1',
+      isDisposed: () => false,
+      streamState: { intentionalClose: false, idleTimer: null, hasAssistantContent: false },
+      checkpointRef: { current: undefined },
+      clearPendingUser: vi.fn(),
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      refreshCheckpointOnly,
+      deriveSessionStatusFromCheckpoint: vi.fn(
+        (checkpoint?: ChatCheckpointRecord) => checkpoint?.graphState?.status as string | undefined
+      ),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      isAssistantContentEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint?: ChatCheckpointRecord) => checkpoint),
+      mergeEvent: vi.fn((events: ChatEventRecord[]) => events),
+      syncMessageFromEvent: vi.fn((messages: ChatMessageRecord[]) => messages),
+      syncProcessMessageFromEvent: vi.fn((messages: ChatMessageRecord[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: ChatSessionRecord[]) => sessions),
+      checkpointRefreshEventTypes: new Set(),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => true),
+      shouldShowStreamFallbackError: vi.fn(() => true),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      setCheckpoint: state.setCheckpoint,
+      setEvents: state.setEvents,
+      setMessages: state.setMessages,
+      setSessions: state.setSessions,
+      setError,
+      startSessionPolling,
+      stopSessionPolling: vi.fn(),
+      scheduleCheckpointRefresh,
+      streamIdleTimeoutMs: 20
+    });
+
+    expect(() => stream.onmessage?.({ data: '{malformed-json' })).not.toThrow();
+    await Promise.resolve();
+
+    expect(stream.close).toHaveBeenCalled();
+    expect(scheduleCheckpointRefresh).toHaveBeenCalled();
+    expect(refreshCheckpointOnly).toHaveBeenCalledWith('session-1');
+    expect(startSessionPolling).toHaveBeenCalledWith('session-1', 'checkpoint');
+    expect(setError).toHaveBeenCalledWith('聊天流已断开，当前改用运行态兜底同步。请确认后端 /api/chat/stream 可达。');
+  });
+
   it('reconciles and stops on stream error without fallback polling when detail is terminal', async () => {
     const stream = {
       close: vi.fn(),

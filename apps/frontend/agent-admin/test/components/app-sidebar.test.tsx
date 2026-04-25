@@ -35,6 +35,13 @@ function renderSidebar(options?: {
 }
 
 describe('AppSidebar', () => {
+  it('labels the navigation group as governance centers plus dedicated entries', () => {
+    const html = renderSidebar({ defaultPlatformNestedExpanded: false });
+
+    expect(html).toContain('治理中心与专项入口');
+    expect(html).not.toContain('>六大中心<');
+  });
+
   it('only renders an expand control for the item that actually owns nested entries', () => {
     const html = renderSidebar({ defaultPlatformNestedExpanded: false });
 
