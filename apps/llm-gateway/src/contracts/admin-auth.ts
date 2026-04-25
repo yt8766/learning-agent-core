@@ -30,9 +30,16 @@ export const AdminAuthTokenPairSchema = z.object({
   principal: AdminPrincipalSchema
 });
 
-export const AdminAuthLoginRequestSchema = z.object({
-  password: z.string().min(1)
-});
+export const AdminAuthLoginRequestSchema = z
+  .object({
+    username: z.string().min(1).optional(),
+    account: z.string().min(1).optional(),
+    password: z.string().min(1)
+  })
+  .transform(({ username, account, password }) => ({
+    username: username ?? account ?? 'admin',
+    password
+  }));
 
 export const AdminAuthRefreshRequestSchema = z.object({
   refreshToken: z.string().min(1)
@@ -50,6 +57,7 @@ export const AdminAuthLogoutResponseSchema = z.object({
 export const AdminAuthErrorCodeSchema = z.enum([
   'admin_auth_bad_request',
   'admin_auth_not_configured',
+  'admin_login_invalid_account',
   'admin_login_invalid_password',
   'admin_current_password_invalid',
   'admin_new_password_weak',

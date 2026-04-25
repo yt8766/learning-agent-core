@@ -9,10 +9,22 @@
 
 ## Approvals Center
 
-| 方法  | 路径                                | 用途                       | 关键契约                                     |
-| ----- | ----------------------------------- | -------------------------- | -------------------------------------------- |
-| `GET` | `/platform/approvals-center`        | 获取 Approvals Center 数据 | 支持 `executionMode`、`interactionKind` 筛选 |
-| `GET` | `/platform/approvals-center/export` | 导出 Approvals Center CSV  | 沿用同一组筛选参数                           |
+| 方法   | 地址                                               | 参数                                                                                    | 返回值                                                    | 说明                            |
+| ------ | -------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------- |
+| `GET`  | `/api/platform/approvals-center`                   | query: `executionMode?: string`、`interactionKind?: string`                             | `PlatformConsoleRecord["approvals"]`                      | 获取 Approvals Center 数据。    |
+| `GET`  | `/api/platform/approvals-center/export`            | query: `executionMode?: string`、`interactionKind?: string`、`format?: "csv" \| "json"` | `{ filename: string; mimeType: string; content: string }` | 导出 Approvals Center。         |
+| `GET`  | `/api/platform/approval-policies`                  | 无                                                                                      | `ApprovalScopePolicyRecord[]`                             | 获取已保存的审批 scope policy。 |
+| `POST` | `/api/platform/approval-policies/:policyId/revoke` | path: `policyId`                                                                        | `ApprovalScopePolicyRecord` 或更新后的 policy 列表投影    | 撤销指定审批 scope policy。     |
+
+参数说明：
+
+| 参数              | 类型              | 默认值 | 说明                                                                                  |
+| ----------------- | ----------------- | ------ | ------------------------------------------------------------------------------------- |
+| `executionMode`   | `string`          | 无     | 支持 `plan`、`execute`、`imperial_direct`；兼容读取 `standard`、`planning-readonly`。 |
+| `interactionKind` | `string`          | 无     | 支持 `approval`、`plan-question`、`supplemental-input`。                              |
+| `format`          | `"csv" \| "json"` | 无     | 仅导出接口支持。                                                                      |
+
+返回值 `PlatformConsoleRecord["approvals"]` 至少应包含审批 summary、审批项列表和 policy 相关投影；具体字段以 core/platform-console schema 为准。
 
 CSV 导出必须包含：
 
@@ -23,12 +35,28 @@ CSV 导出必须包含：
 
 ## Chat 审批动作
 
-| 方法   | 路径                         | 用途                         |
-| ------ | ---------------------------- | ---------------------------- |
-| `POST` | `/api/chat/approve`          | 审批通过或恢复中断           |
-| `POST` | `/api/chat/reject`           | 审批拒绝、取消中断或打回恢复 |
-| `POST` | `/api/chat/recover`          | 从 checkpoint 恢复           |
-| `POST` | `/api/chat/learning/confirm` | 确认学习候选                 |
+| 方法   | 地址                              | 参数                                                                                                                                                                                 | 返回值              | 说明                           |
+| ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------ |
+| `POST` | `/api/chat/approve`               | body: `{ sessionId: string; intent?: string; reason?: string; actor?: string; feedback?: string; approvalScope?: "once" \| "session" \| "always"; interrupt?: ApprovalResumeInput }` | `ChatSessionRecord` | 审批通过或恢复中断。           |
+| `POST` | `/api/chat/reject`                | body: `{ sessionId: string; intent?: string; reason?: string; actor?: string; feedback?: string; interrupt?: ApprovalResumeInput }`                                                  | `ChatSessionRecord` | 审批拒绝、取消中断或打回恢复。 |
+| `POST` | `/api/chat/recover`               | body: `{ sessionId: string }`                                                                                                                                                        | `ChatSessionRecord` | 从当前 checkpoint 恢复。       |
+| `POST` | `/api/chat/recover-to-checkpoint` | body: `{ sessionId: string; checkpointCursor?: number; checkpointId?: string; reason?: string }`                                                                                     | `ChatSessionRecord` | 恢复到指定 checkpoint。        |
+| `POST` | `/api/chat/cancel`                | body: `{ sessionId: string; actor?: string; reason?: string }`                                                                                                                       | `ChatSessionRecord` | 取消当前运行。                 |
+| `POST` | `/api/chat/learning/confirm`      | body: `{ sessionId: string; candidateIds?: string[]; actor?: string }`                                                                                                               | `ChatSessionRecord` | 确认学习候选。                 |
+
+`ApprovalResumeInput` 的关键字段为 `{ interruptId?: string; action: "approve" | "reject" | "feedback" | "input" | "bypass" | "abort"; feedback?: string; value?: string; payload?: Record<string, unknown> }`。
+
+字段语义：
+
+| 字段          | 类型                      | 说明                                                                  |
+| ------------- | ------------------------- | --------------------------------------------------------------------- |
+| `interruptId` | `string`                  | 指定要恢复的 interrupt；缺省时由当前会话活动 interrupt 推断。         |
+| `action`      | union                     | 恢复动作；`feedback` 用于带反馈打回，`input` 用于补充用户输入。       |
+| `feedback`    | `string`                  | 人类反馈文本，通常随 `action: "feedback"` 或 reject-with-feedback。   |
+| `value`       | `string`                  | 补充输入值，通常随 `action: "input"` 写入计划问题或 supplemental 流。 |
+| `payload`     | `Record<string, unknown>` | 扩展结构化上下文；不得替代上面已有稳定字段。                          |
+
+如果 body 未提供 `sessionId`，后端只允许从兼容 cookie `agent_session_id` 读取；新接入必须显式传 `sessionId`。
 
 ## 事件语义
 

@@ -1,183 +1,268 @@
 import { describe, expect, it } from 'vitest';
 
-import { createPostgresGatewayRepositoryForClient } from '../src/repositories/postgres-gateway.js';
+import { createVirtualApiKey } from '../src/keys/api-key.js';
+import { ProviderSecretVault } from '../src/secrets/provider-secret-vault.js';
+import { createPostgresGatewayRepositoryForClient } from '../src/repositories/postgres-gateway-repository.js';
 
 type QueryCall = { text: string; values?: unknown[] };
 
 class FakePgClient {
   readonly calls: QueryCall[] = [];
-  readonly apiKeys = new Map<string, Record<string, unknown>>();
-  readonly models = new Map<string, Record<string, unknown>>();
-  readonly usageRows: Record<string, { used_tokens_today: number; used_cost_today: number }> = {};
-  readonly logs: unknown[] = [];
-  readonly usageRecords: unknown[] = [];
-  endCalls = 0;
-  failNextSchemaCreate = false;
+  apiKeyRow: Record<string, unknown> | null = null;
+  modelRows: Record<string, unknown>[] = [];
+  providerRows: Record<string, unknown>[] = [];
+  usageRow: Record<string, unknown> | null = null;
 
   async query(text: string, values?: unknown[]) {
     this.calls.push({ text, values });
 
-    if (this.failNextSchemaCreate && text.includes('create table if not exists gateway_api_keys')) {
-      this.failNextSchemaCreate = false;
-      throw new Error('schema unavailable');
-    }
-
-    if (text.includes('select * from gateway_api_keys where key_prefix = $1')) {
-      const row = this.apiKeys.get(String(values?.[0]));
-      return { rows: row ? [row] : [] };
-    }
-
-    if (text.includes('select coalesce(sum(total_tokens)')) {
-      return { rows: [this.usageRows[String(values?.[0])] ?? { used_tokens_today: 0, used_cost_today: 0 }] };
+    if (text.includes('select * from api_keys where key_prefix = $1')) {
+      return { rows: this.apiKeyRow && this.apiKeyRow.key_prefix === values?.[0] ? [this.apiKeyRow] : [] };
     }
 
     if (text.includes('select * from gateway_models where alias = $1')) {
-      const row = this.models.get(String(values?.[0]));
-      return { rows: row ? [row] : [] };
+      return { rows: this.modelRows.filter(row => row.alias === values?.[0]) };
     }
 
-    if (text.includes('select * from gateway_models order by alias asc')) {
-      return { rows: [...this.models.values()] };
+    if (text.includes('select * from gateway_models')) {
+      return { rows: this.modelRows };
     }
 
-    if (text.includes('insert into gateway_api_keys')) {
-      this.apiKeys.set(String(values?.[2]), {
-        id: values?.[0],
-        name: values?.[1],
-        key_prefix: values?.[2],
-        key_hash: values?.[3],
-        status: values?.[4],
-        models: values?.[5],
-        rpm_limit: values?.[6],
-        tpm_limit: values?.[7],
-        daily_token_limit: values?.[8],
-        daily_cost_limit: values?.[9],
-        expires_at: values?.[10]
-      });
-      return { rows: [] };
+    if (text.includes('select * from daily_usage_rollups')) {
+      return { rows: this.usageRow && this.usageRow.key_id === values?.[0] ? [this.usageRow] : [] };
     }
 
-    if (text.includes('insert into gateway_models')) {
-      this.models.set(String(values?.[0]), {
-        alias: values?.[0],
-        provider: values?.[1],
-        provider_model: values?.[2],
-        enabled: values?.[3],
-        context_window: values?.[4],
-        input_price_per_1m_tokens: values?.[5],
-        output_price_per_1m_tokens: values?.[6],
-        fallback_aliases: values?.[7],
-        admin_only: values?.[8]
-      });
-      return { rows: [] };
-    }
-
-    if (text.includes('insert into gateway_usage')) {
-      this.usageRecords.push(values);
-      return { rows: [] };
-    }
-
-    if (text.includes('insert into gateway_request_logs')) {
-      this.logs.push(values);
-      return { rows: [] };
+    if (text.includes('providers.id as provider_id')) {
+      return { rows: this.providerRows };
     }
 
     return { rows: [] };
   }
-
-  async end() {
-    this.endCalls += 1;
-  }
 }
 
-const secret = 'e2e-test-secret';
-const plaintext = 'sk-llmgw_test_valid_000000000000';
-const prefix = plaintext.slice(0, 16);
-
 describe('postgres gateway repository', () => {
-  it('maps key, model, usage, and log records through the gateway repository contract', async () => {
+  const providerSecretKey = 'local-provider-secret-vault-key-32';
+
+  it('ensures gateway schema and verifies API keys by plaintext prefix and hash', async () => {
     const client = new FakePgClient();
-    const repository = createPostgresGatewayRepositoryForClient(client, { apiKeySecret: secret });
-
-    await repository.saveSeedApiKey({
-      id: 'key-valid',
-      name: 'E2E valid key',
-      plaintext,
+    const created = await createVirtualApiKey('hash-secret');
+    client.apiKeyRow = {
+      id: 'key_1',
+      name: 'Primary',
+      key_prefix: created.prefix,
+      key_hash: created.hash,
       status: 'active',
       models: ['gpt-main'],
-      rpmLimit: 10,
-      tpmLimit: 1000,
-      dailyTokenLimit: 10000,
-      dailyCostLimit: 1,
-      expiresAt: null
-    });
+      rpm_limit: 60,
+      tpm_limit: 100000,
+      daily_token_limit: 500000,
+      daily_cost_limit: '10.5',
+      expires_at: null
+    };
 
-    client.models.set('gpt-main', {
-      alias: 'gpt-main',
-      provider: 'mock',
-      provider_model: 'mock-gpt-main',
-      enabled: true,
-      context_window: 128000,
-      input_price_per_1m_tokens: 0,
-      output_price_per_1m_tokens: 0,
-      fallback_aliases: [],
-      admin_only: false
-    });
-    client.usageRows['key-valid'] = { used_tokens_today: 12, used_cost_today: 0.001 };
+    const repository = createPostgresGatewayRepositoryForClient(client, { keyHashSecret: 'hash-secret' });
 
-    await expect(repository.verifyApiKey(plaintext)).resolves.toMatchObject({
-      id: 'key-valid',
+    await expect(repository.verifyApiKey(created.plaintext)).resolves.toMatchObject({
+      id: 'key_1',
+      name: 'Primary',
       status: 'active',
       models: ['gpt-main'],
-      usedTokensToday: 0
+      dailyCostLimit: 10.5
     });
-    await expect(repository.getUsageForToday('key-valid')).resolves.toEqual({
-      usedTokensToday: 12,
-      usedCostToday: 0.001
+    await expect(repository.verifyApiKey('sk-llmgw_wrong')).resolves.toBeNull();
+    expect(client.calls.some(call => call.text.includes('create table if not exists api_keys'))).toBe(true);
+    expect(client.calls.some(call => call.text.includes('create table if not exists gateway_models'))).toBe(true);
+    expect(client.calls.some(call => call.text.includes('create table if not exists providers'))).toBe(true);
+    expect(client.calls.some(call => call.text.includes('create table if not exists provider_credentials'))).toBe(true);
+    expect(client.calls.some(call => call.text.includes('create table if not exists request_logs'))).toBe(true);
+    expect(client.calls.some(call => call.text.includes('create table if not exists daily_usage_rollups'))).toBe(true);
+  });
+
+  it('maps model registry reads and persists request logs plus daily rollups', async () => {
+    const client = new FakePgClient();
+    const vault = new ProviderSecretVault({ key: providerSecretKey, keyVersion: 'local-v1' });
+    client.modelRows = [
+      {
+        alias: 'gpt-main',
+        provider_id: 'mock',
+        provider_model: 'mock-gpt-main',
+        enabled: true,
+        context_window: 128000,
+        input_price_per_1m_tokens: '1.25',
+        output_price_per_1m_tokens: '2.5',
+        fallback_aliases: ['cheap-fast'],
+        admin_only: false
+      }
+    ];
+    client.usageRow = {
+      key_id: 'key_1',
+      usage_date: '2026-04-25',
+      used_tokens: '15',
+      used_cost: '0.025'
+    };
+    client.providerRows = [
+      {
+        provider_id: 'provider_openai',
+        provider_kind: 'openai',
+        base_url: 'https://api.openai.com/v1',
+        timeout_ms: 30000,
+        key_version: 'local-v1',
+        encrypted_api_key: JSON.stringify(vault.encrypt('sk-provider-runtime-secret'))
+      }
+    ];
+    const repository = createPostgresGatewayRepositoryForClient(client, {
+      keyHashSecret: 'hash-secret',
+      providerSecretVault: vault
     });
-    await expect(repository.findModelByAlias('gpt-main')).resolves.toMatchObject({
+
+    await expect(repository.resolve('gpt-main')).resolves.toMatchObject({
       alias: 'gpt-main',
       provider: 'mock',
       providerModel: 'mock-gpt-main',
-      enabled: true
+      inputPricePer1mTokens: 1.25,
+      outputPricePer1mTokens: 2.5,
+      fallbackAliases: ['cheap-fast']
     });
+    await expect(repository.list()).resolves.toHaveLength(1);
+    await expect(repository.getUsageForToday('key_1')).resolves.toEqual({
+      usedTokensToday: 15,
+      usedCostToday: 0.025
+    });
+    await expect(repository.listProviderRuntimeConfigs()).resolves.toEqual([
+      {
+        providerId: 'provider_openai',
+        providerKind: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-provider-runtime-secret',
+        timeoutMs: 30000
+      }
+    ]);
 
+    await repository.writeRequestLog({
+      keyId: 'key_1',
+      requestedModel: 'gpt-main',
+      model: 'cheap-fast',
+      providerModel: 'mock-cheap-fast',
+      provider: 'mock',
+      status: 'success',
+      promptTokens: 10,
+      completionTokens: 5,
+      totalTokens: 15,
+      estimatedCost: 0.025,
+      usageSource: 'provider_final_usage',
+      latencyMs: 123,
+      stream: false,
+      fallbackAttemptCount: 1
+    });
     await repository.recordUsage({
-      keyId: 'key-valid',
-      model: 'gpt-main',
-      promptTokens: 5,
-      completionTokens: 7,
-      totalTokens: 12,
-      estimatedCost: 0.001
+      keyId: 'key_1',
+      model: 'cheap-fast',
+      promptTokens: 10,
+      completionTokens: 5,
+      totalTokens: 15,
+      estimatedCost: 0.025,
+      usageSource: 'provider_final_usage'
     });
-    await repository.writeRequestLog({ keyId: 'key-valid', model: 'gpt-main', status: 'success' });
 
-    expect(client.calls.some(call => call.text.includes('create table if not exists gateway_api_keys'))).toBe(true);
-    expect(client.calls.some(call => call.text.includes('create table if not exists gateway_models'))).toBe(true);
-    expect(client.usageRecords).toHaveLength(1);
-    expect(client.logs).toHaveLength(1);
-    expect(client.apiKeys.get(prefix)?.key_hash).toMatch(/^[a-f0-9]{64}$/);
+    const requestLogInsert = client.calls.find(call => call.text.includes('insert into request_logs'));
+    const usageUpsert = client.calls.find(call => call.text.includes('insert into daily_usage_rollups'));
+    expect(requestLogInsert?.values).toEqual([
+      expect.any(String),
+      'key_1',
+      'gpt-main',
+      'cheap-fast',
+      'mock',
+      'mock-cheap-fast',
+      'success',
+      10,
+      5,
+      15,
+      0.025,
+      'provider_final_usage',
+      123,
+      false,
+      1,
+      null,
+      null,
+      expect.any(String)
+    ]);
+    expect(usageUpsert?.values).toEqual(['key_1', expect.any(String), 15, 0.025, expect.any(String)]);
   });
 
-  it('retries schema initialization after a transient schema creation failure', async () => {
+  it('decrypts provider runtime configs before exposing adapter credentials', async () => {
     const client = new FakePgClient();
-    client.failNextSchemaCreate = true;
-    const repository = createPostgresGatewayRepositoryForClient(client, { apiKeySecret: secret });
+    const vault = new ProviderSecretVault({ key: providerSecretKey, keyVersion: 'local-v1' });
+    client.providerRows = [
+      {
+        provider_id: 'provider_openai',
+        provider_kind: 'openai',
+        base_url: 'https://api.openai.com/v1',
+        timeout_ms: 30000,
+        key_version: 'local-v1',
+        encrypted_api_key: JSON.stringify(vault.encrypt('sk-provider-runtime-secret'))
+      }
+    ];
+    const repository = createPostgresGatewayRepositoryForClient(client, {
+      keyHashSecret: 'hash-secret',
+      providerSecretVault: vault
+    });
 
-    await expect(repository.listModels()).rejects.toThrow('schema unavailable');
-    await expect(repository.listModels()).resolves.toEqual([]);
-
-    expect(client.calls.filter(call => call.text.includes('create table if not exists gateway_api_keys'))).toHaveLength(
-      2
-    );
+    await expect(repository.listProviderRuntimeConfigs()).resolves.toEqual([
+      {
+        providerId: 'provider_openai',
+        providerKind: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-provider-runtime-secret',
+        timeoutMs: 30000
+      }
+    ]);
   });
 
-  it('closes the underlying postgres client when disposed', async () => {
+  it('fails closed when provider runtime configs are requested without a provider secret vault', async () => {
     const client = new FakePgClient();
-    const repository = createPostgresGatewayRepositoryForClient(client, { apiKeySecret: secret });
+    const vault = new ProviderSecretVault({ key: providerSecretKey, keyVersion: 'local-v1' });
+    client.providerRows = [
+      {
+        provider_id: 'provider_openai',
+        provider_kind: 'openai',
+        base_url: 'https://api.openai.com/v1',
+        timeout_ms: 30000,
+        key_version: 'local-v1',
+        encrypted_api_key: JSON.stringify(vault.encrypt('sk-provider-runtime-secret'))
+      }
+    ];
+    const repository = createPostgresGatewayRepositoryForClient(client, { keyHashSecret: 'hash-secret' });
 
-    await repository.dispose();
+    await expect(repository.listProviderRuntimeConfigs()).rejects.toMatchObject({
+      name: 'GatewayError',
+      code: 'UPSTREAM_UNAVAILABLE',
+      message: 'Provider secret vault is required for Postgres provider runtime credentials.'
+    });
+  });
 
-    expect(client.endCalls).toBe(1);
+  it('fails closed when provider credential key version cannot be decrypted by the configured vault', async () => {
+    const client = new FakePgClient();
+    const writerVault = new ProviderSecretVault({ key: providerSecretKey, keyVersion: 'local-v1' });
+    const runtimeVault = new ProviderSecretVault({ key: providerSecretKey, keyVersion: 'local-v2' });
+    client.providerRows = [
+      {
+        provider_id: 'provider_openai',
+        provider_kind: 'openai',
+        base_url: 'https://api.openai.com/v1',
+        timeout_ms: 30000,
+        key_version: 'local-v1',
+        encrypted_api_key: JSON.stringify(writerVault.encrypt('sk-provider-runtime-secret'))
+      }
+    ];
+    const repository = createPostgresGatewayRepositoryForClient(client, {
+      keyHashSecret: 'hash-secret',
+      providerSecretVault: runtimeVault
+    });
+
+    await expect(repository.listProviderRuntimeConfigs()).rejects.toMatchObject({
+      name: 'GatewayError',
+      code: 'UPSTREAM_UNAVAILABLE',
+      message: 'Provider credential for provider_openai could not be decrypted.'
+    });
   });
 });

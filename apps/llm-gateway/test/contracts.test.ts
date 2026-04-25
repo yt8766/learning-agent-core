@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AdminAuthLoginRequestSchema,
   ChatCompletionRequestSchema,
   GatewayErrorCodeSchema,
   KeyStatusResponseSchema,
@@ -59,5 +60,31 @@ describe('llm-gateway contracts', () => {
 
     expect(parsed.models).toEqual(['gpt-main']);
     expect(parsed.used_tokens_today).toBe(42);
+  });
+
+  it('parses admin login requests with a username and defaults omitted usernames to admin', () => {
+    expect(
+      AdminAuthLoginRequestSchema.parse({
+        username: 'admin',
+        password: 'secret'
+      })
+    ).toEqual({
+      username: 'admin',
+      password: 'secret'
+    });
+
+    expect(AdminAuthLoginRequestSchema.parse({ password: 'secret' }).username).toBe('admin');
+  });
+
+  it('normalizes legacy admin account login requests to username', () => {
+    expect(
+      AdminAuthLoginRequestSchema.parse({
+        account: 'Owner',
+        password: 'secret'
+      })
+    ).toEqual({
+      username: 'Owner',
+      password: 'secret'
+    });
   });
 });

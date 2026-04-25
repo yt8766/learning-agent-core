@@ -6,6 +6,7 @@ import { createPostgresAdminAuthRepository } from '../repositories/postgres-admi
 import { hashAdminPassword, verifyAdminPassword } from './admin-password';
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+const DEFAULT_ADMIN_ACCOUNT = 'admin';
 
 type TokenType = 'access' | 'refresh';
 
@@ -29,7 +30,7 @@ export interface CreateAdminAuthServiceOptions {
 export interface AdminAuthService {
   readonly repository: AdminAuthRepository;
   ensureOwnerPassword(input: { password: string; displayName?: string }): Promise<AdminPrincipal>;
-  login(input: { password: string }): Promise<AdminTokenPair>;
+  login(input: { username: string; password: string }): Promise<AdminTokenPair>;
   refresh(input: { refreshToken: string }): Promise<AdminTokenPair>;
   changePassword(input: {
     authorization: string | null;
@@ -79,7 +80,7 @@ export function createAdminAuthService(options: CreateAdminAuthServiceOptions): 
       return null;
     }
 
-    return ensureOwnerPassword({ password: options.bootstrapPassword, displayName: 'Owner' });
+    return ensureOwnerPassword({ password: options.bootstrapPassword, displayName: DEFAULT_ADMIN_ACCOUNT });
   }
 
   async function issueTokenPair(principal: AdminPrincipal): Promise<AdminTokenPair> {
@@ -156,7 +157,7 @@ export function createAdminAuthService(options: CreateAdminAuthServiceOptions): 
     const principal: AdminPrincipal = {
       id: `admin_${randomUUID()}`,
       role: 'owner',
-      displayName: input.displayName ?? 'Owner',
+      displayName: input.displayName ?? DEFAULT_ADMIN_ACCOUNT,
       status: 'active',
       accessTokenVersion: 1,
       refreshTokenVersion: 1,
@@ -184,6 +185,10 @@ export function createAdminAuthService(options: CreateAdminAuthServiceOptions): 
     ensureOwnerPassword,
     async login(input) {
       const { principal, credential } = await loadActiveOwner();
+      if (!matchesAdminUsername(input.username, principal)) {
+        throw new AdminAuthError('admin_login_invalid_account', 'Admin username is invalid.', 401);
+      }
+
       const passwordMatches = await verifyAdminPassword(input.password, credential.passwordHash);
 
       if (!passwordMatches) {
@@ -293,6 +298,14 @@ function createBootstrapAdminAuthService(): AdminAuthService {
   });
 }
 
+function matchesAdminUsername(username: string, principal: AdminPrincipal): boolean {
+  return normalizeAdminAccount(username) === normalizeAdminAccount(principal.displayName);
+}
+
+function normalizeAdminAccount(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function signJwt(payload: AdminTokenPayload, secret: string): string {
   const header = { alg: 'HS256', typ: 'JWT' };
   const signingInput = `${encodeJson(header)}.${encodeJson(payload)}`;
@@ -382,7 +395,6 @@ function expiredTokenError(expectedType: TokenType): AdminAuthError {
 function toEpochSeconds(date: Date): number {
   return Math.floor(date.getTime() / 1000);
 }
-
 function isConfiguredSecret(value: string | undefined): value is string {
   return Boolean(value && !value.startsWith('replace-with-'));
 }

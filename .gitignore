@@ -76,6 +76,7 @@ data/**/*.tmp
 packages/templates/src/*.d.ts
 packages/templates/src/*.d.ts.map
 packages/*/src/**/*.d.ts.map
+agents/*/src/**/*.d.ts.map
 !packages/templates/src/bonus-center-data/services/
 !packages/templates/src/bonus-center-data/services/data/
 !packages/templates/src/bonus-center-data/services/data/bonusCenter.ts

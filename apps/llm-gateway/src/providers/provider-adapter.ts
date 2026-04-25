@@ -50,6 +50,7 @@ export interface GatewayChatStreamChunk {
     };
     finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
   }>;
+  usage?: GatewayUsage;
 }
 
 export interface ProviderHealth {

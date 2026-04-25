@@ -13,6 +13,7 @@ export interface AdminStoredAuth {
 }
 
 export interface AdminLoginInput {
+  username: string;
   password: string;
 }
 
@@ -36,6 +37,7 @@ export class AdminClientAuthError extends Error {
 interface AdminClientAuthOptions {
   fetch?: typeof fetch;
   storage?: Storage;
+  now?: () => Date;
 }
 
 let refreshInFlight: Promise<AdminStoredAuth | null> | null = null;
@@ -131,7 +133,7 @@ async function adminFetchWithReplay(
   alreadyReplayed: boolean
 ): Promise<Response> {
   const fetchImpl = options.fetch ?? fetch;
-  const auth = getStoredAdminAuth(options.storage);
+  const auth = (await ensureFreshAdminAuth(options)) ?? getStoredAdminAuth(options.storage);
   const response = await fetchImpl(input, withAdminAuthorization(init, auth?.accessToken));
 
   if (alreadyReplayed || !(await isExpiredAccessTokenResponse(response))) {
@@ -146,6 +148,15 @@ async function adminFetchWithReplay(
   return adminFetchWithReplay(input, init, options, true);
 }
 
+async function ensureFreshAdminAuth(options: AdminClientAuthOptions): Promise<AdminStoredAuth | null> {
+  const auth = getStoredAdminAuth(options.storage);
+  if (!auth || !isAccessTokenExpiringSoon(auth, options.now ?? (() => new Date()))) {
+    return auth;
+  }
+
+  return refreshAdminAuth(options);
+}
+
 async function refreshAdminAuth(options: AdminClientAuthOptions): Promise<AdminStoredAuth | null> {
   if (refreshInFlight) {
     return refreshInFlight;
@@ -156,6 +167,15 @@ async function refreshAdminAuth(options: AdminClientAuthOptions): Promise<AdminS
   });
 
   return refreshInFlight;
+}
+
+function isAccessTokenExpiringSoon(auth: AdminStoredAuth, now: () => Date): boolean {
+  const expiresAt = new Date(auth.accessTokenExpiresAt).getTime();
+  if (!Number.isFinite(expiresAt)) {
+    return true;
+  }
+
+  return expiresAt - now().getTime() <= 60_000;
 }
 
 async function refreshAdminAuthOnce(options: AdminClientAuthOptions): Promise<AdminStoredAuth | null> {

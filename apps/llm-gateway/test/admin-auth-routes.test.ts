@@ -32,7 +32,7 @@ describe('admin auth routes', () => {
   it('logs in, refreshes, changes password, and logs out using JSON bearer contracts', async () => {
     await seedRoutes();
 
-    const loginResponse = await login(jsonRequest({ password: 'correct-password' }));
+    const loginResponse = await login(jsonRequest({ username: 'Owner', password: 'correct-password' }));
     const tokenPair = await loginResponse.json();
 
     expect(loginResponse.status).toBe(200);
@@ -62,7 +62,7 @@ describe('admin auth routes', () => {
 
   it('maps an expired access token to 403 admin_access_token_expired', async () => {
     const service = await seedRoutes();
-    const tokenPair = await service.login({ password: 'correct-password' });
+    const tokenPair = await service.login({ username: 'Owner', password: 'correct-password' });
     setAdminAuthServiceForRoutes(
       createAdminAuthService({
         repository: service.repository,

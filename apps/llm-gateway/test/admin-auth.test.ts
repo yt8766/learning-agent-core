@@ -15,7 +15,7 @@ async function createSeededAuthService() {
 
   await service.ensureOwnerPassword({
     password: 'correct-password',
-    displayName: 'Owner'
+    displayName: 'admin'
   });
 
   return { repository, service };
@@ -31,11 +31,11 @@ describe('admin auth service', () => {
       now: () => now
     });
 
-    const tokenPair = await service.login({ password: 'bootstrap-password' });
+    const tokenPair = await service.login({ username: 'admin', password: 'bootstrap-password' });
 
     expect(tokenPair.principal).toMatchObject({
       role: 'owner',
-      displayName: 'Owner'
+      displayName: 'admin'
     });
     await expect(repository.findPasswordCredential(tokenPair.principal.id)).resolves.toMatchObject({
       principalId: tokenPair.principal.id
@@ -51,7 +51,9 @@ describe('admin auth service', () => {
       now: () => now
     });
 
-    await expect(service.login({ password: 'replace-with-local-admin-password' })).rejects.toMatchObject({
+    await expect(
+      service.login({ username: 'admin', password: 'replace-with-local-admin-password' })
+    ).rejects.toMatchObject({
       code: 'admin_auth_not_configured',
       status: 503
     });
@@ -61,11 +63,11 @@ describe('admin auth service', () => {
   it('logs in the owner with a password and returns a schema-valid token pair', async () => {
     const { service } = await createSeededAuthService();
 
-    const tokenPair = await service.login({ password: 'correct-password' });
+    const tokenPair = await service.login({ username: 'admin', password: 'correct-password' });
 
     expect(AdminAuthTokenPairSchema.parse(tokenPair).principal).toMatchObject({
       role: 'owner',
-      displayName: 'Owner',
+      displayName: 'admin',
       status: 'active',
       accessTokenVersion: 1,
       refreshTokenVersion: 1,
@@ -78,7 +80,7 @@ describe('admin auth service', () => {
 
   it('refreshes only with a refresh token and rejects refresh tokens as bearer access', async () => {
     const { service } = await createSeededAuthService();
-    const tokenPair = await service.login({ password: 'correct-password' });
+    const tokenPair = await service.login({ username: 'admin', password: 'correct-password' });
 
     const refreshed = await service.refresh({ refreshToken: tokenPair.refreshToken });
 
@@ -91,7 +93,7 @@ describe('admin auth service', () => {
 
   it('returns a 403 admin_access_token_expired error for expired access tokens', async () => {
     const { service } = await createSeededAuthService();
-    const tokenPair = await service.login({ password: 'correct-password' });
+    const tokenPair = await service.login({ username: 'admin', password: 'correct-password' });
     const laterService = createAdminAuthService({
       repository: service.repository,
       jwtSecret: 'test-jwt-secret',
@@ -106,7 +108,7 @@ describe('admin auth service', () => {
 
   it('changes password by bumping both token versions and invalidating old tokens', async () => {
     const { service } = await createSeededAuthService();
-    const tokenPair = await service.login({ password: 'correct-password' });
+    const tokenPair = await service.login({ username: 'admin', password: 'correct-password' });
 
     const changed = await service.changePassword({
       authorization: `Bearer ${tokenPair.accessToken}`,
@@ -120,11 +122,20 @@ describe('admin auth service', () => {
       code: 'admin_access_token_invalid',
       status: 401
     });
-    await expect(service.login({ password: 'correct-password' })).rejects.toMatchObject({
+    await expect(service.login({ username: 'admin', password: 'correct-password' })).rejects.toMatchObject({
       code: 'admin_login_invalid_password'
     });
-    await expect(service.login({ password: 'new-secret-password' })).resolves.toMatchObject({
+    await expect(service.login({ username: 'admin', password: 'new-secret-password' })).resolves.toMatchObject({
       principal: { id: tokenPair.principal.id }
+    });
+  });
+
+  it('rejects login when the username does not match the owner display name', async () => {
+    const { service } = await createSeededAuthService();
+
+    await expect(service.login({ username: 'not-admin', password: 'correct-password' })).rejects.toMatchObject({
+      code: 'admin_login_invalid_account',
+      status: 401
     });
   });
 });

@@ -176,6 +176,7 @@ skills/
 - 除非是 Node 原生同步 API 的极小型启动逻辑、第三方接口硬约束，或测试明确需要 mock `node:fs` / `node:fs/promises`，否则不要新增原生 `fs` 作为默认实现
 - 生成分支名、提交信息、PR 标题或判断提交流程时，必须先阅读并遵守 [GitHub Flow 规范](/docs/github-flow.md)
 - 不允许只按通用 GitHub Flow 习惯临时命名分支；必须优先使用仓库 `docs/github-flow.md` 中定义的命名约定
+- 本项目不使用 `git worktree`。后续开发、执行计划、分支切换、验证与收尾都必须在当前 checkout 中完成；即使其他技能或通用流程建议创建 worktree，也以本条项目规则为准，不得执行 `git worktree add`、创建 `.worktrees/` 或依赖 worktree cleanup。
 
 ## 6.0 接口稳定性与可扩展封装规范
 

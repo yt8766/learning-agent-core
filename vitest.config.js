@@ -7,6 +7,7 @@ import { defineConfig } from 'vitest/config';
 const resolvePath = value => fileURLToPath(new URL(value, import.meta.url));
 const agentAdminSrcRoot = resolvePath('./apps/frontend/agent-admin/src/');
 const agentChatSrcRoot = resolvePath('./apps/frontend/agent-chat/src/');
+const llmGatewaySrcRoot = resolvePath('./apps/llm-gateway/src/');
 
 function resolveFrontendAlias(source, importer) {
   if (!source.startsWith('@/')) {
@@ -19,6 +20,10 @@ function resolveFrontendAlias(source, importer) {
 
   if (importer?.includes('/apps/frontend/agent-admin/')) {
     return resolveFrontendAliasPath(agentAdminSrcRoot, source.slice(2));
+  }
+
+  if (importer?.includes('/apps/llm-gateway/')) {
+    return resolveFrontendAliasPath(llmGatewaySrcRoot, source.slice(2));
   }
 
   return resolveFrontendAliasPath(agentAdminSrcRoot, source.slice(2));

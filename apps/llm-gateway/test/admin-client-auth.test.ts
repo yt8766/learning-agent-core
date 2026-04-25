@@ -57,6 +57,10 @@ const refreshedAuth: AdminStoredAuth = {
   refreshTokenExpiresAt: '2026-04-26T13:00:00.000Z'
 };
 
+function testNow(): Date {
+  return new Date('2026-04-25T11:00:00.000Z');
+}
+
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     headers: { 'content-type': 'application/json' },
@@ -85,7 +89,7 @@ describe('admin client auth', () => {
     setStoredAdminAuth(initialAuth);
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true }, { status: 200 }));
 
-    await adminFetch('/api/admin/models', undefined, { fetch: fetchMock });
+    await adminFetch('/api/admin/models', undefined, { fetch: fetchMock, now: testNow });
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/admin/models',
@@ -121,8 +125,8 @@ describe('admin client auth', () => {
     });
 
     const [first, second] = await Promise.all([
-      adminFetch('/api/admin/a', undefined, { fetch: fetchMock }),
-      adminFetch('/api/admin/b', undefined, { fetch: fetchMock })
+      adminFetch('/api/admin/a', undefined, { fetch: fetchMock, now: testNow }),
+      adminFetch('/api/admin/b', undefined, { fetch: fetchMock, now: testNow })
     ]);
 
     expect(first.status).toBe(200);
@@ -134,6 +138,36 @@ describe('admin client auth', () => {
       'Bearer new-access',
       'Bearer new-access'
     ]);
+    expect(getStoredAdminAuth()).toEqual(refreshedAuth);
+  });
+
+  it('refreshes before an admin request when the access token expires within sixty seconds', async () => {
+    setStoredAdminAuth({
+      ...initialAuth,
+      accessTokenExpiresAt: '2026-04-25T12:00:30.000Z'
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const headers = new Headers(init?.headers);
+
+      if (url === '/api/admin/auth/refresh') {
+        expect(headers.get('authorization')).toBe('Bearer old-access');
+        return jsonResponse(refreshedAuth, { status: 200 });
+      }
+
+      return jsonResponse({ ok: true, authorization: headers.get('authorization') }, { status: 200 });
+    });
+
+    const response = await adminFetch('/api/admin/models', undefined, {
+      fetch: fetchMock,
+      now: () => new Date('2026-04-25T12:00:00.000Z')
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      authorization: 'Bearer new-access'
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(getStoredAdminAuth()).toEqual(refreshedAuth);
   });
 
@@ -154,17 +188,19 @@ describe('admin client auth', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('posts password login, stores the returned token pair, and returns it', async () => {
+  it('posts username and password login, stores the returned token pair, and returns it', async () => {
     const fetchMock = vi.fn(async () => jsonResponse(refreshedAuth, { status: 200 }));
 
-    await expect(loginAdmin({ password: 'secret' }, { fetch: fetchMock })).resolves.toEqual(refreshedAuth);
+    await expect(loginAdmin({ username: 'Owner', password: 'secret' }, { fetch: fetchMock })).resolves.toEqual(
+      refreshedAuth
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/admin/auth/login',
       expect.objectContaining({
         method: 'POST',
         headers: expect.any(Headers),
-        body: JSON.stringify({ password: 'secret' })
+        body: JSON.stringify({ username: 'Owner', password: 'secret' })
       })
     );
     expect(getStoredAdminAuth()).toEqual(refreshedAuth);
@@ -184,12 +220,14 @@ describe('admin client auth', () => {
       )
     );
 
-    await expect(loginAdmin({ password: 'secret' }, { fetch: fetchMock })).rejects.toMatchObject({
+    await expect(loginAdmin({ username: 'Owner', password: 'secret' }, { fetch: fetchMock })).rejects.toMatchObject({
       name: 'AdminClientAuthError',
       code: 'admin_auth_not_configured',
       status: 503
     });
-    await expect(loginAdmin({ password: 'secret' }, { fetch: fetchMock })).rejects.toBeInstanceOf(AdminClientAuthError);
+    await expect(loginAdmin({ username: 'Owner', password: 'secret' }, { fetch: fetchMock })).rejects.toBeInstanceOf(
+      AdminClientAuthError
+    );
   });
 
   it('posts password changes through the authorized admin client', async () => {

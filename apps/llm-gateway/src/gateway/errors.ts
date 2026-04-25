@@ -1,10 +1,12 @@
 export type GatewayErrorCode =
   | 'AUTH_ERROR'
   | 'KEY_DISABLED'
+  | 'KEY_REVOKED'
   | 'KEY_EXPIRED'
   | 'MODEL_NOT_FOUND'
   | 'MODEL_NOT_ALLOWED'
   | 'RATE_LIMITED'
+  | 'RATE_LIMITER_UNAVAILABLE'
   | 'BUDGET_EXCEEDED'
   | 'CONTEXT_TOO_LONG'
   | 'UPSTREAM_AUTH_ERROR'
@@ -34,6 +36,11 @@ export function toGatewayError(error: unknown): GatewayError {
     const code = String((error as { code: unknown }).code);
     if (code === 'UPSTREAM_UNAVAILABLE') {
       return new GatewayError('UPSTREAM_UNAVAILABLE', 'Upstream provider is unavailable', 503);
+    }
+
+    if (code === 'RATE_LIMITER_UNAVAILABLE') {
+      const message = error instanceof Error ? error.message : 'Rate limiter unavailable';
+      return new GatewayError('RATE_LIMITER_UNAVAILABLE', message, 503);
     }
   }
 

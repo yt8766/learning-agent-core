@@ -1,5 +1,9 @@
 import { GatewayError } from './errors';
+import { isFallbackEligible } from './fallback-policy';
+import { createGatewayStreamAttemptCallbacks } from './streaming-accounting';
+import { streamWithFallbackAttempts } from './streaming-runtime';
 import { ChatCompletionRequestSchema } from '../contracts';
+import { buildFallbackChain } from '../models/model-fallback';
 import type { RateLimiter } from '../rate-limit/rate-limiter';
 import type {
   GatewayChatMessage,
@@ -13,6 +17,7 @@ import {
   estimateUsageCost,
   isDailyBudgetAvailable
 } from '../usage/usage-meter';
+import { buildInvocationLog } from '../usage/invocation-log';
 
 type KeyStatus = 'active' | 'disabled' | 'revoked';
 
@@ -136,6 +141,10 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
       throw new GatewayError('AUTH_ERROR', 'Invalid API key', 401);
     }
 
+    if (key.status === 'revoked') {
+      throw new GatewayError('KEY_REVOKED', 'API key has been revoked', 403);
+    }
+
     if (key.status !== 'active') {
       throw new GatewayError('KEY_DISABLED', 'API key is not active', 403);
     }
@@ -204,28 +213,44 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
     key: GatewayKeyRecord,
     model: GatewayModelRecord,
     response: GatewayChatResponse,
-    startedAt: number
+    startedAt: number,
+    metadata: { requestedModel?: string; fallbackAttemptCount?: number } = {}
   ) {
     const estimatedCost = estimateUsageCost(response.usage, model);
 
     await options.repository.recordUsage?.({
       keyId: key.id,
       model: model.alias,
+      requestedModel: metadata.requestedModel ?? model.alias,
       promptTokens: response.usage.prompt_tokens,
       completionTokens: response.usage.completion_tokens,
       totalTokens: response.usage.total_tokens,
-      estimatedCost
+      estimatedCost,
+      usageSource: 'provider_final_usage'
     });
 
-    await options.repository.writeRequestLog?.({
-      keyId: key.id,
-      model: model.alias,
-      provider: model.provider,
-      status: 'success',
-      totalTokens: response.usage.total_tokens,
-      estimatedCost,
-      latencyMs: Date.now() - startedAt
-    });
+    await options.repository.writeRequestLog?.(
+      buildInvocationLog({
+        keyId: key.id,
+        model: model.alias,
+        requestedModel: metadata.requestedModel ?? model.alias,
+        providerModel: model.providerModel,
+        provider: model.provider,
+        status: 'success',
+        usage: response.usage,
+        estimatedCost,
+        usageSource: 'provider_final_usage',
+        latencyMs: Date.now() - startedAt,
+        stream: false,
+        fallbackAttemptCount: metadata.fallbackAttemptCount ?? 0
+      })
+    );
+  }
+
+  async function buildGatewayFallbackChain(requestedAlias: string): Promise<GatewayModelRecord[]> {
+    const models = await options.modelRegistry.list();
+    const modelsByAlias = new Map(models.map(model => [model.alias, model]));
+    return buildFallbackChain(requestedAlias, alias => modelsByAlias.get(alias), 5);
   }
 
   return {
@@ -236,63 +261,83 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
       const prepared = await prepare(input.authorization, body);
-      const provider = options.providers[prepared.model.provider];
+      const candidates = await buildGatewayFallbackChain(prepared.model.alias);
+      let lastError: unknown;
 
-      if (!provider) {
-        throw new GatewayError('UPSTREAM_UNAVAILABLE', 'Provider adapter is unavailable', 503);
+      for (const [attemptIndex, candidate] of candidates.entries()) {
+        const provider = options.providers[candidate.provider];
+
+        try {
+          if (!provider) {
+            throw new GatewayError('UPSTREAM_UNAVAILABLE', 'Provider adapter is unavailable', 503);
+          }
+
+          const response = await provider.complete({
+            id: `${prepared.key.id}-${startedAt}`,
+            model: candidate.alias,
+            providerModel: candidate.providerModel,
+            messages: body.messages,
+            stream: false,
+            temperature: body.temperature,
+            maxTokens: body.max_tokens
+          });
+          const normalizedResponse = {
+            ...response,
+            model: prepared.model.alias
+          };
+
+          await writeSuccessLog(prepared.key, candidate, normalizedResponse, startedAt, {
+            requestedModel: prepared.model.alias,
+            fallbackAttemptCount: attemptIndex
+          });
+
+          return normalizedResponse;
+        } catch (error) {
+          lastError = error;
+          if (!isFallbackEligible(error) || attemptIndex === candidates.length - 1) {
+            throw error;
+          }
+        }
       }
 
-      const response = await provider.complete({
-        id: `${prepared.key.id}-${startedAt}`,
-        model: prepared.model.alias,
-        providerModel: prepared.model.providerModel,
-        messages: body.messages,
-        stream: false,
-        temperature: body.temperature,
-        maxTokens: body.max_tokens
-      });
-
-      await writeSuccessLog(prepared.key, prepared.model, response, startedAt);
-
-      return response;
+      throw lastError;
     },
     async stream(input) {
       const body = normalizeBody(input.body);
       const startedAt = Date.now();
       const prepared = await prepare(input.authorization, body);
-      const provider = options.providers[prepared.model.provider];
+      const candidates = await buildGatewayFallbackChain(prepared.model.alias);
 
-      if (!provider) {
-        throw new GatewayError('UPSTREAM_UNAVAILABLE', 'Provider adapter is unavailable', 503);
-      }
+      return streamWithFallbackAttempts(
+        candidates.map((candidate, attemptIndex) => ({
+          attemptIndex,
+          context: candidate,
+          createStream() {
+            const provider = options.providers[candidate.provider];
 
-      const stream = provider.stream({
-        id: `${prepared.key.id}-${Date.now()}`,
-        model: prepared.model.alias,
-        providerModel: prepared.model.providerModel,
-        messages: body.messages,
-        stream: true,
-        temperature: body.temperature,
-        maxTokens: body.max_tokens
-      });
+            if (!provider) {
+              throw new GatewayError('UPSTREAM_UNAVAILABLE', 'Provider adapter is unavailable', 503);
+            }
 
-      return trackStreamUsage(stream, async () => {
-        await options.repository.writeRequestLog?.({
-          keyId: prepared.key.id,
-          model: prepared.model.alias,
-          provider: prepared.model.provider,
-          status: 'success',
-          totalTokens: prepared.estimatedPromptTokens,
-          estimatedCost: estimateCompletionCost({
-            promptTokens: prepared.estimatedPromptTokens,
-            completionTokens: 0,
-            inputPricePer1mTokens: prepared.model.inputPricePer1mTokens,
-            outputPricePer1mTokens: prepared.model.outputPricePer1mTokens
-          }),
-          latencyMs: Date.now() - startedAt,
-          stream: true
-        });
-      });
+            return provider.stream({
+              id: `${prepared.key.id}-${Date.now()}`,
+              model: candidate.alias,
+              providerModel: candidate.providerModel,
+              messages: body.messages,
+              stream: true,
+              temperature: body.temperature,
+              maxTokens: body.max_tokens
+            });
+          }
+        })),
+        createGatewayStreamAttemptCallbacks({
+          repository: options.repository,
+          key: prepared.key,
+          requestedModel: prepared.model,
+          messages: body.messages,
+          startedAt
+        })
+      );
     },
     async listModels(input) {
       const key = await authenticate(input.authorization);
@@ -325,15 +370,4 @@ export function createGatewayService(options: GatewayServiceOptions): GatewaySer
       };
     }
   };
-}
-
-async function* trackStreamUsage(
-  stream: AsyncIterable<GatewayChatStreamChunk>,
-  onComplete: () => Promise<void>
-): AsyncIterable<GatewayChatStreamChunk> {
-  for await (const chunk of stream) {
-    yield chunk;
-  }
-
-  await onComplete();
 }

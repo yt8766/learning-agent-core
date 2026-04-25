@@ -6,12 +6,13 @@ const originalEnv = { ...process.env };
 
 const repositoryState = vi.hoisted(() => ({
   dispose: vi.fn(),
-  findModelByAlias: vi.fn(),
+  list: vi.fn(),
+  resolve: vi.fn(),
   recordUsage: vi.fn(),
   writeRequestLog: vi.fn()
 }));
 
-vi.mock('../src/repositories/postgres-gateway.js', () => ({
+vi.mock('../src/repositories/postgres-gateway-repository.js', () => ({
   createPostgresGatewayRepository: vi.fn(() => ({
     dispose: repositoryState.dispose,
     async verifyApiKey() {
@@ -38,8 +39,8 @@ vi.mock('../src/repositories/postgres-gateway.js', () => ({
     async writeRequestLog(log: unknown) {
       repositoryState.writeRequestLog(log);
     },
-    async findModelByAlias(alias: string) {
-      repositoryState.findModelByAlias(alias);
+    async resolve(alias: string) {
+      repositoryState.resolve(alias);
       return alias === 'gpt-main'
         ? {
             alias: 'gpt-main',
@@ -54,7 +55,8 @@ vi.mock('../src/repositories/postgres-gateway.js', () => ({
           }
         : undefined;
     },
-    async listModels() {
+    async list() {
+      repositoryState.list();
       return [
         {
           alias: 'gpt-main',
@@ -68,6 +70,9 @@ vi.mock('../src/repositories/postgres-gateway.js', () => ({
           adminOnly: false
         }
       ];
+    },
+    async listProviderRuntimeConfigs() {
+      return [];
     }
   }))
 }));
@@ -82,7 +87,8 @@ describe('gateway route runtime postgres mode', () => {
   it('creates a postgres-backed mock-provider gateway service when configured for e2e', async () => {
     process.env.LLM_GATEWAY_RUNTIME = 'postgres';
     process.env.DATABASE_URL = 'postgresql://llm_gateway:password@localhost:5432/llm_gateway';
-    process.env.LLM_GATEWAY_API_KEY_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_KEY_HASH_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_PROVIDER_SECRET_KEY = 'route-runtime-provider-secret-32b';
     process.env.LLM_GATEWAY_PROVIDER_MODE = 'mock';
 
     const service = getGatewayServiceForRoutes();
@@ -97,7 +103,8 @@ describe('gateway route runtime postgres mode', () => {
   it('uses async model resolution for chat completions and records usage/logs', async () => {
     process.env.LLM_GATEWAY_RUNTIME = 'postgres';
     process.env.DATABASE_URL = 'postgresql://llm_gateway:password@localhost:5432/llm_gateway';
-    process.env.LLM_GATEWAY_API_KEY_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_KEY_HASH_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_PROVIDER_SECRET_KEY = 'route-runtime-provider-secret-32b';
     process.env.LLM_GATEWAY_PROVIDER_MODE = 'mock';
 
     const service = getGatewayServiceForRoutes();
@@ -106,8 +113,8 @@ describe('gateway route runtime postgres mode', () => {
       body: { model: 'gpt-main', messages: [{ role: 'user', content: 'hello' }] }
     });
 
-    expect(response.choices[0]?.message.content).toBe('llm-gateway e2e response');
-    expect(repositoryState.findModelByAlias).toHaveBeenCalledWith('gpt-main');
+    expect(response.choices[0]?.message.content).toBe('llm-gateway postgres mock response');
+    expect(repositoryState.list).toHaveBeenCalled();
     expect(repositoryState.recordUsage).toHaveBeenCalledTimes(1);
     expect(repositoryState.writeRequestLog).toHaveBeenCalledTimes(1);
   });
@@ -115,7 +122,8 @@ describe('gateway route runtime postgres mode', () => {
   it('disposes the old route service when reset for tests or hot reload', async () => {
     process.env.LLM_GATEWAY_RUNTIME = 'postgres';
     process.env.DATABASE_URL = 'postgresql://llm_gateway:password@localhost:5432/llm_gateway';
-    process.env.LLM_GATEWAY_API_KEY_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_KEY_HASH_SECRET = 'route-runtime-secret';
+    process.env.LLM_GATEWAY_PROVIDER_SECRET_KEY = 'route-runtime-provider-secret-32b';
     process.env.LLM_GATEWAY_PROVIDER_MODE = 'mock';
 
     getGatewayServiceForRoutes();

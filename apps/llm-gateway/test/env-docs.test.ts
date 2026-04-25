@@ -1,144 +1,124 @@
-import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const repoRoot = new URL('../../../', import.meta.url);
+const gatewayRoot = join(process.cwd(), 'apps/llm-gateway');
+const integrationDocPath = join(process.cwd(), 'docs/integration/llm-gateway-postgres-login.md');
+const postgresRuntimeDocPath = join(process.cwd(), 'docs/integration/llm-gateway-postgres-runtime.md');
+const previewDocPath = join(process.cwd(), 'docs/integration/llm-gateway-vercel-preview.md');
+const integrationReadmePath = join(process.cwd(), 'docs/integration/README.md');
+const frontendReadmePath = join(process.cwd(), 'docs/frontend/llm-gateway/README.md');
+const packageJsonPath = join(gatewayRoot, 'package.json');
+const gitignorePath = join(process.cwd(), '.gitignore');
+const previewSmokeScriptPath = join(process.cwd(), 'apps/llm-gateway/scripts/preview-smoke.mjs');
+const postcssConfigPath = join(gatewayRoot, 'postcss.config.mjs');
 
-function readRepoFile(path: string): string {
-  return readFileSync(new URL(path, repoRoot), 'utf8');
+async function readGatewayFile(path: string): Promise<string> {
+  return readFile(join(gatewayRoot, path), 'utf8');
 }
 
-describe('llm-gateway local PostgreSQL deployment docs', () => {
-  it('names local Docker Compose lifecycle scripts after Docker, not a single database resource', () => {
-    const packageJson = JSON.parse(readRepoFile('apps/llm-gateway/package.json')) as {
-      scripts?: Record<string, string>;
-    };
+describe('llm gateway env docs', () => {
+  it('keeps the documented runtime environment variables in .env.example', async () => {
+    const envExample = await readGatewayFile('.env.example');
 
-    expect(packageJson.scripts?.['docker:up']).toBe('docker compose up -d llm-gateway-postgres');
-    expect(packageJson.scripts?.['docker:down']).toBe('docker compose down');
-    expect(packageJson.scripts).not.toHaveProperty('db:up');
-    expect(packageJson.scripts).not.toHaveProperty('db:down');
-  });
-
-  it('keeps the Docker PostgreSQL service owned by llm-gateway and driven by app env', () => {
-    const compose = readRepoFile('apps/llm-gateway/docker-compose.yml');
-
-    expect(compose).toContain('postgres:16');
-    expect(compose).toContain('POSTGRES_DB: ${POSTGRES_DB:-llm_gateway}');
-    expect(compose).toContain('POSTGRES_USER: ${POSTGRES_USER:-llm_gateway}');
-    expect(compose).toContain(
-      'POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in apps/llm-gateway/.env}'
-    );
-    expect(compose).toContain('${POSTGRES_PORT:-5432}:5432');
-    expect(compose).toContain('${POSTGRES_DATA_DIR:-./.db/postgres}:/var/lib/postgresql/data');
-    expect(compose).toContain('pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"');
-  });
-
-  it('keeps the app env example aligned with the login bootstrap dependencies', () => {
-    const envExample = readRepoFile('apps/llm-gateway/.env.example');
-
-    expect(envExample).toContain('POSTGRES_DB=llm_gateway');
-    expect(envExample).toContain('POSTGRES_USER=llm_gateway');
-    expect(envExample).toContain('POSTGRES_PASSWORD=llm_gateway_password');
-    expect(envExample).toContain('POSTGRES_PORT=5432');
-    expect(envExample).toContain('POSTGRES_DATA_DIR=./.db/postgres');
-    expect(envExample).toContain(
-      'DATABASE_URL=postgresql://llm_gateway:llm_gateway_password@localhost:5432/llm_gateway'
-    );
+    expect(envExample).toContain('DATABASE_URL=');
+    expect(envExample).toContain('UPSTASH_REDIS_REST_URL=');
+    expect(envExample).toContain('UPSTASH_REDIS_REST_TOKEN=');
     expect(envExample).toContain('REDIS_URL=');
     expect(envExample).toContain('OPENAI_API_KEY=');
     expect(envExample).toContain('MINIMAX_API_KEY=');
     expect(envExample).toContain('MIMO_API_KEY=');
+    expect(envExample).toContain('LLM_GATEWAY_PROVIDER_SECRET_KEY=');
+    expect(envExample).toContain('LLM_GATEWAY_PROVIDER_SECRET_KEY_VERSION=');
     expect(envExample).toContain('LLM_GATEWAY_BOOTSTRAP_API_KEY=');
-    expect(envExample).toContain('LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=');
+    expect(envExample).toContain('LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD=replace-with-local-admin-password');
+    expect(envExample).not.toContain('yangtao1314520');
     expect(envExample).toContain('LLM_GATEWAY_ADMIN_JWT_SECRET=');
-    expect(envExample).toContain('values beginning with replace-with- are treated as not configured');
+    expect(envExample).toContain('LLM_GATEWAY_KEY_HASH_SECRET=');
   });
 
-  it('records the login persistence boundary and avoids session-cookie storage', () => {
-    const docs = readRepoFile('docs/integration/llm-gateway-postgres-login.md');
+  it('keeps the Postgres/login integration doc aligned with bootstrap commands and verification', async () => {
+    const doc = await readFile(integrationDocPath, 'utf8');
 
-    expect(docs).toContain('postgres:16');
-    expect(docs).toContain('apps/llm-gateway/docker-compose.yml');
-    expect(docs).toContain('pnpm --dir apps/llm-gateway docker:up');
-    expect(docs).toContain('DATABASE_URL=postgresql://llm_gateway:llm_gateway_password@localhost:5432/llm_gateway');
-    expect(docs).toContain('不使用 session cookie');
-    expect(docs).toContain('不创建 `admin_sessions` 表');
-    expect(docs).toContain('admin_principals');
-    expect(docs).toContain('admin_credentials');
-    expect(docs).toContain('admin_login_attempts');
-    expect(docs).toContain('admin_audit_events');
-    expect(docs).toContain('以 `replace-with-` 开头的示例值会被视为未配置');
-    expect(docs).toContain('后续修改 bootstrap 环境变量不会覆盖既有密码');
+    expect(doc).toContain('pnpm --dir apps/llm-gateway docker:up');
+    expect(doc).toContain('pnpm --dir apps/llm-gateway dev');
+    expect(doc).toContain('apps/llm-gateway/test/env-docs.test.ts');
+    expect(doc).toContain('UPSTASH_REDIS_REST_URL');
+    expect(doc).toContain('LLM_GATEWAY_PROVIDER_SECRET_KEY');
+    expect(doc).toContain('Authorization: Bearer <accessToken>');
   });
 
-  it('confirms local database files stay ignored by git', () => {
-    const gitignore = readRepoFile('.gitignore');
+  it('documents the Vercel Preview acceptance checklist and doc entrypoints', async () => {
+    const previewDoc = await readFile(previewDocPath, 'utf8');
+    const integrationReadme = await readFile(integrationReadmePath, 'utf8');
+    const frontendReadme = await readFile(frontendReadmePath, 'utf8');
+    const packageJson = await readGatewayFile('package.json');
+    const previewSmokeScript = await readFile(previewSmokeScriptPath, 'utf8');
 
-    expect(gitignore).toMatch(/(^|\n)\.db(\n|$)/);
+    expect(packageJson).toContain('"preview:smoke": "node scripts/preview-smoke.mjs"');
+    expect(previewSmokeScript).toContain('PREVIEW_BASE_URL');
+    expect(previewSmokeScript).toContain('LLM_GATEWAY_PREVIEW_API_KEY');
+    expect(previewSmokeScript).toContain('LLM_GATEWAY_PREVIEW_ADMIN_PASSWORD');
+    expect(previewSmokeScript).toContain('/api/v1/models');
+    expect(previewSmokeScript).toContain('/api/v1/key');
+    expect(previewSmokeScript).toContain('/api/v1/chat/completions');
+    expect(previewSmokeScript).toContain('/api/admin/auth/login');
+    expect(previewSmokeScript).toContain('/api/admin/providers');
+    expect(previewSmokeScript).toContain('maskSecret');
+    expect(previewDoc).toContain('DATABASE_URL');
+    expect(previewDoc).toContain('UPSTASH_REDIS_REST_URL');
+    expect(previewDoc).toContain('UPSTASH_REDIS_REST_TOKEN');
+    expect(previewDoc).toContain('LLM_GATEWAY_ADMIN_JWT_SECRET');
+    expect(previewDoc).toContain('LLM_GATEWAY_PROVIDER_SECRET_KEY');
+    expect(previewDoc).toContain('LLM_GATEWAY_KEY_HASH_SECRET');
+    expect(previewDoc).toContain('provider 后台录入/注入');
+    expect(previewDoc).toContain('/api/v1');
+    expect(previewDoc).toContain('admin auth smoke');
+    expect(previewDoc).toContain('pnpm --dir apps/llm-gateway preview:smoke');
+    expect(previewDoc).toContain('PREVIEW_BASE_URL');
+    expect(previewDoc).toContain('LLM_GATEWAY_PREVIEW_API_KEY');
+    expect(previewDoc).toContain('LLM_GATEWAY_PREVIEW_ADMIN_PASSWORD');
+    expect(previewDoc).toContain(
+      'pnpm exec vitest run --config vitest.config.js apps/llm-gateway/test/env-docs.test.ts'
+    );
+
+    expect(integrationReadme).toContain('llm-gateway-vercel-preview.md');
+    expect(frontendReadme).toContain('llm-gateway-vercel-preview.md');
+    expect(frontendReadme).toContain('pnpm --dir apps/llm-gateway preview:smoke');
   });
 
-  it('exposes the isolated E2E compose stack through package scripts and config', () => {
-    const packageJson = JSON.parse(readRepoFile('apps/llm-gateway/package.json')) as {
-      scripts?: Record<string, string>;
+  it('documents local bootstrap fallback separately from production DB fail-closed runtime', async () => {
+    const postgresRuntimeDoc = await readFile(postgresRuntimeDocPath, 'utf8');
+    const previewDoc = await readFile(previewDocPath, 'utf8');
+
+    expect(postgresRuntimeDoc).toContain('本地 bootstrap fallback');
+    expect(postgresRuntimeDoc).toContain('production DB runtime fail-closed');
+    expect(previewDoc).toContain('本地 bootstrap fallback');
+    expect(previewDoc).toContain('production DB runtime fail-closed');
+  });
+
+  it('keeps Next build output out of formatting and source patrols', async () => {
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { scripts?: Record<string, string> };
+    const gitignore = await readFile(gitignorePath, 'utf8');
+    const frontendReadme = await readFile(frontendReadmePath, 'utf8');
+
+    expect(gitignore).toMatch(/(^|\n)\.next(\n|$)/);
+    expect(packageJson.scripts?.lint).toContain('--ignore-pattern .next');
+    expect(frontendReadme).toContain('`.next` 是 Next build/dev 生成目录');
+  });
+
+  it('keeps Tailwind v4 PostCSS wired for the shadcn dashboard shell', async () => {
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as {
+      devDependencies?: Record<string, string>;
     };
+    const postcssConfig = await readFile(postcssConfigPath, 'utf8');
+    const frontendReadme = await readFile(frontendReadmePath, 'utf8');
 
-    expect(packageJson.scripts?.['test:e2e']).toBe('node scripts/run-e2e.mjs --runner=container');
-    expect(packageJson.scripts?.['test:e2e:local']).toBe('node scripts/run-e2e.mjs --runner=host');
-    expect(packageJson.scripts?.['test:e2e:up']).toBe(
-      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app'
-    );
-    expect(packageJson.scripts?.['test:e2e:down']).toBe(
-      'docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml down -v --remove-orphans --rmi local'
-    );
-
-    const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
-    expect(compose).toContain('llm-gateway-e2e-postgres:');
-    expect(compose).toContain('llm-gateway-e2e-app:');
-    expect(compose).toContain('llm-gateway-e2e-runner:');
-    expect(compose).toContain('LLM_GATEWAY_RUNTIME: postgres');
-    expect(compose).toContain('LLM_GATEWAY_PROVIDER_MODE: mock');
-    expect(compose).not.toContain('container_name: learning-agent-llm-gateway-postgres');
-    expect(compose).not.toContain('./.db/postgres');
-
-    const e2eDocs = readRepoFile('docs/integration/llm-gateway-e2e.md');
-    expect(e2eDocs).toContain('pnpm --dir apps/llm-gateway test:e2e');
-    expect(e2eDocs).toContain('docker-compose.e2e.yml');
-  });
-
-  it('keeps E2E Docker context, runner, and seed guarded for isolated execution', () => {
-    const dockerignore = readRepoFile('.dockerignore');
-    for (const pattern of [
-      '.env',
-      '.env.*',
-      '**/.env',
-      '**/.env.*',
-      '**/.db/**',
-      '**/node_modules/**',
-      '.git',
-      '.worktrees',
-      'artifacts',
-      'coverage',
-      '**/.next/**',
-      '**/.turbo/**'
-    ]) {
-      expect(dockerignore).toContain(pattern);
-    }
-
-    const compose = readRepoFile('apps/llm-gateway/docker-compose.e2e.yml');
-    expect(compose).not.toContain('ports:');
-    expect(compose).not.toContain('${LLM_GATEWAY_E2E_PORT:-3100}:3000');
-
-    const runner = readRepoFile('apps/llm-gateway/scripts/run-e2e.mjs');
-    expect(runner).toContain('LLM_GATEWAY_E2E_PROJECT');
-    expect(runner).toContain('llm-gateway-e2e');
-    expect(runner).toContain('apps/llm-gateway/test/e2e/**/*.e2e-spec.ts');
-    expect(runner).toContain('docker compose -p');
-    expect(runner).toContain('test:e2e:down');
-    expect(runner).toContain("'--rmi', 'local'");
-
-    const seed = readRepoFile('apps/llm-gateway/test/e2e/seed.ts');
-    expect(seed).toContain('assertE2eDatabaseUrl');
-    expect(seed).toContain('LLM_GATEWAY_ALLOW_E2E_SEED=1');
-    expect(seed).toContain('Refusing to seed llm-gateway E2E data');
+    expect(packageJson.devDependencies).toHaveProperty('@tailwindcss/postcss');
+    expect(postcssConfig).toContain('@tailwindcss/postcss');
+    expect(frontendReadme).toContain('`postcss.config.mjs` 必须保留 `@tailwindcss/postcss`');
+    expect(frontendReadme).toContain('黑白 dashboard-01');
+    expect(frontendReadme).toContain('桌面端左侧栏必须为 inset/gap 布局');
+    expect(frontendReadme).toContain('浅灰细边');
   });
 });

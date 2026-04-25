@@ -9,11 +9,11 @@
 
 ## 接口
 
-| 方法  | 路径                                | 用途                  | 关键契约                                   |
-| ----- | ----------------------------------- | --------------------- | ------------------------------------------ |
-| `GET` | `/platform/workflow-presets`        | 获取 workflow catalog | 返回 `WorkflowPresetDefinition[]`          |
-| `GET` | `/platform/run-observatory`         | 获取 run summary 列表 | 返回 `RunSummaryRecord[]`                  |
-| `GET` | `/platform/run-observatory/:taskId` | 获取单次 run 详情     | 返回 `RunBundleRecord`，不是 raw task dump |
+| 方法  | 地址                                    | 参数                                                                                                                                                                                                                                             | 返回值                       | 说明                                                               |
+| ----- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------------------------------------------------------------ |
+| `GET` | `/api/platform/workflow-presets`        | 无                                                                                                                                                                                                                                               | `WorkflowPresetDefinition[]` | 获取 workflow catalog。                                            |
+| `GET` | `/api/platform/run-observatory`         | query: `status?: string`、`model?: string`、`pricingSource?: string`、`executionMode?: string`、`interactionKind?: string`、`q?: string`、`hasInterrupt?: string`、`hasFallback?: string`、`hasRecoverableCheckpoint?: string`、`limit?: string` | `RunBundleRecord["run"][]`   | 获取 run summary 列表；前端类型消费为 `RunBundleRecord["run"][]`。 |
+| `GET` | `/api/platform/run-observatory/:taskId` | path: `taskId`                                                                                                                                                                                                                                   | `RunBundleRecord`            | 获取单次 run 详情；返回观测投影，不是 raw task dump。              |
 
 ## Workflow Preset
 
@@ -27,6 +27,21 @@
 - `outputContract`
 
 workflow launch 复用既有任务创建链路：前端读取 preset 后组装 `goal`，再调用任务创建接口。
+
+## Run List 参数
+
+| 参数                       | 类型     | 默认值 | 说明                                                                                  |
+| -------------------------- | -------- | ------ | ------------------------------------------------------------------------------------- |
+| `status`                   | `string` | 无     | 任务状态筛选。                                                                        |
+| `model`                    | `string` | 无     | 模型名称或模型 id 筛选。                                                              |
+| `pricingSource`            | `string` | 无     | 价格来源筛选。                                                                        |
+| `executionMode`            | `string` | 无     | 支持 `plan`、`execute`、`imperial_direct`；兼容读取 `standard`、`planning-readonly`。 |
+| `interactionKind`          | `string` | 无     | 支持 `approval`、`plan-question`、`supplemental-input`。                              |
+| `q`                        | `string` | 无     | 文本搜索关键词。                                                                      |
+| `hasInterrupt`             | `string` | 无     | 字符串布尔值，`"true"` 或 `"false"`。                                                 |
+| `hasFallback`              | `string` | 无     | 字符串布尔值，`"true"` 或 `"false"`。                                                 |
+| `hasRecoverableCheckpoint` | `string` | 无     | 字符串布尔值，`"true"` 或 `"false"`。                                                 |
+| `limit`                    | `string` | 无     | 返回条数上限；前端传入数字后会转成字符串。                                            |
 
 ## Run List
 
