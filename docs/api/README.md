@@ -9,7 +9,7 @@
 
 本目录主文档：
 
-- 接口风格选择：`interface-style-guidelines.md`
+- 接口风格选择：[interface-style-guidelines.md](/docs/api/interface-style-guidelines.md)
 - 聊天 API：[agent-chat.md](/docs/api/agent-chat.md)
 - Admin API：[agent-admin.md](/docs/api/agent-admin.md)
 - Runtime API：[runtime.md](/docs/api/runtime.md)
@@ -18,7 +18,7 @@
 
 ## 阅读顺序
 
-1. `interface-style-guidelines.md`
+1. [interface-style-guidelines.md](/docs/api/interface-style-guidelines.md)
 2. [agent-chat.md](/docs/api/agent-chat.md)
 3. [agent-admin.md](/docs/api/agent-admin.md)
 4. [runtime.md](/docs/api/runtime.md)

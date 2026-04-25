@@ -28,7 +28,7 @@
 3. 再分别实现后端与前端。
 4. 最后做联调、验证与文档回写。
 
-接口风格选择以 `docs/api/interface-style-guidelines.md` 为准。当前默认模式是 RESTful JSON API + schema-first contract + SSE streaming；`agent-server` 继续采用 REST command/query -> SSE observe -> checkpoint/history recover，`llm-gateway` 继续采用 OpenAI-compatible REST + SSE streaming。
+接口风格选择以 [docs/api/interface-style-guidelines.md](/docs/api/interface-style-guidelines.md) 为准。
 
 涉及 API、SSE、checkpoint payload、审批事件、runtime center DTO、admin center 聚合返回、导出字段或其他跨端接口时，不允许先按实现猜字段再补文档。
 
