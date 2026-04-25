@@ -138,6 +138,61 @@ p {
   color: #243b53;
 }
 
+.login-panel {
+  max-width: 440px;
+  margin: 48px auto 0;
+}
+
+.admin-login-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.admin-login-form label {
+  color: #2d3845;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.admin-login-form input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid #c8d0d8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #18202a;
+  font: inherit;
+  padding: 0 12px;
+}
+
+.admin-login-form input:focus {
+  border-color: #0b5cab;
+  outline: 3px solid #d6e9ff;
+}
+
+.admin-login-form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: #0b5cab;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.admin-login-form button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.form-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.92rem;
+}
+
 @media (max-width: 760px) {
   .admin-shell {
     width: min(100% - 28px, 1120px);
