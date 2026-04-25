@@ -3,10 +3,12 @@ import { z } from 'zod';
 export const GatewayErrorCodeSchema = z.enum([
   'AUTH_ERROR',
   'KEY_DISABLED',
+  'KEY_REVOKED',
   'KEY_EXPIRED',
   'MODEL_NOT_ALLOWED',
   'MODEL_NOT_FOUND',
   'RATE_LIMITED',
+  'RATE_LIMITER_UNAVAILABLE',
   'BUDGET_EXCEEDED',
   'CONTEXT_TOO_LONG',
   'UPSTREAM_AUTH_ERROR',

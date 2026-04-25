@@ -22,6 +22,10 @@
 
 - 前后端集成链路：[frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
 - 系统运行闭环：[system-flow-current-state.md](/docs/integration/system-flow-current-state.md)
+- LLM Gateway 登录 PostgreSQL 部署：[llm-gateway-postgres-login.md](/docs/integration/llm-gateway-postgres-login.md)
+- LLM Gateway Provider Runtime：[llm-gateway-provider-runtime.md](/docs/integration/llm-gateway-provider-runtime.md)
+- LLM Gateway UI Hydration Notes：[llm-gateway-ui-hydration.md](/docs/integration/llm-gateway-ui-hydration.md)
+- LLM Gateway Vercel Preview 验收：[llm-gateway-vercel-preview.md](/docs/integration/llm-gateway-vercel-preview.md)
 
 约定：
 
@@ -40,6 +44,10 @@
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/integration/system-flow-current-state.md)
 - [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
+- [LLM Gateway 登录 PostgreSQL 部署](/docs/integration/llm-gateway-postgres-login.md)
+- [LLM Gateway Provider Runtime](/docs/integration/llm-gateway-provider-runtime.md)
+- [LLM Gateway UI Hydration Notes](/docs/integration/llm-gateway-ui-hydration.md)
+- [LLM Gateway Vercel Preview 验收](/docs/integration/llm-gateway-vercel-preview.md)
 
 说明：
 
