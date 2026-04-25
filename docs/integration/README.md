@@ -16,6 +16,7 @@
 改前后端协议、SSE、审批恢复前，优先阅读：
 
 - [API 文档目录](/docs/api/README.md)
+- 接口风格选择以 `docs/api/interface-style-guidelines.md` 为准；integration 文档只补充调用顺序、联调和排障背景。
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 
 本目录主文档：
