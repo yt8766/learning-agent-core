@@ -14,7 +14,7 @@ import {
 import { createMediaProviderRegistry, type MediaProviderRegistry } from './media-provider-registry';
 
 export interface DefaultMediaProvidersInput extends Partial<MiniMaxMediaConfig> {
-  readonly apiKey: string;
+  readonly apiKey?: string;
   readonly transport?: MiniMaxMediaTransport;
 }
 
@@ -25,7 +25,7 @@ export interface DefaultMediaProviders {
 
 export function createDefaultMediaProviders(input: DefaultMediaProvidersInput): DefaultMediaProviders {
   const { transport, ...configInput } = input;
-  const config: MiniMaxMediaConfig = {
+  const providerConfig: MiniMaxMediaConfig = {
     apiKey: configInput.apiKey,
     baseUrl: configInput.baseUrl ?? DEFAULT_MINIMAX_MEDIA_BASE_URL,
     speechModel: configInput.speechModel ?? DEFAULT_MINIMAX_SPEECH_MODEL,
@@ -33,13 +33,17 @@ export function createDefaultMediaProviders(input: DefaultMediaProvidersInput): 
     videoModel: configInput.videoModel ?? DEFAULT_MINIMAX_VIDEO_MODEL,
     musicModel: configInput.musicModel
   };
+  const config: MiniMaxMediaConfig = {
+    ...providerConfig,
+    apiKey: providerConfig.apiKey ? '[redacted]' : undefined
+  };
   const mediaTransport = transport ?? createNoopTransport();
   const registry = createMediaProviderRegistry();
 
-  registry.registerAudioProvider(new MiniMaxAudioProvider(config, mediaTransport));
-  registry.registerImageProvider(new MiniMaxImageProvider(config, mediaTransport));
-  registry.registerVideoProvider(new MiniMaxVideoProvider(config, mediaTransport));
-  registry.registerMusicProvider(new MiniMaxMusicProvider(config, mediaTransport));
+  registry.registerAudioProvider(new MiniMaxAudioProvider(providerConfig, mediaTransport));
+  registry.registerImageProvider(new MiniMaxImageProvider(providerConfig, mediaTransport));
+  registry.registerVideoProvider(new MiniMaxVideoProvider(providerConfig, mediaTransport));
+  registry.registerMusicProvider(new MiniMaxMusicProvider(providerConfig, mediaTransport));
 
   return { registry, config };
 }
