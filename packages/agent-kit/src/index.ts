@@ -34,3 +34,4 @@ export {
   limitStructuredRules,
   searchRuntimeMemories
 } from './runtime-memory-search';
+export * from './media';
