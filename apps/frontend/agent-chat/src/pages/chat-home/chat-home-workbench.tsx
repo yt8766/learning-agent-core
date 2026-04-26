@@ -1,4 +1,4 @@
-import { Alert, Button, Collapse, Dropdown, Flex, Space, Tag, Typography, type MenuProps } from 'antd';
+import { Alert, Button, Collapse, Dropdown, Flex, Segmented, Space, Tag, Typography, type MenuProps } from 'antd';
 import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
 import type { ReactNode } from 'react';
@@ -62,10 +62,7 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
   const showMissionControl = shouldShowMissionControl(props.chat);
   const quickActionChips = useMemo(() => buildQuickActionChips(props.chat), [props.chat]);
   const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
-  const workspaceVaultSignals = useMemo(
-    () => buildWorkspaceVaultSignals(props.chat, workspaceCenterReadiness),
-    [props.chat, workspaceCenterReadiness]
-  );
+  const workspaceVaultSignals = useMemo(() => buildWorkspaceVaultSignals(props.chat), [props.chat]);
   const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
   const conversationAnchors = useMemo(
     () => filterVisibleConversationAnchors(buildConversationAnchors(props.chat.messages), props.bubbleItems),
@@ -338,11 +335,11 @@ function EmptyFrontlineEntry({
 }) {
   return (
     <div className="chatx-empty-entry">
-      <div className="chatx-empty-entry__brand" aria-hidden="true">
-        <span className="chatx-brand-mark" />
-      </div>
+      <div className="chatx-empty-entry__brand">AC</div>
       <div className="chatx-empty-entry__copy">
+        <Text className="chatx-empty-entry__eyebrow">Agent Chat</Text>
         <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
+        <Typography.Paragraph>快速提问直接开始；需要拆解、计划和多步执行时切换专家模式。</Typography.Paragraph>
       </div>
       <Segmented
         className="chatx-empty-entry__modes"
@@ -437,6 +434,20 @@ function ChatComposer({
               ) : null}
             </Flex>
             <Flex align="center" className="chatx-sender-footer__right">
+              <div className={`chatx-plan-mode-inline ${chatMode === 'expert' ? 'is-active' : ''}`}>
+                <Segmented
+                  size="small"
+                  value={chatMode}
+                  onChange={value => {
+                    setSuggestedPayload(null);
+                    onChatModeChange(value as ChatMode);
+                  }}
+                  options={[
+                    { label: '快速模式', value: 'quick' },
+                    { label: '专家模式', value: 'expert' }
+                  ]}
+                />
+              </div>
               {actionNode}
             </Flex>
           </Flex>

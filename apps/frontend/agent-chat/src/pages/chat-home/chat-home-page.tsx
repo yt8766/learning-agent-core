@@ -21,8 +21,8 @@ import {
 import { ConversationAnchorRail } from './chat-home-anchor-rail';
 import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
 import { ChatHomeSidebar } from './chat-home-sidebar';
-import { buildSubmitMessage } from './chat-home-submit';
-import { buildThoughtItems } from './chat-home-workbench-thoughts';
+import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
+import type { ChatMode } from './chat-home-workbench-composer-helpers';
 
 const { Text, Title } = Typography;
 
@@ -35,6 +35,7 @@ export function ChatHomePage() {
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showWorkbench, setShowWorkbench] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>('quick');
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -229,27 +230,35 @@ export function ChatHomePage() {
                     />
                   ) : null}
 
-              {chat.hasMessages ? (
-                <ActiveConversation
-                  activeTitle={stripWorkflowCommandPrefix(chat.activeSession?.title ?? '当前会话')}
-                  activeStatus={chat.activeSession?.status}
-                  chatMode={chatMode}
-                  bubbleItems={anchoredBubbleItems}
-                  anchors={conversationAnchors}
-                  onSend={value => chat.sendMessage(value)}
-                  onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
-                  loading={isThinking}
-                />
-              ) : (
-                <EmptyConversation
-                  chatMode={chatMode}
-                  onSend={value => chat.sendMessage(value)}
-                  onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
-                  loading={chat.loading}
-                />
-              )}
-            </section>
+                  <ChatHomeWorkbench
+                    chat={chat}
+                    chatMode={chatMode}
+                    onChatModeChange={setChatMode}
+                    showWorkbench={showWorkbench}
+                    bubbleItems={bubbleItems}
+                    streamEvents={streamEvents}
+                  />
+                </div>
+              </Content>
+            </Layout>
 
+            <ChatRuntimeDrawer
+              open={chat.showRightPanel}
+              activeSession={chat.activeSession}
+              checkpoint={chat.checkpoint}
+              thinkState={chat.checkpoint?.thinkState}
+              pendingApprovals={chat.pendingApprovals}
+              thoughtItems={thoughtItems}
+              onClose={() => chat.setShowRightPanel(false)}
+              onConfirmLearning={() => void chat.submitLearningConfirmation()}
+              onRecover={() => void chat.recoverActiveSession()}
+              onExportRuntime={() => void handleExportRuntime()}
+              onExportApprovals={() => void handleExportApprovals()}
+              onDownloadReplay={() => void handleDownloadReplay()}
+              onCopyShareLinks={() => void handleCopyShareLinks()}
+              getAgentLabel={getAgentLabel}
+              getSessionStatusLabel={getSessionStatusLabel}
+            />
             <Modal
               title="拒绝并附加说明"
               open={Boolean(feedbackIntent)}

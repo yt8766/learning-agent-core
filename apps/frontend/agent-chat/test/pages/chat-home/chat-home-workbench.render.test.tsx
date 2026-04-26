@@ -232,6 +232,7 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('mission-control');
     expect(html).toContain('使用快速模式开始对话');
     expect(html).toContain('快速模式');
+    expect(html).toContain('专家模式');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).toContain('更多建议');
     expect(html).not.toContain('Frontline Workspace');
