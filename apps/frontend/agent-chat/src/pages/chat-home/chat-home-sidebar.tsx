@@ -93,10 +93,21 @@ export function ChatHomeSidebar({ chat, collapsed, onToggleCollapsed }: ChatHome
                         onClick={() => chat.setActiveSessionId(session.id)}
                       >
                         <span className="chatx-session-item__main">
-                          <span className="chatx-session-item__title">{session.title}</span>
-                          <span className="chatx-session-item__status">
-                            <span className="chatx-session-item__dot" aria-hidden="true" />
-                            <span>{statusDisplay.label}</span>
+                          <span className="chatx-session-item__row">
+                            <span className="chatx-session-item__title">{session.title}</span>
+                            <span
+                              className={`chatx-session-item__status chatx-session-item__status--${statusDisplay.accessory}`}
+                              aria-label={statusDisplay.label}
+                            >
+                              {statusDisplay.accessory === 'pill' ? (
+                                <>
+                                  <span>{statusDisplay.label}</span>
+                                  <span className="chatx-session-item__spinner" aria-hidden="true" />
+                                </>
+                              ) : (
+                                <span className="chatx-session-item__dot" aria-hidden="true" />
+                              )}
+                            </span>
                           </span>
                         </span>
                       </button>
