@@ -46,8 +46,11 @@
       "@agent/skill-runtime": ["packages/skill-runtime/src/index.ts"],
       "@agent/evals": ["packages/evals/src"],
       "@agent/agents-supervisor": ["agents/supervisor/src/index.ts"],
+      "@agent/agents-audio": ["agents/audio/src/index.ts"],
       "@agent/agents-data-report": ["agents/data-report/src/index.ts"],
+      "@agent/agents-image": ["agents/image/src/index.ts"],
       "@agent/agents-intel-engine": ["agents/intel-engine/src/index.ts"],
+      "@agent/agents-video": ["agents/video/src/index.ts"],
       "@agent/agents-coder": ["agents/coder/src/index.ts"],
       "@agent/agents-reviewer": ["agents/reviewer/src/index.ts"]
     }

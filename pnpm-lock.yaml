@@ -63,6 +63,18 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2(@opentelemetry/api@1.9.1)(@types/node@22.19.15)(msw@2.12.14(@types/node@22.19.15)(typescript@5.9.3))(vite@8.0.1(@types/node@22.19.15)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  agents/audio:
+    dependencies:
+      '@agent/agent-kit':
+        specifier: workspace:*
+        version: link:../../packages/agent-kit
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+
   agents/coder:
     dependencies:
       '@agent/adapters':
@@ -101,6 +113,15 @@ importers:
       fs-extra:
         specifier: ^11.3.4
         version: 11.3.4
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+
+  agents/image:
+    dependencies:
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -165,6 +186,15 @@ importers:
       '@langchain/langgraph':
         specifier: ^1.2.5
         version: 1.2.5(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+
+  agents/video:
+    dependencies:
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       zod:
         specifier: ^4.3.6
         version: 4.3.6
