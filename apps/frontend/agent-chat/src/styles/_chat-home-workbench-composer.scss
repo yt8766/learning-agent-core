@@ -1,0 +1,102 @@
+@use './tokens' as *;
+
+.chatx-chat-surface {
+  align-items: stretch;
+  justify-content: flex-start;
+  background: #fff;
+}
+
+.chatx-empty-entry {
+  width: min(720px, 100%);
+  margin: auto;
+  padding: clamp(28px, 7vh, 72px) 18px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+
+  &__brand {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 16px;
+    background: #fff;
+    color: $color-ink-900;
+    font-size: 15px;
+    font-weight: 800;
+    box-shadow: $shadow-soft-sm;
+  }
+
+  &__copy {
+    display: flex;
+    max-width: 560px;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .ant-typography {
+      margin: 0;
+    }
+  }
+
+  &__eyebrow {
+    color: $color-slate-500;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  &__modes {
+    padding: 4px;
+    border-radius: 999px;
+    background: #f3f4f6;
+
+    .ant-segmented-item {
+      border-radius: 999px;
+    }
+  }
+}
+
+.chatx-composer-shell {
+  padding: 0 0 8px;
+
+  &.is-empty-thread {
+    width: min(760px, calc(100% - 24px));
+    margin: 0 auto 12px;
+  }
+}
+
+.chatx-sender {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+
+  .ant-sender-input {
+    padding: 18px 20px 8px;
+  }
+}
+
+.chatx-sender-footer {
+  padding: 8px 12px 12px 14px;
+
+  &__left,
+  &__right {
+    min-width: 0;
+  }
+}
+
+.chatx-plan-mode-inline {
+  margin-right: 8px;
+
+  .ant-segmented {
+    border-radius: 999px;
+  }
+
+  .ant-segmented-item {
+    border-radius: 999px;
+  }
+}

@@ -12,6 +12,10 @@ const renderedSegmentedControls: Array<{
   value?: string;
   onChange?: (value: string) => void;
 }> = [];
+const renderedSegmentedControls: Array<{
+  value?: string;
+  onChange?: (value: string) => void;
+}> = [];
 
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
@@ -71,6 +75,21 @@ vi.mock('antd', () => ({
       </div>
     );
   },
+  Segmented: (props: {
+    options?: Array<{ label?: ReactNode; value?: string }>;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => {
+    renderedSegmentedControls.push({ value: props.value, onChange: props.onChange });
+    return (
+      <div>
+        mode:{props.value}
+        {(props.options ?? []).map(option => (
+          <button key={option.value}>{option.label}</button>
+        ))}
+      </div>
+    );
+  },
   Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Typography: {
@@ -94,6 +113,12 @@ vi.mock('@ant-design/x', () => ({
   Sender: Object.assign(
     (props: Record<string, unknown>) => {
       renderedSenders.push(props);
+      return (
+        <div>
+          <span>{props.placeholder as ReactNode}</span>
+          {(props.footer as ((node: ReactNode) => ReactNode) | undefined)?.(<button>send</button>)}
+        </div>
+      );
       return (
         <div>
           <span>{props.placeholder as ReactNode}</span>
@@ -164,6 +189,7 @@ describe('chat-home-workbench component', () => {
     renderedDropdownMenus.length = 0;
     renderedSenders.length = 0;
     renderedSegmentedControls.length = 0;
+    renderedSegmentedControls.length = 0;
     useStateOverride = null;
   });
 
@@ -187,6 +213,8 @@ describe('chat-home-workbench component', () => {
         }
         chatMode="quick"
         onChatModeChange={vi.fn()}
+        chatMode="quick"
+        onChatModeChange={vi.fn()}
         showWorkbench={false}
         bubbleItems={[]}
         streamEvents={[]}
@@ -196,11 +224,48 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('mission-control');
     expect(html).toContain('使用快速模式开始对话');
     expect(html).toContain('快速模式');
+    expect(html).toContain('专家模式');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).toContain('更多建议');
     expect(html).not.toContain('Frontline Workspace');
+    expect(html).not.toContain('Frontline Workspace');
     expect(html).not.toContain('切换模型');
     expect(html).not.toContain('自动选择');
+  });
+
+  it('routes empty and composer mode controls through the shared chat mode handler', () => {
+    const onChatModeChange = vi.fn();
+
+    renderToStaticMarkup(
+      <ChatHomeWorkbench
+        chat={
+          {
+            activeSession: {
+              id: 'session-1',
+              status: 'idle'
+            },
+            activeSessionId: 'session-1',
+            messages: [],
+            pendingApprovals: [],
+            checkpoint: undefined,
+            sendMessage: vi.fn(),
+            cancelActiveSession: vi.fn(),
+            hasMessages: false
+          } as any
+        }
+        chatMode="quick"
+        onChatModeChange={onChatModeChange}
+        showWorkbench={false}
+        bubbleItems={[]}
+        streamEvents={[]}
+      />
+    );
+
+    renderedSegmentedControls[0]?.onChange?.('expert');
+    renderedSegmentedControls[1]?.onChange?.('expert');
+
+    expect(onChatModeChange).toHaveBeenCalledWith('expert');
+    expect(onChatModeChange).toHaveBeenCalledTimes(2);
   });
 
   it('renders workspace shell, alerts, sections and follow-up actions when workbench is open', () => {
@@ -256,12 +321,48 @@ describe('chat-home-workbench component', () => {
                   connectorTemplateId: 'browser-mcp-template'
                 }
               }
+              currentWorker: 'gongbu-code',
+              externalSources: [{ id: 'source-1' }, { id: 'source-2' }, { id: 'source-3' }],
+              reusedMemories: ['memory-1'],
+              reusedRules: ['rule-1'],
+              reusedSkills: ['repo-analysis'],
+              usedInstalledSkills: ['find-skills'],
+              usedCompanyWorkers: ['repo-reviewer'],
+              connectorRefs: ['github-mcp'],
+              learningEvaluation: {
+                score: 0.91,
+                confidence: 'high',
+                notes: ['已形成可复用经验'],
+                recommendedCandidateIds: ['candidate-1'],
+                autoConfirmCandidateIds: [],
+                sourceSummary: {
+                  externalSourceCount: 3,
+                  internalSourceCount: 2,
+                  reusedMemoryCount: 1,
+                  reusedRuleCount: 1,
+                  reusedSkillCount: 1
+                }
+              },
+              skillSearch: {
+                capabilityGapDetected: true,
+                status: 'suggested',
+                safetyNotes: [],
+                suggestions: [],
+                mcpRecommendation: {
+                  kind: 'connector',
+                  summary: '需要浏览器连接器',
+                  reason: '当前缺少网页检查能力',
+                  connectorTemplateId: 'browser-mcp-template'
+                }
+              }
             },
             sendMessage: vi.fn(),
             cancelActiveSession: vi.fn(),
             hasMessages: true
           } as any
         }
+        chatMode="quick"
+        onChatModeChange={vi.fn()}
         chatMode="quick"
         onChatModeChange={vi.fn()}
         showWorkbench
@@ -278,6 +379,14 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('2 个技能');
     expect(html).toContain('1 个连接器');
     expect(html).toContain('gongbu-code');
+    expect(html).toContain('Workspace Vault');
+    expect(html).toContain('Workspace signals: 8 项');
+    expect(html).toContain('Evidence readiness: 3 条来源');
+    expect(html).toContain('Reuse readiness: 5 项复用');
+    expect(html).toContain('Skill draft readiness: 1 个候选');
+    expect(html).toContain('Capability gap: 待补强');
+    expect(html).toContain('Capability gap · 需要浏览器连接器');
+    expect(html).not.toContain('learning_summary');
     expect(html).toContain('Workspace Vault');
     expect(html).toContain('Workspace signals: 8 项');
     expect(html).toContain('Evidence readiness: 3 条来源');
@@ -404,6 +513,8 @@ describe('chat-home-workbench component', () => {
         }
         chatMode="quick"
         onChatModeChange={vi.fn()}
+        chatMode="quick"
+        onChatModeChange={vi.fn()}
         showWorkbench
         bubbleItems={[{ key: 'bubble-1', content: 'assistant bubble' } as any]}
         streamEvents={[{ id: 'evt-1', summary: 'event-summary' } as any]}
@@ -452,6 +563,8 @@ describe('chat-home-workbench component', () => {
             hasMessages: false
           } as any
         }
+        chatMode="quick"
+        onChatModeChange={vi.fn()}
         chatMode="quick"
         onChatModeChange={vi.fn()}
         showWorkbench={false}
@@ -507,6 +620,8 @@ describe('chat-home-workbench component', () => {
         }
         chatMode="expert"
         onChatModeChange={vi.fn()}
+        chatMode="expert"
+        onChatModeChange={vi.fn()}
         showWorkbench={false}
         bubbleItems={[]}
         streamEvents={[]}
@@ -522,6 +637,39 @@ describe('chat-home-workbench component', () => {
       display: '给我一个实现方案',
       payload: '/plan 给我一个实现方案'
     });
+  });
+
+  it('returns to quick mode when a quick action is selected from expert mode', () => {
+    const onChatModeChange = vi.fn();
+
+    renderToStaticMarkup(
+      <ChatHomeWorkbench
+        chat={
+          {
+            activeSession: {
+              id: 'session-1',
+              status: 'idle'
+            },
+            activeSessionId: 'session-1',
+            messages: [],
+            pendingApprovals: [],
+            checkpoint: undefined,
+            sendMessage: vi.fn(),
+            cancelActiveSession: vi.fn(),
+            hasMessages: false
+          } as any
+        }
+        chatMode="expert"
+        onChatModeChange={onChatModeChange}
+        showWorkbench={false}
+        bubbleItems={[]}
+        streamEvents={[]}
+      />
+    );
+
+    (renderedDropdownMenus[0]?.onClick as ((info: { key: string }) => void) | undefined)?.({ key: '审查风险' });
+
+    expect(onChatModeChange).toHaveBeenCalledWith('quick');
   });
 
   it('returns to quick mode when a quick action is selected from expert mode', () => {
