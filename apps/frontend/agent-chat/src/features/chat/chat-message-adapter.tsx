@@ -136,24 +136,23 @@ function renderMessageContent(
   );
   const statusLabel = isThinking ? '思考中' : '已思考';
   const showCountLabel = isThinking && options.cognitionCountLabel;
-  const titleLabel =
-    isCognitionTarget && options.cognitionDurationLabel
-      ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
-      : statusLabel;
-  const canExpandCognition =
-    Boolean(messageThinkState) || Boolean(inlineThinkContent) || Boolean(messageThoughtItems?.length);
+  const titleLabel = options.cognitionDurationLabel
+    ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
+    : statusLabel;
 
   return (
     <div className="chatx-assistant-stack">
+      <div className="chatx-inline-think chatx-governance-summary">
       <div className="chatx-inline-think chatx-governance-summary">
         <button
           type="button"
           className={`chatx-inline-think__toggle chatx-governance-summary__toggle ${
             isThinking ? 'is-thinking' : 'is-complete'
           }`}
-          onClick={canExpandCognition ? options.onToggleCognition : undefined}
+          onClick={options.onToggleCognition}
         >
           {isThinking ? (
+            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
             <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
               <span className="chatx-inline-think__loader">
                 <span className="chatx-inline-think__bar" />
@@ -162,6 +161,7 @@ function renderMessageContent(
               </span>
             </span>
           ) : (
+            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
             <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
               <span className="chatx-inline-think__dot" />
             </span>
@@ -224,6 +224,15 @@ function renderMessageContent(
       {evidenceContent}
     </div>
   );
+}
+
+function formatCognitionDurationCopy(durationLabel: string) {
+  const normalized = durationLabel.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
 }
 
 function formatCognitionDurationCopy(durationLabel: string) {
