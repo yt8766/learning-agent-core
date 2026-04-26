@@ -3,17 +3,15 @@ import type { ImageProvider } from './image-provider';
 import type { MusicProvider } from './music-provider';
 import type { VideoProvider } from './video-provider';
 
-type ProviderLookup<TProvider> = TProvider | Promise<never>;
-
 export interface MediaProviderRegistry {
   registerAudioProvider(provider: AudioProvider): void;
   registerImageProvider(provider: ImageProvider): void;
   registerVideoProvider(provider: VideoProvider): void;
   registerMusicProvider(provider: MusicProvider): void;
-  getAudioProvider(providerId: string): ProviderLookup<AudioProvider>;
-  getImageProvider(providerId: string): ProviderLookup<ImageProvider>;
-  getVideoProvider(providerId: string): ProviderLookup<VideoProvider>;
-  getMusicProvider(providerId: string): ProviderLookup<MusicProvider>;
+  getAudioProvider(providerId: string): Promise<AudioProvider>;
+  getImageProvider(providerId: string): Promise<ImageProvider>;
+  getVideoProvider(providerId: string): Promise<VideoProvider>;
+  getMusicProvider(providerId: string): Promise<MusicProvider>;
 }
 
 export function createMediaProviderRegistry(): MediaProviderRegistry {
@@ -25,11 +23,11 @@ export function createMediaProviderRegistry(): MediaProviderRegistry {
   const getProvider = <TProvider>(
     providers: ReadonlyMap<string, TProvider>,
     providerId: string
-  ): ProviderLookup<TProvider> => {
+  ): Promise<TProvider> => {
     const provider = providers.get(providerId);
 
     if (provider) {
-      return provider;
+      return Promise.resolve(provider);
     }
 
     return Promise.reject(new Error(`Media provider not found: ${providerId}`));

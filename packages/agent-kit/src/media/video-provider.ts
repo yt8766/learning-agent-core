@@ -1,6 +1,6 @@
 import type { MediaGenerationTask, TemplateVideoRequest, VideoGenerationRequest } from '@agent/core';
 
-import type { MediaTaskQuery } from './audio-provider';
+import type { MediaTaskQuery } from './media-task-query';
 
 export interface VideoProvider {
   readonly providerId: string;

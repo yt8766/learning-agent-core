@@ -7,6 +7,8 @@ import type {
   VoiceProfile
 } from '@agent/core';
 
+import type { MediaTaskQuery } from './media-task-query';
+
 export interface ListSystemVoicesInput {
   readonly language?: string;
   readonly provider?: string;
@@ -14,11 +16,6 @@ export interface ListSystemVoicesInput {
 
 export interface ListSystemVoicesResult {
   readonly voices: readonly VoiceProfile[];
-}
-
-export interface MediaTaskQuery {
-  readonly taskId: string;
-  readonly providerTaskId?: string;
 }
 
 export interface AudioProvider {
