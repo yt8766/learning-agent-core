@@ -147,6 +147,7 @@ Hover 态：
 - 将 Evidence 显示为来源数量或可展开摘要。
 - 将 Approval 显示为待审批 / 已处理的轻量状态。
 - 将 Learning / Skill reuse 显示为可展开提示。
+- 消息表层轻量化样式落在 `styles/_chat-home-message-surface.scss`，作为 `chat-home-messages` 之后的覆盖入口，避免继续扩大旧的大型消息样式文件。
 
 主聊天默认只显示摘要，详情进入折叠内容或高级面板。
 

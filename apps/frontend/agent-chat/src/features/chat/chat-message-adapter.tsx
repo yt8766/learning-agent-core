@@ -126,19 +126,21 @@ function renderMessageContent(
   const statusLabel = isThinking ? '思考中' : '已思考';
   const showCountLabel = isThinking && options.cognitionCountLabel;
   const titleLabel = options.cognitionDurationLabel
-    ? `${statusLabel}（${options.cognitionDurationLabel}）`
+    ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
     : statusLabel;
 
   return (
     <div className="chatx-assistant-stack">
-      <div className="chatx-inline-think">
+      <div className="chatx-inline-think chatx-governance-summary">
         <button
           type="button"
-          className={`chatx-inline-think__toggle ${isThinking ? 'is-thinking' : 'is-complete'}`}
+          className={`chatx-inline-think__toggle chatx-governance-summary__toggle ${
+            isThinking ? 'is-thinking' : 'is-complete'
+          }`}
           onClick={options.onToggleCognition}
         >
           {isThinking ? (
-            <span className="chatx-inline-think__badge is-thinking" aria-hidden="true">
+            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
               <span className="chatx-inline-think__loader">
                 <span className="chatx-inline-think__bar" />
                 <span className="chatx-inline-think__bar" />
@@ -146,7 +148,7 @@ function renderMessageContent(
               </span>
             </span>
           ) : (
-            <span className="chatx-inline-think__badge is-complete" aria-hidden="true">
+            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
               <span className="chatx-inline-think__dot" />
             </span>
           )}
@@ -206,6 +208,15 @@ function renderMessageContent(
       {evidenceContent}
     </div>
   );
+}
+
+function formatCognitionDurationCopy(durationLabel: string) {
+  const normalized = durationLabel.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
 }
 
 export function buildBubbleItems({
