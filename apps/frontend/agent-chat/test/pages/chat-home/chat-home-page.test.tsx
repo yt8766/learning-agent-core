@@ -393,7 +393,7 @@ describe('ChatHomePage shell', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
-      if (stateCallIndex === 5) {
+      if (stateCallIndex === 6) {
         return ['', dismissedErrorSetter];
       }
       return actualUseState(initial);

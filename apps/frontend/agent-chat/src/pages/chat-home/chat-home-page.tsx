@@ -39,6 +39,7 @@ export function ChatHomePage() {
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [showWorkbench, setShowWorkbench] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -189,8 +190,12 @@ export function ChatHomePage() {
       <XProvider>
         <AntApp>
           <Layout className="chatx-layout">
-            <Sider width={312} theme="light" className="chatx-sider">
-              <ChatHomeSidebar chat={chat} />
+            <Sider width={sidebarCollapsed ? 108 : 312} collapsedWidth={108} theme="light" className="chatx-sider">
+              <ChatHomeSidebar
+                chat={chat}
+                collapsed={sidebarCollapsed}
+                onToggleCollapsed={() => setSidebarCollapsed(current => !current)}
+              />
             </Sider>
 
             <Layout>

@@ -1,51 +1,122 @@
-import { Space, Tag, Typography } from 'antd';
-
 import type { useChatSession } from '@/hooks/use-chat-session';
-import { formatSessionTime, getSessionStatusLabel } from '@/hooks/use-chat-session';
 
-const { Paragraph, Text, Title } = Typography;
+import { buildSessionGroups, getSessionStatusTone } from './chat-home-sidebar-helpers';
+
+export type ChatHomeSidebarChat = Pick<
+  ReturnType<typeof useChatSession>,
+  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId'
+>;
 
 interface ChatHomeSidebarProps {
-  chat: ReturnType<typeof useChatSession>;
+  chat: ChatHomeSidebarChat;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
-export function ChatHomeSidebar({ chat }: ChatHomeSidebarProps) {
+export function ChatHomeSidebar({ chat, collapsed, onToggleCollapsed }: ChatHomeSidebarProps) {
+  if (collapsed) {
+    return (
+      <aside className="chatx-sidebar-rail" aria-label="会话侧边栏">
+        <div className="chatx-sidebar-rail__brand" aria-hidden="true">
+          AC
+        </div>
+        <div className="chatx-sidebar-rail__actions" aria-label="侧边栏操作">
+          <button
+            type="button"
+            className="chatx-sidebar-rail__button"
+            aria-label="展开侧边栏"
+            onClick={onToggleCollapsed}
+          >
+            <span aria-hidden="true">&gt;</span>
+          </button>
+          <button
+            type="button"
+            className="chatx-sidebar-rail__button"
+            aria-label="开启新对话"
+            onClick={() => void chat.createNewSession()}
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
+  const sessionGroups = buildSessionGroups(chat.sessions);
+
   return (
-    <>
-      <div className="chatx-brand">
-        <div className="chatx-brand__badge" aria-hidden="true">
-          OC
+    <aside className="chatx-sidebar" aria-label="会话侧边栏">
+      <header className="chatx-sidebar__header">
+        <div className="chatx-brand">
+          <div className="chatx-brand__badge" aria-hidden="true">
+            AC
+          </div>
+          <div className="chatx-brand__copy">
+            <h2>Agent Chat</h2>
+          </div>
         </div>
-        <div className="chatx-brand__copy">
-          <Title level={2}>Agent Chat</Title>
-          <Text className="chatx-brand__subcopy">Single frontline session</Text>
-        </div>
-      </div>
+        <button type="button" className="chatx-sidebar__toggle" aria-label="收起侧边栏" onClick={onToggleCollapsed}>
+          <span aria-hidden="true">&lt;</span>
+        </button>
+      </header>
 
-      <section className="chatx-session-rail">
-        <div className="chatx-session-rail__header">
-          <Text className="chatx-session-rail__eyebrow">当前会话</Text>
-          {chat.activeSession ? <Tag>{getSessionStatusLabel(chat.activeSession.status)}</Tag> : null}
-        </div>
-        <Title level={4} className="chatx-session-rail__title">
-          {chat.activeSession?.title ?? '正在准备会话'}
-        </Title>
-        <Paragraph className="chatx-session-rail__desc">
-          这里先收敛成单会话入口。聊天、审批、技能补强、思考链和运行态都围绕这一条前线线程展开。
-        </Paragraph>
-        <Space wrap size={8} className="chatx-session-rail__meta">
-          {chat.activeSession?.updatedAt ? (
-            <Tag color="blue">更新于 {formatSessionTime(chat.activeSession.updatedAt)}</Tag>
-          ) : null}
-          {chat.checkpoint?.chatRoute ? <Tag color="purple">{chat.checkpoint.chatRoute.flow}</Tag> : null}
-          {chat.checkpoint?.currentMinistry ? <Tag color="cyan">{chat.checkpoint.currentMinistry}</Tag> : null}
-        </Space>
-      </section>
-
-      <button type="button" className="chatx-new-chat" onClick={() => chat.createNewSession()}>
-        <span className="chatx-new-chat__icon">+</span>
-        <span className="chatx-new-chat__label">开启新的当前会话</span>
+      <button type="button" className="chatx-new-chat" onClick={() => void chat.createNewSession()}>
+        <span className="chatx-new-chat__icon" aria-hidden="true">
+          +
+        </span>
+        <span className="chatx-new-chat__label">开启新对话</span>
       </button>
-    </>
+
+      <nav className="chatx-session-list" aria-label="历史会话">
+        {sessionGroups.length ? (
+          sessionGroups.map((group, index) => {
+            const groupId = `chatx-session-group-${index}`;
+
+            return (
+              <section className="chatx-session-group" key={group.label} aria-labelledby={groupId}>
+                <h3 id={groupId} className="chatx-session-group__label">
+                  {group.label}
+                </h3>
+                <div className="chatx-session-group__items">
+                  {group.sessions.map(session => {
+                    const statusDisplay = getSessionStatusTone(session.status);
+                    const isActive = session.id === chat.activeSessionId;
+
+                    return (
+                      <button
+                        type="button"
+                        key={session.id}
+                        className={`chatx-session-item chatx-session-item--${statusDisplay.tone}${
+                          isActive ? ' is-active' : ''
+                        }`}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => chat.setActiveSessionId(session.id)}
+                      >
+                        <span className="chatx-session-item__main">
+                          <span className="chatx-session-item__title">{session.title}</span>
+                          <span className="chatx-session-item__status">
+                            <span className="chatx-session-item__dot" aria-hidden="true" />
+                            <span>{statusDisplay.label}</span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })
+        ) : (
+          <p className="chatx-session-list__empty">还没有会话，输入问题即可开始。</p>
+        )}
+      </nav>
+
+      <footer className="chatx-sidebar__account">
+        <span className="chatx-sidebar__avatar" aria-hidden="true">
+          U
+        </span>
+        <span className="chatx-sidebar__account-text">176******93</span>
+      </footer>
+    </aside>
   );
 }
