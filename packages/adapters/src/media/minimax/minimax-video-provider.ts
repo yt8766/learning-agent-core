@@ -1,35 +1,42 @@
 import type { MediaGenerationTask, TemplateVideoRequest, VideoGenerationRequest } from '@agent/core';
-import type { MediaTaskQuery, VideoProvider } from '@agent/agent-kit';
 
 import type { MiniMaxMediaConfig } from './minimax-config';
-import type { MiniMaxMediaTransport } from './minimax-audio-provider';
+import { resolveMiniMaxVideoModel } from './minimax-config';
+import type { MiniMaxMediaTaskQuery, MiniMaxMediaTransport } from './minimax-audio-provider';
 
-export class MiniMaxVideoProvider implements VideoProvider {
+export class MiniMaxVideoProvider {
   readonly providerId = 'minimax';
 
   constructor(
-    private readonly transport: MiniMaxMediaTransport,
-    private readonly config: MiniMaxMediaConfig = {}
+    private readonly config: MiniMaxMediaConfig,
+    private readonly transport: MiniMaxMediaTransport
   ) {}
 
   createVideoTask(request: VideoGenerationRequest): Promise<MediaGenerationTask> {
     return this.transport.request('video.createVideoTask', {
-      request,
-      config: this.config
+      provider: this.providerId,
+      model: this.videoModel,
+      input: request
     });
   }
 
   createTemplateVideoTask(request: TemplateVideoRequest): Promise<MediaGenerationTask> {
     return this.transport.request('video.createTemplateVideoTask', {
-      request,
-      config: this.config
+      provider: this.providerId,
+      model: this.videoModel,
+      input: request
     });
   }
 
-  getVideoTask(query: MediaTaskQuery): Promise<MediaGenerationTask> {
+  getVideoTask(query: MiniMaxMediaTaskQuery): Promise<MediaGenerationTask> {
     return this.transport.request('video.getVideoTask', {
-      query,
-      config: this.config
+      provider: this.providerId,
+      model: this.videoModel,
+      query
     });
+  }
+
+  private get videoModel(): string {
+    return resolveMiniMaxVideoModel(this.config);
   }
 }

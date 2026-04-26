@@ -6,7 +6,7 @@ export interface MiniMaxTaskMapperInput {
   readonly taskId: string;
   readonly kind: MediaKind;
   readonly providerTaskId?: string;
-  readonly status: MiniMaxTaskStatus;
+  readonly status: MiniMaxTaskStatus | string;
   readonly assetRefs?: readonly string[];
   readonly evidenceRefs?: readonly string[];
   readonly error?: MediaProviderError;
@@ -31,7 +31,7 @@ export function mapMiniMaxTask(input: MiniMaxTaskMapperInput): MediaGenerationTa
   };
 }
 
-export function mapMiniMaxTaskStatus(status: MiniMaxTaskStatus): MediaTaskStatus {
+export function mapMiniMaxTaskStatus(status: MiniMaxTaskStatus | string): MediaTaskStatus {
   switch (status) {
     case 'Preparing':
     case 'Queueing':
@@ -43,5 +43,7 @@ export function mapMiniMaxTaskStatus(status: MiniMaxTaskStatus): MediaTaskStatus
       return 'succeeded';
     case 'Fail':
       return 'failed';
+    default:
+      return 'running';
   }
 }

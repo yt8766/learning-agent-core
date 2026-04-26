@@ -5,7 +5,6 @@ const RETRYABLE_MINIMAX_ERROR_CODES = new Set(['rate_limit', 'timeout', 'tempora
 export interface MiniMaxErrorMapperInput {
   readonly code: string;
   readonly message: string;
-  readonly now?: string;
 }
 
 export function mapMiniMaxError(input: MiniMaxErrorMapperInput): MediaProviderError {

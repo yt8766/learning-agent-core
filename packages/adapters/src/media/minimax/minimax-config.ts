@@ -11,3 +11,19 @@ export interface MiniMaxMediaConfig {
   readonly videoModel?: string;
   readonly musicModel?: string;
 }
+
+export function resolveMiniMaxSpeechModel(config: MiniMaxMediaConfig): string {
+  return config.speechModel ?? DEFAULT_MINIMAX_SPEECH_MODEL;
+}
+
+export function resolveMiniMaxImageModel(config: MiniMaxMediaConfig): string {
+  return config.imageModel ?? DEFAULT_MINIMAX_IMAGE_MODEL;
+}
+
+export function resolveMiniMaxVideoModel(config: MiniMaxMediaConfig): string {
+  return config.videoModel ?? DEFAULT_MINIMAX_VIDEO_MODEL;
+}
+
+export function resolveMiniMaxMusicModel(config: MiniMaxMediaConfig): string | undefined {
+  return config.musicModel;
+}
