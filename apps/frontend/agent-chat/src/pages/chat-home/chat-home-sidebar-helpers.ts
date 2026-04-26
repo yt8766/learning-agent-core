@@ -6,13 +6,11 @@ export interface ChatSessionGroup {
   sessions: ChatSessionRecord[];
 }
 
-export type ChatSessionStatusTone = 'running' | 'approval' | 'danger' | 'done' | 'idle';
-export type ChatSessionStatusAccessory = 'pill' | 'dot';
+export type ChatSessionStatusTone = 'running' | 'warning' | 'danger' | 'done' | 'idle';
 
 export interface ChatSessionStatusDisplay {
   tone: ChatSessionStatusTone;
   label: string;
-  accessory: ChatSessionStatusAccessory;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -58,31 +56,23 @@ export function getSessionGroupLabel(updatedAt: string, now = new Date()): strin
 export function getSessionStatusTone(status: ChatSessionRecord['status']): ChatSessionStatusDisplay {
   switch (status) {
     case 'running':
-      return { tone: 'running', label: getSidebarSessionStatusLabel(status), accessory: 'pill' };
+      return { tone: 'running', label: getSidebarSessionStatusLabel(status) };
     case 'waiting_approval':
-      return { tone: 'approval', label: getSidebarSessionStatusLabel(status), accessory: 'pill' };
+      return { tone: 'warning', label: getSidebarSessionStatusLabel(status) };
     case 'waiting_interrupt':
-      return { tone: 'approval', label: getSidebarSessionStatusLabel(status), accessory: 'pill' };
+      return { tone: 'warning', label: getSidebarSessionStatusLabel(status) };
     case 'failed':
-      return { tone: 'danger', label: getSidebarSessionStatusLabel(status), accessory: 'dot' };
+      return { tone: 'danger', label: getSidebarSessionStatusLabel(status) };
     case 'completed':
-      return { tone: 'done', label: getSidebarSessionStatusLabel(status), accessory: 'dot' };
+      return { tone: 'done', label: getSidebarSessionStatusLabel(status) };
     default:
-      return { tone: 'idle', label: getSidebarSessionStatusLabel(status), accessory: 'dot' };
+      return { tone: 'idle', label: getSidebarSessionStatusLabel(status) };
   }
 }
 
 function getSidebarSessionStatusLabel(status: ChatSessionRecord['status']): string {
-  if (status === 'waiting_approval') {
-    return '需要审批';
-  }
-
   if (status === 'waiting_interrupt') {
-    return '需要确认';
-  }
-
-  if (status === 'running') {
-    return '执行中';
+    return '待确认';
   }
 
   return getSessionStatusLabel(status);
