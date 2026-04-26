@@ -159,7 +159,11 @@ describe('ChatHomeSidebar', () => {
     expect(html).toContain('Agent目录结构优化建议');
     expect(html).toContain('流程图生成与解读');
     expect(html).toContain('gstack中skills概念解析');
-    expect(html).toContain('待审批');
+    expect(html).toContain('等待批准');
+    expect(html).toContain('chatx-session-item__status--pill');
+    expect(html).toContain('chatx-session-item__spinner');
+    expect(html).toContain('chatx-session-item--done');
+    expect(html).toContain('chatx-session-item__status--dot');
     expect(html).toContain('176******93');
     expect(html).not.toContain('Single frontline session');
     expect(html).not.toContain('正在准备会话');
