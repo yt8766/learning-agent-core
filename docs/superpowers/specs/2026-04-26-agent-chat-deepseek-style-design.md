@@ -133,6 +133,7 @@ Hover 态：
 - 审批卡。
 - Evidence / Sources 段落。
 - 关键 ThoughtChain / Think 状态。
+- 实现时只保留当前 `Bubble.List` 实际渲染的可见消息锚点；被折叠、内联或过滤的原始消息不得单独出现在浮条里，避免点击后没有 DOM 目标。
 
 如果当前会话没有足够锚点，不渲染浮条。
 

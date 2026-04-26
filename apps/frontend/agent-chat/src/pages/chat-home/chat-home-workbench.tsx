@@ -1,9 +1,12 @@
 import { Alert, Button, Collapse, Dropdown, Flex, Segmented, Space, Tag, Typography, type MenuProps } from 'antd';
 import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
+import { ConversationAnchorRail } from './chat-home-anchor-rail';
+import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
 import { CHAT_ROLE_CONFIG, buildProjectContextSnapshot } from './chat-home-helpers';
 import { SessionMissionControl } from './chat-home-mission-control';
 import { stripLeadingWorkflowCommand } from './chat-home-submit';
@@ -51,17 +54,26 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
   const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
   const workspaceVaultSignals = useMemo(() => buildWorkspaceVaultSignals(props.chat), [props.chat]);
   const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
+  const conversationAnchors = useMemo(
+    () => filterVisibleConversationAnchors(buildConversationAnchors(props.chat.messages), props.bubbleItems),
+    [props.chat.messages, props.bubbleItems]
+  );
+  const anchoredBubbleItems = useMemo(
+    () => attachConversationAnchorTargets(props.bubbleItems, conversationAnchors),
+    [props.bubbleItems, conversationAnchors]
+  );
 
   return (
     <div className={`chatx-workbench ${props.showWorkbench ? 'is-workbench-open' : 'is-workbench-closed'}`}>
       <section className="chatx-chat-column">
+        <ConversationAnchorRail anchors={conversationAnchors} />
         <div className="chatx-chat-surface">
           {props.chat.activeSession && showMissionControl ? <SessionMissionControl chat={props.chat} /> : null}
           {!props.chat.hasMessages ? (
             <EmptyFrontlineEntry chatMode={props.chatMode} onChatModeChange={props.onChatModeChange} />
           ) : null}
 
-          <Bubble.List items={props.bubbleItems} autoScroll role={CHAT_ROLE_CONFIG} className="chatx-bubble-list" />
+          <Bubble.List items={anchoredBubbleItems} autoScroll role={CHAT_ROLE_CONFIG} className="chatx-bubble-list" />
         </div>
 
         <div className={`chatx-composer-shell ${props.chat.hasMessages ? 'is-thread-active' : 'is-empty-thread'}`}>
@@ -171,6 +183,47 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
       ) : null}
     </div>
   );
+}
+
+function attachConversationAnchorTargets(
+  items: BubbleItemType[],
+  anchors: ReturnType<typeof buildConversationAnchors>
+) {
+  if (!anchors.length) {
+    return items;
+  }
+
+  const anchorByMessageId = new Map(anchors.map(anchor => [anchor.messageId, anchor]));
+
+  return items.map(item => {
+    const anchor = anchorByMessageId.get(String(item.key));
+    if (!anchor) {
+      return item;
+    }
+
+    return {
+      ...item,
+      content: (
+        <div id={anchor.id} className="chatx-message-anchor-target">
+          {item.content as ReactNode}
+        </div>
+      )
+    };
+  });
+}
+
+function filterVisibleConversationAnchors(
+  anchors: ReturnType<typeof buildConversationAnchors>,
+  items: BubbleItemType[]
+) {
+  if (!anchors.length) {
+    return anchors;
+  }
+
+  const visibleMessageIds = new Set(items.map(item => String(item.key)));
+  const visibleAnchors = anchors.filter(anchor => visibleMessageIds.has(anchor.messageId));
+
+  return visibleAnchors.length >= 2 ? visibleAnchors : [];
 }
 
 // checkpoint.activeInterrupt is the persisted 司礼监 / InterruptController projection used by the frontline workbench.

@@ -82,7 +82,14 @@ vi.mock('antd', () => ({
 
 vi.mock('@ant-design/x', () => ({
   Bubble: {
-    List: ({ items }: { items: Array<{ content?: string }> }) => <div>bubbles:{items.length}</div>
+    List: ({ items }: { items: Array<{ content?: ReactNode }> }) => (
+      <div>
+        bubbles:{items.length}
+        {items.map((item, index) => (
+          <div key={index}>{item.content}</div>
+        ))}
+      </div>
+    )
   },
   Sender: Object.assign(
     (props: Record<string, unknown>) => {
@@ -324,6 +331,76 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('情报柜');
     expect(html).toContain('section-body');
     expect(html).toContain('approval-actions');
+  });
+
+  it('renders the conversation anchor rail and scrolls to an anchor when selected', () => {
+    const scrollIntoView = vi.fn();
+    const getElementById = vi.fn(() => ({ scrollIntoView }));
+
+    vi.stubGlobal('document', { getElementById });
+
+    const html = renderToStaticMarkup(
+      <ChatHomeWorkbench
+        chat={
+          {
+            activeSession: {
+              id: 'session-1',
+              status: 'completed'
+            },
+            activeSessionId: 'session-1',
+            messages: [
+              {
+                id: 'user-1',
+                role: 'user',
+                content: '请帮我整理当前任务'
+              },
+              {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: '已经给出结论'
+              },
+              {
+                id: 'evidence-1',
+                role: 'assistant',
+                content: '',
+                card: {
+                  type: 'evidence_digest',
+                  sources: []
+                }
+              }
+            ],
+            pendingApprovals: [],
+            checkpoint: undefined,
+            sendMessage: vi.fn(),
+            cancelActiveSession: vi.fn(),
+            hasMessages: true
+          } as any
+        }
+        chatMode="quick"
+        onChatModeChange={vi.fn()}
+        showWorkbench={false}
+        bubbleItems={[
+          { key: 'user-1', content: 'user bubble' } as any,
+          { key: 'assistant-1', content: 'assistant bubble' } as any
+        ]}
+        streamEvents={[]}
+      />
+    );
+
+    expect(html).toContain('当前对话定位');
+    expect(html).toContain('chatx-anchor-rail');
+    expect(html).toContain('chatx-message-anchor-user-1');
+    expect(html).toContain('chatx-message-anchor-assistant-1');
+    expect(html).toContain('请帮我整理当前任务');
+    expect(html).toContain('已经给出结论');
+    expect(html).not.toContain('Evidence digest');
+
+    renderedButtons.find(button => button.children === '已经给出结论')?.onClick?.();
+
+    expect(getElementById).toHaveBeenCalledWith('chatx-message-anchor-assistant-1');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
+
+    vi.unstubAllGlobals();
   });
 
   it('routes workspace follow-up actions and summary copy through the expected chat handlers', async () => {
