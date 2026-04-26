@@ -33,8 +33,8 @@ export function ChatHomePage() {
   const [feedbackIntent, setFeedbackIntent] = useState('');
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState('');
+  const [showWorkbench, setShowWorkbench] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [chatMode] = useState<ChatMode>('quick');
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -163,28 +163,71 @@ export function ChatHomePage() {
     <ConfigProvider>
       <XProvider>
         <AntApp>
-          <main className={`chatx-agent-codex ${sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'}`}>
-            <div className="chatx-agent-codex__sidebar" aria-label="Agent Chat 会话侧栏">
+          <Layout className="chatx-layout">
+            <Sider width={sidebarCollapsed ? 108 : 312} collapsedWidth={108} theme="light" className="chatx-sider">
               <ChatHomeSidebar
                 chat={chat}
                 collapsed={sidebarCollapsed}
                 onToggleCollapsed={() => setSidebarCollapsed(current => !current)}
-                onLogout={handleLogout}
               />
-            </div>
+            </Sider>
 
-            <section className="chatx-agent-codex__main" aria-label="Codex 对话区">
-              {showErrorAlert && errorCopy ? (
-                <Alert
-                  type="error"
-                  showIcon
-                  closable
-                  className="chatx-agent-codex__error"
-                  title={errorCopy.title}
-                  description={errorCopy.description}
-                  onClose={() => setDismissedError(chat.error)}
-                />
-              ) : null}
+            <Layout>
+              <Header className="chatx-header">
+                <div className="chatx-header__copy">
+                  <Text className="chatx-header__eyebrow">Agent Chat</Text>
+                  <Title level={4}>{chat.activeSession?.title ?? '开始新会话'}</Title>
+                  <Space wrap size={8} className="chatx-header__tags">
+                    {chat.checkpoint?.resolvedWorkflow ? (
+                      <Tag color="gold">{chat.checkpoint.resolvedWorkflow.displayName}</Tag>
+                    ) : null}
+                    {chat.activeSession ? (
+                      <Tag color="default">{getSessionStatusLabel(chat.activeSession.status)}</Tag>
+                    ) : null}
+                  </Space>
+                </div>
+                <Space>
+                  {shouldShowSessionHeaderActions(chat.activeSessionId) ? (
+                    <>
+                      <Button
+                        htmlType="button"
+                        onClick={() => chat.activeSessionId && void chat.refreshSessionDetail()}
+                      >
+                        刷新当前会话
+                      </Button>
+                      <Button
+                        htmlType="button"
+                        danger
+                        onClick={() => {
+                          Modal.confirm(buildDeleteSessionConfirmConfig(async () => chat.deleteActiveSession()));
+                        }}
+                      >
+                        删除会话
+                      </Button>
+                    </>
+                  ) : null}
+                  <Button htmlType="button" onClick={() => setShowWorkbench(current => !current)}>
+                    {getWorkbenchToggleLabel(showWorkbench)}
+                  </Button>
+                  <Button htmlType="button" type="primary" onClick={() => chat.setShowRightPanel(true)}>
+                    打开总览面板
+                  </Button>
+                </Space>
+              </Header>
+
+              <Content className="chatx-content">
+                <div className="chatx-main-card">
+                  {showErrorAlert && errorCopy ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      closable
+                      className="chatx-error-card"
+                      title={errorCopy.title}
+                      description={errorCopy.description}
+                      onClose={() => setDismissedError(chat.error)}
+                    />
+                  ) : null}
 
               {chat.hasMessages ? (
                 <ActiveConversation
