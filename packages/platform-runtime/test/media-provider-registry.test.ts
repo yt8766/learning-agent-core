@@ -64,6 +64,21 @@ describe('@agent/platform-runtime media providers', () => {
     expect(calls[0]?.payload).not.toHaveProperty('apiKey');
   });
 
+  it('keeps credentials out of registered provider instances', async () => {
+    const transport: MiniMaxMediaTransport = {
+      async request<T>(): Promise<T> {
+        return {} as T;
+      }
+    };
+    const providers = createDefaultMediaProviders({
+      apiKey: 'secret-key',
+      transport
+    });
+    const audioProvider = await providers.registry.getAudioProvider('minimax');
+
+    expect(JSON.stringify(audioProvider)).not.toContain('secret-key');
+  });
+
   it('throws when provider calls use the default noop transport', async () => {
     const providers = createDefaultMediaProviders({});
     const audioProvider = await providers.registry.getAudioProvider('minimax');

@@ -26,7 +26,7 @@ export interface DefaultMediaProviders {
 export function createDefaultMediaProviders(input: DefaultMediaProvidersInput): DefaultMediaProviders {
   const { transport, ...configInput } = input;
   const providerConfig: MiniMaxMediaConfig = {
-    apiKey: configInput.apiKey,
+    apiKey: undefined,
     baseUrl: configInput.baseUrl ?? DEFAULT_MINIMAX_MEDIA_BASE_URL,
     speechModel: configInput.speechModel ?? DEFAULT_MINIMAX_SPEECH_MODEL,
     imageModel: configInput.imageModel ?? DEFAULT_MINIMAX_IMAGE_MODEL,
@@ -35,7 +35,7 @@ export function createDefaultMediaProviders(input: DefaultMediaProvidersInput): 
   };
   const config: MiniMaxMediaConfig = {
     ...providerConfig,
-    apiKey: providerConfig.apiKey ? '[redacted]' : undefined
+    apiKey: configInput.apiKey ? '[redacted]' : undefined
   };
   const mediaTransport = transport ?? createNoopTransport();
   const registry = createMediaProviderRegistry();
