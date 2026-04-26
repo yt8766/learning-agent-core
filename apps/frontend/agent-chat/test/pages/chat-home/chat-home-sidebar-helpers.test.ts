@@ -56,20 +56,12 @@ describe('chat-home-sidebar-helpers', () => {
   });
 
   it('maps important session states to sidebar tones', () => {
-    expect(getSessionStatusTone('running')).toEqual({ tone: 'running', label: '执行中', accessory: 'pill' });
-    expect(getSessionStatusTone('waiting_approval')).toEqual({
-      tone: 'approval',
-      label: '需要审批',
-      accessory: 'pill'
-    });
-    expect(getSessionStatusTone('waiting_interrupt')).toEqual({
-      tone: 'approval',
-      label: '需要确认',
-      accessory: 'pill'
-    });
-    expect(getSessionStatusTone('failed')).toEqual({ tone: 'danger', label: '失败', accessory: 'dot' });
-    expect(getSessionStatusTone('completed')).toEqual({ tone: 'done', label: '已完成', accessory: 'dot' });
-    expect(getSessionStatusTone('idle')).toEqual({ tone: 'idle', label: '未开始', accessory: 'dot' });
+    expect(getSessionStatusTone('running')).toEqual({ tone: 'running', label: '运行中' });
+    expect(getSessionStatusTone('waiting_approval')).toEqual({ tone: 'warning', label: '待审批' });
+    expect(getSessionStatusTone('waiting_interrupt')).toEqual({ tone: 'warning', label: '待确认' });
+    expect(getSessionStatusTone('failed')).toEqual({ tone: 'danger', label: '失败' });
+    expect(getSessionStatusTone('completed')).toEqual({ tone: 'done', label: '已完成' });
+    expect(getSessionStatusTone('idle')).toEqual({ tone: 'idle', label: '未开始' });
   });
 });
 
