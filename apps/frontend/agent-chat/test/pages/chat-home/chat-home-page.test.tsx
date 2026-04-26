@@ -37,11 +37,34 @@ vi.mock('antd', async () => {
     ...actual,
     App: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     ConfigProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-    Layout: Object.assign(({ children }: { children?: ReactNode }) => <div>{children}</div>, {
-      Header: ({ children }: { children?: ReactNode }) => <header>{children}</header>,
-      Sider: ({ children }: { children?: ReactNode }) => <aside>{children}</aside>,
-      Content: ({ children }: { children?: ReactNode }) => <main>{children}</main>
-    }),
+    Layout: Object.assign(
+      ({ children, className }: { children?: ReactNode; className?: string }) => (
+        <div className={className}>{children}</div>
+      ),
+      {
+        Header: ({ children, className }: { children?: ReactNode; className?: string }) => (
+          <header className={className}>{children}</header>
+        ),
+        Sider: ({
+          children,
+          className,
+          width,
+          collapsedWidth
+        }: {
+          children?: ReactNode;
+          className?: string;
+          width?: number;
+          collapsedWidth?: number;
+        }) => (
+          <aside className={className} data-width={width} data-collapsed-width={collapsedWidth}>
+            {children}
+          </aside>
+        ),
+        Content: ({ children, className }: { children?: ReactNode; className?: string }) => (
+          <main className={className}>{children}</main>
+        )
+      }
+    ),
     Alert: (props: { title?: ReactNode; description?: ReactNode; onClose?: () => void }) => {
       renderedAlerts.push(props);
       return (
@@ -55,7 +78,9 @@ vi.mock('antd', async () => {
       renderedButtons.push({ children, onClick });
       return <button>{children}</button>;
     },
-    Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Space: ({ children, className }: { children?: ReactNode; className?: string }) => (
+      <div className={className}>{children}</div>
+    ),
     Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
     Typography: {
       Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
@@ -221,6 +246,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
+    expect(html).toContain('class="chatx-layout is-sidebar-expanded"');
+    expect(html).toContain('class="chatx-header__actions"');
     expect(html).toContain('Agent Chat');
     expect(html).toContain('覆盖率冲刺');
     expect(html).toContain('打开工作区');
@@ -230,6 +257,25 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('chat-home-sidebar');
     expect(html).toContain('workbench:closed / bubbles:1 / events:1');
     expect(html).toContain('runtime-drawer:open');
+  });
+
+  it('marks the shell as collapsed when the sidebar starts collapsed', () => {
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 4) {
+        return [true, vi.fn()];
+      }
+      return actualUseState(initial);
+    };
+
+    mockUseChatSession.mockReturnValue(createChatSessionOverrides());
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('class="chatx-layout is-sidebar-collapsed"');
+    expect(html).toContain('data-width="108"');
+    expect(html).toContain('data-collapsed-width="108"');
   });
 
   it('hides dismissible error card when there is no current error and keeps runtime drawer closed', () => {
