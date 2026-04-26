@@ -47,6 +47,7 @@
       "@agent/evals": ["packages/evals/src"],
       "@agent/agents-supervisor": ["agents/supervisor/src/index.ts"],
       "@agent/agents-audio": ["agents/audio/src/index.ts"],
+      "@agent/agents-company-live": ["agents/company-live/src/index.ts"],
       "@agent/agents-data-report": ["agents/data-report/src/index.ts"],
       "@agent/agents-image": ["agents/image/src/index.ts"],
       "@agent/agents-intel-engine": ["agents/intel-engine/src/index.ts"],
