@@ -33,8 +33,8 @@ export function ChatHomePage() {
   const [feedbackIntent, setFeedbackIntent] = useState('');
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState('');
-  const [showWorkbench, setShowWorkbench] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showWorkbench, setShowWorkbench] = useState(false);
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -163,7 +163,7 @@ export function ChatHomePage() {
     <ConfigProvider>
       <XProvider>
         <AntApp>
-          <Layout className="chatx-layout">
+          <Layout className={`chatx-layout ${sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'}`}>
             <Sider width={sidebarCollapsed ? 108 : 312} collapsedWidth={108} theme="light" className="chatx-sider">
               <ChatHomeSidebar
                 chat={chat}
@@ -186,7 +186,7 @@ export function ChatHomePage() {
                     ) : null}
                   </Space>
                 </div>
-                <Space>
+                <Space className="chatx-header__actions">
                   {shouldShowSessionHeaderActions(chat.activeSessionId) ? (
                     <>
                       <Button

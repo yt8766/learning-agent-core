@@ -125,6 +125,10 @@ vi.mock('antd', async () => {
         </section>
       );
     },
+    Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void | Promise<void> }) => {
+      renderedButtons.push({ children, onClick });
+      return <button>{children}</button>;
+    },
     Space: ({ children, className }: { children?: ReactNode; className?: string }) => (
       <div className={className}>{children}</div>
     ),
@@ -322,7 +326,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-expanded"');
+    expect(html).toContain('class="chatx-layout is-sidebar-expanded"');
+    expect(html).toContain('class="chatx-header__actions"');
     expect(html).toContain('Agent Chat');
     expect(html).toContain('aria-label="Codex 对话区"');
     expect(html).toContain('aria-label="Codex 对话区"');
@@ -336,8 +341,27 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('连接错误');
     expect(html).toContain('请稍后重试');
     expect(html).toContain('chat-home-sidebar');
-    expect(html).toContain('assistant bubble');
-    expect(html).toContain('给 Agent Chat 发送消息');
+    expect(html).toContain('workbench:closed / bubbles:1 / events:1');
+    expect(html).toContain('runtime-drawer:open');
+  });
+
+  it('marks the shell as collapsed when the sidebar starts collapsed', () => {
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 4) {
+        return [true, vi.fn()];
+      }
+      return actualUseState(initial);
+    };
+
+    mockUseChatSession.mockReturnValue(createChatSessionOverrides());
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('class="chatx-layout is-sidebar-collapsed"');
+    expect(html).toContain('data-width="108"');
+    expect(html).toContain('data-collapsed-width="108"');
   });
 
   it('marks the shell as collapsed when the sidebar starts collapsed', () => {
