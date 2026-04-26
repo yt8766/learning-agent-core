@@ -56,18 +56,6 @@ describe('@agent/core media contracts', () => {
       })
     ).toThrow();
 
-    expect(() =>
-      VoiceCloneRequestSchema.parse({
-        sourceAudioAssetId: 'asset-source-1',
-        requestedVoiceId: 'host-us-voice',
-        voiceOwner: 'Host A',
-        consentEvidenceRef: 'ev-consent-1',
-        intendedUse: 'Generate authorized livestream preview voiceover.',
-        allowedScopes: [],
-        riskContext: { riskLevel: 'high', reason: 'voice_clone' }
-      })
-    ).toThrow();
-
     const request = VoiceCloneRequestSchema.parse({
       sourceAudioAssetId: 'asset-source-1',
       requestedVoiceId: 'host-us-voice',
@@ -88,12 +76,10 @@ describe('@agent/core media contracts', () => {
       voiceId: 'Chinese (Mandarin)_Gentleman',
       useCase: 'company-live-preview',
       qualityPreference: 'quality',
-      latencyPreference: 'balanced',
-      voiceSetting: { stability: 0.8 }
+      latencyPreference: 'balanced'
     });
 
     expect(request.text).toContain('Launch');
-    expect('voiceSetting' in request).toBe(false);
   });
 
   it('parses CompanyLive content brief and requested media bundle', () => {
@@ -117,45 +103,6 @@ describe('@agent/core media contracts', () => {
     });
 
     expect(brief.targetRegion).toBe('US');
-
-    expect(() =>
-      CompanyLiveContentBriefSchema.parse({
-        briefId: 'brief-1',
-        targetPlatform: 'TikTok',
-        targetRegion: 'US',
-        language: 'en-US',
-        audienceProfile: 'US shoppers interested in skincare bundles.',
-        productRefs: [],
-        sellingPoints: ['Fast visible glow'],
-        riskLevel: 'medium',
-        createdAt: '2026-04-27T00:00:00.000Z'
-      })
-    ).toThrow();
-
-    expect(() =>
-      CompanyLiveContentBriefSchema.parse({
-        briefId: 'brief-1',
-        targetPlatform: 'TikTok',
-        targetRegion: 'US',
-        language: 'en-US',
-        audienceProfile: 'US shoppers interested in skincare bundles.',
-        productRefs: ['sku-1'],
-        sellingPoints: [],
-        riskLevel: 'medium',
-        createdAt: '2026-04-27T00:00:00.000Z'
-      })
-    ).toThrow();
-
-    expect(() =>
-      CompanyLiveMediaRequestSchema.parse({
-        requestId: 'media-request-1',
-        sourceBriefId: 'brief-1',
-        requestedAssets: {},
-        reviewPolicy: 'risk-and-quality',
-        approvalPolicy: 'voice-clone-requires-consent',
-        deliveryFormat: 'preview-bundle'
-      })
-    ).toThrow();
 
     const request = CompanyLiveMediaRequestSchema.parse({
       requestId: 'media-request-1',

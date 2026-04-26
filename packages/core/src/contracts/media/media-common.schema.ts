@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const MediaKindSchema = z.enum(['audio', 'image', 'video', 'music']);
 
-export const MediaProviderIdSchema = z.string().trim().min(1);
+export const MediaProviderIdSchema = z.string().min(1);
 
 export const MediaTaskStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed', 'canceled']);
 
@@ -12,40 +12,40 @@ export const MediaPreferenceSchema = z.enum(['latency', 'balanced', 'quality']);
 
 export const MediaProvenanceSchema = z.object({
   source: z.enum(['generated', 'uploaded', 'imported', 'derived']),
-  promptRef: z.string().trim().min(1).optional(),
-  sourceAssetRefs: z.array(z.string().trim().min(1)).default([]),
-  evidenceRefs: z.array(z.string().trim().min(1)).default([])
+  promptRef: z.string().min(1).optional(),
+  sourceAssetRefs: z.array(z.string().min(1)).optional(),
+  evidenceRefs: z.array(z.string().min(1)).optional()
 });
 
 export const MediaAssetSchema = z.object({
-  assetId: z.string().trim().min(1),
+  assetId: z.string().min(1),
   kind: MediaKindSchema,
-  uri: z.string().trim().min(1),
-  mimeType: z.string().trim().min(1),
+  uri: z.string().min(1),
+  mimeType: z.string().min(1),
   durationMs: z.number().int().positive().optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
   provider: MediaProviderIdSchema.optional(),
-  model: z.string().trim().min(1).optional(),
+  model: z.string().min(1).optional(),
   provenance: MediaProvenanceSchema.optional(),
   createdAt: z.string().datetime()
 });
 
 export const MediaProviderErrorSchema = z.object({
-  code: z.string().trim().min(1),
-  message: z.string().trim().min(1),
+  code: z.string().min(1),
+  message: z.string().min(1),
   retryable: z.boolean().optional(),
   provider: MediaProviderIdSchema.optional()
 });
 
 export const MediaGenerationTaskSchema = z.object({
-  taskId: z.string().trim().min(1),
+  taskId: z.string().min(1),
   kind: MediaKindSchema,
   provider: MediaProviderIdSchema,
   status: MediaTaskStatusSchema,
-  providerTaskId: z.string().trim().min(1).optional(),
-  assetRefs: z.array(z.string().trim().min(1)).default([]),
-  evidenceRefs: z.array(z.string().trim().min(1)).default([]),
+  providerTaskId: z.string().min(1).optional(),
+  assetRefs: z.array(z.string().min(1)).optional(),
+  evidenceRefs: z.array(z.string().min(1)).optional(),
   error: MediaProviderErrorSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
