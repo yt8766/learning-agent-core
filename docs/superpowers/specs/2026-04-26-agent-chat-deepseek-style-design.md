@@ -1,9 +1,9 @@
 # Agent Chat DeepSeek-Style Frontline Design
 
-状态：draft
-文档类型：design
+状态：snapshot
+文档类型：plan
 适用范围：`apps/frontend/agent-chat`
-日期：2026-04-26
+最后核对：2026-04-26
 
 ## 目标
 
@@ -84,7 +84,8 @@
 模式语义：
 
 - 快速模式：普通直接回答路径。
-- 专家模式：启用计划/调度语义，复用当前 plan mode / workflow command 提交逻辑。
+- 专家模式：启用计划/调度语义，默认用轻量 `/plan` workflow command 提交。
+- 快捷能力按钮仍优先保留自身 workflow payload；即使用户当前处于专家模式，选择快捷能力也会回到快速语义，避免 `/review` / `/qa` 等显式动作被误包装成 `/plan`。
 
 ### `ChatThreadSurface`
 
@@ -104,7 +105,7 @@
 行为：
 
 - 快速模式按普通文本提交。
-- 专家模式复用当前 `resolveComposerPlanModeChange` / `resolveComposerSubmit` 相关逻辑。
+- 专家模式通过 `resolveComposerSubmitForMode` 提交为 `/plan <内容>`；已有显式 workflow command 与快捷能力建议 payload 必须保持兼容。
 - loading 时保留取消能力。
 - 保留附件、搜索、深度思考等已有或可映射按钮，但按钮必须有真实状态或明确后续接线边界。
 

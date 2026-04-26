@@ -20,7 +20,22 @@ describe('chat-home-submit', () => {
   it('prefixes natural-language input with the planning workflow when plan mode is active', () => {
     expect(buildSubmitMessage('给我一个实现方案', ['plan'])).toEqual({
       display: '给我一个实现方案',
-      payload: '/plan-eng-review 给我一个实现方案'
+      payload: '/plan 给我一个实现方案'
+    });
+  });
+
+  it('keeps the lightweight /plan command as an explicit workflow command', () => {
+    expect(buildSubmitMessage('/plan 给我一个实现方案')).toEqual({
+      display: '给我一个实现方案',
+      payload: '/plan 给我一个实现方案'
+    });
+  });
+
+  it('keeps longer planning commands compatible when stripping display text', () => {
+    expect(stripLeadingWorkflowCommand('/plan-eng-review 给我方案')).toBe('给我方案');
+    expect(buildSubmitMessage('/plan-ceo-review 复核方案')).toEqual({
+      display: '复核方案',
+      payload: '/plan-ceo-review 复核方案'
     });
   });
 

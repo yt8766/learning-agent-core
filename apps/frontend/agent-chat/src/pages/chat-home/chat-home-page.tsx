@@ -29,6 +29,7 @@ import {
 } from './chat-home-page-helpers';
 import { ChatHomeSidebar } from './chat-home-sidebar';
 import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
+import type { ChatMode } from './chat-home-workbench-composer-helpers';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -40,6 +41,7 @@ export function ChatHomePage() {
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showWorkbench, setShowWorkbench] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>('quick');
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -257,6 +259,8 @@ export function ChatHomePage() {
 
                   <ChatHomeWorkbench
                     chat={chat}
+                    chatMode={chatMode}
+                    onChatModeChange={setChatMode}
                     showWorkbench={showWorkbench}
                     bubbleItems={bubbleItems}
                     streamEvents={streamEvents}

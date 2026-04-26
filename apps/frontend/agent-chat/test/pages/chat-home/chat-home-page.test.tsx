@@ -165,15 +165,19 @@ vi.mock('@/pages/chat-home/chat-home-workbench', () => ({
   buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }],
   ChatHomeWorkbench: ({
     bubbleItems,
+    chatMode,
     streamEvents,
     showWorkbench
   }: {
     bubbleItems: Array<{ content: string }>;
+    chatMode: 'quick' | 'expert';
+    onChatModeChange: (chatMode: 'quick' | 'expert') => void;
     streamEvents: Array<{ summary: string }>;
     showWorkbench: boolean;
   }) => (
     <div>
-      workbench:{showWorkbench ? 'open' : 'closed'} / bubbles:{bubbleItems.length} / events:{streamEvents.length}
+      workbench:{showWorkbench ? 'open' : 'closed'} / mode:{chatMode} / can-change:yes / bubbles:
+      {bubbleItems.length} / events:{streamEvents.length}
     </div>
   )
 }));
@@ -255,7 +259,7 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('连接错误');
     expect(html).toContain('请稍后重试');
     expect(html).toContain('chat-home-sidebar');
-    expect(html).toContain('workbench:closed / bubbles:1 / events:1');
+    expect(html).toContain('workbench:closed / mode:quick / can-change:yes / bubbles:1 / events:1');
     expect(html).toContain('runtime-drawer:open');
   });
 
@@ -439,7 +443,7 @@ describe('ChatHomePage shell', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
-      if (stateCallIndex === 6) {
+      if (stateCallIndex === 7) {
         return ['', dismissedErrorSetter];
       }
       return actualUseState(initial);

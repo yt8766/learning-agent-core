@@ -3,9 +3,9 @@ interface SubmitActionChip {
   value: string;
 }
 
-const WORKFLOW_COMMAND_PATTERN = /^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review)\b\s*/i;
-const EXPLICIT_WORKFLOW_PATTERN = /^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review)\b/i;
-const DEFAULT_PLAN_WORKFLOW_COMMAND = '/plan-eng-review';
+const WORKFLOW_COMMAND_PATTERN = /^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review|plan)\b\s*/i;
+const EXPLICIT_WORKFLOW_PATTERN = /^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review|plan)\b/i;
+const DEFAULT_PLAN_WORKFLOW_COMMAND = '/plan';
 
 export function stripLeadingWorkflowCommand(value: string) {
   return value.replace(WORKFLOW_COMMAND_PATTERN, '').trim();

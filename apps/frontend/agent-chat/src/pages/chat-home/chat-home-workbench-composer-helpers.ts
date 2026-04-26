@@ -3,6 +3,8 @@ import type { MenuProps } from 'antd';
 import { buildSubmitMessage, stripLeadingWorkflowCommand } from './chat-home-submit';
 import { resolveSuggestedDraftSubmission, type QuickActionChip } from './chat-home-workbench-support';
 
+export type ChatMode = 'quick' | 'expert';
+
 export interface ChatComposerState {
   draft: string;
   suggestedPayload: string | null;
@@ -61,4 +63,12 @@ export function resolveComposerSubmit(value: string, suggestedPayload: string | 
   return suggestedPayload && !planModeEnabled
     ? resolveSuggestedDraftSubmission(value, suggestedPayload)
     : buildSubmitMessage(value, planModeEnabled ? ['plan'] : []);
+}
+
+export function resolveComposerSubmitForMode(value: string, suggestedPayload: string | null, chatMode: ChatMode) {
+  if (suggestedPayload) {
+    return resolveComposerSubmit(value, suggestedPayload, false);
+  }
+
+  return resolveComposerSubmit(value, null, chatMode === 'expert');
 }

@@ -1,4 +1,4 @@
-import { Alert, Button, Collapse, Dropdown, Flex, Space, Switch, Tag, Typography, type MenuProps } from 'antd';
+import { Alert, Button, Collapse, Dropdown, Flex, Segmented, Space, Tag, Typography, type MenuProps } from 'antd';
 import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
 import { useEffect, useMemo, useState } from 'react';
@@ -9,14 +9,15 @@ import { SessionMissionControl } from './chat-home-mission-control';
 import { stripLeadingWorkflowCommand } from './chat-home-submit';
 import {
   buildQuickActionMenuItems,
+  type ChatMode,
   resetComposerState,
   resolveComposerChange,
-  resolveComposerPlanModeChange,
-  resolveComposerSubmit,
+  resolveComposerSubmitForMode,
   resolveQuickActionSelection
 } from './chat-home-workbench-composer-helpers';
 import {
   buildQuickActionChips,
+  buildWorkspaceVaultSignals,
   buildWorkspaceFollowUpActions,
   buildWorkspaceShareText,
   shouldShowMissionControl,
@@ -30,6 +31,8 @@ import {
 
 interface ChatHomeWorkbenchProps {
   chat: ReturnType<typeof useChatSession>;
+  chatMode: ChatMode;
+  onChatModeChange: (chatMode: ChatMode) => void;
   showWorkbench: boolean;
   bubbleItems: BubbleItemType[];
   streamEvents: StreamEventRecord[];
@@ -46,6 +49,7 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
   const showMissionControl = shouldShowMissionControl(props.chat);
   const quickActionChips = useMemo(() => buildQuickActionChips(props.chat), [props.chat]);
   const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
+  const workspaceVaultSignals = useMemo(() => buildWorkspaceVaultSignals(props.chat), [props.chat]);
   const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
 
   return (
@@ -53,13 +57,20 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
       <section className="chatx-chat-column">
         <div className="chatx-chat-surface">
           {props.chat.activeSession && showMissionControl ? <SessionMissionControl chat={props.chat} /> : null}
-          {!props.chat.hasMessages ? <EmptyFrontlineEntry /> : null}
+          {!props.chat.hasMessages ? (
+            <EmptyFrontlineEntry chatMode={props.chatMode} onChatModeChange={props.onChatModeChange} />
+          ) : null}
 
           <Bubble.List items={props.bubbleItems} autoScroll role={CHAT_ROLE_CONFIG} className="chatx-bubble-list" />
         </div>
 
         <div className={`chatx-composer-shell ${props.chat.hasMessages ? 'is-thread-active' : 'is-empty-thread'}`}>
-          <ChatComposer chat={props.chat} quickActionChips={quickActionChips} />
+          <ChatComposer
+            chat={props.chat}
+            chatMode={props.chatMode}
+            onChatModeChange={props.onChatModeChange}
+            quickActionChips={quickActionChips}
+          />
         </div>
       </section>
 
@@ -88,6 +99,23 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
                 <Tag color="cyan">{workspaceSnapshot.connectorCount} 个连接器</Tag>
                 {workspaceSnapshot.currentWorker ? <Tag>{workspaceSnapshot.currentWorker}</Tag> : null}
               </div>
+              <article className="chatx-workspace-shell__card">
+                <Text className="chatx-workspace-shell__label">Workspace Vault</Text>
+                <div className="chatx-workspace-shell__meta">
+                  {workspaceVaultSignals.map(signal => (
+                    <Tag key={signal.label} color={signal.tone}>
+                      {signal.label}: {signal.value}
+                    </Tag>
+                  ))}
+                </div>
+                <Space size={4} direction="vertical">
+                  {workspaceVaultSignals.map(signal => (
+                    <Text key={`${signal.label}:detail`} type="secondary">
+                      {signal.label} · {signal.detail}
+                    </Text>
+                  ))}
+                </Space>
+              </article>
               <div className="chatx-workspace-shell__actions">
                 {workspaceFollowUps.map(action => (
                   <Button
@@ -146,40 +174,53 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
 }
 
 // checkpoint.activeInterrupt is the persisted 司礼监 / InterruptController projection used by the frontline workbench.
-function EmptyFrontlineEntry() {
+function EmptyFrontlineEntry({
+  chatMode,
+  onChatModeChange
+}: {
+  chatMode: ChatMode;
+  onChatModeChange: (chatMode: ChatMode) => void;
+}) {
   return (
     <div className="chatx-empty-entry">
+      <div className="chatx-empty-entry__brand">AC</div>
       <div className="chatx-empty-entry__copy">
-        <Text className="chatx-empty-entry__eyebrow">Frontline Workspace</Text>
-        <Typography.Title level={1}>直接输入你的目标</Typography.Title>
-        <Typography.Paragraph>普通问题直接回答，复杂任务自动升级为首辅调度、技能补强与审批闭环。</Typography.Paragraph>
-        <Space size={8} wrap>
-          <Tag color="blue">Direct Reply</Tag>
-          <Tag color="purple">Supervisor</Tag>
-          <Tag color="gold">Skill Aware</Tag>
-        </Space>
+        <Text className="chatx-empty-entry__eyebrow">Agent Chat</Text>
+        <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
+        <Typography.Paragraph>快速提问直接开始；需要拆解、计划和多步执行时切换专家模式。</Typography.Paragraph>
       </div>
+      <Segmented
+        className="chatx-empty-entry__modes"
+        value={chatMode}
+        onChange={value => onChatModeChange(value as ChatMode)}
+        options={[
+          { label: '快速模式', value: 'quick' },
+          { label: '专家模式', value: 'expert' }
+        ]}
+      />
     </div>
   );
 }
 
 function ChatComposer({
   chat,
+  chatMode,
+  onChatModeChange,
   quickActionChips
 }: {
   chat: ReturnType<typeof useChatSession>;
+  chatMode: ChatMode;
+  onChatModeChange: (chatMode: ChatMode) => void;
   quickActionChips: QuickActionChip[];
 }) {
   const [draft, setDraft] = useState('');
   const [suggestedPayload, setSuggestedPayload] = useState<string | null>(null);
-  const [planModeEnabled, setPlanModeEnabled] = useState(false);
   const secondaryMenuItems = buildQuickActionMenuItems(quickActionChips) satisfies MenuProps['items'];
 
   useEffect(() => {
     const nextState = resetComposerState();
     setDraft(nextState.draft);
     setSuggestedPayload(nextState.suggestedPayload);
-    setPlanModeEnabled(nextState.planModeEnabled);
   }, [chat.activeSessionId]);
 
   return (
@@ -188,19 +229,19 @@ function ChatComposer({
         className="chatx-sender"
         value={draft}
         onChange={value => {
-          const nextState = resolveComposerChange(value, planModeEnabled);
+          const nextState = resolveComposerChange(value, chatMode === 'expert');
           setDraft(nextState.draft);
           setSuggestedPayload(nextState.suggestedPayload);
         }}
         onSubmit={value => {
           setDraft('');
-          const outbound = resolveComposerSubmit(value, suggestedPayload, planModeEnabled);
+          const outbound = resolveComposerSubmitForMode(value, suggestedPayload, chatMode);
           setSuggestedPayload(null);
           void chat.sendMessage(outbound);
         }}
         loading={chat.activeSession?.status === 'running' || Boolean(chat.checkpoint?.thinkState?.loading)}
         onCancel={() => void chat.cancelActiveSession()}
-        placeholder="输入内容"
+        placeholder="给 Agent Chat 发送消息"
         autoSize={{ minRows: 3, maxRows: 6 }}
         suffix={false}
         footer={actionNode => (
@@ -217,7 +258,7 @@ function ChatComposer({
                       }
                       setDraft(nextState.draft);
                       setSuggestedPayload(nextState.suggestedPayload);
-                      setPlanModeEnabled(nextState.planModeEnabled);
+                      onChatModeChange('quick');
                     }
                   }}
                   placement="topLeft"
@@ -233,17 +274,18 @@ function ChatComposer({
               ) : null}
             </Flex>
             <Flex align="center" className="chatx-sender-footer__right">
-              <div className={`chatx-plan-mode-inline ${planModeEnabled ? 'is-active' : ''}`}>
-                <span className="chatx-plan-mode-inline__label">计划模式</span>
-                <Switch
+              <div className={`chatx-plan-mode-inline ${chatMode === 'expert' ? 'is-active' : ''}`}>
+                <Segmented
                   size="small"
-                  checked={planModeEnabled}
-                  onChange={checked => {
-                    const nextState = resolveComposerPlanModeChange(checked, draft);
-                    setDraft(nextState.draft);
-                    setSuggestedPayload(nextState.suggestedPayload);
-                    setPlanModeEnabled(nextState.planModeEnabled);
+                  value={chatMode}
+                  onChange={value => {
+                    setSuggestedPayload(null);
+                    onChatModeChange(value as ChatMode);
                   }}
+                  options={[
+                    { label: '快速模式', value: 'quick' },
+                    { label: '专家模式', value: 'expert' }
+                  ]}
                 />
               </div>
               {actionNode}
@@ -258,6 +300,7 @@ export {
   buildQuickActionChips,
   buildThoughtItems,
   buildWorkspaceFollowUpActions,
+  buildWorkspaceVaultSignals,
   buildWorkspaceShareText,
   resolveSuggestedDraftSubmission,
   shouldShowMissionControl
