@@ -73,29 +73,6 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
     [props.bubbleItems, conversationAnchors]
   );
 
-  useEffect(() => {
-    if (!props.showWorkbench) {
-      return;
-    }
-
-    let isActive = true;
-    void getWorkspaceCenterReadiness()
-      .then(readiness => {
-        if (isActive) {
-          setWorkspaceCenterReadiness(readiness);
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setWorkspaceCenterReadiness(undefined);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [props.showWorkbench, props.chat.activeSessionId]);
-
   return (
     <div className={`chatx-workbench ${props.showWorkbench ? 'is-workbench-open' : 'is-workbench-closed'}`}>
       <section className="chatx-chat-column">

@@ -1,5 +1,4 @@
 import type { ChatMessageRecord } from '@/types/chat';
-import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
 
 export type ConversationAnchorTone = 'user' | 'assistant' | 'approval' | 'evidence' | 'governance';
 
@@ -75,8 +74,7 @@ function resolveAnchorLabel(message: ChatMessageRecord) {
     return 'Evidence digest';
   }
 
-  const displayContent = message.role === 'user' ? stripWorkflowCommandPrefix(message.content) : message.content;
-  const content = displayContent.replace(/\s+/g, ' ').trim();
+  const content = message.content.replace(/\s+/g, ' ').trim();
   if (content) {
     return content;
   }
