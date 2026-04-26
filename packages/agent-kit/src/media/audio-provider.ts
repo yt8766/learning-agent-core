@@ -21,18 +21,11 @@ export interface MediaTaskQuery {
   readonly providerTaskId?: string;
 }
 
-export interface SpeechSynthesisAssetReference {
-  readonly assetId: string;
-  readonly evidenceRefs?: readonly string[];
-}
-
-export type SpeechSynthesisProviderResult = SpeechSynthesisResult | SpeechSynthesisAssetReference;
-
 export interface AudioProvider {
   readonly providerId: string;
   listSystemVoices(input?: ListSystemVoicesInput): Promise<ListSystemVoicesResult>;
   cloneVoice(request: VoiceCloneRequest): Promise<VoiceCloneResult>;
-  synthesizeSpeech(request: SpeechSynthesisRequest): Promise<SpeechSynthesisProviderResult>;
+  synthesizeSpeech(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResult>;
   createSpeechTask(request: SpeechSynthesisRequest): Promise<MediaGenerationTask>;
   getSpeechTask(query: MediaTaskQuery): Promise<MediaGenerationTask>;
 }
