@@ -29,6 +29,7 @@
 - 运行时代码导入 `@agent/*` workspace 包时，必须在 `apps/frontend/agent-chat/package.json` 显式声明对应 `workspace:*` 依赖；`tsconfig.app.json` 的 `paths` 只服务 TypeScript，不足以保证 Vite dev server 的 import-analysis 解析
 - 本地 dev 默认通过同源 `/api` 调用后端，并由 Vite proxy 转发到 `http://localhost:3000`；如需指向其他后端，优先设置 `VITE_API_PROXY_TARGET`，只有明确跨源联调时才设置 `VITE_API_BASE_URL`
 - 空会话启动时只允许自动创建一次默认 session；如果后端不可达或 CORS/preflight 失败，前端应展示连接错误而不是在每次 render 后重复 `POST /api/chat/sessions`
+- `src/styles/chat-home-page.scss` 是聊天首页样式聚合入口；同一个 Sass module 在该入口中只能 `@use` 一次，同名 `_*.scss` partial 与非 partial 文件也不能并存，避免 Vite/Sass 因重复 namespace 或解析歧义中断 dev server、CLI 编译或 build
 
 ## 当前目录职责
 

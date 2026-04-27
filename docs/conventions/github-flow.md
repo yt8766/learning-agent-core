@@ -25,8 +25,9 @@
 - 禁止直接提交到 `main`
 - 所有变更必须先进入分支，再通过 Pull Request 合入 `main`
 - 分支应短生命周期，小步提交，尽快合并
-- 本项目允许使用 `git worktree` 隔离并行开发，但每个 worktree 必须有清晰、互不重叠的任务范围；不允许多个 worktree 或当前 checkout 同时修改同一文件、同一主链 graph、同一稳定 contract、同一接口文档或同一前后端协议。
-- 如果任务会触达相同模块或共享边界，必须改为串行推进，或先明确文件/目录级 ownership；worktree 只用于隔离并行开发，不应用来绕过验证、文档更新、lockfile 同步或最终集成检查。
+- 禁止使用 `git worktree` 创建、切换或维护并行工作区；所有开发、验证、提交与交付必须在当前 checkout 内串行完成。
+- 如果任务会触达相同模块、共享边界、主链 graph、稳定 contract、接口文档或前后端协议，必须在当前 checkout 内按文件/目录级 ownership 串行推进，不能通过 worktree 并行规避冲突面。
+- 已存在的历史 worktree 只能在确认不包含未迁移改动后清理；不得把 worktree 当作隔离开发、验证绕行、文档补交或 lockfile 修复的手段。
 
 建议命名：
 

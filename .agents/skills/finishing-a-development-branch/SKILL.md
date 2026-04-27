@@ -85,7 +85,7 @@ git merge <feature-branch>
 git branch -d <feature-branch>
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: finish in the current checkout. Do not create, switch to, or automatically remove git worktrees.
 
 #### Option 2: Push and Create PR
 
@@ -104,13 +104,13 @@ EOF
 )"
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: finish in the current checkout. Do not create, switch to, or automatically remove git worktrees.
 
 #### Option 3: Keep As-Is
 
-Report: "Keeping branch <name>. Worktree preserved at <path>."
+Report: "Keeping branch <name> in the current checkout."
 
-**Don't cleanup worktree.**
+**Do not create, switch to, or automatically remove git worktrees.**
 
 #### Option 4: Discard
 
@@ -134,34 +134,20 @@ git checkout <base-branch>
 git branch -D <feature-branch>
 ```
 
-Then: Cleanup worktree (Step 5)
+Then: finish in the current checkout. Do not create, switch to, or automatically remove git worktrees.
 
-### Step 5: Cleanup Worktree
+### Step 5: Current Checkout Cleanup
 
-**For Options 1, 2, 4:**
-
-Check if in worktree:
-
-```bash
-git worktree list | grep $(git branch --show-current)
-```
-
-If yes:
-
-```bash
-git worktree remove <worktree-path>
-```
-
-**For Option 3:** Keep worktree.
+Do not run `git worktree` commands. If a historical worktree already exists, only clean it after confirming it contains no uncommitted or unmigrated work and the user explicitly asked for cleanup.
 
 ## Quick Reference
 
-| Option           | Merge | Push | Keep Worktree | Cleanup Branch |
-| ---------------- | ----- | ---- | ------------- | -------------- |
-| 1. Merge locally | ✓     | -    | -             | ✓              |
-| 2. Create PR     | -     | ✓    | ✓             | -              |
-| 3. Keep as-is    | -     | -    | ✓             | -              |
-| 4. Discard       | -     | -    | -             | ✓ (force)      |
+| Option           | Merge | Push | Cleanup Branch |
+| ---------------- | ----- | ---- | -------------- |
+| 1. Merge locally | ✓     | -    | ✓              |
+| 2. Create PR     | -     | ✓    | -              |
+| 3. Keep as-is    | -     | -    | -              |
+| 4. Discard       | -     | -    | ✓ (force)      |
 
 ## Common Mistakes
 
@@ -175,10 +161,10 @@ git worktree remove <worktree-path>
 - **Problem:** "What should I do next?" → ambiguous
 - **Fix:** Present exactly 4 structured options
 
-**Automatic worktree cleanup**
+**Automatic worktree usage**
 
-- **Problem:** Remove worktree when might need it (Option 2, 3)
-- **Fix:** Only cleanup for Options 1 and 4
+- **Problem:** Create, switch to, or remove worktrees despite repository policy
+- **Fix:** Stay in the current checkout; only clean historical worktrees after explicit user request and safety checks
 
 **No confirmation for discard**
 
@@ -199,7 +185,7 @@ git worktree remove <worktree-path>
 - Verify tests before offering options
 - Present exactly 4 options
 - Get typed confirmation for Option 4
-- Clean up worktree for Options 1 & 4 only
+- Stay in the current checkout; do not use git worktree as part of finishing
 
 ## Integration
 
@@ -208,6 +194,6 @@ git worktree remove <worktree-path>
 - **subagent-driven-development** (Step 7) - After all tasks complete
 - **executing-plans** (Step 5) - After all batches complete
 
-**Pairs with:**
+**Repository policy:**
 
-- **using-git-worktrees** - Cleans up worktree created by that skill
+- `using-git-worktrees` is disabled in this repository; finishing must not depend on worktree setup or cleanup.

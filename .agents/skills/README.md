@@ -26,7 +26,7 @@
 - `systematic-debugging`
 - `task-delivery-loop`
 - `test-driven-development`
-- `using-git-worktrees`
+- `using-git-worktrees`（已禁用：本仓库规范禁止使用 `git worktree`）
 - `using-superpowers`
 - `verification-before-completion`
 - `writing-plans`
