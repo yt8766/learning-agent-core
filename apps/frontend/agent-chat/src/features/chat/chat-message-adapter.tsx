@@ -136,9 +136,12 @@ function renderMessageContent(
   );
   const statusLabel = isThinking ? '思考中' : '已思考';
   const showCountLabel = isThinking && options.cognitionCountLabel;
-  const titleLabel = options.cognitionDurationLabel
-    ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
-    : statusLabel;
+  const titleLabel =
+    isCognitionTarget && options.cognitionDurationLabel
+      ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
+      : statusLabel;
+  const canExpandCognition =
+    Boolean(messageThinkState) || Boolean(inlineThinkContent) || Boolean(messageThoughtItems?.length);
 
   return (
     <div className="chatx-assistant-stack">
@@ -149,7 +152,7 @@ function renderMessageContent(
           className={`chatx-inline-think__toggle chatx-governance-summary__toggle ${
             isThinking ? 'is-thinking' : 'is-complete'
           }`}
-          onClick={options.onToggleCognition}
+          onClick={canExpandCognition ? options.onToggleCognition : undefined}
         >
           {isThinking ? (
             <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">

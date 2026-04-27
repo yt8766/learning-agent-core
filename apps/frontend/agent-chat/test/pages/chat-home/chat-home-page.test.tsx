@@ -9,6 +9,7 @@ const mockUseChatSession = vi.fn();
 const renderedAlerts: Array<Record<string, unknown>> = [];
 const renderedModals: Array<Record<string, unknown>> = [];
 const renderedSenders: Array<Record<string, unknown>> = [];
+const renderedSenders: Array<Record<string, unknown>> = [];
 
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
@@ -87,6 +88,34 @@ vi.mock('antd', async () => {
         )
       }
     ),
+    Layout: Object.assign(
+      ({ children, className }: { children?: ReactNode; className?: string }) => (
+        <div className={className}>{children}</div>
+      ),
+      {
+        Header: ({ children, className }: { children?: ReactNode; className?: string }) => (
+          <header className={className}>{children}</header>
+        ),
+        Sider: ({
+          children,
+          className,
+          width,
+          collapsedWidth
+        }: {
+          children?: ReactNode;
+          className?: string;
+          width?: number;
+          collapsedWidth?: number;
+        }) => (
+          <aside className={className} data-width={width} data-collapsed-width={collapsedWidth}>
+            {children}
+          </aside>
+        ),
+        Content: ({ children, className }: { children?: ReactNode; className?: string }) => (
+          <main className={className}>{children}</main>
+        )
+      }
+    ),
     Alert: (props: { title?: ReactNode; description?: ReactNode; onClose?: () => void }) => {
       renderedAlerts.push(props);
       return (
@@ -95,10 +124,6 @@ vi.mock('antd', async () => {
           <div>{props.description}</div>
         </section>
       );
-    },
-    Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void | Promise<void> }) => {
-      renderedButtons.push({ children, onClick });
-      return <button>{children}</button>;
     },
     Space: ({ children, className }: { children?: ReactNode; className?: string }) => (
       <div className={className}>{children}</div>
@@ -133,12 +158,33 @@ vi.mock('antd', async () => {
         })(),
       {
         confirm: vi.fn()
+        confirm: vi.fn()
       }
     )
   };
 });
 
 vi.mock('@ant-design/x', () => ({
+  XProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Bubble: {
+    List: ({ items, className }: { items: Array<{ key: string; content: ReactNode }>; className?: string }) => (
+      <div className={className}>
+        {items.map(item => (
+          <article key={item.key}>{item.content}</article>
+        ))}
+      </div>
+    )
+  },
+  Sender: (props: Record<string, unknown>) => {
+    renderedSenders.push(props);
+    const footer = props.footer as ((actionNode: ReactNode) => ReactNode) | undefined;
+    return (
+      <section className={String(props.className ?? '')}>
+        <div>{String(props.placeholder ?? '')}</div>
+        {footer?.(<button type="button">发送</button>)}
+      </section>
+    );
+  }
   XProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Bubble: {
     List: ({ items, className }: { items: Array<{ key: string; content: ReactNode }>; className?: string }) => (
@@ -184,25 +230,21 @@ vi.mock('@/pages/chat-home/chat-home-sidebar', () => ({
   ChatHomeSidebar: () => <div>chat-home-sidebar</div>
 }));
 
-vi.mock('@/pages/chat-home/chat-home-workbench', () => ({
-  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }],
-  ChatHomeWorkbench: ({
-    bubbleItems,
-    chatMode,
-    streamEvents,
-    showWorkbench
-  }: {
-    bubbleItems: Array<{ content: string }>;
-    chatMode: 'quick' | 'expert';
-    onChatModeChange: (chatMode: 'quick' | 'expert') => void;
-    streamEvents: Array<{ summary: string }>;
-    showWorkbench: boolean;
-  }) => (
-    <div>
-      workbench:{showWorkbench ? 'open' : 'closed'} / mode:{chatMode} / can-change:yes / bubbles:
-      {bubbleItems.length} / events:{streamEvents.length}
-    </div>
+vi.mock('@/pages/chat-home/chat-home-workbench-thoughts', () => ({
+  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }]
+}));
+
+vi.mock('@/pages/chat-home/chat-home-anchor-rail', () => ({
+  ConversationAnchorRail: ({ anchors }: { anchors: Array<{ label: string }> }) => (
+    <nav>conversation-anchor-rail:{anchors.length}</nav>
   )
+}));
+
+vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
+  buildConversationAnchors: () => [
+    { id: 'anchor-user', messageId: 'msg-user', label: '用户问题' },
+    { id: 'anchor-assistant', messageId: 'bubble-1', label: '助手回答' }
+  ]
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
@@ -223,6 +265,7 @@ describe('ChatHomePage shell', () => {
         title: '覆盖率冲刺',
         status: 'running'
       },
+      hasMessages: true,
       hasMessages: true,
       messages: [],
       events: [
@@ -250,6 +293,9 @@ describe('ChatHomePage shell', () => {
       loading: false,
       sendMessage: vi.fn(),
       cancelActiveSession: vi.fn(),
+      loading: false,
+      sendMessage: vi.fn(),
+      cancelActiveSession: vi.fn(),
       deleteActiveSession: vi.fn(),
       setShowRightPanel: vi.fn(),
       submitLearningConfirmation: vi.fn(),
@@ -266,46 +312,32 @@ describe('ChatHomePage shell', () => {
     renderedAlerts.length = 0;
     renderedModals.length = 0;
     renderedSenders.length = 0;
+    renderedSenders.length = 0;
     useStateOverride = null;
   });
 
+  it('renders the Agent Chat + Codex active conversation shell with error state', () => {
   it('renders the Agent Chat + Codex active conversation shell with error state', () => {
     mockUseChatSession.mockReturnValue(createChatSessionOverrides());
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-layout is-sidebar-expanded"');
-    expect(html).toContain('class="chatx-header__actions"');
+    expect(html).toContain('class="chatx-agent-codex is-sidebar-expanded"');
     expect(html).toContain('Agent Chat');
     expect(html).toContain('aria-label="Codex 对话区"');
+    expect(html).toContain('aria-label="Codex 对话区"');
     expect(html).toContain('覆盖率冲刺');
+    expect(html).toContain('running');
+    expect(html).not.toContain('回到当前会话');
+    expect(html).not.toContain('分享当前会话');
     expect(html).toContain('running');
     expect(html).not.toContain('回到当前会话');
     expect(html).not.toContain('分享当前会话');
     expect(html).toContain('连接错误');
     expect(html).toContain('请稍后重试');
     expect(html).toContain('chat-home-sidebar');
-    expect(html).toContain('workbench:closed / mode:quick / can-change:yes / bubbles:1 / events:1');
-    expect(html).toContain('runtime-drawer:open');
-  });
-
-  it('marks the shell as collapsed when the sidebar starts collapsed', () => {
-    let stateCallIndex = 0;
-    useStateOverride = (actualUseState, initial) => {
-      stateCallIndex += 1;
-      if (stateCallIndex === 4) {
-        return [true, vi.fn()];
-      }
-      return actualUseState(initial);
-    };
-
-    mockUseChatSession.mockReturnValue(createChatSessionOverrides());
-
-    const html = renderToStaticMarkup(<ChatHomePage />);
-
-    expect(html).toContain('class="chatx-layout is-sidebar-collapsed"');
-    expect(html).toContain('data-width="108"');
-    expect(html).toContain('data-collapsed-width="108"');
+    expect(html).toContain('assistant bubble');
+    expect(html).toContain('给 Agent Chat 发送消息');
   });
 
   it('marks the shell as collapsed when the sidebar starts collapsed', () => {
@@ -331,6 +363,7 @@ describe('ChatHomePage shell', () => {
         activeSessionId: '',
         activeSession: null,
         hasMessages: false,
+        hasMessages: false,
         events: [],
         checkpoint: undefined,
         pendingApprovals: [],
@@ -345,7 +378,43 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
+    expect(html).toContain('开始新对话');
+    expect(html).toContain('给 Agent Chat 发送消息');
+    expect(html).not.toContain('快速模式');
+    expect(html).not.toContain('专家模式');
     expect(html).not.toContain('连接错误');
+  });
+
+  it('keeps quick and expert mode switch hidden even when expert state is selected', () => {
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 5) {
+        return ['expert', vi.fn()];
+      }
+      return actualUseState(initial);
+    };
+
+    mockUseChatSession.mockReturnValue(
+      createChatSessionOverrides({
+        activeSessionId: '',
+        activeSession: null,
+        hasMessages: false,
+        events: [],
+        checkpoint: undefined,
+        pendingApprovals: [],
+        showRightPanel: false,
+        error: ''
+      })
+    );
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('开始新对话');
+    expect(html).not.toContain('使用专家模式开始对话');
+    expect(html).not.toContain('使用快速模式开始对话');
+    expect(html).not.toContain('快速模式');
+    expect(html).not.toContain('专家模式');
   });
 
   it('keeps quick and expert mode switch hidden even when expert state is selected', () => {
@@ -418,12 +487,59 @@ describe('ChatHomePage shell', () => {
       error: ''
     });
     mockUseChatSession.mockReturnValue(chat);
+  it('renders composer controls with left toggles and one right-side send action', () => {
+    mockUseChatSession.mockReturnValue(
+      createChatSessionOverrides({
+        activeSessionId: '',
+        activeSession: null,
+        hasMessages: false,
+        events: [],
+        checkpoint: undefined,
+        pendingApprovals: [],
+        showRightPanel: false,
+        error: ''
+      })
+    );
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('深度思考');
+    expect(html).toContain('智能搜索');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('aria-label="上传文件"');
+    expect(html.match(/chatx-sender-footer__right/g)).toHaveLength(1);
+    expect(html.match(/<button type="button">发送<\/button>/g)).toHaveLength(1);
+    expect(html).not.toContain('♧');
+  });
+
+  it('submits deep-thinking composer input through the supported plan workflow payload', () => {
+    const chat = createChatSessionOverrides({
+      activeSessionId: '',
+      activeSession: null,
+      hasMessages: false,
+      events: [],
+      checkpoint: undefined,
+      pendingApprovals: [],
+      showRightPanel: false,
+      error: ''
+    });
+    mockUseChatSession.mockReturnValue(chat);
 
     renderToStaticMarkup(<ChatHomePage />);
 
     const sender = renderedSenders[0] as { onSubmit?: (value: string) => void };
     sender.onSubmit?.('给我一个实现方案');
+    const sender = renderedSenders[0] as { onSubmit?: (value: string) => void };
+    sender.onSubmit?.('给我一个实现方案');
 
+    expect(chat.sendMessage).toHaveBeenCalledWith({
+      display: '给我一个实现方案',
+      payload: '/plan 给我一个实现方案'
+    });
+  });
+
+  it('connects the sender loading cancel action to the active session cancellation', () => {
     expect(chat.sendMessage).toHaveBeenCalledWith({
       display: '给我一个实现方案',
       payload: '/plan 给我一个实现方案'
@@ -441,7 +557,30 @@ describe('ChatHomePage shell', () => {
     expect(typeof sender.onCancel).toBe('function');
 
     sender.onCancel?.();
+    const sender = renderedSenders[0] as { onCancel?: () => void; loading?: boolean };
+    expect(sender.loading).toBe(true);
+    expect(typeof sender.onCancel).toBe('function');
 
+    sender.onCancel?.();
+
+    expect(chat.cancelActiveSession).toHaveBeenCalledWith('用户停止当前会话');
+  });
+
+  it('filters workflow command prefixes from the active session title', () => {
+    mockUseChatSession.mockReturnValue(
+      createChatSessionOverrides({
+        activeSession: {
+          id: 'session-1',
+          title: '/plan 你是谁',
+          status: 'failed'
+        }
+      })
+    );
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('你是谁');
+    expect(html).not.toContain('/plan 你是谁');
     expect(chat.cancelActiveSession).toHaveBeenCalledWith('用户停止当前会话');
   });
 
@@ -467,7 +606,7 @@ describe('ChatHomePage shell', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
-      if (stateCallIndex === 7) {
+      if (stateCallIndex === 6) {
         return ['', dismissedErrorSetter];
       }
       return actualUseState(initial);

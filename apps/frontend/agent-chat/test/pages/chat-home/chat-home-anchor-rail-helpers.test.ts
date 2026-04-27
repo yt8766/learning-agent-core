@@ -104,6 +104,23 @@ describe('chat-home conversation anchor rail helpers', () => {
     expect(anchors[0]?.label.length).toBeLessThanOrEqual(39);
   });
 
+  it('filters workflow command prefixes from user anchor labels', () => {
+    const anchors = buildConversationAnchors([
+      message({
+        id: 'user-1',
+        role: 'user',
+        content: '/plan 你是谁'
+      }),
+      message({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '我是 Agent Chat'
+      })
+    ]);
+
+    expect(anchors[0]?.label).toBe('你是谁');
+  });
+
   it('scrolls to the target anchor and updates the active anchor id', () => {
     const scrollIntoView = vi.fn();
     const setActiveId = vi.fn();

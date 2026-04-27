@@ -36,105 +36,49 @@ interface ChatFixture {
   chat: ChatHomeSidebarChat;
   createNewSession: ReturnType<typeof vi.fn<ChatHomeSidebarChat['createNewSession']>>;
   setActiveSessionId: ReturnType<typeof vi.fn<ChatHomeSidebarChat['setActiveSessionId']>>;
-}
-
-interface ElementProps {
-  children?: ReactNode;
-  className?: string;
-  'aria-label'?: string;
-  onClick?: () => void;
+  renameSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['renameSessionById']>>;
+  deleteSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['deleteSessionById']>>;
+  logout: ReturnType<typeof vi.fn<() => void>>;
 }
 
 function createChatFixture(): ChatFixture {
   const createNewSession = vi.fn<ChatHomeSidebarChat['createNewSession']>(async () => undefined);
   const setActiveSessionId = vi.fn<ChatHomeSidebarChat['setActiveSessionId']>();
+  const renameSessionById = vi.fn<ChatHomeSidebarChat['renameSessionById']>(async () => undefined);
+  const deleteSessionById = vi.fn<ChatHomeSidebarChat['deleteSessionById']>(async () => undefined);
+  const logout = vi.fn<() => void>();
 
   return {
     chat: {
       sessions,
       activeSessionId: 'session-running',
       createNewSession,
-      setActiveSessionId
+      setActiveSessionId,
+      renameSessionById,
+      deleteSessionById
     },
     createNewSession,
-    setActiveSessionId
+    setActiveSessionId,
+    renameSessionById,
+    deleteSessionById,
+    logout
   };
 }
 
 function renderSidebarElement({
   chat,
   collapsed,
-  onToggleCollapsed
+  onToggleCollapsed,
+  onLogout
 }: {
   chat: ChatHomeSidebarChat;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  onLogout?: () => void;
 }) {
-  return ChatHomeSidebar({ chat, collapsed, onToggleCollapsed });
-}
-
-function getElementProps(element: ReactElement): ElementProps {
-  return element.props as ElementProps;
-}
-
-function getTextContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-
-  if (Array.isArray(node)) {
-    return node.map(getTextContent).join('');
-  }
-
-  if (isValidElement(node)) {
-    return getTextContent(getElementProps(node).children);
-  }
-
-  return '';
-}
-
-function findElement(node: ReactNode, predicate: (element: ReactElement) => boolean): ReactElement | undefined {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const result = findElement(child, predicate);
-      if (result) {
-        return result;
-      }
-    }
-    return undefined;
-  }
-
-  if (!isValidElement(node)) {
-    return undefined;
-  }
-
-  if (predicate(node)) {
-    return node;
-  }
-
-  return findElement(getElementProps(node).children, predicate);
-}
-
-function getButtonByLabel(node: ReactNode, label: string): ReactElement {
-  const button = findElement(
-    node,
-    element => element.type === 'button' && getElementProps(element)['aria-label'] === label
+  return (
+    <ChatHomeSidebar chat={chat} collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} onLogout={onLogout} />
   );
-  if (!button) {
-    throw new Error(`Unable to find button with aria-label: ${label}`);
-  }
-  return button;
-}
-
-function getButtonByText(node: ReactNode, text: string): ReactElement {
-  const button = findElement(
-    node,
-    element => element.type === 'button' && getTextContent(getElementProps(element).children).includes(text)
-  );
-  if (!button) {
-    throw new Error(`Unable to find button containing text: ${text}`);
-  }
-  return button;
 }
 
 describe('ChatHomeSidebar', () => {
@@ -147,7 +91,7 @@ describe('ChatHomeSidebar', () => {
     vi.useRealTimers();
   });
 
-  it('renders expanded multi-session groups with account footer', () => {
+  it('renders expanded Agent Chat session groups with Codex status and account menu', () => {
     const { chat } = createChatFixture();
     const html = renderToStaticMarkup(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }));
 
@@ -159,14 +103,39 @@ describe('ChatHomeSidebar', () => {
     expect(html).toContain('Agent目录结构优化建议');
     expect(html).toContain('流程图生成与解读');
     expect(html).toContain('gstack中skills概念解析');
-    expect(html).toContain('等待批准');
+    expect(html).toContain('需要审批');
+    expect(html).toContain('执行中');
     expect(html).toContain('chatx-session-item__status--pill');
     expect(html).toContain('chatx-session-item__spinner');
     expect(html).toContain('chatx-session-item--done');
     expect(html).toContain('chatx-session-item__status--dot');
     expect(html).toContain('176******93');
+    expect(html).toContain('退出登录');
+    expect(html).toContain('chatx-account-menu');
+    expect(html).toContain('chatx-account-menu__trigger');
+    expect(html).toContain('chatx-account-menu__panel');
+    expect(html).toContain('chatx-account-menu__item');
+    expect(html).not.toContain('下载手机应用');
+    expect(html).not.toContain('系统设置');
+    expect(html).not.toContain('帮助与反馈');
+    expect(html).not.toContain('▶');
+    expect(html).not.toContain('▸');
     expect(html).not.toContain('Single frontline session');
     expect(html).not.toContain('正在准备会话');
+  });
+
+  it('keeps session menus compact with rename and delete actions', () => {
+    const { chat } = createChatFixture();
+    const html = renderToStaticMarkup(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }));
+
+    expect(html).toContain('class="chatx-session-item__menu"');
+    expect(html).toContain('chatx-session-item__menu-trigger');
+    expect(html).toContain('chatx-session-item__menu-panel');
+    expect(html).toContain('role="menu"');
+    expect(html).toContain('chatx-session-item__menu-action');
+    expect(html).toContain('chatx-session-item__menu-icon');
+    expect(html).toContain('重命名');
+    expect(html).toContain('删除');
   });
 
   it('renders collapsed rail actions without history titles or account footer', () => {
@@ -182,39 +151,111 @@ describe('ChatHomeSidebar', () => {
     expect(html).not.toContain('176******93');
   });
 
-  it('selects a session when a session item is clicked', () => {
-    const { chat, setActiveSessionId } = createChatFixture();
-    const sidebar = renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() });
-
-    getElementProps(getButtonByText(sidebar, '流程图生成与解读')).onClick?.();
-
-    expect(setActiveSessionId).toHaveBeenCalledWith('session-approval');
-  });
-
-  it('creates a session from expanded and collapsed actions', () => {
-    const { chat, createNewSession } = createChatFixture();
-
-    getElementProps(
-      getButtonByText(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }), '开启新对话')
-    ).onClick?.();
-    getElementProps(
-      getButtonByLabel(renderSidebarElement({ chat, collapsed: true, onToggleCollapsed: vi.fn() }), '开启新对话')
-    ).onClick?.();
-
-    expect(createNewSession).toHaveBeenCalledTimes(2);
-  });
-
-  it('toggles from expanded and collapsed controls', () => {
+  it('renders session select controls for each history item', () => {
     const { chat } = createChatFixture();
-    const onToggleCollapsed = vi.fn<() => void>();
+    const html = renderToStaticMarkup(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }));
 
-    getElementProps(
-      getButtonByLabel(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed }), '收起侧边栏')
-    ).onClick?.();
-    getElementProps(
-      getButtonByLabel(renderSidebarElement({ chat, collapsed: true, onToggleCollapsed }), '展开侧边栏')
-    ).onClick?.();
+    expect(html.match(/chatx-session-item__select/g)).toHaveLength(3);
+    expect(html).toContain('aria-current="page"');
+  });
 
-    expect(onToggleCollapsed).toHaveBeenCalledTimes(2);
+  it('filters workflow command prefixes from displayed session titles', () => {
+    const { chat } = createChatFixture();
+    const html = renderToStaticMarkup(
+      renderSidebarElement({
+        chat: {
+          ...chat,
+          sessions: [
+            {
+              ...sessions[0],
+              title: '/plan 你是谁'
+            },
+            sessions[1]
+          ]
+        },
+        collapsed: false,
+        onToggleCollapsed: vi.fn()
+      })
+    );
+
+    expect(html).toContain('你是谁');
+    expect(html).not.toContain('/plan 你是谁');
+  });
+
+  it('renders new chat actions from expanded and collapsed states', () => {
+    const { chat } = createChatFixture();
+    const expandedHtml = renderToStaticMarkup(
+      renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() })
+    );
+    const collapsedHtml = renderToStaticMarkup(
+      renderSidebarElement({ chat, collapsed: true, onToggleCollapsed: vi.fn() })
+    );
+
+    expect(expandedHtml).toContain('开启新对话');
+    expect(collapsedHtml).toContain('aria-label="开启新对话"');
+  });
+
+  it('renders expanded and collapsed sidebar toggle controls', () => {
+    const { chat } = createChatFixture();
+    const expandedHtml = renderToStaticMarkup(
+      renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() })
+    );
+    const collapsedHtml = renderToStaticMarkup(
+      renderSidebarElement({ chat, collapsed: true, onToggleCollapsed: vi.fn() })
+    );
+
+    expect(expandedHtml).toContain('aria-label="收起侧边栏"');
+    expect(collapsedHtml).toContain('aria-label="展开侧边栏"');
+  });
+
+  it('keeps only logout in the account menu', () => {
+    const { chat, logout } = createChatFixture();
+    const html = renderToStaticMarkup(
+      renderSidebarElement({
+        chat,
+        collapsed: false,
+        onToggleCollapsed: vi.fn(),
+        onLogout: logout
+      })
+    );
+
+    expect(html).toContain('退出登录');
+    expect(html).not.toContain('下载手机应用');
+    expect(html).not.toContain('系统设置');
+    expect(html).not.toContain('帮助与反馈');
+  });
+
+  it('closes open sidebar menus when a pointer event lands outside menus', async () => {
+    const { closeOpenSidebarMenus } = await import('@/pages/chat-home/chat-home-sidebar');
+    const sessionMenu = { open: true };
+    const accountMenu = { open: true };
+    const root = {
+      querySelectorAll: vi.fn(() => [sessionMenu, accountMenu])
+    };
+    const outsideTarget = {
+      closest: vi.fn(() => null)
+    };
+
+    closeOpenSidebarMenus(outsideTarget as unknown as EventTarget, root as unknown as ParentNode);
+
+    expect(root.querySelectorAll).toHaveBeenCalledWith('details.chatx-session-item__menu, details.chatx-account-menu');
+    expect(sessionMenu.open).toBe(false);
+    expect(accountMenu.open).toBe(false);
+  });
+
+  it('keeps sidebar menus open when the pointer event stays inside a menu', async () => {
+    const { closeOpenSidebarMenus } = await import('@/pages/chat-home/chat-home-sidebar');
+    const sessionMenu = { open: true };
+    const root = {
+      querySelectorAll: vi.fn(() => [sessionMenu])
+    };
+    const insideTarget = {
+      closest: vi.fn(() => ({ className: 'chatx-session-item__menu' }))
+    };
+
+    closeOpenSidebarMenus(insideTarget as unknown as EventTarget, root as unknown as ParentNode);
+
+    expect(root.querySelectorAll).not.toHaveBeenCalled();
+    expect(sessionMenu.open).toBe(true);
   });
 });
