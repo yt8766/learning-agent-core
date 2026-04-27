@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
 import type { TaskBundle } from '@/types/admin';
 
+import type { AgentToolExecutionProjectionInput } from './runtime-agent-tool-execution-projections';
 import { type AgentGraphOverlayFilter } from './runtime-agent-graph-overlay-support';
 import {
+  buildAgentToolExecutionDigestForTask,
   buildCurrentNodeSlice,
   inferWorkflowCommand,
   resolveGraphFilterForWorkbenchTarget,
@@ -26,6 +28,7 @@ export function RuntimeRunWorkbenchCard(props: {
   baselineRun?: RunBundleRecord['run'];
   replayDraftSeed?: RuntimeRunWorkbenchReplayDraftSeed;
   replayLaunchReceipt?: RuntimeReplayLaunchReceipt;
+  agentToolExecutions?: AgentToolExecutionProjectionInput;
   onRetryTask: () => void;
   onRerunFromSnapshot?: (params: {
     goal: string;
@@ -45,6 +48,10 @@ export function RuntimeRunWorkbenchCard(props: {
   const workflowCommand = inferWorkflowCommand(props.bundle.task.goal);
   const inputGoal = stripWorkflowCommand(props.bundle.task.goal, workflowCommand);
   const currentNodeSlice = buildCurrentNodeSlice(props.detail, currentNode, currentStage);
+  const agentToolExecutionDigest = buildAgentToolExecutionDigestForTask(
+    props.agentToolExecutions,
+    props.detail?.run.taskId ?? props.bundle.task.id
+  );
 
   return (
     <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -220,6 +227,40 @@ export function RuntimeRunWorkbenchCard(props: {
               <Badge variant="outline">diff off</Badge>
             )}
           </div>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Agent Tool Execution</p>
+          {agentToolExecutionDigest.requestCount ||
+          agentToolExecutionDigest.terminalResultCount ||
+          agentToolExecutionDigest.eventCount ? (
+            <>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge variant="outline">requests {agentToolExecutionDigest.requestCount}</Badge>
+                <Badge variant="outline">terminal results {agentToolExecutionDigest.terminalResultCount}</Badge>
+                <Badge variant="outline">events {agentToolExecutionDigest.eventCount}</Badge>
+                {agentToolExecutionDigest.governanceSummary ? (
+                  <Badge variant="warning">{agentToolExecutionDigest.governanceSummary}</Badge>
+                ) : null}
+              </div>
+              {agentToolExecutionDigest.latestItems.length ? (
+                <div className="mt-3 grid gap-2">
+                  {agentToolExecutionDigest.latestItems.map(item => (
+                    <article key={item.id} className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm text-foreground">{item.title}</strong>
+                        {item.at ? (
+                          <span className="text-xs text-muted-foreground">{new Date(item.at).toLocaleString()}</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{item.summary}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">当前 run 没有关联的 agent tool execution 详情。</p>
+          )}
         </div>
         <div className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current Node Slice</p>

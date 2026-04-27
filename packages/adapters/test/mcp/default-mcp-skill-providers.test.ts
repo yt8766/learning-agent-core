@@ -16,7 +16,7 @@ describe('@agent/adapters default MCP skill providers', () => {
     expect(registry.get('zhipu')?.descriptor.builtIn).toBe(true);
   });
 
-  it('builds a MiniMax stdio install plan with governed media capabilities', () => {
+  it('builds a MiniMax stdio install plan with governed media and token plan capabilities', () => {
     const provider = createMiniMaxMcpSkillProvider();
     const plan = provider.buildInstallPlan({
       providerId: 'minimax',
@@ -25,22 +25,67 @@ describe('@agent/adapters default MCP skill providers', () => {
       options: { region: 'global' }
     });
 
-    expect(plan.servers).toEqual([
-      expect.objectContaining({
-        id: 'minimax-mcp',
-        transport: 'stdio',
-        command: 'uvx',
-        args: ['minimax-mcp', '-y'],
-        env: expect.objectContaining({
-          MINIMAX_API_KEY: 'minimax-key',
-          MINIMAX_API_HOST: 'https://api.minimax.io'
+    expect(plan.servers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'minimax-mcp',
+          transport: 'stdio',
+          command: 'uvx',
+          args: ['minimax-mcp', '-y'],
+          env: expect.objectContaining({
+            MINIMAX_API_KEY: 'minimax-key',
+            MINIMAX_API_HOST: 'https://api.minimax.io'
+          })
+        }),
+        expect.objectContaining({
+          id: 'minimax-token-plan-mcp',
+          transport: 'stdio',
+          command: 'uvx',
+          args: ['minimax-coding-plan-mcp', '-y'],
+          env: expect.objectContaining({
+            MINIMAX_API_KEY: 'minimax-key',
+            MINIMAX_API_HOST: 'https://api.minimax.io'
+          })
         })
-      })
-    ]);
+      ])
+    );
     expect(plan.capabilities).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'minimax:voice_clone', riskLevel: 'critical', requiresApproval: true }),
-        expect.objectContaining({ id: 'minimax:list_voices', riskLevel: 'low', requiresApproval: false })
+        expect.objectContaining({ id: 'minimax:list_voices', riskLevel: 'low', requiresApproval: false }),
+        expect.objectContaining({
+          id: 'minimax:web_search',
+          toolName: 'web_search',
+          serverId: 'minimax-token-plan-mcp',
+          riskLevel: 'low',
+          requiresApproval: false
+        }),
+        expect.objectContaining({
+          id: 'minimax:understand_image',
+          toolName: 'understand_image',
+          serverId: 'minimax-token-plan-mcp',
+          riskLevel: 'medium',
+          requiresApproval: true
+        })
+      ])
+    );
+  });
+
+  it('lets MiniMax Token Plan web search resolve by MCP tool name', () => {
+    const provider = createMiniMaxMcpSkillProvider();
+    const plan = provider.buildInstallPlan({
+      providerId: 'minimax',
+      profile: 'company',
+      secrets: { MINIMAX_API_KEY: 'minimax-key' }
+    });
+
+    expect(plan.capabilities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'minimax:web_search',
+          toolName: 'web_search',
+          serverId: 'minimax-token-plan-mcp'
+        })
       ])
     );
   });

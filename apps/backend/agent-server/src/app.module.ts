@@ -1,7 +1,9 @@
 ﻿import { Module } from '@nestjs/common';
 
+import { AgentToolsModule } from './agent-tools/agent-tools.module';
 import { AppFeatureModule } from './app/app.module';
 import { ApprovalsModule } from './approvals/approvals.module';
+import { AutoReviewModule } from './auto-review/auto-review.module';
 import { ChatModule } from './chat/chat.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { LearningModule } from './learning/learning.module';
@@ -11,6 +13,7 @@ import { MessageGatewayModule } from './message-gateway/message-gateway.module';
 import { PlatformModule } from './platform/platform.module';
 import { RulesModule } from './rules/rules.module';
 import { RuntimeModule } from './runtime/runtime.module';
+import { SandboxModule } from './sandbox/sandbox.module';
 import { SkillsModule } from './skills/skills.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TemplatesModule } from './templates/templates.module';
@@ -19,6 +22,9 @@ import { TemplatesModule } from './templates/templates.module';
   imports: [
     LoggerModule,
     RuntimeModule,
+    AgentToolsModule,
+    SandboxModule,
+    AutoReviewModule,
     AppFeatureModule,
     ChatModule,
     MessageGatewayModule,

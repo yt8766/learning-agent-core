@@ -2,6 +2,7 @@ import { Collapse, Tag, Typography } from 'antd';
 import type { CollapseProps } from 'antd';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
+import type { AgentToolProjectedEvent } from '@/lib/agent-tool-event-projections';
 import { extractEvidenceEntities } from './chat-home-workbench-evidence-helpers';
 
 export { renderCabinetSection, renderSpecialistSection } from './chat-home-workbench-cabinet-renders';
@@ -79,12 +80,14 @@ export function renderLearningSection(chat: ReturnType<typeof useChatSession>) {
       <section className="chatx-stream-panel chatx-stream-panel--nested">
         <div className="chatx-stream-panel__list">
           <article className="chatx-war-card">
-            <Text className="chatx-war-card__label">学习置信度</Text>
+            <Text className="chatx-war-card__label">本轮学习</Text>
             <Title level={5}>{chat.checkpoint.learningEvaluation.confidence}</Title>
+            <Text type="secondary">Workspace learning 已记录本轮评估，可作为 Skill Flywheel 候选输入。</Text>
             <Text type="secondary">{chat.checkpoint.learningEvaluation.notes.join('；') || '当前尚无附加说明。'}</Text>
             <div className="chatx-war-card__meta">
               <Tag color="purple">推荐 {chat.checkpoint.learningEvaluation.recommendedCandidateIds.length}</Tag>
               <Tag color="green">自动确认 {chat.checkpoint.learningEvaluation.autoConfirmCandidateIds.length}</Tag>
+              <Tag color="blue">草案提示</Tag>
             </div>
           </article>
         </div>
@@ -100,6 +103,7 @@ export function renderReuseSection(chat: ReturnType<typeof useChatSession>) {
       chat.checkpoint.reusedMemories?.length ||
       chat.checkpoint.reusedRules?.length ||
       chat.checkpoint.reusedSkills?.length ||
+      chat.checkpoint.usedInstalledSkills?.length ||
       chat.checkpoint.usedCompanyWorkers?.length
     )
   ) {
@@ -116,6 +120,17 @@ export function renderReuseSection(chat: ReturnType<typeof useChatSession>) {
     children: (
       <section className="chatx-stream-panel chatx-stream-panel--nested">
         <div className="chatx-stream-panel__list">
+          {chat.checkpoint.reusedSkills?.length || chat.checkpoint.usedInstalledSkills?.length ? (
+            <article className="chatx-war-card">
+              <Text className="chatx-war-card__label">技能复用</Text>
+              <Title level={5}>Skill Flywheel readiness</Title>
+              <Text type="secondary">草案提示：当前仅展示真实 checkpoint 复用信号，未收到独立 Skill Draft。</Text>
+              <div className="chatx-war-card__meta">
+                <Tag color="gold">复用 {chat.checkpoint.reusedSkills?.length ?? 0}</Tag>
+                <Tag color="cyan">已安装 {chat.checkpoint.usedInstalledSkills?.length ?? 0}</Tag>
+              </div>
+            </article>
+          ) : null}
           {chat.checkpoint.reusedMemories?.length ? (
             <TagCard title="历史经验" items={chat.checkpoint.reusedMemories} color="gold" />
           ) : null}
@@ -124,6 +139,9 @@ export function renderReuseSection(chat: ReturnType<typeof useChatSession>) {
           ) : null}
           {chat.checkpoint.reusedSkills?.length ? (
             <TagCard title="复用技能" items={chat.checkpoint.reusedSkills} color="gold" />
+          ) : null}
+          {chat.checkpoint.usedInstalledSkills?.length ? (
+            <TagCard title="已安装技能" items={chat.checkpoint.usedInstalledSkills} color="cyan" />
           ) : null}
           {chat.checkpoint.usedCompanyWorkers?.length ? (
             <TagCard title="公司专员" items={chat.checkpoint.usedCompanyWorkers} color="cyan" />
@@ -195,6 +213,42 @@ export function renderApprovalHistorySection(
   } satisfies NonNullable<CollapseProps['items']>[number];
 }
 
+export function renderToolExecutionSection(toolEvents: AgentToolProjectedEvent[]) {
+  if (!toolEvents.length) {
+    return null;
+  }
+  return {
+    key: 'tool-execution',
+    label: (
+      <div className="chatx-workbench-section__label">
+        <Text strong>工具执行</Text>
+        <Text type="secondary">{toolEvents.length} 条事件</Text>
+      </div>
+    ),
+    children: (
+      <section className="chatx-stream-panel chatx-stream-panel--nested">
+        <div className="chatx-stream-panel__list">
+          {toolEvents.slice(0, 8).map((eventItem, index) => (
+            <article key={`${eventItem.requestId}:${eventItem.kind}:${index}`} className="chatx-war-card">
+              <Text className="chatx-war-card__label">{getToolEventKindLabel(eventItem.kind)}</Text>
+              <Title level={5}>{eventItem.title}</Title>
+              {eventItem.summary ? <Text type="secondary">{eventItem.summary}</Text> : null}
+              <div className="chatx-war-card__meta">
+                <Tag color={getToolStatusColor(eventItem.status)}>{getToolStatusLabel(eventItem.status)}</Tag>
+                {eventItem.toolName ? <Tag>{eventItem.toolName}</Tag> : null}
+                {eventItem.riskClass ? <Tag color="orange">{eventItem.riskClass}</Tag> : null}
+                {eventItem.streamKind ? <Tag>{eventItem.streamKind}</Tag> : null}
+                {eventItem.nodeId ? <Tag>{eventItem.nodeId}</Tag> : null}
+              </div>
+              {eventItem.approval?.required ? <Text type="secondary">等待审批确认</Text> : null}
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  } satisfies NonNullable<CollapseProps['items']>[number];
+}
+
 export function renderEventStreamSection(
   streamEvents: Array<{ id: string; type: string; summary: string; at: string; raw: string }>
 ) {
@@ -240,4 +294,60 @@ export function renderEventStreamSection(
       </section>
     )
   } satisfies NonNullable<CollapseProps['items']>[number];
+}
+
+function getToolEventKindLabel(kind: AgentToolProjectedEvent['kind']) {
+  if (kind === 'tool_selected') {
+    return '工具选择';
+  }
+  if (kind === 'tool_called') {
+    return '工具调用';
+  }
+  if (kind === 'tool_stream') {
+    return '流式输出';
+  }
+  if (kind === 'execution_step') {
+    return '执行步骤';
+  }
+  return '审批中断';
+}
+
+function getToolStatusLabel(status: AgentToolProjectedEvent['status']) {
+  switch (status) {
+    case 'pending':
+      return '待执行';
+    case 'pending_policy':
+      return '策略判定中';
+    case 'pending_approval':
+      return '待审批';
+    case 'queued':
+      return '已排队';
+    case 'running':
+      return '执行中';
+    case 'blocked':
+      return '已阻断';
+    case 'resumed':
+      return '已恢复';
+    case 'failed':
+      return '失败';
+    case 'cancelled':
+      return '已取消';
+    case 'denied':
+      return '已拒绝';
+    default:
+      return '完成';
+  }
+}
+
+function getToolStatusColor(status: AgentToolProjectedEvent['status']) {
+  if (status === 'failed' || status === 'denied' || status === 'cancelled') {
+    return 'red';
+  }
+  if (status === 'blocked' || status === 'pending_approval') {
+    return 'orange';
+  }
+  if (status === 'succeeded' || status === 'resumed') {
+    return 'green';
+  }
+  return 'processing';
 }

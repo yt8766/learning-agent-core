@@ -3,13 +3,13 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-25
+最后核对：2026-04-26
 
-本文只说明前后端如何协作调用。API 契约主入口是 [docs/api/README.md](/docs/api/README.md)。
+本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
 
 本主题主文档：
 
-- API 契约以 [docs/api/README.md](/docs/api/README.md) 为准
+- API 契约以 [docs/contracts/api/README.md](/docs/contracts/api/README.md) 为准
 - 本文是前后端集成链路说明，不承载完整接口字段
 
 本文只覆盖：
@@ -23,22 +23,25 @@
 
 前后端新增或修改联调能力时，顺序固定为：
 
-1. 先更新 [docs/api](/docs/api/README.md) 中的接口契约。
+1. 先更新 [docs/contracts/api](/docs/contracts/api/README.md) 中的接口契约。
 2. 再落 schema / contract。
 3. 再分别实现后端与前端。
 4. 最后做联调、验证与文档回写。
 
-接口风格选择以 [docs/api/interface-style-guidelines.md](/docs/api/interface-style-guidelines.md) 为准。
+接口风格选择以 [docs/contracts/api/interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md) 为准。
 
 涉及 API、SSE、checkpoint payload、审批事件、runtime center DTO、admin center 聚合返回、导出字段或其他跨端接口时，不允许先按实现猜字段再补文档。
 
 ## API 入口
 
-- 聊天、会话与 SSE：[agent-chat.md](/docs/api/agent-chat.md)
-- Admin 控制台聚合：[agent-admin.md](/docs/api/agent-admin.md)
-- Runtime Center：[runtime.md](/docs/api/runtime.md)
-- Approvals 与恢复：[approvals.md](/docs/api/approvals.md)
-- Run Observatory：[run-observatory.md](/docs/api/run-observatory.md)
+- 聊天、会话与 SSE：[agent-chat.md](/docs/contracts/api/agent-chat.md)
+- Admin 控制台聚合：[agent-admin.md](/docs/contracts/api/agent-admin.md)
+- Runtime Center：[runtime.md](/docs/contracts/api/runtime.md)
+- Approvals 与恢复：[approvals.md](/docs/contracts/api/approvals.md)
+- Run Observatory：[run-observatory.md](/docs/contracts/api/run-observatory.md)
+- Agent Tool 执行：[tool-execution.md](/docs/contracts/api/tool-execution.md)
+- Sandbox 预检与状态：[sandbox.md](/docs/contracts/api/sandbox.md)
+- Auto Review 审查与阻断：[auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 前端请求层
 
@@ -65,6 +68,35 @@
 - `messages / events` 只用于历史恢复与终态校准。
 - 断流、idle close 或终态事件缺失时，前端先读 checkpoint 收口，再按需补拉历史。
 
+## Tool / Sandbox / Auto Review 链路
+
+当前已落地的最小实现：
+
+- 后端 `AgentToolsModule` 已接入 `apps/backend/agent-server/src/app.module.ts`，真实 HTTP 路径是 `/api/agent-tools/*`。
+- 后端 facade 当前以内存存储 request/result，适合作为前后端联调和 contract 回归入口；request 创建时已最小串联 sandbox preflight，低风险 allow 路径会创建 tool execution auto review，低风险与审批恢复已通过同步 executor queue 边界写出 `queued -> running -> succeeded` 观测语义，真实持久化、异步 worker、真实 sandbox/reviewer runner 和 SSE 广播还未接线。
+- `agent-chat` 当前已提供 `src/lib/agent-tool-execution-api.ts` 与 `src/lib/agent-tool-event-projections.ts`，并在 OpenClaw workbench / ThoughtChain 中把 `tool_*`、`execution_step_*`、policy decision 与 `tool_execution` interrupt 事件投影成“工具执行”时间线；projection 补拉优先用当前 task id，缺失时才用 checkpoint task id 兜底。
+- `agent-admin` 当前已提供 agent tool execution governance summary helper，以及 sandbox / auto review facade helper；Runtime Summary 的 Requests / Risk / Nodes / Policy / Event Log、Run Workbench 与 Run Observatory 只消费稳定 projection，不从 raw task dump 反推工具状态，并且只展示 sandbox / auto-review 白名单治理 badge。
+- `packages/tools` 已提供 local process 与 Docker sandbox provider，Docker provider 默认禁用网络并可通过 runner 注入在测试中验证命令计划。
+
+主链路：
+
+1. Runtime 或专项 Agent 选择工具能力，后端创建 execution request。
+2. 后端按 [tool-execution.md](/docs/contracts/api/tool-execution.md) 做 capability / node 匹配和 policy decision。
+3. 后端按 [sandbox.md](/docs/contracts/api/sandbox.md) 做 profile、permission scope 和 preflight 判定；`require_approval` 复用 agent-tools 审批入口。
+4. sandbox 允许且 request 仍为低风险可执行路径时，后端按 [auto-review.md](/docs/contracts/api/auto-review.md) 创建 review record，并把 `block` verdict 转成 interrupt。
+5. `agent-chat` 通过 SSE 展示 `tool_*`、`execution_step_*`、`review_completed` 和 `interrupt_*`。
+6. Task Trajectory 通过既有 SSE 类型投影：单步使用 `execution_step_* + payload.trajectoryStep`，完整快照使用 `node_progress + payload.projection = "task_trajectory"`。后端投影入口是 `chat-trajectory-events.adapter.ts`，前端消费入口是 `chat-trajectory-projections.ts`。
+7. 用户审批、拒绝、反馈或补充输入后，前端提交对应 approval resume payload。
+8. 后端恢复 request，并在 metadata 存在 `sandboxRunId` / `autoReviewId` 时同步恢复 sandbox run 或 review；随后把终态写入 checkpoint、events、Run Observatory 和 Admin projection。
+
+边界约定：
+
+- 工具执行、sandbox 和 auto review 的字段契约分别以 API 文档为准，本文只说明联调顺序。
+- 新链路优先使用 `interrupt_*` 和 `execution_step_*`；旧 `approval_*` 只作历史 fallback。
+- `agent-chat` 不直接解释第三方 executor、MCP、终端、浏览器或 reviewer 原始 payload。
+- `agent-admin` 不从 raw task dump 推导工具、sandbox 或 review 状态，应消费后端 projection。
+- 高风险工具、越权 sandbox 和 block review 都必须进入审批恢复链路。
+
 ## Admin 链路
 
 `agent-admin` 不把 `/platform/console-shell` 当作所有页面详情来源。
@@ -86,5 +118,5 @@
 
 1. 启动 backend：`pnpm --dir apps/backend/agent-server start:dev`
 2. 启动目标前端。
-3. 先用 [docs/api](/docs/api/README.md) 核对路径、参数和响应。
+3. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
 4. 再按本文检查调用顺序、SSE 兜底和 center 粒度。

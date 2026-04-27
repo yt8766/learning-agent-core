@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const runtimeSummaryTestState = vi.hoisted(() => ({
   stateQueue: [] as Array<{ value: unknown; setter?: (...args: unknown[]) => void }>,
   getChannelDeliveries: vi.fn<() => Promise<Array<{ id: string }>>>(async () => []),
+  getAgentToolExecutionProjection: vi.fn<() => Promise<{ requests: Array<{ id: string }> }>>(async () => ({
+    requests: []
+  })),
   isAbortedAdminRequestError: vi.fn<(error: unknown) => boolean>(() => false),
   cleanups: [] as Array<() => void>
 }));
@@ -28,6 +31,7 @@ vi.mock('react', async () => {
 
 vi.mock('@/api/admin-api', () => ({
   getChannelDeliveries: () => runtimeSummaryTestState.getChannelDeliveries(),
+  getAgentToolExecutionProjection: () => runtimeSummaryTestState.getAgentToolExecutionProjection(),
   isAbortedAdminRequestError: (error: unknown) => runtimeSummaryTestState.isAbortedAdminRequestError(error)
 }));
 
@@ -44,7 +48,9 @@ vi.mock('@/features/runtime-overview/components/runtime-summary-governance', () 
   RuntimeSummaryGovernance: () => <div>governance-block</div>
 }));
 vi.mock('@/features/runtime-overview/components/runtime-summary-tools', () => ({
-  RuntimeSummaryTools: () => <div>tools-block</div>
+  RuntimeSummaryTools: (props: any) => (
+    <div data-agent-tool-request-count={String(props.agentToolExecutions?.requests?.length ?? 0)}>tools-block</div>
+  )
 }));
 vi.mock('@/features/runtime-overview/components/runtime-summary-agent-errors', () => ({
   RuntimeSummaryAgentErrors: (props: any) => (
@@ -104,6 +110,8 @@ function resetHarness() {
   runtimeSummaryTestState.cleanups.length = 0;
   runtimeSummaryTestState.getChannelDeliveries.mockReset();
   runtimeSummaryTestState.getChannelDeliveries.mockResolvedValue([]);
+  runtimeSummaryTestState.getAgentToolExecutionProjection.mockReset();
+  runtimeSummaryTestState.getAgentToolExecutionProjection.mockResolvedValue({ requests: [] });
   runtimeSummaryTestState.isAbortedAdminRequestError.mockReset();
   runtimeSummaryTestState.isAbortedAdminRequestError.mockReturnValue(false);
 }
@@ -120,7 +128,8 @@ describe('RuntimeSummarySection', () => {
       { value: '' },
       { value: '' },
       { value: '' },
-      { value: [], setter: setChannelDeliveries }
+      { value: [], setter: setChannelDeliveries },
+      { value: undefined }
     );
     runtimeSummaryTestState.getChannelDeliveries.mockResolvedValue([{ id: 'delivery-1' }]);
 
@@ -141,7 +150,32 @@ describe('RuntimeSummarySection', () => {
     expect(html).toContain('data-filtered-count="3"');
     expect(html).toContain('data-channel-deliveries="empty"');
     expect(runtimeSummaryTestState.getChannelDeliveries).toHaveBeenCalledTimes(1);
+    expect(runtimeSummaryTestState.getAgentToolExecutionProjection).toHaveBeenCalledTimes(1);
     expect(setChannelDeliveries).toHaveBeenCalledWith([{ id: 'delivery-1' }]);
+  });
+
+  it('passes loaded agent-tools projection to tools summary', async () => {
+    const setAgentToolExecutionProjection = vi.fn();
+    runtimeSummaryTestState.stateQueue.push(
+      { value: '' },
+      { value: '' },
+      { value: '' },
+      { value: [] },
+      { value: undefined, setter: setAgentToolExecutionProjection }
+    );
+    runtimeSummaryTestState.getAgentToolExecutionProjection.mockResolvedValue({
+      requests: [{ id: 'req-projection' }]
+    });
+
+    const html = renderToStaticMarkup(<RuntimeSummarySection {...buildProps()} />);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(html).toContain('data-agent-tool-request-count="0"');
+    expect(runtimeSummaryTestState.getAgentToolExecutionProjection).toHaveBeenCalledTimes(1);
+    expect(setAgentToolExecutionProjection).toHaveBeenCalledWith({
+      requests: [{ id: 'req-projection' }]
+    });
   });
 
   it('filters recent agent errors by error code, ministry, and retryability', () => {
@@ -149,7 +183,8 @@ describe('RuntimeSummarySection', () => {
       { value: 'provider_timeout' },
       { value: 'xingbu-review' },
       { value: 'fatal' },
-      { value: [] }
+      { value: [] },
+      { value: undefined }
     );
 
     const html = renderToStaticMarkup(<RuntimeSummarySection {...buildProps()} />);
@@ -160,10 +195,22 @@ describe('RuntimeSummarySection', () => {
   });
 
   it('filters retryable and fatal errors through their dedicated branches', () => {
-    runtimeSummaryTestState.stateQueue.push({ value: '' }, { value: '' }, { value: 'retryable' }, { value: [] });
+    runtimeSummaryTestState.stateQueue.push(
+      { value: '' },
+      { value: '' },
+      { value: 'retryable' },
+      { value: [] },
+      { value: undefined }
+    );
     const retryableHtml = renderToStaticMarkup(<RuntimeSummarySection {...buildProps()} />);
 
-    runtimeSummaryTestState.stateQueue.push({ value: '' }, { value: '' }, { value: 'fatal' }, { value: [] });
+    runtimeSummaryTestState.stateQueue.push(
+      { value: '' },
+      { value: '' },
+      { value: 'fatal' },
+      { value: [] },
+      { value: undefined }
+    );
     const fatalHtml = renderToStaticMarkup(<RuntimeSummarySection {...buildProps()} />);
 
     expect(retryableHtml).toContain('data-filtered-count="2"');
@@ -176,7 +223,8 @@ describe('RuntimeSummarySection', () => {
       { value: '' },
       { value: '' },
       { value: '' },
-      { value: [], setter: setChannelDeliveries }
+      { value: [], setter: setChannelDeliveries },
+      { value: undefined }
     );
     runtimeSummaryTestState.getChannelDeliveries.mockRejectedValue(new Error('network failed'));
     runtimeSummaryTestState.isAbortedAdminRequestError.mockReturnValue(false);
@@ -195,7 +243,8 @@ describe('RuntimeSummarySection', () => {
       { value: '' },
       { value: '' },
       { value: '' },
-      { value: [], setter: setChannelDeliveries }
+      { value: [], setter: setChannelDeliveries },
+      { value: undefined }
     );
     runtimeSummaryTestState.getChannelDeliveries.mockRejectedValue(new Error('aborted'));
     runtimeSummaryTestState.isAbortedAdminRequestError.mockReturnValue(true);
@@ -218,14 +267,15 @@ describe('RuntimeSummarySection', () => {
       { value: '' },
       { value: '' },
       { value: '' },
-      { value: [], setter: setChannelDeliveries }
+      { value: [], setter: setChannelDeliveries },
+      { value: undefined }
     );
     runtimeSummaryTestState.getChannelDeliveries.mockReturnValue(pendingDeliveries);
 
     renderToStaticMarkup(<RuntimeSummarySection {...buildProps()} />);
-    expect(runtimeSummaryTestState.cleanups).toHaveLength(1);
+    expect(runtimeSummaryTestState.cleanups).toHaveLength(2);
 
-    runtimeSummaryTestState.cleanups[0]?.();
+    runtimeSummaryTestState.cleanups.forEach(cleanup => cleanup());
     resolveDeliveries?.([{ id: 'delivery-late' }]);
     await Promise.resolve();
     await Promise.resolve();

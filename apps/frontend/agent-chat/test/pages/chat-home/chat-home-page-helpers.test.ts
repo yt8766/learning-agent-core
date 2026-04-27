@@ -33,6 +33,7 @@ import {
   buildRuntimeExportRequest,
   buildShareLinksText,
   buildCognitionDurationLabel,
+  resolveNextCognitionExpansion,
   buildStreamEventItems,
   downloadTextFile,
   getWorkbenchToggleLabel,
@@ -116,6 +117,17 @@ describe('chat-home-page helpers', () => {
         Date.now()
       )
     ).toBe('约 1 秒');
+  });
+
+  it('collapses cognition when model thinking finishes while the session is still running', () => {
+    expect(
+      resolveNextCognitionExpansion({
+        wasThinkLoading: true,
+        isThinkLoading: false,
+        hasCognitionTarget: true,
+        isSessionRunning: true
+      })
+    ).toBe(false);
   });
 
   it('maps stream events into reversed, formatted items', () => {

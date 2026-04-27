@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSkillSearchMcpRecommendation,
   buildSkillSearchSafetyNotes,
+  buildSkillDraftInstallCandidate,
   findInstallableManifestSuggestion,
   loadAgentSkillManifests,
   resolveSkillSearchStatus,
@@ -18,6 +19,7 @@ import {
   findInstallableManifestSuggestion as canonicalFindInstallableManifestSuggestion,
   shouldAutoInstallManifest as canonicalShouldAutoInstallManifest
 } from '../src/install/skill-auto-install';
+import { buildSkillDraftInstallCandidate as canonicalBuildSkillDraftInstallCandidate } from '../src/drafts/install-candidate';
 import { SkillRegistry as canonicalSkillRegistry } from '../src/registry/skill-registry';
 import { loadAgentSkillManifests as canonicalLoadAgentSkillManifests } from '../src/sources/agent-skill-loader';
 import {
@@ -36,6 +38,7 @@ describe('@agent/skill-runtime root exports', () => {
     expect(resolveSkillSearchStatus).toBe(canonicalResolveSkillSearchStatus);
     expect(buildSkillSearchSafetyNotes).toBe(canonicalBuildSkillSearchSafetyNotes);
     expect(buildSkillSearchMcpRecommendation).toBe(canonicalBuildSkillSearchMcpRecommendation);
+    expect(buildSkillDraftInstallCandidate).toBe(canonicalBuildSkillDraftInstallCandidate);
   });
 
   it('keeps the package root aligned with the stable skill-runtime facade contract', () => {

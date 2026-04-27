@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import type { ChannelOutboundMessage } from '@agent/core';
 
@@ -24,7 +24,7 @@ export class MessageGatewayDeliveryQueueService implements OnModuleInit, OnModul
     telegramMaxMessageLength: Number(process.env.TELEGRAM_MAX_MESSAGE_LENGTH || 3500)
   });
 
-  constructor(private readonly runtimeHost: RuntimeHost) {}
+  constructor(@Inject(RuntimeHost) private readonly runtimeHost: RuntimeHost) {}
 
   async onModuleInit() {
     const persisted = await loadChannelDeliveries(this.runtimeHost.runtimeStateRepository);

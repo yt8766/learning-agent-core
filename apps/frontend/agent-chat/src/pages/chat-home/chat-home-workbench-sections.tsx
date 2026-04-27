@@ -2,6 +2,11 @@ import { Typography } from 'antd';
 import type { CollapseProps } from 'antd';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
+import {
+  normalizeAgentToolEvent,
+  projectAgentToolGovernanceProjectionToTimeline
+} from '@/lib/agent-tool-event-projections';
+import type { AgentToolGovernanceProjectionLike } from '@/lib/agent-tool-event-projections';
 import { getCompressionHint, getRunningHint } from './chat-home-helpers';
 import { normalizeExecutionMode } from '@/lib/runtime-semantics';
 import {
@@ -11,7 +16,8 @@ import {
   renderEvidenceSection,
   renderLearningSection,
   renderReuseSection,
-  renderSpecialistSection
+  renderSpecialistSection,
+  renderToolExecutionSection
 } from './chat-home-workbench-section-renders';
 
 // activeInterrupt is the persisted 司礼监 / InterruptController projection for the workbench.
@@ -31,6 +37,10 @@ export interface WorkbenchSectionState {
   llmFallbackNotes: string[];
   workbenchItems: NonNullable<CollapseProps['items']>;
 }
+
+type ChatSessionWithGovernanceProjection = ReturnType<typeof useChatSession> & {
+  agentToolGovernanceProjection?: AgentToolGovernanceProjectionLike | null;
+};
 
 function getCheckpointInteractionKind(checkpoint?: ReturnType<typeof useChatSession>['checkpoint']) {
   const payload = checkpoint?.activeInterrupt?.payload;
@@ -112,6 +122,13 @@ export function buildWorkbenchSectionState(
             : ('rejected' as const)
       };
     });
+  const governanceProjection = (chat as ChatSessionWithGovernanceProjection).agentToolGovernanceProjection;
+  const toolEvents = governanceProjection
+    ? projectAgentToolGovernanceProjectionToTimeline(governanceProjection)
+    : chat.events.flatMap(event => {
+        const projected = normalizeAgentToolEvent(event);
+        return projected ? [projected] : [];
+      });
 
   const interruptCopy = getWorkbenchInterruptCopy(chat.checkpoint);
   const workbenchItemsRaw = [
@@ -121,6 +138,7 @@ export function buildWorkbenchSectionState(
     renderLearningSection(chat),
     renderReuseSection(chat),
     renderApprovalHistorySection(approvalHistory),
+    renderToolExecutionSection(toolEvents),
     renderEventStreamSection(streamEvents)
   ];
 

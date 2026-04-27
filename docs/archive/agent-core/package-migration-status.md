@@ -77,7 +77,7 @@
 
 ## 6. 后续 AI 应优先阅读
 
-1. [packages-overview.md](/docs/packages-overview.md)
+1. [packages-overview.md](/docs/maps/packages-overview.md)
 2. [README](/README.md)
 3. [AGENTS.md](/AGENTS.md)
-4. [项目规范总览](/docs/project-conventions.md)
+4. [项目规范总览](/docs/conventions/project-conventions.md)

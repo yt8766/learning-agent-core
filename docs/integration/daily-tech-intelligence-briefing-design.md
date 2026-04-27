@@ -8,7 +8,7 @@
 本主题主文档：
 
 - 本文为每日技术情报简报的跨模块集成设计入口
-- 具体后端 briefing 模块边界继续以 [后端 Runtime Module Notes](/docs/backend/runtime-module-notes.md) 为准
+- 具体后端 briefing 模块边界继续以 [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md) 为准
 
 本文只覆盖：
 
@@ -363,7 +363,7 @@ AI 模型类优先级：
 
 - 复用现有 `runtime/briefings`。
 - 补充 axios、Apifox、Claude Code、Cursor、MCP、OpenAI、Anthropic、Google AI、DeepSeek/Qwen 等源。
-- 接入 MiniMax `web_search` MCP 到现有 `webSearchPrime` 能力边界。
+- MCP 搜索优先走现有 `webSearchPrime` 能力边界；MiniMax Token Plan `minimax:web_search` 已作为同类搜索供应商接入，业务主链不直接依赖供应商返回结构。
 - 保存 run/history/feedback 到 `data/runtime/briefings`。
 
 第二阶段：证据与安全可信度。
@@ -396,7 +396,7 @@ AI 模型类优先级：
 pnpm check:docs
 ```
 
-后续实现代码时，必须按 [验证体系规范](/docs/evals/verification-system-guidelines.md) 补齐五层验证。建议最小测试覆盖：
+后续实现代码时，必须按 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 补齐五层验证。建议最小测试覆盖：
 
 - `Spec`：新增或修改 `TechBriefingItem` / run record / raw evidence schema 时，补 parse 回归。
 - `Unit`：MCP search result -> normalized item、category classifier、dedupe、cross verification、ranking。
@@ -423,10 +423,10 @@ pnpm check:docs
 
 ## 5. 继续阅读
 
-- [架构总览](/docs/ARCHITECTURE.md)
-- [项目规范总览](/docs/project-conventions.md)
-- [后端 Runtime Module Notes](/docs/backend/runtime-module-notes.md)
-- [API 文档目录](/docs/api/README.md)
+- [架构总览](/docs/architecture/ARCHITECTURE.md)
+- [项目规范总览](/docs/conventions/project-conventions.md)
+- [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md)
+- [API 文档目录](/docs/contracts/api/README.md)
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
-- [验证体系规范](/docs/evals/verification-system-guidelines.md)
-- [Runtime API](/docs/api/runtime.md)
+- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md)
+- [Runtime API](/docs/contracts/api/runtime.md)

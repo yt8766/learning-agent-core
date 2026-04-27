@@ -1,0 +1,1 @@
+{"id":"rule_1777210584484","name":"升级失败模式规则","summary":"当评审给出阻断或重试时，沉淀一条更安全的重规划规则。","conditions":["taskId=task_1777210447741"],"action":"MCP capability local-analysis is not registered；MCP capability read_local_file is not registered；MCP capability list_directory is not registered","sourceTaskId":"task_1777210447741","createdAt":"2026-04-26T13:36:24.484Z"}

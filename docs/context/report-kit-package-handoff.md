@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/report-kit/README.md](/docs/report-kit/README.md)
-- [docs/report-kit/package-structure-guidelines.md](/docs/report-kit/package-structure-guidelines.md)
-- [docs/report-kit/data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
+- [docs/packages/report-kit/README.md](/docs/packages/report-kit/README.md)
+- [docs/packages/report-kit/package-structure-guidelines.md](/docs/packages/report-kit/package-structure-guidelines.md)
+- [docs/packages/report-kit/data-report-pipeline.md](/docs/packages/report-kit/data-report-pipeline.md)
 
 ## 改动边界
 

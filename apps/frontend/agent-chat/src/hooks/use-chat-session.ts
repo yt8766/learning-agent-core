@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { fetchChatSession } from '@/api/chat-query';
 import { createSessionStream, selectSession, appendMessage } from '@/api/chat-api';
+import type { AgentToolGovernanceProjection } from '@/lib/agent-tool-execution-api';
+import { getAgentToolGovernanceProjection } from '@/lib/agent-tool-execution-api';
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 import {
   buildSessionActivationPlan,
@@ -20,7 +22,10 @@ export { formatSessionTime, getMessageRoleLabel, getSessionStatusLabel };
 
 export function useChatSession() {
   const queryClient = useQueryClient();
-  const bootstrapFinished = useRef(false);
+  const bootstrapState = useRef({
+    autoCreateRequested: false,
+    finished: false
+  });
   const [sessions, setSessions] = useState<ChatSessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState('');
   const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
@@ -48,17 +53,50 @@ export function useChatSession() {
   const pendingUserIds = useRef<Record<string, string>>({});
   const pendingAssistantIds = useRef<Record<string, string>>({});
   const optimisticThinkingStartedAt = useRef<Record<string, string>>({});
+  const [agentToolGovernanceProjection, setAgentToolGovernanceProjection] = useState<
+    AgentToolGovernanceProjection | undefined
+  >(undefined);
 
   const activeSession = useMemo(
     () => sessions.find(session => session.id === activeSessionId),
     [sessions, activeSessionId]
   );
+  const activeTaskId = activeSession?.currentTaskId ?? checkpoint?.taskId;
   const pendingApprovals = checkpoint?.pendingApprovals ?? [];
   const hasMessages = messages.length > 0;
 
   useEffect(() => {
     checkpointRef.current = checkpoint;
   }, [checkpoint]);
+
+  useEffect(() => {
+    if (!activeSessionId) {
+      setAgentToolGovernanceProjection(undefined);
+      return;
+    }
+
+    let disposed = false;
+    setAgentToolGovernanceProjection(undefined);
+
+    void getAgentToolGovernanceProjection(globalThis.fetch, {
+      taskId: activeTaskId,
+      sessionId: activeSessionId
+    })
+      .then(nextProjection => {
+        if (!disposed) {
+          setAgentToolGovernanceProjection(nextProjection);
+        }
+      })
+      .catch(() => {
+        if (!disposed) {
+          setAgentToolGovernanceProjection(undefined);
+        }
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [activeSessionId, activeTaskId]);
 
   const chatActions = createChatSessionActions({
     activeSessionId,
@@ -97,7 +135,7 @@ export function useChatSession() {
     void (async () => {
       await chatActions.refreshSessions();
       if (!cancelled) {
-        bootstrapFinished.current = true;
+        bootstrapState.current.finished = true;
       }
     })();
     return () => {
@@ -106,17 +144,19 @@ export function useChatSession() {
   }, []);
 
   useEffect(() => {
-    if (!bootstrapFinished.current) {
+    if (!bootstrapState.current.finished) {
       return;
     }
 
     if (!sessions.length) {
-      if (!loading) {
+      if (!loading && !bootstrapState.current.autoCreateRequested) {
+        bootstrapState.current.autoCreateRequested = true;
         void chatActions.createNewSession();
       }
       return;
     }
 
+    bootstrapState.current.autoCreateRequested = false;
     const activeExists = sessions.some(session => session.id === activeSessionId);
     if (activeExists) {
       return;
@@ -214,6 +254,7 @@ export function useChatSession() {
     messages,
     events,
     checkpoint,
+    agentToolGovernanceProjection,
     draft,
     error,
     loading,

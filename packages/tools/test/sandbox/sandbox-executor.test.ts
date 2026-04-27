@@ -25,14 +25,14 @@ describe('LocalSandboxExecutor find-skills', () => {
   it('discovers installed, local, and cached remote skills from the workspace', async () => {
     const root = await createTempWorkspace('sandbox-find-skills');
     tempWorkspaces.push(root);
-    await mkdir(join(root, 'skills', 'repo-audit'), { recursive: true });
+    await mkdir(join(root, '.agents', 'skills', 'repo-audit'), { recursive: true });
     await mkdir(join(root, 'data', 'skills', 'remote-sources', 'bundled-marketplace'), { recursive: true });
     await mkdir(join(root, 'data', 'skills', 'installed', 'bundled-marketplace', 'repo_review_companion', '0.1.0'), {
       recursive: true
     });
 
     await writeFile(
-      join(root, 'skills', 'repo-audit', 'SKILL.md'),
+      join(root, '.agents', 'skills', 'repo-audit', 'SKILL.md'),
       '# Repo Audit\n\nAudit repository structure and review risks.'
     );
     await writeFile(

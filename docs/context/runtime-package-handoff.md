@@ -22,10 +22,10 @@
 
 ## 修改前先读
 
-- [docs/runtime/README.md](/docs/runtime/README.md)
-- [docs/runtime/package-structure-guidelines.md](/docs/runtime/package-structure-guidelines.md)
-- [docs/runtime/runtime-layering-adr.md](/docs/runtime/runtime-layering-adr.md)
-- [docs/runtime/runtime-state-machine.md](/docs/runtime/runtime-state-machine.md)
+- [docs/packages/runtime/README.md](/docs/packages/runtime/README.md)
+- [docs/packages/runtime/package-structure-guidelines.md](/docs/packages/runtime/package-structure-guidelines.md)
+- [docs/packages/runtime/runtime-layering-adr.md](/docs/packages/runtime/runtime-layering-adr.md)
+- [docs/packages/runtime/runtime-state-machine.md](/docs/packages/runtime/runtime-state-machine.md)
 
 ## 改动边界
 

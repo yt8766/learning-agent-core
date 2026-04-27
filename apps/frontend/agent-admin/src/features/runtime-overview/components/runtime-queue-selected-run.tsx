@@ -2,13 +2,20 @@ import { useEffect, useState } from 'react';
 
 import type { RunBundleRecord } from '@agent/core';
 
-import { getRunObservatory, getRunObservatoryDetail, isAbortedAdminRequestError } from '@/api/admin-api';
+import {
+  getAgentToolExecutionProjection,
+  getRunObservatory,
+  getRunObservatoryDetail,
+  isAbortedAdminRequestError
+} from '@/api/admin-api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RunObservatoryCompareCard } from '@/features/run-observatory/run-observatory-compare-card';
 import { RunObservatoryPanel } from '@/features/run-observatory/run-observatory-panel';
+import type { AgentToolObservatoryFilter } from '@/features/run-observatory/run-observatory-panel-support';
 
 import type { RuntimeOverviewPanelProps } from './runtime-overview-types';
+import type { AgentToolExecutionProjectionInput } from './runtime-agent-tool-execution-projections';
 import { RuntimeAgentGraphOverlayCard } from './runtime-agent-graph-overlay-card';
 import { buildAgentGraphOverlayFilter, type AgentGraphOverlayFilter } from './runtime-agent-graph-overlay-support';
 import { RuntimeNodeActivityLedgerCard } from './runtime-node-activity-ledger-card';
@@ -65,6 +72,10 @@ export function RuntimeQueueSelectedRun(
   const [baselineLoading, setBaselineLoading] = useState(false);
   const [graphFilter, setGraphFilter] = useState<AgentGraphOverlayFilter | undefined>(undefined);
   const [replayDraftSeed, setReplayDraftSeed] = useState<RuntimeRunWorkbenchReplayDraftSeed | undefined>(undefined);
+  const [agentToolExecutions, setAgentToolExecutions] = useState<AgentToolExecutionProjectionInput | undefined>(
+    undefined
+  );
+  const [agentToolFilter, setAgentToolFilter] = useState<AgentToolObservatoryFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +108,34 @@ export function RuntimeQueueSelectedRun(
       .finally(() => {
         if (!cancelled) {
           setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bundle?.task.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const taskId = bundle?.task.id;
+
+    if (!taskId) {
+      setAgentToolExecutions(undefined);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void getAgentToolExecutionProjection({ taskId })
+      .then(next => {
+        if (!cancelled) {
+          setAgentToolExecutions(next as AgentToolExecutionProjectionInput);
+        }
+      })
+      .catch(cause => {
+        if (!cancelled && !isAbortedAdminRequestError(cause)) {
+          setAgentToolExecutions(undefined);
         }
       });
 
@@ -219,6 +258,7 @@ export function RuntimeQueueSelectedRun(
               baselineRun={baselineRun}
               replayDraftSeed={replayDraftSeed}
               replayLaunchReceipt={replayLaunchReceipt}
+              agentToolExecutions={agentToolExecutions}
               onRetryTask={() => void onRetryTask(bundle.task.id)}
               onRerunFromSnapshot={params => void onLaunchWorkflowTask(params)}
               onFocusTargetChange={onObservatoryFocusTargetChange}
@@ -286,6 +326,9 @@ export function RuntimeQueueSelectedRun(
               error={error}
               focusTarget={observatoryFocusTarget}
               graphFilter={graphFilter}
+              agentToolExecutions={agentToolExecutions}
+              agentToolFilter={agentToolFilter}
+              onAgentToolFilterChange={setAgentToolFilter}
               onGraphFilterChange={filter => {
                 setGraphFilter(filter);
                 onGraphNodeIdChange(filter?.nodeId);

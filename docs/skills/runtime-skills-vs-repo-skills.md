@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：reference
-适用范围：`packages/skill-runtime`、`skills/`
-最后核对：2026-04-16
+适用范围：`packages/skill-runtime`、`.agents/skills/`
+最后核对：2026-04-26
 
 ## 1. 这篇文档说明什么
 
@@ -33,13 +33,13 @@
 - 仓库级代理说明
 - Codex / Claude Code 的工作流技能文档
 
-### `skills/`
+### `.agents/skills/`
 
 这是仓库级代理技能层，服务对象是代码代理。
 
 当前职责：
 
-- 给 Codex / Claude Code 提供技能说明
+- 给 Codex / Claude Code 提供技能说明；本仓库以 `.agents/skills` 作为 Codex 技能发现入口
 - 通过 `SKILL.md`、`references/`、`scripts/`、`assets/` 组织工作流知识
 - 支撑代码审查、学习流审计、OpenClaw 工作区审计、发布检查等代理工作流
 
@@ -64,7 +64,7 @@ packages/
 仓库级代理 skill：
 
 ```text
-skills/
+.agents/skills/
 ├─ README.md
 ├─ code-review/
 ├─ learning-flow-audit/
@@ -75,7 +75,7 @@ skills/
 ## 4. 容易犯错的地方
 
 - 不要把代理 skill 的说明文档写进 `packages/skill-runtime`
-- 不要把运行时 skill card / registry 写到 `skills/`
+- 不要把运行时 skill card / registry 写到 `.agents/skills/`
 - 不要因为都叫 skill，就让前后端、后端运行时、代码代理共用一套目录语义
 
 ## 5. 当前状态
@@ -84,10 +84,11 @@ skills/
 
 - `packages/runtime` 与 backend 上层代码已切到 `@agent/skill-runtime`
 - 运行时数据默认目录已切到 `data/skills`
+- 仓库级代理技能已迁入 `.agents/skills`，`workspace-skills` source 与 sandbox `find-skills` 均从该目录读取
 - 旧的兼容包与 alias 已删除，仓库只保留 `@agent/skill-runtime`
 
 ## 6. 继续阅读
 
-- [skills/README.md](/skills/README.md)
-- [skills 文档目录](/docs/skills/README.md)
-- [目录地图](/docs/repo-directory-overview.md)
+- [.agents/skills/README.md](/.agents/skills/README.md)
+- [repo skills 文档目录](/docs/skills/README.md)
+- [目录地图](/docs/maps/repo-directory-overview.md)

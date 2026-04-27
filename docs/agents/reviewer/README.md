@@ -22,4 +22,4 @@
 优先阅读：
 
 1. [package-structure-guidelines.md](/docs/agents/reviewer/package-structure-guidelines.md)
-2. [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
+2. [LangGraph 应用结构规范](/docs/conventions/langgraph-app-structure-guidelines.md)

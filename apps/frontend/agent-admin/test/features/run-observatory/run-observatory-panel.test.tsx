@@ -9,6 +9,73 @@ describe('RunObservatoryPanel', () => {
       <RunObservatoryPanel
         loading={false}
         selectedTaskId="task-1"
+        agentToolFilter="blocked"
+        agentToolExecutions={{
+          requests: [
+            {
+              requestId: 'req-1',
+              taskId: 'task-1',
+              toolName: 'terminal.exec',
+              nodeId: 'worker-gongbu',
+              status: 'pending_approval',
+              riskClass: 'high',
+              requestedAt: '2026-04-19T10:01:30.000Z'
+            },
+            {
+              requestId: 'req-2',
+              taskId: 'task-2',
+              toolName: 'browser.open',
+              status: 'running',
+              riskClass: 'low',
+              requestedAt: '2026-04-19T10:01:40.000Z'
+            }
+          ],
+          results: [
+            {
+              resultId: 'result-1',
+              requestId: 'req-1',
+              status: 'failed',
+              completedAt: '2026-04-19T10:02:30.000Z'
+            }
+          ],
+          policyDecisions: [
+            {
+              decisionId: 'policy-1',
+              requestId: 'req-1',
+              decision: 'require_approval',
+              riskClass: 'high',
+              reason: 'shell write requires approval'
+            }
+          ],
+          events: [
+            {
+              id: 'event-1',
+              sessionId: 'session-1',
+              type: 'execution_step_blocked',
+              at: '2026-04-19T10:02:00.000Z',
+              payload: {
+                taskId: 'task-1',
+                requestId: 'req-1',
+                toolName: 'terminal.exec',
+                nodeId: 'worker-gongbu',
+                status: 'blocked',
+                outputPreview: 'SECRET_VENDOR_PAYLOAD'
+              }
+            },
+            {
+              id: 'event-2',
+              sessionId: 'session-1',
+              type: 'execution_step_resumed',
+              at: '2026-04-19T10:03:00.000Z',
+              payload: {
+                taskId: 'task-2',
+                requestId: 'req-2',
+                toolName: 'browser.open',
+                status: 'resumed'
+              }
+            }
+          ]
+        }}
         focusTarget={{ kind: 'span', id: 'span-1' }}
         graphFilter={undefined}
         onGraphFilterChange={vi.fn()}
@@ -122,6 +189,16 @@ describe('RunObservatoryPanel', () => {
     expect(html).toContain('Span gongbu_execute');
     expect(html).toContain('interrupts 1');
     expect(html).toContain('evidence CI Retry Storm');
+    expect(html).toContain('Agent Tool Observatory');
+    expect(html).toContain('requests 1');
+    expect(html).toContain('results 1');
+    expect(html).toContain('events 1');
+    expect(html).toContain('policy 1');
+    expect(html).toContain('terminal.exec');
+    expect(html).toContain('execution_step_blocked');
+    expect(html).toContain('pending_approval · risk high · worker-gongbu');
+    expect(html).not.toContain('browser.open');
+    expect(html).not.toContain('SECRET_VENDOR_PAYLOAD');
   });
 
   it('filters observability sections by graph node filter', () => {

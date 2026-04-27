@@ -47,8 +47,10 @@ Workspace integration 当前覆盖：
 - `test/integration/frontend-backend/chat-session-stream-merge.int-spec.ts`：前端流式消息合并、停流与 checkpoint 状态
 - `test/integration/packages/core-to-runtime-contract.int-spec.ts`：core contract 到 runtime consumer
 - `test/integration/packages/platform-runtime-agent-assembly.int-spec.ts`：platform-runtime 官方 agent 装配
+- `test/integration/packages/platform-runtime-public-entrypoints.int-spec.ts`：platform-runtime 公开 facade、官方 registry 与 runtime dependencies 协同
 - `test/integration/runtime/runtime-main-chain.int-spec.ts`：runtime 主链 contract 与出口一致性
 - `test/integration/runtime/runtime-graph-execution.int-spec.ts`：runtime graph 最小执行闭环
+- `test/integration/runtime/runtime-graph-contract-projection.int-spec.ts`：runtime graph 结果投影到 core task / checkpoint contract
 - `test/integration/runtime/approval-recover-contract.int-spec.ts`：approval / recover contract
 - `test/integration/runtime/approval-recover-state-machine.int-spec.ts`：approval recover 状态迁移
 - `test/integration/runtime/learning-confirmation.int-spec.ts`：learning confirmation、memory、evidence 协同 contract
@@ -59,4 +61,6 @@ Workspace smoke 当前覆盖：
 - `test/smoke/backend/backend-module.smoke.ts`：backend Nest module 元数据与 runtime export surface
 - `test/smoke/apps/agent-chat-workspace.smoke.ts`：agent-chat OpenClaw workspace support helpers
 - `test/smoke/apps/agent-admin-dashboard.smoke.ts`：agent-admin 六大治理中心入口
+- `test/smoke/apps/agent-admin-centers.smoke.ts`：agent-admin 六大中心轻量 projection 与模块入口
 - `test/smoke/packages/package-public-entrypoints.smoke.ts`：关键 package 根出口与 package demo coverage
+- `test/smoke/workspace/workspace-smoke-entrypoints.smoke.ts`：workspace smoke 脚本接线、lane 覆盖与命名约束

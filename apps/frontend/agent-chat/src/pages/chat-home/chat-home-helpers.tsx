@@ -1,6 +1,7 @@
 ﻿import { Avatar } from 'antd';
 
 import { EVENT_LABELS, MINISTRY_LABELS, type SessionFilter, AGENT_LABELS } from './chat-home-constants';
+import { buildProjectedEventSummary } from '@/lib/chat-trajectory-projections';
 import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
 
 // Legacy mode aliases are normalized to executionPlan.mode before user-facing rendering.
@@ -34,6 +35,8 @@ export function getExecutionModeLabel(mode?: string) {
 
 export function buildEventSummary(eventItem: { type: string; payload: Record<string, unknown> }) {
   const payload = eventItem.payload;
+  const projectedSummary = buildProjectedEventSummary(eventItem);
+  if (projectedSummary) return humanizeOperationalCopy(projectedSummary);
   if (typeof payload.content === 'string' && payload.content) return humanizeOperationalCopy(payload.content);
   if (typeof payload.summary === 'string' && payload.summary) return humanizeOperationalCopy(payload.summary);
   if (typeof payload.reason === 'string' && payload.reason) return humanizeOperationalCopy(payload.reason);

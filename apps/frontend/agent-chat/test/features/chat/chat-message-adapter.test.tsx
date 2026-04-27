@@ -71,6 +71,79 @@ vi.mock('@ant-design/x', async () => {
 });
 
 describe('chat-message-adapter cognition rendering', () => {
+  it('用户消息展示会过滤工作流命令前缀', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'chat_msg_user_1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '/plan 你是谁',
+        createdAt: '2026-04-26T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('你是谁');
+    expect(html).not.toContain('/plan');
+  });
+
+  it('AI 回复会带 Agent 头像', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '成本超限，请简化问题或提高预算。',
+        createdAt: '2026-04-26T00:00:01.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const avatarHtml = renderToStaticMarkup(<>{items[0]?.avatar}</>);
+
+    expect(avatarHtml).toContain('chatx-assistant-avatar');
+  });
+
+  it('每条 AI 回复都会展示独立的已思考状态', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '成本超限，请简化问题或提高预算。',
+        createdAt: '2026-04-26T00:00:01.000Z'
+      },
+      {
+        id: 'assistant_2',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '我是一个多 Agent 协作助手，负责理解你的目标。',
+        createdAt: '2026-04-26T00:00:02.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const firstHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_1')?.content}</>);
+    const secondHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_2')?.content}</>);
+
+    expect(firstHtml).toContain('已思考');
+    expect(secondHtml).toContain('已思考');
+  });
+
   it('会把绑定到 progress stream 的 Think 渲染到主聊天线程里，但不再把运行态战报混进正文', () => {
     const messages: ChatMessageRecord[] = [
       {

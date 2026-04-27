@@ -30,6 +30,13 @@ export {
   type RecentQuarantinedMemory,
   type RuntimeGovernanceSnapshotRecord
 } from './runtime-learning-center';
+export {
+  buildRuntimeWorkspaceCenter,
+  type BuildRuntimeWorkspaceCenterInput,
+  type RuntimeWorkspaceCenterRecord,
+  type RuntimeWorkspaceSkillDraftRecord,
+  type SkillDraftStatus
+} from './runtime-workspace-center';
 export { buildLearningMemoryStats } from './runtime-learning-memory-stats';
 export { normalizeLearningCenterJobs, normalizeLearningCenterTasks } from './runtime-learning-center-normalization';
 export { countInvalidatedRules } from './runtime-learning-rule-stats';

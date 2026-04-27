@@ -108,4 +108,61 @@ describe('runWebSearchNode', () => {
       })
     );
   });
+
+  it('falls back to MiniMax Token Plan web_search when webSearchPrime is unavailable', async () => {
+    const invokeTool = vi.fn(async () => ({
+      ok: true,
+      rawOutput: {
+        results: [
+          {
+            title: 'React compiler release note',
+            url: 'https://react.dev/blog/compiler',
+            snippet: 'React compiler 发布了新版本',
+            sourceName: 'react.dev',
+            sourceType: 'official'
+          }
+        ],
+        suggestions: ['react compiler changelog']
+      }
+    }));
+
+    const state = await runWebSearchNode(
+      {
+        mode: 'patrol',
+        jobId: 'job_003',
+        startedAt: '2026-04-24T08:01:00.000Z',
+        searchTasks: [
+          {
+            taskId: 'job_003:frontend_frameworks:0',
+            topicKey: 'frontend_frameworks',
+            query: 'React compiler release',
+            priorityDefault: 'P0',
+            recencyHours: 24,
+            mode: 'patrol'
+          }
+        ]
+      },
+      {
+        mcpClientManager: {
+          hasCapability: capabilityId => capabilityId === 'minimax:web_search',
+          invokeTool
+        }
+      }
+    );
+
+    expect(invokeTool).toHaveBeenCalledWith(
+      'web_search',
+      expect.objectContaining({
+        toolName: 'web_search',
+        input: { query: 'React compiler release' }
+      })
+    );
+    expect(state.rawResults).toEqual([
+      expect.objectContaining({
+        query: 'React compiler release',
+        sourceName: 'react.dev',
+        title: 'React compiler release note'
+      })
+    ]);
+  });
 });

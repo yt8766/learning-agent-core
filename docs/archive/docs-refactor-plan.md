@@ -39,15 +39,15 @@
 
 ### 2.2 修正文档和现状不一致
 
-- [x] 更新 `docs/local-development-guide.md` 中与当前 `data/*` 目录不一致的描述
-- [x] 重写 `docs/project-template-guidelines.md` 中过时的 `agent-core` 目录模板
-- [x] 核对 `docs/frontend-conventions.md` 与当前 `agent-chat`、`agent-admin` 的 `src/features/*` 目录
-- [x] 核对 `docs/backend-conventions.md` 与当前 `apps/backend/agent-server/src/runtime/*` 的实际结构
+- [x] 更新 `docs/conventions/local-development-guide.md` 中与当前 `data/*` 目录不一致的描述
+- [x] 重写 `docs/conventions/project-template-guidelines.md` 中过时的 `agent-core` 目录模板
+- [x] 核对 `docs/conventions/frontend-conventions.md` 与当前 `agent-chat`、`agent-admin` 的 `src/features/*` 目录
+- [x] 核对 `docs/conventions/backend-conventions.md` 与当前 `apps/backend/agent-server/src/runtime/*` 的实际结构
 
 ### 2.3 收拢 `docs/` 根目录
 
 - [x] 将 `docs/frontend-backend-integration.md` 迁到 `docs/integration/frontend-backend-integration.md`
-- [x] 将 `docs/testing-coverage-baseline.md` 迁到 `docs/evals/testing-coverage-baseline.md`
+- [x] 将 `docs/testing-coverage-baseline.md` 迁到 `docs/packages/evals/testing-coverage-baseline.md`
 - [x] 更新 `docs/README.md` 中的索引路径
 - [x] 更新 `README.md` 中相关入口链接
 
@@ -57,42 +57,42 @@
 
 优先补这些文档：
 
-- [x] `docs/config/runtime-profiles.md`
-- [x] `docs/memory/storage-and-search.md`
+- [x] `docs/packages/config/runtime-profiles.md`
+- [x] `docs/packages/memory/storage-and-search.md`
 - [x] `docs/model/provider-and-fallback.md`
-- [x] `docs/tools/runtime-governance-and-sandbox.md`
-- [x] `docs/report-kit/data-report-pipeline.md`
+- [x] `docs/packages/tools/runtime-governance-and-sandbox.md`
+- [x] `docs/packages/report-kit/data-report-pipeline.md`
 - [x] `docs/skills/runtime-skills-vs-repo-skills.md`
-- [x] `docs/templates/template-registry-and-usage.md`
-- [x] `docs/evals/prompt-regression-and-thresholds.md`
+- [x] `docs/packages/templates/template-registry-and-usage.md`
+- [x] `docs/packages/evals/prompt-regression-and-thresholds.md`
 
 ### 3.2 给索引页补“当前专题列表”
 
-- [x] 更新 `docs/config/README.md`
-- [x] 更新 `docs/memory/README.md`
+- [x] 更新 `docs/packages/config/README.md`
+- [x] 更新 `docs/packages/memory/README.md`
 - [x] 更新 `docs/model/README.md`
-- [x] 更新 `docs/tools/README.md`
-- [x] 更新 `docs/report-kit/README.md`
+- [x] 更新 `docs/packages/tools/README.md`
+- [x] 更新 `docs/packages/report-kit/README.md`
 - [x] 更新 `docs/skills/README.md`
-- [x] 更新 `docs/templates/README.md`
-- [x] 更新 `docs/evals/README.md`
+- [x] 更新 `docs/packages/templates/README.md`
+- [x] 更新 `docs/packages/evals/README.md`
 
 ## 4. 后续拆分
 
 ### 4.1 拆大文档
 
 - [x] 将前后端联调文档拆成：
-  - `docs/integration/chat-session-sse.md`（历史路径；当前 API 契约已迁到 `docs/api/agent-chat.md`）
-  - `docs/integration/runtime-centers-api.md`（历史路径；当前 API 契约已拆到 `docs/api/agent-admin.md` 与 `docs/api/runtime.md`）
-  - `docs/integration/approval-recovery.md`（历史路径；当前 API 契约已迁到 `docs/api/approvals.md`）
+  - `docs/integration/chat-session-sse.md`（历史路径；当前 API 契约已迁到 `docs/contracts/api/agent-chat.md`）
+  - `docs/integration/runtime-centers-api.md`（历史路径；当前 API 契约已拆到 `docs/contracts/api/agent-admin.md` 与 `docs/contracts/api/runtime.md`）
+  - `docs/integration/approval-recovery.md`（历史路径；当前 API 契约已迁到 `docs/contracts/api/approvals.md`）
 - [x] 将架构文档拆成：
-  - `docs/ARCHITECTURE.md` 只保留长期方向
+  - `docs/architecture/ARCHITECTURE.md` 只保留长期方向
   - `docs/archive/agent-core/runtime-current-state.md`
-  - `docs/integration/system-flow-current-state.md`
+  - `docs/maps/system-flow-current-state.md`
 - [x] 将测试文档拆成：
-  - `docs/test-conventions.md`
-  - `docs/evals/testing-coverage-baseline.md`
-  - `docs/evals/prompt-regression-and-thresholds.md`
+  - `docs/conventions/test-conventions.md`
+  - `docs/packages/evals/testing-coverage-baseline.md`
+  - `docs/packages/evals/prompt-regression-and-thresholds.md`
 
 ### 4.2 清理命名
 
@@ -151,6 +151,6 @@
 
 - `README.md`
 - `docs/README.md`
-- `docs/repo-directory-overview.md`
+- `docs/maps/repo-directory-overview.md`
 - `docs/docs-refactor-plan.md`
 - 对应模块自己的 `README` 与专题文档

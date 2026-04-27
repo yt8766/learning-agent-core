@@ -1,3 +1,5 @@
+import type { ChatEventRecord } from '@agent/core';
+
 export interface RuntimeCenterThoughtGraphRecord {
   taskId: string;
   goal: string;
@@ -327,4 +329,53 @@ export interface RuntimeCenterToolsRecord {
     riskLevel?: string;
     usedAt: string;
   }>;
+  agentToolExecutions?: {
+    requests: Array<{
+      id?: string;
+      requestId?: string;
+      taskId: string;
+      toolName: string;
+      nodeId?: string;
+      capabilityId?: string;
+      status: string;
+      riskClass?: string;
+      policyDecisionId?: string;
+      requestedAt?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    }>;
+    results?: Array<{
+      id?: string;
+      resultId?: string;
+      requestId: string;
+      status: string;
+      completedAt?: string;
+      createdAt?: string;
+    }>;
+    capabilities?: Array<{
+      id?: string;
+      capabilityId?: string;
+      toolName: string;
+      nodeId?: string;
+      displayName?: string;
+      riskClass?: string;
+      requiresApproval?: boolean;
+    }>;
+    nodes?: Array<{
+      id?: string;
+      nodeId?: string;
+      displayName?: string;
+      status?: string;
+      riskClass?: string;
+    }>;
+    policyDecisions?: Array<{
+      id?: string;
+      decisionId?: string;
+      requestId: string;
+      decision: string;
+      riskClass?: string;
+      reason?: string;
+    }>;
+    events?: ChatEventRecord[];
+  };
 }

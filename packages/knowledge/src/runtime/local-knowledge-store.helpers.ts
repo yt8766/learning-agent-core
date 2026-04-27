@@ -63,7 +63,7 @@ export async function listKnowledgeCandidates(workspaceRoot: string) {
   const docsRoot = join(workspaceRoot, 'docs');
   const candidates: Array<{ absolutePath: string; relativePath: string; kind: KnowledgeSourceRecord['sourceType'] }> =
     [];
-  for (const file of ['README.md', 'docs/project-conventions.md']) {
+  for (const file of ['README.md', 'docs/conventions/project-conventions.md']) {
     candidates.push({
       absolutePath: join(workspaceRoot, file),
       relativePath: file,

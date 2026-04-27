@@ -3,6 +3,7 @@ import type { PromptRegressionConfigSummary } from '../helpers/prompt-regression
 import type { buildRuntimeCenter, buildRuntimeCenterSummary } from './runtime-runtime-center';
 import { buildCompanyAgentsCenter } from './runtime-company-agents-center';
 import { buildConnectorsCenter } from './runtime-connectors-center';
+import type { buildRuntimeWorkspaceCenter } from '../core/runtime-centers-facade';
 import { buildLearningCenter, buildLearningCenterSummary } from './runtime-learning-evidence-center';
 import { buildSkillSourcesCenter } from './runtime-skill-sources-center';
 import { buildToolsCenter } from '../tools/runtime-tools-center';
@@ -18,3 +19,4 @@ export type ConnectorsCenterRecord = ReturnType<typeof buildConnectorsCenter>;
 export type ToolsCenterRecord = ReturnType<typeof buildToolsCenter>;
 export type CompanyAgentsCenterRecord = ReturnType<typeof buildCompanyAgentsCenter>;
 export type SkillSourcesCenterRecord = ReturnType<typeof buildSkillSourcesCenter>;
+export type WorkspaceCenterRecord = ReturnType<typeof buildRuntimeWorkspaceCenter>;

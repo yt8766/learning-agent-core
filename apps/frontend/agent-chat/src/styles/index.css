@@ -21,3 +21,10 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+:root,
+.ant-table-body {
+  scrollbar-width: thin;
+  scrollbar-color: #eaeaea transparent;
+  scrollbar-gutter: stable;
+}

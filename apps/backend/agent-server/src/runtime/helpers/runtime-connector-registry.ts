@@ -307,7 +307,7 @@ export function listSkillSourcesSnapshot(settings: RuntimeConnectorRegistryConte
       id: 'workspace-skills',
       name: 'Workspace Skills',
       kind: 'internal' as const,
-      baseUrl: join(settings.workspaceRoot, 'skills'),
+      baseUrl: join(settings.workspaceRoot, '.agents', 'skills'),
       discoveryMode: 'local-dir' as const,
       syncStrategy: 'manual' as const,
       allowedProfiles: ['platform', 'company', 'personal', 'cli'] as const,

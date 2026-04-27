@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/knowledge/README.md](/docs/knowledge/README.md)
-- [docs/knowledge/indexing-package-guidelines.md](/docs/knowledge/indexing-package-guidelines.md)
-- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/packages/knowledge/README.md](/docs/packages/knowledge/README.md)
+- [docs/packages/knowledge/indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
+- [docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
 
 ## 改动边界
 

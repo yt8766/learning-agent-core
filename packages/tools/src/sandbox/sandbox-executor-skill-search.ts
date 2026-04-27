@@ -9,12 +9,11 @@ export async function executeFindSkills(request: ToolExecutionRequest) {
   const goal = typeof request.input.goal === 'string' ? request.input.goal : 'unknown goal';
   const limit = typeof request.input.limit === 'number' ? request.input.limit : 8;
   const workspaceRoot = process.cwd();
+  const localAgentSkillsRoot = resolve(workspaceRoot, '.agents', 'skills');
   const installedMetadataFiles = await collectFiles(resolve(workspaceRoot, 'data', 'skills', 'installed'), filePath =>
     filePath.endsWith('.json')
   );
-  const localSkillFiles = await collectFiles(resolve(workspaceRoot, 'skills'), filePath =>
-    filePath.endsWith('SKILL.md')
-  );
+  const localSkillFiles = await collectFiles(localAgentSkillsRoot, filePath => filePath.endsWith('SKILL.md'));
   const remoteIndexFiles = await collectFiles(resolve(workspaceRoot, 'data', 'skills', 'remote-sources'), filePath =>
     filePath.endsWith('index.json')
   );
@@ -64,7 +63,7 @@ export async function executeFindSkills(request: ToolExecutionRequest) {
         ?.replace(/^#+\s*/, '')
         .trim();
       local.push({
-        id: relative(resolve(workspaceRoot, 'skills'), dirname(filePath)),
+        id: relative(localAgentSkillsRoot, dirname(filePath)),
         displayName: firstHeading || relative(workspaceRoot, dirname(filePath)),
         kind: 'local-manifest',
         path: relative(workspaceRoot, filePath),

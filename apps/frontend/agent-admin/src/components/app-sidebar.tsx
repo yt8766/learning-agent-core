@@ -66,6 +66,7 @@ export const NAV_ITEMS: Array<{
   { key: 'runtime', label: '运行中枢', description: '运行态、队列、活跃尚书与任务脉冲', icon: SquareTerminal },
   { key: 'approvals', label: '审批中枢', description: '待审批动作、批注反馈与风险阻塞', icon: ClipboardCheck },
   { key: 'learning', label: '学习中枢', description: '自动沉淀、候选待审与学习质量', icon: BrainCircuit },
+  { key: 'workspace', label: 'Agent Workspace', description: '工作区、技能草稿与复用飞轮治理', icon: FolderKanban },
   { key: 'memory', label: '记忆中枢', description: '长期记忆治理、对比、回滚与效果洞察', icon: Database },
   { key: 'profiles', label: '画像中枢', description: '用户画像、偏好 patch 与作用域约束', icon: IdCard },
   { key: 'evals', label: '评测基线', description: 'benchmark 通过率、关键链路健康与回归基线', icon: FlaskConical },
@@ -105,8 +106,8 @@ export function AppSidebar(
     defaultPlatformNestedExpanded
   } = props;
 
-  const platformPrimary = NAV_ITEMS.slice(0, 5);
-  const platformNested = NAV_ITEMS.slice(5, 8);
+  const platformPrimary = NAV_ITEMS.slice(0, 6);
+  const platformNested = NAV_ITEMS.slice(6, 9);
   const [platformNestedExpanded, setPlatformNestedExpanded] = React.useState(
     () => defaultPlatformNestedExpanded ?? isPlatformNestedPage(page)
   );

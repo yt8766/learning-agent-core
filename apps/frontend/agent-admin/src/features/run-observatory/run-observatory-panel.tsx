@@ -6,8 +6,15 @@ import { DashboardEmptyState } from '@/components/dashboard-center-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RunObservatoryFocusCard } from './run-observatory-focus-card';
-import { buildFocusDomId, buildFocusTarget, type RunObservatoryFocusTarget } from './run-observatory-panel-support';
+import {
+  buildAgentToolObservatoryDetail,
+  buildFocusDomId,
+  buildFocusTarget,
+  type AgentToolObservatoryFilter,
+  type RunObservatoryFocusTarget
+} from './run-observatory-panel-support';
 import type { AgentGraphOverlayFilter } from '@/features/runtime-overview/components/runtime-agent-graph-overlay-support';
+import type { AgentToolExecutionProjectionInput } from '@/features/runtime-overview/components/runtime-agent-tool-execution-projections';
 import {
   CheckpointCard,
   DiagnosticsCard,
@@ -25,11 +32,25 @@ export function RunObservatoryPanel(props: {
   detail: RunBundleRecord | null;
   focusTarget?: RunObservatoryFocusTarget;
   graphFilter?: AgentGraphOverlayFilter;
+  agentToolExecutions?: AgentToolExecutionProjectionInput;
+  agentToolFilter?: AgentToolObservatoryFilter;
+  onAgentToolFilterChange?: (filter: AgentToolObservatoryFilter) => void;
   onGraphFilterChange?: (filter?: AgentGraphOverlayFilter) => void;
   onFocusTargetChange: (target: RunObservatoryFocusTarget) => void;
 }) {
-  const { selectedTaskId, loading, error, detail, focusTarget, onFocusTargetChange, graphFilter, onGraphFilterChange } =
-    props;
+  const {
+    selectedTaskId,
+    loading,
+    error,
+    detail,
+    focusTarget,
+    onFocusTargetChange,
+    graphFilter,
+    onGraphFilterChange,
+    agentToolExecutions,
+    agentToolFilter = 'all',
+    onAgentToolFilterChange
+  } = props;
 
   useEffect(() => {
     if (!focusTarget || typeof document === 'undefined') {
@@ -68,6 +89,7 @@ export function RunObservatoryPanel(props: {
     spanId: detail.traces[0]?.spanId,
     evidenceId: detail.evidence[0]?.id
   });
+  const agentToolObservatory = buildAgentToolObservatoryDetail(agentToolExecutions, selectedTaskId, agentToolFilter);
 
   return (
     <div className="grid gap-4">
@@ -99,6 +121,47 @@ export function RunObservatoryPanel(props: {
       </Card>
 
       <TimelineCard detail={detail} filter={graphFilter} />
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base font-semibold text-foreground">Agent Tool Observatory</CardTitle>
+          <Badge variant="outline">{agentToolObservatory.filter}</Badge>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">requests {agentToolObservatory.counts.requests}</Badge>
+            <Badge variant="outline">results {agentToolObservatory.counts.results}</Badge>
+            <Badge variant="outline">events {agentToolObservatory.counts.events}</Badge>
+            <Badge variant="outline">policy {agentToolObservatory.counts.policyDecisions}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'blocked', 'resumed', 'terminal', 'high_risk'] as const).map(filter => (
+              <button key={filter} type="button" onClick={() => onAgentToolFilterChange?.(filter)}>
+                <Badge variant={agentToolObservatory.filter === filter ? 'secondary' : 'outline'}>{filter}</Badge>
+              </button>
+            ))}
+          </div>
+          {agentToolObservatory.latestItems.length ? (
+            <div className="grid gap-2">
+              {agentToolObservatory.latestItems.map(item => (
+                <article key={item.id} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-3">
+                  <header className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm text-foreground">{item.title}</strong>
+                      <Badge variant="outline">{item.kind}</Badge>
+                    </div>
+                    {item.at ? (
+                      <span className="text-xs text-muted-foreground">{new Date(item.at).toLocaleString()}</span>
+                    ) : null}
+                  </header>
+                  {item.summary ? <p className="mt-2 text-sm text-muted-foreground">{item.summary}</p> : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">当前筛选下没有关联的 agent tool execution 详情。</p>
+          )}
+        </CardContent>
+      </Card>
       <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardContent className="flex flex-wrap gap-2 pt-6">
           <button type="button" onClick={() => onFocusTargetChange(defaultTarget)}>

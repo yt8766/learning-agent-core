@@ -95,8 +95,8 @@ PostgreSQL 负责持久化以下管理员登录相关表：
 1. 确认 `.db/` 已被 `.gitignore` 忽略。
 2. 复制 `apps/llm-gateway/.env.example` 中的变量到本地环境，并替换 `LLM_GATEWAY_ADMIN_JWT_SECRET` 等 secret。
 3. 启动 PostgreSQL：`pnpm --dir apps/llm-gateway docker:up`。
-4. 启动应用：`pnpm --dir apps/llm-gateway dev`。
-5. 打开后台登录页，用 `admin / <configured-password>` 首次登录；后端会把该管理员持久化到 PostgreSQL。
+4. 启动应用：`pnpm --dir apps/llm-gateway dev`。该脚本固定使用 `http://localhost:3100`。
+5. 打开后台登录页 `http://localhost:3100/admin`，用 `admin / <configured-password>` 首次登录；后端会把该管理员持久化到 PostgreSQL。
 
 ## 6. 验证入口
 

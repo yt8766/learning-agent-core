@@ -13,6 +13,7 @@ import {
   ChatMessageRecord,
   ChatSessionRecord,
   EvidenceRecord,
+  type AgentSkillReuseRecord,
   ConfiguredConnectorRecord,
   ConnectorDiscoveryHistoryRecord,
   CounselorSelectorConfig,
@@ -112,6 +113,7 @@ export interface RuntimeStateSnapshot {
     memoryId: string;
     record: EvidenceRecord;
   }>;
+  workspaceSkillReuseRecords?: AgentSkillReuseRecord[];
   governance?: {
     disabledSkillSourceIds?: string[];
     disabledCompanyWorkerIds?: string[];
@@ -234,6 +236,9 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatEvents: Array.isArray(parsed.chatEvents) ? parsed.chatEvents : [],
         chatCheckpoints: Array.isArray(parsed.chatCheckpoints) ? parsed.chatCheckpoints : [],
         crossCheckEvidence: Array.isArray(parsed.crossCheckEvidence) ? parsed.crossCheckEvidence : [],
+        workspaceSkillReuseRecords: Array.isArray(parsed.workspaceSkillReuseRecords)
+          ? parsed.workspaceSkillReuseRecords
+          : [],
         governance: {
           disabledSkillSourceIds: Array.isArray(parsed.governance?.disabledSkillSourceIds)
             ? parsed.governance?.disabledSkillSourceIds
@@ -305,6 +310,7 @@ export class FileRuntimeStateRepository implements RuntimeStateRepository {
         chatEvents: [],
         chatCheckpoints: [],
         crossCheckEvidence: [],
+        workspaceSkillReuseRecords: [],
         governance: {
           disabledSkillSourceIds: [],
           disabledCompanyWorkerIds: [],

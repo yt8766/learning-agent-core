@@ -54,6 +54,7 @@ export async function installSkillWithGovernance(input: {
     skillId: manifest.id,
     version: manifest.version,
     sourceId: source.id,
+    sourceDraftId: extractWorkspaceDraftId(manifest),
     phase: requiresApproval ? 'requested' : 'approved',
     integrity: manifest.integrity,
     approvedBy: requiresApproval ? undefined : (input.dto.actor ?? 'system'),
@@ -75,6 +76,23 @@ export async function installSkillWithGovernance(input: {
     await input.finalizeSkillInstall(manifest, source, receipt);
   }
   return receipt;
+}
+
+function extractWorkspaceDraftId(manifest: SkillManifestRecord): string | undefined {
+  if (manifest.sourceId !== 'workspace-skill-drafts') {
+    return undefined;
+  }
+
+  const metadataDraftId = manifest.metadata?.draftId;
+  if (typeof metadataDraftId === 'string' && metadataDraftId.trim()) {
+    return metadataDraftId;
+  }
+
+  if (manifest.entry?.startsWith('workspace-draft:')) {
+    return manifest.entry.slice('workspace-draft:'.length);
+  }
+
+  return undefined;
 }
 
 export async function approveSkillInstallWithGovernance(input: {

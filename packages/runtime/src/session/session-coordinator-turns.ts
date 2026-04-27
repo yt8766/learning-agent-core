@@ -2,10 +2,11 @@ import type {
   CapabilityAttachmentRecord,
   CapabilityAugmentationRecord,
   ChatSessionRecord,
+  ILLMProvider,
   RequestedExecutionHints
 } from '@agent/core';
-import { TaskStatus } from '@agent/core';
 import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
+import { runSessionDirectReply, shouldUseSessionDirectReply } from './session-coordinator-direct-reply';
 import { deriveRequestedHints } from './session-coordinator-routing-hints';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
@@ -21,6 +22,7 @@ type SessionCoordinatorTurnDeps = {
   orchestrator: AgentOrchestrator;
   store: SessionCoordinatorStore;
   thinking: SessionCoordinatorThinking;
+  llmProvider: ILLMProvider;
   syncTask: (sessionId: string, task: SessionTaskAggregate) => void;
 };
 
@@ -43,6 +45,10 @@ export async function runSessionTurn(
       return;
     }
     const taskContextHints = buildTaskContextHints(deps.store, sessionId, { modelId: input.modelId });
+    if (shouldUseSessionDirectReply(input.message, taskContextHints)) {
+      await runSessionDirectReply(deps, sessionId, input, taskContextHints);
+      return;
+    }
     const conversationContext = await deps.thinking.buildConversationContext(
       deps.store.requireSession(sessionId),
       deps.store.getCheckpoint(sessionId),

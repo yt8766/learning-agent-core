@@ -4,6 +4,7 @@ export * from './runtime-invocation';
 export * from './contracts/chat/index';
 export * from './contracts/ministries/index';
 export * from './contracts/execution/index';
+export * from './contracts/trajectory/index';
 export type { SharedPlatformConsoleRecord } from './contracts/platform-console/index';
 export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture/index';
 export type {
@@ -112,4 +113,6 @@ export * from './architecture';
 export * from './primitives';
 export * from './tasking';
 export * from './data-report';
+export * from './tools';
 export * from './contracts/approval/index';
+export * from './workspace';

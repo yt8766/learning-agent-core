@@ -18,6 +18,49 @@ import { describe, expect, it } from 'vitest';
 import { ChatEventRecordSchema } from '@agent/core';
 
 const CANONICAL_EVENT_TYPES: string[] = ChatEventRecordSchema.shape.type.options as string[];
+const AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST: Record<string, string[]> = {
+  tool_called: [
+    'requestId',
+    'toolName',
+    'inputPreview',
+    'policyDecision',
+    'sandboxRunId',
+    'sandboxDecision',
+    'sandboxProfile',
+    'autoReviewId',
+    'autoReviewVerdict'
+  ],
+  execution_step_started: ['requestId', 'nodeId', 'toolName', 'stage', 'sandboxRunId', 'autoReviewId'],
+  execution_step_completed: ['requestId', 'resultId', 'status', 'outputPreview', 'sandboxRunId', 'autoReviewId'],
+  execution_step_blocked: [
+    'requestId',
+    'reasonCode',
+    'approvalId',
+    'interruptId',
+    'sandboxRunId',
+    'sandboxProfile',
+    'autoReviewId',
+    'autoReviewVerdict',
+    'reviewId'
+  ],
+  execution_step_resumed: ['requestId', 'approvalId', 'interruptId', 'action', 'reviewId'],
+  review_completed: ['reviewId', 'kind', 'verdict', 'summary', 'findingCount'],
+  interrupt_pending: ['interruptId', 'kind', 'requestId', 'runId', 'reviewId', 'approvalId'],
+  interrupt_resumed: ['interruptId', 'kind', 'requestId', 'runId', 'reviewId', 'action'],
+  interrupt_rejected_with_feedback: ['interruptId', 'kind', 'requestId', 'reviewId', 'feedback']
+};
+const FORBIDDEN_AGENT_TOOL_PAYLOAD_FIELDS = [
+  'input',
+  'rawInput',
+  'rawOutput',
+  'metadata',
+  'vendorObject',
+  'vendorPayload',
+  'vendorResponse',
+  'rawVendorResponse',
+  'providerResponse',
+  'rawProviderResponse'
+];
 
 describe('frontend-backend SSE payload contract (第5类 integration)', () => {
   describe('canonical event type set', () => {
@@ -110,6 +153,40 @@ describe('frontend-backend SSE payload contract (第5类 integration)', () => {
         expect(CANONICAL_EVENT_TYPES).toContain(eventType);
       });
     }
+  });
+
+  describe('agent tool governance event payload allowlist', () => {
+    for (const eventType of Object.keys(AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST)) {
+      it(`canonical schema includes agent tool governance event type: '${eventType}'`, () => {
+        expect(CANONICAL_EVENT_TYPES).toContain(eventType);
+      });
+    }
+
+    it('does not allow raw input, raw output, metadata, vendor or provider payload fields', () => {
+      const allowlistedFields = new Set(Object.values(AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST).flat());
+
+      for (const forbiddenField of FORBIDDEN_AGENT_TOOL_PAYLOAD_FIELDS) {
+        expect(allowlistedFields.has(forbiddenField)).toBe(false);
+      }
+    });
+
+    it('keeps sandbox and auto-review governance fields as explicit summaries', () => {
+      expect(AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST['tool_called']).toEqual(
+        expect.arrayContaining([
+          'sandboxRunId',
+          'sandboxDecision',
+          'sandboxProfile',
+          'autoReviewId',
+          'autoReviewVerdict'
+        ])
+      );
+      expect(AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST['execution_step_blocked']).toEqual(
+        expect.arrayContaining(['reasonCode', 'approvalId', 'interruptId', 'sandboxRunId', 'autoReviewId', 'reviewId'])
+      );
+      expect(AGENT_TOOL_EVENT_PAYLOAD_ALLOWLIST['review_completed']).toEqual(
+        expect.arrayContaining(['reviewId', 'kind', 'verdict', 'summary', 'findingCount'])
+      );
+    });
   });
 
   describe('ChatEventRecordSchema.parse() (wire format validation)', () => {

@@ -172,4 +172,139 @@ describe('RuntimeRunWorkbenchCard', () => {
     expect(html).toContain('清除节点过滤');
     expect(html).toContain('清除基线');
   });
+
+  it('filters agent tool execution details by task id without leaking raw input payloads', () => {
+    const html = renderToStaticMarkup(
+      <RuntimeRunWorkbenchCard
+        bundle={
+          {
+            task: {
+              id: 'task-current',
+              goal: '/run inspect policy gates',
+              status: 'running'
+            }
+          } as any
+        }
+        detail={
+          {
+            run: {
+              taskId: 'task-current',
+              goal: '/run inspect policy gates',
+              status: 'running',
+              startedAt: '2026-04-19T10:00:00.000Z',
+              hasInterrupt: false,
+              hasFallback: false,
+              hasRecoverableCheckpoint: false,
+              hasEvidenceWarning: false,
+              diagnosticFlags: []
+            },
+            timeline: [],
+            traces: [],
+            checkpoints: [],
+            interrupts: [],
+            diagnostics: [],
+            artifacts: [],
+            evidence: []
+          } as any
+        }
+        agentToolExecutions={{
+          requests: [
+            {
+              requestId: 'request-current',
+              taskId: 'task-current',
+              toolName: 'shell.exec',
+              nodeId: 'worker-shell',
+              status: 'pending_approval',
+              riskClass: 'high',
+              requestedAt: '2026-04-19T10:00:10.000Z',
+              rawInput: 'DO_NOT_RENDER_SECRET_INPUT'
+            } as any,
+            {
+              requestId: 'request-other',
+              taskId: 'task-other',
+              toolName: 'browser.open',
+              status: 'succeeded',
+              riskClass: 'critical',
+              requestedAt: '2026-04-19T10:00:12.000Z',
+              rawInput: 'DO_NOT_RENDER_OTHER_TASK'
+            } as any
+          ],
+          results: [
+            {
+              requestId: 'request-current',
+              status: 'failed',
+              completedAt: '2026-04-19T10:00:20.000Z',
+              vendorPayload: 'DO_NOT_RENDER_VENDOR_PAYLOAD'
+            } as any,
+            {
+              requestId: 'request-other',
+              status: 'succeeded',
+              completedAt: '2026-04-19T10:00:22.000Z'
+            }
+          ],
+          policyDecisions: [
+            {
+              decisionId: 'decision-current',
+              requestId: 'request-current',
+              decision: 'require_approval',
+              riskClass: 'high',
+              reason: 'approval required'
+            },
+            {
+              decisionId: 'decision-other',
+              requestId: 'request-other',
+              decision: 'deny',
+              riskClass: 'critical',
+              reason: 'other task denied'
+            }
+          ],
+          events: [
+            {
+              id: 'event-current',
+              type: 'execution_step_blocked',
+              at: '2026-04-19T10:00:30.000Z',
+              payload: {
+                requestId: 'request-current',
+                taskId: 'task-current',
+                toolName: 'shell.exec',
+                status: 'pending_approval',
+                outputPreview: 'approval gate blocked'
+              }
+            },
+            {
+              id: 'event-other',
+              type: 'execution_step_blocked',
+              at: '2026-04-19T10:00:32.000Z',
+              payload: {
+                requestId: 'request-other',
+                taskId: 'task-other',
+                toolName: 'browser.open',
+                status: 'blocked',
+                outputPreview: 'other task event'
+              }
+            }
+          ] as any
+        }}
+        onRetryTask={vi.fn()}
+        onFocusTargetChange={vi.fn()}
+        onClearGraphFilter={vi.fn()}
+        onClearCompare={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('Agent Tool Execution');
+    expect(html).toContain('requests 1');
+    expect(html).toContain('terminal results 1');
+    expect(html).toContain('events 1');
+    expect(html).toContain('highest risk high');
+    expect(html).toContain('approval required');
+    expect(html).toContain('shell.exec');
+    expect(html).toContain('approval gate blocked');
+    expect(html).not.toContain('browser.open');
+    expect(html).not.toContain('other task event');
+    expect(html).not.toContain('critical');
+    expect(html).not.toContain('DO_NOT_RENDER_SECRET_INPUT');
+    expect(html).not.toContain('DO_NOT_RENDER_OTHER_TASK');
+    expect(html).not.toContain('DO_NOT_RENDER_VENDOR_PAYLOAD');
+  });
 });

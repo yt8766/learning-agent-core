@@ -40,7 +40,7 @@ export function formatChatError(nextError: unknown, fallbackMessage: string) {
       }
     }
     if (!nextError.response) {
-      return `${fallbackMessage}：当前无法连接后端 API，请确认 server 已启动且 ${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api'} 可达。`;
+      return `${fallbackMessage}：当前无法连接后端 API，请确认 server 已启动且 ${import.meta.env.VITE_API_BASE_URL ?? '/api'} 可达。`;
     }
     const detail =
       typeof nextError.response.data === 'string'

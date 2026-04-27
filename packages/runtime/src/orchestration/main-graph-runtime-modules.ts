@@ -65,7 +65,7 @@ export interface MainGraphRuntimeModuleBundle {
 export function createMainGraphRuntimeModules(params: MainGraphRuntimeModuleParams): MainGraphRuntimeModuleBundle {
   const toolRegistry = params.dependencies.toolRegistry ?? createDefaultToolRegistry();
   const workerRegistry = params.dependencies.workerRegistry ?? createDefaultWorkerRegistry();
-  const modelRoutingPolicy = new ModelRoutingPolicy(workerRegistry);
+  const modelRoutingPolicy = new ModelRoutingPolicy(workerRegistry, params.settings.routing);
   const graphCheckpointer = new MemorySaver();
   const refs: {
     lifecycle?: MainGraphLifecycle;
@@ -104,6 +104,26 @@ export function createMainGraphRuntimeModules(params: MainGraphRuntimeModulePara
             specialistDomain: task.specialistLead?.domain
           })
         : undefined;
+    },
+    recordWorkspaceSkillReuse: async record => {
+      const snapshot = await params.dependencies.runtimeStateRepository.load();
+      const workspaceId = `workspace-${params.settings.profile ?? 'platform'}`;
+      const nextRecord = {
+        ...record,
+        workspaceId,
+        reusedBy: {
+          id: 'agent-supervisor',
+          label: 'Supervisor',
+          kind: 'agent' as const
+        }
+      };
+      await params.dependencies.runtimeStateRepository.save({
+        ...snapshot,
+        workspaceSkillReuseRecords: [
+          ...(snapshot.workspaceSkillReuseRecords ?? []).filter(item => item.id !== nextRecord.id),
+          nextRecord
+        ]
+      });
     }
   });
 

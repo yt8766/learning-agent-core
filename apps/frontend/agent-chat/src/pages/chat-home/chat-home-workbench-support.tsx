@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import type { WorkspaceCenterReadinessSummary } from '@/api/workspace-center-api';
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { buildProjectContextSnapshot } from './chat-home-helpers';
 import { buildSubmitMessage, stripLeadingWorkflowCommand } from './chat-home-submit';
@@ -11,6 +12,17 @@ export interface QuickActionChip {
   icon: ReactNode;
   tone?: 'primary' | 'secondary';
 }
+
+export interface WorkspaceVaultSignal {
+  label: string;
+  value: string;
+  detail: string;
+  tone: 'blue' | 'cyan' | 'gold' | 'green' | 'orange';
+}
+
+type SkillInstallState = NonNullable<
+  NonNullable<ReturnType<typeof useChatSession>['checkpoint']>['skillSearch']
+>['suggestions'][number]['installState'];
 
 const QUICK_SUGGESTIONS: QuickActionChip[] = [
   {
@@ -150,6 +162,111 @@ export function buildQuickActionChips(chat: ReturnType<typeof useChatSession>): 
 export function buildWorkspaceFollowUpActions(chat: ReturnType<typeof useChatSession>) {
   const chips = buildQuickActionChips(chat);
   return chips.filter(item => ['继续深挖', '改成计划', '生成执行任务', '输出检查单'].includes(item.label));
+}
+
+export function buildWorkspaceVaultSignals(
+  chat: ReturnType<typeof useChatSession>,
+  workspaceCenterReadiness?: WorkspaceCenterReadinessSummary
+): WorkspaceVaultSignal[] {
+  const checkpoint = chat.checkpoint;
+  const evidenceCount = checkpoint?.externalSources?.length ?? 0;
+  const reusedMemoryCount = checkpoint?.reusedMemories?.length ?? 0;
+  const reusedRuleCount = checkpoint?.reusedRules?.length ?? 0;
+  const reusedSkillCount = checkpoint?.reusedSkills?.length ?? 0;
+  const installedSkillCount = checkpoint?.usedInstalledSkills?.length ?? 0;
+  const workerCount = checkpoint?.usedCompanyWorkers?.length ?? 0;
+  const connectorCount = checkpoint?.connectorRefs?.length ?? 0;
+  const learningEvaluation = checkpoint?.learningEvaluation;
+  const skillSearch = checkpoint?.skillSearch;
+  const workspaceSignalCount =
+    evidenceCount + reusedMemoryCount + reusedRuleCount + reusedSkillCount + workerCount + connectorCount;
+  const reuseCount = reusedMemoryCount + reusedRuleCount + reusedSkillCount + installedSkillCount + workerCount;
+  const skillDraftCandidateCount = learningEvaluation?.recommendedCandidateIds.length ?? 0;
+  const skillDraftAutoCount = learningEvaluation?.autoConfirmCandidateIds.length ?? 0;
+  const installReceiptSignal = buildInstallReceiptSignal(
+    skillSearch?.suggestions.map(suggestion => suggestion.installState).filter(Boolean) ?? []
+  );
+  const capabilityGapDetail =
+    skillSearch?.mcpRecommendation?.summary ||
+    skillSearch?.suggestions?.[0]?.displayName ||
+    skillSearch?.query ||
+    '当前能力可覆盖';
+
+  return [
+    {
+      label: 'Workspace signals',
+      value: `${workspaceSignalCount} 项`,
+      detail: checkpoint?.currentWorker ?? checkpoint?.currentMinistry ?? chat.activeSession?.status ?? 'idle',
+      tone: 'blue'
+    },
+    {
+      label: 'Evidence readiness',
+      value: `${evidenceCount} 条来源`,
+      detail: `internal ${learningEvaluation?.sourceSummary.internalSourceCount ?? 0}`,
+      tone: evidenceCount ? 'cyan' : 'orange'
+    },
+    {
+      label: 'Reuse readiness',
+      value: `${reuseCount} 项复用`,
+      detail: `技能 ${reusedSkillCount + installedSkillCount} · 角色 ${workerCount} · 连接器 ${connectorCount}`,
+      tone: reuseCount ? 'gold' : 'orange'
+    },
+    {
+      label: 'Skill draft readiness',
+      value: `${skillDraftCandidateCount} 个候选`,
+      detail: `auto ${skillDraftAutoCount} · confidence ${learningEvaluation?.confidence ?? 'none'}`,
+      tone: skillDraftCandidateCount ? 'green' : 'orange'
+    },
+    buildWorkspaceCenterSignal(workspaceCenterReadiness),
+    installReceiptSignal,
+    {
+      label: 'Capability gap',
+      value: skillSearch?.capabilityGapDetected ? '待补强' : '已覆盖',
+      detail: capabilityGapDetail,
+      tone: skillSearch?.capabilityGapDetected ? 'orange' : 'green'
+    }
+  ].filter(Boolean) as WorkspaceVaultSignal[];
+}
+
+function buildWorkspaceCenterSignal(readiness?: WorkspaceCenterReadinessSummary): WorkspaceVaultSignal | null {
+  if (!readiness) {
+    return null;
+  }
+
+  const readyCount = readiness.activeDraftCount;
+  const topDrafts = readiness.topDraftTitles.length ? ` · top ${readiness.topDraftTitles.join(', ')}` : '';
+
+  return {
+    label: 'Workspace Center',
+    value: `${readyCount} ready / ${readiness.skillDraftCount} drafts`,
+    detail: `approved ${readiness.approvedDraftCount} · reuse ${readiness.reuseRecordCount}${topDrafts}`,
+    tone: readiness.failedDraftCount ? 'orange' : readyCount ? 'green' : 'cyan'
+  };
+}
+
+function buildInstallReceiptSignal(installStates: SkillInstallState[]): WorkspaceVaultSignal | null {
+  if (!installStates.length) {
+    return null;
+  }
+
+  const installedCount = installStates.filter(state => state?.status === 'installed').length;
+  const failedCount = installStates.filter(state => state?.status === 'failed' || state?.status === 'rejected').length;
+  const primaryStatus =
+    installStates.length === 1 && installStates[0]?.status
+      ? `1 ${installStates[0].status}`
+      : failedCount
+        ? `${failedCount} failed`
+        : installedCount
+          ? `${installedCount} installed`
+          : `${installStates.length} pending`;
+  const receiptIds = installStates.map(state => state?.receiptId).filter(Boolean);
+
+  return {
+    label: 'Install receipts',
+    value: primaryStatus,
+    detail: receiptIds.length ? receiptIds.join(' · ') : 'receipt pending',
+    tone: failedCount ? 'orange' : installedCount ? 'green' : 'gold'
+  };
 }
 
 export function buildWorkspaceShareText(chat: ReturnType<typeof useChatSession>) {

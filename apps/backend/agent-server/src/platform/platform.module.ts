@@ -12,6 +12,7 @@ import { PlatformConsoleController } from './platform-console.controller';
 import { PlatformDiagnosticsController } from './platform-diagnostics.controller';
 import { RuntimeCenterController } from './runtime-center.controller';
 import { SkillSourcesCenterController } from './skill-sources-center.controller';
+import { WorkspaceCenterController } from './workspace-center.controller';
 
 @Module({
   imports: [RuntimeModule],
@@ -26,7 +27,8 @@ import { SkillSourcesCenterController } from './skill-sources-center.controller'
     CompanyAgentsCenterController,
     EvalsCenterController,
     PlatformBriefingsController,
-    PlatformDiagnosticsController
+    PlatformDiagnosticsController,
+    WorkspaceCenterController
   ]
 })
 export class PlatformModule {}

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyGovernanceOverrides,
   getDisabledCompanyWorkerIds,
+  listSkillSourcesSnapshot,
   registerConfiguredConnector,
   registerDiscoveredCapabilities
 } from '../../../src/runtime/helpers/runtime-connector-registry';
@@ -79,6 +80,19 @@ describe('runtime-connector-registry', () => {
     expect(context.mcpCapabilityRegistry.setCapabilityApprovalOverride).toHaveBeenCalledWith(
       'github-mcp:github.create_issue_comment',
       'deny'
+    );
+  });
+
+  it('points workspace skill source at the Codex .agents skills directory', () => {
+    const sources = listSkillSourcesSnapshot(context.settings);
+
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'workspace-skills',
+          baseUrl: '/workspace/.agents/skills'
+        })
+      ])
     );
   });
 

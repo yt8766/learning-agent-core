@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { PatchUserProfileDto } from '@agent/core';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 const http = axios.create({
   baseURL: API_BASE,

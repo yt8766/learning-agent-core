@@ -21,9 +21,9 @@
 
 ## 修改前先读
 
-- [docs/packages-overview.md](/docs/packages-overview.md)
-- [docs/adapters/README.md](/docs/adapters/README.md)
-- [docs/adapters/package-structure-guidelines.md](/docs/adapters/package-structure-guidelines.md)
+- [docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
+- [docs/packages/adapters/README.md](/docs/packages/adapters/README.md)
+- [docs/packages/adapters/package-structure-guidelines.md](/docs/packages/adapters/package-structure-guidelines.md)
 
 ## 改动边界
 

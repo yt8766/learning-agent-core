@@ -61,6 +61,7 @@ export async function autoInstallLocalManifest(context: RuntimeSkillInstallConte
     skillId: manifest.id,
     version: manifest.version,
     sourceId: source.id,
+    sourceDraftId: extractWorkspaceDraftId(manifest),
     approvedBy: 'runtime-auto',
     phase: 'approved',
     status: 'approved',
@@ -69,6 +70,23 @@ export async function autoInstallLocalManifest(context: RuntimeSkillInstallConte
 
   await writeSkillInstallReceipt(context, receipt);
   return finalizeSkillInstall(context, manifest, source, receipt);
+}
+
+function extractWorkspaceDraftId(manifest: SkillManifestRecord): string | undefined {
+  if (manifest.sourceId !== 'workspace-skill-drafts') {
+    return undefined;
+  }
+
+  const metadataDraftId = manifest.metadata?.draftId;
+  if (typeof metadataDraftId === 'string' && metadataDraftId.trim()) {
+    return metadataDraftId;
+  }
+
+  if (manifest.entry?.startsWith('workspace-draft:')) {
+    return manifest.entry.slice('workspace-draft:'.length);
+  }
+
+  return undefined;
 }
 
 export async function getSkillInstallReceipt(context: RuntimeSkillInstallContext, receiptId: string) {

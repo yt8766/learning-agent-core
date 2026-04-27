@@ -42,6 +42,13 @@ describe('AppSidebar', () => {
     expect(html).not.toContain('>六大中心<');
   });
 
+  it('renders a workspace navigation entry for the agent workspace center', () => {
+    const html = renderSidebar({ defaultPlatformNestedExpanded: false });
+
+    expect(html).toContain('Agent Workspace');
+    expect(html).toContain('工作区');
+  });
+
   it('only renders an expand control for the item that actually owns nested entries', () => {
     const html = renderSidebar({ defaultPlatformNestedExpanded: false });
 

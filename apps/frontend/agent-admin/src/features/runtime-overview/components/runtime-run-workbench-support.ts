@@ -3,6 +3,11 @@ import type { RunBundleRecord } from '@agent/core';
 import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
 
 import { resolveGraphFilterForFocusTarget, type AgentGraphOverlayFilter } from './runtime-agent-graph-overlay-support';
+import type {
+  AgentToolExecutionPolicyDecisionRecord,
+  AgentToolExecutionProjectionInput,
+  AgentToolExecutionRequestRecord
+} from './runtime-agent-tool-execution-projections';
 
 export interface RuntimeRunWorkbenchReplayDraftSeed {
   key: string;
@@ -19,6 +24,21 @@ export interface RuntimeReplayLaunchReceipt {
   sourceLabel?: string;
   scoped: boolean;
   baselineTaskId?: string;
+}
+
+export interface RuntimeRunWorkbenchAgentToolExecutionItem {
+  id: string;
+  at?: string;
+  title: string;
+  summary: string;
+}
+
+export interface RuntimeRunWorkbenchAgentToolExecutionDigest {
+  requestCount: number;
+  terminalResultCount: number;
+  eventCount: number;
+  governanceSummary?: string;
+  latestItems: RuntimeRunWorkbenchAgentToolExecutionItem[];
 }
 
 export function inferWorkflowCommand(goal: string) {
@@ -91,6 +111,55 @@ export function buildCurrentNodeSlice(detail?: RunBundleRecord | null, currentNo
 
 export function uniqueValues(values: Array<string | undefined>) {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
+export function buildAgentToolExecutionDigestForTask(
+  input: AgentToolExecutionProjectionInput | undefined,
+  taskId?: string
+): RuntimeRunWorkbenchAgentToolExecutionDigest {
+  if (!input || !taskId) {
+    return createEmptyAgentToolExecutionDigest();
+  }
+
+  const requests = (input.requests ?? []).filter(request => request.taskId === taskId);
+  const requestIds = new Set(requests.flatMap(request => uniqueValues([request.requestId, request.id])));
+  const results = (input.results ?? []).filter(result => requestIds.has(result.requestId));
+  const policyDecisions = (input.policyDecisions ?? []).filter(decision => requestIds.has(decision.requestId));
+  const events = (input.events ?? []).filter(event => {
+    const payload = event.payload;
+    const requestId = getPayloadString(payload, 'requestId') ?? getPayloadString(payload, 'executionRequestId');
+    const eventTaskId = getPayloadString(payload, 'taskId');
+    return (requestId ? requestIds.has(requestId) : false) || eventTaskId === taskId;
+  });
+
+  return {
+    requestCount: requests.length,
+    terminalResultCount: results.filter(result => isTerminalResultStatus(result.status)).length,
+    eventCount: events.length,
+    governanceSummary: buildAgentToolExecutionGovernanceSummary(requests, policyDecisions),
+    latestItems: [
+      ...events.map(event => ({
+        id: `event:${event.id}`,
+        at: event.at,
+        title: getPayloadString(event.payload, 'toolName') ?? event.type,
+        summary:
+          getPayloadString(event.payload, 'outputPreview') ??
+          getPayloadString(event.payload, 'status') ??
+          getPayloadString(event.payload, 'action') ??
+          'event recorded'
+      })),
+      ...requests.map(request => ({
+        id: `request:${request.requestId ?? request.id ?? request.toolName}`,
+        at: request.requestedAt ?? request.createdAt ?? request.updatedAt,
+        title: request.toolName,
+        summary: [request.status, request.riskClass ? `risk ${request.riskClass}` : undefined, request.nodeId]
+          .filter(Boolean)
+          .join(' · ')
+      }))
+    ]
+      .sort((left, right) => Date.parse(right.at ?? '') - Date.parse(left.at ?? ''))
+      .slice(0, 3)
+  };
 }
 
 export function buildReplayDraftSeedFromStoryStep(params: {
@@ -209,4 +278,61 @@ export function resolveGraphFilterForWorkbenchTarget(params: {
     detail: params.detail,
     target: params.target
   });
+}
+
+function createEmptyAgentToolExecutionDigest(): RuntimeRunWorkbenchAgentToolExecutionDigest {
+  return {
+    requestCount: 0,
+    terminalResultCount: 0,
+    eventCount: 0,
+    latestItems: []
+  };
+}
+
+function isTerminalResultStatus(status: string) {
+  return status === 'succeeded' || status === 'failed' || status === 'cancelled';
+}
+
+function buildAgentToolExecutionGovernanceSummary(
+  requests: AgentToolExecutionRequestRecord[],
+  policyDecisions: AgentToolExecutionPolicyDecisionRecord[]
+) {
+  const highestRisk = [
+    ...requests.map(request => request.riskClass),
+    ...policyDecisions.map(decision => decision.riskClass)
+  ]
+    .filter((riskClass): riskClass is string => Boolean(riskClass))
+    .sort((left, right) => riskPriority(right) - riskPriority(left))[0];
+  const approvalDecision = policyDecisions.find(decision => decision.decision === 'require_approval');
+  const deniedDecision = policyDecisions.find(decision => decision.decision === 'deny');
+  const pendingApprovalCount = requests.filter(request => request.status === 'pending_approval').length;
+  const decisionSummary = approvalDecision
+    ? ['approval required', approvalDecision.reason].filter(Boolean).join(' · ')
+    : deniedDecision
+      ? ['denied', deniedDecision.reason].filter(Boolean).join(' · ')
+      : pendingApprovalCount
+        ? `pending approval ${pendingApprovalCount}`
+        : undefined;
+
+  return [highestRisk ? `highest risk ${highestRisk}` : undefined, decisionSummary].filter(Boolean).join(' · ');
+}
+
+function getPayloadString(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function riskPriority(riskClass: string) {
+  switch (riskClass) {
+    case 'critical':
+      return 4;
+    case 'high':
+      return 3;
+    case 'medium':
+      return 2;
+    case 'low':
+      return 1;
+    default:
+      return 0;
+  }
 }

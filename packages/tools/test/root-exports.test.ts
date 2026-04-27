@@ -4,12 +4,18 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ApprovalService,
+  AgentToolAliasResolver,
+  AutoReviewGate,
   buildConnectorDraftConfig,
   buildConnectorSecretUpdateConfig,
+  buildDockerSandboxCommandPlan,
   buildAgentScaffold,
   buildPackageScaffold,
   clearCapabilityPolicyOverride,
   clearConnectorPolicyOverride,
+  CommandPolicy,
+  createDockerSandboxProviderPlugin,
+  DockerSandboxProvider,
   executeConnectorTool,
   executeFilesystemTool,
   executeRuntimeGovernanceTool,
@@ -25,11 +31,15 @@ import {
   McpSkillProviderRegistry,
   findConfiguredConnector,
   resolveConfiguredConnectorId,
+  RuleBasedReviewer,
   SandboxExecutor,
+  SandboxPolicy,
+  SandboxProviderRegistry,
   setCapabilityPolicyOverride,
   setConfiguredConnectorRecord,
   setConnectorEnabledState,
   setConnectorPolicyOverride,
+  SimulatedSandboxProvider,
   StubSandboxExecutor,
   ToolRiskClassifier,
   ToolRegistry,
@@ -37,7 +47,11 @@ import {
   createDefaultToolRegistry,
   writeScaffoldBundle
 } from '../src';
+import * as rootExports from '../src';
+import * as agentSurfaceExports from '../src/agent-surface';
 import * as approvalExports from '../src/approval';
+import * as autoReviewExports from '../src/auto-review';
+import * as commandExports from '../src/command';
 import * as contractRiskClassifierExports from '../src/contracts/tool-risk-classifier';
 import * as contractRegistryExports from '../src/contracts/tool-registry';
 import * as connectorExports from '../src/connectors';
@@ -76,6 +90,16 @@ describe('@agent/tools root exports', () => {
     expect(resolveConfiguredConnectorId).toBe(connectorGovernanceState.resolveConfiguredConnectorId);
     expect(setConfiguredConnectorRecord).toBe(connectorGovernanceState.setConfiguredConnectorRecord);
     expect(StubSandboxExecutor).toBe(sandboxExports.StubSandboxExecutor);
+    expect(DockerSandboxProvider).toBe(sandboxExports.DockerSandboxProvider);
+    expect(buildDockerSandboxCommandPlan).toBe(sandboxExports.buildDockerSandboxCommandPlan);
+    expect(createDockerSandboxProviderPlugin).toBe(sandboxExports.createDockerSandboxProviderPlugin);
+    expect(SandboxPolicy).toBe(sandboxExports.SandboxPolicy);
+    expect(SandboxProviderRegistry).toBe(sandboxExports.SandboxProviderRegistry);
+    expect(SimulatedSandboxProvider).toBe(sandboxExports.SimulatedSandboxProvider);
+    expect(CommandPolicy).toBe(commandExports.CommandPolicy);
+    expect(AutoReviewGate).toBe(autoReviewExports.AutoReviewGate);
+    expect(RuleBasedReviewer).toBe(autoReviewExports.RuleBasedReviewer);
+    expect(AgentToolAliasResolver).toBe(agentSurfaceExports.AgentToolAliasResolver);
     expect(buildAgentScaffold).toBe(scaffoldExports.buildAgentScaffold);
     expect(buildPackageScaffold).toBe(scaffoldExports.buildPackageScaffold);
     expect(inspectScaffoldTarget).toBe(scaffoldExports.inspectScaffoldTarget);
@@ -106,5 +130,10 @@ describe('@agent/tools root exports', () => {
   it('retains contract facade files as the stable contract-first tool entrypoints', () => {
     expect(existsSync(new URL('../src/contracts/tool-registry.ts', import.meta.url))).toBe(true);
     expect(existsSync(new URL('../src/contracts/tool-risk-classifier.ts', import.meta.url))).toBe(true);
+  });
+
+  it('does not expose sandbox provider internals from the root entrypoint', () => {
+    expect(rootExports).not.toHaveProperty('normalizeDockerSandboxError');
+    expect(rootExports).not.toHaveProperty('normalizeLocalProcessSandboxError');
   });
 });

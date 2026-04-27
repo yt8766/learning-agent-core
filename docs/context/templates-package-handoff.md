@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/templates/README.md](/docs/templates/README.md)
-- [docs/templates/package-structure-guidelines.md](/docs/templates/package-structure-guidelines.md)
-- [docs/templates/template-registry-and-usage.md](/docs/templates/template-registry-and-usage.md)
+- [docs/packages/templates/README.md](/docs/packages/templates/README.md)
+- [docs/packages/templates/package-structure-guidelines.md](/docs/packages/templates/package-structure-guidelines.md)
+- [docs/packages/templates/template-registry-and-usage.md](/docs/packages/templates/template-registry-and-usage.md)
 
 ## 改动边界
 

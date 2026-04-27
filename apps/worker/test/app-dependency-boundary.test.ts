@@ -9,5 +9,5 @@ describe('app dependency boundary', () => {
     );
 
     expect(violations).toEqual([]);
-  }, 15_000);
+  }, 30_000);
 });

@@ -58,6 +58,41 @@ describe('runtime-skill-install-actions local', () => {
     ).rejects.toThrow(/Skill manifest missing-manifest not found/);
   });
 
+  it('carries workspace draft provenance into local install receipts', async () => {
+    const source = { ...createInternalSkillSource(), id: 'workspace-skill-drafts' };
+    const manifest = {
+      id: 'workspace-draft-draft-1',
+      sourceId: 'workspace-skill-drafts',
+      version: '20260426010203',
+      integrity: 'sha256-workspace',
+      metadata: {
+        draftId: 'draft-1'
+      }
+    } as never;
+    const writeSkillInstallReceipt = vi.fn(async () => undefined);
+
+    await installSkillWithGovernance({
+      dto: { manifestId: 'workspace-draft-draft-1', actor: 'agent-admin-user' } as never,
+      runtimeStateRepository: {
+        load: vi.fn(async () => ({ governanceAudit: [] })),
+        save: vi.fn(async () => undefined)
+      },
+      listSkillSources: vi.fn(async () => [source]),
+      listSkillManifests: vi.fn(async () => [manifest]),
+      evaluateSkillManifestSafety: vi.fn(() => ({ verdict: 'allow' })),
+      writeSkillInstallReceipt,
+      finalizeSkillInstall: vi.fn(async () => undefined)
+    });
+
+    expect(writeSkillInstallReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId: 'workspace-draft-draft-1',
+        sourceId: 'workspace-skill-drafts',
+        sourceDraftId: 'draft-1'
+      })
+    );
+  });
+
   it('approves, rejects, and short-circuits local install receipts', async () => {
     const source = createInternalSkillSource();
     const installed = {

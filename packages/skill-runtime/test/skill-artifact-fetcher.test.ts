@@ -185,4 +185,75 @@ describe('SkillArtifactFetcher', () => {
     await fetcher.promoteFromStaging(dirResult.stagingDir, installDir);
     await expect(readFile(join(installDir, 'bundle', 'index.js'), 'utf8')).resolves.toContain('ok = true');
   });
+
+  it('materializes active workspace draft entries into skill markdown artifacts', async () => {
+    await mkdir(join(workspaceRoot, 'data', 'skills', 'drafts'), { recursive: true });
+    await writeFile(
+      join(workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json'),
+      JSON.stringify(
+        [
+          {
+            id: 'draft-browser-evidence',
+            workspaceId: 'workspace-platform',
+            title: 'Reuse browser evidence',
+            description: 'Capture repeated browser evidence collection.',
+            triggerHints: ['browser evidence'],
+            bodyMarkdown: '# Reuse browser evidence\n\nOpen the evidence source and cite it.',
+            requiredTools: ['browser.open'],
+            requiredConnectors: ['browser-mcp'],
+            sourceTaskId: 'task-1',
+            source: 'workspace-vault',
+            riskLevel: 'medium',
+            confidence: 0.82,
+            sourceEvidenceIds: ['evidence-1'],
+            status: 'active',
+            reuseStats: { count: 0 },
+            approvedBy: 'reviewer-1',
+            approvedAt: '2026-04-26T01:02:03.000Z',
+            createdAt: '2026-04-26T01:00:00.000Z',
+            updatedAt: '2026-04-26T01:02:03.000Z'
+          }
+        ],
+        null,
+        2
+      )
+    );
+
+    const fetcher = new SkillArtifactFetcher(workspaceRoot);
+    const result = await fetcher.fetchToStaging(
+      {
+        id: 'workspace-draft-draft-browser-evidence',
+        sourceId: 'workspace-skill-drafts',
+        name: 'Reuse browser evidence',
+        description: 'Capture repeated browser evidence collection.',
+        version: '20260426010203',
+        entry: 'workspace-draft:draft-browser-evidence',
+        riskLevel: 'medium',
+        approvalPolicy: 'high-risk-only',
+        requiredCapabilities: ['browser.open'],
+        requiredConnectors: ['browser-mcp'],
+        allowedTools: ['browser.open']
+      } as any,
+      {
+        id: 'workspace-skill-drafts',
+        kind: 'internal',
+        enabled: true
+      } as any,
+      'receipt-workspace-draft'
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        integrityVerified: true,
+        metadata: {
+          mode: 'workspace-draft',
+          draftId: 'draft-browser-evidence'
+        }
+      })
+    );
+    await expect(readFile(join(result.stagingDir, 'SKILL.md'), 'utf8')).resolves.toContain('Open the evidence source');
+    await expect(readFile(join(result.stagingDir, 'manifest.json'), 'utf8')).resolves.toContain(
+      'workspace-draft-draft-browser-evidence'
+    );
+  });
 });
