@@ -20,6 +20,21 @@ export interface SandboxExecutor {
   execute(request: ToolExecutionRequest): Promise<ToolExecutionResult>;
 }
 
+class UnsupportedSandboxToolError extends Error {
+  readonly rawOutput: unknown;
+
+  constructor(request: ToolExecutionRequest) {
+    super(`unsupported_tool: ${request.toolName}`);
+    this.name = 'UnsupportedSandboxToolError';
+    this.rawOutput = {
+      code: 'unsupported_tool',
+      toolName: request.toolName,
+      intent: request.intent,
+      inputSummary: summarizeSandboxInput(request.input)
+    };
+  }
+}
+
 export class LocalSandboxExecutor implements SandboxExecutor {
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
     const startedAt = Date.now();
@@ -34,6 +49,17 @@ export class LocalSandboxExecutor implements SandboxExecutor {
         durationMs: Date.now() - startedAt
       };
     } catch (error) {
+      if (error instanceof UnsupportedSandboxToolError) {
+        return {
+          ok: false,
+          outputSummary: 'Unsupported sandbox tool',
+          rawOutput: error.rawOutput,
+          errorMessage: error.message,
+          exitCode: 1,
+          durationMs: Date.now() - startedAt
+        };
+      }
+
       return {
         ok: false,
         outputSummary: 'Sandbox execution failed',
@@ -75,7 +101,13 @@ export class LocalSandboxExecutor implements SandboxExecutor {
         return {
           outputSummary:
             'HTTP requests remain disabled in the local sandbox. Use this as an approval placeholder only.',
-          rawOutput: { blocked: true, reason: 'network_restricted', request: request.input }
+          rawOutput: {
+            blocked: true,
+            placeholder: true,
+            simulated: true,
+            reason: 'network_restricted',
+            requestSummary: summarizeHttpRequestInput(request.input)
+          }
         };
       }
       case 'local-analysis': {
@@ -249,16 +281,23 @@ export class LocalSandboxExecutor implements SandboxExecutor {
         };
       }
       default: {
-        return {
-          outputSummary: `Sandbox stub executed ${request.toolName}`,
-          rawOutput: {
-            intent: request.intent,
-            input: request.input
-          }
-        };
+        throw new UnsupportedSandboxToolError(request);
       }
     }
   }
+}
+
+function summarizeHttpRequestInput(input: ToolExecutionRequest['input']) {
+  return {
+    method: typeof input.method === 'string' ? input.method : 'GET',
+    url: typeof input.url === 'string' ? input.url : undefined
+  };
+}
+
+function summarizeSandboxInput(input: ToolExecutionRequest['input']) {
+  return {
+    fieldNames: Object.keys(input).sort()
+  };
 }
 
 export class StubSandboxExecutor extends LocalSandboxExecutor {}

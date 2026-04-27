@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ActionIntent, TaskStatus } from '@agent/core';
 import type { RuntimeStateRepository, RuntimeStateSnapshot } from '@agent/memory';
@@ -60,6 +60,14 @@ class InMemoryRuntimeStateRepository implements RuntimeStateRepository {
 function createSessionOrchestratorStub() {
   return {
     async initialize() {},
+    createTask: vi.fn(async (dto: { goal: string; sessionId?: string }) => ({
+      id: `task-${Date.now()}`,
+      goal: dto.goal,
+      sessionId: dto.sessionId,
+      status: TaskStatus.QUEUED,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })),
     async cancelTask() {
       return null;
     },
@@ -72,7 +80,99 @@ function createSessionOrchestratorStub() {
   };
 }
 
+function createLlmProviderStub(response = 'Codex 是一个面向代码和开发任务的 AI 助手。') {
+  return {
+    providerId: 'test',
+    displayName: 'Test LLM',
+    supportedModels: vi.fn(() => []),
+    isConfigured: vi.fn(() => true),
+    generateText: vi.fn(async () => response),
+    streamText: vi.fn(async (_messages, _options, onToken: (token: string) => void) => {
+      for (const token of response.split('')) {
+        onToken(token);
+      }
+      return response;
+    }),
+    generateObject: vi.fn()
+  };
+}
+
+async function waitForCondition(assertion: () => boolean | undefined, timeoutMs = 500): Promise<void> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (assertion()) {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  expect(assertion()).toBe(true);
+}
+
 describe('@agent/runtime session inline capability integration', () => {
+  it('answers general chat prompts through the session direct-reply fast path without creating a runtime task', async () => {
+    const repository = new InMemoryRuntimeStateRepository();
+    const orchestrator = createSessionOrchestratorStub();
+    const llmProvider = createLlmProviderStub('Codex 是 OpenAI 的代码协作智能体。');
+    const coordinator = new SessionCoordinator(orchestrator as never, repository, llmProvider as never);
+
+    const session = await coordinator.createSession({});
+    const userMessage = await coordinator.appendMessage(session.id, {
+      message: 'codex 是什么'
+    });
+
+    await waitForCondition(() => coordinator.getSession(session.id)?.status === 'completed');
+
+    const messages = coordinator.getMessages(session.id);
+    const events = coordinator.getEvents(session.id);
+    const checkpoint = coordinator.getCheckpoint(session.id);
+
+    expect(userMessage.role).toBe('user');
+    expect(orchestrator.createTask).not.toHaveBeenCalled();
+    expect(llmProvider.streamText).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'system', content: expect.stringContaining('不要启动任务编排') }),
+        expect.objectContaining({ role: 'user', content: 'codex 是什么' })
+      ]),
+      expect.objectContaining({ role: 'manager', temperature: 0.2 }),
+      expect.any(Function)
+    );
+    expect(messages.map(item => item.role)).toEqual(['user', 'assistant']);
+    expect(messages[1]?.content).toBe('Codex 是 OpenAI 的代码协作智能体。');
+    expect(events.map(item => item.type)).toEqual(
+      expect.arrayContaining(['user_message', 'node_status', 'assistant_token', 'assistant_message'])
+    );
+    expect(checkpoint?.chatRoute).toMatchObject({
+      flow: 'direct-reply',
+      reason: 'session_fast_path_general_prompt'
+    });
+    expect(checkpoint?.graphState).toMatchObject({
+      status: 'completed',
+      currentStep: 'direct_reply'
+    });
+  });
+
+  it('keeps execution-like prompts on the runtime task path', async () => {
+    const repository = new InMemoryRuntimeStateRepository();
+    const orchestrator = createSessionOrchestratorStub();
+    const llmProvider = createLlmProviderStub();
+    const coordinator = new SessionCoordinator(orchestrator as never, repository, llmProvider as never);
+
+    const session = await coordinator.createSession({});
+    await coordinator.appendMessage(session.id, {
+      message: '帮我实现一个 approval recovery 的回归测试'
+    });
+
+    await waitForCondition(() => orchestrator.createTask.mock.calls.length > 0);
+
+    expect(llmProvider.streamText).not.toHaveBeenCalled();
+    expect(orchestrator.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        goal: '帮我实现一个 approval recovery 的回归测试',
+        sessionId: session.id
+      })
+    );
+  });
+
   it('persists session, messages, events and checkpoint for inline capability replies', async () => {
     const repository = new InMemoryRuntimeStateRepository();
     const coordinator = new SessionCoordinator(createSessionOrchestratorStub() as never, repository, {} as never);

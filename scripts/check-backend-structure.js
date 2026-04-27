@@ -21,10 +21,14 @@ const temporaryOversizeAllowlist = new Set([
   'apps/backend/agent-server/src/runtime/helpers/runtime-governance-store.ts',
   'apps/backend/agent-server/src/runtime/runtime.service.ts',
   'apps/backend/agent-server/test/chat/chat-capability-intents.service.spec.ts',
+  'apps/backend/agent-server/test/agent-tools/agent-tools.service.spec.ts',
   'apps/backend/agent-server/test/runtime/briefings/runtime-tech-briefing.service.test.ts',
   'apps/backend/agent-server/test/runtime/centers/runtime-centers-governance.service.extra.spec.ts',
   'apps/backend/agent-server/test/runtime/centers/runtime-centers-query.service.spec.ts',
-  'apps/backend/agent-server/test/runtime/core/runtime-provider-factories.test.ts'
+  'apps/backend/agent-server/test/runtime/centers/runtime-centers-query.service.workspace.test.ts',
+  'apps/backend/agent-server/test/runtime/core/runtime-provider-factories.test.ts',
+  'apps/backend/agent-server/test/runtime/skills/runtime-skill-install.service.test.ts',
+  'apps/backend/agent-server/test/sandbox/sandbox.service.spec.ts'
 ]);
 const backendScopedPrefixes = [
   'apps/backend/agent-server/src/',

@@ -18,9 +18,9 @@
 
 ## 修改前先读
 
-- [docs/platform-runtime/README.md](/docs/platform-runtime/README.md)
-- [docs/platform-runtime/official-composition-root-adr.md](/docs/platform-runtime/official-composition-root-adr.md)
-- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/packages/platform-runtime/README.md](/docs/packages/platform-runtime/README.md)
+- [docs/packages/platform-runtime/official-composition-root-adr.md](/docs/packages/platform-runtime/official-composition-root-adr.md)
+- [docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
 
 ## 改动边界
 

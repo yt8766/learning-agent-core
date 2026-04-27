@@ -4,31 +4,63 @@ import path from 'node:path';
 const WORKSPACE_ROOT = process.cwd();
 const DOCS_ROOT = path.resolve('docs');
 const EXTRA_LINK_CHECK_FILES = [path.resolve('README.md'), path.resolve('AGENTS.md')];
-const REQUIRED_TOP_LEVEL_DIRS = ['archive', 'agents'];
+const REQUIRED_TOP_LEVEL_DIRS = [
+  'architecture',
+  'maps',
+  'conventions',
+  'apps',
+  'packages',
+  'agents',
+  'skills',
+  'contracts',
+  'integration',
+  'qa',
+  'evals',
+  'context',
+  'workflows',
+  'archive'
+];
 const REQUIRED_INDEX_DIRS = [
-  'docs/adapters',
+  'docs/architecture',
+  'docs/maps',
+  'docs/conventions',
+  'docs/apps',
+  'docs/apps/backend',
+  'docs/apps/backend/agent-server',
+  'docs/apps/backend/worker',
+  'docs/apps/frontend',
+  'docs/apps/frontend/agent-admin',
+  'docs/apps/frontend/agent-chat',
+  'docs/apps/frontend/llm-gateway',
+  'docs/packages',
+  'docs/packages/adapters',
+  'docs/packages/agent-kit',
+  'docs/packages/config',
+  'docs/packages/core',
+  'docs/packages/evals',
+  'docs/packages/knowledge',
+  'docs/packages/memory',
+  'docs/packages/platform-runtime',
+  'docs/packages/report-kit',
+  'docs/packages/runtime',
+  'docs/packages/skill-runtime',
+  'docs/packages/templates',
+  'docs/packages/tools',
+  'docs/agents',
+  'docs/agents/data-report',
+  'docs/skills',
+  'docs/contracts',
+  'docs/contracts/api',
+  'docs/integration',
+  'docs/qa',
+  'docs/evals',
+  'docs/context',
+  'docs/workflows',
   'docs/archive',
   'docs/archive/agent-core',
   'docs/archive/agent-core/archive',
-  'docs/agents',
-  'docs/agents/data-report',
-  'docs/backend',
-  'docs/config',
-  'docs/core',
-  'docs/evals',
-  'docs/frontend',
-  'docs/frontend/agent-admin',
-  'docs/frontend/agent-chat',
-  'docs/integration',
-  'docs/memory',
   'docs/archive/model',
-  'docs/report-kit',
-  'docs/runtime',
-  'docs/shared',
-  'docs/skill-runtime',
-  'docs/skills',
-  'docs/templates',
-  'docs/tools'
+  'docs/archive/shared'
 ];
 const ALLOWED_STATUSES = new Set(['current', 'completed', 'snapshot', 'history', 'archive']);
 const ALLOWED_TYPES = new Set([
@@ -196,7 +228,7 @@ for (const file of files) {
   if (rel === 'docs/README.md') {
     const forbiddenPriorityLinks = [
       '/docs/docs-refactor-plan.md',
-      '/docs/evals/testing-coverage-baseline.md',
+      '/docs/packages/evals/testing-coverage-baseline.md',
       '/docs/archive/'
     ];
     for (const bad of forbiddenPriorityLinks) {

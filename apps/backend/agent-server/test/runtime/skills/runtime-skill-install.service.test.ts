@@ -1,9 +1,10 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SkillArtifactFetcher } from '@agent/skill-runtime';
 
 const { buildSkillsAddCommandMock, buildSkillsCheckCommandMock, buildSkillsUpdateCommandMock, execShellCommandMock } =
   vi.hoisted(() => ({
@@ -206,6 +207,92 @@ describe('runtime-skill-install.service', () => {
     await expect(
       readFile(join(workspaceRoot, 'packages', 'internal', 'skill-local', '1.0.0', 'skill-local@1.0.0.json'), 'utf8')
     ).resolves.toContain('"skill-local"');
+  });
+
+  it('finalizes workspace draft manifests through the real artifact fetcher', async () => {
+    const context = createContext(workspaceRoot);
+    context.skillArtifactFetcher = new SkillArtifactFetcher(workspaceRoot);
+    const draftsRoot = join(workspaceRoot, 'data', 'skills', 'drafts');
+    await mkdir(draftsRoot, { recursive: true });
+    await writeFile(
+      join(draftsRoot, 'workspace-drafts.json'),
+      JSON.stringify(
+        [
+          {
+            id: 'draft-browser-evidence',
+            workspaceId: 'workspace-platform',
+            title: 'Reuse browser evidence',
+            description: 'Capture repeated browser evidence collection.',
+            triggerHints: ['browser evidence'],
+            bodyMarkdown: '# Reuse browser evidence\n\nOpen the evidence source and cite it.',
+            requiredTools: ['browser.open'],
+            requiredConnectors: ['browser-mcp'],
+            sourceTaskId: 'task-1',
+            source: 'workspace-vault',
+            riskLevel: 'medium',
+            confidence: 0.82,
+            sourceEvidenceIds: ['evidence-1'],
+            status: 'active',
+            reuseStats: { count: 0 },
+            approvedBy: 'reviewer-1',
+            approvedAt: '2026-04-26T01:02:03.000Z',
+            createdAt: '2026-04-26T01:00:00.000Z',
+            updatedAt: '2026-04-26T01:02:03.000Z'
+          }
+        ],
+        null,
+        2
+      )
+    );
+
+    const manifest = {
+      id: 'workspace-draft-draft-browser-evidence',
+      sourceId: 'workspace-skill-drafts',
+      name: 'Reuse browser evidence',
+      description: 'Capture repeated browser evidence collection.',
+      summary: 'Capture repeated browser evidence collection.',
+      version: '20260426010203',
+      entry: 'workspace-draft:draft-browser-evidence',
+      approvalPolicy: 'high-risk-only',
+      riskLevel: 'medium',
+      allowedTools: ['browser.open'],
+      requiredCapabilities: ['browser.open'],
+      requiredConnectors: ['browser-mcp']
+    } as any;
+    const source = { id: 'workspace-skill-drafts', kind: 'internal', enabled: true } as any;
+    const receipt = {
+      id: 'receipt-workspace-draft',
+      skillId: manifest.id,
+      version: manifest.version,
+      sourceId: source.id,
+      status: 'approved',
+      phase: 'approved',
+      result: 'ready'
+    } as any;
+
+    const installed = await finalizeSkillInstall(context, manifest, source, receipt);
+
+    expect(installed).toEqual(
+      expect.objectContaining({
+        skillId: 'workspace-draft-draft-browser-evidence',
+        sourceId: 'workspace-skill-drafts',
+        status: 'installed'
+      })
+    );
+    const installDir = join(
+      workspaceRoot,
+      'packages',
+      'internal',
+      'workspace-draft-draft-browser-evidence',
+      '20260426010203'
+    );
+    await expect(readFile(join(installDir, 'SKILL.md'), 'utf8')).resolves.toContain('Open the evidence source');
+    expect(context.publishToLab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'workspace-draft-draft-browser-evidence',
+        installReceiptId: 'receipt-workspace-draft'
+      })
+    );
   });
 
   it('records failed local installs and cleans staging when artifact fetching throws', async () => {

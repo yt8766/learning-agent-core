@@ -11,6 +11,8 @@ export interface SkillArtifactFetchResult {
   metadata: Record<string, unknown>;
 }
 
+const WORKSPACE_DRAFT_ENTRY_PREFIX = 'workspace-draft:';
+
 function resolvePath(candidate: string, workspaceRoot: string): string {
   return isAbsolute(candidate) ? candidate : resolve(workspaceRoot, candidate);
 }
@@ -37,6 +39,11 @@ export class SkillArtifactFetcher {
         integrityVerified: false,
         metadata: { mode: 'manifest-only' }
       };
+    }
+
+    const workspaceDraftId = parseWorkspaceDraftEntry(target);
+    if (workspaceDraftId) {
+      return this.materializeWorkspaceDraft(manifest, source, stagingDir, workspaceDraftId);
     }
 
     if (target.startsWith('http://') || target.startsWith('https://')) {
@@ -93,4 +100,103 @@ export class SkillArtifactFetcher {
     await cp(stagingDir, installDir, { recursive: true });
     await rm(stagingDir, { recursive: true, force: true });
   }
+
+  private async materializeWorkspaceDraft(
+    manifest: SkillManifestRecord,
+    source: SkillSourceRecord,
+    stagingDir: string,
+    draftId: string
+  ): Promise<SkillArtifactFetchResult> {
+    const draftsPath = resolve(this.workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json');
+    const raw = await readFile(draftsPath, 'utf8');
+    const drafts = JSON.parse(raw) as Array<{
+      id?: string;
+      workspaceId?: string;
+      title?: string;
+      description?: string;
+      bodyMarkdown?: string;
+      requiredTools?: string[];
+      requiredConnectors?: string[];
+      sourceTaskId?: string;
+      sourceEvidenceIds?: string[];
+      riskLevel?: string;
+      confidence?: number;
+      status?: string;
+      approvedBy?: string;
+      approvedAt?: string;
+      updatedAt?: string;
+    }>;
+    const draft = drafts.find(candidate => candidate.id === draftId);
+    if (!draft) {
+      throw new Error(`workspace_draft_not_found:${draftId}`);
+    }
+    if (draft.status !== 'active' && draft.status !== 'trusted') {
+      throw new Error(`workspace_draft_not_installable:${draftId}`);
+    }
+    if (!draft.bodyMarkdown) {
+      throw new Error(`workspace_draft_body_missing:${draftId}`);
+    }
+
+    const skillPath = join(stagingDir, 'SKILL.md');
+    await writeFile(skillPath, draft.bodyMarkdown, 'utf8');
+    await writeFile(
+      join(stagingDir, 'manifest.json'),
+      `${JSON.stringify({ manifest, source, draft: toWorkspaceDraftArtifactProjection(draft) }, null, 2)}\n`,
+      'utf8'
+    );
+
+    return {
+      stagingDir,
+      artifactPath: skillPath,
+      bytes: Buffer.byteLength(draft.bodyMarkdown, 'utf8'),
+      integrityVerified: true,
+      metadata: {
+        mode: 'workspace-draft',
+        draftId
+      }
+    };
+  }
+}
+
+function parseWorkspaceDraftEntry(target: string): string | undefined {
+  if (!target.startsWith(WORKSPACE_DRAFT_ENTRY_PREFIX)) {
+    return undefined;
+  }
+
+  const draftId = target.slice(WORKSPACE_DRAFT_ENTRY_PREFIX.length).trim();
+  return draftId || undefined;
+}
+
+function toWorkspaceDraftArtifactProjection(draft: {
+  id?: string;
+  workspaceId?: string;
+  title?: string;
+  description?: string;
+  requiredTools?: string[];
+  requiredConnectors?: string[];
+  sourceTaskId?: string;
+  sourceEvidenceIds?: string[];
+  riskLevel?: string;
+  confidence?: number;
+  status?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  updatedAt?: string;
+}) {
+  return {
+    id: draft.id,
+    workspaceId: draft.workspaceId,
+    title: draft.title,
+    description: draft.description,
+    requiredTools: draft.requiredTools ?? [],
+    requiredConnectors: draft.requiredConnectors ?? [],
+    sourceTaskId: draft.sourceTaskId,
+    sourceEvidenceIds: draft.sourceEvidenceIds ?? [],
+    riskLevel: draft.riskLevel,
+    confidence: draft.confidence,
+    status: draft.status,
+    approvedBy: draft.approvedBy,
+    approvedAt: draft.approvedAt,
+    updatedAt: draft.updatedAt
+  };
 }

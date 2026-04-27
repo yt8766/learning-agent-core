@@ -151,3 +151,10 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+:root,
+.ant-table-body {
+  scrollbar-width: thin;
+  scrollbar-color: #eaeaea transparent;
+  scrollbar-gutter: stable;
+}

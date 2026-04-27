@@ -344,6 +344,16 @@ describe('use-chat-session hook coverage', () => {
     vi.useFakeTimers();
     vi.resetModules();
     vi.clearAllMocks();
+    vi.doMock('@/lib/agent-tool-execution-api', () => ({
+      getAgentToolGovernanceProjection: vi.fn().mockResolvedValue({
+        requests: [],
+        results: [],
+        capabilities: [],
+        nodes: [],
+        policyDecisions: [],
+        events: []
+      })
+    }));
   });
 
   it('bootstraps empty sessions and then creates a new session', async () => {
@@ -427,6 +437,97 @@ describe('use-chat-session hook coverage', () => {
     expect(actions.refreshSessions).toHaveBeenCalledTimes(1);
     expect(actions.createNewSession).toHaveBeenCalledTimes(1);
     expect(harness.stateSlots[5]).toBe('给我一个起步建议');
+  });
+
+  it('does not retry automatic session creation on every render after bootstrap creation fails', async () => {
+    const harness = createReactHookHarness();
+    const queryClient = {
+      fetchQuery: vi.fn()
+    };
+    const actions = {
+      refreshSessions: vi.fn().mockResolvedValue(undefined),
+      createNewSession: vi.fn().mockResolvedValue(undefined),
+      refreshSessionDetail: vi.fn(),
+      sendMessage: vi.fn(),
+      updateApproval: vi.fn(),
+      updatePlanInterrupt: vi.fn(),
+      allowApprovalAndApprove: vi.fn(),
+      installSuggestedSkill: vi.fn(),
+      submitLearningConfirmation: vi.fn(),
+      recoverActiveSession: vi.fn(),
+      cancelActiveSession: vi.fn(),
+      clearPendingSessionMessages: vi.fn(),
+      renameSessionById: vi.fn(),
+      deleteSessionById: vi.fn(),
+      deleteActiveSession: vi.fn()
+    };
+
+    vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => queryClient
+    }));
+    vi.doMock('@/api/chat-api', () => ({
+      appendMessage: vi.fn(),
+      createSessionStream: vi.fn(),
+      selectSession: vi.fn()
+    }));
+    vi.doMock('@/hooks/chat-session/use-chat-session-actions', () => ({
+      createChatSessionActions: () => actions
+    }));
+    vi.doMock('@/hooks/chat-session/chat-session-helpers', () => ({
+      CHECKPOINT_REFRESH_EVENT_TYPES: new Set<string>(),
+      STARTER_PROMPT: '给我一个起步建议',
+      STREAM_IDLE_TIMEOUT_MS: 1000,
+      buildSessionActivationPlan: vi.fn(() => ({
+        shouldSelectSession: false,
+        shouldRefreshDetail: false,
+        shouldOpenStreamImmediately: false
+      })),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      formatSessionTime: vi.fn((value?: string) => value ?? '--'),
+      getMessageRoleLabel: vi.fn((value?: string) => value ?? '--'),
+      getSessionStatusLabel: vi.fn((value?: string) => value ?? '--'),
+      isAssistantContentEvent: vi.fn(() => false),
+      mergeEvent: vi.fn((events: unknown[]) => events),
+      mergeOrAppendMessage: vi.fn((messages: unknown[]) => messages),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint: unknown) => checkpoint),
+      syncMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncProcessMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: unknown[]) => sessions),
+      activateChatSession: vi.fn(activateChatSessionMock),
+      bindChatSessionStream: vi.fn(bindChatSessionStreamMock),
+      createSessionPollingRunner: vi.fn((options: { mode: 'checkpoint' | 'detail'; sessionId: string }) => () => {
+        void options;
+      }),
+      shouldSkipStopSessionPolling: vi.fn(() => false)
+    }));
+
+    const { useChatSession } = await import('@/hooks/use-chat-session');
+
+    harness.render(() => useChatSession());
+    await harness.runEffects();
+    await flushAsyncWork();
+    harness.stateSlots[0] = [];
+
+    harness.render(() => useChatSession());
+    await harness.runEffects();
+    await flushAsyncWork();
+
+    harness.stateSlots[7] = true;
+    harness.render(() => useChatSession());
+    await harness.runEffects();
+
+    harness.stateSlots[7] = false;
+    harness.render(() => useChatSession());
+    await harness.runEffects();
+
+    expect(actions.refreshSessions).toHaveBeenCalledTimes(1);
+    expect(actions.createNewSession).toHaveBeenCalledTimes(1);
   });
 
   it('selects the latest session when bootstrapped with history but no active session', async () => {
@@ -1720,5 +1821,316 @@ describe('use-chat-session hook coverage', () => {
 
     expect(setIntervalSpy).not.toHaveBeenCalledWith(expect.any(Function), 2500);
     clearInterval(timerHandle);
+  });
+
+  it('fetches the agent tool governance projection for the active task and session', async () => {
+    const projection = {
+      requests: [],
+      results: [],
+      capabilities: [],
+      nodes: [],
+      policyDecisions: [],
+      events: []
+    };
+    const getAgentToolGovernanceProjection = vi.fn().mockResolvedValue(projection);
+    const harness = createReactHookHarness({
+      0: [
+        {
+          id: 'session-1',
+          title: 'Current',
+          status: 'running',
+          currentTaskId: 'task-1',
+          createdAt: '2026-04-01T09:00:00.000Z',
+          updatedAt: '2026-04-01T09:00:00.000Z'
+        }
+      ],
+      1: 'session-1'
+    });
+    const actions = {
+      refreshSessions: vi.fn().mockResolvedValue(undefined),
+      createNewSession: vi.fn().mockResolvedValue(undefined),
+      hydrateSessionSnapshot: vi.fn(),
+      refreshCheckpointOnly: vi.fn().mockResolvedValue(undefined),
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      clearPendingUser: vi.fn(),
+      clearPendingSessionMessages: vi.fn(),
+      markSessionStatus: vi.fn(),
+      insertPendingUserMessage: vi.fn(),
+      refreshSessionDetail: vi.fn(),
+      sendMessage: vi.fn(),
+      updateApproval: vi.fn(),
+      updatePlanInterrupt: vi.fn(),
+      allowApprovalAndApprove: vi.fn(),
+      installSuggestedSkill: vi.fn(),
+      submitLearningConfirmation: vi.fn(),
+      recoverActiveSession: vi.fn(),
+      cancelActiveSession: vi.fn(),
+      renameSessionById: vi.fn(),
+      deleteSessionById: vi.fn(),
+      deleteActiveSession: vi.fn()
+    };
+
+    vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => ({ fetchQuery: vi.fn() })
+    }));
+    vi.doMock('@/api/chat-api', () => ({
+      appendMessage: vi.fn(),
+      createSessionStream: vi.fn(),
+      selectSession: vi.fn()
+    }));
+    vi.doMock('@/lib/agent-tool-execution-api', () => ({
+      getAgentToolGovernanceProjection
+    }));
+    vi.doMock('@/hooks/chat-session/use-chat-session-actions', () => ({
+      createChatSessionActions: () => actions
+    }));
+    vi.doMock('@/hooks/chat-session/chat-session-helpers', () => ({
+      CHECKPOINT_REFRESH_EVENT_TYPES: new Set<string>(),
+      STARTER_PROMPT: '起步提示',
+      STREAM_IDLE_TIMEOUT_MS: 1000,
+      buildSessionActivationPlan: vi.fn(() => ({
+        shouldSelectSession: false,
+        shouldRefreshDetail: false,
+        shouldOpenStreamImmediately: false
+      })),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      formatSessionTime: vi.fn((value?: string) => value ?? '--'),
+      getMessageRoleLabel: vi.fn((value?: string) => value ?? '--'),
+      getSessionStatusLabel: vi.fn((value?: string) => value ?? '--'),
+      isAssistantContentEvent: vi.fn(() => false),
+      mergeEvent: vi.fn((events: unknown[]) => events),
+      mergeOrAppendMessage: vi.fn((messages: unknown[]) => messages),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint: unknown) => checkpoint),
+      syncMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncProcessMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: unknown[]) => sessions),
+      activateChatSession: vi.fn(activateChatSessionMock),
+      bindChatSessionStream: vi.fn(bindChatSessionStreamMock),
+      createSessionPollingRunner: vi.fn((options: { mode: 'checkpoint' | 'detail'; sessionId: string }) => () => {
+        void options;
+      }),
+      shouldSkipStopSessionPolling: vi.fn(() => false)
+    }));
+
+    const { useChatSession } = await import('@/hooks/use-chat-session');
+
+    let chat = harness.render(() => useChatSession());
+    await harness.runEffects();
+    await flushAsyncWork();
+    await flushAsyncWork();
+    chat = harness.render(() => useChatSession());
+
+    expect(getAgentToolGovernanceProjection).toHaveBeenCalledWith(globalThis.fetch, {
+      taskId: 'task-1',
+      sessionId: 'session-1'
+    });
+    expect(chat.agentToolGovernanceProjection).toBe(projection);
+  });
+
+  it('uses the checkpoint task id when the active session task id is not hydrated yet', async () => {
+    const projection = {
+      requests: [],
+      results: [],
+      capabilities: [],
+      nodes: [],
+      policyDecisions: [],
+      events: []
+    };
+    const getAgentToolGovernanceProjection = vi.fn().mockResolvedValue(projection);
+    const harness = createReactHookHarness({
+      0: [
+        {
+          id: 'session-1',
+          title: 'Current',
+          status: 'running',
+          createdAt: '2026-04-01T09:00:00.000Z',
+          updatedAt: '2026-04-01T09:00:00.000Z'
+        }
+      ],
+      1: 'session-1',
+      4: {
+        taskId: 'task-from-checkpoint',
+        updatedAt: '2026-04-01T09:00:00.000Z'
+      }
+    });
+    const actions = {
+      refreshSessions: vi.fn().mockResolvedValue(undefined),
+      createNewSession: vi.fn().mockResolvedValue(undefined),
+      hydrateSessionSnapshot: vi.fn(),
+      refreshCheckpointOnly: vi.fn().mockResolvedValue(undefined),
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      clearPendingUser: vi.fn(),
+      clearPendingSessionMessages: vi.fn(),
+      markSessionStatus: vi.fn(),
+      insertPendingUserMessage: vi.fn(),
+      refreshSessionDetail: vi.fn(),
+      sendMessage: vi.fn(),
+      updateApproval: vi.fn(),
+      updatePlanInterrupt: vi.fn(),
+      allowApprovalAndApprove: vi.fn(),
+      installSuggestedSkill: vi.fn(),
+      submitLearningConfirmation: vi.fn(),
+      recoverActiveSession: vi.fn(),
+      cancelActiveSession: vi.fn(),
+      renameSessionById: vi.fn(),
+      deleteSessionById: vi.fn(),
+      deleteActiveSession: vi.fn()
+    };
+
+    vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => ({ fetchQuery: vi.fn() })
+    }));
+    vi.doMock('@/api/chat-api', () => ({
+      appendMessage: vi.fn(),
+      createSessionStream: vi.fn(),
+      selectSession: vi.fn()
+    }));
+    vi.doMock('@/lib/agent-tool-execution-api', () => ({
+      getAgentToolGovernanceProjection
+    }));
+    vi.doMock('@/hooks/chat-session/use-chat-session-actions', () => ({
+      createChatSessionActions: () => actions
+    }));
+    vi.doMock('@/hooks/chat-session/chat-session-helpers', () => ({
+      CHECKPOINT_REFRESH_EVENT_TYPES: new Set<string>(),
+      STARTER_PROMPT: '起步提示',
+      STREAM_IDLE_TIMEOUT_MS: 1000,
+      buildSessionActivationPlan: vi.fn(() => ({
+        shouldSelectSession: false,
+        shouldRefreshDetail: false,
+        shouldOpenStreamImmediately: false
+      })),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      formatSessionTime: vi.fn((value?: string) => value ?? '--'),
+      getMessageRoleLabel: vi.fn((value?: string) => value ?? '--'),
+      getSessionStatusLabel: vi.fn((value?: string) => value ?? '--'),
+      isAssistantContentEvent: vi.fn(() => false),
+      mergeEvent: vi.fn((events: unknown[]) => events),
+      mergeOrAppendMessage: vi.fn((messages: unknown[]) => messages),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint: unknown) => checkpoint),
+      syncMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncProcessMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: unknown[]) => sessions),
+      activateChatSession: vi.fn(activateChatSessionMock),
+      bindChatSessionStream: vi.fn(bindChatSessionStreamMock),
+      createSessionPollingRunner: vi.fn((options: { mode: 'checkpoint' | 'detail'; sessionId: string }) => () => {
+        void options;
+      }),
+      shouldSkipStopSessionPolling: vi.fn(() => false)
+    }));
+
+    const { useChatSession } = await import('@/hooks/use-chat-session');
+
+    harness.render(() => useChatSession());
+    await harness.runEffects();
+    await flushAsyncWork();
+
+    expect(getAgentToolGovernanceProjection).toHaveBeenCalledWith(globalThis.fetch, {
+      taskId: 'task-from-checkpoint',
+      sessionId: 'session-1'
+    });
+  });
+
+  it('does not fetch the agent tool governance projection without an active session and clears the value', async () => {
+    const getAgentToolGovernanceProjection = vi.fn();
+    const staleProjection = {
+      requests: [{ requestId: 'request-1' }],
+      results: [],
+      capabilities: [],
+      nodes: [],
+      policyDecisions: [],
+      events: []
+    };
+    const harness = createReactHookHarness({
+      10: staleProjection
+    });
+    const actions = {
+      refreshSessions: vi.fn().mockResolvedValue(undefined),
+      createNewSession: vi.fn().mockResolvedValue(undefined),
+      refreshSessionDetail: vi.fn(),
+      sendMessage: vi.fn(),
+      updateApproval: vi.fn(),
+      updatePlanInterrupt: vi.fn(),
+      allowApprovalAndApprove: vi.fn(),
+      installSuggestedSkill: vi.fn(),
+      submitLearningConfirmation: vi.fn(),
+      recoverActiveSession: vi.fn(),
+      cancelActiveSession: vi.fn(),
+      clearPendingSessionMessages: vi.fn(),
+      renameSessionById: vi.fn(),
+      deleteSessionById: vi.fn(),
+      deleteActiveSession: vi.fn()
+    };
+
+    vi.doMock('react', () => harness.reactModule);
+    vi.doMock('@tanstack/react-query', () => ({
+      useQueryClient: () => ({ fetchQuery: vi.fn() })
+    }));
+    vi.doMock('@/api/chat-api', () => ({
+      appendMessage: vi.fn(),
+      createSessionStream: vi.fn(),
+      selectSession: vi.fn()
+    }));
+    vi.doMock('@/lib/agent-tool-execution-api', () => ({
+      getAgentToolGovernanceProjection
+    }));
+    vi.doMock('@/hooks/chat-session/use-chat-session-actions', () => ({
+      createChatSessionActions: () => actions
+    }));
+    vi.doMock('@/hooks/chat-session/chat-session-helpers', () => ({
+      CHECKPOINT_REFRESH_EVENT_TYPES: new Set<string>(),
+      STARTER_PROMPT: '起步提示',
+      STREAM_IDLE_TIMEOUT_MS: 1000,
+      buildSessionActivationPlan: vi.fn(() => ({
+        shouldSelectSession: false,
+        shouldRefreshDetail: false,
+        shouldOpenStreamImmediately: false
+      })),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      formatSessionTime: vi.fn((value?: string) => value ?? '--'),
+      getMessageRoleLabel: vi.fn((value?: string) => value ?? '--'),
+      getSessionStatusLabel: vi.fn((value?: string) => value ?? '--'),
+      isAssistantContentEvent: vi.fn(() => false),
+      mergeEvent: vi.fn((events: unknown[]) => events),
+      mergeOrAppendMessage: vi.fn((messages: unknown[]) => messages),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint: unknown) => checkpoint),
+      syncMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncProcessMessageFromEvent: vi.fn((messages: unknown[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: unknown[]) => sessions),
+      activateChatSession: vi.fn(activateChatSessionMock),
+      bindChatSessionStream: vi.fn(bindChatSessionStreamMock),
+      createSessionPollingRunner: vi.fn((options: { mode: 'checkpoint' | 'detail'; sessionId: string }) => () => {
+        void options;
+      }),
+      shouldSkipStopSessionPolling: vi.fn(() => false)
+    }));
+
+    const { useChatSession } = await import('@/hooks/use-chat-session');
+
+    let chat = harness.render(() => useChatSession());
+    expect(chat.agentToolGovernanceProjection).toBe(staleProjection);
+    await harness.runEffects();
+    await flushAsyncWork();
+    chat = harness.render(() => useChatSession());
+
+    expect(getAgentToolGovernanceProjection).not.toHaveBeenCalled();
+    expect(chat.agentToolGovernanceProjection).toBeUndefined();
   });
 });

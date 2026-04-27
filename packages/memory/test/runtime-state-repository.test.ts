@@ -45,6 +45,7 @@ describe('FileRuntimeStateRepository', () => {
       chatEvents: [],
       chatCheckpoints: [],
       crossCheckEvidence: [],
+      workspaceSkillReuseRecords: [],
       governance: {
         disabledSkillSourceIds: [],
         disabledCompanyWorkerIds: [],
@@ -109,6 +110,22 @@ describe('FileRuntimeStateRepository', () => {
       chatEvents: [],
       chatCheckpoints: [],
       crossCheckEvidence: [],
+      workspaceSkillReuseRecords: [
+        {
+          id: 'reuse-1',
+          workspaceId: 'workspace-platform',
+          skillId: 'skill-1',
+          reusedBy: {
+            id: 'agent-supervisor',
+            label: 'Supervisor',
+            kind: 'agent'
+          },
+          taskId: 'task-1',
+          outcome: 'succeeded',
+          evidenceRefs: ['evidence-1'],
+          reusedAt: '2026-04-26T00:00:00.000Z'
+        }
+      ],
       governance: {
         disabledSkillSourceIds: [],
         disabledCompanyWorkerIds: [],
@@ -193,6 +210,7 @@ describe('FileRuntimeStateRepository', () => {
       chatEvents: [],
       chatCheckpoints: [],
       crossCheckEvidence: [],
+      workspaceSkillReuseRecords: [],
       governance: {
         disabledSkillSourceIds: [],
         disabledCompanyWorkerIds: [],

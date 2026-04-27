@@ -7,6 +7,7 @@ import {
   getWorkbenchInterruptCopy
 } from '@/pages/chat-home/chat-home-workbench-sections';
 import { renderEvidenceSection } from '@/pages/chat-home/chat-home-workbench-section-renders';
+import { buildThoughtItems } from '@/pages/chat-home/chat-home-workbench-thoughts';
 
 // activeInterrupt in these tests is the persisted 司礼监 / InterruptController projection.
 describe('chat-home-workbench-sections helpers', () => {
@@ -255,6 +256,233 @@ describe('chat-home-workbench-sections helpers', () => {
     expect(empty.compressionHint).toBe('');
     expect(empty.llmFallbackNotes).toEqual([]);
     expect(empty.workbenchItems).toHaveLength(0);
+  });
+
+  it('surfaces workspace learning and skill flywheel readiness only in workbench sections', () => {
+    const state = buildWorkbenchSectionState(
+      {
+        activeSession: {
+          status: 'completed'
+        },
+        checkpoint: {
+          learningEvaluation: {
+            score: 0.91,
+            confidence: 'high',
+            notes: ['已形成可复用经验'],
+            recommendedCandidateIds: ['candidate-1', 'candidate-2'],
+            autoConfirmCandidateIds: ['candidate-1'],
+            sourceSummary: {
+              externalSourceCount: 1,
+              internalSourceCount: 2,
+              reusedMemoryCount: 1,
+              reusedRuleCount: 1,
+              reusedSkillCount: 1
+            }
+          },
+          reusedSkills: ['repo-analysis'],
+          usedInstalledSkills: ['find-skills']
+        },
+        events: []
+      } as any,
+      []
+    );
+
+    const learningSection = state.workbenchItems.find(item => item?.key === 'learning');
+    const reuseSection = state.workbenchItems.find(item => item?.key === 'reuse');
+    const learningHtml = renderToStaticMarkup(<>{learningSection?.children}</>);
+    const reuseHtml = renderToStaticMarkup(<>{reuseSection?.children}</>);
+    const combinedHtml = `${learningHtml}${reuseHtml}`;
+
+    expect(learningSection).toBeTruthy();
+    expect(reuseSection).toBeTruthy();
+    expect(combinedHtml).toContain('本轮学习');
+    expect(combinedHtml).toContain('Workspace learning');
+    expect(combinedHtml).toContain('技能复用');
+    expect(combinedHtml).toContain('Skill Flywheel readiness');
+    expect(combinedHtml).toContain('草案提示');
+    expect(combinedHtml).toContain('repo-analysis');
+    expect(combinedHtml).toContain('find-skills');
+    expect(combinedHtml).not.toContain('learning_summary');
+  });
+
+  it('builds a tool execution section from projected chat events', () => {
+    const state = buildWorkbenchSectionState(
+      {
+        activeSession: {
+          status: 'running'
+        },
+        events: [
+          {
+            id: 'event-tool-selected',
+            type: 'tool_selected',
+            at: '2026-04-01T09:00:00.000Z',
+            payload: {
+              requestId: 'request-1',
+              toolName: 'shell.run',
+              nodeId: 'execute',
+              riskClass: 'medium'
+            }
+          },
+          {
+            id: 'event-tool-called',
+            type: 'tool_called',
+            at: '2026-04-01T09:00:01.000Z',
+            payload: {
+              requestId: 'request-1',
+              toolName: 'shell.run',
+              inputPreview: 'pnpm test',
+              policyDecision: { decision: 'require_approval', riskClass: 'high' }
+            }
+          },
+          {
+            id: 'event-step-blocked',
+            type: 'execution_step_blocked',
+            at: '2026-04-01T09:00:02.000Z',
+            payload: {
+              requestId: 'request-1',
+              reasonCode: 'approval_required',
+              interruptId: 'interrupt-1'
+            }
+          },
+          {
+            id: 'event-tool-stream',
+            type: 'tool_stream_dispatched',
+            at: '2026-04-01T09:00:03.000Z',
+            payload: {
+              requestId: 'request-1',
+              outputPreview: '已输出 2 行',
+              streamKind: 'stdout'
+            }
+          },
+          {
+            id: 'event-ignored',
+            type: 'message_delta',
+            at: '2026-04-01T09:00:04.000Z',
+            payload: {
+              requestId: 'request-1',
+              summary: '不应显示'
+            }
+          }
+        ]
+      } as any,
+      []
+    );
+
+    const section = state.workbenchItems.find(item => item?.key === 'tool-execution');
+    const labelHtml = renderToStaticMarkup(<>{section?.label}</>);
+    const bodyHtml = renderToStaticMarkup(<>{section?.children}</>);
+
+    expect(labelHtml).toContain('工具执行');
+    expect(labelHtml).toContain('4 条事件');
+    expect(bodyHtml).toContain('工具调用 shell.run');
+    expect(bodyHtml).toContain('pnpm test');
+    expect(bodyHtml).toContain('待审批');
+    expect(bodyHtml).toContain('high');
+    expect(bodyHtml).toContain('执行步骤阻断');
+    expect(bodyHtml).toContain('approval_required');
+    expect(bodyHtml).toContain('已输出 2 行');
+    expect(bodyHtml).not.toContain('不应显示');
+  });
+
+  it('builds a tool execution section from governance projection fallback when chat events are empty', () => {
+    const state = buildWorkbenchSectionState(
+      {
+        activeSession: {
+          status: 'running'
+        },
+        events: [],
+        agentToolGovernanceProjection: {
+          requests: [
+            {
+              requestId: 'request-fallback-1',
+              nodeId: 'execute',
+              capabilityId: 'shell.run',
+              toolName: 'shell.run',
+              inputPreview: 'pnpm test --filter agent-chat',
+              input: 'RAW_INPUT_SHOULD_NOT_RENDER',
+              riskClass: 'medium',
+              status: 'running'
+            }
+          ],
+          results: [
+            {
+              resultId: 'result-fallback-1',
+              requestId: 'request-fallback-1',
+              nodeId: 'execute',
+              status: 'succeeded',
+              outputPreview: '测试通过'
+            }
+          ],
+          events: []
+        }
+      } as any,
+      []
+    );
+
+    const section = state.workbenchItems.find(item => item?.key === 'tool-execution');
+    const labelHtml = renderToStaticMarkup(<>{section?.label}</>);
+    const bodyHtml = renderToStaticMarkup(<>{section?.children}</>);
+
+    expect(section).toBeTruthy();
+    expect(labelHtml).toContain('工具执行');
+    expect(labelHtml).toContain('2 条事件');
+    expect(bodyHtml).toContain('工具请求 shell.run');
+    expect(bodyHtml).toContain('pnpm test --filter agent-chat');
+    expect(bodyHtml).toContain('工具结果');
+    expect(bodyHtml).toContain('测试通过');
+    expect(bodyHtml).not.toContain('RAW_INPUT_SHOULD_NOT_RENDER');
+  });
+
+  it('surfaces governance projection policy decisions in workbench and thought chain without global events', () => {
+    const chat = {
+      activeSession: {
+        status: 'running'
+      },
+      checkpoint: {
+        taskId: 'task-1',
+        updatedAt: '2026-04-01T09:00:00.000Z'
+      },
+      events: [],
+      agentToolGovernanceProjection: {
+        requests: [
+          {
+            requestId: 'request-policy-1',
+            nodeId: 'execute',
+            capabilityId: 'shell.run',
+            toolName: 'shell.run',
+            inputPreview: 'pnpm verify',
+            riskClass: 'high',
+            status: 'pending_policy'
+          }
+        ],
+        results: [],
+        policyDecisions: [
+          {
+            decisionId: 'decision-policy-1',
+            requestId: 'request-policy-1',
+            decision: 'require_approval',
+            reasonCode: 'approval_required',
+            reason: '高风险命令需要前线确认',
+            matchedPolicyIds: ['policy-terminal-high-risk'],
+            requiresApproval: true,
+            riskClass: 'high',
+            createdAt: '2026-04-01T09:00:01.000Z'
+          }
+        ],
+        events: []
+      }
+    } as any;
+
+    const state = buildWorkbenchSectionState(chat, []);
+    const section = state.workbenchItems.find(item => item?.key === 'tool-execution');
+    const bodyHtml = renderToStaticMarkup(<>{section?.children}</>);
+    const thoughtItems = buildThoughtItems(chat);
+
+    expect(bodyHtml).toContain('策略判定');
+    expect(bodyHtml).toContain('待审批');
+    expect(bodyHtml).toContain('approval_required');
+    expect(bodyHtml).toContain('高风险命令需要前线确认');
+    expect(thoughtItems.some(item => renderToStaticMarkup(<>{item.title}</>).includes('策略判定'))).toBe(true);
   });
 
   it('renders failure alert item when the session has stopped', () => {

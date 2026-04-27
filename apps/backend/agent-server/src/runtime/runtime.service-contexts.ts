@@ -11,7 +11,9 @@ import { fetchProviderUsageAuditFromSettings } from './domain/metrics/runtime-pr
 import { resolveTaskSkillSuggestions, syncInstalledSkillWorkers } from './runtime.service.helpers';
 import { createSkillCatalogContext } from './domain/skills/runtime-skill-catalog-context';
 import { createSkillInstallContext, createSkillSourcesContext } from './domain/skills/runtime-skill-contexts';
+import { buildWorkspaceSkillDraftManifests } from './domain/skills/runtime-workspace-skill-draft-manifests';
 import { createTaskContext } from './domain/tasks/runtime-task-context';
+import { getRuntimeWorkspaceDraftStoreForContext } from './centers/runtime-centers-workspace-drafts';
 import type { RuntimeBackgroundRunnerContext } from './helpers/runtime-background-runner';
 import type { RuntimeSkillInstallContext } from './skills/runtime-skill-install.service';
 import type { RuntimeSkillSourcesContext } from './skills/runtime-skill-sources.service';
@@ -107,7 +109,13 @@ export class RuntimeServiceContextFactory {
       skillSourceSyncService: this.params.skillSourceSyncService(),
       remoteSkillDiscoveryService: this.params.runtimeHost().remoteSkillDiscoveryService,
       getDisabledSkillSourceIds: () => this.getDisabledSkillSourceIds(),
-      getSkillInstallContext: () => this.getSkillInstallContext()
+      getSkillInstallContext: () => this.getSkillInstallContext(),
+      listWorkspaceSkillDraftManifests: async () =>
+        buildWorkspaceSkillDraftManifests(
+          await getRuntimeWorkspaceDraftStoreForContext({ settings: this.params.settings() }).listDraftRecords(
+            `workspace-${this.params.settings().profile}`
+          )
+        )
     });
   }
 

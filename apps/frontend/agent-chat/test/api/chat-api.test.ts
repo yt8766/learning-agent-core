@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import axios from 'axios';
 
 const { requestMock, eventSourceMock } = vi.hoisted(() => ({
   requestMock: vi.fn(),
@@ -52,6 +53,14 @@ describe('chat-api url builders', () => {
     eventSourceMock.mockReset();
     vi.unstubAllGlobals();
     vi.stubGlobal('EventSource', eventSourceMock);
+  });
+
+  it('uses the same-origin api base by default so Vite proxy can avoid CORS in local dev', () => {
+    expect(vi.mocked(axios.create)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: '/api'
+      })
+    );
   });
 
   it('builds runtime and approvals export urls with interrupt-native filters', () => {

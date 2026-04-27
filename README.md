@@ -14,7 +14,7 @@
 - `apps/worker`：异步执行、恢复与学习任务 worker
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
-- `skills/*`：仓库级代理技能目录，给 Codex / Claude Code 这类代码代理读取
+- `.agents/skills/*`：仓库级代理技能目录，是 Codex 读取本仓库技能的正式入口
 - `artifacts/*`：仓库级可重建产物目录；当前主要承载覆盖率与共享临时输出，默认不提交 Git
 - `packages/core`：稳定 contract、共享 DTO、接口边界入口
 - `packages/core/src/providers`：运行时对外依赖的 provider 抽象接口层
@@ -31,7 +31,7 @@
 - `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
 - `packages/skill-runtime`：运行时技能注册与技能卡领域包；是 `@agent/skill-runtime` 的真实物理宿主
 - `packages/evals`：评估与复盘
-- `docs/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
+- `docs/archive/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
   - 运行时技能数据默认落在 `data/skill-runtime`
 - `test/*`：仓库级（workspace-level）专用测试宿主
@@ -39,15 +39,15 @@
   - `test/smoke/`：仓库级最小可运行闭环 smoke 测试
   - `test/shared/`：仅限测试的共享 fixture、builder、matcher
   - 不承载宿主内 unit / spec；各宿主测试仍留在 `packages/*/test`、`apps/*/test`
-  - 完整设计见 [`docs/evals/workspace-test-host-design.md`](./docs/evals/workspace-test-host-design.md)
+  - 完整设计见 [`docs/packages/evals/workspace-test-host-design.md`](./docs/packages/evals/workspace-test-host-design.md)
 - `docs/*`：项目规范、模块说明、联调结论与当前实现沉淀
 
 如果需要看“当前每个目录现在在做什么”，优先阅读：
 
-- [`docs/repo-directory-overview.md`](./docs/repo-directory-overview.md)
-- [`docs/apps-overview.md`](./docs/apps-overview.md)
-- [`docs/packages-overview.md`](./docs/packages-overview.md)
-- [`docs/data-overview.md`](./docs/data-overview.md)
+- [`docs/maps/repo-directory-overview.md`](./docs/maps/repo-directory-overview.md)
+- [`docs/maps/apps-overview.md`](./docs/maps/apps-overview.md)
+- [`docs/maps/packages-overview.md`](./docs/maps/packages-overview.md)
+- [`docs/maps/data-overview.md`](./docs/maps/data-overview.md)
 
 当前目录收敛状态补充：
 
@@ -57,7 +57,7 @@
   - `packages/config/src/contracts/settings-facade.ts`
   - `packages/skill-runtime/src/contracts/skill-runtime-facade.ts`
   - `packages/evals/src/contracts/evals-facade.ts`
-- 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/core/package-compat-sunset-candidates.md`](./docs/core/package-compat-sunset-candidates.md)
+- 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/packages/core/package-compat-sunset-candidates.md`](./docs/packages/core/package-compat-sunset-candidates.md)
 
 根目录不再维护单独的 `TODO.md`。后续 roadmap、联调结论和模块待办统一沉淀到对应的 `docs/<module>/` 文档，并直接按最新实现更新原文档。
 
@@ -65,7 +65,7 @@
 
 当前项目采用“Graph 入口清晰、共享能力集中、测试目录与源码分离”的结构规范：
 
-- 结构规范文档：[`docs/langgraph-app-structure-guidelines.md`](./docs/langgraph-app-structure-guidelines.md)
+- 结构规范文档：[`docs/conventions/langgraph-app-structure-guidelines.md`](./docs/conventions/langgraph-app-structure-guidelines.md)
 - 主图与运行时 graph 入口优先放在 `packages/runtime/src/graphs`
 - app 层只通过 `@agent/*` 依赖 graph/runtime facade，不在应用层重新拼 graph
 - 从现在起，每个项目统一使用与 `src/` 同级的 `test/` 目录承载测试
@@ -112,7 +112,7 @@
 
 仓库级代理 skill 现在默认按 `SKILL.md + frontmatter` 规范组织，并由本地后端 loader 直接解析：
 
-- `skills/*/SKILL.md`
+- `.agents/skills/*/SKILL.md`
   - 顶部必须带 frontmatter
   - 最少声明 `name`、`description`
   - 推荐声明 `version`、`publisher`、`license`、`compatibility`、`metadata`、`allowed-tools`
@@ -207,7 +207,7 @@
 仓库当前提供一套最小 `promptfoo` 回归入口，用于比较户部、刑部、礼部关键 prompt 的版本差异：
 
 - 配置文件：[`packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml`](./packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml)
-- 使用说明：[`docs/evals/promptfoo-regression.md`](./docs/evals/promptfoo-regression.md)
+- 使用说明：[`docs/packages/evals/promptfoo-regression.md`](./docs/packages/evals/promptfoo-regression.md)
 
 默认命令：
 
@@ -272,7 +272,7 @@
 
 审批、skill 安装、connector 治理和高风险工具调用，后续统一按可恢复 interrupt 主链收敛。
 
-- 规范文档：[`docs/runtime/runtime-interrupts.md`](./docs/runtime/runtime-interrupts.md)
+- 规范文档：[`docs/packages/runtime/runtime-interrupts.md`](./docs/packages/runtime/runtime-interrupts.md)
 - 兼容期内允许同时保留 `pendingApproval`
 - 终态目标是 `interrupt(payload) -> __interrupt__ -> Command({ resume })`
 
@@ -366,17 +366,17 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 ## 规范入口
 
 - [给 Codex / Agents 的规范](./AGENTS.md)
-- [后端规范](./docs/backend-conventions.md)
-- [前端规范](./docs/frontend-conventions.md)
-- [GitHub Flow 规范](./docs/github-flow.md)
-- [模板示例](./docs/project-template-guidelines.md)
-- [测试规范](./docs/test-conventions.md)
+- [后端规范](./docs/conventions/backend-conventions.md)
+- [前端规范](./docs/conventions/frontend-conventions.md)
+- [GitHub Flow 规范](./docs/conventions/github-flow.md)
+- [模板示例](./docs/conventions/project-template-guidelines.md)
+- [测试规范](./docs/conventions/test-conventions.md)
 - [agent-core 历史结构报告（归档）](./docs/archive/agent-core/archive/agent-core-structure-report.md)
-- [架构总览](./docs/ARCHITECTURE.md)
-- [API 文档目录](./docs/api/README.md)
+- [架构总览](./docs/architecture/ARCHITECTURE.md)
+- [API 文档目录](./docs/contracts/api/README.md)
 - [前后端集成链路](./docs/integration/frontend-backend-integration.md)
-- [仓库目录概览](./docs/repo-directory-overview.md)
-- [规范总览](./docs/project-conventions.md)
+- [仓库目录概览](./docs/maps/repo-directory-overview.md)
+- [规范总览](./docs/conventions/project-conventions.md)
 
 ## For Codex / Agents
 
@@ -384,8 +384,8 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 
 1. [AGENTS.md](./AGENTS.md)
 2. [README.md](./README.md)
-3. [架构总览](./docs/ARCHITECTURE.md)
-4. [API 文档目录](./docs/api/README.md)
+3. [架构总览](./docs/architecture/ARCHITECTURE.md)
+4. [API 文档目录](./docs/contracts/api/README.md)
 5. [前后端集成链路](./docs/integration/frontend-backend-integration.md)
 
 最重要的当前约束：
@@ -400,7 +400,7 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
   - 默认只展示用户消息、Agent 最终回复、必要审批/终止卡
   - Think、ThoughtChain、Evidence、Learning、Skill、Route 等运行态信息优先收纳到 workbench / runtime panel
 - 共享包改动后，优先执行 `pnpm build:lib`
-- 仓库级代理技能放在 `skills/*/SKILL.md`，不要和 `packages/skill-runtime` 混用
+- 仓库级代理技能放在 `.agents/skills/*/SKILL.md`，不要和 `packages/skill-runtime` 混用
 
 ## 工程原则
 

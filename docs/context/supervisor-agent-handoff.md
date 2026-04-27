@@ -21,7 +21,7 @@
 
 - [docs/agents/supervisor/README.md](/docs/agents/supervisor/README.md)
 - [docs/agents/supervisor/package-structure-guidelines.md](/docs/agents/supervisor/package-structure-guidelines.md)
-- [docs/packages-overview.md](/docs/packages-overview.md)
+- [docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
 
 ## 改动边界
 

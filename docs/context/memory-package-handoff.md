@@ -20,9 +20,9 @@
 
 ## 修改前先读
 
-- [docs/memory/README.md](/docs/memory/README.md)
-- [docs/memory/agent-memory-architecture.md](/docs/memory/agent-memory-architecture.md)
-- [docs/memory/storage-and-search.md](/docs/memory/storage-and-search.md)
+- [docs/packages/memory/README.md](/docs/packages/memory/README.md)
+- [docs/packages/memory/agent-memory-architecture.md](/docs/packages/memory/agent-memory-architecture.md)
+- [docs/packages/memory/storage-and-search.md](/docs/packages/memory/storage-and-search.md)
 
 ## 改动边界
 

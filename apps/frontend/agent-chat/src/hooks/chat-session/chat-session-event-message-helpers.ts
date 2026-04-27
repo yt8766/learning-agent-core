@@ -1,3 +1,9 @@
+import {
+  buildExecutionStepEventCopy,
+  buildTaskTrajectoryEventCopy,
+  buildTrajectoryStepEventCopy
+} from '@/lib/chat-trajectory-projections';
+
 function getIntentLabel(intent: string) {
   switch (intent) {
     case 'write_file':
@@ -72,3 +78,28 @@ export function buildNodeStatusCopy(payload: Record<string, unknown>) {
   }
   return `${ministryPrefix}${nodeLabel} 已完成${detail ? `：${detail}` : '。'}`;
 }
+
+const TOOL_STREAM_EVENT_LABELS: Record<string, string> = {
+  tool_selected: '工具已选择',
+  tool_stream_detected: '工具输出已检测',
+  tool_stream_dispatched: '工具输出已分发',
+  tool_stream_completed: '工具输出已完成'
+};
+
+export function buildToolStreamEventCopy(eventType: string, payload: Record<string, unknown>) {
+  const label = TOOL_STREAM_EVENT_LABELS[eventType] ?? '工具执行更新';
+  const segments = [getString(payload.toolName), getString(payload.nodeId), getString(payload.runId)].filter(Boolean);
+  const detail =
+    getString(payload.detail) ??
+    getString(payload.summary) ??
+    getString(payload.outputPreview) ??
+    getString(payload.status);
+
+  return `${label}：${segments.length ? segments.join(' · ') : '当前工具'}${detail ? `。${detail}` : '。'}`;
+}
+
+function getString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+export { buildExecutionStepEventCopy, buildTaskTrajectoryEventCopy, buildTrajectoryStepEventCopy };

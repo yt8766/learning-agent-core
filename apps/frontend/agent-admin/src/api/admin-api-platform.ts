@@ -3,6 +3,10 @@ import type { PlatformConsoleLogAnalysisRecord, PlatformConsoleRecord, RuntimeAr
 import { request, type ChannelDeliveryRecord } from './admin-api-core';
 import { normalizeExecutionMode } from '@/lib/runtime-semantics';
 
+export * from './admin-api-agent-tools';
+export * from './admin-api-sandbox';
+export * from './admin-api-auto-review';
+
 export async function getRuntimeCenter(days = 30) {
   return request<PlatformConsoleRecord['runtime']>(`/platform/runtime-center?days=${days}`, {
     cancelKey: 'runtime-center',

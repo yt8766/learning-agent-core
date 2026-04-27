@@ -14,6 +14,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@agent/core": "workspace:*",
+    "@ant-design/icons": "~6.1.0",
     "@ant-design/x": "^2.4.0",
     "@ant-design/x-markdown": "^2.4.0",
     "@ant-design/x-sdk": "^2.4.0",

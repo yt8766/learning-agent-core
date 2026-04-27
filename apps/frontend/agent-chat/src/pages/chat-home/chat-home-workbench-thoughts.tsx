@@ -1,18 +1,35 @@
 import type { ThoughtChainItemType } from '@ant-design/x';
 
+import type { ChatEventRecord } from '@/types/chat';
 import type { useChatSession } from '@/hooks/use-chat-session';
+import {
+  projectAgentToolGovernanceProjectionToTimeline,
+  type AgentToolGovernanceProjectionLike,
+  type AgentToolProjectedEvent,
+  type AgentToolProjectedEventStatus
+} from '@/lib/agent-tool-event-projections';
+import { resolveProjectedEventThoughtStatus } from '@/lib/chat-trajectory-projections';
 import { EVENT_LABELS, buildEventSummary, humanizeOperationalCopy } from './chat-home-helpers';
+
+type ChatSessionWithGovernanceProjection = ReturnType<typeof useChatSession> & {
+  agentToolGovernanceProjection?: AgentToolGovernanceProjectionLike | null;
+};
 
 export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
   const capabilityThought = buildCapabilityThoughtItem(chat);
   const streamStatusThought = buildStreamStatusThoughtItem(chat);
   const recentCompletedNodeThoughts = buildRecentCompletedNodeThoughtItems(chat);
+  const toolGovernanceThoughts = buildToolGovernanceThoughtItems(chat);
   const optimisticThought = buildOptimisticThoughtItem(chat);
 
   if (optimisticThought) {
-    return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, optimisticThought].filter(
-      Boolean
-    ) as ThoughtChainItemType[];
+    return [
+      streamStatusThought,
+      ...recentCompletedNodeThoughts,
+      capabilityThought,
+      ...toolGovernanceThoughts,
+      optimisticThought
+    ].filter(Boolean) as ThoughtChainItemType[];
   }
 
   if (chat.checkpoint?.thoughtChain?.length) {
@@ -34,9 +51,13 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
       blink: item.blink
     }));
 
-    return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, ...items].filter(
-      Boolean
-    ) as ThoughtChainItemType[];
+    return [
+      streamStatusThought,
+      ...recentCompletedNodeThoughts,
+      capabilityThought,
+      ...toolGovernanceThoughts,
+      ...items
+    ].filter(Boolean) as ThoughtChainItemType[];
   }
 
   const items = chat.events
@@ -58,17 +79,68 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
         title: humanizeOperationalCopy(EVENT_LABELS[eventItem.type] ?? eventItem.type),
         description: buildEventSummary(eventItem),
         footer: meta || eventItem.at,
-        status: resolveThoughtItemStatus(eventItem.type),
+        status: resolveThoughtItemStatus(eventItem),
         collapsible: Boolean(meta)
       };
     });
 
-  return [streamStatusThought, ...recentCompletedNodeThoughts, capabilityThought, ...items].filter(
-    Boolean
-  ) as ThoughtChainItemType[];
+  return [
+    streamStatusThought,
+    ...recentCompletedNodeThoughts,
+    capabilityThought,
+    ...toolGovernanceThoughts,
+    ...items
+  ].filter(Boolean) as ThoughtChainItemType[];
 }
 
-function resolveThoughtItemStatus(eventType: string) {
+function buildToolGovernanceThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
+  const projection = (chat as ChatSessionWithGovernanceProjection).agentToolGovernanceProjection;
+  if (!projection) {
+    return [];
+  }
+
+  return projectAgentToolGovernanceProjectionToTimeline(projection)
+    .slice(-4)
+    .reverse()
+    .map(eventItem => ({
+      key: `tool-governance-${eventItem.requestId}-${eventItem.kind}-${eventItem.title}`,
+      title: humanizeOperationalCopy(eventItem.title),
+      description: buildToolGovernanceThoughtDescription(eventItem),
+      footer: eventItem.toolName ?? eventItem.nodeId ?? eventItem.requestId,
+      status: resolveToolGovernanceThoughtStatus(eventItem.status),
+      collapsible: Boolean(eventItem.summary || eventItem.riskClass)
+    }));
+}
+
+function buildToolGovernanceThoughtDescription(eventItem: AgentToolProjectedEvent) {
+  return [eventItem.summary, eventItem.riskClass ? `风险：${eventItem.riskClass}` : ''].filter(Boolean).join(' · ');
+}
+
+function resolveToolGovernanceThoughtStatus(status: AgentToolProjectedEventStatus) {
+  if (status === 'failed' || status === 'cancelled' || status === 'denied' || status === 'blocked') {
+    return 'error' as const;
+  }
+  if (status === 'succeeded' || status === 'resumed') {
+    return 'success' as const;
+  }
+  return 'loading' as const;
+}
+
+function resolveThoughtItemStatus(eventItem: ChatEventRecord) {
+  const eventType = eventItem.type;
+  const projectedStatus = resolveProjectedEventThoughtStatus(eventItem);
+  if (
+    eventType === 'execution_step_started' ||
+    eventType === 'execution_step_completed' ||
+    eventType === 'execution_step_blocked' ||
+    eventType === 'execution_step_resumed' ||
+    eventType === 'trajectory_step' ||
+    eventType === 'task_trajectory' ||
+    (eventType === 'node_progress' && eventItem.payload?.projection === 'task_trajectory')
+  ) {
+    return projectedStatus;
+  }
+
   if (
     eventType === 'session_failed' ||
     eventType === 'approval_rejected_with_feedback' ||
@@ -97,7 +169,7 @@ function resolveThoughtItemStatus(eventType: string) {
 
 function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
   const checkpoint = chat.checkpoint;
-  if (!checkpoint?.thinkState?.loading || !checkpoint.taskId.startsWith('optimistic_')) {
+  if (!checkpoint?.thinkState?.loading || !checkpoint.taskId?.startsWith('optimistic_')) {
     return undefined;
   }
 

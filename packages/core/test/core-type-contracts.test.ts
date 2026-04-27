@@ -2072,7 +2072,8 @@ describe('@agent/core type contracts', () => {
       version: '1.0.0',
       sourceId: 'workspace-skills',
       status: 'installed',
-      phase: 'installed'
+      phase: 'installed',
+      sourceDraftId: 'draft-repo-auditor'
     });
     const agent: CompanyAgentRecord = CompanyAgentRecordSchema.parse({
       id: 'gongbu-worker-1',
@@ -2084,7 +2085,7 @@ describe('@agent/core type contracts', () => {
     });
 
     expect(installed.status).toBe('installed');
-    expect(receipt.id).toBe('receipt-1');
+    expect(receipt.sourceDraftId).toBe('draft-repo-auditor');
     expect(agent.ministry).toBe('gongbu-code');
   });
 

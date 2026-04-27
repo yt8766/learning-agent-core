@@ -20,10 +20,10 @@
 
 ## 修改前先读
 
-- [docs/packages-overview.md](/docs/packages-overview.md)
-- [docs/config/README.md](/docs/config/README.md)
-- [docs/config/package-structure-guidelines.md](/docs/config/package-structure-guidelines.md)
-- [docs/config/runtime-profiles.md](/docs/config/runtime-profiles.md)
+- [docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
+- [docs/packages/config/README.md](/docs/packages/config/README.md)
+- [docs/packages/config/package-structure-guidelines.md](/docs/packages/config/package-structure-guidelines.md)
+- [docs/packages/config/runtime-profiles.md](/docs/packages/config/runtime-profiles.md)
 
 ## 改动边界
 

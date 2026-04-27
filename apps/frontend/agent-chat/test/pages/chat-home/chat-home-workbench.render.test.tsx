@@ -196,47 +196,11 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('mission-control');
     expect(html).toContain('使用快速模式开始对话');
     expect(html).toContain('快速模式');
-    expect(html).toContain('专家模式');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).toContain('更多建议');
     expect(html).not.toContain('Frontline Workspace');
     expect(html).not.toContain('切换模型');
     expect(html).not.toContain('自动选择');
-  });
-
-  it('routes empty and composer mode controls through the shared chat mode handler', () => {
-    const onChatModeChange = vi.fn();
-
-    renderToStaticMarkup(
-      <ChatHomeWorkbench
-        chat={
-          {
-            activeSession: {
-              id: 'session-1',
-              status: 'idle'
-            },
-            activeSessionId: 'session-1',
-            messages: [],
-            pendingApprovals: [],
-            checkpoint: undefined,
-            sendMessage: vi.fn(),
-            cancelActiveSession: vi.fn(),
-            hasMessages: false
-          } as any
-        }
-        chatMode="quick"
-        onChatModeChange={onChatModeChange}
-        showWorkbench={false}
-        bubbleItems={[]}
-        streamEvents={[]}
-      />
-    );
-
-    renderedSegmentedControls[0]?.onChange?.('expert');
-    renderedSegmentedControls[1]?.onChange?.('expert');
-
-    expect(onChatModeChange).toHaveBeenCalledWith('expert');
-    expect(onChatModeChange).toHaveBeenCalledTimes(2);
   });
 
   it('renders workspace shell, alerts, sections and follow-up actions when workbench is open', () => {

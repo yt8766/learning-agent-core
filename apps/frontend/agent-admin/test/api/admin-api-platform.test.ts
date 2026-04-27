@@ -2,6 +2,89 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const requestMock = vi.fn();
 
+const now = '2026-04-26T00:00:00.000Z';
+
+const validCapability = {
+  capabilityId: 'cap-terminal-run',
+  nodeId: 'node-local',
+  toolName: 'terminal.run',
+  category: 'terminal',
+  riskClass: 'medium',
+  requiresApproval: true
+};
+
+const validPolicyDecision = {
+  decisionId: 'decision-1',
+  requestId: 'request-1',
+  decision: 'require_approval',
+  reasonCode: 'high_risk_command',
+  reason: 'Command requires approval',
+  matchedPolicyIds: ['policy-1'],
+  requiresApproval: true,
+  riskClass: 'medium',
+  createdAt: now
+};
+
+const validAgentToolProjection = {
+  requests: [
+    {
+      requestId: 'request-1',
+      taskId: 'task-1',
+      sessionId: 'session-1',
+      nodeId: 'node-local',
+      capabilityId: 'cap-terminal-run',
+      toolName: 'terminal.run',
+      requestedBy: { actor: 'supervisor', actorId: 'supervisor-1' },
+      inputPreview: 'pnpm test',
+      riskClass: 'medium',
+      policyDecision: validPolicyDecision,
+      approvalId: 'approval-1',
+      status: 'pending_approval',
+      createdAt: now
+    }
+  ],
+  results: [
+    {
+      resultId: 'result-1',
+      requestId: 'request-1',
+      taskId: 'task-1',
+      nodeId: 'node-local',
+      status: 'succeeded',
+      outputPreview: 'ok',
+      artifactIds: [],
+      evidenceIds: [],
+      durationMs: 42,
+      createdAt: now
+    }
+  ],
+  capabilities: [validCapability],
+  nodes: [
+    {
+      nodeId: 'node-local',
+      displayName: 'Local terminal',
+      kind: 'local_terminal',
+      status: 'available',
+      sandboxMode: 'host',
+      riskClass: 'medium',
+      capabilities: [validCapability],
+      permissionScope: {},
+      health: { ok: true, checkedAt: now },
+      createdAt: now,
+      updatedAt: now
+    }
+  ],
+  policyDecisions: [validPolicyDecision],
+  events: [
+    {
+      id: 'event-1',
+      sessionId: 'session-1',
+      type: 'tool_called',
+      at: now,
+      payload: { requestId: 'request-1' }
+    }
+  ]
+};
+
 vi.mock('@/api/admin-api-core', () => ({
   request: (...args: unknown[]) => requestMock(...args)
 }));
@@ -11,6 +94,7 @@ import {
   exportEvalsCenter,
   exportRuntimeCenter,
   forceBriefingRun,
+  getAgentToolExecutionProjection,
   getApprovalScopePolicies,
   getApprovalsCenter,
   getBrowserReplay,
@@ -132,6 +216,7 @@ describe('admin-api-platform', () => {
     await getChannelDeliveries();
     await getConnectorsCenter();
     await getToolsCenter();
+    await getAgentToolExecutionProjection();
     await getRuntimeArchitecture();
     await getWorkflowPresets();
     await getBriefingRuns({ days: 7, category: 'general-security' });
@@ -173,16 +258,16 @@ describe('admin-api-platform', () => {
     );
     expect(requestMock).toHaveBeenNthCalledWith(6, '/platform/browser-replays/session-1');
     expect(requestMock).toHaveBeenNthCalledWith(
-      11,
+      12,
       '/platform/workflow-presets',
       expect.objectContaining({ cancelKey: 'workflow-presets', cancelPrevious: true })
     );
-    expect(requestMock).toHaveBeenNthCalledWith(12, '/platform/briefings/runs?days=7&category=general-security');
-    expect(requestMock).toHaveBeenNthCalledWith(13, '/platform/briefings/backend-tech/force-run', {
+    expect(requestMock).toHaveBeenNthCalledWith(13, '/platform/briefings/runs?days=7&category=general-security');
+    expect(requestMock).toHaveBeenNthCalledWith(14, '/platform/briefings/backend-tech/force-run', {
       method: 'POST'
     });
     expect(requestMock).toHaveBeenNthCalledWith(
-      14,
+      15,
       '/platform/briefings/feedback',
       expect.objectContaining({
         method: 'POST',
@@ -195,28 +280,72 @@ describe('admin-api-platform', () => {
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      17,
+      18,
       '/platform/evals-center?days=30',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      18,
+      19,
       '/platform/evals-center?days=10&scenarioId=scenario-1&outcome=passed',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      19,
+      20,
       '/platform/console/log-analysis?days=7',
       expect.objectContaining({ cancelKey: 'platform-console-log-analysis', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      20,
+      21,
       '/platform/console/refresh-metrics?days=14',
       expect.objectContaining({ method: 'POST' })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      21,
+      22,
       '/platform/evals-center/export?days=10&scenarioId=scenario-1&outcome=passed&format=json'
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      10,
+      '/agent-tools/projection',
+      expect.objectContaining({ cancelKey: 'agent-tool-execution-projection', cancelPrevious: true })
+    );
+  });
+
+  it('parses the agent tool execution projection contract before returning it', async () => {
+    requestMock.mockResolvedValueOnce(validAgentToolProjection);
+
+    await expect(
+      getAgentToolExecutionProjection({
+        requestId: 'request-1',
+        taskId: 'task-1',
+        sessionId: 'session-1'
+      })
+    ).resolves.toEqual(validAgentToolProjection);
+
+    expect(requestMock).toHaveBeenCalledWith(
+      '/agent-tools/projection?requestId=request-1&taskId=task-1&sessionId=session-1',
+      expect.objectContaining({ cancelKey: 'agent-tool-execution-projection', cancelPrevious: true })
+    );
+  });
+
+  it('throws a clear contract error when the agent tool projection contains an invalid request payload', async () => {
+    requestMock.mockResolvedValueOnce({
+      ...validAgentToolProjection,
+      requests: [{ ...validAgentToolProjection.requests[0], status: 'not-a-status' }]
+    });
+
+    await expect(getAgentToolExecutionProjection()).rejects.toThrow(
+      'Agent tool execution projection response did not match the expected contract'
+    );
+  });
+
+  it('throws a clear contract error when the agent tool projection contains invalid events', async () => {
+    requestMock.mockResolvedValueOnce({
+      ...validAgentToolProjection,
+      events: [{ ...validAgentToolProjection.events[0], type: 'not-an-event' }]
+    });
+
+    await expect(getAgentToolExecutionProjection()).rejects.toThrow(
+      'Agent tool execution projection response did not match the expected contract'
     );
   });
 });

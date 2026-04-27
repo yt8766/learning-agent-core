@@ -19,4 +19,4 @@
 后续约束：
 
 - 新代码不要再新增 `@agent/model` 导入
-- 相关实现文档优先更新到 `docs/packages-overview.md`、`docs/package-architecture-guidelines.md` 与 `docs/project-conventions.md`
+- 相关实现文档优先更新到 `docs/maps/packages-overview.md`、`docs/conventions/package-architecture-guidelines.md` 与 `docs/conventions/project-conventions.md`

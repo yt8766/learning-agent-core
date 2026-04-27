@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+
+import { approveWorkspaceSkillDraft, getWorkspaceCenter, rejectWorkspaceSkillDraft } from '@/api/admin-api-workspace';
 import { ApprovalsPanel } from '@/features/approvals-center/approvals-panel';
 import { ArchiveCenterPanel } from '@/features/archive-center/archive-center-panel';
 import { CompanyAgentsPanel } from '@/features/company-agents/company-agents-panel';
@@ -12,8 +15,41 @@ import { ProfileCenterPanel } from '@/features/learning-center/profile-center-pa
 import { RuntimeOverviewPanel } from '@/features/runtime-overview/runtime-overview-panel';
 import { SkillLabPanel } from '@/features/skill-lab/skill-lab-panel';
 import { SkillSourcesCenterPanel } from '@/features/skill-sources-center/skill-sources-center-panel';
+import { WorkspaceCenterPanel } from '@/features/workspace-center/workspace-center-panel';
+import type {
+  WorkspaceCenterRecord,
+  WorkspaceSkillDraftDecisionResponse
+} from '@/features/workspace-center/workspace-center-types';
 import type { AdminDashboardState } from '@/hooks/use-admin-dashboard';
 import { DashboardLoadingState } from './dashboard-loading-state';
+
+const EMPTY_WORKSPACE_CENTER: WorkspaceCenterRecord = {
+  workspace: {
+    id: 'workspace-empty',
+    profileId: 'profile-empty',
+    name: 'Agent Workspace',
+    scope: 'company',
+    status: 'active',
+    owner: {
+      id: 'system',
+      label: 'System',
+      kind: 'system'
+    },
+    policyRefs: [],
+    createdAt: '1970-01-01T00:00:00.000Z',
+    updatedAt: '1970-01-01T00:00:00.000Z',
+    summary: {
+      workspaceId: 'workspace-empty',
+      scope: 'company',
+      activeDraftCount: 0,
+      approvedDraftCount: 0,
+      reuseRecordCount: 0,
+      updatedAt: '1970-01-01T00:00:00.000Z'
+    }
+  },
+  drafts: [],
+  reuseRecords: []
+};
 
 export function renderDashboardCenter(dashboard: AdminDashboardState) {
   const consoleData = dashboard.consoleData;
@@ -102,6 +138,8 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
           />
         </div>
       );
+    case 'workspace':
+      return <WorkspaceDashboardCenter dashboard={dashboard} />;
     case 'memory':
       return (
         <MemoryCenterPanel
@@ -220,5 +258,62 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
       );
     default:
       return null;
+  }
+}
+
+function WorkspaceDashboardCenter({ dashboard }: { dashboard: AdminDashboardState }) {
+  const consoleData = dashboard.consoleData as
+    | ({ workspaceCenter?: WorkspaceCenterRecord } & NonNullable<AdminDashboardState['consoleData']>)
+    | null;
+  const [workspaceCenter, setWorkspaceCenter] = useState<WorkspaceCenterRecord>(
+    () => consoleData?.workspaceCenter ?? EMPTY_WORKSPACE_CENTER
+  );
+
+  async function refreshWorkspaceCenter() {
+    const nextWorkspaceCenter = await getWorkspaceCenter();
+    setWorkspaceCenter(nextWorkspaceCenter);
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    void getWorkspaceCenter().then(nextWorkspaceCenter => {
+      if (active) {
+        setWorkspaceCenter(nextWorkspaceCenter);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <WorkspaceCenterPanel
+      workspaceCenter={workspaceCenter}
+      onApproveDraft={draftId => {
+        void approveWorkspaceSkillDraft(draftId).then(async response => {
+          await refreshWorkspaceAfterDraftApproval(response, dashboard, refreshWorkspaceCenter);
+        });
+      }}
+      onRejectDraft={draftId => {
+        const reason = window.prompt('请输入拒绝原因')?.trim();
+        if (!reason) {
+          return;
+        }
+        void rejectWorkspaceSkillDraft(draftId, reason).then(refreshWorkspaceCenter);
+      }}
+    />
+  );
+}
+
+export async function refreshWorkspaceAfterDraftApproval(
+  response: WorkspaceSkillDraftDecisionResponse,
+  dashboard: Pick<AdminDashboardState, 'refreshPageCenter'>,
+  refreshWorkspaceCenter: () => Promise<void>
+) {
+  await refreshWorkspaceCenter();
+  if (response.intake?.mode === 'install-candidate') {
+    await dashboard.refreshPageCenter('skillSources');
   }
 }

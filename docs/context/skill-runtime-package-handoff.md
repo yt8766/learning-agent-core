@@ -20,13 +20,13 @@
 
 ## 修改前先读
 
-- [docs/skill-runtime/README.md](/docs/skill-runtime/README.md)
-- [docs/skill-runtime/package-structure-guidelines.md](/docs/skill-runtime/package-structure-guidelines.md)
+- [docs/packages/skill-runtime/README.md](/docs/packages/skill-runtime/README.md)
+- [docs/packages/skill-runtime/package-structure-guidelines.md](/docs/packages/skill-runtime/package-structure-guidelines.md)
 - [docs/skills/runtime-skills-vs-repo-skills.md](/docs/skills/runtime-skills-vs-repo-skills.md)
 
 ## 改动边界
 
-- 这里负责运行时技能，不负责仓库代理技能 `skills/*`。
+- 这里负责运行时技能，不负责仓库代理技能 `.agents/skills/*`。
 - source、install、policy 的规则应继续集中在这里，不要重新散到 backend service 或 runtime helper。
 - 涉及 install / approve / reject 流程时，注意治理语义与审批门一致性。
 

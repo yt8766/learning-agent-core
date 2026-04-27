@@ -35,7 +35,7 @@ describe('buildLocalSkillSuggestions', () => {
           requiredCapabilities: ['release-ops'],
           approvalPolicy: 'high-risk-only',
           riskLevel: 'medium',
-          entry: 'skills/release-check/SKILL.md'
+          entry: '.agents/skills/release-check/SKILL.md'
         }
       ],
       sources: [
@@ -43,7 +43,7 @@ describe('buildLocalSkillSuggestions', () => {
           id: 'workspace-skills',
           name: 'Workspace Skills',
           kind: 'internal',
-          baseUrl: '/tmp/skills',
+          baseUrl: '/tmp/.agents/skills',
           trustClass: 'internal',
           priority: 'workspace/internal',
           enabled: true
@@ -77,7 +77,7 @@ describe('buildLocalSkillSuggestions', () => {
           requiredCapabilities: ['documentation'],
           approvalPolicy: 'none',
           riskLevel: 'low',
-          entry: 'skills/openclaw-workspace-audit/SKILL.md'
+          entry: '.agents/skills/openclaw-workspace-audit/SKILL.md'
         }
       ],
       sources: [
@@ -121,7 +121,7 @@ describe('buildLocalSkillSuggestions', () => {
           requiredConnectors: ['repo'],
           approvalPolicy: 'none',
           riskLevel: 'low',
-          entry: 'skills/code-review/SKILL.md',
+          entry: '.agents/skills/code-review/SKILL.md',
           summary: '本地代码审查技能。'
         }
       ],
@@ -130,7 +130,7 @@ describe('buildLocalSkillSuggestions', () => {
           id: 'workspace-skills',
           name: 'Workspace Skills',
           kind: 'internal',
-          baseUrl: '/tmp/skills',
+          baseUrl: '/tmp/.agents/skills',
           trustClass: 'internal',
           priority: 'workspace/internal',
           enabled: true
@@ -165,7 +165,7 @@ describe('buildLocalSkillSuggestions', () => {
           requiredCapabilities: ['knowledge-audit'],
           approvalPolicy: 'none',
           riskLevel: 'low',
-          entry: 'skills/learning-flow-audit/SKILL.md',
+          entry: '.agents/skills/learning-flow-audit/SKILL.md',
           safety: {
             verdict: 'allow',
             trustScore: 82,
@@ -183,7 +183,7 @@ describe('buildLocalSkillSuggestions', () => {
           id: 'workspace-skills',
           name: 'Workspace Skills',
           kind: 'internal',
-          baseUrl: '/tmp/skills',
+          baseUrl: '/tmp/.agents/skills',
           trustClass: 'internal',
           priority: 'workspace/internal',
           enabled: true

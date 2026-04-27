@@ -7,6 +7,7 @@ import type { RuntimePlatformConsoleContext } from './runtime-platform-console.r
 import type { RuntimeSkillInstallContext } from '../skills/runtime-skill-install.service';
 import type { RuntimeSkillSourcesContext } from '../skills/runtime-skill-sources.service';
 import type { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
+import type { RuntimeWorkspaceDraftStore } from './runtime-centers-workspace-drafts';
 
 export interface RuntimeConnectorRegistryContext {
   settings: RuntimeHost['settings'];
@@ -21,6 +22,7 @@ export interface RuntimeCentersContext {
   appLogger?: AppLoggerService;
   techBriefingService?: RuntimeTechBriefingService;
   runtimeHost: RuntimeHost;
+  workspaceDraftStore?: RuntimeWorkspaceDraftStore;
   wenyuanFacade: RuntimeWenyuanFacade;
   sessionCoordinator: RuntimeHost['sessionCoordinator'];
   orchestrator: RuntimeHost['orchestrator'];
@@ -53,6 +55,8 @@ export const RUNTIME_CENTER_QUERY_METHOD_NAMES = [
   'getLearningCenter',
   'getLearningCenterSummary',
   'getEvidenceCenter',
+  'getWorkspaceCenter',
+  'listWorkspaceSkillDrafts',
   'getConnectorsCenter',
   'getToolsCenter',
   'getBrowserReplay',
@@ -85,6 +89,8 @@ export const RUNTIME_CENTER_GOVERNANCE_METHOD_NAMES = [
   'getSkillInstallReceipt',
   'approveSkillInstall',
   'rejectSkillInstall',
+  'approveWorkspaceSkillDraft',
+  'rejectWorkspaceSkillDraft',
   'setSkillSourceEnabled',
   'setCompanyAgentEnabled',
   'setConnectorEnabled',

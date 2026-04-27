@@ -80,6 +80,62 @@ export {
 export { SCAFFOLD_TOOL_DEFINITIONS } from './scaffold/scaffold-tool-definitions';
 export { executeScaffoldTool } from './executors/scaffold/scaffold-executor';
 export { LocalSandboxExecutor, StubSandboxExecutor, type SandboxExecutor } from './sandbox/sandbox-executor';
+export {
+  buildDockerSandboxCommandPlan,
+  createDockerSandboxProviderPlugin,
+  DockerSandboxProvider,
+  type DockerSandboxCommandPlan,
+  type DockerSandboxProviderOptions,
+  type DockerSandboxRunner,
+  type DockerSandboxRunnerResult
+} from './sandbox/docker-sandbox-provider';
 export { SCHEDULING_TOOL_DEFINITIONS } from './definitions/scheduling-tool-definitions';
 export { executeSchedulingTool } from './executors/scheduling/scheduling-executor';
 export { ExecutionWatchdog, type ExecutionWatchdogObservation } from './watchdog/execution-watchdog';
+export {
+  AgentToolAliasResolver,
+  AgentToolSurfaceResolver,
+  classifyAgentToolRisk,
+  decideAgentToolApprovalMode,
+  normalizeAgentToolInput,
+  type AgentToolAliasDefinition,
+  type AgentToolAliasExplanation,
+  type AgentToolAliasResolution
+} from './agent-surface';
+export {
+  CommandPolicy,
+  PlatformCommandResolver,
+  PosixPlatformCommandProvider,
+  RawCommandClassifier,
+  WindowsPlatformCommandProvider,
+  type CommandIntent,
+  type CommandPolicyEvaluation,
+  type CommandSafetyProfile,
+  type PlatformCommandProvider,
+  type PlatformCommandResolverInput,
+  type PlatformName,
+  type RawCommandClassification,
+  type ResolvedCommand
+} from './command';
+export {
+  AutoReviewGate,
+  RuleBasedReviewer,
+  type AutoReviewFinding,
+  type AutoReviewGateDecision,
+  type AutoReviewInput,
+  type AutoReviewResult,
+  type AutoReviewSeverity,
+  type RuleBasedReviewRule
+} from './auto-review';
+export {
+  LocalProcessSandboxProvider,
+  SandboxPolicy,
+  SandboxProviderRegistry,
+  SimulatedSandboxProvider,
+  type SandboxCapability,
+  type SandboxProfile,
+  type SandboxProvider,
+  type SandboxProviderPlugin,
+  type SandboxProviderResolutionInput,
+  type SandboxRunRequest
+} from './sandbox/sandbox-provider';

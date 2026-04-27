@@ -37,7 +37,7 @@ export {
   isFreshnessSensitiveGoal
 } from './utils/prompts/temporal-context';
 export * from './graphs';
-export { LearningFlow } from './flows';
+export * from './flows';
 export { archivalMemorySearch, archivalMemorySearchByParams, coreMemoryAppend, coreMemoryReplace } from './memory';
 export * from './runtime';
 export * from './runtime-observability';

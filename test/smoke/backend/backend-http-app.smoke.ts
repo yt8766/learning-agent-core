@@ -11,7 +11,7 @@ describe('backend HTTP app smoke', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    app = await NestFactory.create(AppModule, { logger: false });
+    app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
     await app.init();
   });
 

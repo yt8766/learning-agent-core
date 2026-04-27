@@ -12,9 +12,9 @@
 1. [package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
 2. [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
 3. [model-selection-guidelines.md](/docs/agents/data-report/model-selection-guidelines.md)
-4. [report-kit 文档目录](/docs/report-kit/README.md)
-5. [data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
-6. [data-report-json-bundle.md](/docs/report-kit/data-report-json-bundle.md)
+4. [report-kit 文档目录](/docs/packages/report-kit/README.md)
+5. [data-report-pipeline.md](/docs/packages/report-kit/data-report-pipeline.md)
+6. [data-report-json-bundle.md](/docs/packages/report-kit/data-report-json-bundle.md)
 
 改 `agents/data-report` 前，优先确认：
 
@@ -44,4 +44,4 @@
 - [package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
 - [type-barrel-notes.md](/docs/agents/data-report/type-barrel-notes.md)
 - [model-selection-guidelines.md](/docs/agents/data-report/model-selection-guidelines.md)
-- [data-report-json-bundle.md](/docs/report-kit/data-report-json-bundle.md)
+- [data-report-json-bundle.md](/docs/packages/report-kit/data-report-json-bundle.md)

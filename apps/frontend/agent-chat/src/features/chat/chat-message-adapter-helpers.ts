@@ -330,6 +330,10 @@ export function stripStreamingCursor(content: string) {
   return content.replace(/[\u2588\u2589\u258a\u258b\u258c\u258d\u258e\u258f▌▋▊▉]+\s*$/u, '').trimEnd();
 }
 
+export function stripWorkflowCommandPrefix(content: string) {
+  return content.replace(/^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review|plan)\b\s*/i, '').trimStart();
+}
+
 /** Strip <think>…</think> reasoning blocks from model output before display. */
 export function stripThinkTags(content: string) {
   return content.replace(/<think>[\s\S]*?<\/think>/gi, '').trimStart();

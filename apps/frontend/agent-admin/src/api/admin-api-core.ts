@@ -14,7 +14,7 @@ export type AdminRequestInit = {
 
 export const ABORTED_REQUEST_ERROR = '__ADMIN_REQUEST_ABORTED__';
 const requestControllers = new Map<string, AbortController>();
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api';
 const http = axios.create({
   baseURL: API_BASE,
   withCredentials: true,

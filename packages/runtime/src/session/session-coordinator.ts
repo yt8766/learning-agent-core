@@ -57,7 +57,7 @@ export class SessionCoordinator {
   constructor(
     private readonly orchestrator: AgentOrchestrator,
     private readonly runtimeStateRepository: RuntimeStateRepository,
-    llmProvider: LlmProvider,
+    private readonly llmProvider: LlmProvider,
     private readonly contextStrategy?: ContextStrategy,
     private readonly memorySearchService?: MemorySearchService
   ) {
@@ -347,6 +347,7 @@ export class SessionCoordinator {
         orchestrator: this.orchestrator,
         store: this.store,
         thinking: this.thinking,
+        llmProvider: this.llmProvider,
         syncTask: (nextSessionId, task) => this.syncTask(nextSessionId, task)
       },
       sessionId,

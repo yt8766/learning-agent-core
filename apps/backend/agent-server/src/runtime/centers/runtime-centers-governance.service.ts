@@ -6,6 +6,7 @@ import {
   SkillManifestRecord,
   SkillSourceRecord
 } from '@agent/core';
+import { NotFoundException } from '@nestjs/common';
 import { appendGovernanceAudit } from '@agent/runtime';
 import {
   clearCapabilityApprovalPolicyWithGovernance,
@@ -53,6 +54,7 @@ import {
   createInstallSkillGovernanceContext,
   createRejectSkillInstallGovernanceContext
 } from '../domain/skills/runtime-skill-governance-context';
+import { getRuntimeWorkspaceDraftStoreForContext } from './runtime-centers-workspace-drafts';
 
 export class RuntimeCentersGovernanceService {
   constructor(private readonly getContext: () => RuntimeCentersContext) {}
@@ -148,6 +150,31 @@ export class RuntimeCentersGovernanceService {
   async rejectSkillInstall(receiptId: string, dto: ResolveSkillInstallDto) {
     const ctx = this.ctx();
     return rejectSkillInstallWithGovernance(createRejectSkillInstallGovernanceContext(ctx, receiptId, dto));
+  }
+
+  async approveWorkspaceSkillDraft(draftId: string, dto?: Record<string, unknown>) {
+    const ctx = this.ctx();
+    try {
+      return await getRuntimeWorkspaceDraftStoreForContext(ctx).approveDraftForInstallCandidate(draftId, {
+        reviewerId: getWorkspaceDraftReviewerId(dto)
+      });
+    } catch (error) {
+      throwWorkspaceDraftNotFound(draftId, error);
+      throw error;
+    }
+  }
+
+  async rejectWorkspaceSkillDraft(draftId: string, dto?: Record<string, unknown>) {
+    const ctx = this.ctx();
+    try {
+      return await getRuntimeWorkspaceDraftStoreForContext(ctx).rejectDraft(draftId, {
+        reviewerId: getWorkspaceDraftReviewerId(dto),
+        reason: typeof dto?.reason === 'string' ? dto.reason : undefined
+      });
+    } catch (error) {
+      throwWorkspaceDraftNotFound(draftId, error);
+      throw error;
+    }
   }
 
   async setSkillSourceEnabled(sourceId: string, enabled: boolean) {
@@ -287,5 +314,15 @@ export class RuntimeCentersGovernanceService {
 
   private ctx() {
     return this.getContext();
+  }
+}
+
+function getWorkspaceDraftReviewerId(dto?: Record<string, unknown>): string {
+  return typeof dto?.reviewerId === 'string' ? dto.reviewerId : 'agent-admin-user';
+}
+
+function throwWorkspaceDraftNotFound(draftId: string, error: unknown): void {
+  if (error instanceof Error && error.message === `Skill draft ${draftId} not found`) {
+    throw new NotFoundException(`Workspace skill draft ${draftId} not found`);
   }
 }

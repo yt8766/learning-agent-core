@@ -134,4 +134,64 @@ describe('backend chat SSE controller integration', () => {
     closeHandler?.();
     expect(response.end).toHaveBeenCalledTimes(1);
   });
+
+  it('uses the explicit stream session id over cookies and stops delivery after client close', () => {
+    const { controller, chatService, emit } = createControllerHarness();
+    const request = {
+      ...createSseRequest(),
+      headers: { cookie: 'agent_session_id=session-from-cookie' }
+    };
+    const response = createSseResponse();
+
+    controller.stream(request as never, response as never, 'session-sse-1');
+
+    expect(response.cookie).toHaveBeenCalledWith('agent_session_id', 'session-sse-1', {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/'
+    });
+    expect(chatService.listEvents).toHaveBeenCalledWith('session-sse-1');
+    expect(chatService.subscribe).toHaveBeenCalledWith('session-sse-1', expect.any(Function));
+
+    const writeCountBeforeClose = response.write.mock.calls.length;
+    const closeHandler = request.on.mock.calls.find(([eventName]) => eventName === 'close')?.[1];
+    closeHandler?.();
+
+    emit(
+      createEvent({
+        id: 'evt-after-close',
+        type: 'assistant_token',
+        at: '2026-04-23T00:00:03.000Z',
+        payload: { taskId: 'task-sse-1', messageId: 'assistant-1', content: 'close 后不应发送' }
+      })
+    );
+
+    expect(response.write).toHaveBeenCalledTimes(writeCountBeforeClose);
+    expect(response.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the session cookie for stream recovery and rejects requests without a session id', () => {
+    const { controller, chatService } = createControllerHarness();
+    const cookieRequest = {
+      ...createSseRequest(),
+      headers: { cookie: 'other=value; agent_session_id=session-sse-1' }
+    };
+    const response = createSseResponse();
+
+    controller.stream(cookieRequest as never, response as never);
+
+    expect(chatService.listEvents).toHaveBeenCalledWith('session-sse-1');
+    expect(response.cookie).toHaveBeenCalledWith('agent_session_id', 'session-sse-1', {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/'
+    });
+
+    const closeHandler = cookieRequest.on.mock.calls.find(([eventName]) => eventName === 'close')?.[1];
+    closeHandler?.();
+
+    expect(() => controller.stream(createSseRequest() as never, createSseResponse() as never)).toThrow(
+      'sessionId is required.'
+    );
+  });
 });

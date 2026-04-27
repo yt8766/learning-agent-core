@@ -1,6 +1,6 @@
 import { loadSettings } from '@agent/config';
 import { z } from 'zod/v4';
-import type { ILLMProvider as LlmProvider } from '@agent/core';
+import type { AgentSkillReuseRecord, ILLMProvider as LlmProvider } from '@agent/core';
 import { MemoryRepository, RuleRepository, MemorySearchService } from '@agent/memory';
 import { generateObjectWithRetry } from '@agent/adapters';
 import { EvaluationResult, LearningEvaluationRecord, ReviewRecord, RuleRecord, SkillCard } from '@agent/core';
@@ -30,7 +30,13 @@ interface LearningFlowDependencies {
   thinking?: boolean;
   settings?: ReturnType<typeof loadSettings>;
   localSkillSuggestionResolver?: (task: TaskRecord) => Promise<TaskRecord['skillSearch'] | undefined>;
+  recordWorkspaceSkillReuse?: (record: LearningWorkspaceSkillReuseRecord) => Promise<void> | void;
 }
+
+type LearningWorkspaceSkillReuseRecord = Pick<
+  AgentSkillReuseRecord,
+  'id' | 'skillId' | 'taskId' | 'sourceDraftId' | 'outcome' | 'evidenceRefs' | 'reusedAt'
+>;
 
 export class LearningFlow {
   private readonly settings: ReturnType<typeof loadSettings>;
@@ -267,9 +273,11 @@ export class LearningFlow {
           }
         ]
       };
+      const evidenceId = `${task.id}:skill-governance:${updated.id}`;
+      const reusedAt = updated.updatedAt ?? new Date().toISOString();
       task.externalSources = mergeEvidence(task.externalSources ?? [], [
         {
-          id: `${task.id}:skill-governance:${updated.id}`,
+          id: evidenceId,
           taskId: task.id,
           sourceId: updated.id,
           sourceType: 'skill_governance',
@@ -281,9 +289,17 @@ export class LearningFlow {
             promotionState: updated.promotionState
           },
           linkedRunId: task.runId,
-          createdAt: updated.updatedAt ?? new Date().toISOString()
+          createdAt: reusedAt
         }
       ]);
+      await this.dependencies.recordWorkspaceSkillReuse?.({
+        id: `reuse:${task.runId ?? task.id}:${updated.id}`,
+        skillId: updated.id,
+        taskId: task.id,
+        outcome: evaluation.success ? 'succeeded' : 'failed',
+        evidenceRefs: [evidenceId],
+        reusedAt
+      });
       builders.addTrace(
         'skill_usage_recorded',
         `Updated installed skill ${updated.id} with success rate ${(updated.successRate ?? 0).toFixed(2)}, recommendation ${recommendation}`

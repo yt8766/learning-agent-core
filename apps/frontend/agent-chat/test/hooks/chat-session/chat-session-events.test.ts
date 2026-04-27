@@ -362,6 +362,170 @@ describe('chat-session-events', () => {
     );
   });
 
+  it('syncProcessMessageFromEvent 会把 execution step 投影成可见系统事件', () => {
+    const messages = syncProcessMessageFromEvent([], {
+      id: 'evt-exec-1',
+      sessionId: 'session-1',
+      type: 'execution_step_started',
+      at: '2026-04-26T08:00:00.000Z',
+      payload: {
+        taskId: 'task-1',
+        requestId: 'exec-req-1',
+        stage: 'execute',
+        toolName: 'pnpm test',
+        nodeId: 'test-runner',
+        status: 'running',
+        detail: '正在运行前端回归测试'
+      }
+    } as any);
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        id: 'event_evt-exec-1',
+        role: 'system',
+        content: '执行步骤开始：execute · pnpm test · test-runner。正在运行前端回归测试'
+      })
+    ]);
+  });
+
+  it('buildVisibleEventMessage 会把 trajectory step 投影成过程轨迹文案', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-trajectory-1',
+      sessionId: 'session-1',
+      type: 'trajectory_step',
+      at: '2026-04-26T08:00:01.000Z',
+      payload: {
+        stepId: 'step-1',
+        taskId: 'task-1',
+        sequence: 3,
+        type: 'tool_executed',
+        title: '运行测试',
+        summary: 'Vitest 已完成最小回归。',
+        actor: 'execution_node',
+        status: 'succeeded',
+        evidenceIds: ['evidence-1'],
+        outputRefs: ['artifact-1']
+      }
+    } as any);
+
+    expect(content).toBe('轨迹步骤 3：运行测试。Vitest 已完成最小回归。');
+  });
+
+  it('buildVisibleEventMessage 会把工具执行流事件投影成可见中文文案', () => {
+    const cases = [
+      {
+        type: 'tool_selected',
+        payload: {
+          toolName: 'pnpm test',
+          nodeId: 'test-runner',
+          detail: '已选择前端回归测试工具'
+        },
+        expected: '工具已选择：pnpm test · test-runner。已选择前端回归测试工具'
+      },
+      {
+        type: 'tool_stream_detected',
+        payload: {
+          toolName: 'pnpm test',
+          nodeId: 'test-runner',
+          detail: '检测到工具输出流'
+        },
+        expected: '工具输出已检测：pnpm test · test-runner。检测到工具输出流'
+      },
+      {
+        type: 'tool_stream_dispatched',
+        payload: {
+          toolName: 'pnpm test',
+          nodeId: 'test-runner',
+          detail: '正在同步给前端'
+        },
+        expected: '工具输出已分发：pnpm test · test-runner。正在同步给前端'
+      },
+      {
+        type: 'tool_stream_completed',
+        payload: {
+          toolName: 'pnpm test',
+          nodeId: 'test-runner',
+          detail: '工具输出同步完成'
+        },
+        expected: '工具输出已完成：pnpm test · test-runner。工具输出同步完成'
+      }
+    ];
+
+    for (const item of cases) {
+      const content = buildVisibleEventMessage({
+        id: `evt-${item.type}`,
+        sessionId: 'session-1',
+        type: item.type,
+        at: '2026-04-26T08:00:01.000Z',
+        payload: item.payload
+      } as any);
+
+      expect(content).toBe(item.expected);
+      expect(content.trim()).not.toBe('');
+    }
+  });
+
+  it('buildVisibleEventMessage 不会把非工具执行 interrupt 改写成工具流文案', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-plan-interrupt-1',
+      sessionId: 'session-1',
+      type: 'interrupt_pending',
+      at: '2026-04-26T08:00:01.000Z',
+      payload: {
+        intent: 'plan_question',
+        interactionKind: 'plan-question',
+        questionSet: {
+          summary: '需要先确认计划方向。'
+        },
+        questions: [{ id: 'scope', question: '范围是什么？' }]
+      }
+    } as any);
+
+    expect(content).toBe('等待方案澄清：当前有 1 个计划问题需要你拍板。需要先确认计划方向。');
+  });
+
+  it('buildVisibleEventMessage 会读取后端 node_progress 中的 task trajectory 投影', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-trajectory-snapshot-1',
+      sessionId: 'session-1',
+      type: 'node_progress',
+      at: '2026-04-26T08:00:02.000Z',
+      payload: {
+        projection: 'task_trajectory',
+        taskId: 'task-1',
+        taskTrajectory: {
+          trajectoryId: 'trajectory-1',
+          sessionId: 'session-1',
+          taskId: 'task-1',
+          intent: { summary: '执行工具链' },
+          status: 'running',
+          steps: [
+            {
+              stepId: 'step-1',
+              taskId: 'task-1',
+              sequence: 1,
+              type: 'tool_requested',
+              title: '请求工具',
+              actor: 'execution_node',
+              status: 'running',
+              startedAt: '2026-04-26T08:00:00.000Z',
+              inputRefs: [],
+              outputRefs: [],
+              evidenceIds: []
+            }
+          ],
+          artifacts: [],
+          evidenceIds: [],
+          replays: [],
+          createdAt: '2026-04-26T08:00:00.000Z',
+          updatedAt: '2026-04-26T08:00:02.000Z'
+        }
+      }
+    } as any);
+
+    expect(content).toBe('执行工具链：1 个步骤 · 状态：running');
+  });
+
   it('syncSessionFromEvent 会用事件里的 title 刷新左侧会话标题', () => {
     const sessions: ChatSessionRecord[] = [
       {

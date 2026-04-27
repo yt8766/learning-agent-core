@@ -1,4 +1,4 @@
-import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, Radar } from 'lucide-react';
+import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, FolderKanban, Radar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -26,6 +26,11 @@ export function DashboardPage() {
     learning: {
       icon: <ClipboardCheck className="h-4 w-4" />,
       description: '治理控制台',
+      badges: []
+    },
+    workspace: {
+      icon: <FolderKanban className="h-4 w-4" />,
+      description: '工作区与技能飞轮治理',
       badges: []
     },
     memory: {

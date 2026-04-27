@@ -1,0 +1,67 @@
+.chatx-header {
+  min-height: 74px;
+  align-items: flex-start;
+  padding: 24px 28px 0;
+}
+
+.chatx-header__copy .chatx-header__eyebrow {
+  display: none;
+}
+
+.chatx-header__copy h4.ant-typography {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.chatx-header__tags {
+  margin-top: 4px;
+}
+
+.chatx-header__actions {
+  margin-left: auto;
+}
+
+.chatx-header__share {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  cursor: pointer;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.chatx-empty-entry {
+  gap: 22px;
+}
+
+.chatx-empty-entry__brand {
+  width: 48px;
+  height: 36px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chatx-empty-entry__copy h1.ant-typography {
+  margin: 0;
+}
+
+.chatx-empty-entry__copy p.ant-typography,
+.chatx-empty-entry__eyebrow,
+.chatx-empty-entry__modes,
+.chatx-plan-mode-inline {
+  display: none;
+}
+
+.chatx-composer-shell.is-empty-thread {
+  width: min(1180px, calc(100vw - 560px));
+  margin-top: 52px;
+}

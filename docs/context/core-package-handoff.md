@@ -22,9 +22,9 @@
 
 ## 修改前先读
 
-- [docs/core/README.md](/docs/core/README.md)
-- [docs/core/current-core-package-guidelines.md](/docs/core/current-core-package-guidelines.md)
-- [docs/core/core-contract-guidelines.md](/docs/core/core-contract-guidelines.md)
+- [docs/packages/core/README.md](/docs/packages/core/README.md)
+- [docs/packages/core/current-core-package-guidelines.md](/docs/packages/core/current-core-package-guidelines.md)
+- [docs/packages/core/core-contract-guidelines.md](/docs/packages/core/core-contract-guidelines.md)
 
 ## 改动边界
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDashboardHash,
   buildDashboardShareUrl,
+  PAGE_TITLES,
   readDashboardStateFromHash,
   shouldPollTask,
   toApprovalItems
@@ -84,6 +85,11 @@ describe('admin-dashboard-constants', () => {
   it('accepts memory and profile center pages from hash parsing', () => {
     expect(readDashboardStateFromHash({ hash: '#/memory' } as Location).page).toBe('memory');
     expect(readDashboardStateFromHash({ hash: '#/profiles' } as Location).page).toBe('profiles');
+  });
+
+  it('accepts the workspace center page from hash parsing', () => {
+    expect(readDashboardStateFromHash({ hash: '#/workspace' } as Location).page).toBe('workspace');
+    expect(PAGE_TITLES.workspace).toBe('Agent Workspace');
   });
 
   it('toApprovalItems 会透传 pendingApproval 的原因码、工具和预览信息', () => {

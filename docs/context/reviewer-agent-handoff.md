@@ -20,7 +20,7 @@
 
 - [docs/agents/reviewer/README.md](/docs/agents/reviewer/README.md)
 - [docs/agents/reviewer/package-structure-guidelines.md](/docs/agents/reviewer/package-structure-guidelines.md)
-- [docs/evals/README.md](/docs/evals/README.md)
+- [docs/packages/evals/README.md](/docs/packages/evals/README.md)
 
 ## 改动边界
 

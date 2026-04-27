@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 
-import { getChannelDeliveries, isAbortedAdminRequestError } from '@/api/admin-api';
+import { getAgentToolExecutionProjection, getChannelDeliveries, isAbortedAdminRequestError } from '@/api/admin-api';
 import { RuntimeSummaryAgentErrors } from './runtime-summary-agent-errors';
 import { RuntimeSummaryBriefingAudit } from './runtime-summary-briefing-audit';
 import { RuntimeSummaryBudget } from './runtime-summary-budget';
@@ -8,6 +8,7 @@ import { RuntimeSummaryChannelDeliveries } from './runtime-summary-channel-deliv
 import { RuntimeSummaryGovernance } from './runtime-summary-governance';
 import { RuntimeSummaryOverview } from './runtime-summary-overview';
 import { RuntimeSummaryTools } from './runtime-summary-tools';
+import type { AgentToolExecutionProjectionInput } from './runtime-agent-tool-execution-projections';
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
 import { RuntimeSummaryVisuals } from './runtime-summary-visuals';
 import { RuntimeWorkflowCatalogCard } from './runtime-workflow-catalog-card';
@@ -30,6 +31,7 @@ export function RuntimeSummarySection({
   const [ministryFilter, setMinistryFilter] = useState('');
   const [retryableFilter, setRetryableFilter] = useState('');
   const [channelDeliveries, setChannelDeliveries] = useState<Awaited<ReturnType<typeof getChannelDeliveries>>>([]);
+  const [agentToolExecutions, setAgentToolExecutions] = useState<AgentToolExecutionProjectionInput | undefined>();
   const errorCodeOptions = useMemo(
     () => Array.from(new Set((runtime.recentAgentErrors ?? []).map(item => item.errorCode))).filter(Boolean),
     [runtime.recentAgentErrors]
@@ -78,6 +80,26 @@ export function RuntimeSummarySection({
     };
   }, [runtime.taskCount, runtime.activeTaskCount, runtime.pendingApprovalCount]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getAgentToolExecutionProjection()
+      .then(next => {
+        if (cancelled) {
+          return;
+        }
+        setAgentToolExecutions(next as AgentToolExecutionProjectionInput);
+      })
+      .catch(error => {
+        if (cancelled || isAbortedAdminRequestError(error)) {
+          return;
+        }
+        setAgentToolExecutions(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [runtime.taskCount, runtime.activeTaskCount, runtime.pendingApprovalCount]);
+
   return (
     <>
       <RuntimeSummaryOverview runtime={runtime} onRevokeApprovalPolicy={onRevokeApprovalPolicy} />
@@ -86,6 +108,7 @@ export function RuntimeSummarySection({
       <RuntimeSummaryGovernance runtime={runtime} />
       <RuntimeSummaryTools
         runtime={runtime}
+        agentToolExecutions={agentToolExecutions}
         executionModeFilter={executionModeFilter}
         onExecutionModeFilterChange={onExecutionModeFilterChange}
         interactionKindFilter={interactionKindFilter}

@@ -12,6 +12,7 @@ import {
   syncSessionFromEvent
 } from '../../../apps/frontend/agent-chat/src/hooks/chat-session/chat-session-events';
 import {
+  shouldIgnoreStaleTerminalStreamEvent,
   shouldStopStreamingForEvent,
   syncCheckpointFromStreamEvent
 } from '../../../apps/frontend/agent-chat/src/hooks/chat-session/chat-session-stream';
@@ -115,5 +116,50 @@ describe('frontend-backend chat session stream merge integration', () => {
     });
 
     expect(syncMessageFromEvent(current as never, malformed as never)).toBe(current);
+  });
+
+  it('ignores stale terminal events when a newer running checkpoint is already active', () => {
+    const checkpoint = {
+      sessionId: 'session-stream-1',
+      taskId: 'task-new-run',
+      graphState: { status: 'running' },
+      thinkState: { loading: true, blink: true },
+      updatedAt: '2026-04-23T00:00:10.000Z'
+    };
+
+    const staleFinished = event({
+      id: 'evt-stale-finished',
+      type: 'session_finished',
+      at: '2026-04-23T00:00:05.000Z',
+      payload: { taskId: 'task-old-run' }
+    });
+
+    const nextCheckpoint = shouldIgnoreStaleTerminalStreamEvent(checkpoint as never, staleFinished)
+      ? checkpoint
+      : syncCheckpointFromStreamEvent(checkpoint as never, staleFinished);
+
+    expect(nextCheckpoint).toBe(checkpoint);
+  });
+
+  it('does not ignore terminal events for the active task even when checkpoint recovery uses the same task id', () => {
+    const checkpoint = {
+      sessionId: 'session-stream-1',
+      taskId: 'task-stream-1',
+      graphState: { status: 'running' },
+      thinkState: { loading: true, blink: true },
+      updatedAt: '2026-04-23T00:00:00.000Z'
+    };
+    const cancelled = event({
+      id: 'evt-cancelled',
+      type: 'run_cancelled',
+      at: '2026-04-23T00:00:02.000Z',
+      payload: { taskId: 'task-stream-1', reason: '用户取消' }
+    });
+
+    expect(shouldIgnoreStaleTerminalStreamEvent(checkpoint as never, cancelled)).toBe(false);
+    expect(syncCheckpointFromStreamEvent(checkpoint as never, cancelled)).toMatchObject({
+      graphState: { status: 'cancelled' },
+      thinkState: { loading: false, blink: false }
+    });
   });
 });

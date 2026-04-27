@@ -9,8 +9,12 @@ import {
 } from './chat-session-event-card-helpers';
 import {
   buildApprovalRequiredCopy,
+  buildExecutionStepEventCopy,
   buildNodeStatusCopy,
-  buildPlanQuestionCopy
+  buildPlanQuestionCopy,
+  buildTaskTrajectoryEventCopy,
+  buildToolStreamEventCopy,
+  buildTrajectoryStepEventCopy
 } from './chat-session-event-message-helpers';
 import {
   attachEventTaskIdsToMessages as attachEventTaskIdsToMessagesInternal,
@@ -147,9 +151,27 @@ export function buildVisibleEventMessage(event: ChatEventRecord) {
     case 'conversation_compacted': {
       return '正在自动压缩背景信息';
     }
-    case 'node_status':
     case 'node_progress':
+      if (payload.projection === 'task_trajectory') {
+        return buildTaskTrajectoryEventCopy(payload);
+      }
       return buildNodeStatusCopy(payload);
+    case 'node_status':
+      return buildNodeStatusCopy(payload);
+    case 'execution_step_started':
+    case 'execution_step_completed':
+    case 'execution_step_blocked':
+    case 'execution_step_resumed':
+      return buildExecutionStepEventCopy(event.type, payload);
+    case 'tool_selected':
+    case 'tool_stream_detected':
+    case 'tool_stream_dispatched':
+    case 'tool_stream_completed':
+      return buildToolStreamEventCopy(event.type, payload);
+    case 'trajectory_step':
+      return buildTrajectoryStepEventCopy(payload);
+    case 'task_trajectory':
+      return buildTaskTrajectoryEventCopy(payload);
     case 'decree_received':
       return '已接收你的请求，正在判断这一轮该如何处理。';
     case 'skill_resolved':

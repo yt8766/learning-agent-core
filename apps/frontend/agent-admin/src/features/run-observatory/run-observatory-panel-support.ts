@@ -1,5 +1,12 @@
 import type { RunBundleRecord } from '@agent/core';
 
+export type {
+  AgentToolObservatoryDetail,
+  AgentToolObservatoryFilter,
+  AgentToolObservatoryItem
+} from './run-observatory-agent-tools';
+export { buildAgentToolObservatoryDetail } from './run-observatory-agent-tools';
+
 export type RunObservatoryFocusTarget =
   | {
       kind: 'checkpoint';

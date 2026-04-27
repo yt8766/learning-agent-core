@@ -7,7 +7,7 @@ const integrationDocPath = join(process.cwd(), 'docs/integration/llm-gateway-pos
 const postgresRuntimeDocPath = join(process.cwd(), 'docs/integration/llm-gateway-postgres-runtime.md');
 const previewDocPath = join(process.cwd(), 'docs/integration/llm-gateway-vercel-preview.md');
 const integrationReadmePath = join(process.cwd(), 'docs/integration/README.md');
-const frontendReadmePath = join(process.cwd(), 'docs/frontend/llm-gateway/README.md');
+const frontendReadmePath = join(process.cwd(), 'docs/apps/frontend/llm-gateway/README.md');
 const packageJsonPath = join(gatewayRoot, 'package.json');
 const gitignorePath = join(process.cwd(), '.gitignore');
 const previewSmokeScriptPath = join(process.cwd(), 'apps/llm-gateway/scripts/preview-smoke.mjs');
@@ -35,6 +35,16 @@ describe('llm gateway env docs', () => {
     expect(envExample).not.toContain('yangtao1314520');
     expect(envExample).toContain('LLM_GATEWAY_ADMIN_JWT_SECRET=');
     expect(envExample).toContain('LLM_GATEWAY_KEY_HASH_SECRET=');
+  });
+
+  it('keeps the local dev server on the documented gateway port', async () => {
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { scripts?: Record<string, string> };
+    const doc = await readFile(integrationDocPath, 'utf8');
+    const frontendReadme = await readFile(frontendReadmePath, 'utf8');
+
+    expect(packageJson.scripts?.dev).toBe('next dev --port 3100');
+    expect(doc).toContain('http://localhost:3100');
+    expect(frontendReadme).toContain('http://localhost:3100');
   });
 
   it('keeps the Postgres/login integration doc aligned with bootstrap commands and verification', async () => {

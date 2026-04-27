@@ -17,6 +17,7 @@ import {
   resolveSkillSearchStatus
 } from '../domain/skills/runtime-skill-search-resolution';
 
+import { WORKSPACE_SKILL_DRAFT_SOURCE_ID } from '../domain/skills/runtime-workspace-skill-draft-manifests';
 import {
   buildConnectorTemplateSuggestions,
   evaluateSkillManifestSafety,
@@ -79,6 +80,7 @@ export interface RuntimeSkillSourcesContext {
   };
   getDisabledSkillSourceIds: () => Promise<string[]>;
   autoInstallLocalManifest: (manifest: SkillManifestRecord) => Promise<unknown>;
+  listWorkspaceSkillDraftManifests?: () => Promise<SkillManifestRecord[]>;
 }
 
 export async function listSkillSources(context: RuntimeSkillSourcesContext): Promise<SkillSourceRecord[]> {
@@ -89,6 +91,18 @@ export async function listSkillSources(context: RuntimeSkillSourcesContext): Pro
       name: 'Workspace Skills',
       kind: 'internal',
       baseUrl: `${context.settings.workspaceRoot}/skills`,
+      discoveryMode: 'local-dir',
+      syncStrategy: 'manual',
+      allowedProfiles: ['platform', 'company', 'personal', 'cli'],
+      trustClass: 'internal',
+      priority: 'workspace/internal',
+      authMode: 'none'
+    },
+    {
+      id: WORKSPACE_SKILL_DRAFT_SOURCE_ID,
+      name: 'Workspace Skill Drafts',
+      kind: 'internal',
+      baseUrl: `${context.settings.workspaceRoot}/data/skills/drafts`,
       discoveryMode: 'local-dir',
       syncStrategy: 'manual',
       allowedProfiles: ['platform', 'company', 'personal', 'cli'],
@@ -172,19 +186,23 @@ export async function listSkillSources(context: RuntimeSkillSourcesContext): Pro
 
 export async function listSkillManifests(context: RuntimeSkillSourcesContext): Promise<SkillManifestRecord[]> {
   const sources = await listSkillSources(context);
+  const workspaceDraftSource = sources.find(source => source.id === WORKSPACE_SKILL_DRAFT_SOURCE_ID);
   const localSources = sources.filter(
     source =>
-      (source.discoveryMode ?? 'local-dir') === 'local-dir' && (source.enabled || source.id === 'workspace-skills')
+      source.id !== WORKSPACE_SKILL_DRAFT_SOURCE_ID &&
+      (source.discoveryMode ?? 'local-dir') === 'local-dir' &&
+      (source.enabled || source.id === 'workspace-skills')
   );
-  const [localManifests, remoteManifestsBySource] = await Promise.all([
+  const [localManifests, workspaceDraftManifests, remoteManifestsBySource] = await Promise.all([
     loadAgentSkillManifests(localSources),
+    workspaceDraftSource?.enabled ? (context.listWorkspaceSkillDraftManifests?.() ?? Promise.resolve([])) : [],
     Promise.all(
       sources
         .filter(source => source.enabled && (source.discoveryMode ?? 'local-dir') !== 'local-dir')
         .map(async source => context.skillSourceSyncService.readCachedManifests(source))
     )
   ]);
-  const merged = [...localManifests, ...remoteManifestsBySource.flat()];
+  const merged = [...localManifests, ...workspaceDraftManifests, ...remoteManifestsBySource.flat()];
   const manifests = Array.from(
     new Map(merged.map(item => [`${item.sourceId}:${item.id}:${item.version}`, item])).values()
   );

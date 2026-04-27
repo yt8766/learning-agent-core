@@ -39,6 +39,7 @@ export function createSkillSourcesContext(input: {
   remoteSkillDiscoveryService: RuntimeHost['remoteSkillDiscoveryService'];
   getDisabledSkillSourceIds: () => Promise<string[]>;
   getSkillInstallContext: () => RuntimeSkillInstallContext;
+  listWorkspaceSkillDraftManifests?: () => Promise<SkillManifestRecord[]>;
 }) {
   const context: RuntimeSkillSourcesContextWithList = {
     settings: input.settings,
@@ -48,7 +49,8 @@ export function createSkillSourcesContext(input: {
     remoteSkillDiscoveryService: input.remoteSkillDiscoveryService,
     getDisabledSkillSourceIds: () => input.getDisabledSkillSourceIds(),
     autoInstallLocalManifest: (manifest: SkillManifestRecord) =>
-      autoInstallLocalManifest(input.getSkillInstallContext(), manifest)
+      autoInstallLocalManifest(input.getSkillInstallContext(), manifest),
+    listWorkspaceSkillDraftManifests: input.listWorkspaceSkillDraftManifests
   };
   context.listSkillSources = async () => {
     const { listSkillSources } = await import('../../skills/runtime-skill-sources.service');

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { requestMock } = vi.hoisted(() => ({
+const { createMock, requestMock } = vi.hoisted(() => ({
+  createMock: vi.fn(),
   requestMock: vi.fn()
 }));
 
@@ -11,7 +12,7 @@ vi.mock('axios', () => {
 
   return {
     default: {
-      create: vi.fn(() => ({
+      create: createMock.mockImplementation(() => ({
         request: requestMock
       })),
       isCancel: vi.fn((error: unknown) => error instanceof CanceledError),
@@ -34,6 +35,15 @@ describe('admin-api-core', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     requestMock.mockReset();
+  });
+
+  it('uses the loopback ipv4 backend as the default api base', () => {
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'http://127.0.0.1:3000/api',
+        withCredentials: true
+      })
+    );
   });
 
   it('sends json requests with the default api base and returns parsed payloads', async () => {

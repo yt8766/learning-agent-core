@@ -20,7 +20,7 @@
 
 - [docs/agents/data-report/README.md](/docs/agents/data-report/README.md)
 - [docs/agents/data-report/package-structure-guidelines.md](/docs/agents/data-report/package-structure-guidelines.md)
-- [docs/report-kit/data-report-pipeline.md](/docs/report-kit/data-report-pipeline.md)
+- [docs/packages/report-kit/data-report-pipeline.md](/docs/packages/report-kit/data-report-pipeline.md)
 
 ## 改动边界
 

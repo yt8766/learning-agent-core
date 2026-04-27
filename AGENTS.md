@@ -5,11 +5,11 @@
 优先阅读：
 
 - [README](/README.md)
-- [项目规范总览](/docs/project-conventions.md)
-- [架构总览](/docs/ARCHITECTURE.md)
-- [API 文档目录](/docs/api/README.md)
+- [项目规范总览](/docs/conventions/project-conventions.md)
+- [架构总览](/docs/architecture/ARCHITECTURE.md)
+- [API 文档目录](/docs/contracts/api/README.md)
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
-- [验证体系规范](/docs/evals/verification-system-guidelines.md)
+- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md)
 
 ## 1. 产品定位
 
@@ -112,13 +112,13 @@
 
 ### 代理技能
 
-- 目录：`skills/*`
+- 目录：`.agents/skills/*`
 - 作用：给 Codex / Claude Code 这类代码代理读取的仓库技能
 
 推荐结构：
 
 ```text
-skills/
+.agents/skills/
 ├─ README.md
 └─ <skill-name>/
    ├─ SKILL.md
@@ -131,7 +131,7 @@ skills/
 
 - 每个代理技能目录必须有 `SKILL.md`
 - 不要把代理技能写进 `packages/skill-runtime`
-- 不要把运行时 skill card/registry 写进 `skills/`
+- 不要把运行时 skill card/registry 写进 `.agents/skills/`
 
 ## 5. 共享模型与执行策略
 
@@ -174,9 +174,15 @@ skills/
   - `build/types`
 - 代码里涉及文件系统操作时，默认优先使用 `fs-extra`
 - 除非是 Node 原生同步 API 的极小型启动逻辑、第三方接口硬约束，或测试明确需要 mock `node:fs` / `node:fs/promises`，否则不要新增原生 `fs` 作为默认实现
-- 生成分支名、提交信息、PR 标题或判断提交流程时，必须先阅读并遵守 [GitHub Flow 规范](/docs/github-flow.md)
-- 不允许只按通用 GitHub Flow 习惯临时命名分支；必须优先使用仓库 `docs/github-flow.md` 中定义的命名约定
-- 本项目不使用 `git worktree`。后续开发、执行计划、分支切换、验证与收尾都必须在当前 checkout 中完成；即使其他技能或通用流程建议创建 worktree，也以本条项目规则为准，不得执行 `git worktree add`、创建 `.worktrees/` 或依赖 worktree cleanup。
+- 生成分支名、提交信息、PR 标题或判断提交流程时，必须先阅读并遵守 [GitHub Flow 规范](/docs/conventions/github-flow.md)
+- 不允许只按通用 GitHub Flow 习惯临时命名分支；必须优先使用仓库 `docs/conventions/github-flow.md` 中定义的命名约定
+- 禁止使用 `git commit --no-verify` 或任何等价方式绕过本地 hook；如果 hook 因既有红灯、环境、权限或外部依赖失败，必须先修复或明确记录 blocker，不能跳过 hook 强行提交
+- 本项目允许使用 `git worktree` 隔离并行开发，但必须遵守修改边界隔离：
+  - 每个 worktree 必须有清晰、互不重叠的任务范围。
+  - 不允许多个 worktree 或当前 checkout 同时修改同一文件、同一主链 graph、同一稳定 contract、同一接口文档或同一前后端协议。
+  - 如果任务会触达相同模块或共享边界，必须改为串行推进，或先明确文件/目录级 ownership。
+  - 使用 worktree 前应检查当前 checkout 与其他 worktree 的未提交修改，避免并行改动落在同一冲突面。
+  - worktree 只用于隔离并行开发，不应用来绕过验证、文档更新、lockfile 同步或最终集成检查。
 
 ## 6.0 接口稳定性与可扩展封装规范
 
@@ -184,7 +190,7 @@ skills/
 - 只要本轮改动涉及前后端联调、跨包 API、SSE payload、DTO、事件、tool result、graph state 切片或其他会被多个模块消费的接口，必须先定义接口文档，再开始前后端实现；禁止前端和后端各自先写代码、再事后倒推协议。
 - 接口文档必须先明确：接口目的、入口路径或调用方式、请求参数、响应或事件 schema、错误语义、兼容策略、字段演进约束，以及前后端各自负责的实现边界；能落 schema 的内容，必须与 `packages/core` 或宿主 `schemas/` 中的正式定义保持一致。
 - 前端开发、后端开发、联调、测试与文档更新都必须以同一份接口文档为准；接口发生变更时，先更新接口文档与 schema/contract，再同步修改前后端实现和验证，禁止让文档长期落后于真实协议。
-- `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移台账保留在 `docs/shared/*`，后续不要再新增 `@agent/shared` 或 `packages/shared/*`。
+- `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移台账保留在 `docs/archive/shared/*`，后续不要再新增 `@agent/shared` 或 `packages/shared/*`。
 - 稳定 contract 默认收敛到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 主实现必须落在真实宿主，不允许重新引入第二个 shared 包层。
 - `packages/core` 默认采用 schema-first：所有稳定 JSON / DTO / event / payload contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型；不要继续在 `core` 新增只有 interface/type、没有 schema 的长期公共 contract。
 - 发现稳定 contract 与运行时聚合/展示类型混放时，必须继续拆成 `core stable contract + 宿主本地 aggregate/facade`，禁止把 compat 重新堆回公共包。
@@ -234,9 +240,9 @@ pnpm --dir apps/backend/agent-server build
 - 以后每次完成功能、修复缺陷、调整链路、补齐约束或确认重要联调结论后，必须同步把结果写入文档，不能只改代码不沉淀。
 - 文档必须放在 `docs/<module>/` 目录下，按当前主要改动模块归档：
 - `packages/runtime/*` 与已删除 `packages/agent-core` 的历史迁移文档 -> `docs/archive/agent-core/`
-  - `apps/backend/*` -> `docs/backend/`
-  - `apps/frontend/agent-chat/*` -> `docs/frontend/agent-chat/`
-  - `apps/frontend/agent-admin/*` -> `docs/frontend/agent-admin/`
+  - `apps/backend/*` -> `docs/apps/backend/agent-server/`
+  - `apps/frontend/agent-chat/*` -> `docs/apps/frontend/agent-chat/`
+  - `apps/frontend/agent-admin/*` -> `docs/apps/frontend/agent-admin/`
   - 跨模块链路说明可放在 `docs/integration/`
 - 不允许把新的模块专项文档继续平铺在 `docs/` 根目录；根目录只保留总览、全局规范、架构类文档。
 - 新文档应优先记录：
@@ -249,7 +255,7 @@ pnpm --dir apps/backend/agent-server build
   - 将仍有部分参考价值但内容已过期的文档显式标注“过时”或改写为最新实现
   - 避免同一主题在多个位置出现互相冲突的说明
 - 每次任务完成后，除检查实现文档外，还必须顺手检查本轮涉及的规范文档是否已经过期：
-  - 包括但不限于 `AGENTS.md`、`docs/project-conventions.md`、模块 `README`、专题 `*-conventions.md` / `*-guidelines.md`
+  - 包括但不限于 `AGENTS.md`、`docs/conventions/project-conventions.md`、模块 `README`、专题 `*-conventions.md` / `*-guidelines.md`
   - 如果实现、流程、目录边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不要把“规范已失效”留到后续任务
   - 如果暂时无法在本轮彻底改完，至少要显式标注“过时”并指出正确入口，避免后续 AI 继续按旧规范执行
 - 如果本轮改动影响既有文档内容，必须直接更新原文档，而不是只额外新增一份“补充说明”导致知识分叉。
@@ -260,7 +266,7 @@ pnpm --dir apps/backend/agent-server build
 
 ## 7. 完成后验证
 
-- [验证体系规范](/docs/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须按该文档执行验证，不允许跳过为“局部小改”“只改一个文件”或“只是重构”。
+- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须按该文档执行验证，不允许跳过为“局部小改”“只改一个文件”或“只是重构”。
 - 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前就必须补齐五层验证，不允许只改代码不校验。
 - 五层验证固定为：
   - `Type`：TypeScript 静态类型检查
@@ -270,7 +276,7 @@ pnpm --dir apps/backend/agent-server build
 - `Integration`：跨模块、跨包、跨节点协同验证
 - 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
 - 当前根级 `pnpm verify` 必须覆盖 `pnpm lint:prettier:check`、`pnpm lint:eslint:check`、`pnpm test:spec` 与 `pnpm test:demo`，确保治理门槛、`Spec` 和 `Demo` 都不是只停留在口头约定或目录存在。
-- 每次改动文件时，都必须先按 [验证体系规范](/docs/evals/verification-system-guidelines.md) 判断本轮需要补齐的层级、门槛和命令；禁止凭经验只跑 `test`、只跑 `build`、只跑单个 `tsc` 或只做手工验证后直接交付。
+- 每次改动文件时，都必须先按 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 判断本轮需要补齐的层级、门槛和命令；禁止凭经验只跑 `test`、只跑 `build`、只跑单个 `tsc` 或只做手工验证后直接交付。
 - 如果 `pnpm verify` 被与本轮无关的既有红灯、外部服务、凭据、网络或环境问题阻断，仍必须对受影响范围逐层补齐五层验证，并在交付中明确说明：
   - 实际执行了哪些命令
   - 哪一层因什么 blocker 未能完成
@@ -295,7 +301,7 @@ pnpm --dir apps/backend/agent-server build
 - 同一阻断优先自修复，最多连续尝试 `3` 次；只有达到上限才允许报告阻塞。
 - 每次改动完成后都必须补齐五层验证，或明确记录阻断原因；不要只改代码不校验。
 - 默认采用 **TDD（Test-Driven Development）** 推进新增功能、修复和重构：先写失败测试，再写最小实现，最后在测试保护下重构。
-- 对“实现需求 / 修复缺陷 / 重构收敛 / 需要可交付结果”的任务，默认按 `skills/task-delivery-loop` 的闭环执行：
+- 对“实现需求 / 修复缺陷 / 重构收敛 / 需要可交付结果”的任务，默认按 `.agents/skills/task-delivery-loop` 的闭环执行：
   - 任务定级与完成条件
   - 需求与影响面分析
   - Red

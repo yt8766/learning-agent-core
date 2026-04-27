@@ -79,6 +79,12 @@ export async function executeBrowsePage(request: ToolExecutionRequest) {
       artifactRef: artifactPath,
       snapshotRef: snapshotPath,
       screenshotRef: screenshotPath,
+      screenshot: {
+        path: screenshotPath,
+        simulated: true,
+        placeholder: true,
+        kind: 'text_placeholder'
+      },
       stepTrace: replayArtifact.stepTrace,
       steps
     }

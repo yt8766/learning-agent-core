@@ -36,6 +36,27 @@ export function buildCognitionDurationLabel(
   return checkpoint?.thinkState?.loading ? `${seconds}s` : `约 ${seconds} 秒`;
 }
 
+export function resolveNextCognitionExpansion(params: {
+  wasThinkLoading: boolean;
+  isThinkLoading: boolean;
+  hasCognitionTarget: boolean;
+  isSessionRunning: boolean;
+}) {
+  if (params.isThinkLoading) {
+    return true;
+  }
+
+  if (params.wasThinkLoading && params.hasCognitionTarget) {
+    return false;
+  }
+
+  if (params.hasCognitionTarget && !params.wasThinkLoading && !params.isSessionRunning) {
+    return false;
+  }
+
+  return undefined;
+}
+
 export function buildStreamEventItems(events: ChatEventRecord[]) {
   return events
     .slice()

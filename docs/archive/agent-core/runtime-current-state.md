@@ -115,5 +115,5 @@ packages/
 ## 8. 继续阅读
 
 - [agent-core 文档目录](/docs/archive/agent-core/README.md)
-- [架构总览](/docs/ARCHITECTURE.md)
-- [LangGraph 应用结构规范](/docs/langgraph-app-structure-guidelines.md)
+- [架构总览](/docs/architecture/ARCHITECTURE.md)
+- [LangGraph 应用结构规范](/docs/conventions/langgraph-app-structure-guidelines.md)

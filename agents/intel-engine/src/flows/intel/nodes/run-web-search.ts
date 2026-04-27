@@ -23,6 +23,31 @@ export interface RunWebSearchNodeInput {
   mcpClientManager?: WebSearchMcpClientManager;
 }
 
+type ResolvedSearchTool =
+  | { capabilityId: 'webSearchPrime'; toolName: 'webSearchPrime'; kind: 'webSearchPrime' }
+  | { capabilityId: 'minimax:web_search'; toolName: 'web_search'; kind: 'minimaxTokenPlan' };
+
+function resolveSearchTool(mcpClientManager: WebSearchMcpClientManager): ResolvedSearchTool | undefined {
+  if (mcpClientManager.hasCapability('webSearchPrime')) {
+    return { capabilityId: 'webSearchPrime', toolName: 'webSearchPrime', kind: 'webSearchPrime' };
+  }
+  if (mcpClientManager.hasCapability('minimax:web_search')) {
+    return { capabilityId: 'minimax:web_search', toolName: 'web_search', kind: 'minimaxTokenPlan' };
+  }
+  return undefined;
+}
+
+function buildSearchInput(task: PatrolSearchTask, tool: ResolvedSearchTool): Record<string, unknown> {
+  if (tool.kind === 'minimaxTokenPlan') {
+    return { query: task.query };
+  }
+  return {
+    query: task.query,
+    goal: `Collect latest intel for ${task.topicKey}`,
+    freshnessHint: task.priorityDefault === 'P0' ? 'urgent' : 'recent'
+  };
+}
+
 function resolveSourceName(rawSourceName: unknown, url: string): string | undefined {
   let parsedUrl: URL;
   try {
@@ -99,27 +124,24 @@ export async function runWebSearchNode(
   input: RunWebSearchNodeInput
 ): Promise<PatrolGraphState> {
   const mcpClientManager = input.mcpClientManager;
+  const searchTool = mcpClientManager ? resolveSearchTool(mcpClientManager) : undefined;
 
-  if (!mcpClientManager?.hasCapability('webSearchPrime')) {
+  if (!mcpClientManager || !searchTool) {
     return {
       ...state,
       rawResults: [],
-      errors: [...(state.errors ?? []), 'webSearchPrime capability is unavailable']
+      errors: [...(state.errors ?? []), 'webSearchPrime or minimax:web_search capability is unavailable']
     } as PatrolGraphState;
   }
 
   const rawResults: PatrolSearchResult[] = [];
 
   for (const task of state.searchTasks) {
-    const result = await mcpClientManager.invokeTool('webSearchPrime', {
+    const result = await mcpClientManager.invokeTool(searchTool.toolName, {
       taskId: task.taskId,
-      toolName: 'webSearchPrime',
+      toolName: searchTool.toolName,
       intent: 'CALL_EXTERNAL_API',
-      input: {
-        query: task.query,
-        goal: `Collect latest intel for ${task.topicKey}`,
-        freshnessHint: task.priorityDefault === 'P0' ? 'urgent' : 'recent'
-      },
+      input: buildSearchInput(task, searchTool),
       requestedBy: 'agent'
     });
 

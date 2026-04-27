@@ -23,9 +23,12 @@ import {
   toRuntimeInterruptItems,
   filterRuntimeInterruptItems
 } from './runtime-summary-tools-helpers';
+import { RuntimeAgentToolExecutionSection } from './runtime-agent-tool-execution-section';
+import type { AgentToolExecutionProjectionInput } from './runtime-agent-tool-execution-projections';
 
 export function RuntimeSummaryTools({
   runtime,
+  agentToolExecutions,
   executionModeFilter,
   onExecutionModeFilterChange,
   interactionKindFilter,
@@ -33,6 +36,7 @@ export function RuntimeSummaryTools({
   onCopyShareLink
 }: {
   runtime: RuntimeCenterRecord;
+  agentToolExecutions?: AgentToolExecutionProjectionInput;
   executionModeFilter: 'all' | 'plan' | 'execute' | 'imperial_direct';
   onExecutionModeFilterChange: (value: 'all' | 'plan' | 'execute' | 'imperial_direct') => void;
   interactionKindFilter: 'all' | InterruptInteractionKind;
@@ -105,6 +109,8 @@ export function RuntimeSummaryTools({
             </div>
           </div>
         </div>
+
+        <RuntimeAgentToolExecutionSection agentToolExecutions={agentToolExecutions ?? tools?.agentToolExecutions} />
 
         <div className="grid gap-4 rounded-3xl border border-border/70 bg-muted/30 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

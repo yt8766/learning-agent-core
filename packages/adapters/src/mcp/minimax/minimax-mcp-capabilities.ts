@@ -1,8 +1,12 @@
 import type { AdapterMcpCapabilityDefinition } from '../mcp-skill-provider-adapter';
 
 const MINIMAX_SERVER_ID = 'minimax-mcp';
+const MINIMAX_TOKEN_PLAN_SERVER_ID = 'minimax-token-plan-mcp';
 
-export function buildMiniMaxMcpCapabilities(serverId = MINIMAX_SERVER_ID): AdapterMcpCapabilityDefinition[] {
+export function buildMiniMaxMcpCapabilities(
+  serverId = MINIMAX_SERVER_ID,
+  tokenPlanServerId = MINIMAX_TOKEN_PLAN_SERVER_ID
+): AdapterMcpCapabilityDefinition[] {
   return [
     {
       id: 'minimax:text_to_audio',
@@ -91,6 +95,28 @@ export function buildMiniMaxMcpCapabilities(serverId = MINIMAX_SERVER_ID): Adapt
       category: 'action',
       dataScope: 'prompt-and-audio-generation',
       writeScope: 'external-billing-and-content-generation'
+    },
+    {
+      id: 'minimax:web_search',
+      toolName: 'web_search',
+      serverId: tokenPlanServerId,
+      displayName: 'MiniMax Token Plan web search',
+      riskLevel: 'low',
+      requiresApproval: false,
+      category: 'knowledge',
+      dataScope: 'web-search-query-and-results',
+      writeScope: 'none'
+    },
+    {
+      id: 'minimax:understand_image',
+      toolName: 'understand_image',
+      serverId: tokenPlanServerId,
+      displayName: 'MiniMax Token Plan image understanding',
+      riskLevel: 'medium',
+      requiresApproval: true,
+      category: 'knowledge',
+      dataScope: 'image-url-or-local-image-content',
+      writeScope: 'none'
     }
   ];
 }

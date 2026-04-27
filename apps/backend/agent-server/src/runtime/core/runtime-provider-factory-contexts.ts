@@ -8,7 +8,9 @@ import { createCentersContext } from '../domain/centers/runtime-centers-context'
 import { createPlatformConsoleContext } from '../domain/centers/runtime-platform-console-context';
 import { createKnowledgeContext } from '../domain/knowledge/runtime-knowledge-context';
 import { createSkillInstallContext, createSkillSourcesContext } from '../domain/skills/runtime-skill-contexts';
+import { buildWorkspaceSkillDraftManifests } from '../domain/skills/runtime-workspace-skill-draft-manifests';
 import { syncInstalledSkillWorkers } from '../domain/skills/runtime-skill-orchestration';
+import { getRuntimeWorkspaceDraftStoreForContext } from '../centers/runtime-centers-workspace-drafts';
 import { RuntimeCentersGovernanceService } from '../centers/runtime-centers-governance.service';
 import { refreshMetricsSnapshots as refreshMetricsSnapshotsWithGovernance } from '../centers/runtime-centers-governance-metrics';
 import { RuntimeCentersQueryService } from '../centers/runtime-centers-query.service';
@@ -93,7 +95,13 @@ export function createProviderFactorySkillSourcesContext(runtimeHost: RuntimeHos
       const snapshot = await runtimeHost.runtimeStateRepository.load();
       return snapshot.governance?.disabledSkillSourceIds ?? [];
     },
-    getSkillInstallContext: () => createProviderFactorySkillInstallContext(runtimeHost)
+    getSkillInstallContext: () => createProviderFactorySkillInstallContext(runtimeHost),
+    listWorkspaceSkillDraftManifests: async () =>
+      buildWorkspaceSkillDraftManifests(
+        await getRuntimeWorkspaceDraftStoreForContext({ settings: runtimeHost.settings }).listDraftRecords(
+          `workspace-${runtimeHost.settings.profile}`
+        )
+      )
   });
 }
 

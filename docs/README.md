@@ -3,114 +3,109 @@
 状态：current
 文档类型：index
 适用范围：`docs/`
-最后核对：2026-04-22
+最后核对：2026-04-26
 
-本目录用于沉淀仓库级规范、模块文档、联调结论与后续 AI 接手所需上下文。
+本目录用于沉淀仓库级规范、模块文档、接口契约、联调结论、AI 接手上下文、工作流记录与历史归档。
 
-如果想先搞清楚仓库当前各目录在做什么，先看：
+当前 `docs/` 根目录只保留本文件；其他文档必须进入下列一级目录。
 
-- [目录地图](/docs/repo-directory-overview.md)
-- [apps 目录说明](/docs/apps-overview.md)
-- [packages 目录说明](/docs/packages-overview.md)
-- [data 目录说明](/docs/data-overview.md)
+当前文档：
 
-当前高优先级入口：
+- [架构文档](./architecture/README.md)
+- [仓库地图](./maps/README.md)
+- [研发与工程规范](./conventions/README.md)
+- [应用文档](./apps/README.md)
+- [Packages 文档](./packages/README.md)
+- [智能体文档](./agents/README.md)
+- [代理技能文档](./skills/README.md)
+- [契约文档](./contracts/README.md)
+- [联调文档](./integration/README.md)
+- [QA 导航](./qa/README.md)
+- [Evals 导航](./evals/README.md)
+- [AI 对接上下文](./context/README.md)
+- [工作流记录](./workflows/README.md)
+- [历史归档](./archive/README.md)
 
-- [项目规范总览](/docs/project-conventions.md)
-- [AI / 包交接文档入口](/docs/context/README.md)
-- [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
-- [目录地图](/docs/repo-directory-overview.md)
-- [packages 目录说明](/docs/packages-overview.md)
-- [Packages 分层与职责矩阵](/docs/packages-overview.md#按包职责矩阵)
-- [目录聚合入口分级](/docs/packages-overview.md#目录聚合入口分级)
-- [Packages 阶段收官报告](/docs/core/package-finalization-report.md)
-- [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
-- [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
-- [API 文档目录](/docs/api/README.md)
-- [前后端集成链路](/docs/integration/frontend-backend-integration.md)
-- [本地联调指南](/docs/local-development-guide.md)
+## 阅读路径
 
-本目录主文档：
+第一次接手仓库时，推荐按下面顺序读：
 
-- 仓库阅读入口：[repo-directory-overview.md](/docs/repo-directory-overview.md)
-- 全局规范入口：[project-conventions.md](/docs/project-conventions.md)
-- API 契约入口：[api/README.md](/docs/api/README.md)
-- 跨模块集成链路：[integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-- AI / 包交接入口：[context/README.md](/docs/context/README.md)
+1. [仓库目录概览](./maps/repo-directory-overview.md)
+2. [架构总览](./architecture/ARCHITECTURE.md)
+3. [项目规范总览](./conventions/project-conventions.md)
+4. [AI 总交接文档](./context/ai-handoff.md)
+5. [API 文档目录](./contracts/api/README.md)
+6. [前后端集成链路](./integration/frontend-backend-integration.md)
+7. [验证体系规范](./packages/evals/verification-system-guidelines.md)
 
-按需参考入口：
+改具体模块时：
 
-- [历史归档目录](/docs/archive/README.md)
-- [Docs 重构计划（已归档）](/docs/archive/docs-refactor-plan.md)
-- [测试覆盖率基线](/docs/evals/testing-coverage-baseline.md)
+- 改 `apps/*`：先看 [apps 文档目录](./apps/README.md)
+- 改 `packages/*`：先看 [packages 文档目录](./packages/README.md)
+- 改 `agents/*`：先看 [agents 文档目录](./agents/README.md)
+- 改仓库代理技能 `.agents/skills/*`：先看 [skills 文档目录](./skills/README.md)
+- 改接口、SSE、DTO 或 tool result：先看 [契约文档目录](./contracts/README.md)
+- 改跨模块联调链路：先看 [integration 文档目录](./integration/README.md)
+- 需要 AI 接手背景：先看 [context 交接目录](./context/README.md)
 
-## 0.1 阅读路径
+## 一级目录职责
 
-如果你是第一次接手这个仓库，推荐按下面顺序读：
+- `architecture/`
+  - 全局架构、长期边界、核心工作流与架构 ADR。
+- `maps/`
+  - 仓库目录地图、应用地图、包地图、数据地图与系统业务流概览。
+- `conventions/`
+  - 研发规范、工程约束、GitHub Flow、本地联调、模板和 prompt 规范。
+- `apps/`
+  - 应用层文档，尽量镜像真实 `apps/` 目录。
+- `packages/`
+  - 包级文档，必须镜像真实 `packages/` 目录。
+- `agents/`
+  - root 级 `agents/*` 文档。
+- `skills/`
+  - 仓库代理技能 `.agents/skills/*` 文档。
+- `contracts/`
+  - API / SSE / DTO / tool result 等稳定契约。
+- `integration/`
+  - 跨模块、前后端和端到端联调链路。
+- `qa/`
+  - 仓库级 QA、验证与质量门槛导航。
+- `evals/`
+  - 仓库级评测导航；包级 evals 实现文档仍在 `packages/evals/`。
+- `context/`
+  - AI 对接、包交接和 Agent 交接文档。
+- `workflows/`
+  - 当前仍可参考的工作流记录、执行流转说明和计划索引。
+- `archive/`
+  - 历史文档、迁移台账与不再代表当前实现的资料。
 
-1. 先看“仓库现在是什么”：
-   - [目录地图](/docs/repo-directory-overview.md)
-   - [apps 目录说明](/docs/apps-overview.md)
-   - [packages 目录说明](/docs/packages-overview.md)
-2. 再看“全局规则是什么”：
-   - [项目规范总览](/docs/project-conventions.md)
-   - [Runtime 分层 ADR](/docs/runtime/runtime-layering-adr.md)
-   - [Packages 分层与依赖约定](/docs/package-architecture-guidelines.md)
-   - [Packages 分层与职责矩阵](/docs/packages-overview.md#按包职责矩阵)
-   - [目录聚合入口分级](/docs/packages-overview.md#目录聚合入口分级)
-   - [Packages 阶段收官报告](/docs/core/package-finalization-report.md)
-   - [Compat 入口收缩候选](/docs/core/package-compat-sunset-candidates.md)
-   - [测试规范](/docs/test-conventions.md)
-3. 如果你要改具体模块：
-   - 先看交接入口：[docs/context/README.md](/docs/context/README.md)
-   - 后端：先看 [docs/backend/README.md](/docs/backend/README.md)
-   - 前端：先看 [docs/frontend/README.md](/docs/frontend/README.md)
-   - 前端 chat：再看 [docs/frontend/agent-chat/README.md](/docs/frontend/agent-chat/README.md)
-   - 前端 admin：再看 [docs/frontend/agent-admin/README.md](/docs/frontend/agent-admin/README.md)
-   - API 契约：先看 [docs/api/README.md](/docs/api/README.md)
-   - runtime / session / graph：先看 [docs/runtime/README.md](/docs/runtime/README.md)
-   - root 级 agents：先看 [docs/agents/README.md](/docs/agents/README.md)
-   - 运行时技能：先看 [docs/skill-runtime/README.md](/docs/skill-runtime/README.md)
-   - 跨模块联调：先看 [docs/integration/README.md](/docs/integration/README.md)
-   - 运行时质量与评测：先看 [docs/evals/README.md](/docs/evals/README.md)
-4. 只有在需要追迁移背景时，再看：
-   - [历史归档目录](/docs/archive/README.md)
+## 放置规则
 
-## 0. 元信息规则
+文档默认按真实宿主或用途归档：
 
-每篇文档头部默认包含这四行：
+- `apps/backend/agent-server/*` -> `docs/apps/backend/agent-server/`
+- `apps/worker/*` -> `docs/apps/backend/worker/`
+- `apps/frontend/agent-chat/*` -> `docs/apps/frontend/agent-chat/`
+- `apps/frontend/agent-admin/*` -> `docs/apps/frontend/agent-admin/`
+- `apps/llm-gateway/*` -> `docs/apps/frontend/llm-gateway/`
+- `packages/<pkg>/*` -> `docs/packages/<pkg>/`
+- `agents/<agent>/*` -> `docs/agents/<agent>/`
+- `.agents/skills/*` -> `docs/skills/`
+- 跨模块契约 -> `docs/contracts/`
+- 跨模块联调 -> `docs/integration/`
+- AI handoff -> `docs/context/`
+- 历史资料 -> `docs/archive/`
+
+`docs/packages/` 必须与真实 `packages/` 目录保持一一对应。已删除包的历史资料不要继续放在 `docs/packages/`，应进入 `docs/archive/`。
+
+## 元信息规则
+
+每篇文档头部默认包含四行：
 
 - `状态`
 - `文档类型`
 - `适用范围`
 - `最后核对`
-
-推荐类型：
-
-- `index`
-  - 目录入口与阅读导航
-- `architecture`
-  - 长期架构方向
-- `overview`
-  - 当前目录或模块概览
-- `convention`
-  - 规范、约束、治理规则
-- `guide`
-  - 上手、联调、迁移、使用指导
-- `integration`
-  - 跨模块对接与协议链路
-- `reference`
-  - 事实说明、边界说明、专题资料
-- `evaluation`
-  - 评测、验证、质量基建说明
-- `baseline`
-  - 带明确时间点的快照基线，不代表实时状态
-- `plan`
-  - 阶段性计划与执行清单
-- `history`
-  - 历史迁移资料，保留参考价值但不作为当前宿主
-- `archive`
-  - 归档文档，不再按当前实现维护
 
 推荐状态：
 
@@ -120,47 +115,26 @@
 - `history`
 - `archive`
 
-## 1. 放置规则
+推荐类型：
 
-文档默认按模块归档到 `docs/<module>/`。
+- `index`
+- `architecture`
+- `overview`
+- `convention`
+- `guide`
+- `integration`
+- `reference`
+- `evaluation`
+- `baseline`
+- `plan`
+- `history`
+- `archive`
+- `template`
+- `note`
 
-对于 `packages/*`，默认按包名建立独立目录；已删除包的历史迁移文档保留在对应历史目录：
+## 更新规则
 
-- 已删除的 `packages/agent-core` 历史迁移档案 -> `docs/archive/agent-core/`
-- `packages/config` -> `docs/config/`
-- `packages/core` -> `docs/core/`
-- `packages/evals` -> `docs/evals/`
-- `packages/memory` -> `docs/memory/`
-- 已删除的 `packages/model` 历史说明 -> `docs/archive/model/`
-- `packages/platform-runtime` -> `docs/platform-runtime/`
-- `packages/report-kit` -> `docs/report-kit/`
-- `packages/runtime` -> `docs/runtime/`
-- `packages/shared` -> `docs/shared/`
-- `packages/skill-runtime` -> `docs/skill-runtime/`
-- `packages/templates` -> `docs/templates/`
-- `packages/tools` -> `docs/tools/`
-
-应用与跨模块目录继续使用：
-
-- `docs/backend/`
-- `docs/frontend/agent-chat/`
-- `docs/frontend/agent-admin/`
-- `docs/integration/`
-- `docs/agents/`
-- `docs/archive/`
-
-`docs/` 根目录只保留以下内容：
-
-- 架构总览
-- 全局规范
-- 跨模块共享约定
-- 不适合归属到单一模块的总说明
-
-不要再把新的模块专项文档直接平铺到 `docs/` 根目录。
-
-## 2. 更新规则
-
-以后每次完成功能、修复缺陷、调整链路、补充联调结论或确认新的实现约束后，必须同步更新文档。
+每次完成功能、修复缺陷、调整链路、补充联调结论或确认新的实现约束后，必须同步更新相关文档。
 
 最低要求：
 
@@ -168,41 +142,24 @@
 2. 相关验证完成
 3. 文档同步完成
 
-缺少第 3 步，不应视为真正交付完成。
+缺少文档同步，不应视为真正交付完成。
 
-## 3. 文档内容要求
+## 清理规则
 
-文档优先写“当前真实实现”，不要只写理想设计。
+每次写新文档或更新功能时，都要顺手检查相关旧文档是否过时：
 
-建议至少包含：
+- 明显失效且无保留价值：删除
+- 仍有参考价值但内容过期：标注过时并补正确入口
+- 同主题多份冲突文档：合并或清理
 
-- 入口与模块边界
-- 真实链路与事件
-- 关键开关、缓存策略、模型路由或约束
-- 已踩过的坑、误判点、回归风险
-- 后续 AI 接手时应优先阅读的位置
+不要长期保留互相矛盾的文档。
 
-## 4. 过时文档清理
+## 验证
 
-每次写新文档或更新功能时，都要顺手检查相关旧文档是否已经过时。
+文档改动至少运行：
 
-处理原则：
+```bash
+pnpm check:docs
+```
 
-- 明显失效且无保留价值：直接删除
-- 仍有部分参考价值但内容过期：明确标注过时并补充正确入口
-- 同主题多份冲突文档：合并或清理，避免知识分叉
-
-禁止长期保留互相矛盾的文档。
-
-## 5. 推荐做法
-
-- 改一个模块，就优先更新该模块自己的 `docs/<module>/README.md`
-- 改一个 `package`，就优先更新对应的 `docs/<package>/README.md`
-- 新增专项说明时，尽量同时补对应模块目录下的索引
-- 如果是跨模块链路，优先写到 `docs/integration/`
-- 计划、基线、迁移快照不要伪装成长期规范；应通过 `文档类型` 与 `状态` 明确标识
-- 历史资料统一收进 `docs/archive/`，不要继续和当前实现文档混放
-- 运行 `pnpm check:docs`，至少确认元信息、目录索引、旧路径引用和本地 Markdown 链接没有回归
-- 新增文档时优先使用 `pnpm new:doc docs/<module>/<name>.md` 生成标准骨架，再补内容
-- 在最终交付说明里明确列出这次更新了哪些文档、清理了哪些旧文档
-- 目录级 `README.md` 默认至少回答三件事：先读哪篇、改动前看哪篇、该目录的主文档是谁
+该命令会检查元信息、目录索引和本地 Markdown 链接。

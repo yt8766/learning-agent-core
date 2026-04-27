@@ -5,6 +5,7 @@ import {
   buildQuickActionChips,
   buildWorkspaceFollowUpActions,
   buildWorkspaceShareText,
+  buildWorkspaceVaultSignals,
   buildThoughtItems,
   resolveSuggestedDraftSubmission,
   shouldShowMissionControl
@@ -72,6 +73,127 @@ describe('chat-home-workbench suggestion submission', () => {
     expect(followUps.map(item => item.label)).toEqual(
       expect.arrayContaining(['继续深挖', '改成计划', '生成执行任务', '输出检查单'])
     );
+  });
+});
+
+describe('chat-home workspace vault signals', () => {
+  it('summarizes workspace evidence, reuse, skill draft readiness and capability gaps outside the chat thread', () => {
+    const signals = buildWorkspaceVaultSignals({
+      activeSession: {
+        id: 'session-1',
+        title: '当前会话',
+        status: 'waiting_learning_confirmation',
+        createdAt: '2026-03-28T00:00:00.000Z',
+        updatedAt: '2026-03-28T00:00:00.000Z'
+      },
+      messages: [],
+      pendingApprovals: [],
+      checkpoint: {
+        externalSources: [{ id: 'source-1' }, { id: 'source-2' }],
+        reusedMemories: ['memory-1'],
+        reusedRules: ['rule-1'],
+        reusedSkills: ['repo-analysis'],
+        usedInstalledSkills: ['find-skills'],
+        usedCompanyWorkers: ['repo-reviewer'],
+        connectorRefs: ['github-mcp'],
+        learningEvaluation: {
+          score: 0.91,
+          confidence: 'high',
+          notes: ['已形成可复用经验'],
+          recommendedCandidateIds: ['candidate-1', 'candidate-2'],
+          autoConfirmCandidateIds: ['candidate-1'],
+          sourceSummary: {
+            externalSourceCount: 2,
+            internalSourceCount: 1,
+            reusedMemoryCount: 1,
+            reusedRuleCount: 1,
+            reusedSkillCount: 1
+          }
+        },
+        skillSearch: {
+          capabilityGapDetected: true,
+          status: 'suggested',
+          safetyNotes: ['需要审批后安装'],
+          suggestions: [
+            {
+              id: 'skill-suggestion-1',
+              kind: 'remote-skill',
+              displayName: 'repo-inspector',
+              summary: '分析仓库结构',
+              score: 0.87,
+              availability: 'approval-required',
+              reason: '需要更强仓库分析能力',
+              requiredCapabilities: ['repo.read']
+            }
+          ],
+          mcpRecommendation: {
+            kind: 'connector',
+            summary: '需要浏览器连接器',
+            reason: '当前缺少网页检查能力',
+            connectorTemplateId: 'browser-mcp-template'
+          }
+        }
+      }
+    } as never);
+
+    expect(signals).toEqual([
+      expect.objectContaining({ label: 'Workspace signals', value: '7 项', tone: 'blue' }),
+      expect.objectContaining({ label: 'Evidence readiness', value: '2 条来源', detail: 'internal 1' }),
+      expect.objectContaining({ label: 'Reuse readiness', value: '5 项复用', detail: '技能 2 · 角色 1 · 连接器 1' }),
+      expect.objectContaining({
+        label: 'Skill draft readiness',
+        value: '2 个候选',
+        detail: 'auto 1 · confidence high'
+      }),
+      expect.objectContaining({ label: 'Capability gap', value: '待补强', detail: '需要浏览器连接器' })
+    ]);
+    expect(JSON.stringify(signals)).not.toContain('learning_summary');
+  });
+
+  it('adds read-only workspace-center projection readiness without exposing install actions', () => {
+    const signals = buildWorkspaceVaultSignals(
+      {
+        activeSession: {
+          id: 'session-1',
+          title: '当前会话',
+          status: 'completed',
+          createdAt: '2026-03-28T00:00:00.000Z',
+          updatedAt: '2026-03-28T00:00:00.000Z'
+        },
+        messages: [],
+        pendingApprovals: [],
+        checkpoint: undefined
+      } as never,
+      {
+        workspaceId: 'workspace-platform',
+        workspaceName: 'Agent Workspace',
+        workspaceStatus: 'active',
+        updatedAt: '2026-04-26T08:10:00.000Z',
+        skillDraftCount: 3,
+        activeDraftCount: 2,
+        approvedDraftCount: 1,
+        installedDraftCount: 1,
+        failedDraftCount: 0,
+        pendingInstallCount: 1,
+        highConfidenceDraftCount: 2,
+        reuseRecordCount: 4,
+        topDraftTitles: ['Repo Analyzer', 'Review Helper']
+      }
+    );
+
+    expect(signals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Workspace Center',
+          value: '2 ready / 3 drafts',
+          detail: 'approved 1 · reuse 4 · top Repo Analyzer, Review Helper',
+          tone: 'green'
+        })
+      ])
+    );
+    expect(JSON.stringify(signals)).not.toContain('安装');
+    expect(JSON.stringify(signals)).not.toContain('approveWorkspaceSkillDraft');
+    expect(JSON.stringify(signals)).not.toContain('installRemoteSkill');
   });
 });
 
@@ -310,6 +432,96 @@ describe('chat-home-workbench thought items', () => {
         expect.objectContaining({ title: 'Agent 回复', status: 'success' }),
         expect.objectContaining({ title: '用户消息', status: 'success' }),
         expect.objectContaining({ title: '会话启动', status: 'success' })
+      ])
+    );
+  });
+
+  it('projects task trajectory and trajectory step events into readable thought items', () => {
+    const items = buildThoughtItems({
+      events: [
+        {
+          id: 'evt-trajectory',
+          sessionId: 'session-1',
+          type: 'node_progress',
+          at: '2026-04-26T08:10:00.000Z',
+          payload: {
+            projection: 'task_trajectory',
+            taskId: 'task-1',
+            taskTrajectory: {
+              trajectoryId: 'trajectory-1',
+              taskId: 'task-1',
+              status: 'succeeded',
+              summary: {
+                title: '前端轨迹接入',
+                outcome: '已把执行轨迹纳入 OpenClaw 工作区。'
+              },
+              steps: [
+                {
+                  stepId: 'step-1',
+                  taskId: 'task-1',
+                  sequence: 1,
+                  type: 'tool_requested',
+                  title: '请求测试工具',
+                  actor: 'runtime',
+                  status: 'succeeded',
+                  startedAt: '2026-04-26T08:00:00.000Z',
+                  inputRefs: [],
+                  outputRefs: [],
+                  evidenceIds: []
+                },
+                {
+                  stepId: 'step-2',
+                  taskId: 'task-1',
+                  sequence: 2,
+                  type: 'tool_executed',
+                  title: '执行测试',
+                  summary: '17 个前端测试已通过。',
+                  actor: 'execution_node',
+                  status: 'succeeded',
+                  startedAt: '2026-04-26T08:01:00.000Z',
+                  inputRefs: [],
+                  outputRefs: ['artifact-1'],
+                  evidenceIds: ['evidence-1']
+                }
+              ]
+            }
+          }
+        },
+        {
+          id: 'evt-step',
+          sessionId: 'session-1',
+          type: 'trajectory_step',
+          at: '2026-04-26T08:09:00.000Z',
+          payload: {
+            stepId: 'step-3',
+            taskId: 'task-1',
+            sequence: 3,
+            type: 'finalized',
+            title: '整理交付',
+            summary: '最终回复准备完成。',
+            actor: 'supervisor',
+            status: 'running',
+            inputRefs: [],
+            outputRefs: [],
+            evidenceIds: []
+          }
+        }
+      ],
+      checkpoint: undefined
+    } as never);
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: '节点进度',
+          description: '前端轨迹接入：已把执行轨迹纳入 OpenClaw 工作区。',
+          status: 'success'
+        }),
+        expect.objectContaining({
+          title: '轨迹步骤',
+          description: '轨迹步骤 3：整理交付。最终回复准备完成。',
+          status: 'loading'
+        })
       ])
     );
   });

@@ -1,9 +1,10 @@
-import { Alert, Button, Collapse, Dropdown, Flex, Segmented, Space, Tag, Typography, type MenuProps } from 'antd';
+import { Alert, Button, Collapse, Dropdown, Flex, Space, Tag, Typography, type MenuProps } from 'antd';
 import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { getWorkspaceCenterReadiness, type WorkspaceCenterReadinessSummary } from '@/api/workspace-center-api';
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { ConversationAnchorRail } from './chat-home-anchor-rail';
 import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
@@ -49,10 +50,14 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
     props.chat,
     props.streamEvents
   );
+  const [workspaceCenterReadiness, setWorkspaceCenterReadiness] = useState<WorkspaceCenterReadinessSummary>();
   const showMissionControl = shouldShowMissionControl(props.chat);
   const quickActionChips = useMemo(() => buildQuickActionChips(props.chat), [props.chat]);
   const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
-  const workspaceVaultSignals = useMemo(() => buildWorkspaceVaultSignals(props.chat), [props.chat]);
+  const workspaceVaultSignals = useMemo(
+    () => buildWorkspaceVaultSignals(props.chat, workspaceCenterReadiness),
+    [props.chat, workspaceCenterReadiness]
+  );
   const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
   const conversationAnchors = useMemo(
     () => filterVisibleConversationAnchors(buildConversationAnchors(props.chat.messages), props.bubbleItems),
@@ -63,15 +68,36 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
     [props.bubbleItems, conversationAnchors]
   );
 
+  useEffect(() => {
+    if (!props.showWorkbench) {
+      return;
+    }
+
+    let isActive = true;
+    void getWorkspaceCenterReadiness()
+      .then(readiness => {
+        if (isActive) {
+          setWorkspaceCenterReadiness(readiness);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setWorkspaceCenterReadiness(undefined);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [props.showWorkbench, props.chat.activeSessionId]);
+
   return (
     <div className={`chatx-workbench ${props.showWorkbench ? 'is-workbench-open' : 'is-workbench-closed'}`}>
       <section className="chatx-chat-column">
         <ConversationAnchorRail anchors={conversationAnchors} />
         <div className="chatx-chat-surface">
           {props.chat.activeSession && showMissionControl ? <SessionMissionControl chat={props.chat} /> : null}
-          {!props.chat.hasMessages ? (
-            <EmptyFrontlineEntry chatMode={props.chatMode} onChatModeChange={props.onChatModeChange} />
-          ) : null}
+          {!props.chat.hasMessages ? <EmptyFrontlineEntry /> : null}
 
           <Bubble.List items={anchoredBubbleItems} autoScroll role={CHAT_ROLE_CONFIG} className="chatx-bubble-list" />
         </div>
@@ -227,30 +253,15 @@ function filterVisibleConversationAnchors(
 }
 
 // checkpoint.activeInterrupt is the persisted 司礼监 / InterruptController projection used by the frontline workbench.
-function EmptyFrontlineEntry({
-  chatMode,
-  onChatModeChange
-}: {
-  chatMode: ChatMode;
-  onChatModeChange: (chatMode: ChatMode) => void;
-}) {
+function EmptyFrontlineEntry() {
   return (
     <div className="chatx-empty-entry">
-      <div className="chatx-empty-entry__brand">AC</div>
-      <div className="chatx-empty-entry__copy">
-        <Text className="chatx-empty-entry__eyebrow">Agent Chat</Text>
-        <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
-        <Typography.Paragraph>快速提问直接开始；需要拆解、计划和多步执行时切换专家模式。</Typography.Paragraph>
+      <div className="chatx-empty-entry__brand" aria-hidden="true">
+        <span className="chatx-brand-mark" />
       </div>
-      <Segmented
-        className="chatx-empty-entry__modes"
-        value={chatMode}
-        onChange={value => onChatModeChange(value as ChatMode)}
-        options={[
-          { label: '快速模式', value: 'quick' },
-          { label: '专家模式', value: 'expert' }
-        ]}
-      />
+      <div className="chatx-empty-entry__copy">
+        <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
+      </div>
     </div>
   );
 }
@@ -327,20 +338,6 @@ function ChatComposer({
               ) : null}
             </Flex>
             <Flex align="center" className="chatx-sender-footer__right">
-              <div className={`chatx-plan-mode-inline ${chatMode === 'expert' ? 'is-active' : ''}`}>
-                <Segmented
-                  size="small"
-                  value={chatMode}
-                  onChange={value => {
-                    setSuggestedPayload(null);
-                    onChatModeChange(value as ChatMode);
-                  }}
-                  options={[
-                    { label: '快速模式', value: 'quick' },
-                    { label: '专家模式', value: 'expert' }
-                  ]}
-                />
-              </div>
               {actionNode}
             </Flex>
           </Flex>

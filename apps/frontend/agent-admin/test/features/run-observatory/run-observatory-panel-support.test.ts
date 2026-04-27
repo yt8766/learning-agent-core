@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildAgentToolObservatoryDetail,
   buildFocusDetail,
   buildFocusDomId,
   buildFocusTarget,
@@ -165,5 +166,128 @@ describe('run observatory panel support', () => {
         ]
       })
     );
+  });
+
+  it('builds task-scoped agent tool observatory detail without raw payload content', () => {
+    const detail = buildAgentToolObservatoryDetail(
+      {
+        requests: [
+          {
+            requestId: 'req-1',
+            taskId: 'task-1',
+            toolName: 'terminal.exec',
+            nodeId: 'worker-gongbu',
+            status: 'pending_approval',
+            riskClass: 'high',
+            requestedAt: '2026-04-19T10:00:00.000Z',
+            metadata: {
+              sandboxRunId: 'sandbox-observatory-1',
+              sandboxDecision: 'requires_review',
+              sandboxProfile: 'workspace-write',
+              autoReviewId: 'review-observatory-1',
+              autoReviewVerdict: 'changes_requested',
+              rawInput: 'SECRET_REQUEST_INPUT'
+            }
+          },
+          {
+            requestId: 'req-2',
+            taskId: 'task-2',
+            toolName: 'browser.open',
+            status: 'running',
+            riskClass: 'low',
+            requestedAt: '2026-04-19T10:01:00.000Z'
+          }
+        ],
+        results: [
+          {
+            requestId: 'req-1',
+            resultId: 'result-1',
+            status: 'failed',
+            completedAt: '2026-04-19T10:02:00.000Z'
+          }
+        ],
+        policyDecisions: [
+          {
+            requestId: 'req-1',
+            decisionId: 'policy-1',
+            decision: 'require_approval',
+            riskClass: 'high',
+            reason: 'shell write requires approval'
+          }
+        ],
+        events: [
+          {
+            id: 'event-1',
+            sessionId: 'session-1',
+            type: 'execution_step_blocked',
+            at: '2026-04-19T10:03:00.000Z',
+            payload: {
+              taskId: 'task-1',
+              requestId: 'req-1',
+              toolName: 'terminal.exec',
+              nodeId: 'worker-gongbu',
+              status: 'blocked',
+              outputPreview: 'SECRET_VENDOR_PAYLOAD'
+            }
+          },
+          {
+            id: 'event-2',
+            sessionId: 'session-1',
+            type: 'execution_step_resumed',
+            at: '2026-04-19T10:04:00.000Z',
+            payload: {
+              taskId: 'task-2',
+              requestId: 'req-2',
+              toolName: 'browser.open',
+              status: 'resumed'
+            }
+          }
+        ]
+      },
+      'task-1',
+      'blocked'
+    );
+
+    expect(detail.counts).toEqual({
+      requests: 1,
+      results: 1,
+      events: 1,
+      policyDecisions: 1
+    });
+    expect(detail.latestItems).toEqual([
+      expect.objectContaining({
+        kind: 'event',
+        id: 'event:event-1',
+        title: 'execution_step_blocked',
+        summary: 'blocked · terminal.exec · worker-gongbu'
+      }),
+      expect.objectContaining({
+        kind: 'result',
+        id: 'result:result-1',
+        title: 'result failed',
+        summary: 'request req-1'
+      }),
+      expect.objectContaining({
+        kind: 'request',
+        id: 'request:req-1',
+        title: 'terminal.exec',
+        summary: 'pending_approval · risk high · worker-gongbu',
+        badges: [
+          'sandbox sandbox-observatory-1',
+          'sandbox decision requires_review',
+          'sandbox profile workspace-write',
+          'review review-observatory-1',
+          'review verdict changes_requested'
+        ]
+      }),
+      expect.objectContaining({
+        kind: 'policy',
+        id: 'policy:policy-1',
+        title: 'policy require_approval',
+        summary: 'risk high · shell write requires approval'
+      })
+    ]);
+    expect(JSON.stringify(detail.latestItems)).not.toContain('SECRET_VENDOR_PAYLOAD');
+    expect(JSON.stringify(detail.latestItems)).not.toContain('SECRET_REQUEST_INPUT');
   });
 });

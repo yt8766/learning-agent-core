@@ -14,9 +14,9 @@
 优先入口：
 
 - 总交接文档：[ai-handoff.md](/docs/context/ai-handoff.md)
-- 仓库级目录说明：[repo-directory-overview.md](/docs/repo-directory-overview.md)
-- 包职责总览：[packages-overview.md](/docs/packages-overview.md)
-- 项目规范总览：[project-conventions.md](/docs/project-conventions.md)
+- 仓库级目录说明：[repo-directory-overview.md](/docs/maps/repo-directory-overview.md)
+- 包职责总览：[packages-overview.md](/docs/maps/packages-overview.md)
+- 项目规范总览：[project-conventions.md](/docs/conventions/project-conventions.md)
 
 ## 阅读顺序
 

@@ -163,6 +163,7 @@ export const SkillInstallReceiptSchema = z.object({
   skillId: z.string(),
   version: z.string(),
   sourceId: z.string(),
+  sourceDraftId: z.string().optional(),
   phase: z
     .enum([
       'searching',

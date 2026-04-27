@@ -34,12 +34,12 @@
 
 1. 仓库入口：[README.md](/README.md)
 2. docs 目录规范：[docs/README.md](/docs/README.md)
-3. 项目规范总览：[docs/project-conventions.md](/docs/project-conventions.md)
-4. 架构总览：[docs/ARCHITECTURE.md](/docs/ARCHITECTURE.md)
-5. 包总览：[docs/packages-overview.md](/docs/packages-overview.md)
-6. API 契约：[docs/api/README.md](/docs/api/README.md)
+3. 项目规范总览：[docs/conventions/project-conventions.md](/docs/conventions/project-conventions.md)
+4. 架构总览：[docs/architecture/ARCHITECTURE.md](/docs/architecture/ARCHITECTURE.md)
+5. 包总览：[docs/maps/packages-overview.md](/docs/maps/packages-overview.md)
+6. API 契约：[docs/contracts/api/README.md](/docs/contracts/api/README.md)
 7. 前后端集成链路：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-8. 验证体系：[docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
+8. 验证体系：[docs/packages/evals/verification-system-guidelines.md](/docs/packages/evals/verification-system-guidelines.md)
 9. 目标包交接文档：[docs/context/README.md](/docs/context/README.md)
 
 ## 代码与文档的默认落位
@@ -91,11 +91,11 @@
 ## 修改前优先看的专项文档
 
 - runtime / graph / session：
-  - [docs/runtime/README.md](/docs/runtime/README.md)
+  - [docs/packages/runtime/README.md](/docs/packages/runtime/README.md)
 - backend：
-  - [docs/backend/README.md](/docs/backend/README.md)
+  - [docs/apps/backend/README.md](/docs/apps/backend/README.md)
 - frontend：
-  - [docs/frontend/README.md](/docs/frontend/README.md)
+  - [docs/apps/frontend/README.md](/docs/apps/frontend/README.md)
 - supervisor / workflow：
   - [docs/agents/supervisor/README.md](/docs/agents/supervisor/README.md)
 - data-report：

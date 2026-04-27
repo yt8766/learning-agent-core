@@ -151,6 +151,13 @@ describe('runtime-skill-sources.service', () => {
           lastSyncedAt: undefined
         }),
         expect.objectContaining({
+          id: 'workspace-skill-drafts',
+          enabled: true,
+          healthState: 'healthy',
+          lastSyncedAt: undefined,
+          trustClass: 'internal'
+        }),
+        expect.objectContaining({
           id: 'managed-local-skills',
           enabled: false,
           healthState: 'disabled',
@@ -168,7 +175,25 @@ describe('runtime-skill-sources.service', () => {
   });
 
   it('merges local and remote manifests and attaches safety summaries', async () => {
-    const context = createContext();
+    const context = createContext({
+      listWorkspaceSkillDraftManifests: vi.fn(async () => [
+        {
+          id: 'workspace-draft-draft-1',
+          name: 'Approved workspace draft',
+          version: '20260426010000',
+          description: 'Draft projected from Workspace Center',
+          publisher: 'workspace',
+          sourceId: 'workspace-skill-drafts',
+          requiredCapabilities: ['browser.open'],
+          requiredConnectors: [],
+          allowedTools: ['browser.open'],
+          approvalPolicy: 'high-risk-only',
+          riskLevel: 'medium',
+          entry: 'workspace-draft:draft-1',
+          summary: 'Draft projected from Workspace Center'
+        }
+      ])
+    });
 
     const manifests = await listSkillManifests(context);
 
@@ -189,10 +214,19 @@ describe('runtime-skill-sources.service', () => {
             verdict: 'allow',
             reasons: ['safe:bundled-marketplace-manifest']
           })
+        }),
+        expect.objectContaining({
+          id: 'workspace-draft-draft-1',
+          sourceId: 'workspace-skill-drafts',
+          safety: expect.objectContaining({
+            verdict: 'allow',
+            reasons: ['safe:workspace-draft-draft-1']
+          })
         })
       ])
     );
     expect(manifests.filter((item: any) => item.id === 'workspace-manifest')).toHaveLength(1);
+    expect(context.listWorkspaceSkillDraftManifests).toHaveBeenCalledTimes(1);
   });
 
   it('delegates local skill suggestion search with installed skills, manifests, and sources', async () => {

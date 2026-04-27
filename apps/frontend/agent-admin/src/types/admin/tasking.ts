@@ -5,6 +5,7 @@ export type DashboardPageKey =
   | 'runtime'
   | 'approvals'
   | 'learning'
+  | 'workspace'
   | 'evals'
   | 'archives'
   | 'skills'

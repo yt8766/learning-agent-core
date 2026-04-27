@@ -19,9 +19,9 @@
 
 ## 修改前先读
 
-- [docs/evals/README.md](/docs/evals/README.md)
-- [docs/evals/verification-system-guidelines.md](/docs/evals/verification-system-guidelines.md)
-- [docs/evals/promptfoo-regression.md](/docs/evals/promptfoo-regression.md)
+- [docs/packages/evals/README.md](/docs/packages/evals/README.md)
+- [docs/packages/evals/verification-system-guidelines.md](/docs/packages/evals/verification-system-guidelines.md)
+- [docs/packages/evals/promptfoo-regression.md](/docs/packages/evals/promptfoo-regression.md)
 
 ## 改动边界
 

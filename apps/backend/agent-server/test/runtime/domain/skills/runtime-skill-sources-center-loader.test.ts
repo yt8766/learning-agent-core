@@ -3,7 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 const { listSkillSourcesMock, listSkillManifestsMock, readInstalledSkillRecordsMock, readSkillInstallReceiptsMock } =
   vi.hoisted(() => ({
     listSkillSourcesMock: vi.fn(async () => [{ id: 'workspace-skills' }]),
-    listSkillManifestsMock: vi.fn(async () => [{ id: 'find-skills', displayName: 'find-skills' }]),
+    listSkillManifestsMock: vi.fn(async () => [
+      { id: 'find-skills', displayName: 'find-skills' },
+      {
+        id: 'workspace-draft-draft-1',
+        sourceId: 'workspace-skill-drafts',
+        name: 'Approved workspace draft',
+        version: '20260426010000'
+      }
+    ]),
     readInstalledSkillRecordsMock: vi.fn(async () => [
       { skillId: 'remote-vercel-labs-skills-find-skills', installedAt: '2026-04-01T09:00:00.000Z' }
     ]),
@@ -53,7 +61,13 @@ describe('runtime skill sources center loader', () => {
     expect(result).toEqual(
       expect.objectContaining({
         sources: [{ id: 'workspace-skills' }],
-        manifests: [expect.objectContaining({ id: 'find-skills' })],
+        manifests: [
+          expect.objectContaining({ id: 'find-skills' }),
+          expect.objectContaining({
+            id: 'workspace-draft-draft-1',
+            sourceId: 'workspace-skill-drafts'
+          })
+        ],
         installed: expect.any(Array),
         receipts: [expect.objectContaining({ receiptId: 'receipt-1' })]
       })
