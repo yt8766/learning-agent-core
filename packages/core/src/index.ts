@@ -5,6 +5,7 @@ export * from './contracts/chat/index';
 export * from './contracts/ministries/index';
 export * from './contracts/execution/index';
 export * from './contracts/media';
+export * from './contracts/trajectory';
 export type { SharedPlatformConsoleRecord } from './contracts/platform-console/index';
 export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture/index';
 export type {
