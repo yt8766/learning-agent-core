@@ -177,12 +177,9 @@
 - 生成分支名、提交信息、PR 标题或判断提交流程时，必须先阅读并遵守 [GitHub Flow 规范](/docs/conventions/github-flow.md)
 - 不允许只按通用 GitHub Flow 习惯临时命名分支；必须优先使用仓库 `docs/conventions/github-flow.md` 中定义的命名约定
 - 禁止使用 `git commit --no-verify` 或任何等价方式绕过本地 hook；如果 hook 因既有红灯、环境、权限或外部依赖失败，必须先修复或明确记录 blocker，不能跳过 hook 强行提交
-- 本项目允许使用 `git worktree` 隔离并行开发，但必须遵守修改边界隔离：
-  - 每个 worktree 必须有清晰、互不重叠的任务范围。
-  - 不允许多个 worktree 或当前 checkout 同时修改同一文件、同一主链 graph、同一稳定 contract、同一接口文档或同一前后端协议。
-  - 如果任务会触达相同模块或共享边界，必须改为串行推进，或先明确文件/目录级 ownership。
-  - 使用 worktree 前应检查当前 checkout 与其他 worktree 的未提交修改，避免并行改动落在同一冲突面。
-  - worktree 只用于隔离并行开发，不应用来绕过验证、文档更新、lockfile 同步或最终集成检查。
+- 禁止使用 `git worktree` 创建、切换或维护并行工作区；所有开发、验证、提交与交付必须在当前 checkout 内串行完成。
+- 如果任务会触达相同模块、共享边界、主链 graph、稳定 contract、接口文档或前后端协议，必须在当前 checkout 内按文件/目录级 ownership 串行推进，不能通过 worktree 并行规避冲突面。
+- 已存在的历史 worktree 只能在确认不包含未迁移改动后清理；不得把 worktree 当作隔离开发、验证绕行、文档补交或 lockfile 修复的手段。
 
 ## 6.0 接口稳定性与可扩展封装规范
 

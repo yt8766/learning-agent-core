@@ -172,12 +172,9 @@
 - 涉及 `packages/*` 的改动，优先执行 `pnpm build:lib`，再验证应用层
 - `packages/*` 与 `agents/*` 的 `tsup` 默认只允许以稳定公开入口 `src/index.ts` 作为构建入口；除非某个子路径已通过 `package.json` 的 `exports` 显式对外发布，否则不要把 `src/**/*.ts` 或零散内部模块当成多入口打包，避免 `build:lib` 被内部实现膨胀拖慢
 - `.github/workflows/*` 中的 JavaScript actions 默认优先使用 Node 24-ready 主版本；当 GitHub 公告提示某个 action 仍运行在 Node 20 时，应优先升级到支持 `runs.using: node24` 的版本，并显式用 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` 提前验证兼容性
-- 本项目允许使用 `git worktree` 隔离并行开发，但必须遵守修改边界隔离：
-  - 每个 worktree 必须有清晰、互不重叠的任务范围。
-  - 不允许多个 worktree 或当前 checkout 同时修改同一文件、同一主链 graph、同一稳定 contract、同一接口文档或同一前后端协议。
-  - 如果任务会触达相同模块或共享边界，必须改为串行推进，或先明确文件/目录级 ownership。
-  - 使用 worktree 前应检查当前 checkout 与其他 worktree 的未提交修改，避免并行改动落在同一冲突面。
-  - worktree 只用于隔离并行开发，不应用来绕过验证、文档更新、lockfile 同步或最终集成检查。
+- 禁止使用 `git worktree` 创建、切换或维护并行工作区；所有开发、验证、提交与交付必须在当前 checkout 内串行完成。
+- 如果任务会触达相同模块、共享边界、主链 graph、稳定 contract、接口文档或前后端协议，必须在当前 checkout 内按文件/目录级 ownership 串行推进，不能通过 worktree 并行规避冲突面。
+- 已存在的历史 worktree 只能在确认不包含未迁移改动后清理；不得把 worktree 当作隔离开发、验证绕行、文档补交或 lockfile 修复的手段。
 - 依赖安装必须使用 `pnpm add`
 - 安装到工作空间根时，必须使用 `pnpm add -w`
 - 安装开发依赖时，必须使用 `pnpm add -D`；如果是工作空间根开发依赖，必须使用 `pnpm add -Dw`

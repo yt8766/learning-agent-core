@@ -100,3 +100,4 @@ export type {
 } from './intel/scheduled-job-runner';
 
 export * from './centers';
+export * from './media';

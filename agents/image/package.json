@@ -1,0 +1,34 @@
+{
+  "name": "@agent/agents-image",
+  "version": "0.1.0",
+  "main": "build/cjs/index.js",
+  "module": "build/esm/index.mjs",
+  "types": "build/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/esm/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/cjs/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build:transpile": "tsup",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:lib": "pnpm build:transpile && pnpm build:types",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js agents/image/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:typecheck": "pnpm typecheck",
+    "turbo:test:unit": "pnpm test",
+    "verify": "pnpm typecheck && pnpm test && pnpm build:lib"
+  },
+  "dependencies": {
+    "@agent/core": "workspace:*",
+    "zod": "^4.3.6"
+  }
+}

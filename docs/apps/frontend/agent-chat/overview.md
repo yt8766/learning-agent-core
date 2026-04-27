@@ -9,26 +9,27 @@
 
 当前主要承载：
 
-- 自有 Agent Chat 品牌的轻量聊天壳，视觉参考轻量多会话聊天产品，但不复用第三方品牌、logo 或图标资产
+- DeepSeek-style lightweight frontline shell
 - Collapsible multi-session sidebar with time grouping and status indicators
-- 当前隐藏 Quick / expert chat entry mode；执行意图由发送框内项目已支持的开关表达
+- Quick / expert chat entry mode
 - Current-conversation anchor rail for long-thread navigation
-- 聊天流内 Codex 风格执行与审批卡，用于承载命令、工具调用、审批、拒绝反馈、取消与恢复
+- Inline folded governance summaries for Think / ThoughtChain / Evidence / Approval / Learning
 - Chat thread 与多轮会话切换
 - Approval cards、Cancel、Recover 等消息流内操作
 - Think / ThoughtChain / Event Timeline 运行态可视化
 - Evidence / Sources / Learning suggestions 展示
 - Workspace Vault 轻量摘要、Skill reuse readiness 与 Skill Flywheel 候选摘要
-- Session list、长线程锚点轨与执行状态等轻量辅助视图
+- Runtime panel、session list 等执行辅助视图
 
 当前约束：
 
 - 前线发送框不再暴露模型切换下拉框；聊天模型选择统一交给 Runtime 路由与治理策略决定
-- Workspace / learning / reuse / skill draft 详情不作为默认右侧工作台外壳展示；主聊天消息流只展示轻量折叠摘要或 Codex 风格审批/执行卡
+- Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示轻量折叠摘要
 - Workspace Center projection 只允许在 chat 侧作为只读 readiness 摘要消费；不要在 `agent-chat` 中新增 Skill Draft 审批、安装或治理动作
 - 运行时代码导入 `@agent/*` workspace 包时，必须在 `apps/frontend/agent-chat/package.json` 显式声明对应 `workspace:*` 依赖；`tsconfig.app.json` 的 `paths` 只服务 TypeScript，不足以保证 Vite dev server 的 import-analysis 解析
 - 本地 dev 默认通过同源 `/api` 调用后端，并由 Vite proxy 转发到 `http://localhost:3000`；如需指向其他后端，优先设置 `VITE_API_PROXY_TARGET`，只有明确跨源联调时才设置 `VITE_API_BASE_URL`
 - 空会话启动时只允许自动创建一次默认 session；如果后端不可达或 CORS/preflight 失败，前端应展示连接错误而不是在每次 render 后重复 `POST /api/chat/sessions`
+- `src/styles/chat-home-page.scss` 是聊天首页样式聚合入口；同一个 Sass module 在该入口中只能 `@use` 一次，同名 `_*.scss` partial 与非 partial 文件也不能并存，避免 Vite/Sass 因重复 namespace 或解析歧义中断 dev server、CLI 编译或 build
 
 ## 当前目录职责
 
@@ -57,14 +58,10 @@
   - 前端状态管理
 - `src/pages`
   - 页面级路由；当前以 `chat-home`、`session-detail` 为主
-  - `pages/chat-home/chat-home-page.tsx`
-    - 当前默认页面壳：`chatx-agent-codex`，承载自有 Agent Chat 品牌、多会话侧栏、空会话入口、聊天流、停止当前会话动作与审批反馈 modal
-  - `pages/chat-home/chat-home-sidebar.tsx`
-    - 左侧多会话侧栏；按时间分组，展示运行中、等待审批、完成等状态，并提供新对话、重命名、删除和退出登录入口
   - `pages/chat-home/chat-home-workbench-sections.tsx`
-    - 保留高级摘要 section state 装配与导出 helper，默认聊天页面不再以完整 workbench 外壳承载这些内容
+    - 只保留 workbench section state 装配与导出 helper
   - `pages/chat-home/chat-home-workbench-section-renders.tsx`
-    - 承载 approval / current progress / evidence / learning / reuse / event stream 等高级摘要 section 渲染
+    - 承载 approval / current progress / evidence / learning / reuse / event stream 等 section 渲染
 - `src/styles`、`src/assets`、`src/types`、`src/lib`
   - 样式、静态资源、类型和轻量工具
 
@@ -74,17 +71,15 @@
 pnpm --dir apps/frontend/agent-chat dev
 ```
 
-## 轻量聊天壳与 Codex 风格执行体验
+## 轻量聊天壳与治理能力
 
-`pages/chat-home` 默认呈现轻量聊天壳，使用自有 `Agent Chat` 品牌标识与项目内 CSS 图标，不复用第三方品牌名称、logo 或图表资产。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用胶囊与处理中图标突出阻塞态，审批完成后回落为普通会话项。中间主区域当前隐藏快速/专家模式切换，避免与发送框内的执行意图开关重复。发送框内的“深度思考”和“智能搜索”不新增后端字段，而是折叠到当前项目已支持的文本 workflow payload：深度思考对应 `/plan <message>`，智能搜索对应 `/browse <message>`，再通过既有 `POST /api/chat/messages` 的 `message` 字段进入 Runtime 路由；前端展示层会过滤这些 workflow 前缀，避免用户气泡、会话标题、左侧会话列表与锚点浮层暴露 `/plan`、`/browse` 等内部路由命令。`@ant-design/x` Sender 的 loading cancel action 直接接入 `cancelActiveSession`，用于停止当前运行会话。
+`pages/chat-home` 默认呈现轻量聊天壳。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用绿色胶囊和处理中图标突出阻塞态，审批完成后回落为普通会话项并保留右侧蓝点。中间主区域在无消息时展示快速/专家模式入口；快速模式走直接回答，专家模式复用计划/调度提交路径。
 
-右侧默认不占用完整工作台空间。长线程通过右侧锚点浮条定位用户问题、助手回答、审批点、Evidence 段落与关键执行节点；不再额外展示“回到当前会话”按钮。AI 回复统一展示自有 Agent Chat 头像，每条可见 AI 回复都有独立的“已思考”摘要；当前运行中的最新回复会把 Think / ThoughtChain 绑定为可展开面板，历史回复则保留各自的完成态思考入口，避免只有最后一条回复出现思考状态。Think、ThoughtChain、Evidence、Approval、Learning 与 Skill reuse 保留为消息内折叠摘要；当聊天记录出现审批或高风险命令时，应在消息流内展示 Codex 风格审批卡，明确命令/动作、风险说明、批准、拒绝、带反馈拒绝和取消入口。
-
-API 仍以 [`agent-chat.md`](/docs/contracts/api/agent-chat.md) 为准：会话列表、消息、SSE、checkpoint、approve/reject 与 interrupt 恢复语义不因视觉重设计而改变。前端组件只消费项目稳定 DTO / SSE / checkpoint projection，不直接渲染第三方 executor、MCP、终端或浏览器原始 payload。
+右侧默认不占用完整工作台空间。长线程通过当前会话锚点浮条定位用户问题、助手回答、审批点、Evidence 段落与关键治理节点。Think、ThoughtChain、Evidence、Approval、Learning 与 Skill reuse 保留为消息内折叠摘要或高级面板详情，不回退成普通聊天机器人。
 
 ## Workspace Vault 摘要
 
-Workspace Vault 摘要由 `buildWorkspaceVaultSignals` 从当前 checkpoint 与 Workspace Center readiness 聚合，不写入主聊天 Bubble，也不复用 `learning_summary` 这类线程消息标记。新版默认聊天壳不把它作为常驻右侧工作台展示；需要高级摘要时，由消息内折叠摘要或显式高级入口承载。
+`pages/chat-home/chat-home-workbench.tsx` 在右侧 OpenClaw workbench 的 `Current Workspace` 区块内渲染 `Workspace Vault` 摘要。该摘要由 `buildWorkspaceVaultSignals` 从当前 checkpoint 与 Workspace Center readiness 聚合，不写入主聊天 Bubble，也不复用 `learning_summary` 这类线程消息标记。
 
 当前 Vault 只展示轻量 readiness 信号：
 

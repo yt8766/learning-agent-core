@@ -36,6 +36,7 @@ export * from './openai-compatible/chat';
 export * from './openai-compatible/embeddings';
 export * from './minimax/chat';
 export * from './zhipu/chat';
+export * from './media/minimax';
 
 // Routing — canonical
 export { ModelRouter, ProviderRegistry, RoutedLlmProvider } from './routing/llm';
