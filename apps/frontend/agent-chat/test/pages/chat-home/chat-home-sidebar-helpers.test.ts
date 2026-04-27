@@ -56,15 +56,15 @@ describe('chat-home-sidebar-helpers', () => {
   });
 
   it('maps important session states to sidebar tones', () => {
-    expect(getSessionStatusTone('running')).toEqual({ tone: 'running', label: '运行中', accessory: 'dot' });
+    expect(getSessionStatusTone('running')).toEqual({ tone: 'running', label: '执行中', accessory: 'pill' });
     expect(getSessionStatusTone('waiting_approval')).toEqual({
       tone: 'approval',
-      label: '等待批准',
+      label: '需要审批',
       accessory: 'pill'
     });
     expect(getSessionStatusTone('waiting_interrupt')).toEqual({
       tone: 'approval',
-      label: '等待确认',
+      label: '需要确认',
       accessory: 'pill'
     });
     expect(getSessionStatusTone('failed')).toEqual({ tone: 'danger', label: '失败', accessory: 'dot' });

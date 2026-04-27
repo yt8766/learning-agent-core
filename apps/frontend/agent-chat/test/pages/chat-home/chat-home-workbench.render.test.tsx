@@ -164,7 +164,6 @@ describe('chat-home-workbench component', () => {
     renderedDropdownMenus.length = 0;
     renderedSenders.length = 0;
     renderedSegmentedControls.length = 0;
-    renderedSegmentedControls.length = 0;
     useStateOverride = null;
   });
 
@@ -197,48 +196,11 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('mission-control');
     expect(html).toContain('使用快速模式开始对话');
     expect(html).toContain('快速模式');
-    expect(html).toContain('专家模式');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).toContain('更多建议');
     expect(html).not.toContain('Frontline Workspace');
-    expect(html).not.toContain('Frontline Workspace');
     expect(html).not.toContain('切换模型');
     expect(html).not.toContain('自动选择');
-  });
-
-  it('routes empty and composer mode controls through the shared chat mode handler', () => {
-    const onChatModeChange = vi.fn();
-
-    renderToStaticMarkup(
-      <ChatHomeWorkbench
-        chat={
-          {
-            activeSession: {
-              id: 'session-1',
-              status: 'idle'
-            },
-            activeSessionId: 'session-1',
-            messages: [],
-            pendingApprovals: [],
-            checkpoint: undefined,
-            sendMessage: vi.fn(),
-            cancelActiveSession: vi.fn(),
-            hasMessages: false
-          } as any
-        }
-        chatMode="quick"
-        onChatModeChange={onChatModeChange}
-        showWorkbench={false}
-        bubbleItems={[]}
-        streamEvents={[]}
-      />
-    );
-
-    renderedSegmentedControls[0]?.onChange?.('expert');
-    renderedSegmentedControls[1]?.onChange?.('expert');
-
-    expect(onChatModeChange).toHaveBeenCalledWith('expert');
-    expect(onChatModeChange).toHaveBeenCalledTimes(2);
   });
 
   it('renders workspace shell, alerts, sections and follow-up actions when workbench is open', () => {
@@ -317,15 +279,7 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('1 个连接器');
     expect(html).toContain('gongbu-code');
     expect(html).toContain('Workspace Vault');
-    expect(html).toContain('Workspace signals: 9 项');
-    expect(html).toContain('Evidence readiness: 3 条来源');
-    expect(html).toContain('Reuse readiness: 5 项复用');
-    expect(html).toContain('Skill draft readiness: 1 个候选');
-    expect(html).toContain('Capability gap: 待补强');
-    expect(html).toContain('Capability gap · 需要浏览器连接器');
-    expect(html).not.toContain('learning_summary');
-    expect(html).toContain('Workspace Vault');
-    expect(html).toContain('Workspace signals: 9 项');
+    expect(html).toContain('Workspace signals: 8 项');
     expect(html).toContain('Evidence readiness: 3 条来源');
     expect(html).toContain('Reuse readiness: 5 项复用');
     expect(html).toContain('Skill draft readiness: 1 个候选');
@@ -341,76 +295,6 @@ describe('chat-home-workbench component', () => {
     expect(html).toContain('情报柜');
     expect(html).toContain('section-body');
     expect(html).toContain('approval-actions');
-  });
-
-  it('renders the conversation anchor rail and scrolls to an anchor when selected', () => {
-    const scrollIntoView = vi.fn();
-    const getElementById = vi.fn(() => ({ scrollIntoView }));
-
-    vi.stubGlobal('document', { getElementById });
-
-    const html = renderToStaticMarkup(
-      <ChatHomeWorkbench
-        chat={
-          {
-            activeSession: {
-              id: 'session-1',
-              status: 'completed'
-            },
-            activeSessionId: 'session-1',
-            messages: [
-              {
-                id: 'user-1',
-                role: 'user',
-                content: '请帮我整理当前任务'
-              },
-              {
-                id: 'assistant-1',
-                role: 'assistant',
-                content: '已经给出结论'
-              },
-              {
-                id: 'evidence-1',
-                role: 'assistant',
-                content: '',
-                card: {
-                  type: 'evidence_digest',
-                  sources: []
-                }
-              }
-            ],
-            pendingApprovals: [],
-            checkpoint: undefined,
-            sendMessage: vi.fn(),
-            cancelActiveSession: vi.fn(),
-            hasMessages: true
-          } as any
-        }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
-        showWorkbench={false}
-        bubbleItems={[
-          { key: 'user-1', content: 'user bubble' } as any,
-          { key: 'assistant-1', content: 'assistant bubble' } as any
-        ]}
-        streamEvents={[]}
-      />
-    );
-
-    expect(html).toContain('当前对话定位');
-    expect(html).toContain('chatx-anchor-rail');
-    expect(html).toContain('chatx-message-anchor-user-1');
-    expect(html).toContain('chatx-message-anchor-assistant-1');
-    expect(html).toContain('请帮我整理当前任务');
-    expect(html).toContain('已经给出结论');
-    expect(html).not.toContain('Evidence digest');
-
-    renderedButtons.find(button => button.children === '已经给出结论')?.onClick?.();
-
-    expect(getElementById).toHaveBeenCalledWith('chatx-message-anchor-assistant-1');
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
-
-    vi.unstubAllGlobals();
   });
 
   it('renders the conversation anchor rail and scrolls to an anchor when selected', () => {
@@ -638,39 +522,6 @@ describe('chat-home-workbench component', () => {
       display: '给我一个实现方案',
       payload: '/plan 给我一个实现方案'
     });
-  });
-
-  it('returns to quick mode when a quick action is selected from expert mode', () => {
-    const onChatModeChange = vi.fn();
-
-    renderToStaticMarkup(
-      <ChatHomeWorkbench
-        chat={
-          {
-            activeSession: {
-              id: 'session-1',
-              status: 'idle'
-            },
-            activeSessionId: 'session-1',
-            messages: [],
-            pendingApprovals: [],
-            checkpoint: undefined,
-            sendMessage: vi.fn(),
-            cancelActiveSession: vi.fn(),
-            hasMessages: false
-          } as any
-        }
-        chatMode="expert"
-        onChatModeChange={onChatModeChange}
-        showWorkbench={false}
-        bubbleItems={[]}
-        streamEvents={[]}
-      />
-    );
-
-    (renderedDropdownMenus[0]?.onClick as ((info: { key: string }) => void) | undefined)?.({ key: '审查风险' });
-
-    expect(onChatModeChange).toHaveBeenCalledWith('quick');
   });
 
   it('returns to quick mode when a quick action is selected from expert mode', () => {

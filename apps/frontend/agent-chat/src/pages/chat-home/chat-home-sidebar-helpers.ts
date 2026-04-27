@@ -58,7 +58,7 @@ export function getSessionGroupLabel(updatedAt: string, now = new Date()): strin
 export function getSessionStatusTone(status: ChatSessionRecord['status']): ChatSessionStatusDisplay {
   switch (status) {
     case 'running':
-      return { tone: 'running', label: getSidebarSessionStatusLabel(status), accessory: 'dot' };
+      return { tone: 'running', label: getSidebarSessionStatusLabel(status), accessory: 'pill' };
     case 'waiting_approval':
       return { tone: 'approval', label: getSidebarSessionStatusLabel(status), accessory: 'pill' };
     case 'waiting_interrupt':
@@ -74,11 +74,15 @@ export function getSessionStatusTone(status: ChatSessionRecord['status']): ChatS
 
 function getSidebarSessionStatusLabel(status: ChatSessionRecord['status']): string {
   if (status === 'waiting_approval') {
-    return '等待批准';
+    return '需要审批';
   }
 
   if (status === 'waiting_interrupt') {
-    return '等待确认';
+    return '需要确认';
+  }
+
+  if (status === 'running') {
+    return '执行中';
   }
 
   return getSessionStatusLabel(status);

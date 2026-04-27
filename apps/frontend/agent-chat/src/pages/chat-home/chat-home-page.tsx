@@ -1,39 +1,32 @@
-import { Alert, App as AntApp, Button, ConfigProvider, Layout, Modal, Space, Tag, Typography } from 'antd';
-import { XProvider } from '@ant-design/x';
+import { AimOutlined, GlobalOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { Alert, App as AntApp, ConfigProvider, Modal, Typography } from 'antd';
+import { Bubble, Sender, XProvider } from '@ant-design/x';
+import type { BubbleItemType } from '@ant-design/x';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { exportApprovalsCenter, exportRuntimeCenter, getBrowserReplay } from '@/api/chat-api';
 import { buildBubbleItems } from '@/features/chat/chat-message-adapter';
-import { ChatRuntimeDrawer } from '@/features/runtime-panel/chat-runtime-drawer';
+import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
 import { getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
 import '@/styles/chat-home-page.scss';
 import { getAgentLabel, getErrorCopy } from './chat-home-helpers';
 import {
-  buildApprovalsExportRequest,
-  buildChatHomeShareLinks,
   buildCognitionDurationLabel,
-  buildDeleteSessionConfirmConfig,
-  buildReplayDownloadFilename,
-  buildRuntimeExportRequest,
-  buildStreamEventItems,
-  downloadTextFile,
-  getWorkbenchToggleLabel,
   openApprovalFeedbackState,
   resetApprovalFeedbackState,
   resolveApprovalFeedbackSubmission,
   resolveCognitionTargetMessageId,
   resolveNextCognitionExpansion,
-  serializeBrowserReplay,
-  shouldShowSessionHeaderActions,
   shouldShowErrorAlert
 } from './chat-home-page-helpers';
+import { ConversationAnchorRail } from './chat-home-anchor-rail';
+import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
 import { ChatHomeSidebar } from './chat-home-sidebar';
-import { stripLeadingWorkflowCommand } from './chat-home-submit';
-import { buildThoughtItems, ChatHomeWorkbench } from './chat-home-workbench';
-import type { ChatMode } from './chat-home-workbench-composer-helpers';
+import { buildSubmitMessage } from './chat-home-submit';
+import { buildThoughtItems } from './chat-home-workbench-thoughts';
 
 const { Text, Title } = Typography;
-const { Header, Sider, Content } = Layout;
+
+type ChatMode = 'quick' | 'expert';
 
 export function ChatHomePage() {
   const chat = useChatSession();
@@ -41,8 +34,7 @@ export function ChatHomePage() {
   const [feedbackDraft, setFeedbackDraft] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showWorkbench, setShowWorkbench] = useState(false);
-  const [chatMode, setChatMode] = useState<ChatMode>('quick');
+  const [chatMode] = useState<ChatMode>('quick');
   const [dismissedError, setDismissedError] = useState('');
   const [cognitionExpanded, setCognitionExpanded] = useState(false);
   const [thinkingNow, setThinkingNow] = useState(Date.now());
@@ -151,138 +143,70 @@ export function ChatHomePage() {
     ]
   );
 
-  const streamEvents = useMemo(() => buildStreamEventItems(chat.events), [chat.events]);
+  const conversationAnchors = useMemo(
+    () => filterVisibleConversationAnchors(buildConversationAnchors(chat.messages), bubbleItems),
+    [chat.messages, bubbleItems]
+  );
+  const anchoredBubbleItems = useMemo(
+    () => attachConversationAnchorTargets(bubbleItems, conversationAnchors),
+    [bubbleItems, conversationAnchors]
+  );
   const errorCopy = chat.error ? getErrorCopy(chat.error) : null;
   const showErrorAlert = shouldShowErrorAlert(chat.error, dismissedError, Boolean(errorCopy));
 
-  const handleExportRuntime = async () => {
-    const exported = await exportRuntimeCenter(buildRuntimeExportRequest(chat.checkpoint));
-    downloadTextFile(exported.filename, exported.mimeType, exported.content);
-  };
-
-  const handleExportApprovals = async () => {
-    const exported = await exportApprovalsCenter(buildApprovalsExportRequest(chat.checkpoint));
-    downloadTextFile(exported.filename, exported.mimeType, exported.content);
-  };
-
-  const handleDownloadReplay = async () => {
-    if (!chat.activeSessionId) return;
-    const replay = await getBrowserReplay(chat.activeSessionId);
-    downloadTextFile(
-      buildReplayDownloadFilename(chat.activeSessionId),
-      'application/json',
-      serializeBrowserReplay(replay)
-    );
-  };
-
-  const handleCopyShareLinks = async () => {
-    const links = buildChatHomeShareLinks(chat.checkpoint, chat.activeSessionId);
-    await navigator.clipboard.writeText(
-      [links.runtimeUrl, links.approvalsUrl, links.observatoryUrl, links.replayUrl].filter(Boolean).join('\n')
-    );
+  const handleLogout = () => {
+    chat.setActiveSessionId('');
+    window.dispatchEvent(new CustomEvent('agent-chat:logout'));
   };
 
   return (
     <ConfigProvider>
       <XProvider>
         <AntApp>
-          <Layout className={`chatx-layout ${sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'}`}>
-            <Sider width={sidebarCollapsed ? 108 : 312} collapsedWidth={108} theme="light" className="chatx-sider">
+          <main className={`chatx-agent-codex ${sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'}`}>
+            <div className="chatx-agent-codex__sidebar" aria-label="Agent Chat 会话侧栏">
               <ChatHomeSidebar
                 chat={chat}
                 collapsed={sidebarCollapsed}
                 onToggleCollapsed={() => setSidebarCollapsed(current => !current)}
+                onLogout={handleLogout}
               />
-            </Sider>
+            </div>
 
-            <Layout>
-              <Header className="chatx-header">
-                <div className="chatx-header__copy">
-                  <Text className="chatx-header__eyebrow">Agent Chat</Text>
-                  <Title level={4}>
-                    {chat.activeSession?.title ? stripLeadingWorkflowCommand(chat.activeSession.title) : '开始新会话'}
-                  </Title>
-                  <Space wrap size={8} className="chatx-header__tags">
-                    {chat.checkpoint?.resolvedWorkflow ? (
-                      <Tag color="gold">{chat.checkpoint.resolvedWorkflow.displayName}</Tag>
-                    ) : null}
-                    {chat.activeSession ? (
-                      <Tag color="default">{getSessionStatusLabel(chat.activeSession.status)}</Tag>
-                    ) : null}
-                  </Space>
-                </div>
-                <Space className="chatx-header__actions">
-                  {shouldShowSessionHeaderActions(chat.activeSessionId) ? (
-                    <>
-                      <Button
-                        htmlType="button"
-                        onClick={() => chat.activeSessionId && void chat.refreshSessionDetail()}
-                      >
-                        刷新当前会话
-                      </Button>
-                      <Button
-                        htmlType="button"
-                        danger
-                        onClick={() => {
-                          Modal.confirm(buildDeleteSessionConfirmConfig(async () => chat.deleteActiveSession()));
-                        }}
-                      >
-                        删除会话
-                      </Button>
-                    </>
-                  ) : null}
-                  <Button htmlType="button" onClick={() => setShowWorkbench(current => !current)}>
-                    {getWorkbenchToggleLabel(showWorkbench)}
-                  </Button>
-                  <Button htmlType="button" type="primary" onClick={() => chat.setShowRightPanel(true)}>
-                    打开总览面板
-                  </Button>
-                </Space>
-              </Header>
+            <section className="chatx-agent-codex__main" aria-label="Codex 对话区">
+              {showErrorAlert && errorCopy ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  closable
+                  className="chatx-agent-codex__error"
+                  title={errorCopy.title}
+                  description={errorCopy.description}
+                  onClose={() => setDismissedError(chat.error)}
+                />
+              ) : null}
 
-              <Content className="chatx-content" aria-label="Codex 对话区">
-                <div className="chatx-main-card">
-                  {showErrorAlert && errorCopy ? (
-                    <Alert
-                      type="error"
-                      showIcon
-                      closable
-                      className="chatx-error-card"
-                      title={errorCopy.title}
-                      description={errorCopy.description}
-                      onClose={() => setDismissedError(chat.error)}
-                    />
-                  ) : null}
+              {chat.hasMessages ? (
+                <ActiveConversation
+                  activeTitle={stripWorkflowCommandPrefix(chat.activeSession?.title ?? '当前会话')}
+                  activeStatus={chat.activeSession?.status}
+                  chatMode={chatMode}
+                  bubbleItems={anchoredBubbleItems}
+                  anchors={conversationAnchors}
+                  onSend={value => chat.sendMessage(value)}
+                  onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
+                  loading={isThinking}
+                />
+              ) : (
+                <EmptyConversation
+                  chatMode={chatMode}
+                  onSend={value => chat.sendMessage(value)}
+                  onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
+                  loading={chat.loading}
+                />
+              )}
+            </section>
 
-                  <ChatHomeWorkbench
-                    chat={chat}
-                    chatMode={chatMode}
-                    onChatModeChange={setChatMode}
-                    showWorkbench={showWorkbench}
-                    bubbleItems={bubbleItems}
-                    streamEvents={streamEvents}
-                  />
-                </div>
-              </Content>
-            </Layout>
-
-            <ChatRuntimeDrawer
-              open={chat.showRightPanel}
-              activeSession={chat.activeSession}
-              checkpoint={chat.checkpoint}
-              thinkState={chat.checkpoint?.thinkState}
-              pendingApprovals={chat.pendingApprovals}
-              thoughtItems={thoughtItems}
-              onClose={() => chat.setShowRightPanel(false)}
-              onConfirmLearning={() => void chat.submitLearningConfirmation()}
-              onRecover={() => void chat.recoverActiveSession()}
-              onExportRuntime={() => void handleExportRuntime()}
-              onExportApprovals={() => void handleExportApprovals()}
-              onDownloadReplay={() => void handleDownloadReplay()}
-              onCopyShareLinks={() => void handleCopyShareLinks()}
-              getAgentLabel={getAgentLabel}
-              getSessionStatusLabel={getSessionStatusLabel}
-            />
             <Modal
               title="拒绝并附加说明"
               open={Boolean(feedbackIntent)}
@@ -313,9 +237,182 @@ export function ChatHomePage() {
                 />
               </div>
             </Modal>
-          </Layout>
+          </main>
         </AntApp>
       </XProvider>
     </ConfigProvider>
   );
+}
+
+interface ConversationProps {
+  chatMode: ChatMode;
+  onSend: ReturnType<typeof useChatSession>['sendMessage'];
+  onCancel: ReturnType<typeof useChatSession>['cancelActiveSession'];
+  loading: boolean;
+}
+
+interface ActiveConversationProps extends ConversationProps {
+  activeTitle: string;
+  activeStatus?: string;
+  bubbleItems: BubbleItemType[];
+  anchors: ReturnType<typeof buildConversationAnchors>;
+}
+
+function ActiveConversation(props: ActiveConversationProps) {
+  return (
+    <div className="chatx-conversation">
+      <header className="chatx-conversation__header">
+        <div>
+          <Title level={2}>{props.activeTitle}</Title>
+          {props.activeStatus ? (
+            <Text className="chatx-conversation__mode">{getSessionStatusLabel(props.activeStatus)}</Text>
+          ) : null}
+        </div>
+      </header>
+
+      <ConversationAnchorRail anchors={props.anchors} />
+
+      <div className="chatx-conversation__stream">
+        <Bubble.List items={props.bubbleItems} autoScroll className="chatx-bubble-list" />
+        <div className="chatx-conversation__composer">
+          <ChatComposer
+            chatMode={props.chatMode}
+            onSend={props.onSend}
+            onCancel={props.onCancel}
+            loading={props.loading}
+            active
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyConversation(props: ConversationProps) {
+  return (
+    <div className="chatx-empty-conversation">
+      <div className="chatx-empty-conversation__hero">
+        <div className="chatx-empty-conversation__title">
+          <span className="chatx-brand-mark" aria-hidden="true" />
+          <Title level={1}>开始新对话</Title>
+        </div>
+        <ChatComposer
+          chatMode={props.chatMode}
+          onSend={props.onSend}
+          onCancel={props.onCancel}
+          loading={props.loading}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ChatComposer(props: ConversationProps & { active?: boolean }) {
+  const [draft, setDraft] = useState('');
+  const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(true);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+
+  useEffect(() => {
+    setDraft('');
+  }, [props.chatMode]);
+
+  return (
+    <div className={`chatx-agent-composer ${props.active ? 'is-active-thread' : 'is-empty-thread'}`}>
+      <Sender
+        className="chatx-sender"
+        value={draft}
+        onChange={setDraft}
+        onSubmit={value => {
+          const nextValue = value.trim();
+          if (!nextValue) {
+            return;
+          }
+          const activeModes = [
+            props.chatMode === 'expert' || deepThinkingEnabled ? 'plan' : '',
+            webSearchEnabled ? 'browse' : ''
+          ].filter(Boolean);
+          const outbound = buildSubmitMessage(nextValue, activeModes);
+          setDraft('');
+          props.onSend(outbound);
+        }}
+        onCancel={props.onCancel}
+        suffix={false}
+        loading={props.loading}
+        placeholder="给 Agent Chat 发送消息"
+        autoSize={{ minRows: 2, maxRows: 3 }}
+        footer={actionNode => (
+          <div className="chatx-sender-footer">
+            <div className="chatx-sender-footer__left">
+              <button
+                type="button"
+                className={`chatx-sender-chip${deepThinkingEnabled ? ' is-active' : ''}`}
+                aria-pressed={deepThinkingEnabled}
+                onClick={() => setDeepThinkingEnabled(enabled => !enabled)}
+              >
+                <AimOutlined aria-hidden="true" />
+                <span>深度思考</span>
+              </button>
+              <button
+                type="button"
+                className={`chatx-sender-chip${webSearchEnabled ? ' is-active' : ''}`}
+                aria-pressed={webSearchEnabled}
+                onClick={() => setWebSearchEnabled(enabled => !enabled)}
+              >
+                <GlobalOutlined aria-hidden="true" />
+                <span>智能搜索</span>
+              </button>
+            </div>
+            <div className="chatx-sender-footer__right">
+              <button type="button" className="chatx-sender-attach" aria-label="上传文件">
+                <PaperClipOutlined aria-hidden="true" />
+              </button>
+              {actionNode}
+            </div>
+          </div>
+        )}
+      />
+      <Text className="chatx-ai-disclaimer">内容由 AI 生成，请仔细甄别</Text>
+    </div>
+  );
+}
+
+function attachConversationAnchorTargets(
+  items: BubbleItemType[],
+  anchors: ReturnType<typeof buildConversationAnchors>
+) {
+  if (!anchors.length) {
+    return items;
+  }
+
+  const anchorByMessageId = new Map(anchors.map(anchor => [anchor.messageId, anchor]));
+
+  return items.map(item => {
+    const anchor = anchorByMessageId.get(String(item.key));
+    if (!anchor) {
+      return item;
+    }
+
+    return {
+      ...item,
+      content: (
+        <div id={anchor.id} className="chatx-message-anchor-target">
+          {item.content}
+        </div>
+      )
+    };
+  });
+}
+
+function filterVisibleConversationAnchors(
+  anchors: ReturnType<typeof buildConversationAnchors>,
+  items: BubbleItemType[]
+) {
+  if (!anchors.length) {
+    return anchors;
+  }
+
+  const visibleMessageIds = new Set(items.map(item => String(item.key)));
+  const visibleAnchors = anchors.filter(anchor => visibleMessageIds.has(anchor.messageId));
+
+  return visibleAnchors.length >= 2 ? visibleAnchors : [];
 }
