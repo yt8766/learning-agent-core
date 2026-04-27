@@ -160,7 +160,10 @@ export function buildWorkspaceFollowUpActions(chat: ReturnType<typeof useChatSes
   return chips.filter(item => ['继续深挖', '改成计划', '生成执行任务', '输出检查单'].includes(item.label));
 }
 
-export function buildWorkspaceVaultSignals(chat: ReturnType<typeof useChatSession>): WorkspaceVaultSignal[] {
+export function buildWorkspaceVaultSignals(
+  chat: ReturnType<typeof useChatSession>,
+  workspaceCenterReadiness?: WorkspaceCenterReadinessSummary
+): WorkspaceVaultSignal[] {
   const checkpoint = chat.checkpoint;
   const sourceSummary = checkpoint?.learningEvaluation?.sourceSummary;
   const externalSourceCount = sourceSummary?.externalSourceCount ?? checkpoint?.externalSources?.length ?? 0;
@@ -173,12 +176,32 @@ export function buildWorkspaceVaultSignals(chat: ReturnType<typeof useChatSessio
   const connectorCount = checkpoint?.connectorRefs?.length ?? 0;
   const reuseCount = reusedMemoryCount + reusedRuleCount + reusedSkillCount + installedSkillCount + companyWorkerCount;
   const workspaceSignalCount =
-    externalSourceCount + internalSourceCount + reusedMemoryCount + reusedRuleCount + reusedSkillCount;
+    externalSourceCount + internalSourceCount + reusedMemoryCount + reusedRuleCount + reusedSkillCount + connectorCount;
   const candidateCount = checkpoint?.learningEvaluation?.recommendedCandidateIds?.length ?? 0;
+  const autoConfirmCandidateCount = checkpoint?.learningEvaluation?.autoConfirmCandidateIds?.length ?? 0;
+  const learningConfidence = checkpoint?.learningEvaluation?.confidence;
+  const installedReceiptIds =
+    checkpoint?.skillSearch?.suggestions.flatMap(suggestion =>
+      suggestion.installState?.status === 'installed' ? [suggestion.installState.receiptId] : []
+    ) ?? [];
   const capabilityGapDetected = Boolean(checkpoint?.skillSearch?.capabilityGapDetected);
   const recommendationSummary = checkpoint?.skillSearch?.mcpRecommendation?.summary;
 
   return [
+    ...(workspaceCenterReadiness
+      ? [
+          {
+            label: 'Workspace Center',
+            value: `${workspaceCenterReadiness.approvedDraftCount + workspaceCenterReadiness.installedDraftCount} ready / ${workspaceCenterReadiness.skillDraftCount} drafts`,
+            detail: `approved ${workspaceCenterReadiness.approvedDraftCount} · reuse ${workspaceCenterReadiness.reuseRecordCount} · top ${
+              workspaceCenterReadiness.topDraftTitles.length
+                ? workspaceCenterReadiness.topDraftTitles.join(', ')
+                : workspaceCenterReadiness.workspaceName
+            }`,
+            tone: 'green'
+          } satisfies WorkspaceVaultSignal
+        ]
+      : []),
     {
       label: 'Workspace signals',
       value: `${workspaceSignalCount} 项`,
@@ -190,32 +213,36 @@ export function buildWorkspaceVaultSignals(chat: ReturnType<typeof useChatSessio
     {
       label: 'Evidence readiness',
       value: `${externalSourceCount} 条来源`,
-      detail: externalSourceCount ? `${externalSourceCount} 条外部来源可追溯` : '暂无外部来源沉淀',
+      detail: `internal ${internalSourceCount}`,
       tone: 'cyan'
     },
     {
       label: 'Reuse readiness',
       value: `${reuseCount} 项复用`,
-      detail: `${reusedMemoryCount} 记忆，${reusedRuleCount} 规则，${reusedSkillCount + installedSkillCount} 技能，${companyWorkerCount} 工作者`,
+      detail: `技能 ${reusedSkillCount + installedSkillCount} · 角色 ${companyWorkerCount} · 连接器 ${connectorCount}`,
       tone: 'purple'
     },
     {
       label: 'Skill draft readiness',
       value: `${candidateCount} 个候选`,
-      detail: candidateCount ? '存在可沉淀为技能草稿的候选' : '暂无技能草稿候选',
+      detail: `auto ${autoConfirmCandidateCount} · confidence ${learningConfidence ?? 'unknown'}`,
       tone: 'green'
     },
+    ...(installedReceiptIds.length
+      ? [
+          {
+            label: 'Install receipts',
+            value: `${installedReceiptIds.length} installed`,
+            detail: installedReceiptIds.join(', '),
+            tone: 'green'
+          } satisfies WorkspaceVaultSignal
+        ]
+      : []),
     {
       label: 'Capability gap',
       value: capabilityGapDetected ? '待补强' : '已覆盖',
       detail: recommendationSummary ?? (capabilityGapDetected ? '存在待补能力缺口' : '当前能力覆盖稳定'),
       tone: capabilityGapDetected ? 'orange' : 'geekblue'
-    },
-    {
-      label: 'Connector readiness',
-      value: `${connectorCount} 个连接器`,
-      detail: connectorCount ? '连接器上下文已参与当前任务' : '暂无连接器上下文',
-      tone: 'gold'
     }
   ];
 }

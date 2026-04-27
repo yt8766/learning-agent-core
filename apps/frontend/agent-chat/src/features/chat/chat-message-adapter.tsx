@@ -113,6 +113,9 @@ function renderMessageContent(
   const shouldShowCognition =
     message.role === 'assistant' &&
     (hasTargetCognition || Boolean(inlineThinkContent) || Boolean(normalizedMessage.content.trim()));
+  const canExpandCognition = Boolean(
+    isCognitionTarget && (messageThinkState || inlineThinkContent || (messageThoughtItems?.length ?? 0) > 0)
+  );
 
   if (!shouldShowCognition) {
     if (!evidenceContent) {
@@ -143,7 +146,6 @@ function renderMessageContent(
   return (
     <div className="chatx-assistant-stack">
       <div className="chatx-inline-think chatx-governance-summary">
-      <div className="chatx-inline-think chatx-governance-summary">
         <button
           type="button"
           className={`chatx-inline-think__toggle chatx-governance-summary__toggle ${
@@ -153,7 +155,6 @@ function renderMessageContent(
         >
           {isThinking ? (
             <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
-            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
               <span className="chatx-inline-think__loader">
                 <span className="chatx-inline-think__bar" />
                 <span className="chatx-inline-think__bar" />
@@ -161,7 +162,6 @@ function renderMessageContent(
               </span>
             </span>
           ) : (
-            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
             <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
               <span className="chatx-inline-think__dot" />
             </span>
@@ -224,15 +224,6 @@ function renderMessageContent(
       {evidenceContent}
     </div>
   );
-}
-
-function formatCognitionDurationCopy(durationLabel: string) {
-  const normalized = durationLabel.trim();
-  if (!normalized) {
-    return '';
-  }
-
-  return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
 }
 
 function formatCognitionDurationCopy(durationLabel: string) {

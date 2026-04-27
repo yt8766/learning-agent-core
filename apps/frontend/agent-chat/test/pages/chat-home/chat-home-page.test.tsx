@@ -9,7 +9,7 @@ const mockUseChatSession = vi.fn();
 const renderedAlerts: Array<Record<string, unknown>> = [];
 const renderedModals: Array<Record<string, unknown>> = [];
 const renderedSenders: Array<Record<string, unknown>> = [];
-const renderedSenders: Array<Record<string, unknown>> = [];
+const renderedButtons: Array<{ children?: ReactNode; onClick?: () => void | Promise<void> }> = [];
 
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
@@ -55,64 +55,18 @@ vi.mock('antd', async () => {
             {children}
           </aside>
         ),
-        Content: ({ children, className }: { children?: ReactNode; className?: string }) => (
-          <main className={className}>{children}</main>
-        )
-      }
-    ),
-    Layout: Object.assign(
-      ({ children, className }: { children?: ReactNode; className?: string }) => (
-        <div className={className}>{children}</div>
-      ),
-      {
-        Header: ({ children, className }: { children?: ReactNode; className?: string }) => (
-          <header className={className}>{children}</header>
-        ),
-        Sider: ({
+        Content: ({
           children,
           className,
-          width,
-          collapsedWidth
+          ...rest
         }: {
           children?: ReactNode;
           className?: string;
-          width?: number;
-          collapsedWidth?: number;
+          [key: string]: unknown;
         }) => (
-          <aside className={className} data-width={width} data-collapsed-width={collapsedWidth}>
+          <main className={className} {...rest}>
             {children}
-          </aside>
-        ),
-        Content: ({ children, className }: { children?: ReactNode; className?: string }) => (
-          <main className={className}>{children}</main>
-        )
-      }
-    ),
-    Layout: Object.assign(
-      ({ children, className }: { children?: ReactNode; className?: string }) => (
-        <div className={className}>{children}</div>
-      ),
-      {
-        Header: ({ children, className }: { children?: ReactNode; className?: string }) => (
-          <header className={className}>{children}</header>
-        ),
-        Sider: ({
-          children,
-          className,
-          width,
-          collapsedWidth
-        }: {
-          children?: ReactNode;
-          className?: string;
-          width?: number;
-          collapsedWidth?: number;
-        }) => (
-          <aside className={className} data-width={width} data-collapsed-width={collapsedWidth}>
-            {children}
-          </aside>
-        ),
-        Content: ({ children, className }: { children?: ReactNode; className?: string }) => (
-          <main className={className}>{children}</main>
+          </main>
         )
       }
     ),
@@ -170,6 +124,12 @@ vi.mock('antd', async () => {
 
 vi.mock('@ant-design/x', () => ({
   XProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Think: ({ children, title }: { children?: ReactNode; title?: ReactNode }) => (
+    <section>
+      <h3>{title}</h3>
+      {children}
+    </section>
+  ),
   Bubble: {
     List: ({ items, className }: { items: Array<{ key: string; content: ReactNode }>; className?: string }) => (
       <div className={className}>
@@ -190,6 +150,12 @@ vi.mock('@ant-design/x', () => ({
     );
   }
   XProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Think: ({ children, title }: { children?: ReactNode; title?: ReactNode }) => (
+    <section>
+      <h3>{title}</h3>
+      {children}
+    </section>
+  ),
   Bubble: {
     List: ({ items, className }: { items: Array<{ key: string; content: ReactNode }>; className?: string }) => (
       <div className={className}>
@@ -234,32 +200,72 @@ vi.mock('@/pages/chat-home/chat-home-sidebar', () => ({
   ChatHomeSidebar: () => <div>chat-home-sidebar</div>
 }));
 
+vi.mock('@/features/runtime-panel/chat-runtime-drawer', () => ({
+  ChatRuntimeDrawer: ({ open }: { open: boolean }) => <div>runtime-drawer:{open ? 'open' : 'closed'}</div>,
+  getRuntimeDrawerExportFilters: () => ({})
+}));
+
 vi.mock('@/pages/chat-home/chat-home-workbench', () => ({
   buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }],
   ChatHomeWorkbench: ({
+    chat,
     bubbleItems,
     chatMode,
     streamEvents,
     showWorkbench
   }: {
+    chat: {
+      hasMessages: boolean;
+      sendMessage: (message: { display: string; payload: string }) => void;
+      cancelActiveSession: (reason?: string) => void;
+    };
     bubbleItems: Array<{ content: string }>;
     chatMode: 'quick' | 'expert';
     onChatModeChange: (chatMode: 'quick' | 'expert') => void;
     streamEvents: Array<{ summary: string }>;
     showWorkbench: boolean;
-  }) => (
-    <div>
-      workbench:{showWorkbench ? 'open' : 'closed'} / mode:{chatMode} / can-change:yes / bubbles:
-      {bubbleItems.length} / events:{streamEvents.length}
-    </div>
-  )
-}));
+  }) => {
+    const senderProps = {
+      className: 'chatx-sender',
+      placeholder: '给 Agent Chat 发送消息',
+      loading: true,
+      onCancel: () => chat.cancelActiveSession('用户停止当前会话'),
+      onSubmit: (value: string) =>
+        chat.sendMessage({
+          display: value.trim(),
+          payload: `/plan ${value.trim()}`
+        }),
+      footer: (actionNode: ReactNode) => (
+        <div className="chatx-sender-footer">
+          <div className="chatx-sender-footer__left">
+            <button type="button" aria-pressed="true">
+              深度思考
+            </button>
+            <button type="button" aria-pressed="false">
+              智能搜索
+            </button>
+          </div>
+          <div className="chatx-sender-footer__right">
+            <button type="button" aria-label="上传文件">
+              上传文件
+            </button>
+            {actionNode}
+          </div>
+        </div>
+      )
+    };
+    renderedSenders.push(senderProps);
 
-vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
-  buildConversationAnchors: () => [
-    { id: 'anchor-user', messageId: 'msg-user', label: '用户问题' },
-    { id: 'anchor-assistant', messageId: 'bubble-1', label: '助手回答' }
-  ]
+    return (
+      <div>
+        workbench:{showWorkbench ? 'open' : 'closed'} / mode:{chatMode} / can-change:yes / bubbles:
+        {bubbleItems.length} / events:{streamEvents.length}
+        {!chat.hasMessages ? <h1>开始新对话</h1> : null}
+        <span>{senderProps.placeholder}</span>
+        <section className={senderProps.className}>{senderProps.footer(<button type="button">发送</button>)}</section>
+      </div>
+    );
+  }
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
@@ -389,7 +395,7 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-collapsed"');
+    expect(html).toContain('class="chatx-layout is-sidebar-collapsed"');
   });
 
   it('renders the empty conversation entry with own brand title and Agent Chat placeholder', () => {

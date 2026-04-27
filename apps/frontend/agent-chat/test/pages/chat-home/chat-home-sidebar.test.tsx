@@ -2,7 +2,6 @@ import type { ReactElement, ReactNode } from 'react';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatHomeSidebar } from '@/pages/chat-home/chat-home-sidebar';
 import type { ChatHomeSidebarChat } from '@/pages/chat-home/chat-home-sidebar';
