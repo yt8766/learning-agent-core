@@ -1,5 +1,10 @@
 # Knowledge Hybrid Search Implementation Plan
 
+状态：completed
+文档类型：plan
+适用范围：`packages/knowledge/src/retrieval/`
+最后核对：2026-04-28
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在 `packages/knowledge` 中实现 Hybrid Search（Keyword + Vector + RRF），通过 `HybridKnowledgeSearchService` 替换 `searchService` 注入点，无需改动 pipeline 主链。
