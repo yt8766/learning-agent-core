@@ -23,7 +23,12 @@ export class VectorKnowledgeSearchService implements KnowledgeSearchService {
 
   async search(request: RetrievalRequest): Promise<RetrievalResult> {
     const topK = request.limit ?? 5;
-    const providerHits = await this.provider.searchSimilar(request.query, topK);
+    let providerHits;
+    try {
+      providerHits = await this.provider.searchSimilar(request.query, topK);
+    } catch {
+      return { hits: [], total: 0 };
+    }
 
     if (providerHits.length === 0) {
       return { hits: [], total: 0 };
