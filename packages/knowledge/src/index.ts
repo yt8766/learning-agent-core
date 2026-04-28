@@ -28,7 +28,6 @@ export * from './contracts';
 export * from './repositories/knowledge-source.repository';
 export * from './repositories/knowledge-chunk.repository';
 export * from './retrieval/knowledge-search-service';
-export * from './retrieval/rrf-fusion';
 export type { KnowledgeRetrievalRuntime, RetrievalPipelineConfig } from './contracts/knowledge-retrieval-runtime';
 export type { ContextAssembler } from './runtime/stages/context-assembler';
 export type { QueryNormalizer } from './runtime/stages/query-normalizer';
