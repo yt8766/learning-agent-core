@@ -1,6 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "include": ["src/**/*"],
+  "exclude": [
+    "src/blueprints/bonus-center-data/pages/**/*",
+    "src/blueprints/bonus-center-data/routes*.ts",
+    "src/blueprints/bonus-center-data/services/**/*",
+    "src/blueprints/bonus-center-data/types/**/*"
+  ],
   "compilerOptions": {
     "outDir": "./build/tmp",
     "types": ["node"],

@@ -1,4 +1,4 @@
-import { ActionIntent, AgentRole, ApprovalResumeInput, TaskStatus, ToolUsageSummaryRecord } from '@agent/core';
+import { ActionIntent, AgentRole, TaskStatus } from '@agent/core';
 import { Annotation, BaseCheckpointSaver, END, interrupt, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../../flows/approval';
@@ -7,6 +7,7 @@ import {
   runPreExecutionSkillGateNode,
   runTaskBootstrapFinishNode
 } from '../../../../flows/approval/bootstrap/task-bootstrap-interrupt-nodes';
+import type { ApprovalResumeInput, ToolUsageSummaryRecord } from '@agent/runtime';
 
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across bootstrap resumes.
 export interface TaskBootstrapGraphState {

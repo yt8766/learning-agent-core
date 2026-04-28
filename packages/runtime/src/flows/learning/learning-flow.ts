@@ -3,8 +3,9 @@ import { z } from 'zod/v4';
 import type { AgentSkillReuseRecord, ILLMProvider as LlmProvider } from '@agent/core';
 import { MemoryRepository, RuleRepository, MemorySearchService } from '@agent/memory';
 import { generateObjectWithRetry } from '@agent/adapters';
-import { EvaluationResult, LearningEvaluationRecord, ReviewRecord, RuleRecord, SkillCard } from '@agent/core';
-import { SkillRegistry } from '@agent/skill-runtime';
+import type { EvaluationResult, LearningEvaluationRecord } from '@agent/knowledge';
+import { ReviewRecord, SkillCard } from '@agent/core';
+import { SkillRegistry } from '@agent/skill';
 import type { RuntimeLearningJob as LearningJob } from '../../runtime/runtime-learning.types';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 
@@ -20,6 +21,7 @@ import {
   shouldExtractSkillForTask
 } from './learning-flow-task';
 import { isDiagnosisTask } from './shared/learning-task-diagnosis';
+import type { RuleRecord } from '@agent/memory';
 
 interface LearningFlowDependencies {
   memoryRepository: MemoryRepository;

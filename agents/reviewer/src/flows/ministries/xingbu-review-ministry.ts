@@ -2,11 +2,9 @@ import {
   AgentExecutionState,
   AgentRole,
   CritiqueResultRecord,
-  EvaluationResult,
   ReviewRecord,
   ReviewDecision,
-  SpecialistFindingRecord,
-  ToolExecutionResult
+  SpecialistFindingRecord
 } from '@agent/core';
 import { evaluateExecution } from '@agent/evals';
 
@@ -17,6 +15,8 @@ import { generateObjectWithRetry } from '../../utils/llm-retry';
 import { safeGenerateObject, type StructuredContractMeta } from '../../utils/schemas/safe-generate-object';
 import { XINGBU_REVIEW_SYSTEM_PROMPT } from './xingbu-review/prompts/review-prompts';
 import { ReviewDecisionOutput, ReviewDecisionSchema } from './xingbu-review/schemas/review-decision-schema';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 export class XingbuReviewMinistry {
   private readonly state: AgentExecutionState;

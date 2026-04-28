@@ -31,9 +31,9 @@
   - `createSkillInstallContext`、`createSkillSourcesContext` 已拆到 `runtime/domain/skills/runtime-skill-contexts.ts`
   - skill install orchestration 相关 helper 已拆到 `runtime/domain/skills/runtime-skill-orchestration.ts`
   - 包括 pre-execution intervention、approval continuation、runtime-stage intervention，以及 install receipt/finalize 收口逻辑
-  - `runtime.service.ts` 内部使用的 skill resolver wiring 已拆到 `runtime/domain/skills/runtime-skill-runtime-resolvers.ts`
+  - `runtime.service.ts` 内部使用的 skill resolver wiring 已拆到 `runtime/domain/skills/runtime-skill-resolvers.ts`
   - `runtime.service.helpers.ts` 仅保留兼容 re-export 与真正的 runtime helper
-  - 远程安装路径规则与 skill artifact staging/promote 能力已上提到 `@agent/skill-runtime`；backend 当前只保留薄 compat 入口，不再作为这两类长期规则的真实宿主
+  - 远程安装路径规则与 skill artifact staging/promote 能力已上提到 `@agent/skill`；backend 当前只保留薄 compat 入口，不再作为这两类长期规则的真实宿主
 - `runtime/domain/connectors/*`
   - 当前承载 connector/governance 侧的 app-local 聚合 helper
   - `groupConnectorDiscoveryHistory`、`groupGovernanceAuditByTarget`、`defaultConnectorSessionState` 已从 `runtime-derived-records.ts` 拆出；其真实宿主现已迁到 `@agent/runtime` 的 `runtime/runtime-connector-governance-records.ts`，backend 当前只保留 compat re-export，避免继续把 connectors 治理语义混进通用 records helper
@@ -135,7 +135,7 @@
 - `RuntimeCentersContext` 现在还显式带上 `runtimeHost`，用于 runtime center / architecture 侧读取 workflow/subgraph/version metadata；这些 metadata 也已经继续收口到 `PlatformRuntimeFacade.metadata`，避免 backend 宿主再一半走 facade、一半直接依赖 `@agent/platform-runtime`
 - `runtime/domain/governance/` 现在开始承接可复用的治理状态动作；例如 `syncSkillSource`、skill source / company worker 的 enable/disable 状态切换已经先从 `RuntimeCentersGovernanceService` 下沉到 `runtime-governance-actions.ts`，service 只负责组合 context 与返回 admin 视图，后续 connector / skill governance 的更多通用状态变更也应优先沿这条边界继续收敛
 - `runtime/domain/governance/` 当前也开始承接 company agents center 的共享 view loader；`runtime-company-agents-view.ts` 已统一收走 company agents center 构造与单 worker view 查找，`RuntimeCentersCatalogQueryService` 与 `RuntimeCentersGovernanceService` 不应再各自手写 `buildCompanyAgentsCenter(...) + find(...)` 组合
-- `runtime/domain/skills/` 的 skill search 纯领域决策也已退化为 compat re-export；真实宿主现已迁到 `@agent/skill-runtime` 的 `sources/skill-search-resolution.ts`。`runtime-skill-sources.service.ts` 应继续往“装配 sources/manifests/search result，再委托 domain helper 判定”收敛，而不是把 capability gap 对应的 status、safety note 与 MCP recommendation 规则继续堆回 service
+- `runtime/domain/skills/` 的 skill search 纯领域决策也已退化为 compat re-export；真实宿主现已迁到 `@agent/skill` 的 `sources/skill-search-resolution.ts`。`runtime-skill-sources.service.ts` 应继续往“装配 sources/manifests/search result，再委托 domain helper 判定”收敛，而不是把 capability gap 对应的 status、safety note 与 MCP recommendation 规则继续堆回 service
 - `runtime/domain/skills/` 现在还开始承接 auto-install eligibility 规则；`runtime-skill-auto-install.ts` 已收走“哪些 suggestion 才算可安装 manifest”以及“什么 safety/trust 条件下允许 low-risk auto install”的纯判断，`runtime-skill-safety.ts` 保留 manifest safety 评估与兼容出口，不要再把这类 eligibility 分支继续塞回 safety/service 文件
 - `runtime/domain/skills/` 也应继续承接 skill install 的纯路径/命名规则；`runtime-skill-install-paths.ts` 已收走 remote skill display name、optional skill name normalize、install path sanitize/build 等纯 helper，`runtime-skill-install.service.ts` 应更多保留 receipt 持久化、artifact promote、CLI 调用和失败回写，不要再把这类 deterministic helper 长期堆在 service 文件底部
 - `runtime/domain/skills/` 现在还开始承接 skill card 列表清洗规则；`runtime-skill-card-listing.ts` 已收走 accidental prompt-like card 过滤、重复 skill 去重与 stable/lab 优先级排序，`RuntimeSkillCatalogService` 应更多保留 catalog facade、NotFound 映射与 draft 发布入口，而不是继续在 service 文件底部堆这类 listing 规则

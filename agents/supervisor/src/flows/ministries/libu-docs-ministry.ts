@@ -1,14 +1,11 @@
-import { AgentExecutionState, ActionIntent, ReviewRecord, ToolExecutionResult } from '@agent/core';
-import type {
-  DeliveryMinistryLike,
-  EvaluationResult,
-  MemoryRecord,
-  SkillCard,
-  TaskRecord as CoreTaskRecord
-} from '@agent/core';
+import { AgentExecutionState, ActionIntent, ReviewRecord } from '@agent/core';
+import type { DeliveryMinistryLike, SkillCard, TaskRecord as CoreTaskRecord } from '@agent/core';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { AgentRole } from '../supervisor/supervisor-architecture-helpers';
+import type { ToolExecutionResult } from '@agent/runtime';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { MemoryRecord } from '@agent/memory';
 
 export class LibuDocsMinistry implements DeliveryMinistryLike {
   private readonly state: AgentExecutionState;

@@ -1,7 +1,7 @@
 import { ActionIntent } from '@agent/core';
-import type { ToolDefinition } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import type { ToolDefinition } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

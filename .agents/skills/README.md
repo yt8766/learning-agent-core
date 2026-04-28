@@ -7,7 +7,7 @@
 
 本目录承载给 Codex / Claude Code 等代码代理读取的仓库级代理技能，不承载运行时 skill registry、skill card 或后端技能持久化模型。
 
-运行时技能边界在 `packages/skill-runtime`；两类 skill 的区别见 [Runtime Skills vs Repo Skills](/docs/skills/runtime-skills-vs-repo-skills.md)。
+运行时技能边界在 `packages/skill`；两类 skill 的区别见 [Runtime Skills vs Repo Skills](/docs/skills/runtime-skills-vs-repo-skills.md)。
 
 ## 当前技能
 

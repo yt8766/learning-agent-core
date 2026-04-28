@@ -34,7 +34,6 @@ const REQUIRED_INDEX_DIRS = [
   'docs/apps/frontend/llm-gateway',
   'docs/packages',
   'docs/packages/adapters',
-  'docs/packages/agent-kit',
   'docs/packages/config',
   'docs/packages/core',
   'docs/packages/evals',
@@ -43,7 +42,7 @@ const REQUIRED_INDEX_DIRS = [
   'docs/packages/platform-runtime',
   'docs/packages/report-kit',
   'docs/packages/runtime',
-  'docs/packages/skill-runtime',
+  'docs/packages/skill',
   'docs/packages/templates',
   'docs/packages/tools',
   'docs/agents',
@@ -57,8 +56,6 @@ const REQUIRED_INDEX_DIRS = [
   'docs/context',
   'docs/workflows',
   'docs/archive',
-  'docs/archive/agent-core',
-  'docs/archive/agent-core/archive',
   'docs/archive/model',
   'docs/archive/shared'
 ];

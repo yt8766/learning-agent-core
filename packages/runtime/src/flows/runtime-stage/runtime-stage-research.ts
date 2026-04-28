@@ -1,4 +1,5 @@
-import { EvidenceRecord, MemoryRecord, SkillCard, SpecialistLeadRecord, type AgentExecutionState } from '@agent/core';
+import type { MemoryRecord } from '@agent/memory';
+import { SkillCard, SpecialistLeadRecord, type AgentExecutionState } from '@agent/core';
 import type {
   DeliveryMinistryLike,
   MinistryContractMeta,
@@ -7,8 +8,8 @@ import type {
   TaskRecord as CoreTaskRecord
 } from '@agent/core';
 import { ActionIntent, AgentRole } from '@agent/core';
-import { normalizeSpecialistFinding } from '@agent/core';
 import { normalizeExecutionMode } from '../../runtime/runtime-architecture-helpers';
+import { normalizeRuntimeSpecialistFinding } from '../../runtime/runtime-review-records';
 import {
   buildResearchSourcePlan,
   markExecutionStepBlocked,
@@ -23,6 +24,7 @@ import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { announceSkillStep, completeSkillStep, resolveResearchDispatchObjective } from './runtime-stage-helpers';
 import type { PipelineRuntimeCallbacks } from './runtime-stage-types';
+import type { EvidenceRecord } from '@agent/memory';
 
 type NormalizedResearchResult = {
   summary: string;
@@ -33,8 +35,11 @@ type NormalizedResearchResult = {
   contractMeta: MinistryContractMeta;
 };
 
-function upsertRuntimeSpecialistFinding(task: TaskRecord, input: Parameters<typeof normalizeSpecialistFinding>[0]) {
-  const finding = normalizeSpecialistFinding(input) as SpecialistFindingRecord;
+function upsertRuntimeSpecialistFinding(
+  task: TaskRecord,
+  input: Parameters<typeof normalizeRuntimeSpecialistFinding>[0]
+) {
+  const finding = normalizeRuntimeSpecialistFinding(input) as SpecialistFindingRecord;
   const current: SpecialistFindingRecord[] = task.specialistFindings ?? [];
   task.specialistFindings = [
     ...current.filter(item => !(item.specialistId === finding.specialistId && item.role === finding.role)),
@@ -212,7 +217,7 @@ export async function runResearchStage(
         suggestions: [task.specialistLead.reason ?? '结合研究结果继续形成统一判断。'],
         evidenceRefs: researchEvidenceRefs,
         confidence: task.routeConfidence
-      }) as Parameters<typeof normalizeSpecialistFinding>[0]
+      }) as Parameters<typeof normalizeRuntimeSpecialistFinding>[0]
     );
   }
   for (const support of task.supportingSpecialists ?? []) {

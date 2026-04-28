@@ -177,7 +177,7 @@
 - learning/review/research/delivery 的主链逻辑
 - repository/service 的增删改查实现
 
-这些内容应落在 `agent-core`、`runtime`、`memory`、`tools`、`agents/*` 等真实执行包。
+这些内容应落在 `runtime`、`memory`、`tools`、`agents/*` 等真实执行包。
 
 ### 3.2 外部 SDK
 

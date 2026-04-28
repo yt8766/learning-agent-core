@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { MemoryRecord } from '@agent/core';
+import type { MemoryRecord } from '@agent/memory';
 
 import { MemoryCrossCheckService } from './memory-cross-check.service';
 import { RuntimeKnowledgeService } from '../runtime/services/runtime-knowledge.service';

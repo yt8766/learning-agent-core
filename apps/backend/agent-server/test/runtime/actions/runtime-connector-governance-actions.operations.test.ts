@@ -90,7 +90,15 @@ describe('runtime-connector-governance-actions operations', () => {
     persistConnectorDiscoverySnapshotMock.mockRejectedValueOnce(new Error('snapshot failed'));
 
     const result = await configureConnectorWithGovernance({
-      dto: { templateId: 'github-mcp-template', actor: 'tester', enabled: false } as never,
+      dto: {
+        templateId: 'github-mcp-template',
+        transport: 'stdio',
+        displayName: 'GitHub MCP',
+        command: 'npx',
+        args: ['-y', 'github-mcp-server'],
+        actor: 'tester',
+        enabled: false
+      },
       runtimeStateRepository: { load: async () => snapshot, save },
       mcpClientManager: {
         refreshServerDiscovery: async () => {

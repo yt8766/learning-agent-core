@@ -16,7 +16,6 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@agent/agent-kit": ["packages/agent-kit/src/index.ts"],
       "@agent/core": ["packages/core/src/index.ts"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],
@@ -25,7 +24,7 @@
       "@agent/tools": ["packages/tools/src"],
       "@agent/memory": ["packages/memory/src"],
       "@agent/report-kit": ["packages/report-kit/src/index.ts"],
-      "@agent/skill-runtime": ["packages/skill-runtime/src/index.ts"],
+      "@agent/skill": ["packages/skill/src/index.ts"],
       "@agent/templates": ["packages/templates/src"],
       "@agent/evals": ["packages/evals/src"],
       "@agent/agents-supervisor": ["agents/supervisor/src/index.ts"],

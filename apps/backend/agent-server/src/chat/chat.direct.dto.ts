@@ -1,4 +1,5 @@
-import type { ILLMProvider, ReportBundle, ReportPatchOperation } from '@agent/core';
+import type { ILLMProvider } from '@agent/core';
+import type { ReportBundle, ReportPatchOperation } from '@agent/agents-data-report';
 import type { DataReportJsonStructuredInput } from '../runtime/core/runtime-data-report-facade';
 
 export type DirectChatMessages = Parameters<ILLMProvider['streamText']>[0];

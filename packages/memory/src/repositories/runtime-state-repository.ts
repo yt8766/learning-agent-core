@@ -2,26 +2,48 @@
 import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
-import {
-  ActionIntent,
-  type ApprovalScopePolicyRecord,
-  CapabilityGovernanceProfileRecord,
-  ChannelIdentity,
-  ChannelOutboundMessage,
-  ChatCheckpointRecord,
-  ChatEventRecord,
-  ChatMessageRecord,
-  ChatSessionRecord,
-  EvidenceRecord,
-  type AgentSkillReuseRecord,
-  ConfiguredConnectorRecord,
-  ConnectorDiscoveryHistoryRecord,
-  CounselorSelectorConfig,
-  GovernanceProfileRecord,
-  LearningConflictScanResult
-} from '@agent/core';
+import type { EvidenceRecord } from '../contracts';
 
 import type { RuntimeStateTaskRecord } from './runtime-state-task.types';
+
+type RuntimeStateLooseRecord = Record<string, unknown>;
+
+type RuntimeStateApprovalScopePolicyRecord = {
+  id: string;
+  scope: 'session' | 'always';
+  status: 'active' | 'revoked';
+  matchKey: string;
+  createdAt: string;
+  updatedAt: string;
+  intent?: string;
+  toolName?: string;
+  riskCode?: string;
+  requestedBy?: string;
+  grantedBy?: string;
+  reason?: string;
+  expiresAt?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  lastMatchedAt?: string;
+  matchCount?: number;
+  [key: string]: unknown;
+};
+
+type RuntimeStateLearningEvaluationRecord = {
+  score: number;
+  confidence: 'low' | 'medium' | 'high';
+  notes: string[];
+  recommendedCandidateIds: string[];
+  autoConfirmCandidateIds: string[];
+  sourceSummary: {
+    externalSourceCount: number;
+    internalSourceCount: number;
+    reusedMemoryCount: number;
+    reusedRuleCount: number;
+    reusedSkillCount: number;
+  };
+  [key: string]: unknown;
+};
 
 export interface RuntimeStateLearningJob {
   id: string;
@@ -43,7 +65,7 @@ export interface RuntimeStateLearningJob {
   summary?: string;
   sources?: EvidenceRecord[];
   trustSummary?: Partial<Record<'official' | 'curated' | 'community' | 'unverified' | 'internal', number>>;
-  learningEvaluation?: import('@agent/core').LearningEvaluationRecord;
+  learningEvaluation?: RuntimeStateLearningEvaluationRecord;
   autoPersistEligible?: boolean;
   persistedMemoryIds?: string[];
   conflictDetected?: boolean;
@@ -62,7 +84,7 @@ export interface RuntimeStateLearningQueueItem {
   reason?: 'high_risk_failure' | 'rollback' | 'timeout_defaulted' | 'blocked_review' | 'normal' | 'dream-task';
   selectedCounselorId?: string;
   selectedVersion?: string;
-  trace: import('@agent/core').ExecutionTrace[];
+  trace: RuntimeStateLooseRecord[];
   aggregationResult?: string;
   userFeedback?: string;
   capabilityUsageStats?: {
@@ -75,7 +97,7 @@ export interface RuntimeStateLearningQueueItem {
   updatedAt: string;
 }
 
-type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
+type ActionIntentValue = string;
 
 export interface PendingExecutionRecord {
   taskId: string;
@@ -86,11 +108,11 @@ export interface PendingExecutionRecord {
 
 export interface ChannelDeliveryRecord {
   id: string;
-  channel: ChannelIdentity['channel'];
+  channel: string;
   channelChatId: string;
   sessionId?: string;
   taskId?: string;
-  segment: ChannelOutboundMessage['segment'];
+  segment: RuntimeStateLooseRecord;
   status: 'queued' | 'sent' | 'failed';
   attemptCount?: number;
   queuedAt: string;
@@ -105,21 +127,21 @@ export interface RuntimeStateSnapshot {
   learningQueue?: RuntimeStateLearningQueueItem[];
   pendingExecutions: PendingExecutionRecord[];
   channelDeliveries: ChannelDeliveryRecord[];
-  chatSessions: ChatSessionRecord[];
-  chatMessages: ChatMessageRecord[];
-  chatEvents: ChatEventRecord[];
-  chatCheckpoints: ChatCheckpointRecord[];
+  chatSessions: RuntimeStateLooseRecord[];
+  chatMessages: RuntimeStateLooseRecord[];
+  chatEvents: RuntimeStateLooseRecord[];
+  chatCheckpoints: RuntimeStateLooseRecord[];
   crossCheckEvidence?: Array<{
     memoryId: string;
     record: EvidenceRecord;
   }>;
-  workspaceSkillReuseRecords?: AgentSkillReuseRecord[];
+  workspaceSkillReuseRecords?: RuntimeStateLooseRecord[];
   governance?: {
     disabledSkillSourceIds?: string[];
     disabledCompanyWorkerIds?: string[];
     disabledConnectorIds?: string[];
-    configuredConnectors?: ConfiguredConnectorRecord[];
-    connectorDiscoveryHistory?: ConnectorDiscoveryHistoryRecord[];
+    configuredConnectors?: RuntimeStateLooseRecord[];
+    connectorDiscoveryHistory?: RuntimeStateLooseRecord[];
     connectorPolicyOverrides?: Array<{
       connectorId: string;
       effect: 'allow' | 'deny' | 'require-approval' | 'observe';
@@ -135,13 +157,13 @@ export interface RuntimeStateSnapshot {
       updatedAt: string;
       updatedBy?: string;
     }>;
-    capabilityGovernanceProfiles?: CapabilityGovernanceProfileRecord[];
-    ministryGovernanceProfiles?: GovernanceProfileRecord[];
-    workerGovernanceProfiles?: GovernanceProfileRecord[];
-    specialistGovernanceProfiles?: GovernanceProfileRecord[];
-    counselorSelectorConfigs?: CounselorSelectorConfig[];
-    approvalScopePolicies?: ApprovalScopePolicyRecord[];
-    learningConflictScan?: LearningConflictScanResult;
+    capabilityGovernanceProfiles?: RuntimeStateLooseRecord[];
+    ministryGovernanceProfiles?: RuntimeStateLooseRecord[];
+    workerGovernanceProfiles?: RuntimeStateLooseRecord[];
+    specialistGovernanceProfiles?: RuntimeStateLooseRecord[];
+    counselorSelectorConfigs?: RuntimeStateLooseRecord[];
+    approvalScopePolicies?: RuntimeStateApprovalScopePolicyRecord[];
+    learningConflictScan?: Record<string, unknown>;
   };
   governanceAudit?: Array<{
     id: string;

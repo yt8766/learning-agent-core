@@ -2,7 +2,7 @@ import { getRecentGovernanceAudit, listApprovalScopePolicies, syncCapabilityGove
 
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadRuntimeUsageAnalytics } from './runtime-centers-query-metrics';
-import { ingestLocalKnowledge } from '../knowledge/runtime-knowledge-store';
+import { ingestLocalKnowledge } from '../domain/knowledge/runtime-knowledge-store';
 import { readDailyTechBriefingStatus } from '../briefings/runtime-tech-briefing-status';
 import { filterAndSortRecentRuntimeRuns } from '../domain/metrics/runtime-recent-runs';
 import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';

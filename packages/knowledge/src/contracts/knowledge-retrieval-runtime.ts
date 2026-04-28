@@ -1,4 +1,4 @@
-import type { RetrievalRequest } from '@agent/core';
+import type { RetrievalRequest } from '@agent/knowledge';
 
 import type { ContextAssembler } from '../runtime/stages/context-assembler';
 import type { QueryNormalizer } from '../runtime/stages/query-normalizer';
@@ -7,7 +7,15 @@ import type { KnowledgeRetrievalResult } from '../runtime/types/retrieval-runtim
 import type { KnowledgeFacade } from './knowledge-facade';
 
 export interface RetrievalPipelineConfig {
-  queryNormalizer?: QueryNormalizer;
+  /**
+   * 检索前 query 归一化处理器。
+   * - 传入单个 QueryNormalizer：直接使用
+   * - 传入数组：按顺序串联执行，每步输出作为下步输入
+   * - 传入空数组或不传：使用默认规则式 DefaultQueryNormalizer
+   * 调用方可传入 SDK 内置实现（DefaultQueryNormalizer、LlmQueryNormalizer）、
+   * 自定义实现，或两者的任意组合。
+   */
+  queryNormalizer?: QueryNormalizer | QueryNormalizer[];
   postProcessor?: RetrievalPostProcessor;
   contextAssembler?: ContextAssembler;
 }

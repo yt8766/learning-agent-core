@@ -1,9 +1,9 @@
-import { matchesApprovalScopePolicy, type ApprovalScopePolicyRecord } from '@agent/core';
 import { ApprovalDecision, TaskStatus } from '@agent/core';
 import type { ChatSessionRecord, SessionApprovalDto } from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
 import type { AgentOrchestrator } from '../orchestration/agent-orchestrator';
+import { matchesApprovalScopePolicy, type ApprovalScopePolicyRecord } from '../contracts/governance';
 import {
   buildApprovalScopeMatchInput,
   findRuntimeApprovalScopePolicy,

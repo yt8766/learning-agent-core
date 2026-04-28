@@ -1,6 +1,6 @@
 import type { ActionIntent } from '../../primitives/types/primitives.types';
 import type { AgentExecutionState } from '../../tasking/types/orchestration';
-import type { ToolDefinition, ToolExecutionResult } from '../../governance/types/governance.types';
+import type { ToolDefinition, ToolExecutionResult } from '../../tasking/types/governance-fields';
 
 export interface ApprovedExecutionContextLike {
   taskId: string;

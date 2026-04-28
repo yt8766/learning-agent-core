@@ -8,7 +8,7 @@ import {
   evaluatePermissionCheckers,
   evaluateStaticPolicy,
   mergeGovernanceDecisions
-} from '../src/approval/preflight-governance';
+} from '@agent/runtime';
 
 describe('preflight-governance helpers', () => {
   const settings = {

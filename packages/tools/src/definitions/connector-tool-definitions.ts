@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/core';
+import type { ToolDefinition } from '@agent/runtime';
 
 export const CONNECTOR_TOOL_DEFINITIONS: ToolDefinition[] = [
   {

@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from '@agent/core';
+import type { JsonObject, JsonValue } from '@agent/knowledge';
 
 export function normalizeMetadataValue(value: unknown): JsonValue | undefined {
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {

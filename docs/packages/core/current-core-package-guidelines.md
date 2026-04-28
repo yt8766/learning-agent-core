@@ -147,13 +147,12 @@
 - `tasking-checkpoint`
 - `tasking-task-record`
 - `tasking-thought-graph`
-- `governance` 中稳定 policy / connector health / capability 主 contract
 - `connectors` 中稳定摘要与能力记录
 - `execution-trace`
 - `skills-search` 的主状态、外围 DTO、connector discovery / install/search DTO
-- `knowledge-runtime` 中稳定 runtime contract
 - `platform-console` 的稳定主 contract
 - `channels`、`delivery`、`workflow-route`、`architecture-records` 这类跨端稳定协议
+- checkpoint / task record / channel DTO 仍需复用的轻量 memory / knowledge / governance 字段，必须落在 `tasking/schemas/*-fields.ts` 这类本地字段文件；完整领域 contract 应落在 `@agent/memory`、`@agent/knowledge`、`@agent/runtime` 或 `@agent/tools`
 
 ### 4.2 应保留在 shared 的内容
 
@@ -197,14 +196,14 @@
 - 它们的唯一主宿主必须是对应真实业务包，例如：
   - `agents/supervisor` 持有 workflow routing / preset / specialist / research planning / execution steps
   - `packages/runtime` 持有 runtime prompt helper，例如 `temporal-context`
-  - `packages/skill-runtime` 只持有技能加载、注册、执行逻辑，不持有预置 bootstrap 技能主定义
+  - `packages/skill` 只持有技能加载、注册、执行逻辑，不持有预置 bootstrap 技能主定义
 - `packages/shared` 对这类能力最多只保留 compat re-export，不能再承载第二份实现
 
 ## 5. 推荐目录结构
 
 为了兼顾“当前已有实现”与“后续可持续收敛”，`core` 目录默认按“领域目录 + 技术目录”理解：
 
-- 当前执行结构：`contracts / providers / memory + domain folders`
+- 当前执行结构：`contracts / providers + domain folders`
 - 目标收敛结构：继续让稳定 schema/type 落在真实领域目录中，避免重新长出第二层伪共享目录
 
 ### 5.1 当前可执行结构
@@ -214,7 +213,6 @@ packages/core/
   src/
     contracts/     # 非 JSON-safe 的稳定技术契约
     providers/     # provider interface 与 provider shared contract
-    memory/        # memory 领域稳定 schema
     <domain>/      # 各稳定 contract 的真实 schema/type/helper 宿主
     index.ts       # 唯一公共出口
 ```
@@ -233,20 +231,6 @@ packages/core/
       helpers/
         specialist-finding.ts
         critique-result.ts
-    governance/
-      schemas/
-        governance.schema.ts
-      types/
-        governance.types.ts
-      helpers/
-        matchers.ts
-    knowledge/
-      schemas/
-        knowledge-runtime.schema.ts
-      types/
-        knowledge-runtime.types.ts
-      helpers/
-        evidence.ts
     channels/
       schemas/
         channels.schema.ts
@@ -421,15 +405,13 @@ packages/core/
 
 确定性、纯函数式、与稳定 contract 紧密耦合的辅助逻辑，优先贴着所属 domain folder 落位，例如：
 
-- `governance/helpers/matchers.ts`
-- `knowledge/helpers/evidence.ts`
 - `review/helpers/*`
 
 不再新增泛化的 `helpers/` 目录。
 
-### `memory/`
+### `tasking/*-fields`
 
-用于承载 memory 领域稳定 schema。只要是共享记忆记录的结构约束，允许留在 `core`；如果是 repository/search/service 行为，应留在 `packages/memory`。
+`tasking/schemas/memory-fields.ts`、`tasking/schemas/knowledge-fields.ts` 与 `tasking/schemas/governance-fields.ts` 只承接 task/checkpoint/channel 稳定记录所需的本地字段。不要把它们扩展成 `memory`、`knowledge`、`governance` 或 `tools` 的领域 compat 目录；完整领域 contract 应继续由真实宿主公开。
 
 ## 7. 当前建议继续合并/优化的点
 
@@ -437,10 +419,8 @@ packages/core/
 
 - `src/review/*`
   - 已成为 review contract 的真实物理宿主；旧 `src/spec/review/*` 已删除
-- `src/governance/*`
-  - 已成为治理 contract 与 matcher helper 的真实物理宿主；旧平铺 `src/spec/types` 入口已删除
-- `src/knowledge/*`
-  - 已成为 knowledge runtime contract 与 evidence helper 的真实物理宿主；旧平铺 `src/spec/types` 入口已删除
+- `src/governance/*` / `src/tools/*` / `src/knowledge/*` / `src/memory/*`
+  - 已从 core 删除；后续不得恢复 compat barrel。task/checkpoint/channel 的必要稳定字段只允许通过 `tasking/*-fields` 本地化。
 - `src/channels/*`
   - 已成为跨端 DTO 的真实物理宿主；旧平铺 `src/spec/types` 入口已删除
 - `src/connectors/*`

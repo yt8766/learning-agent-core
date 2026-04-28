@@ -1,5 +1,6 @@
 import type { RuntimeProfile } from '@agent/config';
-import type { ApprovalScopePolicyRecord, ChatCheckpointRecord, ChatSessionRecord } from '@agent/core';
+import type { ChatCheckpointRecord, ChatSessionRecord } from '@agent/core';
+import type { ApprovalScopePolicyRecord } from '@agent/runtime';
 import {
   buildRuntimeCenterProjection,
   buildRuntimeCenterSummaryProjection,

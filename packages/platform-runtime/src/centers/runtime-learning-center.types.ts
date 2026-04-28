@@ -1,5 +1,5 @@
-import { EvidenceRecord } from '@agent/core';
-import type { LocalSkillSuggestionRecord, ResolutionCandidateRecord } from '@agent/core';
+import type { LocalSkillSuggestionRecord } from '@agent/core';
+import type { EvidenceRecord, ResolutionCandidateRecord } from '@agent/memory';
 
 export interface LearningCenterTaskLike {
   id: string;

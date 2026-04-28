@@ -1,4 +1,4 @@
-import type { EvidenceRecord, MemoryRecord } from '../../memory';
+import type { EvidenceRecord, MemoryRecord } from '../../tasking/types/memory-fields';
 import type { SkillCard } from '../../skills';
 import type { AgentExecutionState, SpecialistFindingRecord } from '../../tasking/types/orchestration';
 

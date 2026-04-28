@@ -5,7 +5,7 @@ import type { RuntimeHost } from '../../core/runtime.host';
 import type { RuntimeCentersContext, RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';
 import type { AppLoggerService } from '../../../logger/app-logger.service';
 import type { RuntimeTechBriefingService } from '../../briefings/runtime-tech-briefing.service';
-import type { RuntimeWenyuanFacade } from '../../wenyuan/runtime-wenyuan-facade';
+import type { RuntimeWenyuanFacade } from '../knowledge/runtime-wenyuan-facade';
 import type { RuntimePlatformConsoleContext } from '../../centers/runtime-platform-console.records';
 import type { RuntimeSkillInstallContext } from '../../skills/runtime-skill-install.service';
 import type { RuntimeSkillSourcesContext } from '../../skills/runtime-skill-sources.service';

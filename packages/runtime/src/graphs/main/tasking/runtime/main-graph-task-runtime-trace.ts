@@ -4,12 +4,12 @@ import type {
   AgentExecutionState,
   AgentMessageRecord as AgentMessage,
   CapabilityOwnerType,
-  ExecutionTrace,
-  ToolUsageSummaryRecord
+  ExecutionTrace
 } from '@agent/core';
 import type { ToolRegistry } from '@agent/tools';
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
 import { AgentRole } from '../task-architecture-helpers';
+import type { ToolUsageSummaryRecord } from '@agent/runtime';
 
 export function addRuntimeMessage(
   task: TaskRecord,

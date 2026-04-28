@@ -1,4 +1,4 @@
-import type { AgentProvider, PlatformAgentDescriptor } from '@agent/agent-kit';
+import type { AgentProvider, PlatformAgentDescriptor } from '@agent/runtime';
 
 export interface RuntimeAgentAdapterOptions<TAgent> {
   readonly descriptor: PlatformAgentDescriptor;

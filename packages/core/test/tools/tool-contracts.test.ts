@@ -10,11 +10,11 @@ import {
   ToolApprovalPreviewSchema,
   ToolReceiptSchema,
   ToolRuntimeEventSchema
-} from '../../src/tools';
+} from '@agent/tools';
 
 const timestamp = '2026-04-25T10:00:00.000Z';
 
-describe('@agent/core tool contracts', () => {
+describe('@agent/tools tool contracts', () => {
   it('parses a file tool contract', () => {
     const tool = FileToolContractSchema.parse({
       toolId: 'tool.file.workspace',
@@ -105,7 +105,7 @@ describe('@agent/core tool contracts', () => {
       reviewId: 'review-1',
       taskId: 'task-1',
       scope: {
-        changedFiles: ['packages/core/src/tools/index.ts'],
+        changedFiles: ['packages/tools/src/index.ts'],
         diffRefs: ['HEAD']
       },
       focus: ['contract_compatibility', 'test_coverage'],
@@ -126,7 +126,7 @@ describe('@agent/core tool contracts', () => {
           category: 'contract_compatibility',
           title: 'Missing schema export',
           message: 'The schema is not exported from the tools boundary.',
-          file: 'packages/core/src/tools/index.ts',
+          file: 'packages/tools/src/index.ts',
           startLine: 1,
           endLine: 1
         }
@@ -160,7 +160,7 @@ describe('@agent/core tool contracts', () => {
           category: 'sandbox_result',
           title: 'Sandbox denied command',
           message: 'The command attempted to use a denied operation.',
-          file: 'packages/core/src/tools/index.ts',
+          file: 'packages/tools/src/index.ts',
           startLine: 12,
           endLine: 12,
           evidenceIds: ['evidence-1'],

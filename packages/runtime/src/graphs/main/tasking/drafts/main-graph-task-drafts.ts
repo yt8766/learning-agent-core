@@ -1,4 +1,6 @@
-import type { EvaluationResult, MemoryRecord, ReviewRecord, RuleRecord, SkillCard } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { MemoryRecord, RuleRecord } from '@agent/memory';
+import type { ReviewRecord, SkillCard } from '@agent/core';
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
 
 import { isDiagnosisTask } from '../../runtime/knowledge';

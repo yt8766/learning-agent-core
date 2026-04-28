@@ -1,4 +1,4 @@
-import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../domain/knowledge/runtime-knowledge-store';
 
 export function createKnowledgeArchitectureRegistry(input: {
   knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;

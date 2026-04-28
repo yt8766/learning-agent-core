@@ -1,4 +1,4 @@
-import type { JsonObject } from '@agent/core';
+import type { JsonObject } from '@agent/knowledge';
 
 import { normalizeMetadataValue } from './normalize-metadata';
 

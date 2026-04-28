@@ -34,8 +34,10 @@
   },
   "dependencies": {
     "@agent/adapters": "workspace:*",
-    "@agent/agent-kit": "workspace:*",
     "@agent/core": "workspace:*",
+    "@agent/knowledge": "workspace:*",
+    "@agent/memory": "workspace:*",
+    "@agent/runtime": "workspace:*",
     "@langchain/langgraph": "^1.2.5",
     "zod": "^4.3.6"
   }

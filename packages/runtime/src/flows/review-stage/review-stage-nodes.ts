@@ -4,7 +4,7 @@ import type {
   RouterMinistryLike,
   TaskRecord as CoreTaskRecord
 } from '@agent/core';
-import { AgentRole, EvaluationResult, ReviewRecord, TaskStatus } from '@agent/core';
+import { AgentRole, ReviewRecord, TaskStatus } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import {

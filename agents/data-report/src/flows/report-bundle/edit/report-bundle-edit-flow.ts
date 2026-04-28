@@ -1,7 +1,7 @@
-import { ReportBundleSchema, type ReportBundle, type ReportDocument, type ReportPatchOperation } from '@agent/core';
-
 import { executeDataReportJsonGraph } from '../../data-report-json/runtime';
 import type { DataReportJsonGenerateInput, DataReportJsonGenerateResult } from '../../../types/data-report-json';
+import { ReportBundleSchema } from '../../../types';
+import type { ReportBundle, ReportDocument, ReportPatchOperation } from '../../../types';
 
 export interface ReportBundleEditMessage {
   role: 'system' | 'user' | 'assistant';

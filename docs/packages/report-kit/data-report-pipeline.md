@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`packages/report-kit`、`agents/data-report`、`packages/runtime`
-最后核对：2026-04-15
+最后核对：2026-04-27
 
 ## 1. 这篇文档说明什么
 
@@ -53,4 +53,4 @@
 ## 5. 继续阅读
 
 - [report-kit 文档目录](/docs/packages/report-kit/README.md)
-- [agent-core data-report 指南（历史迁移参考）](/docs/archive/agent-core/data-report-json-generation-guide.md)
+- [data-report JSON bundle 规范](/docs/packages/report-kit/data-report-json-bundle.md)

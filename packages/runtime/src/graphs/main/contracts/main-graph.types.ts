@@ -1,14 +1,17 @@
-import type { ApprovalResumeInput, CreateTaskDto, RequestedExecutionHints, SkillSearchStateRecord } from '@agent/core';
+import type { CreateTaskDto, RequestedExecutionHints, SkillSearchStateRecord } from '@agent/core';
 import type { loadSettings } from '@agent/config';
 import type { MemoryRepository, MemorySearchService, RuleRepository, RuntimeStateRepository } from '@agent/memory';
-import type { SkillRegistry } from '@agent/skill-runtime';
-import type { ApprovalService, McpClientManager, SandboxExecutor, ToolRegistry } from '@agent/tools';
+import type { SkillRegistry } from '@agent/skill';
+import type { McpClientManager, ToolRegistry } from '@agent/tools';
+import type { ApprovalService } from '../../../governance/approval';
 import type { LocalKnowledgeSearchService } from '../../../runtime/local-knowledge-search-service';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 import type { WorkerRegistry } from '../../../governance/worker-registry';
 import type { LlmProvider } from '@agent/adapters';
 import type { PendingExecutionContext } from '../../../flows/approval';
 import type { RuntimeAgentDependencies } from '../../../contracts/runtime-agent-dependencies';
+import type { SandboxExecutor } from '../../../sandbox';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 export interface AgentRuntimeSettings {
   zhipuModels: {

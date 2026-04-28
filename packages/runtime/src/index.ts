@@ -1,5 +1,15 @@
 export type { AgentRuntimeContext, AgentLike } from './contracts';
-export { BaseAgent } from './agents';
+export { BaseAgent, derivePlannerStrategyRecord } from './agents';
+export type {
+  AgentCapability,
+  AgentDescriptor,
+  AgentFactory,
+  AgentProvider,
+  AgentRegistry,
+  PlannerStrategyContext,
+  PlannerStrategyLead,
+  PlatformAgentDescriptor
+} from './agents';
 export { SessionCoordinator } from './contracts';
 export { WorkerRegistry, createDefaultWorkerRegistry } from './contracts';
 export { describeConnectorProfilePolicy, describeSkillSourceProfilePolicy } from './contracts';
@@ -16,6 +26,7 @@ export {
 export type { SessionStoreSnapshot } from './contracts';
 export { AgentRuntime, type AgentRuntimeOptions } from './contracts';
 export { listActiveApprovalScopePolicies, revokeApprovalScopePolicyWithAudit } from './governance';
+export * from './contracts/governance';
 export {
   appendGovernanceAudit,
   getRecentGovernanceAudit,
@@ -31,6 +42,8 @@ export {
 } from './governance';
 export { listCounselorSelectorConfigs, setCounselorSelectorEnabled, upsertCounselorSelectorConfig } from './governance';
 export { aggregateCapabilityGovernanceProfiles, aggregateNamedGovernanceProfiles } from './governance';
+export * from './governance/approval';
+export * from './governance/runtime-governance';
 export {
   buildFreshnessAnswerInstruction,
   buildTemporalContextBlock,
@@ -39,5 +52,14 @@ export {
 export * from './graphs';
 export * from './flows';
 export { archivalMemorySearch, archivalMemorySearchByParams, coreMemoryAppend, coreMemoryReplace } from './memory';
+export {
+  buildRuntimeMemorySearchRequest,
+  flattenStructuredMemories,
+  limitStructuredRules,
+  searchRuntimeMemories
+} from './memory';
+export * from './media';
+export * from './sandbox';
+export * from './watchdog';
 export * from './runtime';
 export * from './runtime-observability';

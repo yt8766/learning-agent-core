@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：architecture
-适用范围：`packages/core`、`packages/agent-kit`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
-最后核对：2026-04-27
+适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
+最后核对：2026-05-12
 
 本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求与经营判断，不直接调用厂商 API。
 
@@ -27,7 +27,7 @@ CompanyLive 内容需求
 - Agent 不直接依赖 MiniMax 字段、URL、task id 或错误码。
 - MiniMax 实现只出现在 `packages/adapters`。
 - 稳定 JSON contract 先落 `packages/core`。
-- Agent 可消费接口落 `packages/agent-kit`。
+- Agent 可消费接口落 `packages/runtime`。
 - 默认 provider 装配落 `packages/platform-runtime`。
 - 音色克隆必须走授权、风险审查与审批边界。
 
@@ -37,7 +37,7 @@ CompanyLive 内容需求
 
 ```text
 agents/audio ─┐
-agents/image ─┼─> @agent/agent-kit media provider interfaces
+agents/image ─┼─> @agent/runtime media provider interfaces
 agents/video ─┘
                     ↑
               @agent/core media schemas
@@ -53,7 +53,7 @@ packages/adapters
 各层职责：
 
 - `packages/core`：媒体资产、媒体任务、语音、图片、视频、音乐、错误与治理请求的 schema-first contract。
-- `packages/agent-kit`：`AudioProvider`、`ImageProvider`、`VideoProvider`、`MusicProvider` 与 `MediaProviderRegistry` 接口。
+- `packages/runtime`：`AudioProvider`、`ImageProvider`、`VideoProvider`、`MusicProvider` 与 `MediaProviderRegistry` 接口。
 - `packages/adapters`：MiniMax HTTP / WebSocket client、request/response mapper、provider error 映射、任务状态映射。
 - `packages/platform-runtime`：读取配置并装配默认 MiniMax provider。
 - `agents/audio`、`agents/image`、`agents/video`：业务编排、prompt、review、asset delivery；只消费 provider interface。
@@ -88,7 +88,7 @@ packages/core/src/contracts/media/
 Agent 侧 provider interface：
 
 ```text
-packages/agent-kit/src/media/
+packages/runtime/src/media/
 ├─ audio-provider.ts
 ├─ image-provider.ts
 ├─ video-provider.ts
@@ -214,7 +214,7 @@ MediaProviderError
 
 ## 5. Provider interface
 
-`packages/agent-kit` 暴露 Agent 可消费接口：
+`packages/runtime` 暴露 Agent 可消费接口：
 
 ```ts
 export interface AudioProvider {
@@ -509,7 +509,7 @@ GeneratedMediaBundle
 v1.0 至少满足：
 
 - `core` media schema 有 parse 成功与失败样例。
-- `agent-kit` provider interface 不依赖 MiniMax。
+- `runtime` provider interface 不依赖 MiniMax。
 - MiniMax adapter mapper 能把厂商响应映射成统一 contract。
 - `platform-runtime` 能注册默认 MiniMax provider。
 - `AudioDomain` 能通过 interface 生成 TTS 请求。
@@ -525,7 +525,7 @@ v1.0 至少满足：
 
 1. 新增本文档并完成评审。
 2. 新增 `packages/core/src/contracts/media` schema。
-3. 新增 `packages/agent-kit/src/media` provider interface。
+3. 新增 `packages/runtime/src/media` provider interface。
 4. 新增 `packages/adapters/src/media/minimax` skeleton 与 mapper。
 5. 新增 `packages/platform-runtime/src/media` provider registry。
 6. 新增或完善 `agents/audio`、`agents/image`、`agents/video` skeleton。
@@ -540,8 +540,54 @@ v1.0 至少满足：
 判断一个新媒体能力的落点：
 
 - 稳定 DTO / schema：`packages/core`
-- Agent 侧接口：`packages/agent-kit`
+- Agent 侧接口：`packages/runtime`
 - 厂商 API 映射：`packages/adapters`
 - 默认装配：`packages/platform-runtime`
 - 业务编排：`agents/audio`、`agents/image`、`agents/video`
 - 公司直播业务 brief：`agents/company-live`
+
+## 16. 当前已落地结构（Phase 1 完成后）
+
+### agents/image
+
+```text
+agents/image/src/
+├─ flows/
+│  └─ image-generation/
+│     └─ image-generation-policy.ts   # assertImageGenerationRequestAllowed()
+├─ runtime/
+│  └─ image-domain-runtime.ts          # ImageDomainRuntime + createImageDomainRuntime()
+└─ index.ts                            # 导出 policy、runtime、imageDomainDescriptor
+```
+
+Policy 规则：`count > 4` 且无 `evidenceRefs` 时拒绝，末尾调用 `ImageGenerationRequestSchema.parse()`。
+
+### agents/video
+
+```text
+agents/video/src/
+├─ flows/
+│  └─ video-generation/
+│     └─ video-generation-policy.ts   # assertVideoGenerationRequestAllowed()
+├─ runtime/
+│  └─ video-domain-runtime.ts          # VideoDomainRuntime + createVideoDomainRuntime()
+└─ index.ts                            # 导出 policy、runtime、videoDomainDescriptor
+```
+
+Policy 规则：`durationMs > 300000` 或 `imageAssetRefs.length > 10` 时拒绝，末尾调用 `VideoGenerationRequestSchema.parse()`。
+
+### agents/company-live
+
+`companyLiveDomainDescriptor` 已标注 `type: 'composite'`、`orchestrates: ['audio', 'image', 'video']`，明确此 agent 是编排型 Domain 而非原子能力 Domain。
+
+### agents/intel-engine
+
+`src/services/` 目录已删除，三个执行函数迁入 `src/runtime/execution/`：
+
+| 旧路径                                   | 新路径                                            |
+| ---------------------------------------- | ------------------------------------------------- |
+| `src/services/digest-intel.service.ts`   | `src/runtime/execution/digest-intel-run.ts`       |
+| `src/services/patrol-intel.service.ts`   | `src/runtime/execution/patrol-intel-run.ts`       |
+| `src/services/retry-delivery.service.ts` | `src/runtime/execution/retry-intel-deliveries.ts` |
+
+所有外部 import（`src/graphs/intel/intel.graph.ts`、`src/index.ts`、相关测试文件）已同步更新到新路径。

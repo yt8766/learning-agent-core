@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import type { RuntimeStateSnapshot } from '@agent/memory';
 
-import { ConfigureConnectorDto, type ConfiguredConnectorRecord } from '@agent/core';
+import { ConfigureConnectorDto, ConfiguredConnectorRecordSchema, type ConfiguredConnectorRecord } from '@agent/core';
 import type { RuntimeProfile } from '@agent/config';
 import type { McpClientManager } from '@agent/tools';
 import {
@@ -302,7 +302,11 @@ export async function configureConnectorWithGovernance<TConnectorView>(input: {
   const snapshot = await input.runtimeStateRepository.load();
   setConfiguredConnectorRecord(snapshot, input.dto, new Date().toISOString());
   await input.runtimeStateRepository.save(snapshot);
-  const configured = snapshot.governance?.configuredConnectors?.find(item => item.connectorId === connectorId);
+  const configured = (snapshot.governance?.configuredConnectors ?? [])
+    .map(item => ConfiguredConnectorRecordSchema.safeParse(item))
+    .filter((result): result is { success: true; data: ConfiguredConnectorRecord } => result.success)
+    .map(result => result.data)
+    .find(item => item.connectorId === connectorId);
   if (configured) {
     input.registerConfiguredConnector(configured);
   }

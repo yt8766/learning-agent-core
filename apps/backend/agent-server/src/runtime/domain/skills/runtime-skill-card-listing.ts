@@ -1,1 +1,1 @@
-export { sanitizeListedSkills } from '@agent/skill-runtime';
+export { sanitizeListedSkills } from '@agent/skill';

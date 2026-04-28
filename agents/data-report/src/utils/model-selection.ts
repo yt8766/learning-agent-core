@@ -1,9 +1,5 @@
-import type {
-  DataReportJsonModelSelectorPreference,
-  DataReportJsonNodeModelSelector,
-  LlmProviderLike,
-  LlmProviderLikeModelInfo
-} from '@agent/core';
+import type { LlmProviderLike, LlmProviderLikeModelInfo } from '@agent/core';
+import type { DataReportJsonModelSelectorPreference, DataReportJsonNodeModelSelector } from '../types/data-report-json';
 
 const FAST_MODEL_KEYWORDS = [
   'flash',

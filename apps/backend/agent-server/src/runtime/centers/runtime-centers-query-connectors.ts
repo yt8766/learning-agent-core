@@ -1,4 +1,4 @@
-import { readKnowledgeOverview } from '../knowledge/runtime-knowledge-store';
+import { readKnowledgeOverview } from '../domain/knowledge/runtime-knowledge-store';
 import { loadConnectorCenterProjection } from '../domain/connectors/runtime-connector-view-reader';
 import type { RuntimeCentersContext } from './runtime-centers.types';
 

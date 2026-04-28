@@ -1,4 +1,5 @@
-import { EvaluationResult, ToolExecutionResult } from '@agent/core';
+import type { EvaluationResult } from '@agent/core';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 export function evaluateExecution(result: ToolExecutionResult): EvaluationResult {
   const success = result.ok && result.exitCode === 0;

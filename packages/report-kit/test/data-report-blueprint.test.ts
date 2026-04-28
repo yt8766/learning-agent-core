@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildDataReportBlueprint, inferSingleReportStructure } from '../src';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { buildDataReportBlueprint, inferSingleReportStructure, resolveBonusCenterBlueprintDir } from '../src';
 import {
   buildDataReportBlueprint as canonicalBuildDataReportBlueprint,
   inferSingleReportStructure as canonicalInferSingleReportStructure
@@ -40,6 +43,28 @@ describe('@agent/report-kit data report blueprint', () => {
         'data/generated/data-report/template/index.tsx',
         'data/generated/data-report/template/package.json',
         'data/generated/data-report/template/styles.css'
+      ])
+    );
+  });
+
+  it('resolves bonus-center-data blueprint assets from report-kit', () => {
+    const blueprintDir = resolveBonusCenterBlueprintDir();
+    const blueprint = buildDataReportBlueprint({
+      goal: '生成 bonus center data 成本分析报表',
+      taskContext: '大数据接口: get_bc_cost_analysis_data',
+      templateId: 'bonus-center-data'
+    });
+
+    expect(blueprintDir).toContain('packages/report-kit/src/blueprints/bonus-center-data');
+    expect(existsSync(join(blueprintDir, 'routes.ts'))).toBe(true);
+    expect(existsSync(join(blueprintDir, 'services/data/bonusCenter.ts'))).toBe(true);
+    expect(blueprint.templateId).toBe('bonus-center-data');
+    expect(blueprint.templateApiCount).toBeGreaterThan(0);
+    expect(blueprint.plannedFiles).toEqual(
+      expect.arrayContaining([
+        'src/pages/dataDashboard/costAnalysis/index.tsx',
+        'src/services/data/costAnalysis.ts',
+        'src/types/data/costAnalysis.ts'
       ])
     );
   });

@@ -1,9 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { CreateTaskDto } from '@agent/core';
-import { createOfficialRuntimeAgentDependencies } from '@agent/platform-runtime';
 
-import { configureRuntimeAgentDependencies } from '../src';
+import { configureRuntimeAgentDependencies, type RuntimeAgentDependencies } from '../src';
 import {
   buildExecutionPlan,
   deriveOrchestrationGovernance
@@ -14,9 +13,85 @@ import {
 } from '../src/graphs/main/tasking/factory/task-entry-decision';
 import { resolveTaskWorkflowResolution } from '../src/graphs/main/tasking/factory/task-workflow-resolution';
 
+const testRuntimeAgentDependencies: RuntimeAgentDependencies = {
+  createLibuRouterMinistry: () => ({}) as never,
+  createHubuSearchMinistry: () => ({}) as never,
+  createLibuDocsMinistry: () => ({}) as never,
+  createGongbuCodeMinistry: () => ({}) as never,
+  createBingbuOpsMinistry: () => ({}) as never,
+  createXingbuReviewMinistry: () => ({}) as never,
+  listBootstrapSkills: () => [],
+  buildResearchSourcePlan: () => [],
+  initializeTaskExecutionSteps: () => undefined,
+  markExecutionStepBlocked: () => undefined,
+  markExecutionStepCompleted: () => undefined,
+  markExecutionStepResumed: () => undefined,
+  markExecutionStepStarted: () => undefined,
+  mergeEvidence: (existing, incoming) => [...existing, ...incoming],
+  resolveSpecialistRoute: () => ({
+    specialistLead: {
+      id: 'technical-architecture',
+      displayName: 'Technical Architecture',
+      domain: 'technical-architecture',
+      agentId: 'official.coder',
+      candidateAgentIds: ['official.coder', 'official.reviewer', 'official.data-report']
+    },
+    supportingSpecialists: [],
+    routeConfidence: 0.9,
+    contextSlicesBySpecialist: []
+  }),
+  resolveWorkflowPreset: goal => {
+    const isExplicitScaffold = /^\/scaffold\b/i.test(goal.trim());
+
+    return {
+      preset: isExplicitScaffold
+        ? {
+            id: 'scaffold',
+            command: '/scaffold',
+            title: 'Scaffold',
+            summary: 'Create scaffolded project assets',
+            category: 'general'
+          }
+        : {
+            id: 'implementation',
+            command: '/implement',
+            title: 'Implementation',
+            summary: 'Plan and execute implementation work',
+            category: 'general'
+          },
+      normalizedGoal: goal,
+      source: isExplicitScaffold ? 'explicit' : 'default'
+    };
+  },
+  resolveWorkflowRoute: input => ({
+    graph: 'workflow',
+    flow: 'supervisor',
+    reason: input.workflow?.id === 'scaffold' ? 'explicit_scaffold' : 'default_supervisor',
+    adapter: 'test-runtime-agent-dependencies',
+    priority: 100,
+    intent: input.workflow?.id === 'scaffold' ? 'workflow-execute' : 'workflow-execute',
+    intentConfidence: 1,
+    executionReadiness: 'ready',
+    matchedSignals: []
+  }),
+  runDispatchStage: async () => undefined,
+  runGoalIntakeStage: async () => undefined,
+  runManagerPlanStage: async () => undefined,
+  runRouteStage: async () => undefined,
+  buildDataReportContract: () => ({
+    scope: 'single',
+    templateRef: 'generic-report',
+    componentPattern: [],
+    implementationNotes: [],
+    executionStages: [],
+    contextBlock: ''
+  }),
+  appendDataReportContext: context => context ?? ''
+};
+
 describe('main graph task factory helpers', () => {
   beforeAll(() => {
-    configureRuntimeAgentDependencies(createOfficialRuntimeAgentDependencies());
+    configureRuntimeAgentDependencies(testRuntimeAgentDependencies);
   });
 
   it('resolves requested mode with explicit, imperial-direct, and /plan priorities', () => {

@@ -14,7 +14,7 @@
 - adapters
 - memory
 - tools
-- skill-runtime
+- skill
 - graphs / flows
 
 这些能力装配成可运行、可审批、可恢复、可观测的主链 runtime。

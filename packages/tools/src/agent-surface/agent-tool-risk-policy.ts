@@ -1,4 +1,4 @@
-import type { AgentToolAlias, ToolRiskLevel } from '@agent/core';
+import type { AgentToolAlias, ToolRiskLevel } from '@agent/tools';
 
 import { RawCommandClassifier } from '../command';
 

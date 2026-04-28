@@ -9,8 +9,8 @@ import {
   executeDataReportJsonGraph,
   executeDataReportSandpackGraph,
   generateDataReportPreview
-} from '@agent/platform-runtime';
-import type { DataReportJsonGenerateResult } from '@agent/platform-runtime';
+} from '@agent/agents-data-report';
+import type { DataReportJsonGenerateResult } from '@agent/agents-data-report';
 
 export {
   DATA_REPORT_GENERATION_NODE_META,
@@ -43,9 +43,9 @@ export type {
   DataReportPreviewStageEvent,
   DataReportSandpackFiles,
   DataReportSandpackStage
-} from '@agent/platform-runtime';
-export type { ReportBundle } from '@agent/core';
+} from '@agent/agents-data-report';
+export type { ReportBundle } from '@agent/agents-data-report';
 
 export type DataReportBundleGenerateResult = DataReportJsonGenerateResult & {
-  bundle?: import('@agent/core').ReportBundle;
+  bundle?: import('@agent/agents-data-report').ReportBundle;
 };

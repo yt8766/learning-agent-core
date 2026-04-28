@@ -3,20 +3,18 @@ import {
   AgentMessageRecord as AgentMessage,
   AgentRole,
   type AgentRoleValue,
-  ApprovalResumeInput,
   CreateTaskDto,
   ExecutionTrace,
-  MemoryRecord,
   ModelRouteDecision,
   QueueStateRecord,
   ReviewRecord,
-  RuleRecord,
   SkillCard,
   type SubgraphIdValue as SubgraphId,
   WorkflowPresetDefinition
 } from '@agent/core';
 import { Command } from '@langchain/langgraph';
-import type { EvaluationResult } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { MemoryRecord, RuleRecord } from '@agent/memory';
 import type { ReviewMinistryLike, RouterMinistryLike } from '@agent/core';
 
 import { MainGraphExecutionHelpers } from '../recovery/main-graph-execution-helpers';
@@ -31,6 +29,7 @@ import { PendingExecutionContext } from '../../../../../flows/approval';
 import { LearningFlow } from '../../../../../flows/learning';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../../../types/chat-graph';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 interface MainGraphBridgeParams {
   pendingExecutions: Map<string, PendingExecutionContext>;

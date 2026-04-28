@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { IntelDeliverySchema, IntelSignalSchema, IntelSignalSourceSchema } from '@agent/core';
+import { IntelDeliverySchema, IntelSignalSchema, IntelSignalSourceSchema } from '../../../types';
 
 export const DigestModeSchema = z.literal('digest');
 

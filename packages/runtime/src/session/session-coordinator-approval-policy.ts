@@ -1,7 +1,11 @@
-import { buildApprovalScopeMatchKey, matchesApprovalScopePolicy, type ApprovalScopePolicyRecord } from '@agent/core';
 import type { ChatSessionRecord, SessionApprovalDto } from '@agent/core';
 import type { RuntimeStateRepository } from '@agent/memory';
 
+import {
+  buildApprovalScopeMatchKey,
+  matchesApprovalScopePolicy,
+  type ApprovalScopePolicyRecord
+} from '../contracts/governance';
 import type { SessionTaskLike } from './session-task.types';
 
 export function buildApprovalScopeMatchInput(task: SessionTaskLike) {

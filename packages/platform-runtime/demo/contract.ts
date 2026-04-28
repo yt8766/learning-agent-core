@@ -4,13 +4,9 @@ import {
   buildRuntimeCenterSummaryProjection,
   createDefaultPlatformRuntime,
   createDefaultPlatformRuntimeOptions,
-  createOfficialAgentRegistry,
-  createOfficialRuntimeAgentDependencies,
-  createOfficialWorkflowRegistry,
+  createPlatformWorkflowRegistry,
   createPlatformRuntime,
   createRuntimeAgentProvider,
-  listBootstrapSkills,
-  listWorkflowPresets,
   toCritiqueStyleReviewOutcome
 } from '../src/index.js';
 import * as adapterExports from '../src/adapters/index.js';
@@ -27,11 +23,7 @@ console.log(
         createDefaultPlatformRuntimeOptions === runtimeExports.createDefaultPlatformRuntimeOptions,
       registryAligned:
         StaticAgentRegistry === registryExports.StaticAgentRegistry &&
-        createOfficialAgentRegistry === registryExports.createOfficialAgentRegistry &&
-        createOfficialRuntimeAgentDependencies === registryExports.createOfficialRuntimeAgentDependencies &&
-        createOfficialWorkflowRegistry === registryExports.createOfficialWorkflowRegistry &&
-        listBootstrapSkills === registryExports.listBootstrapSkills &&
-        listWorkflowPresets === registryExports.listWorkflowPresets,
+        createPlatformWorkflowRegistry === registryExports.createPlatformWorkflowRegistry,
       adapterAligned: createRuntimeAgentProvider === adapterExports.createRuntimeAgentProvider,
       centersAligned:
         buildRuntimeCenterProjection === centersExports.buildRuntimeCenterProjection &&

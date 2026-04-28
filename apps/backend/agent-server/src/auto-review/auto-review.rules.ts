@@ -1,5 +1,8 @@
-import type { AutoReviewFinding } from '@agent/core';
+import { AutoReviewFindingSchema } from '@agent/tools';
 import { AutoReviewGate, RuleBasedReviewer, type RuleBasedReviewRule } from '@agent/tools';
+import type { z } from 'zod/v4';
+
+type AutoReviewFinding = z.infer<typeof AutoReviewFindingSchema>;
 
 type RuleBasedReviewVerdict = 'allow' | 'warn' | 'block';
 type RuleBasedReviewStatus = 'passed' | 'warnings' | 'blocked';

@@ -13,7 +13,7 @@ import {
 const CONFIG_PATH = resolve('packages/evals/promptfoo/ministry-prompts.promptfooconfig.yaml');
 const RAW_OUTPUT_PATH = resolve('packages/evals/promptfoo/latest-promptfoo-results.json');
 const SUMMARY_PATH = resolve('packages/evals/promptfoo/latest-summary.json');
-const PROMPTFOO_SUPPORTED_NODE_RANGE = '^20.20.0 || >=22.22.0';
+const PROMPTFOO_SUPPORTED_NODE_RANGE = '^20.20.0 || ^22.22.0';
 
 async function main() {
   await mkdir(dirname(RAW_OUTPUT_PATH), { recursive: true });

@@ -1,8 +1,10 @@
-import { ActionIntent, type ToolExecutionResult } from '@agent/core';
-import type { EvidenceRecord } from '@agent/core';
-import type { ExecutionStepRecord } from '@agent/agent-kit';
+import { ActionIntent } from '@agent/core';
+
+import type { ExecutionStepRecord } from '@agent/runtime';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import type { ToolExecutionResult } from '@agent/runtime';
+import type { EvidenceRecord } from '@agent/memory';
 
 export function buildHubuWebSearchTask(
   context: AgentRuntimeContext,

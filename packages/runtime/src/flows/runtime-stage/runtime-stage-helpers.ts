@@ -1,4 +1,5 @@
-import type { CurrentSkillExecutionRecord, DispatchInstruction, EvidenceRecord } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
+import type { CurrentSkillExecutionRecord, DispatchInstruction } from '@agent/core';
 import { AgentRole, type AgentRoleValue } from '@agent/core';
 import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 import { mergeEvidence } from '../../bridges/supervisor-runtime-bridge';

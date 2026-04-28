@@ -3,4 +3,4 @@ export {
   deriveRemoteSkillDisplayName,
   normalizeOptionalSkillName,
   sanitizePathSegment
-} from '@agent/skill-runtime';
+} from '@agent/skill';

@@ -1,11 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RetrievalHit, RetrievalRequest } from '@agent/core';
+import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
 
 import type { KnowledgeSearchService } from '../src/contracts/knowledge-facade';
 import type { QueryNormalizer } from '../src/runtime/stages/query-normalizer';
 import type { NormalizedRetrievalRequest } from '../src/runtime/types/retrieval-runtime.types';
 import { runKnowledgeRetrieval } from '../src/runtime/pipeline/run-knowledge-retrieval';
+import { InMemoryKnowledgeChunkRepository } from '../src/repositories/knowledge-chunk.repository';
+import { InMemoryKnowledgeSourceRepository } from '../src/repositories/knowledge-source.repository';
+import { DefaultKnowledgeSearchService } from '../src/retrieval/knowledge-search-service';
+import { HybridKnowledgeSearchService } from '../src/retrieval/hybrid-knowledge-search-service';
+import { InMemoryVectorSearchProvider } from '../src/retrieval/in-memory-vector-search-provider';
+import { VectorKnowledgeSearchService } from '../src/retrieval/vector-knowledge-search-service';
 
 function makeHit(overrides: Partial<RetrievalHit> = {}): RetrievalHit {
   return {
@@ -294,5 +300,131 @@ describe('runKnowledgeRetrieval', () => {
     });
 
     expect(result.contextBundle).toBe('custom context bundle');
+  });
+
+  describe('normalizer chain (array config)', () => {
+    it('executes normalizers in order when queryNormalizer is an array', async () => {
+      const callOrder: string[] = [];
+
+      const firstNormalizer: QueryNormalizer = {
+        normalize: async (req: RetrievalRequest): Promise<NormalizedRetrievalRequest> => {
+          callOrder.push('first');
+          return makeNormalizedRequest(req, {
+            normalizedQuery: 'first-normalized',
+            queryVariants: ['first-normalized']
+          });
+        }
+      };
+
+      const secondNormalizer: QueryNormalizer = {
+        normalize: async (req: RetrievalRequest): Promise<NormalizedRetrievalRequest> => {
+          callOrder.push('second');
+          // 第二步收到的 req 是 NormalizedRetrievalRequest，normalizedQuery 已由第一步填充
+          const prev = (req as NormalizedRetrievalRequest).normalizedQuery ?? req.query;
+          return makeNormalizedRequest(req, {
+            normalizedQuery: `${prev}-then-second`,
+            queryVariants: [`${prev}-then-second`]
+          });
+        }
+      };
+
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: 'original' },
+        searchService,
+        pipeline: { queryNormalizer: [firstNormalizer, secondNormalizer] }
+      });
+
+      expect(callOrder).toEqual(['first', 'second']);
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'first-normalized-then-second' }));
+    });
+
+    it('falls back to DefaultQueryNormalizer when queryNormalizer is an empty array', async () => {
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: '  some query  ' },
+        searchService,
+        pipeline: { queryNormalizer: [] }
+      });
+
+      // DefaultQueryNormalizer trims whitespace
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'some query' }));
+    });
+
+    it('uses single normalizer directly when array has one element', async () => {
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: 'test' },
+        searchService,
+        pipeline: { queryNormalizer: [makeSingleVariantNormalizer()] }
+      });
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'test' }));
+    });
+  });
+});
+
+describe('runKnowledgeRetrieval with HybridKnowledgeSearchService', () => {
+  function buildHybridRuntime() {
+    const source = {
+      id: 'src-1',
+      sourceType: 'repo-docs' as const,
+      uri: '/guide.md',
+      title: 'Guide',
+      trustClass: 'internal' as const,
+      updatedAt: '2026-04-28T00:00:00.000Z'
+    };
+    const chunk = {
+      id: 'chunk-1',
+      sourceId: 'src-1',
+      documentId: 'doc-1',
+      chunkIndex: 0,
+      content: 'retrieval augmented generation pipeline knowledge base',
+      searchable: true,
+      updatedAt: '2026-04-28T00:00:00.000Z'
+    };
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([source]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository([chunk]);
+
+    const vectorProvider = new InMemoryVectorSearchProvider();
+    vectorProvider.register(chunk.id, chunk.content);
+
+    const keywordService = new DefaultKnowledgeSearchService(sourceRepo, chunkRepo);
+    const vectorService = new VectorKnowledgeSearchService(vectorProvider, chunkRepo, sourceRepo);
+    const hybridService = new HybridKnowledgeSearchService(keywordService, vectorService);
+
+    return { hybridService };
+  }
+
+  it('runs full pipeline with hybrid search and returns hits', async () => {
+    const { hybridService } = buildHybridRuntime();
+
+    const result = await runKnowledgeRetrieval({
+      request: { query: 'retrieval pipeline', limit: 5 },
+      searchService: hybridService
+    });
+
+    expect(result.hits.length).toBeGreaterThan(0);
+    expect(result.hits[0]?.chunkId).toBe('chunk-1');
+  });
+
+  it('pipeline diagnostics are populated when hybrid search is used', async () => {
+    const { hybridService } = buildHybridRuntime();
+
+    const result = await runKnowledgeRetrieval({
+      request: { query: 'knowledge base', limit: 3 },
+      searchService: hybridService,
+      includeDiagnostics: true
+    });
+
+    expect(result.diagnostics).toBeDefined();
+    expect(result.diagnostics?.originalQuery).toBe('knowledge base');
+    expect(result.diagnostics?.executedQueries).toEqual(expect.arrayContaining(['knowledge base']));
   });
 });

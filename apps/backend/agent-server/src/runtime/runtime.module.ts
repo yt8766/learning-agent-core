@@ -29,7 +29,7 @@ import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.ser
 import { RuntimeTaskService } from './services/runtime-task.service';
 import { RuntimeToolsService } from './services/runtime-tools.service';
 import { RuntimeService } from './runtime.service';
-import { RuntimeIntelSchedulerService } from './intel/runtime-intel-scheduler.service';
+import { RuntimeIntelSchedulerService } from './domain/intel/runtime-intel-scheduler.service';
 
 @Module({
   imports: [LoggerModule],

@@ -6,9 +6,9 @@ import {
   type ExecutionNodeRecord,
   type ExecutionNodeKind,
   type ExecutionRiskClass,
-  type ExecutionSandboxMode,
-  type ToolDefinition
+  type ExecutionSandboxMode
 } from '@agent/core';
+import type { ToolDefinition } from '@agent/runtime';
 import { createDefaultToolRegistry } from '@agent/tools';
 
 import { optionalBooleanEquals, optionalEquals } from './agent-tools.helpers';

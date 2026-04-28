@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import * as KnowledgeContracts from '@agent/knowledge';
+import * as MemoryContracts from '@agent/memory';
+import * as RuntimeContracts from '@agent/runtime';
 
 import type {
   ActionIntent,
@@ -82,9 +85,6 @@ import {
   ChatThinkStateSchema,
   ChatThoughtChainItemSchema,
   ChatRoleValues,
-  ApprovalPolicyRecordSchema,
-  ApprovalScopePolicyRecordSchema,
-  buildApprovalScopeMatchKey,
   BlackboardStateRecordSchema,
   BlackboardRefsSchema,
   CapabilityAugmentationRecordSchema,
@@ -124,19 +124,12 @@ import {
   GovernanceScoreRecordSchema,
   HealthCheckResultSchema,
   InstalledSkillRecordSchema,
-  BudgetStateSchema,
-  LearningEvaluationRecordSchema,
   KnowledgeIndexStateRecordSchema,
   KnowledgeIngestionStateRecordSchema,
-  isCitationEvidenceSource,
   LearningSourceTypeValues,
   LlmUsageRecordSchema,
   ManagerPlanSchema,
   MemoryEventRecordSchema,
-  MemoryRecordSchema,
-  MemorySearchRequestSchema,
-  MemorySearchResultSchema,
-  PermissionCheckResultSchema,
   PartialAggregationRecordSchema,
   PartialAggregationOutputKindSchema,
   PartialAggregationPolicySchema,
@@ -146,14 +139,10 @@ import {
   PlanQuestionChatMessageCardSchema,
   PlanQuestionRecordSchema,
   PlannerStrategyRecordSchema,
-  PreflightGovernanceDecisionSchema,
   RequestedExecutionHintsSchema,
   SkillInstallReceiptSchema,
   SkillManifestRecordSchema,
   ReviewDecisionValues,
-  ReflectionRecordSchema,
-  ResolutionCandidateRecordSchema,
-  McpCapabilitySchema,
   QueueStateRecordSchema,
   RiskLevelValues,
   WorkflowVersionRecordSchema,
@@ -193,18 +182,9 @@ import {
   ThoughtGraphEdgeSchema,
   ThoughtGraphNodeSchema,
   TaskRecordSchema,
-  ToolAttachmentRecordSchema,
-  ToolCapabilityTypeSchema,
-  ToolDefinitionSchema,
-  ToolExecutionRequestSchema,
-  ToolExecutionResultSchema,
-  ToolFamilyRecordSchema,
-  ToolPermissionScopeSchema,
-  ToolUsageSummaryRecordSchema,
   SandboxStateRecordSchema,
   TrustClassValues,
   TrustClassSchema,
-  UserProfileRecordSchema,
   RunCancelledChatMessageCardSchema,
   matchesApprovalScopePolicy
 } from '../src';
@@ -262,11 +242,11 @@ describe('@agent/core type contracts', () => {
   });
 
   it('parses tool governance contracts from core-hosted schemas', () => {
-    expect(ToolCapabilityTypeSchema.parse('local-tool')).toBe('local-tool');
-    expect(ToolPermissionScopeSchema.parse('readonly')).toBe('readonly');
-    expect(PreflightGovernanceDecisionSchema.parse('allow')).toBe('allow');
+    expect(RuntimeContracts.ToolCapabilityTypeSchema.parse('local-tool')).toBe('local-tool');
+    expect(RuntimeContracts.ToolPermissionScopeSchema.parse('readonly')).toBe('readonly');
+    expect(RuntimeContracts.PreflightGovernanceDecisionSchema.parse('allow')).toBe('allow');
     expect(
-      ToolFamilyRecordSchema.parse({
+      RuntimeContracts.ToolFamilyRecordSchema.parse({
         id: 'filesystem',
         displayName: 'Filesystem',
         description: 'workspace file operations',
@@ -275,7 +255,7 @@ describe('@agent/core type contracts', () => {
       }).id
     ).toBe('filesystem');
     expect(
-      ToolDefinitionSchema.parse({
+      RuntimeContracts.ToolDefinitionSchema.parse({
         name: 'filesystem.read',
         description: 'read project files',
         family: 'filesystem',
@@ -294,7 +274,7 @@ describe('@agent/core type contracts', () => {
       }).category
     ).toBe('knowledge');
     expect(
-      ToolExecutionRequestSchema.parse({
+      RuntimeContracts.ToolExecutionRequestSchema.parse({
         taskId: 'task-1',
         toolName: 'filesystem.read',
         intent: 'read_file',
@@ -303,7 +283,7 @@ describe('@agent/core type contracts', () => {
       }).toolName
     ).toBe('filesystem.read');
     expect(
-      PermissionCheckResultSchema.parse({
+      RuntimeContracts.PermissionCheckResultSchema.parse({
         decision: 'allow',
         reason: 'policy matched',
         reasonCode: 'static_policy_allow'
@@ -382,7 +362,7 @@ describe('@agent/core type contracts', () => {
       id: 'policy-1',
       scope: 'session',
       status: 'active',
-      matchKey: buildApprovalScopeMatchKey({
+      matchKey: RuntimeContracts.buildApprovalScopeMatchKey({
         intent: 'edit file',
         toolName: 'filesystem.write',
         requestedBy: 'worker'
@@ -406,7 +386,7 @@ describe('@agent/core type contracts', () => {
     };
 
     expect(
-      matchesApprovalScopePolicy(policy, {
+      RuntimeContracts.matchesApprovalScopePolicy(policy, {
         intent: 'edit file',
         toolName: 'filesystem.write',
         requestedBy: 'worker'
@@ -418,7 +398,7 @@ describe('@agent/core type contracts', () => {
 
   it('parses governance contracts from schema-first core definitions', () => {
     expect(
-      ConnectorHealthRecordSchema.parse({
+      RuntimeContracts.ConnectorHealthRecordSchema.parse({
         connectorId: 'github',
         healthState: 'healthy',
         checkedAt: '2026-04-15T00:00:00.000Z'
@@ -426,7 +406,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('github');
 
     expect(
-      ApprovalPolicyRecordSchema.parse({
+      RuntimeContracts.ApprovalPolicyRecordSchema.parse({
         id: 'policy-1',
         scope: 'connector',
         targetId: 'github',
@@ -436,11 +416,11 @@ describe('@agent/core type contracts', () => {
     ).toBe('connector');
 
     expect(
-      ApprovalScopePolicyRecordSchema.parse({
+      RuntimeContracts.ApprovalScopePolicyRecordSchema.parse({
         id: 'scope-1',
         scope: 'session',
         status: 'active',
-        matchKey: buildApprovalScopeMatchKey({
+        matchKey: RuntimeContracts.buildApprovalScopeMatchKey({
           intent: 'edit file',
           toolName: 'filesystem.write'
         }),
@@ -450,7 +430,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('active');
 
     expect(
-      McpCapabilitySchema.parse({
+      RuntimeContracts.McpCapabilitySchema.parse({
         id: 'cap-1',
         toolName: 'filesystem.write',
         serverId: 'mcp-local',
@@ -830,7 +810,7 @@ describe('@agent/core type contracts', () => {
       updatedAt: '2026-04-16T00:00:00.000Z'
     };
 
-    expect(ApprovalRecordSchema.parse(approval).decision).toBe('pending');
+    expect(RuntimeContracts.ApprovalRecordSchema.parse(approval).decision).toBe('pending');
     expect(AgentExecutionStateSchema.parse(agentState).role).toBe('research');
     expect(
       ChatCheckpointPendingApprovalsSchema.parse({
@@ -933,7 +913,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('remote-skill');
 
     expect(
-      BudgetStateSchema.parse({
+      KnowledgeContracts.BudgetStateSchema.parse({
         stepBudget: 8,
         stepsConsumed: 3,
         retryBudget: 1,
@@ -948,7 +928,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('soft-threshold-triggered');
 
     expect(
-      LearningEvaluationRecordSchema.parse({
+      KnowledgeContracts.LearningEvaluationRecordSchema.parse({
         score: 92,
         confidence: 'high',
         notes: ['evidence stable'],
@@ -965,7 +945,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('high');
 
     expect(
-      ToolAttachmentRecordSchema.parse({
+      RuntimeContracts.ToolAttachmentRecordSchema.parse({
         toolName: 'filesystem.read',
         family: 'filesystem',
         ownerType: 'runtime-derived',
@@ -976,7 +956,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('runtime-derived');
 
     expect(
-      ToolAttachmentRecordSchema.parse({
+      RuntimeContracts.ToolAttachmentRecordSchema.parse({
         toolName: 'connector.github',
         family: 'connector',
         ownerType: 'user-attached',
@@ -988,7 +968,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('user-attached');
 
     expect(
-      ToolUsageSummaryRecordSchema.parse({
+      RuntimeContracts.ToolUsageSummaryRecordSchema.parse({
         toolName: 'filesystem.read',
         family: 'filesystem',
         capabilityType: 'local-tool',
@@ -1766,7 +1746,7 @@ describe('@agent/core type contracts', () => {
     };
 
     expect(trace.role).toBe('planner');
-    expect(isCitationEvidenceSource(evidence)).toBe(true);
+    expect(KnowledgeContracts.isCitationEvidenceSource(evidence)).toBe(true);
   });
 
   it('keeps memory and rule records stable in core', () => {
@@ -1793,7 +1773,7 @@ describe('@agent/core type contracts', () => {
   });
 
   it('parses modern memory contracts while keeping legacy memory fields compatible', () => {
-    const parsed = MemoryRecordSchema.parse({
+    const parsed = MemoryContracts.MemoryRecordSchema.parse({
       id: 'memory-modern-1',
       type: 'fact',
       memoryType: 'constraint',
@@ -1817,7 +1797,7 @@ describe('@agent/core type contracts', () => {
       createdAt: '2026-04-16T00:00:00.000Z'
     });
 
-    const legacy = MemoryRecordSchema.parse({
+    const legacy = MemoryContracts.MemoryRecordSchema.parse({
       id: 'memory-legacy-1',
       type: 'fact',
       summary: 'legacy memory',
@@ -1834,7 +1814,7 @@ describe('@agent/core type contracts', () => {
 
   it('parses profile, reflection, search, resolution, and event contracts in core', () => {
     expect(
-      UserProfileRecordSchema.parse({
+      MemoryContracts.UserProfileRecordSchema.parse({
         id: 'profile-1',
         userId: 'user-1',
         communicationStyle: 'concise',
@@ -1846,7 +1826,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('user');
 
     expect(
-      ReflectionRecordSchema.parse({
+      MemoryContracts.ReflectionRecordSchema.parse({
         id: 'reflection-1',
         taskId: 'task-1',
         kind: 'failurePattern',
@@ -1861,7 +1841,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('failurePattern');
 
     expect(
-      ResolutionCandidateRecordSchema.parse({
+      MemoryContracts.ResolutionCandidateRecordSchema.parse({
         id: 'resolution-1',
         conflictKind: 'semantic_conflict',
         challengerId: 'memory-2',
@@ -1875,7 +1855,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('supersede_existing');
 
     expect(
-      MemoryEventRecordSchema.parse({
+      MemoryContracts.MemoryEventRecordSchema.parse({
         id: 'event-1',
         memoryId: 'memory-1',
         version: 2,
@@ -1886,7 +1866,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('memory.updated');
 
     expect(
-      MemorySearchRequestSchema.parse({
+      MemoryContracts.MemorySearchRequestSchema.parse({
         query: 'manual deploy',
         scopeContext: {
           actorRole: 'agent-chat-user',
@@ -1901,7 +1881,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('manual deploy');
 
     expect(
-      MemorySearchResultSchema.parse({
+      MemoryContracts.MemorySearchResultSchema.parse({
         coreMemories: [],
         archivalMemories: [],
         rules: [],
@@ -2006,7 +1986,7 @@ describe('@agent/core type contracts', () => {
       blockCount: 0,
       updatedAt: '2026-04-16T00:00:00.000Z'
     });
-    const result: ToolExecutionResult = ToolExecutionResultSchema.parse({
+    const result: ToolExecutionResult = RuntimeContracts.ToolExecutionResultSchema.parse({
       ok: true,
       outputSummary: 'Applied the workspace change.',
       durationMs: 120

@@ -7,7 +7,7 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
-} from '@agent/core';
+} from '@agent/knowledge';
 
 import {
   chunkDocumentContent,
@@ -70,7 +70,8 @@ export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<K
   const failedDocuments = new Set<string>();
 
   for (const file of candidateFiles) {
-    const fileStat = await readSourceStat(file.absolutePath);
+    const fileStat = await readOptionalSourceStat(file.absolutePath);
+    if (!fileStat) continue;
     const version = `${fileStat.mtimeMs}:${fileStat.size}`;
     const sourceId = `source_${hashText(file.relativePath)}`;
     const receiptId = `receipt_${hashText(`${file.relativePath}:${version}`)}`;
@@ -169,6 +170,21 @@ export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<K
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, 8)
   };
+}
+
+async function readOptionalSourceStat(path: string) {
+  try {
+    return await readSourceStat(path);
+  } catch (error) {
+    if (isMissingFileError(error)) return undefined;
+    throw error;
+  }
+}
+
+function isMissingFileError(error: unknown) {
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'ENOENT'
+  );
 }
 
 export async function readKnowledgeOverview(settings: RuntimeSettings): Promise<KnowledgeOverviewRecord> {

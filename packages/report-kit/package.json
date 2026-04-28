@@ -34,7 +34,6 @@
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/core": "workspace:*",
     "@agent/templates": "workspace:*",
     "typescript": "^5.8.2"
   }

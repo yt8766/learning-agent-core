@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ExecutionWatchdog } from '../src/watchdog/execution-watchdog';
+import { ExecutionWatchdog } from '@agent/runtime';
 import * as watchdogExports from '../src/watchdog';
 
 describe('ExecutionWatchdog', () => {
-  it('co-locates watchdog implementation under src/watchdog', () => {
+  it('keeps the tools watchdog entrypoint as a runtime compat bridge', () => {
     expect(ExecutionWatchdog).toBe(watchdogExports.ExecutionWatchdog);
   });
 

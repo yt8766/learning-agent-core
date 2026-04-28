@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ReportBundleSchema, type ReportBundle } from '@agent/core';
+import { ReportBundleSchema, type ReportBundle } from '../src/types';
 
 import { executeReportBundleEditFlow } from '../src/flows/report-bundle/edit/report-bundle-edit-flow';
 

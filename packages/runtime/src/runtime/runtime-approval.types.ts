@@ -1,4 +1,5 @@
-import type { CapabilityOwnerType, PlatformApprovalInterruptRecord, RiskLevel, ToolCapabilityType } from '@agent/core';
+import type { CapabilityOwnerType, PlatformApprovalInterruptRecord, RiskLevel } from '@agent/core';
+import type { ToolCapabilityType } from '../contracts/governance';
 
 type ActionIntentValue = string;
 

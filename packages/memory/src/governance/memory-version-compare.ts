@@ -1,4 +1,4 @@
-import type { MemoryEventRecord, MemoryRecord } from '@agent/core';
+import type { MemoryEventRecord, MemoryRecord } from '@agent/memory';
 
 type MemoryHistoryRecord = {
   memory?: MemoryRecord;

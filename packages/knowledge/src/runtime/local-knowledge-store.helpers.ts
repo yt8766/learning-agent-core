@@ -10,7 +10,7 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
-} from '@agent/core';
+} from '@agent/knowledge';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 

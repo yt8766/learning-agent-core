@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { SandboxPolicy, SandboxProviderRegistry } from '@agent/tools';
+import { SandboxPolicy, SandboxProviderRegistry } from '@agent/runtime';
 
 import { SANDBOX_PROFILES } from './sandbox.profiles';
 import { SandboxRepository } from './sandbox.repository';

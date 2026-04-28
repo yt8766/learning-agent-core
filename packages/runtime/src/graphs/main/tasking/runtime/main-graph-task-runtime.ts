@@ -8,7 +8,6 @@ import type {
   ExecutionTrace,
   ModelRouteDecision,
   QueueStateRecord,
-  ToolUsageSummaryRecord,
   WorkerDomain,
   WorkflowPresetDefinition
 } from '@agent/core';
@@ -41,6 +40,7 @@ import {
   upsertRuntimeAgentState
 } from './main-graph-task-runtime-trace';
 import { TaskBudgetExceededError, TaskCancelledError } from './main-graph-task-runtime-errors';
+import type { ToolUsageSummaryRecord } from '@agent/runtime';
 
 interface MainGraphTaskRuntimeDependencies {
   mcpClientManager?: McpClientManager;

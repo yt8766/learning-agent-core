@@ -2,14 +2,14 @@
 
 状态：completed
 文档类型：plan
-适用范围：`packages/core`、`packages/agent-kit`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
+适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
 最后核对：2026-04-27
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the v1.0 media provider boundary so CompanyLive content briefs can drive Audio / Image / Video media generation through provider interfaces, with MiniMax as the default adapter and voice clone governance enforced before provider calls.
 
-**Architecture:** Stable media DTOs live in `packages/core`, Agent-facing provider interfaces live in `packages/agent-kit`, MiniMax-specific mapping and clients live in `packages/adapters`, and default provider registration lives in `packages/platform-runtime`. `agents/audio`, `agents/image`, `agents/video`, and future `agents/company-live` consume only stable contracts and provider interfaces; they must not import MiniMax-specific modules directly.
+**Architecture:** Stable media DTOs live in `packages/core`, Agent-facing provider interfaces live in `packages/runtime`, MiniMax-specific mapping and clients live in `packages/adapters`, and default provider registration lives in `packages/platform-runtime`. `agents/audio`, `agents/image`, `agents/video`, and future `agents/company-live` consume only stable contracts and provider interfaces; they must not import MiniMax-specific modules directly.
 
 **Tech Stack:** TypeScript, zod v4, Vitest, pnpm workspace packages, existing `@agent/*` package boundaries.
 
@@ -28,14 +28,14 @@ Create or modify these files in order:
 - Create `packages/core/src/contracts/media/index.ts`: media contract barrel.
 - Modify `packages/core/src/index.ts`: export media contracts.
 - Create `packages/core/test/media-contracts.test.ts`: schema parse and rejection tests.
-- Create `packages/agent-kit/src/media/audio-provider.ts`: `AudioProvider` interface.
-- Create `packages/agent-kit/src/media/image-provider.ts`: `ImageProvider` interface.
-- Create `packages/agent-kit/src/media/video-provider.ts`: `VideoProvider` interface.
-- Create `packages/agent-kit/src/media/music-provider.ts`: `MusicProvider` interface.
-- Create `packages/agent-kit/src/media/media-provider-registry.ts`: registry interface and in-memory implementation.
-- Create `packages/agent-kit/src/media/index.ts`: media provider barrel.
-- Modify `packages/agent-kit/src/index.ts`: export media interfaces.
-- Create `packages/agent-kit/test/media-provider-registry.test.ts`: registry tests.
+- Create `packages/runtime/src/media/audio-provider.ts`: `AudioProvider` interface.
+- Create `packages/runtime/src/media/image-provider.ts`: `ImageProvider` interface.
+- Create `packages/runtime/src/media/video-provider.ts`: `VideoProvider` interface.
+- Create `packages/runtime/src/media/music-provider.ts`: `MusicProvider` interface.
+- Create `packages/runtime/src/media/media-provider-registry.ts`: registry interface and in-memory implementation.
+- Create `packages/runtime/src/media/index.ts`: media provider barrel.
+- Modify `packages/runtime/src/index.ts`: export media interfaces.
+- Create `packages/runtime/test/media-provider-registry.test.ts`: registry tests.
 - Create `packages/adapters/src/media/minimax/minimax-config.ts`: MiniMax media adapter config.
 - Create `packages/adapters/src/media/minimax/minimax-error.mapper.ts`: provider error mapping.
 - Create `packages/adapters/src/media/minimax/minimax-media-task.mapper.ts`: task status and asset mapping.
@@ -518,24 +518,24 @@ git commit -m "feat: add media core contracts"
 
 **Files:**
 
-- Create: `packages/agent-kit/src/media/audio-provider.ts`
-- Create: `packages/agent-kit/src/media/image-provider.ts`
-- Create: `packages/agent-kit/src/media/video-provider.ts`
-- Create: `packages/agent-kit/src/media/music-provider.ts`
-- Create: `packages/agent-kit/src/media/media-provider-registry.ts`
-- Create: `packages/agent-kit/src/media/index.ts`
-- Modify: `packages/agent-kit/src/index.ts`
-- Test: `packages/agent-kit/test/media-provider-registry.test.ts`
+- Create: `packages/runtime/src/media/audio-provider.ts`
+- Create: `packages/runtime/src/media/image-provider.ts`
+- Create: `packages/runtime/src/media/video-provider.ts`
+- Create: `packages/runtime/src/media/music-provider.ts`
+- Create: `packages/runtime/src/media/media-provider-registry.ts`
+- Create: `packages/runtime/src/media/index.ts`
+- Modify: `packages/runtime/src/index.ts`
+- Test: `packages/runtime/test/media-provider-registry.test.ts`
 
 - [ ] **Step 1: Write failing registry test**
 
-Create `packages/agent-kit/test/media-provider-registry.test.ts`:
+Create `packages/runtime/test/media-provider-registry.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
 import { createMediaProviderRegistry } from '../src';
 
-describe('@agent/agent-kit media provider registry', () => {
+describe('@agent/runtime media provider registry', () => {
   it('registers and resolves named media providers', async () => {
     const registry = createMediaProviderRegistry();
     const audioProvider = {
@@ -570,14 +570,14 @@ describe('@agent/agent-kit media provider registry', () => {
 Run:
 
 ```bash
-pnpm --filter @agent/agent-kit test -- media-provider-registry.test.ts
+pnpm --filter @agent/runtime test -- media-provider-registry.test.ts
 ```
 
 Expected: fail because `createMediaProviderRegistry` does not exist.
 
 - [ ] **Step 3: Implement provider interfaces**
 
-Create `packages/agent-kit/src/media/audio-provider.ts`:
+Create `packages/runtime/src/media/audio-provider.ts`:
 
 ```ts
 import type {
@@ -612,7 +612,7 @@ export interface AudioProvider {
 }
 ```
 
-Create `packages/agent-kit/src/media/image-provider.ts`:
+Create `packages/runtime/src/media/image-provider.ts`:
 
 ```ts
 import type { ImageGenerationRequest, ImageGenerationResult } from '@agent/core';
@@ -624,7 +624,7 @@ export interface ImageProvider {
 }
 ```
 
-Create `packages/agent-kit/src/media/video-provider.ts`:
+Create `packages/runtime/src/media/video-provider.ts`:
 
 ```ts
 import type { MediaGenerationTask, TemplateVideoRequest, VideoGenerationRequest } from '@agent/core';
@@ -641,7 +641,7 @@ export interface VideoProvider {
 }
 ```
 
-Create `packages/agent-kit/src/media/music-provider.ts`:
+Create `packages/runtime/src/media/music-provider.ts`:
 
 ```ts
 import type { MediaGenerationTask, MusicGenerationRequest, MusicGenerationResult } from '@agent/core';
@@ -666,7 +666,7 @@ export interface MusicProvider {
 
 - [ ] **Step 4: Implement registry**
 
-Create `packages/agent-kit/src/media/media-provider-registry.ts`:
+Create `packages/runtime/src/media/media-provider-registry.ts`:
 
 ```ts
 import type { AudioProvider } from './audio-provider';
@@ -730,7 +730,7 @@ export function createMediaProviderRegistry(): MediaProviderRegistry {
 
 - [ ] **Step 5: Export media interfaces**
 
-Create `packages/agent-kit/src/media/index.ts`:
+Create `packages/runtime/src/media/index.ts`:
 
 ```ts
 export * from './audio-provider';
@@ -740,7 +740,7 @@ export * from './music-provider';
 export * from './media-provider-registry';
 ```
 
-Add to `packages/agent-kit/src/index.ts`:
+Add to `packages/runtime/src/index.ts`:
 
 ```ts
 export * from './media';
@@ -751,8 +751,8 @@ export * from './media';
 Run:
 
 ```bash
-pnpm --filter @agent/agent-kit test -- media-provider-registry.test.ts
-pnpm --filter @agent/agent-kit typecheck
+pnpm --filter @agent/runtime test -- media-provider-registry.test.ts
+pnpm --filter @agent/runtime typecheck
 ```
 
 Expected: both pass.
@@ -762,7 +762,7 @@ Expected: both pass.
 Run:
 
 ```bash
-git add packages/agent-kit/src/media packages/agent-kit/src/index.ts packages/agent-kit/test/media-provider-registry.test.ts
+git add packages/runtime/src/media packages/runtime/src/index.ts packages/runtime/test/media-provider-registry.test.ts
 git commit -m "feat: add media provider interfaces"
 ```
 
@@ -919,7 +919,7 @@ export function mapMiniMaxTask(input: MiniMaxTaskMapperInput): MediaGenerationTa
 Create `packages/adapters/src/media/minimax/minimax-audio-provider.ts`:
 
 ```ts
-import type { AudioProvider, ListSystemVoicesInput, ListSystemVoicesResult, MediaTaskQuery } from '@agent/agent-kit';
+import type { AudioProvider, ListSystemVoicesInput, ListSystemVoicesResult, MediaTaskQuery } from '@agent/runtime';
 import type {
   MediaGenerationTask,
   SpeechSynthesisRequest,
@@ -978,7 +978,7 @@ export class MiniMaxAudioProvider implements AudioProvider {
 Create `packages/adapters/src/media/minimax/minimax-image-provider.ts`:
 
 ```ts
-import type { ImageProvider } from '@agent/agent-kit';
+import type { ImageProvider } from '@agent/runtime';
 import type { ImageGenerationRequest, ImageGenerationResult } from '@agent/core';
 import type { MiniMaxMediaConfig } from './minimax-config';
 import type { MiniMaxMediaTransport } from './minimax-audio-provider';
@@ -1012,7 +1012,7 @@ export class MiniMaxImageProvider implements ImageProvider {
 Create `packages/adapters/src/media/minimax/minimax-video-provider.ts`:
 
 ```ts
-import type { MediaTaskQuery, VideoProvider } from '@agent/agent-kit';
+import type { MediaTaskQuery, VideoProvider } from '@agent/runtime';
 import type { MediaGenerationTask, TemplateVideoRequest, VideoGenerationRequest } from '@agent/core';
 import type { MiniMaxMediaConfig } from './minimax-config';
 import type { MiniMaxMediaTransport } from './minimax-audio-provider';
@@ -1066,7 +1066,7 @@ export class MiniMaxVideoProvider implements VideoProvider {
 Create `packages/adapters/src/media/minimax/minimax-music-provider.ts`:
 
 ```ts
-import type { LyricsGenerationInput, LyricsGenerationResult, MediaTaskQuery, MusicProvider } from '@agent/agent-kit';
+import type { LyricsGenerationInput, LyricsGenerationResult, MediaTaskQuery, MusicProvider } from '@agent/runtime';
 import type { MediaGenerationTask, MusicGenerationRequest } from '@agent/core';
 import type { MiniMaxMediaTransport } from './minimax-audio-provider';
 
@@ -1180,14 +1180,14 @@ Expected: fail because `createDefaultMediaProviders` does not exist.
 Create `packages/platform-runtime/src/media/media-provider-registry.ts`:
 
 ```ts
-export { createMediaProviderRegistry } from '@agent/agent-kit';
-export type { MediaProviderRegistry } from '@agent/agent-kit';
+export { createMediaProviderRegistry } from '@agent/runtime';
+export type { MediaProviderRegistry } from '@agent/runtime';
 ```
 
 Create `packages/platform-runtime/src/media/create-default-media-providers.ts`:
 
 ```ts
-import { createMediaProviderRegistry } from '@agent/agent-kit';
+import { createMediaProviderRegistry } from '@agent/runtime';
 import {
   DEFAULT_MINIMAX_IMAGE_MODEL,
   DEFAULT_MINIMAX_MEDIA_BASE_URL,
@@ -1342,7 +1342,7 @@ Create `agents/audio/package.json`:
     "verify": "pnpm typecheck && pnpm test && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/agent-kit": "workspace:*",
+    "@agent/runtime": "workspace:*",
     "@agent/core": "workspace:*",
     "zod": "^4.3.6"
   }
@@ -1385,7 +1385,7 @@ export function assertVoiceCloneRequestAllowed(input: VoiceCloneRequest): VoiceC
 Create `agents/audio/src/runtime/audio-domain-runtime.ts`:
 
 ```ts
-import type { AudioProvider, MusicProvider } from '@agent/agent-kit';
+import type { AudioProvider, MusicProvider } from '@agent/runtime';
 
 export interface AudioDomainRuntime {
   audioProvider: AudioProvider;
@@ -1591,7 +1591,7 @@ Append this section to `docs/architecture/media-provider-boundary-and-company-li
 v1.0 已完成以下边界：
 
 - `packages/core/src/contracts/media` 提供 schema-first media contracts。
-- `packages/agent-kit/src/media` 提供 Agent-facing provider interfaces。
+- `packages/runtime/src/media` 提供 Agent-facing provider interfaces。
 - `packages/adapters/src/media/minimax` 提供 MiniMax adapter skeleton 与 mapper。
 - `packages/platform-runtime/src/media` 提供默认 provider registry wiring。
 - `agents/audio`、`agents/image`、`agents/video` 提供媒体 Domain skeleton。
@@ -1606,7 +1606,7 @@ Run:
 
 ```bash
 pnpm --filter @agent/core test -- media-contracts.test.ts
-pnpm --filter @agent/agent-kit test -- media-provider-registry.test.ts
+pnpm --filter @agent/runtime test -- media-provider-registry.test.ts
 pnpm --filter @agent/adapters test -- minimax-media-mappers.test.ts
 pnpm --filter @agent/platform-runtime test -- media-provider-registry.test.ts
 pnpm --filter @agent/agents-audio test
@@ -1622,7 +1622,7 @@ Run:
 
 ```bash
 pnpm --filter @agent/core typecheck
-pnpm --filter @agent/agent-kit typecheck
+pnpm --filter @agent/runtime typecheck
 pnpm --filter @agent/adapters typecheck
 pnpm --filter @agent/platform-runtime typecheck
 pnpm --filter @agent/agents-audio typecheck
@@ -1658,7 +1658,7 @@ Spec coverage:
 
 - MiniMax as provider, not Agent: covered by Tasks 2, 3, and 4.
 - Core schema-first contracts: covered by Task 1.
-- Provider interfaces in agent-kit: covered by Task 2.
+- Provider interfaces in runtime: covered by Task 2.
 - MiniMax implementation in adapters: covered by Task 3.
 - Platform default wiring: covered by Task 4.
 - Audio/Image/Video domain skeletons: covered by Task 5.

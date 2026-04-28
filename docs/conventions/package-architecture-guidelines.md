@@ -116,8 +116,8 @@ packages/<pkg>/
 当前实施状态：
 
 - `packages/core` 已移除 `@agent/report-kit` 依赖，并由 `pnpm check:package-boundaries` 阻止回退
-- `packages/platform-runtime` 已落地为官方组合根，backend/worker 默认 runtime 创建线已改由它装配
-- `apps/backend` 与 `apps/worker` 禁止直接依赖 `@agent/agents-*`，官方 Agent 能力统一经 `@agent/platform-runtime` 暴露
+- `packages/platform-runtime` 已收敛为可注入 platform facade / registry 包，不再直接依赖 `@agent/agents-*`
+- `apps/backend/agent-server/src/runtime/agents/*` 是官方 Agent 组合根；backend manifest 允许直接依赖官方 `@agent/agents-*` 并注入 `@agent/platform-runtime`
 - `packages/runtime/src/bridges/*` 已收敛为 runtime 内部 adapter；它们只转发 `RuntimeAgentDependencies` contract，不再直接 re-export 官方 Agent
 
 1. 契约层
@@ -130,7 +130,6 @@ packages/<pkg>/
 
 3. Agent SDK 与 Runtime Kernel 层
 
-- `packages/agent-kit`
 - `packages/runtime`
 
 4. 平台基础能力层
@@ -139,7 +138,7 @@ packages/<pkg>/
 - `packages/knowledge`
 - `packages/memory`
 - `packages/tools`
-- `packages/skill-runtime`
+- `packages/skill`
 - `packages/report-kit`
 - `packages/templates`
 
@@ -167,8 +166,8 @@ packages/<pkg>/
 迁移兼容说明：
 
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除，历史台账保留在 `docs/archive/shared/`
-- 已删除的 `packages/agent-core` 历史说明统一保留在 `docs/archive/agent-core/`
-- 新消费侧优先改用 `@agent/agent-kit`、`@agent/runtime`、`@agent/platform-runtime`、`@agent/adapters` 与对应稳定公开入口
+- 新消费侧优先改用 `@agent/runtime`、`@agent/platform-runtime`、`@agent/adapters` 与对应稳定公开入口
+- `packages/agent-core` 已删除；当前包边界规范不再以它作为模板或文档入口。需要追溯迁移原因时，再进入 `docs/archive/` 查历史资料。
 
 ## 每个包允许放什么
 
@@ -189,7 +188,7 @@ packages/<pkg>/
   - `knowledge` 中的 `ExecutionTrace`、`EvidenceRecord`、`MemoryRecord`、`RuleRecord`、以及后续可独立稳定的 evidence / trace helper，也应优先从 `shared` 回收到 `core`
   - `primitives` 中像 `QueueStateRecord`、`LlmUsageModelRecord`、`LlmUsageRecord` 这类跨 runtime / backend / frontends 复用的稳定记录结构，也应优先放入 `packages/core`，`packages/shared` 只保留 compat re-export 或前端默认组合
   - `connectors` 中像 `ConnectorKnowledgeIngestionSummary`、`ConnectorCapabilityUsageRecord` 这类稳定摘要 contract，也应以 `packages/core` 为唯一主定义，并优先按 schema-first 维护
-  - `DataReportBlueprintResultSchema` 这类稳定结构可以留在 `core`，但 `buildDataReportBlueprint`、scaffold、write、template resolve 等确定性生成实现必须留在 `report-kit`
+  - data-report 领域 schema/type/graph contract 已下沉到 `agents/data-report/src/types/`，不要再回填到 `core`；`buildDataReportBlueprint`、scaffold、write、template resolve 等确定性生成实现必须留在 `report-kit`
   - `packages/core/package.json` 当前只允许 `zod` 作为依赖；禁止重新加入 `@agent/report-kit`、`@agent/runtime`、`@agent/agents-*` 或任何业务实现包
 
 ### `packages/config`
@@ -236,7 +235,7 @@ packages/<pkg>/
 - 允许：tool registry、tool definition、sandbox executor、filesystem executor、approval preflight、MCP transport
 - 禁止：agent orchestration、chat/review/research prompt、graph/ministry 主逻辑
 
-### `packages/skill-runtime`
+### `packages/skill`
 
 - 定位：运行时技能资产治理包
 - 允许：
@@ -263,9 +262,9 @@ packages/<pkg>/
   - `shared/`：manifest normalizer、catalog mapper
   - `utils/`：纯函数工具
 - 说明：
-  - `skill-runtime` 应按“运行时技能资产层”理解，而不是 loader 杂物层
-  - `skill-runtime` 当前已经补出 `contracts/skill-runtime-facade.ts` 作为包根稳定导出层
-  - `docs/skills/*` 继续描述仓库代理技能；运行时 skill 的包级规则应独立沉淀到 `docs/packages/skill-runtime/*`
+  - `skill` 应按“运行时技能资产层”理解，而不是 loader 杂物层
+  - `skill` 当前已经补出 `contracts/skill-facade.ts` 作为包根稳定导出层
+  - `docs/skills/*` 继续描述仓库代理技能；运行时 skill 的包级规则应独立沉淀到 `docs/packages/skill/*`
 
 ### `packages/runtime`
 
@@ -289,15 +288,13 @@ packages/<pkg>/
 
 ### `packages/platform-runtime`
 
-- 定位：官方平台装配层 / Composition Root
+- 定位：可注入 platform facade / registry contract
 - 允许：
-  - 官方 Agent / workflow 出口
+  - 通用 Agent registry 实现
   - `PlatformRuntimeFacade` contract
-  - `createOfficialAgentRegistry()`
-  - 基于 capability / domain 的官方 agent descriptor 查询
-  - `createOfficialRuntimeAgentDependencies({ agentRegistry? })`
-  - `createPlatformRuntime({ runtime, agentRegistry })`
-  - `createDefaultPlatformRuntime(options)`
+  - 基于 capability / domain 的注入 agent descriptor 查询
+  - `createPlatformRuntime({ runtime, agentRegistry, agentDependencies, metadata? })`
+  - `createDefaultPlatformRuntime(options)`（要求 app 层注入 `agentDependencies`）
   - backend 与 worker 可复用的 runtime facade 装配
 - 禁止：
   - HTTP controller
@@ -306,20 +303,6 @@ packages/<pkg>/
   - Agent prompt、graph 节点主实现
   - report-kit blueprint/scaffold/write 主流程
   - 变成第二个 `runtime` 或第二个 `backend`
-
-### `packages/agent-kit`
-
-- 定位：Agent SDK 层 / 编写 Agent 的轻量基础宿主
-- 允许：
-  - `BaseAgent`
-  - 流式执行与 runtime-memory helper
-  - 通用 `AgentDescriptor` / `AgentProvider` / `AgentRegistry` contract
-  - planner strategy selector 这类 Agent authoring / orchestration 共用的轻量决策 helper
-  - agent authoring 所需的轻量 helper
-- 禁止：
-  - session/checkpoint/platform center projection
-  - backend/worker 装配
-  - 官方 agent 默认注册表实现
 
 ### `packages/evals`
 
@@ -404,18 +387,18 @@ packages/<pkg>/
 
 - `core` 不得依赖任何 `@agent/*` 业务实现包；当前只允许 `zod`
 - `config` 不得依赖 `runtime` 或任意 `agents/*`
-- `adapters / memory / tools / skill-runtime` 只允许依赖 `config`、`core` 和必要第三方库
-- `runtime` 可以依赖 `agent-kit / config / core / adapters / memory / tools / skill-runtime`
+- `adapters / memory / tools / skill` 只允许依赖 `config`、`core` 和必要第三方库
+- `runtime` 可以依赖 `config / core / adapters / memory / tools / skill`
 - `runtime` 长期不得依赖任何 `agents/*`；当前 `bridges/*` 是 runtime 内部稳定 adapter，而不是官方 Agent 的直接宿主
-- `platform-runtime` 可以依赖 `runtime` 和官方 `agents/*`，但只做官方装配与 facade wiring
-- `platform-runtime` 持有官方 agent descriptor / capability / specialist-domain registry；需要 capability dispatch 时，优先沿这层 contract 扩展，而不是把 dispatch 重新写回 `apps/*` 或 `runtime`
-- `platform-runtime` 负责把 supervisor 返回的 specialist domain 继续 enrich 为官方 agent 匹配线索；runtime 主链消费的是 enrich 后的 route，而不是自行反查 registry
-- `PlatformRuntimeFacade` 应作为 app 层读取官方默认装配能力的首选入口；应用侧不要继续直接 import `resolveWorkflowPreset`、`runDispatchStage`、`createOfficialRuntimeAgentDependencies`、`listWorkflowPresets`、`listSubgraphDescriptors`、`listWorkflowVersions` 这类主链装配 helper
+- `platform-runtime` 可以依赖 `runtime`，但不得直接依赖官方 `agents/*`
+- backend agents 组合根持有官方 agent descriptor / capability / specialist-domain registry；需要 capability dispatch 时，优先沿这层 contract 扩展，而不是把 dispatch 重新写回 `runtime`
+- backend agents 组合根负责把 supervisor 返回的 specialist domain 继续 enrich 为官方 agent 匹配线索；runtime 主链消费的是 enrich 后的 route，而不是自行反查 registry
+- `PlatformRuntimeFacade` 应作为 app 层读取已注入运行时装配能力的首选入口；官方默认装配能力由 backend agents 组合根注入，应用侧不要继续直接 import `resolveWorkflowPreset`、`runDispatchStage`、`createOfficialRuntimeAgentDependencies`、`listWorkflowPresets`、`listSubgraphDescriptors`、`listWorkflowVersions` 这类主链装配 helper
 - dispatch contract 应显式区分 `agentId`（偏好 / 首选 hint）与 `selectedAgentId`（本次 dispatch 实际收敛目标）；不要让 runtime / admin / chat 继续从 `to = executor|reviewer` 这类历史角色名反推官方 agent
 - planner 的策略态应通过稳定 contract 暴露给 runtime / admin（例如 `plannerStrategy.mode = default | capability-gap | rich-candidates`），不要让治理侧继续从自由文本 summary 反推当前规划模式
-- `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill-runtime`
+- `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill`
 - `apps/*` 只能依赖各包公开入口
-- `apps/backend` 与 `apps/worker` 不得直接依赖 `@agent/agents-*`，官方装配统一通过 `@agent/platform-runtime`
+- `apps/backend` 可作为官方组合根直接依赖 `@agent/agents-*`；其他 app/worker 默认通过显式注入后的 `@agent/platform-runtime` facade 消费
 - 禁止 `apps/*` 直接依赖 `packages/*/src`、`agents/*/src` 或 `@agent/<pkg>/<subpath>`
 - 禁止基础能力层反向依赖 `runtime` 或 `agents/*`
 
@@ -449,7 +432,7 @@ packages/<pkg>/
 - 模型/provider/embedding 装配：放 `adapters`
 - memory/rule/vector/cache 存取与搜索：放 `memory`
 - executor/registry/sandbox/MCP：放 `tools`
-- skill registry/manifest/source：放 `skill-runtime`
+- skill registry/manifest/source：放 `skill`
 - report blueprint/scaffold/assembly/write：放 `report-kit`
 - 模板资产、模板 manifest、模板 registry：放 `templates`
 - 质量评测 contract、回归 runner、benchmark 基建：放 `evals`
@@ -594,7 +577,7 @@ packages/tools/
   - `mcp/` 目录本质是 transport 与 capability 管理，不建议继续作为一个过大的混合目录增长
   - `packages/tools/test/data-report/*` 这类测试如果长期存在，说明报表能力边界已经外溢，应优先迁回 `report-kit`
 
-### `packages/skill-runtime`
+### `packages/skill`
 
 - 主宿主：
   - skill registry
@@ -607,7 +590,7 @@ packages/tools/
 - 推荐目标结构：
 
 ```text
-packages/skill-runtime/
+packages/skill/
   src/
     contracts/
     schemas/
@@ -885,7 +868,7 @@ packages/report-kit/
   - `runtime/` 不再作为配置默认宿主
   - `settings.ts` / `settings/index.ts` 仅保留聚合职责
 
-### Wave 6: `packages/skill-runtime`
+### Wave 6: `packages/skill`
 
 - 目标：
   - 把 registry、catalog、install、policy 拆成完整生命周期
@@ -897,8 +880,8 @@ packages/report-kit/
   - `src/registry/skill-registry.ts`
   - `src/sources/agent-skill-loader.ts`
 - 第一批验证重点：
-  - `packages/skill-runtime/test/agent-skill-loader.test.ts`
-  - `packages/skill-runtime/test/root-exports.test.ts`
+  - `packages/skill/test/agent-skill-loader.test.ts`
+  - `packages/skill/test/root-exports.test.ts`
 - 第一批收口标准：
   - catalog listing/query 不再继续堆进 `skill-registry.ts`
 
@@ -963,7 +946,7 @@ packages/report-kit/
 当前优先按“先补文档、后搬源码”的顺序，收敛以下几个结构仍偏扁平的包：
 
 1. `packages/config`
-2. `packages/skill-runtime`
+2. `packages/skill`
 3. `packages/templates`
 4. `packages/report-kit`
 5. `packages/evals`
@@ -1009,7 +992,7 @@ packages/report-kit/
 
 - `packages/memory` 的内部目录分层仍然存在，但对外已经统一改为根入口消费
 - `packages/tools` 仍保留较多内部目录分层，后续如继续膨胀可再整理内部文件布局，但对外仍维持根入口消费
-- `packages/config`、`packages/skill-runtime`、`packages/templates`、`packages/report-kit`、`packages/evals` 当前已先定义推荐终态结构，但源码目录仍未完全收敛到该结构
+- `packages/config`、`packages/skill`、`packages/templates`、`packages/report-kit`、`packages/evals` 当前已先定义推荐终态结构，但源码目录仍未完全收敛到该结构
 - `agent-admin` / `agent-chat` 仍有部分本地 UI 类型包装，后续可继续按 `@agent/core + 本地 facade` 收口
 
 ## 禁止项
@@ -1021,4 +1004,4 @@ packages/report-kit/
 - 在 backend controller/service 内联 agent prompt、结构化输出 parse、graph 主链编排
 - 在 `tools` 中新增 ministry/graph/review/research 编排逻辑
 - 跨包深层 import，例如 `@agent/<pkg>/src/*`
-- 让 `tools / model / memory / skill-runtime` 反向依赖 `runtime` 或 `agents/*`
+- 让 `tools / model / memory / skill` 反向依赖 `runtime` 或 `agents/*`

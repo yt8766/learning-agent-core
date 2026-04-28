@@ -1,11 +1,4 @@
-import {
-  ActionIntent,
-  AgentRole,
-  AgentExecutionState,
-  type ToolDefinition,
-  type ToolExecutionResult,
-  type PendingExecutionContext
-} from '@agent/core';
+import { ActionIntent, AgentRole, AgentExecutionState, type PendingExecutionContext } from '@agent/core';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
@@ -25,6 +18,7 @@ import {
   selectPreferredResearchSource,
   selectPreferredToolNameByWorkflow
 } from './gongbu-code/gongbu-code-tool-resolution';
+import type { ToolDefinition, ToolExecutionResult } from '@agent/runtime';
 
 export class GongbuCodeMinistry {
   protected readonly state: AgentExecutionState;

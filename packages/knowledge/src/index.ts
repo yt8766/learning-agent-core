@@ -7,7 +7,7 @@ export type {
   RetrievalHit,
   RetrievalRequest,
   RetrievalResult
-} from '@agent/core';
+} from './contracts';
 export {
   CitationSchema,
   KnowledgeChunkSchema,
@@ -17,20 +17,27 @@ export {
   RetrievalHitSchema,
   RetrievalRequestSchema,
   RetrievalResultSchema
-} from '@agent/core';
+} from './contracts';
 export type {
   KnowledgeChunkRepository,
   KnowledgeFacade,
   KnowledgeSearchService,
   KnowledgeSourceRepository
 } from './contracts/knowledge-facade';
-export * from './contracts/knowledge-facade';
+export * from './contracts';
 export * from './repositories/knowledge-source.repository';
 export * from './repositories/knowledge-chunk.repository';
 export * from './retrieval/knowledge-search-service';
+export type { VectorSearchHit, VectorSearchProvider } from './retrieval/vector-search-provider';
+export { InMemoryVectorSearchProvider } from './retrieval/in-memory-vector-search-provider';
+export { VectorKnowledgeSearchService } from './retrieval/vector-knowledge-search-service';
+export { rrfFusion } from './retrieval/rrf-fusion';
+export type { HybridSearchConfig } from './retrieval/hybrid-knowledge-search-service';
+export { HybridKnowledgeSearchService } from './retrieval/hybrid-knowledge-search-service';
 export type { KnowledgeRetrievalRuntime, RetrievalPipelineConfig } from './contracts/knowledge-retrieval-runtime';
 export type { ContextAssembler } from './runtime/stages/context-assembler';
 export type { QueryNormalizer } from './runtime/stages/query-normalizer';
+export type { QueryRewriteProvider } from './runtime/stages/query-rewrite-provider';
 export type { RetrievalPostProcessor } from './runtime/stages/post-processor';
 export type {
   KnowledgeRetrievalResult,
@@ -39,6 +46,7 @@ export type {
 } from './runtime/types/retrieval-runtime.types';
 export { DefaultContextAssembler } from './runtime/defaults/default-context-assembler';
 export { DefaultQueryNormalizer } from './runtime/defaults/default-query-normalizer';
+export { LlmQueryNormalizer } from './runtime/defaults/llm-query-normalizer';
 export { DefaultRetrievalPostProcessor } from './runtime/defaults/default-post-processor';
 export {
   DEFAULT_CONTEXT_SEPARATOR,

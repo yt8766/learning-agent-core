@@ -14,7 +14,7 @@ import {
   buildRemoteSkillInstallLocation,
   deriveRemoteSkillDisplayName,
   normalizeOptionalSkillName
-} from '@agent/skill-runtime';
+} from '@agent/skill';
 
 import {
   buildSkillsAddCommand,

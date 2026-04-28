@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { AutoReviewResultSchema } from '@agent/core';
+import { AutoReviewResultSchema } from '@agent/tools';
 
 import { AutoReviewRepository } from './auto-review.repository';
 import { runRuleBasedReviewGate } from './auto-review.rules';

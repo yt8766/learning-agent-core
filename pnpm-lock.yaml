@@ -65,9 +65,6 @@ importers:
 
   agents/audio:
     dependencies:
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../../packages/agent-kit
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -80,12 +77,12 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../../packages/agent-kit
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@agent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -165,15 +162,15 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../../packages/agent-kit
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@agent/evals':
         specifier: workspace:*
         version: link:../../packages/evals
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@langchain/langgraph':
         specifier: ^1.2.5
         version: 1.2.5(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
@@ -186,12 +183,18 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../../packages/agent-kit
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agent/knowledge':
+        specifier: workspace:*
+        version: link:../../packages/knowledge
+      '@agent/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@langchain/langgraph':
         specifier: ^1.2.5
         version: 1.2.5(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
@@ -213,6 +216,21 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../../../packages/adapters
+      '@agent/agents-coder':
+        specifier: workspace:*
+        version: link:../../../agents/coder
+      '@agent/agents-data-report':
+        specifier: workspace:*
+        version: link:../../../agents/data-report
+      '@agent/agents-intel-engine':
+        specifier: workspace:*
+        version: link:../../../agents/intel-engine
+      '@agent/agents-reviewer':
+        specifier: workspace:*
+        version: link:../../../agents/reviewer
+      '@agent/agents-supervisor':
+        specifier: workspace:*
+        version: link:../../../agents/supervisor
       '@agent/config':
         specifier: workspace:*
         version: link:../../../packages/config
@@ -234,9 +252,9 @@ importers:
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../../packages/runtime
-      '@agent/skill-runtime':
+      '@agent/skill':
         specifier: workspace:*
-        version: link:../../../packages/skill-runtime
+        version: link:../../../packages/skill
       '@agent/templates':
         specifier: workspace:*
         version: link:../../../packages/templates
@@ -577,9 +595,9 @@ importers:
       '@agent/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@agent/skill-runtime':
+      '@agent/skill':
         specifier: workspace:*
-        version: link:../../packages/skill-runtime
+        version: link:../../packages/skill
       '@agent/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -592,6 +610,9 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../core
+      '@agent/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@langchain/community':
         specifier: ^1.1.27
         version: 1.1.27(6f9ebc1db635d58503b149ee458cef0c)
@@ -614,30 +635,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/agent-kit:
-    dependencies:
-      '@agent/adapters':
-        specifier: workspace:*
-        version: link:../adapters
-      '@agent/config':
-        specifier: workspace:*
-        version: link:../config
-      '@agent/core':
-        specifier: workspace:*
-        version: link:../core
-      '@agent/memory':
-        specifier: workspace:*
-        version: link:../memory
-      '@agent/skill-runtime':
-        specifier: workspace:*
-        version: link:../skill-runtime
-      '@agent/tools':
-        specifier: workspace:*
-        version: link:../tools
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
-
   packages/config: {}
 
   packages/core:
@@ -646,7 +643,11 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/evals: {}
+  packages/evals:
+    dependencies:
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/knowledge:
     dependencies:
@@ -656,9 +657,12 @@ importers:
       '@agent/config':
         specifier: workspace:*
         version: link:../config
-      '@agent/core':
+      '@agent/memory':
         specifier: workspace:*
-        version: link:../core
+        version: link:../memory
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   packages/memory:
     dependencies:
@@ -668,30 +672,15 @@ importers:
       '@agent/config':
         specifier: workspace:*
         version: link:../config
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   packages/platform-runtime:
     dependencies:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../adapters
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../agent-kit
-      '@agent/agents-coder':
-        specifier: workspace:*
-        version: link:../../agents/coder
-      '@agent/agents-data-report':
-        specifier: workspace:*
-        version: link:../../agents/data-report
-      '@agent/agents-intel-engine':
-        specifier: workspace:*
-        version: link:../../agents/intel-engine
-      '@agent/agents-reviewer':
-        specifier: workspace:*
-        version: link:../../agents/reviewer
-      '@agent/agents-supervisor':
-        specifier: workspace:*
-        version: link:../../agents/supervisor
       '@agent/config':
         specifier: workspace:*
         version: link:../config
@@ -716,9 +705,6 @@ importers:
 
   packages/report-kit:
     dependencies:
-      '@agent/core':
-        specifier: workspace:*
-        version: link:../core
       '@agent/templates':
         specifier: workspace:*
         version: link:../templates
@@ -731,9 +717,6 @@ importers:
       '@agent/adapters':
         specifier: workspace:*
         version: link:../adapters
-      '@agent/agent-kit':
-        specifier: workspace:*
-        version: link:../agent-kit
       '@agent/config':
         specifier: workspace:*
         version: link:../config
@@ -743,9 +726,9 @@ importers:
       '@agent/memory':
         specifier: workspace:*
         version: link:../memory
-      '@agent/skill-runtime':
+      '@agent/skill':
         specifier: workspace:*
-        version: link:../skill-runtime
+        version: link:../skill
       '@agent/tools':
         specifier: workspace:*
         version: link:../tools
@@ -756,7 +739,7 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
-  packages/skill-runtime:
+  packages/skill:
     dependencies:
       '@agent/config':
         specifier: workspace:*
@@ -806,12 +789,18 @@ importers:
       '@agent/report-kit':
         specifier: workspace:*
         version: link:../report-kit
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@agent/templates':
         specifier: workspace:*
         version: link:../templates
       fs-extra:
         specifier: ^11.3.4
         version: 11.3.4
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
 packages:
 

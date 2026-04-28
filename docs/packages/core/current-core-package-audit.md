@@ -25,9 +25,9 @@
 
 ## 2. 当前已经满足的点
 
-- `packages/core/src` 当前已经以 `contracts / providers / memory + domain folders` 为主结构，同时 `review / governance / knowledge` 已补出独立 domain folder，避免继续把 helper 与 schema 堆回平铺目录。
+- `packages/core/src` 当前已经以 `contracts / providers + domain folders` 为主结构；`knowledge`、`memory`、`governance`、`tools` 旧领域目录已删除，task/checkpoint/channel 仍需复用的轻量字段已本地化到 `tasking/schemas/*-fields.ts`。
 - 当前没有把 graph、flow、service、repository、runtime orchestration、tool executor 这类实现层逻辑塞进 `core`。
-- `tasking`、`data-report`、`skills`、`governance`、`connectors`、`channels`、`workflow-route`、`delivery`、`platform-console`、`execution-trace`、`skills-search`、`architecture-records`、`primitives` 等稳定子域，已经大量采用 `schema-first` 方式托管。
+- `tasking`、`skills`、`connectors`、`channels`、`workflow-route`、`delivery`、`platform-console`、`execution-trace`、`skills-search`、`architecture-records`、`primitives` 等仍留在 core 的稳定子域，已经大量采用 `schema-first` 方式托管；data-report、knowledge、memory、governance、tools 的完整领域 contract 已迁出到真实宿主。
 - 历史上的 `packages/shared` 相关 tasking / governance / connectors / trace contract 已经完成退场，现由 `core` 或真实宿主承接。
 - `packages/core/src/index.ts` 仍是统一公共出口，符合稳定 facade 约束。
 
@@ -37,13 +37,13 @@
 
 - review 相关 stable schema 与 normalize helper 已迁入 `review/*`
 - `pending-execution-context.ts` 已收敛到 `contracts/approval/*`
-- `helpers/` 泛化目录已清理，治理 matcher 与 evidence 判定逻辑改为贴着 `governance/*`、`knowledge/*` 域目录落位
+- `helpers/` 泛化目录已清理；治理 matcher 与 evidence 判定逻辑不再由 core 旧 `governance/*` / `knowledge/*` 目录承载
 - `channels`、`connectors`、`workflow-route`、`delivery`、`execution-trace` 已补出独立 domain folder，旧平铺 `spec/types` 文件已删除
 - `skills-search`、`platform-console`、`architecture-records` 也已补出独立 domain folder，旧平铺 `spec/types` 文件已删除
 - `primitives` 也已补出独立 domain folder，旧平铺 `spec/types` 入口已删除
 - `packages/core/src` 内部当前已基本不再依赖旧平铺入口；`core-contract-exports.int-spec.ts` 也已切到根出口与物理宿主直接对齐
 - `packages/core/test/core-compat-boundary.test.ts` 已补上实现层边界检查，当前会阻止 `packages/core/src` 内部重新引用旧平铺 compat 入口
-- `tasking/*`、`data-report/*`
+- `tasking/*`
   - 已成为真实 top-level domain host；后续收敛重点不再是“把它们搬进目录”，而是继续删薄 compat 平铺入口与压缩历史描述
 
 ### 3.1.1 当前 compat 入口状态
@@ -61,10 +61,7 @@
 当前主宿主已经分别位于：
 
 - `tasking/*`
-- `data-report/*`
 - `skills/*`
-- `governance/*`
-- `knowledge/*`
 - `review/*`
 - `skills-search/*`
 - `platform-console/*`
@@ -100,7 +97,7 @@
 - runtime / backend / memory / supervisor / admin 的主链类型消费已改为：
   - `@agent/core` 承接稳定 contract
   - 各宿主本地 `types.ts`、`*-helpers.ts`、`*-architecture-helpers.ts`、`*-records.ts` 承接 aggregate、facade 与 compat
-- 原先由 `packages/shared` 承接的 `runtime-centers*`、`console-centers*`、`skills-sources`、`data-report contract`、`BootstrapSkillRecord`、`ExecutionPlanRecord` 等 facade / compat 入口，已分别迁回 backend、admin、runtime、supervisor、data-report 或 `@agent/core`
+- 原先由 `packages/shared` 承接的 `runtime-centers*`、`console-centers*`、`skills-sources`、`data-report contract`、`BootstrapSkillRecord`、`ExecutionPlanRecord` 等 facade / compat 入口，已分别迁回 backend、admin、runtime、supervisor、`@agent/agents-data-report` 或 `@agent/core`
 - 最新全仓结果已经满足：
   - `packages/shared` 之外的源码与测试文件对 `@agent/shared` 的 import 为 `0`
   - 业务包 `package.json` 不再声明 `@agent/shared`
@@ -140,7 +137,7 @@
 
 补充：
 
-- backend、runtime、memory、supervisor、agent-admin、skill-runtime 都已经建立各自的本地 facade / aggregate / helper 宿主
+- backend、runtime、memory、supervisor、agent-admin、skill 都已经建立各自的本地 facade / aggregate / helper 宿主
 - 这些宿主中的业务文件不再直接从 `@agent/shared` 导入稳定 contract 或 aggregate record
 - 后续若继续重构，应优先删薄这些宿主本地 compat 层，而不是重新引入公共 shared 包
 - `apps/backend/agent-server/src/runtime/*`
@@ -149,7 +146,7 @@
 - `packages/memory/src/repositories/runtime-state-repository.ts`
   - 最新继续清理后，业务文件中的 shared 直连已清到 `0`
   - 当前剩余 shared 命中只来自宿主内 `runtime-state-task.types.ts` 这一层 aggregate 适配
-- `packages/skill-runtime/src/*`
+- `packages/skill/src/*`
   - 最新继续清理后，业务文件中的 shared 直连已清到 `0`
 - `apps/frontend/agent-admin/src/types/admin/*`
   - 最新继续清理后，业务类型文件中的 shared 直连已清到 `0`
@@ -223,11 +220,11 @@
 - `tasking-chat.ts`、`tasking-task-record.ts` 的 overlay
 - `primitives.ts` 中真实 shared-facing widening
 
-## 5. 本轮修正的规范认知
+## 5. 已修正的规范认知
 
-本轮确认并修正了两类容易误导后续 AI 的问题：
+当前已修正两类容易误导后续 AI 的问题：
 
-- `docs/conventions/package-architecture-guidelines.md` 里还残留旧 `agent-core` 说法，需要同步更新成 `runtime / agents/*`
+- `docs/conventions/package-architecture-guidelines.md` 不再把已删除的 `packages/agent-core` 当作当前包边界模板；当前实现入口收敛到 `runtime / agents/*`
 - `docs/packages/core/current-core-package-audit.md` 旧版本里对 `packages/core/package.json` 依赖状态的描述已经过时，不能继续保留
 
 ## 6. 后续收敛优先级

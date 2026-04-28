@@ -1,4 +1,4 @@
-import { IntelSignalSchema, type IntelSignal } from '@agent/core';
+import { IntelSignalSchema, type IntelSignal } from '../../../types';
 
 import type { PatrolGraphState } from '../schemas/patrol-graph-state.schema';
 

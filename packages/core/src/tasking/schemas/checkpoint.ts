@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { EvidenceRecordSchema } from '../../memory';
 import {
   ApprovalRecordSchema,
   ApprovalScopePolicyRecordSchema,
   ToolAttachmentRecordSchema,
   ToolUsageSummaryRecordSchema
-} from '../../governance';
+} from './governance-fields';
+import { EvidenceRecordSchema } from './memory-fields';
 import { PlatformApprovalInterruptRecordSchema } from '../../platform-console';
 import {
   AgentExecutionStateSchema,
@@ -36,7 +36,7 @@ import {
   PlanDraftRecordSchema,
   PlanModeTransitionRecordSchema
 } from './planning';
-import { BudgetStateSchema, LearningEvaluationRecordSchema } from '../../knowledge';
+import { BudgetStateSchema, LearningEvaluationRecordSchema } from './knowledge-fields';
 import {
   TaskBackgroundLearningStateSchema,
   TaskCheckpointCursorStateSchema,

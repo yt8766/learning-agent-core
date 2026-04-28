@@ -3,7 +3,7 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/knowledge/src/runtime/`
-最后核对：2026-04-24
+最后核对：2026-04-28（2026-04-28 LLM 改写更新）
 
 ## 背景与定位
 
@@ -34,7 +34,7 @@ packages/knowledge/src/
     pipeline/
       run-knowledge-retrieval.ts      ← 函数式主入口 runKnowledgeRetrieval()
     stages/
-      query-normalizer.ts             ← QueryNormalizer 接口
+      query-normalizer.ts             ← QueryNormalizer 接口 + QueryRewriteProvider 接口
       post-processor.ts               ← RetrievalPostProcessor 接口
       context-assembler.ts            ← ContextAssembler 接口
     defaults/
@@ -43,6 +43,8 @@ packages/knowledge/src/
       default-post-processor.ts       ← score > 0 过滤 + topK trim
       default-context-assembler.ts    ← 拼接 [N] title\ncontent
       retrieval-runtime-defaults.ts   ← DEFAULT_RETRIEVAL_LIMIT = 5 等常量
+    normalizers/
+      llm-query-normalizer.ts         ← LlmQueryNormalizer：LLM 改写 + 失败降级
     types/
       retrieval-runtime.types.ts      ← KnowledgeRetrievalResult / Diagnostics / NormalizedRetrievalRequest
     local-knowledge-facade.ts         ← 实现 KnowledgeRetrievalRuntime，默认内存存储
@@ -74,7 +76,30 @@ interface KnowledgeRetrievalRunOptions {
 function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOptions): Promise<KnowledgeRetrievalResult>;
 ```
 
-### 结果类型
+### QueryRewriteProvider（LLM 改写注入点）
+
+```ts
+/** 调用方注入的 LLM 改写能力。失败时 normalizer 会静默降级，不中断检索。 */
+interface QueryRewriteProvider {
+  rewrite(query: string): Promise<string>;
+}
+```
+
+`QueryRewriteProvider` 是轻量 adapter 接口，目的是让调用方注入任意 LLM（OpenAI / Anthropic / 内部 model router 均可），而不把具体 SDK 绑定进 `packages/knowledge`。
+
+### LlmQueryNormalizer
+
+```ts
+class LlmQueryNormalizer implements QueryNormalizer {
+  constructor(provider: QueryRewriteProvider, fallbackNormalizer?: QueryNormalizer);
+  normalize(request: RetrievalRequest): Promise<NormalizedRetrievalRequest>;
+}
+```
+
+- 先调用 `provider.rewrite(query)` 进行语义改写
+- 失败时（任何错误/reject）静默降级到 `fallbackNormalizer`（默认 `DefaultQueryNormalizer`）
+- 降级路径不会 throw，不影响主检索流程
+- 可通过 `pipeline.queryNormalizer` 单个注入，也可组合进串联数组
 
 ```ts
 interface KnowledgeRetrievalResult {
@@ -98,7 +123,7 @@ interface KnowledgeRetrievalResult {
 
 ## Schema 复用策略
 
-所有稳定 contract（`RetrievalRequest` / `RetrievalResult` / `RetrievalHit` / `Citation`）全部来自 `@agent/core`，不重新定义。运行时专属类型（`KnowledgeRetrievalResult` / `RetrievalDiagnostics` / `NormalizedRetrievalRequest`）放在 `runtime/types/`，不放进 core。
+所有知识检索稳定 contract（`RetrievalRequest` / `RetrievalResult` / `RetrievalHit` / `Citation`）全部来自 `@agent/knowledge` 的本包 `contracts/`，不再从 `@agent/core` 消费。运行时专属类型（`KnowledgeRetrievalResult` / `RetrievalDiagnostics` / `NormalizedRetrievalRequest`）放在 `runtime/types/`，不放进 core。
 
 ## 命名约定
 
@@ -111,24 +136,42 @@ interface KnowledgeRetrievalResult {
 ## 使用示例
 
 ```ts
-import { LocalKnowledgeFacade, runKnowledgeRetrieval } from '@agent/knowledge';
+import { LocalKnowledgeFacade, LlmQueryNormalizer, runKnowledgeRetrieval } from '@agent/knowledge';
 
-// 方式一：facade.retrieve（走默认 pipeline）
+// 方式一：facade.retrieve（走默认 pipeline，不含 LLM 改写）
 const facade = new LocalKnowledgeFacade();
 const result = await facade.retrieve({ query: 'retrieval pipeline' });
 
-// 方式二：runKnowledgeRetrieval 自定义 pipeline + context assembly
-const fullResult = await runKnowledgeRetrieval({
+// 方式二：注入 LLM 改写（实现 QueryRewriteProvider 接口）
+class MyLlmProvider {
+  async rewrite(query: string): Promise<string> {
+    // 调用自己的 LLM router / OpenAI / Anthropic，返回改写后 query
+    return callMyLlm(query);
+  }
+}
+
+const llmNormalizer = new LlmQueryNormalizer(new MyLlmProvider());
+
+const llmResult = await runKnowledgeRetrieval({
   request: { query: 'How do I improve retrieval quality?' },
   searchService: facade.searchService,
   assembleContext: true,
   includeDiagnostics: true,
   pipeline: {
-    postProcessor: customReranker // 注入自定义 reranker
+    queryNormalizer: llmNormalizer
   }
 });
-// fullResult.contextBundle → prompt-ready 字符串
-// fullResult.diagnostics  → 运行时诊断信息
+
+// 方式三：串联多个 normalizer（数组顺序执行，前一个输出作为后一个输入）
+const chainedResult = await runKnowledgeRetrieval({
+  request: { query: 'search quality' },
+  searchService: facade.searchService,
+  pipeline: {
+    queryNormalizer: [llmNormalizer, anotherNormalizer]
+  }
+});
+// chainedResult.contextBundle → prompt-ready 字符串
+// chainedResult.diagnostics  → 运行时诊断信息（含 rewriteApplied / rewriteReason）
 ```
 
 ## 当前已实现
@@ -140,33 +183,41 @@ const fullResult = await runKnowledgeRetrieval({
 - bounded multi-query retrieval
 - 按 `chunkId` 的命中合并
 - richer retrieval diagnostics
+- **LLM-based query rewrite**：通过 `LlmQueryNormalizer` + `QueryRewriteProvider` 接口，失败时自动降级
+- `VectorSearchProvider` 接口（`src/retrieval/vector-search-provider.ts`）
+- `InMemoryVectorSearchProvider`（bigram 余弦相似度，`src/retrieval/in-memory-vector-search-provider.ts`）
+- `VectorKnowledgeSearchService`（Provider + Repo 映射，`src/retrieval/vector-knowledge-search-service.ts`）
+- `rrfFusion`（RRF 纯函数，`src/retrieval/rrf-fusion.ts`）
+- **`HybridKnowledgeSearchService`**（双路并行 + RRF 融合 + 降级，`src/retrieval/hybrid-knowledge-search-service.ts`）
 
 ## 仍未实现
 
 当前默认 runtime 还没有实现这些更重的检索前增强：
 
-- query decomposition
-- HyDE
-- LLM-based rewrite
-- semantic rerank beyond the current post-process hook
+- query decomposition（把一个复合问题拆成多个子查询）
+- HyDE（Hypothetical Document Embeddings：先让 LLM 生成假想文档，再检索最近邻）
+- semantic rerank beyond the current post-process hook（交叉编码器重排）
 
 这些能力仍然建议通过 `QueryNormalizer` / `RetrievalPostProcessor` 的扩展点按需注入。
 
 ## 扩展点
 
-| 场景                     | 注入方式                                                    |
-| ------------------------ | ----------------------------------------------------------- |
-| 接入向量检索             | 替换 `KnowledgeSearchService`                               |
-| 接入 LLM query rewrite   | 实现 `QueryNormalizer` 注入 `pipeline.queryNormalizer`      |
-| 接入语义 reranker        | 实现 `RetrievalPostProcessor` 注入 `pipeline.postProcessor` |
-| 接入 query decomposition | 在 `QueryNormalizer` 中生成结构化 `queryVariants`           |
-| 自定义 context 格式      | 实现 `ContextAssembler` 注入 `pipeline.contextAssembler`    |
+| 场景                     | 注入方式                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| 接入向量检索             | 替换 `KnowledgeSearchService`                                                            |
+| 接入 LLM query rewrite   | 实现 `QueryRewriteProvider` 并构造 `LlmQueryNormalizer`，注入 `pipeline.queryNormalizer` |
+| 串联多个 normalizer      | `pipeline.queryNormalizer` 支持数组，顺序执行                                            |
+| 接入语义 reranker        | 实现 `RetrievalPostProcessor` 注入 `pipeline.postProcessor`                              |
+| 接入 query decomposition | 在 `QueryNormalizer` 中生成结构化 `queryVariants`                                        |
+| 自定义 context 格式      | 实现 `ContextAssembler` 注入 `pipeline.contextAssembler`                                 |
 
 ## 测试
 
 - `packages/knowledge/test/default-query-normalizer.test.ts` — 默认 rewrite / query variants 单元测试
 - `packages/knowledge/test/run-knowledge-retrieval.test.ts` — pipeline runner 单元测试（含 multi-query merge 与 diagnostics）
 - `packages/knowledge/test/local-knowledge-facade-retrieve.test.ts` — facade retrieve 集成测试
+- `packages/knowledge/test/llm-query-normalizer.test.ts` — LLM 改写 + 降级路径单元测试
+- `packages/knowledge/test/query-normalizer-chain.test.ts` — resolveNormalizerChain 串联行为测试
 - `packages/knowledge/demo/retrieval-runtime.ts` — 最小可运行 demo
 
 ## 不属于此包的能力

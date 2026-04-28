@@ -1,5 +1,5 @@
 import type { SkillManifestRecord } from '@agent/core';
-import type { SkillDraftRecord } from '@agent/skill-runtime';
+import type { SkillDraftRecord } from '@agent/skill';
 
 export const WORKSPACE_SKILL_DRAFT_SOURCE_ID = 'workspace-skill-drafts';
 

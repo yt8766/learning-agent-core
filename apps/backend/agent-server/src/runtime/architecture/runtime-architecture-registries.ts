@@ -2,7 +2,7 @@ import { WorkerRegistry } from '@agent/runtime';
 import type { ArchitectureDescriptorRegistryEntry, RuntimeArchitectureRecord } from '@agent/core';
 import type { RuntimeHost } from '../core/runtime.host';
 
-import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../domain/knowledge/runtime-knowledge-store';
 import { createAgentAdminArchitectureRegistryEntry } from './admin-page-architecture.registry';
 import { createAgentArchitectureRegistryEntry } from './agent-runtime-architecture.registry';
 import { createAgentChatArchitectureRegistryEntry } from './chat-workspace-architecture.registry';

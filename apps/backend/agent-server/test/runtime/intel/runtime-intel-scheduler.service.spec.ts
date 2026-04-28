@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { RuntimeIntelSchedulerService } from '../../../src/runtime/intel/runtime-intel-scheduler.service';
+import { RuntimeIntelSchedulerService } from '../../../src/runtime/domain/intel/runtime-intel-scheduler.service';
 
 describe('RuntimeIntelSchedulerService', () => {
   it('starts and stops the Bree scheduler when explicitly enabled', async () => {

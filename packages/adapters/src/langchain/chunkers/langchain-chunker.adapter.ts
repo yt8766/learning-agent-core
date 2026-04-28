@@ -1,5 +1,5 @@
 import type { BaseDocumentTransformer } from '@langchain/core/documents';
-import type { Chunker, Chunk, Document } from '@agent/core';
+import type { Chunk, Chunker, Document } from '@agent/knowledge';
 
 import { mapLangChainSplitToCoreChunk } from '../shared/langchain-chunk.mapper';
 import { mapCoreDocumentToLangChainDocument } from '../shared/langchain-chunk.mapper';

@@ -1,4 +1,4 @@
-import type { JsonObject } from '@agent/core';
+import type { JsonObject } from '@agent/knowledge';
 
 export type ChromaMetadata = Record<string, string | number | boolean>;
 

@@ -1,4 +1,4 @@
-import { MemoryRecord, MemorySearchRequest, MemorySearchResult, ReflectionRecord, RuleRecord } from '@agent/core';
+import { MemoryRecord, MemorySearchRequest, MemorySearchResult, ReflectionRecord, RuleRecord } from '@agent/memory';
 
 import { MemoryRepository } from '../repositories/memory-repository';
 import { RuleRepository } from '../repositories/rule-repository';

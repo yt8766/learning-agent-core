@@ -27,7 +27,6 @@
 ## packages 交接文档
 
 - [adapters-package-handoff.md](/docs/context/adapters-package-handoff.md)
-- [agent-kit-package-handoff.md](/docs/context/agent-kit-package-handoff.md)
 - [config-package-handoff.md](/docs/context/config-package-handoff.md)
 - [core-package-handoff.md](/docs/context/core-package-handoff.md)
 - [evals-package-handoff.md](/docs/context/evals-package-handoff.md)
@@ -36,7 +35,7 @@
 - [platform-runtime-package-handoff.md](/docs/context/platform-runtime-package-handoff.md)
 - [report-kit-package-handoff.md](/docs/context/report-kit-package-handoff.md)
 - [runtime-package-handoff.md](/docs/context/runtime-package-handoff.md)
-- [skill-runtime-package-handoff.md](/docs/context/skill-runtime-package-handoff.md)
+- [skill-package-handoff.md](/docs/context/skill-package-handoff.md)
 - [templates-package-handoff.md](/docs/context/templates-package-handoff.md)
 - [tools-package-handoff.md](/docs/context/tools-package-handoff.md)
 

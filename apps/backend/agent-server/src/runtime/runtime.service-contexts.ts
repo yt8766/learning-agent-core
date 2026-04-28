@@ -22,7 +22,7 @@ import type { RuntimeCentersService } from './centers/runtime-centers.service';
 import type { RuntimePlatformConsoleContext } from './centers/runtime-platform-console.records';
 import type { RuntimeKnowledgeContext } from './services/runtime-knowledge.service';
 import type { RuntimeOperationalStateService } from './services/runtime-operational-state.service';
-import type { RuntimeWenyuanFacade } from './wenyuan/runtime-wenyuan-facade';
+import type { RuntimeWenyuanFacade } from './domain/knowledge/runtime-wenyuan-facade';
 import type { AppLoggerService } from '../logger/app-logger.service';
 
 interface RuntimeServiceContextFactoryParams {

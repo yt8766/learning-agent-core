@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RetrievalRequest } from '@agent/core';
+import type { RetrievalRequest } from '@agent/knowledge';
 
 import {
   DEFAULT_QUERY_VARIANT_LIMIT,

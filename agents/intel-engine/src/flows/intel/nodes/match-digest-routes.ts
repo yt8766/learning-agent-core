@@ -1,4 +1,4 @@
-import type { IntelSignal } from '@agent/core';
+import type { IntelSignal } from '../../../types';
 
 import {
   matchIntelRoutes,

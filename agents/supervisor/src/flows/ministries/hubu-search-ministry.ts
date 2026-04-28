@@ -1,12 +1,5 @@
-﻿import {
-  AgentExecutionState,
-  EvidenceRecord,
-  MemoryRecord,
-  RuleRecord,
-  SkillCard,
-  SpecialistFindingRecord
-} from '@agent/core';
-import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '@agent/agent-kit';
+﻿import { AgentExecutionState, SkillCard, SpecialistFindingRecord } from '@agent/core';
+import { type ExecutionStepRecord, StreamingExecutionCoordinator } from '@agent/runtime';
 
 import { AgentRuntimeContext } from '../../runtime/agent-runtime-context';
 import { type StructuredContractMeta } from '@agent/adapters';
@@ -15,6 +8,7 @@ import { isChatPersonaGoal, MinistryToolCallDecision, ResearchToolId } from './h
 import { createHubuSearchTaskMap } from './hubu-search/hubu-search-task-map';
 import { generateHubuResearchEvidence } from './hubu-search/hubu-search-research-generator';
 import { resolveHubuResearchToolPlan } from './hubu-search/hubu-search-tool-plan';
+import type { EvidenceRecord, MemoryRecord, RuleRecord } from '@agent/memory';
 
 export class HubuSearchMinistry {
   private readonly state: AgentExecutionState;

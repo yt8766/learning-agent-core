@@ -1,12 +1,13 @@
-import { RuntimeStateSnapshot } from '@agent/memory';
+import type { RuntimeStateSnapshot } from '@agent/memory';
 import {
-  ApprovalScopePolicyRecord,
   CapabilityGovernanceProfileRecord,
+  CapabilityGovernanceProfileRecordSchema,
   GovernanceProfileRecord,
-  buildApprovalScopeMatchKey
+  GovernanceProfileRecordSchema
 } from '@agent/core';
 import { McpClientManager } from '@agent/tools';
 
+import { buildApprovalScopeMatchKey, type ApprovalScopePolicyRecord } from '../contracts/governance';
 import {
   aggregateCapabilityGovernanceProfiles,
   aggregateNamedGovernanceProfiles
@@ -160,29 +161,22 @@ export async function syncCapabilityGovernanceProfiles(
   tasks: GovernanceStoreTaskLike[]
 ) {
   const snapshot = await runtimeStateRepository.load();
-  const aggregated = aggregateCapabilityGovernanceProfiles(
-    tasks,
-    snapshot.governance?.capabilityGovernanceProfiles ?? []
-  );
-  const previous = snapshot.governance?.capabilityGovernanceProfiles ?? [];
+  const aggregated = aggregateCapabilityGovernanceProfiles(tasks, getCapabilityGovernanceProfiles(snapshot));
+  const previous = getCapabilityGovernanceProfiles(snapshot);
   const ministryProfiles = aggregateNamedGovernanceProfiles(
     tasks,
     'ministry',
-    snapshot.governance?.ministryGovernanceProfiles ?? []
+    getGovernanceProfiles(snapshot, 'ministry')
   );
-  const workerProfiles = aggregateNamedGovernanceProfiles(
-    tasks,
-    'worker',
-    snapshot.governance?.workerGovernanceProfiles ?? []
-  );
+  const workerProfiles = aggregateNamedGovernanceProfiles(tasks, 'worker', getGovernanceProfiles(snapshot, 'worker'));
   const specialistProfiles = aggregateNamedGovernanceProfiles(
     tasks,
     'specialist',
-    snapshot.governance?.specialistGovernanceProfiles ?? []
+    getGovernanceProfiles(snapshot, 'specialist')
   );
-  const previousMinistryProfiles = snapshot.governance?.ministryGovernanceProfiles ?? [];
-  const previousWorkerProfiles = snapshot.governance?.workerGovernanceProfiles ?? [];
-  const previousSpecialistProfiles = snapshot.governance?.specialistGovernanceProfiles ?? [];
+  const previousMinistryProfiles = getGovernanceProfiles(snapshot, 'ministry');
+  const previousWorkerProfiles = getGovernanceProfiles(snapshot, 'worker');
+  const previousSpecialistProfiles = getGovernanceProfiles(snapshot, 'specialist');
 
   if (
     JSON.stringify(previous) !== JSON.stringify(aggregated) ||
@@ -207,7 +201,7 @@ export async function listCapabilityGovernanceProfiles(runtimeStateRepository: {
   load: () => Promise<RuntimeStateSnapshot>;
 }) {
   const snapshot = await runtimeStateRepository.load();
-  return snapshot.governance?.capabilityGovernanceProfiles ?? [];
+  return getCapabilityGovernanceProfiles(snapshot);
 }
 
 export async function listGovernanceProfiles(
@@ -217,13 +211,30 @@ export async function listGovernanceProfiles(
   kind: GovernanceProfileRecord['entityKind']
 ) {
   const snapshot = await runtimeStateRepository.load();
-  if (kind === 'ministry') {
-    return snapshot.governance?.ministryGovernanceProfiles ?? [];
-  }
-  if (kind === 'worker') {
-    return snapshot.governance?.workerGovernanceProfiles ?? [];
-  }
-  return snapshot.governance?.specialistGovernanceProfiles ?? [];
+  return getGovernanceProfiles(snapshot, kind);
+}
+
+export function getCapabilityGovernanceProfiles(snapshot: RuntimeStateSnapshot): CapabilityGovernanceProfileRecord[] {
+  return (snapshot.governance?.capabilityGovernanceProfiles ?? [])
+    .map(item => CapabilityGovernanceProfileRecordSchema.safeParse(item))
+    .filter((result): result is { success: true; data: CapabilityGovernanceProfileRecord } => result.success)
+    .map(result => result.data);
+}
+
+export function getGovernanceProfiles(
+  snapshot: RuntimeStateSnapshot,
+  kind: GovernanceProfileRecord['entityKind']
+): GovernanceProfileRecord[] {
+  const records =
+    kind === 'ministry'
+      ? snapshot.governance?.ministryGovernanceProfiles
+      : kind === 'worker'
+        ? snapshot.governance?.workerGovernanceProfiles
+        : snapshot.governance?.specialistGovernanceProfiles;
+  return (records ?? [])
+    .map(item => GovernanceProfileRecordSchema.safeParse(item))
+    .filter((result): result is { success: true; data: GovernanceProfileRecord } => result.success)
+    .map(result => result.data);
 }
 
 export async function listApprovalScopePolicies(runtimeStateRepository: { load: () => Promise<RuntimeStateSnapshot> }) {

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { getFrontendTemplate, resolveFrontendTemplateDir } from '@agent/templates';
 
+import { BONUS_CENTER_BLUEPRINT_TEMPLATE, resolveBonusCenterBlueprintDir } from './bonus-center-data';
 import { collectBonusCenterTemplateEntries, findMatchedBonusCenterEntry } from './data-report-blueprint-template';
 
 export type DataReportScope = 'single' | 'multiple' | 'shell-first';
@@ -190,6 +191,14 @@ function listTemplateFiles(rootDir: string, currentDir = rootDir): string[] {
   return files.sort();
 }
 
+function getDataReportTemplate(templateId: string) {
+  return templateId === 'bonus-center-data' ? BONUS_CENTER_BLUEPRINT_TEMPLATE : getFrontendTemplate(templateId);
+}
+
+function resolveDataReportTemplateDir(templateId: string) {
+  return templateId === 'bonus-center-data' ? resolveBonusCenterBlueprintDir() : resolveFrontendTemplateDir(templateId);
+}
+
 function buildBonusCenterModules(templateDir: string, routeName: string): DataReportModuleBlueprint[] {
   const componentsDir = join(templateDir, 'pages', 'dataDashboard', 'bonusCenterData', 'components');
   return readdirSync(componentsDir, { withFileTypes: true })
@@ -232,8 +241,8 @@ export function buildDataReportBlueprint(params: {
 }): DataReportBlueprintResult {
   const templateRef = resolveTemplate(params.goal, params.taskContext);
   const templateId = resolveTemplateId(params.goal, params.taskContext, params.templateId);
-  const template = getFrontendTemplate(templateId);
-  const templateDir = resolveFrontendTemplateDir(templateId);
+  const template = getDataReportTemplate(templateId);
+  const templateDir = resolveDataReportTemplateDir(templateId);
   const templateEntries =
     templateId === 'bonus-center-data' && templateDir ? collectBonusCenterTemplateEntries(templateDir) : [];
   const structuredIntent = extractStructuredReportIntent(params.goal, params.taskContext);

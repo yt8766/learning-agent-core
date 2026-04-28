@@ -17,6 +17,7 @@
 - `ReviewerAgent`
 - `XingbuReviewMinistry`
 - review prompt、review schema、critique / specialist finding 相关输出规范
+- `agents/reviewer/src/types/*` 承接 reviewer 领域 schema/helper，并通过 `@agent/agents-reviewer` 根入口公开
 - 根入口导出的 agent、ministry、prompt、schema 已有专门 root export 测试锁定
 
 优先阅读：

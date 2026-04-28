@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { getFrontendTemplate, resolveFrontendTemplateDir } from '@agent/templates';
 
+import { BONUS_CENTER_BLUEPRINT_TEMPLATE, resolveBonusCenterBlueprintDir } from '../blueprints/bonus-center-data';
+import { BONUS_CENTER_SINGLE_REPORT_PAGE_TEMPLATE } from '../blueprints/bonus-center-data/single-report-page-template';
 import {
   buildDataReportBlueprint,
   inferSingleReportStructure,
@@ -85,12 +87,7 @@ function buildSingleReportPageContent(params: {
   serviceExportName: string;
   tableTypeName: string;
 }) {
-  const templateDir = resolveFrontendTemplateDir('single-report-table');
-  const templatePath = templateDir ? join(templateDir, 'pages', 'dataDashboard', 'generatedReport', 'index.tsx') : '';
-  const raw = templatePath ? readFileSync(templatePath, 'utf8') : '';
-
-  return raw
-    .split('__SERVICE_EXPORT__')
+  return BONUS_CENTER_SINGLE_REPORT_PAGE_TEMPLATE.split('__SERVICE_EXPORT__')
     .join(params.serviceExportName)
     .split('__ROUTE_NAME__')
     .join(params.routeName)
@@ -131,8 +128,10 @@ export interface ReportTableRow {
 }
 
 function buildTemplateFiles(baseDir: string, templateId: string) {
-  const template = getFrontendTemplate(templateId);
-  const templateDir = resolveFrontendTemplateDir(templateId);
+  const template =
+    templateId === 'bonus-center-data' ? BONUS_CENTER_BLUEPRINT_TEMPLATE : getFrontendTemplate(templateId);
+  const templateDir =
+    templateId === 'bonus-center-data' ? resolveBonusCenterBlueprintDir() : resolveFrontendTemplateDir(templateId);
   if (!template || !templateDir) {
     return [] as DataReportScaffoldFile[];
   }

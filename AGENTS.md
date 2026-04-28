@@ -107,7 +107,7 @@
 
 ### 运行时技能
 
-- 目录：`packages/skill-runtime`
+- 目录：`packages/skill`
 - 作用：服务端运行时的技能注册、技能卡、技能领域模型
 
 ### 代理技能
@@ -130,7 +130,7 @@
 约束：
 
 - 每个代理技能目录必须有 `SKILL.md`
-- 不要把代理技能写进 `packages/skill-runtime`
+- 不要把代理技能写进 `packages/skill`
 - 不要把运行时 skill card/registry 写进 `.agents/skills/`
 
 ## 5. 共享模型与执行策略
@@ -191,7 +191,7 @@
 - 稳定 contract 默认收敛到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 主实现必须落在真实宿主，不允许重新引入第二个 shared 包层。
 - `packages/core` 默认采用 schema-first：所有稳定 JSON / DTO / event / payload contract 必须先定义 schema，再通过 `z.infer<typeof Schema>` 推导类型；不要继续在 `core` 新增只有 interface/type、没有 schema 的长期公共 contract。
 - 发现稳定 contract 与运行时聚合/展示类型混放时，必须继续拆成 `core stable contract + 宿主本地 aggregate/facade`，禁止把 compat 重新堆回公共包。
-- `helper / workflow / prompt / bootstrap registry` 的主实现必须落在真实宿主，不允许迁进 `packages/core` 伪共享；默认落点为 `agents/supervisor`、`packages/runtime`、`packages/skill-runtime` 等真实业务包。
+- `helper / workflow / prompt / bootstrap registry` 的主实现必须落在真实宿主，不允许迁进 `packages/core` 伪共享；默认落点为 `agents/supervisor`、`packages/runtime`、`packages/skill` 等真实业务包。
 - 如需兼容历史入口，只允许在真实宿主或应用本地保留 thin compat re-export，不允许恢复 `@agent/shared` 包名。
 - 对外暴露的模块必须先定义清晰边界：输入、输出、错误语义、版本兼容策略，再落具体实现；禁止先把实现写散，再事后补接口包装。
 - 涉及跨包、跨模块、前后端、graph 与 tool、service 与 repository 之间的协作时，优先抽象稳定 `contract / adapter / facade`，避免调用方直接耦合底层细节。
@@ -236,11 +236,13 @@ pnpm --dir apps/backend/agent-server build
 
 - 以后每次完成功能、修复缺陷、调整链路、补齐约束或确认重要联调结论后，必须同步把结果写入文档，不能只改代码不沉淀。
 - 文档必须放在 `docs/<module>/` 目录下，按当前主要改动模块归档：
-- `packages/runtime/*` 与已删除 `packages/agent-core` 的历史迁移文档 -> `docs/archive/agent-core/`
+  - `packages/runtime/*` -> `docs/packages/runtime/`
+  - `agents/*` -> `docs/agents/<agent-name>/` 或对应模块文档目录
   - `apps/backend/*` -> `docs/apps/backend/agent-server/`
   - `apps/frontend/agent-chat/*` -> `docs/apps/frontend/agent-chat/`
   - `apps/frontend/agent-admin/*` -> `docs/apps/frontend/agent-admin/`
   - 跨模块链路说明可放在 `docs/integration/`
+- 已删除包的历史迁移资料才允许放入 `docs/archive/`；不要再为已删除的 `packages/agent-core` 新增“当前实现”文档，也不要把 archive 子目录当作当前阅读入口。
 - 不允许把新的模块专项文档继续平铺在 `docs/` 根目录；根目录只保留总览、全局规范、架构类文档。
 - 新文档应优先记录：
   - 当前真实生效的实现，而不是理想状态

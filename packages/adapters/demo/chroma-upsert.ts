@@ -3,7 +3,7 @@
  * 演示如何构造 vectors 并 upsert 到 Chroma（无 Chroma 服务时跳过）
  */
 import { ChromaVectorStoreAdapter } from '../src/chroma/stores/chroma-vector-store.adapter';
-import type { Vector } from '@agent/core';
+import type { Vector } from '@agent/knowledge';
 
 async function main() {
   const vectors: Vector[] = [

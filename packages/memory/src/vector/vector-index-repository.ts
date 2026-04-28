@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
-import { MemoryRecord, RuleRecord } from '@agent/core';
+import { MemoryRecord, RuleRecord } from '@agent/memory';
 
 import type { EmbeddingProvider } from '../embeddings/embedding-provider';
 import { loadKnowledgeVectorDocuments, type KnowledgeVectorDocumentRecord } from './knowledge-vector-documents';

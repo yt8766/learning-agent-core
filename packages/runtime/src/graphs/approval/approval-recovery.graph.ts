@@ -1,12 +1,13 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import { ApprovalDecision, ToolExecutionResult } from '@agent/core';
+import { ApprovalDecision } from '@agent/core';
 
 import {
   runApprovalRecoveryFinishNode,
   runExecuteApprovedNode
 } from '../../flows/approval/approval-recovery-graph-nodes';
 import { PendingExecutionContext } from '../../flows/approval';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 type ApprovalDecisionValue = (typeof ApprovalDecision)[keyof typeof ApprovalDecision];
 

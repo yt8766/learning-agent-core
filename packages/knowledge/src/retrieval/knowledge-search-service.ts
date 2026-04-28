@@ -1,4 +1,4 @@
-import type { KnowledgeSource, RetrievalHit, RetrievalRequest, RetrievalResult } from '@agent/core';
+import type { KnowledgeSource, RetrievalHit, RetrievalRequest, RetrievalResult } from '@agent/knowledge';
 
 import type {
   KnowledgeChunkRepository,

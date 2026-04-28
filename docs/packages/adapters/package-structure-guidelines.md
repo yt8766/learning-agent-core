@@ -12,7 +12,7 @@
 `packages/adapters` 是项目的**外部生态双向转化层**，负责：
 
 ```text
-第三方输出 -> 项目稳定契约（@agent/core 类型）
+第三方输出 -> 项目稳定契约（@agent/knowledge indexing 类型）
 项目稳定契约 -> 第三方 SDK 输入
 ```
 
@@ -85,7 +85,7 @@ MCP skills / provider adapter 统一写入 `mcp/<provider>/`。`minimax/`、`zhi
 
 ## 4. 契约来源规范
 
-- **Indexing 契约**（Document / Chunk / Vector / Loader / Chunker / Embedder / VectorStore）定义在 `@agent/core/src/knowledge/indexing/contracts/`
+- **Indexing 契约**（Document / Chunk / Vector / Loader / Chunker / Embedder / VectorStore）定义在 `packages/knowledge/src/contracts/indexing/`，通过 `@agent/knowledge` 消费
 - **LLM 契约**（LlmProvider / ModelCapabilities 等）定义在 `packages/adapters/src/contracts/llm/`
 
 ## 5. 第三方类型隔离原则

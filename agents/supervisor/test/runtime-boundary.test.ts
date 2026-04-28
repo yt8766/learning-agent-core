@@ -1,14 +1,22 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 const FORBIDDEN_RUNTIME_IMPORT_PATTERNS = [
   /packages\/runtime\/src/,
-  /@agent\/runtime\//,
   /runtime\/agent-bridges/,
-  /from ['"]@agent\/runtime['"]/
+  new RegExp(String.raw`from ['"]@agent\/${['agent', 'kit'].join('-')}(?:\/[^'"]+)?['"]`)
 ];
+
+const EXPECTED_RUNTIME_IMPORTS_BY_FILE = new Map([
+  ['agent-runtime-context.ts', '@agent/runtime'],
+  ['temporal-context.ts', '@agent/runtime'],
+  ['hubu-search-ministry.ts', '@agent/runtime'],
+  ['hubu-search-task-map.ts', '@agent/runtime'],
+  ['hubu-web-search.ts', '@agent/runtime'],
+  ['hubu-memory-search.ts', '@agent/runtime']
+]);
 
 async function collectTsFiles(rootDir: string): Promise<string[]> {
   const entries = await readdir(rootDir, { withFileTypes: true });
@@ -29,19 +37,20 @@ async function collectTsFiles(rootDir: string): Promise<string[]> {
 }
 
 describe('@agent/agents-supervisor shared agent foundation boundary', () => {
-  it('depends on shared agent foundations only through the @agent/agent-kit root entry', async () => {
+  it('depends on shared agent foundations only through @agent/runtime root or published subpaths', async () => {
     const srcRoot = join(process.cwd(), 'agents', 'supervisor', 'src');
     const files = await collectTsFiles(srcRoot);
     const violations: string[] = [];
 
     for (const file of files) {
       const content = await readFile(file, 'utf8');
-      if (content.includes("from '@agent/agent-kit'") || content.includes('from "@agent/agent-kit"')) {
-        const sanitized = content.replaceAll("from '@agent/agent-kit'", '').replaceAll('from "@agent/agent-kit"', '');
-        if (FORBIDDEN_RUNTIME_IMPORT_PATTERNS.some(pattern => pattern.test(sanitized))) {
-          violations.push(relative(srcRoot, file));
-        }
-        continue;
+      const runtimeImports = [...content.matchAll(/from ['"](@agent\/runtime(?:\/[^'"]+)?)['"]/g)].map(
+        match => match[1]
+      );
+      const expectedRuntimeImport = EXPECTED_RUNTIME_IMPORTS_BY_FILE.get(basename(file));
+
+      if (expectedRuntimeImport && !runtimeImports.includes(expectedRuntimeImport)) {
+        violations.push(`${relative(srcRoot, file)} -> missing ${expectedRuntimeImport} import`);
       }
 
       if (FORBIDDEN_RUNTIME_IMPORT_PATTERNS.some(pattern => pattern.test(content))) {

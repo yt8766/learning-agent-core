@@ -1,4 +1,4 @@
-import { AgentRole, type ToolUsageSummaryRecord, type AgentRoleValue, type RouterMinistryLike } from '@agent/core';
+import { AgentRole, type AgentRoleValue, type RouterMinistryLike } from '@agent/core';
 import { Annotation, BaseCheckpointSaver, END, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../../flows/approval';
@@ -8,6 +8,7 @@ import {
   runDirectReplySkillGateNode
 } from '../../../../flows/chat/direct-reply/direct-reply-interrupt-nodes';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
+import type { ToolUsageSummaryRecord } from '@agent/runtime';
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across direct-reply resumes.
 export interface DirectReplyInterruptGraphState {
   taskId: string;

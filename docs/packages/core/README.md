@@ -3,11 +3,11 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/core/`
-最后核对：2026-04-22
+最后核对：2026-04-28
 
 本目录用于沉淀 `packages/core` 相关文档。
 
-`packages/core` 在本仓库里不是业务实现层，也不是 graph/runtime 编排层，而是稳定 contract facade。它优先回答的是“跨包怎么对齐边界”，不是“业务怎么跑起来”。
+`packages/core` 在本仓库里不是业务实现层，也不是 graph/runtime 编排层，而是跨域稳定 contract facade。它优先回答的是“跨包怎么对齐边界”，不是“业务怎么跑起来”。
 
 包边界：
 
@@ -34,8 +34,8 @@
 
 当前现实：
 
-- `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖；`DataReportBlueprintResultSchema` 这类稳定结构可留在 core，但 blueprint/scaffold/write/template resolve 实现必须留在 `packages/report-kit`
-- `packages/core` 已经不只是迁移期 facade；当前源码中已经承载 provider interface、memory schema、approval / review schema 以及多组稳定类型入口
+- `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖；data-report 领域 schema/contract 已整体下沉到 `agents/data-report/src/types/`，blueprint/scaffold/write/template resolve 实现继续留在 `packages/report-kit`
+- `packages/core` 已经不只是迁移期 facade；当前源码中承载 provider interface、tasking/channel 稳定字段以及多组跨域 contract 入口。`data-report` 领域 schema/contract 已下沉到 `agents/data-report/src/types/`，`intel` 领域 schema 已下沉到 `agents/intel-engine/src/types/`，`review` 领域 schema/helper 已下沉到 `agents/reviewer/src/types/`，core 只继续保留 tasking 中的通用 review record / specialist finding record 结构。
 - `packages/core/src/tasking/schemas/planning.ts` + `packages/core/src/tasking/types/planning.ts`
   - 已开始承接 tasking planning 子域的 schema-first 主定义，当前覆盖 plan question / decision / draft / mode transition，以及 `EntryDecisionRecord` / `ExecutionPlanRecord` / `PartialAggregationRecord`；最近一轮已把 counselor selector、imperial direct intent、partial aggregation policy、question set、micro budget 等匿名结构提为具名子 schema
 - `packages/core/src/tasking/schemas/orchestration.ts` + `packages/core/src/tasking/types/orchestration.ts`
@@ -75,6 +75,8 @@
   - 当前承接 checkpoint 主体与 checkpoint wrapper 的 schema-first 主定义，覆盖 checkpoint metadata / pending approvals / agent states / checkpoint record；checkpoint 上的 `externalSources`、`llmUsage`、预算/治理/黑板/技能执行等稳定状态字段已改为引用 core-hosted 子 schema；最近一轮已把 cursor fields、shared refs、specialist state 提为具名子 schema，并把 `requestedHints / capabilityAttachments / activeInterrupt / interruptHistory` 接回正式 schema
 - `packages/core/src/tasking/schemas/task-record.ts` + `packages/core/src/tasking/types/task-record.ts`
   - 当前承接 task 主体的 schema-first 主定义，作为 `TaskRecord` 的稳定主宿主；当前已覆盖 task 主体骨架、`externalSources` / `learningCandidates`、`llmUsage` 以及多组预算/治理/黑板/技能执行稳定聚合字段，剩余高变嵌套字段继续按兼容 schema 逐步精细化；最近一轮已开始复用 checkpoint 的 specialist/shared-ref/agent-output 子 schema，并补出 task execution state 与 planning state 的具名聚合 schema
+- `packages/core/src/tasking/schemas/memory-fields.ts` + `packages/core/src/tasking/schemas/knowledge-fields.ts`
+  - 仅承接 checkpoint / task record / channel DTO 仍需复用的轻量稳定字段，例如 `EvidenceRecordSchema`、`LearningCandidateRecordSchema`、`MemoryScopeTypeSchema`、`MemoryTypeSchema`、`BudgetStateSchema` 与 `LearningEvaluationRecordSchema`。这些文件不是 `packages/core/src/memory` 或 `packages/core/src/knowledge` 的 compat 替代品，后续不得用它们恢复领域 repository/search/runtime contract。
 - 历史上的 `packages/shared` tasking/primitives facade 已退场；当前应直接阅读 `packages/core` 与对应宿主本地 facade/aggregate 类型层
 - `packages/core/src/skills/schemas/*` + `packages/core/src/skills/types/skills.types.ts`
   - `skills` 子域现已具备真实 top-level domain host，由 `capability / safety / catalog / registry` 四组 schema 文件与统一类型宿主承接；旧平铺 `spec/types` 入口已删除
@@ -83,18 +85,18 @@
   - 当前已进一步承接 task runtime decoration，`requestedHints`、interrupt 历史、capability augmentations/attachments、current skill execution、learning evaluation、skill search 等字段已接回正式 schema
   - 本轮又继续收紧了一批此前还是 `z.any()` 的运行时支撑字段，checkpoint / task record 现在已经复用明确 schema 来描述 tool attachment / usage、execution trace、context filter、guardrail、critic、sandbox、knowledge ingestion/index、evaluation report、internal sub-agent
   - `ToolAttachmentRecord.ownerType` 现已与 capability ownership 主契约对齐，统一接受 `shared`、`ministry-owned`、`specialist-owned`、`imperial-attached`、`temporary-assignment`、`user-attached`、`runtime-derived`；后续 runtime/backend/memory 不应再各自维护缩窄副本
-- `packages/core/src/data-report/schemas/*` + `packages/core/src/data-report/types/*`
-  - `data-report` 子域现已具备真实 top-level domain host，`data-report` / `data-report-json` / `data-report-json-schema` 的 schema 与类型实现均已从平铺 compat 入口收回该目录；旧平铺 `spec/types` 入口已删除
-- `packages/core/src/knowledge/*`
-  - `knowledge` 子域现已拆成 `schemas / types / helpers` 三层，`BudgetState`、`LearningEvaluationRecord` 与 evidence 判定 helper 均已物理落到该域；旧平铺 `spec/types` 入口已删除
-- `packages/core/src/governance/*`
-  - `governance` 子域现已拆成 `schemas / types / helpers` 三层，稳定 policy / capability / approval scope contract 与 matcher helper 已物理落位；旧平铺 `spec/types` 入口已删除
-- `packages/core/src/review/*`
-  - `review` 子域现已拆成 `schemas / helpers` 两层，`specialist-finding` / `critique-result` 主 schema 与 normalize helper 已从旧 shared 命名完全迁入该域
+- `agents/data-report/src/types/schemas/*` + `agents/data-report/src/types/contracts/*`
+  - `data-report` 子域现已从 core 下沉到真实 agent 宿主；`ReportBundle`、`DataReportJsonBundle`、data-report graph state 与 json graph state 均通过 `@agent/agents-data-report` 公开入口消费。`packages/core/src/data-report/*` 与 `packages/core/src/contracts/data-report/*` 已删除，后续不要在 core 恢复 data-report 领域 contract。
+- `packages/knowledge/src/contracts/*` 与 `packages/memory/src/contracts/*`
+  - `knowledge` / `memory` 领域 contract 已从 core 旧目录下沉到真实宿主；`packages/core/src/knowledge/*` 与 `packages/core/src/memory/*` 已删除，后续不要恢复 compat barrel。知识检索、索引、预算/学习评估类 contract 通过 `@agent/knowledge` 消费；记忆、规则、证据、学习候选与 active-memory tool contract 通过 `@agent/memory` 消费。
+- `packages/runtime/src/contracts/governance/*` 与 `packages/tools/src/contracts/*`
+  - governance / tools 领域 contract 已从 core 旧目录下沉到真实宿主；`packages/core/src/governance/*` 与 `packages/core/src/tools/*` 已删除，后续不要恢复 compat barrel。core 内 task/checkpoint 所需的审批记录、tool attachment、tool usage 等稳定字段只保留在 `packages/core/src/tasking/schemas/governance-fields.ts`。
+- `agents/reviewer/src/types/*`
+  - `review` 子域的 `specialist-finding` / `critique-result` 主 schema 与 normalize helper 已下沉到 reviewer 真实宿主；消费方应通过 `@agent/agents-reviewer` 的公开入口使用这些领域 contract。`packages/core/src/tasking/*` 仍保留跨主链稳定的 review record / specialist finding record。
 - `packages/core/src/skills/schemas/*` + `packages/core/src/skills/types/skills.types.ts`
   - 当前除 capability / attachment / governance profile 外，也已开始承接 `SkillTriggerReason`、`LocalSkillSuggestionRecord`、`SkillSearchStateRecord` 这组稳定 skill search 主契约；`tasking-checkpoint.ts` 与 `tasking-task-record.ts` 已开始直接复用
 - `packages/core/src/contracts/platform-console/index.ts`
-  - 当前 contracts 出口已开始按 `chat / ministries / execution / architecture / platform-console / approval / data-report` 聚合；`SharedPlatformConsoleRecord` 这类 generic aggregation shell 仍属于 contracts 终态例外，除非后续确认它本身要进入稳定 JSON/API 边界，否则不应强行 schema-first 化
+  - 当前 contracts 出口已开始按 `chat / ministries / execution / architecture / platform-console / approval` 聚合；`data-report` 已迁到 `@agent/agents-data-report`。`SharedPlatformConsoleRecord` 这类 generic aggregation shell 仍属于 contracts 终态例外，除非后续确认它本身要进入稳定 JSON/API 边界，否则不应强行 schema-first 化
 - `packages/core/src/providers/*`
   - 当前继续作为非 JSON-safe provider 技术契约的真实宿主，承接 `ILLMProvider`、`IEmbeddingProvider`、`IToolProvider` 以及 provider budget / usage / health 共享类型；这层属于稳定 interface contract，不是 provider 实现
 - `packages/core/src/contracts/approval/*` 与 `packages/core/src/contracts/execution/*`
@@ -114,7 +116,7 @@
 
 - `core` 是稳定主 contract 的唯一宿主
 - `shared` 只保留 compat / facade / 展示组合职责
-- `core` 当前应按 `contracts / providers / memory + domain folders` 理解：`tasking / data-report / skills / review / governance / knowledge / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主
+- `core` 当前应按 `contracts / providers + domain folders` 理解：`tasking / skills / review / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主；data-report 已迁到 `@agent/agents-data-report`，knowledge / memory 已迁到 `@agent/knowledge` / `@agent/memory`，governance / tools 已迁到 `@agent/runtime` / `@agent/tools`
 - 后续继续收敛时，优先把剩余仍在平铺 compat 入口后的子域继续迁入 domain folder，而不是继续扩大根级平铺文件数量
 
 建议优先阅读：

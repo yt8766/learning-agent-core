@@ -28,5 +28,5 @@
 补充说明：
 
 - `agents/*` 当前都已经不是占位目录
-- root 级 `agents/*` 默认通过 `@agent/agent-kit` 消费共享 agent foundation，并通过 `@agent/runtime` 消费 runtime facade；不直接依赖 `packages/runtime/src/*` 或 `runtime/agent-bridges/*`
+- root 级 `agents/*` 默认通过 `@agent/runtime` 消费共享 agent foundation 与 runtime facade；不直接依赖 `packages/runtime/src/*` 或 `runtime/agent-bridges/*`
 - 后续涉及 graph / flow / root export 调整时，应同步更新对应 `docs/agents/<domain>/*`

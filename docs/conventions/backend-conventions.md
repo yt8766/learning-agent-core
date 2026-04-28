@@ -118,7 +118,7 @@
 - `module`：只做依赖组织
 - 复杂复用逻辑进入 `packages/*`
 - `RuntimeService` 作为后端运行时门面
-- 官方 Agent 装配统一通过 `@agent/platform-runtime` 进入，backend 只选择装配方案并暴露 Nest 入口
+- 官方 Agent 装配由 `apps/backend/agent-server/src/runtime/agents` 完成，再注入 `@agent/platform-runtime` facade；backend service 只通过 RuntimeHost / facade 消费已装配能力
 
 禁止：
 
@@ -412,11 +412,11 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 - `@agent/platform-runtime`
 - `@agent/memory`
 - `@agent/tools`
-- `@agent/skill-runtime`
+- `@agent/skill`
 
 禁止：
 
-- `../../../../../packages/agent-core/src/...`
+- `../../../../../packages/<pkg>/src/...`
 - `../build/...`
 - `../dist/...`
 

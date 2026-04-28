@@ -1,9 +1,9 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/core';
+import type { ToolExecutionRequest } from '@agent/runtime';
 
-import { toWorkspacePath } from '../../sandbox/sandbox-executor-utils';
+import { toWorkspacePath } from '@agent/runtime';
 
 export async function executeRuntimeGovernanceTool(request: ToolExecutionRequest) {
   switch (request.toolName) {

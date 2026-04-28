@@ -20,7 +20,7 @@ import type {
   RuntimePlatformConsoleContext
 } from '../centers/runtime-platform-console.records';
 import { RuntimeOperationalStateService } from '../services/runtime-operational-state.service';
-import { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
+import { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
 import { RuntimeTechBriefingService } from '../briefings/runtime-tech-briefing.service';
 import type { AppLoggerService } from '../../logger/app-logger.service';
 import type { RuntimeHost } from './runtime.host';

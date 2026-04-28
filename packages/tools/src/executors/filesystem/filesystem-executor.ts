@@ -1,9 +1,9 @@
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, relative } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/core';
+import type { ToolExecutionRequest } from '@agent/runtime';
 
-import { collectFiles, toWorkspacePath } from '../../sandbox/sandbox-executor-utils';
+import { collectFiles, toWorkspacePath } from '@agent/runtime';
 
 export async function executeFilesystemTool(request: ToolExecutionRequest) {
   switch (request.toolName) {

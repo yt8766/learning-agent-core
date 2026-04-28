@@ -1,5 +1,6 @@
-import type { EvidenceRecord } from '@agent/core';
-import { inferTrustClass, mergeEvidence, normalizeInstalledSkillId } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
+import { inferTrustClass, mergeEvidence } from '@agent/knowledge';
+import { normalizeInstalledSkillId } from '@agent/knowledge';
 
 import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 

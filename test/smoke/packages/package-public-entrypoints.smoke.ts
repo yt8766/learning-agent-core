@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as adapters from '@agent/adapters';
-import * as agentKit from '@agent/agent-kit';
 import * as config from '@agent/config';
 import * as core from '@agent/core';
 import * as evals from '@agent/evals';
@@ -13,7 +12,7 @@ import * as memory from '@agent/memory';
 import * as platformRuntime from '@agent/platform-runtime';
 import * as reportKit from '@agent/report-kit';
 import * as runtime from '@agent/runtime';
-import * as skillRuntime from '@agent/skill-runtime';
+import * as skillRuntime from '@agent/skill';
 import * as templates from '@agent/templates';
 import * as tools from '@agent/tools';
 
@@ -23,8 +22,10 @@ describe('packages public entrypoints smoke', () => {
   it('keeps critical package root exports loadable through @agent/* aliases', () => {
     expect(core.ChatEventRecordSchema).toBeDefined();
     expect(runtime.createAgentGraph).toBeDefined();
-    expect(agentKit.BaseAgent).toBeDefined();
-    expect(platformRuntime.listWorkflowPresets).toBeDefined();
+    expect(runtime.BaseAgent).toBeDefined();
+    expect(runtime.createMediaProviderRegistry).toBeDefined();
+    expect(platformRuntime.createPlatformRuntime).toBeDefined();
+    expect(platformRuntime.StaticAgentRegistry).toBeDefined();
     expect(config.DEFAULT_DATA_PATHS).toBeDefined();
     expect(evals.evaluateExecution).toBeDefined();
     expect(knowledge.runKnowledgeRetrieval).toBeDefined();

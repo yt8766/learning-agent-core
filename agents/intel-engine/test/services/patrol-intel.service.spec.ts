@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { attachSignalSources } from '../../src/flows/intel/nodes/attach-signal-sources';
 import { createIntelRepositories } from '../../src/runtime/storage/intel.repositories';
-import { executePatrolIntelRun } from '../../src/services/patrol-intel.service';
+import { executePatrolIntelRun } from '../../src/runtime/execution/patrol-intel-run';
 
 describe('executePatrolIntelRun', () => {
   const tempDirs: string[] = [];

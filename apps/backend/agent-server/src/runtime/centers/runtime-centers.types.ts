@@ -6,7 +6,7 @@ import type { RuntimeHost } from '../core/runtime.host';
 import type { RuntimePlatformConsoleContext } from './runtime-platform-console.records';
 import type { RuntimeSkillInstallContext } from '../skills/runtime-skill-install.service';
 import type { RuntimeSkillSourcesContext } from '../skills/runtime-skill-sources.service';
-import type { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
+import type { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
 import type { RuntimeWorkspaceDraftStore } from './runtime-centers-workspace-drafts';
 
 export interface RuntimeConnectorRegistryContext {

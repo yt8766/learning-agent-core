@@ -37,7 +37,7 @@ describe('@agent/knowledge root exports', () => {
     expect(listKnowledgeArtifacts).toBe(localKnowledgeStoreExports.listKnowledgeArtifacts);
   });
 
-  it('re-exports stable schema-first contracts from @agent/core', () => {
+  it('re-exports stable schema-first contracts from the knowledge package host', () => {
     expect(rootExports.RetrievalRequestSchema).toBe(RetrievalRequestSchema);
     expect(RetrievalRequestSchema.safeParse({ query: 'RAG 是什么' }).success).toBe(true);
   });

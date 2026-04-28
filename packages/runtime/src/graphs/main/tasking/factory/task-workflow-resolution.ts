@@ -1,5 +1,5 @@
 import type { ExecutionPlanMode, RequestedExecutionHints, CreateTaskDto, SpecialistDomain } from '@agent/core';
-import type { EvidenceRecord } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
 import {
   resolveSpecialistRoute,
   resolveWorkflowPreset,

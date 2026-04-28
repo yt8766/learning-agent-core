@@ -1,4 +1,5 @@
-import type { AgentRoleValue, EvaluationResult, ReviewRecord } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { AgentRoleValue, ReviewRecord } from '@agent/core';
 import type { MinistryContractMeta, ReviewMinistryLike } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';

@@ -30,7 +30,7 @@
   - app controller / view model
   - 垂直 agent 私有 prompt 与实现
 - 依赖方向：
-  - 依赖 `@agent/config`、`@agent/core`、`@agent/adapters`、`@agent/memory`、`@agent/tools`、`@agent/skill-runtime`
+  - 依赖 `@agent/config`、`@agent/core`、`@agent/adapters`、`@agent/memory`、`@agent/tools`、`@agent/skill`
   - 当前仍存在对 `agents/*` 的编排依赖，后续应继续向 contract / registry 方向收敛
 - 公开入口：
   - 根入口：`@agent/runtime`
@@ -67,6 +67,7 @@
 
 当前文档：
 
+- [contract-import-boundaries.md](/docs/packages/runtime/contract-import-boundaries.md) — P3-1 后 runtime/backend/agents 的迁出 contract 导入边界
 - [execution-trajectory-factories.md](/docs/packages/runtime/execution-trajectory-factories.md) — Execution Fabric 与 Task Trajectory runtime factories
 - [llm-invocation-lifecycle-plan.md](/docs/packages/runtime/llm-invocation-lifecycle-plan.md) — LLM 前处理、能力注入、token/cost 预检、后处理与计费结算计划
 - [package-structure-guidelines.md](/docs/packages/runtime/package-structure-guidelines.md)

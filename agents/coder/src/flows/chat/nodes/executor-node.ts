@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { ActionIntent, AgentRole, ToolExecutionResult, type ToolDefinition } from '@agent/core';
+import { ActionIntent, AgentRole } from '@agent/core';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 
@@ -21,6 +21,7 @@ import {
   selectPreferredToolNameByWorkflow
 } from './executor-node-tooling';
 import { maybeReadSearchResult } from './executor-node-search-followup';
+import type { ToolDefinition, ToolExecutionResult } from '@agent/runtime';
 
 export class ExecutorAgent extends BaseAgent {
   constructor(context: AgentRuntimeContext) {

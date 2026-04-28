@@ -183,7 +183,7 @@ export default tseslint.config(
             { name: '@agent/tools', message: 'shared 是契约层，禁止依赖 tools。' },
             { name: '@agent/adapters', message: 'core/shared 是契约层，禁止依赖 adapters。' },
             { name: '@agent/memory', message: 'shared 是契约层，禁止依赖 memory。' },
-            { name: '@agent/skill-runtime', message: 'shared 是契约层，禁止依赖 skill-runtime。' }
+            { name: '@agent/skill', message: 'core/shared 是契约层，禁止依赖 skill。' }
           ],
           patterns: packageSrcDeepImportPatterns
         }
@@ -191,7 +191,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ['packages/{tools,model,memory,skill-runtime,report-kit,adapters}/src/**/*.ts'],
+    files: ['packages/{tools,model,memory,skill,report-kit,adapters}/src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -217,7 +217,7 @@ export default tseslint.config(
       'agents/*/src/**/*.{ts,tsx}',
       'apps/backend/agent-server/src/**/*.ts',
       'packages/tools/src/**/*.ts',
-      'packages/skill-runtime/src/**/*.ts'
+      'packages/skill/src/**/*.ts'
     ],
     rules: {
       'no-restricted-imports': [

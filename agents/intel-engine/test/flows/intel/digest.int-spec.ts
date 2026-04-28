@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { IntelSignal, IntelSignalSource } from '@agent/core';
+import type { IntelSignal, IntelSignalSource } from '../../../src/types';
 
 import { DigestGraphStateSchema } from '../../../src/flows/intel/schemas/digest-graph-state.schema';
-import { executeDigestIntelRun } from '../../../src/services/digest-intel.service';
+import { executeDigestIntelRun } from '../../../src/runtime/execution/digest-intel-run';
 
 describe('executeDigestIntelRun', () => {
   it('collects same-day signals, ranks highlights, renders a digest, persists it, and queues digest deliveries', async () => {

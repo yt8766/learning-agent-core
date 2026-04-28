@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DataReportJsonBundleSchema } from '@agent/core';
+import { DataReportJsonBundleSchema } from '../src/types';
 import {
   DataReportAnalysisSchema,
   DataReportComponentPlanSchema,

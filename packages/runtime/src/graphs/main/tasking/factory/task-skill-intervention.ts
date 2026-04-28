@@ -1,5 +1,5 @@
 import { ActionIntent, TaskStatus } from '@agent/core';
-import type { EvidenceRecord } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
 
 import { mergeCapabilityStateFromSkillSearch } from '../../../../capabilities/capability-pool';
 import {

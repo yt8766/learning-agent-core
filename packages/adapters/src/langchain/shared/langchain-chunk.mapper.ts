@@ -1,5 +1,5 @@
 import { Document as LangChainDocument } from '@langchain/core/documents';
-import type { Chunk } from '@agent/core';
+import type { Chunk } from '@agent/knowledge';
 
 import { chunkId } from '../../shared/ids/stable-id';
 import { mergeMetadata } from '../../shared/metadata/merge-metadata';

@@ -1,4 +1,5 @@
-import type { LocalSkillSuggestionRecord, MemoryRecord, RuleRecord } from '@agent/core';
+import type { LocalSkillSuggestionRecord } from '@agent/core';
+import type { MemoryRecord, RuleRecord } from '@agent/memory';
 import { syncCapabilityGovernanceProfiles } from '@agent/runtime';
 
 import { RuntimeCentersContext } from './runtime-centers.types';
@@ -10,7 +11,7 @@ import {
 } from './runtime-learning-evidence-center';
 import type { BuildLearningCenterInput } from './runtime-learning-evidence-center';
 import { resolveLocalSkillSuggestionsWithTimeout } from '../domain/observability/runtime-observability-filters';
-import { ingestLocalKnowledge } from '../knowledge/runtime-knowledge-store';
+import { ingestLocalKnowledge } from '../domain/knowledge/runtime-knowledge-store';
 import { searchLocalSkillSuggestions } from '../skills/runtime-skill-sources.service';
 import {
   normalizeLearningCenterJobs,

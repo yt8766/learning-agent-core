@@ -13,3 +13,5 @@ export * from './thought-graph';
 export * from './checkpoint';
 export * from './task-record';
 export * from './run-observability';
+export * from './memory-fields';
+export * from './knowledge-fields';

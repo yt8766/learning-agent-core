@@ -5,5 +5,5 @@ export type {
   AgentProvider,
   AgentRegistry,
   PlatformAgentDescriptor
-} from '@agent/agent-kit';
+} from '@agent/runtime';
 export type { CreatePlatformRuntimeOptions, PlatformRuntimeFacade } from './platform-runtime-facade';

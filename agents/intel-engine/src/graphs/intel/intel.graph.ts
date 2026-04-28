@@ -6,9 +6,9 @@ import type {
   IntelSourcesConfig
 } from '../../flows/intel/schemas/intel-config.schema';
 import type { IntelRetryDeliveryRecord } from '../../flows/intel/schemas/delivery-retry-graph-state.schema';
-import { executeDigestIntelRun } from '../../services/digest-intel.service';
-import { executePatrolIntelRun } from '../../services/patrol-intel.service';
-import { retryIntelDeliveries } from '../../services/retry-delivery.service';
+import { executeDigestIntelRun } from '../../runtime/execution/digest-intel-run';
+import { executePatrolIntelRun } from '../../runtime/execution/patrol-intel-run';
+import { retryIntelDeliveries } from '../../runtime/execution/retry-intel-deliveries';
 import type { IntelRepositories } from '../../runtime/storage/intel.repositories';
 
 interface IntelMcpClientManager {

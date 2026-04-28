@@ -1,4 +1,4 @@
-import type { AgentToolAlias, AgentToolApprovalMode, ToolRiskLevel } from '@agent/core';
+import type { AgentToolAlias, AgentToolApprovalMode, ToolRiskLevel } from '@agent/tools';
 
 export interface AgentToolApprovalModeInput {
   alias: AgentToolAlias;

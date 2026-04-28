@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { ReflectionRecord } from '@agent/core';
+import { ReflectionRecord } from '@agent/memory';
 
 export interface ReflectionRepository {
   append(record: ReflectionRecord): Promise<void>;

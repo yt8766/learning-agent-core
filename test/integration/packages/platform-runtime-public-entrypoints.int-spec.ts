@@ -3,13 +3,15 @@ import type { ILLMProvider } from '@agent/core';
 
 import { TaskStatusSchema, WorkflowPresetDefinitionSchema, WorkflowVersionRecordSchema } from '@agent/core';
 import { AgentRuntime, getRuntimeAgentDependencies } from '@agent/runtime';
+import { createDefaultPlatformRuntime, createPlatformRuntime } from '@agent/platform-runtime';
 import {
   OFFICIAL_SUPERVISOR_AGENT_ID,
-  createDefaultPlatformRuntime,
   createOfficialAgentRegistry,
-  createOfficialRuntimeAgentDependencies,
-  createPlatformRuntime
-} from '@agent/platform-runtime';
+  listSubgraphDescriptors,
+  listWorkflowPresets,
+  listWorkflowVersions
+} from '../../../apps/backend/agent-server/src/runtime/agents';
+import { createOfficialRuntimeAgentDependencies } from '../../../apps/backend/agent-server/src/runtime/agents/official-runtime-agent-dependencies';
 
 const testLlmProvider: ILLMProvider = {
   providerId: 'workspace-integration-provider',
@@ -23,8 +25,17 @@ const testLlmProvider: ILLMProvider = {
 
 describe('platform runtime public entrypoint integration', () => {
   it('wires the default platform facade into runtime dependencies and core metadata schemas', () => {
+    const agentRegistry = createOfficialAgentRegistry();
+    const agentDependencies = createOfficialRuntimeAgentDependencies({ agentRegistry });
     const facade = createDefaultPlatformRuntime({
-      llmProvider: testLlmProvider
+      llmProvider: testLlmProvider,
+      agentRegistry,
+      agentDependencies,
+      metadata: {
+        listWorkflowPresets,
+        listSubgraphDescriptors,
+        listWorkflowVersions
+      }
     });
 
     const workflowPreset = facade.agentDependencies.resolveWorkflowPreset('请安排一个代码实现任务').preset;
@@ -52,7 +63,12 @@ describe('platform runtime public entrypoint integration', () => {
     const facade = createPlatformRuntime({
       runtime: { name: 'custom-runtime-kernel' },
       agentRegistry,
-      agentDependencies
+      agentDependencies,
+      metadata: {
+        listWorkflowPresets,
+        listSubgraphDescriptors,
+        listWorkflowVersions
+      }
     });
     const supervisor = facade.agentRegistry.findAgentById(OFFICIAL_SUPERVISOR_AGENT_ID);
     const supervisorModule = await supervisor?.createAgent();

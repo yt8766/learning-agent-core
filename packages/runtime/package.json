@@ -26,6 +26,56 @@
         "default": "./build/cjs/agents/base-agent.js"
       }
     },
+    "./agent-registry": {
+      "import": {
+        "types": "./build/types/agents/agent-registry.d.ts",
+        "default": "./build/esm/agents/agent-registry.mjs"
+      },
+      "require": {
+        "types": "./build/types/agents/agent-registry.d.ts",
+        "default": "./build/cjs/agents/agent-registry.js"
+      }
+    },
+    "./agents": {
+      "import": {
+        "types": "./build/types/agents/index.d.ts",
+        "default": "./build/esm/agents/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/agents/index.d.ts",
+        "default": "./build/cjs/agents/index.js"
+      }
+    },
+    "./planner-strategy": {
+      "import": {
+        "types": "./build/types/agents/planner-strategy.d.ts",
+        "default": "./build/esm/agents/planner-strategy.mjs"
+      },
+      "require": {
+        "types": "./build/types/agents/planner-strategy.d.ts",
+        "default": "./build/cjs/agents/planner-strategy.js"
+      }
+    },
+    "./memory": {
+      "import": {
+        "types": "./build/types/memory/index.d.ts",
+        "default": "./build/esm/memory/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/memory/index.d.ts",
+        "default": "./build/cjs/memory/index.js"
+      }
+    },
+    "./media": {
+      "import": {
+        "types": "./build/types/media/index.d.ts",
+        "default": "./build/esm/media/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/media/index.d.ts",
+        "default": "./build/cjs/media/index.js"
+      }
+    },
     "./streaming-execution": {
       "import": {
         "types": "./build/types/runtime/streaming-execution.d.ts",
@@ -34,6 +84,56 @@
       "require": {
         "types": "./build/types/runtime/streaming-execution.d.ts",
         "default": "./build/cjs/runtime/streaming-execution.js"
+      }
+    },
+    "./governance/approval": {
+      "import": {
+        "types": "./build/types/governance/approval/index.d.ts",
+        "default": "./build/esm/governance/approval/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/governance/approval/index.d.ts",
+        "default": "./build/cjs/governance/approval/index.js"
+      }
+    },
+    "./governance/runtime-governance": {
+      "import": {
+        "types": "./build/types/governance/runtime-governance/index.d.ts",
+        "default": "./build/esm/governance/runtime-governance/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/governance/runtime-governance/index.d.ts",
+        "default": "./build/cjs/governance/runtime-governance/index.js"
+      }
+    },
+    "./sandbox": {
+      "import": {
+        "types": "./build/types/sandbox/index.d.ts",
+        "default": "./build/esm/sandbox/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/sandbox/index.d.ts",
+        "default": "./build/cjs/sandbox/index.js"
+      }
+    },
+    "./sandbox-utils": {
+      "import": {
+        "types": "./build/types/sandbox/sandbox-executor-utils.d.ts",
+        "default": "./build/esm/sandbox/sandbox-executor-utils.mjs"
+      },
+      "require": {
+        "types": "./build/types/sandbox/sandbox-executor-utils.d.ts",
+        "default": "./build/cjs/sandbox/sandbox-executor-utils.js"
+      }
+    },
+    "./watchdog": {
+      "import": {
+        "types": "./build/types/watchdog/index.d.ts",
+        "default": "./build/esm/watchdog/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/watchdog/index.d.ts",
+        "default": "./build/cjs/watchdog/index.js"
       }
     },
     ".": {
@@ -64,12 +164,11 @@
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/agent-kit": "workspace:*",
     "@agent/adapters": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/memory": "workspace:*",
-    "@agent/skill-runtime": "workspace:*",
+    "@agent/skill": "workspace:*",
     "@agent/tools": "workspace:*",
     "@langchain/langgraph": "^1.2.5",
     "zod": "^4.3.6"

@@ -82,9 +82,9 @@ export async function persistLifecycleSnapshot(params: {
   const snapshot = await params.runtimeStateRepository.load();
   await params.runtimeStateRepository.save({
     ...snapshot,
-    tasks: [...params.tasks.values()],
-    learningJobs: [...params.learningJobs.values()],
-    learningQueue: [...params.learningQueue.values()],
+    tasks: [...params.tasks.values()] as unknown as typeof snapshot.tasks,
+    learningJobs: [...params.learningJobs.values()] as unknown as typeof snapshot.learningJobs,
+    learningQueue: [...params.learningQueue.values()] as unknown as typeof snapshot.learningQueue,
     pendingExecutions: [...params.pendingExecutions.values()]
   });
 }
@@ -101,9 +101,10 @@ export async function hydrateLifecycleSnapshot(params: {
   params.learningJobs.clear();
   params.learningQueue.clear();
   params.pendingExecutions.clear();
-  for (const task of snapshot.tasks) params.tasks.set(task.id, task);
-  for (const job of snapshot.learningJobs) params.learningJobs.set(job.id, job);
-  for (const item of snapshot.learningQueue ?? []) params.learningQueue.set(item.id, item);
+  for (const task of snapshot.tasks as unknown as TaskRecord[]) params.tasks.set(task.id, task);
+  for (const job of snapshot.learningJobs as unknown as LearningJob[]) params.learningJobs.set(job.id, job);
+  for (const item of (snapshot.learningQueue ?? []) as unknown as LearningQueueItem[])
+    params.learningQueue.set(item.id, item);
   for (const pending of snapshot.pendingExecutions as PendingExecutionRecord[]) {
     params.pendingExecutions.set(pending.taskId, pending as PendingExecutionContext);
   }

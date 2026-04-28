@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach } from 'vitest';
 
@@ -58,13 +59,7 @@ describe('TemplatesController', () => {
     expect(packageJson.dependencies).not.toHaveProperty('@umijs/max');
   });
 
-  it('returns arbitrary template files by template id', async () => {
-    const payload = controller.getTemplateById('bonus-center-data');
-
-    await expect(payload).resolves.toMatchObject({
-      '/routes.ts': { code: expect.any(String) },
-      '/pages/dataDashboard/bonusCenterData/index.tsx': { code: expect.any(String) },
-      '/pages/dataDashboard/bonusCenterData/config.tsx': { code: expect.any(String) }
-    });
+  it('keeps migrated report blueprints out of the generic template endpoint', async () => {
+    await expect(controller.getTemplateById('bonus-center-data')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

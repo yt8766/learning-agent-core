@@ -1,4 +1,8 @@
 import {
+  ChatCheckpointRecordSchema,
+  ChatEventRecordSchema,
+  ChatMessageRecordSchema,
+  ChatSessionRecordSchema,
   TaskStatus,
   type ChatCheckpointRecord,
   type ChatEventRecord,
@@ -174,23 +178,23 @@ export class SessionCoordinatorStore {
     this.events.clear();
     this.checkpoints.clear();
 
-    for (const session of snapshot.chatSessions) {
+    for (const session of parseRuntimeStateRecords(snapshot.chatSessions, ChatSessionRecordSchema)) {
       this.sessions.set(session.id, session);
     }
 
-    for (const message of snapshot.chatMessages) {
+    for (const message of parseRuntimeStateRecords(snapshot.chatMessages, ChatMessageRecordSchema)) {
       const items = this.messages.get(message.sessionId) ?? [];
       items.push(message);
       this.messages.set(message.sessionId, items);
     }
 
-    for (const event of snapshot.chatEvents) {
+    for (const event of parseRuntimeStateRecords(snapshot.chatEvents, ChatEventRecordSchema)) {
       const items = this.events.get(event.sessionId) ?? [];
       items.push(event);
       this.events.set(event.sessionId, items);
     }
 
-    for (const checkpoint of snapshot.chatCheckpoints) {
+    for (const checkpoint of parseRuntimeStateRecords(snapshot.chatCheckpoints, ChatCheckpointRecordSchema)) {
       checkpoint.checkpointId ||= `checkpoint_${checkpoint.sessionId}`;
       checkpoint.recoverability ??= checkpoint.pendingApproval ? 'partial' : 'safe';
       this.checkpoints.set(checkpoint.sessionId, checkpoint);
@@ -207,4 +211,14 @@ export class SessionCoordinatorStore {
       chatCheckpoints: [...this.checkpoints.values()]
     });
   }
+}
+
+function parseRuntimeStateRecords<T>(
+  records: unknown[] | undefined,
+  schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false } }
+): T[] {
+  return (records ?? [])
+    .map(record => schema.safeParse(record))
+    .filter((result): result is { success: true; data: T } => result.success)
+    .map(result => result.data);
 }

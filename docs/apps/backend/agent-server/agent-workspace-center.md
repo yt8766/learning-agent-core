@@ -16,7 +16,7 @@
 - Governance 实现：`apps/backend/agent-server/src/runtime/centers/runtime-centers-governance.service.ts`
 - Agent-server draft store adapter：`apps/backend/agent-server/src/runtime/centers/runtime-centers-workspace-drafts.ts`
 - Projection builder：`packages/platform-runtime/src/centers/runtime-workspace-center.ts`
-- Draft store MVP：`packages/skill-runtime/src/drafts/repository.ts` 与 `packages/skill-runtime/src/drafts/service.ts`
+- Draft store MVP：`packages/skill/src/drafts/repository.ts` 与 `packages/skill/src/drafts/service.ts`
 
 ## 路由
 
@@ -51,18 +51,18 @@ Controller 只做 HTTP 适配和 facade 转发，不在 controller 内重建 run
 - `getWorkspaceCenter()` 会读取 `RuntimeStateSnapshot.workspaceSkillReuseRecords`，按当前 `workspaceId` 过滤并输出 `reuseRecords`；持久 reuse record 也会参与 skill reuse badge 去重，避免与 task 上的 `usedInstalledSkills` 重复显示。
 - `getWorkspaceCenter()` 会读取 skill install receipt store，并按 `receipt.sourceDraftId` 或 `workspace-draft-<draftId>` skill id 关联 workspace draft；返回给前端的 draft 只包含 `install`、`provenance`、`lifecycle` 白名单摘要。`provenance` 会保留 draft 的 `sourceEvidenceIds`，并用 workspace evidence 白名单摘要补出 `evidenceCount` 与 `evidenceRefs`，不透传 evidence metadata 或 receipt raw 字段。
 - `listWorkspaceSkillDrafts()` 当前从 workspace projection 读取 `skillDrafts`，再按 `status`、`sourceTaskId`、`sessionId`、`limit`、`cursor` 做只读过滤；`source` 过滤通过 draft store 先按原始 draft source 计算 draft id 交集，再回到 workspace projection，避免破坏 install / provenance / lifecycle 摘要。
-- `approveWorkspaceSkillDraft()` 与 `rejectWorkspaceSkillDraft()` 通过 `runtime-centers-workspace-drafts.ts` 复用 `packages/skill-runtime` 的 `SkillDraftService` 修改 draft 状态；缺失 draft 会返回 `NotFoundException`。
-- `approveWorkspaceSkillDraft()` 会在 draft 进入 `active` 后返回 `intake.mode = "install-candidate"` 的白名单候选摘要；候选内容来自 `packages/skill-runtime` 的 `buildSkillDraftInstallCandidate()`，不包含 raw metadata、workspace 内部作者字段或 credential。
+- `approveWorkspaceSkillDraft()` 与 `rejectWorkspaceSkillDraft()` 通过 `runtime-centers-workspace-drafts.ts` 复用 `packages/skill` 的 `SkillDraftService` 修改 draft 状态；缺失 draft 会返回 `NotFoundException`。
+- `approveWorkspaceSkillDraft()` 会在 draft 进入 `active` 后返回 `intake.mode = "install-candidate"` 的白名单候选摘要；候选内容来自 `packages/skill` 的 `buildSkillDraftInstallCandidate()`，不包含 raw metadata、workspace 内部作者字段或 credential。
 - `workspace-skill-drafts` 是 Skill Sources Center 的内部 source。`runtime-workspace-skill-draft-manifests.ts` 只把 `active` / `trusted` draft 投影为 `SkillManifestRecord`，再由 `runtime-skill-sources.service.ts` 合并进现有 manifest 查询；安装和 receipt 仍走既有 Skill Sources / install governance。
-- `workspace-draft:<draftId>` manifest entry 已由 `packages/skill-runtime` 的 `SkillArtifactFetcher` materialize：安装时会读取 file-backed draft store，生成 `SKILL.md` 与 `manifest.json`，再由 `finalizeSkillInstall()` 推到内部 skill package 目录并发布到 Skill Lab；本地安装 receipt 会写入 `sourceDraftId`，供 Workspace Center 后续回读。
+- `workspace-draft:<draftId>` manifest entry 已由 `packages/skill` 的 `SkillArtifactFetcher` materialize：安装时会读取 file-backed draft store，生成 `SKILL.md` 与 `manifest.json`，再由 `finalizeSkillInstall()` 推到内部 skill package 目录并发布到 Skill Lab；本地安装 receipt 会写入 `sourceDraftId`，供 Workspace Center 后续回读。
 - `runtime-centers-workspace-drafts.ts` 是 agent-server 的 MVP adapter，负责把 `AgentSkillDraft` 映射成 workspace projection，并防止 raw metadata 穿透到 controller 或前端。
 - 默认 runtime context 带有 `settings.workspaceRoot` 时，draft store 会落到 `data/skills/drafts/workspace-drafts.json`；测试或短生命周期场景仍可注入 in-memory store。
 
 ## 下一阶段落地说明
 
-- Persistent draft store：当前 agent-server 已通过 `packages/skill-runtime` 的 file-backed repository 获得本地 JSON 持久化能力，这是 MVP 持久化，不是最终治理数据库。生产化时应继续把数据库或外部存储能力放在 `packages/skill-runtime` repository / service 边界后面，agent-server 继续通过 `SkillDraftService` 或等价 facade 调用，不在 controller、query service 或 governance service 内直接访问数据库表、Map 索引或 vendor 存储对象。
+- Persistent draft store：当前 agent-server 已通过 `packages/skill` 的 file-backed repository 获得本地 JSON 持久化能力，这是 MVP 持久化，不是最终治理数据库。生产化时应继续把数据库或外部存储能力放在 `packages/skill` repository / service 边界后面，agent-server 继续通过 `SkillDraftService` 或等价 facade 调用，不在 controller、query service 或 governance service 内直接访问数据库表、Map 索引或 vendor 存储对象。
 - 真实 projection 聚合：当前已完成 task learning summary、EvidenceRecord 摘要、reuse badge、`AgentSkillReuseRecord` 持久记录、capability gap，以及 skill draft provenance evidence 关联摘要 / 计数的最小聚合；后续继续补更细的分页 / filter。
-- Approve 后 Skill Lab 链路：当前 approve 已返回 install candidate 摘要，并让 approved / trusted draft 作为 `workspace-skill-drafts` manifest 出现在 Skill Sources 查询中；`workspace-draft:` entry 已能 materialize 为安装 artifact，receipt / provenance / lifecycle 已以只读摘要回填到 Workspace Center。更完整的安装操作、manifest 校验、trust policy、rollback 和 receipt 明细继续交给 Skill Lab / Skill Source Center / `packages/skill-runtime` install lifecycle。
+- Approve 后 Skill Lab 链路：当前 approve 已返回 install candidate 摘要，并让 approved / trusted draft 作为 `workspace-skill-drafts` manifest 出现在 Skill Sources 查询中；`workspace-draft:` entry 已能 materialize 为安装 artifact，receipt / provenance / lifecycle 已以只读摘要回填到 Workspace Center。更完整的安装操作、manifest 校验、trust policy、rollback 和 receipt 明细继续交给 Skill Lab / Skill Source Center / `packages/skill` install lifecycle。
 - Chat Workspace Vault cards：backend 不为 chat 单独造另一套 payload；`agent-chat` 的 Vault cards 继续消费 `/api/platform/workspace-center` projection 或后续明确定义的兼容扩展。
 
 ## 边界
@@ -91,6 +91,6 @@ Controller 只做 HTTP 适配和 facade 转发，不在 controller 内重建 run
 - `apps/backend/agent-server/test/runtime/actions/runtime-skill-install-actions.local.test.ts`
 - `packages/core/test/core-type-contracts.test.ts`
 - `packages/platform-runtime/test/runtime-workspace-center.test.ts`
-- `packages/skill-runtime/test/skill-draft-service.test.ts`
+- `packages/skill/test/skill-draft-service.test.ts`
 
 文档-only 更新至少执行 `pnpm check:docs`。后续接线真实 draft store 或改动代码时，还需要按 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 补齐五层验证。

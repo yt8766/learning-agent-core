@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { describeSkillSourceProfilePolicy } from '@agent/runtime';
-import { loadAgentSkillManifests } from '@agent/skill-runtime';
+import { loadAgentSkillManifests } from '@agent/skill';
 import type {
   LocalSkillSuggestionRecord,
   RequestedExecutionHints,

@@ -1,40 +1,53 @@
-import type {
-  CapabilityAttachmentRecord,
-  CapabilityAugmentationRecord,
-  ChatRouteRecord,
-  ContextFilterRecord,
-  CurrentSkillExecutionRecord,
-  EntryDecisionRecord,
-  EvaluationReportRecord,
-  EvidenceRecord,
-  ExecutionPlanRecord,
-  ExecutionStepRecord,
-  ExecutionTrace,
-  FinalReviewRecord,
-  GovernanceReportRecord,
-  GovernanceScoreRecord,
-  GuardrailStateRecord,
-  InternalSubAgentResult,
-  LearningCandidateRecord,
-  LearningEvaluationRecord,
-  LlmUsageRecord,
-  ManagerPlan,
-  MicroLoopStateRecord,
-  ModelRouteDecision,
-  PendingActionRecord,
-  PendingApprovalRecord,
-  PlatformApprovalInterruptRecord,
-  QueueStateRecord,
-  RequestedExecutionHints,
-  ReviewRecord,
-  SandboxStateRecord,
-  SkillSearchStateRecord,
-  SpecialistDomain,
-  TaskBackgroundLearningState,
-  TaskStatus,
-  ToolAttachmentRecord,
-  ToolUsageSummaryRecord
-} from '@agent/core';
+import type { EvidenceRecord, LearningCandidateRecord } from '../contracts';
+
+type RuntimeStateLooseRecord = Record<string, unknown>;
+type RuntimeStateToolCapabilityType = 'local-tool' | 'mcp-capability' | 'governance-tool';
+type RuntimeStateLearningEvaluationRecord = {
+  score: number;
+  confidence: 'low' | 'medium' | 'high';
+  notes: string[];
+  recommendedCandidateIds: string[];
+  autoConfirmCandidateIds: string[];
+  sourceSummary: {
+    externalSourceCount: number;
+    internalSourceCount: number;
+    reusedMemoryCount: number;
+    reusedRuleCount: number;
+    reusedSkillCount: number;
+  };
+  [key: string]: unknown;
+};
+type RuntimeStateToolAttachmentRecord = RuntimeStateLooseRecord;
+type RuntimeStateToolUsageSummaryRecord = RuntimeStateLooseRecord;
+type CapabilityAttachmentRecord = RuntimeStateLooseRecord;
+type CapabilityAugmentationRecord = RuntimeStateLooseRecord;
+type ChatRouteRecord = RuntimeStateLooseRecord;
+type ContextFilterRecord = RuntimeStateLooseRecord;
+type CurrentSkillExecutionRecord = RuntimeStateLooseRecord;
+type EntryDecisionRecord = RuntimeStateLooseRecord;
+type EvaluationReportRecord = RuntimeStateLooseRecord;
+type ExecutionPlanRecord = RuntimeStateLooseRecord;
+type ExecutionStepRecord = RuntimeStateLooseRecord;
+type ExecutionTrace = RuntimeStateLooseRecord;
+type FinalReviewRecord = RuntimeStateLooseRecord;
+type GovernanceReportRecord = RuntimeStateLooseRecord;
+type GovernanceScoreRecord = RuntimeStateLooseRecord;
+type GuardrailStateRecord = RuntimeStateLooseRecord;
+type InternalSubAgentResult = RuntimeStateLooseRecord;
+type LlmUsageRecord = RuntimeStateLooseRecord;
+type ManagerPlan = RuntimeStateLooseRecord;
+type MicroLoopStateRecord = RuntimeStateLooseRecord;
+type ModelRouteDecision = RuntimeStateLooseRecord;
+type PendingActionRecord = RuntimeStateLooseRecord;
+type PendingApprovalRecord = RuntimeStateLooseRecord;
+type PlatformApprovalInterruptRecord = RuntimeStateLooseRecord;
+type QueueStateRecord = RuntimeStateLooseRecord;
+type RequestedExecutionHints = RuntimeStateLooseRecord;
+type ReviewRecord = RuntimeStateLooseRecord;
+type SandboxStateRecord = RuntimeStateLooseRecord;
+type SkillSearchStateRecord = RuntimeStateLooseRecord;
+type SpecialistDomain = string;
+type TaskBackgroundLearningState = RuntimeStateLooseRecord;
 
 type ActionIntentValue = string;
 type TaskStatusValue = 'queued' | 'running' | 'waiting_approval' | 'blocked' | 'cancelled' | 'completed' | 'failed';
@@ -47,8 +60,8 @@ type RuntimeTaskApprovalInterruptRecord = Omit<
   createdAt: string;
   riskLevel?: 'low' | 'medium' | 'high' | 'critical';
   family?: string;
-  capabilityType?: import('@agent/core').ToolCapabilityType;
-  ownerType?: import('@agent/core').CapabilityOwnerType;
+  capabilityType?: RuntimeStateToolCapabilityType;
+  ownerType?: string;
   ownerId?: string;
   blockedReason?: string;
   threadId?: string;
@@ -101,7 +114,7 @@ export interface RuntimeStateTaskRecord {
   traceId?: string;
   skillId?: string;
   skillStage?: string;
-  resolvedWorkflow?: import('@agent/core').WorkflowPresetDefinition;
+  resolvedWorkflow?: RuntimeStateLooseRecord;
   subgraphTrail?: string[];
   currentNode?: string;
   currentMinistry?: string;
@@ -110,9 +123,9 @@ export interface RuntimeStateTaskRecord {
   supportingSpecialists?: RuntimeTaskSpecialistLeadRecord[];
   specialistFindings?: RuntimeTaskSpecialistFindingRecord[];
   routeConfidence?: number;
-  contextSlicesBySpecialist?: import('@agent/core').ContextSliceRecord[];
-  dispatches?: import('@agent/core').DispatchInstruction[];
-  critiqueResult?: import('@agent/core').CritiqueResultRecord;
+  contextSlicesBySpecialist?: RuntimeStateLooseRecord[];
+  dispatches?: RuntimeStateLooseRecord[];
+  critiqueResult?: RuntimeStateLooseRecord;
   chatRoute?: ChatRouteRecord;
   executionSteps?: ExecutionStepRecord[];
   currentExecutionStep?: ExecutionStepRecord;
@@ -131,19 +144,19 @@ export interface RuntimeStateTaskRecord {
   microLoopState?: MicroLoopStateRecord;
   revisionState?: 'idle' | 'needs_revision' | 'revising' | 'blocked' | 'completed';
   trace: ExecutionTrace[];
-  approvals: import('@agent/core').ApprovalRecord[];
+  approvals: RuntimeStateLooseRecord[];
   result?: string;
   plan?: ManagerPlan;
   entryDecision?: EntryDecisionRecord;
   executionPlan?: ExecutionPlanRecord;
-  budgetGateState?: import('@agent/core').BudgetGateStateRecord;
-  complexTaskPlan?: import('@agent/core').ComplexTaskPlanRecord;
-  blackboardState?: import('@agent/core').BlackboardStateRecord;
+  budgetGateState?: RuntimeStateLooseRecord;
+  complexTaskPlan?: RuntimeStateLooseRecord;
+  blackboardState?: RuntimeStateLooseRecord;
   mainChainNode?: string;
-  modeGateState?: import('@agent/core').TaskModeGateState;
+  modeGateState?: RuntimeStateLooseRecord;
   contextFilterState?: ContextFilterRecord;
   guardrailState?: GuardrailStateRecord;
-  criticState?: import('@agent/core').CriticStateRecord;
+  criticState?: RuntimeStateLooseRecord;
   sandboxState?: SandboxStateRecord;
   finalReviewState?: FinalReviewRecord;
   governanceScore?: GovernanceScoreRecord;
@@ -152,13 +165,13 @@ export interface RuntimeStateTaskRecord {
   evaluationReport?: EvaluationReportRecord;
   planMode?: 'intent' | 'implementation' | 'finalized' | 'aborted';
   executionMode?: 'standard' | 'planning-readonly' | 'plan' | 'execute' | 'imperial_direct';
-  partialAggregation?: import('@agent/core').PartialAggregationRecord;
+  partialAggregation?: RuntimeStateLooseRecord;
   internalSubAgents?: InternalSubAgentResult[];
   interruptOrigin?: 'counselor_proxy' | 'runtime' | 'timeout' | 'budget' | 'review';
-  planModeTransitions?: import('@agent/core').PlanModeTransitionRecord[];
-  planDraft?: import('@agent/core').PlanDraftRecord;
-  agentStates: import('@agent/core').AgentExecutionState[];
-  messages: import('@agent/core').AgentMessageRecord[];
+  planModeTransitions?: RuntimeStateLooseRecord[];
+  planDraft?: RuntimeStateLooseRecord;
+  agentStates: RuntimeStateLooseRecord[];
+  messages: RuntimeStateLooseRecord[];
   review?: ReviewRecord;
   learningCandidates?: LearningCandidateRecord[];
   externalSources?: EvidenceRecord[];
@@ -169,18 +182,18 @@ export interface RuntimeStateTaskRecord {
   usedCompanyWorkers?: string[];
   connectorRefs?: string[];
   requestedHints?: RequestedExecutionHints;
-  toolAttachments?: ToolAttachmentRecord[];
-  toolUsageSummary?: ToolUsageSummaryRecord[];
+  toolAttachments?: RuntimeStateToolAttachmentRecord[];
+  toolUsageSummary?: RuntimeStateToolUsageSummaryRecord[];
   activeInterrupt?: RuntimeTaskApprovalInterruptRecord;
   interruptHistory?: RuntimeTaskApprovalInterruptRecord[];
-  budgetState?: import('@agent/core').BudgetState;
-  knowledgeIngestionState?: import('@agent/core').KnowledgeIngestionStateRecord;
-  knowledgeIndexState?: import('@agent/core').KnowledgeIndexStateRecord;
+  budgetState?: RuntimeStateLooseRecord;
+  knowledgeIngestionState?: RuntimeStateLooseRecord;
+  knowledgeIndexState?: RuntimeStateLooseRecord;
   capabilityAugmentations?: CapabilityAugmentationRecord[];
   capabilityAttachments?: CapabilityAttachmentRecord[];
   llmUsage?: LlmUsageRecord;
   currentSkillExecution?: CurrentSkillExecutionRecord;
-  learningEvaluation?: LearningEvaluationRecord;
+  learningEvaluation?: RuntimeStateLearningEvaluationRecord;
   skillSearch?: SkillSearchStateRecord;
   learningQueueItemId?: string;
   backgroundLearningState?: TaskBackgroundLearningState;
