@@ -1,6 +1,6 @@
 # Hybrid Search 设计文档
 
-状态：draft  
+状态：implemented  
 文档类型：spec  
 适用范围：`packages/knowledge/src/retrieval/`  
 日期：2026-04-28

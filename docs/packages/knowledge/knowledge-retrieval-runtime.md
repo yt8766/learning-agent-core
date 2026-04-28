@@ -184,6 +184,11 @@ const chainedResult = await runKnowledgeRetrieval({
 - 按 `chunkId` 的命中合并
 - richer retrieval diagnostics
 - **LLM-based query rewrite**：通过 `LlmQueryNormalizer` + `QueryRewriteProvider` 接口，失败时自动降级
+- `VectorSearchProvider` 接口（`src/retrieval/vector-search-provider.ts`）
+- `InMemoryVectorSearchProvider`（bigram 余弦相似度，`src/retrieval/in-memory-vector-search-provider.ts`）
+- `VectorKnowledgeSearchService`（Provider + Repo 映射，`src/retrieval/vector-knowledge-search-service.ts`）
+- `rrfFusion`（RRF 纯函数，`src/retrieval/rrf-fusion.ts`）
+- **`HybridKnowledgeSearchService`**（双路并行 + RRF 融合 + 降级，`src/retrieval/hybrid-knowledge-search-service.ts`）
 
 ## 仍未实现
 
