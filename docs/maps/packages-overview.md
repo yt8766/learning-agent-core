@@ -41,7 +41,7 @@
 - `packages/platform-runtime`
   - 通用 platform facade、registry 基础设施、platform centers 与 backend/worker 共享启动线
   - 负责承载已注入的 `runtime + agentRegistry + agentDependencies + metadata`，不直接持有官方 Agent/workflow 出口
-  - 官方 agent registry、workflow metadata 与 specialist route enrich 位于 `apps/backend/agent-server/src/agents`
+  - 官方 agent registry、workflow metadata 与 specialist route enrich 位于 `apps/backend/agent-server/src/runtime/agents`
   - 不负责 HTTP controller、worker loop、前端 view model 或 Agent graph 主实现
 - `packages/adapters`
   - 模型 provider normalize、chat/embedding factory、LLM adapter 的真实实现入口
@@ -217,7 +217,7 @@
 
 - `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖；后续不得让 contract 层重新依赖业务实现
 - `packages/platform-runtime` 已作为 workspace 包落地，并承接 backend/worker 默认 runtime facade、可注入 registry 与 platform centers
-- `apps/backend/agent-server/src/agents/*` 已成为官方 Agent 组合根；backend manifest 直接依赖官方 `@agent/agents-*` 并注入 `@agent/platform-runtime`
+- `apps/backend/agent-server/src/runtime/agents/*` 已成为官方 Agent 组合根；backend manifest 直接依赖官方 `@agent/agents-*` 并注入 `@agent/platform-runtime`
 - `packages/runtime` 已移除对官方 `@agent/agents-*` 的直接依赖，内部 bridge 仅保留 contract wrapper 兼容层
 - `packages/runtime` 已承载 `runtime / session / governance` 的真实源码
 - `packages/runtime` 现已继续承载 `chat.graph / recovery.graph / learning.graph / LearningFlow / approval-recovery` 的真实源码

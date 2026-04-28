@@ -117,7 +117,7 @@ packages/<pkg>/
 
 - `packages/core` 已移除 `@agent/report-kit` 依赖，并由 `pnpm check:package-boundaries` 阻止回退
 - `packages/platform-runtime` 已收敛为可注入 platform facade / registry 包，不再直接依赖 `@agent/agents-*`
-- `apps/backend/agent-server/src/agents/*` 是官方 Agent 组合根；backend manifest 允许直接依赖官方 `@agent/agents-*` 并注入 `@agent/platform-runtime`
+- `apps/backend/agent-server/src/runtime/agents/*` 是官方 Agent 组合根；backend manifest 允许直接依赖官方 `@agent/agents-*` 并注入 `@agent/platform-runtime`
 - `packages/runtime/src/bridges/*` 已收敛为 runtime 内部 adapter；它们只转发 `RuntimeAgentDependencies` contract，不再直接 re-export 官方 Agent
 
 1. 契约层

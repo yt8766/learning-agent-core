@@ -17,7 +17,7 @@
 - 当前落地入口
 - 与 runtime / agents / apps 的依赖关系
 
-它的职责是提供可注入的 runtime facade、agent registry 与 platform centers；具体官方 agents 由 `apps/backend/agent-server/src/agents/*` 装配后注入。
+它的职责是提供可注入的 runtime facade、agent registry 与 platform centers；具体官方 agents 由 `apps/backend/agent-server/src/runtime/agents/*` 装配后注入。
 
 当前已落地能力：
 
@@ -56,7 +56,7 @@
 
 - `platform-runtime` 不再依赖 `@agent/agents-coder`、`@agent/agents-data-report`、`@agent/agents-intel-engine`、`@agent/agents-reviewer`、`@agent/agents-supervisor`。
 - 通用 `AgentDescriptor` / `AgentProvider` / `AgentRegistry` contract 已并入 `packages/runtime`；`platform-runtime` 只保留通用 registry 实现、默认 facade、platform centers 与 adapter。
-- `apps/backend/agent-server/src/agents/*` 现在承载 `createOfficialAgentRegistry()` 与 `createOfficialRuntimeAgentDependencies()`。
+- `apps/backend/agent-server/src/runtime/agents/*` 现在承载 `createOfficialAgentRegistry()` 与 `createOfficialRuntimeAgentDependencies()`。
 - `createDefaultPlatformRuntime()` 只接受 app 层注入的 `agentRegistry`、`agentDependencies` 与 `metadata`，避免平台基础包硬编码官方 agent。
 - `createDefaultPlatformRuntimeOptions()` 现在承载 platform profile、`process.cwd()` workspace root 与默认 runtime llm provider 的标准装配语义；backend / worker 如果只需要官方默认 runtime，再叠加各自 override，应优先复用这条入口，而不是在 app 层重复拼 `createDefaultRuntimeLlmProvider(...)`
 - `PlatformRuntimeFacade` 当前显式暴露 `runtime + agentRegistry + agentDependencies + metadata`，其中 `metadata` 统一承接 workflow preset、subgraph descriptor、workflow version 等官方只读组合根信息；app 层如果需要读取这些能力，应优先从 facade / host 取值，而不是继续直接 import 主链 helper。

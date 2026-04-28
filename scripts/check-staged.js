@@ -32,7 +32,7 @@ const TSC_PROJECT_RULES = [
   { test: file => file.startsWith('packages/memory/'), project: 'packages/memory/tsconfig.json' },
   { test: file => file.startsWith('packages/evals/'), project: 'packages/evals/tsconfig.json' },
   { test: file => file.startsWith('packages/tools/'), project: 'packages/tools/tsconfig.json' },
-  { test: file => file.startsWith('packages/skill-runtime/'), project: 'packages/skill-runtime/tsconfig.json' },
+  { test: file => file.startsWith('packages/skill/'), project: 'packages/skill/tsconfig.json' },
   { test: file => file.startsWith('agents/supervisor/'), project: 'agents/supervisor/tsconfig.json' },
   {
     test: file => file.startsWith('agents/data-report/'),

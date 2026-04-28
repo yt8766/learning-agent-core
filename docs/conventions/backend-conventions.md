@@ -118,7 +118,7 @@
 - `module`：只做依赖组织
 - 复杂复用逻辑进入 `packages/*`
 - `RuntimeService` 作为后端运行时门面
-- 官方 Agent 装配由 `apps/backend/agent-server/src/agents` 完成，再注入 `@agent/platform-runtime` facade；backend service 只通过 RuntimeHost / facade 消费已装配能力
+- 官方 Agent 装配由 `apps/backend/agent-server/src/runtime/agents` 完成，再注入 `@agent/platform-runtime` facade；backend service 只通过 RuntimeHost / facade 消费已装配能力
 
 禁止：
 

@@ -5,8 +5,8 @@
 适用范围：`packages/knowledge`
 最后核对：2026-04-28
 
-**日期**：2026-04-28  
-**范围**：`packages/knowledge` 检索前处理增强 — LLM 语义改写 + 多 normalizer 串联  
+**日期**：2026-04-28
+**范围**：`packages/knowledge` 检索前处理增强 — LLM 语义改写 + 多 normalizer 串联
 **不在此范围**：多变体检索执行、结果合并、后处理（retrieval 阶段单独设计）
 
 ---

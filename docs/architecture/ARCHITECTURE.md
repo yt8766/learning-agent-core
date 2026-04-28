@@ -82,7 +82,7 @@ apps/*                     = 启动适配器，只选择装配方案并暴露入
 
 - `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖，并由 `pnpm check:package-boundaries` 阻止回退。
 - `packages/platform-runtime` 已收敛为可注入 platform facade / registry contract 包，不再直接依赖官方 `@agent/agents-*`。
-- `apps/backend/agent-server/src/agents/*` 现在负责把官方 `@agent/agents-*` 装配成 `RuntimeAgentDependencies`，再注入 `AgentRuntime`。
+- `apps/backend/agent-server/src/runtime/agents/*` 现在负责把官方 `@agent/agents-*` 装配成 `RuntimeAgentDependencies`，再注入 `AgentRuntime`。
 - `packages/platform-runtime` 的 `PlatformRuntimeFacade` 当前显式暴露 `runtime + agentRegistry + agentDependencies + metadata`；backend / worker 读取官方默认装配能力与只读 workflow/subgraph/version metadata 时，应优先通过这层 facade，而不是继续在 `apps/*` 零散 import 官方 helper。
 - backend agents 组合根的 `createOfficialAgentRegistry()` 现已持有默认官方 agent descriptor，并支持 capability / specialist-domain 查询，作为后续 supervisor capability dispatch 的默认组合根入口。
 - backend agents 组合根的 `createOfficialRuntimeAgentDependencies()` 当前会优先按 capability contract 解析 supervisor / coder / reviewer / data-report 官方模块，再回退固定 agentId；后续 capability 化改造默认继续沿这条 contract 演进，而不是在 runtime 侧重新写死 `official.*` id。
