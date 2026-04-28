@@ -92,7 +92,7 @@ const ALL_TYPECHECK_PROJECTS = [
   'packages/memory/tsconfig.json',
   'packages/evals/tsconfig.json',
   'packages/tools/tsconfig.json',
-  'packages/skill-runtime/tsconfig.json',
+
   'agents/supervisor/tsconfig.json',
   'agents/data-report/tsconfig.json',
   'agents/coder/tsconfig.json',

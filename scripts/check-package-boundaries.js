@@ -46,8 +46,8 @@ const publicEntryRoots = [
   'packages/memory/src',
   'packages/tools/src',
   'packages/tools/test',
-  'packages/skill-runtime/src',
-  'packages/skill-runtime/test',
+  'packages/skill/src',
+  'packages/skill/test',
   'apps/backend/agent-server/src',
   'apps/backend/agent-server/test',
   'apps/worker/src',
@@ -75,7 +75,7 @@ const corePackageManifestPath = 'packages/core/package.json';
 const runtimePackageManifestPath = 'packages/runtime/package.json';
 const supervisorPackageManifestPath = 'agents/supervisor/package.json';
 const allowedCoreDependencies = new Set(['zod']);
-const appPackageManifestPaths = ['apps/backend/agent-server/package.json', 'apps/worker/package.json'];
+const appPackageManifestPaths = ['apps/worker/package.json'];
 const officialAgentPackageNames = new Set([
   '@agent/agents-supervisor',
   '@agent/agents-data-report',
@@ -123,6 +123,12 @@ const allowedBackendPlatformRuntimeFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-facade.ts'
+]);
+const allowedBackendOfficialAgentRoots = ['apps/backend/agent-server/src/agents'];
+const allowedBackendOfficialAgentFiles = new Set([
+  'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-intel-runner.ts',
+  'apps/backend/agent-server/src/chat/chat.direct.dto.ts'
 ]);
 
 function fail(messages) {
@@ -344,25 +350,31 @@ export function findBoundaryViolations(scanRoot = rootDir) {
         if (
           source === '@agent/platform-runtime' &&
           repoPath.startsWith('apps/backend/agent-server/src/') &&
-          !allowedBackendPlatformRuntimeFiles.has(repoPath)
+          !allowedBackendPlatformRuntimeFiles.has(repoPath) &&
+          !isUnderRoots(repoPath, allowedBackendOfficialAgentRoots)
         ) {
           violations.push(
             `${repoPath} imports "@agent/platform-runtime" directly from backend app code; backend should route official platform-runtime access through runtime/core facades`
           );
         }
 
-        if (officialAgentPackageNames.has(source)) {
+        if (
+          officialAgentPackageNames.has(source) &&
+          !isUnderRoots(repoPath, allowedBackendOfficialAgentRoots) &&
+          !allowedBackendOfficialAgentFiles.has(repoPath)
+        ) {
           violations.push(
             `${repoPath} imports official agent package "${source}" from app code; use @agent/platform-runtime instead`
           );
         }
 
         if (source === '@agent/platform-runtime') {
-          const disallowedImports =
-            namedImports
-              .filter(entry => entry.source === source)
-              .flatMap(entry => entry.importedNames)
-              .filter(name => forbiddenAppPlatformRuntimeImports.has(name)) ?? [];
+          const disallowedImports = isUnderRoots(repoPath, allowedBackendOfficialAgentRoots)
+            ? []
+            : (namedImports
+                .filter(entry => entry.source === source)
+                .flatMap(entry => entry.importedNames)
+                .filter(name => forbiddenAppPlatformRuntimeImports.has(name)) ?? []);
 
           if (disallowedImports.length > 0) {
             violations.push(

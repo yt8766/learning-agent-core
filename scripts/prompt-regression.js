@@ -47,7 +47,9 @@ export function isSupportedPromptfooNodeRuntime(version = process.versions.node)
   if (major === 22) {
     return minor > 22 || (minor === 22 && patch >= 0);
   }
-  return major > 22;
+  // Node v24+ is not yet supported: promptfoo's @opentelemetry/api dependency
+  // fails to load under Node v24 (ERR_DLOPEN_FAILED / CJS syntax error).
+  return false;
 }
 
 export function buildPromptRegressionSkipSummary(reason, options = {}) {
