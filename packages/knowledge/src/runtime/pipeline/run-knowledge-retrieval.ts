@@ -1,4 +1,4 @@
-import type { RetrievalHit, RetrievalRequest } from '@agent/core';
+import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
 
 import type { KnowledgeSearchService } from '../../contracts/knowledge-facade';
 import type { RetrievalPipelineConfig } from '../../contracts/knowledge-retrieval-runtime';
@@ -57,14 +57,30 @@ function mergeHitsByChunkId(hitGroups: SearchHits[]): RetrievalHit[] {
 export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOptions): Promise<KnowledgeRetrievalResult> {
   const { request, searchService, pipeline = {}, assembleContext = false, includeDiagnostics = false } = options;
 
-  const queryNormalizer = pipeline.queryNormalizer ?? new DefaultQueryNormalizer();
+  const queryNormalizerConfig = pipeline.queryNormalizer ?? new DefaultQueryNormalizer();
   const postProcessor = pipeline.postProcessor ?? new DefaultRetrievalPostProcessor();
   const contextAssembler = assembleContext ? (pipeline.contextAssembler ?? new DefaultContextAssembler()) : null;
 
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
 
-  const normalized = await queryNormalizer.normalize(request);
+  // Handle single normalizer or array of normalizers
+  const normalizers = Array.isArray(queryNormalizerConfig)
+    ? queryNormalizerConfig.length > 0
+      ? queryNormalizerConfig
+      : [new DefaultQueryNormalizer()]
+    : [queryNormalizerConfig];
+
+  let normalized = await normalizers[0]!.normalize(request);
+
+  // Chain remaining normalizers, passing output of each as input to next
+  for (let i = 1; i < normalizers.length; i++) {
+    normalized = await normalizers[i]!.normalize({
+      query: normalized.normalizedQuery,
+      limit: normalized.topK
+    });
+  }
+
   const queryVariants = dedupeQueries(
     normalized.queryVariants?.length ? normalized.queryVariants : [normalized.normalizedQuery]
   );
