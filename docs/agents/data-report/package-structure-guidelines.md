@@ -48,7 +48,7 @@ agents/data-report/
 - `flows/data-report-json/`
   - JSON schema generation、patch、lane runtime、node model policy
 - `types/`
-  - 本地域类型出口，继续与 `@agent/core` 分工
+  - 本地域类型、schema 与 graph/flow contract 出口；data-report 领域不再从 `@agent/core` 取 contract
 
 ## 3. 当前收敛策略
 
@@ -59,7 +59,7 @@ agents/data-report/
 - `agents/data-report`
   - 只承载 graph / runtime facade / LLM 节点编排
 - `runtime` 依赖边界
-  - 如需共享 agent foundation，默认仅允许通过 `@agent/agent-kit` 根入口消费
+  - 如需共享 agent foundation，默认仅允许通过 `@agent/runtime` 根入口消费
   - runtime facade 仅允许通过 `@agent/runtime` 根入口消费
   - 不允许直接依赖 `packages/runtime/src/*`，也不允许依赖 `runtime/agent-bridges/*` 这类 runtime 内部过渡层
 
@@ -69,3 +69,4 @@ agents/data-report/
 2. 不把 preview / JSON graph 写回 backend service
 3. 根入口继续暴露稳定 graph、runtime facade 与类型出口
 4. 已纳入 root export 测试的 graph、schema parser、runtime facade 继续保持“根入口稳定 + flows/graphs 真实宿主明确”
+5. `ReportBundle`、`DataReportJsonBundle`、data-report graph state 与 json graph state 均由 `src/types/schemas/*` 与 `src/types/contracts/*` schema-first 承接；`packages/core/src/data-report/*` 与 `packages/core/src/contracts/data-report/*` 不再作为宿主恢复

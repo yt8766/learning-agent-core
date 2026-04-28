@@ -1,17 +1,21 @@
-import type {
-  CapabilityAttachmentRecord,
-  CreateTaskDto,
-  CapabilityGovernanceProfileRecord,
-  GovernanceProfileRecord,
-  RequestedExecutionHints,
-  RuleRecord,
-  WorkerDefinition
+import {
+  CounselorSelectorConfigSchema,
+  type CapabilityAttachmentRecord,
+  type CapabilityGovernanceProfileRecord,
+  type CreateTaskDto,
+  type GovernanceProfileRecord,
+  type RequestedExecutionHints,
+  type WorkerDefinition
 } from '@agent/core';
-import type { MemoryRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
+import type { MemoryRepository, RuleRecord, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
 import { archivalMemorySearchByParams } from '../../../../../memory/active-memory-tools';
 import { flattenStructuredMemories } from '../../../../../memory/runtime-memory-search';
 import { resolveSpecialistRoute, type resolveWorkflowPreset } from '../../../../../bridges/supervisor-runtime-bridge';
+import {
+  getCapabilityGovernanceProfiles,
+  getGovernanceProfiles
+} from '../../../../../governance/runtime-governance-store';
 
 type WorkflowResolution = ReturnType<typeof resolveWorkflowPreset>;
 
@@ -116,7 +120,11 @@ export async function applyLifecycleCounselorSelectorGovernance(params: {
     recentTurns: params.dto.recentTurns,
     relatedHistory: params.dto.relatedHistory
   });
-  const selectorConfigs = (snapshot.governance?.counselorSelectorConfigs ?? []).filter(item => item.enabled);
+  const selectorConfigs = (snapshot.governance?.counselorSelectorConfigs ?? [])
+    .map(item => CounselorSelectorConfigSchema.safeParse(item))
+    .filter(result => result.success)
+    .map(result => result.data)
+    .filter(item => item.enabled);
   const matchedConfig = params.dto.counselorSelector?.candidateIds?.length
     ? undefined
     : selectorConfigs.find(
@@ -154,14 +162,13 @@ function buildGovernanceSeedAttachments(params: {
   specialistRoute: ReturnType<typeof resolveSpecialistRoute>;
   snapshot: Awaited<ReturnType<RuntimeStateRepository['load']>>;
 }): CapabilityAttachmentRecord[] {
-  const governance = params.snapshot.governance;
-  const specialistProfile = (governance?.specialistGovernanceProfiles ?? []).find(
+  const specialistProfile = getGovernanceProfiles(params.snapshot, 'specialist').find(
     item => item.entityId === params.specialistRoute.specialistLead.domain
   );
   const ministryProfiles = params.workflowResolution.preset.requiredMinistries
-    .map(ministry => (governance?.ministryGovernanceProfiles ?? []).find(item => item.entityId === ministry))
+    .map(ministry => getGovernanceProfiles(params.snapshot, 'ministry').find(item => item.entityId === ministry))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const requestedCapabilityProfiles = (governance?.capabilityGovernanceProfiles ?? []).filter(profile =>
+  const requestedCapabilityProfiles = getCapabilityGovernanceProfiles(params.snapshot).filter(profile =>
     matchesRequestedCapability(profile, params.dto)
   );
 

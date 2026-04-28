@@ -1,9 +1,10 @@
-import { ActionIntent, type ToolDefinition } from '@agent/core';
+import { ActionIntent } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { isToolAllowedInExecutionMode } from '../../../capabilities/execution-mode-guard';
 import type { GongbuExecutionSelection } from './gongbu-code-selection-service';
 import { buildScaffoldWorkflowToolInput, resolveScaffoldToolName } from './gongbu-code-scaffold';
+import type { ToolDefinition } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

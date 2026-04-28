@@ -1,7 +1,7 @@
 import type { RuntimeProfile } from '@agent/config';
-import { describeConnectorProfilePolicy } from '@agent/runtime';
+import { describeConnectorProfilePolicy, type ApprovalPolicyRecord, type ConnectorHealthRecord } from '@agent/runtime';
 import type { RuntimeStateSnapshot } from '@agent/memory';
-import { ApprovalPolicyRecord, ConnectorHealthRecord, TaskStatus } from '@agent/core';
+import { TaskStatus } from '@agent/core';
 import type { McpClientManager } from '@agent/tools';
 
 import {
@@ -15,6 +15,7 @@ import {
 } from './runtime-connectors-center.helpers';
 
 type ConnectorsCenterItem = ReturnType<McpClientManager['describeServers']>[number];
+type RuntimeStateLooseRecord = Record<string, unknown>;
 
 interface ConnectorsCenterTaskLike {
   id: string;
@@ -81,6 +82,43 @@ export type RuntimeConnectorsCenterRecord = Omit<
   >;
 };
 
+function isLooseRecord(value: unknown): value is RuntimeStateLooseRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function normalizeConfiguredConnector(
+  value: unknown
+): { connectorId: string; configuredAt?: string; templateId?: string } | undefined {
+  if (!isLooseRecord(value)) {
+    return undefined;
+  }
+  const connectorId = optionalString(value.connectorId);
+  if (!connectorId) {
+    return undefined;
+  }
+  return {
+    connectorId,
+    configuredAt: optionalString(value.configuredAt),
+    templateId: optionalString(value.templateId)
+  };
+}
+
+function normalizeDiscoveryRecord(value: unknown): RuntimeConnectorDiscoveryRecord | undefined {
+  if (!isLooseRecord(value)) {
+    return undefined;
+  }
+  const connectorId = optionalString(value.connectorId);
+  const discoveredAt = optionalString(value.discoveredAt);
+  if (!connectorId || !discoveredAt) {
+    return undefined;
+  }
+  return { ...value, connectorId, discoveredAt };
+}
+
 export function buildConnectorsCenter(input: {
   profile: RuntimeProfile;
   snapshot: RuntimeStateSnapshot;
@@ -96,9 +134,16 @@ export function buildConnectorsCenter(input: {
   };
 }): RuntimeConnectorsCenterRecord[] {
   const configuredConnectors = new Map(
-    (input.snapshot.governance?.configuredConnectors ?? []).map(item => [item.connectorId, item] as const)
+    (input.snapshot.governance?.configuredConnectors ?? [])
+      .map(normalizeConfiguredConnector)
+      .filter(item => item !== undefined)
+      .map(item => [item.connectorId, item] as const)
   );
-  const discoveryHistory = groupConnectorDiscoveryHistory(input.snapshot.governance?.connectorDiscoveryHistory ?? []);
+  const discoveryHistory = groupConnectorDiscoveryHistory(
+    (input.snapshot.governance?.connectorDiscoveryHistory ?? [])
+      .map(normalizeDiscoveryRecord)
+      .filter(item => item !== undefined)
+  );
   const governanceAuditByConnector = groupGovernanceAuditByTarget(input.snapshot.governanceAudit ?? []);
   const policyOverrides = new Map(
     (input.snapshot.governance?.connectorPolicyOverrides ?? []).map(item => [item.connectorId, item] as const)

@@ -2,7 +2,6 @@ import type {
   ChatCheckpointRecord,
   ChatSessionRecord,
   PlatformApprovalRecord,
-  RuleRecord,
   SkillCard,
   TaskRecord
 } from '@agent/core';
@@ -24,6 +23,7 @@ import type {
   PlatformConsoleRuntimeTaskRecordSchema,
   PlatformConsoleTimingRecordSchema
 } from './runtime-platform-console.schemas';
+import type { RuleRecord } from '@agent/memory';
 
 export type PlatformConsoleRuntimeTaskRecord = z.infer<typeof PlatformConsoleRuntimeTaskRecordSchema>;
 export type PlatformConsoleRuntimeRecord = z.infer<typeof PlatformConsoleRuntimeRecordSchema>;

@@ -1,7 +1,7 @@
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/runtime';
 
-import { ExecutionWatchdog } from '../watchdog/execution-watchdog';
-import { SandboxExecutor } from '../sandbox/sandbox-executor';
+import type { SandboxExecutor } from '@agent/runtime';
+import type { ExecutionWatchdog } from '@agent/runtime';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';
 import {

@@ -58,20 +58,40 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@agent/agent-kit': resolvePath('./packages/agent-kit/src'),
       '@agent/runtime/base-agent': resolvePath('./packages/runtime/src/agents/base-agent.ts'),
       '@agent/runtime/agent-runtime-context': resolvePath('./packages/runtime/src/runtime/agent-runtime-context.ts'),
       '@agent/runtime/streaming-execution': resolvePath('./packages/runtime/src/runtime/streaming-execution.ts'),
+      '@agent/runtime/governance/approval': resolvePath('./packages/runtime/src/governance/approval/index.ts'),
+      '@agent/runtime/governance/runtime-governance': resolvePath(
+        './packages/runtime/src/governance/runtime-governance/index.ts'
+      ),
+      '@agent/runtime/sandbox': resolvePath('./packages/runtime/src/sandbox/index.ts'),
+      '@agent/runtime/sandbox-utils': resolvePath('./packages/runtime/src/sandbox/sandbox-executor-utils.ts'),
+      '@agent/runtime/watchdog': resolvePath('./packages/runtime/src/watchdog/index.ts'),
       '@agent/core': resolvePath('./packages/core/src'),
       '@agent/knowledge': resolvePath('./packages/knowledge/src'),
       '@agent/config': resolvePath('./packages/config/src'),
       '@agent/runtime': resolvePath('./packages/runtime/src'),
       '@agent/platform-runtime': resolvePath('./packages/platform-runtime/src'),
       '@agent/adapters': resolvePath('./packages/adapters/src'),
+      '@agent/tools/command': resolvePath('./packages/tools/src/command/index.ts'),
+      '@agent/tools/executors/connectors': resolvePath(
+        './packages/tools/src/executors/connectors/connectors-executor.ts'
+      ),
+      '@agent/tools/executors/filesystem': resolvePath(
+        './packages/tools/src/executors/filesystem/filesystem-executor.ts'
+      ),
+      '@agent/tools/executors/runtime-governance': resolvePath(
+        './packages/tools/src/executors/runtime-governance/runtime-governance-executor.ts'
+      ),
+      '@agent/tools/executors/scaffold': resolvePath('./packages/tools/src/executors/scaffold/scaffold-executor.ts'),
+      '@agent/tools/executors/scheduling': resolvePath(
+        './packages/tools/src/executors/scheduling/scheduling-executor.ts'
+      ),
       '@agent/tools': resolvePath('./packages/tools/src'),
       '@agent/memory': resolvePath('./packages/memory/src'),
       '@agent/report-kit': resolvePath('./packages/report-kit/src'),
-      '@agent/skill-runtime': resolvePath('./packages/skill-runtime/src'),
+      '@agent/skill': resolvePath('./packages/skill/src'),
       '@agent/templates': resolvePath('./packages/templates/src'),
       '@agent/evals': resolvePath('./packages/evals/src'),
       '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),

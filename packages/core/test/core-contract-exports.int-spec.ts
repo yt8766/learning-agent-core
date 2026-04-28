@@ -3,12 +3,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   ChatMessageRecordSchema,
   TaskRecordSchema,
-  DataReportJsonSchemaSchema,
-  ReportBundleSchema,
-  DataReportSandpackPayloadSchema,
   SkillCardSchema,
-  SpecialistFindingSchema,
-  ConnectorHealthRecordSchema,
   BudgetStateSchema,
   CreateTaskDtoSchema,
   ConnectorKnowledgeIngestionSummarySchema,
@@ -18,14 +13,10 @@ import {
   InstallSkillDtoSchema,
   PlatformApprovalRecordSchema,
   ArchitectureDescriptorSchema,
-  RiskLevelSchema,
-  buildApprovalScopeMatchKey,
-  isCitationEvidenceSource
+  RiskLevelSchema
 } from '../src';
 import {
   type ArchitectureDescriptorRegistryEntry,
-  type DataReportJsonGenerateInput,
-  type DataReportSandpackGenerateInput,
   type CreateTaskDto,
   type ConnectorKnowledgeIngestionSummary,
   type WorkflowRouteContext,
@@ -36,10 +27,7 @@ import {
   type ArchitectureDescriptor,
   type RiskLevel,
   type ChatMessageRecord,
-  type TaskRecord,
-  type DataReportJsonSchema,
-  type ReportBundle,
-  type DataReportSandpackPayload
+  type TaskRecord
 } from '../src';
 import { type SharedPlatformConsoleRecord, type RuntimeAgentGraphState, type AgentGraphHandlers } from '../src';
 import {
@@ -54,13 +42,8 @@ import {
 } from '../src';
 import { ChatMessageRecordSchema as DirectChatMessageRecordSchema } from '../src/tasking/schemas/chat';
 import { TaskRecordSchema as DirectTaskRecordSchema } from '../src/tasking/schemas/task-record';
-import { DataReportJsonSchemaSchema as DirectDataReportJsonSchemaSchema } from '../src/data-report/schemas/data-report-json-schema';
-import { ReportBundleSchema as DirectReportBundleSchema } from '../src/data-report/schemas/report-bundle';
-import { DataReportSandpackPayloadSchema as DirectDataReportSandpackPayloadSchema } from '../src/data-report/schemas/data-report';
 import { SkillCardSchema as DirectSkillCardSchema } from '../src/skills/schemas/catalog';
-import { SpecialistFindingSchema as DirectSpecialistFindingSchema } from '../src/review/schemas/specialist-finding.schema';
-import { ConnectorHealthRecordSchema as DirectConnectorHealthRecordSchema } from '../src/governance/schemas/governance.schema';
-import { BudgetStateSchema as DirectBudgetStateSchema } from '../src/knowledge/schemas/knowledge-runtime.schema';
+import { BudgetStateSchema as DirectBudgetStateSchema } from '../src/tasking/schemas/knowledge-fields';
 import { CreateTaskDtoSchema as DirectCreateTaskDtoSchema } from '../src/channels/schemas/channels.schema';
 import { ConnectorKnowledgeIngestionSummarySchema as DirectConnectorKnowledgeIngestionSummarySchema } from '../src/connectors/schemas/connectors.schema';
 import { WorkflowRouteContextSchema as DirectWorkflowRouteContextSchema } from '../src/workflow-route/schemas/workflow-route.schema';
@@ -70,9 +53,6 @@ import { InstallSkillDtoSchema as DirectInstallSkillDtoSchema } from '../src/ski
 import { PlatformApprovalRecordSchema as DirectPlatformApprovalRecordSchema } from '../src/platform-console/schemas/platform-console.schema';
 import { ArchitectureDescriptorSchema as DirectArchitectureDescriptorSchema } from '../src/architecture/schemas/architecture-records.schema';
 import { RiskLevelSchema as DirectRiskLevelSchema } from '../src/primitives/schemas/primitives.schema';
-import { isCitationEvidenceSource as DirectIsCitationEvidenceSource } from '../src/knowledge/helpers/evidence';
-import { type DataReportSandpackGenerateInput as DirectDataReportSandpackGenerateInput } from '../src/contracts/data-report/data-report';
-import { type DataReportJsonGenerateInput as DirectDataReportJsonGenerateInput } from '../src/contracts/data-report/data-report-json';
 import { type ArchitectureDescriptorRegistryEntry as DirectArchitectureDescriptorRegistryEntry } from '../src/contracts/architecture/architecture-records';
 import { type SharedPlatformConsoleRecord as DirectSharedPlatformConsoleRecord } from '../src/contracts/platform-console/platform-console';
 import { type PendingExecutionContext as DirectPendingExecutionContext } from '../src/contracts/approval/pending-execution-context';
@@ -98,9 +78,6 @@ import { type ArchitectureDescriptor as DirectArchitectureDescriptor } from '../
 import { type RiskLevel as DirectRiskLevel } from '../src/primitives/types/primitives.types';
 import { type ChatMessageRecord as DirectChatMessageRecord } from '../src/tasking/types/chat';
 import { type TaskRecord as DirectTaskRecord } from '../src/tasking/types/task-record';
-import { type DataReportJsonSchema as DirectDataReportJsonSchema } from '../src/data-report/types/data-report-json-schema';
-import { type ReportBundle as DirectReportBundle } from '../src/data-report/types/report-bundle';
-import { type DataReportSandpackPayload as DirectDataReportSandpackPayload } from '../src/data-report/types/data-report';
 import { type SkillCard as DirectSkillCard } from '../src/skills/types/skills.types';
 import { type ProviderBudgetState as DirectProviderBudgetState } from '../src/providers/provider.types';
 import { type ProviderHealthSnapshot as DirectProviderHealthSnapshot } from '../src/providers/provider.types';
@@ -115,17 +92,7 @@ describe('@agent/core contract export integration', () => {
 
     expect(TaskRecordSchema).toBe(DirectTaskRecordSchema);
 
-    expect(DataReportJsonSchemaSchema).toBe(DirectDataReportJsonSchemaSchema);
-
-    expect(ReportBundleSchema).toBe(DirectReportBundleSchema);
-
-    expect(DataReportSandpackPayloadSchema).toBe(DirectDataReportSandpackPayloadSchema);
-
     expect(SkillCardSchema).toBe(DirectSkillCardSchema);
-
-    expect(SpecialistFindingSchema).toBe(DirectSpecialistFindingSchema);
-
-    expect(ConnectorHealthRecordSchema).toBe(DirectConnectorHealthRecordSchema);
 
     expect(BudgetStateSchema).toBe(DirectBudgetStateSchema);
 
@@ -148,41 +115,13 @@ describe('@agent/core contract export integration', () => {
     expect(RiskLevelSchema).toBe(DirectRiskLevelSchema);
   });
 
-  it('keeps helper exports aligned across root and direct domain entrypoints', () => {
-    expect(isCitationEvidenceSource).toBe(DirectIsCitationEvidenceSource);
-
-    const matchKey = buildApprovalScopeMatchKey({
-      intent: 'write_file',
-      toolName: 'filesystem.write',
-      riskCode: 'high-risk',
-      requestedBy: 'supervisor',
-      commandPreview: 'write docs/core.md'
-    });
-
-    expect(matchKey).toBe('write_file::filesystem.write::high-risk::supervisor::write docs/core.md');
-    expect(
-      isCitationEvidenceSource({
-        sourceType: 'web',
-        sourceUrl: 'https://example.com',
-        trustClass: 'official'
-      })
-    ).toBe(true);
-  });
-
   it('keeps contract types aligned across root and physical contract hosts', () => {
-    expectTypeOf<DataReportSandpackGenerateInput>().toEqualTypeOf<DirectDataReportSandpackGenerateInput>();
-
-    expectTypeOf<DataReportJsonGenerateInput>().toEqualTypeOf<DirectDataReportJsonGenerateInput>();
-
     expectTypeOf<ArchitectureDescriptorRegistryEntry>().toEqualTypeOf<DirectArchitectureDescriptorRegistryEntry>();
 
     expectTypeOf<CreateTaskDto>().toEqualTypeOf<DirectCreateTaskDto>();
 
     expectTypeOf<ChatMessageRecord>().toEqualTypeOf<DirectChatMessageRecord>();
     expectTypeOf<TaskRecord>().toEqualTypeOf<DirectTaskRecord>();
-    expectTypeOf<DataReportJsonSchema>().toEqualTypeOf<DirectDataReportJsonSchema>();
-    expectTypeOf<ReportBundle>().toEqualTypeOf<DirectReportBundle>();
-    expectTypeOf<DataReportSandpackPayload>().toEqualTypeOf<DirectDataReportSandpackPayload>();
     expectTypeOf<import('../src').SkillCard>().toEqualTypeOf<DirectSkillCard>();
 
     expectTypeOf<ConnectorKnowledgeIngestionSummary>().toEqualTypeOf<DirectConnectorKnowledgeIngestionSummary>();

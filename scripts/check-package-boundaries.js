@@ -124,7 +124,7 @@ const allowedBackendPlatformRuntimeFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-facade.ts'
 ]);
-const allowedBackendOfficialAgentRoots = ['apps/backend/agent-server/src/agents'];
+const allowedBackendOfficialAgentRoots = ['apps/backend/agent-server/src/runtime/agents'];
 const allowedBackendOfficialAgentFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-runner.ts',

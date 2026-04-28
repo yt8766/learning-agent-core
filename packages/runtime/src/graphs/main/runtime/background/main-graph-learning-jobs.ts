@@ -1,12 +1,7 @@
 import { loadSettings } from '@agent/config';
-import {
-  ActionIntent,
-  CreateDocumentLearningJobDto,
-  CreateResearchLearningJobDto,
-  EvidenceRecord,
-  SkillCard
-} from '@agent/core';
-import { SkillRegistry } from '@agent/skill-runtime';
+import { ActionIntent, CreateDocumentLearningJobDto, CreateResearchLearningJobDto, SkillCard } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
+import { SkillRegistry } from '@agent/skill';
 import { McpClientManager } from '@agent/tools';
 
 import { LearningFlow } from '../../../../flows/learning';

@@ -1,1 +1,1 @@
-export { findInstallableManifestSuggestion, shouldAutoInstallManifest } from '@agent/skill-runtime';
+export { findInstallableManifestSuggestion, shouldAutoInstallManifest } from '@agent/skill';

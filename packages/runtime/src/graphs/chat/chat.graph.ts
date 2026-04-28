@@ -4,10 +4,8 @@ import {
   ActionIntent,
   type ApprovalStatus,
   type DispatchInstruction,
-  type MemoryRecord,
   type ReviewDecision,
   type SkillCard,
-  type ToolExecutionResult,
   type AgentGraphHandlers,
   type RuntimeAgentGraphState
 } from '@agent/core';
@@ -21,6 +19,8 @@ import {
   runReviewNode,
   runRouteNode
 } from '../../flows/chat/chat-graph-nodes';
+import type { MemoryRecord } from '@agent/memory';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

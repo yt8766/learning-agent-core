@@ -1,6 +1,6 @@
-import type { RuleRecord, SkillCard } from '@agent/core';
-import type { MemoryRepository, RuleRepository } from '@agent/memory';
-import type { SkillRegistry } from '@agent/skill-runtime';
+import type { SkillCard } from '@agent/core';
+import type { MemoryRepository, RuleRecord, RuleRepository } from '@agent/memory';
+import type { SkillRegistry } from '@agent/skill';
 
 import type { RuntimeTaskRecord as TaskRecord } from '../../../runtime/runtime-task.types';
 

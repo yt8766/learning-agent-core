@@ -1,10 +1,17 @@
 import { createDefaultPlatformRuntime, createDefaultPlatformRuntimeOptions } from '@agent/platform-runtime';
 import { ModelInvocationFacade } from '@agent/runtime';
-import { SkillArtifactFetcher } from '@agent/skill-runtime';
+import { SkillArtifactFetcher } from '@agent/skill';
 import type { LlmProviderOptions, ModelInvocationRequest, ProviderUsage } from '@agent/core';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
 import { SkillSourceSyncService } from '../skills/skill-source-sync.service';
+import {
+  createOfficialAgentRegistry,
+  createOfficialRuntimeAgentDependencies,
+  listSubgraphDescriptors,
+  listWorkflowPresets,
+  listWorkflowVersions
+} from '../agents';
 
 function resolveInvocationRole(modeProfile: 'direct-reply' | 'runtime-task'): LlmProviderOptions['role'] {
   return modeProfile === 'direct-reply' ? 'manager' : 'manager';
@@ -53,10 +60,22 @@ function resolveInvocationTokenSink(
 }
 
 export class RuntimeHost {
+  private readonly agentRegistry = createOfficialAgentRegistry();
+  private readonly agentDependencies = createOfficialRuntimeAgentDependencies({
+    agentRegistry: this.agentRegistry
+  });
+
   readonly platformRuntime = createDefaultPlatformRuntime({
     ...createDefaultPlatformRuntimeOptions({
       workspaceRoot: process.cwd()
-    })
+    }),
+    agentRegistry: this.agentRegistry,
+    agentDependencies: this.agentDependencies,
+    metadata: {
+      listWorkflowPresets,
+      listSubgraphDescriptors,
+      listWorkflowVersions
+    }
   });
 
   readonly runtime = this.platformRuntime.runtime;
@@ -111,14 +130,14 @@ export class RuntimeHost {
   readonly skillArtifactFetcher = new SkillArtifactFetcher(this.settings.workspaceRoot);
 
   listWorkflowPresets() {
-    return this.platformRuntime.metadata.listWorkflowPresets();
+    return this.platformRuntime.metadata.listWorkflowPresets?.() ?? [];
   }
 
   listSubgraphDescriptors() {
-    return this.platformRuntime.metadata.listSubgraphDescriptors();
+    return this.platformRuntime.metadata.listSubgraphDescriptors?.() ?? [];
   }
 
   listWorkflowVersions() {
-    return this.platformRuntime.metadata.listWorkflowVersions();
+    return this.platformRuntime.metadata.listWorkflowVersions?.() ?? [];
   }
 }

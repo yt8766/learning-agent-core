@@ -5,10 +5,17 @@ import * as canonicalScaffoldTemplateRegistry from '../src/registries/scaffold-t
 import * as canonicalTemplateRegistry from '../src/registries/frontend-template-registry';
 
 describe('@agent/templates root exports', () => {
-  it('re-exports the frontend template registry explicitly from the package root', () => {
-    expect(templateExports.getFrontendTemplate).toBe(canonicalTemplateRegistry.getFrontendTemplate);
-    expect(templateExports.listFrontendTemplates).toBe(canonicalTemplateRegistry.listFrontendTemplates);
-    expect(templateExports.resolveFrontendTemplateDir).toBe(canonicalTemplateRegistry.resolveFrontendTemplateDir);
+  it('keeps public frontend template exports filtered to non-report templates', () => {
+    expect(templateExports.getFrontendTemplate('react-ts')).toBe(
+      canonicalTemplateRegistry.getFrontendTemplate('react-ts')
+    );
+    expect(templateExports.resolveFrontendTemplateDir('react-ts')).toBe(
+      canonicalTemplateRegistry.resolveFrontendTemplateDir('react-ts')
+    );
+    expect(templateExports.getFrontendTemplate('bonus-center-data')).toBeUndefined();
+    expect(templateExports.listFrontendTemplates()).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ directoryName: expect.stringMatching(/^reports\//) })])
+    );
   });
 
   it('re-exports the scaffold template registry explicitly from the package root', () => {

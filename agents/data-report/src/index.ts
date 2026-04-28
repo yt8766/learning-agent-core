@@ -75,10 +75,24 @@ export type {
   DataReportJsonNodeModelSelector,
   DataReportJsonNodeModelPolicy,
   DataReportJsonNodeStageEvent,
+  DataReportJsonBundle,
+  DataReportJsonBundleReport,
   DataReportJsonSchema,
   DataReportJsonStructuredInput,
   DataReportJsonStructuredSectionInput,
-  DataReportJsonVersionInfo
+  DataReportJsonVersionInfo,
+  ReportBundle,
+  ReportBundleMode,
+  ReportDocument,
+  ReportPatchOperation
+} from './types';
+export {
+  DataReportJsonBundleSchema,
+  DataReportJsonSchemaSchema,
+  ReportBundleModeSchema,
+  ReportBundleSchema,
+  ReportDocumentSchema,
+  ReportPatchOperationSchema
 } from './types';
 export {
   runJsonAnalysisNode,

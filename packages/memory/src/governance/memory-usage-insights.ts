@@ -1,4 +1,4 @@
-import type { MemoryRecord } from '@agent/core';
+import type { MemoryRecord } from '@agent/memory';
 
 export function buildMemoryUsageInsights(memories: MemoryRecord[]) {
   const totals = memories.reduce(

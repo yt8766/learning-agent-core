@@ -11,7 +11,7 @@ import {
   type IntelDelivery,
   type IntelSignal,
   type IntelSignalSource
-} from '@agent/core';
+} from '../../types';
 
 import { createIntelDatabase } from './intel-db';
 

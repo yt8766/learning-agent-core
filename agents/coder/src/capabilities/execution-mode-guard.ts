@@ -1,4 +1,5 @@
-import type { ExecutionMode, ToolDefinition } from '@agent/core';
+import type { ExecutionMode } from '@agent/core';
+import type { ToolDefinition } from '@agent/runtime';
 
 export function isToolAllowedInExecutionMode(tool: ToolDefinition, mode: ExecutionMode | undefined) {
   if (normalizeExecutionMode(mode) !== 'plan') {

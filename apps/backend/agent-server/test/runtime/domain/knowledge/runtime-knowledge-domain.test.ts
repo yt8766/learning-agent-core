@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { MemoryEventRecord, MemoryRecord, EvidenceRecord } from '@agent/core';
+import type { MemoryEventRecord } from '@agent/memory';
 import type { RuntimeStateSnapshot } from '@agent/memory';
 
 import { buildMemoryUsageInsights } from '../../../../src/runtime/domain/knowledge/runtime-memory-usage-insights';
 import { buildMemoryVersionComparison } from '../../../../src/runtime/domain/knowledge/runtime-memory-version-compare';
 import { applyCrossCheckEvidenceRecords } from '../../../../src/runtime/domain/knowledge/runtime-cross-check-evidence';
+import type { EvidenceRecord, MemoryRecord } from '@agent/memory';
 
 describe('runtime knowledge domain helpers', () => {
   it('builds memory usage insights from stable memory records', () => {

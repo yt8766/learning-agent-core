@@ -37,9 +37,9 @@ load -> transform(optional) -> filter(optional) -> chunk -> metadata build(optio
 
 ## 3. 与其他包的关系
 
-### 3.1 `packages/core`
+### 3.1 `packages/knowledge/src/contracts`
 
-稳定公共知识契约优先放在 `packages/core/src/knowledge/*`。
+稳定公共知识契约放在 `packages/knowledge/src/contracts/*`。
 
 当前 indexing 应复用这些类型：
 
@@ -48,7 +48,7 @@ load -> transform(optional) -> filter(optional) -> chunk -> metadata build(optio
 - `KnowledgeSourceType`
 - `KnowledgeTrustClass`
 
-禁止在 `packages/knowledge/src/indexing` 再重复定义这些公共模型。
+禁止在 `packages/knowledge/src/indexing` 再重复定义这些公共模型，也不要把 indexing contract 恢复到 `packages/core/src/knowledge/*`。
 
 ### 3.2 `packages/adapters`
 

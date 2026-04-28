@@ -1,4 +1,4 @@
-import { IntelSignalSourceSchema, type IntelSignalSource } from '@agent/core';
+import { IntelSignalSourceSchema, type IntelSignalSource } from '../../../types';
 
 import type { PatrolSearchResult, PatrolIntelSignal } from '../schemas/patrol-graph-state.schema';
 import { resolveIntelContentHash, resolveIntelSignalSourceId } from './intel-evidence-helpers';

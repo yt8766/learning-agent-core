@@ -9,7 +9,7 @@ import {
   ingestLocalKnowledge,
   listKnowledgeArtifacts,
   readKnowledgeOverview
-} from '../../../src/runtime/knowledge/runtime-knowledge-store';
+} from '../../../src/runtime/domain/knowledge/runtime-knowledge-store';
 
 const tempRoots: string[] = [];
 

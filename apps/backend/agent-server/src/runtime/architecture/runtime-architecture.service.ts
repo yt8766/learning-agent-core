@@ -4,7 +4,7 @@ import { WorkerRegistry } from '@agent/runtime';
 import { loadSettings } from '@agent/config';
 import type { ArchitectureDescriptor, ArchitectureDiagramRecord, RuntimeArchitectureRecord } from '@agent/core';
 import { RuntimeHost } from '../core/runtime.host';
-import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../domain/knowledge/runtime-knowledge-store';
 import { createArchitectureDescriptorRegistry } from './runtime-architecture-registries';
 
 const ARCHITECTURE_VERSION = '2026.03.runtime-architecture.v1';

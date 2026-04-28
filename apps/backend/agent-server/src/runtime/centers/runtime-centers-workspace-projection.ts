@@ -1,6 +1,7 @@
-import { normalizeInstalledSkillId, type AgentSkillReuseRecord } from '@agent/core';
+import { type AgentSkillReuseRecord } from '@agent/core';
 
 import type { WorkspaceCenterRecord } from './runtime-centers.records';
+import { normalizeInstalledSkillId } from '@agent/knowledge';
 
 type WorkspaceEvidence = WorkspaceCenterRecord['evidence'][number];
 type WorkspaceLearningSummary = WorkspaceCenterRecord['learningSummaries'][number];

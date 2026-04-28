@@ -38,8 +38,8 @@
 
 - `packages/evals/src/benchmarks.ts`
 - `packages/evals/src/evaluators.ts`
-- `packages/skill-runtime/src/skill-registry.ts`
-- `packages/skill-runtime/src/agent-skill-loader.ts`
+- `packages/skill/src/skill-registry.ts`
+- `packages/skill/src/agent-skill-loader.ts`
 - `packages/report-kit/src/data-report-blueprint.ts`
 - `packages/report-kit/src/data-report-blueprint-template.ts`
 - `packages/report-kit/src/data-report-module-scaffold.ts`
@@ -162,7 +162,7 @@
 - `packages/tools/src/contracts/tool-registry.ts`
 - `packages/tools/src/contracts/tool-risk-classifier.ts`
 - `packages/adapters/src/contracts/llm-provider.ts`
-- `packages/skill-runtime/src/contracts/skill-runtime-facade.ts`
+- `packages/skill/src/contracts/skill-facade.ts`
 - `packages/evals/src/contracts/evals-facade.ts`
 - `packages/report-kit/src/contracts/data-report-facade.ts`
 - `packages/config/src/contracts/settings-facade.ts`

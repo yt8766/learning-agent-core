@@ -1,14 +1,10 @@
-import type {
-  EvidenceRecord,
-  ExecutionMode,
-  SourcePolicyMode,
-  TrustClass,
-  WorkflowPresetDefinition
-} from '@agent/core';
-import { mergeEvidence } from '@agent/core';
+import type { ExecutionMode, SourcePolicyMode, TrustClass, WorkflowPresetDefinition } from '@agent/core';
+
 import { normalizeExecutionMode } from './workflow-architecture-helpers';
 
 import { buildTemporalContextBlock, isFreshnessSensitiveGoal } from '../utils/prompts/temporal-context';
+import type { EvidenceRecord } from '@agent/memory';
+import { mergeEvidence } from '@agent/knowledge';
 
 export interface ResearchSourcePlanInput {
   taskId: string;
@@ -133,4 +129,4 @@ function resolveEffectiveSourcePolicyMode(
   return priority[resolvedWorkflowMode] <= priority[runtimeMode] ? resolvedWorkflowMode : runtimeMode;
 }
 
-export { mergeEvidence } from '@agent/core';
+export { mergeEvidence } from '@agent/knowledge';

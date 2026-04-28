@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { EvidenceRecord, MemoryRecord } from '@agent/core';
-import type { MemoryScrubberFinding } from '@agent/memory';
+import type { EvidenceRecord, MemoryRecord, MemoryScrubberFinding } from '@agent/memory';
 
 type CrossCheckFinding = MemoryScrubberFinding & {
   evidenceRecords?: EvidenceRecord[];

@@ -19,7 +19,7 @@
     "@agent/memory": "workspace:*",
     "@agent/platform-runtime": "workspace:*",
     "@agent/runtime": "workspace:*",
-    "@agent/skill-runtime": "workspace:*",
+    "@agent/skill": "workspace:*",
     "@agent/tools": "workspace:*"
   }
 }

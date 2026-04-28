@@ -1,7 +1,6 @@
 import type {
   AgentRoleValue as AgentRole,
   AgentExecutionState,
-  ApprovalResumeInput,
   CreateTaskDto,
   ExecutionTrace,
   RequestedExecutionHints,
@@ -22,6 +21,7 @@ import type {
   RuntimeLearningQueueItem as LearningQueueItem
 } from '../../../../runtime/runtime-learning.types';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../runtime/runtime-task.types';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 export type LocalSkillSuggestionResolver = (params: {
   goal: string;

@@ -1,6 +1,6 @@
 import type { ArchitectureDescriptor, ArchitectureDescriptorRegistryEntry } from '@agent/core';
 
-import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../domain/knowledge/runtime-knowledge-store';
 
 export function buildAgentAdminArchitectureDescriptor(input: {
   knowledgeDescriptor: ReturnType<typeof buildKnowledgeDescriptor>;

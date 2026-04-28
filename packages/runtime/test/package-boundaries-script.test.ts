@@ -124,7 +124,7 @@ describe('check-package-boundaries script', () => {
     ]);
   });
 
-  it('blocks application code and manifests from depending on official agent packages directly', async () => {
+  it('blocks application code from depending on official agent packages directly while allowing backend composition manifests', async () => {
     const rootDir = await mkdtemp(path.join(tmpdir(), 'package-boundaries-'));
     tempDirs.push(rootDir);
 
@@ -134,6 +134,18 @@ describe('check-package-boundaries script', () => {
       [
         "import { listWorkflowPresets } from '@agent/agents-supervisor';",
         "import { executeIntelRun } from '@agent/agents-intel-engine';"
+      ].join('\n')
+    );
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/backend/agent-server/src/runtime/agents/official-agent-registry.ts',
+      [
+        "import { createRuntimeAgentProvider } from '@agent/platform-runtime';",
+        "import { createMainRouteGraph } from '@agent/agents-supervisor';",
+        "import { executeIntelRun } from '@agent/agents-intel-engine';",
+        'void createRuntimeAgentProvider;',
+        'void createMainRouteGraph;',
+        'void executeIntelRun;'
       ].join('\n')
     );
     await writeWorkspaceFile(
@@ -149,8 +161,6 @@ describe('check-package-boundaries script', () => {
     );
 
     expect(findBoundaryViolations(rootDir)).toEqual([
-      'apps/backend/agent-server/package.json depends on official agent package "@agent/agents-intel-engine"; app packages should depend on @agent/platform-runtime for official assembly',
-      'apps/backend/agent-server/package.json depends on official agent package "@agent/agents-supervisor"; app packages should depend on @agent/platform-runtime for official assembly',
       'apps/backend/agent-server/src/example.ts imports official agent package "@agent/agents-supervisor" from app code; use @agent/platform-runtime instead',
       'apps/backend/agent-server/src/example.ts imports official agent package "@agent/agents-intel-engine" from app code; use @agent/platform-runtime instead'
     ]);

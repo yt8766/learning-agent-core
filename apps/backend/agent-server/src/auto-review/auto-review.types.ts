@@ -1,6 +1,7 @@
-import type { AutoReviewResult } from '@agent/core';
+import { AutoReviewResultSchema } from '@agent/tools';
+import type { z } from 'zod/v4';
 
-export type AutoReviewRecord = AutoReviewResult;
+export type AutoReviewRecord = z.infer<typeof AutoReviewResultSchema>;
 export type AutoReviewApprovalAction = 'approve' | 'reject' | 'feedback' | 'input' | 'bypass' | 'abort';
 
 export interface AutoReviewListQuery {

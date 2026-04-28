@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { ApprovalResumeInputSchema } from '../../governance';
 import { ApprovalScopeSchema, ChatRoleSchema, ExecutionPlanModeSchema } from '../../primitives';
+import { ApprovalResumeInputSchema } from '../../tasking/schemas/governance-fields';
 import {
   CapabilityAttachmentRecordSchema,
   CapabilityAugmentationRecordSchema,
@@ -9,7 +9,7 @@ import {
 } from '../../skills/schemas/capability';
 import { ChannelIdentitySchema, ChatSessionCompressionRecordSchema } from '../../tasking/schemas/session';
 import { TaskLineageRecordSchema } from '../../tasking/schemas/task-lineage';
-import { MemoryScopeTypeSchema, MemoryTypeSchema } from '../../memory';
+import { MemoryScopeTypeSchema, MemoryTypeSchema } from '../../tasking/schemas/memory-fields';
 
 export const CreateTaskCounselorSelectorSchema = z.object({
   strategy: z.enum(['user-id', 'session-ratio', 'task-type', 'feature-flag', 'manual']),

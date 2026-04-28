@@ -1,4 +1,4 @@
-import type { IntelSignal } from '@agent/core';
+import type { IntelSignal } from '../../../types';
 
 import { DigestGraphStateSchema, type DigestGraphState } from '../schemas/digest-graph-state.schema';
 

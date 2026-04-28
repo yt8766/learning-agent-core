@@ -1,14 +1,17 @@
-import { normalizeCritiqueResult, normalizeSpecialistFinding } from '@agent/core';
 import type { RuntimeSpecialistFindingRecord as SpecialistFindingRecord } from '../../runtime/runtime-specialist-finding.types';
 import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
+import {
+  normalizeRuntimeCritiqueResult,
+  normalizeRuntimeSpecialistFinding
+} from '../../runtime/runtime-review-records';
 import { buildFinalReviewSummary, deriveFinalReviewDecision } from './review-stage-helpers';
 import type { NormalizedReviewResult } from './review-stage.types';
 
 function upsertRuntimeSpecialistFinding(
   task: RuntimeTaskRecord,
-  input: Parameters<typeof normalizeSpecialistFinding>[0]
+  input: Parameters<typeof normalizeRuntimeSpecialistFinding>[0]
 ) {
-  const finding = normalizeSpecialistFinding(input) as SpecialistFindingRecord;
+  const finding = normalizeRuntimeSpecialistFinding(input) as SpecialistFindingRecord;
   const current: SpecialistFindingRecord[] = task.specialistFindings ?? [];
   task.specialistFindings = [
     ...current.filter(item => !(item.specialistId === finding.specialistId && item.role === finding.role)),
@@ -23,7 +26,7 @@ export function applyReviewOutcomeState(
   reviewMinistry: 'xingbu-review' | 'libu-delivery'
 ) {
   const critiqueDecision = deriveFinalReviewDecision(task, reviewed.review, reviewed.evaluation.shouldRetry);
-  task.critiqueResult = normalizeCritiqueResult({
+  task.critiqueResult = normalizeRuntimeCritiqueResult({
     ...reviewed.critiqueResult,
     decision: critiqueDecision,
     summary: buildFinalReviewSummary(task, reviewed.critiqueResult?.summary, critiqueDecision),

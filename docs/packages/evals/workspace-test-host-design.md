@@ -189,7 +189,7 @@ test/
 - `test/integration/frontend-backend/`
   - 前后端联动契约测试，例如消息流、SSE payload、approval action flow、evidence contract
 - `test/integration/packages/`
-  - `core -> runtime`、`runtime -> tools`、`skill-runtime` 装载等跨包协同测试
+  - `core -> runtime`、`runtime -> tools`、`skill` 装载等跨包协同测试
 
 辅助目录：
 

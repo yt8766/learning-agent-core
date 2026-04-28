@@ -8,7 +8,6 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 
 const workspaceManifests = [
   'packages/adapters/package.json',
-  'packages/agent-kit/package.json',
   'packages/config/package.json',
   'packages/core/package.json',
   'packages/evals/package.json',
@@ -17,7 +16,7 @@ const workspaceManifests = [
   'packages/platform-runtime/package.json',
   'packages/report-kit/package.json',
   'packages/runtime/package.json',
-  'packages/skill-runtime/package.json',
+  'packages/skill/package.json',
   'packages/templates/package.json',
   'packages/tools/package.json',
   'agents/coder/package.json',

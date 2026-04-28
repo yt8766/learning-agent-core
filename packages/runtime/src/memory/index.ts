@@ -4,4 +4,9 @@ export {
   coreMemoryAppend,
   coreMemoryReplace
 } from './active-memory-tools';
-export { buildRuntimeMemorySearchRequest, flattenStructuredMemories } from './runtime-memory-search';
+export {
+  buildRuntimeMemorySearchRequest,
+  flattenStructuredMemories,
+  limitStructuredRules,
+  searchRuntimeMemories
+} from './runtime-memory-search';

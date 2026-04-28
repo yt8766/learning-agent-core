@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { retryIntelDeliveries } from '../../src/services/retry-delivery.service';
+import { retryIntelDeliveries } from '../../src/runtime/execution/retry-intel-deliveries';
 
 describe('retryIntelDeliveries', () => {
   it('resolves channel webhooks and sends retryable Lark deliveries', async () => {

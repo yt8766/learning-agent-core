@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { derivePlannerStrategyRecord } from '@agent/agent-kit';
 import type { CreateTaskDto, EntryDecisionRecord, QueueStateRecord } from '@agent/core';
 import { ExecutionPlanMode, TaskStatus } from '@agent/core';
 
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
+import { derivePlannerStrategyRecord } from '../../../../agents';
 import type { KnowledgeReuseResult, RuntimeSettings } from './task-factory.types';
 
 export function buildTaskRecord(params: {

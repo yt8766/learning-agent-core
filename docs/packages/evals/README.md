@@ -64,6 +64,7 @@
   - `src/regressions/execution-evaluator.ts`
   - `src/quality-gates/skill-promotion-gate.ts`
   - `src/benchmarks/benchmarks.ts`
+- `src/regressions/execution-evaluator.ts` 只消费评测结果语义与 runtime tool execution contract；`ToolExecutionResult` 等已迁出的 tool/governance contract 必须从 `@agent/runtime` / `@agent/tools` 消费，不允许恢复到 `@agent/core`
 - `src/prompt-regression/evaluators.ts` 当前仅保留过渡 compat 职责
 - `@agent/evals` 根入口当前先通过 `contracts/evals-facade.ts` 导出上述 canonical host；legacy 根文件 `src/evaluators.ts` 与 `src/benchmarks.ts` 已删除
 

@@ -1,5 +1,6 @@
-import type { ApprovalScopePolicyRecord, ChatSessionRecord } from '@agent/core';
+import type { ChatSessionRecord } from '@agent/core';
 import type { RuntimeProfile } from '@agent/config';
+import type { ApprovalScopePolicyRecord } from '@agent/runtime';
 import type { summarizeAndPersistUsageAnalytics } from './runtime-metrics-store';
 
 export interface RuntimeCenterTaskLike {

@@ -1,4 +1,4 @@
-import { CreateTaskDto, QueueStateRecord, ToolUsageSummaryRecord, CapabilityOwnerType } from '@agent/core';
+import { CreateTaskDto, QueueStateRecord, CapabilityOwnerType } from '@agent/core';
 
 import { buildInitialCapabilityState } from '../../../../capabilities/capability-pool';
 import { initializeTaskExecutionSteps } from '../../../../bridges/supervisor-runtime-bridge';
@@ -15,6 +15,7 @@ import type {
 import { buildTaskRecord } from './task-record-builder';
 import { applyLocalSkillSuggestions } from './task-skill-intervention';
 import { resolveTaskWorkflowResolution } from './task-workflow-resolution';
+import type { ToolUsageSummaryRecord } from '@agent/runtime';
 
 export class MainGraphTaskFactory {
   constructor(

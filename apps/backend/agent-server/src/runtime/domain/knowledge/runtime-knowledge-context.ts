@@ -1,6 +1,6 @@
 import type { RuntimeHost } from '../../core/runtime.host';
 import type { RuntimeKnowledgeContext } from '../../services/runtime-knowledge.service';
-import type { RuntimeWenyuanFacade } from '../../wenyuan/runtime-wenyuan-facade';
+import type { RuntimeWenyuanFacade } from './runtime-wenyuan-facade';
 
 export interface RuntimeKnowledgeContextInput {
   wenyuanFacade: () => RuntimeWenyuanFacade;

@@ -4,13 +4,12 @@ import type {
   CreateDocumentLearningJobDto,
   CreateResearchLearningJobDto,
   ExecutionTrace,
-  LearningConflictRecord,
-  LearningCandidateRecord,
   ManagerPlan,
   ReviewRecord,
   WorkerDefinition
 } from '@agent/core';
-import type { RuleRecord } from '@agent/core';
+import type { LearningConflictRecord } from '@agent/knowledge';
+import type { LearningCandidateRecord, RuleRecord } from '@agent/memory';
 import type {
   RuntimeLearningJob as LearningJob,
   RuntimeLearningQueueItem as LearningQueueItem

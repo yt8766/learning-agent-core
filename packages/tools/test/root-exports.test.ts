@@ -80,8 +80,9 @@ describe('@agent/tools root exports', () => {
     expect(createDefaultToolRegistry).toBe(registryExports.createDefaultToolRegistry);
     expect(ToolRiskClassifier).toBe(registryExports.ToolRiskClassifier);
     expect(ToolRiskClassifier).toBe(contractRiskClassifierExports.ToolRiskClassifier);
-    expect(buildToolsCenter).toBe((await import('../src/runtime-governance/tools-center')).buildToolsCenter);
-    const connectorGovernanceState = await import('../src/runtime-governance/connector-governance-state');
+    const runtimeGovernanceExports = await import('@agent/runtime');
+    expect(buildToolsCenter).toBe(runtimeGovernanceExports.buildToolsCenter);
+    const connectorGovernanceState = runtimeGovernanceExports;
     expect(setConnectorEnabledState).toBe(connectorGovernanceState.setConnectorEnabledState);
     expect(setConnectorPolicyOverride).toBe(connectorGovernanceState.setConnectorPolicyOverride);
     expect(clearConnectorPolicyOverride).toBe(connectorGovernanceState.clearConnectorPolicyOverride);

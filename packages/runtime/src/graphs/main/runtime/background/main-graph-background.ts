@@ -1,8 +1,9 @@
 import { TaskStatus } from '@agent/core';
-import type { ApprovalResumeInput, QueueStateRecord, SubgraphIdValue as SubgraphId } from '@agent/core';
+import type { QueueStateRecord, SubgraphIdValue as SubgraphId } from '@agent/core';
 
 import type { PendingExecutionContext } from '../../../../flows/approval';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 export class MainGraphBackgroundRuntime {
   constructor(

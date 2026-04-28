@@ -1,4 +1,4 @@
-import type { Chunk, Chunker, Document } from '@agent/core';
+import type { Chunk, Chunker, Document } from '@agent/knowledge';
 
 export class FixedWindowChunker implements Chunker {
   constructor(

@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   ArchitectureDescriptorRegistryEntry,
-  DataReportJsonSchema,
-  DataReportJsonGenerateInput,
-  DataReportJsonGraphHandlers,
-  DataReportJsonGraphState,
-  DataReportSandpackGenerateInput,
-  DataReportSandpackGraphHandlers,
-  DataReportSandpackGraphState,
   DeliverySourceSummaryRecord,
   ExecutionTraceSummaryRecord,
   PlatformApprovalRecord,
@@ -19,10 +12,6 @@ import type {
 import {
   ArchitectureDescriptorSchema,
   ArchitectureDiagramRecordSchema,
-  DataReportJsonGenerateResultSchema,
-  DataReportJsonGenerationErrorSchema,
-  DataReportJsonPatchOperationSchema,
-  DataReportJsonSchemaSchema,
   DeliveryCitationRecordSchema,
   DeliverySourceSummaryRecordSchema,
   ExecutionTraceSummaryRecordSchema,
@@ -263,132 +252,5 @@ describe('@agent/core schema-first contracts', () => {
     };
 
     expect(registryEntry.build().scope).toBe('project');
-  });
-
-  it('keeps data report runtime contracts available after moving them to contracts', () => {
-    const sandpackInput: DataReportSandpackGenerateInput = {
-      llm: {} as never,
-      goal: 'build report'
-    };
-    const sandpackState: DataReportSandpackGraphState = {
-      goal: 'build report'
-    };
-    const sandpackHandlers: DataReportSandpackGraphHandlers = {};
-    const jsonInput: DataReportJsonGenerateInput = {
-      goal: 'build schema'
-    };
-    const jsonState: DataReportJsonGraphState = {
-      goal: 'build schema'
-    };
-    const jsonHandlers: DataReportJsonGraphHandlers = {};
-
-    expect(sandpackInput.goal).toBe('build report');
-    expect(sandpackState.goal).toBe('build report');
-    expect(sandpackHandlers).toEqual({});
-    expect(jsonInput.goal).toBe('build schema');
-    expect(jsonState.goal).toBe('build schema');
-    expect(jsonHandlers).toEqual({});
-  });
-
-  it('parses brand-new and patch data report json schemas', () => {
-    const schema: DataReportJsonSchema = DataReportJsonSchemaSchema.parse({
-      version: '1.0',
-      kind: 'data-report-json',
-      meta: {
-        reportId: 'report-1',
-        title: 'Runtime overview',
-        description: 'Runtime dashboard',
-        route: '/runtime',
-        templateRef: 'bonus-center',
-        scope: 'single',
-        layout: 'dashboard',
-        owner: 'data-report-json-agent'
-      },
-      pageDefaults: {
-        filters: {},
-        queryPolicy: {
-          autoQueryOnInit: true,
-          autoQueryOnFilterChange: false,
-          cacheKey: 'runtime-report'
-        }
-      },
-      filterSchema: {
-        formKey: 'runtime-filters',
-        layout: 'inline',
-        fields: []
-      },
-      dataSources: {
-        runtime: {
-          serviceKey: 'runtimeService',
-          requestAdapter: {},
-          responseAdapter: {
-            listPath: 'data.items'
-          }
-        }
-      },
-      sections: [
-        {
-          id: 'overview',
-          title: 'Overview',
-          description: 'Runtime overview',
-          dataSourceKey: 'runtime',
-          sectionDefaults: {
-            filters: {},
-            table: {
-              pageSize: 20,
-              defaultSort: {
-                field: 'updatedAt',
-                order: 'desc'
-              }
-            }
-          },
-          blocks: [
-            {
-              type: 'metrics',
-              title: 'Key metrics',
-              items: []
-            }
-          ]
-        }
-      ],
-      registries: {
-        filterComponents: ['date-range'],
-        blockTypes: ['metrics'],
-        serviceKeys: ['runtimeService']
-      },
-      modification: {
-        strategy: 'patchable-json',
-        supportedOperations: ['append-section']
-      },
-      patchOperations: [
-        DataReportJsonPatchOperationSchema.parse({
-          op: 'replace-meta-title',
-          path: '/meta/title',
-          summary: 'Rename report'
-        })
-      ],
-      warnings: []
-    });
-
-    expect(schema.patchOperations?.[0]?.op).toBe('replace-meta-title');
-  });
-
-  it('parses data report generation results and errors', () => {
-    expect(
-      DataReportJsonGenerateResultSchema.parse({
-        status: 'partial',
-        partialSchema: {
-          version: '1.0',
-          kind: 'data-report-json'
-        },
-        error: DataReportJsonGenerationErrorSchema.parse({
-          errorCode: 'report_schema_validation_failed',
-          errorMessage: 'missing sections',
-          retryable: true
-        }),
-        content: '{}',
-        elapsedMs: 1200
-      }).status
-    ).toBe('partial');
   });
 });

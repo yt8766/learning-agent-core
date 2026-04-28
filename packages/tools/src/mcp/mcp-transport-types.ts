@@ -1,4 +1,4 @@
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/runtime';
 
 import type { McpCapabilityDefinition } from './mcp-capability-registry';
 import type { McpServerDefinition } from './mcp-server-registry';

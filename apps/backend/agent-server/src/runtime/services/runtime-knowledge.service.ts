@@ -8,26 +8,28 @@ import {
 } from '@agent/memory';
 
 import {
-  EvidenceRecord,
   InvalidateKnowledgeDto,
   MemoryFeedbackDto,
-  MemorySearchResult,
-  MemoryRecord,
   OverrideMemoryDto,
   PatchUserProfileDto,
   RetireKnowledgeDto,
   ResolveResolutionCandidateDto,
-  ResolutionCandidateRecord,
   RollbackMemoryDto,
   SearchMemoryDto,
-  UserProfileRecord,
   SupersedeKnowledgeDto
 } from '@agent/core';
+import type {
+  EvidenceRecord,
+  MemoryRecord,
+  MemorySearchResult,
+  ResolutionCandidateRecord,
+  UserProfileRecord
+} from '@agent/memory';
 import type { RuntimeHost } from '../core/runtime.host';
 import { applyCrossCheckEvidenceRecords } from '../domain/knowledge/runtime-cross-check-evidence';
 import { buildMemoryUsageInsights } from '../domain/knowledge/runtime-memory-usage-insights';
 import { buildMemoryVersionComparison } from '../domain/knowledge/runtime-memory-version-compare';
-import { RuntimeWenyuanFacade } from '../wenyuan/runtime-wenyuan-facade';
+import { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
 
 export interface RuntimeKnowledgeContext {
   wenyuanFacade: RuntimeWenyuanFacade;

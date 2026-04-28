@@ -1,13 +1,15 @@
 /**
  * 第2类 integration：platform-runtime 装配 agent
  *
- * 验证 createOfficialAgentRegistry() 和 createPlatformRuntime() 在无外部服务的情况下
- * 能正确装配四个官方 Agent，并返回结构完整的 PlatformRuntimeFacade。
+ * 验证 backend 官方装配入口和 createPlatformRuntime() 在无外部服务的情况下
+ * 能正确协作：官方 Agent 留在真实宿主，platform-runtime 只承载注入后的 facade。
  *
  * 命名约定：*.int-spec.ts
  */
 
 import { describe, expect, it } from 'vitest';
+
+import { createPlatformWorkflowRegistry, createPlatformRuntime } from '@agent/platform-runtime';
 
 import {
   OFFICIAL_CODER_AGENT_ID,
@@ -19,14 +21,11 @@ import {
   OFFICIAL_SUPERVISOR_AGENT_ID,
   OFFICIAL_SUPERVISOR_PRIMARY_CAPABILITY,
   createOfficialAgentRegistry,
-  createOfficialRuntimeAgentDependencies,
-  createOfficialWorkflowRegistry,
   listSubgraphDescriptors,
   listWorkflowPresets,
   listWorkflowVersions
-} from '@agent/platform-runtime';
-
-import { createPlatformRuntime } from '@agent/platform-runtime';
+} from '../../../apps/backend/agent-server/src/runtime/agents';
+import { createOfficialRuntimeAgentDependencies } from '../../../apps/backend/agent-server/src/runtime/agents/official-runtime-agent-dependencies';
 
 describe('platform-runtime agent assembly (第2类 integration)', () => {
   describe('createOfficialAgentRegistry()', () => {
@@ -146,35 +145,35 @@ describe('platform-runtime agent assembly (第2类 integration)', () => {
       expect(facade.metadata).toBeDefined();
     });
 
-    it('falls back to official registry when agentRegistry is not provided', () => {
+    it('falls back to an empty static registry when agentRegistry is not provided', () => {
       const facade = createPlatformRuntime({ runtime: {} as unknown });
       expect(facade.agentRegistry).toBeDefined();
       const agents = facade.agentRegistry.listAgents();
-      expect(agents.length).toBeGreaterThan(0);
+      expect(agents).toHaveLength(0);
     });
 
-    it('metadata.listWorkflowPresets() returns non-empty list', () => {
+    it('metadata.listWorkflowPresets() returns empty list without host metadata', () => {
       const facade = createPlatformRuntime({ runtime: {} as unknown });
       const presets = facade.metadata.listWorkflowPresets();
-      expect(presets.length).toBeGreaterThan(0);
+      expect(presets).toHaveLength(0);
     });
 
-    it('metadata.listSubgraphDescriptors() returns non-empty list', () => {
+    it('metadata.listSubgraphDescriptors() returns empty list without host metadata', () => {
       const facade = createPlatformRuntime({ runtime: {} as unknown });
       const descriptors = facade.metadata.listSubgraphDescriptors();
-      expect(descriptors.length).toBeGreaterThan(0);
+      expect(descriptors).toHaveLength(0);
     });
 
-    it('metadata.listWorkflowVersions() returns non-empty list', () => {
+    it('metadata.listWorkflowVersions() returns empty list without host metadata', () => {
       const facade = createPlatformRuntime({ runtime: {} as unknown });
       const versions = facade.metadata.listWorkflowVersions();
-      expect(versions.length).toBeGreaterThan(0);
+      expect(versions).toHaveLength(0);
     });
   });
 
-  describe('createOfficialWorkflowRegistry()', () => {
-    it('returns workflow registry with official presets', () => {
-      const workflowRegistry = createOfficialWorkflowRegistry();
+  describe('createPlatformWorkflowRegistry()', () => {
+    it('returns a generic workflow registry shell', () => {
+      const workflowRegistry = createPlatformWorkflowRegistry();
       expect(workflowRegistry).toBeDefined();
     });
   });

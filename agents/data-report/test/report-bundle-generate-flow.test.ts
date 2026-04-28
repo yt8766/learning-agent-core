@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import type { LlmProviderMessage } from '@agent/core';
 import type {
   DataReportJsonGenerateResult,
   DataReportJsonGraphState,
   DataReportJsonStructuredInput,
-  LlmProviderMessage,
   ReportDocument
-} from '@agent/core';
+} from '../src/types';
 
 import {
   executeReportBundleGenerateFlow,

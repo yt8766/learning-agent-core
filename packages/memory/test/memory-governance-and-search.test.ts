@@ -11,7 +11,7 @@ import {
   LocalVectorIndexRepository,
   shouldReindexMemory
 } from '@agent/memory';
-import type { MemoryRecord, RuleRecord } from '@agent/core';
+import type { MemoryRecord, RuleRecord } from '@agent/memory';
 
 describe('governed memory repository and structured search', () => {
   let tempDir = '';

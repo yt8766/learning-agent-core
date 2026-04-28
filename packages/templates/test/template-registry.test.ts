@@ -32,12 +32,11 @@ describe('@agent/templates frontend template registry', () => {
         expect.objectContaining({
           id: 'react-ts',
           directoryName: 'starters/react-ts'
-        }),
-        expect.objectContaining({
-          id: 'bonus-center-data',
-          directoryName: 'reports/bonus-center-data'
         })
       ])
+    );
+    expect(templates).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ directoryName: expect.stringMatching(/^reports\//) })])
     );
   });
 
@@ -71,31 +70,11 @@ describe('@agent/templates frontend template registry', () => {
     }
   });
 
-  it('resolves the bonus-center-data structured template with page, services, types, and routes files', () => {
-    const template = getFrontendTemplate('bonus-center-data');
-    const templateDir = resolveFrontendTemplateDir('bonus-center-data');
-
-    expect(template).toEqual(
-      expect.objectContaining({
-        id: 'bonus-center-data',
-        displayName: 'Bonus Center Data Report',
-        moduleDirectories: ['pages/dataDashboard/bonusCenterData/components'],
-        sharedEntryFiles: expect.arrayContaining([
-          'pages/dataDashboard/bonusCenterData/index.tsx',
-          'pages/dataDashboard/bonusCenterData/components/Search/index.tsx',
-          'services/data/bonusCenter.ts',
-          'types/data/bonusCenter.ts',
-          'routes.ts'
-        ]),
-        entryFiles: expect.arrayContaining([
-          'pages/dataDashboard/bonusCenterData/index.tsx',
-          'services/data/bonusCenter.ts',
-          'types/data/bonusCenter.ts',
-          'routes.ts'
-        ])
-      })
-    );
-    expect(templateDir).toContain('packages/templates/src/reports/bonus-center-data');
+  it('does not expose report blueprints from the templates package root', () => {
+    expect(getFrontendTemplate('bonus-center-data')).toBeUndefined();
+    expect(getFrontendTemplate('single-report-table')).toBeUndefined();
+    expect(resolveFrontendTemplateDir('bonus-center-data')).toBeUndefined();
+    expect(resolveFrontendTemplateDir('single-report-table')).toBeUndefined();
   });
 
   it('keeps the react-ts template ready as a minimal runnable frontend scaffold', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { EvaluationResult, ReviewRecord, SkillCard } from '@agent/core';
+import type { ReviewRecord, SkillCard } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
 import { LearningFlow } from '../src/flows/learning';
 
 const baseEvaluation: EvaluationResult = {

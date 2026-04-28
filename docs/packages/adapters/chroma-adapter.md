@@ -3,17 +3,17 @@
 状态：current
 文档类型：guide
 适用范围：`packages/adapters/src/chroma/`
-最后核对：2026-05-09
+最后核对：2026-04-28
 
 ## 概述
 
-`ChromaVectorStoreAdapter` 实现 `@agent/core` 的 `VectorStore` 接口，将 `Vector[]` upsert 到 Chroma 向量数据库。
+`ChromaVectorStoreAdapter` 实现 `@agent/knowledge` 的 `VectorStore` 接口，将 `Vector[]` upsert 到 Chroma 向量数据库。
 
 ## 基础用法
 
 ```ts
 import { ChromaVectorStoreAdapter } from '@agent/adapters';
-import type { Vector } from '@agent/core';
+import type { Vector } from '@agent/knowledge';
 
 const store = new ChromaVectorStoreAdapter({
   collectionName: 'my-collection',

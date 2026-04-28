@@ -1,6 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import type { ToolExecutionResult } from '@agent/core';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 export interface CoderGraphState {
   goal: string;

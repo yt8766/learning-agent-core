@@ -122,7 +122,7 @@
 
 落位：
 
-- `packages/core/src/memory/`
+- `packages/memory/src/contracts/`
 
 至少应收口：
 
@@ -142,6 +142,7 @@
 - 默认 schema-first
 - 类型通过 `z.infer` 推导
 - 历史上的 `packages/shared` 只承担过 compat re-export 或前端展示组合；当前这类职责应落到真实宿主本地
+- `packages/core/src/memory/` 已删除，后续不要恢复 compat barrel；调用方通过 `@agent/memory` 消费 memory contract
 
 ### 4.2 Storage 层
 
@@ -435,14 +436,14 @@ Core Memory 只保留任务成功所必需的高价值信息：
 
 ## 9. 数据模型收敛方向
 
-### 9.1 `packages/core` 应成为唯一主 contract 宿主
+### 9.1 `packages/memory` 是 memory 主 contract 宿主
 
 后续记忆相关稳定 contract 默认放到：
 
-- `packages/core/src/memory/schemas/*`
-- `packages/core/src/memory/index.ts`
+- `packages/memory/src/contracts/schemas/*`
+- `packages/memory/src/contracts/index.ts`
 
-历史上的 `packages/shared` 只承担 compat re-export 或前端展示组合，不再作为长期主定义；当前请以 `packages/core + 宿主本地 facade` 为准。
+历史上的 `packages/shared` 只承担 compat re-export 或前端展示组合，不再作为长期主定义；`packages/core/src/memory/*` 已删除，当前请以 `@agent/memory` 的 package-local contract 为准。
 
 ### 9.2 建议核心模型
 
@@ -494,10 +495,10 @@ Core Memory 只保留任务成功所必需的高价值信息：
 
 ## 10. 推荐目录蓝图
 
-### 10.1 `packages/core`
+### 10.1 `packages/memory` contracts
 
 ```text
-packages/core/src/memory/
+packages/memory/src/contracts/
   schemas/
     memory-record.schema.ts
     user-profile-record.schema.ts

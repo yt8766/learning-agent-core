@@ -9,19 +9,17 @@ import {
   DefaultMemorySearchService,
   LocalVectorIndexRepository
 } from '@agent/memory';
-import { SkillRegistry } from '@agent/skill-runtime';
+import { SkillRegistry } from '@agent/skill';
 import {
-  ApprovalService,
-  ExecutionWatchdog,
   McpCapabilityRegistry,
   McpClientManager,
   McpServerRegistry,
-  SandboxExecutor,
-  StubSandboxExecutor,
   ToolRegistry,
   createDefaultToolRegistry
 } from '@agent/tools';
-import type { ApprovalClassifier } from '@agent/tools';
+import { ApprovalService, type ApprovalClassifier } from '../governance/approval';
+import { type SandboxExecutor, StubSandboxExecutor } from '../sandbox';
+import { ExecutionWatchdog } from '../watchdog';
 
 import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { LocalKnowledgeSearchService } from './local-knowledge-search-service';

@@ -1,4 +1,4 @@
-import { AgentRole, ApprovalDecision, CreateTaskDto, SourcePolicyMode, ToolUsageSummaryRecord } from '@agent/core';
+import { AgentRole, ApprovalDecision, CreateTaskDto, SourcePolicyMode } from '@agent/core';
 import type {
   CodeExecutionMinistryLike,
   DeliveryMinistryLike,
@@ -21,6 +21,7 @@ import {
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../../types/chat-graph';
 import { createAgentGraph } from '../../../chat/chat.graph';
+import type { ToolUsageSummaryRecord } from '@agent/runtime';
 
 interface TaskPipelineGraphCallbacks {
   ensureTaskNotCancelled: (task: RuntimeTaskRecord) => void;

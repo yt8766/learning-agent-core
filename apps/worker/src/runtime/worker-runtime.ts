@@ -3,7 +3,7 @@ import {
   createDefaultPlatformRuntimeOptions,
   type PlatformRuntimeFacade
 } from '@agent/platform-runtime';
-import type { AgentRuntime } from '@agent/runtime';
+import type { AgentRuntime, RuntimeAgentDependencies } from '@agent/runtime';
 
 import {
   runBackgroundRunnerTick,
@@ -18,6 +18,75 @@ export interface WorkerProcessHandle {
   stop: () => Promise<void>;
 }
 
+function createWorkerRuntimeAgentDependencies(): RuntimeAgentDependencies {
+  return {
+    createLibuRouterMinistry: () => ({}) as never,
+    createHubuSearchMinistry: () => ({}) as never,
+    createLibuDocsMinistry: () => ({}) as never,
+    createGongbuCodeMinistry: () => ({}) as never,
+    createBingbuOpsMinistry: () => ({}) as never,
+    createXingbuReviewMinistry: () => ({}) as never,
+    listBootstrapSkills: () => [],
+    buildResearchSourcePlan: () => [],
+    initializeTaskExecutionSteps: () => undefined,
+    markExecutionStepBlocked: () => undefined,
+    markExecutionStepCompleted: () => undefined,
+    markExecutionStepResumed: () => undefined,
+    markExecutionStepStarted: () => undefined,
+    mergeEvidence: (existing, incoming) => [...existing, ...incoming],
+    resolveWorkflowPreset: goal => ({
+      preset: {
+        id: 'worker-background',
+        command: '/worker-background',
+        displayName: 'Worker Background Runtime',
+        intentPatterns: ['worker-background'],
+        requiredMinistries: [],
+        allowedCapabilities: [],
+        approvalPolicy: 'manual',
+        outputContract: {
+          type: 'worker-background',
+          requiredSections: []
+        }
+      },
+      normalizedGoal: goal
+    }),
+    resolveWorkflowRoute: () => ({
+      graph: 'workflow',
+      flow: 'supervisor',
+      reason: 'worker-background-runtime',
+      adapter: 'fallback',
+      priority: 0,
+      intent: 'workflow-execute',
+      intentConfidence: 1,
+      executionReadiness: 'ready',
+      matchedSignals: ['worker-background']
+    }),
+    resolveSpecialistRoute: () => ({
+      specialistLead: {
+        id: 'technical-architecture',
+        displayName: 'Worker Background Runtime',
+        domain: 'technical-architecture'
+      },
+      supportingSpecialists: [],
+      routeConfidence: 0,
+      contextSlicesBySpecialist: []
+    }),
+    runDispatchStage: async () => undefined,
+    runGoalIntakeStage: async () => undefined,
+    runManagerPlanStage: async () => undefined,
+    runRouteStage: async () => undefined,
+    buildDataReportContract: () => ({
+      scope: 'single',
+      templateRef: 'generic-report',
+      componentPattern: [],
+      implementationNotes: [],
+      executionStages: [],
+      contextBlock: ''
+    }),
+    appendDataReportContext: context => context ?? ''
+  };
+}
+
 function createWorkerPlatformRuntime(): PlatformRuntimeFacade<AgentRuntime> {
   return createDefaultPlatformRuntime({
     ...createDefaultPlatformRuntimeOptions({
@@ -30,7 +99,8 @@ function createWorkerPlatformRuntime(): PlatformRuntimeFacade<AgentRuntime> {
           }
         }
       }
-    })
+    }),
+    agentDependencies: createWorkerRuntimeAgentDependencies()
   });
 }
 

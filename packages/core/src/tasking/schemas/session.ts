@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ApprovalScopePolicyRecordSchema } from '../../governance';
+import { ApprovalScopePolicyRecordSchema } from './governance-fields';
 
 export const ChannelKindSchema = z.enum(['web', 'telegram', 'feishu', 'wechat']);
 

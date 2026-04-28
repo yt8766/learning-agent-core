@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EvidenceRecord, MemoryEventRecord, MemoryRecord } from '@agent/core';
+import type { EvidenceRecord, MemoryEventRecord, MemoryRecord } from '@agent/memory';
 import type { RuntimeStateSnapshot } from '@agent/memory';
 import { applyCrossCheckEvidenceRecords, buildMemoryUsageInsights, buildMemoryVersionComparison } from '@agent/memory';
 

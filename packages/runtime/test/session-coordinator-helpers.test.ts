@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ActionIntent,
-  ApprovalDecision,
-  buildApprovalScopeMatchKey,
-  type ApprovalScopePolicyRecord,
-  type ChatCheckpointRecord
-} from '@agent/core';
+import { ActionIntent, ApprovalDecision, type ApprovalScopePolicyRecord, type ChatCheckpointRecord } from '@agent/core';
+import { buildApprovalScopeMatchKey } from '@agent/runtime';
 
 import {
   resolveApprovalEventType,

@@ -1,4 +1,5 @@
-import type { Chunk, Vector } from '@agent/core';
+import type { Chunk } from '@agent/knowledge';
+import type { KnowledgeVectorDocumentRecord } from '@agent/memory';
 
 import {
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
@@ -60,15 +61,10 @@ export async function runKnowledgeIndexing(options: KnowledgeIndexingRunOptions)
     }
   }
 
-  const allVectors: Vector[] = [];
+  const vectorRecords = allChunks.map(toKnowledgeVectorDocumentRecord);
   for (let i = 0; i < allChunks.length; i += context.batchSize) {
-    const batch = allChunks.slice(i, i + context.batchSize);
-    const batchVectors = await options.embedder.embed(batch);
-    allVectors.push(...batchVectors);
-  }
-
-  if (allVectors.length > 0) {
-    await options.vectorStore.upsert(allVectors);
+    const batch = vectorRecords.slice(i, i + context.batchSize);
+    await Promise.all(batch.map(record => options.vectorIndex.upsertKnowledge(record)));
   }
 
   return {
@@ -77,9 +73,25 @@ export async function runKnowledgeIndexing(options: KnowledgeIndexingRunOptions)
     indexedDocumentCount: indexedCount,
     skippedDocumentCount: skippedCount,
     chunkCount: allChunks.length,
-    embeddedChunkCount: allVectors.length,
+    embeddedChunkCount: vectorRecords.length,
     warningCount: warnings.length,
     warnings
+  };
+}
+
+function toKnowledgeVectorDocumentRecord(chunk: Chunk): KnowledgeVectorDocumentRecord {
+  const documentId = resolveField(chunk.metadata, 'documentId') ?? chunk.sourceDocumentId;
+  return {
+    id: chunk.id,
+    namespace: 'knowledge',
+    sourceId: resolveField(chunk.metadata, 'sourceId') ?? documentId,
+    documentId,
+    chunkId: chunk.id,
+    uri: resolveField(chunk.metadata, 'uri') ?? documentId,
+    title: resolveField(chunk.metadata, 'title') ?? documentId,
+    sourceType: resolveField(chunk.metadata, 'sourceType') ?? 'repo-docs',
+    content: chunk.content,
+    searchable: true
   };
 }
 

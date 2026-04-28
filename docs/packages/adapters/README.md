@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/adapters/`
-最后核对：2026-05-09
+最后核对：2026-04-28
 
 本目录用于沉淀 `packages/adapters` 相关文档。
 
@@ -32,7 +32,8 @@
   - memory repository
   - indexing pipeline 编排（由 `@agent/knowledge` 负责）
 - 依赖方向：
-  - 只依赖 `@agent/config`、`@agent/core` 与必要第三方库
+  - 依赖 `@agent/config`、`@agent/core`、`@agent/knowledge` 与必要第三方库
+  - indexing adapter 的 `Document` / `Chunk` / `Vector` / `JsonObject` / `VectorStore` 等契约只从 `@agent/knowledge` 消费，不再从 `@agent/core` 消费
   - 被 `@agent/runtime`、`@agent/knowledge`、`agents/*` 与 app 装配层消费
 
 ## 文档列表

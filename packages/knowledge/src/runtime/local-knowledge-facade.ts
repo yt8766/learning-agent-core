@@ -1,4 +1,4 @@
-import type { RetrievalRequest } from '@agent/core';
+import type { RetrievalRequest } from '@agent/knowledge';
 
 import type { KnowledgeRetrievalRuntime, RetrievalPipelineConfig } from '../contracts/knowledge-retrieval-runtime';
 import { InMemoryKnowledgeChunkRepository } from '../repositories/knowledge-chunk.repository';

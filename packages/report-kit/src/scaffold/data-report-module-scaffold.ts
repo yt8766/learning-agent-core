@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { resolveFrontendTemplateDir } from '@agent/templates';
 
+import { resolveBonusCenterBlueprintDir } from '../blueprints/bonus-center-data';
 import {
   buildDataReportBlueprint,
   inferSingleReportStructure,
@@ -183,7 +184,10 @@ export function buildDataReportModuleScaffold(params: {
     };
   }
 
-  const templateDir = resolveFrontendTemplateDir(blueprint.templateId);
+  const templateDir =
+    blueprint.templateId === 'bonus-center-data'
+      ? resolveBonusCenterBlueprintDir()
+      : resolveFrontendTemplateDir(blueprint.templateId);
   if (!templateDir) {
     throw new Error(`Unable to resolve template directory for ${blueprint.templateId}`);
   }

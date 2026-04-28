@@ -1,1 +1,1 @@
-export type { AgentRuntimeContext } from '@agent/agent-kit';
+export type { AgentRuntimeContext } from '@agent/runtime';

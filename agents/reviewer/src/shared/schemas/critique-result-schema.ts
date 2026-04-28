@@ -1,1 +1,1 @@
-export { CritiqueResultSchema, normalizeCritiqueResult } from '@agent/core';
+export { CritiqueResultSchema, normalizeCritiqueResult } from '../../types';

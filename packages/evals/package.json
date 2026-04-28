@@ -33,5 +33,7 @@
     "turbo:test:integration": "pnpm test:integration",
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@agent/runtime": "workspace:*"
+  }
 }

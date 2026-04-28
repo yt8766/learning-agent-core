@@ -2,7 +2,7 @@ import type { ZodType } from 'zod/v4';
 
 import { generateObjectWithRetry } from '../../../utils/llm-retry';
 import type { ChatMessage } from '@agent/adapters';
-import type { DataReportJsonNodeModelSelector } from '@agent/core';
+import type { DataReportJsonNodeModelSelector } from '../../../types/data-report-json';
 import type { DataReportGenerationNode, DataReportSandpackGraphState } from '../../../types/data-report';
 import { resolveFirstModelSelectorCandidate } from '../../../utils/model-selection';
 

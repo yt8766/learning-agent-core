@@ -10,6 +10,8 @@ import {
   executeDataReportJsonGraph,
   executeDataReportSandpackGraph,
   generateDataReportPreview,
+  DataReportJsonBundleSchema,
+  ReportBundleSchema,
   parseDataReportJsonSchema,
   parseDataReportSandpackPayload
 } from '../src';
@@ -26,6 +28,10 @@ import { executeReportBundleEditFlow as canonicalExecuteReportBundleEditFlow } f
 import { executeReportBundleGenerateFlow as canonicalExecuteReportBundleGenerateFlow } from '../src/flows/report-bundle/generate';
 import { createDataReportJsonGraph as canonicalCreateDataReportJsonGraph } from '../src/graphs/data-report-json.graph';
 import { createDataReportSandpackGraph as canonicalCreateDataReportSandpackGraph } from '../src/graphs/data-report.graph';
+import {
+  DataReportJsonBundleSchema as canonicalDataReportJsonBundleSchema,
+  ReportBundleSchema as canonicalReportBundleSchema
+} from '../src/types';
 
 describe('@agent/agents-data-report root exports', () => {
   it('keeps stable data-report exports wired to canonical hosts', () => {
@@ -40,5 +46,7 @@ describe('@agent/agents-data-report root exports', () => {
     expect(executeReportBundleEditFlow).toBe(canonicalExecuteReportBundleEditFlow);
     expect(parseDataReportSandpackPayload).toBe(canonicalParseDataReportSandpackPayload);
     expect(parseDataReportJsonSchema).toBe(canonicalParseDataReportJsonSchema);
+    expect(DataReportJsonBundleSchema).toBe(canonicalDataReportJsonBundleSchema);
+    expect(ReportBundleSchema).toBe(canonicalReportBundleSchema);
   });
 });

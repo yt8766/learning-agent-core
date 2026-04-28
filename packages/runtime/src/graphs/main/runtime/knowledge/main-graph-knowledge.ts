@@ -1,4 +1,6 @@
-import type { DispatchInstruction, EvaluationResult, EvidenceRecord, ReviewRecord } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { EvidenceRecord } from '@agent/memory';
+import type { DispatchInstruction, ReviewRecord } from '@agent/core';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
 
 export function isDiagnosisTask(

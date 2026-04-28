@@ -1,0 +1,11 @@
+export * from './schemas/memory-record.schema';
+export * from './schemas/user-profile-record.schema';
+export * from './schemas/reflection-record.schema';
+export * from './schemas/learning-candidate-record.schema';
+export * from './schemas/resolution-candidate-record.schema';
+export * from './schemas/memory-evidence-link.schema';
+export * from './schemas/memory-event-record.schema';
+export * from './schemas/memory-search.schema';
+export * from './schemas/active-memory-tool.schema';
+export type { MemoryRepository } from './memory-repository';
+export type { MemorySearchService } from './memory-search-service';

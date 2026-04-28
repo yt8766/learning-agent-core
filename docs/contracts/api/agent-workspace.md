@@ -14,7 +14,7 @@
 - 后端 HTTP 入口：`apps/backend/agent-server/src/platform/workspace-center.controller.ts`，挂在 `/api/platform/workspace-center`。
 - 后端 runtime facade：`RuntimeCentersService` 已暴露 `getWorkspaceCenter`、`listWorkspaceSkillDrafts`、`approveWorkspaceSkillDraft`、`rejectWorkspaceSkillDraft`。
 - 当前 workspace projection 构造入口：`packages/platform-runtime/src/centers/runtime-workspace-center.ts` 与 `runtime-workspace-center.build.ts`，只输出白名单字段，并在测试中断言不泄漏 `metadata` / `rawMetadata`、install raw staging path 或失败堆栈。
-- Skill draft 内存存储：`packages/skill-runtime/src/drafts/repository.ts` 提供 `InMemorySkillDraftRepository`，`packages/skill-runtime/src/drafts/service.ts` 提供 create / list / approve / reject / promote / retire / reuse 语义。
+- Skill draft 内存存储：`packages/skill/src/drafts/repository.ts` 提供 `InMemorySkillDraftRepository`，`packages/skill/src/drafts/service.ts` 提供 create / list / approve / reject / promote / retire / reuse 语义。
 - Admin 前端入口：`apps/frontend/agent-admin/src/api/admin-api-workspace.ts`、`src/features/workspace-center/workspace-center-panel.tsx`、`src/pages/dashboard/dashboard-center-content.tsx`，Workspace Center dashboard 已接入读取和 approve / reject 按钮；API facade 会把后端 runtime projection 归一化成面板消费的本地 workspace 视图。
 - Chat 前线 readiness：`apps/frontend/agent-chat/src/pages/chat-home/chat-home-workbench-section-renders.tsx` 已在 workbench 的 learning / reuse 区展示 Workspace learning 与 Skill Flywheel readiness，不把 learning summary 重新塞回主线程消息。
 
@@ -29,7 +29,7 @@
 
 本文契约的下一阶段生产化目标如下；这些目标不能被误读为当前已经完成：
 
-- Persistent draft store：当前 draft store 已有 `packages/skill-runtime` file-backed repository，可保存 draft、risk / evidence gate 所需字段和 reuse stats。后续生产化仍需要 decision history、数据库级并发控制和 install candidate 关联。
+- Persistent draft store：当前 draft store 已有 `packages/skill` file-backed repository，可保存 draft、risk / evidence gate 所需字段和 reuse stats。后续生产化仍需要 decision history、数据库级并发控制和 install candidate 关联。
 - 真实 workspace projection 聚合：当前 projection 已有稳定白名单形状，并能读到 runtime task 的 learning summary、EvidenceRecord 摘要、reuse badges、capability gaps、draft 状态、`AgentSkillReuseRecord` 持久记录和 workspace draft install receipt 摘要；后续需要补更丰富的 evidence provenance、分页和 filter。
 - Approve 到 Skill Lab / 安装链路：当前 approve 会改变 draft 决策状态并返回 install candidate 摘要；Skill Sources 查询会额外暴露 approved / trusted draft manifest，`workspace-draft:` entry 已能 materialize 为安装 artifact，安装 receipt 会携带 `sourceDraftId` 并由 Workspace Center 回读为只读摘要。Workspace API 不直接安装 skill、不写 `.agents/skills/*`、不绕过 Skill Lab / Skill Source Center 的 trust、compatibility、receipt 和 rollback 规则。
 - Chat Workspace Vault cards：`agent-chat` 下一步应消费当前 workspace projection，在 OpenClaw workbench 中渲染 Workspace Vault cards，用于展示 evidence、learning、reuse、draft readiness 和 capability gaps；cards 不进入主聊天消息流。
@@ -432,4 +432,4 @@ type AgentWorkspaceCapabilityGap = {
 - Runtime / learning / skill draft 构造逻辑应留在 `packages/runtime` 或对应真实宿主，不放进 backend controller。
 - 稳定 JSON schema 应落在 `packages/core`；Workspace draft 的 install / provenance / lifecycle 摘要已经在 core schema 中保持 optional 兼容，高变实现细节留在宿主本地 `flows/`、`runtime/`、`repositories/` 或 `domain/`。
 - Skill draft approved 只表示进入后续治理流程，不等同于已安装、已启用或已写入 `.agents/skills/*`。
-- Persistent draft repository 应落在 `packages/skill-runtime` 的 repository / service 边界后面；backend 和 frontend 不得依赖具体存储表结构、Map 索引或 vendor payload。
+- Persistent draft repository 应落在 `packages/skill` 的 repository / service 边界后面；backend 和 frontend 不得依赖具体存储表结构、Map 索引或 vendor payload。

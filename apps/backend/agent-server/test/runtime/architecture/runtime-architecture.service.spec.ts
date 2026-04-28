@@ -4,7 +4,7 @@ import { RuntimeArchitectureService } from '../../../src/runtime/architecture/ru
 import { createArchitectureDescriptorRegistry } from '../../../src/runtime/architecture/runtime-architecture-registries';
 import { loadSettings } from '@agent/config';
 import { WorkerRegistry } from '@agent/runtime';
-import { buildKnowledgeDescriptor } from '../../../src/runtime/knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../../../src/runtime/domain/knowledge/runtime-knowledge-store';
 import { RuntimeHost } from '../../../src/runtime/core/runtime.host';
 
 function createRuntimeHostStub() {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { EvidenceRecordSchema, LearningCandidateRecordSchema } from '../../memory';
-import { ApprovalRecordSchema, ToolAttachmentRecordSchema, ToolUsageSummaryRecordSchema } from '../../governance';
+import { ApprovalRecordSchema, ToolAttachmentRecordSchema, ToolUsageSummaryRecordSchema } from './governance-fields';
+import { EvidenceRecordSchema, LearningCandidateRecordSchema } from './memory-fields';
 import { PlatformApprovalInterruptRecordSchema } from '../../platform-console';
 import {
   ChatCheckpointAgentStatesSchema,
@@ -44,7 +44,7 @@ import {
   RequestedExecutionHintsSchema,
   SkillSearchStateRecordSchema
 } from '../../skills';
-import { BudgetStateSchema, LearningEvaluationRecordSchema } from '../../knowledge';
+import { BudgetStateSchema, LearningEvaluationRecordSchema } from './knowledge-fields';
 import {
   ChatRouteRecordSchema,
   ExecutionStepRecordSchema,

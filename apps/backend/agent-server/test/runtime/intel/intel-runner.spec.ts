@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { runIntelScheduledJob } from '../../../src/runtime/intel/intel-runner';
+import { runIntelScheduledJob } from '../../../src/runtime/domain/intel/intel-runner';
 
 const SOURCES_YAML = `defaults:
   recency_hours: 48

@@ -1,5 +1,5 @@
 import type { BaseDocumentLoader } from '@langchain/core/document_loaders/base';
-import type { Loader, Document } from '@agent/core';
+import type { Document, Loader } from '@agent/knowledge';
 
 import { mapLangChainDocumentToCoreDocument } from '../shared/langchain-document.mapper';
 

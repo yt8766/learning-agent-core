@@ -1,4 +1,5 @@
-import type { EvaluationResult, GovernanceReportRecord } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { GovernanceReportRecord } from '@agent/core';
 import type { RuntimeTaskRecord } from '../../runtime/runtime-task.types';
 
 function toGovernanceReviewDecision(

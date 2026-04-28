@@ -144,4 +144,43 @@ describe('buildConnectorsCenter', () => {
       })
     ]);
   });
+
+  it('normalizes loose connector configuration values before projecting them', () => {
+    const result = buildConnectorsCenter({
+      profile: 'personal' as any,
+      snapshot: {
+        governance: {
+          configuredConnectors: [
+            {
+              connectorId: 'github-mcp',
+              configuredAt: 42,
+              templateId: 'github-template'
+            }
+          ]
+        }
+      } as any,
+      tasks: [],
+      connectors: [
+        {
+          id: 'github-mcp',
+          displayName: 'GitHub MCP',
+          transport: 'stdio',
+          enabled: true,
+          healthState: 'healthy',
+          healthReason: 'ready',
+          capabilityCount: 0,
+          implementedCapabilityCount: 0,
+          discoveredCapabilityCount: 0,
+          capabilities: []
+        }
+      ] as any
+    });
+
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        configuredAt: undefined,
+        configurationTemplateId: 'github-template'
+      })
+    );
+  });
 });

@@ -1,9 +1,10 @@
-import type { EvidenceRecord, MemoryRecord, RuleRecord, SkillCard } from '@agent/core';
-import type { ExecutionStepRecord } from '@agent/agent-kit';
+import type { SkillCard } from '@agent/core';
+import type { ExecutionStepRecord } from '@agent/runtime';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { searchHubuMemories } from './hubu-memory-search';
 import { buildHubuWebSearchTask } from './hubu-web-search';
 import type { MinistryToolCallDecision, ResearchToolId } from './hubu-search-helpers';
+import type { EvidenceRecord, MemoryRecord, RuleRecord } from '@agent/memory';
 
 export function createHubuSearchTaskMap(params: {
   context: AgentRuntimeContext;

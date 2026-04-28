@@ -17,14 +17,14 @@
   - 全仓与项目级 threshold 仍未达标
   - 另有一个独立失败用例：`packages/config/test/settings.test.ts` 的“每日技术情报简报配置与 env override”
 
-当前 4 个门槛项目基线：
+快照中的 4 个门槛项目基线：
 
-| 项目                        |  Lines | Statements | Functions | Branches |
-| --------------------------- | -----: | ---------: | --------: | -------: |
-| `packages/agent-core`       | 80.71% |     80.56% |    83.11% |   65.58% |
-| `apps/backend/agent-server` | 78.06% |     77.49% |    82.05% |   64.64% |
-| `apps/frontend/agent-chat`  | 70.97% |     69.94% |    73.62% |   56.13% |
-| `apps/frontend/agent-admin` | 64.26% |     64.95% |    57.31% |   48.98% |
+| 项目                                      |  Lines | Statements | Functions | Branches |
+| ----------------------------------------- | -----: | ---------: | --------: | -------: |
+| `packages/agent-core`（已删除，历史快照） | 80.71% |     80.56% |    83.11% |   65.58% |
+| `apps/backend/agent-server`               | 78.06% |     77.49% |    82.05% |   64.64% |
+| `apps/frontend/agent-chat`                | 70.97% |     69.94% |    73.62% |   56.13% |
+| `apps/frontend/agent-admin`               | 64.26% |     64.95% |    57.31% |   48.98% |
 
 当前全仓基线：
 
@@ -33,7 +33,7 @@
 - `functions`: `76.01%`
 - `branches`: `60.39%`
 
-## 当前 Top 10 Branch 缺口
+## 快照中的 Top 10 Branch 缺口
 
 - `apps/backend/agent-server/src/runtime/skills/skill-artifact-fetcher.ts` `0.00%`
 - `apps/backend/agent-server/src/runtime/runtime.service.helpers.ts` `3.44%`
@@ -44,11 +44,11 @@
 - `apps/frontend/agent-admin/src/features/connectors-center/connectors-center-summary.tsx` `0.00%`
 - `apps/frontend/agent-admin/src/features/connectors-center/connector-card-primitives.tsx` `0.00%`
 - `apps/frontend/agent-chat/src/components/chat-message-cards/skill-suggestions-meta.ts` `25.00%`
-- `packages/agent-core/src/graphs/recovery.graph.ts` `0.00%`
+- `packages/agent-core/src/graphs/recovery.graph.ts` `0.00%`（已删除包的历史快照）
 
-## 四个门槛项目各自当前 branch 最低前 3
+## 四个门槛项目各自快照 branch 最低前 3
 
-### `packages/agent-core`
+### `packages/agent-core`（已删除，历史快照）
 
 - `graphs/recovery.graph.ts` `0.00%`
 - `flows/chat/base-agent.ts` `32.25%`

@@ -1,3 +1,4 @@
+export type { AgentLike, AgentRuntimeContext } from './agent-runtime-context';
 export {
   StreamingExecutionCoordinator,
   StreamingToolScheduler,

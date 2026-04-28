@@ -30,10 +30,10 @@
 - `agent-admin` 作为平台控制台，承载六大中心
 - 系统主线是开发自治，按“Human / Supervisor / 六部”方向演进
 - 仓库级代理技能统一放在 `.agents/skills/*/SKILL.md`
-- `packages/skill-runtime` 承载运行时 skill 领域，不承载 Codex/Claude 技能说明
+- `packages/skill` 承载运行时 skill 领域，不承载 Codex/Claude 技能说明
 - `artifacts/*` 默认承载仓库级覆盖率、共享调试输出和部分可重建临时产物，默认不提交 Git
 - 后端单 API + 独立 worker
-- `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并继续承接原 `agent-core` 的结构演进目标：
+- `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并延续旧主链拆分后的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
 - `packages/knowledge` 负责 RAG knowledge ingestion / retrieval / citation / context assembly
@@ -43,11 +43,11 @@
 - 新建包时不要求同步提供 `src/`、实现代码或任何业务逻辑；允许先立包、后补实现
 - 第一阶段 compat 根文件收缩已完成：
   - `packages/evals`
-  - `packages/skill-runtime`
+  - `packages/skill`
   - `packages/report-kit`
   - `packages/templates`
   - `packages/config` 的纯 compat `settings.*`
-  - 其中 `packages/config`、`packages/skill-runtime`、`packages/evals` 已继续补出 facade contract，作为包根稳定导出层
+  - 其中 `packages/config`、`packages/skill`、`packages/evals` 已继续补出 facade contract，作为包根稳定导出层
   - 后续继续删除前优先参考 [Compat 入口收缩候选](/docs/packages/core/package-compat-sunset-candidates.md)
 - `packages/shared` 已于 `2026-04-18` 从 workspace 删除；历史迁移和兼容分析保留在 `docs/archive/shared/*`
 - 稳定主 contract 默认收口到 `packages/core`；运行时 aggregate、展示 facade、helper reclaim 与 compat 应落到真实宿主或应用本地，不再新增 `@agent/shared`
@@ -99,7 +99,7 @@
   - `agents/supervisor/src/workflows/` 只放 workflow 路由、预设、轻量任务契约和分类策略，不允许承载可执行子 Agent、长提示词生成器、LLM 调用主链或 Sandpack/代码生成校验链
   - 后端 `apps/backend/*` 只负责 HTTP/SSE/鉴权/运行时装配，不允许把子 Agent 的系统提示词、节点流程、模型输出解析和结构校验直接写进 controller/service
   - 报表生成这类垂直 Agent 默认采用 `graphs/data-report.graph.ts` + `flows/data-report/*`，不得退回 `chat.service.ts` 或 `workflows/*` 胶水实现
-  - `data-report` 的领域类型文件统一放在 `packages/core/src` 或 `agents/data-report/src/types/`，不要继续放在 `flows/data-report/` 下
+  - `data-report` 的领域类型、schema 与 graph/flow contract 统一放在 `agents/data-report/src/types/`，不要继续放在 `packages/core/src` 或 `flows/data-report/` 下
   - `data-report` 的确定性生成资产分层必须固定：`packages/report-kit` 只承载 blueprint/scaffold/routes/assembly/write；`agents/data-report` 与 `packages/runtime` 只承载 preview flow、graph/runtime facade 与 LLM 节点编排；`apps/backend/*` 只能做 HTTP/SSE 装配并调用 facade，禁止在 service 中直接串 `report-kit` 流程、直接 `graph.compile().invoke()`，或复制 preview/report-schema/sandpack 子链
 - `packages/runtime/src/graphs` 进一步约束为：
   - 顶层按能力域分组：`chat/`、`learning/`、`approval/`、`main/`
@@ -264,7 +264,7 @@
   - `packages/report-kit`
     - 只允许放 data-report blueprint、scaffold、routes、assembly、write 等垂直生成能力
     - 禁止放 tool registry、sandbox executor、MCP transport、agent orchestration
-  - `packages/skill-runtime`
+  - `packages/skill`
     - 只允许放运行时 skill registry、skill manifest loader、skill source sync 基础能力
     - 禁止放仓库级 `.agents/skills/*` 代理技能文档、agent graph 逻辑
   - `packages/runtime`
@@ -272,11 +272,11 @@
     - 禁止放 app controller/view model、前端专属展示 DTO、长期散落的 provider 细节
   - 依赖方向必须满足：
     - `config` 不得依赖 `runtime` 或任意 `agents/*`
-    - `adapters / memory / tools / skill-runtime` 只允许依赖 `config`、`core` 和必要第三方库
-    - `runtime` 可以依赖 `config / core / adapters / memory / tools / skill-runtime`
-    - `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill-runtime`
+    - `adapters / memory / tools / skill` 只允许依赖 `config`、`core` 和必要第三方库
+    - `runtime` 可以依赖 `config / core / adapters / memory / tools / skill`
+    - `agents/*` 可以依赖 `config / core / adapters / runtime / memory / tools / skill`
     - `apps/*` 只能依赖各包公开入口，禁止依赖 `packages/*/src`、`agents/*/src` 或 `@agent/<pkg>/<subpath>`
-    - 禁止 `adapters / tools / memory / skill-runtime` 反向依赖 `runtime` 或 `agents/*`
+    - 禁止 `adapters / tools / memory / skill` 反向依赖 `runtime` 或 `agents/*`
   - 新增代码默认按以下规则落位：
     - 跨端共享且稳定的数据结构：放 `core`
     - 运行时默认策略与配置：放 `config`
@@ -285,7 +285,7 @@
     - memory/rule/vector/cache 存取与搜索：放 `memory`
     - executor/registry/sandbox/MCP：放 `tools`
     - data-report 生成资产与拼装：放 `report-kit`
-    - skill registry/manifest/source：放 `skill-runtime`
+    - skill registry/manifest/source：放 `skill`
     - graph/flow/session/governance/agent runtime：放 `runtime` 或对应 `agents/*`
   - “多个地方复用”不等于必须进入 `shared`
   - 只有稳定 contract 才能进入 `shared`

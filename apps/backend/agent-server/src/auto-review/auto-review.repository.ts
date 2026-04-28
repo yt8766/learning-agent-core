@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AutoReviewResultSchema } from '@agent/core';
+import { AutoReviewResultSchema } from '@agent/tools';
 import { z } from 'zod/v4';
 
 import type { AutoReviewRecord } from './auto-review.types';

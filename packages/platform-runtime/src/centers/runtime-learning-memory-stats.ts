@@ -1,4 +1,4 @@
-import type { MemoryRecord } from '@agent/core';
+import type { MemoryRecord } from '@agent/memory';
 
 export function buildLearningMemoryStats(items: MemoryRecord[]) {
   const invalidated = items.filter(item => item.status === 'invalidated').length;

@@ -1,5 +1,5 @@
-import type { MemoryRecord } from '../../memory';
-import type { ToolExecutionResult } from '../../governance/types/governance.types';
+import type { MemoryRecord } from '../../tasking/types/memory-fields';
+import type { ToolExecutionResult } from '../../tasking/types/governance-fields';
 import type {
   ActionIntent,
   ApprovalStatus,

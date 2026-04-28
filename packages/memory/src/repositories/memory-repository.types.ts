@@ -7,7 +7,7 @@ import type {
   ReflectionRecord,
   ResolutionCandidateRecord,
   UserProfileRecord
-} from '@agent/core';
+} from '@agent/memory';
 import type { MemoryFeedbackKind } from '../governance/memory-repository-governance';
 
 export interface MemoryRepositoryMalformedLine {

@@ -1,5 +1,4 @@
 export * from './providers';
-export * from './intel';
 export * from './runtime-invocation';
 export * from './contracts/chat/index';
 export * from './contracts/ministries/index';
@@ -8,31 +7,6 @@ export * from './contracts/media';
 export * from './contracts/trajectory';
 export type { SharedPlatformConsoleRecord } from './contracts/platform-console/index';
 export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture/index';
-export type {
-  DataReportSandpackGenerateInput,
-  DataReportSandpackGenerateResult,
-  DataReportSandpackGraphHandlers,
-  DataReportSandpackGraphState
-} from './contracts/data-report/index';
-export type {
-  DataReportJsonGenerateInput,
-  DataReportJsonGraphHandlers,
-  DataReportJsonGraphState,
-  DataReportJsonModelSelectorPreference,
-  DataReportJsonModelSelectorTier,
-  DataReportJsonNodeModelSelector,
-  DataReportJsonNodeModelPolicy,
-  ReportBundle,
-  ReportBundleMode,
-  ReportDocument,
-  ReportPatchOperation
-} from './contracts/data-report/index';
-export {
-  ReportBundleSchema,
-  ReportBundleModeSchema,
-  ReportDocumentSchema,
-  ReportPatchOperationSchema
-} from './contracts/data-report/index';
 export {
   ActionIntent,
   ActionIntentSchema,
@@ -72,7 +46,6 @@ export {
 } from './primitives';
 export { AgentRole, AgentRoleSchema, SubgraphIdSchema, SubgraphIdValues } from './primitives';
 export type { AgentRole as AgentRoleValue, SubgraphId as SubgraphIdValue } from './primitives';
-export * from './memory';
 export type {
   ApprovalScope,
   ApprovalStatus,
@@ -99,9 +72,6 @@ export type {
   WorkflowPresetDefinition,
   WorkflowVersionRecord
 } from './primitives/types/primitives.types';
-export * from './review';
-export * from './governance';
-export * from './knowledge';
 export * from './channels';
 export * from './connectors';
 export * from './workflow-route';
@@ -113,7 +83,5 @@ export * from './platform-console';
 export * from './architecture';
 export * from './primitives';
 export * from './tasking';
-export * from './data-report';
-export * from './tools';
 export * from './contracts/approval/index';
 export * from './workspace';

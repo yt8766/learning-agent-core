@@ -3,7 +3,6 @@ import type {
   ChatRouteRecord,
   CodeExecutionMinistryLike,
   DeliveryMinistryLike,
-  EvidenceRecord,
   ExecutionMode,
   ExecutionPlanMode,
   ExecutionStepOwner,
@@ -18,6 +17,7 @@ import type {
   ContextSliceRecord,
   WorkflowPresetDefinition
 } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
 
 import type { AgentRuntimeContext } from '../runtime/agent-runtime-context';
 import type { RuntimeTaskRecord } from '../runtime/runtime-task.types';

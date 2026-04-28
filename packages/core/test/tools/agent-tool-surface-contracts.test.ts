@@ -7,7 +7,7 @@ import {
   AgentToolResolutionSchema,
   AgentToolSurfaceActorSchema,
   AgentToolSurfaceErrorCodeSchema
-} from '../../src/tools';
+} from '@agent/tools';
 
 describe('agent tool surface contracts', () => {
   it('parses supported aliases and approval modes', () => {

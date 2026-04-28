@@ -63,7 +63,7 @@
 - `apps/worker`
   - 独立 background worker。
   - 当前消费 queued background tasks，处理 lease、interrupt timeout、learning queue 和恢复相关作业。
-  - 与主 API 一样通过 `@agent/*` 根入口接入 runtime、tools、memory、skill-runtime 等共享宿主。
+  - 与主 API 一样通过 `@agent/*` 根入口接入 runtime、tools、memory、skill 等共享宿主。
 
 ## `packages/`
 
@@ -94,10 +94,6 @@
 - `agents/reviewer`
   - reviewer 智能体公开入口。
   - 当前承载 reviewer graph、节点装配与根导出契约。
-- `packages/agent-core`
-  - 已删除。
-  - 原多 Agent 主链已迁入 `packages/runtime`、`packages/adapters` 与 `agents/*`。
-  - 相关历史说明统一保留在 `docs/archive/agent-core/`，不要把它当成当前代码宿主。
 - `docs/archive/shared/`
   - `packages/shared` 退场过程的历史迁移文档归档。
 - `packages/config`
@@ -107,10 +103,10 @@
   - repositories、search、vector、embeddings、semantic cache。
 - `packages/tools`
   - tool registry、approval、filesystem、sandbox、MCP、runtime governance。
-- `packages/skill-runtime`
+- `packages/skill`
   - 运行时技能注册、manifest 解析、source sync 的真实宿主。
-  - 新代码统一通过 `@agent/skill-runtime` 消费。
-  - 包根稳定导出当前先通过 `contracts/skill-runtime-facade.ts` 收口。
+  - 新代码统一通过 `@agent/skill` 消费。
+  - 包根稳定导出当前先通过 `contracts/skill-facade.ts` 收口。
 - `packages/report-kit`
   - data-report 的确定性蓝图、骨架、组装和落盘能力。
 - `packages/templates`
@@ -119,9 +115,9 @@
   - prompt 回归和质量评测基建。
   - 包根稳定导出当前先通过 `contracts/evals-facade.ts` 收口。
 - 补充：
-  - `packages/evals`、`packages/skill-runtime`、`packages/report-kit`、`packages/templates` 的 legacy 根文件已删除
+  - `packages/evals`、`packages/skill`、`packages/report-kit`、`packages/templates` 的 legacy 根文件已删除
   - `packages/config` 已删除纯 compat `settings.*` 文件，当前只保留 `src/settings.ts` 与 `src/settings/index.ts` 作为人工可读聚合入口
-  - `packages/config`、`packages/skill-runtime`、`packages/evals` 已补出 facade contract，再由包根入口导出
+  - `packages/config`、`packages/skill`、`packages/evals` 已补出 facade contract，再由包根入口导出
 
 ## `data/`
 
@@ -143,8 +139,8 @@
   - 只通过 `@agent/*` 公共入口依赖共享包与 agent 包；不应直接引用 `packages/*/src`、`agents/*/src`，也不应把 `@agent/<pkg>/<subpath>` 当成应用层稳定接口。
 - `.agents/skills/*`
   - 只表示仓库级代理技能。
-- `packages/skill-runtime`
-  - 表示运行时 skill 基础能力；代码语义统一使用 `@agent/skill-runtime`，不要与 `.agents/skills/*` 混用。
+- `packages/skill`
+  - 表示运行时 skill 基础能力；代码语义统一使用 `@agent/skill`，不要与 `.agents/skills/*` 混用。
 - `packages/runtime`
   - 承载 graph、flow、session、governance 等运行时内核能力。
 - `apps/backend/agent-server/src/runtime`
@@ -176,7 +172,7 @@
 - `docs/agents/`
   - root 级 `agents/*` 专项文档。
 - `docs/skills/`
-  - 仓库级 `.agents/skills/*` 代理技能文档目录；不对应 `packages/skill-runtime`。
+  - 仓库级 `.agents/skills/*` 代理技能文档目录；不对应 `packages/skill`。
 - `docs/archive/shared/`
   - 已删除 `packages/shared` 的历史归档目录。
 - `docs/context/`

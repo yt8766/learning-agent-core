@@ -2,9 +2,9 @@
 
 import { loadSettings } from '@agent/config';
 import { ActionIntent } from '@agent/core';
-import type { ToolDefinition } from '@agent/core';
+import type { ToolDefinition } from '@agent/runtime';
 
-import { ApprovalService } from '../src/approval/approval-service';
+import { ApprovalService } from '@agent/runtime';
 import * as approvalExports from '../src/approval';
 
 describe('ApprovalService', () => {
@@ -37,7 +37,7 @@ describe('ApprovalService', () => {
     };
   }
 
-  it('co-locates approval implementation under src/approval', () => {
+  it('keeps the tools approval entrypoint as a runtime compat bridge', () => {
     expect(ApprovalService).toBe(approvalExports.ApprovalService);
   });
 

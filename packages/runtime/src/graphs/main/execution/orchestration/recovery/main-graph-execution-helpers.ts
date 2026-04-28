@@ -2,15 +2,13 @@ import {
   AgentRole,
   type AgentRoleValue,
   ApprovalDecision,
-  ApprovalResumeInput,
   CreateTaskDto,
   QueueStateRecord,
   ReviewRecord,
   TaskStatus
 } from '@agent/core';
-import type { EvaluationResult } from '@agent/core';
+import type { EvaluationResult } from '@agent/knowledge';
 import type { WorkflowPresetDefinition } from '@agent/core';
-import { normalizeSpecialistFinding } from '@agent/core';
 import type {
   CodeExecutionMinistryLike,
   MinistryContractMeta,
@@ -18,6 +16,7 @@ import type {
   RouterMinistryLike
 } from '@agent/core';
 import { getMinistryDisplayName } from '../../../../../runtime/runtime-architecture-helpers';
+import { normalizeRuntimeSpecialistFinding } from '../../../../../runtime/runtime-review-records';
 import { markExecutionStepCompleted, markExecutionStepResumed } from '../../../../../bridges/supervisor-runtime-bridge';
 
 import { buildMinistryStagePreferences } from '../../../../../capabilities/capability-pool';
@@ -30,6 +29,7 @@ import type { RuntimeTaskRecord } from '../../../../../runtime/runtime-task.type
 import { TaskCancelledError } from '../../../tasking/runtime/main-graph-task-runtime-errors';
 import type { RuntimeAgentGraphState } from '../../../../../types/chat-graph';
 import { createInitialState } from '../../../../chat/chat.graph';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 export class MainGraphExecutionHelpers {
   constructor(
@@ -266,8 +266,8 @@ export class MainGraphExecutionHelpers {
     return {
       ...reviewed,
       specialistFinding: reviewed.specialistFinding
-        ? (normalizeSpecialistFinding(
-            reviewed.specialistFinding as Parameters<typeof normalizeSpecialistFinding>[0]
+        ? (normalizeRuntimeSpecialistFinding(
+            reviewed.specialistFinding as Parameters<typeof normalizeRuntimeSpecialistFinding>[0]
           ) as NonNullable<RuntimeTaskRecord['specialistFindings']>[number])
         : undefined
     };

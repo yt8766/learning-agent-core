@@ -1,7 +1,8 @@
 import { safeGenerateObject, type StructuredContractMeta } from '@agent/adapters';
 import { withReactiveContextRetry } from '@agent/adapters';
 import { generateObjectWithRetry } from '../../../utils/llm-retry';
-import type { MemoryRecord, RuleRecord, SkillCard, SpecialistFindingRecord } from '@agent/core';
+import type { SkillCard, SpecialistFindingRecord } from '@agent/core';
+import type { MemoryRecord, RuleRecord } from '@agent/memory';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import {
   buildResearchFallbackSummary,

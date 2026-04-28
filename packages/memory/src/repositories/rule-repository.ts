@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
-import { RuleRecord } from '@agent/core';
+import { RuleRecord } from '@agent/memory';
 import type { VectorIndexRepository } from '../vector/vector-index-repository';
 
 export interface RuleRepository {

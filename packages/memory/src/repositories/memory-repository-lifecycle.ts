@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 
-import type { MemoryEventRecord, MemoryRecord } from '@agent/core';
+import type { MemoryEventRecord, MemoryRecord } from '@agent/memory';
 import type { VectorIndexRepository } from '../vector/vector-index-repository';
 import { buildMemorySnapshotPayload } from '../governance/memory-repository-governance';
 import { nextVersion } from '../normalization/memory-record-helpers';

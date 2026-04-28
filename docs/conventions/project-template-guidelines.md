@@ -131,7 +131,7 @@ export function ChatHomePage() {
 }
 ```
 
-## 3. `agent-core` 内部分层模板
+## 3. Runtime / Agent 内部分层模板
 
 ### 目录结构
 
@@ -158,7 +158,7 @@ src/
 
 ### 说明
 
-当前项目不再使用早期 `models / agents / graph` 这类目录模板，而是按：
+当前项目不再使用早期 `models / agents / graph` 这类目录模板，也不再以已删除的 `packages/agent-core` 作为示例宿主。新的 runtime / agent 实现按：
 
 - `graphs`
   - graph 入口、状态定义、边编排
@@ -461,4 +461,4 @@ await writeScaffoldBundle({
 - `references/` 放规范和样例
 - `scripts/` 放代理可执行脚本
 - `assets/` 放模板或静态资源
-- 运行时 skill registry 的真实宿主位于 `packages/skill-runtime`
+- 运行时 skill registry 的真实宿主位于 `packages/skill`

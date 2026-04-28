@@ -138,7 +138,7 @@
 - `promptfoo` 用于模型层评测，不替代 `Vitest`
 - 结构化输出与 schema 校验默认优先 `zod`
 - 当前 Turbo 只安全接入了根级治理校验入口：`check:docs` 与 `check:architecture`
-- 根级 `typecheck`、`build` 与基于包图的 `test` 任务仍以根级脚本为主；虽然 `@agent/runtime <- @agent/agent-kit -> agents/*` 已拆掉历史主循环，但 Turbo 主链收敛仍需继续按阶段方案推进
+- 根级 `typecheck`、`build` 与基于包图的 `test` 任务仍以根级脚本为主；虽然 agent foundation 已并入 `@agent/runtime` 并拆掉历史主循环，但 Turbo 主链收敛仍需继续按阶段方案推进
 - 根级 `start:dev` 也不应继续经由 `turbo start:dev` 走 package graph；当前根级入口固定代理到 `apps/backend/agent-server`，避免开发启动被现有循环依赖阻断
 - 当前已新增 Turbo-only 包级验证通道：
   - `turbo:typecheck`
@@ -392,7 +392,7 @@ pnpm check
 - registry / executor / approval preflight 单测
 - sandbox / MCP / tool contract 集成测试
 
-### 6.6 `packages/skill-runtime` / `@agent/skill-runtime`
+### 6.6 `packages/skill` / `@agent/skill`
 
 - 类型检查
 - manifest loader / registry / source sync 单测

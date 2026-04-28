@@ -4,7 +4,7 @@ import {
   SandboxProviderRegistry,
   SimulatedSandboxProvider,
   type SandboxProfile
-} from '@agent/tools';
+} from '@agent/runtime';
 
 import type { SandboxPermissionScope, SandboxRunRecord } from './sandbox.types';
 

@@ -1,8 +1,9 @@
-import { ActionIntent, type AgentExecutionState, type ToolDefinition, type ToolExecutionResult } from '@agent/core';
+import { ActionIntent, type AgentExecutionState } from '@agent/core';
 
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { evaluateGongbuApprovalGate } from './gongbu-code-approval-gate';
 import { inspectScaffoldWriteCommand, resolveScaffoldIntent, resolveScaffoldToolName } from './gongbu-code-scaffold';
+import type { ToolDefinition, ToolExecutionResult } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

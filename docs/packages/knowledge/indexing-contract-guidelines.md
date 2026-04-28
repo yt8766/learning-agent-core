@@ -2,15 +2,15 @@
 
 状态：current
 文档类型：convention
-适用范围：`packages/core/src/knowledge/indexing/`
+适用范围：`packages/knowledge/src/contracts/indexing/`
 最后核对：2026-05-09
 
 ## 1. 定位
 
-`@agent/core/src/knowledge/indexing/` 是 indexing pipeline 所有参与方的**唯一共享契约层**。
+`@agent/knowledge` 的 `packages/knowledge/src/contracts/indexing/` 是 indexing pipeline 所有参与方的共享契约层。
 
 - `@agent/adapters` 实现这些契约（LangChain / Chroma adapter）
-- `@agent/knowledge` 消费这些契约编排 pipeline
+- `@agent/knowledge` 承载契约并编排 pipeline
 - `agents/*`、`apps/*` 间接使用
 
 ## 2. 数据模型
@@ -18,7 +18,7 @@
 ### Document（文档）
 
 ```ts
-import type { Document } from '@agent/core';
+import type { Document } from '@agent/knowledge';
 // {
 //   id: string;
 //   content: string;
@@ -31,7 +31,7 @@ import type { Document } from '@agent/core';
 ### Chunk（分块）
 
 ```ts
-import type { Chunk } from '@agent/core';
+import type { Chunk } from '@agent/knowledge';
 // {
 //   id: string;
 //   content: string;
@@ -46,7 +46,7 @@ import type { Chunk } from '@agent/core';
 ### Vector（向量）
 
 ```ts
-import type { Vector } from '@agent/core';
+import type { Vector } from '@agent/knowledge';
 // {
 //   id: string;
 //   values: number[];
@@ -60,7 +60,7 @@ import type { Vector } from '@agent/core';
 ### JsonObject / JsonValue
 
 ```ts
-import type { JsonObject, JsonValue } from '@agent/core';
+import type { JsonObject, JsonValue } from '@agent/knowledge';
 // JsonObject = Record<string, JsonValue>
 // JsonValue = string | number | boolean | null | JsonObject | JsonValue[]
 ```
@@ -87,14 +87,14 @@ interface VectorStore {
 }
 ```
 
-这四个接口定义在 `@agent/core/src/knowledge/indexing/contracts/`，从 `@agent/core` 根入口导出。
+这四个接口定义在 `packages/knowledge/src/contracts/indexing/contracts/`，从 `@agent/knowledge` 根入口导出。
 
 ## 4. Schema 验证
 
 每个数据模型都有对应的 Zod schema，用于运行时验证：
 
 ```ts
-import { DocumentSchema, ChunkSchema, VectorSchema } from '@agent/core';
+import { DocumentSchema, ChunkSchema, VectorSchema } from '@agent/knowledge';
 
 const doc = DocumentSchema.parse(rawData); // 验证 Document
 const chunk = ChunkSchema.parse(rawChunk); // 验证 Chunk
@@ -104,13 +104,13 @@ const vector = VectorSchema.parse(rawVector); // 验证 Vector
 ## 5. 设计原则
 
 - **schema-first**：先定义 Zod schema，类型通过 `z.infer` 派生
-- **零第三方依赖**：`@agent/core` 不依赖 `@langchain/*`、`chromadb` 等
+- **第三方隔离**：`@agent/knowledge` 的 contract 不泄露 `@langchain/*`、`chromadb` 等第三方类型
 - **稳定契约**：接口定义不随第三方 SDK 版本变化
 
 ## 6. 消费关系
 
 ```
-@agent/core (定义契约)
+@agent/knowledge (定义契约)
     ↓
 @agent/adapters (实现 — LangChain/Chroma adapter)
     ↓

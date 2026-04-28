@@ -1,6 +1,7 @@
-import { ActionIntent, ToolExecutionResult } from '@agent/core';
+import { ActionIntent } from '@agent/core';
 
 import { GongbuCodeMinistry } from './gongbu-code-ministry';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

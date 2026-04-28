@@ -1,4 +1,4 @@
-import type { RetrievalHit } from '@agent/core';
+import type { RetrievalHit } from '@agent/knowledge';
 
 import type { RetrievalPostProcessor } from '../stages/post-processor';
 import type { NormalizedRetrievalRequest } from '../types/retrieval-runtime.types';

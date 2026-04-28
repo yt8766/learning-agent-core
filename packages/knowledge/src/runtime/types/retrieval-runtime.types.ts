@@ -1,4 +1,4 @@
-import type { RetrievalHit, RetrievalRequest } from '@agent/core';
+import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
 
 export interface NormalizedRetrievalRequest extends RetrievalRequest {
   originalQuery?: string;

@@ -2,7 +2,7 @@
 
 状态：snapshot
 文档类型：plan
-适用范围：`packages/runtime`、`packages/core`、`packages/adapters`、`packages/platform-runtime`、`packages/skill-runtime`、`packages/tools`、`apps/backend/agent-server`
+适用范围：`packages/runtime`、`packages/core`、`packages/adapters`、`packages/platform-runtime`、`packages/skill`、`packages/tools`、`apps/backend/agent-server`
 最后核对：2026-04-23
 
 本文定义一条统一的 LLM 调用生命周期计划，用于把用户输入、大模型前处理、skills/tools/connectors 能力注入、token/cost 预检、模型调用、后处理、usage 结算、计费与审计收敛到稳定 runtime contract。
@@ -154,7 +154,7 @@ type NormalizedInvocationInput = {
 
 能力来源：
 
-- `@agent/skill-runtime`：运行时 skill registry、skill search、install receipt。
+- `@agent/skill`：运行时 skill registry、skill search、install receipt。
 - `@agent/tools`：tool definition、risk classifier、approval preflight。
 - `packages/runtime/src/capabilities/*`：capability pool、attachment、governance preference。
 - `@agent/core`：稳定 capability、skill、tool、connector、approval contract。
@@ -427,7 +427,7 @@ packages/core/src/llm-invocation/
 
 - schema-first 稳定 contract。
 - 不包含 runtime 处理逻辑。
-- 不依赖 provider、runtime、skill-runtime、tools。
+- 不依赖 provider、runtime、skill、tools。
 
 ### 9.2 `packages/runtime`
 
@@ -468,7 +468,7 @@ packages/runtime/src/llm-invocation/
 - 注入 pricing table、provider billing reconciliation adapter。
 - 将官方 agent / workflow / provider registry 与 gateway 组合。
 
-### 9.5 `packages/skill-runtime`
+### 9.5 `packages/skill`
 
 负责：
 
@@ -546,7 +546,7 @@ runtime center 需要展示：
 验收：
 
 - schema 可以 parse allowed / approval / blocked / receipt 典型样例。
-- 不引入对 runtime/adapters/tools/skill-runtime 的依赖。
+- 不引入对 runtime/adapters/tools/skill 的依赖。
 
 验证：
 
@@ -765,7 +765,7 @@ pnpm --dir apps/backend/agent-server build
 - [runtime 文档目录](/docs/packages/runtime/README.md)
 - [runtime 包结构规范](/docs/packages/runtime/package-structure-guidelines.md)
 - [Runtime Interrupts](/docs/packages/runtime/runtime-interrupts.md)
-- [skill-runtime 文档目录](/docs/packages/skill-runtime/README.md)
+- [skill 文档目录](/docs/packages/skill/README.md)
 - [tools runtime governance](/docs/packages/tools/runtime-governance-and-sandbox.md)
 - [API 文档目录](/docs/contracts/api/README.md)
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
@@ -775,6 +775,6 @@ pnpm --dir apps/backend/agent-server build
 - `core` 只放 schema-first contract。
 - `runtime` 承载 gateway 和生命周期主语义。
 - `adapters` 只适配 provider，不承载业务计费策略。
-- `skill-runtime` 只管理 skill 资产，不直接拼 prompt。
+- `skill` 只管理 skill 资产，不直接拼 prompt。
 - `tools` 只管理 tool definition / risk / executor，不承载 agent orchestration。
 - `apps/backend` 只做 HTTP/SSE/BFF 装配，不内联前处理或计费流程。

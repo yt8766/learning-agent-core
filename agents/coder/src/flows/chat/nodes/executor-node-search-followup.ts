@@ -1,5 +1,6 @@
-import { ActionIntent, type ToolExecutionResult } from '@agent/core';
+import { ActionIntent } from '@agent/core';
 import type { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 export async function maybeReadSearchResult(params: {
   context: AgentRuntimeContext;

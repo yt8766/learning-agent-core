@@ -24,7 +24,8 @@
   - MCP transport
   - agent orchestration
 - 依赖方向：
-  - 可依赖 `@agent/core` 的稳定 data-report contract 与模板资产
+  - 不依赖 `@agent/core` 的 data-report contract；领域 schema/type/graph contract 由 `@agent/agents-data-report` 承接
+  - 继续依赖模板资产与包内确定性 blueprint/scaffold/assembly 类型
   - 由 `@agent/tools` 作为工具平台 facade 暴露给上层
   - 长期继续与 `agents/data-report`、`packages/runtime` 的编排层分离
 

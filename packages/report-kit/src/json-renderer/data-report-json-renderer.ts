@@ -1,9 +1,53 @@
-import type { DataReportJsonBundle, DataReportJsonBundleReport } from '@agent/core';
-
 export interface DataReportJsonRenderedFile {
   path: string;
   kind: 'page' | 'component' | 'service' | 'type' | 'config';
   content: string;
+}
+
+export type DataReportJsonBundleFieldValueType =
+  | 'string'
+  | 'number'
+  | 'percent'
+  | 'date'
+  | 'date-range'
+  | 'string[]'
+  | 'boolean';
+
+export interface DataReportJsonBundleField {
+  name: string;
+  label: string;
+  valueType: DataReportJsonBundleFieldValueType;
+  required: boolean;
+  requestKey?: string;
+  formatter?: string;
+  defaultValue?: unknown;
+}
+
+export interface DataReportJsonBundleReport {
+  id: string;
+  componentName: string;
+  titleI18nKey: string;
+  service: {
+    serviceKey: string;
+    lambdaKey: string;
+    requestTypeName: string;
+    responseTypeName: string;
+    listPath: string;
+    totalPath?: string;
+  };
+  dataModel: DataReportJsonBundleField[];
+}
+
+export interface DataReportJsonBundle {
+  page: {
+    routePath: string;
+    pageDir: string;
+  };
+  shared: {
+    searchParams: DataReportJsonBundleField[];
+    defaultParams: Record<string, unknown>;
+  };
+  reports: DataReportJsonBundleReport[];
 }
 
 export interface DataReportJsonRenderResult {

@@ -1,17 +1,16 @@
+import type { LlmProviderLike, LlmProviderMessage } from '@agent/core';
+
+import { executeDataReportJsonGraph } from '../../data-report-json/runtime';
+import { ReportBundleSchema } from '../../../types';
 import type {
   DataReportJsonGenerateInput,
   DataReportJsonGenerateResult,
   DataReportJsonGraphHandlers,
   DataReportJsonRuntimeMeta,
   DataReportJsonStructuredInput,
-  LlmProviderLike,
-  LlmProviderMessage,
   ReportBundle,
   ReportDocument
-} from '@agent/core';
-import { ReportBundleSchema } from '@agent/core';
-
-import { executeDataReportJsonGraph } from '../../data-report-json/runtime';
+} from '../../../types';
 
 export interface ReportBundleGenerateInput {
   messages: LlmProviderMessage[];

@@ -1,8 +1,7 @@
 /**
  * 第1类 integration：runtime 主链契约
  *
- * 验证 SubgraphId 原语、listSubgraphDescriptors()、listWorkflowPresets()、
- * listWorkflowVersions() 与 runtime graph factory 出口之间的协作一致性。
+ * 验证 SubgraphId 原语、supervisor 元数据入口与 runtime graph factory 出口之间的协作一致性。
  *
  * 不依赖 LLM / DB / 外部服务，只做结构性和枚举一致性断言。
  *
@@ -25,7 +24,7 @@ import {
   listWorkflowVersions,
   resolveWorkflowPreset,
   resolveWorkflowRoute
-} from '@agent/platform-runtime';
+} from '@agent/agents-supervisor';
 
 import { createAgentGraph, createApprovalRecoveryGraph, createLearningGraph } from '@agent/runtime';
 
@@ -57,7 +56,7 @@ describe('runtime main chain contracts (第1类 integration)', () => {
     });
   });
 
-  describe('listSubgraphDescriptors() (supervisor via platform-runtime)', () => {
+  describe('listSubgraphDescriptors() (supervisor host)', () => {
     it('returns non-empty list', () => {
       const descriptors = listSubgraphDescriptors();
       expect(descriptors.length).toBeGreaterThan(0);
@@ -95,7 +94,7 @@ describe('runtime main chain contracts (第1类 integration)', () => {
     });
   });
 
-  describe('listWorkflowPresets() (platform-runtime via supervisor)', () => {
+  describe('listWorkflowPresets() (supervisor host)', () => {
     it('returns non-empty list', () => {
       const presets = listWorkflowPresets();
       expect(presets.length).toBeGreaterThan(0);
@@ -128,7 +127,7 @@ describe('runtime main chain contracts (第1类 integration)', () => {
     });
   });
 
-  describe('listWorkflowVersions() (platform-runtime)', () => {
+  describe('listWorkflowVersions() (supervisor host)', () => {
     it('returns non-empty list', () => {
       const versions = listWorkflowVersions();
       expect(versions.length).toBeGreaterThan(0);

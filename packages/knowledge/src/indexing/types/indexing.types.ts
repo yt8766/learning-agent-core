@@ -1,5 +1,6 @@
-import type { Chunker, Document, Embedder, Loader, VectorStore } from '@agent/core';
-import type { KnowledgeSourceType, KnowledgeTrustClass } from '@agent/core';
+import type { Chunker, Document, Loader } from '@agent/knowledge';
+import type { KnowledgeSourceType, KnowledgeTrustClass } from '@agent/knowledge';
+import type { KnowledgeVectorIndexWriter } from '@agent/memory';
 
 export interface KnowledgeSourceConfig {
   sourceId: string;
@@ -29,8 +30,7 @@ export interface KnowledgeIndexingResult {
 export interface KnowledgeIndexingRunOptions {
   loader: Loader;
   chunker?: Chunker;
-  embedder: Embedder;
-  vectorStore: VectorStore;
+  vectorIndex: KnowledgeVectorIndexWriter;
   sourceConfig: KnowledgeSourceConfig;
   chunkSize?: number;
   chunkOverlap?: number;

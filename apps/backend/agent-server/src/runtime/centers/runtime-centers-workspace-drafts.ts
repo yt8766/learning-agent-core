@@ -8,7 +8,7 @@ import {
   type SkillDraftInstallCandidate,
   type SkillDraftRecord,
   type SkillDraftRepository
-} from '@agent/skill-runtime';
+} from '@agent/skill';
 import { Buffer } from 'node:buffer';
 import { join } from 'node:path';
 

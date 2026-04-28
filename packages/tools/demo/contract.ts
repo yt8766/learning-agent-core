@@ -17,7 +17,7 @@ import * as runtimeGovernanceExecutorExports from '../src/executors/runtime-gove
 import * as scaffoldExecutorExports from '../src/executors/scaffold/scaffold-executor.js';
 import * as schedulingExecutorExports from '../src/executors/scheduling/scheduling-executor.js';
 import * as registryExports from '../src/registry/index.js';
-import * as toolsCenterExports from '../src/runtime-governance/tools-center.js';
+import * as toolsCenterExports from '@agent/runtime';
 
 console.log(
   JSON.stringify(

@@ -1,10 +1,12 @@
 import { z } from 'zod/v4';
 
-import { AgentRole, EvaluationResult, ReviewDecision, ReviewRecord, ToolExecutionResult } from '@agent/core';
+import { AgentRole, ReviewDecision, ReviewRecord } from '@agent/core';
 import { evaluateExecution } from '@agent/evals';
 
 import { AgentRuntimeContext } from '../../../runtime/agent-runtime-context';
 import { BaseAgent } from '../base-agent';
+import type { EvaluationResult } from '@agent/knowledge';
+import type { ToolExecutionResult } from '@agent/runtime';
 
 export class ReviewerAgent extends BaseAgent {
   constructor(context: AgentRuntimeContext) {

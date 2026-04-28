@@ -7,7 +7,7 @@ import {
   type IntelAlert,
   type IntelDelivery,
   type IntelSignal
-} from '@agent/core';
+} from '../../../types';
 
 const PatrolModeSchema = z.enum(['patrol', 'ingest']);
 

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { AutoReviewResultSchema } from '@agent/core';
+import { AutoReviewResultSchema } from '@agent/tools';
 import { describe, expect, it } from 'vitest';
 
 import { AutoReviewRepository } from '../../src/auto-review/auto-review.repository';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createIntelScheduler } from '../../../src/runtime/intel/intel-scheduler';
+import { createIntelScheduler } from '../../../src/runtime/domain/intel/intel-scheduler';
 
 describe('createIntelScheduler', () => {
   it('registers the expected Bree intel jobs', () => {

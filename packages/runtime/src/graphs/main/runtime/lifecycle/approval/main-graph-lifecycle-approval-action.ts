@@ -1,8 +1,9 @@
-import type { ApprovalActionDto, ApprovalResumeInput } from '@agent/core';
+import type { ApprovalActionDto } from '@agent/core';
 import { ActionIntent, AgentRole, ApprovalDecision, TaskStatus } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../../runtime/runtime-task.types';
 
 import type { LifecycleApprovalParams, LifecyclePersistCallbacks } from './main-graph-lifecycle-approval.types';
+import type { ApprovalResumeInput } from '@agent/runtime';
 
 export async function applyApprovalAction(
   params: LifecycleApprovalParams & LifecyclePersistCallbacks,

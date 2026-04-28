@@ -1,4 +1,6 @@
-import type { EvidenceRecord, ExecutionTrace, LearningEvaluationRecord, TrustClass } from '@agent/core';
+import type { LearningEvaluationRecord } from '@agent/knowledge';
+import type { EvidenceRecord } from '@agent/memory';
+import type { ExecutionTrace, TrustClass } from '@agent/core';
 
 export type RuntimeLearningSourceType =
   | 'execution'

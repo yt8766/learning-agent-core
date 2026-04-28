@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { SpecialistFindingSchema } from '@agent/core';
+import { SpecialistFindingSchema } from '../../../../shared/schemas/specialist-finding-schema';
 
 export const ResearchEvidenceSchema = z.object({
   contractVersion: z.literal('research-evidence.v1'),

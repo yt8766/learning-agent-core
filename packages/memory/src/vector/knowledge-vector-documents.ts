@@ -14,6 +14,10 @@ export interface KnowledgeVectorDocumentRecord {
   searchable: boolean;
 }
 
+export interface KnowledgeVectorIndexWriter {
+  upsertKnowledge(record: KnowledgeVectorDocumentRecord): Promise<void>;
+}
+
 interface KnowledgeChunkSnapshot {
   id: string;
   sourceId: string;

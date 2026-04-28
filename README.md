@@ -29,11 +29,11 @@
 - `agents/coder`：代码生成智能体公开入口，承载 coder graph 与节点装配
 - `agents/reviewer`：质量审核智能体公开入口，承载 reviewer graph 与节点装配
 - `packages/templates`：前端模板仓，承载可供代码生成选择的页面/报表模板定义
-- `packages/skill-runtime`：运行时技能注册与技能卡领域包；是 `@agent/skill-runtime` 的真实物理宿主
+- `packages/skill`：运行时技能注册与技能卡领域包；是 `@agent/skill` 的真实物理宿主
 - `packages/evals`：评估与复盘
 - `docs/archive/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
 - `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
-  - 运行时技能数据默认落在 `data/skill-runtime`
+  - 运行时技能数据默认落在 `data/skill`
 - `test/*`：仓库级（workspace-level）专用测试宿主
   - `test/integration/`：跨包、跨宿主、跨链路的 integration 测试
   - `test/smoke/`：仓库级最小可运行闭环 smoke 测试
@@ -52,10 +52,10 @@
 当前目录收敛状态补充：
 
 - `packages/*` 与 `agents/*` 的职责、统一目录语法、root export / runtime boundary 规则已经统一沉淀到 `docs/*`
-- 第一阶段 compat 根文件收缩已完成，`packages/evals`、`packages/skill-runtime`、`packages/report-kit`、`packages/templates` 以及 `packages/config` 的纯 compat `settings.*` 已切到“包根直出 canonical host”
+- 第一阶段 compat 根文件收缩已完成，`packages/evals`、`packages/skill`、`packages/report-kit`、`packages/templates` 以及 `packages/config` 的纯 compat `settings.*` 已切到“包根直出 canonical host”
 - 一部分扁平包已经继续补出明确的 facade contract：
   - `packages/config/src/contracts/settings-facade.ts`
-  - `packages/skill-runtime/src/contracts/skill-runtime-facade.ts`
+  - `packages/skill/src/contracts/skill-facade.ts`
   - `packages/evals/src/contracts/evals-facade.ts`
 - 仍保留的 compat / facade 入口默认不是历史残留，而是刻意保留的稳定聚合层或 contract-first 入口；具体清单见 [`docs/packages/core/package-compat-sunset-candidates.md`](./docs/packages/core/package-compat-sunset-candidates.md)
 
@@ -371,7 +371,6 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 - [GitHub Flow 规范](./docs/conventions/github-flow.md)
 - [模板示例](./docs/conventions/project-template-guidelines.md)
 - [测试规范](./docs/conventions/test-conventions.md)
-- [agent-core 历史结构报告（归档）](./docs/archive/agent-core/archive/agent-core-structure-report.md)
 - [架构总览](./docs/architecture/ARCHITECTURE.md)
 - [API 文档目录](./docs/contracts/api/README.md)
 - [前后端集成链路](./docs/integration/frontend-backend-integration.md)
@@ -400,7 +399,7 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
   - 默认只展示用户消息、Agent 最终回复、必要审批/终止卡
   - Think、ThoughtChain、Evidence、Learning、Skill、Route 等运行态信息优先收纳到 workbench / runtime panel
 - 共享包改动后，优先执行 `pnpm build:lib`
-- 仓库级代理技能放在 `.agents/skills/*/SKILL.md`，不要和 `packages/skill-runtime` 混用
+- 仓库级代理技能放在 `.agents/skills/*/SKILL.md`，不要和 `packages/skill` 混用
 
 ## 工程原则
 

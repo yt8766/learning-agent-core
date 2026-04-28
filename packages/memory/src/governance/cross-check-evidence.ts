@@ -1,4 +1,4 @@
-import type { EvidenceRecord } from '@agent/core';
+import type { EvidenceRecord } from '@agent/memory';
 
 import type { RuntimeStateSnapshot } from '../repositories/runtime-state-repository';
 

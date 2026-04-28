@@ -7,8 +7,8 @@ import {
   MemorySearchService,
   NullVectorIndexRepository
 } from '@agent/memory';
-import { SkillRegistry } from '@agent/skill-runtime';
-import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from '@agent/tools';
+import { SkillRegistry } from '@agent/skill';
+import { McpClientManager, ToolRegistry } from '@agent/tools';
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
 import { AgentRole } from '../task-architecture-helpers';
 import { resolveCompiledSkillAttachment, resolveExecutionMode } from './main-graph-task-context-helpers';
@@ -19,8 +19,10 @@ import {
 } from './main-graph-task-context-usage';
 
 import { WorkerRegistry } from '../../../../governance/worker-registry';
+import type { ApprovalService } from '../../../../governance/approval';
 import type { AgentRuntimeContext } from '../../../../runtime/agent-runtime-context';
 import { LocalKnowledgeSearchService } from '../../../../runtime/local-knowledge-search-service';
+import type { SandboxExecutor } from '../../../../sandbox';
 
 import type { MainGraphTaskContextDependencies, RuntimeSettings } from './main-graph-task-context.types';
 export type { MainGraphTaskContextDependencies, RuntimeSettings } from './main-graph-task-context.types';

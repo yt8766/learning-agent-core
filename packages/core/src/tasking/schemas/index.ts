@@ -10,3 +10,5 @@ export * from './task-record';
 export * from './task-lineage';
 export * from './thought-graph';
 export * from './run-observability';
+export * from './memory-fields';
+export * from './knowledge-fields';

@@ -29,7 +29,7 @@
 
 - 这里负责配置 contract 与加载，不负责 runtime orchestration 或 provider 实例创建。
 - 所有稳定配置项优先 schema-first，不要只加 interface 而不补 schema。
-- 如果新增策略影响 profile 或目录布局，要同步检查 backend、worker、runtime 与 skill-runtime。
+- 如果新增策略影响 profile 或目录布局，要同步检查 backend、worker、runtime 与 skill。
 
 ## 验证
 

@@ -242,9 +242,9 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
   - 已改为从 `@agent/core` 消费 `ExecutionPlanRecord`
 - `packages/shared/src/types/tasking-planning.ts`
   - 当前只剩 `ExecutionPlanRecord` 的 compat type export，不再是 runtime task 主链的计划记录宿主
-- `packages/skill-runtime/src/skill-registry.ts`
-  - `PluginDraft` 已回收到 skill-runtime 本地宿主
-  - `packages/skill-runtime/src/*` 当前已不再直接从 shared 导入 `PluginDraft`
+- `packages/skill/src/skill-registry.ts`
+  - `PluginDraft` 已回收到 skill 本地宿主
+  - `packages/skill/src/*` 当前已不再直接从 shared 导入 `PluginDraft`
 - `packages/runtime/src/graphs/main/main.graph.ts`、`packages/runtime/src/graphs/main/main-graph-runtime-modules.ts`
   - `AgentTokenEvent` 已切到 `@agent/core`
   - `packages/shared/src/types/tasking-orchestration.ts` 仅保留 compat re-export，不再承载主定义
@@ -266,7 +266,7 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
 - `packages/runtime/src/graphs/main/pipeline/main-graph-pipeline-graph.ts`
   - `ApprovalDecision`、`CreateTaskDto`、`ToolUsageSummaryRecord` 已切到 `@agent/core`
   - shared 侧只保留 `TaskRecord` / `AgentRole` 这类 overlay 或 helper reclaim 相关导入
-- `agents/supervisor/src/workflows/research-source-planner.ts`、`agents/supervisor/src/workflows/execution-steps.ts`、`apps/backend/agent-server/src/runtime/skills/remote-skill-discovery.service.ts`、`packages/skill-runtime/src/agent-skill-loader.ts`、`packages/runtime/src/graphs/main/task/task-workflow-resolution.ts`、`packages/runtime/src/governance/model-routing-policy.ts`、`packages/runtime/src/capabilities/capability-pool-governance.ts`、`packages/runtime/src/governance/profile-policy.ts`
+- `agents/supervisor/src/workflows/research-source-planner.ts`、`agents/supervisor/src/workflows/execution-steps.ts`、`apps/backend/agent-server/src/runtime/skills/remote-skill-discovery.service.ts`、`packages/skill/src/agent-skill-loader.ts`、`packages/runtime/src/graphs/main/task/task-workflow-resolution.ts`、`packages/runtime/src/governance/model-routing-policy.ts`、`packages/runtime/src/capabilities/capability-pool-governance.ts`、`packages/runtime/src/governance/profile-policy.ts`
   - `SourcePolicyMode`、`WorkerDomain`、`SpecialistDomain`、`ExecutionStepRoute`、`ExecutionStepStage`、`ExecutionStepStatus`、`ExecutionStepOwner` 已切到 `@agent/core`
   - shared 侧只保留 `TaskRecord` / `ExecutionPlanRecord` 与 helper reclaim 等白名单残留
 - `agents/supervisor/src/workflows/specialist-routing.ts`、`apps/backend/agent-server/src/runtime/skills/runtime-skill-sources.service.ts`、`packages/runtime/src/graphs/main/task/task-factory.types.ts`、`packages/runtime/src/capabilities/capability-pool.shared.ts`、`packages/runtime/src/capabilities/capability-pool-bootstrap.ts`
@@ -355,7 +355,7 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
  10 apps/frontend
   5 packages/shared
   4 packages/evals
-  4 packages/skill-runtime
+  4 packages/skill
   3 agents/reviewer
   2 packages/adapters
   1 packages/core
@@ -434,7 +434,7 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
 - `agents/supervisor`
 - `packages/runtime`
 - `agents/data-report`
-- `packages/skill-runtime`
+- `packages/skill`
 
 它们继续留在 `shared`，会让 `shared` 永远删不掉。
 
@@ -971,7 +971,7 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
   - `consumption facade`
     例如 admin/runtime center、platform console、前端友好组合类型
   - `helper reclaim`
-    例如应继续迁回 `runtime / agents-supervisor / skill-runtime` 宿主的 workflow、prompt、bootstrap helper
+    例如应继续迁回 `runtime / agents-supervisor / skill` 宿主的 workflow、prompt、bootstrap helper
   - `compat`
     仅保留 type alias / re-export 的过渡出口，不再承载主定义
 
@@ -1026,7 +1026,7 @@ shared 原先承接的 helper reclaim 已经迁空并删除实现；当前这类
 
 - `core`
   - 收稳定主 contract、schema、DTO、事件、payload、接口边界
-- `runtime / agents/* / tools / skill-runtime`
+- `runtime / agents/* / tools / skill`
   - 收流程 helper、prompt helper、bootstrap registry、ministry 技术 contract
 - `frontend/admin` 或更窄的新消费层
   - 收 runtime center / console center / skill source 等消费组合类型

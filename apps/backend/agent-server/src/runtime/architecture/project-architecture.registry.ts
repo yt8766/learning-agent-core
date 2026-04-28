@@ -6,7 +6,7 @@ import type {
 } from '@agent/core';
 import type { RuntimeHost } from '../core/runtime.host';
 
-import { buildKnowledgeDescriptor } from '../knowledge/runtime-knowledge-store';
+import { buildKnowledgeDescriptor } from '../domain/knowledge/runtime-knowledge-store';
 
 export function buildProjectArchitectureDescriptor(input: {
   subgraphs: ReturnType<RuntimeHost['listSubgraphDescriptors']>;

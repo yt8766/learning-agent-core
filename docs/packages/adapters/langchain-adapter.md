@@ -3,15 +3,15 @@
 状态：current
 文档类型：guide
 适用范围：`packages/adapters/src/langchain/`
-最后核对：2026-05-09
+最后核对：2026-04-28
 
 ## 概述
 
-`packages/adapters` 提供三种 LangChain adapter，将 LangChain 生态的 loader / splitter / embedder 适配为 `@agent/core` 定义的稳定契约接口。
+`packages/adapters` 提供三种 LangChain adapter，将 LangChain 生态的 loader / splitter / embedder 适配为 `@agent/knowledge` 定义的稳定 indexing 契约接口。
 
 ## 1. Loader — `LangChainLoaderAdapter`
 
-包装任意 LangChain `BaseDocumentLoader`，输出 `Document[]`（core 类型）。
+包装任意 LangChain `BaseDocumentLoader`，输出 `Document[]`（`@agent/knowledge` 类型）。
 
 ```ts
 import { LangChainLoaderAdapter, createMarkdownDirectoryLoader } from '@agent/adapters';

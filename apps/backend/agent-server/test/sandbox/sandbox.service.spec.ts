@@ -1,6 +1,10 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import type { ToolExecutionResult } from '@agent/core';
-import { SandboxProviderRegistry, SimulatedSandboxProvider, type SandboxProvider } from '@agent/tools';
+import {
+  SandboxProviderRegistry,
+  SimulatedSandboxProvider,
+  type SandboxProvider,
+  type ToolExecutionResult
+} from '@agent/runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { SandboxRepository } from '../../src/sandbox/sandbox.repository';

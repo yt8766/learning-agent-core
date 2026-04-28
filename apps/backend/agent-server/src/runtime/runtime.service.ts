@@ -10,7 +10,7 @@ import { RuntimeOperationalStateService } from './services/runtime-operational-s
 import { RuntimeSessionService } from './services/runtime-session.service';
 import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.service';
 import { RuntimeTaskService } from './services/runtime-task.service';
-import { RuntimeWenyuanFacade } from './wenyuan/runtime-wenyuan-facade';
+import { RuntimeWenyuanFacade } from './domain/knowledge/runtime-wenyuan-facade';
 import { RuntimeTechBriefingService } from './briefings/runtime-tech-briefing.service';
 import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
 import { RuntimeServiceContextFactory } from './runtime.service-contexts';

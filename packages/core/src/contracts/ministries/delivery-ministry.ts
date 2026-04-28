@@ -1,10 +1,10 @@
-import type { MemoryRecord } from '../../memory';
-import type { EvaluationResult } from '../../knowledge/types/knowledge-runtime.types';
+import type { EvaluationResult } from '../../tasking/types/knowledge-fields';
+import type { MemoryRecord } from '../../tasking/types/memory-fields';
 import type { ActionIntent } from '../../primitives/types/primitives.types';
 import type { SkillCard } from '../../skills';
 import type { TaskRecord } from '../../tasking/types/task-record';
 import type { AgentExecutionState, ReviewRecord } from '../../tasking/types/orchestration';
-import type { ToolExecutionResult } from '../../governance/types/governance.types';
+import type { ToolExecutionResult } from '../../tasking/types/governance-fields';
 
 export interface DeliveryResearchResult {
   summary: string;

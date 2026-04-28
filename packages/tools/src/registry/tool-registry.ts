@@ -1,4 +1,5 @@
-import { ActionIntent, type ToolDefinition, type ToolFamilyRecord } from '@agent/core';
+import { ActionIntent } from '@agent/core';
+import type { ToolDefinition, ToolFamilyRecord } from '@agent/runtime';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

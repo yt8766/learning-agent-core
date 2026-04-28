@@ -10,7 +10,6 @@
 当前文档：
 
 - [adapters/README.md](/docs/packages/adapters/README.md)
-- [agent-kit/README.md](/docs/packages/agent-kit/README.md)
 - [config/README.md](/docs/packages/config/README.md)
 - [core/README.md](/docs/packages/core/README.md)
 - [evals/README.md](/docs/packages/evals/README.md)
@@ -19,7 +18,7 @@
 - [platform-runtime/README.md](/docs/packages/platform-runtime/README.md)
 - [report-kit/README.md](/docs/packages/report-kit/README.md)
 - [runtime/README.md](/docs/packages/runtime/README.md)
-- [skill-runtime/README.md](/docs/packages/skill-runtime/README.md)
+- [skill/README.md](/docs/packages/skill/README.md)
 - [templates/README.md](/docs/packages/templates/README.md)
 - [tools/README.md](/docs/packages/tools/README.md)
 

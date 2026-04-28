@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/memory/`
-最后核对：2026-04-20
+最后核对：2026-04-28
 
 本目录用于沉淀 `packages/memory` 相关文档。
 
@@ -26,7 +26,8 @@
   - review / delivery / research 流程控制
   - knowledge chunking / retrieval / citation
 - 依赖方向：
-  - 只依赖 `@agent/core`、`@agent/config`、`@agent/adapters`
+  - 只依赖 `@agent/config`、`@agent/adapters` 与必要第三方库
+  - memory / evidence / learning candidate 等领域 contract 由 `@agent/memory` 本包承载；不要从 `@agent/core` 恢复旧 memory host
   - 被 backend、runtime、agents 消费
 - 公开入口：
   - 根入口：`@agent/memory`
@@ -59,4 +60,4 @@
 补充：
 
 - RAG knowledge ingestion / retrieval / citation 从 `2026-04-18` 起开始收口到 `packages/knowledge`
-- `RuntimeStateSnapshot.workspaceSkillReuseRecords` 从 `2026-04-26` 起作为 `AgentSkillReuseRecord[]` 的最小持久槽位存在；`load()` 对旧快照默认补空数组，避免 learning flow 或 Workspace Center 写入的复用记录被顶层白名单丢弃。runtime 写入端按幂等 id 覆盖同一 run/task + skill 的重复记录，Workspace Center 读取端按 `workspaceId` 过滤并只投影 core contract 字段。
+  - `RuntimeStateSnapshot.workspaceSkillReuseRecords` 从 `2026-04-26` 起作为 loose snapshot record 的最小持久槽位存在；`load()` 对旧快照默认补空数组，避免 learning flow 或 Workspace Center 写入的复用记录被顶层白名单丢弃。runtime 写入端按幂等 id 覆盖同一 run/task + skill 的重复记录，Workspace Center 读取端按 `workspaceId` 过滤并只投影稳定字段。

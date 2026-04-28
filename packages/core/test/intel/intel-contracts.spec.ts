@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { IntelAlertSchema, IntelDeliverySchema, IntelSignalSchema } from '../../src';
+import { IntelAlertSchema, IntelDeliverySchema, IntelSignalSchema } from '@agent/agents-intel-engine';
 
-describe('@agent/core intel contracts', () => {
+describe('@agent/agents-intel-engine intel contracts', () => {
   it('parses the minimal signal, alert, and delivery records', () => {
     const signal = IntelSignalSchema.parse({
       id: 'signal_001',

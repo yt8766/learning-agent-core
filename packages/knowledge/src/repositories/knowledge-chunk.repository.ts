@@ -1,4 +1,4 @@
-import type { KnowledgeChunk } from '@agent/core';
+import type { KnowledgeChunk } from '@agent/knowledge';
 
 import type { KnowledgeChunkRepository } from '../contracts/knowledge-facade';
 

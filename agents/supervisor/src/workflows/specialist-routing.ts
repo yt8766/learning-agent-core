@@ -1,11 +1,12 @@
-import { buildSpecialistFindingOutputInstruction } from '@agent/core';
-import type { EvidenceRecord, RequestedExecutionHints, SpecialistDomain } from '@agent/core';
+import type { RequestedExecutionHints, SpecialistDomain } from '@agent/core';
+import { buildSpecialistFindingOutputInstruction } from '../shared/schemas/specialist-finding-schema';
 import type {
   WorkflowContextSliceRecord as ContextSliceRecord,
   WorkflowSpecialistLeadRecord as SpecialistLeadRecord,
   WorkflowSpecialistSupportRecord as SpecialistSupportRecord
 } from './workflow-architecture-helpers';
 import { getSpecialistDisplayName, normalizeSpecialistDomain } from './workflow-architecture-helpers';
+import type { EvidenceRecord } from '@agent/memory';
 
 const SPECIALIST_DISPLAY_NAMES: Record<SpecialistDomain, string> = {
   'general-assistant': '通用助理',

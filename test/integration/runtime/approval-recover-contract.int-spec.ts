@@ -6,7 +6,7 @@
  *
  * 测试策略：
  * - 通过 @agent/core 的公开 schema 验证 approval / recover DTO 契约
- * - 通过 @agent/core 的 matchesApprovalScopePolicy 验证自动审批策略匹配逻辑
+ * - 通过 @agent/runtime 的 matchesApprovalScopePolicy 验证自动审批策略匹配逻辑
  * - 验证 TaskStatus 枚举值稳定性（runtime 跨包依赖此枚举做状态判断）
  * - 不依赖外部服务，不模拟 LLM 调用
  *
@@ -23,15 +23,16 @@ import {
   ApprovalActionDtoSchema,
   // recover contract
   RecoverToCheckpointDtoSchema,
-  // approval scope policy
-  ApprovalScopePolicyRecordSchema,
-  matchesApprovalScopePolicy,
-  buildApprovalScopeMatchKey,
   // runtime status enum (consumed by runtime session coordinator)
   TaskStatus,
   // approval decision enum
   ApprovalDecision
 } from '@agent/core';
+import {
+  ApprovalScopePolicyRecordSchema,
+  buildApprovalScopeMatchKey,
+  matchesApprovalScopePolicy
+} from '@agent/runtime';
 
 // ─── 1. ApprovalAction DTO contract ───────────────────────────────────────────
 

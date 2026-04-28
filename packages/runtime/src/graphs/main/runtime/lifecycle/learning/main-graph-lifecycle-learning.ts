@@ -1,6 +1,6 @@
 import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
-import type { LearningConflictRecord, RuleRecord } from '@agent/core';
-import type { MemoryRepository, RuleRepository, RuntimeStateRepository } from '@agent/memory';
+import { LearningConflictScanResultSchema, type LearningConflictRecord } from '@agent/knowledge';
+import type { MemoryRepository, RuleRecord, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 
 import type { LearningFlow } from '../../../../../flows/learning';
 import type { MainGraphLearningJobsRuntime } from '../../background/main-graph-learning-jobs';
@@ -107,7 +107,8 @@ export async function updateLifecycleLearningConflictStatus(
   preferredMemoryId?: string
 ) {
   const snapshot = await deps.runtimeStateRepository.load();
-  const current = snapshot.governance?.learningConflictScan;
+  const parsedCurrent = LearningConflictScanResultSchema.safeParse(snapshot.governance?.learningConflictScan);
+  const current = parsedCurrent.success ? parsedCurrent.data : undefined;
   if (!current) {
     return undefined;
   }
@@ -137,7 +138,7 @@ export async function updateLifecycleLearningConflictStatus(
     }
   };
   await deps.runtimeStateRepository.save(snapshot);
-  return snapshot.governance.learningConflictScan?.conflictPairs.find(item => item.id === conflictId);
+  return nextConflictPairs.find(item => item.id === conflictId);
 }
 
 export async function listLifecycleRules(deps: Pick<LearningLifecycleDeps, 'ruleRepository'>): Promise<RuleRecord[]> {

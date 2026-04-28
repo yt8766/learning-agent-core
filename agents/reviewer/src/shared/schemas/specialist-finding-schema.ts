@@ -1,1 +1,1 @@
-export { SpecialistFindingSchema } from '@agent/core';
+export { SpecialistFindingSchema } from '../../types/specialist-finding.schema';

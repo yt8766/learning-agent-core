@@ -22,8 +22,8 @@ vi.mock('@agent/runtime', () => ({
   describeSkillSourceProfilePolicy: describeSkillSourceProfilePolicyMock
 }));
 
-vi.mock('@agent/skill-runtime', async importOriginal => {
-  const actual = await importOriginal<typeof import('@agent/skill-runtime')>();
+vi.mock('@agent/skill', async importOriginal => {
+  const actual = await importOriginal<typeof import('@agent/skill')>();
   return {
     ...actual,
     loadAgentSkillManifests: loadAgentSkillManifestsMock

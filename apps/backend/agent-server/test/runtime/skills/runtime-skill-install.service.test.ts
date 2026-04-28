@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SkillArtifactFetcher } from '@agent/skill-runtime';
+import { SkillArtifactFetcher } from '@agent/skill';
 
 const { buildSkillsAddCommandMock, buildSkillsCheckCommandMock, buildSkillsUpdateCommandMock, execShellCommandMock } =
   vi.hoisted(() => ({

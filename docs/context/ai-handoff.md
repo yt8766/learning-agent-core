@@ -59,7 +59,7 @@
 - tool registry / executor / sandbox / MCP transport：
   - 优先落到 `packages/tools`
 - skill catalog / install / source / registry：
-  - 优先落到 `packages/skill-runtime`
+  - 优先落到 `packages/skill`
 - data-report 的确定性 blueprints / scaffold / assembly：
   - 优先落到 `packages/report-kit`
 - 专项 agent graph / flow / prompt / schema：

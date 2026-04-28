@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`agents/intel-engine`、`apps/backend/agent-server`、`packages/core`、`config/intel`、`data/intel`
+适用范围：`agents/intel-engine`、`apps/backend/agent-server`、`config/intel`、`data/intel`
 最后核对：2026-04-24
 
 ## 1. 背景
@@ -34,7 +34,7 @@
 - 高风险事件走 `30 分钟` 巡检，触发即时告警
 - 普通动态进入当日池，在固定时间生成日报
 
-专项宿主统一落在 `agents/intel-engine`，而不是新增通用 `packages/*` 业务包。稳定 contract 仍收敛到 `packages/core`。
+专项宿主统一落在 `agents/intel-engine`，而不是新增通用 `packages/*` 业务包。Intel 领域 schema 与类型由 `agents/intel-engine/src/types/` 承接，并通过 `@agent/agents-intel-engine` 公开。
 
 ## 2.1 当前落地状态
 
@@ -138,9 +138,9 @@
 - `runtime/` 放调度、存储、路由、分发等运行时能力
 - `services/` 只做 job facade，不复制 graph 内部业务
 
-### 5.2 `packages/core`
+### 5.2 `agents/intel-engine/src/types`
 
-只放稳定 contract，例如：
+只放 Intel 领域 contract，例如：
 
 - `IntelSignalSchema`
 - `IntelAlertSchema`

@@ -1,5 +1,1 @@
-export {
-  buildSkillSearchMcpRecommendation,
-  buildSkillSearchSafetyNotes,
-  resolveSkillSearchStatus
-} from '@agent/skill-runtime';
+export { buildSkillSearchMcpRecommendation, buildSkillSearchSafetyNotes, resolveSkillSearchStatus } from '@agent/skill';
