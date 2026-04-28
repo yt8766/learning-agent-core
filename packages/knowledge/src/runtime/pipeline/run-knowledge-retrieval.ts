@@ -2,6 +2,7 @@ import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
 
 import type { KnowledgeSearchService } from '../../contracts/knowledge-facade';
 import type { RetrievalPipelineConfig } from '../../contracts/knowledge-retrieval-runtime';
+import type { QueryNormalizer } from '../stages/query-normalizer';
 import type { KnowledgeRetrievalResult } from '../types/retrieval-runtime.types';
 import { DefaultContextAssembler } from '../defaults/default-context-assembler';
 import { DefaultQueryNormalizer } from '../defaults/default-query-normalizer';
@@ -13,6 +14,23 @@ export interface KnowledgeRetrievalRunOptions {
   pipeline?: RetrievalPipelineConfig;
   assembleContext?: boolean;
   includeDiagnostics?: boolean;
+}
+
+function resolveNormalizerChain(config: QueryNormalizer | QueryNormalizer[] | undefined): QueryNormalizer {
+  if (!config) return new DefaultQueryNormalizer();
+  if (!Array.isArray(config)) return config;
+  const valid = config.filter((n): n is QueryNormalizer => n != null);
+  if (valid.length === 0) return new DefaultQueryNormalizer();
+  if (valid.length === 1) return valid[0]!;
+  return {
+    normalize: async request => {
+      let result = await valid[0]!.normalize(request);
+      for (const normalizer of valid.slice(1)) {
+        result = await normalizer.normalize(result);
+      }
+      return result;
+    }
+  };
 }
 
 function dedupeQueries(queries: string[]): string[] {
@@ -57,30 +75,14 @@ function mergeHitsByChunkId(hitGroups: SearchHits[]): RetrievalHit[] {
 export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOptions): Promise<KnowledgeRetrievalResult> {
   const { request, searchService, pipeline = {}, assembleContext = false, includeDiagnostics = false } = options;
 
-  const queryNormalizerConfig = pipeline.queryNormalizer ?? new DefaultQueryNormalizer();
+  const queryNormalizer = resolveNormalizerChain(pipeline.queryNormalizer);
   const postProcessor = pipeline.postProcessor ?? new DefaultRetrievalPostProcessor();
   const contextAssembler = assembleContext ? (pipeline.contextAssembler ?? new DefaultContextAssembler()) : null;
 
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
 
-  // Handle single normalizer or array of normalizers
-  const normalizers = Array.isArray(queryNormalizerConfig)
-    ? queryNormalizerConfig.length > 0
-      ? queryNormalizerConfig
-      : [new DefaultQueryNormalizer()]
-    : [queryNormalizerConfig];
-
-  let normalized = await normalizers[0]!.normalize(request);
-
-  // Chain remaining normalizers, passing output of each as input to next
-  for (let i = 1; i < normalizers.length; i++) {
-    normalized = await normalizers[i]!.normalize({
-      query: normalized.normalizedQuery,
-      limit: normalized.topK
-    });
-  }
-
+  const normalized = await queryNormalizer.normalize(request);
   const queryVariants = dedupeQueries(
     normalized.queryVariants?.length ? normalized.queryVariants : [normalized.normalizedQuery]
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RetrievalHit, RetrievalRequest } from '@agent/core';
+import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
 
 import type { KnowledgeSearchService } from '../src/contracts/knowledge-facade';
 import type { QueryNormalizer } from '../src/runtime/stages/query-normalizer';
@@ -294,5 +294,72 @@ describe('runKnowledgeRetrieval', () => {
     });
 
     expect(result.contextBundle).toBe('custom context bundle');
+  });
+
+  describe('normalizer chain (array config)', () => {
+    it('executes normalizers in order when queryNormalizer is an array', async () => {
+      const callOrder: string[] = [];
+
+      const firstNormalizer: QueryNormalizer = {
+        normalize: async (req: RetrievalRequest): Promise<NormalizedRetrievalRequest> => {
+          callOrder.push('first');
+          return makeNormalizedRequest(req, {
+            normalizedQuery: 'first-normalized',
+            queryVariants: ['first-normalized']
+          });
+        }
+      };
+
+      const secondNormalizer: QueryNormalizer = {
+        normalize: async (req: RetrievalRequest): Promise<NormalizedRetrievalRequest> => {
+          callOrder.push('second');
+          // 第二步收到的 req 是 NormalizedRetrievalRequest，normalizedQuery 已由第一步填充
+          const prev = (req as NormalizedRetrievalRequest).normalizedQuery ?? req.query;
+          return makeNormalizedRequest(req, {
+            normalizedQuery: `${prev}-then-second`,
+            queryVariants: [`${prev}-then-second`]
+          });
+        }
+      };
+
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: 'original' },
+        searchService,
+        pipeline: { queryNormalizer: [firstNormalizer, secondNormalizer] }
+      });
+
+      expect(callOrder).toEqual(['first', 'second']);
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'first-normalized-then-second' }));
+    });
+
+    it('falls back to DefaultQueryNormalizer when queryNormalizer is an empty array', async () => {
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: '  some query  ' },
+        searchService,
+        pipeline: { queryNormalizer: [] }
+      });
+
+      // DefaultQueryNormalizer trims whitespace
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'some query' }));
+    });
+
+    it('uses single normalizer directly when array has one element', async () => {
+      const searchService = makeSearchService([]);
+      const spy = vi.spyOn(searchService, 'search');
+
+      await runKnowledgeRetrieval({
+        request: { query: 'test' },
+        searchService,
+        pipeline: { queryNormalizer: [makeSingleVariantNormalizer()] }
+      });
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'test' }));
+    });
   });
 });
