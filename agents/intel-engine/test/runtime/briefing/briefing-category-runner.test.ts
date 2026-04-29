@@ -1,19 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processCategory } from '../../../src/runtime/briefings/runtime-tech-briefing-category-runner';
+import { processCategory } from '../../../src/runtime/briefing/briefing-category-runner';
 
-vi.mock('../../../src/runtime/briefings/runtime-tech-briefing-sources', () => ({
+vi.mock('../../../src/runtime/briefing/briefing-sources', () => ({
   BRIEFING_CATEGORY_TITLES: {
     'ai-tech': 'AI & LLM 技术'
   }
 }));
 
-vi.mock('../../../src/runtime/briefings/runtime-tech-briefing-source-summary', () => ({
+vi.mock('../../../src/runtime/briefing/briefing-source-summary', () => ({
   BRIEFING_CATEGORY_SOURCE_LABELS: {
     'ai-tech': ['OpenAI Blog', 'Anthropic Blog']
   }
 }));
 
-vi.mock('../../../src/runtime/briefings/runtime-tech-briefing-category-processor', () => ({
+vi.mock('../../../src/runtime/briefing/briefing-category-processor', () => ({
   buildSuppressedSummary: vi.fn(() => ''),
   decideItemForSend: vi.fn((item: { id: string }) => ({ ...item, decisionReason: 'send_new' })),
   limitCategoryItems: vi.fn((items: Array<{ id: string }>) => ({

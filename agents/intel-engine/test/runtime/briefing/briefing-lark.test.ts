@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { sendLarkDigestMessage } from '../../../src/runtime/briefings/runtime-tech-briefing-lark';
+import { sendLarkDigestMessage } from '../../../src/runtime/briefing/briefing-lark';
 
 describe('sendLarkDigestMessage', () => {
   it('Lark 返回业务错误时会从交互卡片降级到 markdown 卡片', async () => {

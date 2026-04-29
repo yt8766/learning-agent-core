@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { rankItems } from '../../../src/runtime/briefings/runtime-tech-briefing-ranking';
-import type { TechBriefingItem } from '../../../src/runtime/briefings/runtime-tech-briefing.types';
+import { rankItems } from '../../../src/runtime/briefing/briefing-ranking';
+import type { TechBriefingItem } from '../../../src/runtime/briefing/briefing.types';
 
 function createItem(overrides: Partial<TechBriefingItem>): TechBriefingItem {
   return {

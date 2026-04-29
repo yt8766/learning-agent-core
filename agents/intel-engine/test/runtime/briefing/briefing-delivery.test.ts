@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildTechBriefingRun } from '../../../src/runtime/briefings/runtime-tech-briefing-delivery';
+import { buildTechBriefingRun } from '../../../src/runtime/briefing/briefing-delivery';
 
 describe('runtime tech briefing delivery helpers', () => {
   it('builds a partial run record when only part of categories are delivered', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { computePriorityScore } from '../../../src/runtime/briefings/runtime-tech-briefing-ranking-policy';
-import type { TechBriefingItem } from '../../../src/runtime/briefings/runtime-tech-briefing.types';
+import { computePriorityScore } from '../../../src/runtime/briefing/briefing-ranking-policy';
+import type { TechBriefingItem } from '../../../src/runtime/briefing/briefing.types';
 
 function createItem(overrides: Partial<TechBriefingItem>): TechBriefingItem {
   return {

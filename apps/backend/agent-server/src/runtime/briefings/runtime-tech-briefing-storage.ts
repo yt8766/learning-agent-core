@@ -1,3 +1,5 @@
+// Transitional shim: briefing storage now lives in agents/intel-engine.
+// Remove this backend compatibility entry after Task 4/5 rewires callers to the intel facade.
 export {
   appendBriefingFeedback,
   appendBriefingRawEvidence,

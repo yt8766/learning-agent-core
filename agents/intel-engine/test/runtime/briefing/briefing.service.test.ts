@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readJson } from 'fs-extra';
 
-import { RuntimeTechBriefingService } from '../../../src/runtime/briefings/runtime-tech-briefing.service';
-import { appendBriefingFeedback } from '../../../src/runtime/briefings/runtime-tech-briefing-storage';
+import { RuntimeTechBriefingService } from '../../../src/runtime/briefing/briefing.service';
+import { appendBriefingFeedback } from '../../../src/runtime/briefing/briefing-storage';
 
 describe('RuntimeTechBriefingService', () => {
   let workspaceRoot = '';
@@ -22,7 +22,7 @@ describe('RuntimeTechBriefingService', () => {
   it('会初始化默认 schedule 并在 Bree 触发后发送多条分类消息', async () => {
     workspaceRoot = await mkdtemp(join(tmpdir(), 'runtime-tech-briefing-'));
     process.env.LARK_BOT_WEBHOOK_URL = 'https://lark.example.com/webhook';
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => mockFetchResponse(String(input)));
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => mockFetchResponse(String(input)));
     const service = new RuntimeTechBriefingService(() => ({
       settings: {
         workspaceRoot,
@@ -66,6 +66,9 @@ describe('RuntimeTechBriefingService', () => {
 
     const schedule = await service.initializeSchedule();
     const run = await service.runScheduled(new Date('2026-04-01T11:00:00.000Z'));
+    if (!run) {
+      throw new Error('expected scheduled briefing run');
+    }
     const persistedSchedule = await readJson(
       join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json')
     );

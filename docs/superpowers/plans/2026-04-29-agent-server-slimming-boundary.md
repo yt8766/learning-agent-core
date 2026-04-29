@@ -196,22 +196,36 @@ perl -0pi -e "s#'\\./runtime-tech-briefing#'./briefing#g; s#\"\\./runtime-tech-b
 
 Expected: `rg "runtime-tech-briefing" agents/intel-engine/src/runtime/briefing` 不再命中 import specifier。
 
-- [ ] **Step 3：修正 service 的 core import**
+- [ ] **Step 3：修正 service 的 core import 与 context contract**
 
-在 `agents/intel-engine/src/runtime/briefing/briefing.service.ts` 保持下面的 import 形态：
+在 `agents/intel-engine/src/runtime/briefing/briefing.service.ts` 保持 `@agent/core` import，不要反向绑定完整 `@agent/config`：
 
 ```ts
-import type { RuntimeSettings } from '@agent/config';
 import { ActionIntent } from '@agent/core';
 ```
 
-如果 `@agent/config` 尚未在 `agents/intel-engine/package.json` dependencies 中声明，执行：
+`RuntimeTechBriefingContext.settings` 使用 briefing runtime 需要的最小本地 contract：
 
-```bash
-pnpm add @agent/config --filter @agent/agents-intel-engine
+```ts
+export interface RuntimeTechBriefingContext {
+  settings: {
+    workspaceRoot: string;
+    zhipuApiKey?: string;
+    zhipuApiBaseUrl?: string;
+    zhipuModels?: {
+      manager: string;
+      research: string;
+      executor: string;
+      reviewer: string;
+    };
+    providers?: unknown[];
+    dailyTechBriefing: BriefingSettings;
+  };
+  ...
+}
 ```
 
-Expected: `agents/intel-engine/package.json` 出现 `"@agent/config": "workspace:*"`，`pnpm-lock.yaml` 同步更新。
+Expected: `agents/intel-engine` 不新增 `@agent/config` 依赖；backend composition root 负责把真实 settings 适配成该最小 context，避免配置包类型穿透到领域 runtime。
 
 - [ ] **Step 4：创建 briefing barrel**
 

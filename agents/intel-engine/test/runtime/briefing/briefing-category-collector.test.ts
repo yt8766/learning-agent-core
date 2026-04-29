@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toMcpSearchItems } from '../../../src/runtime/briefings/runtime-tech-briefing-category-collector';
+import { toMcpSearchItems } from '../../../src/runtime/briefing/briefing-category-collector';
 
 describe('runtime tech briefing category collector helpers', () => {
   it('keeps allowlisted MCP search results and drops unsupported domains', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { renderSummaryDigest } from '../../../src/runtime/briefings/runtime-tech-briefing-localize';
+import { renderSummaryDigest } from '../../../src/runtime/briefing/briefing-localize';
 
 describe('renderSummaryDigest', () => {
   it('会静默空分类并在底部追加巡检说明', () => {

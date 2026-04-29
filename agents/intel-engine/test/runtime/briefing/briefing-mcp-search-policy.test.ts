@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MCP_DISCOVERY_QUERIES,
   resolveMcpSearchSourceMeta
-} from '../../../src/runtime/briefings/runtime-tech-briefing-mcp-search-policy';
+} from '../../../src/runtime/briefing/briefing-mcp-search-policy';
 
 describe('runtime tech briefing MCP search policy', () => {
   it('uses targeted discovery queries for frontend security and AI devtool security', () => {

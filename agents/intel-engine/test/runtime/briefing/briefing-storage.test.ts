@@ -14,8 +14,8 @@ import {
   readBriefingScheduleState,
   readDailyTechBriefingRuns,
   saveBriefingHistory
-} from '../../../src/runtime/briefings/runtime-tech-briefing-storage';
-import { readDailyTechBriefingStatus } from '../../../src/runtime/briefings/runtime-tech-briefing-status';
+} from '../../../src/runtime/briefing/briefing-storage';
+import { readDailyTechBriefingStatus } from '../../../src/runtime/briefing/briefing-status';
 
 describe('runtime-tech-briefing-storage', () => {
   let workspaceRoot = '';
@@ -109,7 +109,9 @@ describe('runtime-tech-briefing-storage', () => {
           title: '后端/全栈新技术',
           status: 'sent',
           itemCount: 1,
+          sent: true,
           emptyDigest: false,
+          sourcesChecked: ['Node.js Blog'],
           newCount: 1,
           updateCount: 0,
           crossRunSuppressedCount: 2,
@@ -148,7 +150,9 @@ describe('runtime-tech-briefing-storage', () => {
           title: '后端/全栈新技术',
           status: 'sent',
           itemCount: 1,
+          sent: true,
           emptyDigest: false,
+          sourcesChecked: ['Node.js Blog'],
           newCount: 1,
           updateCount: 0,
           crossRunSuppressedCount: 0,

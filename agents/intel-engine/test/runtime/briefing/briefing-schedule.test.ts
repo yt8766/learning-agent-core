@@ -7,7 +7,7 @@ import {
   resolveBriefingLookbackDays,
   scheduleForCategory,
   type BriefingSettings
-} from '../../../src/runtime/briefings/runtime-tech-briefing-schedule';
+} from '../../../src/runtime/briefing/briefing-schedule';
 
 const baseSettings: BriefingSettings = {
   enabled: true,
@@ -80,7 +80,7 @@ describe('runtime tech briefing schedule helpers', () => {
             sourceType: 'official-page',
             authorityTier: 'official-advisory',
             sourceGroup: 'official',
-            contentKind: 'security-advisory',
+            contentKind: 'advisory',
             summary: 'critical',
             confidence: 0.9,
             sourceLabel: 'Example',

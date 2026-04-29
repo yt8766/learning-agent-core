@@ -6,8 +6,8 @@ import {
   finalizeCategoryStatus,
   limitCategoryItems,
   mergeSameRunItems
-} from '../../../src/runtime/briefings/runtime-tech-briefing-category-processor';
-import type { BriefingSettings } from '../../../src/runtime/briefings/runtime-tech-briefing-schedule';
+} from '../../../src/runtime/briefing/briefing-category-processor';
+import type { BriefingSettings } from '../../../src/runtime/briefing/briefing-schedule';
 
 const config: BriefingSettings = {
   enabled: true,

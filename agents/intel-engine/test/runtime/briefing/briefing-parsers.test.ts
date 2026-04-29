@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { collectSecurityPageItems } from '../../../src/runtime/briefings/runtime-tech-briefing-parsers';
-import type { SecurityPageSourceRecord } from '../../../src/runtime/briefings/runtime-tech-briefing-sources';
+import { collectSecurityPageItems } from '../../../src/runtime/briefing/briefing-parsers';
+import type { SecurityPageSourceRecord } from '../../../src/runtime/briefing/briefing-sources';
 
 describe('runtime tech briefing parsers', () => {
   it('为 Apifox 官方公告使用站点 rebuild 时间作为兜底发布时间', async () => {
