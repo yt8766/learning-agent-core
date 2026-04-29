@@ -27,25 +27,25 @@
 
 ## 文件变更清单
 
-| 操作 | 文件路径                                                                                                              | 职责                                                                 |
-| ---- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 修改 | `docs/apps/backend/agent-server/agent-server-overview.md`                                                             | 写入 backend 长期职责与 briefing 迁出结论                            |
-| 修改 | `docs/apps/backend/agent-server/runtime-module-notes.md`                                                              | 标记 `runtime/briefings` 迁入 `agents/intel-engine` 后的真实宿主     |
-| 修改 | `docs/integration/daily-tech-intelligence-briefing-design.md`                                                         | 将当前实现入口从 backend 更新为 intel engine                         |
-| 新增 | `docs/agents/intel-engine/daily-tech-briefing.md`                                                                     | 记录 briefing 在 intel engine 内的当前入口、存储、测试和禁止回退规则 |
-| 移动 | `apps/backend/agent-server/src/runtime/briefings/*.ts` -> `agents/intel-engine/src/runtime/briefing/*.ts`             | briefing 主逻辑真实宿主                                              |
-| 新增 | `agents/intel-engine/src/runtime/briefing/index.ts`                                                                   | briefing facade/root export                                          |
-| 修改 | `agents/intel-engine/src/index.ts`                                                                                    | 导出 briefing facade、service、types                                 |
-| 移动 | `apps/backend/agent-server/test/runtime/briefings/*.test.ts` -> `agents/intel-engine/test/runtime/briefing/*.test.ts` | briefing 单元测试迁到真实宿主                                        |
-| 新增 | `apps/backend/agent-server/src/runtime/core/runtime-intel-briefing-facade.ts`                                         | backend-only adapter，调用 `@agent/agents-intel-engine`              |
-| 修改 | `apps/backend/agent-server/src/runtime/core/runtime-provider-factories.ts`                                            | 创建 intel briefing facade，替代 backend service 实例                |
-| 修改 | `apps/backend/agent-server/src/runtime/runtime.module.ts`                                                             | provider token 从 backend briefing service 切到 facade               |
-| 修改 | `apps/backend/agent-server/src/runtime/runtime.service.ts`                                                            | 兼容 facade 使用 intel briefing adapter                              |
-| 修改 | `apps/backend/agent-server/src/runtime/schedules/runtime-schedule.service.ts`                                         | schedule 触发调用 intel briefing facade                              |
-| 修改 | `apps/backend/agent-server/src/runtime/centers/runtime-centers*.ts`                                                   | briefing runs/status/feedback 读取切到 intel briefing facade         |
-| 修改 | `apps/backend/agent-server/src/platform/platform-briefings.controller.ts`                                             | 保持 API 不变，只委托 backend BFF/facade                             |
-| 修改 | `apps/backend/agent-server/test/platform/platform-console-and-runtime.controller.spec.ts`                             | 保留 controller delegation smoke                                     |
-| 新增 | `apps/backend/agent-server/test/runtime/briefings/briefing-bff-facade.spec.ts`                                        | backend 只测试 BFF adapter，不再测试 briefing 领域规则               |
+| 操作 | 文件路径                                                                                                              | 职责                                                         |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 修改 | `docs/apps/backend/agent-server/agent-server-overview.md`                                                             | 写入 backend 长期职责与 briefing 迁出结论                    |
+| 修改 | `docs/apps/backend/agent-server/runtime-module-notes.md`                                                              | 标记 `runtime/briefings` 为待迁出历史落点和完成后的保留边界  |
+| 修改 | `docs/integration/daily-tech-intelligence-briefing-design.md`                                                         | 记录当前历史落点与 intel-engine 长期目标入口                 |
+| 新增 | `docs/agents/intel-engine/daily-tech-briefing.md`                                                                     | 记录 briefing 迁移目标、存储、测试和禁止回退规则             |
+| 移动 | `apps/backend/agent-server/src/runtime/briefings/*.ts` -> `agents/intel-engine/src/runtime/briefing/*.ts`             | briefing 主逻辑真实宿主                                      |
+| 新增 | `agents/intel-engine/src/runtime/briefing/index.ts`                                                                   | briefing facade/root export                                  |
+| 修改 | `agents/intel-engine/src/index.ts`                                                                                    | 导出 briefing facade、service、types                         |
+| 移动 | `apps/backend/agent-server/test/runtime/briefings/*.test.ts` -> `agents/intel-engine/test/runtime/briefing/*.test.ts` | briefing 单元测试迁到真实宿主                                |
+| 新增 | `apps/backend/agent-server/src/runtime/core/runtime-intel-briefing-facade.ts`                                         | backend-only adapter，调用 `@agent/agents-intel-engine`      |
+| 修改 | `apps/backend/agent-server/src/runtime/core/runtime-provider-factories.ts`                                            | 创建 intel briefing facade，替代 backend service 实例        |
+| 修改 | `apps/backend/agent-server/src/runtime/runtime.module.ts`                                                             | provider token 从 backend briefing service 切到 facade       |
+| 修改 | `apps/backend/agent-server/src/runtime/runtime.service.ts`                                                            | 兼容 facade 使用 intel briefing adapter                      |
+| 修改 | `apps/backend/agent-server/src/runtime/schedules/runtime-schedule.service.ts`                                         | schedule 触发调用 intel briefing facade                      |
+| 修改 | `apps/backend/agent-server/src/runtime/centers/runtime-centers*.ts`                                                   | briefing runs/status/feedback 读取切到 intel briefing facade |
+| 修改 | `apps/backend/agent-server/src/platform/platform-briefings.controller.ts`                                             | 保持 API 不变，只委托 backend BFF/facade                     |
+| 修改 | `apps/backend/agent-server/test/platform/platform-console-and-runtime.controller.spec.ts`                             | 保留 controller delegation smoke                             |
+| 新增 | `apps/backend/agent-server/test/runtime/briefings/briefing-bff-facade.spec.ts`                                        | backend 只测试 BFF adapter，不再测试 briefing 领域规则       |
 
 ## Task 1：锁定文档边界
 
@@ -65,8 +65,9 @@
 
 - `agent-server` 的长期定位是 API Host + BFF + Composition Root。
 - `agent-server` 可以装配 runtime、暴露 HTTP/SSE、适配 Nest 错误语义和聚合 admin BFF response，但不作为稳定领域规则、agent 主链或业务子系统的真实宿主。
-- Daily Tech Intelligence Briefing 的真实宿主是 `agents/intel-engine`；backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计和错误映射。
-- 新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
+- Daily Tech Intelligence Briefing 当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings`；本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing`。
+- 迁移完成后，backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计和错误映射。
+- 迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改或迁入 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
 ```
 
 - [ ] **Step 2：更新 runtime module notes**
@@ -76,18 +77,21 @@
 ```markdown
 `briefings/` 迁移约束：
 
-- Daily Tech Intelligence Briefing 不是 backend runtime 子模块，而是 `agents/intel-engine` 的默认能力。
-- backend 不再承载 briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑。
-- backend 只允许保留调用 `@agent/agents-intel-engine` facade 的 BFF adapter、schedule trigger、controller delegation、error mapping 和 API smoke。
+- Daily Tech Intelligence Briefing 当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings`，但这只是待迁出的过渡状态，不是长期 backend runtime 子模块。
+- 本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing`。
+- 迁移完成前，不要新增 backend briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑；只允许保留迁移所需适配。
+- 迁移完成后，backend 只允许保留调用 `@agent/agents-intel-engine` facade 的 BFF adapter、schedule trigger、controller delegation、error mapping 和 API smoke。
 - 迁移完成后，`apps/backend/agent-server/src/runtime/briefings` 应删除；不得保留长期 compat 双轨。
 ```
 
 - [ ] **Step 3：更新 integration 设计入口**
 
-将 `docs/integration/daily-tech-intelligence-briefing-design.md` 中“当前真实实现”的 backend 文件列表改为 intel engine 入口：
+将 `docs/integration/daily-tech-intelligence-briefing-design.md` 中“当前真实实现”改为过渡态说明：当前代码历史落点仍是 backend `runtime/briefings`，Task 2/3 才创建并迁移到 intel-engine 入口。
 
 ```markdown
-当前真实实现应以 `agents/intel-engine` 为准：
+当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings/*`。这是待迁出的过渡状态，不代表 backend 是 briefing 领域长期宿主。
+
+本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing/*`：
 
 - `agents/intel-engine/src/runtime/briefing/briefing.service.ts`
   - briefing orchestration facade，负责分类循环、抓取和投递编排。
@@ -99,6 +103,8 @@
   - category schedule、adaptive interval、lookback days 和 cron 计算。
 - `agents/intel-engine/src/runtime/briefing/briefing-storage.ts`
   - schedules、runs、history、feedback、schedule state 的本地 JSON 存储。
+
+迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。迁移完成后，`apps/backend/agent-server` 只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 ```
 
 - [ ] **Step 4：新增 intel-engine briefing 文档**
@@ -113,12 +119,12 @@
 适用范围：`agents/intel-engine/src/runtime/briefing`  
 最后核对：2026-04-29
 
-Daily Tech Intelligence Briefing 是 `agents/intel-engine` 的默认能力。
+Daily Tech Intelligence Briefing 的当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings/*`。本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing/*`；迁移完成前，不要新增 backend briefing 主逻辑，只允许做迁移所需适配。
 
 ## 边界
 
-- `agents/intel-engine` 负责 briefing category config、情报采集、MCP/web search 补充发现、去重、ranking、本地化、Lark delivery、run/history/feedback/schedule storage。
-- `apps/backend/agent-server` 只负责 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
+- 迁移完成后，`agents/intel-engine` 负责 briefing category config、情报采集、MCP/web search 补充发现、去重、ranking、本地化、Lark delivery、run/history/feedback/schedule storage。
+- 迁移完成后，`apps/backend/agent-server` 只负责 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 - `packages/runtime` 不承载 briefing 业务主逻辑。
 
 ## 存储
@@ -136,7 +142,7 @@ data/runtime/schedules/daily-tech-briefing-<category>.json
 
 ## 测试
 
-briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。
+迁移完成后，briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。
 ````
 
 - [ ] **Step 5：运行文档检查**

@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/src/runtime`
-最后核对：2026-04-20
+最后核对：2026-04-29
 
 本主题主文档：
 
@@ -204,9 +204,10 @@
 
 `briefings/` 迁移约束：
 
-- Daily Tech Intelligence Briefing 不是 backend runtime 子模块，而是 `agents/intel-engine` 的默认能力。
-- backend 不再承载 briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑。
-- backend 只允许保留调用 `@agent/agents-intel-engine` facade 的 BFF adapter、schedule trigger、controller delegation、error mapping 和 API smoke。
+- Daily Tech Intelligence Briefing 当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings`，但这只是待迁出的过渡状态，不是长期 backend runtime 子模块。
+- 本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing`。
+- 迁移完成前，不要新增 backend briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑；只允许保留迁移所需适配。
+- 迁移完成后，backend 只允许保留调用 `@agent/agents-intel-engine` facade 的 BFF adapter、schedule trigger、controller delegation、error mapping 和 API smoke。
 - 迁移完成后，`apps/backend/agent-server/src/runtime/briefings` 应删除；不得保留长期 compat 双轨。
 
 依赖原则：

@@ -5,12 +5,12 @@
 适用范围：`agents/intel-engine/src/runtime/briefing`  
 最后核对：2026-04-29
 
-Daily Tech Intelligence Briefing 是 `agents/intel-engine` 的默认能力。
+Daily Tech Intelligence Briefing 的当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings/*`。本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing/*`；迁移完成前，不要新增 backend briefing 主逻辑，只允许做迁移所需适配。
 
 ## 边界
 
-- `agents/intel-engine` 负责 briefing category config、情报采集、MCP/web search 补充发现、去重、ranking、本地化、Lark delivery、run/history/feedback/schedule storage。
-- `apps/backend/agent-server` 只负责 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
+- 迁移完成后，`agents/intel-engine` 负责 briefing category config、情报采集、MCP/web search 补充发现、去重、ranking、本地化、Lark delivery、run/history/feedback/schedule storage。
+- 迁移完成后，`apps/backend/agent-server` 只负责 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 - `packages/runtime` 不承载 briefing 业务主逻辑。
 
 ## 存储
@@ -28,4 +28,4 @@ data/runtime/schedules/daily-tech-briefing-<category>.json
 
 ## 测试
 
-briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。
+迁移完成后，briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。

@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/backend/agent-server`
-最后核对：2026-04-26
+最后核对：2026-04-29
 
 本主题主文档：
 
@@ -55,8 +55,9 @@
 
 - `agent-server` 的长期定位是 API Host + BFF + Composition Root。
 - `agent-server` 可以装配 runtime、暴露 HTTP/SSE、适配 Nest 错误语义和聚合 admin BFF response，但不作为稳定领域规则、agent 主链或业务子系统的真实宿主。
-- Daily Tech Intelligence Briefing 的真实宿主是 `agents/intel-engine`；backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计和错误映射。
-- 新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
+- Daily Tech Intelligence Briefing 当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings`；本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing`。
+- 迁移完成后，backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计和错误映射。
+- 迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改或迁入 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
 
 当前工具执行 facade：
 

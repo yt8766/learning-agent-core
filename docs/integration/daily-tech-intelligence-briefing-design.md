@@ -3,17 +3,17 @@
 状态：current
 文档类型：integration
 适用范围：daily tech intelligence briefing integration
-最后核对：2026-04-23
+最后核对：2026-04-29
 
 本主题主文档：
 
 - 本文为每日技术情报简报的跨模块集成设计入口
-- 当前 briefing 领域宿主以 [Daily Tech Briefing in Intel Engine](/docs/agents/intel-engine/daily-tech-briefing.md) 为准；后端保留边界以 [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md) 为准
+- 当前 briefing 迁移边界以 [Daily Tech Briefing in Intel Engine](/docs/agents/intel-engine/daily-tech-briefing.md) 为准；后端保留边界以 [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md) 为准
 
 本文只覆盖：
 
 - 每日技术情报的信息分类、获取流程、MiniMax MCP 使用边界与本地存储设计
-- 后续实现时的后端、admin、chat、Evidence 与 Learning 分工
+- 后续实现时的 intel-engine、后端、admin、chat、Evidence 与 Learning 分工
 - 不覆盖具体代码实现、接口字段最终定稿或数据库迁移方案
 
 ## 1. 这篇文档解决什么问题
@@ -32,9 +32,11 @@
 - 刑部：做可信度、影响面、严重级别、修复状态和误报风险判断。
 - 礼部：生成可读日报、保留 Evidence、压缩噪音，并把结果交给 Runtime / Evidence / Learning 中心。
 
-## 2. 当前真实实现
+## 2. 当前实现与迁移目标
 
-当前真实实现应以 `agents/intel-engine` 为准：
+当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings/*`。这是待迁出的过渡状态，不代表 backend 是 briefing 领域长期宿主。
+
+本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing/*`：
 
 - `agents/intel-engine/src/runtime/briefing/briefing.service.ts`
   - briefing orchestration facade，负责分类循环、抓取和投递编排。
@@ -52,7 +54,7 @@
   - 承载 MCP supplemental search 的查询词、补充来源白名单与来源 metadata 映射。
   - 新增 MiniMax `web_search` 这类搜索供应商时，应继续映射到项目内稳定搜索能力，不要把供应商返回结构直接穿透到 briefing 主链。
 
-`apps/backend/agent-server` 不再是 briefing 业务主逻辑宿主，只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
+迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。迁移完成后，`apps/backend/agent-server` 只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 
 当前已有分类：
 
@@ -77,7 +79,7 @@ data/runtime/schedules/daily-tech-briefing-<category>.json
 
 `raw/` 当前用于保存 MCP supplemental search 原始结果，供后续误报追溯与分类策略回放。展示给 admin/chat 的数据仍必须使用 `TechBriefingItem` 归一化结果，不能直接依赖 raw payload；如果下游需要在 digest / alert 中显示证据链，也应输出项目内归一化的 evidence summary / source refs，而不是把 raw payload 直接透传到交付层。
 
-现有 MCP 补充搜索已经通过 `mcpClientManager` 的稳定能力边界调用：
+历史 backend 落点里的 MCP 补充搜索已经通过 `mcpClientManager` 的稳定能力边界调用；迁移到 `agents/intel-engine` 后仍应保持这层项目内能力边界：
 
 ```ts
 await mcpClientManager.invokeTool('webSearchPrime', {
@@ -340,11 +342,17 @@ AI 模型类优先级：
 
 ### 3.10 前后端职责
 
-后端：
+`agents/intel-engine`：
 
 - 负责源抓取、MCP 补充搜索、证据归一化、去重、排序、落盘和投递。
-- 后端 controller/service 只暴露 briefing run、force-run、feedback、status 等窄接口。
-- 不在 controller 内直接拼搜索流程或 MiniMax 请求。
+- 负责 briefing category config、run/history/feedback/schedule storage 与 Lark delivery。
+- 不把 MiniMax 或其他供应商返回结构直接穿透到 briefing 主链。
+
+后端：
+
+- 只负责 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、错误映射和权限审计。
+- 后端 controller/service 只暴露 briefing run、force-run、feedback、status 等窄接口，并委托 intel-engine facade。
+- 不在 controller 内直接拼搜索流程、MiniMax 请求、证据归一化、去重、排序、落盘或投递。
 
 `agent-admin`：
 
@@ -363,7 +371,8 @@ AI 模型类优先级：
 
 第一阶段：本地日报闭环。
 
-- 复用现有 `runtime/briefings`。
+- 迁移前代码仍在 backend 历史落点 `apps/backend/agent-server/src/runtime/briefings`。
+- 实施任务会迁入 `agents/intel-engine/src/runtime/briefing`；新增能力不得继续扩展 backend `runtime/briefings`。
 - 补充 axios、Apifox、Claude Code、Cursor、MCP、OpenAI、Anthropic、Google AI、DeepSeek/Qwen 等源。
 - MCP 搜索优先走现有 `webSearchPrime` 能力边界；MiniMax Token Plan `minimax:web_search` 已作为同类搜索供应商接入，业务主链不直接依赖供应商返回结构。
 - 保存 run/history/feedback 到 `data/runtime/briefings`。
@@ -404,7 +413,7 @@ pnpm check:docs
 - `Unit`：MCP search result -> normalized item、category classifier、dedupe、cross verification、ranking。
 - `Demo`：用 fixture 跑一次每日简报生成，确认本地 run/history/raw 文件可生成。
 - `Integration`：force run API -> collector -> processor -> storage -> admin query。
-- `Type`：至少跑后端 `tsc --noEmit`，涉及共享包则跑 `pnpm build:lib`。
+- `Type`：briefing 迁移后至少跑 `agents/intel-engine` 与 backend 相关 `tsc --noEmit`，涉及共享包则跑 `pnpm build:lib`。
 
 主要回归风险：
 
@@ -427,6 +436,7 @@ pnpm check:docs
 
 - [架构总览](/docs/architecture/ARCHITECTURE.md)
 - [项目规范总览](/docs/conventions/project-conventions.md)
+- [Daily Tech Briefing in Intel Engine](/docs/agents/intel-engine/daily-tech-briefing.md)
 - [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md)
 - [API 文档目录](/docs/contracts/api/README.md)
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
