@@ -591,3 +591,19 @@ Policy 规则：`durationMs > 300000` 或 `imageAssetRefs.length > 10` 时拒绝
 | `src/services/retry-delivery.service.ts` | `src/runtime/execution/retry-intel-deliveries.ts` |
 
 所有外部 import（`src/graphs/intel/intel.graph.ts`、`src/index.ts`、相关测试文件）已同步更新到新路径。
+
+## 16. v1.0 Implementation Status
+
+状态：completed
+最后核对：2026-04-27
+
+v1.0 已完成以下边界：
+
+- `packages/core/src/contracts/media` 提供 schema-first media contracts。
+- `packages/runtime/src/media` 提供 Agent-facing provider interfaces。
+- `packages/adapters/src/media/minimax` 提供 MiniMax adapter skeleton 与 mapper。
+- `packages/platform-runtime/src/media` 提供默认 provider registry wiring。
+- `agents/audio`、`agents/image`、`agents/video` 提供媒体 Domain skeleton。
+- `agents/company-live` 提供 content brief 到 media request 的稳定转换入口。
+
+真实 MiniMax 网络调用、后台轮询 worker、资产持久化、Admin 媒体中心和完整 CompanyLive 业务 graph 留到后续阶段。
