@@ -257,7 +257,31 @@ function useWorkflowStream(runId: string | null) {
 
 ## 6. 数据库配置
 
-**环境变量（`.env`）**：
+### 6.1 本地开发：Docker PostgreSQL
+
+在仓库根目录新建 `docker-compose.dev.yml`：
+
+```yaml
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agent_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+启动命令：`docker compose -f docker-compose.dev.yml up -d`
+
+### 6.2 环境变量（`.env`）
 
 ```
 DB_HOST=localhost
@@ -267,11 +291,11 @@ DB_PASS=postgres
 DB_NAME=agent_db
 ```
 
-或使用 `DATABASE_URL=postgresql://user:pass@host:port/dbname`
-
 **AppModule** 中通过 `TypeOrmModule.forRoot({ type: 'postgres', ... })` 装载。
 
-**迁移策略**：开发阶段使用 `synchronize: true` 自动同步；生产阶段应切换为 TypeORM migrations。
+### 6.3 迁移策略
+
+开发阶段使用 `synchronize: true` 自动同步 schema；生产阶段应切换为 TypeORM migrations。
 
 ---
 
