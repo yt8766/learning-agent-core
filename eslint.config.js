@@ -286,7 +286,8 @@ export default tseslint.config(
         {
           patterns: rootOnlyPackagePatterns
         }
-      ]
+      ],
+      '@typescript-eslint/no-unused-vars': 'off'
     }
   },
   {

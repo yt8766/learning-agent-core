@@ -1,4 +1,6 @@
 export { buildCompanyLiveMediaRequest } from './flows/content/company-live-content-brief';
+export { executeCompanyLiveGraph } from './graphs/company-live.graph';
+export { createCompanyLiveStubRegistry } from './runtime/company-live-domain-runtime';
 
 export const companyLiveDomainDescriptor = {
   agentId: 'official.company-live',

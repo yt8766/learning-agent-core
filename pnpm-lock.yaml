@@ -98,6 +98,9 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agent/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -219,6 +222,9 @@ importers:
       '@agent/agents-coder':
         specifier: workspace:*
         version: link:../../../agents/coder
+      '@agent/agents-company-live':
+        specifier: workspace:*
+        version: link:../../../agents/company-live
       '@agent/agents-data-report':
         specifier: workspace:*
         version: link:../../../agents/data-report

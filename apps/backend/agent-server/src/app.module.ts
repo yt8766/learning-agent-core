@@ -5,6 +5,7 @@ import { AppFeatureModule } from './app/app.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AutoReviewModule } from './auto-review/auto-review.module';
 import { ChatModule } from './chat/chat.module';
+import { CompanyLiveModule } from './company-live/company-live.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { LearningModule } from './learning/learning.module';
 import { LoggerModule } from './logger/logger.module';
@@ -36,7 +37,8 @@ import { TemplatesModule } from './templates/templates.module';
     SkillsModule,
     LearningModule,
     ApprovalsModule,
-    TemplatesModule
+    TemplatesModule,
+    CompanyLiveModule
   ]
 })
 export class AppModule {}

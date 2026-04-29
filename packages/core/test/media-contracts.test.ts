@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   CompanyLiveContentBriefSchema,
+  CompanyLiveGenerateResultSchema,
   CompanyLiveMediaRequestSchema,
+  CompanyLiveNodeTraceSchema,
   MediaAssetSchema,
   MediaGenerationTaskSchema,
   SpeechSynthesisRequestSchema,
@@ -118,5 +120,63 @@ describe('@agent/core media contracts', () => {
     });
 
     expect(request.requestedAssets.video?.aspectRatio).toBe('9:16');
+  });
+
+  it('parses a CompanyLiveNodeTrace', () => {
+    const trace = CompanyLiveNodeTraceSchema.parse({
+      nodeId: 'generateAudio',
+      status: 'succeeded',
+      durationMs: 12,
+      inputSnapshot: { audioAssetRef: null },
+      outputSnapshot: { audioAssetRef: 'asset-audio-stub-1' }
+    });
+
+    expect(trace.nodeId).toBe('generateAudio');
+    expect(trace.status).toBe('succeeded');
+    expect(trace.durationMs).toBe(12);
+    expect(trace.outputSnapshot['audioAssetRef']).toBe('asset-audio-stub-1');
+  });
+
+  it('parses a CompanyLiveGenerateResult with bundle and trace', () => {
+    const result = CompanyLiveGenerateResultSchema.parse({
+      bundle: {
+        bundleId: 'bundle-stub-1',
+        requestId: 'req-stub-1',
+        assets: [],
+        createdAt: '2026-04-29T00:00:00.000Z'
+      },
+      trace: [
+        {
+          nodeId: 'generateAudio',
+          status: 'succeeded',
+          durationMs: 12,
+          inputSnapshot: { audioAssetRef: null },
+          outputSnapshot: { audioAssetRef: 'asset-audio-stub-1' }
+        },
+        {
+          nodeId: 'assembleBundle',
+          status: 'succeeded',
+          durationMs: 3,
+          inputSnapshot: { assetCount: 3 },
+          outputSnapshot: { bundleId: 'bundle-stub-1' }
+        }
+      ]
+    });
+
+    expect(result.bundle.bundleId).toBe('bundle-stub-1');
+    expect(result.trace).toHaveLength(2);
+    expect(result.trace[0]?.nodeId).toBe('generateAudio');
+  });
+
+  it('rejects CompanyLiveNodeTrace with invalid status', () => {
+    expect(() =>
+      CompanyLiveNodeTraceSchema.parse({
+        nodeId: 'generateAudio',
+        status: 'unknown',
+        durationMs: 12,
+        inputSnapshot: {},
+        outputSnapshot: {}
+      })
+    ).toThrow();
   });
 });
