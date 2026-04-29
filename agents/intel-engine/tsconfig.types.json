@@ -5,7 +5,10 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "declarationMap": true,
+    "rootDir": "./src",
     "outDir": "./build/types",
+    "baseUrl": "./",
+    "paths": {},
     "noEmit": false
   }
 }
