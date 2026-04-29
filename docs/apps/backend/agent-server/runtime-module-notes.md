@@ -202,46 +202,12 @@
   - checkpoint ref 已拆到 `runtime/domain/session/runtime-checkpoint-ref.ts`
   - connector discovery / governance audit grouping 已拆到 `runtime/domain/connectors/runtime-connector-governance-records.ts`
 
-`briefings/` 当前额外约束：
+`briefings/` 迁移约束：
 
-- `runtime-tech-briefing.service.ts`
-  - 只保留 briefing orchestration facade、分类循环、抓取/投递编排
-- `runtime-tech-briefing-schedule.ts`
-  - 承载 category schedule、adaptive interval、lookback days、cron 计算
-- `runtime-tech-briefing-category-processor.ts`
-  - 承载同轮合并、跨轮去重、分类限流、audit record 与 category final status 决策
-- `runtime-tech-briefing-category-collector.ts`
-  - 承载 feed/security page/MCP supplemental search 的分类抓取、翻译前整理与偏好排序入口
-- `runtime-tech-briefing-item-enrichment.ts`
-  - 承载 action metadata、受影响版本/修复版本推断与偏好分数规则
-- `runtime-tech-briefing-ranking.ts`
-  - 只保留 source policy 过滤与最终排序
-- `runtime-tech-briefing-ranking-finalize.ts`
-  - 承载 ranking 前的 relevance enrichment、cross-verify、stable metadata 装配
-- `runtime-tech-briefing-ranking-policy.ts`
-  - 承载 priority score 与影响等级策略
-- `runtime-tech-briefing-localize.ts`
-  - 退化为 briefing 渲染 facade，只保留稳定导出面
-- `runtime-tech-briefing-localize-copy.ts`
-  - 承载标题/摘要本地化与文案替换规则
-- `runtime-tech-briefing-localize-summary.ts`
-  - 承载 markdown digest summary 渲染
-- `runtime-tech-briefing-localize-card.ts`
-  - 承载 interactive card 渲染
-- `runtime-tech-briefing-localize-render-shared.ts`
-  - 承载时间/标题/标签/摘要渲染共享 helper
-- `runtime-tech-briefing-localize-render-content.ts`
-  - 承载 impact/action/type/check-command 这类内容生成规则
-- `runtime-tech-briefing-delivery.ts`
-  - 承载 digest 投递、history 持久化、run record 组装
-- `bree` 调度开关
-  - `RuntimeScheduleService` 只在 `dailyTechBriefing.enabled === true` 时初始化 `bree`
-  - 本地停用定时 briefing 的首选入口是项目根 `.env` 里的 `DAILY_TECH_BRIEFING_ENABLED=false`
-  - 已落盘的 `data/runtime/schedules/*.json` 需要同步切到 `PAUSED`，避免控制台继续展示为活动态
-- 后续继续拆分时，`category processor`、`collector`、`delivery`、`history/schedule persistence` 也应继续下沉到独立子模块
-- 不要再把 adaptive interval、category config、cron 计算重新塞回 `runtime-tech-briefing.service.ts`
-- 不要把 MCP supplemental search、偏好打分、动作元信息推断重新回填到 `runtime-tech-briefing.service.ts` 或单一 collector 大文件
-- 不要把排序策略、偏好打分、抓取逻辑重新回填到 `runtime-tech-briefing-localize.ts`；新增渲染规则优先落在 `summary / card / render-content / render-shared` 对应模块
+- Daily Tech Intelligence Briefing 不是 backend runtime 子模块，而是 `agents/intel-engine` 的默认能力。
+- backend 不再承载 briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑。
+- backend 只允许保留调用 `@agent/agents-intel-engine` facade 的 BFF adapter、schedule trigger、controller delegation、error mapping 和 API smoke。
+- 迁移完成后，`apps/backend/agent-server/src/runtime/briefings` 应删除；不得保留长期 compat 双轨。
 
 依赖原则：
 

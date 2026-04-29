@@ -8,7 +8,7 @@
 本主题主文档：
 
 - 本文为每日技术情报简报的跨模块集成设计入口
-- 具体后端 briefing 模块边界继续以 [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md) 为准
+- 当前 briefing 领域宿主以 [Daily Tech Briefing in Intel Engine](/docs/agents/intel-engine/daily-tech-briefing.md) 为准；后端保留边界以 [后端 Runtime Module Notes](/docs/apps/backend/agent-server/runtime-module-notes.md) 为准
 
 本文只覆盖：
 
@@ -34,23 +34,25 @@
 
 ## 2. 当前真实实现
 
-仓库已有一条可复用的 `daily-tech-briefing` 后端链路，不应另起炉灶：
+当前真实实现应以 `agents/intel-engine` 为准：
 
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing.service.ts`
-  - 当前作为 briefing orchestration facade，负责分类循环、抓取和投递编排。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-category-collector.ts`
-  - 当前负责 feed、安全页、NVD 与 MCP supplemental search 的分类抓取入口。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-category-processor.ts`
-  - 当前负责同轮合并、跨轮去重、分类限流、audit record 与 final status。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-schedule.ts`
-  - 当前负责 category schedule、adaptive interval、lookback days 和 cron 计算。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-storage.ts`
-  - 当前把 schedules、runs、history、feedback、schedule state 写入仓库根级 `data/runtime/*`。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing.types.ts`
-  - 当前定义 `TechBriefingCategory`、`TechBriefingItem`、run record、schedule record 等本地类型。
-- `apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-mcp-search-policy.ts`
-  - 当前承载 MCP supplemental search 的查询词、补充来源白名单与来源 metadata 映射。
+- `agents/intel-engine/src/runtime/briefing/briefing.service.ts`
+  - briefing orchestration facade，负责分类循环、抓取和投递编排。
+- `agents/intel-engine/src/runtime/briefing/briefing-category-collector.ts`
+  - feed、安全页、NVD 与 MCP supplemental search 的分类抓取入口。
+- `agents/intel-engine/src/runtime/briefing/briefing-category-processor.ts`
+  - 同轮合并、跨轮去重、分类限流、audit record 与 final status。
+- `agents/intel-engine/src/runtime/briefing/briefing-schedule.ts`
+  - category schedule、adaptive interval、lookback days 和 cron 计算。
+- `agents/intel-engine/src/runtime/briefing/briefing-storage.ts`
+  - schedules、runs、history、feedback、schedule state 的本地 JSON 存储。
+- `agents/intel-engine/src/runtime/briefing/briefing.types.ts`
+  - 定义 `TechBriefingCategory`、`TechBriefingItem`、run record、schedule record 等本地类型。
+- `agents/intel-engine/src/runtime/briefing/briefing-mcp-search-policy.ts`
+  - 承载 MCP supplemental search 的查询词、补充来源白名单与来源 metadata 映射。
   - 新增 MiniMax `web_search` 这类搜索供应商时，应继续映射到项目内稳定搜索能力，不要把供应商返回结构直接穿透到 briefing 主链。
+
+`apps/backend/agent-server` 不再是 briefing 业务主逻辑宿主，只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 
 当前已有分类：
 
