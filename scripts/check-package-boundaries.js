@@ -128,7 +128,12 @@ const allowedBackendOfficialAgentRoots = ['apps/backend/agent-server/src/runtime
 const allowedBackendOfficialAgentFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-runner.ts',
-  'apps/backend/agent-server/src/chat/chat.direct.dto.ts'
+  'apps/backend/agent-server/src/chat/chat.direct.dto.ts',
+  // Transitional shims: briefing runtime migrated to agents/intel-engine. Remove after Task 4/5 rewires callers.
+  'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing.service.ts',
+  'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing.types.ts',
+  'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-status.ts',
+  'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-storage.ts'
 ]);
 
 function fail(messages) {
