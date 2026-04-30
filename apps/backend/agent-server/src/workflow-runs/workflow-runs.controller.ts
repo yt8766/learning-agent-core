@@ -1,13 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 
-import { WorkflowRunsService } from './workflow-runs.service';
+import { WorkflowRunService } from './workflow-runs.service';
 
 @Controller('workflow-runs')
 export class WorkflowRunsController {
-  constructor(private workflowRunsService: WorkflowRunsService) {}
+  constructor(private workflowRunService: WorkflowRunService) {}
 
   @Get()
   async getWorkflowRuns() {
-    return this.workflowRunsService.getWorkflowRuns();
+    return this.workflowRunService.listRuns();
   }
 }
