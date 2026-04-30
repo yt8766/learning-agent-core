@@ -1,4 +1,4 @@
-import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, FolderKanban, Radar } from 'lucide-react';
+import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, FolderKanban, Radar, Workflow } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -76,6 +76,11 @@ export function DashboardPage() {
     companyAgents: {
       icon: <ClipboardCheck className="h-4 w-4" />,
       description: '治理控制台',
+      badges: []
+    },
+    workflowLab: {
+      icon: <Workflow className="h-4 w-4" />,
+      description: '工作流实验室',
       badges: []
     }
   }[dashboard.page];

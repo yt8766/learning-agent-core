@@ -44,7 +44,8 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'evidence',
   'connectors',
   'skillSources',
-  'companyAgents'
+  'companyAgents',
+  'workflowLab'
 ];
 
 const ADMIN_RUNTIME_PAGE_TITLES = {
@@ -64,7 +65,8 @@ const ADMIN_RUNTIME_PAGE_TITLES = {
 export const PAGE_TITLES = {
   ...ADMIN_RUNTIME_PAGE_TITLES,
   memory: '记忆中枢',
-  profiles: '画像中枢'
+  profiles: '画像中枢',
+  workflowLab: '工作流实验室'
 } satisfies Record<DashboardPageKey, string>;
 
 function isExecutionModeFilter(value: string | null): value is ExecutionModeFilter {

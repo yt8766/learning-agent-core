@@ -14,7 +14,8 @@ export type DashboardPageKey =
   | 'skillSources'
   | 'companyAgents'
   | 'memory'
-  | 'profiles';
+  | 'profiles'
+  | 'workflowLab';
 
 export interface SpecialistLeadRecord {
   id: string;
