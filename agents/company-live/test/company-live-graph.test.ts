@@ -160,3 +160,24 @@ describe('executeCompanyLiveGraph', () => {
     }
   });
 });
+
+describe('executeCompanyLiveGraph with progressCallback', () => {
+  it('calls onNodeComplete for each completed node', async () => {
+    const registry = makeStubRegistry();
+    const completed: string[] = [];
+
+    await executeCompanyLiveGraph(stubBrief, registry, {
+      onNodeComplete: trace => {
+        completed.push(trace.nodeId);
+      }
+    });
+
+    expect(completed).toEqual(['generateAudio', 'generateImage', 'generateVideo', 'assembleBundle']);
+  });
+
+  it('backward compatible: works without options', async () => {
+    const registry = makeStubRegistry();
+    const result = await executeCompanyLiveGraph(stubBrief, registry);
+    expect(result.trace).toHaveLength(4);
+  });
+});

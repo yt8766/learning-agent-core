@@ -9,3 +9,5 @@ export const companyLiveDomainDescriptor = {
   orchestrates: ['audio', 'image', 'video'],
   capabilities: ['media.audio.voice-clone', 'media.image.generate', 'media.video.generate']
 } as const;
+
+export type { CompanyLiveGraphOptions } from './graphs/company-live.graph';
