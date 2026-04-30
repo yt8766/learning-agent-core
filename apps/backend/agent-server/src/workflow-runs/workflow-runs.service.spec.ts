@@ -1,39 +1,48 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+// apps/backend/agent-server/src/workflow-runs/workflow-runs.service.spec.ts
+import { WorkflowDispatcher } from './workflow-dispatcher';
+import { WorkflowRunRepository } from './repositories/workflow-run.repository';
+import { WorkflowRunService } from './workflow-runs.service';
 
-import { WorkflowRun } from './entities/workflow-run.entity';
-import { WorkflowRunsService } from './workflow-runs.service';
+describe('WorkflowRunService', () => {
+  let service: WorkflowRunService;
+  let repository: Partial<WorkflowRunRepository>;
+  let dispatcher: Partial<WorkflowDispatcher>;
 
-describe('WorkflowRunsService', () => {
-  let service: WorkflowRunsService;
-  let repository: Repository<WorkflowRun>;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        WorkflowRunsService,
-        {
-          provide: getRepositoryToken(WorkflowRun),
-          useValue: {
-            find: jest.fn().mockResolvedValue([])
-          }
-        }
-      ]
-    }).compile();
-
-    service = module.get<WorkflowRunsService>(WorkflowRunsService);
-    repository = module.get<Repository<WorkflowRun>>(getRepositoryToken(WorkflowRun));
+  beforeEach(() => {
+    repository = {
+      create: jest.fn().mockResolvedValue({}),
+      complete: jest.fn().mockResolvedValue(undefined),
+      fail: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValue(null),
+      findByWorkflowId: jest.fn().mockResolvedValue([]),
+      findAll: jest.fn().mockResolvedValue([])
+    };
+    dispatcher = {
+      dispatch: jest.fn().mockResolvedValue({ bundle: {}, trace: [] })
+    };
+    service = new WorkflowRunService(repository as WorkflowRunRepository, dispatcher as WorkflowDispatcher);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('startRun creates a run record and returns a runId string', async () => {
+    const runId = await service.startRun('company-live', { briefId: 'b1', targetPlatform: 'douyin' });
+    expect(typeof runId).toBe('string');
+    expect(runId.length).toBeGreaterThan(0);
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ workflowId: 'company-live' }));
   });
 
-  it('should get workflow runs', async () => {
-    const result = [];
-    jest.spyOn(repository, 'find').mockResolvedValueOnce(result);
+  it('listRuns delegates to repository.findAll when no workflowId', async () => {
+    await service.listRuns();
+    expect(repository.findAll).toHaveBeenCalled();
+  });
 
-    expect(await service.getWorkflowRuns()).toBe(result);
+  it('listRuns delegates to repository.findByWorkflowId when workflowId provided', async () => {
+    await service.listRuns('company-live');
+    expect(repository.findByWorkflowId).toHaveBeenCalledWith('company-live');
+  });
+
+  it('streamRun returns observable for existing runId', () => {
+    const obs = service.streamRun('non-existent-run');
+    expect(obs).toBeDefined();
+    expect(typeof obs.subscribe).toBe('function');
   });
 });
