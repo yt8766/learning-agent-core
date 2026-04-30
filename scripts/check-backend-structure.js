@@ -7,8 +7,15 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backendRoot = path.join(rootDir, 'apps/backend/agent-server/src');
 const backendTestRoot = path.join(rootDir, 'apps/backend/agent-server/test');
-const allowedModuleSubdirs = new Set(['dto', 'entities', 'interfaces']);
-const allowedNestedModuleSubdirs = new Set(['controllers', 'services', 'dto', 'entities', 'interfaces']);
+const allowedModuleSubdirs = new Set(['dto', 'entities', 'interfaces', 'repositories']);
+const allowedNestedModuleSubdirs = new Set([
+  'controllers',
+  'services',
+  'dto',
+  'entities',
+  'interfaces',
+  'repositories'
+]);
 const legacyModuleDirs = new Set(['app', 'common', 'cors', 'logger', 'platform', 'runtime', 'templates']);
 const maxBackendLines = 400;
 const temporaryOversizeAllowlist = new Set([
@@ -157,7 +164,7 @@ function ensureModuleLayout(moduleDirName) {
     fail(
       `backend module "${moduleDirName}" contains unsupported subdirectories:\n${invalidEntries
         .map(name => `- apps/backend/agent-server/src/${moduleDirName}/${name}`)
-        .join('\n')}\nAllowed subdirectories: dto/, entities/, interfaces/`
+        .join('\n')}\nAllowed subdirectories: dto/, entities/, interfaces/, repositories/`
     );
   }
 
@@ -175,7 +182,7 @@ function ensureModuleLayout(moduleDirName) {
     fail(
       `backend nested module "${moduleDirName}" contains unsupported subdirectories:\n${invalidNestedEntries
         .map(name => `- apps/backend/agent-server/src/modules/${moduleDirName}/${name}`)
-        .join('\n')}\nAllowed subdirectories: controllers/, services/, dto/, entities/, interfaces/`
+        .join('\n')}\nAllowed subdirectories: controllers/, services/, dto/, entities/, interfaces/, repositories/`
     );
   }
 }
