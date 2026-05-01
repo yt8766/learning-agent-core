@@ -7,7 +7,9 @@
 
 ## Goal
 
-`packages/knowledge` is evolving toward a publishable RAG SDK. It provides schema-first contracts, provider interfaces, default retrieval pipelines, optional default adapters, API client helpers, eval primitives, and observability primitives.
+`packages/knowledge` is evolving toward a publishable RAG SDK. This document describes the target architecture and migration rules; it is not a claim that every listed source directory, subpath export, client helper, eval primitive, observability primitive, or optional adapter exists today.
+
+Current horizontal MVP usage keeps frontend code behind backend Knowledge HTTP APIs plus app-local API client/DTO code. Publishable SDK facades such as `src/core`, `src/client`, `src/eval`, and `src/observability` must only be treated as current implementation after their source directories, package exports, tests, and docs land in the same migration slice.
 
 ## Principles
 
@@ -19,6 +21,8 @@
 6. SDK code does not read host environment variables unless the host explicitly passes values to an adapter factory.
 
 ## Target Source Layout
+
+This is the target source layout. Directories that do not exist in the current package must not be used as caller dependencies or documented as current import paths. When a migration slice adds one of these directories, it must update package exports, tests, and docs in the same slice.
 
 ```text
 packages/knowledge/src/
@@ -50,12 +54,19 @@ packages/knowledge/src/
 Entrypoint status:
 
 - Current: `@agent/knowledge` exists as the current package root and exposes current retrieval/indexing contracts according to existing package exports.
-- Migration-compatible: `@agent/knowledge/core` and `@agent/knowledge/client` are target public facades that may initially re-export or wrap current contracts/client helpers while migration is in progress.
+- Target-only: `@agent/knowledge/core` and `@agent/knowledge/client` are planned public facades. Frontend code must not import them until a later slice actually adds `src/core` / `src/client` plus matching package exports, tests, and docs.
 - Target planned: `@agent/knowledge/browser`, `@agent/knowledge/node`, `@agent/knowledge/adapters/*`, and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
 
+Current implemented public package entrypoint:
+
 ```text
 @agent/knowledge
+```
+
+Target-only public subpaths. Each subpath below requires source ownership, package exports, tests, and docs in the same migration slice before callers may depend on it:
+
+```text
 @agent/knowledge/core
 @agent/knowledge/client
 @agent/knowledge/runtime
@@ -181,9 +192,9 @@ export interface TraceSink {
 
 `Generator` is a host-injected, server-side optional extension contract. It is not part of the current default `packages/knowledge/src/runtime` retrieval chain and does not change the package boundary: final answer generation is owned by host runtime, apps, or agents, not by `packages/knowledge`.
 
-## MVP Default Adapters
+## Target Adapter Direction
 
-Target publishable adapters:
+The current concrete vendor adapters still live in `packages/adapters`; the knowledge package has not switched its default implementation to Supabase/OpenAI. The following are recommended target implementations for the knowledge app/API MVP and possible future publishable SDK adapter entrypoints:
 
 - `adapters/supabase`: document store, chunk store, vector store, keyword search provider, trace sink, eval store.
 - `adapters/openai`: embedding provider, generator, eval judge provider.
@@ -221,7 +232,7 @@ query
 -> trace
 ```
 
-Query rewrite, rerank, Small-to-Big, and citation checking are extension points after the MVP.
+Query rewrite, hybrid retrieval/rerank-style fusion, Small-to-Big context expansion, and citation checking are not merely post-MVP ideas. First-stage runtime capabilities already exist in the current package and should continue to converge in the SDK architecture as replaceable strategies, observable stages, and productized extension points. Later slices expand, harden, and document those capabilities rather than introducing them from zero.
 
 The default `packages/knowledge/src/runtime` chain must not generate the final answer. It prepares retrieval hits, assembled context, citations, diagnostics, and trace events for the host runtime. Final answer generation remains the responsibility of `packages/runtime`, apps, or `agents/*`.
 
@@ -251,7 +262,9 @@ Backend/server hosts must not leak vendor raw responses, provider errors, SDK cl
 
 ## Frontend Usage Boundary
 
-`apps/frontend/knowledge` may import:
+Current horizontal MVP frontend usage must go through backend Knowledge HTTP APIs and app-local API client/DTO code.
+
+Only after a later migration slice actually adds `src/core` / `src/client` plus matching package exports, tests, and docs may `apps/frontend/knowledge` import:
 
 - `@agent/knowledge/core`
 - `@agent/knowledge/client`

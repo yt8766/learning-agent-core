@@ -101,6 +101,7 @@
 来源接线状态：
 
 - `KnowledgeSource` / `RetrievalRequest` / `RetrievalHit` 的正式 `sourceType` 当前为 `workspace-docs`、`repo-docs`、`connector-manifest`、`catalog-sync`、`user-upload`、`web-curated`
+- Retrieval runtime 的 `KnowledgeSource.sourceType` 与 Knowledge API 的 `DocumentSourceType` 不是同一枚举；API 层的 `connector-sync`、`web-url` 等来源进入 retrieval 前，必须由 backend/host 映射为 retrieval source 与 metadata，例如 connector sync 进入 retrieval 时映射为 `sourceType=connector-manifest` 且 `metadata.docType=connector-sync`。不要把 API-only source type 直接塞进 retrieval filters。
 - `createKnowledgeSourceIngestionLoader()` 是调用方已有内容产物进入 indexing pipeline 的最小 loader；会校验正式 `sourceType`，并把 source metadata 写入 `Document.metadata`
 - source ingestion payload builders 已覆盖 user upload、catalog sync、web curated 与 connector sync 的规范化入口；后续来源 job 应优先调用这些 builder，再交给 HTTP facade、`RuntimeKnowledgeService.ingestUserUploadSource()`、`RuntimeKnowledgeService.ingestCatalogSyncSources()`、`RuntimeKnowledgeService.ingestWebCuratedSources()`、`RuntimeKnowledgeService.ingestConnectorSyncSources()` 或 `RuntimeKnowledgeService.ingestKnowledgeSources()`
 - `runKnowledgeIndexing()` 当前支持 `sourceIndex`、`fulltextIndex`、`vectorIndex` 三边界 fanout；生产 user upload、catalog sync、web curated 或 connector content loader 接入时，应同时写入 `KnowledgeSource`、`KnowledgeChunk` 与 vector record
