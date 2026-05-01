@@ -183,3 +183,4 @@ export * from './runtime/local-knowledge-store';
 export * from './runtime/local-knowledge-source-ingestion';
 export * from './shared/knowledge-text-scoring';
 export * from './indexing';
+export * from './adapters';

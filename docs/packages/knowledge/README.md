@@ -58,6 +58,11 @@
   - 不依赖 `@agent/adapters`、`@agent/config`、`@agent/memory` 或任何 vendor SDK；使用方可以实现接口并注入自己的 embedding / vector store
   - 根入口只保留不冲突的显式 re-export；SDK vector 类型在根入口使用 `KnowledgeSdk*` alias，未加 alias 的名字应从 `@agent/knowledge/core` 引入
 
+- `packages/knowledge/src/adapters/`
+  - 是 `@agent/knowledge` 独立发布包内的官方 adapter 层
+  - 通过 LangChain `ChatOpenAI` / `OpenAIEmbeddings` 创建 MiniMax、GLM、DeepSeek 与 OpenAI-compatible provider
+  - 对外只暴露 `KnowledgeChatProvider` / `KnowledgeEmbeddingProvider` 等 SDK contract，不泄露 LangChain 或 vendor 原始对象
+
 - `packages/knowledge/src/runtime/pipeline/run-knowledge-retrieval.ts`
   - 当前已支持 deterministic query cleanup、轻量 rewrite 与 bounded query variants
   - 会按 query variants 执行多次检索，再按 `chunkId` 合并命中并保留最高分结果
