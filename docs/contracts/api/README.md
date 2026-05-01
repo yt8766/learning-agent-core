@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/contracts/api/`
-最后核对：2026-04-26
+最后核对：2026-05-01
 
 本目录是前后端 API 契约的唯一主入口。后端按这里实现接口，前端按这里接入接口；跨模块调用时序和联调背景放在 [integration](/docs/integration/README.md)。
 

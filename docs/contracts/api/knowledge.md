@@ -37,15 +37,26 @@ export interface PageResult<T> {
   pageSize: number;
 }
 
+export type ApiErrorDetailValue = string | number | boolean | null | string[] | number[];
+
+export interface ApiErrorDetails {
+  summary?: string;
+  fields?: Record<string, string>;
+  data?: Record<string, ApiErrorDetailValue>;
+  itemIds?: ID[];
+}
+
 export interface ApiErrorResponse {
   code: string;
   message: string;
-  details?: Record<string, unknown>;
+  details?: ApiErrorDetails;
   requestId?: string;
 }
 ```
 
 分页接口默认 `page=1`、`pageSize=20`，`pageSize` 最大为 `100`；超出范围时后端返回 `400 validation_error`。`score`、`rate`、`metrics` 字段默认使用 `0-1` 小数区间；面向产品展示的 `latestEvalScore`、`EvalReportSummary.*Score` 使用 `0-100` 分。
+
+`ApiErrorResponse.details` 必须是 redacted JSON-safe projection，只能保存字段级错误、摘要、稳定枚举或资源 ID；不得透传 SDK error 对象、raw headers、request config、vendor response、provider stack、secret、token 或第三方原始错误对象。
 
 ## 3. Auth
 
@@ -404,6 +415,8 @@ export interface CreateFeedbackRequest {
 }
 ```
 
+`ChatRequest.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
+
 Endpoint contract:
 
 | Method | Path                          | Query / Body                                           | Response                                                                                 | 主要错误码                                                                                                    | 权限                                        |
@@ -457,6 +470,26 @@ export interface TraceSpanPayloadSummary {
   itemIds?: ID[];
 }
 
+export interface StageLatencyMetric {
+  stage: TraceSpanStage;
+  averageLatencyMs: number;
+  p95LatencyMs: number;
+}
+
+export interface ObservabilityMetrics {
+  traceCount: number;
+  questionCount: number;
+  averageLatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  errorRate: number;
+  timeoutRate: number;
+  noAnswerRate: number;
+  negativeFeedbackRate: number;
+  citationClickRate: number;
+  stageLatency: StageLatencyMetric[];
+}
+
 export interface RagTrace {
   id: ID;
   workspaceId: ID;
@@ -496,15 +529,17 @@ export interface RagTraceDetail extends RagTrace {
 }
 ```
 
+Trace display 字段必须是 redacted display projection：`RagTrace.question` 和 `RagTrace.answer` 最长 `2000` 字符；`RetrievalHitPreview.contentPreview`、`Citation.quote`、`TraceSpanPayloadSummary.summary` 最长 `500` 字符。所有展示字段都必须先脱敏、截断和去除 secret，不得包含 token、service role key、provider API key、密码、完整 prompt、完整 context、vendor raw request / response、raw headers、provider SDK 对象或第三方错误原始对象。
+
 `RagTraceSpan.input` 与 `RagTraceSpan.output` 只能保存稳定 redacted projection，不得透传 vendor raw request / response、raw headers、prompt 原文、完整检索上下文、provider SDK 对象或第三方错误原始对象。
 
 Endpoint contract:
 
-| Method | Path                        | Query / Body                                                                                              | Response                 | 主要错误码                                                | 权限                     |
-| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------ | --------------------------------------------------------- | ------------------------ |
-| GET    | `/observability/metrics`    | query: `{ knowledgeBaseId?: ID; from?: ISODateTime; to?: ISODateTime }`                                   | `Record<string, number>` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
-| GET    | `/observability/traces`     | query: `PageQuery & { knowledgeBaseId?: ID; status?: TraceStatus; from?: ISODateTime; to?: ISODateTime }` | `PageResult<RagTrace>`   | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
-| GET    | `/observability/traces/:id` | path: `id`                                                                                                | `RagTraceDetail`         | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
+| Method | Path                        | Query / Body                                                                                              | Response               | 主要错误码                                                | 权限                     |
+| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------- | ------------------------ |
+| GET    | `/observability/metrics`    | query: `{ knowledgeBaseId?: ID; from?: ISODateTime; to?: ISODateTime }`                                   | `ObservabilityMetrics` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces`     | query: `PageQuery & { knowledgeBaseId?: ID; status?: TraceStatus; from?: ISODateTime; to?: ISODateTime }` | `PageResult<RagTrace>` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces/:id` | path: `id`                                                                                                | `RagTraceDetail`       | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
 
 ## 9. Eval
 
@@ -654,7 +689,7 @@ MVP roles:
 
 - `owner` and `admin`: all MVP actions.
 - `maintainer`: create knowledge bases, upload documents, chat, view traces, run evals.
-- `evaluator`: view knowledge bases, chat, manage eval datasets and runs.
+- `evaluator`: view knowledge bases, chat, list/create eval datasets, create eval cases, create/list eval runs, read eval run results.
 - `viewer`: chat, view allowed documents, submit feedback.
 
 Backend is the authority. Frontend may hide buttons but must not be trusted for authorization.
@@ -672,11 +707,13 @@ Endpoint / action matrix:
 | submit feedback                           | yes   | yes   | yes        | yes       | yes    |
 | view dashboard overview                   | yes   | yes   | yes        | no        | no     |
 | view traces and metrics                   | yes   | yes   | yes        | no        | no     |
-| manage eval datasets and cases            | yes   | yes   | yes        | yes       | no     |
-| create/read eval runs and results         | yes   | yes   | yes        | yes       | no     |
+| list/create eval datasets                 | yes   | yes   | yes        | yes       | no     |
+| create eval cases                         | yes   | yes   | yes        | yes       | no     |
+| create/list eval runs                     | yes   | yes   | yes        | yes       | no     |
+| read eval run results                     | yes   | yes   | yes        | yes       | no     |
 
 `viewer` 的 list/read 只覆盖后端判定为 allowed 的知识库、文档和 chunk；跨 workspace 或不可见资源必须返回 `auth_forbidden` 或对应 `*_not_found`，避免泄露资源存在性。
 
 ## 11. Trace Redaction
 
-Trace payloads must not include tokens, service role keys, provider API keys, raw vendor headers, passwords, or unredacted secret configuration.
+Trace payloads and display projections must not include tokens, service role keys, provider API keys, raw vendor headers, passwords, complete prompts, complete retrieved context, provider raw responses, or unredacted secret configuration.
