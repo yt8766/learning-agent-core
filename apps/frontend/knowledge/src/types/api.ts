@@ -14,10 +14,19 @@ export interface PageResult<T> {
   pageSize: number;
 }
 
+export type ApiErrorDetailValue = string | number | boolean | null | string[] | number[];
+
+export interface ApiErrorDetails {
+  summary?: string;
+  fields?: Record<string, string>;
+  data?: Record<string, ApiErrorDetailValue>;
+  itemIds?: ID[];
+}
+
 export interface ApiErrorResponse {
   code: string;
   message: string;
-  details?: Record<string, unknown>;
+  details?: ApiErrorDetails;
   requestId?: string;
 }
 
