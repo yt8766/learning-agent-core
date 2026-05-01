@@ -37,6 +37,7 @@
 
 当前文档：
 
+- [sdk-architecture.md](/docs/packages/knowledge/sdk-architecture.md)
 - [indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
 - [indexing-contract-guidelines.md](/docs/packages/knowledge/indexing-contract-guidelines.md)
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
