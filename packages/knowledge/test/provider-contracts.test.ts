@@ -52,6 +52,15 @@ describe('knowledge provider contracts', () => {
       KnowledgeModelBindingSchema.parse({
         providerId: 'minimax',
         adapter: 'langchain-chat-openai',
+        model: 'MiniMax-M2.7',
+        secret: 'secret'
+      })
+    ).toThrow();
+
+    expect(() =>
+      KnowledgeModelBindingSchema.parse({
+        providerId: 'minimax',
+        adapter: 'langchain-chat-openai',
         model: 'embedding',
         dimensions: 0
       })

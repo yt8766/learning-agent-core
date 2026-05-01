@@ -3,9 +3,8 @@ import type { z } from 'zod';
 import type {
   JsonObjectSchema,
   JsonValueSchema,
-  KnowledgeAuthTokensSchema,
-  KnowledgeRefreshSessionSchema,
   KnowledgeAuthSessionSchema,
+  KnowledgeAuthTokensSchema,
   KnowledgeBaseSchema,
   KnowledgeCitationSchema,
   KnowledgeEvalRunMetricsSchema,
@@ -14,6 +13,7 @@ import type {
   KnowledgeModelBindingSchema,
   KnowledgeModelProfileSchema,
   KnowledgeRagAnswerSchema,
+  KnowledgeRefreshSessionSchema,
   KnowledgeRerankModelBindingSchema,
   KnowledgeTokenUsageSchema,
   KnowledgeTraceSchema,
@@ -37,7 +37,6 @@ export type KnowledgeRefreshSession = z.infer<typeof KnowledgeRefreshSessionSche
 export type KnowledgeVectorSearchFilters = z.infer<typeof KnowledgeVectorSearchFiltersSchema>;
 export type KnowledgeVectorSearchRequest = z.infer<typeof KnowledgeVectorSearchRequestSchema>;
 export type KnowledgeCitation = z.infer<typeof KnowledgeCitationSchema>;
-export type KnowledgeTokenUsage = z.infer<typeof KnowledgeTokenUsageSchema>;
 export type KnowledgeRagAnswer = z.infer<typeof KnowledgeRagAnswerSchema>;
 export type KnowledgeEvalRunMetrics = z.infer<typeof KnowledgeEvalRunMetricsSchema>;
 export type KnowledgeEvalRun = z.infer<typeof KnowledgeEvalRunSchema>;
@@ -49,3 +48,4 @@ export type KnowledgeModelAdapter = z.infer<typeof KnowledgeModelAdapterSchema>;
 export type KnowledgeModelBinding = z.infer<typeof KnowledgeModelBindingSchema>;
 export type KnowledgeRerankModelBinding = z.infer<typeof KnowledgeRerankModelBindingSchema>;
 export type KnowledgeModelProfile = z.infer<typeof KnowledgeModelProfileSchema>;
+export type KnowledgeTokenUsage = z.infer<typeof KnowledgeTokenUsageSchema>;

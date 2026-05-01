@@ -43,6 +43,12 @@ export const ProviderHealthSchema = z.object({
   message: z.string().optional()
 });
 
+export const KnowledgeTokenUsageSchema = z.object({
+  inputTokens: z.number().int().nonnegative().optional(),
+  outputTokens: z.number().int().nonnegative().optional(),
+  totalTokens: z.number().int().nonnegative().optional()
+});
+
 export const KnowledgeUserSchema = z
   .object({
     id: z.string().min(1),
@@ -75,6 +81,7 @@ export const KnowledgeRefreshSessionSchema = z
     tokens: KnowledgeAuthTokensSchema
   })
   .strict();
+
 export const KnowledgeVectorSearchFiltersSchema = z
   .object({
     documentIds: z.array(z.string().min(1)).optional(),
@@ -99,12 +106,6 @@ export const KnowledgeCitationSchema = z.object({
   title: z.string().min(1).optional(),
   score: z.number().min(0).max(1).optional(),
   text: z.string().min(1).optional()
-});
-
-export const KnowledgeTokenUsageSchema = z.object({
-  inputTokens: z.number().int().nonnegative().optional(),
-  outputTokens: z.number().int().nonnegative().optional(),
-  totalTokens: z.number().int().nonnegative().optional()
 });
 
 export const KnowledgeRagAnswerSchema = z.object({
@@ -172,7 +173,12 @@ export const KnowledgeTraceSchema = z.object({
   spans: z.array(KnowledgeTraceSpanSchema).default([])
 });
 
-export const KnowledgeModelAdapterSchema = z.string().min(1);
+export const KnowledgeModelAdapterSchema = z.union([
+  z.literal('langchain-chat-openai'),
+  z.literal('langchain-openai-embeddings'),
+  z.literal('openai-compatible'),
+  z.string().min(1)
+]);
 
 export const KnowledgeModelBindingSchema = z
   .object({
@@ -185,13 +191,14 @@ export const KnowledgeModelBindingSchema = z
   .strict();
 
 export const KnowledgeRerankModelBindingSchema = KnowledgeModelBindingSchema.extend({
-  enabled: z.boolean().default(true)
+  enabled: z.boolean()
 }).strict();
 
 export const KnowledgeModelProfileSchema = z
   .object({
     embedding: KnowledgeModelBindingSchema,
     chat: KnowledgeModelBindingSchema,
-    rerank: KnowledgeRerankModelBindingSchema.optional()
+    rerank: KnowledgeRerankModelBindingSchema.optional(),
+    judge: KnowledgeModelBindingSchema.optional()
   })
   .strict();

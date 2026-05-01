@@ -102,10 +102,28 @@ export interface KnowledgeChatGenerateResult {
   metadata?: JsonObject;
 }
 
+export type KnowledgeChatStreamEvent =
+  | {
+      type: 'delta';
+      text: string;
+      metadata?: JsonObject;
+    }
+  | {
+      type: 'usage';
+      usage: KnowledgeTokenUsage;
+      metadata?: JsonObject;
+    }
+  | {
+      type: 'done';
+      result?: KnowledgeChatGenerateResult;
+      metadata?: JsonObject;
+    };
+
 export interface KnowledgeChatProvider {
   providerId: string;
   defaultModel: string;
   generate(input: KnowledgeChatGenerateInput): Promise<KnowledgeChatGenerateResult>;
+  stream?(input: KnowledgeChatGenerateInput): AsyncIterable<KnowledgeChatStreamEvent>;
   healthCheck?(): Promise<ProviderHealth>;
 }
 
