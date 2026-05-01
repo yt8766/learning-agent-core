@@ -162,6 +162,17 @@ describe('knowledge frontend API types', () => {
       }
     } satisfies ApiErrorResponse;
 
+    const rejectedFieldSecret = {
+      code: 'provider_error',
+      message: 'Provider failed',
+      details: {
+        fields: {
+          // @ts-expect-error ApiErrorDetails.fields must not expose authorization values.
+          authorization: 'Bearer secret'
+        }
+      }
+    } satisfies ApiErrorResponse;
+
     const rejectedObjectArray = {
       code: 'provider_error',
       message: 'Provider failed',
@@ -174,6 +185,7 @@ describe('knowledge frontend API types', () => {
     } satisfies ApiErrorResponse;
 
     expect(rejectedHeaders.code).toBe('provider_error');
+    expect(rejectedFieldSecret.message).toBe('Provider failed');
     expect(rejectedObjectArray.message).toBe('Provider failed');
   });
 
