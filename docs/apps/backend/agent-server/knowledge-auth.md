@@ -25,7 +25,7 @@ apps/backend/agent-server/src/knowledge/
 模块装配：
 
 - `apps/backend/agent-server/src/app/app.module.ts` 引入 `KnowledgeModule`。
-- controller 路由前缀是 `knowledge/v1/auth`；全局 API prefix 由后端宿主统一处理。
+- controller 路由前缀是 `knowledge/v1`，认证方法挂在 `auth/*`；全局 API prefix 由后端宿主统一处理。
 - 该模块遵守后端结构检查的标准布局：`knowledge.module.ts`、`knowledge.controller.ts`、`knowledge.service.ts` 与服务测试位于模块根或 `test/knowledge/`。
 
 ## 当前行为

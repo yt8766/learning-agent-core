@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { knowledgeApiFixtures } from './knowledge-api-fixtures';
 import { createKnowledgeAccessToken, createKnowledgeRefreshToken, parseKnowledgeRefreshToken } from './knowledge-jwt';
 
 export interface KnowledgeLoginRequest {
@@ -52,6 +53,124 @@ export class KnowledgeService {
     };
   }
 
+  getDashboardOverview() {
+    return knowledgeApiFixtures.dashboard;
+  }
+
+  listKnowledgeBases() {
+    return knowledgeApiFixtures.knowledgeBases;
+  }
+
+  getKnowledgeBase(id: string) {
+    return (
+      knowledgeApiFixtures.knowledgeBases.items.find(item => item.id === id) ??
+      knowledgeApiFixtures.knowledgeBases.items[0]
+    );
+  }
+
+  listDocuments() {
+    return knowledgeApiFixtures.documents;
+  }
+
+  getDocument(id: string) {
+    return knowledgeApiFixtures.documents.items.find(item => item.id === id) ?? knowledgeApiFixtures.documents.items[0];
+  }
+
+  listDocumentJobs() {
+    return page(knowledgeApiFixtures.jobs);
+  }
+
+  listDocumentChunks() {
+    return knowledgeApiFixtures.chunks;
+  }
+
+  chat(input: { conversationId?: string; message?: string }) {
+    return {
+      ...knowledgeApiFixtures.chatResponse,
+      conversationId: input.conversationId ?? knowledgeApiFixtures.chatResponse.conversationId,
+      userMessage: {
+        ...knowledgeApiFixtures.chatResponse.userMessage,
+        conversationId: input.conversationId ?? knowledgeApiFixtures.chatResponse.conversationId,
+        content: input.message ?? knowledgeApiFixtures.chatResponse.userMessage.content
+      },
+      assistantMessage: {
+        ...knowledgeApiFixtures.chatResponse.assistantMessage,
+        conversationId: input.conversationId ?? knowledgeApiFixtures.chatResponse.conversationId
+      }
+    };
+  }
+
+  createFeedback(messageId: string, input: { rating?: 'positive' | 'negative'; category?: string; comment?: string }) {
+    return {
+      ...knowledgeApiFixtures.chatResponse.assistantMessage,
+      id: messageId,
+      feedback: {
+        rating: input.rating ?? 'negative',
+        category: input.category
+      }
+    };
+  }
+
+  getObservabilityMetrics() {
+    return {
+      traceCount: 1,
+      questionCount: knowledgeApiFixtures.dashboard.todayQuestionCount,
+      averageLatencyMs: knowledgeApiFixtures.dashboard.averageLatencyMs,
+      p95LatencyMs: knowledgeApiFixtures.dashboard.p95LatencyMs,
+      p99LatencyMs: knowledgeApiFixtures.dashboard.p99LatencyMs,
+      errorRate: knowledgeApiFixtures.dashboard.errorRate,
+      timeoutRate: 0,
+      noAnswerRate: knowledgeApiFixtures.dashboard.noAnswerRate,
+      negativeFeedbackRate: knowledgeApiFixtures.dashboard.negativeFeedbackRate,
+      citationClickRate: 0.42,
+      stageLatency: [
+        { stage: 'embedding', averageLatencyMs: 100, p95LatencyMs: 130 },
+        { stage: 'vector_search', averageLatencyMs: 120, p95LatencyMs: 160 },
+        { stage: 'generation', averageLatencyMs: 600, p95LatencyMs: 820 }
+      ]
+    };
+  }
+
+  listTraces() {
+    return page([
+      {
+        id: knowledgeApiFixtures.traceDetail.id,
+        workspaceId: knowledgeApiFixtures.traceDetail.workspaceId,
+        conversationId: knowledgeApiFixtures.traceDetail.conversationId,
+        messageId: knowledgeApiFixtures.traceDetail.messageId,
+        knowledgeBaseIds: knowledgeApiFixtures.traceDetail.knowledgeBaseIds,
+        question: knowledgeApiFixtures.traceDetail.question,
+        answer: knowledgeApiFixtures.traceDetail.answer,
+        status: knowledgeApiFixtures.traceDetail.status,
+        latencyMs: knowledgeApiFixtures.traceDetail.latencyMs,
+        hitCount: knowledgeApiFixtures.traceDetail.hitCount,
+        citationCount: knowledgeApiFixtures.traceDetail.citationCount,
+        createdBy: knowledgeApiFixtures.traceDetail.createdBy,
+        createdAt: knowledgeApiFixtures.traceDetail.createdAt
+      }
+    ]);
+  }
+
+  getTrace() {
+    return knowledgeApiFixtures.traceDetail;
+  }
+
+  listEvalDatasets() {
+    return knowledgeApiFixtures.evalDatasets;
+  }
+
+  listEvalRuns() {
+    return knowledgeApiFixtures.evalRuns;
+  }
+
+  getEvalRun(id: string) {
+    return knowledgeApiFixtures.evalRuns.items.find(item => item.id === id) ?? knowledgeApiFixtures.evalRuns.items[0];
+  }
+
+  listEvalRunResults() {
+    return knowledgeApiFixtures.evalResults;
+  }
+
   private getStubUser(email: string) {
     return {
       id: 'user_1',
@@ -62,4 +181,8 @@ export class KnowledgeService {
       permissions: ['knowledge:read', 'knowledge:write', 'document:upload', 'chat:write', 'eval:run', 'trace:read']
     };
   }
+}
+
+function page<T>(items: readonly T[]) {
+  return { items, total: items.length, page: 1, pageSize: 20 };
 }

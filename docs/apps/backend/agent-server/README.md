@@ -11,6 +11,7 @@
 
 - [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 - [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
+- [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
 - [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
 - [run-observatory.md](/docs/apps/backend/agent-server/run-observatory.md)
 - [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
@@ -22,6 +23,7 @@
 
 1. [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 2. [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
-3. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
-4. [contracts/api/README.md](/docs/contracts/api/README.md)
-5. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
+3. [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
+4. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
+5. [contracts/api/README.md](/docs/contracts/api/README.md)
+6. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
