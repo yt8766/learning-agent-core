@@ -3,7 +3,7 @@ import { getRecentGovernanceAudit, listApprovalScopePolicies, syncCapabilityGove
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadRuntimeUsageAnalytics } from './runtime-centers-query-metrics';
 import { ingestLocalKnowledge } from '../domain/knowledge/runtime-knowledge-store';
-import { readDailyTechBriefingStatus } from '../briefings/runtime-tech-briefing-status';
+import { readDailyTechBriefingStatus } from '../core/runtime-intel-briefing-facade';
 import { filterAndSortRecentRuntimeRuns } from '../domain/metrics/runtime-recent-runs';
 import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildRuntimeCenter, buildRuntimeCenterSummary } from './runtime-runtime-center';
@@ -60,6 +60,8 @@ export class RuntimeCentersRuntimeQueryService {
         getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
         runtimeHost: ctx.runtimeHost,
         knowledgeOverview,
+        knowledgeSearchStatus: await ctx.runtimeHost.getKnowledgeSearchStatus(),
+        knowledgeSearchLastDiagnostics: ctx.runtimeHost.runtime.knowledgeSearchService.getLastDiagnostics?.(),
         dailyTechBriefing
       }),
       tools: buildToolsCenter({

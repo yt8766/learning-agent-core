@@ -1,15 +1,20 @@
 import axios from 'axios';
-import type { AxiosRequestConfig, AxiosRequestHeaders, Method } from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
+import type { AdminAuthErrorResponse, AdminTokenPair } from '@agent/core';
 
+import { adminAuthStore } from '@/features/auth/store/admin-auth-store';
+import { adminTokenManager } from '@/features/auth/runtime/admin-token-manager';
 import type { PlatformConsoleRecord } from '@/types/admin';
 
 export type AdminRequestInit = {
   method?: Method;
   body?: BodyInit | null;
-  headers?: AxiosRequestHeaders | Record<string, string>;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
   cancelKey?: string;
   cancelPrevious?: boolean;
+  skipAuth?: boolean;
+  retryAfterRefresh?: boolean;
 };
 
 export const ABORTED_REQUEST_ERROR = '__ADMIN_REQUEST_ABORTED__';
@@ -17,12 +22,12 @@ const requestControllers = new Map<string, AbortController>();
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api';
 const http = axios.create({
   baseURL: API_BASE,
-  withCredentials: true,
   timeout: 12000,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+let refreshPromise: Promise<AdminTokenPair> | undefined;
 
 export interface ChannelDeliveryRecord {
   id: string;
@@ -71,7 +76,7 @@ export async function request<T>(path: string, init?: AdminRequestInit): Promise
     const config: AxiosRequestConfig = {
       url: path,
       method: init?.method ?? 'GET',
-      headers: init?.headers,
+      headers: withAuthHeaders(init),
       signal: abortController?.signal ?? init?.signal
     };
 
@@ -88,6 +93,19 @@ export async function request<T>(path: string, init?: AdminRequestInit): Promise
       throw new Error(ABORTED_REQUEST_ERROR);
     }
     if (axios.isAxiosError(error) && error.response) {
+      const errorCode = readAdminAuthErrorCode(error.response.data);
+      if (
+        error.response.status === 401 &&
+        errorCode === 'access_token_expired' &&
+        !init?.skipAuth &&
+        !init?.retryAfterRefresh
+      ) {
+        await refreshAdminTokenPair();
+        return request<T>(path, {
+          ...init,
+          retryAfterRefresh: true
+        });
+      }
       throw new Error(`Request failed: ${error.response.status}`);
     }
     throw error;
@@ -96,6 +114,54 @@ export async function request<T>(path: string, init?: AdminRequestInit): Promise
       requestControllers.delete(cancelKey);
     }
   }
+}
+
+function withAuthHeaders(init?: AdminRequestInit): Record<string, string> | undefined {
+  if (init?.skipAuth) {
+    return init.headers;
+  }
+  const accessToken = adminTokenManager.getAccessToken();
+  if (!accessToken) {
+    return init?.headers;
+  }
+  return {
+    ...(init?.headers ?? {}),
+    Authorization: `Bearer ${accessToken}`
+  };
+}
+
+async function refreshAdminTokenPair(): Promise<AdminTokenPair> {
+  if (!refreshPromise) {
+    adminAuthStore.setRefreshing();
+    refreshPromise = http
+      .request<{ tokens: AdminTokenPair }>({
+        url: '/admin/auth/refresh',
+        method: 'POST',
+        data: JSON.stringify({
+          refreshToken: adminTokenManager.getRefreshToken()
+        })
+      })
+      .then(response => {
+        adminTokenManager.setTokenPair(response.data.tokens);
+        return response.data.tokens;
+      })
+      .catch(error => {
+        adminTokenManager.clearTokens();
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = undefined;
+      });
+  }
+  return refreshPromise;
+}
+
+function readAdminAuthErrorCode(data: unknown): AdminAuthErrorResponse['error']['code'] | undefined {
+  if (typeof data !== 'object' || data === null || !('error' in data)) {
+    return undefined;
+  }
+  const error = (data as { error?: { code?: unknown } }).error;
+  return typeof error?.code === 'string' ? (error.code as AdminAuthErrorResponse['error']['code']) : undefined;
 }
 
 export async function getHealth() {

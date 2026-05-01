@@ -1,11 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { parseCompanyLiveGenerateDto } from '../../src/company-live/company-live.dto';
 import { CompanyLiveService } from '../../src/company-live/company-live.service';
+import { RuntimeCompanyLiveFacade } from '../../src/runtime/core/runtime-company-live-facade';
 
 describe('CompanyLiveService', () => {
+  it('delegates generation to the backend company-live runtime facade', async () => {
+    const dto = parseCompanyLiveGenerateDto({
+      briefId: 'svc-facade-test',
+      targetPlatform: 'douyin'
+    });
+    const facade = {
+      generate: vi.fn().mockResolvedValue({
+        bundle: { sourceBriefId: 'svc-facade-test' },
+        trace: [{ nodeId: 'business-agent', status: 'succeeded', durationMs: 1 }]
+      })
+    } as unknown as RuntimeCompanyLiveFacade;
+    const service = new CompanyLiveService(facade);
+
+    await expect(service.generate(dto)).resolves.toMatchObject({
+      bundle: { sourceBriefId: 'svc-facade-test' }
+    });
+    expect(facade.generate).toHaveBeenCalledWith(dto);
+  });
+
   it('generates a company live bundle with node trace via stub registry', async () => {
-    const service = new CompanyLiveService();
+    const service = new CompanyLiveService(new RuntimeCompanyLiveFacade());
     const dto = parseCompanyLiveGenerateDto({
       briefId: 'svc-test-1',
       targetPlatform: 'douyin',

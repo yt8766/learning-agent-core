@@ -1,8 +1,9 @@
-import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, FolderKanban, Radar, Workflow } from 'lucide-react';
+import { Activity, AlertCircle, ArrowRightLeft, ClipboardCheck, Radar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 import { AppSidebar } from '@/components/app-sidebar';
+import { NavigationProgress } from '@/components/navigation-progress';
 import { SectionCards } from '@/components/section-cards';
 import { SiteHeader } from '@/components/site-header';
 import { PAGE_TITLES, useAdminDashboard } from '@/hooks/use-admin-dashboard';
@@ -11,79 +12,11 @@ import { renderDashboardCenter } from './dashboard-center-content';
 export function DashboardPage() {
   const dashboard = useAdminDashboard();
   const consoleData = dashboard.consoleData;
+  const navigationProgressActive =
+    dashboard.loading || dashboard.activeRefreshTargets.some(target => target.scope === 'center');
 
-  const headerConfig = {
-    runtime: {
-      icon: <Radar className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: buildHeaderBadges(consoleData)
-    },
-    approvals: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: buildHeaderBadges(consoleData)
-    },
-    learning: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    workspace: {
-      icon: <FolderKanban className="h-4 w-4" />,
-      description: '工作区与技能飞轮治理',
-      badges: []
-    },
-    memory: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    profiles: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    evals: {
-      icon: <Radar className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    archives: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    skills: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    evidence: {
-      icon: <AlertCircle className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    connectors: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    skillSources: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    companyAgents: {
-      icon: <ClipboardCheck className="h-4 w-4" />,
-      description: '治理控制台',
-      badges: []
-    },
-    workflowLab: {
-      icon: <Workflow className="h-4 w-4" />,
-      description: '工作流实验室',
-      badges: []
-    }
-  }[dashboard.page];
+  const headerBadges =
+    dashboard.page === 'runtime' || dashboard.page === 'approvals' ? buildHeaderBadges(consoleData) : [];
 
   const summaryCards = [
     {
@@ -118,17 +51,24 @@ export function DashboardPage() {
       icon: Activity
     }
   ];
+  const compactStatusCards = [
+    { label: '健康', value: dashboard.loading ? '加载中' : dashboard.health || '待同步' },
+    { label: '审批', value: `${dashboard.pendingApprovals.length}` },
+    { label: '模式', value: '控制面' }
+  ];
 
   return (
     <SidebarProvider
-      className="bg-[#fdfdfc]"
+      data-admin-shell="shadcn-admin-inspired"
+      className="bg-background"
       style={
         {
-          '--sidebar-width': '21.5rem',
+          '--sidebar-width': '16rem',
           '--header-height': '4rem'
         } as React.CSSProperties
       }
     >
+      <NavigationProgress active={navigationProgressActive} />
       <AppSidebar
         page={dashboard.page}
         health={dashboard.health}
@@ -147,20 +87,34 @@ export function DashboardPage() {
       <SidebarInset>
         <SiteHeader
           title={PAGE_TITLES[dashboard.page]}
-          icon={headerConfig.icon}
-          health={dashboard.health}
-          loading={dashboard.loading}
-          description={headerConfig.description}
-          badges={headerConfig.badges}
+          page={dashboard.page}
+          badges={headerBadges}
+          onNavigate={dashboard.setPage}
           onRefresh={dashboard.refreshAll}
           onRefreshMetrics={dashboard.handleRefreshMetricsSnapshots}
           onQuickCreate={dashboard.handleQuickCreate}
           onCopyShareLink={() => void navigator.clipboard.writeText(dashboard.shareUrl)}
         />
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-4 p-4 pt-3 md:p-5 md:pt-3">
+          <div className="@container/main flex flex-1 flex-col gap-4 p-4 md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">治理控制台</p>
+                <h1 className="mt-2 text-2xl font-bold tracking-normal text-foreground md:text-3xl">
+                  {PAGE_TITLES[dashboard.page]}
+                </h1>
+              </div>
+              <div data-admin-home-status="compact" className="grid w-full grid-cols-3 gap-2 md:w-[28rem]">
+                {compactStatusCards.map(item => (
+                  <div key={item.label} className="rounded-lg border border-border bg-background px-3 py-2 shadow-sm">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-foreground">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
             <SectionCards items={summaryCards} />
-            <div className="min-h-[calc(100vh-8rem)] flex-1 rounded-[1.75rem] bg-[#f8f8f6] p-4 md:min-h-min md:p-5">
+            <div className="min-h-[calc(100vh-14rem)] flex-1 rounded-xl border border-border bg-background p-4 shadow-sm md:min-h-min md:p-5">
               {dashboard.error ? (
                 <div className="mb-4">
                   <Card className="rounded-3xl border-red-200 bg-red-50 shadow-sm">

@@ -7,6 +7,8 @@ export interface RuntimeKnowledgeContextInput {
   ruleRepository: () => RuntimeHost['ruleRepository'];
   orchestrator: () => RuntimeHost['orchestrator'];
   runtimeStateRepository: () => RuntimeHost['runtimeStateRepository'];
+  settings?: () => RuntimeHost['settings'];
+  vectorIndexRepository?: () => RuntimeHost['runtime']['vectorIndexRepository'];
 }
 
 export function createKnowledgeContext(input: RuntimeKnowledgeContextInput): RuntimeKnowledgeContext {
@@ -14,6 +16,8 @@ export function createKnowledgeContext(input: RuntimeKnowledgeContextInput): Run
     wenyuanFacade: input.wenyuanFacade(),
     ruleRepository: input.ruleRepository(),
     orchestrator: input.orchestrator(),
-    runtimeStateRepository: input.runtimeStateRepository()
+    runtimeStateRepository: input.runtimeStateRepository(),
+    settings: input.settings?.(),
+    vectorIndexRepository: input.vectorIndexRepository?.()
   };
 }

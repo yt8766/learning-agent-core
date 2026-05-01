@@ -20,6 +20,7 @@
 - [data-report 文档目录](/docs/agents/data-report/README.md)
 - [data-report 包结构规范](/docs/agents/data-report/package-structure-guidelines.md)
 - [data-report 类型导出说明](/docs/agents/data-report/type-barrel-notes.md)
+- [company-live 文档目录](/docs/agents/company-live/README.md)
 - [coder 文档目录](/docs/agents/coder/README.md)
 - [coder 包结构规范](/docs/agents/coder/package-structure-guidelines.md)
 - [reviewer 文档目录](/docs/agents/reviewer/README.md)

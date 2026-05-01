@@ -84,6 +84,21 @@ describe('VectorKnowledgeSearchService', () => {
     expect(result.hits).toHaveLength(0);
   });
 
+  it('propagates provider failures so hybrid orchestration can record fallback diagnostics', async () => {
+    const source = makeSource();
+    const chunk = makeChunk();
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([source]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository([chunk]);
+    const provider: VectorSearchProvider = {
+      searchSimilar: async () => {
+        throw new Error('vector backend unavailable');
+      }
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    await expect(service.search({ query: 'retrieval', limit: 5 })).rejects.toThrow('vector backend unavailable');
+  });
+
   it('filters by allowedSourceTypes', async () => {
     const repoSource = makeSource({ id: 'src-repo', sourceType: 'repo-docs' });
     const uploadSource = makeSource({ id: 'src-upload', sourceType: 'user-upload', uri: '/upload.md' });
@@ -104,6 +119,157 @@ describe('VectorKnowledgeSearchService', () => {
     });
 
     expect(result.hits.every(h => h.sourceType === 'repo-docs')).toBe(true);
+  });
+
+  it('passes resolved filters to provider as vector search options', async () => {
+    const source = makeSource({ trustClass: 'official' });
+    const chunk = makeChunk({
+      metadata: {
+        docType: 'policy',
+        status: 'active',
+        allowedRoles: ['engineering']
+      }
+    });
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([source]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository([chunk]);
+    const provider = {
+      calls: [] as Array<{ query: string; topK: number; options?: unknown }>,
+      async searchSimilar(query: string, topK: number, options?: unknown) {
+        this.calls.push({ query, topK, options });
+        return [{ chunkId: chunk.id, score: 0.9 }];
+      }
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    await service.search({
+      query: 'retrieval',
+      limit: 5,
+      filters: {
+        sourceTypes: ['repo-docs'],
+        sourceIds: ['source-1'],
+        documentIds: ['doc-1'],
+        minTrustClass: 'curated',
+        docTypes: ['policy'],
+        statuses: ['active'],
+        allowedRoles: ['engineering']
+      }
+    });
+
+    expect(provider.calls).toHaveLength(1);
+    expect(provider.calls[0]).toMatchObject({
+      query: 'retrieval',
+      topK: 15,
+      options: {
+        filters: {
+          sourceTypes: ['repo-docs'],
+          sourceIds: ['source-1'],
+          documentIds: ['doc-1'],
+          minTrustClass: 'curated',
+          searchableOnly: true,
+          docTypes: ['policy'],
+          statuses: ['active'],
+          allowedRoles: ['engineering']
+        }
+      }
+    });
+  });
+
+  it('defensively filters provider hits by source and chunk metadata', async () => {
+    const allowedSource = makeSource({ id: 'src-allowed', sourceType: 'repo-docs' });
+    const blockedSource = makeSource({ id: 'src-blocked', sourceType: 'user-upload' });
+    const chunks = [
+      makeChunk({
+        id: 'allowed',
+        sourceId: 'src-allowed',
+        documentId: 'doc-allowed',
+        metadata: { status: 'active' }
+      }),
+      makeChunk({
+        id: 'blocked-by-status',
+        sourceId: 'src-allowed',
+        documentId: 'doc-blocked-status',
+        metadata: { status: 'draft' }
+      }),
+      makeChunk({
+        id: 'blocked-by-source',
+        sourceId: 'src-blocked',
+        documentId: 'doc-blocked-source',
+        metadata: { status: 'active' }
+      })
+    ];
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([allowedSource, blockedSource]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository(chunks);
+    const provider: VectorSearchProvider = {
+      searchSimilar: async () => [
+        { chunkId: 'allowed', score: 0.9 },
+        { chunkId: 'blocked-by-status', score: 0.8 },
+        { chunkId: 'blocked-by-source', score: 0.7 }
+      ]
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    const result = await service.search({
+      query: 'retrieval',
+      limit: 5,
+      filters: {
+        sourceTypes: ['repo-docs'],
+        statuses: ['active']
+      }
+    });
+
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['allowed']);
+    expect(result.hits[0]?.metadata).toEqual({ status: 'active' });
+  });
+
+  it('expands provider topK and slices filtered hits back to request limit', async () => {
+    const source = makeSource();
+    const chunks = [
+      makeChunk({ id: 'first', content: 'first retrieval result' }),
+      makeChunk({ id: 'second', content: 'second retrieval result' })
+    ];
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([source]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository(chunks);
+    const provider = {
+      calls: [] as Array<{ query: string; topK: number; options?: unknown }>,
+      async searchSimilar(query: string, topK: number, options?: unknown) {
+        this.calls.push({ query, topK, options });
+        return [
+          { chunkId: 'first', score: 0.9 },
+          { chunkId: 'second', score: 0.8 }
+        ];
+      }
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    const result = await service.search({ query: 'retrieval', limit: 1 });
+
+    expect(provider.calls[0]?.topK).toBe(3);
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['first']);
+    expect(result.total).toBe(1);
+  });
+
+  it('keeps legacy allowedSourceTypes working through resolved filters', async () => {
+    const repoSource = makeSource({ id: 'src-repo', sourceType: 'repo-docs' });
+    const uploadSource = makeSource({ id: 'src-upload', sourceType: 'user-upload' });
+    const repoChunk = makeChunk({ id: 'allowed', sourceId: 'src-repo' });
+    const uploadChunk = makeChunk({ id: 'blocked', sourceId: 'src-upload' });
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([repoSource, uploadSource]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository([repoChunk, uploadChunk]);
+    const provider: VectorSearchProvider = {
+      searchSimilar: async () => [
+        { chunkId: 'allowed', score: 0.9 },
+        { chunkId: 'blocked', score: 0.8 }
+      ]
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    const result = await service.search({
+      query: 'retrieval',
+      limit: 5,
+      allowedSourceTypes: ['repo-docs']
+    });
+
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['allowed']);
   });
 
   it('returns hits sorted by provider score descending', async () => {

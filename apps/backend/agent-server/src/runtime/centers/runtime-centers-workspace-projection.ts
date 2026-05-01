@@ -1,7 +1,7 @@
 import { type AgentSkillReuseRecord } from '@agent/core';
 
 import type { WorkspaceCenterRecord } from './runtime-centers.records';
-import { normalizeInstalledSkillId } from '@agent/knowledge';
+import { isCitationEvidenceSource, normalizeInstalledSkillId } from '@agent/knowledge';
 
 type WorkspaceEvidence = WorkspaceCenterRecord['evidence'][number];
 type WorkspaceLearningSummary = WorkspaceCenterRecord['learningSummaries'][number];
@@ -114,6 +114,15 @@ function buildWorkspaceEvidence(tasks: WorkspaceTaskProjectionLike[]): Workspace
 
   for (const task of tasks) {
     for (const source of task.externalSources ?? []) {
+      if (
+        !isCitationEvidenceSource({
+          sourceType: source.sourceType,
+          sourceUrl: source.sourceUrl,
+          trustClass: source.trustClass ?? 'unknown'
+        })
+      ) {
+        continue;
+      }
       if (evidence.size >= MAX_WORKSPACE_EVIDENCE) {
         return Array.from(evidence.values());
       }

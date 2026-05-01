@@ -24,7 +24,13 @@ describe('backend HTTP app smoke', () => {
 
     expect(response.body).toMatchObject({
       status: 'ok',
-      service: 'server'
+      service: 'server',
+      knowledgeSearchStatus: {
+        configuredMode: expect.any(String),
+        effectiveMode: expect.any(String),
+        vectorConfigured: expect.any(Boolean),
+        hybridEnabled: expect.any(Boolean)
+      }
     });
     expect(() => HealthCheckResultSchema.parse(response.body)).not.toThrow();
   });

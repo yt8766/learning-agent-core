@@ -9,8 +9,9 @@ function renderSidebar(options?: {
   page?: DashboardPageKey;
   defaultPlatformNestedExpanded?: boolean;
   tasks?: TaskRecord[];
+  roles?: ['super_admin'] | ['developer'];
 }) {
-  const { page = 'runtime', defaultPlatformNestedExpanded, tasks = [] } = options ?? {};
+  const { page = 'runtime', defaultPlatformNestedExpanded, tasks = [], roles } = options ?? {};
 
   return renderToStaticMarkup(
     <SidebarProvider>
@@ -25,6 +26,7 @@ function renderSidebar(options?: {
         refreshDiagnostics={null}
         activeRefreshTargets={[]}
         defaultPlatformNestedExpanded={defaultPlatformNestedExpanded}
+        roles={roles}
         onNavigate={vi.fn()}
         onRefresh={vi.fn()}
         onQuickCreate={vi.fn()}
@@ -35,11 +37,24 @@ function renderSidebar(options?: {
 }
 
 describe('AppSidebar', () => {
+  it('starts expanded after refresh so center labels remain visible', () => {
+    const html = renderSidebar({ defaultPlatformNestedExpanded: false });
+
+    expect(html).toContain('data-collapsible="expanded"');
+    expect(html).toContain('group-data-[collapsible=icon]/sidebar-wrapper:hidden');
+    expect(html).toContain('group-data-[collapsible=icon]/sidebar-wrapper:size-12');
+  });
+
   it('labels the navigation group as governance centers plus dedicated entries', () => {
     const html = renderSidebar({ defaultPlatformNestedExpanded: false });
 
-    expect(html).toContain('治理中心与专项入口');
-    expect(html).not.toContain('>六大中心<');
+    expect(html).toContain('General');
+    expect(html).toContain('Governance');
+    expect(html).toContain('data-slot="sidebar-group"');
+    expect(html).toContain('data-slot="sidebar-menu-button"');
+    expect(html).not.toContain('六部治理台');
+    expect(html).not.toContain('健康</p>');
+    expect(html).not.toContain('模式</p>');
   });
 
   it('renders a workspace navigation entry for the agent workspace center', () => {
@@ -82,5 +97,16 @@ describe('AppSidebar', () => {
     expect(html).toContain('归档中心');
     expect(html).toContain('技能工坊');
     expect(html).toContain('aria-expanded="true"');
+  });
+
+  it('limits developer navigation to the MVP-safe centers', () => {
+    const html = renderSidebar({ roles: ['developer'], defaultPlatformNestedExpanded: true });
+
+    expect(html).toContain('运行中枢');
+    expect(html).toContain('学习中枢');
+    expect(html).toContain('技能工坊');
+    expect(html).toContain('证据中心');
+    expect(html).not.toContain('审批中枢');
+    expect(html).not.toContain('连接器与策略');
   });
 });

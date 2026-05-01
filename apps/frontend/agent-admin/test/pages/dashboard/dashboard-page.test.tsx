@@ -247,9 +247,16 @@ describe('DashboardPage shell', () => {
 
     expect(html).toContain('治理控制台');
     expect(html).toContain('运行中枢');
-    expect(html).toContain('六部治理台');
+    expect(html).toContain('Agent Admin');
     expect(html).toContain('审批中枢');
-    expect(html).toContain('专项编排');
+    expect(html).toContain('General');
+    expect(html).toContain('Governance');
+    expect(html).toContain('data-slot="sidebar-header"');
+    expect(html).toContain('data-slot="sidebar-content"');
+    expect(html).toContain('data-slot="sidebar-footer"');
+    expect(html).toContain('aria-keyshortcuts="Meta+K Control+K"');
+    expect(html).toContain('>Search</span>');
+    expect(html).toContain('data-admin-home-status="compact"');
     expect(html).toContain('系统健康');
     expect(html).toContain('待审批');
     expect(html).toContain('活跃任务');
@@ -260,6 +267,30 @@ describe('DashboardPage shell', () => {
     expect(html).toContain('控制台 84ms');
     expect(html).toContain('缓存 未命中');
     expect(html).toContain('runtime panel body');
+    expect(html).toContain('data-admin-shell="shadcn-admin-inspired"');
+    expect(html).toContain('data-slot="navigation-progress"');
+    expect(html).toContain('data-state="idle"');
+    expect(html).not.toContain('data-admin-center-tabs="primary"');
+  });
+
+  it('shows the top navigation progress bar while a page center is refreshing', () => {
+    mockUseAdminDashboard.mockReturnValue(
+      createDashboardOverrides({
+        activeRefreshTargets: [
+          {
+            scope: 'center',
+            target: 'approvals',
+            since: '2026-04-30T12:00:00.000Z'
+          }
+        ]
+      })
+    );
+
+    const html = renderToStaticMarkup(<DashboardPage />);
+
+    expect(html).toContain('data-slot="navigation-progress"');
+    expect(html).toContain('data-state="active"');
+    expect(html).toContain('aria-label="页面切换加载进度"');
   });
 
   it('renders page-specific center panels for approvals, learning, memory, profiles and evals', () => {

@@ -13,29 +13,29 @@ interface SectionCardItem {
 
 export function SectionCards({ items }: { items: SectionCardItem[] }) {
   return (
-    <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+    <div className="grid auto-rows-min gap-4 md:grid-cols-2 xl:grid-cols-4">
       {items.map(item => {
         const Icon = item.icon;
         return (
-          <Card key={item.title} className="aspect-video rounded-[1.75rem] border-none bg-[#f8f8f6] shadow-none">
-            <CardHeader className="gap-3 p-6">
+          <Card key={item.title} className="min-h-36">
+            <CardHeader className="gap-2 px-6">
               <div className="flex items-center justify-between gap-3">
-                <div className="rounded-2xl bg-white p-2 text-primary shadow-sm">
+                <div className="text-muted-foreground">
                   <Icon className="h-4 w-4" />
                 </div>
                 <Badge
                   variant={item.tone === 'accent' ? 'default' : 'outline'}
-                  className="rounded-full border-none bg-white text-muted-foreground"
+                  className="rounded-md border-border bg-background text-muted-foreground"
                 >
                   {item.title}
                 </Badge>
               </div>
-              <CardTitle className="pt-3 text-3xl">{item.value}</CardTitle>
-              <CardDescription>{item.description}</CardDescription>
+              <CardTitle className="pt-4 text-2xl font-bold tracking-normal">{item.value}</CardTitle>
+              <CardDescription className="text-xs">{item.description}</CardDescription>
             </CardHeader>
-            <CardContent className="flex items-center gap-2 px-6 pb-6 text-xs text-muted-foreground">
+            <CardContent className="flex items-center gap-2 px-6 pb-2 text-xs text-muted-foreground">
               <ArrowRight className="h-3.5 w-3.5" />
-              Structured console workspace
+              Control plane workspace
             </CardContent>
           </Card>
         );

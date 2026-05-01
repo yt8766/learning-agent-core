@@ -28,6 +28,7 @@
   - 不认识任何具体官方 agent
 - `packages/platform-runtime` 是可注入 platform facade 包
   - 负责通用 agent registry 实现
+  - 负责通用 workflow registry / execution contract
   - 负责默认 `PlatformRuntimeFacade`
   - 负责默认只读 metadata facade（workflow preset / subgraph descriptor / workflow version）
   - centers 只消费真实宿主 contract：治理策略与 connector health 来自 `@agent/runtime`，memory / rule / resolution / evidence 来自 `@agent/memory`
@@ -47,6 +48,7 @@
   - `metadata`
 - backend `createOfficialRuntimeAgentDependencies()` 默认优先按 capability contract 解析官方模块，再回退兼容 `official.*` id
 - backend 官方 agent 组合根固定在 `apps/backend/agent-server/src/runtime/agents/`，这是 app 层唯一允许直接注册 `@agent/agents-*` 的位置；其他 app 代码必须继续通过 runtime/core facade 或 platform facade 获取能力
+- backend 官方 workflow executor 当前固定经由 `apps/backend/agent-server/src/runtime/core/runtime-workflow-execution-facade.ts` 注入 `createPlatformWorkflowRegistry()`；`packages/platform-runtime` 只持有 workflow contract，不直接依赖或执行官方 `@agent/agents-*` graph
 - `pnpm check:package-boundaries` 阻止 `apps/*` 直接 import `@agent/platform-runtime` 中的主链装配 helper，例如：
   - `resolveWorkflowPreset`
   - `listWorkflowPresets`

@@ -1,11 +1,16 @@
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import fs from 'fs-extra';
 import type { MemoryScrubberValidator } from '@agent/memory';
+import { listKnowledgeArtifacts } from '@agent/knowledge';
 
 import { RuntimeKnowledgeService } from '../../../src/runtime/services/runtime-knowledge.service';
 
 describe('RuntimeKnowledgeService', () => {
-  const createService = () => {
+  const createService = (options?: { workspaceRoot?: string; knowledgeRoot?: string }) => {
     const memoryRepository = {
       search: vi.fn(async () => [{ id: 'memory-1' }]),
       list: vi.fn(async () => [{ id: 'memory-1' }]),
@@ -61,6 +66,9 @@ describe('RuntimeKnowledgeService', () => {
     const orchestrator = {
       listRules: vi.fn(() => [{ id: 'rule-1' }])
     };
+    const vectorIndexRepository = {
+      upsertKnowledge: vi.fn(async () => undefined)
+    };
     let runtimeStateSnapshot = {
       crossCheckEvidence: []
     };
@@ -97,11 +105,17 @@ describe('RuntimeKnowledgeService', () => {
         wenyuanFacade: wenyuanFacade as any,
         ruleRepository,
         orchestrator,
-        runtimeStateRepository
+        runtimeStateRepository,
+        settings: {
+          workspaceRoot: options?.workspaceRoot ?? '/tmp/workspace',
+          knowledgeRoot: options?.knowledgeRoot ?? '/tmp/workspace/knowledge'
+        },
+        vectorIndexRepository
       })),
       memoryRepository,
       ruleRepository,
       orchestrator,
+      vectorIndexRepository,
       runtimeStateRepository
     };
   };
@@ -197,6 +211,161 @@ describe('RuntimeKnowledgeService', () => {
       }
     ]);
     expect(runtimeStateRepository.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('可调度生产来源 ingestion 并写入统一 knowledge 边界', async () => {
+    const { service, vectorIndexRepository } = createService();
+
+    const result = await service.ingestKnowledgeSources([
+      {
+        sourceId: 'upload-1',
+        sourceType: 'user-upload',
+        uri: '/uploads/policy.md',
+        title: 'Uploaded Policy',
+        trustClass: 'internal',
+        content: 'uploaded policy for runtime approval',
+        metadata: {
+          docType: 'uploaded-policy',
+          status: 'active'
+        }
+      }
+    ]);
+
+    expect(result).toMatchObject({
+      loadedDocumentCount: 1,
+      sourceCount: 1,
+      indexedDocumentCount: 1,
+      chunkCount: 1
+    });
+    expect(vectorIndexRepository.upsertKnowledge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'upload-1',
+        sourceType: 'user-upload',
+        title: 'Uploaded Policy'
+      })
+    );
+  });
+
+  it('可从 workspace 内真实上传文件构造 user-upload payload 并写入 knowledge 边界', async () => {
+    const workspaceRoot = await fs.mkdtemp(join(tmpdir(), 'runtime-user-upload-'));
+    try {
+      await fs.ensureDir(join(workspaceRoot, 'uploads'));
+      await fs.writeFile(join(workspaceRoot, 'uploads', 'policy.md'), 'uploaded file policy content', 'utf8');
+      const { service, vectorIndexRepository } = createService({
+        workspaceRoot,
+        knowledgeRoot: join(workspaceRoot, 'data', 'knowledge')
+      });
+
+      const result = await service.ingestUserUploadSource({
+        uploadId: 'upload-file-1',
+        filePath: 'uploads/policy.md',
+        uploadedBy: 'admin@example.com',
+        allowedRoles: ['admin'],
+        mimeType: 'text/markdown',
+        metadata: {
+          status: 'active'
+        }
+      });
+
+      expect(result).toMatchObject({
+        sourceCount: 1,
+        chunkCount: 1,
+        embeddedChunkCount: 1
+      });
+      expect(vectorIndexRepository.upsertKnowledge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceId: 'upload-file-1',
+          sourceType: 'user-upload',
+          uri: 'upload://upload-file-1/policy.md',
+          title: 'policy.md',
+          content: 'uploaded file policy content'
+        })
+      );
+      await expect(
+        listKnowledgeArtifacts({
+          workspaceRoot,
+          knowledgeRoot: join(workspaceRoot, 'data', 'knowledge')
+        } as never)
+      ).resolves.toMatchObject({
+        chunks: [
+          expect.objectContaining({
+            sourceId: 'upload-file-1',
+            metadata: expect.objectContaining({
+              docType: 'user-upload',
+              status: 'active',
+              originalFilename: 'policy.md',
+              uploadedBy: 'admin@example.com',
+              allowedRoles: ['admin'],
+              mimeType: 'text/markdown'
+            })
+          })
+        ]
+      });
+    } finally {
+      await fs.remove(workspaceRoot);
+    }
+  });
+
+  it('拒绝读取 workspace 外的 user upload 文件路径', async () => {
+    const workspaceRoot = await fs.mkdtemp(join(tmpdir(), 'runtime-user-upload-workspace-'));
+    const outsideRoot = await fs.mkdtemp(join(tmpdir(), 'runtime-user-upload-outside-'));
+    try {
+      const outsideFile = join(outsideRoot, 'secret.md');
+      await fs.writeFile(outsideFile, 'outside workspace content', 'utf8');
+      const { service, vectorIndexRepository } = createService({
+        workspaceRoot,
+        knowledgeRoot: join(workspaceRoot, 'data', 'knowledge')
+      });
+
+      await expect(
+        service.ingestUserUploadSource({
+          uploadId: 'upload-outside',
+          filePath: outsideFile
+        })
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'knowledge_user_upload_path_outside_workspace'
+        })
+      });
+      expect(vectorIndexRepository.upsertKnowledge).not.toHaveBeenCalled();
+    } finally {
+      await fs.remove(workspaceRoot);
+      await fs.remove(outsideRoot);
+    }
+  });
+
+  it('可将已同步 catalog entries 构造成 catalog-sync payload 并写入 knowledge 边界', async () => {
+    const { service, vectorIndexRepository } = createService();
+
+    const result = await service.ingestCatalogSyncSources([
+      {
+        catalogId: 'service-runtime',
+        title: 'Runtime Service',
+        content: 'runtime service owner and SLA',
+        uri: 'catalog://services/runtime',
+        version: 'v2',
+        owner: 'runtime-team',
+        metadata: {
+          status: 'active',
+          tier: 'gold'
+        }
+      }
+    ]);
+
+    expect(result).toMatchObject({
+      sourceCount: 1,
+      chunkCount: 1,
+      embeddedChunkCount: 1
+    });
+    expect(vectorIndexRepository.upsertKnowledge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'catalog-service-runtime',
+        sourceType: 'catalog-sync',
+        uri: 'catalog://services/runtime',
+        title: 'Runtime Service',
+        content: 'runtime service owner and SLA'
+      })
+    );
   });
 
   it('对缺失 memory/rule 抛出 NotFoundException', async () => {

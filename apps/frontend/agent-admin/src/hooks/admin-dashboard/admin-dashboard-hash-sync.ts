@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import type { DashboardPageKey } from '@/types/admin';
 import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
 import type { ExecutionModeFilter, InteractionKindFilter } from './admin-dashboard-constants';
-import { buildDashboardHash, readDashboardStateFromHash } from './admin-dashboard-constants';
+import { buildDashboardRoute, readDashboardStateFromRoute } from './admin-dashboard-constants';
 
 interface HashSyncSetters {
   setPage: (page: DashboardPageKey) => void;
@@ -22,8 +22,8 @@ interface HashSyncSetters {
 
 export function useHashChangeListener(setters: HashSyncSetters) {
   useEffect(() => {
-    const onHashChange = () => {
-      const nextState = readDashboardStateFromHash();
+    const onRouteChange = () => {
+      const nextState = readDashboardStateFromRoute();
       setters.setPage(nextState.page);
       setters.setActiveTaskId(nextState.runtimeTaskId);
       setters.setObservatoryFocusTarget(
@@ -44,8 +44,8 @@ export function useHashChangeListener(setters: HashSyncSetters) {
       setters.setApprovalsExecutionModeFilter(nextState.approvalsExecutionModeFilter);
       setters.setApprovalsInteractionKindFilter(nextState.approvalsInteractionKindFilter);
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('popstate', onRouteChange);
+    return () => window.removeEventListener('popstate', onRouteChange);
   }, [setters]);
 }
 
@@ -66,7 +66,7 @@ interface HashWriteState {
 
 export function useHashWriter(state: HashWriteState) {
   useEffect(() => {
-    const nextHash = buildDashboardHash({
+    const nextRoute = buildDashboardRoute({
       page: state.page,
       runtimeTaskId: state.activeTaskId,
       runtimeFocusKind: state.observatoryFocusTarget?.kind,
@@ -81,8 +81,9 @@ export function useHashWriter(state: HashWriteState) {
       approvalsExecutionModeFilter: state.approvalsExecutionModeFilter,
       approvalsInteractionKindFilter: state.approvalsInteractionKindFilter
     });
-    if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash);
+    const currentRoute = `${window.location.pathname}${window.location.search}`;
+    if (currentRoute !== nextRoute || window.location.hash) {
+      window.history.replaceState(null, '', nextRoute);
     }
   }, [
     state.page,

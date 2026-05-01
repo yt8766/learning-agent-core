@@ -1,4 +1,4 @@
-import type { VectorSearchHit, VectorSearchProvider } from './vector-search-provider';
+import type { VectorSearchHit, VectorSearchOptions, VectorSearchProvider } from './vector-search-provider';
 
 /**
  * 基于 bigram（字符二元组）频率向量 + 余弦相似度的内存 VectorSearchProvider。
@@ -21,7 +21,7 @@ export class InMemoryVectorSearchProvider implements VectorSearchProvider {
     this.store.set(chunkId, content);
   }
 
-  async searchSimilar(query: string, topK: number): Promise<VectorSearchHit[]> {
+  async searchSimilar(query: string, topK: number, _options?: VectorSearchOptions): Promise<VectorSearchHit[]> {
     if (this.store.size === 0) {
       return [];
     }

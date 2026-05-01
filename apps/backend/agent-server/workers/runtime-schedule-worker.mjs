@@ -8,17 +8,17 @@ const __dirname = dirname(__filename);
 
 async function main() {
   const appRoot = join(__dirname, '..');
-  const serviceModule = await loadModule(
-    join(appRoot, 'dist', 'runtime', 'briefings', 'runtime-tech-briefing.service.js'),
-    join(appRoot, 'src', 'runtime', 'briefings', 'runtime-tech-briefing.service.ts')
+  const facadeModule = await loadModule(
+    join(appRoot, 'dist', 'runtime', 'core', 'runtime-intel-briefing-facade.js'),
+    join(appRoot, 'src', 'runtime', 'core', 'runtime-intel-briefing-facade.ts')
   );
 
   if (!String(workerData?.jobId ?? '').startsWith('runtime-tech-briefing:')) {
     throw new Error(`Unsupported scheduled job: ${workerData?.jobId ?? 'unknown'}`);
   }
 
-  const { RuntimeTechBriefingService } = serviceModule;
-  const service = new RuntimeTechBriefingService(() => ({
+  const { RuntimeIntelBriefingFacade } = facadeModule;
+  const service = new RuntimeIntelBriefingFacade(() => ({
     settings: {
       workspaceRoot: workerData.workspaceRoot,
       dailyTechBriefing: workerData.dailyTechBriefing

@@ -86,6 +86,16 @@
         "default": "./build/cjs/runtime/streaming-execution.js"
       }
     },
+    "./concurrency": {
+      "import": {
+        "types": "./build/types/runtime/concurrency/index.d.ts",
+        "default": "./build/esm/runtime/concurrency/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/runtime/concurrency/index.d.ts",
+        "default": "./build/cjs/runtime/concurrency/index.js"
+      }
+    },
     "./governance/approval": {
       "import": {
         "types": "./build/types/governance/approval/index.d.ts",

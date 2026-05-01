@@ -3,13 +3,13 @@ import type { MemoryRepository, MemorySearchService, RuleRepository, RuntimeStat
 import type { SkillRegistry } from '@agent/skill';
 import type { McpClientManager } from '@agent/tools';
 import type { ApprovalService } from '../../../../governance/approval';
-import type { LocalKnowledgeSearchService } from '../../../../runtime/local-knowledge-search-service';
+import type { RuntimeKnowledgeSearchService } from '../../../../runtime/local-knowledge-search-service';
 import type { SandboxExecutor } from '../../../../sandbox';
 
 export interface MainGraphTaskContextDependencies {
   memoryRepository: MemoryRepository;
   memorySearchService?: MemorySearchService;
-  knowledgeSearchService?: LocalKnowledgeSearchService;
+  knowledgeSearchService?: RuntimeKnowledgeSearchService;
   ruleRepository: RuleRepository;
   runtimeStateRepository: RuntimeStateRepository;
   skillRegistry: SkillRegistry;

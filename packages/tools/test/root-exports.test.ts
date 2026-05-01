@@ -30,6 +30,7 @@ import {
   McpServerRegistry,
   McpSkillProviderRegistry,
   findConfiguredConnector,
+  resolveAgentToolSandboxProfile,
   resolveConfiguredConnectorId,
   RuleBasedReviewer,
   SandboxExecutor,
@@ -39,6 +40,7 @@ import {
   setConfiguredConnectorRecord,
   setConnectorEnabledState,
   setConnectorPolicyOverride,
+  shouldRequireAgentToolApproval,
   SimulatedSandboxProvider,
   StubSandboxExecutor,
   ToolRiskClassifier,
@@ -48,6 +50,7 @@ import {
   writeScaffoldBundle
 } from '../src';
 import * as rootExports from '../src';
+import * as agentExecutionExports from '../src/agent-execution';
 import * as agentSurfaceExports from '../src/agent-surface';
 import * as approvalExports from '../src/approval';
 import * as autoReviewExports from '../src/auto-review';
@@ -100,6 +103,8 @@ describe('@agent/tools root exports', () => {
     expect(CommandPolicy).toBe(commandExports.CommandPolicy);
     expect(AutoReviewGate).toBe(autoReviewExports.AutoReviewGate);
     expect(RuleBasedReviewer).toBe(autoReviewExports.RuleBasedReviewer);
+    expect(shouldRequireAgentToolApproval).toBe(agentExecutionExports.shouldRequireAgentToolApproval);
+    expect(resolveAgentToolSandboxProfile).toBe(agentExecutionExports.resolveAgentToolSandboxProfile);
     expect(AgentToolAliasResolver).toBe(agentSurfaceExports.AgentToolAliasResolver);
     expect(buildAgentScaffold).toBe(scaffoldExports.buildAgentScaffold);
     expect(buildPackageScaffold).toBe(scaffoldExports.buildPackageScaffold);

@@ -2,6 +2,7 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AgentToolsModule } from './agent-tools/agent-tools.module';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AppFeatureModule } from './app/app.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AutoReviewModule } from './auto-review/auto-review.module';
@@ -35,6 +36,7 @@ import { WorkflowRunsModule } from './workflow-runs/workflow-runs.module';
       synchronize: process.env.NODE_ENV !== 'production'
     }),
     LoggerModule,
+    AdminAuthModule,
     RuntimeModule,
     AgentToolsModule,
     SandboxModule,

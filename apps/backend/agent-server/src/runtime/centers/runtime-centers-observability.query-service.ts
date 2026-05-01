@@ -9,8 +9,12 @@ import { getPlatformConsoleLogAnalysis as loadPlatformConsoleLogAnalysis } from 
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildPlatformConsole, buildPlatformConsoleShell } from '../helpers/runtime-platform-console';
-import { appendBriefingFeedback, readDailyTechBriefingRuns } from '../briefings/runtime-tech-briefing-storage';
-import type { BriefingFeedbackRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
+import {
+  appendBriefingFeedback,
+  readDailyTechBriefingRuns,
+  type BriefingFeedbackRecord,
+  type TechBriefingCategory
+} from '../core/runtime-intel-briefing-facade';
 import { buildApprovalsCenterRecords } from '../domain/observability/runtime-approvals-center';
 import { filterBriefingRunsByWindow } from '../domain/observability/runtime-briefing-runs';
 import {

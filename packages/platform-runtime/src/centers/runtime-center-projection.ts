@@ -4,5 +4,6 @@ export { buildRuntimeCenterSummaryProjection } from './runtime-center-projection
 export type {
   BuildRuntimeCenterProjectionInput,
   BuildRuntimeCenterSummaryProjectionInput,
+  RuntimeCenterKnowledgeSearchStatus,
   RuntimeCenterTaskLike
 } from './runtime-center-projection.types';

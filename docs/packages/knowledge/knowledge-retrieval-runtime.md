@@ -460,15 +460,15 @@ Hybrid Search 当前真实边界：
 
 `sourceType` schema 只定义 retrieval / runtime artifact 可以接受的稳定来源枚举；它不隐含对应来源已经具备 loader、权限 metadata、receipt、embedding 写入或 backend host 生产接线。
 
-| 来源               | Retrieval contract | Runtime artifact schema | 当前接线状态 / 风险                                                                                                                                                      |
-| ------------------ | ------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| repo docs          | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 `docs/**/*.md`；仍需按实际部署确认 embedding 凭据与 searchable 状态                                                                 |
-| workspace docs     | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 README 与项目规范；不等于所有 workspace 文档都完整接入                                                                              |
-| connector manifest | 已有               | 已有                    | 本地最小枚举部分 `package.json` manifest；connector 同步内容是否产出可检索 chunk 仍需逐源接线                                                                            |
-| catalog sync       | 已有               | 已有                    | contract 已有；未在 `packages/knowledge` 内发现稳定 ingestion / production wiring                                                                                        |
-| user upload        | 已有               | 已有                    | contract 与 schema 已有；上传文件 ingestion、权限 metadata、searchable 状态和 chunk 写入仍待接线                                                                         |
-| web curated        | 已有               | 已有                    | contract 与 schema 已有；外部资料接入、trustClass、权限 metadata 与索引写入策略仍待接线                                                                                  |
-| agent skills       | 未新增             | 未新增                  | 不声明 `agent-skill` 已进入 Hybrid Search；后续应先决定复用 `workspace-docs` / `repo-docs` / `connector-manifest` / `catalog-sync`，还是新增 sourceType 并补完整回归测试 |
+| 来源               | Retrieval contract | Runtime artifact schema | 当前接线状态 / 风险                                                                                                                                                                                                                            |
+| ------------------ | ------------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| repo docs          | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 `docs/**/*.md`；仍需按实际部署确认 embedding 凭据与 searchable 状态                                                                                                                                       |
+| workspace docs     | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 README 与项目规范；不等于所有 workspace 文档都完整接入                                                                                                                                                    |
+| connector manifest | 已有               | 已有                    | 本地最小枚举部分 `package.json` manifest；backend 已有 connector sync entries adapter 并复用 `connector-manifest` + `metadata.docType=connector-sync`，真实 connector API 同步 job 仍待接线                                                    |
+| catalog sync       | 已有               | 已有                    | backend 已有上游 entries adapter，可写入 receipt 与 chunk；外部 catalog 拉取 / 鉴权 job 仍待接线                                                                                                                                               |
+| user upload        | 已有               | 已有                    | backend 已有 workspace 内已落盘文件 adapter，可写入权限 metadata、receipt 与 chunk；multipart / 对象存储 / 鉴权上游 job 仍待接线                                                                                                               |
+| web curated        | 已有               | 已有                    | backend 已有上游 curated URL entries adapter，可写入 receipt 与 chunk；网页抓取 / 清洗 / trustClass 策略 job 仍待接线                                                                                                                          |
+| agent skills       | 未新增             | 未新增                  | 决策为不新增 `agent-skill` sourceType；代理技能进入 Hybrid Search 时先复用 `workspace-docs` / `repo-docs` + `metadata.docType=agent-skill`，运行时技能 manifest 复用 `connector-manifest` 或 `catalog-sync` + `metadata.docType=runtime-skill` |
 
 后续新增来源时，必须先补 schema/contract、ingestion 产物、metadata filter 语义和最小检索回归，再宣称其进入统一知识入口。
 

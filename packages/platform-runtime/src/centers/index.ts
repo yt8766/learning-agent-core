@@ -18,6 +18,7 @@ export {
   buildRuntimeCenterProjection,
   buildRuntimeCenterSummaryProjection,
   toCritiqueStyleReviewOutcome,
+  type RuntimeCenterKnowledgeSearchStatus,
   type RuntimeCenterTaskLike
 } from './runtime-center-projection';
 export {

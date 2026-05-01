@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/knowledge/src/indexing/*`
-最后核对：2026-04-18
+最后核对：2026-04-30（writer fanout 闭环核对）
 
 ## 1. 定位
 
@@ -12,10 +12,14 @@
 它负责把原始知识内容加工成运行时可检索的数据资产，核心流程固定为：
 
 ```text
-load -> transform(optional) -> filter(optional) -> chunk -> metadata build(optional) -> embed -> write -> result collect
+load -> filter(optional) -> chunk -> metadata build -> writer fanout -> result collect
 ```
 
 这里的 `indexing` 是 pipeline orchestration 层，不是 provider SDK 封装层，也不是 runtime 检索层。
+
+当前 `runKnowledgeIndexing()` 不直接持有 embedder，也不直接绑定真实 vector store。它把 chunk 转为 `KnowledgeVectorDocumentRecord` 后写入注入的 `KnowledgeVectorIndexWriter`；embedding 与向量索引持久化由 `@agent/memory` 的 vector boundary 负责。若调用方同时提供 `KnowledgeSourceIndexWriter` 和 `KnowledgeFulltextIndexWriter`，同一批文档会额外写入 `KnowledgeSource` 与 `KnowledgeChunk` 边界，用于关键词检索、Small-to-Big 上下文回补和 Runtime Center source 观测。
+
+Runtime metadata filtering 与 Small-to-Big Expansion 已依赖 chunk metadata 的稳定语义。新增或调整索引 metadata 时，必须同步核对 `docs/packages/knowledge/indexing-contract-guidelines.md`：`docType`、`status`、`allowedRoles`、`parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle` 都必须保持 JSON-safe，不能把第三方对象、权限 SDK 类型或 vendor response 直接写入 metadata。
 
 ## 2. 边界
 
@@ -23,8 +27,9 @@ load -> transform(optional) -> filter(optional) -> chunk -> metadata build(optio
 
 - 定义知识索引流水线阶段
 - 提供统一入口 `runKnowledgeIndexing`
-- 提供默认 loader / chunker / mock embedder / in-memory writer
-- 组织 loader、transformer、chunker、embedder、writer 的调用关系
+- 提供默认 chunker
+- 组织 loader、chunker、vector writer、fulltext writer 的调用关系
+- 组织可选 source writer，确保 user upload、catalog sync、web curated 等生产来源不仅有 chunk，也有稳定 `KnowledgeSource`
 - 统一批次、上下文、warning 汇总与结果统计
 
 ### 2.2 indexing 不负责什么
@@ -70,7 +75,6 @@ load -> transform(optional) -> filter(optional) -> chunk -> metadata build(optio
 packages/knowledge/src/indexing/
   chunkers/
   defaults/
-  embedders/
   loaders/
   pipeline/
   transformers/
@@ -87,10 +91,8 @@ packages/knowledge/src/indexing/
   - 做清洗、规范化、裁剪、结构转换
 - `chunkers/`
   - 把文档切分成 `KnowledgeChunk[]`
-- `embedders/`
-  - 定义 embedding 抽象，允许 mock 或 adapter 注入
 - `writers/`
-  - 将 source / chunk / vector 写入下游索引宿主
+  - 可放 indexing 本地 writer 适配；当前稳定 writer 契约在 `types/` 中声明，并由调用方注入实现
 - `pipeline/`
   - 放 `runKnowledgeIndexing` 这类编排入口
 - `defaults/`
@@ -103,7 +105,7 @@ packages/knowledge/src/indexing/
 后续 AI 扩展时默认遵守：
 
 1. 新增真实文件系统 loader、飞书 loader、网页 loader 时，优先新增实现到 `packages/adapters`，这里只保留协议和 orchestration 接口。
-2. 新增真实 embedding provider 时，优先新增 adapter，再由调用方把实现注入 `runKnowledgeIndexing`。
+2. 新增真实 embedding provider 时，优先新增 `@agent/memory` vector boundary 或 adapter 内部实现，不要让 embedding provider 类型穿透到 `runKnowledgeIndexing`。
 3. 新增 metadata builder、filter、retry、incremental strategy 时，优先新增独立实现点，不要持续堆叠 `if/else`。
 4. 如果 indexing 子域文件继续增长，优先补 `shared/` 或 `policies/`，不要把复杂逻辑堆回 `pipeline/run-knowledge-indexing.ts`。
 5. 如果未来出现稳定对外 DTO，再补 `schemas/`，并保持 schema-first。
@@ -116,11 +118,18 @@ packages/knowledge/src/indexing/
 - [packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts](/packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts)
 - 所有规范文档统一放在 `docs/packages/knowledge/*`，不要在 `packages/knowledge/*` 下继续新增 handoff README 或重复说明
 
-当前默认实现：
+当前默认实现只有 `FixedWindowChunker`。loader、vector writer、fulltext writer 都必须由调用方显式注入。
 
-- `StaticKnowledgeDocumentLoader`
-- `FixedWindowKnowledgeChunker`
-- `MockKnowledgeEmbedder`
-- `InMemoryKnowledgeIndexWriter`
+当前提供的 loader：
 
-这些实现只用于最小闭环、测试和后续接口演进，不应被误认为生产级基础设施。
+- `createKnowledgeSourceIngestionLoader(payloads)`：把调用方传入的生产来源产物规范化为 indexing `Document[]`。payload 必须显式包含 `sourceId`、`sourceType`、`uri`、`title`、`trustClass`、`content`；可选 `documentId`、`version`、JSON-safe `metadata`。它适合 user upload、catalog sync、web curated、connector content 这类“调用方已经拿到内容”的接线场景。
+
+Writer fanout 的当前边界：
+
+- `vectorIndex: KnowledgeVectorIndexWriter` 是必填项；每个 indexed chunk 都会写入 `upsertKnowledge(record)`。
+- `sourceIndex?: KnowledgeSourceIndexWriter` 是可选项；提供后每个 indexed source 都会写入 `upsertKnowledgeSource(source)`，skipped document 不会写入 source。
+- `fulltextIndex?: KnowledgeFulltextIndexWriter` 是可选项；提供后每个 indexed chunk 都会写入 `upsertKnowledgeChunk(chunk)`。
+- `KnowledgeIndexingResult.sourceCount` 统计成功进入 source writer fanout 的去重 source 数；未提供 source writer 时仍会基于 indexed documents 计算该值。
+- `KnowledgeIndexingResult.embeddedChunkCount` 统计交给 vector boundary 的 chunk 数。
+- `KnowledgeIndexingResult.fulltextChunkCount` 统计成功交给 fulltext writer 的 chunk 数；未提供 fulltext writer 时为 `0`。
+- fulltext chunk 使用 `sourceId`、`documentId`、`title`、`uri` 等已构建 metadata，且保持 JSON-safe metadata，不允许写入 provider SDK 对象。

@@ -3,10 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { EMPTY, Observable, Subject, from, merge, of } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
 
-import type { CompanyLiveNodeTrace } from '@agent/core';
-
 import { WorkflowRunRepository } from './repositories/workflow-run.repository';
 import { WorkflowDispatcher } from './workflow-dispatcher';
+import type { WorkflowNodeTrace } from './workflow-runs.types';
 
 export interface NodeCompleteEvent {
   type: 'node-complete';
@@ -65,7 +64,7 @@ export class WorkflowRunService {
       mergeMap(run => {
         if (!run) return EMPTY;
         const traceEvents: WorkflowStreamEvent[] = (run.traceData ?? []).map(
-          (t: CompanyLiveNodeTrace) =>
+          (t: WorkflowNodeTrace) =>
             ({
               type: 'node-complete',
               nodeId: t.nodeId,
@@ -112,7 +111,7 @@ export class WorkflowRunService {
   ): Promise<void> {
     const startedAt = Date.now();
     try {
-      const result = await this.dispatcher.dispatch(workflowId, input, (trace: CompanyLiveNodeTrace) => {
+      const result = await this.dispatcher.dispatch(workflowId, input, (trace: WorkflowNodeTrace) => {
         subject.next({
           type: 'node-complete',
           nodeId: trace.nodeId,

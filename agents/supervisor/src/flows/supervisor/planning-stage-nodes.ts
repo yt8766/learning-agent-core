@@ -26,6 +26,8 @@ import {
   buildPlanningFinalAnswer,
   collectCounselorIds,
   finalizePlanInterrupt,
+  isPendingPlanInterruptReplay,
+  resolveNextPlanTurnCount,
   shouldExecuteAfterPlanning
 } from './planning-stage-interrupt-helpers';
 import { derivePlannerStrategyRecord } from './contracts/supervisor-plan-contract';
@@ -128,7 +130,9 @@ export async function runManagerPlanStage<TTask extends SupervisorPlanningTaskLi
     if (shouldAskQuestions) {
       const maxPlanTurns = planDraft.maxPlanTurns ?? 3;
       const planTurnsUsed = planDraft.planTurnsUsed ?? 0;
-      if (planTurnsUsed >= maxPlanTurns) {
+      const interruptId = task.activeInterrupt?.id ?? `interrupt_${task.id}_plan_question`;
+      const isPendingReplay = isPendingPlanInterruptReplay(task, interruptId);
+      if (!isPendingReplay && planTurnsUsed >= maxPlanTurns) {
         applyDefaultPlanAssumptions(task, planDraft, now, 'fallback-assumption');
       } else {
         const partialAggregation = buildPartialAggregationPreview(task, planDraft);
@@ -139,49 +143,52 @@ export async function runManagerPlanStage<TTask extends SupervisorPlanningTaskLi
         task.currentStep = 'waiting_plan_input';
         task.planDraft = {
           ...planDraft,
-          planTurnsUsed: planTurnsUsed + 1
+          planTurnsUsed: resolveNextPlanTurnCount(planTurnsUsed, isPendingReplay)
         };
         if (task.queueState) {
           task.queueState.status = 'waiting_approval';
           task.queueState.startedAt ??= now;
           task.queueState.lastTransitionAt = now;
         }
-        const interruptId = task.activeInterrupt?.id ?? `interrupt_${task.id}_plan_question`;
-        const proxyInterrupt = buildCounselorProxyInterrupt(task, planDraft, interruptId, now);
+        const proxyInterrupt = isPendingReplay
+          ? task.activeInterrupt!
+          : buildCounselorProxyInterrupt(task, planDraft, interruptId, now);
         task.activeInterrupt = proxyInterrupt;
-        task.interruptHistory = [...(task.interruptHistory ?? []), proxyInterrupt];
-        markExecutionStepBlocked(
-          task,
-          'task-planning',
-          proxyInterrupt.reason ?? '计划模式需要用户补充关键问题。',
-          '群辅票拟已暂停，等待计划问题回复。',
-          'libu'
-        );
-        task.approvals.push({
-          taskId: task.id,
-          intent: 'plan_question',
-          actor: 'runtime-planning',
-          reason: proxyInterrupt.reason,
-          decision: 'pending',
-          decidedAt: now
-        });
-        callbacks.addTrace(task, 'partial_aggregation_preview', partialAggregation.summary, {
-          allowedOutputKinds: task.executionPlan?.partialAggregationPolicy?.allowedOutputKinds,
-          interactionKind: 'plan-question',
-          sourceCounselorIds: partialAggregation.sourceCounselorIds
-        });
-        callbacks.addTrace(task, 'approval_gate', proxyInterrupt.reason ?? '计划模式需要用户回答关键问题。', {
-          interruptId,
-          interactionKind: 'plan-question',
-          planMode: task.planMode,
-          questionSet: planDraft.questionSet,
-          questionCount: questions.length,
-          microBudget: planDraft.microBudget
-        });
-        callbacks.addProgressDelta(
-          task,
-          `${partialAggregation.summary} 存在关键未知项，已发起计划问题，等待你补充方向后继续。`
-        );
+        if (!isPendingReplay) {
+          task.interruptHistory = [...(task.interruptHistory ?? []), proxyInterrupt];
+          markExecutionStepBlocked(
+            task,
+            'task-planning',
+            proxyInterrupt.reason ?? '计划模式需要用户补充关键问题。',
+            '群辅票拟已暂停，等待计划问题回复。',
+            'libu'
+          );
+          task.approvals.push({
+            taskId: task.id,
+            intent: 'plan_question',
+            actor: 'runtime-planning',
+            reason: proxyInterrupt.reason,
+            decision: 'pending',
+            decidedAt: now
+          });
+          callbacks.addTrace(task, 'partial_aggregation_preview', partialAggregation.summary, {
+            allowedOutputKinds: task.executionPlan?.partialAggregationPolicy?.allowedOutputKinds,
+            interactionKind: 'plan-question',
+            sourceCounselorIds: partialAggregation.sourceCounselorIds
+          });
+          callbacks.addTrace(task, 'approval_gate', proxyInterrupt.reason ?? '计划模式需要用户回答关键问题。', {
+            interruptId,
+            interactionKind: 'plan-question',
+            planMode: task.planMode,
+            questionSet: planDraft.questionSet,
+            questionCount: questions.length,
+            microBudget: planDraft.microBudget
+          });
+          callbacks.addProgressDelta(
+            task,
+            `${partialAggregation.summary} 存在关键未知项，已发起计划问题，等待你补充方向后继续。`
+          );
+        }
         await callbacks.persistAndEmitTask(task);
 
         const resume = interrupt({

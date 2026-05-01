@@ -6,6 +6,7 @@ import type {
   TaskBootstrapGraphState
 } from '../../../graphs/main/execution/pipeline/task-bootstrap-interrupt-graph';
 import { markExecutionStepBlocked, markExecutionStepResumed } from '../../../bridges/supervisor-runtime-bridge';
+import { recordPendingApprovalOnce, recordPendingInterruptOnce } from '../interrupt-idempotency';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../risk-interrupts';
 import type { ApprovalResumeInput } from '@agent/runtime';
 
@@ -51,7 +52,9 @@ export async function runPreExecutionSkillGateNode(
     return { ...state, blocked: false };
   }
 
-  const now = new Date().toISOString();
+  const interruptId = `interrupt_${task.id}_pre_execution_skill_install`;
+  const isPendingReplay = task.activeInterrupt?.id === interruptId && task.activeInterrupt.status === 'pending';
+  const now = task.activeInterrupt?.createdAt ?? new Date().toISOString();
   task.status = TaskStatus.WAITING_APPROVAL;
   task.currentNode = 'approval_gate';
   task.currentStep = 'waiting_skill_install_approval';
@@ -68,65 +71,73 @@ export async function runPreExecutionSkillGateNode(
     },
     { requestedBy: 'libu-governance', approvalScope: 'once' }
   );
-  task.activeInterrupt = extendInterruptWithRiskMetadata(
-    {
-      id: `interrupt_${task.id}_pre_execution_skill_install`,
-      status: 'pending',
-      mode: 'blocking',
-      source: 'graph',
-      origin: 'runtime',
-      kind: 'skill-install',
-      intent: ActionIntent.INSTALL_SKILL,
+  task.activeInterrupt = isPendingReplay
+    ? task.activeInterrupt
+    : extendInterruptWithRiskMetadata(
+        {
+          id: interruptId,
+          status: 'pending',
+          mode: 'blocking',
+          source: 'graph',
+          origin: 'runtime',
+          kind: 'skill-install',
+          intent: ActionIntent.INSTALL_SKILL,
+          toolName: intervention.pendingApproval.toolName,
+          family: 'runtime-governance',
+          capabilityType: 'governance-tool',
+          requestedBy: 'libu-governance',
+          ownerType: 'ministry-owned',
+          ownerId: 'libu-governance',
+          reason: intervention.pendingApproval.reason,
+          blockedReason: intervention.pendingApproval.reason,
+          riskLevel: 'medium',
+          resumeStrategy: 'command',
+          preview: intervention.pendingApproval.preview,
+          payload: {
+            stage: 'pre_execution',
+            receiptId: intervention.pendingExecution.receiptId,
+            skillDisplayName: intervention.pendingExecution.skillDisplayName
+          },
+          createdAt: now
+        },
+        { approvalScope: 'once' }
+      );
+  const activeInterrupt = task.activeInterrupt;
+  if (!activeInterrupt) {
+    throw new Error('Pre-execution skill install interrupt was not initialized.');
+  }
+  const isFirstPendingInterrupt = recordPendingInterruptOnce(task, activeInterrupt);
+  if (isFirstPendingInterrupt) {
+    callbacks.attachTool(task, {
       toolName: intervention.pendingApproval.toolName,
-      family: 'runtime-governance',
-      capabilityType: 'governance-tool',
-      requestedBy: 'libu-governance',
+      attachedBy: 'runtime',
+      preferred: true,
+      reason: intervention.pendingApproval.reason,
       ownerType: 'ministry-owned',
       ownerId: 'libu-governance',
+      family: 'runtime-governance'
+    });
+    callbacks.recordToolUsage(task, {
+      toolName: intervention.pendingApproval.toolName,
+      status: 'blocked',
+      requestedBy: 'libu-governance',
       reason: intervention.pendingApproval.reason,
       blockedReason: intervention.pendingApproval.reason,
-      riskLevel: 'medium',
-      resumeStrategy: 'command',
-      preview: intervention.pendingApproval.preview,
-      payload: {
-        stage: 'pre_execution',
-        receiptId: intervention.pendingExecution.receiptId,
-        skillDisplayName: intervention.pendingExecution.skillDisplayName
-      },
-      createdAt: now
-    },
-    { approvalScope: 'once' }
-  );
-  task.interruptHistory = [...(task.interruptHistory ?? []), task.activeInterrupt];
-  callbacks.attachTool(task, {
-    toolName: intervention.pendingApproval.toolName,
-    attachedBy: 'runtime',
-    preferred: true,
-    reason: intervention.pendingApproval.reason,
-    ownerType: 'ministry-owned',
-    ownerId: 'libu-governance',
-    family: 'runtime-governance'
-  });
-  callbacks.recordToolUsage(task, {
-    toolName: intervention.pendingApproval.toolName,
-    status: 'blocked',
-    requestedBy: 'libu-governance',
-    reason: intervention.pendingApproval.reason,
-    blockedReason: intervention.pendingApproval.reason,
-    approvalRequired: true,
-    route: 'governance',
-    family: 'runtime-governance',
-    capabilityType: 'governance-tool',
-    riskLevel: 'medium'
-  });
-  task.approvals.push({
-    taskId: task.id,
-    intent: ActionIntent.INSTALL_SKILL,
-    reason: intervention.pendingApproval.reason,
-    actor: 'runtime-auto-pre-execution',
-    decision: 'pending',
-    decidedAt: now
-  });
+      approvalRequired: true,
+      route: 'governance',
+      family: 'runtime-governance',
+      capabilityType: 'governance-tool',
+      riskLevel: 'medium'
+    });
+    recordPendingApprovalOnce(task, {
+      taskId: task.id,
+      intent: ActionIntent.INSTALL_SKILL,
+      reason: intervention.pendingApproval.reason,
+      actor: 'runtime-auto-pre-execution',
+      decision: 'pending',
+      decidedAt: now
+    });
+  }
   callbacks.registerPendingExecution(task.id, {
     taskId: task.id,
     intent: ActionIntent.INSTALL_SKILL,
@@ -139,27 +150,34 @@ export async function runPreExecutionSkillGateNode(
     currentSkillExecution: task.currentSkillExecution,
     skillDisplayName: intervention.pendingExecution.skillDisplayName
   });
-  callbacks.addTrace(task, 'approval_gate', intervention.pendingApproval.reason ?? '检测到远程 skill 安装需要审批。', {
-    stage: 'pre_execution',
-    receiptId: intervention.pendingExecution.receiptId,
-    skillDisplayName: intervention.pendingExecution.skillDisplayName,
-    intent: ActionIntent.INSTALL_SKILL
-  });
-  callbacks.addProgressDelta(
-    task,
-    `当前轮需要先确认安装 ${intervention.pendingExecution.skillDisplayName ?? '远程 skill'}。`
-  );
-  markExecutionStepBlocked(
-    task,
-    'approval-interrupt',
-    intervention.pendingApproval.reason,
-    '预执行阶段已暂停等待审批。',
-    'system'
-  );
+  if (isFirstPendingInterrupt) {
+    callbacks.addTrace(
+      task,
+      'approval_gate',
+      intervention.pendingApproval.reason ?? '检测到远程 skill 安装需要审批。',
+      {
+        stage: 'pre_execution',
+        receiptId: intervention.pendingExecution.receiptId,
+        skillDisplayName: intervention.pendingExecution.skillDisplayName,
+        intent: ActionIntent.INSTALL_SKILL
+      }
+    );
+    callbacks.addProgressDelta(
+      task,
+      `当前轮需要先确认安装 ${intervention.pendingExecution.skillDisplayName ?? '远程 skill'}。`
+    );
+    markExecutionStepBlocked(
+      task,
+      'approval-interrupt',
+      intervention.pendingApproval.reason,
+      '预执行阶段已暂停等待审批。',
+      'system'
+    );
+  }
   await callbacks.persistAndEmitTask(task);
 
   const resume = interrupt({
-    interruptId: task.activeInterrupt.id,
+    interruptId: activeInterrupt.id,
     kind: 'skill-install',
     mode: 'blocking',
     toolName: intervention.pendingApproval.toolName,

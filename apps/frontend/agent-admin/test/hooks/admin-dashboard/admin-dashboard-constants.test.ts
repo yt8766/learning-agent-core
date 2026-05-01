@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildDashboardHash,
+  buildDashboardRoute,
   buildDashboardShareUrl,
   PAGE_TITLES,
-  readDashboardStateFromHash,
+  readDashboardStateFromRoute,
   shouldPollTask,
   toApprovalItems
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 
-// Legacy hash aliases are normalized into canonical executionPlan.mode values in these tests.
+// Legacy route aliases are normalized into canonical executionPlan.mode values in these tests.
 // activeInterrupt samples below are persisted 司礼监 / InterruptController projections.
 describe('admin-dashboard-constants', () => {
-  it('reads dashboard filters from hash', () => {
+  it('reads dashboard filters from path routes', () => {
     expect(
-      readDashboardStateFromHash({
-        hash: '#/approvals?runtimeExecutionMode=planning-readonly&runtimeInteractionKind=plan-question&approvalsExecutionMode=standard&approvalsInteractionKind=approval'
+      readDashboardStateFromRoute({
+        pathname: '/approvals',
+        search:
+          '?runtimeExecutionMode=planning-readonly&runtimeInteractionKind=plan-question&approvalsExecutionMode=standard&approvalsInteractionKind=approval',
+        hash: ''
       } as Location)
     ).toEqual({
       page: 'approvals',
@@ -34,9 +37,9 @@ describe('admin-dashboard-constants', () => {
     });
   });
 
-  it('builds compact dashboard hashes and share urls', () => {
+  it('builds compact dashboard routes and share urls', () => {
     expect(
-      buildDashboardHash({
+      buildDashboardRoute({
         page: 'runtime',
         runtimeTaskId: 'task-42',
         runtimeFocusKind: 'span',
@@ -52,7 +55,7 @@ describe('admin-dashboard-constants', () => {
         approvalsInteractionKindFilter: 'all'
       })
     ).toBe(
-      '#/runtime?runtimeTaskId=task-42&runtimeFocusKind=span&runtimeFocusId=span-9&runtimeCompareTaskId=task-7&runtimeGraphNodeId=worker-xingbu-review&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=plan-question'
+      '/runtime?runtimeTaskId=task-42&runtimeFocusKind=span&runtimeFocusId=span-9&runtimeCompareTaskId=task-7&runtimeGraphNodeId=worker-xingbu-review&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan&runtimeInteractionKind=plan-question'
     );
 
     expect(
@@ -77,19 +80,27 @@ describe('admin-dashboard-constants', () => {
           pathname: '/dashboard.html'
         }
       )
-    ).toBe(
-      'http://localhost:5174/dashboard.html#/approvals?approvalsExecutionMode=plan&approvalsInteractionKind=plan-question'
+    ).toBe('http://localhost:5174/approvals?approvalsExecutionMode=plan&approvalsInteractionKind=plan-question');
+  });
+
+  it('accepts memory and profile center pages from path parsing', () => {
+    expect(readDashboardStateFromRoute({ pathname: '/memory', search: '', hash: '' } as Location).page).toBe('memory');
+    expect(readDashboardStateFromRoute({ pathname: '/profiles', search: '', hash: '' } as Location).page).toBe(
+      'profiles'
     );
   });
 
-  it('accepts memory and profile center pages from hash parsing', () => {
-    expect(readDashboardStateFromHash({ hash: '#/memory' } as Location).page).toBe('memory');
-    expect(readDashboardStateFromHash({ hash: '#/profiles' } as Location).page).toBe('profiles');
+  it('accepts the workspace center page from path parsing', () => {
+    expect(readDashboardStateFromRoute({ pathname: '/workspace', search: '', hash: '' } as Location).page).toBe(
+      'workspace'
+    );
+    expect(PAGE_TITLES.workspace).toBe('Agent Workspace');
   });
 
-  it('accepts the workspace center page from hash parsing', () => {
-    expect(readDashboardStateFromHash({ hash: '#/workspace' } as Location).page).toBe('workspace');
-    expect(PAGE_TITLES.workspace).toBe('Agent Workspace');
+  it('normalizes legacy dashboard hashes into path routes for compatibility', () => {
+    expect(readDashboardStateFromRoute({ pathname: '/', search: '', hash: '#/learning' } as Location).page).toBe(
+      'learning'
+    );
   });
 
   it('toApprovalItems 会透传 pendingApproval 的原因码、工具和预览信息', () => {

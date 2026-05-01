@@ -5,6 +5,7 @@ import { DashboardEmptyState } from '@/components/dashboard-center-shell';
 import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
 
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
+import { RuntimeKnowledgeSummaryCard } from './runtime-knowledge-summary-card';
 import { getChainNodeLabel } from './runtime-summary-visuals-helpers';
 
 // runtime.interruptLedger carries persisted 司礼监 / InterruptController projections for admin observability.
@@ -333,38 +334,7 @@ export function RuntimeSummaryVisuals({
         </CardContent>
       </Card>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-foreground">Wenyuan & Cangjing</CardTitle>
-          <Badge variant="outline">{runtime.knowledgeOverview?.stores.length ?? 0}</Badge>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {!runtime.knowledgeOverview ? (
-            <DashboardEmptyState message="当前还没有知识库总览。" />
-          ) : (
-            <>
-              <article className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4 text-xs text-muted-foreground">
-                <p>sources {runtime.knowledgeOverview.sourceCount}</p>
-                <p>chunks {runtime.knowledgeOverview.chunkCount}</p>
-                <p>embeddings {runtime.knowledgeOverview.embeddingCount}</p>
-                <p>
-                  searchable {runtime.knowledgeOverview.searchableDocumentCount} / blocked{' '}
-                  {runtime.knowledgeOverview.blockedDocumentCount}
-                </p>
-              </article>
-              {runtime.knowledgeOverview.stores.map(store => (
-                <article key={store.id} className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-4">
-                  <p className="text-sm font-semibold text-foreground">{store.displayName}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{store.summary}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {store.store} / {store.status}
-                  </p>
-                </article>
-              ))}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <RuntimeKnowledgeSummaryCard runtime={runtime} />
     </div>
   );
 }

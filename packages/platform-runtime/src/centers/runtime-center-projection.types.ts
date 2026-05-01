@@ -1,6 +1,6 @@
 import type { ChatSessionRecord } from '@agent/core';
 import type { RuntimeProfile } from '@agent/config';
-import type { ApprovalScopePolicyRecord } from '@agent/runtime';
+import type { ApprovalScopePolicyRecord, RuntimeKnowledgeSearchDiagnosticsSnapshot } from '@agent/runtime';
 import type { summarizeAndPersistUsageAnalytics } from './runtime-metrics-store';
 
 export interface RuntimeCenterTaskLike {
@@ -168,6 +168,34 @@ export interface BuildRuntimeCenterSummaryProjectionInput {
   getMinistryDisplayName: (ministry?: string) => string | undefined;
 }
 
+export interface RuntimeCenterKnowledgeSearchStatus {
+  configuredMode: 'keyword-only' | 'vector-only' | 'hybrid';
+  effectiveMode: 'keyword-only' | 'vector-only' | 'hybrid';
+  vectorProviderId?: string;
+  vectorConfigured: boolean;
+  hybridEnabled: boolean;
+  vectorProviderHealth?: {
+    status: 'healthy' | 'degraded' | 'unknown';
+    checkedAt: string;
+    latencyMs?: number;
+    message?: string;
+    consecutiveFailures?: number;
+  };
+  keywordProviderHealth?: {
+    status: 'healthy' | 'degraded' | 'unknown';
+    checkedAt: string;
+    latencyMs?: number;
+    message?: string;
+    consecutiveFailures?: number;
+  };
+  diagnostics: Array<{
+    code: string;
+    severity: 'info' | 'warning';
+    message: string;
+  }>;
+  checkedAt: string;
+}
+
 export interface BuildRuntimeCenterProjectionInput extends BuildRuntimeCenterSummaryProjectionInput {
   profile: RuntimeProfile;
   policy: {
@@ -231,5 +259,7 @@ export interface BuildRuntimeCenterProjectionInput extends BuildRuntimeCenterSum
       updatedAt: string;
     }>;
   };
+  knowledgeSearchStatus?: RuntimeCenterKnowledgeSearchStatus;
+  knowledgeSearchLastDiagnostics?: RuntimeKnowledgeSearchDiagnosticsSnapshot;
   dailyTechBriefing?: unknown;
 }

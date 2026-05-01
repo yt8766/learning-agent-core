@@ -24,6 +24,7 @@
 - fallback / plan normalization 现在会对 candidate richness 与 capability gap 做出不同规划反应，而不是始终输出同一份三段式默认票拟
 - planner strategy 已被显式固化为 contract：首辅会把当前规划态记录为 `default`、`capability-gap` 或 `rich-candidates`，供 runtime checkpoint、runtime center 和 admin 详情面板直接消费
 - planning stage 生成的 dispatch 指令会把官方 specialist / counselor 线索和 `requiredCapabilities` 一起压进 `dispatches` 记录，供 runtime checkpoint、runtime center projection 与 recover 直接复用
+- planning stage 的 LangGraph `plan-question` 中断会在恢复重放时复用已有 pending interrupt；不得重复消耗 `planTurnsUsed`，也不得重复追加 `interruptHistory`、`approvals`、trace 或 progress
 - 根入口导出的 bootstrap registry、workflow route/preset 与 main-route graph 已有专门 root export 测试锁定
 
 优先阅读：

@@ -1,5 +1,10 @@
 # Workflow Lab 设计文档
 
+状态：current
+文档类型：note
+适用范围：`apps/frontend/agent-admin`、`apps/backend/agent-server`、本地 PostgreSQL
+最后核对：2026-04-30
+
 **日期**：2026-04-29  
 **状态**：已批准，待实现  
 **范围**：agent-admin 新增"工作流实验室"页面，支持触发工作流运行、实时 SSE 节点轨迹、查看历史记录
@@ -259,10 +264,9 @@ function useWorkflowStream(runId: string | null) {
 
 ### 6.1 本地开发：Docker PostgreSQL
 
-在仓库根目录新建 `docker-compose.dev.yml`：
+在仓库根目录新建 `docker-compose.yml`：
 
 ```yaml
-version: '3.9'
 services:
   postgres:
     image: postgres:16-alpine
@@ -273,13 +277,10 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+      - ./db/postgres:/var/lib/postgresql/data
 ```
 
-启动命令：`docker compose -f docker-compose.dev.yml up -d`
+启动命令：`docker compose up -d postgres`
 
 ### 6.2 环境变量（`.env`）
 

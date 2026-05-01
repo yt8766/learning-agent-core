@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-import type { CompanyLiveNodeTrace } from '@agent/core';
+import type { WorkflowNodeTrace } from '../workflow-runs.types';
 
 export type WorkflowRunStatus = 'pending' | 'running' | 'completed' | 'failed';
 
@@ -25,5 +25,5 @@ export class WorkflowRun {
   inputData: Record<string, unknown> | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  traceData: CompanyLiveNodeTrace[] | null;
+  traceData: WorkflowNodeTrace[] | null;
 }

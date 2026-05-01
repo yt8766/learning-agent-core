@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/backend/agent-server`
-最后核对：2026-04-29
+最后核对：2026-05-01
 
 本主题主文档：
 
@@ -27,6 +27,7 @@
 - `/api/chat` 直连大模型 SSE 推流
 - `/api/agent-tools/*` 工具执行 facade、能力目录、审批恢复与健康检查最小闭环
 - runtime / approvals / learning / evidence / connectors 治理接口
+- `/api/health` 轻量健康检查，包含 backend host 的 `knowledgeSearchStatus` 装配态与可选 vector provider health
 - 任务创建、审批、恢复、学习确认
 - 可选的内建 background runner
 
@@ -47,26 +48,33 @@
 - `runtime center`、`company agents center`、`skill sources center`
   - 核心 projection 已迁到 `packages/runtime`
   - `agent-server/src/runtime/centers/*` 默认只保留 backend query/context 注入与薄 wrapper
+  - Runtime Center 当前会透出 `RuntimeHost.getKnowledgeSearchStatus()`，用于展示知识检索 configured/effective mode、vector 配置、装配 diagnostics 与可选 vector provider health；health 结果有短 TTL cache、超时保护和 `consecutiveFailures` 计数，避免健康页高频直连 provider。它不是单次 query diagnostics。单次 query 的最近诊断快照由 runtime bridge 的 `RuntimeKnowledgeSearchService.getLastDiagnostics()` 保留，并以 `knowledgeSearchLastDiagnostics` 作为可选 projection 字段供后续 drilldown 或调试台读取
 - `learning center`
   - `full / summary` projection 已迁到 `packages/runtime`
+  - 原 backend-local learning pure helpers 已去重删除；queue priority、counselor experiment 与 capability trust profile 纯计算只保留在 `packages/platform-runtime/src/centers/runtime-learning-center.helpers.ts`
   - `evidence center` 暂时仍留在 backend，因为它还绑定 checkpoint ref / browser replay 这类 BFF 适配细节
 
 当前 backend 瘦身边界补充：
 
 - `agent-server` 的长期定位是 API Host + BFF + Composition Root。
 - `agent-server` 可以装配 runtime、暴露 HTTP/SSE、适配 Nest 错误语义和聚合 admin BFF response，但不作为稳定领域规则、agent 主链或业务子系统的真实宿主。
-- Daily Tech Intelligence Briefing 当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings`；本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing`。
-- 迁移完成后，backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计和错误映射。
-- 迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改或迁入 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
+- `packages/platform-runtime` 当前提供可注入的 workflow registry / execution contract，不直接依赖任何 `@agent/agents-*`；backend `runtime/core` 负责把官方 workflow executor 注入这层 contract，再对外暴露 HTTP/BFF。
+- `RuntimeWorkflowExecutionFacade` 当前是 backend workflow composition facade，负责注册 `company-live` 与 `data-report-json` 两个现有 workflow executor；`RuntimeCompanyLiveFacade` 只保留为 company-live graph 的单一调用点。
+- `RuntimeCompanyLiveFacade` 与 `RuntimeWorkflowExecutionFacade` 都是过渡 composition facade，不应承载业务规则、prompt、schema 或 node 编排；后续退出条件是官方 workflow registry 继续收敛为可复用的 platform runtime 装配能力。
+- `company-live.service.ts` 与 `workflow-runs/workflow-dispatcher.ts` 不应直接 import 或执行 `@agent/agents-company-live` graph；新增 workflow 能力默认先进入对应 `agents/*` 宿主或官方 workflow facade，再由 backend 暴露 HTTP/BFF 入口。
+- Daily Tech Intelligence Briefing 当前真实宿主是 `agents/intel-engine/src/runtime/briefing`；历史 backend 落点 `apps/backend/agent-server/src/runtime/briefings` 已删除。
+- backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计、错误映射和 `RuntimeIntelBriefingFacade` 这类 BFF adapter。
+- 新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改 `agents/intel-engine`，不要在 `apps/backend/agent-server` 恢复 briefing 主逻辑或 compat 双轨。
 
 当前工具执行 facade：
 
 - `apps/backend/agent-server/src/agent-tools`
   - 作为 HTTP/BFF facade 暴露 `/api/agent-tools/*`
+  - agent tool 的低风险/中高风险审批判定与 sandbox profile 选择这类纯治理规则已迁到 `@agent/tools`；backend facade 只负责调用这些规则并衔接 sandbox、auto-review、repository、事件投影
   - 当前使用 in-memory repository，适合作为前后端 contract 联调与测试入口；repository 已提供 contract snapshot export/restore 边界，便于后续替换为真实持久化
   - request 创建时已调用 `SandboxService.preflight`，并把 `sandboxRunId`、`sandboxDecision`、`sandboxProfile` 写入 execution request metadata；sandbox `require_approval` 会复用 agent-tools 审批入口
-  - sandbox 允许且低风险可执行路径会调用 `AutoReviewService.createReview(kind = "tool_execution")`；`block` verdict 会进入 `pending_approval`，审批恢复时同步恢复关联 review
-  - 事件投影会把 sandbox / auto-review 白名单治理字段写入 `tool_called`、`execution_step_started`、`execution_step_completed` 与 `execution_step_blocked`，但不会展开 raw input
+  - sandbox 允许且低风险可执行路径会调用 `AutoReviewService.createReview(kind = "tool_execution")`；`block` verdict 会进入 `pending_approval`，写入规范关联字段 `reviewId`，并保留 `autoReviewId` 作为兼容字段；审批恢复时优先 `reviewId`，缺失时 fallback 到 `autoReviewId`
+  - 事件投影会把 sandbox / auto-review 白名单治理字段写入 `tool_called`、`execution_step_*`、`interrupt_*`、`/api/agent-tools/events` 与 `/api/agent-tools/projection.events`，但不会展开 `input`、`rawInput`、`rawOutput`、完整 `metadata`、vendor/provider 原始 payload 或第三方 response/error
   - 低风险和审批恢复执行当前通过同步 executor queue helper 写出 `queued -> running -> succeeded` 观测语义；这仍是最小 facade，不是异步真实 worker
   - 能力目录由 `@agent/tools` 默认 registry 投影为 `@agent/core` execution contracts
   - 真实落盘、异步 worker、真实 sandbox/reviewer runner 和 SSE 广播后续应继续接入 runtime / observability 宿主，不要把长期执行主链堆在 controller/service 里

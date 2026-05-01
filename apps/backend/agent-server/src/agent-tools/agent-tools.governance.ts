@@ -1,11 +1,10 @@
 import { BadRequestException, HttpException } from '@nestjs/common';
-import type { ExecutionCapabilityRecord, ExecutionRequestRecord, ExecutionRiskClass } from '@agent/core';
+import type { ExecutionCapabilityRecord, ExecutionRequestRecord } from '@agent/core';
+import { resolveAgentToolSandboxProfile, shouldRequireAgentToolApproval } from '@agent/tools';
 
 import type { AutoReviewService } from '../auto-review/auto-review.service';
 import type { SandboxService } from '../sandbox/sandbox.service';
 import type { AgentToolApprovalRequest } from './agent-tools.schemas';
-
-const APPROVAL_RISK_CLASSES = new Set<ExecutionRiskClass>(['medium', 'high', 'critical']);
 
 export interface AgentToolSandboxGateDecision {
   decision?: string;
@@ -18,13 +17,6 @@ export interface AgentToolAutoReviewGateDecision {
   metadata: Record<string, unknown>;
 }
 
-export function shouldRequireAgentToolApproval(
-  riskClass: ExecutionRiskClass,
-  capabilityRequiresApproval: boolean
-): boolean {
-  return capabilityRequiresApproval || APPROVAL_RISK_CLASSES.has(riskClass);
-}
-
 export function runAgentToolSandboxPreflight(
   sandboxService: SandboxService | undefined,
   request: ExecutionRequestRecord,
@@ -35,7 +27,7 @@ export function runAgentToolSandboxPreflight(
   }
 
   try {
-    const profile = resolveSandboxProfile(request.riskClass, capability.toolName);
+    const profile = resolveAgentToolSandboxProfile(request.riskClass, capability.toolName);
     const response = sandboxService.preflight({
       taskId: request.taskId,
       sessionId: request.sessionId,
@@ -113,6 +105,7 @@ export function runAgentToolAutoReview(
   return {
     requiresApproval: review.verdict === 'block',
     metadata: {
+      reviewId: review.reviewId,
       autoReviewId: review.reviewId,
       autoReviewVerdict: review.verdict
     }
@@ -147,7 +140,12 @@ export function resumeLinkedAgentToolGovernanceApprovals(args: {
     });
   }
 
-  const autoReviewId = typeof request.metadata?.autoReviewId === 'string' ? request.metadata.autoReviewId : undefined;
+  const autoReviewId =
+    typeof request.metadata?.reviewId === 'string'
+      ? request.metadata.reviewId
+      : typeof request.metadata?.autoReviewId === 'string'
+        ? request.metadata.autoReviewId
+        : undefined;
   if (autoReviewId && autoReviewService) {
     autoReviewService.resumeApproval(autoReviewId, {
       sessionId: input.sessionId,
@@ -163,16 +161,6 @@ export function resumeLinkedAgentToolGovernanceApprovals(args: {
       }
     });
   }
-}
-
-function resolveSandboxProfile(riskClass: ExecutionRiskClass, toolName: string): string {
-  if (riskClass === 'high' || riskClass === 'critical') {
-    return 'release-ops';
-  }
-  if (toolName === 'read_local_file') {
-    return 'workspace-readonly';
-  }
-  return 'workspace-write';
 }
 
 function extractCommandPreview(input: unknown): string | undefined {

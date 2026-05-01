@@ -1,6 +1,7 @@
 import type { CompanyLiveContentBrief, CompanyLiveGenerateResult, CompanyLiveNodeTrace } from '@agent/core';
 import type { MediaProviderRegistry } from '@agent/runtime';
 
+import { runCompanyLiveBusinessAgents } from '../flows/company-live/nodes';
 import { assembleBundleNode, generateAudioNode, generateImageNode, generateVideoNode } from '../flows/media/nodes';
 import type { CompanyLiveGraphState } from '../flows/media/nodes';
 
@@ -20,6 +21,15 @@ export async function executeCompanyLiveGraph(
     videoAsset: null,
     bundle: null,
     trace: []
+  };
+
+  state = {
+    ...state,
+    trace: runCompanyLiveBusinessAgents({
+      brief: state.brief,
+      trace: state.trace,
+      onNodeComplete: options?.onNodeComplete
+    })
   };
 
   const audioUpdate = await generateAudioNode(state, registry);

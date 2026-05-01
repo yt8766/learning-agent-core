@@ -3,10 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import type { CompanyLiveNodeTrace } from '@agent/core';
-
 import { WorkflowRun } from '../entities/workflow-run.entity';
 import type { WorkflowRunStatus } from '../entities/workflow-run.entity';
+import type { WorkflowNodeTrace } from '../workflow-runs.types';
 
 export interface CreateRunInput {
   id: string;
@@ -34,7 +33,7 @@ export class WorkflowRunRepository {
     return this.repo.save(run);
   }
 
-  async complete(id: string, traceData: CompanyLiveNodeTrace[]): Promise<void> {
+  async complete(id: string, traceData: WorkflowNodeTrace[]): Promise<void> {
     await this.repo.update(id, {
       status: 'completed',
       completedAt: Date.now(),

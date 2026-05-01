@@ -6,8 +6,6 @@
   "scripts": {
     "dev": "next dev --port 3100",
     "build": "next build",
-    "docker:up": "docker compose up -d llm-gateway-postgres",
-    "docker:down": "docker compose down",
     "test:e2e": "node scripts/run-e2e.mjs --runner=container",
     "test:e2e:local": "node scripts/run-e2e.mjs --runner=host",
     "test:e2e:up": "docker compose -p ${LLM_GATEWAY_E2E_PROJECT:-llm-gateway-e2e} -f docker-compose.e2e.yml up -d llm-gateway-e2e-postgres llm-gateway-e2e-app",

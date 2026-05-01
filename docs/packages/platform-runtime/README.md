@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`packages/platform-runtime`
-最后核对：2026-04-20
+最后核对：2026-04-30
 
 `packages/platform-runtime` 是平台 runtime facade 与 registry contract 包；官方 agent 组合根位于 backend app 层。
 
@@ -35,6 +35,12 @@
   - `StaticAgentRegistry`
   - 支持 `findAgentById`、`findAgentsByCapability`、`findAgentsByDomain`
   - 不直接 import 或依赖任何 `@agent/agents-*`
+- 可注入 workflow registry：
+  - `createPlatformWorkflowRegistry`
+  - `WorkflowRegistry`
+  - `PlatformWorkflowExecutor`
+  - `WorkflowExecutionInput` / `WorkflowExecutionResult` / `WorkflowStageEvent`
+  - 只承接 descriptor、executor contract 和 dispatch 查找，不直接 import 或依赖任何 `@agent/agents-*`
 
 允许：
 
@@ -68,7 +74,9 @@
 - supervisor / runtime 现在还会把上述能力态进一步沉淀为 `plannerStrategy` contract（`default` / `capability-gap` / `rich-candidates`），让 runtime center 与 admin workbench 直接观察当前规划为什么这样收敛。
 - `packages/runtime/src/bridges/*` 仍保留为 runtime 内部兼容壳，但已经只读取 runtime contract，不再直接 re-export 官方 Agent。
 - `@agent/platform-runtime` 包根入口现在只导出平台 facade、registry、adapter、centers 与 media 能力；官方 agent class、prompt、graph 根入口仍留在各自 `@agent/agents-*` 包内，并由 backend app 层组装。
+- `createPlatformWorkflowRegistry()` 只提供可注入 workflow registry contract；官方 workflow executor 仍由 backend `runtime/core` 或后续明确的 app composition root 注入，不能把 `company-live`、`data-report` 等专项 graph 主实现迁入 `packages/platform-runtime`。
 - `platform-runtime` 可以依赖 `@agent/runtime`，但不能直接依赖官方 `@agent/agents-*`；`packages/runtime` 也不能反向依赖 `@agent/platform-runtime`。
+- learning center 的 queue priority、counselor experiment 与 capability trust profile 纯 helper 当前是 `packages/platform-runtime/src/centers/runtime-learning-center.helpers.ts` 的 package-internal 实现；backend 不再保留重复 helper，也不把这些 helper 作为 `@agent/platform-runtime` 根入口稳定 API。
 - `pnpm check:package-boundaries` 现已阻止 `apps/*` 直接从 `@agent/platform-runtime` import `resolveWorkflowPreset`、`runDispatchStage`、`createOfficialRuntimeAgentDependencies`、`listWorkflowPresets`、`listSubgraphDescriptors`、`listWorkflowVersions` 这类主链装配 helper；应用层应通过 facade、RuntimeHost 或专门适配器读取这些能力。
 
 验证入口：

@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
 import type { CompanyLiveGenerateResult } from '@agent/core';
-import { createCompanyLiveStubRegistry, executeCompanyLiveGraph } from '@agent/agents-company-live';
 
+import { RuntimeCompanyLiveFacade } from '../runtime/core/runtime-company-live-facade';
 import type { CompanyLiveGenerateDto } from './company-live.dto';
 
 @Injectable()
 export class CompanyLiveService {
+  constructor(private readonly companyLiveFacade: RuntimeCompanyLiveFacade) {}
+
   async generate(dto: CompanyLiveGenerateDto): Promise<CompanyLiveGenerateResult> {
-    const registry = createCompanyLiveStubRegistry();
-    return executeCompanyLiveGraph(dto, registry);
+    return this.companyLiveFacade.generate(dto);
   }
 }

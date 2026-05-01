@@ -26,6 +26,19 @@ export function finalizePlanInterrupt(
   }
 }
 
+export function isPendingPlanInterruptReplay(task: SupervisorPlanningTaskLike, interruptId: string) {
+  return (
+    task.activeInterrupt?.id === interruptId &&
+    task.activeInterrupt.status === 'pending' &&
+    task.activeInterrupt.kind === 'user-input' &&
+    task.activeInterrupt.interactionKind === 'plan-question'
+  );
+}
+
+export function resolveNextPlanTurnCount(planTurnsUsed: number, isReplay: boolean) {
+  return isReplay ? planTurnsUsed : planTurnsUsed + 1;
+}
+
 export function shouldExecuteAfterPlanning(task: SupervisorPlanningTaskLike) {
   return task.planDraft?.decisions?.some(
     item =>

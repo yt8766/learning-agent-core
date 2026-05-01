@@ -8,6 +8,7 @@ export interface KnowledgeSourceRepository {
 
 export interface KnowledgeChunkRepository {
   list(): Promise<KnowledgeChunk[]>;
+  getByIds(ids: string[]): Promise<KnowledgeChunk[]>;
   listBySourceId(sourceId: string): Promise<KnowledgeChunk[]>;
   upsert(chunk: KnowledgeChunk): Promise<void>;
 }

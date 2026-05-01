@@ -34,9 +34,7 @@
 
 ## 2. 当前实现与迁移目标
 
-当前代码历史落点仍是 `apps/backend/agent-server/src/runtime/briefings/*`。这是待迁出的过渡状态，不代表 backend 是 briefing 领域长期宿主。
-
-本轮计划目标和长期真实宿主是 `agents/intel-engine/src/runtime/briefing/*`：
+当前真实宿主是 `agents/intel-engine/src/runtime/briefing/*`。历史 backend 落点 `apps/backend/agent-server/src/runtime/briefings/*` 已删除，backend 不再保留 briefing compat re-export 双轨。
 
 - `agents/intel-engine/src/runtime/briefing/briefing.service.ts`
   - briefing orchestration facade，负责分类循环、抓取和投递编排。
@@ -54,7 +52,7 @@
   - 承载 MCP supplemental search 的查询词、补充来源白名单与来源 metadata 映射。
   - 新增 MiniMax `web_search` 这类搜索供应商时，应继续映射到项目内稳定搜索能力，不要把供应商返回结构直接穿透到 briefing 主链。
 
-迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。迁移完成后，`apps/backend/agent-server` 只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
+`apps/backend/agent-server` 只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。新增 briefing 主逻辑、采集源、排序、本地化、投递、存储和反馈策略应落在 `agents/intel-engine`。
 
 当前已有分类：
 
@@ -371,8 +369,8 @@ AI 模型类优先级：
 
 第一阶段：本地日报闭环。
 
-- 迁移前代码仍在 backend 历史落点 `apps/backend/agent-server/src/runtime/briefings`。
-- 实施任务会迁入 `agents/intel-engine/src/runtime/briefing`；新增能力不得继续扩展 backend `runtime/briefings`。
+- 当前代码已迁入 `agents/intel-engine/src/runtime/briefing`；backend 历史落点 `apps/backend/agent-server/src/runtime/briefings` 已删除。
+- 新增能力不得恢复或扩展 backend `runtime/briefings`。
 - 补充 axios、Apifox、Claude Code、Cursor、MCP、OpenAI、Anthropic、Google AI、DeepSeek/Qwen 等源。
 - MCP 搜索优先走现有 `webSearchPrime` 能力边界；MiniMax Token Plan `minimax:web_search` 已作为同类搜索供应商接入，业务主链不直接依赖供应商返回结构。
 - 保存 run/history/feedback 到 `data/runtime/briefings`。

@@ -166,6 +166,26 @@ describe('check-package-boundaries script', () => {
     ]);
   });
 
+  it('allows backend runtime core company-live facade while blocking service-level company-live agent imports', async () => {
+    const rootDir = await mkdtemp(path.join(tmpdir(), 'package-boundaries-'));
+    tempDirs.push(rootDir);
+
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/backend/agent-server/src/runtime/core/runtime-company-live-facade.ts',
+      "import { createCompanyLiveStubRegistry, executeCompanyLiveGraph } from '@agent/agents-company-live';"
+    );
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/backend/agent-server/src/company-live/company-live.service.ts',
+      "import { executeCompanyLiveGraph } from '@agent/agents-company-live';"
+    );
+
+    expect(findBoundaryViolations(rootDir)).toEqual([
+      'apps/backend/agent-server/src/company-live/company-live.service.ts imports official agent package "@agent/agents-company-live" from app code; use @agent/platform-runtime instead'
+    ]);
+  });
+
   it('blocks app code from importing platform-runtime assembly helpers directly', async () => {
     const rootDir = await mkdtemp(path.join(tmpdir(), 'package-boundaries-'));
     tempDirs.push(rootDir);
@@ -199,6 +219,26 @@ describe('check-package-boundaries script', () => {
 
     expect(findBoundaryViolations(rootDir)).toEqual([
       'apps/backend/agent-server/src/chat/chat.service.ts imports "@agent/platform-runtime" directly from backend app code; backend should route official platform-runtime access through runtime/core facades'
+    ]);
+  });
+
+  it('allows backend runtime core workflow execution facade to consume platform workflow registry contract', async () => {
+    const rootDir = await mkdtemp(path.join(tmpdir(), 'package-boundaries-'));
+    tempDirs.push(rootDir);
+
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/backend/agent-server/src/runtime/core/runtime-workflow-execution-facade.ts',
+      "import { createPlatformWorkflowRegistry } from '@agent/platform-runtime';"
+    );
+    await writeWorkspaceFile(
+      rootDir,
+      'apps/backend/agent-server/src/workflow-runs/workflow-dispatcher.ts',
+      "import { createPlatformWorkflowRegistry } from '@agent/platform-runtime';"
+    );
+
+    expect(findBoundaryViolations(rootDir)).toEqual([
+      'apps/backend/agent-server/src/workflow-runs/workflow-dispatcher.ts imports "@agent/platform-runtime" directly from backend app code; backend should route official platform-runtime access through runtime/core facades'
     ]);
   });
 

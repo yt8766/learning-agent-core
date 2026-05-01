@@ -2,10 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-状态：snapshot  
+状态：completed  
 文档类型：plan  
 适用范围：`apps/backend/agent-server`、`agents/intel-engine`  
-最后核对：2026-04-29
+最后核对：2026-04-30
 
 **Goal:** 将 `agent-server` 收敛为 API Host + BFF + Composition Root，并把 Daily Tech Intelligence Briefing 直接迁入 `agents/intel-engine`。
 
@@ -56,7 +56,7 @@
 - Modify: `docs/integration/daily-tech-intelligence-briefing-design.md`
 - Create: `docs/agents/intel-engine/daily-tech-briefing.md`
 
-- [ ] **Step 1：更新 backend overview**
+- [x] **Step 1：更新 backend overview**
 
 在 `docs/apps/backend/agent-server/agent-server-overview.md` 的 runtime 边界段落补入以下内容：
 
@@ -70,7 +70,7 @@
 - 迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改或迁入 `agents/intel-engine`，不要继续扩展 `apps/backend/agent-server/src/runtime/briefings`。
 ```
 
-- [ ] **Step 2：更新 runtime module notes**
+- [x] **Step 2：更新 runtime module notes**
 
 在 `docs/apps/backend/agent-server/runtime-module-notes.md` 的 `briefings/` 约束段落替换为：
 
@@ -84,7 +84,7 @@
 - 迁移完成后，`apps/backend/agent-server/src/runtime/briefings` 应删除；不得保留长期 compat 双轨。
 ```
 
-- [ ] **Step 3：更新 integration 设计入口**
+- [x] **Step 3：更新 integration 设计入口**
 
 将 `docs/integration/daily-tech-intelligence-briefing-design.md` 中“当前真实实现”改为过渡态说明：当前代码历史落点仍是 backend `runtime/briefings`，Task 2/3 才创建并迁移到 intel-engine 入口。
 
@@ -107,7 +107,7 @@
 迁移完成前，不要新增 backend briefing 主逻辑；只允许做迁移所需适配。迁移完成后，`apps/backend/agent-server` 只保留 HTTP/BFF、Nest wiring、force-run、feedback、runs 查询、权限审计和错误映射。
 ```
 
-- [ ] **Step 4：新增 intel-engine briefing 文档**
+- [x] **Step 4：新增 intel-engine briefing 文档**
 
 创建 `docs/agents/intel-engine/daily-tech-briefing.md`：
 
@@ -145,7 +145,7 @@ data/runtime/schedules/daily-tech-briefing-<category>.json
 迁移完成后，briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。
 ````
 
-- [ ] **Step 5：运行文档检查**
+- [x] **Step 5：运行文档检查**
 
 Run:
 
@@ -155,7 +155,7 @@ pnpm check:docs
 
 Expected: `docs check passed`。
 
-- [ ] **Step 6：Commit**
+- [x] **Step 6：Commit**
 
 ```bash
 git add docs/apps/backend/agent-server/agent-server-overview.md docs/apps/backend/agent-server/runtime-module-notes.md docs/integration/daily-tech-intelligence-briefing-design.md docs/agents/intel-engine/daily-tech-briefing.md
@@ -172,7 +172,7 @@ git commit -m "docs: lock agent-server briefing ownership"
 - Create: `agents/intel-engine/src/runtime/briefing/index.ts`
 - Modify: `agents/intel-engine/src/index.ts`
 
-- [ ] **Step 1：移动 briefing 源码**
+- [x] **Step 1：移动 briefing 源码**
 
 Run:
 
@@ -186,7 +186,7 @@ rmdir apps/backend/agent-server/src/runtime/briefings
 
 Expected: `apps/backend/agent-server/src/runtime/briefings` 不再存在，`agents/intel-engine/src/runtime/briefing` 包含迁移后的文件。
 
-- [ ] **Step 2：批量修正同目录 import 名称**
+- [x] **Step 2：批量修正同目录 import 名称**
 
 Run:
 
@@ -196,7 +196,7 @@ perl -0pi -e "s#'\\./runtime-tech-briefing#'./briefing#g; s#\"\\./runtime-tech-b
 
 Expected: `rg "runtime-tech-briefing" agents/intel-engine/src/runtime/briefing` 不再命中 import specifier。
 
-- [ ] **Step 3：修正 service 的 core import 与 context contract**
+- [x] **Step 3：修正 service 的 core import 与 context contract**
 
 在 `agents/intel-engine/src/runtime/briefing/briefing.service.ts` 保持 `@agent/core` import，不要反向绑定完整 `@agent/config`：
 
@@ -227,7 +227,7 @@ export interface RuntimeTechBriefingContext {
 
 Expected: `agents/intel-engine` 不新增 `@agent/config` 依赖；backend composition root 负责把真实 settings 适配成该最小 context，避免配置包类型穿透到领域 runtime。
 
-- [ ] **Step 4：创建 briefing barrel**
+- [x] **Step 4：创建 briefing barrel**
 
 创建 `agents/intel-engine/src/runtime/briefing/index.ts`：
 
@@ -256,7 +256,7 @@ export type {
 } from './briefing.types';
 ```
 
-- [ ] **Step 5：导出 public entrypoint**
+- [x] **Step 5：导出 public entrypoint**
 
 在 `agents/intel-engine/src/index.ts` 增加：
 
@@ -264,7 +264,7 @@ export type {
 export * from './runtime/briefing';
 ```
 
-- [ ] **Step 6：运行 intel-engine typecheck**
+- [x] **Step 6：运行 intel-engine typecheck**
 
 Run:
 
@@ -274,7 +274,7 @@ pnpm --dir agents/intel-engine typecheck
 
 Expected: PASS。
 
-- [ ] **Step 7：Commit**
+- [x] **Step 7：Commit**
 
 ```bash
 git add agents/intel-engine/src apps/backend/agent-server/src/runtime/briefings agents/intel-engine/package.json pnpm-lock.yaml
@@ -287,7 +287,7 @@ git commit -m "refactor(intel-engine): move briefing runtime into intel agent"
 
 - Move: `apps/backend/agent-server/test/runtime/briefings/*.test.ts` -> `agents/intel-engine/test/runtime/briefing/*.test.ts`
 
-- [ ] **Step 1：移动测试文件**
+- [x] **Step 1：移动测试文件**
 
 Run:
 
@@ -299,7 +299,7 @@ rmdir apps/backend/agent-server/test/runtime/briefings
 
 Expected: `agents/intel-engine/test/runtime/briefing` 包含所有 briefing 领域测试。
 
-- [ ] **Step 2：修正测试 import**
+- [x] **Step 2：修正测试 import**
 
 Run:
 
@@ -309,7 +309,7 @@ perl -0pi -e "s#../../../src/runtime/briefings/runtime-tech-briefing#../../../sr
 
 Expected: `rg "runtime/briefings|runtime-tech-briefing" agents/intel-engine/test/runtime/briefing` 不再命中。
 
-- [ ] **Step 3：运行迁移后的测试**
+- [x] **Step 3：运行迁移后的测试**
 
 Run:
 
@@ -319,7 +319,7 @@ pnpm --dir agents/intel-engine exec vitest run --config ../../vitest.config.js t
 
 Expected: PASS。
 
-- [ ] **Step 4：Commit**
+- [x] **Step 4：Commit**
 
 ```bash
 git add agents/intel-engine/test apps/backend/agent-server/test/runtime/briefings
@@ -336,7 +336,7 @@ git commit -m "test(intel-engine): move briefing tests to intel agent"
 - Modify: `apps/backend/agent-server/src/runtime/runtime.service.ts`
 - Modify: `apps/backend/agent-server/src/runtime/core/runtime-provider-factory-contexts.ts`
 
-- [ ] **Step 1：新增 backend-only briefing facade**
+- [x] **Step 1：新增 backend-only briefing facade**
 
 创建 `apps/backend/agent-server/src/runtime/core/runtime-intel-briefing-facade.ts`：
 
@@ -372,7 +372,7 @@ export class RuntimeIntelBriefingFacade {
 }
 ```
 
-- [ ] **Step 2：更新 provider factory import**
+- [x] **Step 2：更新 provider factory import**
 
 在 `apps/backend/agent-server/src/runtime/core/runtime-provider-factories.ts` 中把 backend service import：
 
@@ -401,7 +401,7 @@ export function createRuntimeIntelBriefingFacade(runtimeHost: RuntimeHost) {
 
 如果 `RuntimeHost` 现在没有 `translateText` 窄方法，先把 `translateText` 字段省略，保持 existing service 的 fallback 行为；不要在 backend 内新增翻译主逻辑。
 
-- [ ] **Step 3：更新 RuntimeModule provider token**
+- [x] **Step 3：更新 RuntimeModule provider token**
 
 在 `apps/backend/agent-server/src/runtime/runtime.module.ts` 中替换 provider：
 
@@ -415,7 +415,7 @@ export function createRuntimeIntelBriefingFacade(runtimeHost: RuntimeHost) {
 
 同时把依赖 `RuntimeTechBriefingService` 的 factory 参数替换成 `RuntimeIntelBriefingFacade`。
 
-- [ ] **Step 4：更新 context 类型**
+- [x] **Step 4：更新 context 类型**
 
 在 `apps/backend/agent-server/src/runtime/core/runtime-provider-factory-contexts.ts`、`runtime-centers.types.ts`、`runtime-centers-context.ts` 中，将 briefing service 类型统一替换为：
 
@@ -425,7 +425,7 @@ import type { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade
 
 对应 context 字段命名保持 `techBriefingService`，类型改为 `RuntimeIntelBriefingFacade`，避免扩大本轮改名面。
 
-- [ ] **Step 5：运行 backend runtime 相关 typecheck**
+- [x] **Step 5：运行 backend runtime 相关 typecheck**
 
 Run:
 
@@ -435,7 +435,7 @@ pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit --pretty false
 
 Expected: PASS。
 
-- [ ] **Step 6：Commit**
+- [x] **Step 6：Commit**
 
 ```bash
 git add apps/backend/agent-server/src/runtime
@@ -452,7 +452,7 @@ git commit -m "refactor(backend): route briefing through intel facade"
 - Modify: `apps/backend/agent-server/src/runtime/centers/runtime-centers-runtime.query-service.ts`
 - Modify: `apps/backend/agent-server/src/runtime/centers/runtime-runtime-center.ts`
 
-- [ ] **Step 1：替换 schedule imports**
+- [x] **Step 1：替换 schedule imports**
 
 在 `runtime-schedule.service.ts` 中，将：
 
@@ -482,7 +482,7 @@ import type { RuntimeIntelBriefingFacade } from '../core/runtime-intel-briefing-
 
 并把 `techBriefingService: RuntimeTechBriefingService` 改为 `techBriefingService: RuntimeIntelBriefingFacade`。
 
-- [ ] **Step 2：替换 centers query 类型 imports**
+- [x] **Step 2：替换 centers query 类型 imports**
 
 将所有来自 `../briefings/runtime-tech-briefing.types`、`../briefings/runtime-tech-briefing-status`、`../briefings/runtime-tech-briefing-storage` 的 import 改为 `@agent/agents-intel-engine`。
 
@@ -492,7 +492,7 @@ import type { RuntimeIntelBriefingFacade } from '../core/runtime-intel-briefing-
 import { readDailyTechBriefingStatus, type TechBriefingCategory } from '@agent/agents-intel-engine';
 ```
 
-- [ ] **Step 3：运行 targeted rg 检查**
+- [x] **Step 3：运行 targeted rg 检查**
 
 Run:
 
@@ -502,7 +502,7 @@ rg "runtime/briefings|runtime-tech-briefing|../briefings" apps/backend/agent-ser
 
 Expected: no matches。
 
-- [ ] **Step 4：运行 backend runtime 测试**
+- [x] **Step 4：运行 backend runtime 测试**
 
 Run:
 
@@ -512,7 +512,7 @@ pnpm --dir apps/backend/agent-server test:runtime
 
 Expected: PASS。
 
-- [ ] **Step 5：Commit**
+- [x] **Step 5：Commit**
 
 ```bash
 git add apps/backend/agent-server/src/runtime
@@ -527,7 +527,7 @@ git commit -m "refactor(backend): consume briefing from intel engine"
 - Modify: `apps/backend/agent-server/test/platform/platform-console-and-runtime.controller.spec.ts`
 - Modify: `apps/backend/agent-server/test/platform/platform-controller.test-helpers.ts`
 
-- [ ] **Step 1：新增 BFF facade smoke 测试**
+- [x] **Step 1：新增 BFF facade smoke 测试**
 
 创建 `apps/backend/agent-server/test/runtime/briefings/briefing-bff-facade.spec.ts`：
 
@@ -562,7 +562,7 @@ describe('RuntimeIntelBriefingFacade', () => {
 
 If the exact `BriefingSettings` shape requires additional existing fields, add the minimum fields reported by TypeScript and keep `enabled: false` so the test does not fetch external sources.
 
-- [ ] **Step 2：确认 platform controller 测试仍只测 delegation**
+- [x] **Step 2：确认 platform controller 测试仍只测 delegation**
 
 在 `apps/backend/agent-server/test/platform/platform-console-and-runtime.controller.spec.ts` 中保留以下断言语义：
 
@@ -573,7 +573,7 @@ expect(briefingController.getBriefingRuns(7, 'general-security')).toEqual(
 expect(briefingController.forceBriefingRun('backend-tech')).toEqual({ category: 'backend-tech', forced: true });
 ```
 
-- [ ] **Step 3：运行 backend BFF 测试**
+- [x] **Step 3：运行 backend BFF 测试**
 
 Run:
 
@@ -583,7 +583,7 @@ pnpm --dir apps/backend/agent-server exec vitest run --config ../../../vitest.co
 
 Expected: PASS。
 
-- [ ] **Step 4：Commit**
+- [x] **Step 4：Commit**
 
 ```bash
 git add apps/backend/agent-server/test
@@ -599,7 +599,7 @@ git commit -m "test(backend): keep briefing bff smoke coverage"
 - Modify: `docs/integration/daily-tech-intelligence-briefing-design.md`
 - Modify: `docs/agents/intel-engine/daily-tech-briefing.md`
 
-- [ ] **Step 1：检查 backend briefing 残留**
+- [x] **Step 1：检查 backend briefing 残留**
 
 Run:
 
@@ -609,7 +609,7 @@ rg "runtime/briefings|runtime-tech-briefing|RuntimeTechBriefingService" apps/bac
 
 Expected: backend 源码不再命中旧路径；docs 只允许在历史迁移说明中出现“旧路径已删除”。
 
-- [ ] **Step 2：检查 intel engine 导出**
+- [x] **Step 2：检查 intel engine 导出**
 
 Run:
 
@@ -620,7 +620,7 @@ pnpm --dir agents/intel-engine test
 
 Expected: both PASS。
 
-- [ ] **Step 3：运行文档检查**
+- [x] **Step 3：运行文档检查**
 
 Run:
 
@@ -630,7 +630,7 @@ pnpm check:docs
 
 Expected: `docs check passed`。
 
-- [ ] **Step 4：Commit**
+- [x] **Step 4：Commit**
 
 ```bash
 git add docs apps/backend/agent-server/src agents/intel-engine/src agents/intel-engine/test
@@ -643,7 +643,7 @@ git commit -m "docs: document intel briefing ownership"
 
 - No source edits in this task.
 
-- [ ] **Step 1：Type**
+- [x] **Step 1：Type**
 
 Run:
 
@@ -654,7 +654,7 @@ pnpm --dir agents/intel-engine typecheck
 
 Expected: both PASS。
 
-- [ ] **Step 2：Unit**
+- [x] **Step 2：Unit**
 
 Run:
 
@@ -665,7 +665,7 @@ pnpm --dir apps/backend/agent-server test:runtime
 
 Expected: both PASS。
 
-- [ ] **Step 3：Build**
+- [x] **Step 3：Build**
 
 Run:
 
@@ -676,7 +676,7 @@ pnpm --dir apps/backend/agent-server build
 
 Expected: both PASS。
 
-- [ ] **Step 4：Docs**
+- [x] **Step 4：Docs**
 
 Run:
 
@@ -686,7 +686,7 @@ pnpm check:docs
 
 Expected: PASS。
 
-- [ ] **Step 5：Workspace verification**
+- [x] **Step 5：Workspace verification**
 
 Run:
 
@@ -696,7 +696,7 @@ pnpm verify
 
 Expected: PASS. If blocked by unrelated existing red lights, capture the failing command, error summary, and whether it touches files changed by this plan.
 
-- [ ] **Step 6：Final commit if verification only changed generated lock/build metadata**
+- [x] **Step 6：Final commit if verification only changed generated lock/build metadata**
 
 If verification caused no file changes, skip this step. If `pnpm add` in Task 2 changed `pnpm-lock.yaml`, it should already be committed in Task 2.
 

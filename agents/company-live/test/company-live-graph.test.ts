@@ -117,13 +117,23 @@ describe('executeCompanyLiveGraph', () => {
     expect(kinds).toContain('video');
   });
 
-  it('returns trace with 4 entries (generateAudio, generateImage, generateVideo, assembleBundle)', async () => {
+  it('returns trace with business agents followed by media generation nodes', async () => {
     const registry = makeStubRegistry();
     const result = await executeCompanyLiveGraph(stubBrief, registry);
 
-    expect(result.trace).toHaveLength(4);
+    expect(result.trace).toHaveLength(12);
 
     const nodeIds = result.trace.map(t => t.nodeId);
+    expect(nodeIds.slice(0, 8)).toEqual([
+      'growthAgent',
+      'operationsAgent',
+      'riskAgent',
+      'productAgent',
+      'financeAgent',
+      'supportAgent',
+      'contentAgent',
+      'intelligenceAgent'
+    ]);
     expect(nodeIds).toContain('generateAudio');
     expect(nodeIds).toContain('generateImage');
     expect(nodeIds).toContain('generateVideo');
@@ -172,12 +182,25 @@ describe('executeCompanyLiveGraph with progressCallback', () => {
       }
     });
 
-    expect(completed).toEqual(['generateAudio', 'generateImage', 'generateVideo', 'assembleBundle']);
+    expect(completed).toEqual([
+      'growthAgent',
+      'operationsAgent',
+      'riskAgent',
+      'productAgent',
+      'financeAgent',
+      'supportAgent',
+      'contentAgent',
+      'intelligenceAgent',
+      'generateAudio',
+      'generateImage',
+      'generateVideo',
+      'assembleBundle'
+    ]);
   });
 
   it('backward compatible: works without options', async () => {
     const registry = makeStubRegistry();
     const result = await executeCompanyLiveGraph(stubBrief, registry);
-    expect(result.trace).toHaveLength(4);
+    expect(result.trace).toHaveLength(12);
   });
 });

@@ -1,4 +1,5 @@
 export * from './approval';
+export * from './agent-execution';
 export * from './contracts';
 export { CONNECTOR_TOOL_DEFINITIONS } from './definitions/connector-tool-definitions';
 export {
