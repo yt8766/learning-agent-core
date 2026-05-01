@@ -84,3 +84,14 @@ describe('knowledge root adapter exports', () => {
     expect(root).toHaveProperty('LangChainEmbeddingProvider');
   });
 });
+
+describe('knowledge root adapter exports', () => {
+  it('exports adapter factories from the root entrypoint for SDK discoverability', async () => {
+    const root = await import('../src');
+
+    expect(root).toHaveProperty('createMiniMaxChatProvider');
+    expect(root).toHaveProperty('createGlmEmbeddingProvider');
+    expect(root).toHaveProperty('createDeepSeekChatProvider');
+    expect(root).toHaveProperty('LangChainEmbeddingProvider');
+  });
+});
