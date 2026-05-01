@@ -47,6 +47,13 @@ packages/knowledge/src/
 
 ## Public Entrypoints
 
+Entrypoint status:
+
+- Current: `@agent/knowledge` exists as the current package root and exposes current retrieval/indexing contracts according to existing package exports.
+- Migration-compatible: `@agent/knowledge/core` and `@agent/knowledge/client` are target public facades that may initially re-export or wrap current contracts/client helpers while migration is in progress.
+- Target planned: `@agent/knowledge/browser`, `@agent/knowledge/node`, `@agent/knowledge/adapters/*`, and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
+- Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
+
 ```text
 @agent/knowledge
 @agent/knowledge/core
@@ -100,6 +107,50 @@ Migration rules:
 - A stable schema may have only one source of truth at any time.
 - If a schema moves from `src/contracts` to `src/core`, all callers, docs, tests, and compat exports must be updated in the same migration slice.
 - Do not maintain parallel schema definitions for the same DTO, event, trace, provider input, or retrieval result.
+
+## Responsibility Layers
+
+Provider:
+
+- Defines project-owned capability interfaces such as embedding, vector search, keyword search, rerank, trace, eval judge, or optional server-side generation.
+- Accepts and returns SDK-owned schema/type values only.
+- Does not expose vendor SDK clients, vendor response shapes, raw errors, headers, or request configuration to runtime, repository, client, API DTOs, or browser code.
+
+Adapter:
+
+- Implements provider or repository interfaces for a concrete vendor or infrastructure backend.
+- Owns vendor SDK lifecycle, request mapping, response mapping, retry/error normalization, redaction, and credential handling at the boundary.
+- Converts every vendor response and error into SDK-owned records or SDK-owned error models before returning.
+- Is optional and must not be required by `@agent/knowledge/core`.
+
+Repository:
+
+- Is a host/backend-facing persistence abstraction.
+- Reads and writes project-defined schemas/records only, such as knowledge sources, chunks, indexing receipts, eval records, trace records, or retrieval configuration records.
+- Must not leak database, vector-store, ORM, storage, or vendor-specific types into contracts, runtime, API DTOs, or browser clients.
+- Owns namespace, tenant, workspace, and knowledge-base scoping semantics.
+- Owns idempotent writes, pagination, filtering, ordering, and query semantics for persistent records.
+- May be implemented by host infrastructure or optional adapters, but its public contract remains SDK-owned.
+
+Runtime:
+
+- Orchestrates retrieval, context assembly, citation preparation, diagnostics, and trace emission using injected providers and repositories.
+- Does not create vendor clients, read host environment variables, own auth/permission decisions, or generate the final answer in the default chain.
+- Receives already-configured dependencies from backend/server host wiring.
+
+Client:
+
+- Is an HTTP/API client for browser/frontend or external callers.
+- Calls the backend Knowledge API contract only.
+- Does not hold provider secrets, service keys, model credentials, database credentials, or vector-store credentials.
+- Must not directly access runtime, repository, adapter, provider SDKs, or node-only entrypoints.
+- Owns request/response parsing, token attachment/refresh behavior where applicable, and API error projection handling.
+
+Public entrypoints:
+
+- Expose stable, documented boundaries for the layers above.
+- Must separate browser-safe, node-only, adapter, runtime, repository, and client surfaces.
+- Must not make target-only or migration-only surfaces look like current implemented guarantees.
 
 ## MVP Provider Interfaces
 
@@ -177,6 +228,26 @@ The default `packages/knowledge/src/runtime` chain must not generate the final a
 Server-side hosts may inject a `Generator` through `host-integration` or equivalent optional interfaces after retrieval/context assembly. That integration is outside the current default runtime chain and must keep provider secrets, model clients, and raw generation payloads behind host-owned server boundaries.
 
 Runtime traces and errors must use redacted JSON-safe projections. Trace span metadata and API error details may include stable IDs, timings, status values, redacted summaries, and bounded diagnostics, but must not include secrets, tokens, raw provider responses, raw headers, SDK client configuration, or third-party error objects.
+
+## Backend and Server Host Boundary
+
+Backend/server hosts may consume:
+
+- `@agent/knowledge` current root exports during migration.
+- `@agent/knowledge/core` target contracts once available.
+- `@agent/knowledge/client` only when the backend is acting as an HTTP client to another Knowledge API host.
+- `@agent/knowledge/runtime`, `@agent/knowledge/node`, repository interfaces, provider interfaces, or adapter subpaths only from server-side code after those entrypoints exist and their ownership is documented.
+
+Backend/server hosts are responsible for:
+
+- Auth, permission checks, workspace/tenant scoping, and policy enforcement.
+- Reading environment variables, secrets, service keys, endpoint configuration, and model configuration.
+- Creating vendor SDK clients or adapter instances at host-owned boundaries.
+- Wiring runtime dependencies, repositories, providers, trace sinks, eval stores, and optional server-side generation contracts.
+- Mapping SDK-owned records/results/errors into Knowledge API DTOs.
+- Redacting diagnostics, traces, and API errors before they leave the server.
+
+Backend/server hosts must not leak vendor raw responses, provider errors, SDK client config, request headers, service keys, tokens, stack traces, or database/vector vendor types into Knowledge API responses, frontend state, traces, eval records, or browser bundles.
 
 ## Frontend Usage Boundary
 

@@ -24,7 +24,8 @@
   - app view model
   - provider SDK 具体实现
 - 依赖方向：
-  - 允许依赖 `@agent/config`、`@agent/adapters`、`@agent/memory`
+  - 当前 runtime / host-integration 过渡态允许依赖 `@agent/config`、`@agent/adapters`、`@agent/memory`，用于既有检索装配、本地存储与 adapter bridge
+  - publishable SDK 长期边界不应让 `@agent/knowledge/core` 直接依赖 `@agent/config`、`@agent/adapters`、`@agent/memory`；这些依赖应收敛到 host/server wiring、optional adapters、compat re-export 或迁移层
   - 被 `runtime`、`agents/*` 与 backend 消费
 - 公开入口：
   - 根入口：`@agent/knowledge`
@@ -33,6 +34,7 @@
 
 - `packages/knowledge` 是知识检索宿主，不是 memory 的别名
 - 稳定知识契约沉淀到 `packages/knowledge/src/contracts/*`，不要恢复 `packages/core/src/knowledge/*`
+- 当前 schema source of truth 是 `packages/knowledge/src/contracts/*`；目标 public facade 是 `packages/knowledge/src/core/*`，迁移期间禁止重复 schema，一份稳定 schema 只允许一个源
 - 具体 provider / vector-store / loader 适配器仍放在 `packages/adapters`
 
 当前文档：
