@@ -45,6 +45,8 @@ export interface ApiErrorResponse {
 }
 ```
 
+分页接口默认 `page=1`、`pageSize=20`，`pageSize` 最大为 `100`；超出范围时后端返回 `400 validation_error`。`score`、`rate`、`metrics` 字段默认使用 `0-1` 小数区间；面向产品展示的 `latestEvalScore`、`EvalReportSummary.*Score` 使用 `0-100` 分。
+
 ## 3. Auth
 
 登录使用 JWT 双 Token。前端把 `accessToken`、`refreshToken`、两个过期时间存入 localStorage。退出登录只删除本地 token。
@@ -93,12 +95,16 @@ export interface MeResponse {
 }
 ```
 
-Endpoints:
+`POST /auth/logout` 是 MVP no-op / optional endpoint：后端可以返回空成功响应，但不承诺撤销服务端 refresh token。前端退出登录以删除本地 `accessToken`、`refreshToken` 和过期时间为准。
 
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `GET /auth/me`
-- `POST /auth/logout`
+Endpoint contract:
+
+| Method | Path            | Query / Body                               | Response               | 主要错误码                                                                     | 权限               |
+| ------ | --------------- | ------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------ | ------------------ |
+| POST   | `/auth/login`   | body: `LoginRequest`                       | `LoginResponse`        | `auth_invalid_credentials`, `validation_error`                                 | public             |
+| POST   | `/auth/refresh` | body: `RefreshTokenRequest`                | `RefreshTokenResponse` | `auth_refresh_token_expired`, `auth_refresh_token_invalid`, `validation_error` | public             |
+| GET    | `/auth/me`      | none                                       | `MeResponse`           | `auth_unauthorized`, `auth_token_expired`                                      | authenticated user |
+| POST   | `/auth/logout`  | optional body: `{ refreshToken?: string }` | `{ ok: true }`         | `auth_unauthorized`                                                            | authenticated user |
 
 Auth errors:
 
@@ -136,6 +142,12 @@ export interface DashboardOverview {
   topMissingKnowledgeQuestions: string[];
 }
 ```
+
+Endpoint contract:
+
+| Method | Path                  | Query / Body | Response            | 主要错误码                            | 权限                     |
+| ------ | --------------------- | ------------ | ------------------- | ------------------------------------- | ------------------------ |
+| GET    | `/dashboard/overview` | none         | `DashboardOverview` | `auth_unauthorized`, `auth_forbidden` | owner, admin, maintainer |
 
 ## 5. KnowledgeBase
 
@@ -184,12 +196,14 @@ export interface UpdateKnowledgeBaseRequest {
 }
 ```
 
-Endpoints:
+Endpoint contract:
 
-- `GET /knowledge-bases`
-- `POST /knowledge-bases`
-- `GET /knowledge-bases/:id`
-- `PATCH /knowledge-bases/:id`
+| Method | Path                   | Query / Body                                   | Response                    | 主要错误码                                                                            | 权限                                        |
+| ------ | ---------------------- | ---------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------- |
+| GET    | `/knowledge-bases`     | query: `PageQuery`                             | `PageResult<KnowledgeBase>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                             | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge-bases`     | body: `CreateKnowledgeBaseRequest`             | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `kb_name_conflict`         | owner, admin, maintainer                    |
+| GET    | `/knowledge-bases/:id` | path: `id`                                     | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`                     | owner, admin, maintainer, evaluator, viewer |
+| PATCH  | `/knowledge-bases/:id` | path: `id`; body: `UpdateKnowledgeBaseRequest` | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `validation_error` | owner, admin, maintainer                    |
 
 ## 6. Document and Chunk
 
@@ -294,16 +308,18 @@ export interface DocumentChunk {
 }
 ```
 
-Endpoints:
+Endpoint contract:
 
-- `GET /documents`
-- `GET /documents/:id`
-- `POST /knowledge-bases/:id/documents/upload`
-- `GET /documents/:id/jobs`
-- `GET /documents/:id/chunks`
-- `POST /documents/:id/reprocess`
-- `POST /documents/:id/reembed`
-- `POST /documents/:id/disable`
+| Method | Path                                    | Query / Body                                                                | Response                            | 主要错误码                                                                                                                       | 权限                                        |
+| ------ | --------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| GET    | `/documents`                            | query: `PageQuery & { knowledgeBaseId?: ID; status?: DocumentStatus }`      | `PageResult<KnowledgeDocument>`     | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                        | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/documents/:id`                        | path: `id`                                                                  | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                      | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge-bases/:id/documents/upload` | path: `id`; multipart fields: `file`, optional `title`, optional `metadata` | `UploadDocumentResponse`            | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `unsupported_file_type`, `file_too_large`, `validation_error` | owner, admin, maintainer                    |
+| GET    | `/documents/:id/jobs`                   | path: `id`; query: `PageQuery`                                              | `PageResult<DocumentProcessingJob>` | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                  | owner, admin, maintainer                    |
+| GET    | `/documents/:id/chunks`                 | path: `id`; query: `PageQuery`                                              | `PageResult<DocumentChunk>`         | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                  | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/documents/:id/reprocess`              | path: `id`; optional body: `{ reason?: string }`                            | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                             | owner, admin, maintainer                    |
+| POST   | `/documents/:id/reembed`                | path: `id`; optional body: `{ embeddingModel?: string; reason?: string }`   | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                             | owner, admin, maintainer                    |
+| POST   | `/documents/:id/disable`                | path: `id`; optional body: `{ reason?: string }`                            | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                      | owner, admin, maintainer                    |
 
 Upload response:
 
@@ -388,13 +404,15 @@ export interface CreateFeedbackRequest {
 }
 ```
 
-Endpoints:
+Endpoint contract:
 
-- `POST /chat`
-- `GET /conversations`
-- `GET /conversations/:id/messages`
-- `POST /messages/:id/feedback`
-- `POST /messages/:id/add-to-eval`
+| Method | Path                          | Query / Body                                           | Response                                                                                 | 主要错误码                                                                                                    | 权限                                        |
+| ------ | ----------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| POST   | `/chat`                       | body: `ChatRequest`                                    | `ChatResponse`                                                                           | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_base_not_found`, `provider_unavailable` | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations`              | query: `PageQuery & { knowledgeBaseId?: ID }`          | `PageResult<{ id: ID; title?: string; createdAt: ISODateTime; updatedAt: ISODateTime }>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                     | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations/:id/messages` | path: `id`; query: `PageQuery`                         | `PageResult<ChatMessage>`                                                                | `auth_unauthorized`, `auth_forbidden`, `conversation_not_found`, `validation_error`                           | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                                                                            | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                                                                               | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`      | owner, admin, maintainer, evaluator         |
 
 ## 8. Observability
 
@@ -431,6 +449,14 @@ export interface RetrievalSnapshot {
   selectedChunks: RetrievalHitPreview[];
 }
 
+export type TraceSpanPayloadScalar = string | number | boolean | null;
+
+export interface TraceSpanPayloadSummary {
+  summary?: string;
+  data?: Record<string, TraceSpanPayloadScalar | string[] | number[]>;
+  itemIds?: ID[];
+}
+
 export interface RagTrace {
   id: ID;
   workspaceId: ID;
@@ -455,8 +481,8 @@ export interface RagTraceSpan {
   name: string;
   status: TraceStatus;
   latencyMs?: number;
-  input?: Record<string, unknown>;
-  output?: Record<string, unknown>;
+  input?: TraceSpanPayloadSummary;
+  output?: TraceSpanPayloadSummary;
   error?: ApiErrorResponse;
   startedAt?: ISODateTime;
   endedAt?: ISODateTime;
@@ -470,11 +496,15 @@ export interface RagTraceDetail extends RagTrace {
 }
 ```
 
-Endpoints:
+`RagTraceSpan.input` 与 `RagTraceSpan.output` 只能保存稳定 redacted projection，不得透传 vendor raw request / response、raw headers、prompt 原文、完整检索上下文、provider SDK 对象或第三方错误原始对象。
 
-- `GET /observability/metrics`
-- `GET /observability/traces`
-- `GET /observability/traces/:id`
+Endpoint contract:
+
+| Method | Path                        | Query / Body                                                                                              | Response                 | 主要错误码                                                | 权限                     |
+| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------ | --------------------------------------------------------- | ------------------------ |
+| GET    | `/observability/metrics`    | query: `{ knowledgeBaseId?: ID; from?: ISODateTime; to?: ISODateTime }`                                   | `Record<string, number>` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces`     | query: `PageQuery & { knowledgeBaseId?: ID; status?: TraceStatus; from?: ISODateTime; to?: ISODateTime }` | `PageResult<RagTrace>`   | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces/:id` | path: `id`                                                                                                | `RagTraceDetail`         | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
 
 ## 9. Eval
 
@@ -508,6 +538,23 @@ export interface EvalCase {
   createdAt: ISODateTime;
 }
 
+export interface CreateEvalDatasetRequest {
+  name: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface CreateEvalCaseRequest {
+  question: string;
+  expectedAnswer?: string;
+  expectedDocumentIds?: ID[];
+  expectedChunkIds?: ID[];
+  tags?: string[];
+  difficulty?: EvalDifficulty;
+  sourceTraceId?: ID;
+  metadata?: Record<string, unknown>;
+}
+
 export interface EvalReportSummary {
   totalScore?: number;
   retrievalScore?: number;
@@ -533,6 +580,14 @@ export interface EvalRun {
   completedAt?: ISODateTime;
   createdBy: ID;
   createdAt: ISODateTime;
+}
+
+export interface CreateEvalRunRequest {
+  datasetId: ID;
+  knowledgeBaseIds: ID[];
+  retrievalConfigId?: ID;
+  promptTemplateId?: ID;
+  modelConfigId?: ID;
 }
 
 export interface RetrievalMetrics {
@@ -581,15 +636,17 @@ export interface EvalCaseResult {
 }
 ```
 
-Endpoints:
+Endpoint contract:
 
-- `GET /eval/datasets`
-- `POST /eval/datasets`
-- `POST /eval/datasets/:id/cases`
-- `POST /eval/runs`
-- `GET /eval/runs`
-- `GET /eval/runs/:id`
-- `GET /eval/runs/:id/results`
+| Method | Path                       | Query / Body                                                    | Response                     | 主要错误码                                                                                                      | 权限                                |
+| ------ | -------------------------- | --------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| GET    | `/eval/datasets`           | query: `PageQuery`                                              | `PageResult<EvalDataset>`    | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                       | owner, admin, maintainer, evaluator |
+| POST   | `/eval/datasets`           | body: `CreateEvalDatasetRequest`                                | `EvalDataset`                | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `eval_dataset_name_conflict`                         | owner, admin, maintainer, evaluator |
+| POST   | `/eval/datasets/:id/cases` | path: `id`; body: `CreateEvalCaseRequest`                       | `EvalCase`                   | `auth_unauthorized`, `auth_forbidden`, `eval_dataset_not_found`, `validation_error`                             | owner, admin, maintainer, evaluator |
+| POST   | `/eval/runs`               | body: `CreateEvalRunRequest`                                    | `EvalRun`                    | `auth_unauthorized`, `auth_forbidden`, `eval_dataset_not_found`, `knowledge_base_not_found`, `validation_error` | owner, admin, maintainer, evaluator |
+| GET    | `/eval/runs`               | query: `PageQuery & { datasetId?: ID; status?: EvalRunStatus }` | `PageResult<EvalRun>`        | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                       | owner, admin, maintainer, evaluator |
+| GET    | `/eval/runs/:id`           | path: `id`                                                      | `EvalRun`                    | `auth_unauthorized`, `auth_forbidden`, `eval_run_not_found`                                                     | owner, admin, maintainer, evaluator |
+| GET    | `/eval/runs/:id/results`   | path: `id`; query: `PageQuery`                                  | `PageResult<EvalCaseResult>` | `auth_unauthorized`, `auth_forbidden`, `eval_run_not_found`, `validation_error`                                 | owner, admin, maintainer, evaluator |
 
 ## 10. Permission Semantics
 
@@ -601,6 +658,24 @@ MVP roles:
 - `viewer`: chat, view allowed documents, submit feedback.
 
 Backend is the authority. Frontend may hide buttons but must not be trusted for authorization.
+
+Endpoint / action matrix:
+
+| Action                                    | Owner | Admin | Maintainer | Evaluator | Viewer |
+| ----------------------------------------- | ----- | ----- | ---------- | --------- | ------ |
+| list/read knowledge bases                 | yes   | yes   | yes        | yes       | yes    |
+| create knowledge base                     | yes   | yes   | yes        | no        | no     |
+| update knowledge base                     | yes   | yes   | yes        | no        | no     |
+| upload/reprocess/reembed/disable document | yes   | yes   | yes        | no        | no     |
+| list/read allowed documents and chunks    | yes   | yes   | yes        | yes       | yes    |
+| chat with allowed knowledge bases         | yes   | yes   | yes        | yes       | yes    |
+| submit feedback                           | yes   | yes   | yes        | yes       | yes    |
+| view dashboard overview                   | yes   | yes   | yes        | no        | no     |
+| view traces and metrics                   | yes   | yes   | yes        | no        | no     |
+| manage eval datasets and cases            | yes   | yes   | yes        | yes       | no     |
+| create/read eval runs and results         | yes   | yes   | yes        | yes       | no     |
+
+`viewer` 的 list/read 只覆盖后端判定为 allowed 的知识库、文档和 chunk；跨 workspace 或不可见资源必须返回 `auth_forbidden` 或对应 `*_not_found`，避免泄露资源存在性。
 
 ## 11. Trace Redaction
 

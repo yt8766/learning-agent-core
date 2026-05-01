@@ -14,6 +14,7 @@
 - Admin API：[agent-admin.md](/docs/contracts/api/agent-admin.md)
 - Admin Auth API：[admin-auth.md](/docs/contracts/api/admin-auth.md)
 - Runtime API：[runtime.md](/docs/contracts/api/runtime.md)
+- Knowledge API：[knowledge.md](/docs/contracts/api/knowledge.md)
 - Knowledge Ingestion API：[knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
 - Approvals API：[approvals.md](/docs/contracts/api/approvals.md)
 - Run Observatory API：[run-observatory.md](/docs/contracts/api/run-observatory.md)
@@ -31,15 +32,16 @@
 3. [agent-admin.md](/docs/contracts/api/agent-admin.md)
 4. [admin-auth.md](/docs/contracts/api/admin-auth.md)
 5. [runtime.md](/docs/contracts/api/runtime.md)
-6. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
-7. [approvals.md](/docs/contracts/api/approvals.md)
-8. [run-observatory.md](/docs/contracts/api/run-observatory.md)
-9. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
-10. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
-11. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
-12. [tool-execution.md](/docs/contracts/api/tool-execution.md)
-13. [sandbox.md](/docs/contracts/api/sandbox.md)
-14. [auto-review.md](/docs/contracts/api/auto-review.md)
+6. [knowledge.md](/docs/contracts/api/knowledge.md)
+7. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
+8. [approvals.md](/docs/contracts/api/approvals.md)
+9. [run-observatory.md](/docs/contracts/api/run-observatory.md)
+10. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
+11. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
+12. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
+13. [tool-execution.md](/docs/contracts/api/tool-execution.md)
+14. [sandbox.md](/docs/contracts/api/sandbox.md)
+15. [auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 工具执行治理 API 关系
 
@@ -79,6 +81,7 @@
 - `agent-admin.md`：`apps/frontend/agent-admin` 的控制台聚合入口和刷新语义。
 - `admin-auth.md`：`apps/frontend/agent-admin` 的账号密码登录、JWT 双 Token、自动刷新、退出登录与当前用户恢复契约。
 - `runtime.md`：Runtime Center 查询、导出与筛选契约。
+- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约。
 - `knowledge-ingestion.md`：规范化 source payload 写入统一 source/chunk/receipt snapshot 与 vector 边界的 ingestion 契约。
 - `approvals.md`：Approvals Center、聊天审批动作、恢复与 interrupt 兼容契约。
 - `run-observatory.md`：workflow catalog、run list/detail 与 observability 投影契约。
