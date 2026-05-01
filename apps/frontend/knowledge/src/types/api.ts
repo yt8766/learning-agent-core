@@ -27,39 +27,27 @@ export interface PageResult<T> {
 
 export type ApiErrorDetailValue = string | number | boolean | null | string[] | number[];
 
-export type ApiErrorDetailDataKey =
-  | 'retryable'
-  | 'failedCount'
-  | 'reason'
-  | 'stage'
-  | 'stages'
-  | 'counts'
-  | 'status'
-  | 'resourceType'
-  | 'resourceId'
-  | 'workspaceId'
-  | 'knowledgeBaseId'
-  | 'documentId'
-  | 'jobId'
-  | 'traceId'
-  | 'messageId'
-  | 'datasetId'
-  | 'runId'
-  | 'caseId'
-  | 'operation'
-  | 'latencyMs'
-  | 'attempt'
-  | 'limit'
-  | 'page'
-  | 'pageSize'
-  | 'expected'
-  | 'actual';
+export interface ForbiddenRawProjectionKeys {
+  authorization?: never;
+  rawHeaders?: never;
+  rawRequest?: never;
+  rawResponse?: never;
+  request?: never;
+  response?: never;
+  headers?: never;
+  vendorRequest?: never;
+  vendorResponse?: never;
+  providerStack?: never;
+  sdkError?: never;
+  secret?: never;
+  token?: never;
+}
 
-export type ApiErrorDetailData = Partial<Record<ApiErrorDetailDataKey, ApiErrorDetailValue>>;
+export type ApiErrorDetailData = Record<string, ApiErrorDetailValue> & ForbiddenRawProjectionKeys;
 
 export interface ApiErrorDetails {
   summary?: string;
-  fields?: Record<string, string>;
+  fields?: Record<string, string> & ForbiddenRawProjectionKeys;
   data?: ApiErrorDetailData;
   itemIds?: ID[];
 }
@@ -376,43 +364,8 @@ export interface RetrievalSnapshot {
 
 export type TraceSpanPayloadScalar = string | number | boolean | null;
 
-export type TraceSpanPayloadDataKey =
-  | 'stage'
-  | 'operation'
-  | 'provider'
-  | 'model'
-  | 'hitLimit'
-  | 'topK'
-  | 'candidateCount'
-  | 'selectedCount'
-  | 'vectorCount'
-  | 'vectorHitCount'
-  | 'keywordHitCount'
-  | 'mergedHitCount'
-  | 'rerankedHitCount'
-  | 'citationCount'
-  | 'tokenCount'
-  | 'inputTokens'
-  | 'outputTokens'
-  | 'totalTokens'
-  | 'latencyMs'
-  | 'durationMs'
-  | 'cacheHit'
-  | 'debug'
-  | 'status'
-  | 'reason'
-  | 'stages'
-  | 'ranks'
-  | 'scores'
-  | 'chunkIds'
-  | 'documentIds'
-  | 'knowledgeBaseIds'
-  | 'traceId'
-  | 'messageId';
-
-export type TraceSpanPayloadData = Partial<
-  Record<TraceSpanPayloadDataKey, TraceSpanPayloadScalar | string[] | number[]>
->;
+export type TraceSpanPayloadData = Record<string, TraceSpanPayloadScalar | string[] | number[]> &
+  ForbiddenRawProjectionKeys;
 
 export interface TraceSpanPayloadSummary {
   summary?: string;
