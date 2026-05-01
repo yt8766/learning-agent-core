@@ -43,6 +43,8 @@
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
 - [source-ingestion-status.md](/docs/packages/knowledge/source-ingestion-status.md)
 
+说明：`sdk-architecture.md` 记录 SDK target architecture / migration guide，不代表其中所有目标目录、subpath exports 或 optional adapters 当前均已实现。
+
 当前实现补充：
 
 - `packages/knowledge/src/runtime/pipeline/run-knowledge-retrieval.ts`
