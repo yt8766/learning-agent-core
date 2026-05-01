@@ -27,10 +27,40 @@ export interface PageResult<T> {
 
 export type ApiErrorDetailValue = string | number | boolean | null | string[] | number[];
 
+export type ApiErrorDetailDataKey =
+  | 'retryable'
+  | 'failedCount'
+  | 'reason'
+  | 'stage'
+  | 'stages'
+  | 'counts'
+  | 'status'
+  | 'resourceType'
+  | 'resourceId'
+  | 'workspaceId'
+  | 'knowledgeBaseId'
+  | 'documentId'
+  | 'jobId'
+  | 'traceId'
+  | 'messageId'
+  | 'datasetId'
+  | 'runId'
+  | 'caseId'
+  | 'operation'
+  | 'latencyMs'
+  | 'attempt'
+  | 'limit'
+  | 'page'
+  | 'pageSize'
+  | 'expected'
+  | 'actual';
+
+export type ApiErrorDetailData = Partial<Record<ApiErrorDetailDataKey, ApiErrorDetailValue>>;
+
 export interface ApiErrorDetails {
   summary?: string;
   fields?: Record<string, string>;
-  data?: Record<string, ApiErrorDetailValue>;
+  data?: ApiErrorDetailData;
   itemIds?: ID[];
 }
 
@@ -346,9 +376,47 @@ export interface RetrievalSnapshot {
 
 export type TraceSpanPayloadScalar = string | number | boolean | null;
 
+export type TraceSpanPayloadDataKey =
+  | 'stage'
+  | 'operation'
+  | 'provider'
+  | 'model'
+  | 'hitLimit'
+  | 'topK'
+  | 'candidateCount'
+  | 'selectedCount'
+  | 'vectorCount'
+  | 'vectorHitCount'
+  | 'keywordHitCount'
+  | 'mergedHitCount'
+  | 'rerankedHitCount'
+  | 'citationCount'
+  | 'tokenCount'
+  | 'inputTokens'
+  | 'outputTokens'
+  | 'totalTokens'
+  | 'latencyMs'
+  | 'durationMs'
+  | 'cacheHit'
+  | 'debug'
+  | 'status'
+  | 'reason'
+  | 'stages'
+  | 'ranks'
+  | 'scores'
+  | 'chunkIds'
+  | 'documentIds'
+  | 'knowledgeBaseIds'
+  | 'traceId'
+  | 'messageId';
+
+export type TraceSpanPayloadData = Partial<
+  Record<TraceSpanPayloadDataKey, TraceSpanPayloadScalar | string[] | number[]>
+>;
+
 export interface TraceSpanPayloadSummary {
   summary?: string;
-  data?: Record<string, TraceSpanPayloadScalar | string[] | number[]>;
+  data?: TraceSpanPayloadData;
   itemIds?: ID[];
 }
 
