@@ -84,7 +84,9 @@ Knowledge App 使用 JWT 双 token：
 
 - `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
 - `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
+- `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
 - `apps/frontend/knowledge/test/token-storage.test.ts` 与 `apps/frontend/knowledge/test/auth-client.test.ts`：固定双 token 存储、并发刷新复用和 logout 本地清理语义。
+- `apps/frontend/knowledge/test/knowledge-api-client.test.ts`：固定业务请求 access token 过期后的 refresh/retry、不相关 401 不刷新、以及最多重试一次的边界。
 
 权限边界在 MVP 中先以用户 `roles` 与 `permissions` 驱动 UI 可用态，后端 API contract 始终是权限事实来源：
 
