@@ -29,3 +29,7 @@ data/runtime/schedules/daily-tech-briefing-<category>.json
 ## 测试
 
 briefing 领域测试放在 `agents/intel-engine/test/runtime/briefing`。Backend 只保留 controller 和 BFF adapter smoke。
+
+`agents/intel-engine/tsconfig.types.json` 的 declaration build 必须继承 workspace 根 `paths`，不要覆盖
+`baseUrl` 或清空 `paths`；否则干净 CI 中 `pnpm test:demo:affected` 可能在 `@agent/core` 尚未产出 build
+types 时解析失败。`agents/intel-engine/test/tsconfig-types.test.ts` 固定覆盖这条约束。

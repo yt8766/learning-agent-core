@@ -64,6 +64,14 @@ describe('workspace smoke entrypoints smoke', () => {
       expect(vitestConfig, `${alias} should resolve to source in vitest.config.js`).toContain(`'${alias}'`);
     }
   });
+
+  it('gives real backend app smoke enough hook time for cold CI startup', () => {
+    const backendHttpSmoke = fs.readFileSync(path.join(smokeRoot, 'backend', 'backend-http-app.smoke.ts'), 'utf8');
+
+    expect(backendHttpSmoke).toContain('const BACKEND_HTTP_APP_HOOK_TIMEOUT_MS');
+    expect(backendHttpSmoke).toContain('beforeAll(async () => {');
+    expect(backendHttpSmoke).toContain('}, BACKEND_HTTP_APP_HOOK_TIMEOUT_MS);');
+  });
 });
 
 function listFiles(dir: string): string[] {
