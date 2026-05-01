@@ -1,5 +1,1 @@
-export class LangChainEmbeddingProvider {}
-
-export function createOpenAIEmbeddingsProvider() {
-  return new LangChainEmbeddingProvider();
-}
+export * from './langchain-embedding-provider';
