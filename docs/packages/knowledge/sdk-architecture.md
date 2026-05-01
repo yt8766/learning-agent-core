@@ -232,7 +232,7 @@ query
 -> trace
 ```
 
-Query rewrite, hybrid retrieval/rerank-style fusion, Small-to-Big context expansion, and citation checking are not merely post-MVP ideas. First-stage runtime capabilities already exist in the current package and should continue to converge in the SDK architecture as replaceable strategies, observable stages, and productized extension points. Later slices expand, harden, and document those capabilities rather than introducing them from zero.
+Query rewrite, hybrid retrieval/rerank-style fusion, and Small-to-Big context expansion are not merely post-MVP ideas. First-stage runtime capabilities already exist in the current package and should continue to converge in the SDK architecture as replaceable strategies, observable stages, and productized extension points. Citation contracts, citation preparation, and quote masking also exist today; a dedicated citation-checking stage is a future hardening point and must not be treated as current runtime behavior until implemented with tests and docs. Later slices expand, harden, and document those capabilities rather than introducing them from zero.
 
 The default `packages/knowledge/src/runtime` chain must not generate the final answer. It prepares retrieval hits, assembled context, citations, diagnostics, and trace events for the host runtime. Final answer generation remains the responsibility of `packages/runtime`, apps, or `agents/*`.
 
