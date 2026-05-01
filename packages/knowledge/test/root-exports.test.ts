@@ -7,13 +7,27 @@ import {
   DefaultKnowledgeSearchService,
   DefaultQueryNormalizer,
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
+  DefaultPostRetrievalDiversifier,
+  DefaultPostRetrievalFilter,
+  DefaultPostRetrievalRanker,
+  HybridRetrievalEngine,
+  createKnowledgeSearchServiceRetriever,
   InMemoryKnowledgeChunkRepository,
   InMemoryKnowledgeSourceRepository,
+  RrfFusionStrategy,
+  SmallToBigContextExpander,
   ingestLocalKnowledge,
   LocalKnowledgeFacade,
   listKnowledgeArtifacts,
   readKnowledgeOverview,
   RetrievalRequestSchema,
+  HybridKnowledgeSearchProductionConfigSchema,
+  buildCatalogSyncKnowledgePayload,
+  buildConnectorSyncKnowledgePayload,
+  buildUserUploadKnowledgePayload,
+  buildWebCuratedKnowledgePayload,
+  createKnowledgeSourceIngestionLoader,
+  ingestKnowledgeSourcePayloads,
   runKnowledgeIndexing
 } from '../src/index';
 import * as rootExports from '../src/index';
@@ -40,6 +54,7 @@ describe('@agent/knowledge root exports', () => {
   it('re-exports stable schema-first contracts from the knowledge package host', () => {
     expect(rootExports.RetrievalRequestSchema).toBe(RetrievalRequestSchema);
     expect(RetrievalRequestSchema.safeParse({ query: 'RAG 是什么' }).success).toBe(true);
+    expect(rootExports.HybridKnowledgeSearchProductionConfigSchema).toBe(HybridKnowledgeSearchProductionConfigSchema);
   });
 
   it('retains the contract facade file as a stable contract-first entrypoint', () => {
@@ -47,8 +62,34 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
     expect(rootExports.DefaultQueryNormalizer).toBe(DefaultQueryNormalizer);
     expect(rootExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);
+    expect(rootExports.createKnowledgeSourceIngestionLoader).toBe(createKnowledgeSourceIngestionLoader);
+    expect(rootExports.ingestKnowledgeSourcePayloads).toBe(ingestKnowledgeSourcePayloads);
+    expect(rootExports.buildUserUploadKnowledgePayload).toBe(buildUserUploadKnowledgePayload);
+    expect(rootExports.buildCatalogSyncKnowledgePayload).toBe(buildCatalogSyncKnowledgePayload);
+    expect(rootExports.buildWebCuratedKnowledgePayload).toBe(buildWebCuratedKnowledgePayload);
+    expect(rootExports.buildConnectorSyncKnowledgePayload).toBe(buildConnectorSyncKnowledgePayload);
     expect(rootExports.DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE).toBe(DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE);
     expect(indexingExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);
     expect(contractExports).toBeTruthy();
+  });
+
+  it('re-exports hybrid retrieval engine and fusion strategy APIs', () => {
+    expect(rootExports.HybridRetrievalEngine).toBe(HybridRetrievalEngine);
+    expect(rootExports.RrfFusionStrategy).toBe(RrfFusionStrategy);
+    expect(rootExports.createKnowledgeSearchServiceRetriever).toBe(createKnowledgeSearchServiceRetriever);
+  });
+
+  it('re-exports the Small-to-Big context expander implementation', () => {
+    expect(rootExports.SmallToBigContextExpander).toBe(SmallToBigContextExpander);
+    expect(SmallToBigContextExpander).toBeTypeOf('function');
+  });
+
+  it('re-exports post-retrieval stage defaults', () => {
+    expect(DefaultPostRetrievalFilter).toBe(rootExports.DefaultPostRetrievalFilter);
+    expect(DefaultPostRetrievalRanker).toBe(rootExports.DefaultPostRetrievalRanker);
+    expect(DefaultPostRetrievalDiversifier).toBe(rootExports.DefaultPostRetrievalDiversifier);
+    expect(DefaultPostRetrievalFilter).toBeTypeOf('function');
+    expect(DefaultPostRetrievalRanker).toBeTypeOf('function');
+    expect(DefaultPostRetrievalDiversifier).toBeTypeOf('function');
   });
 });

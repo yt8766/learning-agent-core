@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { ensureDir, readJson, writeJson } from 'fs-extra';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ensureDailyTechBriefingSchedules } from '../../../src/runtime/briefings/runtime-tech-briefing-storage';
+import { ensureDailyTechBriefingSchedules } from '../../../src/runtime/core/runtime-intel-briefing-facade';
 import { resolveRuntimeSchedule } from '../../../src/runtime/schedules/runtime-schedule.helpers';
 import { RuntimeScheduleService } from '../../../src/runtime/schedules/runtime-schedule.service';
 

@@ -95,8 +95,12 @@ export default defineConfig({
       '@agent/templates': resolvePath('./packages/templates/src'),
       '@agent/evals': resolvePath('./packages/evals/src'),
       '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),
+      '@agent/agents-audio': resolvePath('./agents/audio/src'),
+      '@agent/agents-company-live': resolvePath('./agents/company-live/src'),
       '@agent/agents-data-report': resolvePath('./agents/data-report/src'),
+      '@agent/agents-image': resolvePath('./agents/image/src'),
       '@agent/agents-intel-engine': resolvePath('./agents/intel-engine/src'),
+      '@agent/agents-video': resolvePath('./agents/video/src'),
       '@agent/agents-coder': resolvePath('./agents/coder/src'),
       '@agent/agents-reviewer': resolvePath('./agents/reviewer/src')
     }

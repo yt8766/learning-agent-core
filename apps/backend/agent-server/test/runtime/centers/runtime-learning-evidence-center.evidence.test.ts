@@ -108,6 +108,43 @@ describe('runtime-learning-evidence-center evidence', () => {
         searchableDocumentCount: 5,
         blockedDocumentCount: 1,
         latestReceipts: [{ id: 'receipt-1', status: 'completed', updatedAt: '2026-04-08T11:59:00.000Z' }]
+      },
+      knowledgeSearchLastDiagnostics: {
+        query: '病假超过 3 天需要什么材料',
+        limit: 5,
+        hitCount: 3,
+        total: 8,
+        searchedAt: '2026-04-08T11:58:00.000Z',
+        diagnostics: {
+          postRetrieval: {
+            filtering: {
+              enabled: true,
+              beforeCount: 8,
+              afterCount: 5,
+              droppedCount: 3,
+              maskedCount: 1,
+              reasons: {
+                'low-score': 2,
+                'unsafe-content': 1
+              }
+            },
+            ranking: {
+              enabled: true,
+              strategy: 'deterministic-signals+semantic-rerank',
+              scoredCount: 5,
+              signals: ['retrieval-score', 'authority', 'semantic-rerank', 'alignment'],
+              providerError: new Error('vendor-specific failure')
+            },
+            diversification: {
+              enabled: true,
+              strategy: 'source-parent-section-coverage',
+              beforeCount: 5,
+              afterCount: 3,
+              maxPerSource: 2,
+              maxPerParent: 1
+            }
+          }
+        }
       }
     });
 
@@ -116,8 +153,29 @@ describe('runtime-learning-evidence-center evidence', () => {
         id: 'cangjing:overview',
         taskGoal: '藏经阁本地知识链',
         summary: '藏经阁索引 source 6 / searchable 5 / blocked 1',
-        createdAt: '2026-04-08T12:00:00.000Z'
+        createdAt: '2026-04-08T12:00:00.000Z',
+        detail: expect.objectContaining({
+          knowledgeRetrievalDiagnostics: expect.objectContaining({
+            query: '病假超过 3 天需要什么材料',
+            hitCount: 3,
+            total: 8,
+            postRetrieval: expect.objectContaining({
+              filtering: expect.objectContaining({
+                beforeCount: 8,
+                afterCount: 5,
+                droppedCount: 3,
+                maskedCount: 1
+              })
+            })
+          })
+        })
       })
+    );
+    expect(JSON.stringify((result[0] as any).detail.knowledgeRetrievalDiagnostics.postRetrieval)).not.toContain(
+      'vendor-specific failure'
+    );
+    expect((result[0] as any).detail.knowledgeRetrievalDiagnostics.postRetrieval.ranking).not.toHaveProperty(
+      'providerError'
     );
     expect(result[1]).toEqual(
       expect.objectContaining({

@@ -133,7 +133,7 @@ describe('use-admin-dashboard hook coverage', () => {
     vi.clearAllMocks();
   });
 
-  it('loads dashboard data, syncs the hash, and reacts to hash changes', async () => {
+  it('loads dashboard data, syncs the path route, and reacts to browser navigation', async () => {
     const harness = createReactHookHarness();
     const listeners = new Map<string, EventListener>();
     const replaceState = vi.fn();
@@ -146,7 +146,7 @@ describe('use-admin-dashboard hook coverage', () => {
       refreshPageCenter: vi.fn().mockResolvedValue(undefined),
       refreshTask: vi.fn().mockResolvedValue(undefined)
     };
-    const initialHashState = {
+    const initialRouteState = {
       page: 'runtime',
       runtimeTaskId: 'task-selected-1',
       runtimeFocusKind: 'checkpoint',
@@ -161,7 +161,7 @@ describe('use-admin-dashboard hook coverage', () => {
       approvalsExecutionModeFilter: 'all',
       approvalsInteractionKindFilter: 'all'
     };
-    const changedHashState = {
+    const changedRouteState = {
       page: 'approvals',
       runtimeTaskId: 'task-selected-2',
       runtimeFocusKind: 'span',
@@ -176,14 +176,15 @@ describe('use-admin-dashboard hook coverage', () => {
       approvalsExecutionModeFilter: 'imperial_direct',
       approvalsInteractionKindFilter: 'plan-question'
     };
-    let currentHashState = initialHashState;
-    const readDashboardStateFromHash = vi.fn(() => currentHashState);
+    let currentRouteState = initialRouteState;
+    const readDashboardStateFromRoute = vi.fn(() => currentRouteState);
 
     vi.stubGlobal('window', {
       location: {
-        hash: '#/runtime',
+        hash: '',
         origin: 'https://example.com',
-        pathname: '/admin'
+        pathname: '/runtime',
+        search: ''
       },
       history: {
         replaceState
@@ -220,12 +221,12 @@ describe('use-admin-dashboard hook coverage', () => {
         runtime: '运行中枢',
         approvals: '审批中枢'
       },
-      buildDashboardHash: vi.fn(
+      buildDashboardRoute: vi.fn(
         () =>
-          '#/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
+          '/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
       ),
-      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/runtime'),
-      readDashboardStateFromHash,
+      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/runtime'),
+      readDashboardStateFromRoute,
       shouldPollTask: vi.fn(() => false),
       toApprovalItems: vi.fn(() => ['approval-1'])
     }));
@@ -241,7 +242,7 @@ describe('use-admin-dashboard hook coverage', () => {
     expect(replaceState).toHaveBeenCalledWith(
       null,
       '',
-      '#/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
+      '/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
     );
     expect(result.pendingApprovals).toEqual(['approval-1']);
     expect(result.activeTaskId).toBe('task-selected-1');
@@ -249,8 +250,8 @@ describe('use-admin-dashboard hook coverage', () => {
     expect(result.runtimeCompareTaskId).toBe('task-compare-1');
     expect(result.runtimeGraphNodeId).toBe('worker-gongbu-code');
 
-    currentHashState = changedHashState;
-    listeners.get('hashchange')?.(new Event('hashchange'));
+    currentRouteState = changedRouteState;
+    listeners.get('popstate')?.(new Event('popstate'));
     result = harness.render(() => useAdminDashboard());
     await harness.runEffects();
 
@@ -303,10 +304,11 @@ describe('use-admin-dashboard hook coverage', () => {
     expect(result.refreshDiagnostics).toMatchObject({ target: 'runtime', outcome: 'completed' });
     expect(result.activeRefreshTargets).toEqual([]);
 
-    result.setPage('runtime');
+    result.setPage('learning');
     result = harness.render(() => useAdminDashboard());
     await harness.runEffects();
-    expect(result.page).toBe('runtime');
+    expect(result.page).toBe('learning');
+    expect(actions.refreshPageCenter).toHaveBeenCalledWith('learning');
 
     harness.unmount();
   });
@@ -343,9 +345,10 @@ describe('use-admin-dashboard hook coverage', () => {
 
     vi.stubGlobal('window', {
       location: {
-        hash: '#/runtime',
+        hash: '',
         origin: 'https://example.com',
-        pathname: '/admin'
+        pathname: '/runtime',
+        search: ''
       },
       history: {
         replaceState: vi.fn()
@@ -381,9 +384,9 @@ describe('use-admin-dashboard hook coverage', () => {
       PAGE_TITLES: {
         runtime: '运行中枢'
       },
-      buildDashboardHash: vi.fn(() => '#/runtime'),
-      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/runtime'),
-      readDashboardStateFromHash: vi.fn(() => ({
+      buildDashboardRoute: vi.fn(() => '/runtime'),
+      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/runtime'),
+      readDashboardStateFromRoute: vi.fn(() => ({
         page: 'runtime',
         runtimeTaskId: 'task-1',
         runtimeFocusKind: undefined,
@@ -453,9 +456,10 @@ describe('use-admin-dashboard hook coverage', () => {
 
     vi.stubGlobal('window', {
       location: {
-        hash: '#/approvals',
+        hash: '',
         origin: 'https://example.com',
-        pathname: '/admin'
+        pathname: '/approvals',
+        search: ''
       },
       history: {
         replaceState: vi.fn()
@@ -489,9 +493,9 @@ describe('use-admin-dashboard hook coverage', () => {
         approvals: '审批中枢',
         evals: '评测基线'
       },
-      buildDashboardHash: vi.fn(() => '#/approvals'),
-      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/approvals'),
-      readDashboardStateFromHash: vi.fn(() => ({
+      buildDashboardRoute: vi.fn(() => '/approvals'),
+      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/approvals'),
+      readDashboardStateFromRoute: vi.fn(() => ({
         page: 'approvals',
         runtimeTaskId: undefined,
         runtimeFocusKind: undefined,
@@ -540,9 +544,9 @@ describe('use-admin-dashboard hook coverage', () => {
         approvals: '审批中枢',
         evals: '评测基线'
       },
-      buildDashboardHash: vi.fn(() => '#/evals'),
-      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin#/evals'),
-      readDashboardStateFromHash: vi.fn(() => ({
+      buildDashboardRoute: vi.fn(() => '/evals'),
+      buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/evals'),
+      readDashboardStateFromRoute: vi.fn(() => ({
         page: 'evals',
         runtimeTaskId: undefined,
         runtimeFocusKind: undefined,

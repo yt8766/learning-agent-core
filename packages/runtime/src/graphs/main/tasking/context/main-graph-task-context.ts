@@ -21,14 +21,17 @@ import {
 import { WorkerRegistry } from '../../../../governance/worker-registry';
 import type { ApprovalService } from '../../../../governance/approval';
 import type { AgentRuntimeContext } from '../../../../runtime/agent-runtime-context';
-import { LocalKnowledgeSearchService } from '../../../../runtime/local-knowledge-search-service';
+import {
+  LocalKnowledgeSearchService,
+  type RuntimeKnowledgeSearchService
+} from '../../../../runtime/local-knowledge-search-service';
 import type { SandboxExecutor } from '../../../../sandbox';
 
 import type { MainGraphTaskContextDependencies, RuntimeSettings } from './main-graph-task-context.types';
 export type { MainGraphTaskContextDependencies, RuntimeSettings } from './main-graph-task-context.types';
 
 export class MainGraphTaskContextRuntime {
-  private readonly knowledgeSearchService: LocalKnowledgeSearchService;
+  private readonly knowledgeSearchService: RuntimeKnowledgeSearchService;
 
   constructor(
     private readonly dependencies: MainGraphTaskContextDependencies,

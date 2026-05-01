@@ -3,13 +3,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { loadSettings } from '@agent/config';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ingestLocalKnowledge,
   listKnowledgeArtifacts,
   readKnowledgeOverview
 } from '../src/runtime/local-knowledge-store';
+import { embedChunk } from '../src/runtime/local-knowledge-store.helpers';
 
 const tempRoots: string[] = [];
 
@@ -54,5 +55,46 @@ describe('Local knowledge store', () => {
     expect(stored.embeddings.some(item => item.status === 'failed')).toBe(true);
     expect(stored.receipts.length).toBeGreaterThan(0);
     expect(reloaded.blockedDocumentCount).toBeGreaterThan(0);
+  });
+
+  it('skips adapter loading when embedding credentials are unavailable', async () => {
+    vi.doMock('@agent/adapters', () => {
+      throw new Error('adapter module should not load without embedding credentials');
+    });
+
+    const settings = loadSettings({
+      workspaceRoot: '/tmp/knowledge-store-adapter-skip',
+      overrides: {
+        zhipuApiKey: '',
+        knowledgeRoot: 'data/knowledge'
+      }
+    });
+
+    try {
+      const embedding = await embedChunk(
+        settings,
+        {
+          id: 'chunk_adapter_skip',
+          store: 'cangjing',
+          sourceId: 'source_adapter_skip',
+          documentId: 'doc_adapter_skip',
+          chunkIndex: 0,
+          content: 'hello knowledge',
+          tokenCount: 4,
+          searchable: false,
+          receiptId: 'receipt_adapter_skip',
+          version: 'v1',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z'
+        },
+        'receipt_adapter_skip',
+        'v1'
+      );
+
+      expect(embedding.status).toBe('failed');
+      expect(embedding.failureReason).toBe('missing_embedding_api_key');
+    } finally {
+      vi.doUnmock('@agent/adapters');
+    }
   });
 });

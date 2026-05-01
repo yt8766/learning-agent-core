@@ -9,7 +9,7 @@ import {
   type ExecutionResultRecord
 } from '@agent/core';
 import { createExecutionPolicyDecision, createExecutionRequest, createExecutionResult } from '@agent/runtime';
-import { AgentToolSurfaceResolver, createDefaultToolRegistry } from '@agent/tools';
+import { AgentToolSurfaceResolver, createDefaultToolRegistry, shouldRequireAgentToolApproval } from '@agent/tools';
 
 import { AutoReviewService } from '../auto-review/auto-review.service';
 import { SandboxService } from '../sandbox/sandbox.service';
@@ -43,8 +43,7 @@ import {
 import {
   resumeLinkedAgentToolGovernanceApprovals,
   runAgentToolAutoReview,
-  runAgentToolSandboxPreflight,
-  shouldRequireAgentToolApproval
+  runAgentToolSandboxPreflight
 } from './agent-tools.governance';
 import { buildAgentToolGovernanceProjection, listProjectedAgentToolEvents } from './agent-tools.projection';
 import { AgentToolsRepository } from './agent-tools.repository';

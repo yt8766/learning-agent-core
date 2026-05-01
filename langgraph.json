@@ -1,0 +1,17 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "node_version": "20",
+  "dependencies": ["."],
+  "graphs": {
+    "chat": "./packages/runtime/src/graphs/chat/chat.graph.ts:createAgentGraph",
+    "approval_recovery": "./packages/runtime/src/graphs/approval/approval-recovery.graph.ts:createApprovalRecoveryGraph",
+    "learning": "./packages/runtime/src/graphs/learning/learning.graph.ts:createLearningGraph",
+    "supervisor_route": "./agents/supervisor/src/graphs/main-route.graph.ts:createMainRouteGraph",
+    "coder": "./agents/coder/src/graphs/coder.graph.ts:createCoderGraph",
+    "reviewer": "./agents/reviewer/src/graphs/reviewer.graph.ts:createReviewerGraph",
+    "data_report_sandpack": "./agents/data-report/src/graphs/data-report.graph.ts:createDataReportSandpackGraph",
+    "data_report_json": "./agents/data-report/src/graphs/data-report-json.graph.ts:createDataReportJsonGraph",
+    "intel": "./agents/intel-engine/src/graphs/intel/intel.graph.ts:createIntelGraph"
+  },
+  "env": "./.env"
+}

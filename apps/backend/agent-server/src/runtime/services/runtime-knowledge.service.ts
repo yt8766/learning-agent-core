@@ -18,6 +18,7 @@ import {
   SearchMemoryDto,
   SupersedeKnowledgeDto
 } from '@agent/core';
+import { ingestKnowledgeSourcePayloads, type KnowledgeSourceIngestionPayload } from '@agent/knowledge';
 import type {
   EvidenceRecord,
   MemoryRecord,
@@ -30,12 +31,24 @@ import { applyCrossCheckEvidenceRecords } from '../domain/knowledge/runtime-cros
 import { buildMemoryUsageInsights } from '../domain/knowledge/runtime-memory-usage-insights';
 import { buildMemoryVersionComparison } from '../domain/knowledge/runtime-memory-version-compare';
 import { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
+import {
+  buildCatalogSyncKnowledgePayloads,
+  buildConnectorSyncKnowledgePayloads,
+  buildWebCuratedKnowledgePayloads,
+  buildUserUploadKnowledgePayloadFromWorkspace,
+  type RuntimeCatalogSyncKnowledgeIngestionInput,
+  type RuntimeConnectorSyncKnowledgeIngestionInput,
+  type RuntimeWebCuratedKnowledgeIngestionInput,
+  type RuntimeUserUploadKnowledgeIngestionInput
+} from '../domain/knowledge/runtime-source-ingestion-adapters';
 
 export interface RuntimeKnowledgeContext {
   wenyuanFacade: RuntimeWenyuanFacade;
   ruleRepository: RuleRepository;
   orchestrator: RuntimeHost['orchestrator'];
   runtimeStateRepository: RuntimeHost['runtimeStateRepository'];
+  settings?: Pick<RuntimeHost['settings'], 'workspaceRoot' | 'knowledgeRoot'>;
+  vectorIndexRepository?: RuntimeHost['runtime']['vectorIndexRepository'];
 }
 
 export class RuntimeKnowledgeService {
@@ -229,6 +242,59 @@ export class RuntimeKnowledgeService {
 
   async listCrossCheckEvidence(memoryId?: string) {
     return this.ctx().wenyuanFacade.listCrossCheckEvidence(memoryId);
+  }
+
+  ingestKnowledgeSources(payloads: readonly KnowledgeSourceIngestionPayload[]) {
+    const context = this.ctx();
+    if (!context.settings || !context.vectorIndexRepository) {
+      throw new Error('Runtime knowledge ingestion requires settings and vectorIndexRepository context');
+    }
+    return ingestKnowledgeSourcePayloads(context.settings, payloads, context.vectorIndexRepository);
+  }
+
+  async ingestUserUploadSource(input: RuntimeUserUploadKnowledgeIngestionInput) {
+    const context = this.ctx();
+    if (!context.settings || !context.vectorIndexRepository) {
+      throw new Error('Runtime user upload ingestion requires settings and vectorIndexRepository context');
+    }
+    const payload = await buildUserUploadKnowledgePayloadFromWorkspace(context.settings, input);
+    return ingestKnowledgeSourcePayloads(context.settings, [payload], context.vectorIndexRepository);
+  }
+
+  ingestCatalogSyncSources(entries: readonly RuntimeCatalogSyncKnowledgeIngestionInput[]) {
+    const context = this.ctx();
+    if (!context.settings || !context.vectorIndexRepository) {
+      throw new Error('Runtime catalog sync ingestion requires settings and vectorIndexRepository context');
+    }
+    return ingestKnowledgeSourcePayloads(
+      context.settings,
+      buildCatalogSyncKnowledgePayloads(entries),
+      context.vectorIndexRepository
+    );
+  }
+
+  ingestWebCuratedSources(entries: readonly RuntimeWebCuratedKnowledgeIngestionInput[]) {
+    const context = this.ctx();
+    if (!context.settings || !context.vectorIndexRepository) {
+      throw new Error('Runtime web curated ingestion requires settings and vectorIndexRepository context');
+    }
+    return ingestKnowledgeSourcePayloads(
+      context.settings,
+      buildWebCuratedKnowledgePayloads(entries),
+      context.vectorIndexRepository
+    );
+  }
+
+  ingestConnectorSyncSources(entries: readonly RuntimeConnectorSyncKnowledgeIngestionInput[]) {
+    const context = this.ctx();
+    if (!context.settings || !context.vectorIndexRepository) {
+      throw new Error('Runtime connector sync ingestion requires settings and vectorIndexRepository context');
+    }
+    return ingestKnowledgeSourcePayloads(
+      context.settings,
+      buildConnectorSyncKnowledgePayloads(entries),
+      context.vectorIndexRepository
+    );
   }
 
   listRules() {

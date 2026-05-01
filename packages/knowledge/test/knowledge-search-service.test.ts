@@ -80,4 +80,68 @@ describe('DefaultKnowledgeSearchService', () => {
 
     expect(result).toEqual({ hits: [], total: 0 });
   });
+
+  it('filters candidates by metadata before keyword scoring', async () => {
+    const sourceRepository = new InMemoryKnowledgeSourceRepository([
+      {
+        id: 'source-1',
+        sourceType: 'repo-docs',
+        uri: '/docs/sales-policy.md',
+        title: 'Sales Policy',
+        trustClass: 'internal',
+        updatedAt: '2026-04-30T00:00:00.000Z'
+      }
+    ]);
+    const chunkRepository = new InMemoryKnowledgeChunkRepository([
+      {
+        id: 'chunk-active',
+        sourceId: 'source-1',
+        documentId: 'doc-sales-policy',
+        chunkIndex: 0,
+        content: 'sales discount policy',
+        searchable: true,
+        updatedAt: '2026-04-30T00:00:00.000Z',
+        metadata: {
+          docType: 'policy',
+          status: 'active',
+          allowedRoles: ['sales']
+        }
+      },
+      {
+        id: 'chunk-inactive',
+        sourceId: 'source-1',
+        documentId: 'doc-sales-policy',
+        chunkIndex: 1,
+        content:
+          'sales discount approval policy sales discount approval policy sales discount approval policy requires manager review',
+        searchable: true,
+        updatedAt: '2026-04-30T00:00:00.000Z',
+        metadata: {
+          docType: 'policy',
+          status: 'inactive',
+          allowedRoles: ['sales']
+        }
+      }
+    ]);
+
+    const service = new DefaultKnowledgeSearchService(sourceRepository, chunkRepository);
+    const result = await service.search({
+      query: 'sales discount approval policy',
+      limit: 1,
+      filters: {
+        docTypes: ['policy'],
+        statuses: ['active'],
+        allowedRoles: ['sales']
+      }
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.hits).toHaveLength(1);
+    expect(result.hits[0]?.chunkId).toBe('chunk-active');
+    expect(result.hits[0]?.metadata).toEqual({
+      docType: 'policy',
+      status: 'active',
+      allowedRoles: ['sales']
+    });
+  });
 });

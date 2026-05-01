@@ -1,10 +1,12 @@
 ﻿import { Module } from '@nestjs/common';
-
 import { AgentToolsModule } from './agent-tools/agent-tools.module';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { createPersistenceImports } from './app.persistence';
 import { AppFeatureModule } from './app/app.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AutoReviewModule } from './auto-review/auto-review.module';
 import { ChatModule } from './chat/chat.module';
+import { CompanyLiveModule } from './company-live/company-live.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { LearningModule } from './learning/learning.module';
 import { LoggerModule } from './logger/logger.module';
@@ -21,6 +23,7 @@ import { TemplatesModule } from './templates/templates.module';
 @Module({
   imports: [
     LoggerModule,
+    AdminAuthModule,
     RuntimeModule,
     AgentToolsModule,
     SandboxModule,
@@ -36,7 +39,9 @@ import { TemplatesModule } from './templates/templates.module';
     SkillsModule,
     LearningModule,
     ApprovalsModule,
-    TemplatesModule
+    TemplatesModule,
+    CompanyLiveModule,
+    ...createPersistenceImports()
   ]
 })
 export class AppModule {}

@@ -7,6 +7,7 @@ import { ConnectorsCenterController } from './connectors-center.controller';
 import { EvalsCenterController } from './evals-center.controller';
 import { EvidenceCenterController } from './evidence-center.controller';
 import { LearningCenterController } from './learning-center.controller';
+import { KnowledgeIngestionController } from './knowledge-ingestion.controller';
 import { PlatformBriefingsController } from './platform-briefings.controller';
 import { PlatformConsoleController } from './platform-console.controller';
 import { PlatformDiagnosticsController } from './platform-diagnostics.controller';
@@ -20,6 +21,7 @@ import { WorkspaceCenterController } from './workspace-center.controller';
     PlatformConsoleController,
     RuntimeCenterController,
     ApprovalsCenterController,
+    KnowledgeIngestionController,
     LearningCenterController,
     EvidenceCenterController,
     ConnectorsCenterController,

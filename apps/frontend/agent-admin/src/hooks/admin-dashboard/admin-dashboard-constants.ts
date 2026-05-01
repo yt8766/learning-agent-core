@@ -29,7 +29,7 @@ export interface DashboardHashState {
   approvalsInteractionKindFilter: InteractionKindFilter;
 }
 
-type HashLocationLike = Pick<Location, 'hash'>;
+type DashboardRouteLocationLike = Pick<Location, 'hash' | 'pathname' | 'search'>;
 
 export const PAGE_KEYS: DashboardPageKey[] = [
   'runtime',
@@ -44,7 +44,8 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'evidence',
   'connectors',
   'skillSources',
-  'companyAgents'
+  'companyAgents',
+  'workflowLab'
 ];
 
 const ADMIN_RUNTIME_PAGE_TITLES = {
@@ -64,7 +65,8 @@ const ADMIN_RUNTIME_PAGE_TITLES = {
 export const PAGE_TITLES = {
   ...ADMIN_RUNTIME_PAGE_TITLES,
   memory: '记忆中枢',
-  profiles: '画像中枢'
+  profiles: '画像中枢',
+  workflowLab: '工作流实验室'
 } satisfies Record<DashboardPageKey, string>;
 
 function isExecutionModeFilter(value: string | null): value is ExecutionModeFilter {
@@ -97,8 +99,10 @@ function isObservatoryFocusKind(value: string | null): value is ObservatoryFocus
   return value === 'checkpoint' || value === 'span' || value === 'evidence';
 }
 
-export function readDashboardStateFromHash(locationLike: HashLocationLike = window.location): DashboardHashState {
-  const [rawPage = '', rawQuery = ''] = locationLike.hash.replace(/^#\//, '').split('?');
+export function readDashboardStateFromRoute(
+  locationLike: DashboardRouteLocationLike = window.location
+): DashboardHashState {
+  const { rawPage, rawQuery } = readDashboardRouteParts(locationLike);
   const page = PAGE_KEYS.includes(rawPage as DashboardPageKey) ? (rawPage as DashboardPageKey) : 'runtime';
   const params = new URLSearchParams(rawQuery);
   const runtimeTaskId = params.get('runtimeTaskId');
@@ -132,10 +136,10 @@ export function readDashboardStateFromHash(locationLike: HashLocationLike = wind
 }
 
 export function readPageFromHash(): DashboardPageKey {
-  return readDashboardStateFromHash().page;
+  return readDashboardStateFromRoute().page;
 }
 
-export function buildDashboardHash(state: DashboardHashState): string {
+export function buildDashboardRoute(state: DashboardHashState): string {
   const params = new URLSearchParams();
   if (state.page === 'runtime' && state.runtimeTaskId) {
     params.set('runtimeTaskId', state.runtimeTaskId);
@@ -173,14 +177,30 @@ export function buildDashboardHash(state: DashboardHashState): string {
   }
 
   const query = params.toString();
-  return `#/${state.page}${query ? `?${query}` : ''}`;
+  return `/${state.page}${query ? `?${query}` : ''}`;
 }
 
 export function buildDashboardShareUrl(
   state: DashboardHashState,
   locationLike: Pick<Location, 'origin' | 'pathname'> = window.location
 ) {
-  return `${locationLike.origin}${locationLike.pathname}${buildDashboardHash(state)}`;
+  return `${locationLike.origin}${buildDashboardRoute(state)}`;
+}
+
+export const readDashboardStateFromHash = readDashboardStateFromRoute;
+export const buildDashboardHash = buildDashboardRoute;
+
+function readDashboardRouteParts(locationLike: DashboardRouteLocationLike) {
+  if (locationLike.hash.startsWith('#/')) {
+    const [legacyPage = '', legacyQuery = ''] = locationLike.hash.replace(/^#\//, '').split('?');
+    return { rawPage: legacyPage, rawQuery: legacyQuery };
+  }
+
+  const rawPage = locationLike.pathname.replace(/^\//, '').split('/')[0] || 'runtime';
+  return {
+    rawPage,
+    rawQuery: locationLike.search.replace(/^\?/, '')
+  };
 }
 
 export function toApprovalItems(consoleData: PlatformConsoleRecord | null): ApprovalCenterItem[] {

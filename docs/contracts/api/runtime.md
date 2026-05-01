@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-admin`
-最后核对：2026-04-25
+最后核对：2026-05-01
 
 本文记录 Runtime Center 查询、导出与筛选契约。
 
@@ -26,7 +26,28 @@
 | `interactionKind` | `string`          | 无     | 交互类型筛选；见下方取值。                     |
 | `format`          | `"csv" \| "json"` | 无     | 仅导出接口支持。                               |
 
-返回值 `PlatformConsoleRecord["runtime"]` 至少应包含 dashboard 展示需要的 summary、任务/队列投影、模型与成本统计、approval scope policy 与工具摘要；新增字段必须保持向后兼容。
+返回值 `PlatformConsoleRecord["runtime"]` 至少应包含 dashboard 展示需要的 summary、任务/队列投影、模型与成本统计、approval scope policy、工具摘要与知识检索装配状态；新增字段必须保持向后兼容。
+
+知识检索状态字段：
+
+| 字段                    | 类型                                                                 | 说明                                                                |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `knowledgeSearchStatus` | `RuntimeCenterKnowledgeSearchStatusRecord \| undefined`              | RuntimeHost 当前知识检索装配态，不是单次 query diagnostics。        |
+| `configuredMode`        | `"keyword-only" \| "vector-only" \| "hybrid"`                        | 配置期望模式。                                                      |
+| `effectiveMode`         | `"keyword-only" \| "vector-only" \| "hybrid"`                        | 实际生效模式；例如 vector client 缺失时可从 `hybrid` 降为 keyword。 |
+| `vectorProviderId`      | `string \| undefined`                                                | provider 标识，只用于观测，不包含凭据或 raw endpoint。              |
+| `vectorConfigured`      | `boolean`                                                            | host 是否配置了 vector 路径。                                       |
+| `hybridEnabled`         | `boolean`                                                            | 当前是否实际启用 hybrid 检索。                                      |
+| `keywordProviderHealth` | `{ status; checkedAt; latencyMs?; message?; consecutiveFailures? }`  | keyword provider 连通性；当前 OpenSearch provider 可返回该字段。    |
+| `vectorProviderHealth`  | `{ status; checkedAt; latencyMs?; message?; consecutiveFailures? }`  | vector provider 连通性；经短 TTL 缓存和超时保护。                   |
+| `diagnostics`           | `{ code: string; severity: "info" \| "warning"; message: string }[]` | 装配期 diagnostics；不得透传第三方 raw error 或凭据。               |
+| `checkedAt`             | `string`                                                             | RuntimeHost 状态生成时间；provider health 字段有各自检查时间。      |
+
+生产配置样例见仓库根目录 `.env.example` 的 knowledge retrieval 区块。常用组合：
+
+- `KNOWLEDGE_RETRIEVAL_MODE=keyword-only`：只使用本地 snapshot keyword，或设置 `KNOWLEDGE_KEYWORD_PROVIDER=opensearch` 接入 OpenSearch。
+- `KNOWLEDGE_RETRIEVAL_MODE=vector-only`：设置 `KNOWLEDGE_VECTOR_PROVIDER=chroma`、Chroma collection、embedding endpoint/model。
+- `KNOWLEDGE_RETRIEVAL_MODE=hybrid`：同时接入 `KNOWLEDGE_KEYWORD_PROVIDER=opensearch` 与 `KNOWLEDGE_VECTOR_PROVIDER=chroma`。
 
 ## Execution Mode
 

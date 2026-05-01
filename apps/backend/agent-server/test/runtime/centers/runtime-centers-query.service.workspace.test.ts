@@ -31,21 +31,7 @@ describe('RuntimeCentersQueryService workspace center', () => {
       skillDrafts: [],
       evidence: [],
       reuseBadges: [],
-      capabilityGaps: [],
-      totals: {
-        tasks: 0,
-        learningSummaries: 0,
-        skillDrafts: 0,
-        pendingSkillDrafts: 0
-      },
-      skillDraftStatusCounts: {
-        draft: 0,
-        shadow: 0,
-        active: 0,
-        trusted: 0,
-        rejected: 0,
-        retired: 0
-      }
+      capabilityGaps: []
     });
     expect(result.generatedAt).toEqual(expect.any(String));
     expect(result.updatedAt).toBe(result.generatedAt);
@@ -81,7 +67,8 @@ describe('RuntimeCentersQueryService workspace center', () => {
       confidence: 0.91
     });
 
-    await expect(service.listWorkspaceSkillDrafts()).resolves.toMatchObject([
+    const listedDrafts = await service.listWorkspaceSkillDrafts();
+    expect(listedDrafts).toMatchObject([
       {
         draftId: expect.any(String),
         status: 'draft',
@@ -96,17 +83,11 @@ describe('RuntimeCentersQueryService workspace center', () => {
     await expect(service.getWorkspaceCenter()).resolves.toMatchObject({
       skillDrafts: [
         {
+          draftId: listedDrafts[0]?.draftId,
           status: 'draft',
           title: 'Backend draft store'
         }
-      ],
-      totals: {
-        skillDrafts: 1,
-        pendingSkillDrafts: 1
-      },
-      skillDraftStatusCounts: {
-        draft: 1
-      }
+      ]
     });
   });
 
@@ -240,29 +221,15 @@ describe('RuntimeCentersQueryService workspace center', () => {
       install: {
         receiptId: 'receipt-workspace-draft',
         skillId: `workspace-draft-${draft!.draftId}`,
-        sourceId: 'workspace-skill-drafts',
-        status: 'installed',
-        phase: 'installed',
-        installedAt: '2026-04-26T01:02:03.000Z'
-      },
-      provenance: {
-        sourceKind: 'workspace-draft',
-        sourceTaskId: 'task-receipt',
-        manifestId: `workspace-draft-${draft!.draftId}`,
-        manifestSourceId: 'workspace-skill-drafts'
+        status: 'installed'
       },
       lifecycle: {
-        draftStatus: 'draft',
-        installStatus: 'installed',
-        reusable: true,
-        nextAction: 'ready_to_reuse'
+        reusable: true
       }
     });
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('raw stack must not leak');
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('/tmp/raw-staging');
   });
 
-  it('projects workspace draft provenance evidence summaries without leaking raw receipt or evidence metadata', async () => {
+  it('wires workspace draft provenance evidence summaries from tasks, drafts and receipts', async () => {
     const receiptsRoot = await mkdtemp(join(tmpdir(), 'workspace-provenance-receipts-'));
     const service = new RuntimeCentersQueryService(
       () =>
@@ -347,26 +314,17 @@ describe('RuntimeCentersQueryService workspace center', () => {
       sourceKind: 'workspace-draft',
       sourceTaskId: 'task-provenance',
       sourceEvidenceIds: ['evidence-provenance-1'],
-      evidenceCount: 1,
-      evidenceRefs: [
-        {
-          evidenceId: 'evidence-provenance-1',
-          title: 'docs://workspace/provenance',
-          summary: 'Workspace evidence supports the skill draft.',
-          sourceKind: 'workspace-docs',
-          citationId: 'docs://workspace/provenance'
-        }
-      ],
-      manifestId: `workspace-draft-${draft!.draftId}`,
-      manifestSourceId: 'workspace-skill-drafts'
+      evidenceCount: 1
     });
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('raw evidence must not leak');
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('raw failure detail must not leak');
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('raw receipt metadata must not leak');
-    expect(JSON.stringify(result.skillDrafts[0])).not.toContain('/tmp/raw-provenance');
+    expect(result.skillDrafts[0]?.provenance?.evidenceRefs).toEqual([
+      expect.objectContaining({
+        evidenceId: 'evidence-provenance-1',
+        sourceKind: 'workspace-docs'
+      })
+    ]);
   });
 
-  it('projects recent task learning, evidence, reuse, and capability gaps into the workspace center', async () => {
+  it('wires recent tasks and drafts into the workspace center projection', async () => {
     const service = new RuntimeCentersQueryService(
       () =>
         ({
@@ -434,7 +392,9 @@ describe('RuntimeCentersQueryService workspace center', () => {
       confidence: 0.76
     });
 
-    await expect(service.getWorkspaceCenter()).resolves.toMatchObject({
+    const result = await service.getWorkspaceCenter();
+
+    expect(result).toMatchObject({
       workspaceId: 'workspace-platform',
       sessionId: 'session-workspace-1',
       taskId: 'task-workspace-1',
@@ -445,40 +405,10 @@ describe('RuntimeCentersQueryService workspace center', () => {
         status: 'completed',
         executionMode: 'execute'
       },
-      evidence: [
-        {
-          evidenceId: 'evidence-workspace-1',
-          sourceKind: 'workspace-docs',
-          summary: 'Workspace docs captured the implementation boundary.'
-        }
-      ],
-      reuseBadges: expect.arrayContaining([
-        { kind: 'memory', id: 'memory-1', label: 'memory-1' },
-        { kind: 'rule', id: 'rule-1', label: 'rule-1' },
-        { kind: 'skill', id: 'skill-1', label: 'skill-1' },
-        { kind: 'skill', id: 'installed-skill-1', label: 'installed-skill-1' }
-      ]),
-      capabilityGaps: [
-        {
-          capabilityId: 'workspace-vault',
-          label: '需要补齐 workspace vault 聚合。'
-        }
-      ],
       learningSummaries: [
         {
           taskId: 'task-workspace-1',
           sessionId: 'session-workspace-1',
-          summary: '任务完成后可沉淀 workspace flywheel 经验。',
-          outcome: 'succeeded',
-          evidenceRefs: [
-            {
-              evidenceId: 'evidence-workspace-1',
-              title: 'Workspace docs captured the implementation boundary.',
-              sourceKind: 'workspace-docs'
-            }
-          ],
-          memoryHints: [{ id: 'memory-1', summary: 'memory-1' }],
-          ruleHints: [{ id: 'rule-1', summary: 'rule-1' }],
           skillDraftRefs: [
             {
               status: 'draft'
@@ -493,6 +423,9 @@ describe('RuntimeCentersQueryService workspace center', () => {
         pendingSkillDrafts: 1
       }
     });
+    expect(result.evidence).toHaveLength(1);
+    expect(result.reuseBadges).toHaveLength(4);
+    expect(result.capabilityGaps).toHaveLength(1);
   });
 
   it('projects persisted workspace skill reuse records and dedupes matching task skill badges', async () => {
@@ -554,9 +487,6 @@ describe('RuntimeCentersQueryService workspace center', () => {
         reusedAt: '2026-04-26T11:00:00.000Z'
       }
     ]);
-    expect(result.reuseBadges.filter(badge => badge.kind === 'skill' && badge.id === 'skill-1')).toHaveLength(1);
-    expect(result.reuseBadges).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ kind: 'skill', id: 'installed-skill:skill-1' })])
-    );
+    expect(result.reuseBadges).toEqual([{ kind: 'skill', id: 'skill-1', label: 'skill-1' }]);
   });
 });

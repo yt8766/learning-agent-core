@@ -467,15 +467,39 @@ describe('AgentToolsService', () => {
     expect(response.request.metadata).toEqual(
       expect.objectContaining({
         sandboxRunId: 'sandbox_run_review_block',
+        reviewId: 'review_block',
         autoReviewId: 'review_block',
         autoReviewVerdict: 'block'
       })
     );
     expect(service.listEvents(response.request.requestId)[2].payload).toEqual(
       expect.objectContaining({
+        reviewId: 'review_block',
         autoReviewId: 'review_block',
         autoReviewVerdict: 'block',
         reasonCode: 'auto_review_blocked'
+      })
+    );
+    expect(service.listEvents(response.request.requestId)[3].payload).toEqual(
+      expect.objectContaining({
+        reviewId: 'review_block',
+        autoReviewId: 'review_block',
+        autoReviewVerdict: 'block'
+      })
+    );
+    const projection = service.getProjection({ requestId: response.request.requestId });
+    expect(projection.requests[0].metadata).toEqual(
+      expect.objectContaining({
+        reviewId: 'review_block',
+        autoReviewId: 'review_block',
+        autoReviewVerdict: 'block'
+      })
+    );
+    expect(projection.events[2].payload).toEqual(
+      expect.objectContaining({
+        reviewId: 'review_block',
+        autoReviewId: 'review_block',
+        autoReviewVerdict: 'block'
       })
     );
     expect(() => ChatEventRecordSchema.array().parse(service.listEvents(response.request.requestId))).not.toThrow();
@@ -627,12 +651,24 @@ describe('AgentToolsService', () => {
             input: { secret: 'metadata input' },
             rawInput: 'raw metadata input',
             vendor: { raw: true },
-            rawOutput: 'raw metadata output'
+            rawOutput: 'raw metadata output',
+            vendorObject: { raw: 'metadata vendor object' },
+            vendorPayload: { raw: 'metadata vendor payload' },
+            vendorResponse: { raw: 'metadata vendor response' },
+            rawVendorResponse: { raw: 'metadata raw vendor response' },
+            providerResponse: { raw: 'metadata provider response' },
+            rawProviderResponse: { raw: 'metadata raw provider response' }
           },
           input: { secret: 'payload input' },
           rawInput: 'payload raw input',
           vendor: { raw: true },
-          rawOutput: 'payload raw output'
+          rawOutput: 'payload raw output',
+          vendorObject: { raw: 'payload vendor object' },
+          vendorPayload: { raw: 'payload vendor payload' },
+          vendorResponse: { raw: 'payload vendor response' },
+          rawVendorResponse: { raw: 'payload raw vendor response' },
+          providerResponse: { raw: 'payload provider response' },
+          rawProviderResponse: { raw: 'payload raw provider response' }
         }
       })
     ]);
@@ -653,6 +689,76 @@ describe('AgentToolsService', () => {
     expect(sanitized?.payload).not.toHaveProperty('rawInput');
     expect(sanitized?.payload).not.toHaveProperty('vendor');
     expect(sanitized?.payload).not.toHaveProperty('rawOutput');
+    expect(sanitized?.payload).not.toHaveProperty('vendorObject');
+    expect(sanitized?.payload).not.toHaveProperty('vendorPayload');
+    expect(sanitized?.payload).not.toHaveProperty('vendorResponse');
+    expect(sanitized?.payload).not.toHaveProperty('rawVendorResponse');
+    expect(sanitized?.payload).not.toHaveProperty('providerResponse');
+    expect(sanitized?.payload).not.toHaveProperty('rawProviderResponse');
+    const projectionEvent = service
+      .getProjection({ requestId: response.request.requestId })
+      .events.find(event => event.id.endsWith('_9999_tool_called'));
+    expect(projectionEvent?.payload).toEqual(sanitized?.payload);
+  });
+
+  it('removes nested raw vendor and provider fields from projected event payloads', () => {
+    const repository = new AgentToolsRepository();
+    service = new AgentToolsService(repository);
+    const response = service.createRequest({
+      taskId: 'task-events-nested-sanitize',
+      sessionId: 'session-events-nested-sanitize',
+      capabilityId: 'capability.filesystem.read_local_file',
+      toolName: 'read_local_file',
+      requestedBy: { actor: 'runtime' },
+      input: { path: 'README.md' },
+      riskClass: 'low'
+    });
+    repository.appendEvents(response.request.requestId, [
+      ChatEventRecordSchema.parse({
+        id: `agent_tool_${response.request.requestId}_9999_tool_called`,
+        sessionId: response.request.sessionId,
+        type: 'tool_called',
+        at: '2026-04-26T00:00:00.000Z',
+        payload: {
+          requestId: response.request.requestId,
+          details: {
+            safeSummary: 'kept',
+            providerResponse: { token: 'provider secret' },
+            nested: {
+              vendorPayload: { token: 'vendor secret' },
+              rawVendorResponse: { token: 'raw vendor secret' }
+            }
+          },
+          outputs: [
+            {
+              label: 'preview',
+              rawProviderResponse: { token: 'raw provider secret' }
+            }
+          ]
+        }
+      })
+    ]);
+
+    const event = service
+      .listEvents(response.request.requestId)
+      .find(record => record.id.endsWith('_9999_tool_called'));
+    const projectionEvent = service
+      .getProjection({ requestId: response.request.requestId })
+      .events.find(record => record.id.endsWith('_9999_tool_called'));
+
+    expect(event?.payload).toEqual({
+      requestId: response.request.requestId,
+      details: {
+        safeSummary: 'kept',
+        nested: {}
+      },
+      outputs: [
+        {
+          label: 'preview'
+        }
+      ]
+    });
+    expect(projectionEvent?.payload).toEqual(event?.payload);
   });
 
   it('projects alias governance metadata without leaking raw request metadata', () => {
@@ -1140,6 +1246,47 @@ describe('AgentToolsService', () => {
         interrupt: expect.objectContaining({
           action: 'approve',
           reviewId: 'review_resume',
+          requestId: pending.request.requestId
+        })
+      })
+    );
+  });
+
+  it('prefers reviewId over the legacy autoReviewId when resuming linked auto review approvals', () => {
+    const autoReviewService = createAutoReviewServiceMock({ verdict: 'block', reviewId: 'review_canonical' });
+    service = new AgentToolsService(new AgentToolsRepository(), undefined, autoReviewService);
+    const pending = service.createRequest({
+      taskId: 'task-approval-review-id',
+      sessionId: 'session-approval-review-id',
+      capabilityId: 'capability.mcp.run_terminal',
+      toolName: 'run_terminal',
+      requestedBy: { actor: 'supervisor' },
+      input: { command: 'pnpm release' },
+      riskClass: 'high',
+      metadata: {
+        reviewId: 'review_canonical',
+        autoReviewId: 'review_legacy',
+        autoReviewVerdict: 'block'
+      }
+    });
+
+    service.resumeApproval(pending.request.requestId, {
+      sessionId: 'session-approval-review-id',
+      actor: 'human',
+      reason: 'approved after governance review',
+      interrupt: {
+        action: 'approve',
+        requestId: pending.request.requestId,
+        approvalId: pending.request.approvalId,
+        interruptId: pending.approval?.interruptId
+      }
+    });
+
+    expect(autoReviewService.resumeApproval).toHaveBeenCalledWith(
+      'review_canonical',
+      expect.objectContaining({
+        interrupt: expect.objectContaining({
+          reviewId: 'review_canonical',
           requestId: pending.request.requestId
         })
       })

@@ -591,3 +591,57 @@ Policy 规则：`durationMs > 300000` 或 `imageAssetRefs.length > 10` 时拒绝
 | `src/services/retry-delivery.service.ts` | `src/runtime/execution/retry-intel-deliveries.ts` |
 
 所有外部 import（`src/graphs/intel/intel.graph.ts`、`src/index.ts`、相关测试文件）已同步更新到新路径。
+
+## 16. v1.0 Implementation Status
+
+状态：completed
+最后核对：2026-04-27
+
+v1.0 已完成以下边界：
+
+- `packages/core/src/contracts/media` 提供 schema-first media contracts。
+- `packages/runtime/src/media` 提供 Agent-facing provider interfaces。
+- `packages/adapters/src/media/minimax` 提供 MiniMax adapter skeleton 与 mapper。
+- `packages/platform-runtime/src/media` 提供默认 provider registry wiring。
+- `agents/audio`、`agents/image`、`agents/video` 提供媒体 Domain skeleton。
+- `agents/company-live` 提供 content brief 到 media request 的稳定转换入口。
+
+真实 MiniMax 网络调用、后台轮询 worker、资产持久化、Admin 媒体中心和完整 CompanyLive 业务 graph 留到后续阶段。
+
+## 17. v1.0 MVP E2E 打通状态
+
+状态：completed
+最后核对：2026-04-29
+
+以 stub transport（无需真实 API key）完成前端→后端→agent graph→media providers 的完整 MVP 端到端：
+
+### 新增模块
+
+| 模块              | 路径                                                                                   | 说明                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Graph + 节点      | `agents/company-live/src/graphs/company-live.graph.ts`                                 | 顺序 pipeline：generateAudio → generateImage → generateVideo → assembleBundle |
+| Stub Registry     | `agents/company-live/src/runtime/company-live-domain-runtime.ts`                       | `createCompanyLiveStubRegistry()` 返回 mock asset，不发 HTTP                  |
+| 节点 trace schema | `packages/core/src/contracts/media/company-live-generate-result.schema.ts`             | `CompanyLiveNodeTraceSchema` + `CompanyLiveGenerateResultSchema`              |
+| 后端 endpoint     | `apps/backend/agent-server/src/company-live/`                                          | POST /company-live/generate → service → graph                                 |
+| 前端 API 客户端   | `apps/frontend/agent-admin/src/api/company-live.api.ts`                                | `generateCompanyLive(brief)`                                                  |
+| 前端生成表单      | `apps/frontend/agent-admin/src/features/company-agents/company-live-generate-form.tsx` | 输入 briefId/platform/script/duration/voiceId                                 |
+| 前端结果展示      | `apps/frontend/agent-admin/src/features/company-agents/company-live-bundle-result.tsx` | 展示 GeneratedMediaBundle.assets                                              |
+| 前端节点轨迹      | `apps/frontend/agent-admin/src/features/company-agents/company-live-node-trace.tsx`    | 时间线：nodeId、status、durationMs、input/output snapshot                     |
+
+### 接口文档
+
+`docs/contracts/api/company-live-generate.md` — POST /api/company-live/generate 完整接口定义。
+
+### 验证状态
+
+- Spec：`packages/core/test/media-contracts.test.ts` 7 ✅
+- Unit/Graph：`agents/company-live/test/company-live-graph.test.ts` 5 ✅
+- Demo/Controller：`apps/backend/agent-server/test/company-live/company-live.controller.spec.ts` 2 ✅
+- Frontend API：`apps/frontend/agent-admin/test/api/admin-api-company-live.test.ts` 2 ✅
+- Typecheck：core、company-live、backend、agent-admin 四层全通过
+
+### 已知限制
+
+- stub registry 返回固定 mock asset，不发真实 HTTP
+- video stub 直接构造 MediaAsset，不经 task polling
+- GeneratedMediaBundle.assets 无 `sourceNodeId` 字段（schema 未定义此字段）

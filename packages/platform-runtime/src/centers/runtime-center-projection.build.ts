@@ -63,6 +63,8 @@ export function buildRuntimeCenterProjection(input: BuildRuntimeCenterProjection
     activeMinistries,
     activeWorkers,
     knowledgeOverview: input.knowledgeOverview,
+    knowledgeSearchStatus: input.knowledgeSearchStatus,
+    knowledgeSearchLastDiagnostics: input.knowledgeSearchLastDiagnostics,
     subgraphs: input.listSubgraphDescriptors(),
     workflowVersions: input.listWorkflowVersions(),
     usageAnalytics: input.usageAnalytics,

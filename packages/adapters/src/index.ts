@@ -93,11 +93,40 @@ export {
 // Chroma adapter
 export {
   ChromaVectorStoreAdapter,
+  ChromaVectorSearchProvider,
+  buildChromaKnowledgeFilterWhere,
   createChromaClient,
   getOrCreateChromaCollection,
   mapVectorMetadataToChromaMetadata
 } from './chroma';
-export type { ChromaVectorStoreOptions, ChromaClientOptions, ChromaClientLike, ChromaCollectionLike } from './chroma';
+export type {
+  ChromaVectorStoreOptions,
+  ChromaVectorSearchProviderOptions,
+  ChromaKnowledgeFilterWhere,
+  ChromaSearchCollectionLike,
+  QueryEmbeddingProvider,
+  ChromaClientOptions,
+  ChromaClientLike,
+  ChromaCollectionLike
+} from './chroma';
+
+// OpenSearch-like full-text adapter
+export {
+  OpenSearchKeywordSearchProvider,
+  buildOpenSearchKnowledgeFilter,
+  createOpenSearchKeywordSearchProvider,
+  parseOpenSearchKeywordSearchProviderConfig,
+  mapOpenSearchResponseToRetrievalResult
+} from './opensearch';
+export type {
+  OpenSearchKeywordHealthCheckParams,
+  OpenSearchKeywordSearchClientLike,
+  OpenSearchKeywordSearchProviderConfig,
+  OpenSearchKeywordSearchParams,
+  OpenSearchKeywordSearchProviderOptions,
+  OpenSearchKnowledgeFilterClause,
+  OpenSearchTermValue
+} from './opensearch/search';
 
 // MCP skill providers
 export {

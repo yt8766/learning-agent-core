@@ -1,4 +1,10 @@
 export type { AgentLike, AgentRuntimeContext } from './agent-runtime-context';
+export type {
+  LocalKnowledgeSearchHit,
+  RuntimeKnowledgeSearchDiagnostics,
+  RuntimeKnowledgeSearchDiagnosticsSnapshot,
+  RuntimeKnowledgeSearchService
+} from './local-knowledge-search-service';
 export {
   StreamingExecutionCoordinator,
   StreamingToolScheduler,
@@ -7,6 +13,15 @@ export {
   type StreamingExecutionEvent,
   type StreamingExecutionTask
 } from './streaming-execution';
+export {
+  runWithConcurrency,
+  type RunWithConcurrencyOptions,
+  type RunWithConcurrencyProgressEvent,
+  type RunWithConcurrencyProgressStatus,
+  type RunWithConcurrencyResult,
+  type RunWithConcurrencySettledResult,
+  type RunWithConcurrencyWorkerContext
+} from './concurrency';
 export { buildCheckpointRef } from './runtime-checkpoint-ref';
 export {
   generateObjectWithRetry,

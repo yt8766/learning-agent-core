@@ -122,7 +122,38 @@ describe('runtime-center-projection', () => {
       getSpecialistDisplayName: ({ domain }) => (domain === 'safety' ? '礼部审校' : domain),
       deriveRecentAgentErrors: input => input.map(task => ({ taskId: task.id })),
       listSubgraphDescriptors: () => [{ id: 'subgraph-1' }],
-      listWorkflowVersions: () => [{ workflowId: 'chat', version: 'v1' }]
+      listWorkflowVersions: () => [{ workflowId: 'chat', version: 'v1' }],
+      knowledgeSearchStatus: {
+        configuredMode: 'hybrid',
+        effectiveMode: 'keyword-only',
+        vectorProviderId: 'missing-client',
+        vectorConfigured: true,
+        hybridEnabled: false,
+        vectorProviderHealth: {
+          status: 'degraded',
+          checkedAt: '2026-05-01T00:00:00.000Z',
+          message: 'connection refused'
+        },
+        diagnostics: [
+          {
+            code: 'knowledge.vector_provider.missing_client',
+            severity: 'warning',
+            message: 'vector client missing'
+          }
+        ],
+        checkedAt: '2026-05-01T00:00:00.000Z'
+      },
+      knowledgeSearchLastDiagnostics: {
+        query: 'HX-9000 semantic alias',
+        limit: 4,
+        hitCount: 1,
+        total: 3,
+        diagnostics: {
+          retrievalMode: 'hybrid',
+          candidateCount: 7
+        },
+        searchedAt: '2026-05-01T00:01:00.000Z'
+      }
     });
 
     expect(result.activeMinistries).toEqual(['工部']);
@@ -153,6 +184,26 @@ describe('runtime-center-projection', () => {
     expect(result.recentAgentErrors).toEqual([{ taskId: 'task-1' }]);
     expect(result.subgraphs).toEqual([{ id: 'subgraph-1' }]);
     expect(result.workflowVersions).toEqual([{ workflowId: 'chat', version: 'v1' }]);
+    expect(result.knowledgeSearchStatus).toMatchObject({
+      configuredMode: 'hybrid',
+      effectiveMode: 'keyword-only',
+      vectorConfigured: true,
+      hybridEnabled: false,
+      vectorProviderHealth: {
+        status: 'degraded'
+      }
+    });
+    expect(result.knowledgeSearchLastDiagnostics).toEqual({
+      query: 'HX-9000 semantic alias',
+      limit: 4,
+      hitCount: 1,
+      total: 3,
+      diagnostics: {
+        retrievalMode: 'hybrid',
+        candidateCount: 7
+      },
+      searchedAt: '2026-05-01T00:01:00.000Z'
+    });
   });
 
   it('normalizes legacy governance review outcomes to critique-style values', () => {

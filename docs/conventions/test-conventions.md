@@ -203,11 +203,12 @@
 
 ## 1.1 强制执行要求
 
-- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；每次改动文件时，都必须先按该文档判断本轮需要补齐的验证层级、治理门槛与命令组合。
-- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前就必须补齐五层验证，不允许只跑其中一层就结束。
-- 默认优先执行根级 `pnpm verify`；如果它全绿，视为本轮仓库级验证已收口。
+- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的验证分流入口；每次交付前，都必须先按该文档判断本轮需要补齐的受影响范围、验证层级、治理门槛与命令组合。
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，完成前就必须对受影响范围补齐必要验证层级，不允许只跑其中一层就结束。
+- 日常改动不要求每次修改代码后手动执行全量 `pnpm verify`；本地优先跑新增测试、受影响测试、对应类型检查与必要治理检查，本地提交链路和 main CI 再承担更重的聚合验证收口。
+- 根级 `pnpm verify` 是重型全量收口入口；如果它全绿，视为本轮仓库级验证已收口，但不要把它当成每次文件修改后的默认命令。
 - 禁止因为“只是单文件改动”“只是重构”“只是补测试”“只是调模板”而跳过 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 要求的 Type / Spec / Unit / Demo / Integration / Eval / 治理门槛判断。
-- 如果 `pnpm verify` 被与本轮无关的既有红灯、网络、凭据、外部服务或环境问题阻断，仍必须对受影响范围逐层补齐以下验证：
+- 如果受影响范围验证或 hook / CI 中的 `pnpm verify` 被与本轮无关的既有红灯、网络、凭据、外部服务或环境问题阻断，仍必须对受影响范围逐层补齐以下验证：
   - `Governance`：`pnpm lint:prettier:check`、`pnpm lint:eslint:check`，或受影响范围的 `pnpm lint:prettier:affected`、`pnpm lint:eslint:affected`
   - `Type`：`pnpm typecheck` 或受影响项目的 `tsc --noEmit`
   - `Spec`：`pnpm test:spec`、`pnpm test:spec:affected` 或受影响项目的 schema parse / safeParse 回归
@@ -216,7 +217,7 @@
   - `Integration`：`pnpm test:integration` 或受影响项目的 integration tests
   - `Eval`：涉及 prompt 敏感路径时执行 `pnpm eval:prompts` 或 `pnpm eval:prompts:affected`
 - 只要本轮触达模板、脚手架、CLI、工具 adapter、workflow preset、审批恢复或最小闭环相关实现，这五层验证依旧全部生效，不能因为“只是生成链路”就跳过 Demo / Integration
-- 纯文档改动至少执行 `pnpm check:docs`；如果文档与代码同轮变更，仍按五层验证执行。
+- 纯文档改动至少执行 `pnpm check:docs`；如果文档与代码同轮变更，仍按受影响范围补齐对应验证层级。
 - 如果只想预览治理校验会执行哪些 Turbo 任务，可运行 `pnpm exec turbo run check:docs check:architecture --dry-run=json` 或 `pnpm exec turbo run check:docs check:architecture --graph=turbo-verify-governance.html`。
 - 交付说明里必须明确写出：
   - 实际执行了哪些验证命令

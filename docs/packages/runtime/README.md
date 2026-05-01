@@ -57,6 +57,7 @@
 - `packages/runtime` 的专项文档统一放在 `docs/packages/runtime/`
 - 新增 runtime facade、session 语义、governance 边界或 graph 主链宿主变化后，需同步更新本目录文档
 - `runtime/llm-facade.ts` 当前作为 LLM retry / structured generation facade 的真实宿主
+- `runtime/concurrency` 当前作为 agent 批量异步任务并发控制 helper 的真实宿主；它提供 `runWithConcurrency`，用于保序结果、失败汇总、取消信号透传与并发上限控制
 - `contracts/llm-facade.ts` 已删除；这类 helper 不再额外包一层 runtime contract 壳
   - `runtime/model-invocation` 当前已收敛两条最小语义：
   - `CapabilityInjectionPreprocessor` 对 `direct-reply` 维持保守按需注入，默认不放行 MCP；若 hint 显式请求 MCP，会写入 `rejectedCandidates / reasons` 并拒绝执行
@@ -71,6 +72,7 @@
 - [execution-trajectory-factories.md](/docs/packages/runtime/execution-trajectory-factories.md) — Execution Fabric 与 Task Trajectory runtime factories
 - [llm-invocation-lifecycle-plan.md](/docs/packages/runtime/llm-invocation-lifecycle-plan.md) — LLM 前处理、能力注入、token/cost 预检、后处理与计费结算计划
 - [package-structure-guidelines.md](/docs/packages/runtime/package-structure-guidelines.md)
+- [runtime-concurrency.md](/docs/packages/runtime/runtime-concurrency.md) — agent 运行期批量异步任务并发控制 helper
 - [runtime-interrupts.md](/docs/packages/runtime/runtime-interrupts.md) — 中断控制流规范
 - [runtime-layering-adr.md](/docs/packages/runtime/runtime-layering-adr.md) — Runtime 分层 ADR
 - [runtime-state-machine.md](/docs/packages/runtime/runtime-state-machine.md) — 状态机参考

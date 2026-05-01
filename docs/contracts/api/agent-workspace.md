@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-26
+最后核对：2026-04-30
 
 本文定义 Agent Workspace Vault + Skill Flywheel MVP 的 HTTP API 契约。跨模块设计说明见 [agent-workspace-vault-and-skill-flywheel-design.md](/docs/integration/agent-workspace-vault-and-skill-flywheel-design.md)。
 
@@ -14,13 +14,13 @@
 - 后端 HTTP 入口：`apps/backend/agent-server/src/platform/workspace-center.controller.ts`，挂在 `/api/platform/workspace-center`。
 - 后端 runtime facade：`RuntimeCentersService` 已暴露 `getWorkspaceCenter`、`listWorkspaceSkillDrafts`、`approveWorkspaceSkillDraft`、`rejectWorkspaceSkillDraft`。
 - 当前 workspace projection 构造入口：`packages/platform-runtime/src/centers/runtime-workspace-center.ts` 与 `runtime-workspace-center.build.ts`，只输出白名单字段，并在测试中断言不泄漏 `metadata` / `rawMetadata`、install raw staging path 或失败堆栈。
-- Skill draft 内存存储：`packages/skill/src/drafts/repository.ts` 提供 `InMemorySkillDraftRepository`，`packages/skill/src/drafts/service.ts` 提供 create / list / approve / reject / promote / retire / reuse 语义。
+- Skill draft repository/service：`packages/skill/src/drafts/repository.ts` 提供 file-backed 与 in-memory repository，`packages/skill/src/drafts/service.ts` 提供 create / list / approve / reject / promote / retire / reuse 语义；默认 runtime context 带 `workspaceRoot` 时走 file-backed，本地短生命周期或测试可注入 in-memory。
 - Admin 前端入口：`apps/frontend/agent-admin/src/api/admin-api-workspace.ts`、`src/features/workspace-center/workspace-center-panel.tsx`、`src/pages/dashboard/dashboard-center-content.tsx`，Workspace Center dashboard 已接入读取和 approve / reject 按钮；API facade 会把后端 runtime projection 归一化成面板消费的本地 workspace 视图。
 - Chat 前线 readiness：`apps/frontend/agent-chat/src/pages/chat-home/chat-home-workbench-section-renders.tsx` 已在 workbench 的 learning / reuse 区展示 Workspace learning 与 Skill Flywheel readiness，不把 learning summary 重新塞回主线程消息。
 
-当前仍需按本文契约继续强化的接线：
+当前实现核对 / 当前接线：
 
-- `RuntimeCentersQueryService.getWorkspaceCenter()` 已接入 context-aware draft store，并从 runtime task 投影 current task、learning summaries、EvidenceRecord 摘要、reuse badges 和 capability gaps；同时会读取 `RuntimeStateSnapshot.workspaceSkillReuseRecords`，按 workspace 白名单输出 `reuseRecords`，并从 skill install receipt 回填 workspace draft 的 `install` / `provenance` / `lifecycle` 只读摘要。默认 runtime context 带有 `workspaceRoot` 时会使用本地 JSON file-backed store。
+- `RuntimeCentersQueryService.getWorkspaceCenter()` 已接入 context-aware draft store，并从 runtime task 投影 current task、learning summaries、EvidenceRecord 摘要、reuse badges 和 capability gaps；workspace reuse record 读取与 session task id 查询由 backend-local workspace query helper 承接；同时会读取 `RuntimeStateSnapshot.workspaceSkillReuseRecords`，按 workspace 白名单输出 `reuseRecords`，并通过 backend-local workspace lifecycle helper 从 skill install receipt 回填 workspace draft 的 `install` / `provenance` / `lifecycle` 只读摘要。默认 runtime context 带有 `workspaceRoot` 时会使用本地 JSON file-backed store。
 - `RuntimeCentersGovernanceService.approveWorkspaceSkillDraft()` 与 `rejectWorkspaceSkillDraft()` 已通过 `runtime-centers-workspace-drafts.ts` 修改 draft store 状态，并让下一次 workspace / draft list 查询立即反映最新状态；approve 会返回白名单 install candidate 摘要，缺失 draft 仍返回 `NotFoundException`。
 - Skill Sources 接线：`workspace-skill-drafts` 是内部 source，`active` / `trusted` workspace draft 会经 `runtime-workspace-skill-draft-manifests.ts` 投影为 `SkillManifestRecord`，并应在 `/api/platform/skill-sources-center` 的 `manifests[]` 中以 `sourceId: "workspace-skill-drafts"` 出现，再由现有 Skill Sources Center / install governance 链路消费。
 - `packages/core` 的长期稳定 schema-first contract 仍是后续收敛目标；当前前后端已按本契约和本地类型先行实现 MVP 骨架。
@@ -58,12 +58,12 @@ MVP 不定义 Heartbeat、Gateway、Memory CRUD、Rule CRUD、Skill install 或 
 
 ## Endpoint 速查
 
-| 方法   | 地址                                                           | 参数                                                                 | 返回值                               | 说明                                |
-| ------ | -------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------ | ----------------------------------- |
-| `GET`  | `/api/platform/workspace-center`                               | query: `sessionId?`、`taskId?`、`days?`、`limit?`                    | `AgentWorkspaceSummaryProjection`    | 读取当前 workspace 与轻量摘要投影。 |
-| `GET`  | `/api/platform/workspace-center/skill-drafts`                  | query: `status?`、`sourceTaskId?`、`sessionId?`、`limit?`、`cursor?` | `SkillDraftListResponse`             | 读取 skill draft 列表。             |
-| `POST` | `/api/platform/workspace-center/skill-drafts/:draftId/approve` | path: `draftId`; body: `SkillDraftApproveRequest`                    | `SkillDraftDecisionResultProjection` | 批准 skill draft。                  |
-| `POST` | `/api/platform/workspace-center/skill-drafts/:draftId/reject`  | path: `draftId`; body: `SkillDraftRejectRequest`                     | `SkillDraftDecisionResultProjection` | 拒绝 skill draft。                  |
+| 方法   | 地址                                                           | 参数                                                                            | 返回值                               | 说明                                |
+| ------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------- |
+| `GET`  | `/api/platform/workspace-center`                               | query: `sessionId?`、`taskId?`、`days?`、`limit?`                               | `AgentWorkspaceSummaryProjection`    | 读取当前 workspace 与轻量摘要投影。 |
+| `GET`  | `/api/platform/workspace-center/skill-drafts`                  | query: `status?`、`source?`、`sourceTaskId?`、`sessionId?`、`limit?`、`cursor?` | `SkillDraftListResponse`             | 读取 skill draft 列表。             |
+| `POST` | `/api/platform/workspace-center/skill-drafts/:draftId/approve` | path: `draftId`; body: `SkillDraftApproveRequest`                               | `SkillDraftDecisionResultProjection` | 批准 skill draft。                  |
+| `POST` | `/api/platform/workspace-center/skill-drafts/:draftId/reject`  | path: `draftId`; body: `SkillDraftRejectRequest`                                | `SkillDraftDecisionResultProjection` | 拒绝 skill draft。                  |
 
 ## 请求参数
 
@@ -81,6 +81,7 @@ MVP 不定义 Heartbeat、Gateway、Memory CRUD、Rule CRUD、Skill install 或 
 | 参数           | 类型                                                                      | 默认值 | 说明                                 |
 | -------------- | ------------------------------------------------------------------------- | ------ | ------------------------------------ |
 | `status`       | `"draft" \| "shadow" \| "active" \| "trusted" \| "rejected" \| "retired"` | 无     | 按 draft 状态筛选。                  |
+| `source`       | `string`                                                                  | 无     | 按 draft 原始来源筛选。              |
 | `sourceTaskId` | `string`                                                                  | 无     | 只读取来自某个 task 的 draft。       |
 | `sessionId`    | `string`                                                                  | 无     | 只读取某个 session 关联的 draft。    |
 | `limit`        | `number`                                                                  | `20`   | 返回条数上限。                       |

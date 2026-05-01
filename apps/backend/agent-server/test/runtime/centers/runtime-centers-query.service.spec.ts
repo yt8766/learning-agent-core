@@ -17,7 +17,10 @@ import {
   listSkillSources,
   searchLocalSkillSuggestions
 } from '../../../src/runtime/skills/runtime-skill-sources.service';
-import { ingestLocalKnowledge, readKnowledgeOverview } from '../../../src/runtime/knowledge/runtime-knowledge-store';
+import {
+  ingestLocalKnowledge,
+  readKnowledgeOverview
+} from '../../../src/runtime/domain/knowledge/runtime-knowledge-store';
 
 vi.mock('node:fs/promises', async importOriginal => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
@@ -69,7 +72,7 @@ vi.mock('../../../src/runtime/skills/runtime-skill-sources.service', () => ({
   }))
 }));
 
-vi.mock('../../../src/runtime/knowledge/runtime-knowledge-store', () => ({
+vi.mock('../../../src/runtime/domain/knowledge/runtime-knowledge-store', () => ({
   ingestLocalKnowledge: vi.fn(async () => ({
     sourceCount: 0,
     chunkCount: 0,
@@ -91,6 +94,101 @@ vi.mock('../../../src/runtime/knowledge/runtime-knowledge-store', () => ({
 describe('RuntimeCentersQueryService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('includes knowledge search status in the runtime center payload', async () => {
+    const knowledgeSearchStatus = {
+      configuredMode: 'hybrid',
+      effectiveMode: 'keyword-only',
+      vectorProviderId: 'missing-client',
+      vectorConfigured: true,
+      hybridEnabled: false,
+      diagnostics: [
+        {
+          code: 'knowledge.vector_provider.missing_client',
+          severity: 'warning',
+          message: 'vector client missing'
+        }
+      ],
+      vectorProviderHealth: {
+        status: 'healthy',
+        checkedAt: '2026-05-01T00:00:00.000Z',
+        message: 'vector provider reachable'
+      },
+      checkedAt: '2026-05-01T00:00:00.000Z'
+    };
+    const knowledgeSearchLastDiagnostics = {
+      query: 'runtime center query',
+      limit: 5,
+      hitCount: 2,
+      total: 4,
+      diagnostics: {
+        retrievalMode: 'hybrid',
+        candidateCount: 9
+      },
+      searchedAt: '2026-05-01T00:01:00.000Z'
+    };
+    const service = new RuntimeCentersQueryService(
+      () =>
+        ({
+          settings: {
+            profile: 'platform',
+            workspaceRoot: '/workspace',
+            knowledgeRoot: '/workspace/data/knowledge',
+            policy: {
+              approvalMode: 'balanced',
+              skillInstallMode: 'manual',
+              learningMode: 'controlled',
+              sourcePolicyMode: 'controlled-first',
+              budget: {
+                stepBudget: 8,
+                retryBudget: 2,
+                sourceBudget: 5
+              }
+            },
+            runtimeBackground: {
+              workerPoolSize: 2
+            },
+            dailyTechBriefing: {
+              enabled: false,
+              schedule: '0 9 * * *'
+            }
+          },
+          runtimeHost: {
+            knowledgeSearchStatus,
+            getKnowledgeSearchStatus: async () => knowledgeSearchStatus,
+            runtime: {
+              knowledgeSearchService: {
+                getLastDiagnostics: () => knowledgeSearchLastDiagnostics
+              }
+            },
+            listSubgraphDescriptors: () => [],
+            listWorkflowVersions: () => []
+          },
+          orchestrator: {
+            listTasks: () => [],
+            listPendingApprovals: () => []
+          },
+          wenyuanFacade: {
+            listHistory: () => [],
+            getCheckpoint: () => undefined
+          },
+          runtimeStateRepository: {
+            load: vi.fn(async () => ({})),
+            save: vi.fn(async () => undefined)
+          },
+          toolRegistry: {
+            list: () => [],
+            listFamilies: () => []
+          },
+          getBackgroundWorkerSlots: () => new Map()
+        }) as any
+    );
+
+    await expect(service.getRuntimeCenter()).resolves.toMatchObject({
+      knowledgeSearchStatus,
+      knowledgeSearchLastDiagnostics
+    });
   });
 
   it('maps pending approvals and applies execution-mode and interaction filters', () => {

@@ -2,9 +2,19 @@ import { createDefaultPlatformRuntime, createDefaultPlatformRuntimeOptions } fro
 import { ModelInvocationFacade } from '@agent/runtime';
 import { SkillArtifactFetcher } from '@agent/skill';
 import type { LlmProviderOptions, ModelInvocationRequest, ProviderUsage } from '@agent/core';
+import type { KnowledgeSearchService, VectorSearchProvider } from '@agent/knowledge';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
 import { SkillSourceSyncService } from '../skills/skill-source-sync.service';
+import {
+  createRuntimeKnowledgeProviderFactory,
+  createRuntimeKnowledgeSearchBridge,
+  createRuntimeKnowledgeSearchService,
+  createRuntimeKnowledgeSearchStatus,
+  createRuntimeKnowledgeSearchStatusWithHealth,
+  type RuntimeKnowledgeProviderFactoryConfig
+} from './runtime-knowledge-search-factory';
+import { createRuntimeKnowledgeProviderOptionsFromEnv } from './runtime-knowledge-provider-config';
 import {
   createOfficialAgentRegistry,
   createOfficialRuntimeAgentDependencies,
@@ -59,15 +69,40 @@ function resolveInvocationTokenSink(
   return isInvocationTokenSink(onToken) ? onToken : undefined;
 }
 
+export interface RuntimeHostOptions {
+  keywordSearchService?: KnowledgeSearchService;
+  knowledgeVectorSearchProvider?: VectorSearchProvider;
+  knowledgeProviderConfig?: RuntimeKnowledgeProviderFactoryConfig;
+  env?: NodeJS.ProcessEnv;
+}
+
 export class RuntimeHost {
+  constructor(private readonly options: RuntimeHostOptions = {}) {}
+
   private readonly agentRegistry = createOfficialAgentRegistry();
   private readonly agentDependencies = createOfficialRuntimeAgentDependencies({
     agentRegistry: this.agentRegistry
   });
+  private readonly configuredKnowledgeProviderOptions = createRuntimeKnowledgeProviderOptionsFromEnv(this.options.env);
+  private readonly configuredKeywordSearchService =
+    this.options.keywordSearchService ?? this.configuredKnowledgeProviderOptions.keywordSearchService;
+  private readonly configuredKnowledgeVectorSearchProvider =
+    this.options.knowledgeVectorSearchProvider ?? this.configuredKnowledgeProviderOptions.knowledgeVectorSearchProvider;
+  private readonly knowledgeProviderConfig =
+    this.options.knowledgeProviderConfig ?? this.configuredKnowledgeProviderOptions.config;
 
   readonly platformRuntime = createDefaultPlatformRuntime({
     ...createDefaultPlatformRuntimeOptions({
-      workspaceRoot: process.cwd()
+      workspaceRoot: process.cwd(),
+      createKnowledgeSearchService: ({ settings }) =>
+        createRuntimeKnowledgeSearchBridge(
+          createRuntimeKnowledgeSearchService({
+            settings,
+            keywordSearchService: this.configuredKeywordSearchService,
+            knowledgeVectorSearchProvider: this.configuredKnowledgeVectorSearchProvider,
+            config: this.knowledgeProviderConfig
+          })
+        )
     }),
     agentRegistry: this.agentRegistry,
     agentDependencies: this.agentDependencies,
@@ -81,6 +116,16 @@ export class RuntimeHost {
   readonly runtime = this.platformRuntime.runtime;
 
   readonly settings = this.runtime.settings;
+  readonly knowledgeVectorSearchProvider =
+    this.configuredKnowledgeVectorSearchProvider ?? resolveRuntimeKnowledgeVectorSearchProvider(this.runtime);
+  private readonly knowledgeSearchFactory = createRuntimeKnowledgeProviderFactory({
+    settings: this.settings,
+    config: this.knowledgeProviderConfig,
+    keywordSearchService: this.configuredKeywordSearchService,
+    knowledgeVectorSearchProvider: this.knowledgeVectorSearchProvider
+  });
+  readonly knowledgeSearchService = this.knowledgeSearchFactory.searchService;
+  readonly knowledgeSearchStatus = createRuntimeKnowledgeSearchStatus(this.knowledgeSearchFactory);
   readonly memoryRepository = this.runtime.memoryRepository;
   readonly ruleRepository = this.runtime.ruleRepository;
   readonly skillRegistry = this.runtime.skillRegistry;
@@ -140,4 +185,22 @@ export class RuntimeHost {
   listWorkflowVersions() {
     return this.platformRuntime.metadata.listWorkflowVersions?.() ?? [];
   }
+
+  getKnowledgeSearchStatus() {
+    return createRuntimeKnowledgeSearchStatusWithHealth(this.knowledgeSearchFactory);
+  }
+}
+
+function resolveRuntimeKnowledgeVectorSearchProvider(runtime: unknown): VectorSearchProvider | undefined {
+  const candidate = (runtime as { knowledgeVectorSearchProvider?: unknown }).knowledgeVectorSearchProvider;
+  return isVectorSearchProvider(candidate) ? candidate : undefined;
+}
+
+function isVectorSearchProvider(value: unknown): value is VectorSearchProvider {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'searchSimilar' in value &&
+    typeof (value as { searchSimilar?: unknown }).searchSimilar === 'function'
+  );
 }

@@ -1,4 +1,5 @@
 import type { ChatCheckpointRecord, TaskRecord } from '@agent/core';
+import type { RuntimeKnowledgeSearchDiagnosticsSnapshot } from '@agent/runtime';
 
 import {
   buildLearningJobEvidenceEntries,
@@ -38,11 +39,13 @@ export function buildEvidenceCenter(input: {
       updatedAt: string;
     }>;
   };
+  knowledgeSearchLastDiagnostics?: RuntimeKnowledgeSearchDiagnosticsSnapshot;
 }) {
   return [
     ...buildOverviewEvidenceEntries({
       wenyuanOverview: input.wenyuanOverview,
       knowledgeOverview: input.knowledgeOverview,
+      knowledgeSearchLastDiagnostics: input.knowledgeSearchLastDiagnostics,
       now: new Date()
     }),
     ...buildLearningJobEvidenceEntries(input.jobs),

@@ -29,7 +29,13 @@ import {
   LangChainEmbedderAdapter,
   // Chroma adapter
   ChromaVectorStoreAdapter,
-  mapVectorMetadataToChromaMetadata
+  ChromaVectorSearchProvider,
+  buildChromaKnowledgeFilterWhere,
+  mapVectorMetadataToChromaMetadata,
+  OpenSearchKeywordSearchProvider,
+  buildOpenSearchKnowledgeFilter,
+  createOpenSearchKeywordSearchProvider,
+  parseOpenSearchKeywordSearchProviderConfig
 } from '@agent/adapters';
 import * as contractLlmProviderExports from '../src/contracts/llm';
 import * as embeddingExports from '../src/openai-compatible/embeddings';
@@ -80,7 +86,16 @@ describe('@agent/adapters root exports', () => {
 
   it('exports Chroma adapter', () => {
     expect(ChromaVectorStoreAdapter).toBeTypeOf('function');
+    expect(ChromaVectorSearchProvider).toBeTypeOf('function');
+    expect(buildChromaKnowledgeFilterWhere).toBeTypeOf('function');
     expect(mapVectorMetadataToChromaMetadata).toBeTypeOf('function');
+  });
+
+  it('exports OpenSearch-like full-text adapter', () => {
+    expect(OpenSearchKeywordSearchProvider).toBeTypeOf('function');
+    expect(buildOpenSearchKnowledgeFilter).toBeTypeOf('function');
+    expect(createOpenSearchKeywordSearchProvider).toBeTypeOf('function');
+    expect(parseOpenSearchKeywordSearchProviderConfig).toBeTypeOf('function');
   });
 
   it('exports default MCP skill providers', () => {

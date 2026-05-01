@@ -49,7 +49,8 @@ export function MemoryInsightCard(props: {
       return;
     }
     window.sessionStorage.setItem('agent-admin:evidence-highlight-ids', JSON.stringify(evidenceIds));
-    window.location.hash = '/evidence';
+    window.history.pushState(null, '', '/evidence');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
   return (

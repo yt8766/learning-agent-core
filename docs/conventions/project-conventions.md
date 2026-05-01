@@ -128,17 +128,18 @@
 - 规范以文档为主，少量根级配置为辅
 - 每次任务完成后，必须顺手检查本轮涉及的规范文档是否已经过期；如果真实实现、流程边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不能把失效规范留到后续任务
 - 文档新增与更新默认要经过 `pnpm check:docs`；如果新增文档，优先使用 `pnpm new:doc docs/<module>/<name>.md` 生成标准骨架，再补充内容
-- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的固定验证总入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须先按该文档判断需要补齐的验证层级、治理门槛和执行命令
-- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前都必须补齐五层验证：
+- [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的验证分流入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须先按该文档判断受影响范围、验证层级、治理门槛和执行命令
+- 日常开发不要求每次修改代码后手动跑全量 `pnpm verify`；本地优先跑新增测试、受影响测试、对应类型检查与必要治理检查，本地提交链路和 main CI 再承担聚合验证收口。
+- 只要本轮触达代码、配置、模板、脚手架、构建脚本或测试文件，交付前都必须对受影响范围补齐必要验证层级：
   - `Type`
   - `Spec`
   - `Unit`
   - `Demo`
   - `Integration`
-- 默认优先执行根级 `pnpm verify`；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成五层验证，并在交付说明中明确 blocker
+- 根级 `pnpm verify` 是重型全量收口入口，主要用于本地提交链路触发的聚合验证、main CI 全量验证，以及开发者明确需要全仓证明的场景；当前它应覆盖 `check:docs + lint:prettier:check + lint:eslint:check + typecheck + test:spec + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke + check:architecture`。如果根级验证因与本轮无关的既有红灯、外部依赖或环境阻断而无法全绿，仍必须对受影响范围逐层完成必要验证，并在交付说明中明确 blocker
 - 受影响范围入口 `pnpm verify:affected` 也必须带上治理门槛、`Spec` 与 `Demo` 层；当前应覆盖 `verify:governance + lint:prettier:affected + lint:eslint:affected + test:spec:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected`
 - `packages/*` 默认应维护显式 `demo/` 与 `demo` 脚本，并让根级 `pnpm test:demo` / `pnpm test:demo:affected` 能直接覆盖；不要把包级最小闭环长期只留给人工运行才发现
-- 每次改动文件时，禁止绕过 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 自行裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成对应层级验证或明确记录 blocker
+- 每次交付前，禁止绕过 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 凭经验随意裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成受影响范围的对应层级验证或明确记录 blocker
 - 禁止使用 `git commit --no-verify` 或任何等价方式绕过本地 hook；如果 hook 因既有红灯、环境、权限或外部依赖失败，必须先修复，或在不提交的情况下明确记录 blocker 并等待处理
 - GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected + test:workspace:smoke`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
 - GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口

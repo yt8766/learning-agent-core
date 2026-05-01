@@ -40,10 +40,10 @@ describe('admin-api-core', () => {
   it('uses the loopback ipv4 backend as the default api base', () => {
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseURL: 'http://127.0.0.1:3000/api',
-        withCredentials: true
+        baseURL: 'http://127.0.0.1:3000/api'
       })
     );
+    expect(createMock).toHaveBeenCalledWith(expect.not.objectContaining({ withCredentials: true }));
   });
 
   it('sends json requests with the default api base and returns parsed payloads', async () => {
@@ -104,11 +104,17 @@ describe('admin-api-core', () => {
     requestMock
       .mockRejectedValueOnce({
         response: {
+          status: 403
+        }
+      })
+      .mockRejectedValueOnce({
+        response: {
           status: 503
         }
       })
       .mockRejectedValueOnce(new axios.CanceledError('aborted'));
 
+    await expect(request('/forbidden')).rejects.toThrow('Request failed: 403');
     await expect(request('/boom')).rejects.toThrow('Request failed: 503');
     await expect(request('/abort')).rejects.toThrow(ABORTED_REQUEST_ERROR);
     expect(isAbortedAdminRequestError(new Error(ABORTED_REQUEST_ERROR))).toBe(true);

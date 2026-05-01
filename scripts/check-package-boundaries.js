@@ -69,7 +69,8 @@ const forbiddenSubpathPrefixes = [
   '@agent/agents-data-report/',
   '@agent/agents-coder/',
   '@agent/agents-reviewer/',
-  '@agent/agents-intel-engine/'
+  '@agent/agents-intel-engine/',
+  '@agent/agents-company-live/'
 ];
 const corePackageManifestPath = 'packages/core/package.json';
 const runtimePackageManifestPath = 'packages/runtime/package.json';
@@ -81,7 +82,8 @@ const officialAgentPackageNames = new Set([
   '@agent/agents-data-report',
   '@agent/agents-coder',
   '@agent/agents-reviewer',
-  '@agent/agents-intel-engine'
+  '@agent/agents-intel-engine',
+  '@agent/agents-company-live'
 ]);
 const forbiddenAppPlatformRuntimeImports = new Set([
   'createOfficialAgentRegistry',
@@ -121,13 +123,16 @@ const specialistAgentPackageNames = new Set([
 const allowedBackendPlatformRuntimeFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime.host.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-workflow-execution-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-centers-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-facade.ts'
 ]);
 const allowedBackendOfficialAgentRoots = ['apps/backend/agent-server/src/runtime/agents'];
 const allowedBackendOfficialAgentFiles = new Set([
   'apps/backend/agent-server/src/runtime/core/runtime-data-report-facade.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-company-live-facade.ts',
   'apps/backend/agent-server/src/runtime/core/runtime-intel-runner.ts',
+  'apps/backend/agent-server/src/runtime/core/runtime-intel-briefing-facade.ts',
   'apps/backend/agent-server/src/chat/chat.direct.dto.ts'
 ]);
 
@@ -218,12 +223,9 @@ function isAgentPackageSubpath(source) {
   return /^@agent\/[^/'"]+\/.+/.test(source);
 }
 
-export function findBoundaryViolations(scanRoot = rootDir) {
-  const files = [
-    ...walk(path.join(scanRoot, 'packages')),
-    ...walk(path.join(scanRoot, 'agents')),
-    ...walk(path.join(scanRoot, 'apps'))
-  ];
+export function findBoundaryViolations(scanRoot = rootDir, options = {}) {
+  const scanGroups = options.scanGroups ?? ['packages', 'agents', 'apps'];
+  const files = scanGroups.flatMap(scanGroup => walk(path.join(scanRoot, scanGroup)));
   const violations = [];
   const corePackageManifest = path.join(scanRoot, corePackageManifestPath);
 

@@ -16,6 +16,7 @@ import { RuntimeOverviewPanel } from '@/features/runtime-overview/runtime-overvi
 import { SkillLabPanel } from '@/features/skill-lab/skill-lab-panel';
 import { SkillSourcesCenterPanel } from '@/features/skill-sources-center/skill-sources-center-panel';
 import { WorkspaceCenterPanel } from '@/features/workspace-center/workspace-center-panel';
+import { WorkflowLabPage } from '@/features/workflow-lab/WorkflowLabPage';
 import type {
   WorkspaceCenterRecord,
   WorkspaceSkillDraftDecisionResponse
@@ -256,6 +257,8 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
           onDisableAgent={dashboard.handleDisableCompanyAgent}
         />
       );
+    case 'workflowLab':
+      return <WorkflowLabPage />;
     default:
       return null;
   }

@@ -24,6 +24,7 @@ import { createMediaProviderRegistry as CanonicalCreateMediaProviderRegistry } f
 import { AgentRuntime, SessionCoordinator, WorkerRegistry } from '../src';
 import { generateObjectWithRetry, generateTextWithRetry, streamTextWithRetry, withLlmRetry } from '../src';
 import { StreamingExecutionCoordinator } from '../src/runtime/streaming-execution';
+import { runWithConcurrency as RuntimeConcurrencySubpath } from '../src/runtime/concurrency';
 import {
   generateObjectWithRetry as canonicalGenerateObjectWithRetry,
   generateTextWithRetry as canonicalGenerateTextWithRetry,
@@ -50,6 +51,7 @@ describe('@agent/runtime', () => {
   it('keeps cycle-safe subpath entrypoints available for agent packages', () => {
     expect(BaseAgentSubpath).toBe(BaseAgent);
     expect(StreamingExecutionCoordinator).toBeTypeOf('function');
+    expect(RuntimeConcurrencySubpath).toBeTypeOf('function');
   });
 
   it('re-exports llm facade helpers directly from the runtime host', () => {

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { KnowledgeChunkMetadataSchema } from './knowledge-retrieval.schema';
+
 export const BudgetInterruptStateSchema = z.object({
   status: z.enum(['idle', 'soft-threshold-triggered', 'hard-threshold-triggered', 'resolved']),
   interactionKind: z
@@ -97,7 +99,14 @@ export const LearningEvaluationRecordSchema = z.object({
 });
 
 const KnowledgeStoreSchema = z.enum(['wenyuan', 'cangjing']);
-const KnowledgeSourceTypeSchema = z.enum(['workspace-docs', 'repo-docs', 'connector-manifest', 'catalog-sync']);
+const KnowledgeSourceTypeSchema = z.enum([
+  'workspace-docs',
+  'repo-docs',
+  'connector-manifest',
+  'catalog-sync',
+  'user-upload',
+  'web-curated'
+]);
 const KnowledgeStoreStatusSchema = z.enum(['active', 'degraded', 'readonly']);
 const EmbeddingProviderSchema = z.string();
 const EmbeddingModelSchema = z.string();
@@ -135,6 +144,7 @@ export const KnowledgeChunkRecordSchema = z.object({
   content: z.string(),
   tokenCount: z.number().optional(),
   searchable: z.boolean(),
+  metadata: KnowledgeChunkMetadataSchema.optional(),
   receiptId: z.string().optional(),
   version: z.string().optional(),
   createdAt: z.string(),

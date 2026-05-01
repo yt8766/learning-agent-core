@@ -15,6 +15,13 @@ export class InMemoryKnowledgeChunkRepository implements KnowledgeChunkRepositor
     return [...this.records.values()];
   }
 
+  async getByIds(ids: string[]): Promise<KnowledgeChunk[]> {
+    return ids.flatMap(id => {
+      const chunk = this.records.get(id);
+      return chunk ? [chunk] : [];
+    });
+  }
+
   async listBySourceId(sourceId: string): Promise<KnowledgeChunk[]> {
     return [...this.records.values()].filter(chunk => chunk.sourceId === sourceId);
   }

@@ -22,7 +22,7 @@ import { type SandboxExecutor, StubSandboxExecutor } from '../sandbox';
 import { ExecutionWatchdog } from '../watchdog';
 
 import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
-import { LocalKnowledgeSearchService } from './local-knowledge-search-service';
+import { LocalKnowledgeSearchService, type RuntimeKnowledgeSearchService } from './local-knowledge-search-service';
 import { SessionCoordinator } from '../session/session-coordinator';
 import {
   configureRuntimeAgentDependencies,
@@ -49,6 +49,10 @@ export interface AgentRuntimeOptions {
    * 默认实现（XingbuClassifier）由 platform-runtime 通过此工厂注入。
    */
   createApprovalClassifier?: (llm: ILLMProvider) => ApprovalClassifier;
+  createKnowledgeSearchService?: (input: {
+    settings: RuntimeSettings;
+    vectorIndexRepository: LocalVectorIndexRepository;
+  }) => RuntimeKnowledgeSearchService;
 }
 
 export class AgentRuntime {
@@ -57,7 +61,7 @@ export class AgentRuntime {
   readonly ruleRepository;
   readonly memorySearchService;
   readonly vectorIndexRepository;
-  readonly knowledgeSearchService;
+  readonly knowledgeSearchService: RuntimeKnowledgeSearchService;
   readonly skillRegistry;
   readonly approvalService;
   readonly runtimeStateRepository;
@@ -99,7 +103,11 @@ export class AgentRuntime {
       this.ruleRepository,
       this.vectorIndexRepository
     );
-    this.knowledgeSearchService = new LocalKnowledgeSearchService(this.settings, this.vectorIndexRepository);
+    this.knowledgeSearchService =
+      options.createKnowledgeSearchService?.({
+        settings: this.settings,
+        vectorIndexRepository: this.vectorIndexRepository
+      }) ?? new LocalKnowledgeSearchService(this.settings, this.vectorIndexRepository);
     this.skillRegistry = new SkillRegistry(this.settings.skillsRoot);
     this.runtimeStateRepository = new FileRuntimeStateRepository(this.settings.tasksStateFilePath);
     this.semanticCacheRepository = new FileSemanticCacheRepository(this.settings.semanticCacheFilePath);

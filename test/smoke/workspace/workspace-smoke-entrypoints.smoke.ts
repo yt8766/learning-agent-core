@@ -47,6 +47,31 @@ describe('workspace smoke entrypoints smoke', () => {
       expect(relativePath, 'workspace smoke files must use *.smoke.ts or *.smoke.tsx').toMatch(/\.smoke\.tsx?$/);
     }
   });
+
+  it('keeps vitest source aliases aligned with workspace agent packages used by smoke tests', () => {
+    const vitestConfig = fs.readFileSync(path.join(repoRoot, 'vitest.config.js'), 'utf8');
+    const tsconfigRaw = fs.readFileSync(path.join(repoRoot, 'tsconfig.json'), 'utf8').replace(/^\uFEFF/, '');
+    const tsconfig = JSON.parse(tsconfigRaw) as {
+      compilerOptions?: { paths?: Record<string, string[]> };
+    };
+    const requiredAgentAliases = Object.entries(tsconfig.compilerOptions?.paths ?? {})
+      .filter(
+        ([alias, targets]) => alias.startsWith('@agent/agents-') && targets.some(target => target.startsWith('agents/'))
+      )
+      .map(([alias]) => alias);
+
+    for (const alias of requiredAgentAliases) {
+      expect(vitestConfig, `${alias} should resolve to source in vitest.config.js`).toContain(`'${alias}'`);
+    }
+  });
+
+  it('gives real backend app smoke enough hook time for cold CI startup', () => {
+    const backendHttpSmoke = fs.readFileSync(path.join(smokeRoot, 'backend', 'backend-http-app.smoke.ts'), 'utf8');
+
+    expect(backendHttpSmoke).toContain('const BACKEND_HTTP_APP_HOOK_TIMEOUT_MS');
+    expect(backendHttpSmoke).toContain('beforeAll(async () => {');
+    expect(backendHttpSmoke).toContain('}, BACKEND_HTTP_APP_HOOK_TIMEOUT_MS);');
+  });
 });
 
 function listFiles(dir: string): string[] {

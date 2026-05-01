@@ -14,7 +14,23 @@ export interface LocalKnowledgeSearchHit {
   score: number;
 }
 
-export class LocalKnowledgeSearchService {
+export type RuntimeKnowledgeSearchDiagnostics = Record<string, unknown>;
+
+export interface RuntimeKnowledgeSearchDiagnosticsSnapshot {
+  query: string;
+  limit: number;
+  hitCount: number;
+  total: number;
+  diagnostics?: RuntimeKnowledgeSearchDiagnostics;
+  searchedAt: string;
+}
+
+export interface RuntimeKnowledgeSearchService {
+  search(query: string, limit?: number): Promise<LocalKnowledgeSearchHit[]>;
+  getLastDiagnostics?(): RuntimeKnowledgeSearchDiagnosticsSnapshot | undefined;
+}
+
+export class LocalKnowledgeSearchService implements RuntimeKnowledgeSearchService {
   constructor(
     private readonly settings: RuntimeSettings,
     private readonly vectorIndexRepository: VectorIndexRepository

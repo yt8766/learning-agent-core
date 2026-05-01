@@ -12,7 +12,9 @@
 - 接口风格选择：[interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 - 聊天 API：[agent-chat.md](/docs/contracts/api/agent-chat.md)
 - Admin API：[agent-admin.md](/docs/contracts/api/agent-admin.md)
+- Admin Auth API：[admin-auth.md](/docs/contracts/api/admin-auth.md)
 - Runtime API：[runtime.md](/docs/contracts/api/runtime.md)
+- Knowledge Ingestion API：[knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
 - Approvals API：[approvals.md](/docs/contracts/api/approvals.md)
 - Run Observatory API：[run-observatory.md](/docs/contracts/api/run-observatory.md)
 - Agent Tool Execution API：[tool-execution.md](/docs/contracts/api/tool-execution.md)
@@ -27,15 +29,17 @@
 1. [interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 2. [agent-chat.md](/docs/contracts/api/agent-chat.md)
 3. [agent-admin.md](/docs/contracts/api/agent-admin.md)
-4. [runtime.md](/docs/contracts/api/runtime.md)
-5. [approvals.md](/docs/contracts/api/approvals.md)
-6. [run-observatory.md](/docs/contracts/api/run-observatory.md)
-7. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
-8. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
-9. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
-10. [tool-execution.md](/docs/contracts/api/tool-execution.md)
-11. [sandbox.md](/docs/contracts/api/sandbox.md)
-12. [auto-review.md](/docs/contracts/api/auto-review.md)
+4. [admin-auth.md](/docs/contracts/api/admin-auth.md)
+5. [runtime.md](/docs/contracts/api/runtime.md)
+6. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
+7. [approvals.md](/docs/contracts/api/approvals.md)
+8. [run-observatory.md](/docs/contracts/api/run-observatory.md)
+9. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
+10. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
+11. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
+12. [tool-execution.md](/docs/contracts/api/tool-execution.md)
+13. [sandbox.md](/docs/contracts/api/sandbox.md)
+14. [auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 工具执行治理 API 关系
 
@@ -47,7 +51,7 @@
 | [sandbox.md](/docs/contracts/api/sandbox.md)               | `/api/sandbox/*`     | profile、permission scope、preflight、受控执行 run、sandbox 审批恢复。  | 安全边界。通常由 agent-tools 在执行前调用；直接调用只用于治理、预检、contract 回归或 sandbox run 查询。                    |
 | [auto-review.md](/docs/contracts/api/auto-review.md)       | `/api/auto-review/*` | 结构化 review、finding、verdict、阻断与审查审批恢复。                   | 审查门。通常由 agent-tools 在 sandbox allow 后创建；block verdict 通过 agent-tools 统一审批恢复。                          |
 
-跨端事件仍统一落到 `ChatEventRecord`。其中 agent tool 相关 SSE payload 的治理字段必须是白名单：允许 `requestId`、`sandboxRunId`、`sandboxDecision`、`sandboxProfile`、`autoReviewId`、`autoReviewVerdict`、`reviewId`、`verdict`、`findingCount` 等可展示摘要；不得透传 `input`、`rawInput`、`rawOutput`、完整 `metadata`、vendor/provider 原始对象或第三方 response。
+跨端事件仍统一落到 `ChatEventRecord`。其中 agent tool 相关 SSE payload、`/api/agent-tools/events` 与 `/api/agent-tools/projection.events` 的治理字段必须是白名单：允许 `requestId`、`sandboxRunId`、`sandboxDecision`、`sandboxProfile`、`reviewId`、`autoReviewId`、`autoReviewVerdict`、`verdict`、`findingCount` 等可展示摘要；`reviewId` 是 auto-review 规范关联字段，`autoReviewId` 仅作历史兼容字段；不得透传 `input`、`rawInput`、`rawOutput`、完整 `metadata`、vendor/provider 原始对象或第三方 response。
 
 ## 前后端开发入口
 
@@ -73,7 +77,9 @@
 
 - `agent-chat.md`：`apps/frontend/agent-chat` 消费的聊天、会话、SSE 与 direct reply 接口。
 - `agent-admin.md`：`apps/frontend/agent-admin` 的控制台聚合入口和刷新语义。
+- `admin-auth.md`：`apps/frontend/agent-admin` 的账号密码登录、JWT 双 Token、自动刷新、退出登录与当前用户恢复契约。
 - `runtime.md`：Runtime Center 查询、导出与筛选契约。
+- `knowledge-ingestion.md`：规范化 source payload 写入统一 source/chunk/receipt snapshot 与 vector 边界的 ingestion 契约。
 - `approvals.md`：Approvals Center、聊天审批动作、恢复与 interrupt 兼容契约。
 - `run-observatory.md`：workflow catalog、run list/detail 与 observability 投影契约。
 - `tool-execution.md`：Agent Tool 执行请求、策略判定、SSE、审批恢复与错误语义。

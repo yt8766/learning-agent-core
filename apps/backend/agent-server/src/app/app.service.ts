@@ -2,17 +2,26 @@ import { Injectable } from '@nestjs/common';
 
 import { HealthCheckResult } from '@agent/core';
 
+import { RuntimeHost } from '../runtime/core/runtime.host';
 import { RuntimeTaskService } from '../runtime/services/runtime-task.service';
+
+type AppHealthCheckResult = HealthCheckResult & {
+  knowledgeSearchStatus: RuntimeHost['knowledgeSearchStatus'];
+};
 
 @Injectable()
 export class AppService {
-  constructor(private readonly runtimeTaskService: RuntimeTaskService) {}
+  constructor(
+    private readonly runtimeTaskService: RuntimeTaskService,
+    private readonly runtimeHost: RuntimeHost
+  ) {}
 
-  health(): HealthCheckResult {
+  async health(): Promise<AppHealthCheckResult> {
     return {
       status: 'ok',
       service: 'server',
-      now: new Date().toISOString()
+      now: new Date().toISOString(),
+      knowledgeSearchStatus: await this.runtimeHost.getKnowledgeSearchStatus()
     };
   }
 

@@ -72,6 +72,7 @@ pnpm-debug.log*
 /data/skills
 /data/skill-runtime
 .db
+/db
 data/**/*.tmp
 packages/templates/src/*.d.ts
 packages/templates/src/*.d.ts.map
@@ -82,6 +83,7 @@ agents/*/src/**/*.d.ts.map
 !packages/templates/src/bonus-center-data/services/data/bonusCenter.ts
 !packages/templates/src/bonus-center-data/types/
 !packages/templates/src/bonus-center-data/types/data/
+.superpowers
 !packages/templates/src/bonus-center-data/types/data/bonusCenter.ts
 
 # -----------------------------------------------------------------------------
@@ -91,3 +93,6 @@ agents/*/src/**/*.d.ts.map
 .worktrees
 Thumbs.db
 Desktop.ini
+
+# LangGraph API
+.langgraph_api

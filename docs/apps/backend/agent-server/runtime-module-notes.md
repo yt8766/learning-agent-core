@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/src/runtime`
-最后核对：2026-04-20
+最后核对：2026-05-01
 
 本主题主文档：
 
@@ -58,8 +58,24 @@
 - `runtime/core/runtime.host.ts`
   - 当前已经作为 backend 默认官方组合根宿主
   - 除 `runtime / orchestrator / sessionCoordinator` 外，也开始承接 `listWorkflowPresets()`、`listSubgraphDescriptors()`、`listWorkflowVersions()` 这类 metadata 读取，以及 chat 侧 data-report runtime facade 的本地接线入口
+  - 当前还暴露 `knowledgeSearchService`，由 `runtime/core/runtime-knowledge-search-factory.ts` 装配 `@agent/knowledge` 的本地 artifact snapshot repositories；当 host options 提供 `keywordSearchService` / `knowledgeVectorSearchProvider`，或进程 env 配置了 `KNOWLEDGE_VECTOR_PROVIDER=chroma`、Chroma collection、embedding endpoint/model/secret 时，factory 可组装 explicit keyword-only 或 `HybridKnowledgeSearchService(keyword + vector)`，并通过 runtime bridge 进入 `AgentRuntime.knowledgeSearchService` 主链入口；bridge 会保留最近一次 query 的 `getLastDiagnostics()` 快照，未提供时保持 `DefaultKnowledgeSearchService` keyword-only 行为
+  - `runtime/core/runtime-knowledge-provider-config.ts` 是 backend 读取生产配置/secret 并创建 adapter provider 的入口；当前只创建 `@agent/adapters` 的 Chroma vector provider，真实 SDK 仍由 adapter 管理。Chroma env 缺失时保持 fake-safe：只把 vector configured 写入 factory config，不创建 provider，最终由 factory diagnostic 标记 missing client 并降级 keyword-only
+  - `RuntimeHost.getKnowledgeSearchStatus()` 的 vector health 由 `runtime/core/runtime-knowledge-provider-health.ts` 包裹短 TTL cache、超时和连续失败计数；默认 TTL 5s、超时 2s，可由 `KNOWLEDGE_PROVIDER_HEALTH_TTL_MS` / `KNOWLEDGE_PROVIDER_HEALTH_TIMEOUT_MS` 覆盖；`KNOWLEDGE_PROVIDER_HEALTH_DEGRADED_AFTER_FAILURES` 可控制连续失败达到多少次后才标记 degraded
+  - runtime knowledge bridge 当前通过 `@agent/knowledge` 的 `runKnowledgeRetrieval({ includeDiagnostics: true })` 执行搜索，以便 Runtime Center 的 last diagnostics 能拿到 `diagnostics.postRetrieval.filtering / ranking / diversification`；bridge 会把底层 diagnostics 裁剪成项目自有字段：hybrid 摘要、可选 nested `hybrid`、schema-compatible `postRetrieval`，避免 provider error、SDK response 或 vendor-specific 对象穿透到 Runtime / Evidence Center
+  - `runtime-knowledge-search-factory.ts` 只负责读取配置、注入 provider 与组合 facade；不要在 backend service/controller 内联 RRF、metadata filter、vector provider 调用细节或真实外部连接凭据
   - backend controller / service 如果只是需要官方默认装配信息，应优先经由 `RuntimeHost` 读取，而不是继续直接 import `@agent/platform-runtime`
-  - 当前 package boundary 也已补红线：backend app 源码里允许直连 `@agent/platform-runtime` 的位置只保留 `runtime/core/runtime.host.ts` 与 `runtime/core/runtime-data-report-facade.ts`；其他业务 service/controller/query 默认应通过这两个入口或更窄 backend facade 取用官方组合能力
+  - 当前 package boundary 也已补红线：backend app 源码里允许直连 `@agent/platform-runtime` 的位置只保留 `runtime/core/*` 下明确白名单的 composition facade；普通业务 service/controller/query 默认应通过这些入口或更窄 backend facade 取用官方组合能力
+- `runtime/core/runtime-company-live-facade.ts`
+  - 当前是临时 backend composition facade，只负责统一 `company-live` 独立 API 与 `workflow-runs` 的 company-live graph 调用点
+  - 该 facade 可以直连 `@agent/agents-company-live`，但不得继续新增其他 workflow executor，也不得承载 company-live 业务规则、prompt、schema 或 node 编排
+  - workspace smoke 会在干净 CI 环境中直接加载 backend `AppModule`；所有 `tsconfig.json` 中声明的 `@agent/agents-*` 源码入口都必须同步出现在根 `vitest.config.js` alias 中，不能依赖本地残留的 `agents/*/build` 产物解析。
+  - `test/smoke/backend/backend-http-app.smoke.ts` 是真实 Nest `AppModule` 冷启动 smoke。GitHub runner 上首次 import、provider 初始化与 health request 可能超过 Vitest 默认 `10s` hook timeout，因此该 smoke 必须保留显式 `BACKEND_HTTP_APP_HOOK_TIMEOUT_MS`，不要退回默认 hook 预算。
+  - workspace smoke 默认运行在 `NODE_ENV=test`，此时 `AppModule` 会通过 `createPersistenceImports()` 跳过 workflow-run 的 Postgres 持久化装配，避免干净 CI runner 因没有本地 `localhost:5432` 服务而让健康检查失败；需要在测试环境覆盖真实数据库链路时，必须显式设置 `AGENT_SERVER_ENABLE_DATABASE_IN_TEST=true` 并提供对应 `DB_*` 环境变量。
+  - 退出条件是后续由更正式的官方 workflow 装配层承接 company-live executor 注册；迁移完成后 backend 应只保留 HTTP/BFF、trace/SSE adapter 与错误映射
+- `runtime/core/runtime-workflow-execution-facade.ts`
+  - 当前是 backend workflow composition facade，基于 `@agent/platform-runtime` 的可注入 workflow registry contract 注册 `company-live` 与 `data-report-json`
+  - `packages/platform-runtime` 只提供 registry / execution contract，不直接依赖 `@agent/agents-*`；官方 executor 仍由 backend core 注入，避免 platform-runtime 重新变成 official agent 宿主
+  - 不要在 `WorkflowDispatcher` 或普通 backend service 里新增 `workflowId -> executor` 分支；新增 workflow 应先进入对应 `agents/*` 宿主，再通过 runtime/core workflow facade 注册
 - `RuntimeSessionService`
   - chat session、message、event、checkpoint、recover、subscribe
   - session message 的流式 assistant / 最终 assistant 去重规则现在已下沉到 `runtime/domain/session/runtime-session-message-dedupe.ts`；`RuntimeSessionService` 应更多保留 session existence guard、NotFound 映射与 coordinator facade，不再把消息去重细节继续内联在 service 文件底部
@@ -77,6 +93,13 @@
     - `runtime/domain/knowledge/runtime-cross-check-evidence.ts`
       当前只保留 compat re-export，不再作为这三类纯记忆治理规则的真实宿主
   - 本地知识 ingestion / overview / artifact snapshot facade 现已迁到 `@agent/knowledge` 的 `runtime/local-knowledge-store.ts`；backend 的 `runtime/knowledge/runtime-knowledge-store.ts` 当前只保留 compat re-export，不再作为本地知识落盘规则的真实宿主
+  - 生产来源 payload 的本地 runtime store 写入入口是 `@agent/knowledge` 的 `ingestKnowledgeSourcePayloads()`；`RuntimeKnowledgeService.ingestKnowledgeSources()` 只负责从 `RuntimeHost` context 取 `settings` 与 `vectorIndexRepository` 后委托 package facade。controller、web curated job 不应绕过该 facade 自行写 source/chunk/receipt snapshot
+  - `RuntimeKnowledgeService.ingestUserUploadSource()` 是当前 user upload 的最小 backend adapter：它只读取已落在 `settings.workspaceRoot` 内的文件，提取 filename / version / uploadedBy / allowedRoles / mimeType metadata，调用 `buildUserUploadKnowledgePayload()` 后再进入同一 ingestion facade；multipart 上传、对象存储下载、病毒扫描和租户鉴权仍属于上游 upload job，不在该 adapter 内实现
+  - `RuntimeKnowledgeService.ingestCatalogSyncSources()` 是当前 catalog sync 的最小 backend adapter：它接受上游已同步、已清洗的 catalog entries，调用 `buildCatalogSyncKnowledgePayload()` 后进入同一 ingestion facade；外部 catalog 拉取、租户鉴权和 vendor raw response 清洗仍属于上游 catalog job
+  - `RuntimeKnowledgeService.ingestWebCuratedSources()` 是当前 web curated 的最小 backend adapter：它接受上游已抓取、已清洗并完成 trustClass 策略判定的 URL entries，调用 `buildWebCuratedKnowledgePayload()` 后进入同一 ingestion facade；网页抓取、robots / 版权策略、cookie 会话和正文清洗仍属于上游 curated job
+  - `runtime/domain/knowledge/runtime-web-curated-ingestion-job.ts` 提供 web curated 的最小 job 编排边界：通过注入 `fetchUrl`、可选 `cleanContent` 和 `trustPolicy`，把 curated URL 来源转为现有 `ingestWebCuratedSources()` 可消费的 entries；真实 HTTP/MCP 抓取器、robots / 版权策略、cookie 会话和调度仍应由上游实现注入，不得把 vendor raw response 或凭据穿透到 ingestion payload
+  - `RuntimeKnowledgeService.ingestConnectorSyncSources()` 是当前 connector sync 的最小 backend adapter：它接受上游 connector 同步产物，调用 `buildConnectorSyncKnowledgePayload()` 后以 `sourceType=connector-manifest`、`metadata.docType=connector-sync` 进入同一 ingestion facade；connector API 调用、凭据使用、分页同步和 vendor raw response 清洗仍属于上游 connector job
+  - `platform/knowledge-ingestion.controller.ts` 暴露 `POST /api/platform/knowledge/sources/ingest`、`POST /api/platform/knowledge/sources/user-upload/ingest`、`POST /api/platform/knowledge/sources/catalog-sync/ingest`、`POST /api/platform/knowledge/sources/web-curated/ingest` 与 `POST /api/platform/knowledge/sources/connector-sync/ingest`；controller 只做 schema parse 与 service delegation，具体来源采集仍应落在各自 job / adapter
   - `RuntimeKnowledgeService` 只保留 facade 入口、调用顺序与 `NotFoundException` 语义，不再继续内联这类稳定领域规则
 - `RuntimeSkillCatalogService`
   - skill 列表、提升、停用、恢复、退役
@@ -87,6 +110,8 @@
     - `RuntimeCentersGovernanceService`
   - `runtime-centers-query.helpers.ts` 应作为 center 侧公共解析入口，像 executionMode / interactionKind / interrupt payload 这类兼容读取优先集中在这里做 controlled narrowing，不要在多个 query service 里重复写弱类型分支
   - `runtime-learning-evidence-center.*`、`runtime-company-agents-center.ts`、`runtime-skill-sources-center.ts`、`runtime-centers-governance-{counselors,connectors}.ts` 这类 helper 现在默认也要对齐显式输入 contract；读取 runtime state 时优先直接使用 `RuntimeStateSnapshot` / `CounselorSelectorConfig` / 本地汇总类型，不再回退成 `Promise<any>` 或 `Map<string, any>`
+  - workspace draft install lifecycle 的 receipt 关联、install status / phase normalization 与 `nextAction` 推导已从 `RuntimeCentersQueryService` 拆到 `runtime/centers/runtime-centers-workspace-lifecycle.ts`；这是 backend-local BFF projection helper，不是 `packages/runtime` 稳定 contract，也不是 `packages/skill` install lifecycle 主实现
+  - workspace reuse record 读取、按 workspace 过滤排序、`sessionId -> sourceTaskId` 查询辅助、workspace center status normalization，以及 workspace skill draft projection 的 source/status/sourceTask/sessionTask 过滤已从 `RuntimeCentersQueryService` 拆到 `runtime/centers/runtime-centers-workspace-query.ts`；这是 backend-local BFF/query projection helper，不是 `packages/runtime` 稳定 contract
   - facade 只保留聚合与兼容出口
   - `platform console` 聚合 helper 当前带 `15s` 短 TTL 缓存与并发同 key 去重，用于缓解 admin dashboard 重复刷新导致的整包重算放大；如需更强实时性或主动刷新，应新增显式 refresh 语义，而不是移除这层保护
   - `platform console` 的 runtime/evals/evidence/diagnostics 聚合边界已开始显式收敛到 `runtime-platform-console.schemas.ts + runtime-platform-console.records.ts`；后续新增字段时，优先先补 schema/normalizer，再改 controller 或 export helper，不要把 `any` / `unknown` 重新穿透到后台边界
@@ -113,8 +138,10 @@
   - `runtime-company-agents-center.ts`、`runtime-connectors-center.ts` 与 `runtime-skill-sources-center.ts` 已退化为对 `@agent/runtime` 的 thin re-export
 - learning center
   - `runtime-learning-evidence-center.learning.ts` 与 `runtime-learning-evidence-center.summary.ts` 当前已退化为 backend wrapper，核心 projection 由 `packages/runtime/src/runtime/runtime-learning-center*.ts` 承载
+  - `runtime-learning-evidence-center.learning-helpers.ts` 已删除；原重复的 queue priority、counselor experiment 与 capability trust profile 纯 helper 现在只保留在 `packages/platform-runtime/src/centers/runtime-learning-center.helpers.ts`，由 package-local 测试覆盖
   - backend 当前只负责注入 `buildRuleCandidates` 等 app-local 派生依赖；`runtime-learning-evidence-center.evidence.ts` 已明确收敛为永久 backend-only BFF adapter，专门承载 checkpoint ref / replay / recoverable 聚合
   - 这层 backend-only adapter 的具体 helper 当前下沉到 `runtime-learning-evidence-center.evidence-adapter.ts`；后续如果继续演进，应保持“session checkpoint binding + replay extraction” 只在这一层聚合，不要再把它误判为待迁出的过渡逻辑
+  - Evidence Center 的 `cangjing:overview.detail.knowledgeRetrievalDiagnostics` 当前只承载最近一次 runtime knowledge query 的裁剪快照：`query / limit / hitCount / total / searchedAt / postRetrieval`。它复用 `RuntimeHost.runtime.knowledgeSearchService.getLastDiagnostics()`，但只透出 `diagnostics.postRetrieval`，不得把命中正文、被 drop/mask 的原文、provider error 或 vendor-specific response 写入 evidence detail
 - `RuntimeService`
   - 兼容 facade
   - 仅用于需要聚合多个 runtime provider 的场景
@@ -202,46 +229,12 @@
   - checkpoint ref 已拆到 `runtime/domain/session/runtime-checkpoint-ref.ts`
   - connector discovery / governance audit grouping 已拆到 `runtime/domain/connectors/runtime-connector-governance-records.ts`
 
-`briefings/` 当前额外约束：
+Daily Tech Briefing 边界：
 
-- `runtime-tech-briefing.service.ts`
-  - 只保留 briefing orchestration facade、分类循环、抓取/投递编排
-- `runtime-tech-briefing-schedule.ts`
-  - 承载 category schedule、adaptive interval、lookback days、cron 计算
-- `runtime-tech-briefing-category-processor.ts`
-  - 承载同轮合并、跨轮去重、分类限流、audit record 与 category final status 决策
-- `runtime-tech-briefing-category-collector.ts`
-  - 承载 feed/security page/MCP supplemental search 的分类抓取、翻译前整理与偏好排序入口
-- `runtime-tech-briefing-item-enrichment.ts`
-  - 承载 action metadata、受影响版本/修复版本推断与偏好分数规则
-- `runtime-tech-briefing-ranking.ts`
-  - 只保留 source policy 过滤与最终排序
-- `runtime-tech-briefing-ranking-finalize.ts`
-  - 承载 ranking 前的 relevance enrichment、cross-verify、stable metadata 装配
-- `runtime-tech-briefing-ranking-policy.ts`
-  - 承载 priority score 与影响等级策略
-- `runtime-tech-briefing-localize.ts`
-  - 退化为 briefing 渲染 facade，只保留稳定导出面
-- `runtime-tech-briefing-localize-copy.ts`
-  - 承载标题/摘要本地化与文案替换规则
-- `runtime-tech-briefing-localize-summary.ts`
-  - 承载 markdown digest summary 渲染
-- `runtime-tech-briefing-localize-card.ts`
-  - 承载 interactive card 渲染
-- `runtime-tech-briefing-localize-render-shared.ts`
-  - 承载时间/标题/标签/摘要渲染共享 helper
-- `runtime-tech-briefing-localize-render-content.ts`
-  - 承载 impact/action/type/check-command 这类内容生成规则
-- `runtime-tech-briefing-delivery.ts`
-  - 承载 digest 投递、history 持久化、run record 组装
-- `bree` 调度开关
-  - `RuntimeScheduleService` 只在 `dailyTechBriefing.enabled === true` 时初始化 `bree`
-  - 本地停用定时 briefing 的首选入口是项目根 `.env` 里的 `DAILY_TECH_BRIEFING_ENABLED=false`
-  - 已落盘的 `data/runtime/schedules/*.json` 需要同步切到 `PAUSED`，避免控制台继续展示为活动态
-- 后续继续拆分时，`category processor`、`collector`、`delivery`、`history/schedule persistence` 也应继续下沉到独立子模块
-- 不要再把 adaptive interval、category config、cron 计算重新塞回 `runtime-tech-briefing.service.ts`
-- 不要把 MCP supplemental search、偏好打分、动作元信息推断重新回填到 `runtime-tech-briefing.service.ts` 或单一 collector 大文件
-- 不要把排序策略、偏好打分、抓取逻辑重新回填到 `runtime-tech-briefing-localize.ts`；新增渲染规则优先落在 `summary / card / render-content / render-shared` 对应模块
+- Daily Tech Intelligence Briefing 当前真实宿主是 `agents/intel-engine/src/runtime/briefing`。
+- `apps/backend/agent-server/src/runtime/briefings` 已删除，不再保留 backend compat re-export 双轨。
+- backend 只允许保留调用 `@agent/agents-intel-engine` 的 `RuntimeIntelBriefingFacade`、schedule trigger、controller delegation、error mapping 和 API smoke。
+- 不要在 backend 新增 briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑；新增 briefing 领域能力应落在 `agents/intel-engine`。
 
 依赖原则：
 

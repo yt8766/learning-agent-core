@@ -18,6 +18,7 @@ const GOVERNANCE_EVENT_FIELD_NAMES = [
   'sandboxRunId',
   'sandboxDecision',
   'sandboxProfile',
+  'reviewId',
   'autoReviewId',
   'autoReviewVerdict',
   'alias',
@@ -25,7 +26,19 @@ const GOVERNANCE_EVENT_FIELD_NAMES = [
   'approvalReasonCode',
   'aliasReasonCode'
 ] as const;
-const FORBIDDEN_EVENT_PAYLOAD_FIELD_NAMES = new Set(['input', 'rawInput', 'vendor', 'rawOutput']);
+const FORBIDDEN_EVENT_PAYLOAD_FIELD_NAMES = new Set([
+  'input',
+  'rawInput',
+  'rawOutput',
+  'metadata',
+  'vendor',
+  'vendorObject',
+  'vendorPayload',
+  'vendorResponse',
+  'rawVendorResponse',
+  'providerResponse',
+  'rawProviderResponse'
+]);
 
 export function listProjectedAgentToolEvents(args: {
   repository: AgentToolsRepository;
@@ -147,10 +160,10 @@ function sanitizeAgentToolEvent(event: ChatEventRecord): ChatEventRecord {
 function sanitizeAgentToolEventPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
-    if (key === 'metadata' || FORBIDDEN_EVENT_PAYLOAD_FIELD_NAMES.has(key)) {
+    if (FORBIDDEN_EVENT_PAYLOAD_FIELD_NAMES.has(key)) {
       continue;
     }
-    sanitized[key] = value;
+    sanitized[key] = sanitizeProjectedPayloadValue(value);
   }
   const metadata = payload.metadata;
   if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
@@ -160,6 +173,29 @@ function sanitizeAgentToolEventPayload(payload: Record<string, unknown>): Record
         sanitized[fieldName] = value;
       }
     }
+    if (sanitized.reviewId === undefined) {
+      const value = (metadata as Record<string, unknown>).autoReviewId;
+      if (typeof value === 'string' && value.length > 0) {
+        sanitized.reviewId = value;
+      }
+    }
+  }
+  return sanitized;
+}
+
+function sanitizeProjectedPayloadValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(item => sanitizeProjectedPayloadValue(item));
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (FORBIDDEN_EVENT_PAYLOAD_FIELD_NAMES.has(key)) {
+      continue;
+    }
+    sanitized[key] = sanitizeProjectedPayloadValue(nestedValue);
   }
   return sanitized;
 }
@@ -174,6 +210,13 @@ function pickGovernanceMetadata(metadata: Record<string, unknown> | undefined): 
     if (typeof value === 'string' && value.length > 0) {
       sanitized[fieldName] = value;
     }
+  }
+  if (
+    sanitized.reviewId === undefined &&
+    typeof metadata.autoReviewId === 'string' &&
+    metadata.autoReviewId.length > 0
+  ) {
+    sanitized.reviewId = metadata.autoReviewId;
   }
   return sanitized;
 }

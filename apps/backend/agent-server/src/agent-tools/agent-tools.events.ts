@@ -7,6 +7,7 @@ const GOVERNANCE_EVENT_FIELD_NAMES = [
   'sandboxRunId',
   'sandboxDecision',
   'sandboxProfile',
+  'reviewId',
   'autoReviewId',
   'autoReviewVerdict',
   'alias',
@@ -89,7 +90,8 @@ export function buildBlockedAgentToolEventDrafts(
         interruptId: approval.interruptId,
         kind: 'tool_execution',
         requestId: request.requestId,
-        approvalId: approval.approvalId
+        approvalId: approval.approvalId,
+        ...governance
       }
     }
   ];
@@ -168,6 +170,9 @@ function pickGovernanceEventPayload(request: ExecutionRequestRecord): Record<str
       payload[fieldName] = value;
     }
   }
+  if (payload.reviewId === undefined && typeof request.metadata?.autoReviewId === 'string') {
+    payload.reviewId = request.metadata.autoReviewId;
+  }
   return payload;
 }
 
@@ -176,6 +181,7 @@ export function buildApprovalResumedEventDrafts(
   approval: AgentToolApprovalProjection,
   action: string
 ): AgentToolEventDraft[] {
+  const governance = pickGovernanceEventPayload(request);
   return [
     {
       type: 'execution_step_resumed',
@@ -183,7 +189,8 @@ export function buildApprovalResumedEventDrafts(
         requestId: request.requestId,
         approvalId: approval.approvalId,
         interruptId: approval.interruptId,
-        action
+        action,
+        ...governance
       }
     },
     {
@@ -192,7 +199,8 @@ export function buildApprovalResumedEventDrafts(
         interruptId: approval.interruptId,
         kind: 'tool_execution',
         requestId: request.requestId,
-        action
+        action,
+        ...governance
       }
     }
   ];
@@ -204,6 +212,7 @@ export function buildApprovalRejectedEventDrafts(
   action: string,
   feedback: string | undefined
 ): AgentToolEventDraft[] {
+  const governance = pickGovernanceEventPayload(request);
   return [
     {
       type: 'execution_step_resumed',
@@ -211,7 +220,8 @@ export function buildApprovalRejectedEventDrafts(
         requestId: request.requestId,
         approvalId: approval.approvalId,
         interruptId: approval.interruptId,
-        action
+        action,
+        ...governance
       }
     },
     {
@@ -220,7 +230,8 @@ export function buildApprovalRejectedEventDrafts(
         interruptId: approval.interruptId,
         kind: 'tool_execution',
         requestId: request.requestId,
-        feedback
+        feedback,
+        ...governance
       }
     }
   ];

@@ -1,6 +1,7 @@
 export * from './providers';
 export * from './runtime-invocation';
 export * from './contracts/chat/index';
+export * from './contracts/admin-auth';
 export * from './contracts/ministries/index';
 export * from './contracts/execution/index';
 export * from './contracts/media';

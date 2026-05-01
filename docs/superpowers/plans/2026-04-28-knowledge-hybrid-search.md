@@ -1134,10 +1134,10 @@ Expected: 两个检查均无错误
 - `HybridKnowledgeSearchService`（双路并行 + RRF + 降级，`src/retrieval/hybrid-knowledge-search-service.ts`）
 ```
 
-将 spec 文件状态从 `draft` 改为 `implemented`：
+将 spec 文件状态从 `draft` 改为 `current`，并用 `状态说明：...` 记录实现进度；`implemented` 不是 `pnpm check:docs` 支持的状态值：
 
 ```bash
-sed -i '' 's/状态：draft/状态：implemented/' docs/superpowers/specs/2026-04-28-knowledge-hybrid-search-design.md
+sed -i '' 's/状态：draft/状态：current/' docs/superpowers/specs/2026-04-28-knowledge-hybrid-search-design.md
 ```
 
 - [ ] **Step 4：最终 Commit**

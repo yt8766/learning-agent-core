@@ -5,14 +5,15 @@ import { join, resolve } from 'node:path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import Bree = require('bree');
 
-import type { RuntimeTechBriefingService } from '../briefings/runtime-tech-briefing.service';
 import { computeNextRunAt, resolveRuntimeSchedule } from './runtime-schedule.helpers';
 import {
   ensureDailyTechBriefingSchedules,
   listPersistedBriefingSchedules,
-  saveDailyTechBriefingSchedule
-} from '../briefings/runtime-tech-briefing-storage';
-import type { DailyTechBriefingScheduleRecord, TechBriefingCategory } from '../briefings/runtime-tech-briefing.types';
+  saveDailyTechBriefingSchedule,
+  type DailyTechBriefingScheduleRecord,
+  type RuntimeIntelBriefingFacade,
+  type TechBriefingCategory
+} from '../core/runtime-intel-briefing-facade';
 
 const SCHEDULE_REFRESH_MS = 30_000;
 const METRICS_SNAPSHOT_REFRESH_MS = 30 * 60 * 1000;
@@ -43,7 +44,7 @@ export interface RuntimeScheduleContext {
       };
     };
   };
-  techBriefingService: RuntimeTechBriefingService;
+  techBriefingService: RuntimeIntelBriefingFacade;
   refreshMetricsSnapshots?: (days: number) => Promise<unknown>;
 }
 

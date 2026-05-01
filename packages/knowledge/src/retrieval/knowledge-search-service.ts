@@ -6,6 +6,12 @@ import type {
   KnowledgeSourceRepository
 } from '../contracts/knowledge-facade';
 import { scoreKnowledgeChunk } from '../shared/knowledge-text-scoring';
+import {
+  matchesKnowledgeChunkFilters,
+  matchesKnowledgeSourceFilters,
+  resolveKnowledgeRetrievalFilters,
+  type ResolvedKnowledgeRetrievalFilters
+} from './knowledge-retrieval-filters';
 
 export class DefaultKnowledgeSearchService implements KnowledgeSearchService {
   constructor(
@@ -16,11 +22,11 @@ export class DefaultKnowledgeSearchService implements KnowledgeSearchService {
   async search(request: RetrievalRequest): Promise<RetrievalResult> {
     const limit = request.limit ?? 5;
     const [sources, chunks] = await Promise.all([this.sourceRepository.list(), this.chunkRepository.list()]);
+    const filters = resolveKnowledgeRetrievalFilters(request);
     const sourceMap = new Map(sources.map(source => [source.id, source]));
 
     const hits = chunks
-      .filter(chunk => chunk.searchable)
-      .map(chunk => this.toHit(chunk, request, sourceMap))
+      .map(chunk => this.toHit(chunk, request, filters, sourceMap))
       .filter((hit): hit is RetrievalHit => Boolean(hit))
       .sort((left, right) => right.score - left.score)
       .slice(0, limit);
@@ -34,13 +40,17 @@ export class DefaultKnowledgeSearchService implements KnowledgeSearchService {
   private toHit(
     chunk: Awaited<ReturnType<KnowledgeChunkRepository['list']>>[number],
     request: RetrievalRequest,
+    filters: ResolvedKnowledgeRetrievalFilters,
     sourceMap: Map<string, KnowledgeSource>
   ): RetrievalHit | null {
     const source = sourceMap.get(chunk.sourceId);
     if (!source) {
       return null;
     }
-    if (request.allowedSourceTypes && !request.allowedSourceTypes.includes(source.sourceType)) {
+    if (!matchesKnowledgeSourceFilters(source, filters)) {
+      return null;
+    }
+    if (!matchesKnowledgeChunkFilters(chunk, filters)) {
       return null;
     }
 
@@ -59,6 +69,7 @@ export class DefaultKnowledgeSearchService implements KnowledgeSearchService {
       trustClass: source.trustClass,
       content: chunk.content,
       score,
+      metadata: chunk.metadata,
       citation: {
         sourceId: source.id,
         chunkId: chunk.id,

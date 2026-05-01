@@ -14,9 +14,9 @@ import { RuntimeSkillCatalogService } from '../services/runtime-skill-catalog.se
 import { RuntimeTaskService } from '../services/runtime-task.service';
 import { RuntimeToolsService } from '../services/runtime-tools.service';
 import { searchLocalSkillSuggestions } from '../skills/runtime-skill-sources.service';
-import { RuntimeTechBriefingService } from '../briefings/runtime-tech-briefing.service';
 import { RuntimeScheduleService } from '../schedules/runtime-schedule.service';
 import type { AppLoggerService } from '../../logger/app-logger.service';
+import { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade';
 import {
   applyProviderFactoryGovernanceOverrides,
   createProviderFactoryBackgroundRunnerContext,
@@ -28,8 +28,8 @@ import {
   syncProviderFactoryInstalledSkillWorkers
 } from './runtime-provider-factory-contexts';
 
-export function createRuntimeTechBriefingService(runtimeHost: RuntimeHost) {
-  return new RuntimeTechBriefingService(() => ({
+export function createRuntimeIntelBriefingFacade(runtimeHost: RuntimeHost) {
+  return new RuntimeIntelBriefingFacade(() => ({
     settings: runtimeHost.settings,
     mcpClientManager: runtimeHost.mcpClientManager,
     llmProvider: runtimeHost.llmProvider
@@ -38,7 +38,7 @@ export function createRuntimeTechBriefingService(runtimeHost: RuntimeHost) {
 
 export function createRuntimeScheduleService(
   runtimeHost: RuntimeHost,
-  techBriefingService: RuntimeTechBriefingService
+  techBriefingService: RuntimeIntelBriefingFacade
 ) {
   return new RuntimeScheduleService(() => ({
     settings: runtimeHost.settings,
@@ -110,7 +110,7 @@ export function createRuntimeMessageGatewayFacadeService(
 export function createRuntimeBootstrapService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeTechBriefingService,
+  techBriefingService: RuntimeIntelBriefingFacade,
   runtimeScheduleService: RuntimeScheduleService
 ) {
   return new RuntimeBootstrapService(() => ({
@@ -135,7 +135,7 @@ export function createRuntimeBootstrapService(
 export function createRuntimeCentersService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeTechBriefingService,
+  techBriefingService: RuntimeIntelBriefingFacade,
   appLogger?: AppLoggerService
 ) {
   return createProviderFactoryCentersService(runtimeHost, operationalState, techBriefingService, appLogger);

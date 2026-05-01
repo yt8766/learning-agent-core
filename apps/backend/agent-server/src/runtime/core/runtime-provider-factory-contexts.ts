@@ -21,9 +21,9 @@ import type {
 } from '../centers/runtime-platform-console.records';
 import { RuntimeOperationalStateService } from '../services/runtime-operational-state.service';
 import { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
-import { RuntimeTechBriefingService } from '../briefings/runtime-tech-briefing.service';
 import type { AppLoggerService } from '../../logger/app-logger.service';
 import type { RuntimeHost } from './runtime.host';
+import { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade';
 
 export function createProviderFactoryUnsupportedPlatformConsoleContext(): RuntimePlatformConsoleContext {
   const unsupported = (name: string) => () => {
@@ -120,14 +120,16 @@ export function createProviderFactoryKnowledgeContext(runtimeHost: RuntimeHost) 
     wenyuanFacade: () => createProviderFactoryWenyuanFacade(runtimeHost),
     ruleRepository: () => runtimeHost.ruleRepository,
     orchestrator: () => runtimeHost.orchestrator,
-    runtimeStateRepository: () => runtimeHost.runtimeStateRepository
+    runtimeStateRepository: () => runtimeHost.runtimeStateRepository,
+    settings: () => runtimeHost.settings,
+    vectorIndexRepository: () => runtimeHost.runtime.vectorIndexRepository
   });
 }
 
 function createBootstrapCentersContext(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeTechBriefingService
+  techBriefingService: RuntimeIntelBriefingFacade
 ) {
   return createCentersContext({
     settings: () => runtimeHost.settings,
@@ -162,7 +164,7 @@ function createBootstrapCentersContext(
 export async function initializeProviderFactoryMetricsSnapshots(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeTechBriefingService,
+  techBriefingService: RuntimeIntelBriefingFacade,
   days: number
 ) {
   await refreshMetricsSnapshotsWithGovernance(
@@ -203,7 +205,7 @@ export function createProviderFactoryBackgroundRunnerContext(
 export function createProviderFactoryCentersService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeTechBriefingService,
+  techBriefingService: RuntimeIntelBriefingFacade,
   appLogger?: AppLoggerService
 ) {
   const wenyuanFacade = createProviderFactoryWenyuanFacade(runtimeHost);

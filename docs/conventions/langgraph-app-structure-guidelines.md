@@ -13,6 +13,7 @@
 - 多 Graph / 子图可维护
 - 共享能力集中复用
 - 测试目录统一，不再与 `src/` 混放
+- 根级 `langgraph.json` 只做部署注册表，不承载业务流程
 
 ## 1. 适用范围
 
@@ -28,6 +29,14 @@
 前端不直接承载 LangGraph graph，但也应遵守同样的“源码目录 + 同级 test 目录”原则。
 
 ## 2. 当前项目推荐结构
+
+根目录 `langgraph.json` 是当前仓库面向 LangSmith / LangGraph 部署的 Graph 注册入口：
+
+- `dependencies` 固定从仓库根 `package.json` 与 workspace 依赖解析，当前使用 `["."]`
+- `node_version` 使用 LangGraph CLI schema 要求的字符串字面量，例如 `"20"` 或 `"22"`，不要写成数字
+- `graphs` 只引用稳定 graph 入口或 graph 工厂函数，不在配置中表达业务路由细节
+- `env` 本地指向根目录 `.env`；生产环境变量由部署平台注入，配置文件不写入真实 secret
+- 新增可部署 graph 时，先确保 graph 入口位于真实宿主的 `src/graphs/` 下，再同步注册到根级 `langgraph.json`
 
 ### `packages/runtime`
 

@@ -9,7 +9,7 @@ import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/com
 import {
   PAGE_TITLES,
   buildDashboardShareUrl,
-  readDashboardStateFromHash,
+  readDashboardStateFromRoute,
   shouldPollTask,
   toApprovalItems
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
@@ -22,7 +22,7 @@ let initialDashboardRefreshPromise: Promise<void> | null = null;
 
 export function useAdminDashboard() {
   const queryClient = useQueryClient();
-  const initialHashState = readDashboardStateFromHash();
+  const initialHashState = readDashboardStateFromRoute();
   const [page, setPage] = useState<DashboardPageKey>(() => initialHashState.page);
   const [health, setHealth] = useState('检查中');
   const [consoleData, setConsoleData] = useState<PlatformConsoleRecord | null>(null);
@@ -310,6 +310,7 @@ export function useAdminDashboard() {
     page,
     setPage: (nextPage: DashboardPageKey) => {
       setPage(nextPage);
+      void actions.refreshPageCenter(nextPage);
     },
     shareUrl,
     title: PAGE_TITLES[page],

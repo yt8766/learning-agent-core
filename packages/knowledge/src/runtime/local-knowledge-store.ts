@@ -23,6 +23,8 @@ import {
   writeKnowledgeSnapshot
 } from './local-knowledge-store.helpers';
 
+export { KNOWLEDGE_RELATIVE_PATHS } from './local-knowledge-store.helpers';
+
 type RuntimeSettings = ReturnType<typeof loadSettings>;
 
 export interface KnowledgeOverviewRecord {
@@ -145,27 +147,27 @@ export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<K
   const stores = buildDefaultStores(settings);
   const snapshot: PersistedKnowledgeSnapshot = {
     stores,
-    sources,
-    chunks,
-    embeddings,
-    receipts
+    sources: mergeById(existing.sources, sources),
+    chunks: mergeById(existing.chunks, chunks),
+    embeddings: mergeById(existing.embeddings, embeddings),
+    receipts: mergeById(existing.receipts, receipts)
   };
   await writeKnowledgeSnapshot(settings, snapshot);
 
-  const searchableDocumentCount = chunks.filter(chunk => chunk.searchable).length
-    ? new Set(chunks.filter(chunk => chunk.searchable).map(chunk => chunk.documentId)).size
-    : existing.chunks.filter(chunk => chunk.searchable).length
-      ? new Set(existing.chunks.filter(chunk => chunk.searchable).map(chunk => chunk.documentId)).size
-      : embeddedSuccessByDocument.size;
+  const searchableDocumentCount = snapshot.chunks.filter(chunk => chunk.searchable).length
+    ? new Set(snapshot.chunks.filter(chunk => chunk.searchable).map(chunk => chunk.documentId)).size
+    : embeddedSuccessByDocument.size;
 
   return {
     stores,
     searchableDocumentCount,
-    blockedDocumentCount: failedDocuments.size,
-    sourceCount: sources.length,
-    chunkCount: chunks.length,
-    embeddingCount: embeddings.filter(item => item.status === 'ready').length,
-    latestReceipts: receipts
+    blockedDocumentCount: failedDocuments.size
+      ? failedDocuments.size
+      : new Set(snapshot.embeddings.filter(item => item.status === 'failed').map(item => item.documentId)).size,
+    sourceCount: snapshot.sources.length,
+    chunkCount: snapshot.chunks.length,
+    embeddingCount: snapshot.embeddings.filter(item => item.status === 'ready').length,
+    latestReceipts: snapshot.receipts
       .slice()
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, 8)
@@ -221,4 +223,11 @@ export function buildKnowledgeDescriptor(settings: RuntimeSettings) {
       'cangjing local vectors/indexes'
     ]
   };
+}
+
+function mergeById<T extends { id: string }>(existing: readonly T[], updates: readonly T[]): T[] {
+  const merged = new Map<string, T>();
+  for (const item of existing) merged.set(item.id, item);
+  for (const item of updates) merged.set(item.id, item);
+  return [...merged.values()];
 }

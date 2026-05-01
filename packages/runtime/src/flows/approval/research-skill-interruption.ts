@@ -5,6 +5,7 @@ import type { PendingExecutionContext } from './types';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { markExecutionStepBlocked, markExecutionStepResumed } from '../../bridges/supervisor-runtime-bridge';
+import { recordPendingApprovalOnce, recordPendingInterruptOnce } from './interrupt-idempotency';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
 import type { ApprovalResumeInput } from '@agent/runtime';
 
@@ -144,7 +145,9 @@ export async function handleResearchSkillIntervention(
     return { interrupted: false };
   }
 
-  const interruptAt = new Date().toISOString();
+  const interruptId = `interrupt_${task.id}_research_skill_install`;
+  const isPendingReplay = task.activeInterrupt?.id === interruptId && task.activeInterrupt.status === 'pending';
+  const interruptAt = task.activeInterrupt?.createdAt ?? new Date().toISOString();
   task.status = TaskStatus.WAITING_APPROVAL;
   callbacks.transitionQueueState(task, 'waiting_approval');
   task.currentNode = 'approval_gate';
@@ -162,64 +165,72 @@ export async function handleResearchSkillIntervention(
     },
     { requestedBy: task.currentMinistry ?? researchMinistry, approvalScope: 'once' }
   );
-  task.activeInterrupt = extendInterruptWithRiskMetadata(
-    {
-      id: `interrupt_${task.id}_research_skill_install`,
-      status: 'pending',
-      mode: 'blocking',
-      source: 'graph',
-      origin: 'runtime',
-      kind: 'skill-install',
-      intent: ActionIntent.INSTALL_SKILL,
+  task.activeInterrupt = isPendingReplay
+    ? task.activeInterrupt
+    : extendInterruptWithRiskMetadata(
+        {
+          id: interruptId,
+          status: 'pending',
+          mode: 'blocking',
+          source: 'graph',
+          origin: 'runtime',
+          kind: 'skill-install',
+          intent: ActionIntent.INSTALL_SKILL,
+          toolName: resolved.pendingApproval.toolName,
+          family: 'runtime-governance',
+          capabilityType: 'governance-tool',
+          requestedBy: task.currentMinistry ?? researchMinistry,
+          ownerType: 'ministry-owned',
+          ownerId: task.currentMinistry ?? researchMinistry,
+          reason: resolved.pendingApproval.reason,
+          blockedReason: resolved.pendingApproval.reason,
+          riskLevel: 'medium',
+          resumeStrategy: 'command',
+          preview: resolved.pendingApproval.preview,
+          payload: {
+            stage: 'research',
+            receiptId: resolved.pendingExecution.receiptId,
+            skillDisplayName: resolved.pendingExecution.skillDisplayName
+          },
+          createdAt: interruptAt
+        },
+        { approvalScope: 'once' }
+      );
+  const activeInterrupt = task.activeInterrupt;
+  if (!activeInterrupt) {
+    throw new Error('Research skill install interrupt was not initialized.');
+  }
+  const isFirstPendingInterrupt = recordPendingInterruptOnce(task, activeInterrupt);
+  if (isFirstPendingInterrupt) {
+    callbacks.attachTool(task, {
       toolName: resolved.pendingApproval.toolName,
-      family: 'runtime-governance',
-      capabilityType: 'governance-tool',
-      requestedBy: task.currentMinistry ?? researchMinistry,
+      attachedBy: 'runtime',
+      preferred: true,
+      reason: resolved.pendingApproval.reason,
       ownerType: 'ministry-owned',
       ownerId: task.currentMinistry ?? researchMinistry,
+      family: 'runtime-governance'
+    });
+    callbacks.recordToolUsage(task, {
+      toolName: resolved.pendingApproval.toolName,
+      status: 'blocked',
+      requestedBy: task.currentMinistry ?? researchMinistry,
       reason: resolved.pendingApproval.reason,
       blockedReason: resolved.pendingApproval.reason,
-      riskLevel: 'medium',
-      resumeStrategy: 'command',
-      preview: resolved.pendingApproval.preview,
-      payload: {
-        stage: 'research',
-        receiptId: resolved.pendingExecution.receiptId,
-        skillDisplayName: resolved.pendingExecution.skillDisplayName
-      },
-      createdAt: interruptAt
-    },
-    { approvalScope: 'once' }
-  );
-  task.interruptHistory = [...(task.interruptHistory ?? []), task.activeInterrupt];
-  callbacks.attachTool(task, {
-    toolName: resolved.pendingApproval.toolName,
-    attachedBy: 'runtime',
-    preferred: true,
-    reason: resolved.pendingApproval.reason,
-    ownerType: 'ministry-owned',
-    ownerId: task.currentMinistry ?? researchMinistry,
-    family: 'runtime-governance'
-  });
-  callbacks.recordToolUsage(task, {
-    toolName: resolved.pendingApproval.toolName,
-    status: 'blocked',
-    requestedBy: task.currentMinistry ?? researchMinistry,
-    reason: resolved.pendingApproval.reason,
-    blockedReason: resolved.pendingApproval.reason,
-    approvalRequired: true,
-    route: 'governance',
-    family: 'runtime-governance',
-    capabilityType: 'governance-tool',
-    riskLevel: 'medium'
-  });
-  task.approvals.push({
-    taskId: task.id,
-    intent: ActionIntent.INSTALL_SKILL,
-    decision: 'pending',
-    decidedAt: new Date().toISOString(),
-    reason: resolved.pendingApproval.reason
-  });
+      approvalRequired: true,
+      route: 'governance',
+      family: 'runtime-governance',
+      capabilityType: 'governance-tool',
+      riskLevel: 'medium'
+    });
+    recordPendingApprovalOnce(task, {
+      taskId: task.id,
+      intent: ActionIntent.INSTALL_SKILL,
+      decision: 'pending',
+      decidedAt: new Date().toISOString(),
+      reason: resolved.pendingApproval.reason
+    });
+  }
   callbacks.registerPendingExecution?.(task.id, {
     taskId: task.id,
     intent: ActionIntent.INSTALL_SKILL,
@@ -238,32 +249,34 @@ export async function handleResearchSkillIntervention(
           updatedAt: new Date().toISOString()
         }
       : task.currentSkillExecution;
-  callbacks.setSubTaskStatus(task, AgentRole.RESEARCH, 'blocked');
-  callbacks.addTrace(
-    task,
-    'approval_gate',
-    `户部发现当前轮仍缺少关键 skill，已暂停等待安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}。`,
-    {
-      stage: 'research',
-      receiptId: resolved.pendingExecution.receiptId,
-      skillDisplayName: resolved.pendingExecution.skillDisplayName
-    }
-  );
-  callbacks.addProgressDelta(
-    task,
-    `户部发现需要先安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}，当前轮已暂停等待审批。`,
-    AgentRole.RESEARCH
-  );
-  markExecutionStepBlocked(
-    task,
-    'approval-interrupt',
-    resolved.pendingApproval.reason,
-    '研究阶段已暂停等待审批。',
-    'system'
-  );
+  if (isFirstPendingInterrupt) {
+    callbacks.setSubTaskStatus(task, AgentRole.RESEARCH, 'blocked');
+    callbacks.addTrace(
+      task,
+      'approval_gate',
+      `户部发现当前轮仍缺少关键 skill，已暂停等待安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}。`,
+      {
+        stage: 'research',
+        receiptId: resolved.pendingExecution.receiptId,
+        skillDisplayName: resolved.pendingExecution.skillDisplayName
+      }
+    );
+    callbacks.addProgressDelta(
+      task,
+      `户部发现需要先安装 ${resolved.pendingExecution.skillDisplayName ?? '远程 skill'}，当前轮已暂停等待审批。`,
+      AgentRole.RESEARCH
+    );
+    markExecutionStepBlocked(
+      task,
+      'approval-interrupt',
+      resolved.pendingApproval.reason,
+      '研究阶段已暂停等待审批。',
+      'system'
+    );
+  }
   await callbacks.persistAndEmitTask(task);
   const resume = interrupt({
-    interruptId: task.activeInterrupt.id,
+    interruptId: activeInterrupt.id,
     kind: 'skill-install',
     mode: 'blocking',
     toolName: resolved.pendingApproval.toolName,

@@ -42,6 +42,76 @@ export interface RuntimeCenterKnowledgeOverviewRecord {
   }>;
 }
 
+export interface RuntimeCenterKnowledgeSearchStatusRecord {
+  configuredMode: 'keyword-only' | 'vector-only' | 'hybrid';
+  effectiveMode: 'keyword-only' | 'vector-only' | 'hybrid';
+  vectorProviderId?: string;
+  vectorConfigured: boolean;
+  hybridEnabled: boolean;
+  vectorProviderHealth?: {
+    status: 'healthy' | 'degraded' | 'unknown';
+    checkedAt: string;
+    latencyMs?: number;
+    message?: string;
+    consecutiveFailures?: number;
+  };
+  keywordProviderHealth?: {
+    status: 'healthy' | 'degraded' | 'unknown';
+    checkedAt: string;
+    latencyMs?: number;
+    message?: string;
+    consecutiveFailures?: number;
+  };
+  diagnostics: Array<{
+    code: string;
+    severity: 'info' | 'warning';
+    message: string;
+  }>;
+  checkedAt: string;
+}
+
+export interface RuntimeCenterKnowledgeHybridDiagnosticsRecord {
+  retrievalMode?: string;
+  enabledRetrievers?: string[];
+  failedRetrievers?: string[];
+  candidateCount?: number;
+  fusionStrategy?: string;
+  prefilterApplied?: boolean;
+}
+
+export interface RuntimeCenterKnowledgePostRetrievalDiagnosticsRecord {
+  filtering?: {
+    beforeCount?: number;
+    afterCount?: number;
+    droppedCount?: number;
+    maskedCount?: number;
+  };
+  ranking?: {
+    strategy?: string;
+    signals?: string[];
+  };
+  diversification?: {
+    beforeCount?: number;
+    afterCount?: number;
+    maxPerSource?: number;
+  };
+}
+
+export interface RuntimeCenterKnowledgeSearchDiagnosticsPayloadRecord extends RuntimeCenterKnowledgeHybridDiagnosticsRecord {
+  hybrid?: RuntimeCenterKnowledgeHybridDiagnosticsRecord;
+  postRetrieval?: RuntimeCenterKnowledgePostRetrievalDiagnosticsRecord;
+  [key: string]: unknown;
+}
+
+export interface RuntimeCenterKnowledgeSearchDiagnosticsRecord {
+  query: string;
+  limit: number;
+  hitCount: number;
+  total: number;
+  diagnostics?: RuntimeCenterKnowledgeSearchDiagnosticsPayloadRecord;
+  searchedAt: string;
+}
+
 export interface RuntimeCenterSubgraphRecord {
   id: string;
   displayName: string;
@@ -98,6 +168,8 @@ export interface RuntimeCenterRecord {
   activeMinistries: string[];
   activeWorkers: string[];
   knowledgeOverview?: RuntimeCenterKnowledgeOverviewRecord;
+  knowledgeSearchStatus?: RuntimeCenterKnowledgeSearchStatusRecord;
+  knowledgeSearchLastDiagnostics?: RuntimeCenterKnowledgeSearchDiagnosticsRecord;
   subgraphs?: RuntimeCenterSubgraphRecord[];
   workflowVersions?: RuntimeCenterWorkflowVersionRecord[];
   appliedFilters?: {

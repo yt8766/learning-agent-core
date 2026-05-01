@@ -11,7 +11,7 @@ import { RuntimeSessionService } from './services/runtime-session.service';
 import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.service';
 import { RuntimeTaskService } from './services/runtime-task.service';
 import { RuntimeWenyuanFacade } from './domain/knowledge/runtime-wenyuan-facade';
-import { RuntimeTechBriefingService } from './briefings/runtime-tech-briefing.service';
+import { RuntimeIntelBriefingFacade } from './core/runtime-intel-briefing-facade';
 import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
 import { RuntimeServiceContextFactory } from './runtime.service-contexts';
 import { registerRuntimeServiceSkillResolvers } from './domain/skills/runtime-skill-runtime-resolvers';
@@ -55,7 +55,7 @@ export class RuntimeService implements OnModuleInit {
   private readonly skillCatalogService: RuntimeSkillCatalogService;
   private readonly taskService: RuntimeTaskService;
   private readonly wenyuanFacade: RuntimeWenyuanFacade;
-  private readonly techBriefingService: RuntimeTechBriefingService;
+  private readonly techBriefingService: RuntimeIntelBriefingFacade;
   private readonly scheduleService: RuntimeScheduleService;
   private readonly contextFactory: RuntimeServiceContextFactory;
   private readonly appLogger?: AppLoggerService;
@@ -64,7 +64,7 @@ export class RuntimeService implements OnModuleInit {
     private readonly runtimeHost: RuntimeHost = new RuntimeHost(),
     operationalState?: RuntimeOperationalStateService,
     bootstrapService?: RuntimeBootstrapService,
-    techBriefingService?: RuntimeTechBriefingService,
+    techBriefingService?: RuntimeIntelBriefingFacade,
     scheduleService?: RuntimeScheduleService,
     centersService?: RuntimeCentersService,
     sessionService?: RuntimeSessionService,
@@ -94,7 +94,7 @@ export class RuntimeService implements OnModuleInit {
     this.appLogger = appLogger;
     this.techBriefingService =
       techBriefingService ??
-      new RuntimeTechBriefingService(() => ({
+      new RuntimeIntelBriefingFacade(() => ({
         settings: this.settings,
         mcpClientManager: this.mcpClientManager,
         llmProvider: this.llmProvider

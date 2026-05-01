@@ -2,10 +2,10 @@
   "extends": "./tsconfig.json",
   "include": ["src/**/*"],
   "compilerOptions": {
+    "outDir": "build/types",
+    "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "declarationMap": true,
-    "outDir": "./build/types",
-    "noEmit": false
+    "declarationMap": true
   }
 }

@@ -12,7 +12,12 @@ import type {
   KnowledgeSearchService,
   KnowledgeSourceRepository
 } from '../contracts/knowledge-facade';
-import type { VectorSearchProvider } from './vector-search-provider';
+import {
+  matchesKnowledgeChunkFilters,
+  matchesKnowledgeSourceFilters,
+  resolveKnowledgeRetrievalFilters
+} from './knowledge-retrieval-filters';
+import type { VectorSearchHit, VectorSearchProvider } from './vector-search-provider';
 
 export class VectorKnowledgeSearchService implements KnowledgeSearchService {
   constructor(
@@ -23,12 +28,9 @@ export class VectorKnowledgeSearchService implements KnowledgeSearchService {
 
   async search(request: RetrievalRequest): Promise<RetrievalResult> {
     const topK = request.limit ?? 5;
-    let providerHits;
-    try {
-      providerHits = await this.provider.searchSimilar(request.query, topK);
-    } catch {
-      return { hits: [], total: 0 };
-    }
+    const filters = resolveKnowledgeRetrievalFilters(request);
+    const providerTopK = topK * 3;
+    const providerHits = await this.provider.searchSimilar(request.query, providerTopK, { filters });
 
     if (providerHits.length === 0) {
       return { hits: [], total: 0 };
@@ -48,13 +50,17 @@ export class VectorKnowledgeSearchService implements KnowledgeSearchService {
       if (!source) {
         continue;
       }
-      if (request.allowedSourceTypes && !request.allowedSourceTypes.includes(source.sourceType)) {
+      if (!matchesKnowledgeSourceFilters(source, filters)) {
+        continue;
+      }
+      if (!matchesKnowledgeChunkFilters(chunk, filters)) {
         continue;
       }
       hits.push(toRetrievalHit(chunk, source, providerHit.score));
     }
 
-    return { hits, total: hits.length };
+    const limitedHits = hits.slice(0, topK);
+    return { hits: limitedHits, total: limitedHits.length };
   }
 }
 
@@ -79,6 +85,7 @@ function toRetrievalHit(chunk: KnowledgeChunk, source: KnowledgeSource, score: n
     trustClass: source.trustClass,
     content: chunk.content,
     score,
+    metadata: chunk.metadata,
     citation
   };
 }

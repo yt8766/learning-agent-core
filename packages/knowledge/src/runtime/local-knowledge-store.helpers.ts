@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 
-import { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } from '@agent/adapters';
 import { loadSettings } from '@agent/config';
 import type {
   KnowledgeChunkRecord,
@@ -13,6 +12,7 @@ import type {
 } from '@agent/knowledge';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
+export type KnowledgeStorageSettings = Pick<RuntimeSettings, 'knowledgeRoot'>;
 
 export type PersistedKnowledgeSnapshot = {
   stores: KnowledgeStoreRecord[];
@@ -30,7 +30,7 @@ export const KNOWLEDGE_RELATIVE_PATHS = {
   receipts: 'ingestion/receipts/records.json'
 } as const;
 
-export async function ensureKnowledgeDirectories(settings: RuntimeSettings) {
+export async function ensureKnowledgeDirectories(settings: KnowledgeStorageSettings) {
   await Promise.all(
     Object.values(KNOWLEDGE_RELATIVE_PATHS).map(relativePath =>
       mkdir(dirname(join(settings.knowledgeRoot, relativePath)), { recursive: true })
@@ -38,7 +38,7 @@ export async function ensureKnowledgeDirectories(settings: RuntimeSettings) {
   );
 }
 
-export async function readKnowledgeSnapshot(settings: RuntimeSettings): Promise<PersistedKnowledgeSnapshot> {
+export async function readKnowledgeSnapshot(settings: KnowledgeStorageSettings): Promise<PersistedKnowledgeSnapshot> {
   const [stores, sources, chunks, embeddings, receipts] = await Promise.all([
     readJsonArray<KnowledgeStoreRecord>(join(settings.knowledgeRoot, KNOWLEDGE_RELATIVE_PATHS.catalog)),
     readJsonArray<KnowledgeSourceRecord>(join(settings.knowledgeRoot, KNOWLEDGE_RELATIVE_PATHS.sources)),
@@ -49,7 +49,7 @@ export async function readKnowledgeSnapshot(settings: RuntimeSettings): Promise<
   return { stores, sources, chunks, embeddings, receipts };
 }
 
-export async function writeKnowledgeSnapshot(settings: RuntimeSettings, snapshot: PersistedKnowledgeSnapshot) {
+export async function writeKnowledgeSnapshot(settings: KnowledgeStorageSettings, snapshot: PersistedKnowledgeSnapshot) {
   await Promise.all([
     writeJson(join(settings.knowledgeRoot, KNOWLEDGE_RELATIVE_PATHS.catalog), snapshot.stores),
     writeJson(join(settings.knowledgeRoot, KNOWLEDGE_RELATIVE_PATHS.sources), snapshot.sources),
@@ -117,9 +117,12 @@ export async function embedChunk(
   version: string
 ): Promise<KnowledgeEmbeddingRecord> {
   const now = new Date().toISOString();
-  if (!resolveRuntimeEmbeddingApiKey(settings)) {
+  if (!resolveLocalEmbeddingApiKey(settings)) {
     return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_embedding_api_key');
   }
+
+  // Keep adapter loading lazy so @agent/knowledge root exports do not create a package init cycle.
+  const { createRuntimeEmbeddingProvider } = await import('@agent/adapters');
   try {
     const vector = await createRuntimeEmbeddingProvider(settings).embedQuery(chunk.content);
     if (!vector?.length) throw new Error('empty_embedding');
@@ -147,6 +150,10 @@ export async function embedChunk(
       error instanceof Error ? error.message : 'embedding_failed'
     );
   }
+}
+
+function resolveLocalEmbeddingApiKey(settings: RuntimeSettings) {
+  return settings.embeddings.apiKey || settings.mcp?.bigmodelApiKey || settings.zhipuApiKey || undefined;
 }
 
 export function estimateTokenCount(text: string) {

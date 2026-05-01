@@ -7,13 +7,15 @@ import { HealthCheckResultSchema } from '@agent/core';
 
 import { AppModule } from '../../../apps/backend/agent-server/src/app.module';
 
+const BACKEND_HTTP_APP_HOOK_TIMEOUT_MS = 30_000;
+
 describe('backend HTTP app smoke', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
     await app.init();
-  });
+  }, BACKEND_HTTP_APP_HOOK_TIMEOUT_MS);
 
   afterAll(async () => {
     await app?.close();
@@ -24,7 +26,13 @@ describe('backend HTTP app smoke', () => {
 
     expect(response.body).toMatchObject({
       status: 'ok',
-      service: 'server'
+      service: 'server',
+      knowledgeSearchStatus: {
+        configuredMode: expect.any(String),
+        effectiveMode: expect.any(String),
+        vectorConfigured: expect.any(Boolean),
+        hybridEnabled: expect.any(Boolean)
+      }
     });
     expect(() => HealthCheckResultSchema.parse(response.body)).not.toThrow();
   });

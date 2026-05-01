@@ -44,6 +44,7 @@
 - [indexing-adapter-guidelines.md](./indexing-adapter-guidelines.md) — LangChain / Chroma indexing adapter 规范
 - [langchain-adapter.md](./langchain-adapter.md) — LangChain adapter 使用文档
 - [chroma-adapter.md](./chroma-adapter.md) — Chroma VectorStore adapter 使用文档
+- [opensearch-adapter.md](./opensearch-adapter.md) — OpenSearch Keyword Search Provider 使用文档
 - [mcp-skill-providers.md](./mcp-skill-providers.md) — MCP skills / provider adapter 规范
 
 - 公开入口：

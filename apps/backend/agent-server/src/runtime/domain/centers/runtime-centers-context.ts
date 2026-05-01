@@ -2,9 +2,9 @@ import { describeConnectorProfilePolicy } from '@agent/runtime';
 import type { ProviderAuditSyncResult } from '../../core/runtime-centers-facade';
 
 import type { RuntimeHost } from '../../core/runtime.host';
+import type { RuntimeIntelBriefingFacade } from '../../core/runtime-intel-briefing-facade';
 import type { RuntimeCentersContext, RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';
 import type { AppLoggerService } from '../../../logger/app-logger.service';
-import type { RuntimeTechBriefingService } from '../../briefings/runtime-tech-briefing.service';
 import type { RuntimeWenyuanFacade } from '../knowledge/runtime-wenyuan-facade';
 import type { RuntimePlatformConsoleContext } from '../../centers/runtime-platform-console.records';
 import type { RuntimeSkillInstallContext } from '../../skills/runtime-skill-install.service';
@@ -14,7 +14,7 @@ export interface RuntimeCentersContextInput {
   settings: () => RuntimeHost['settings'];
   runtimeHost: () => RuntimeHost;
   appLogger?: () => AppLoggerService | undefined;
-  techBriefingService?: () => RuntimeTechBriefingService | undefined;
+  techBriefingService?: () => RuntimeIntelBriefingFacade | undefined;
   wenyuanFacade: () => RuntimeWenyuanFacade;
   sessionCoordinator: () => RuntimeHost['sessionCoordinator'];
   orchestrator: () => RuntimeHost['orchestrator'];
