@@ -199,7 +199,7 @@ Knowledge App 使用 JWT 双 token：
 - 查看引用和来源文档。
 - 提交正向或负向反馈。
 - 将问答加入评测数据集。
-- 打开 Trace side panel 或进入 trace 详情页。
+- owner/admin/maintainer 可打开 Trace side panel 或进入 trace 详情页；viewer/evaluator 只能查看当前回答返回的 citation、answer 和有限延迟摘要，不能请求 trace detail。
 
 状态要求：
 
@@ -304,7 +304,7 @@ Knowledge App 使用 JWT 双 token：
 
 - 查看 case 明细。
 - 按指标筛选低分样本。
-- 打开对应 trace。
+- owner/admin/maintainer 可打开对应 trace；evaluator 只能查看 eval case 中已经返回的受控摘要，trace link 必须隐藏或禁用并展示权限说明。
 - 将失败问题回流到 missing knowledge 或数据集维护队列。
 
 状态要求：
@@ -348,5 +348,5 @@ Knowledge App 使用 JWT 双 token：
 - 页面组件只消费 Knowledge API client 和本地视图模型，不直接消费 RAG runtime、vector store、LLM SDK 或 `packages/knowledge/src`。
 - 类型优先来自稳定 API contract 或 `apps/frontend/knowledge/src/types/api.ts`，不要在页面内重复发明 DTO。
 - 观测中心不展示 raw vendor payload；错误、request metadata 和 span detail 必须先经过后端或 SDK 边界脱敏。
-- 评测结果必须保留 metric 名称、score、threshold、case id、trace id 的稳定映射，便于后续跨页面跳转和回归分析。
+- 评测结果必须保留当前 contract 中的 `EvalReportSummary`、case id、可访问的 trace id、`retrievalMetrics`、`generationMetrics` 和 `judgeResult.score` 映射；generic metric name/threshold 结构属于 future contract extension。
 - 所有列表页默认支持分页语义；即使 MVP mock 数据较少，也不要把列表实现成只能渲染固定数组的死结构。
