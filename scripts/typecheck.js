@@ -13,7 +13,8 @@ const appProjects = [
   'apps/frontend/agent-admin/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.node.json',
   'apps/frontend/agent-chat/tsconfig.app.json',
-  'apps/frontend/agent-chat/tsconfig.node.json'
+  'apps/frontend/agent-chat/tsconfig.node.json',
+  'apps/frontend/knowledge/tsconfig.app.json'
 ];
 const projects = [...collectPackageProjects('packages'), ...collectPackageProjects('agents'), ...appProjects];
 

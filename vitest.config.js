@@ -7,6 +7,7 @@ import { defineConfig } from 'vitest/config';
 const resolvePath = value => fileURLToPath(new URL(value, import.meta.url));
 const agentAdminSrcRoot = resolvePath('./apps/frontend/agent-admin/src/');
 const agentChatSrcRoot = resolvePath('./apps/frontend/agent-chat/src/');
+const knowledgeSrcRoot = resolvePath('./apps/frontend/knowledge/src/');
 const llmGatewaySrcRoot = resolvePath('./apps/llm-gateway/src/');
 
 function resolveFrontendAlias(source, importer) {
@@ -20,6 +21,10 @@ function resolveFrontendAlias(source, importer) {
 
   if (importer?.includes('/apps/frontend/agent-admin/')) {
     return resolveFrontendAliasPath(agentAdminSrcRoot, source.slice(2));
+  }
+
+  if (importer?.includes('/apps/frontend/knowledge/')) {
+    return resolveFrontendAliasPath(knowledgeSrcRoot, source.slice(2));
   }
 
   if (importer?.includes('/apps/llm-gateway/')) {
@@ -166,7 +171,8 @@ export default defineConfig({
         'agents/**/src/**/*.{ts,tsx}',
         'apps/backend/agent-server/src/**/*.{ts,tsx}',
         'apps/frontend/agent-chat/src/**/*.{ts,tsx}',
-        'apps/frontend/agent-admin/src/**/*.{ts,tsx}'
+        'apps/frontend/agent-admin/src/**/*.{ts,tsx}',
+        'apps/frontend/knowledge/src/**/*.{ts,tsx}'
       ],
       exclude: [
         '**/*.d.ts',
@@ -215,6 +221,12 @@ export default defineConfig({
           branches: 85
         },
         'apps/frontend/agent-admin/src/**': {
+          lines: 85,
+          statements: 85,
+          functions: 85,
+          branches: 85
+        },
+        'apps/frontend/knowledge/src/**': {
           lines: 85,
           statements: 85,
           functions: 85,

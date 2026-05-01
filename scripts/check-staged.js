@@ -55,8 +55,16 @@ const TSC_PROJECT_RULES = [
     project: 'apps/frontend/agent-chat/tsconfig.app.json'
   },
   {
+    test: file => file.startsWith('apps/frontend/knowledge/src/') || file.startsWith('apps/frontend/knowledge/test/'),
+    project: 'apps/frontend/knowledge/tsconfig.app.json'
+  },
+  {
     test: file => file === 'apps/frontend/agent-chat/vite.config.ts',
     project: 'apps/frontend/agent-chat/tsconfig.node.json'
+  },
+  {
+    test: file => file === 'apps/frontend/knowledge/vite.config.ts',
+    project: 'apps/frontend/knowledge/tsconfig.app.json'
   }
 ];
 
@@ -101,7 +109,8 @@ const ALL_TYPECHECK_PROJECTS = [
   'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.app.json',
   'apps/frontend/agent-chat/tsconfig.app.json',
-  'apps/frontend/agent-chat/tsconfig.node.json'
+  'apps/frontend/agent-chat/tsconfig.node.json',
+  'apps/frontend/knowledge/tsconfig.app.json'
 ];
 
 function run(command, args, options = {}) {
