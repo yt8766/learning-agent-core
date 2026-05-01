@@ -74,11 +74,17 @@ Knowledge App 使用 JWT 双 token：
 
 - `accessToken`：用于普通 API 请求，短期有效。
 - `refreshToken`：用于刷新 access token，长期有效但仍有过期时间。
-- 本地存储：MVP 将 access token、refresh token、各自过期时间和当前用户摘要保存到 `localStorage`。键名必须带 knowledge 前缀，避免与其他前端应用冲突。
+- 本地存储：当前认证存储只保存 access token、refresh token 和各自过期时间；当前用户摘要通过 `/auth/me` 或后续 app shell 状态维护，不和 token 写进同一份本地记录。键名必须带 knowledge 前缀，避免与其他前端应用冲突。
 - 自动刷新：请求前如果 access token 接近过期，先刷新再发业务请求。
 - 401 恢复：业务请求返回 `401 auth_token_expired` 时触发一次刷新，并对原请求最多重试一次。
 - 并发控制：多个请求同时触发刷新时共享同一个 refresh promise，避免并发刷新造成 token 版本抖动。
-- 失败边界：refresh 失败、refresh token 缺失或过期时，清理本地登录态，跳转 `/login`，并保留用户原目标路径用于重新登录后恢复。
+- 失败边界：refresh 失败、refresh token 缺失或过期时，底层 `AuthClient` 清理本地 token 并触发 `onAuthLost`；路由层后续负责跳转 `/login` 并保留用户原目标路径用于重新登录后恢复。
+
+当前前端实现入口：
+
+- `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
+- `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
+- `apps/frontend/knowledge/test/token-storage.test.ts` 与 `apps/frontend/knowledge/test/auth-client.test.ts`：固定双 token 存储、并发刷新复用和 logout 本地清理语义。
 
 权限边界在 MVP 中先以用户 `roles` 与 `permissions` 驱动 UI 可用态，后端 API contract 始终是权限事实来源：
 
