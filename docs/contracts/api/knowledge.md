@@ -1333,6 +1333,14 @@ export interface CreateEvalRunRequest {
   modelConfigId?: ID;
 }
 
+export interface CreateEvalRunRequest {
+  datasetId: ID;
+  knowledgeBaseIds: ID[];
+  retrievalConfigId?: ID;
+  promptTemplateId?: ID;
+  modelConfigId?: ID;
+}
+
 export interface RetrievalMetrics {
   recallAtK?: number;
   precisionAtK?: number;
