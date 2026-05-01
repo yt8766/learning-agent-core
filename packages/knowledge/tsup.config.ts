@@ -3,9 +3,6 @@ import { defineConfig } from 'tsup';
 const entry = [
   'src/index.ts',
   'src/core/index.ts',
-  'src/client/index.ts',
-  'src/browser/index.ts',
-  'src/node/index.ts',
   'src/adapters/index.ts',
   'src/adapters/langchain/index.ts',
   'src/adapters/minimax/index.ts',
