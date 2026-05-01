@@ -65,6 +65,11 @@ Current implemented public package entrypoint:
 
 ```text
 @agent/knowledge
+```
+
+Target-only public subpaths. Each subpath below requires source ownership, package exports, tests, and docs in the same migration slice before callers may depend on it:
+
+```text
 @agent/knowledge/core
 @agent/knowledge/node
 @agent/knowledge/adapters
