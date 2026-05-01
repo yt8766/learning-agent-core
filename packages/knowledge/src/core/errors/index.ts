@@ -22,7 +22,7 @@ export class KnowledgeError extends Error {
   readonly category: KnowledgeErrorCategory;
   readonly retryable: boolean;
   readonly details?: JsonObject;
-  override readonly cause?: unknown;
+  readonly cause?: unknown;
 
   constructor(message: string, options: KnowledgeErrorOptions) {
     super(message);
