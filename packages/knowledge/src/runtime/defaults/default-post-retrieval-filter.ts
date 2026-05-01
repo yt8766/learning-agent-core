@@ -73,26 +73,7 @@ export class DefaultPostRetrievalFilter implements PostRetrievalFilter {
       }
     }
 
-    const byParent = new Map<string, RetrievalHit>();
-    for (const hit of byChunk.values()) {
-      const parentId = getParentId(hit);
-      if (!parentId) {
-        byParent.set(hit.chunkId, hit);
-        continue;
-      }
-
-      const existing = byParent.get(parentId);
-      if (!existing || hit.score > existing.score) {
-        if (existing) {
-          incrementReason(reasons, 'duplicate-parent');
-        }
-        byParent.set(parentId, hit);
-      } else {
-        incrementReason(reasons, 'duplicate-parent');
-      }
-    }
-
-    const filteredHits = Array.from(byParent.values()).sort((left, right) => right.score - left.score);
+    const filteredHits = Array.from(byChunk.values()).sort((left, right) => right.score - left.score);
 
     return {
       hits: filteredHits,
@@ -134,12 +115,6 @@ function incrementReason(
   reason: PostRetrievalFilterReason
 ) {
   reasons[reason] = (reasons[reason] ?? 0) + 1;
-}
-
-function getParentId(hit: RetrievalHit): string | undefined {
-  const metadata = hit.metadata as Record<string, unknown> | undefined;
-  const parentId = metadata?.parentId;
-  return typeof parentId === 'string' && parentId.length > 0 ? parentId : undefined;
 }
 
 function isLowContextValue(content: string): boolean {

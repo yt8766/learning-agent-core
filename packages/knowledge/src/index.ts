@@ -150,5 +150,6 @@ export type { KnowledgeRetrievalRunOptions } from './runtime/pipeline/run-knowle
 export { runKnowledgeRetrieval } from './runtime/pipeline/run-knowledge-retrieval';
 export * from './runtime/local-knowledge-facade';
 export * from './runtime/local-knowledge-store';
+export * from './runtime/local-knowledge-source-ingestion';
 export * from './shared/knowledge-text-scoring';
 export * from './indexing';

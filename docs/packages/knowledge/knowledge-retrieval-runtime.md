@@ -295,7 +295,7 @@ merged hits
 
 默认实现使用确定性信号，并支持安全扫描扩展点：
 
-- filter：低分、重复 chunk、重复 parent、低上下文价值、可注入 `RetrievalSafetyScanner` 的 `keep` / `mask` / `drop` 判定，以及 scanner 不可用时的最小 unsafe content fallback。
+- filter：低分、重复 chunk、低上下文价值、可注入 `RetrievalSafetyScanner` 的 `keep` / `mask` / `drop` 判定，以及 scanner 不可用时的最小 unsafe content fallback。默认 filter 不再按 `metadata.parentId` 去重，同一 parent 的互补 chunk 会继续进入 rank / diversify，由 diversifier 的 `maxPerParent` 决定最终覆盖度。
 - ranker：融合 retrieval score、trustClass authority、updatedAt recency、context fit 与 query 中明确版本/年份约束。
 - reranker provider：可选注入语义 alignment score；成功时与 deterministic signals 融合排序，失败时自动回退 deterministic signals。
 - diversifier：优先按 sourceId 与 metadata.parentId 控制覆盖度，避免同一来源或父段落占满上下文；如果只有单一来源且未填满 topK，会回填同源候选以保持既有召回容量。

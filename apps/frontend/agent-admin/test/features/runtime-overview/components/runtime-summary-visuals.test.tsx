@@ -160,6 +160,58 @@ describe('RuntimeSummaryVisuals', () => {
                   status: 'ready'
                 }
               ]
+            },
+            knowledgeSearchStatus: {
+              configuredMode: 'hybrid',
+              effectiveMode: 'keyword-only',
+              vectorProviderId: 'missing-client',
+              vectorConfigured: true,
+              hybridEnabled: false,
+              vectorProviderHealth: {
+                status: 'degraded',
+                checkedAt: '2026-05-01T00:00:00.000Z',
+                message: 'connection refused'
+              },
+              diagnostics: [
+                {
+                  code: 'knowledge.vector_provider.missing_client',
+                  severity: 'warning',
+                  message: 'vector client missing'
+                }
+              ],
+              checkedAt: '2026-05-01T00:00:00.000Z'
+            },
+            knowledgeSearchLastDiagnostics: {
+              query: 'HX-9000 semantic alias',
+              limit: 4,
+              hitCount: 1,
+              total: 3,
+              diagnostics: {
+                retrievalMode: 'hybrid',
+                enabledRetrievers: ['keyword', 'vector'],
+                failedRetrievers: ['vector'],
+                candidateCount: 7,
+                fusionStrategy: 'rrf',
+                prefilterApplied: true,
+                postRetrieval: {
+                  filtering: {
+                    beforeCount: 6,
+                    afterCount: 4,
+                    droppedCount: 2,
+                    maskedCount: 1
+                  },
+                  ranking: {
+                    strategy: 'deterministic-signals+semantic-rerank',
+                    signals: ['retrieval-score', 'authority', 'semantic-rerank', 'alignment']
+                  },
+                  diversification: {
+                    beforeCount: 4,
+                    afterCount: 3,
+                    maxPerSource: 2
+                  }
+                }
+              },
+              searchedAt: '2026-05-01T00:01:00.000Z'
             }
           } as any
         }
@@ -187,6 +239,22 @@ describe('RuntimeSummaryVisuals', () => {
     expect(html).toContain('memory-1 / rule-2');
     expect(html).toContain('Wenyuan &amp; Cangjing');
     expect(html).toContain('主知识库');
+    expect(html).toContain('retrieval hybrid -&gt; keyword-only');
+    expect(html).toContain('vector configured / hybrid disabled');
+    expect(html).toContain('provider missing-client');
+    expect(html).toContain('health degraded');
+    expect(html).toContain('warnings 1');
+    expect(html).toContain('latest query hits 1/3');
+    expect(html).toContain('mode hybrid');
+    expect(html).toContain('retrievers keyword, vector / failed vector');
+    expect(html).toContain('candidates 7');
+    expect(html).toContain('fusion rrf');
+    expect(html).toContain('prefilter applied');
+    expect(html).toContain('filter 6-&gt;4 / dropped 2 / masked 1');
+    expect(html).toContain(
+      'rank deterministic-signals+semantic-rerank / retrieval-score, authority, semantic-rerank, alignment'
+    );
+    expect(html).toContain('diversify 4-&gt;3 / maxPerSource 2');
   });
 
   it('routes task selection buttons back to the parent callback', async () => {
@@ -231,5 +299,85 @@ describe('RuntimeSummaryVisuals', () => {
 
     expect(onSelectTask).toHaveBeenNthCalledWith(1, 'task-1');
     expect(onSelectTask).toHaveBeenNthCalledWith(2, 'task-2');
+  });
+
+  it('skips incomplete post-retrieval diagnostics without rendering placeholder metrics', () => {
+    const html = renderToStaticMarkup(
+      <RuntimeSummaryVisuals
+        runtime={
+          {
+            imperialChain: [],
+            executionSpans: [],
+            thoughtGraphs: [],
+            modelHeatmap: [],
+            knowledgeOverview: {
+              sourceCount: 1,
+              chunkCount: 2,
+              embeddingCount: 2,
+              searchableDocumentCount: 1,
+              blockedDocumentCount: 0,
+              stores: []
+            },
+            knowledgeSearchLastDiagnostics: {
+              query: 'partial',
+              limit: 3,
+              hitCount: 0,
+              total: 0,
+              diagnostics: {
+                postRetrieval: {
+                  filtering: { beforeCount: 2 },
+                  ranking: { strategy: 'deterministic-signals', signals: [] },
+                  diversification: { beforeCount: 2, maxPerSource: 2 }
+                }
+              },
+              searchedAt: '2026-05-01T00:01:00.000Z'
+            }
+          } as any
+        }
+        onSelectTask={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('latest query hits 0/0');
+    expect(html).not.toContain('filter ');
+    expect(html).not.toContain('masked');
+    expect(html).not.toContain('rank deterministic-signals');
+    expect(html).not.toContain('diversify ');
+  });
+
+  it('renders knowledge status when diagnostics array is missing from a legacy payload', () => {
+    const html = renderToStaticMarkup(
+      <RuntimeSummaryVisuals
+        runtime={
+          {
+            imperialChain: [],
+            executionSpans: [],
+            thoughtGraphs: [],
+            modelHeatmap: [],
+            knowledgeOverview: {
+              sourceCount: 1,
+              chunkCount: 2,
+              embeddingCount: 2,
+              searchableDocumentCount: 1,
+              blockedDocumentCount: 0,
+              stores: []
+            },
+            knowledgeSearchStatus: {
+              configuredMode: 'hybrid',
+              effectiveMode: 'keyword-only',
+              vectorProviderId: 'legacy-provider',
+              vectorConfigured: true,
+              hybridEnabled: false,
+              checkedAt: '2026-05-01T00:00:00.000Z'
+            }
+          } as any
+        }
+        onSelectTask={vi.fn()}
+      />
+    );
+
+    expect(html).toContain('retrieval hybrid -&gt; keyword-only');
+    expect(html).toContain('provider legacy-provider');
+    expect(html).not.toContain('warnings');
   });
 });

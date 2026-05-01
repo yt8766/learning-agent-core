@@ -84,7 +84,29 @@ describe('EvidenceCenterPanel', () => {
               referenceDate: '2026-03-30',
               searchableDocumentCount: 4,
               blockedDocumentCount: 1,
-              latestReceipts: [{ id: 'receipt-1' }]
+              latestReceipts: [{ id: 'receipt-1' }],
+              knowledgeRetrievalDiagnostics: {
+                query: 'HX-9000 semantic alias',
+                hitCount: 2,
+                total: 6,
+                postRetrieval: {
+                  filtering: {
+                    beforeCount: 6,
+                    afterCount: 4,
+                    droppedCount: 2,
+                    maskedCount: 1
+                  },
+                  ranking: {
+                    strategy: 'deterministic-signals+semantic-rerank',
+                    signals: ['retrieval-score', 'authority', 'semantic-rerank', 'alignment']
+                  },
+                  diversification: {
+                    beforeCount: 4,
+                    afterCount: 2,
+                    maxPerSource: 2
+                  }
+                }
+              }
             }
           } as any
         ]}
@@ -99,6 +121,14 @@ describe('EvidenceCenterPanel', () => {
     expect(html).toContain('时效基线');
     expect(html).toContain('决策 pass');
     expect(html).toContain('信息基准日期');
+    expect(html).toContain('最近检索');
+    expect(html).toContain('query: HX-9000 semantic alias');
+    expect(html).toContain('hits 2/6');
+    expect(html).toContain('filter 6-&gt;4 / dropped 2 / masked 1');
+    expect(html).toContain(
+      'rank deterministic-signals+semantic-rerank / retrieval-score, authority, semantic-rerank, alignment'
+    );
+    expect(html).toContain('diversify 4-&gt;2 / maxPerSource 2');
   });
 
   it('loads replay payloads, skips cached sessions, and closes expanded replay', async () => {

@@ -1,4 +1,6 @@
 import type { ChatCheckpointRecord, TaskRecord } from '@agent/core';
+import { PostRetrievalDiagnosticsSchema } from '@agent/knowledge';
+import type { RuntimeKnowledgeSearchDiagnosticsSnapshot } from '@agent/runtime';
 
 import { extractBrowserReplay } from '../helpers/runtime-connector-utils';
 import { buildCheckpointRef } from '../domain/session/runtime-checkpoint-ref';
@@ -129,8 +131,10 @@ export function buildOverviewEvidenceEntries(input: {
       updatedAt: string;
     }>;
   };
+  knowledgeSearchLastDiagnostics?: RuntimeKnowledgeSearchDiagnosticsSnapshot;
   now: Date;
 }) {
+  const knowledgeRetrievalDiagnostics = buildKnowledgeRetrievalDiagnosticsDetail(input.knowledgeSearchLastDiagnostics);
   const governanceEvidence = input.wenyuanOverview
     ? [
         {
@@ -169,7 +173,8 @@ export function buildOverviewEvidenceEntries(input: {
             embeddingCount: input.knowledgeOverview.embeddingCount,
             searchableDocumentCount: input.knowledgeOverview.searchableDocumentCount,
             blockedDocumentCount: input.knowledgeOverview.blockedDocumentCount,
-            latestReceipts: input.knowledgeOverview.latestReceipts
+            latestReceipts: input.knowledgeOverview.latestReceipts,
+            ...(knowledgeRetrievalDiagnostics ? { knowledgeRetrievalDiagnostics } : {})
           },
           createdAt: input.now.toISOString()
         }
@@ -180,4 +185,24 @@ export function buildOverviewEvidenceEntries(input: {
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
+}
+
+function buildKnowledgeRetrievalDiagnosticsDetail(snapshot?: RuntimeKnowledgeSearchDiagnosticsSnapshot) {
+  const postRetrieval = asRecord(snapshot?.diagnostics)?.postRetrieval;
+  if (!snapshot || !asRecord(postRetrieval)) {
+    return undefined;
+  }
+  const parsedPostRetrieval = PostRetrievalDiagnosticsSchema.safeParse(postRetrieval);
+  if (!parsedPostRetrieval.success) {
+    return undefined;
+  }
+
+  return {
+    query: snapshot.query,
+    limit: snapshot.limit,
+    hitCount: snapshot.hitCount,
+    total: snapshot.total,
+    searchedAt: snapshot.searchedAt,
+    postRetrieval: parsedPostRetrieval.data
+  };
 }

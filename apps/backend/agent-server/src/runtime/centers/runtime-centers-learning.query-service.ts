@@ -49,7 +49,8 @@ export class RuntimeCentersLearningQueryService {
           jobs,
           getCheckpoint: (sessionId: string) => ctx.wenyuanFacade.getCheckpoint(sessionId),
           wenyuanOverview,
-          knowledgeOverview
+          knowledgeOverview,
+          knowledgeSearchLastDiagnostics: ctx.runtimeHost.runtime.knowledgeSearchService.getLastDiagnostics?.()
         })
     );
   }

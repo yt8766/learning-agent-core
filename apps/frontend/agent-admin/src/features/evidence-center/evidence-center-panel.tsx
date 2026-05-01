@@ -18,6 +18,97 @@ interface EvidenceCenterPanelProps {
   evidence: EvidenceRecord[];
 }
 
+interface KnowledgeRetrievalDiagnosticsSummary {
+  query?: string;
+  hitLine?: string;
+  rows: string[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function getString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function getStringList(record: Record<string, unknown>, key: string): string[] {
+  const value = record[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function getKnowledgeRetrievalDiagnosticsSummary(
+  detail: Record<string, unknown> | undefined
+): KnowledgeRetrievalDiagnosticsSummary | undefined {
+  if (!detail || !isRecord(detail.knowledgeRetrievalDiagnostics)) return undefined;
+  const diagnostics = detail.knowledgeRetrievalDiagnostics;
+  const postRetrieval = isRecord(diagnostics.postRetrieval) ? diagnostics.postRetrieval : undefined;
+  if (!postRetrieval) return undefined;
+
+  const rows: string[] = [];
+  const query = getString(diagnostics, 'query');
+  const hitCount = getNumber(diagnostics, 'hitCount');
+  const total = getNumber(diagnostics, 'total');
+
+  if (isRecord(postRetrieval.filtering)) {
+    const beforeCount = getNumber(postRetrieval.filtering, 'beforeCount');
+    const afterCount = getNumber(postRetrieval.filtering, 'afterCount');
+    const droppedCount = getNumber(postRetrieval.filtering, 'droppedCount');
+    const maskedCount = getNumber(postRetrieval.filtering, 'maskedCount');
+    if (beforeCount !== undefined && afterCount !== undefined && droppedCount !== undefined) {
+      rows.push(
+        `filter ${beforeCount}->${afterCount} / dropped ${droppedCount}${
+          maskedCount !== undefined ? ` / masked ${maskedCount}` : ''
+        }`
+      );
+    }
+  }
+
+  if (isRecord(postRetrieval.ranking)) {
+    const strategy = getString(postRetrieval.ranking, 'strategy');
+    const signals = getStringList(postRetrieval.ranking, 'signals');
+    if (strategy && signals.length) rows.push(`rank ${strategy} / ${signals.join(', ')}`);
+  }
+
+  if (isRecord(postRetrieval.diversification)) {
+    const beforeCount = getNumber(postRetrieval.diversification, 'beforeCount');
+    const afterCount = getNumber(postRetrieval.diversification, 'afterCount');
+    const maxPerSource = getNumber(postRetrieval.diversification, 'maxPerSource');
+    if (beforeCount !== undefined && afterCount !== undefined && maxPerSource !== undefined) {
+      rows.push(`diversify ${beforeCount}->${afterCount} / maxPerSource ${maxPerSource}`);
+    }
+  }
+
+  if (!query && hitCount === undefined && total === undefined && rows.length === 0) return undefined;
+  return {
+    query,
+    hitLine: hitCount !== undefined && total !== undefined ? `hits ${hitCount}/${total}` : undefined,
+    rows
+  };
+}
+
+function KnowledgeRetrievalDiagnosticsSummaryBlock({ detail }: { detail: Record<string, unknown> | undefined }) {
+  const summary = getKnowledgeRetrievalDiagnosticsSummary(detail);
+  if (!summary) return null;
+
+  return (
+    <div className="mt-2 grid gap-1 border-t border-indigo-200/70 pt-2">
+      <p className="font-medium">最近检索</p>
+      {summary.query ? <p>query: {summary.query}</p> : null}
+      {summary.hitLine ? <p>{summary.hitLine}</p> : null}
+      {summary.rows.map(row => (
+        <p key={row}>{row}</p>
+      ))}
+    </div>
+  );
+}
+
 export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
   const [highlightedEvidenceIds, setHighlightedEvidenceIds] = useState<string[]>(readHighlightedEvidenceIds());
   const [expandedReplayId, setExpandedReplayId] = useState<string>();
@@ -189,6 +280,7 @@ export function EvidenceCenterPanel({ evidence }: EvidenceCenterPanelProps) {
                     {Array.isArray(item.detail?.latestReceipts) && item.detail.latestReceipts.length ? (
                       <p>latest receipts: {item.detail.latestReceipts.map(receipt => receipt.id).join(', ')}</p>
                     ) : null}
+                    <KnowledgeRetrievalDiagnosticsSummaryBlock detail={item.detail} />
                   </div>
                 </div>
               ) : null}

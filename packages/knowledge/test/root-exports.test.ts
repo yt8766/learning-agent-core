@@ -22,6 +22,8 @@ import {
   readKnowledgeOverview,
   RetrievalRequestSchema,
   HybridKnowledgeSearchProductionConfigSchema,
+  createKnowledgeSourceIngestionLoader,
+  ingestKnowledgeSourcePayloads,
   runKnowledgeIndexing
 } from '../src/index';
 import * as rootExports from '../src/index';
@@ -56,6 +58,8 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
     expect(rootExports.DefaultQueryNormalizer).toBe(DefaultQueryNormalizer);
     expect(rootExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);
+    expect(rootExports.createKnowledgeSourceIngestionLoader).toBe(createKnowledgeSourceIngestionLoader);
+    expect(rootExports.ingestKnowledgeSourcePayloads).toBe(ingestKnowledgeSourcePayloads);
     expect(rootExports.DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE).toBe(DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE);
     expect(indexingExports.runKnowledgeIndexing).toBe(runKnowledgeIndexing);
     expect(contractExports).toBeTruthy();

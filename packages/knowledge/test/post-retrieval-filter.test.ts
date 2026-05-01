@@ -64,7 +64,7 @@ describe('DefaultPostRetrievalFilter', () => {
     expect(result.diagnostics.reasons['duplicate-chunk']).toBe(1);
   });
 
-  it('limits duplicate parent hits after preserving the highest score', async () => {
+  it('preserves same-parent hits so diversification can decide parent coverage', async () => {
     const filter = new DefaultPostRetrievalFilter(0.1);
 
     const result = await filter.filter(
@@ -75,8 +75,8 @@ describe('DefaultPostRetrievalFilter', () => {
       request
     );
 
-    expect(result.hits.map(hit => hit.chunkId)).toEqual(['parent-high']);
-    expect(result.diagnostics.reasons['duplicate-parent']).toBe(1);
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['parent-high', 'parent-low']);
+    expect(result.diagnostics.reasons['duplicate-parent']).toBeUndefined();
   });
 
   it('drops low context value and unsafe content without returning the dropped text', async () => {
