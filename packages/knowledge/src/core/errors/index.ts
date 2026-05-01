@@ -41,3 +41,17 @@ export class KnowledgeValidationError extends KnowledgeError {
     this.name = 'KnowledgeValidationError';
   }
 }
+
+export interface KnowledgeProviderErrorOptions extends Omit<KnowledgeErrorOptions, 'category'> {
+  providerId: string;
+}
+
+export class KnowledgeProviderError extends KnowledgeError {
+  readonly providerId: string;
+
+  constructor(message: string, options: KnowledgeProviderErrorOptions) {
+    super(message, { ...options, category: 'provider' });
+    this.name = 'KnowledgeProviderError';
+    this.providerId = options.providerId;
+  }
+}
