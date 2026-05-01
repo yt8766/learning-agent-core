@@ -70,6 +70,7 @@
   - 该 facade 可以直连 `@agent/agents-company-live`，但不得继续新增其他 workflow executor，也不得承载 company-live 业务规则、prompt、schema 或 node 编排
   - workspace smoke 会在干净 CI 环境中直接加载 backend `AppModule`；所有 `tsconfig.json` 中声明的 `@agent/agents-*` 源码入口都必须同步出现在根 `vitest.config.js` alias 中，不能依赖本地残留的 `agents/*/build` 产物解析。
   - `test/smoke/backend/backend-http-app.smoke.ts` 是真实 Nest `AppModule` 冷启动 smoke。GitHub runner 上首次 import、provider 初始化与 health request 可能超过 Vitest 默认 `10s` hook timeout，因此该 smoke 必须保留显式 `BACKEND_HTTP_APP_HOOK_TIMEOUT_MS`，不要退回默认 hook 预算。
+  - workspace smoke 默认运行在 `NODE_ENV=test`，此时 `AppModule` 会通过 `createPersistenceImports()` 跳过 workflow-run 的 Postgres 持久化装配，避免干净 CI runner 因没有本地 `localhost:5432` 服务而让健康检查失败；需要在测试环境覆盖真实数据库链路时，必须显式设置 `AGENT_SERVER_ENABLE_DATABASE_IN_TEST=true` 并提供对应 `DB_*` 环境变量。
   - 退出条件是后续由更正式的官方 workflow 装配层承接 company-live executor 注册；迁移完成后 backend 应只保留 HTTP/BFF、trace/SSE adapter 与错误映射
 - `runtime/core/runtime-workflow-execution-facade.ts`
   - 当前是 backend workflow composition facade，基于 `@agent/platform-runtime` 的可注入 workflow registry contract 注册 `company-live` 与 `data-report-json`

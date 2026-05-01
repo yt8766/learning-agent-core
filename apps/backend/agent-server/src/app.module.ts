@@ -1,8 +1,7 @@
 ﻿import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
 import { AgentToolsModule } from './agent-tools/agent-tools.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { createPersistenceImports } from './app.persistence';
 import { AppFeatureModule } from './app/app.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { AutoReviewModule } from './auto-review/auto-review.module';
@@ -20,21 +19,9 @@ import { SandboxModule } from './sandbox/sandbox.module';
 import { SkillsModule } from './skills/skills.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TemplatesModule } from './templates/templates.module';
-import { WorkflowRun } from './workflow-runs/entities/workflow-run.entity';
-import { WorkflowRunsModule } from './workflow-runs/workflow-runs.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST ?? 'localhost',
-      port: parseInt(process.env.DB_PORT ?? '5432', 10),
-      username: process.env.DB_USER ?? 'postgres',
-      password: process.env.DB_PASS ?? 'postgres',
-      database: process.env.DB_NAME ?? 'agent_db',
-      entities: [WorkflowRun],
-      synchronize: process.env.NODE_ENV !== 'production'
-    }),
     LoggerModule,
     AdminAuthModule,
     RuntimeModule,
@@ -54,7 +41,7 @@ import { WorkflowRunsModule } from './workflow-runs/workflow-runs.module';
     ApprovalsModule,
     TemplatesModule,
     CompanyLiveModule,
-    WorkflowRunsModule
+    ...createPersistenceImports()
   ]
 })
 export class AppModule {}
