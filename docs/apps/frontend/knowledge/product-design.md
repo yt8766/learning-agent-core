@@ -85,8 +85,12 @@ Knowledge App 使用 JWT 双 token：
 - `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
 - `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
 - `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
+- `apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`：当前横向 MVP 页面使用的本地 fixture / mock client；真实后端联调时应替换为 `KnowledgeApiClient`，不要让页面直接读取后端或 SDK runtime。
+- `apps/frontend/knowledge/src/features/auth/*`：当前登录门使用本地 mock token 写入，退出登录只删除本地 token；真实后端联调时保持双 token 行为，替换 login 调用来源。
+- `apps/frontend/knowledge/src/features/*`：当前已落地总览、知识库、文档、对话实验室、观测中心、评测中心和设置的 mock-first 页面，第一屏是可操作工作台，不是 landing page。
 - `apps/frontend/knowledge/test/token-storage.test.ts` 与 `apps/frontend/knowledge/test/auth-client.test.ts`：固定双 token 存储、并发刷新复用和 logout 本地清理语义。
 - `apps/frontend/knowledge/test/knowledge-api-client.test.ts`：固定业务请求 access token 过期后的 refresh/retry、不相关 401 不刷新、以及最多重试一次的边界。
+- `apps/frontend/knowledge/test/app-render.test.tsx`：固定未登录时显示登录门、已登录时显示工作台导航。
 
 权限边界在 MVP 中先以用户 `roles` 与 `permissions` 驱动 UI 可用态，后端 API contract 始终是权限事实来源：
 
