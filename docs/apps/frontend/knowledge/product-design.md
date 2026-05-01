@@ -9,9 +9,7 @@
 
 `apps/frontend/knowledge` 是独立 Knowledge 前端项目，面向知识库运营、RAG 体验验证、引用审查、观测排障与评测闭环。它不是 marketing landing page，不做营销式首页；也不是 `agent-chat` 或 `agent-admin` 的重复产品。
 
-Task 3 product metadata marker:
-
-文档类型：product
+产品设计属性：product（因 docs checker 当前不支持 product 作为顶层文档类型，顶层使用 reference）
 
 - 不重复 `agent-chat`：Knowledge App 的 Chat Lab 用于验证指定知识库的检索、回答、引用、反馈和 trace，不承载 OpenClaw 作战面、审批恢复、ThoughtChain 或多 Agent 执行体验。
 - 不重复 `agent-admin`：Knowledge App 的观测和评测只围绕知识库问答质量、检索表现、文档处理和 RAG 链路，不承载全局 Runtime Center、Approvals Center、Skill Lab 或治理后台。
@@ -48,9 +46,11 @@ Task 3 product metadata marker:
 - 评测中心：`/app/evals/datasets`、`/app/evals/runs`
 - 设置：`/app/settings`
 
-文档详情、trace 详情和评测运行详情属于上下文详情页，不作为一级导航常驻入口。知识库详情页内可提供二级 tabs：概览、文档、对话、评测、观测、配置、权限；MVP 可以先渲染完整 tab 外壳，其中概览、文档、对话、评测和观测有真实数据面板，配置和权限先展示受限空态。
+文档详情、trace 详情和评测运行详情属于上下文详情页，不作为一级导航常驻入口。知识库详情页内可提供二级 tabs：概览、文档、对话、评测、观测、配置、权限；MVP 可以先渲染完整 tab 外壳，其中概览、文档、对话、评测和观测按权限展示真实数据面板，配置和权限先展示受限空态。
 
 ## MVP User Flow
+
+面向 owner/admin/maintainer 的完整运营闭环：
 
 ```text
 login
@@ -66,7 +66,7 @@ login
 -> inspect eval results
 ```
 
-MVP 的完成标准是这条路径能用 mock 数据和后端 stub API 证明端到端信息结构成立。纵向增强如批量权限、真实向量库适配、复杂过滤、告警订阅和高级评测分析，必须建立在这条路径已可运行的基础上。
+MVP 的完成标准是这条路径能用 mock 数据和后端 stub API 证明端到端信息结构成立。evaluator 的 MVP 闭环从 Chat Lab 或 Eval Center 开始，不包含 dashboard/observability；viewer 的 MVP 闭环限于 allowed 知识库、文档、Chat Lab 和 feedback。纵向增强如批量权限、真实向量库适配、复杂过滤、告警订阅和高级评测分析，必须建立在这些路径已可运行的基础上。
 
 ## Auth Behavior
 
@@ -80,11 +80,12 @@ Knowledge App 使用 JWT 双 token：
 - 并发控制：多个请求同时触发刷新时共享同一个 refresh promise，避免并发刷新造成 token 版本抖动。
 - 失败边界：refresh 失败、refresh token 缺失或过期时，清理本地登录态，跳转 `/login`，并保留用户原目标路径用于重新登录后恢复。
 
-权限边界在 MVP 中先以用户 `role` 与 `permissions` 驱动 UI 可用态：
+权限边界在 MVP 中先以用户 `roles` 与 `permissions` 驱动 UI 可用态，后端 API contract 始终是权限事实来源：
 
-- viewer：查看知识库、文档、trace、评测结果；不能上传、编辑或启动运行。
-- maintainer：创建知识库、上传文档、重处理文档、聊天、反馈、启动评测。
-- evaluator：查看知识库、使用 Chat Lab、管理评测数据集和运行。
+- owner/admin：可执行 MVP 全部动作。
+- maintainer：创建知识库、上传文档、重处理文档、聊天、反馈、查看 dashboard/trace、启动评测。
+- evaluator：查看知识库、使用 Chat Lab、提交反馈、管理评测数据集和运行；不能访问 dashboard overview、observability metrics/traces/detail。
+- viewer：查看 allowed 知识库和文档、使用 Chat Lab、提交反馈；不能上传、编辑、查看 dashboard overview、查看 observability 或启动评测。
 
 ## MVP Pages
 
@@ -124,7 +125,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：指标卡和列表使用骨架屏。
 - 空态：没有知识库时引导创建知识库；没有 trace 或 eval 时展示轻量空态。
 - 错误态：指标区可局部失败，保留其他可用数据并允许重试。
-- 权限边界：viewer 看不到创建入口；maintainer 和 evaluator 看到各自可执行操作。
+- 权限边界：`GET /dashboard/overview` 仅 owner/admin/maintainer 可访问。viewer 和 evaluator 访问 `/app/overview` 时显示受限态或引导跳转到 `/app/chat-lab`、`/app/evals/datasets` 等其有权限的页面，不请求 dashboard endpoint，也不展示 overview 操作入口。
 
 ### Knowledge Bases
 
@@ -143,7 +144,8 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：表格行骨架。
 - 空态：无知识库时展示创建入口；搜索无结果时展示清除筛选。
 - 错误态：列表加载失败时提供重试。
-- 权限边界：viewer 只能查看；maintainer 可创建和编辑基础信息。
+- 权限边界：viewer/evaluator 只能查看；owner/admin/maintainer 可创建和编辑基础信息。
+- 查询边界：当前 `/knowledge-bases` 只接受 `PageQuery`。MVP 的搜索、状态过滤和标签过滤只在当前页或 mock data 上做 client-side filter；如需后端 status/tags/search query，必须作为 future contract extension 先更新 API contract。
 
 ### Knowledge Base Detail
 
@@ -163,7 +165,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：摘要和 tab 内容分别加载。
 - 空态：无文档时引导上传；无 trace 或 eval 时保留 tab 但展示空态。
 - 错误态：详情不存在时展示 not found；局部面板失败可单独重试。
-- 权限边界：上传、重处理和配置入口只对 maintainer 开放。
+- 权限边界：上传、重处理和配置入口只对 owner/admin/maintainer 开放。viewer/evaluator 可看 allowed 知识库摘要和文档列表，但不能看到需要写权限的操作按钮。
 
 ### Document Detail
 
@@ -182,7 +184,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：timeline 和 chunk 表独立骨架。
 - 空态：处理未完成时 chunk 表展示等待状态。
 - 错误态：处理失败展示可读错误、失败阶段和可重试动作。
-- 权限边界：viewer 不能触发 reprocess、reembed 或 disable。
+- 权限边界：viewer/evaluator 可以查看 allowed 文档基础信息和 chunk；`GET /documents/:id/jobs` 仅 owner/admin/maintainer 可访问，所以 viewer/evaluator 的 job timeline 显示受限态或隐藏，不发起 jobs 请求。reprocess、reembed 和 disable 也只对 owner/admin/maintainer 开放。
 
 ### Chat Lab
 
@@ -204,7 +206,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：发送中显示回答生成状态，引用区可在回答后补齐。
 - 空态：未选择知识库时禁止发送并提示先选择；无线程时展示输入框和最近问题建议。
 - 错误态：回答失败保留用户问题，展示 retry；引用解析失败不隐藏回答。
-- 权限边界：viewer 可试问但不能提交会改变数据的反馈或加入评测；maintainer 和 evaluator 可加入评测数据集。
+- 权限边界：feedback 按 API contract 开放给 owner/admin/maintainer/evaluator/viewer，只要用户具备对应 API 权限即可提交正向或负向反馈。加入评测数据集只对 owner/admin/maintainer/evaluator 开放。若未来产品要限制 viewer 反馈，必须先作为非 MVP 产品限制写入 contract 或新增前端策略说明，不能在 MVP 中覆盖当前 API 权限。
 
 ### Observability Trace List
 
@@ -219,16 +221,17 @@ Knowledge App 使用 JWT 双 token：
 
 主要操作：
 
-- 按状态、知识库、反馈、时间范围和错误码过滤。
+- 按状态、知识库和时间范围过滤；feedback 和错误码过滤仅作为当前页/mock data 的 client-side 辅助视图。
 - 打开 trace 详情。
-- 从 trace 加入评测数据集。
+- 从 trace 加入评测数据集；该入口只对同时具备 trace 读取和 eval 写入权限的 owner/admin/maintainer 展示，evaluator 可从 Chat Lab 添加评测样本。
 
 状态要求：
 
 - 加载态：过滤栏先可见，列表骨架加载。
 - 空态：无 trace 时说明需要先在 Chat Lab 提问；筛选无结果时允许清除筛选。
 - 错误态：列表失败展示重试，过滤条件保留。
-- 权限边界：trace 只暴露脱敏数据；无 `trace:read` 权限时展示受限态。
+- 权限边界：`GET /observability/metrics`、`GET /observability/traces` 和 `GET /observability/traces/:id` 仅 owner/admin/maintainer 可访问。viewer/evaluator 进入观测页时显示受限态或 403 copy，不能发起 trace detail 请求；最多只能在 Chat Lab 当前回答上下文中查看 chat response 已返回的有限 citation/answer 信息。
+- 查询边界：当前 `/observability/traces` query 只支持 `PageQuery`、`knowledgeBaseId`、`status`、`from`、`to`。MVP 不要求后端支持 feedback/errorCode filters；这两类过滤只允许在当前页/mock data client-side filter，后端能力必须作为 future contract extension 先更新 API contract。
 
 ### Observability Trace Detail
 
@@ -248,7 +251,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：基础摘要优先，span 和 retrieval 面板可延迟加载。
 - 空态：缺少引用或反馈时展示明确的空标签。
 - 错误态：trace 不存在展示 not found；敏感字段不可展示 raw vendor payload。
-- 权限边界：调试信息按权限降级；viewer 可看摘要，maintainer/evaluator 可看更完整的调试面板。
+- 权限边界：trace detail 仅 owner/admin/maintainer 可访问。viewer/evaluator 不应请求 `/observability/traces/:id`，也不展示 trace 摘要或调试信息；他们只能看到 Chat Lab 响应中已经返回的有限 answer/citation 信息。
 
 ### Eval Datasets
 
@@ -270,7 +273,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：列表骨架。
 - 空态：无数据集时引导从负反馈或 trace 创建第一批样本。
 - 错误态：创建失败保留输入并提示原因。
-- 权限边界：viewer 只能查看；evaluator 和 maintainer 可创建和编辑。
+- 权限边界：`/eval/datasets` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可创建和编辑数据集。
 
 ### Eval Runs
 
@@ -289,13 +292,13 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：列表和运行按钮分别呈现状态。
 - 空态：无运行时引导选择数据集启动。
 - 错误态：启动失败显示可读错误；运行失败在列表显示失败原因摘要。
-- 权限边界：viewer 不能启动运行；evaluator 和 maintainer 可启动。
+- 权限边界：`/eval/runs` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测运行页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可启动运行。
 
 ### Eval Run Detail
 
 核心数据：
 
-- 运行进度、summary metrics、case results、通过率、引用命中率、groundedness、answer correctness、latency、cost/token、失败样本、低分原因。
+- 运行进度、`EvalReportSummary`（`totalScore`、`retrievalScore`、`generationScore`、`citationScore`、`regressionDelta`）、case results、case-level `retrievalMetrics`、`generationMetrics`、`judgeResult`、失败样本和低分原因。
 
 主要操作：
 
@@ -309,13 +312,13 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：进度先展示，case results 可分页加载。
 - 空态：运行排队或刚开始时展示等待状态。
 - 错误态：运行失败展示失败阶段、错误码和可重试建议。
-- 权限边界：结果可读范围按数据集和知识库权限裁剪。
+- 权限边界：结果可读范围按数据集和知识库权限裁剪，且只对 owner/admin/maintainer/evaluator 开放。viewer 不能请求 eval run detail 或 results endpoints。groundedness、answer correctness、latency、cost/token 等命名指标不属于当前 contract 稳定字段，只能作为 future metric extension 先扩展 contract 后再进入 UI。
 
 ### Settings
 
 核心数据：
 
-- 当前用户、角色、权限、API base URL、mock API 状态、token 过期时间、默认知识库选择偏好。
+- 当前用户、`roles`、权限、API base URL、mock API 状态、token 过期时间、默认知识库选择偏好。
 
 主要操作：
 
