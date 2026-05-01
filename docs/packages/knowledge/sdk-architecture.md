@@ -250,6 +250,10 @@ The default `packages/knowledge/src/runtime` chain must not generate the final a
 
 Server-side hosts may inject a `Generator` through `host-integration` or equivalent optional interfaces after retrieval/context assembly. That integration is outside the current default runtime chain and must keep provider secrets, model clients, and raw generation payloads behind host-owned server boundaries.
 
+The default `packages/knowledge/src/runtime` chain must not generate the final answer. It prepares retrieval hits, assembled context, citations, diagnostics, and trace events for the host runtime. Final answer generation remains the responsibility of `packages/runtime`, apps, or `agents/*`.
+
+Server-side hosts may inject a `Generator` through `host-integration` or equivalent optional interfaces after retrieval/context assembly. That integration is outside the current default runtime chain and must keep provider secrets, model clients, and raw generation payloads behind host-owned server boundaries.
+
 Runtime traces and errors must use redacted JSON-safe projections. Trace span metadata and API error details may include stable IDs, timings, status values, redacted summaries, and bounded diagnostics, but must not include secrets, tokens, raw provider responses, raw headers, SDK client configuration, or third-party error objects.
 
 ## Backend and Server Host Boundary
