@@ -133,9 +133,10 @@ describe('knowledge frontend API types', () => {
         retryable: true,
         failedCount: 2,
         reason: 'unsupported_file_type',
-        empty: detailValue,
+        expected: detailValue,
         stages: ['parse', 'embed'],
-        counts: [1, 2]
+        counts: [1, 2],
+        documentId: 'doc_1'
       },
       itemIds: ['doc_1', 'doc_2']
     };
@@ -155,10 +156,8 @@ describe('knowledge frontend API types', () => {
       message: 'Provider failed',
       details: {
         data: {
-          rawHeaders: {
-            // @ts-expect-error ApiErrorDetails must not carry nested vendor raw payloads.
-            authorization: 'Bearer secret'
-          }
+          // @ts-expect-error ApiErrorDetails must not expose raw header keys.
+          rawHeaders: ['authorization: Bearer secret']
         }
       }
     } satisfies ApiErrorResponse;
@@ -169,7 +168,7 @@ describe('knowledge frontend API types', () => {
       details: {
         data: {
           // @ts-expect-error ApiErrorDetailValue only allows scalar arrays, not object arrays.
-          rawItems: [{ id: 'vendor_1' }]
+          reason: [{ id: 'vendor_1' }]
         }
       }
     } satisfies ApiErrorResponse;
@@ -185,7 +184,7 @@ describe('knowledge frontend API types', () => {
         model: 'text-embedding',
         hitLimit: 8,
         debug: false,
-        empty: null,
+        status: null,
         stages: ['embedding', 'vector_search'],
         ranks: [1, 2, 3]
       },
@@ -212,19 +211,24 @@ describe('knowledge frontend API types', () => {
   });
 
   it('rejects raw trace span payload objects', () => {
-    const rejectedTracePayload = {
+    const rejectedRawRequest = {
       summary: 'Raw provider response',
       data: {
-        response: {
-          // @ts-expect-error TraceSpanPayloadSummary must not carry nested raw responses.
-          headers: {
-            authorization: 'Bearer secret'
-          }
-        }
+        // @ts-expect-error TraceSpanPayloadSummary must not expose raw request keys.
+        rawRequest: 'raw prompt and context'
       }
     } satisfies TraceSpanPayloadSummary;
 
-    expect(rejectedTracePayload.summary).toBe('Raw provider response');
+    const rejectedRawResponse = {
+      summary: 'Raw provider response',
+      data: {
+        // @ts-expect-error TraceSpanPayloadSummary must not expose raw response keys.
+        response: 'raw provider response'
+      }
+    } satisfies TraceSpanPayloadSummary;
+
+    expect(rejectedRawRequest.summary).toBe('Raw provider response');
+    expect(rejectedRawResponse.summary).toBe('Raw provider response');
   });
 
   it('keeps document source DTOs and enum values stable', () => {
