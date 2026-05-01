@@ -128,17 +128,17 @@ export interface KnowledgeChatProvider {
 }
 
 export interface KnowledgeEmbeddingResult extends EmbedTextResult {
-  dimensions: number;
+  dimensions?: number;
 }
 
 export interface KnowledgeEmbeddingBatchResult extends EmbedBatchResult {
-  dimensions: number;
+  dimensions?: number;
 }
 
 export interface KnowledgeEmbeddingProvider {
   providerId: string;
   defaultModel: string;
-  dimensions: number;
+  dimensions?: number;
   embedText(input: EmbedTextInput): Promise<KnowledgeEmbeddingResult>;
   embedBatch(input: EmbedBatchInput): Promise<KnowledgeEmbeddingBatchResult>;
   healthCheck?(): Promise<ProviderHealth>;

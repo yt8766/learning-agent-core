@@ -107,7 +107,10 @@ describe('LangChain knowledge adapters', () => {
       }
     });
 
-    await expect(countMismatch.embedBatch({ texts: ['a', 'b'] })).rejects.toBeInstanceOf(KnowledgeProviderError);
+    await expect(countMismatch.embedBatch({ texts: ['a', 'b'] })).rejects.toMatchObject({
+      name: 'KnowledgeProviderError',
+      code: 'knowledge_embedding_count_mismatch'
+    });
 
     const dimensionMismatch = new LangChainEmbeddingProvider({
       providerId: 'minimax',
@@ -125,6 +128,27 @@ describe('LangChain knowledge adapters', () => {
 
     await expect(dimensionMismatch.embedText({ text: 'a' })).rejects.toMatchObject({
       code: 'knowledge_embedding_dimensions_mismatch'
+    });
+  });
+
+  it('does not expose a placeholder dimension when embedding dimensions are unknown', async () => {
+    const provider = new LangChainEmbeddingProvider({
+      providerId: 'custom',
+      defaultModel: 'embedding',
+      embeddings: {
+        async embedQuery() {
+          return [1, 2];
+        },
+        async embedDocuments(texts: string[]) {
+          return texts.map(() => [1, 2]);
+        }
+      }
+    });
+
+    expect(provider.dimensions).toBeUndefined();
+    await expect(provider.embedText({ text: 'a' })).resolves.toEqual({
+      embedding: [1, 2],
+      model: 'embedding'
     });
   });
 });

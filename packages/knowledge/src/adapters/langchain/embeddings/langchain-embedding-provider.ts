@@ -23,15 +23,15 @@ export interface LangChainEmbeddingProviderOptions {
 export class LangChainEmbeddingProvider implements KnowledgeEmbeddingProvider {
   readonly providerId: string;
   readonly defaultModel: string;
-  readonly dimensions: number;
-  private readonly expectedDimensions?: number;
+  readonly dimensions?: number;
   private readonly embeddings: LangChainEmbeddingsLike;
 
   constructor(options: LangChainEmbeddingProviderOptions) {
     this.providerId = options.providerId;
     this.defaultModel = options.defaultModel;
-    this.dimensions = options.dimensions ?? 0;
-    this.expectedDimensions = options.dimensions;
+    if (options.dimensions !== undefined) {
+      this.dimensions = options.dimensions;
+    }
     this.embeddings = options.embeddings;
   }
 
@@ -39,7 +39,11 @@ export class LangChainEmbeddingProvider implements KnowledgeEmbeddingProvider {
     try {
       const embedding = await this.embeddings.embedQuery(input.text);
       this.assertDimensions(embedding);
-      return { embedding, model: this.defaultModel, dimensions: embedding.length };
+      return {
+        embedding,
+        model: this.defaultModel,
+        ...(this.dimensions === undefined ? {} : { dimensions: embedding.length })
+      };
     } catch (error) {
       throw this.toEmbeddingError(error);
     }
@@ -59,19 +63,23 @@ export class LangChainEmbeddingProvider implements KnowledgeEmbeddingProvider {
       for (const embedding of embeddings) {
         this.assertDimensions(embedding);
       }
-      return { embeddings, model: this.defaultModel, dimensions: embeddings[0]?.length ?? this.dimensions };
+      return {
+        embeddings,
+        model: this.defaultModel,
+        ...(this.dimensions === undefined ? {} : { dimensions: embeddings[0]?.length ?? this.dimensions })
+      };
     } catch (error) {
       throw this.toEmbeddingError(error);
     }
   }
 
   private assertDimensions(embedding: readonly number[]) {
-    if (this.expectedDimensions !== undefined && embedding.length !== this.expectedDimensions) {
+    if (this.dimensions !== undefined && embedding.length !== this.dimensions) {
       throw toKnowledgeProviderError({
         providerId: this.providerId,
         message: `Embedding dimensions mismatch for provider ${this.providerId}`,
         code: 'knowledge_embedding_dimensions_mismatch',
-        details: { expected: this.expectedDimensions, actual: embedding.length }
+        details: { expected: this.dimensions, actual: embedding.length }
       });
     }
   }
