@@ -117,11 +117,12 @@ export async function embedChunk(
   version: string
 ): Promise<KnowledgeEmbeddingRecord> {
   const now = new Date().toISOString();
-  // Keep adapter loading lazy so @agent/knowledge root exports do not create a package init cycle.
-  const { createRuntimeEmbeddingProvider, resolveRuntimeEmbeddingApiKey } = await import('@agent/adapters');
-  if (!resolveRuntimeEmbeddingApiKey(settings)) {
+  if (!resolveLocalEmbeddingApiKey(settings)) {
     return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_embedding_api_key');
   }
+
+  // Keep adapter loading lazy so @agent/knowledge root exports do not create a package init cycle.
+  const { createRuntimeEmbeddingProvider } = await import('@agent/adapters');
   try {
     const vector = await createRuntimeEmbeddingProvider(settings).embedQuery(chunk.content);
     if (!vector?.length) throw new Error('empty_embedding');
@@ -149,6 +150,10 @@ export async function embedChunk(
       error instanceof Error ? error.message : 'embedding_failed'
     );
   }
+}
+
+function resolveLocalEmbeddingApiKey(settings: RuntimeSettings) {
+  return settings.embeddings.apiKey || settings.mcp?.bigmodelApiKey || settings.zhipuApiKey || undefined;
 }
 
 export function estimateTokenCount(text: string) {

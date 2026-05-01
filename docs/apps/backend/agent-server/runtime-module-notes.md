@@ -68,6 +68,7 @@
 - `runtime/core/runtime-company-live-facade.ts`
   - 当前是临时 backend composition facade，只负责统一 `company-live` 独立 API 与 `workflow-runs` 的 company-live graph 调用点
   - 该 facade 可以直连 `@agent/agents-company-live`，但不得继续新增其他 workflow executor，也不得承载 company-live 业务规则、prompt、schema 或 node 编排
+  - workspace smoke 会在干净 CI 环境中直接加载 backend `AppModule`；所有 `tsconfig.json` 中声明的 `@agent/agents-*` 源码入口都必须同步出现在根 `vitest.config.js` alias 中，不能依赖本地残留的 `agents/*/build` 产物解析。
   - 退出条件是后续由更正式的官方 workflow 装配层承接 company-live executor 注册；迁移完成后 backend 应只保留 HTTP/BFF、trace/SSE adapter 与错误映射
 - `runtime/core/runtime-workflow-execution-facade.ts`
   - 当前是 backend workflow composition facade，基于 `@agent/platform-runtime` 的可注入 workflow registry contract 注册 `company-live` 与 `data-report-json`
