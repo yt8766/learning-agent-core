@@ -700,6 +700,9 @@ importers:
       '@agent/memory':
         specifier: workspace:*
         version: link:../memory
+      '@langchain/openai':
+        specifier: ^1.4.1
+        version: 1.4.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(ws@8.20.0)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
