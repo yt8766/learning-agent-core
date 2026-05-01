@@ -1,7 +1,2 @@
-export function createGlmChatProvider() {
-  return {};
-}
-
-export function createGlmEmbeddingProvider() {
-  return {};
-}
+export * from './glm-chat-openai';
+export * from './glm-embeddings-openai';

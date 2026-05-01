@@ -1,3 +1,1 @@
-export function createDeepSeekChatProvider() {
-  return {};
-}
+export * from './deepseek-chat-openai';

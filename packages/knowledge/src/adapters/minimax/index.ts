@@ -1,7 +1,2 @@
-export function createMiniMaxChatProvider() {
-  return {};
-}
-
-export function createMiniMaxEmbeddingProvider() {
-  return {};
-}
+export * from './minimax-chat-openai';
+export * from './minimax-embeddings-openai';

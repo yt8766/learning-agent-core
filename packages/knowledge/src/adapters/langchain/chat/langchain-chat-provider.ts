@@ -7,7 +7,7 @@ import {
 } from '../../shared';
 
 export interface LangChainChatModelLike {
-  invoke(messages: unknown[], options?: Record<string, unknown>): Promise<unknown>;
+  invoke(input: unknown, options?: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface LangChainChatProviderOptions {
