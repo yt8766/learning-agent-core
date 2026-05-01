@@ -1,3 +1,33 @@
+export {
+  DEFAULT_RRF_K,
+  DEFAULT_TOP_K,
+  DEFAULT_TRACE_SAMPLE_RATE,
+  KnowledgeBaseSchema,
+  ProviderHealthSchema
+} from './core';
+export {
+  KnowledgeError,
+  KnowledgeValidationError,
+  type AsyncPipeline,
+  type EmbedBatchInput,
+  type EmbedBatchResult,
+  type EmbeddingProvider,
+  type EmbedTextInput,
+  type EmbedTextResult,
+  type KnowledgeBase,
+  type KnowledgeErrorCategory,
+  type KnowledgeErrorOptions,
+  type ProviderHealth,
+  type VectorDeleteInput as KnowledgeSdkVectorDeleteInput,
+  type VectorDeleteResult as KnowledgeSdkVectorDeleteResult,
+  type VectorRecord as KnowledgeSdkVectorRecord,
+  type VectorSearchHit as KnowledgeSdkVectorSearchHit,
+  type VectorSearchInput as KnowledgeSdkVectorSearchInput,
+  type VectorSearchResult as KnowledgeSdkVectorSearchResult,
+  type VectorStore as KnowledgeSdkVectorStore,
+  type VectorUpsertInput as KnowledgeSdkVectorUpsertInput,
+  type VectorUpsertResult as KnowledgeSdkVectorUpsertResult
+} from './core';
 export type {
   ChromaClientConfig,
   ChromaCollectionConfig,

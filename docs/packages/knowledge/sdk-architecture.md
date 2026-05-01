@@ -9,7 +9,7 @@
 
 `packages/knowledge` is evolving toward a publishable RAG SDK. This document describes the target architecture and migration rules; it is not a claim that every listed source directory, subpath export, client helper, eval primitive, observability primitive, or optional adapter exists today.
 
-Current horizontal MVP usage keeps frontend code behind backend Knowledge HTTP APIs plus app-local API client/DTO code. Publishable SDK facades such as `src/core`, `src/client`, `src/eval`, and `src/observability` must only be treated as current implementation after their source directories, package exports, tests, and docs land in the same migration slice.
+Current horizontal MVP usage keeps frontend code behind backend Knowledge HTTP APIs plus app-local API client/DTO code. `src/core` is now the first publishable SDK facade slice; later facades such as `src/client`, `src/eval`, and `src/observability` must only be treated as current implementation after their source directories, package exports, tests, and docs land in the same migration slice.
 
 ## Principles
 
@@ -54,7 +54,8 @@ packages/knowledge/src/
 Entrypoint status:
 
 - Current: `@agent/knowledge` exists as the current package root and exposes current retrieval/indexing contracts according to existing package exports.
-- Target-only: `@agent/knowledge/core` and `@agent/knowledge/client` are planned public facades. Frontend code must not import them until a later slice actually adds `src/core` / `src/client` plus matching package exports, tests, and docs.
+- Current: `@agent/knowledge/core` exposes the SDK core contract facade: schema-first knowledge base/provider health records, provider interfaces, SDK error classes, constants, and the generic async pipeline type. It has no vendor SDK dependency.
+- Target-only: `@agent/knowledge/client` is a planned public facade. Frontend code must not import it until a later slice actually adds `src/client` plus matching package exports, tests, and docs.
 - Target planned: `@agent/knowledge/browser`, `@agent/knowledge/node`, `@agent/knowledge/adapters/*`, and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
 
@@ -62,12 +63,12 @@ Current implemented public package entrypoint:
 
 ```text
 @agent/knowledge
+@agent/knowledge/core
 ```
 
 Target-only public subpaths. Each subpath below requires source ownership, package exports, tests, and docs in the same migration slice before callers may depend on it:
 
 ```text
-@agent/knowledge/core
 @agent/knowledge/client
 @agent/knowledge/runtime
 @agent/knowledge/indexing
@@ -106,6 +107,13 @@ Target-only public subpaths. Each subpath below requires source ownership, packa
 - `node:fs`
 - `react`
 - NestJS
+
+Current `src/core` package export:
+
+- Source: `packages/knowledge/src/core/index.ts`
+- Public subpath: `@agent/knowledge/core`
+- Build entries: `build/cjs/core/index.js`, `build/esm/core/index.mjs`, `build/types/knowledge/src/core/index.d.ts`
+- Root package compatibility: `@agent/knowledge` explicitly re-exports non-conflicting core schemas, constants, `EmbeddingProvider`, and core errors. Vector-store related SDK types are exported from the root with `KnowledgeSdk*` aliases to avoid colliding with the existing retrieval/indexing `VectorStore` and `VectorSearchHit` contracts. New SDK consumers should prefer `@agent/knowledge/core` for the unaliased core names.
 
 ## Current Contracts and Core Migration
 

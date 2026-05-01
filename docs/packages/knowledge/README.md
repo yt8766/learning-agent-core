@@ -29,12 +29,15 @@
   - 被 `runtime`、`agents/*` 与 backend 消费
 - 公开入口：
   - 根入口：`@agent/knowledge`
+  - SDK core 子路径：`@agent/knowledge/core`
 
 约定：
 
 - `packages/knowledge` 是知识检索宿主，不是 memory 的别名
 - 稳定知识契约沉淀到 `packages/knowledge/src/contracts/*`，不要恢复 `packages/core/src/knowledge/*`
-- 当前 schema source of truth 是 `packages/knowledge/src/contracts/*`；目标 public facade 是 `packages/knowledge/src/core/*`，迁移期间禁止重复 schema，一份稳定 schema 只允许一个源
+- 当前 retrieval/indexing schema source of truth 仍是 `packages/knowledge/src/contracts/*`
+- 当前 SDK core facade 已落地到 `packages/knowledge/src/core/*`，用于 publishable SDK 的 provider interface、core error、provider health、knowledge base summary 等边界；不要把它误当成 retrieval runtime 现有 contract 的替代源
+- 迁移期间禁止重复同一稳定 schema：如果某个 retrieval/indexing schema 从 `contracts` 迁到 `core`，必须同步更新调用方、测试、文档与 compat 导出
 - 具体 provider / vector-store / loader 适配器仍放在 `packages/adapters`
 
 当前文档：
@@ -48,6 +51,12 @@
 说明：`sdk-architecture.md` 记录 SDK target architecture / migration guide，不代表其中所有目标目录、subpath exports 或 optional adapters 当前均已实现。
 
 当前实现补充：
+
+- `packages/knowledge/src/core/index.ts`
+  - 是当前已实现的 SDK core 子路径入口，对外通过 `@agent/knowledge/core` 暴露
+  - 当前包含 schema-first `KnowledgeBaseSchema` / `ProviderHealthSchema`、`EmbeddingProvider`、`VectorStore`、SDK error 基类、默认常量和 `AsyncPipeline`
+  - 不依赖 `@agent/adapters`、`@agent/config`、`@agent/memory` 或任何 vendor SDK；使用方可以实现接口并注入自己的 embedding / vector store
+  - 根入口只保留不冲突的显式 re-export；SDK vector 类型在根入口使用 `KnowledgeSdk*` alias，未加 alias 的名字应从 `@agent/knowledge/core` 引入
 
 - `packages/knowledge/src/runtime/pipeline/run-knowledge-retrieval.ts`
   - 当前已支持 deterministic query cleanup、轻量 rewrite 与 bounded query variants

@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
 
-const entry = ['src/index.ts'];
+const entry = ['src/index.ts', 'src/core/index.ts'];
 
 export default defineConfig([
   {
