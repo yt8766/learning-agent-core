@@ -11,6 +11,7 @@ import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY } from './knowledge.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
+import { createKnowledgeSdkRuntimeProvider } from './runtime/knowledge-sdk-runtime.provider';
 import { createAliyunOssStorageProviderFromEnv, describeAliyunOssEnv } from './storage/aliyun-oss-storage.provider';
 import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.provider';
 import type { OssStorageProvider } from './storage/oss-storage.provider';
@@ -19,6 +20,7 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
   controllers: [KnowledgeController, KnowledgeFrontendMvpController],
   providers: [
     createKnowledgeRepositoryProvider(),
+    createKnowledgeSdkRuntimeProvider(),
     {
       provide: KnowledgeService,
       useFactory: (repository: KnowledgeRepository) => new KnowledgeService(repository),
