@@ -146,7 +146,12 @@ function cloneDocument(document: KnowledgeDocumentRecord): KnowledgeDocumentReco
 }
 
 function cloneJob(job: DocumentProcessingJobRecord): DocumentProcessingJobRecord {
-  return { ...job, stages: job.stages.map(stage => ({ ...stage })) };
+  return {
+    ...job,
+    stages: job.stages.map(stage => ({ ...stage })),
+    progress: { ...job.progress },
+    error: job.error ? { ...job.error } : undefined
+  };
 }
 
 function cloneChunk(chunk: DocumentChunkRecord): DocumentChunkRecord {

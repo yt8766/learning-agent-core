@@ -1,6 +1,19 @@
+import type { z } from 'zod';
+
+import type {
+  DocumentProcessingJobErrorSchema,
+  DocumentProcessingJobProgressSchema,
+  DocumentProcessingStageSchema,
+  DocumentProcessingStatusSchema
+} from './knowledge-document.schemas';
+
 export type KnowledgeDocumentStatus = 'queued' | 'processing' | 'ready' | 'failed';
 export type KnowledgeDocumentSourceType = 'user-upload';
-export type KnowledgeJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type DocumentProcessingStage = z.infer<typeof DocumentProcessingStageSchema>;
+export type DocumentProcessingStatus = z.infer<typeof DocumentProcessingStatusSchema>;
+export type DocumentProcessingJobProgress = z.infer<typeof DocumentProcessingJobProgressSchema>;
+export type DocumentProcessingJobError = z.infer<typeof DocumentProcessingJobErrorSchema>;
+export type KnowledgeJobStatus = DocumentProcessingStatus;
 export type KnowledgeJobStage =
   | 'queued'
   | 'parse'
@@ -44,15 +57,14 @@ export interface DocumentProcessingJobRecord {
   id: string;
   documentId: string;
   status: KnowledgeJobStatus;
+  stage: DocumentProcessingStage;
   currentStage: KnowledgeJobStage;
   stages: DocumentProcessingJobStageRecord[];
-  progress?: {
-    percent: number;
-    processedChunks?: number;
-    totalChunks?: number;
-  };
+  progress: DocumentProcessingJobProgress;
+  error?: DocumentProcessingJobError;
   errorCode?: string;
   errorMessage?: string;
+  attempts: number;
   createdAt: string;
   updatedAt: string;
 }

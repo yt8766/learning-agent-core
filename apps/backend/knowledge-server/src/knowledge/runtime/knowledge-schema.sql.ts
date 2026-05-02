@@ -55,13 +55,29 @@ create table if not exists knowledge_document_jobs (
   id text primary key,
   document_id text not null references knowledge_documents(id) on delete cascade,
   status text not null,
+  stage text not null default 'uploaded',
   current_stage text not null,
   stages jsonb not null default '[]'::jsonb,
+  progress jsonb not null default '{"percent":0}'::jsonb,
+  error jsonb,
   error_code text,
   error_message text,
+  attempts integer not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table knowledge_document_jobs
+  add column if not exists stage text not null default 'uploaded';
+
+alter table knowledge_document_jobs
+  add column if not exists progress jsonb not null default '{"percent":0}'::jsonb;
+
+alter table knowledge_document_jobs
+  add column if not exists error jsonb;
+
+alter table knowledge_document_jobs
+  add column if not exists attempts integer not null default 1;
 
 create table if not exists knowledge_document_chunks (
   id text primary key,

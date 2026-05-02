@@ -271,27 +271,36 @@ export interface KnowledgeDocument {
 }
 
 export type DocumentProcessingStage =
+  | 'uploaded'
+  | 'parsing'
+  | 'chunking'
+  | 'embedding'
+  | 'indexing'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled';
+
+export type LegacyDocumentProcessingStage =
   | 'queued'
-  | 'upload_received'
   | 'parse'
   | 'clean'
   | 'chunk'
   | 'embed'
   | 'index_vector'
   | 'index_keyword'
-  | 'failed'
   | 'commit';
 
-export type ProcessingJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'retrying';
+export type ProcessingJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 export interface ProcessingErrorSummary {
   code: string;
   message: string;
+  retryable?: boolean;
   stage?: DocumentProcessingStage;
 }
 
 export interface DocumentProcessingStageRecord {
-  stage: DocumentProcessingStage;
+  stage: LegacyDocumentProcessingStage;
   status: ProcessingJobStatus;
   latencyMs?: number;
   error?: ProcessingErrorSummary;
@@ -303,14 +312,16 @@ export interface DocumentProcessingJob {
   id: ID;
   documentId: ID;
   status: ProcessingJobStatus;
-  currentStage?: DocumentProcessingStage;
+  stage: DocumentProcessingStage;
+  currentStage?: LegacyDocumentProcessingStage;
   stages: DocumentProcessingStageRecord[];
-  progress?: {
+  progress: {
     percent: number;
     processedChunks?: number;
     totalChunks?: number;
   };
   error?: ProcessingErrorSummary;
+  attempts: number;
   startedAt?: ISODateTime;
   completedAt?: ISODateTime;
   createdAt: ISODateTime;
@@ -415,7 +426,9 @@ Response: `CreateDocumentFromUploadResponse`
 
 前端上传页必须通过上传弹窗显式展示目标 knowledge base 与 embedding model 选择，不能把这些选择器常驻在文档列表顶部。当前横向 MVP 允许把 `embeddingModelId` 放入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，由后端保存为 document metadata；后续接入真实异步 embedding provider 时应继续使用同一 display contract，不让 provider secret、SDK response 或向量细节穿透到前端。
 
-`DocumentProcessingJob.progress.percent` 是前端进度条的稳定投影，取值范围 `0-100`。文档列表 Table 必须以行内进度列展示每个 document 的线上处理进度；上传弹窗内的进度只表示当前文件选择/上传动作。同步 MVP 可在 job 完成后直接返回 `100`；异步实现必须在 `parse/chunk/embed/index_vector/commit` 等 stage 更新时保持单调推进。`processedChunks` 与 `totalChunks` 只用于展示，不作为前端判断任务终态的依据；终态仍以 `status` 为准。
+`DocumentProcessingJob.progress.percent` 是前端进度条的稳定投影，取值范围 `0-100`。文档列表 Table 必须以行内进度列展示每个 document 的线上处理进度；上传弹窗内的进度只表示当前文件选择/上传动作。同步 MVP 会按 `parsing/chunking/embedding/indexing/succeeded` 写入 `15/35/60/85/100`，异步实现必须按稳定 `stage` 保持单调推进。`processedChunks` 与 `totalChunks` 只用于展示，不作为前端判断任务终态的依据；终态仍以 `status` 为准。`currentStage` 和 `stages[].stage` 是 legacy 投影，保留给旧 UI；新 UI 默认读取 `stage/progress/error/attempts`。
+
+失败 job 的 `error` 必须包含稳定 `code/message/stage`，可重试失败还必须包含 `retryable: true`。当前 embedding / indexing 失败分别返回 `knowledge_ingestion_embedding_failed` 与 `knowledge_ingestion_index_failed`；`POST /documents/:documentId/reprocess` 必须创建新的 job id，并把 `attempts` 设置为上一条 job attempts + 1。
 
 Endpoint contract:
 

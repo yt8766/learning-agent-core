@@ -2,8 +2,7 @@ import type {
   KnowledgeBase,
   KnowledgeBaseCreateRequest,
   KnowledgeBaseMember,
-  KnowledgeBaseMemberCreateRequest,
-  KnowledgeBaseMemberRole
+  KnowledgeBaseMemberCreateRequest
 } from '@agent/core';
 
 import type {
@@ -11,7 +10,8 @@ import type {
   DocumentProcessingJobRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
-import type { KnowledgeUploadContentType, KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
+import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
+import { mapBase, mapChunk, mapDocument, mapJob, mapMember, mapUpload } from './knowledge-postgres.mappers';
 import type { KnowledgeRepository } from './knowledge.repository';
 
 export interface PostgresKnowledgeClient {
@@ -198,17 +198,21 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
   async createJob(input: DocumentProcessingJobRecord): Promise<DocumentProcessingJobRecord> {
     const result = await this.client.query(
       `insert into knowledge_document_jobs
-        (id, document_id, status, current_stage, stages, error_code, error_message, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       returning id, document_id, status, current_stage, stages, error_code, error_message, created_at, updated_at`,
+        (id, document_id, status, stage, current_stage, stages, progress, error, error_code, error_message, attempts, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       returning id, document_id, status, stage, current_stage, stages, progress, error, error_code, error_message, attempts, created_at, updated_at`,
       [
         input.id,
         input.documentId,
         input.status,
+        input.stage,
         input.currentStage,
         JSON.stringify(input.stages),
+        JSON.stringify(input.progress),
+        input.error ? JSON.stringify(input.error) : null,
         input.errorCode ?? null,
         input.errorMessage ?? null,
+        input.attempts,
         input.createdAt,
         input.updatedAt
       ]
@@ -219,16 +223,20 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
   async updateJob(input: DocumentProcessingJobRecord): Promise<DocumentProcessingJobRecord> {
     const result = await this.client.query(
       `update knowledge_document_jobs
-       set status = $2, current_stage = $3, stages = $4, error_code = $5, error_message = $6, updated_at = $7
+       set status = $2, stage = $3, current_stage = $4, stages = $5, progress = $6, error = $7, error_code = $8, error_message = $9, attempts = $10, updated_at = $11
        where id = $1
-       returning id, document_id, status, current_stage, stages, error_code, error_message, created_at, updated_at`,
+       returning id, document_id, status, stage, current_stage, stages, progress, error, error_code, error_message, attempts, created_at, updated_at`,
       [
         input.id,
         input.status,
+        input.stage,
         input.currentStage,
         JSON.stringify(input.stages),
+        JSON.stringify(input.progress),
+        input.error ? JSON.stringify(input.error) : null,
         input.errorCode ?? null,
         input.errorMessage ?? null,
+        input.attempts,
         input.updatedAt
       ]
     );
@@ -237,7 +245,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
 
   async findLatestJobForDocument(documentId: string): Promise<DocumentProcessingJobRecord | undefined> {
     const result = await this.client.query(
-      `select id, document_id, status, current_stage, stages, error_code, error_message, created_at, updated_at
+      `select id, document_id, status, stage, current_stage, stages, progress, error, error_code, error_message, attempts, created_at, updated_at
        from knowledge_document_jobs
        where document_id = $1
        order by created_at desc
@@ -284,107 +292,6 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     );
     return result.rows.map(mapChunk);
   }
-}
-
-function mapBase(row: Record<string, unknown>): KnowledgeBase {
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    description: String(row.description ?? ''),
-    createdByUserId: String(row.created_by_user_id),
-    status: row.status as KnowledgeBase['status'],
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at)
-  };
-}
-
-function mapMember(row: Record<string, unknown>): KnowledgeBaseMember {
-  return {
-    knowledgeBaseId: String(row.knowledge_base_id),
-    userId: String(row.user_id),
-    role: row.role as KnowledgeBaseMemberRole,
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at)
-  };
-}
-
-function mapUpload(row: Record<string, unknown>): KnowledgeUploadRecord {
-  return {
-    uploadId: String(row.upload_id),
-    knowledgeBaseId: String(row.knowledge_base_id),
-    filename: String(row.filename),
-    size: Number(row.size_bytes),
-    contentType: row.content_type as KnowledgeUploadContentType,
-    objectKey: String(row.object_key),
-    ossUrl: String(row.oss_url),
-    uploadedByUserId: String(row.uploaded_by_user_id),
-    uploadedAt: toIsoString(row.uploaded_at)
-  };
-}
-
-function mapDocument(row: Record<string, unknown>): KnowledgeDocumentRecord {
-  return {
-    id: String(row.id),
-    workspaceId: String(row.workspace_id),
-    knowledgeBaseId: String(row.knowledge_base_id),
-    uploadId: String(row.upload_id),
-    objectKey: String(row.object_key),
-    filename: String(row.filename),
-    title: String(row.title),
-    sourceType: 'user-upload',
-    status: row.status as KnowledgeDocumentRecord['status'],
-    version: String(row.version),
-    chunkCount: Number(row.chunk_count),
-    embeddedChunkCount: Number(row.embedded_chunk_count),
-    createdBy: String(row.created_by),
-    metadata: parseJsonObject(row.metadata),
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at)
-  };
-}
-
-function mapJob(row: Record<string, unknown>): DocumentProcessingJobRecord {
-  return {
-    id: String(row.id),
-    documentId: String(row.document_id),
-    status: row.status as DocumentProcessingJobRecord['status'],
-    currentStage: row.current_stage as DocumentProcessingJobRecord['currentStage'],
-    stages: Array.isArray(row.stages) ? (row.stages as DocumentProcessingJobRecord['stages']) : [],
-    errorCode: row.error_code ? String(row.error_code) : undefined,
-    errorMessage: row.error_message ? String(row.error_message) : undefined,
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at)
-  };
-}
-
-function mapChunk(row: Record<string, unknown>): DocumentChunkRecord {
-  return {
-    id: String(row.id),
-    documentId: String(row.document_id),
-    ordinal: Number(row.ordinal),
-    content: String(row.content),
-    tokenCount: Number(row.token_count),
-    embeddingStatus: row.embedding_status as DocumentChunkRecord['embeddingStatus'],
-    vectorIndexStatus: row.vector_index_status as DocumentChunkRecord['vectorIndexStatus'],
-    keywordIndexStatus: row.keyword_index_status as DocumentChunkRecord['keywordIndexStatus'],
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at)
-  };
-}
-
-function parseJsonObject(value: unknown): Record<string, unknown> {
-  if (!value) {
-    return {};
-  }
-  if (typeof value === 'string') {
-    const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-  }
-  return typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
-function toIsoString(value: unknown): string {
-  return value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
 }
 
 function requiredRow(row: Record<string, unknown> | undefined, name: string): Record<string, unknown> {

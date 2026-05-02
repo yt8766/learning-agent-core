@@ -69,8 +69,11 @@ export class KnowledgeDocumentService {
       id: `job_${randomUUID()}`,
       documentId: document.id,
       status: 'queued',
+      stage: 'uploaded',
       currentStage: 'queued',
       stages: [{ stage: 'queued', status: 'queued', startedAt: now }],
+      progress: { percent: 0 },
+      attempts: 1,
       createdAt: now,
       updatedAt: now
     };
@@ -132,6 +135,8 @@ export class KnowledgeDocumentService {
   async reprocessDocument(actor: KnowledgeActor, documentId: string): Promise<CreateDocumentFromUploadResponse> {
     const document = await this.getDocument(actor, documentId);
     const now = new Date().toISOString();
+    const latestJob = await this.repository.findLatestJobForDocument(document.id);
+    const nextAttempt = (latestJob?.attempts ?? 0) + 1;
     await this.repository.updateDocument({
       ...document,
       status: 'queued',
@@ -141,8 +146,11 @@ export class KnowledgeDocumentService {
       id: `job_${randomUUID()}`,
       documentId: document.id,
       status: 'queued',
+      stage: 'uploaded',
       currentStage: 'queued',
       stages: [{ stage: 'queued', status: 'queued', startedAt: now }],
+      progress: { percent: 0 },
+      attempts: nextAttempt,
       createdAt: now,
       updatedAt: now
     };
@@ -216,9 +224,13 @@ export class KnowledgeDocumentService {
     return {
       ...job,
       progress: {
-        percent: deriveProgressPercent(job, processedChunks, totalChunks),
-        processedChunks,
-        totalChunks
+        ...job.progress,
+        percent:
+          job.status === 'succeeded'
+            ? 100
+            : (job.progress.percent ?? deriveProgressPercent(job, processedChunks, totalChunks)),
+        processedChunks: job.progress.processedChunks ?? processedChunks,
+        totalChunks: job.progress.totalChunks ?? totalChunks
       }
     };
   }

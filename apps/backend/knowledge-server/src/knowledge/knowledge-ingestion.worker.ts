@@ -4,7 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { KnowledgeServiceError } from './knowledge.errors';
 import type {
   DocumentChunkRecord,
+  DocumentProcessingJobError,
   DocumentProcessingJobRecord,
+  DocumentProcessingJobProgress,
+  DocumentProcessingStage,
   KnowledgeDocumentRecord,
   KnowledgeJobStage
 } from './domain/knowledge-document.types';
@@ -31,14 +34,17 @@ export class KnowledgeIngestionWorker {
     }
 
     const now = new Date().toISOString();
-    await this.repository.updateJob({
+    job = await this.repository.updateJob({
       ...job,
       status: 'running',
+      stage: 'parsing',
       currentStage: 'parse',
+      progress: { percent: 15 },
       updatedAt: now,
       stages: [{ stage: 'parse', status: 'running', startedAt: now }]
     });
 
+    job = await this.advanceJob(job, 'chunking', 'chunk', { percent: 35 });
     const chunks = splitIntoChunks(object.body.toString('utf8')).map((content, index): DocumentChunkRecord => {
       const timestamp = new Date().toISOString();
       return {
@@ -59,6 +65,16 @@ export class KnowledgeIngestionWorker {
       return this.processWithSdkRuntime({ job, document, chunks, startedAt: now });
     }
 
+    job = await this.advanceJob(job, 'embedding', 'embed', {
+      percent: 60,
+      processedChunks: chunks.length,
+      totalChunks: chunks.length
+    });
+    job = await this.advanceJob(job, 'indexing', 'index_vector', {
+      percent: 85,
+      processedChunks: chunks.length,
+      totalChunks: chunks.length
+    });
     await this.repository.saveChunks(document.id, chunks);
     await this.repository.updateDocument({
       ...document,
@@ -72,7 +88,9 @@ export class KnowledgeIngestionWorker {
     return this.repository.updateJob({
       ...job,
       status: 'succeeded',
+      stage: 'succeeded',
       currentStage: 'commit',
+      progress: { percent: 100, processedChunks: chunks.length, totalChunks: chunks.length },
       updatedAt: completedAt,
       stages: [
         { stage: 'parse', status: 'succeeded', startedAt: now, completedAt },
@@ -91,10 +109,16 @@ export class KnowledgeIngestionWorker {
     chunks: DocumentChunkRecord[];
     startedAt: string;
   }): Promise<DocumentProcessingJobRecord> {
-    const { job, document, chunks, startedAt } = input;
+    let { job } = input;
+    const { document, chunks, startedAt } = input;
     let embeddings: number[][];
 
     try {
+      job = await this.advanceJob(job, 'embedding', 'embed', {
+        percent: 60,
+        processedChunks: 0,
+        totalChunks: chunks.length
+      });
       embeddings = await this.embedChunks(chunks);
       assertEmbeddingCount(chunks, embeddings);
     } catch (error) {
@@ -109,6 +133,11 @@ export class KnowledgeIngestionWorker {
     }));
 
     try {
+      job = await this.advanceJob(job, 'indexing', 'index_vector', {
+        percent: 85,
+        processedChunks: embeddedChunks.length,
+        totalChunks: embeddedChunks.length
+      });
       const upsertResult = await this.sdkRuntime.runtime.vectorStore.upsert({
         records: embeddedChunks.map((chunk, index) => ({
           id: chunk.id,
@@ -142,7 +171,9 @@ export class KnowledgeIngestionWorker {
     return this.repository.updateJob({
       ...job,
       status: 'succeeded',
+      stage: 'succeeded',
       currentStage: 'commit',
+      progress: { percent: 100, processedChunks: indexedChunks.length, totalChunks: indexedChunks.length },
       updatedAt: completedAt,
       stages: [
         { stage: 'parse', status: 'succeeded', startedAt, completedAt },
@@ -176,6 +207,7 @@ export class KnowledgeIngestionWorker {
     const failedAt = new Date().toISOString();
     const errorCode = getStageErrorCode(input.stage);
     const errorMessage = getErrorMessage(input.error);
+    const error = createJobError(input.stage, errorMessage);
     const failedChunks = input.chunks.map(chunk => ({
       ...chunk,
       embeddingStatus: input.stage === 'embed' ? ('failed' as const) : chunk.embeddingStatus,
@@ -194,7 +226,10 @@ export class KnowledgeIngestionWorker {
     await this.repository.updateJob({
       ...input.job,
       status: 'failed',
+      stage: error.stage,
       currentStage: input.stage,
+      progress: getFailureProgress(input.stage, failedChunks),
+      error,
       errorCode,
       errorMessage,
       updatedAt: failedAt,
@@ -220,6 +255,22 @@ export class KnowledgeIngestionWorker {
           message: errorMessage
         }
       ]
+    });
+  }
+
+  private async advanceJob(
+    job: DocumentProcessingJobRecord,
+    stage: DocumentProcessingStage,
+    currentStage: KnowledgeJobStage,
+    progress: DocumentProcessingJobProgress
+  ): Promise<DocumentProcessingJobRecord> {
+    return this.repository.updateJob({
+      ...job,
+      status: 'running',
+      stage,
+      currentStage,
+      progress,
+      updatedAt: new Date().toISOString()
     });
   }
 }
@@ -278,6 +329,35 @@ function toIngestionError(
 
 function getStageErrorCode(stage: Extract<KnowledgeJobStage, 'embed' | 'index_vector'>) {
   return stage === 'embed' ? 'knowledge_embedding_failed' : 'knowledge_index_failed';
+}
+
+function createJobError(
+  stage: Extract<KnowledgeJobStage, 'embed' | 'index_vector'>,
+  message: string
+): DocumentProcessingJobError {
+  const stableStage = toStableJobStage(stage);
+  return {
+    code: stableStage === 'embedding' ? 'knowledge_ingestion_embedding_failed' : 'knowledge_ingestion_index_failed',
+    message,
+    retryable: stableStage === 'embedding' || stableStage === 'indexing',
+    stage: stableStage
+  };
+}
+
+function getFailureProgress(
+  stage: Extract<KnowledgeJobStage, 'embed' | 'index_vector'>,
+  chunks: DocumentChunkRecord[]
+): DocumentProcessingJobProgress {
+  if (stage === 'embed') {
+    return { percent: 60, processedChunks: 0, totalChunks: chunks.length };
+  }
+  return { percent: 85, processedChunks: countEmbeddedChunks(chunks), totalChunks: chunks.length };
+}
+
+function toStableJobStage(
+  stage: Extract<KnowledgeJobStage, 'embed' | 'index_vector'>
+): Extract<DocumentProcessingStage, 'embedding' | 'indexing'> {
+  return stage === 'embed' ? 'embedding' : 'indexing';
 }
 
 function getErrorMessage(error: unknown): string {
