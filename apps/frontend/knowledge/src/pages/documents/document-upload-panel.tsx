@@ -1,18 +1,20 @@
 import { useRef } from 'react';
-import { Alert, Button, Card, Descriptions, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Progress, Space, Tag, Typography } from 'antd';
 import { InboxOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 
 import { useDocumentUpload } from '../../hooks/use-document-upload';
 
 export function DocumentUploadPanel({
+  embeddingModelId,
   knowledgeBaseId,
   onUploaded
 }: {
+  embeddingModelId?: string;
   knowledgeBaseId: string;
   onUploaded?: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const upload = useDocumentUpload({ knowledgeBaseId });
+  const upload = useDocumentUpload({ embeddingModelId, knowledgeBaseId });
   const busy = upload.status === 'uploading' || upload.status === 'creating' || upload.status === 'polling';
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -20,8 +22,10 @@ export function DocumentUploadPanel({
     if (!file) {
       return;
     }
-    void upload.upload(file).then(() => {
-      onUploaded?.();
+    void upload.upload(file).then(uploaded => {
+      if (uploaded) {
+        onUploaded?.();
+      }
     });
     event.currentTarget.value = '';
   }
@@ -53,6 +57,11 @@ export function DocumentUploadPanel({
           </Button>
           <Tag>{upload.status}</Tag>
         </Space>
+        <Progress
+          percent={upload.progressPercent}
+          size="small"
+          status={upload.status === 'failed' ? 'exception' : 'active'}
+        />
         {upload.error ? <Alert message={upload.error.message} type="error" /> : null}
         {upload.uploadResult ? (
           <Descriptions bordered column={1} size="small">

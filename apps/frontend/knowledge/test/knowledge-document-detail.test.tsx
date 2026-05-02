@@ -263,6 +263,12 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
     listEvalDatasets: vi.fn<KnowledgeFrontendApi['listEvalDatasets']>(),
     listEvalRunResults: vi.fn<KnowledgeFrontendApi['listEvalRunResults']>(),
     listEvalRuns: vi.fn<KnowledgeFrontendApi['listEvalRuns']>(),
+    listEmbeddingModels: vi.fn<KnowledgeFrontendApi['listEmbeddingModels']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
     listKnowledgeBases: vi.fn<KnowledgeFrontendApi['listKnowledgeBases']>().mockResolvedValue({
       items: [],
       total: 0,

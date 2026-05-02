@@ -10,6 +10,7 @@ import type {
   DeleteDocumentResponse,
   DocumentChunksResponse,
   DocumentProcessingJob,
+  EmbeddingModelOption,
   EvalCaseResult,
   EvalRunComparison,
   EvalDataset,
@@ -61,6 +62,13 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     return normalizeKnowledgeBases(result);
   }
 
+  async listEmbeddingModels() {
+    const result = await this.get<PageResult<EmbeddingModelOption> | KnowledgeEmbeddingModelsServiceResponse>(
+      '/knowledge/embedding-models'
+    );
+    return normalizeEmbeddingModels(result);
+  }
+
   listDocuments(input: { knowledgeBaseId?: string } = {}) {
     const params = new URLSearchParams();
     if (input.knowledgeBaseId) {
@@ -102,7 +110,7 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     });
     return this.createDocumentFromUpload(input.knowledgeBaseId, {
       filename: uploadResult.filename,
-      metadata: input.metadata,
+      metadata: mergeUploadMetadata(input.metadata, input.embeddingModelId),
       objectKey: uploadResult.objectKey,
       uploadId: uploadResult.uploadId
     });
@@ -261,6 +269,22 @@ interface KnowledgeServiceBase {
   updatedAt: string;
 }
 
+interface KnowledgeEmbeddingModelsServiceResponse {
+  items: Array<{
+    id: string;
+    label?: string;
+    name?: string;
+    provider: string;
+    dimension?: number;
+    dimensions?: number;
+    description?: string;
+    status?: 'active' | 'disabled' | 'available' | 'unconfigured' | 'degraded';
+  }>;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+}
+
 function normalizeKnowledgeBases(
   input: PageResult<KnowledgeBase> | KnowledgeBasesServiceResponse
 ): PageResult<KnowledgeBase> {
@@ -291,6 +315,40 @@ function normalizeKnowledgeBase(base: KnowledgeServiceBase): KnowledgeBase {
     createdBy: base.createdByUserId,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt
+  };
+}
+
+function normalizeEmbeddingModels(
+  input: PageResult<EmbeddingModelOption> | KnowledgeEmbeddingModelsServiceResponse
+): PageResult<EmbeddingModelOption> {
+  return {
+    items: input.items.map(normalizeEmbeddingModel),
+    total: input.total ?? input.items.length,
+    page: input.page ?? 1,
+    pageSize: input.pageSize ?? input.items.length
+  };
+}
+
+function normalizeEmbeddingModel(
+  item: EmbeddingModelOption | KnowledgeEmbeddingModelsServiceResponse['items'][number]
+): EmbeddingModelOption {
+  return {
+    id: item.id,
+    name: item.name ?? ('label' in item ? item.label : undefined) ?? item.id,
+    provider: item.provider,
+    dimension: item.dimension ?? ('dimensions' in item ? item.dimensions : undefined),
+    description: item.description,
+    status: item.status
+  };
+}
+
+function mergeUploadMetadata(metadata: Record<string, unknown> | undefined, embeddingModelId: string | undefined) {
+  if (!embeddingModelId) {
+    return metadata;
+  }
+  return {
+    ...metadata,
+    embeddingModelId
   };
 }
 

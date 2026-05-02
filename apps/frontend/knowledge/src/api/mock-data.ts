@@ -90,7 +90,8 @@ export const mockTraceDetail = {
       chunkId: 'chunk_1',
       title: '前端规范',
       quote: '默认使用顶层静态 import',
-      score: 0.91
+      score: 0.91,
+      uri: 'docs/conventions/project-conventions.md'
     }
   ],
   spans: [

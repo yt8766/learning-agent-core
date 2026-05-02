@@ -7,6 +7,7 @@ import { useDocumentUpload } from '../src/hooks/use-document-upload';
 import type {
   DocumentChunk,
   DocumentProcessingJob,
+  EmbeddingModelOption,
   KnowledgeDocument,
   KnowledgeBase,
   PageResult
@@ -88,12 +89,13 @@ interface CoreOpsApi {
 }
 
 function UploadProbe({ knowledgeBaseId }: { knowledgeBaseId: string }) {
-  capturedUpload = useDocumentUpload({ knowledgeBaseId, pollIntervalMs: 10 });
+  capturedUpload = useDocumentUpload({ embeddingModelId: 'embed_openai_small', knowledgeBaseId, pollIntervalMs: 10 });
   return (
     <div>
       <span>{capturedUpload.status}</span>
       <span>{capturedUpload.uploadResult?.filename}</span>
       <span>{capturedUpload.job?.status}</span>
+      <span>{capturedUpload.progressPercent}</span>
     </div>
   );
 }
@@ -134,11 +136,13 @@ describe('knowledge upload flow', () => {
     expect(client.uploadKnowledgeFile).toHaveBeenCalledWith({ file, knowledgeBaseId: 'kb_frontend' });
     expect(client.createDocumentFromUpload).toHaveBeenCalledWith('kb_frontend', {
       filename: 'runbook.md',
+      metadata: { embeddingModelId: 'embed_openai_small' },
       objectKey: 'knowledge/kb_frontend/upload_1/runbook.md',
       uploadId: 'upload_1'
     });
     expect(capturedUpload.status).toBe('polling');
     expect(capturedUpload.uploadResult?.filename).toBe('runbook.md');
+    expect(capturedUpload.progressPercent).toBeGreaterThan(0);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
@@ -150,6 +154,7 @@ describe('knowledge upload flow', () => {
     expect(client.getLatestDocumentJob).toHaveBeenCalledWith('doc_upload');
     expect(capturedUpload.status).toBe('succeeded');
     expect(capturedUpload.job?.status).toBe('succeeded');
+    expect(capturedUpload.progressPercent).toBe(100);
   });
 
   it('rejects unsupported web/html files before upload', async () => {
@@ -214,6 +219,12 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
     listKnowledgeBases: vi.fn<() => Promise<PageResult<KnowledgeBase>>>().mockResolvedValue({
       items: [knowledgeBase],
       total: 1,
+      page: 1,
+      pageSize: 20
+    }),
+    listEmbeddingModels: vi.fn<() => Promise<PageResult<EmbeddingModelOption>>>().mockResolvedValue({
+      items: [],
+      total: 0,
       page: 1,
       pageSize: 20
     }),

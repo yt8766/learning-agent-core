@@ -205,6 +205,7 @@ function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFron
     listEvalRunResults: vi.fn<KnowledgeFrontendApi['listEvalRunResults']>(),
     listEvalRuns: vi.fn<KnowledgeFrontendApi['listEvalRuns']>(),
     listDocuments: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEmbeddingModels: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listKnowledgeBases: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     createDocumentFromUpload: vi.fn<KnowledgeFrontendApi['createDocumentFromUpload']>(),

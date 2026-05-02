@@ -146,7 +146,7 @@ describe('knowledge real API paths', () => {
     });
 
     const file = new File(['hello'], 'runbook.md', { type: 'text/markdown' });
-    await client.uploadDocument({ knowledgeBaseId: 'kb_1', file });
+    await client.uploadDocument({ embeddingModelId: 'embed_openai_small', knowledgeBaseId: 'kb_1', file });
 
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       'http://127.0.0.1:3020/api/knowledge/bases/kb_1/uploads',
@@ -157,11 +157,35 @@ describe('knowledge real API paths', () => {
         method: 'POST',
         body: JSON.stringify({
           filename: 'runbook.md',
+          metadata: { embeddingModelId: 'embed_openai_small' },
           objectKey: 'knowledge/kb_1/upload_1/runbook.md',
           uploadId: 'upload_1'
         })
       })
     );
+  });
+
+  it('lists embedding model options through knowledge-server', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [{ id: 'embed_openai_small', name: 'OpenAI text-embedding-3-small', provider: 'openai' }],
+          total: 1,
+          page: 1,
+          pageSize: 20
+        }),
+        { status: 200 }
+      )
+    );
+    const client = createKnowledgeApiClient({
+      baseUrl: 'http://127.0.0.1:3020/api',
+      getAccessToken: () => 'access-token',
+      fetchImpl: fetcher
+    });
+
+    await client.listEmbeddingModels();
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/embedding-models');
   });
 
   it('reprocesses a document through knowledge-server core operations path', async () => {

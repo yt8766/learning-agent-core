@@ -11,6 +11,7 @@ import type {
   DeleteDocumentResponse,
   DocumentChunksResponse,
   DocumentProcessingJob,
+  EmbeddingModelOption,
   EvalCaseResult,
   EvalRunComparison,
   EvalDataset,
@@ -31,6 +32,7 @@ import type {
 export interface KnowledgeFrontendApi {
   getDashboardOverview(): Promise<DashboardOverview>;
   listKnowledgeBases(): Promise<PageResult<KnowledgeBase>>;
+  listEmbeddingModels(): Promise<PageResult<EmbeddingModelOption>>;
   listDocuments(input?: { knowledgeBaseId?: string }): Promise<PageResult<KnowledgeDocument>>;
   uploadKnowledgeFile(input: UploadKnowledgeFileRequest): Promise<KnowledgeUploadResult>;
   createDocumentFromUpload(

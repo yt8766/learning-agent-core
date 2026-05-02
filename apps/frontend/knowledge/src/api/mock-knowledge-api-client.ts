@@ -8,6 +8,7 @@ import type {
   DocumentChunksResponse,
   DocumentProcessingJob,
   DeleteDocumentResponse,
+  EmbeddingModelOption,
   EvalCaseResult,
   EvalRunComparison,
   KnowledgeDocument,
@@ -36,6 +37,18 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
 
   async listKnowledgeBases() {
     return page(mockKnowledgeBases);
+  }
+
+  async listEmbeddingModels(): Promise<PageResult<EmbeddingModelOption>> {
+    return page([
+      {
+        id: 'embed_mock_default',
+        name: 'Mock Embedding Small',
+        provider: 'mock',
+        dimension: 1536,
+        status: 'active'
+      }
+    ]);
   }
 
   async listDocuments() {
@@ -89,7 +102,14 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   async uploadDocument(input: UploadDocumentRequest): Promise<UploadDocumentResponse> {
-    const document = { ...mockDocuments[0]!, filename: input.file.name, title: input.file.name };
+    const document = {
+      ...mockDocuments[0]!,
+      filename: input.file.name,
+      metadata: input.embeddingModelId
+        ? { ...input.metadata, embeddingModelId: input.embeddingModelId }
+        : input.metadata,
+      title: input.file.name
+    };
     return {
       document,
       job: {
@@ -121,7 +141,8 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   async chat(input: ChatRequest): Promise<ChatResponse> {
-    const conversationId = input.conversationId ?? 'conv_1';
+    const conversationId = input.metadata?.conversationId ?? input.conversationId ?? 'conv_1';
+    const message = input.message ?? latestUserMessage(input.messages) ?? '';
     const answer = '默认使用顶层静态 import；动态导入只用于代码分割或浏览器专属重资产加载。';
     return {
       conversationId,
@@ -132,7 +153,7 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         id: 'msg_user',
         conversationId,
         role: 'user',
-        content: input.message,
+        content: message,
         createdAt: new Date().toISOString()
       },
       assistantMessage: {
@@ -195,6 +216,20 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       perMetricDelta: {}
     };
   }
+}
+
+function latestUserMessage(messages: ChatRequest['messages']): string | undefined {
+  const message = [...(messages ?? [])].reverse().find(item => item.role === 'user');
+  if (!message) {
+    return undefined;
+  }
+  if (typeof message.content === 'string') {
+    return message.content;
+  }
+  return message.content
+    .filter(part => part.type === 'text')
+    .map(part => part.text)
+    .join('\n');
 }
 
 function page<T>(items: T[]): PageResult<T> {
