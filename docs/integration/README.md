@@ -28,6 +28,7 @@
 - LLM Gateway UI Hydration Notes：[llm-gateway-ui-hydration.md](/docs/integration/llm-gateway-ui-hydration.md)
 - LLM Gateway Vercel Preview 验收：[llm-gateway-vercel-preview.md](/docs/integration/llm-gateway-vercel-preview.md)
 - Agent Workspace Vault + Skill Flywheel MVP：[agent-workspace-vault-and-skill-flywheel-design.md](/docs/integration/agent-workspace-vault-and-skill-flywheel-design.md)
+- Knowledge SDK RAG Rollout：[knowledge-sdk-rag-rollout.md](/docs/integration/knowledge-sdk-rag-rollout.md)
 
 约定：
 
@@ -46,6 +47,7 @@
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/maps/system-flow-current-state.md)
 - [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
+- [Knowledge SDK RAG Rollout](/docs/integration/knowledge-sdk-rag-rollout.md)
 - [LLM Gateway 登录 PostgreSQL 部署](/docs/integration/llm-gateway-postgres-login.md)
 - [LLM Gateway Provider Runtime](/docs/integration/llm-gateway-provider-runtime.md)
 - [LLM Gateway UI Hydration Notes](/docs/integration/llm-gateway-ui-hydration.md)

@@ -233,9 +233,9 @@ function createPlaceholderDocument(documentId: string) {
 }
 
 function defaultEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
-  const id = process.env.KNOWLEDGE_EMBEDDING_MODEL_ID ?? 'text-embedding-3-small';
-  const provider = process.env.KNOWLEDGE_EMBEDDING_PROVIDER ?? 'openai';
-  const status = process.env.KNOWLEDGE_EMBEDDING_API_KEY || process.env.OPENAI_API_KEY ? 'available' : 'unconfigured';
+  const id = process.env.KNOWLEDGE_EMBEDDING_MODEL ?? 'text-embedding-3-small';
+  const provider = 'openai-compatible';
+  const status = process.env.KNOWLEDGE_LLM_API_KEY ? 'available' : 'unconfigured';
   return {
     items: [{ id, label: id, provider, status }]
   };

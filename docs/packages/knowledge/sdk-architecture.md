@@ -56,7 +56,9 @@ Entrypoint status:
 - Current: `@agent/knowledge` exists as the current package root and exposes current retrieval/indexing contracts according to existing package exports.
 - Current: `@agent/knowledge/core` exposes the SDK core contract facade: schema-first knowledge base/provider health records, provider interfaces, SDK error classes, constants, and the generic async pipeline type. It has no vendor SDK dependency.
 - Target-only: `@agent/knowledge/client` is a planned public facade. Frontend code must not import it until a later slice actually adds `src/client` plus matching package exports, tests, and docs.
-- Target planned: `@agent/knowledge/browser`, `@agent/knowledge/node`, `@agent/knowledge/adapters/*`, and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
+- Current: `@agent/knowledge/node` exposes node-only runtime factories, including `createDefaultKnowledgeSdkRuntime()` for OpenAI-compatible chat/embedding plus Supabase pgvector vector store, and `createKnowledgeRuntime()` for custom provider composition. It is intentionally not re-exported from the root package.
+- Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Supabase pgvector and OpenAI-compatible providers.
+- Target planned: `@agent/knowledge/browser` and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
 
 Current implemented public package entrypoint:
@@ -64,6 +66,10 @@ Current implemented public package entrypoint:
 ```text
 @agent/knowledge
 @agent/knowledge/core
+@agent/knowledge/node
+@agent/knowledge/adapters
+@agent/knowledge/adapters/supabase
+@agent/knowledge/adapters/openai-compatible
 ```
 
 Target-only public subpaths. Each subpath below requires source ownership, package exports, tests, and docs in the same migration slice before callers may depend on it:
@@ -76,8 +82,6 @@ Target-only public subpaths. Each subpath below requires source ownership, packa
 @agent/knowledge/eval
 @agent/knowledge/observability
 @agent/knowledge/browser
-@agent/knowledge/node
-@agent/knowledge/adapters/supabase
 @agent/knowledge/adapters/openai
 @agent/knowledge/adapters/qdrant
 @agent/knowledge/adapters/weaviate
