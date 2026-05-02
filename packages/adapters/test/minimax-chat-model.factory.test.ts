@@ -73,5 +73,5 @@ describe('createMiniMaxChatModel', () => {
     expect(bodies[0]).not.toHaveProperty('stream_options');
     expect(bodies[0]).not.toHaveProperty('thinking');
     expect(bodies[0]).not.toHaveProperty('temperature');
-  }, 20_000);
+  });
 });

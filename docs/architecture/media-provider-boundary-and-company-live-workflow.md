@@ -696,7 +696,7 @@ CompanyLiveContentBrief
 | `supportAgent`      | reserved | 用户问题、投诉、退货退款。     |
 | `supplyAgent`       | reserved | 库存、备货、发货、物流时效。   |
 
-v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；关键词命中时可按路由规则选中对应专家，包括 reserved 专家。
+v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；第一版普通关键词路由只遍历这 6 个 core experts。`marketingAgent`、`intelligenceAgent`、`supportAgent`、`supplyAgent` 作为 reserved 专家定义和后续扩展点保留，当前不会被普通关键词路由选中。
 
 边界约束：
 
