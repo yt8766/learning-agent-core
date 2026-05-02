@@ -7,6 +7,7 @@ export interface JwtProviderOptions {
 
 export interface AuthJwtPayload {
   sub: string;
+  sid: string;
   username: string;
   roles: string[];
   status: string;

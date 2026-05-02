@@ -52,6 +52,16 @@ roles
 
 全局 auth 角色不等于知识库成员角色。即使用户有 `admin` 或 `knowledge_user` 全局角色，也必须通过 `knowledge_base_members` 获得具体知识库权限。
 
+## Runtime Repository Selection
+
+当前横向 MVP 支持按环境选择 repository：
+
+- 未配置 `DATABASE_URL` 时，`KnowledgeModule` 使用 `InMemoryKnowledgeRepository`，用于本地开发和单元测试闭环。
+- 配置 `DATABASE_URL` 时，`KnowledgeModule` 使用 `PostgresKnowledgeRepository`。
+- `AUTH_SERVER_JWT_SECRET` 必须与 `auth-server` 签发 token 的 secret 一致。
+
+PostgreSQL 边界由 `PostgresKnowledgeRepository` 收敛，接收项目自定义的 `PostgresKnowledgeClient`。`pg.Pool` 只在 `src/knowledge/runtime/knowledge-database.provider.ts` 中创建，不穿透到 controller、service 或共享 contract。
+
 ## PostgreSQL Tables
 
 ```sql
@@ -66,7 +76,7 @@ create table if not exists knowledge_bases (
 );
 
 create table if not exists knowledge_base_members (
-  knowledge_base_id text not null references knowledge_bases(id),
+  knowledge_base_id text not null references knowledge_bases(id) on delete cascade,
   user_id text not null,
   role text not null,
   created_at timestamptz not null default now(),

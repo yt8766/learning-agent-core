@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：integration
-适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
+适用范围：`apps/backend/agent-server`、`apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
 最后核对：2026-05-02
 
 本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
@@ -121,6 +121,13 @@ knowledge login -> auth-server /api/auth/login
 knowledge bases -> knowledge-server /api/knowledge/bases
 ```
 
+边界约定：
+
+- `apps/backend/auth-server` 是统一登录、refresh、logout、当前用户和用户管理的 canonical 服务。
+- `apps/backend/knowledge-server` 是 `apps/frontend/knowledge` 的 canonical knowledge business API 服务。
+- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；前端不要新增到 `/api/knowledge/v1` 的业务调用。
+- 知识库权限由 `knowledge-server` 自己的 membership 治理，不从 auth 全局角色直接推导。
+
 默认本地端口：
 
 ```text
@@ -138,7 +145,9 @@ agent-server     http://127.0.0.1:3000/api
 
 ## 联调建议
 
-1. 启动 backend：`pnpm --dir apps/backend/agent-server start:dev`
-2. 启动目标前端。
-3. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
-4. 再按本文检查调用顺序、SSE 兜底和 center 粒度。
+1. 启动 `auth-server`：`pnpm --dir apps/backend/auth-server start:dev`
+2. 启动 `knowledge-server`：`pnpm --dir apps/backend/knowledge-server start:dev`
+3. 需要 chat/runtime/admin 旧中心时，再启动 `agent-server`：`pnpm --dir apps/backend/agent-server start:dev`
+4. 启动目标前端。
+5. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
+6. 再按本文检查调用顺序、SSE 兜底和 center 粒度。

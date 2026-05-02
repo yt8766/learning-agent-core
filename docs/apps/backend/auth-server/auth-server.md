@@ -48,11 +48,23 @@ create table if not exists auth_refresh_tokens (
 );
 ```
 
-## Runtime Boundary
+## Runtime Repository Selection
 
-当前横向 MVP 默认使用 `InMemoryAuthRepository`，用于本地开发和单元测试闭环。PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PgClientLike`，避免让 `pg` 的第三方类型穿透到 auth 业务层。
+当前横向 MVP 支持按环境选择 repository：
 
-后续切换真实持久化时，只替换 `AuthModule` 中的 repository provider，不改变 `AuthService`、controller 或前端 contract。
+- 未配置 `DATABASE_URL` 时，`AuthModule` 使用 `InMemoryAuthRepository`，用于本地开发和单元测试闭环。
+- 配置 `DATABASE_URL` 时，`AuthModule` 使用 `PostgresAuthRepository`。
+- `AUTH_SERVER_JWT_SECRET` 必须与 `knowledge-server` 的 verifier secret 一致，否则 knowledge API 会拒绝 auth-server token。
+
+PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PostgresAuthClient`，避免让 `pg` 的第三方类型穿透到 auth 业务层。`pg.Pool` 只在 `src/auth/runtime/auth-database.provider.ts` 中创建。
+
+## HTTP Behavior
+
+- `POST /api/auth/login` 签发 Access Token、Refresh Token 和 Session。
+- `POST /api/auth/refresh` 执行 Refresh Token Rotation，并在旧 token 重放时撤销 session。
+- `POST /api/auth/logout` 根据 refresh token 撤销对应 session；未知 token 保持幂等成功。
+- `GET /api/auth/me` 通过 Access Token 中的 session id 校验当前 session 和账号状态后返回当前用户。
+- `GET/POST /api/auth/users/*` 需要 `admin` 或 `super_admin` 角色。
 
 ## Verification
 

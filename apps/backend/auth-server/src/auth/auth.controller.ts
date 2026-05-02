@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import {
   AuthLoginRequestSchema,
   AuthLogoutRequestSchema,
@@ -9,6 +9,9 @@ import {
 } from '@agent/core';
 
 import { AuthService } from './auth.service';
+import { AuthGuard } from './auth.guard';
+import { AuthUser } from './decorators/auth-user.decorator';
+import type { AuthJwtPayload } from './jwt.provider';
 
 @Controller('auth')
 export class AuthController {
@@ -25,21 +28,13 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Body() body: unknown): { success: true } {
-    AuthLogoutRequestSchema.parse(body);
-    return { success: true };
+  logout(@Body() body: unknown): Promise<{ success: true }> {
+    return this.authService.logout(AuthLogoutRequestSchema.parse(body));
   }
 
+  @UseGuards(AuthGuard)
   @Get('me')
-  me(): AuthMeResponse {
-    return {
-      account: {
-        id: 'user_demo',
-        username: 'demo',
-        displayName: 'Demo User',
-        roles: ['developer'],
-        status: 'enabled'
-      }
-    };
+  me(@AuthUser() user: AuthJwtPayload): Promise<AuthMeResponse> {
+    return this.authService.getCurrentUserFromPayload(user);
   }
 }
