@@ -3,7 +3,7 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
-最后核对：2026-05-02
+最后核对：2026-05-12
 
 本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求、专家会诊结论与经营判断，不直接调用厂商 API。
 
@@ -696,7 +696,7 @@ CompanyLiveContentBrief
 | `supportAgent`      | reserved | 用户问题、投诉、退货退款。     |
 | `supplyAgent`       | reserved | 库存、备货、发货、物流时效。   |
 
-v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；第一版普通关键词路由只遍历这 6 个 core experts。`marketingAgent`、`intelligenceAgent`、`supportAgent`、`supplyAgent` 作为 reserved 专家定义和后续扩展点保留，当前不会被普通关键词路由选中。
+v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；关键词命中时可按路由规则选中对应专家，包括 reserved 专家。
 
 边界约束：
 
