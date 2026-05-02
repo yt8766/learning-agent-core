@@ -1,19 +1,12 @@
 import type {
-  AgentFlowListResponse,
-  AgentFlowRecord,
-  AgentFlowRunRequest,
-  AgentFlowRunResponse,
-  AgentFlowSaveRequest,
-  AgentFlowSaveResponse,
   ChatMessage,
   ChatRequest,
   ChatResponse,
-  ChatConversation,
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
-  DocumentProcessingJob,
   DocumentChunksResponse,
+  DocumentProcessingJob,
   DeleteDocumentResponse,
   EmbeddingModelOption,
   EvalCaseResult,
@@ -21,12 +14,10 @@ import type {
   KnowledgeDocument,
   KnowledgeUploadResult,
   PageResult,
-  RagModelProfileSummary,
   ReprocessDocumentResponse,
   UploadKnowledgeFileRequest,
   UploadDocumentRequest,
-  UploadDocumentResponse,
-  KnowledgeRagStreamEvent
+  UploadDocumentResponse
 } from '../types/api';
 import type { KnowledgeFrontendApi } from './knowledge-api-provider';
 import {
@@ -34,31 +25,12 @@ import {
   mockDocuments,
   mockEvalDatasets,
   mockEvalRuns,
-  mockFailedIngestionJob,
   mockObservabilityMetrics,
   mockKnowledgeBases,
   mockTraceDetail
 } from './mock-data';
-import {
-  createDefaultAgentFlow,
-  createMockJob,
-  latestUserMessage,
-  page,
-  toSdkCitation,
-  upsertAgentFlow
-} from './mock-knowledge-api-client.helpers';
-import {
-  mockChatAssistantConfig,
-  mockSettingsApiKeys,
-  mockSettingsModelProviders,
-  mockSettingsSecurity,
-  mockSettingsStorage,
-  mockWorkspaceUsers
-} from './mock-knowledge-governance-data';
 
 export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
-  private agentFlows: AgentFlowRecord[] = [createDefaultAgentFlow()];
-
   async getDashboardOverview() {
     return mockDashboard;
   }
@@ -73,7 +45,7 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         id: 'embed_mock_default',
         name: 'Mock Embedding Small',
         provider: 'mock',
-        dimension: 1024,
+        dimension: 1536,
         status: 'active'
       }
     ]);
@@ -118,7 +90,7 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   async getLatestDocumentJob(documentId: string): Promise<DocumentProcessingJob> {
-    return { ...mockFailedIngestionJob, documentId };
+    return createMockJob(documentId);
   }
 
   async listDocumentChunks(documentId: string): Promise<DocumentChunksResponse> {
@@ -143,11 +115,8 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       job: {
         id: 'job_upload_mock',
         documentId: document.id,
-        stage: 'uploaded',
         status: 'queued',
         stages: [],
-        progress: { percent: 0 },
-        attempts: 1,
         createdAt: new Date().toISOString()
       }
     };
@@ -160,11 +129,8 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       job: {
         id: 'job_reprocess_mock',
         documentId,
-        stage: 'uploaded',
         status: 'queued',
         stages: [],
-        progress: { percent: 0 },
-        attempts: 2,
         createdAt: new Date().toISOString()
       }
     };
@@ -172,68 +138,6 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
 
   async deleteDocument(): Promise<DeleteDocumentResponse> {
     return { ok: true };
-  }
-
-  async listRagModelProfiles(): Promise<{ items: RagModelProfileSummary[] }> {
-    return {
-      items: [
-        {
-          id: 'coding-pro',
-          label: '用于编程',
-          description: '更专业的回答与控制',
-          useCase: 'coding',
-          enabled: true
-        },
-        {
-          id: 'daily-balanced',
-          label: '适合日常工作',
-          description: '同样强大，技术细节更少',
-          useCase: 'daily',
-          enabled: true
-        }
-      ]
-    };
-  }
-
-  async listConversations(): Promise<PageResult<ChatConversation>> {
-    return page([]);
-  }
-
-  async listWorkspaceUsers() {
-    return {
-      ...page(mockWorkspaceUsers),
-      summary: {
-        activeUsers: mockWorkspaceUsers.filter(user => user.status === 'active').length,
-        adminUsers: mockWorkspaceUsers.filter(user => user.role === 'admin').length,
-        pendingUsers: mockWorkspaceUsers.filter(user => user.status === 'pending').length,
-        totalUsers: mockWorkspaceUsers.length
-      }
-    };
-  }
-
-  async getSettingsModelProviders() {
-    return { items: mockSettingsModelProviders, updatedAt: '2026-05-04T08:00:00.000Z' };
-  }
-
-  async getSettingsApiKeys() {
-    return { items: mockSettingsApiKeys };
-  }
-
-  async getSettingsStorage() {
-    return mockSettingsStorage;
-  }
-
-  async getSettingsSecurity() {
-    return mockSettingsSecurity;
-  }
-
-  async getChatAssistantConfig() {
-    return mockChatAssistantConfig;
-  }
-
-  async listConversationMessages(conversationId: string): Promise<PageResult<ChatMessage>> {
-    void conversationId;
-    return page([]);
   }
 
   async chat(input: ChatRequest): Promise<ChatResponse> {
@@ -244,14 +148,6 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       conversationId,
       answer,
       traceId: mockTraceDetail.id,
-      route: { reason: 'mentions', requestedMentions: ['前端知识库'], selectedKnowledgeBaseIds: ['kb_frontend'] },
-      diagnostics: {
-        normalizedQuery: message,
-        queryVariants: [message],
-        retrievalMode: 'hybrid',
-        hitCount: 1,
-        contextChunkCount: 1
-      },
       citations: mockTraceDetail.citations,
       userMessage: {
         id: 'msg_user',
@@ -265,39 +161,9 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         conversationId,
         role: 'assistant',
         content: answer,
-        diagnostics: {
-          normalizedQuery: message,
-          queryVariants: [message],
-          retrievalMode: 'hybrid',
-          hitCount: 1,
-          contextChunkCount: 1
-        },
-        route: { reason: 'mentions', requestedMentions: ['前端知识库'], selectedKnowledgeBaseIds: ['kb_frontend'] },
         traceId: mockTraceDetail.id,
         citations: mockTraceDetail.citations,
         createdAt: new Date().toISOString()
-      }
-    };
-  }
-
-  async *streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
-    const response = await this.chat({ ...input, stream: true });
-    const runId = response.traceId;
-    yield { type: 'rag.started' as const, runId };
-    yield { type: 'planner.started' as const, runId };
-    yield { type: 'retrieval.started' as const, runId };
-    yield {
-      type: 'answer.delta' as const,
-      runId,
-      delta: response.answer
-    };
-    yield {
-      type: 'answer.completed' as const,
-      runId,
-      answer: {
-        text: response.answer,
-        noAnswer: false,
-        citations: response.citations.map(toSdkCitation)
       }
     };
   }
@@ -350,35 +216,24 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       perMetricDelta: {}
     };
   }
+}
 
-  async listAgentFlows(): Promise<AgentFlowListResponse> {
-    return page(this.agentFlows);
+function latestUserMessage(messages: ChatRequest['messages']): string | undefined {
+  const message = [...(messages ?? [])].reverse().find(item => item.role === 'user');
+  if (!message) {
+    return undefined;
   }
+  if (typeof message.content === 'string') {
+    return message.content;
+  }
+  return message.content
+    .filter(part => part.type === 'text')
+    .map(part => part.text)
+    .join('\n');
+}
 
-  async saveAgentFlow(input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse> {
-    this.agentFlows = upsertAgentFlow(this.agentFlows, input.flow);
-    return { flow: input.flow };
-  }
-
-  async updateAgentFlow(flowId: string, input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse> {
-    const flow = { ...input.flow, id: flowId };
-    this.agentFlows = upsertAgentFlow(this.agentFlows, flow);
-    return { flow };
-  }
-
-  async runAgentFlow(flowId: string, input: AgentFlowRunRequest): Promise<AgentFlowRunResponse> {
-    return {
-      runId: `run_${flowId}`,
-      flowId: input.flowId,
-      status: 'completed',
-      output: {
-        answer: `Mock answer for: ${input.input.message}`,
-        knowledgeBaseIds: input.input.knowledgeBaseIds
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-  }
+function page<T>(items: T[]): PageResult<T> {
+  return { items, total: items.length, page: 1, pageSize: 20 };
 }
 
 function createMockJob(documentId: string): DocumentProcessingJob {

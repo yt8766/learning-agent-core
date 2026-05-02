@@ -1,12 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { knowledgeQueryKeys } from '../src/api/knowledge-query';
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
 import { useDocumentUpload } from '../src/hooks/use-document-upload';
-import { useKnowledgeDocuments } from '../src/hooks/use-knowledge-documents';
 import type {
   DocumentChunk,
   DocumentProcessingJob,
@@ -103,13 +100,7 @@ function UploadProbe({ knowledgeBaseId }: { knowledgeBaseId: string }) {
   );
 }
 
-function DocumentsProbe() {
-  capturedDocuments = useKnowledgeDocuments();
-  return <div>{capturedDocuments.documents.length}</div>;
-}
-
 let capturedUpload: ReturnType<typeof useDocumentUpload>;
-let capturedDocuments: ReturnType<typeof useKnowledgeDocuments>;
 let mountedRoot: Root | undefined;
 
 beforeAll(() => {
@@ -183,58 +174,7 @@ describe('knowledge upload flow', () => {
     expect(capturedUpload.status).toBe('failed');
     expect(capturedUpload.error?.message).toContain('仅支持 Markdown/TXT');
   });
-
-  it('invalidates the documents query after uploading a document', async () => {
-    const { invalidateQueries } = await renderDocumentsProbe();
-
-    const file = new File(['# Runbook'], 'runbook.md', { type: 'text/markdown' });
-    await act(async () => {
-      await capturedDocuments.uploadDocument(file, 'kb_frontend');
-    });
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
-  });
-
-  it('invalidates the documents query after deleting a document', async () => {
-    const { invalidateQueries } = await renderDocumentsProbe();
-
-    await act(async () => {
-      await capturedDocuments.deleteDocument('doc_upload');
-    });
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
-  });
-
-  it('invalidates the documents query after reprocessing a document', async () => {
-    const { invalidateQueries } = await renderDocumentsProbe();
-
-    await act(async () => {
-      await capturedDocuments.reprocessDocument('doc_upload');
-    });
-
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
-  });
 });
-
-async function renderDocumentsProbe() {
-  const client = createClient();
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false }
-    }
-  });
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
-
-  await renderClient(
-    <QueryClientProvider client={queryClient}>
-      <KnowledgeApiProvider client={client}>
-        <DocumentsProbe />
-      </KnowledgeApiProvider>
-    </QueryClientProvider>
-  );
-
-  return { client, invalidateQueries };
-}
 
 function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   const uploadKnowledgeFile = vi.fn<CoreOpsApi['uploadKnowledgeFile']>().mockResolvedValue({
@@ -249,7 +189,6 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   });
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>(),
-    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>(),
     compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>(),
     createDocumentFromUpload: vi.fn<CoreOpsApi['createDocumentFromUpload']>().mockResolvedValue({
       document: documentRecord,
@@ -289,58 +228,6 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
       page: 1,
       pageSize: 20
     }),
-    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
-    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listWorkspaceUsers: vi.fn().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      summary: { totalUsers: 0, activeUsers: 0, adminUsers: 0, pendingUsers: 0 }
-    }),
-    getSettingsModelProviders: vi.fn().mockResolvedValue({ items: [], updatedAt: now }),
-    getSettingsApiKeys: vi.fn().mockResolvedValue({ items: [] }),
-    getSettingsStorage: vi.fn().mockResolvedValue({ buckets: [], knowledgeBases: [], updatedAt: now }),
-    getSettingsSecurity: vi.fn().mockResolvedValue({
-      auditLogEnabled: true,
-      encryption: { enabled: true, transport: 'TLS 1.3', atRest: 'AES-256' },
-      ipAllowlist: [],
-      ipAllowlistEnabled: false,
-      mfaRequired: false,
-      passwordPolicy: '基础',
-      securityScore: 80,
-      ssoEnabled: true,
-      updatedAt: now
-    }),
-    getChatAssistantConfig: vi.fn().mockResolvedValue({
-      deepThinkEnabled: true,
-      webSearchEnabled: false,
-      modelProfileId: 'knowledge-rag',
-      defaultKnowledgeBaseIds: [],
-      quickPrompts: [],
-      thinkingSteps: [],
-      updatedAt: now
-    }),
-    listAgentFlows: vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    saveAgentFlow: vi.fn<KnowledgeFrontendApi['saveAgentFlow']>(),
-    updateAgentFlow: vi.fn<KnowledgeFrontendApi['updateAgentFlow']>(),
-    runAgentFlow: vi.fn<KnowledgeFrontendApi['runAgentFlow']>(),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     reprocessDocument: vi.fn<KnowledgeFrontendApi['reprocessDocument']>(),
     deleteDocument: vi.fn<KnowledgeFrontendApi['deleteDocument']>(),

@@ -1,5 +1,4 @@
 import type { KnowledgeBase as CoreKnowledgeBase } from '@agent/knowledge';
-import type { KnowledgeBaseHealth } from '@agent/knowledge';
 import type { ID, ISODateTime } from './common';
 
 export type KnowledgeBaseStatus = 'active' | 'disabled' | 'archived';
@@ -23,7 +22,6 @@ export interface KnowledgeBase extends CoreKnowledgeBase {
   latestTraceAt?: ISODateTime;
   defaultRetrievalConfigId?: ID;
   defaultPromptTemplateId?: ID;
-  health?: Partial<KnowledgeBaseHealth>;
   createdBy: ID;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;

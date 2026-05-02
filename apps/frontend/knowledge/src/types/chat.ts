@@ -1,5 +1,4 @@
 import type { ID, ISODateTime } from './common';
-import type { KnowledgeRagAnswer, KnowledgeRagStreamEvent as SdkKnowledgeRagStreamEvent } from '@agent/knowledge';
 
 export interface Citation {
   id: ID;
@@ -49,35 +48,12 @@ export interface MessageFeedbackSummary {
 export interface ChatMessage {
   id: ID;
   conversationId: ID;
-  userId?: ID;
   role: ChatMessageRole;
   content: string;
-  modelProfileId?: ID;
   citations?: Citation[];
   traceId?: ID;
-  route?: KnowledgeRagAnswer['route'];
-  diagnostics?: KnowledgeRagAnswer['diagnostics'];
   feedback?: MessageFeedbackSummary;
   createdAt: ISODateTime;
-}
-
-export type RagModelProfileUseCase = 'coding' | 'daily' | 'balanced';
-
-export interface RagModelProfileSummary {
-  id: ID;
-  label: string;
-  description?: string;
-  useCase: RagModelProfileUseCase;
-  enabled: boolean;
-}
-
-export interface ChatConversation {
-  id: ID;
-  userId: ID;
-  title: string;
-  activeModelProfileId: ID;
-  createdAt: ISODateTime;
-  updatedAt: ISODateTime;
 }
 
 export interface ChatRequest {
@@ -92,8 +68,6 @@ export interface ChatRequest {
       id?: ID;
       label?: string;
     }>;
-    reasoningMode?: 'standard' | 'deep';
-    webSearchMode?: 'off' | 'allowed';
     debug?: boolean;
   };
   stream?: boolean;
@@ -112,21 +86,7 @@ export interface ChatResponse {
   answer: string;
   citations: Citation[];
   traceId: ID;
-  route?: KnowledgeRagAnswer['route'];
-  diagnostics?: KnowledgeRagAnswer['diagnostics'];
   usage?: TokenUsage;
-}
-
-export type KnowledgeRagStreamEvent = SdkKnowledgeRagStreamEvent;
-
-export type KnowledgeChatStreamPhase = 'idle' | 'planner' | 'retrieval' | 'answer' | 'completed' | 'error';
-
-export interface KnowledgeChatStreamState {
-  answerText: string;
-  citations: Citation[];
-  events: KnowledgeRagStreamEvent[];
-  phase: KnowledgeChatStreamPhase;
-  runId?: ID;
 }
 
 export interface CreateFeedbackRequest {

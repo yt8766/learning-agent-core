@@ -9,8 +9,6 @@ export interface KnowledgeBaseMention {
 export interface ChatLabConversation {
   id: string;
   title: string;
-  activeModelProfileId?: string;
-  persisted?: boolean;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
@@ -76,10 +74,6 @@ export function createChatLabConversation(seedMessage?: string): ChatLabConversa
     createdAt: now,
     updatedAt: now
   };
-}
-
-export function resolveChatLabKnowledgeBaseId(knowledgeBases: readonly Pick<KnowledgeBase, 'id'>[]) {
-  return knowledgeBases[0]?.id;
 }
 
 export function deriveConversationTitle(message?: string): string {

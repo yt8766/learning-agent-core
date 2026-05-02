@@ -1,12 +1,6 @@
 import type {
-  AgentFlowListResponse,
-  AgentFlowRunRequest,
-  AgentFlowRunResponse,
-  AgentFlowSaveRequest,
-  AgentFlowSaveResponse,
   ChatRequest,
   ChatResponse,
-  ChatConversation,
   ChatMessage,
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
@@ -22,37 +16,19 @@ import type {
   EvalDataset,
   EvalRun,
   KnowledgeBase,
-  KnowledgeRagStreamEvent,
   KnowledgeDocument,
   KnowledgeUploadResult,
   ObservabilityMetrics,
   PageResult,
-  RagModelProfileSummary,
   RagTrace,
   RagTraceDetail,
   ReprocessDocumentResponse,
-  ChatAssistantConfig,
-  SettingsApiKeysResponse,
-  SettingsModelProvidersResponse,
-  SettingsSecurityPolicy,
-  SettingsStorageOverview,
   UploadKnowledgeFileRequest,
   UploadDocumentRequest,
-  UploadDocumentResponse,
-  WorkspaceUsersResponse
+  UploadDocumentResponse
 } from '../types/api';
 import type { AuthClient } from './auth-client';
-import { streamKnowledgeChat } from './knowledge-chat-stream';
 import type { KnowledgeFrontendApi } from './knowledge-api-provider';
-import {
-  mergeUploadMetadata,
-  normalizeEmbeddingModels,
-  normalizeKnowledgeBase,
-  normalizeKnowledgeBases,
-  type KnowledgeEmbeddingModelsServiceResponse,
-  type KnowledgeBasesServiceResponse,
-  type KnowledgeServiceBase
-} from './knowledge-api-client-normalizers';
 
 export interface KnowledgeApiFactoryOptions {
   baseUrl: string;
@@ -148,18 +124,6 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     return this.request<DeleteDocumentResponse>(`/knowledge/documents/${documentId}`, { method: 'DELETE' });
   }
 
-  listRagModelProfiles() {
-    return this.get<{ items: RagModelProfileSummary[] }>('/rag/model-profiles');
-  }
-
-  listConversations(): Promise<PageResult<ChatConversation>> {
-    return this.get<PageResult<ChatConversation>>('/conversations');
-  }
-
-  listConversationMessages(conversationId: string): Promise<PageResult<ChatMessage>> {
-    return this.get<PageResult<ChatMessage>>(`/conversations/${encodeURIComponent(conversationId)}/messages`);
-  }
-
   async createKnowledgeBase(input: CreateKnowledgeBaseRequest) {
     const base = await this.post<KnowledgeServiceBase>('/knowledge/bases', {
       name: input.name,
@@ -172,17 +136,7 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     return this.post<ChatResponse>('/chat', input);
   }
 
-  async *streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
-    const accessToken = await this.authClient.ensureValidAccessToken();
-    yield* streamKnowledgeChat({
-      accessToken,
-      baseUrl: this.baseUrl,
-      fetcher: this.fetcher,
-      input
-    });
-  }
-
-  createFeedback(messageId: string, input: CreateFeedbackRequest): Promise<ChatMessage> {
+  createFeedback(messageId: string, input: CreateFeedbackRequest) {
     return this.post<ChatMessage>(`/messages/${messageId}/feedback`, input);
   }
 
@@ -214,46 +168,6 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     return this.get<RagTraceDetail>(`/observability/traces/${traceId}`);
   }
 
-  listWorkspaceUsers() {
-    return this.get<WorkspaceUsersResponse>('/knowledge/workspace/users');
-  }
-
-  getSettingsModelProviders() {
-    return this.get<SettingsModelProvidersResponse>('/knowledge/settings/model-providers');
-  }
-
-  getSettingsApiKeys() {
-    return this.get<SettingsApiKeysResponse>('/knowledge/settings/api-keys');
-  }
-
-  getSettingsStorage() {
-    return this.get<SettingsStorageOverview>('/knowledge/settings/storage');
-  }
-
-  getSettingsSecurity() {
-    return this.get<SettingsSecurityPolicy>('/knowledge/settings/security');
-  }
-
-  getChatAssistantConfig() {
-    return this.get<ChatAssistantConfig>('/knowledge/chat/assistant-config');
-  }
-
-  listAgentFlows() {
-    return this.request<AgentFlowListResponse>('/knowledge/agent-flows', { method: 'GET' });
-  }
-
-  saveAgentFlow(input: AgentFlowSaveRequest) {
-    return this.post<AgentFlowSaveResponse>('/knowledge/agent-flows', input);
-  }
-
-  updateAgentFlow(flowId: string, input: AgentFlowSaveRequest) {
-    return this.put<AgentFlowSaveResponse>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}`, input);
-  }
-
-  runAgentFlow(flowId: string, input: AgentFlowRunRequest) {
-    return this.post<AgentFlowRunResponse>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}/run`, input);
-  }
-
   get<T>(path: string) {
     return this.request<T>(path);
   }
@@ -261,14 +175,6 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   post<T>(path: string, body: unknown) {
     return this.request<T>(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-  }
-
-  put<T>(path: string, body: unknown) {
-    return this.request<T>(path, {
-      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
@@ -347,6 +253,103 @@ export function createKnowledgeApiClient(options: KnowledgeApiFactoryOptions) {
     } as unknown as AuthClient,
     fetcher: options.fetchImpl
   });
+}
+
+interface KnowledgeBasesServiceResponse {
+  bases: KnowledgeServiceBase[];
+}
+
+interface KnowledgeServiceBase {
+  id: string;
+  name: string;
+  description: string;
+  createdByUserId: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface KnowledgeEmbeddingModelsServiceResponse {
+  items: Array<{
+    id: string;
+    label?: string;
+    name?: string;
+    provider: string;
+    dimension?: number;
+    dimensions?: number;
+    description?: string;
+    status?: 'active' | 'disabled' | 'available' | 'unconfigured' | 'degraded';
+  }>;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+}
+
+function normalizeKnowledgeBases(
+  input: PageResult<KnowledgeBase> | KnowledgeBasesServiceResponse
+): PageResult<KnowledgeBase> {
+  if ('items' in input) {
+    return input;
+  }
+  return {
+    items: input.bases.map(normalizeKnowledgeBase),
+    total: input.bases.length,
+    page: 1,
+    pageSize: input.bases.length
+  };
+}
+
+function normalizeKnowledgeBase(base: KnowledgeServiceBase): KnowledgeBase {
+  return {
+    id: base.id,
+    workspaceId: 'default',
+    name: base.name,
+    description: base.description,
+    tags: [],
+    visibility: 'private',
+    status: base.status === 'active' ? 'active' : 'archived',
+    documentCount: 0,
+    chunkCount: 0,
+    readyDocumentCount: 0,
+    failedDocumentCount: 0,
+    createdBy: base.createdByUserId,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt
+  };
+}
+
+function normalizeEmbeddingModels(
+  input: PageResult<EmbeddingModelOption> | KnowledgeEmbeddingModelsServiceResponse
+): PageResult<EmbeddingModelOption> {
+  return {
+    items: input.items.map(normalizeEmbeddingModel),
+    total: input.total ?? input.items.length,
+    page: input.page ?? 1,
+    pageSize: input.pageSize ?? input.items.length
+  };
+}
+
+function normalizeEmbeddingModel(
+  item: EmbeddingModelOption | KnowledgeEmbeddingModelsServiceResponse['items'][number]
+): EmbeddingModelOption {
+  return {
+    id: item.id,
+    name: item.name ?? ('label' in item ? item.label : undefined) ?? item.id,
+    provider: item.provider,
+    dimension: item.dimension ?? ('dimensions' in item ? item.dimensions : undefined),
+    description: item.description,
+    status: item.status
+  };
+}
+
+function mergeUploadMetadata(metadata: Record<string, unknown> | undefined, embeddingModelId: string | undefined) {
+  if (!embeddingModelId) {
+    return metadata;
+  }
+  return {
+    ...metadata,
+    embeddingModelId
+  };
 }
 
 function isRecord(input: unknown): input is Record<string, unknown> {

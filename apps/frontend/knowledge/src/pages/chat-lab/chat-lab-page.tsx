@@ -1,263 +1,203 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useXChat, useXConversations } from '@ant-design/x-sdk';
+import Actions from '@ant-design/x/es/actions';
+import XMarkdown from '@ant-design/x-markdown/es';
+import Bubble, { type BubbleItemType, type BubbleListProps } from '@ant-design/x/es/bubble';
+import Conversations from '@ant-design/x/es/conversations';
+import Sender from '@ant-design/x/es/sender';
+import Suggestion from '@ant-design/x/es/suggestion';
+import { Button, Flex, Space, Spin, Tag, Typography } from 'antd';
 
 import { useKnowledgeApi } from '../../api/knowledge-api-provider';
-import { createKnowledgeChatActions } from '../../chat-runtime/knowledge-chat-actions';
-import {
-  createKnowledgeChatProvider,
-  type KnowledgeChatProviderChunk,
-  type KnowledgeChatProviderInput
-} from '../../chat-runtime/knowledge-chat-provider';
-import { useChatAssistantConfig } from '../../hooks/use-knowledge-governance';
-import type { ChatMessage, CreateFeedbackRequest, KnowledgeBase, KnowledgeChatStreamState } from '../../types/api';
-import { loadKnowledgeConversationMessages, summarizeStreamDiagnostics, toError } from './chat-lab-diagnostics';
+import { useKnowledgeChat } from '../../hooks/use-knowledge-chat';
+import type { ChatMessage, Citation, KnowledgeBase } from '../../types/api';
+import { PageSection } from '../shared/ui';
 import {
   createChatLabConversation,
   deriveConversationTitle,
   parseKnowledgeMentions,
+  removeCurrentKnowledgeMentionToken,
   uniqueKnowledgeMentions,
-  type KnowledgeBaseMention
+  type KnowledgeBaseMention,
+  type ChatLabConversation
 } from './chat-lab-helpers';
-import { ChatLabLayout, type ChatLabConversationData } from './chat-lab-layout';
-import { createChatRoles, type FeedbackValue } from './chat-lab-messages';
 
-export { resolveChatLabKnowledgeBaseId } from './chat-lab-helpers';
+type FeedbackValue = 'default' | 'like' | 'dislike';
 
-const initialStreamState: KnowledgeChatStreamState = {
-  answerText: '',
-  citations: [],
-  events: [],
-  phase: 'idle'
-};
+interface ChatLabAiExtraInfo {
+  citations: Citation[];
+  feedback?: FeedbackValue;
+  messageId: string;
+  traceId?: string;
+}
+
+export function resolveChatLabKnowledgeBaseId(knowledgeBases: readonly Pick<KnowledgeBase, 'id'>[]) {
+  return knowledgeBases[0]?.id;
+}
+
+function formatCitationScore(score: number | undefined) {
+  return typeof score === 'number' ? score.toFixed(2) : undefined;
+}
+
+function CitationList({ citations }: { citations: Citation[] }) {
+  if (citations.length === 0) {
+    return <Typography.Text type="secondary">引用来源：无</Typography.Text>;
+  }
+
+  return (
+    <div className="knowledge-chat-citations">
+      <Typography.Text strong>引用来源</Typography.Text>
+      {citations.map(citation => {
+        const score = formatCitationScore(citation.score);
+        return (
+          <div className="knowledge-chat-citation" key={citation.id}>
+            <Space direction="vertical" size={4}>
+              <Typography.Text strong>{citation.title}</Typography.Text>
+              <Typography.Text>{citation.quote}</Typography.Text>
+              <Space wrap>
+                {score ? <Tag>score {score}</Tag> : null}
+                {citation.uri ? <Typography.Text type="secondary">{citation.uri}</Typography.Text> : null}
+              </Space>
+            </Space>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ChatLabPage() {
   const api = useKnowledgeApi();
-  const actions = useMemo(() => createKnowledgeChatActions({ api }), [api]);
-  const initialConversationItems = useMemo<ChatLabConversationData[]>(() => {
-    const initialConversation = createChatLabConversation('');
-    return [
-      {
-        createdAt: initialConversation.createdAt,
-        key: initialConversation.id,
-        label: initialConversation.title,
-        persisted: false,
-        updatedAt: initialConversation.updatedAt
-      }
-    ];
-  }, []);
-  const {
-    addConversation,
-    conversations,
-    getConversation,
-    getMessages,
-    removeConversation: removeConversationState,
-    setActiveConversationKey,
-    setConversation,
-    setConversations,
-    activeConversationKey
-  } = useXConversations({
-    defaultActiveConversationKey: initialConversationItems[0]?.key,
-    defaultConversations: initialConversationItems
-  });
   const [question, setQuestion] = useState('');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [knowledgeBasesError, setKnowledgeBasesError] = useState<Error | null>(null);
-  const [chatLabError, setChatLabError] = useState<Error | null>(null);
-  const [requestError, setRequestError] = useState<Error | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<ChatMessage | null>(null);
-  const [selectedModelProfileId, setSelectedModelProfileId] = useState('knowledge-rag');
   const [messageFeedback, setMessageFeedback] = useState<Record<string, FeedbackValue>>({});
   const [selectedMentions, setSelectedMentions] = useState<KnowledgeBaseMention[]>([]);
-  const [deepThink, setDeepThink] = useState(true);
-  const [webSearch, setWebSearch] = useState(false);
-  const [streamState, setStreamState] = useState<KnowledgeChatStreamState>(initialStreamState);
-  const { config: assistantConfig } = useChatAssistantConfig();
-  const provider = useMemo(
-    () =>
-      createKnowledgeChatProvider({
-        api,
-        onStreamStateChange(nextStreamState) {
-          setStreamState(nextStreamState);
-        }
-      }),
-    [api]
+  const [chatConversations, setChatConversations] = useState<ChatLabConversation[]>(() => [
+    createChatLabConversation('')
+  ]);
+  const [activeConversationKey, setActiveConversationKey] = useState(() => chatConversations[0]!.id);
+  const { error, feedbackMessage, loading, sendMessage, submitFeedback } = useKnowledgeChat();
+  const activeConversation = chatConversations.find(item => item.id === activeConversationKey) ?? chatConversations[0]!;
+  const conversationItems = useMemo(
+    () => chatConversations.map(item => ({ key: item.id, label: item.title })),
+    [chatConversations]
   );
-  const { isRequesting, messages, onRequest, queueRequest } = useXChat<
-    ChatMessage,
-    ChatMessage,
-    KnowledgeChatProviderInput,
-    KnowledgeChatProviderChunk
-  >({
-    conversationKey: String(activeConversationKey),
-    defaultMessages: async ({ conversationKey }: { conversationKey?: string }) => {
-      const currentConversation = conversationKey
-        ? (getConversation(String(conversationKey)) as ChatLabConversationData)
-        : undefined;
-      if (!currentConversation?.persisted) {
-        return [];
-      }
-      return loadKnowledgeConversationMessages(api, String(conversationKey)).then(result =>
-        result.map(message => ({ id: message.id, message, status: 'success' as const }))
-      );
-    },
-    provider,
-    requestFallback: (requestParams, info) => {
-      const nextError = toError(info.error);
-      setRequestError(nextError);
-      return {
-        content: nextError.message,
-        conversationId: requestParams.conversationId ?? String(activeConversationKey),
-        createdAt: new Date().toISOString(),
-        id: info.messageInfo.message.id,
-        role: 'assistant'
-      } satisfies ChatMessage;
-    },
-    requestPlaceholder: requestParams => ({
-      content: '',
-      conversationId: requestParams.conversationId ?? String(activeConversationKey),
-      createdAt: new Date().toISOString(),
-      id: `loading_assistant_${Date.now()}`,
-      role: 'assistant'
-    })
-  });
-  const activeConversation =
-    (getConversation(String(activeConversationKey)) as ChatLabConversationData | undefined) ??
-    (conversations[0] as ChatLabConversationData | undefined);
   const knowledgeBaseSuggestionItems = useMemo(
     () => knowledgeBases.map(item => ({ label: item.name, value: item.id })),
     [knowledgeBases]
-  );
-  const streamDiagnostics = useMemo(() => summarizeStreamDiagnostics(streamState.events), [streamState.events]);
-  const bubbleMessages = useMemo(
-    () =>
-      messages.map(({ message, status }) => {
-        if (message.role === 'assistant') {
-          return {
-            content: message.content,
-            extraInfo: {
-              citations: message.citations ?? [],
-              diagnostics: message.diagnostics,
-              feedback: messageFeedback[message.id],
-              messageId: message.id,
-              route: message.route,
-              traceId: message.traceId
-            },
-            key: message.id,
-            role: 'ai',
-            status: status === 'error' || status === 'abort' ? 'success' : status
-          } as const;
-        }
-        return {
-          content: message.content,
-          key: message.id,
-          role: message.role === 'system' ? 'system' : 'user'
-        } as const;
-      }),
-    [messageFeedback, messages]
   );
 
   useEffect(() => {
     let mounted = true;
     setKnowledgeBasesError(null);
-    void Promise.all([api.listKnowledgeBases(), api.listRagModelProfiles(), actions.listConversations()])
-      .then(([knowledgeBaseResult, , conversationItems]) => {
+    void api
+      .listKnowledgeBases()
+      .then(result => {
         if (!mounted) {
           return;
         }
-        setKnowledgeBases(knowledgeBaseResult.items);
-        if (conversationItems.length === 0) {
-          return;
-        }
-        const restoredConversations = conversationItems.map(item => ({
-          ...item,
-          activeModelProfileId: item.group,
-          persisted: true
-        })) as ChatLabConversationData[];
-        setConversations(restoredConversations);
-        setActiveConversationKey(restoredConversations[0]!.key);
-        setSelectedModelProfileId(restoredConversations[0]!.activeModelProfileId ?? 'knowledge-rag');
+        setKnowledgeBases(result.items);
       })
       .catch(error => {
-        if (!mounted) {
-          return;
+        if (mounted) {
+          setKnowledgeBasesError(toError(error));
         }
-        const nextError = toError(error);
-        setKnowledgeBasesError(nextError);
-        setChatLabError(nextError);
       });
     return () => {
       mounted = false;
     };
-  }, [actions, api, setActiveConversationKey, setConversations]);
-
-  useEffect(() => {
-    if (!assistantConfig) {
-      return;
-    }
-    setDeepThink(assistantConfig.deepThinkEnabled);
-    setWebSearch(assistantConfig.webSearchEnabled);
-    setSelectedModelProfileId(assistantConfig.modelProfileId);
-  }, [assistantConfig]);
-
-  useEffect(() => {
-    if (!activeConversation?.activeModelProfileId) {
-      return;
-    }
-    setSelectedModelProfileId(activeConversation.activeModelProfileId);
-  }, [activeConversation?.activeModelProfileId]);
+  }, [api]);
 
   const chatRoles = useMemo(
     () =>
-      createChatRoles({
-        setMessageFeedback,
-        submitFeedback: async (messageId: string, input: CreateFeedbackRequest) => {
-          const nextFeedbackMessage = await actions.createFeedback(messageId, input);
-          if (nextFeedbackMessage) {
-            setFeedbackMessage(nextFeedbackMessage);
-          }
-          return nextFeedbackMessage;
-        }
-      }),
-    [actions]
+      ({
+        ai: {
+          contentRender: (content: unknown) => <XMarkdown>{String(content ?? '')}</XMarkdown>,
+          footer: (content: unknown, { extraInfo, key }: { extraInfo?: unknown; key?: string | number }) => {
+            const info = extraInfo as ChatLabAiExtraInfo | undefined;
+            if (!info?.messageId) {
+              return null;
+            }
+            const text = String(content ?? '');
+            return (
+              <Space direction="vertical" size={8}>
+                <Actions
+                  items={[
+                    {
+                      key: 'copy',
+                      label: 'copy',
+                      actionRender: () => <Actions.Copy text={text} />
+                    },
+                    {
+                      key: 'feedback',
+                      actionRender: () => (
+                        <Actions.Feedback
+                          key="feedback"
+                          onChange={value => {
+                            const nextFeedback = value as FeedbackValue;
+                            setMessageFeedback(current => ({ ...current, [String(key)]: nextFeedback }));
+                            if (nextFeedback === 'like') {
+                              void submitFeedback(info.messageId, { category: 'helpful', rating: 'positive' });
+                            }
+                            if (nextFeedback === 'dislike') {
+                              void submitFeedback(info.messageId, { category: 'not_helpful', rating: 'negative' });
+                            }
+                          }}
+                          styles={{
+                            liked: {
+                              color: '#f759ab'
+                            }
+                          }}
+                          value={info.feedback ?? 'default'}
+                        />
+                      )
+                    }
+                  ]}
+                />
+                <Space wrap>
+                  {info.traceId ? (
+                    <Typography.Link href={`/observability?traceId=${info.traceId}`}>Trace</Typography.Link>
+                  ) : null}
+                  <CitationList citations={info.citations} />
+                </Space>
+              </Space>
+            );
+          },
+          loadingRender: () => (
+            <Flex align="center" gap="small">
+              <Spin size="small" />
+              <Typography.Text type="secondary">正在检索知识库...</Typography.Text>
+            </Flex>
+          ),
+          placement: 'start' as const,
+          typing: (_content: unknown, { status }: { status?: string }) =>
+            status === 'updating' ? { effect: 'typing' as const, interval: 20, step: 5 } : false,
+          variant: 'borderless' as const
+        },
+        system: { placement: 'start' as const, variant: 'outlined' as const },
+        user: { placement: 'end' as const, variant: 'filled' as const }
+      }) satisfies NonNullable<BubbleListProps['role']>,
+    [submitFeedback]
   );
+
+  const messages: BubbleItemType[] = [
+    ...activeConversation.messages.map(message => toBubbleMessage(message, messageFeedback)),
+    loading
+      ? {
+          content: '',
+          key: 'answer-loading',
+          loading: true,
+          role: 'ai',
+          status: 'loading'
+        }
+      : null
+  ].filter(Boolean) as BubbleItemType[];
 
   function createConversation(seedMessage?: string) {
     const nextConversation = createChatLabConversation(seedMessage);
-    const nextItem: ChatLabConversationData = {
-      createdAt: nextConversation.createdAt,
-      key: nextConversation.id,
-      label: nextConversation.title,
-      persisted: false,
-      updatedAt: nextConversation.updatedAt
-    };
-    addConversation(nextItem, 'prepend');
-    setActiveConversationKey(nextItem.key);
-    return nextItem;
-  }
-
-  function renameConversation(conversationId: string, title: string) {
-    const normalizedTitle = title.trim();
-    if (!normalizedTitle) {
-      return;
-    }
-    const currentConversation = getConversation(conversationId) as ChatLabConversationData | undefined;
-    if (!currentConversation) {
-      return;
-    }
-    setConversation(conversationId, {
-      ...currentConversation,
-      label: normalizedTitle,
-      updatedAt: new Date().toISOString()
-    });
-  }
-
-  function removeConversation(conversationId: string) {
-    const didRemove = removeConversationState(conversationId);
-    if (!didRemove || conversations.length > 1) {
-      return;
-    }
-    const fallbackConversation = createConversation('');
-    setActiveConversationKey(fallbackConversation.key);
+    setChatConversations(current => [nextConversation, ...current]);
+    setActiveConversationKey(nextConversation.id);
+    return nextConversation;
   }
 
   async function submit(message: string) {
@@ -265,13 +205,8 @@ export function ChatLabPage() {
     if (!normalizedMessage && selectedMentions.length === 0) {
       return;
     }
-
-    setRequestError(null);
-    setChatLabError(null);
-    setStreamState(initialStreamState);
-
-    const conversationId = String(activeConversationKey);
-    const currentConversation = activeConversation ?? createConversation(normalizedMessage);
+    const now = new Date().toISOString();
+    const conversationId = activeConversationKey;
     const availableKnowledgeBases = knowledgeBases.length > 0 ? knowledgeBases : (await api.listKnowledgeBases()).items;
     if (knowledgeBases.length === 0) {
       setKnowledgeBases(availableKnowledgeBases);
@@ -280,71 +215,238 @@ export function ChatLabPage() {
       ...selectedMentions,
       ...parseKnowledgeMentions(message, availableKnowledgeBases)
     ]);
-    const currentMessages = (getMessages(conversationId) as Array<{ message: ChatMessage }> | undefined) ?? [];
-    if (currentMessages.length === 0) {
-      setConversation(conversationId, {
-        ...currentConversation,
-        label: deriveConversationTitle(normalizedMessage),
-        updatedAt: new Date().toISOString()
-      });
-    }
+    const userMessage: ChatMessage = {
+      id: `local_user_${Date.now()}`,
+      conversationId,
+      role: 'user',
+      content: normalizedMessage,
+      createdAt: now
+    };
+    setChatConversations(current =>
+      current.map(conversation =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              title:
+                conversation.messages.length === 0 ? deriveConversationTitle(normalizedMessage) : conversation.title,
+              messages: [...conversation.messages, userMessage],
+              updatedAt: now
+            }
+          : conversation
+      )
+    );
     setQuestion('');
     setSelectedMentions([]);
-
-    const requestParams: KnowledgeChatProviderInput = {
-      conversationId,
+    const nextResponse = await sendMessage({
       messages: [{ content: normalizedMessage, role: 'user' }],
       metadata: {
         conversationId,
         debug: true,
-        mentions,
-        reasoningMode: deepThink ? 'deep' : 'standard',
-        webSearchMode: webSearch ? 'allowed' : 'off'
+        mentions
       },
-      model: selectedModelProfileId,
-      stream: true
-    };
-
-    if (currentConversation.key !== conversationId) {
-      queueRequest(conversationId, requestParams);
+      model: 'knowledge-rag',
+      stream: false
+    });
+    if (!nextResponse) {
       return;
     }
-
-    onRequest(requestParams);
+    setChatConversations(current =>
+      current.map(conversation =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              messages: [
+                ...conversation.messages,
+                {
+                  ...nextResponse.assistantMessage,
+                  citations: nextResponse.citations,
+                  content: nextResponse.answer,
+                  traceId: nextResponse.traceId
+                }
+              ],
+              updatedAt: new Date().toISOString()
+            }
+          : conversation
+      )
+    );
   }
 
   return (
-    <ChatLabLayout
-      activeConversation={activeConversation}
-      activeConversationKey={String(activeConversationKey)}
-      assistantConfig={assistantConfig}
-      bubbleMessages={bubbleMessages}
-      chatConversations={conversations as ChatLabConversationData[]}
-      chatLabError={chatLabError}
-      chatRoles={chatRoles}
-      createConversation={createConversation}
-      feedbackMessage={feedbackMessage}
-      isRequesting={isRequesting}
-      knowledgeBaseSuggestionItems={knowledgeBaseSuggestionItems}
-      knowledgeBases={knowledgeBases}
-      knowledgeBasesError={knowledgeBasesError}
-      messagesLength={messages.length}
-      question={question}
-      removeConversation={removeConversation}
-      renameConversation={renameConversation}
-      requestError={requestError}
-      resetConversationRuntime={key => {
-        setActiveConversationKey(key);
-        setRequestError(null);
-        setChatLabError(null);
-        setStreamState(initialStreamState);
-      }}
-      selectedMentions={selectedMentions}
-      setQuestion={setQuestion}
-      setSelectedMentions={setSelectedMentions}
-      streamDiagnostics={streamDiagnostics}
-      streamState={streamState}
-      submit={submit}
-    />
+    <PageSection title="对话实验室">
+      <div className="knowledge-chat-codex">
+        <aside className="knowledge-chat-codex-sidebar">
+          <div className="knowledge-chat-sidebar-actions">
+            <Button
+              icon={<span aria-hidden className="knowledge-chat-icon is-plus" />}
+              onClick={() => createConversation()}
+              type="text"
+            >
+              新建会话
+            </Button>
+            <Button icon={<span aria-hidden className="knowledge-chat-icon is-search" />} type="text">
+              搜索
+            </Button>
+          </div>
+          <div className="knowledge-chat-sidebar-block">
+            <div className="knowledge-chat-sidebar-title">对话</div>
+            <Conversations
+              activeKey={activeConversationKey}
+              items={conversationItems}
+              onActiveChange={setActiveConversationKey}
+            />
+          </div>
+          <div className="knowledge-chat-sidebar-block">
+            <div className="knowledge-chat-sidebar-title">知识库</div>
+            <div className="knowledge-chat-base-list">
+              {knowledgeBases.map(base => (
+                <button
+                  className="knowledge-chat-base-item"
+                  key={base.id}
+                  onClick={() =>
+                    setSelectedMentions(current =>
+                      uniqueKnowledgeMentions([
+                        ...current,
+                        {
+                          id: base.id,
+                          label: base.name,
+                          type: 'knowledge_base'
+                        }
+                      ])
+                    )
+                  }
+                  type="button"
+                >
+                  <span aria-hidden className="knowledge-chat-icon is-folder" />
+                  <span>{base.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+        <section className="knowledge-chat-codex-main">
+          <div className="knowledge-chat-codex-topbar">
+            <Space size={8}>
+              <Typography.Text strong>{activeConversation.title}</Typography.Text>
+              <Typography.Text type="secondary">knowledge</Typography.Text>
+            </Space>
+            <Space className="knowledge-chat-run-meta" size={8}>
+              <span aria-hidden className="knowledge-chat-icon is-branch" />
+              <Typography.Text type="secondary">SDK RAG</Typography.Text>
+              <Tag>5.5</Tag>
+            </Space>
+          </div>
+
+          <div className={activeConversation.messages.length === 0 ? 'knowledge-chat-empty' : 'knowledge-chat-thread'}>
+            {activeConversation.messages.length === 0 && !loading ? (
+              <>
+                <Typography.Title className="knowledge-chat-empty-title" level={1}>
+                  我们该构建什么？
+                </Typography.Title>
+                <Typography.Text className="knowledge-chat-empty-subtitle" type="secondary">
+                  {knowledgeBases.length > 0 ? knowledgeBases.map(base => base.name).join(' / ') : 'Knowledge Lab'}
+                </Typography.Text>
+              </>
+            ) : null}
+            {messages.length > 0 ? (
+              <div className="knowledge-chat-bubbles">
+                <Bubble.List items={messages} role={chatRoles} />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="knowledge-chat-composer-zone">
+            <Suggestion
+              block
+              items={knowledgeBaseSuggestionItems}
+              onSelect={value => {
+                const selectedKnowledgeBase = knowledgeBases.find(item => item.id === value);
+                if (selectedKnowledgeBase) {
+                  setSelectedMentions(current =>
+                    uniqueKnowledgeMentions([
+                      ...current,
+                      {
+                        id: selectedKnowledgeBase.id,
+                        label: selectedKnowledgeBase.name,
+                        type: 'knowledge_base'
+                      }
+                    ])
+                  );
+                  setQuestion(current => removeCurrentKnowledgeMentionToken(current));
+                }
+              }}
+            >
+              {({ onKeyDown, onTrigger }) => (
+                <Sender
+                  className="knowledge-chat-sender"
+                  header={
+                    selectedMentions.length > 0 ? (
+                      <div className="knowledge-chat-mention-tags">
+                        {selectedMentions.map(mention => (
+                          <Tag
+                            className="knowledge-chat-mention-tag"
+                            closable
+                            key={mention.id ?? mention.label}
+                            onClose={() =>
+                              setSelectedMentions(current =>
+                                current.filter(item => (item.id ?? item.label) !== (mention.id ?? mention.label))
+                              )
+                            }
+                          >
+                            <span aria-hidden className="knowledge-chat-mention-tag-icon" />
+                            {mention.label}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : undefined
+                  }
+                  loading={loading}
+                  onChange={value => {
+                    setQuestion(value);
+                    onTrigger(/(^|\s)@\S*$/.test(value) ? {} : false);
+                  }}
+                  onKeyDown={onKeyDown}
+                  onSubmit={submit}
+                  placeholder="要求后续变更"
+                  value={question}
+                />
+              )}
+            </Suggestion>
+            <div className="knowledge-chat-status-line">
+              {error ? <Typography.Text type="danger">{error.message}</Typography.Text> : null}
+              {knowledgeBasesError ? (
+                <Typography.Text type="danger">{knowledgeBasesError.message}</Typography.Text>
+              ) : null}
+              {feedbackMessage ? <Typography.Text type="success">反馈已记录</Typography.Text> : null}
+            </div>
+          </div>
+        </section>
+      </div>
+    </PageSection>
   );
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function toBubbleMessage(message: ChatMessage, feedback: Record<string, FeedbackValue>): BubbleItemType {
+  if (message.role === 'assistant') {
+    return {
+      content: message.content,
+      extraInfo: {
+        citations: message.citations ?? [],
+        feedback: feedback[message.id],
+        messageId: message.id,
+        traceId: message.traceId
+      } satisfies ChatLabAiExtraInfo,
+      key: message.id,
+      role: 'ai',
+      status: 'success'
+    };
+  }
+  return {
+    content: message.content,
+    key: message.id,
+    role: message.role === 'system' ? 'system' : 'user'
+  };
 }

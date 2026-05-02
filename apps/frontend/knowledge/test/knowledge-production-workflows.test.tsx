@@ -2,13 +2,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
 import { ChatLabPage } from '../src/pages/chat-lab/chat-lab-page';
 import { DocumentsPage, resolveDocumentUploadKnowledgeBaseId } from '../src/pages/documents/documents-page';
 import { EvalsPage } from '../src/pages/evals/evals-page';
-import { KnowledgeBasesPage } from '../src/pages/knowledge-bases/knowledge-bases-page';
 import { ObservabilityPage } from '../src/pages/observability/observability-page';
 import type {
   ChatMessage,
@@ -41,13 +39,6 @@ const testState = vi.hoisted(() => ({
     title?: React.ReactNode;
   }>,
   renderedButtons: [] as Array<{ children?: React.ReactNode; onClick?: () => void }>,
-  renderedSearchInputs: [] as Array<{
-    onChange?: (event: { target: { value: string } }) => void;
-    placeholder?: string;
-    value?: string;
-  }>,
-  useXChatCalls: [] as Array<Record<string, unknown>>,
-  useXConversationsCalls: [] as Array<Record<string, unknown>>,
   submitted: false
 }));
 
@@ -124,29 +115,12 @@ vi.mock('@ant-design/x/es/actions', () => {
 });
 
 vi.mock('@ant-design/x/es/conversations', () => ({
-  default({
-    items,
-    menu
-  }: {
-    items: Array<{ key: string; label: React.ReactNode }>;
-    menu?: (conversation: { key: string; label: React.ReactNode }) => {
-      items: Array<{ danger?: boolean; key: string; label: React.ReactNode }>;
-      onClick?: (info: { domEvent: { stopPropagation: () => void }; key: string }) => void;
-    };
-  }) {
+  default({ items }: { items: Array<{ key: string; label: React.ReactNode }> }) {
     return (
       <nav>
-        {items.map(item => {
-          const menuConfig = menu?.(item);
-          return (
-            <div key={item.key}>
-              <span>{item.label}</span>
-              {menuConfig?.items.map(menuItem => (
-                <span key={`${item.key}-${menuItem.key}`}>{menuItem.label}</span>
-              ))}
-            </div>
-          );
-        })}
+        {items.map(item => (
+          <span key={item.key}>{item.label}</span>
+        ))}
       </nav>
     );
   }
@@ -216,42 +190,11 @@ vi.mock('@ant-design/x/es/welcome', () => ({
   }
 }));
 
-vi.mock('@ant-design/x-sdk', async importOriginal => {
-  const actual = await importOriginal<typeof import('@ant-design/x-sdk')>();
-  return {
-    ...actual,
-    useXChat: (options: Record<string, unknown>) => {
-      testState.useXChatCalls.push(options);
-      return actual.useXChat(options as never);
-    },
-    useXConversations: (options: Record<string, unknown>) => {
-      testState.useXConversationsCalls.push(options);
-      return actual.useXConversations(options as never);
-    }
-  };
-});
-
 vi.mock('@ant-design/x-markdown/es', () => ({
   default({ children }: { children?: React.ReactNode }) {
     return <div>{children}</div>;
   }
 }));
-
-vi.mock('@ant-design/icons', () => {
-  function Icon({ name }: { name: string }) {
-    return <span>{name}</span>;
-  }
-  return {
-    BulbOutlined: () => <Icon name="BulbOutlined" />,
-    DeleteOutlined: () => <Icon name="DeleteOutlined" />,
-    GlobalOutlined: () => <Icon name="GlobalOutlined" />,
-    InboxOutlined: () => <Icon name="InboxOutlined" />,
-    PlusOutlined: () => <Icon name="PlusOutlined" />,
-    ReloadOutlined: () => <Icon name="ReloadOutlined" />,
-    ThunderboltOutlined: () => <Icon name="ThunderboltOutlined" />,
-    UploadOutlined: () => <Icon name="UploadOutlined" />
-  };
-});
 
 vi.mock('antd', () => ({
   Button({ children, disabled, onClick }: { children?: React.ReactNode; disabled?: boolean; onClick?: () => void }) {
@@ -273,72 +216,6 @@ vi.mock('antd', () => ({
   Flex({ children }: { children?: React.ReactNode }) {
     return <div>{children}</div>;
   },
-  Form: Object.assign(
-    ({ children }: { children?: React.ReactNode }) => {
-      return <form>{children}</form>;
-    },
-    {
-      Item({ children, label }: { children?: React.ReactNode; label?: React.ReactNode }) {
-        return (
-          <label>
-            {label}
-            {children}
-          </label>
-        );
-      },
-      useForm() {
-        return [
-          {
-            resetFields: vi.fn(),
-            validateFields: vi.fn()
-          }
-        ];
-      }
-    }
-  ),
-  Input: Object.assign(
-    ({
-      onChange,
-      placeholder,
-      value
-    }: {
-      onChange?: (event: { target: { value: string } }) => void;
-      placeholder?: string;
-      value?: string;
-    }) => {
-      return (
-        <input
-          onChange={event => onChange?.({ target: { value: event.currentTarget.value } })}
-          placeholder={placeholder}
-          value={value}
-        />
-      );
-    },
-    {
-      Search({
-        onChange,
-        placeholder,
-        value
-      }: {
-        onChange?: (event: { target: { value: string } }) => void;
-        placeholder?: string;
-        value?: string;
-      }) {
-        testState.renderedSearchInputs.push({ onChange, placeholder, value });
-        return (
-          <input
-            aria-label={placeholder}
-            onChange={event => onChange?.({ target: { value: event.currentTarget.value } })}
-            placeholder={placeholder}
-            value={value}
-          />
-        );
-      },
-      TextArea({ children }: { children?: React.ReactNode }) {
-        return <textarea>{children}</textarea>;
-      }
-    }
-  ),
   Progress({ percent }: { percent?: number }) {
     return <span>{percent}</span>;
   },
@@ -390,16 +267,9 @@ vi.mock('antd', () => ({
       </span>
     );
   },
-  Space: Object.assign(
-    ({ children }: { children?: React.ReactNode }) => {
-      return <span>{children}</span>;
-    },
-    {
-      Compact({ children }: { children?: React.ReactNode }) {
-        return <span>{children}</span>;
-      }
-    }
-  ),
+  Space({ children }: { children?: React.ReactNode }) {
+    return <span>{children}</span>;
+  },
   Select({
     options,
     placeholder,
@@ -422,9 +292,6 @@ vi.mock('antd', () => ({
   },
   Spin() {
     return <span>loading</span>;
-  },
-  Switch({ checked, onChange }: { checked?: boolean; onChange?: (checked: boolean) => void }) {
-    return <button onClick={() => onChange?.(!checked)}>{checked ? 'on' : 'off'}</button>;
   },
   Statistic({ suffix, title, value }: { suffix?: React.ReactNode; title?: React.ReactNode; value?: React.ReactNode }) {
     return (
@@ -476,22 +343,14 @@ vi.mock('antd', () => ({
   Tag({ children }: { children?: React.ReactNode }) {
     return <span>{children}</span>;
   },
-  Timeline({ items }: { items?: Array<{ children?: React.ReactNode; content?: React.ReactNode }> }) {
+  Timeline({ items }: { items?: Array<{ children?: React.ReactNode }> }) {
     return (
       <ol>
         {(items ?? []).map((item, index) => (
-          <li key={index}>{item.content ?? item.children}</li>
+          <li key={index}>{item.children}</li>
         ))}
       </ol>
     );
-  },
-  Upload: {
-    Dragger({ children }: { children?: React.ReactNode }) {
-      return <section>{children}</section>;
-    }
-  },
-  theme: {
-    defaultAlgorithm: {}
   },
   Typography: {
     Title({ children }: { children?: React.ReactNode }) {
@@ -568,19 +427,6 @@ const chatResponse: ChatResponse = {
     createdAt: now
   }
 };
-
-function toSdkCitation(citation: ChatResponse['citations'][number]) {
-  return {
-    sourceId: citation.documentId,
-    chunkId: citation.chunkId,
-    title: citation.title,
-    uri: citation.uri ?? '',
-    quote: citation.quote,
-    sourceType: 'user-upload' as const,
-    trustClass: 'internal' as const,
-    score: citation.score
-  };
-}
 
 const dataset: EvalDataset = {
   id: 'dataset_provider',
@@ -665,7 +511,7 @@ const embeddingModel: EmbeddingModelOption = {
   id: 'embed_openai_small',
   name: 'OpenAI Small',
   provider: 'openai',
-  dimension: 1024,
+  dimension: 1536,
   status: 'active'
 };
 
@@ -698,15 +544,6 @@ const trace: RagTraceDetail = {
 function createClient(): KnowledgeFrontendApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>().mockResolvedValue(chatResponse),
-    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>().mockImplementation(async function* () {
-      yield { type: 'rag.started', runId: 'trace_real' };
-      yield { type: 'answer.delta', runId: 'trace_real', delta: chatResponse.answer };
-      yield {
-        type: 'answer.completed',
-        runId: 'trace_real',
-        answer: { text: chatResponse.answer, noAnswer: false, citations: chatResponse.citations.map(toSdkCitation) }
-      };
-    }),
     createFeedback: vi
       .fn<(messageId: string, input: CreateFeedbackRequest) => Promise<ChatMessage>>()
       .mockResolvedValue({
@@ -770,58 +607,6 @@ function createClient(): KnowledgeFrontendApi {
       page: 1,
       pageSize: 20
     }),
-    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
-    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listWorkspaceUsers: vi.fn().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      summary: { totalUsers: 0, activeUsers: 0, adminUsers: 0, pendingUsers: 0 }
-    }),
-    getSettingsModelProviders: vi.fn().mockResolvedValue({ items: [], updatedAt: now }),
-    getSettingsApiKeys: vi.fn().mockResolvedValue({ items: [] }),
-    getSettingsStorage: vi.fn().mockResolvedValue({ buckets: [], knowledgeBases: [], updatedAt: now }),
-    getSettingsSecurity: vi.fn().mockResolvedValue({
-      auditLogEnabled: true,
-      encryption: { enabled: true, transport: 'TLS 1.3', atRest: 'AES-256' },
-      ipAllowlist: [],
-      ipAllowlistEnabled: false,
-      mfaRequired: false,
-      passwordPolicy: '基础',
-      securityScore: 80,
-      ssoEnabled: true,
-      updatedAt: now
-    }),
-    getChatAssistantConfig: vi.fn().mockResolvedValue({
-      deepThinkEnabled: true,
-      webSearchEnabled: false,
-      modelProfileId: 'knowledge-rag',
-      defaultKnowledgeBaseIds: [],
-      quickPrompts: [],
-      thinkingSteps: [],
-      updatedAt: now
-    }),
-    listAgentFlows: vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    saveAgentFlow: vi.fn<KnowledgeFrontendApi['saveAgentFlow']>(),
-    updateAgentFlow: vi.fn<KnowledgeFrontendApi['updateAgentFlow']>(),
-    runAgentFlow: vi.fn<KnowledgeFrontendApi['runAgentFlow']>(),
     listTraces: vi.fn(
       async (): Promise<PageResult<RagTrace>> => ({
         items: [trace],
@@ -868,9 +653,6 @@ beforeEach(() => {
   testState.autoSubmitMessage = undefined;
   testState.renderedButtons = [];
   testState.renderedPopconfirms = [];
-  testState.renderedSearchInputs = [];
-  testState.useXChatCalls = [];
-  testState.useXConversationsCalls = [];
   testState.submitted = false;
 });
 
@@ -896,22 +678,17 @@ describe('knowledge production workflow pages', () => {
     );
     await flushEffects();
 
-    expect(client.streamChat).toHaveBeenCalledWith({
+    expect(client.chat).toHaveBeenCalledWith({
       messages: [{ content: '如何接入 provider？', role: 'user' }],
       metadata: {
         conversationId: expect.any(String),
         debug: true,
-        mentions: [],
-        reasoningMode: 'deep',
-        webSearchMode: 'off'
+        mentions: []
       },
       model: 'knowledge-rag',
-      stream: true
+      stream: false
     });
-    expect(container?.textContent).toContain('新会话');
-    expect(container?.textContent).toContain('重命名');
-    expect(container?.textContent).toContain('删除');
-    expect(container?.textContent).not.toContain('用于编程');
+    expect(container?.textContent).toContain('新建会话');
     expect(container?.textContent).not.toContain('选择对话知识库');
     expect(container?.textContent).toContain('真实 API provider 返回的回答');
     expect(container?.textContent).toContain('Provider Citation');
@@ -919,8 +696,6 @@ describe('knowledge production workflow pages', () => {
     expect(container?.textContent).toContain('like');
     expect(container?.textContent).toContain('dislike');
     expect(container?.textContent).toContain('Trace');
-    expect(testState.useXConversationsCalls).not.toHaveLength(0);
-    expect(testState.useXChatCalls).not.toHaveLength(0);
   });
 
   it('renders DocumentsPage document stages and actions from the injected API client', async () => {
@@ -951,58 +726,7 @@ describe('knowledge production workflow pages', () => {
     expect(container?.textContent).toContain('前端知识库');
     expect(container?.textContent).toContain('选择 Embedding Model');
     expect(container?.textContent).toContain('OpenAI Small');
-    expect(container?.textContent).toContain('拖拽 Markdown/TXT 到此处');
-    expect(container?.textContent).toContain('文件会先上传到后端，再创建文档入库任务。');
     expect(container?.textContent).toContain('上传进度');
-  });
-
-  it('filters KnowledgeBasesPage by keyword and health state', async () => {
-    const client = createClient();
-    vi.mocked(client.listKnowledgeBases).mockResolvedValueOnce({
-      items: [
-        {
-          ...knowledgeBase,
-          id: 'kb_product',
-          name: '产品技术文档库',
-          description: '产品研发与技术方案',
-          tags: ['product', 'engineering'],
-          health: { status: 'ready' }
-        },
-        {
-          ...knowledgeBase,
-          id: 'kb_sales',
-          name: '销售资料库',
-          description: '销售话术与客户案例',
-          tags: ['sales'],
-          health: { status: 'degraded' }
-        }
-      ],
-      total: 2,
-      page: 1,
-      pageSize: 20
-    });
-
-    await renderClient(
-      <KnowledgeApiProvider client={client}>
-        <MemoryRouter>
-          <KnowledgeBasesPage />
-        </MemoryRouter>
-      </KnowledgeApiProvider>
-    );
-    await flushEffects();
-
-    const searchInput = testState.renderedSearchInputs.find(input => input.placeholder === '搜索知识库');
-    expect(searchInput).toBeDefined();
-
-    await act(async () => {
-      searchInput?.onChange?.({ target: { value: '销售' } });
-    });
-    await act(async () => {
-      testState.renderedButtons.find(button => button.children === 'degraded')?.onClick?.();
-    });
-
-    expect(container?.textContent).toContain('销售资料库');
-    expect(container?.textContent).not.toContain('产品技术文档库');
   });
 
   it('confirms before deleting a document from DocumentsPage', async () => {
@@ -1104,12 +828,8 @@ function renderClient(element: React.ReactNode) {
 
 function flushEffects() {
   return act(async () => {
-    for (let index = 0; index < 5; index += 1) {
-      await Promise.resolve();
-      await new Promise(resolve => {
-        globalThis.setTimeout(resolve, 0);
-      });
-    }
+    await Promise.resolve();
+    await Promise.resolve();
   });
 }
 
