@@ -432,6 +432,8 @@ Response: `CreateDocumentFromUploadResponse`
 
 `POST /chat` 的 Chat Lab 响应在 legacy `answer/citations/traceId` 外还返回 `route` 与 `diagnostics`。`route.reason` 使用稳定枚举 `legacy-ids | mentions | metadata-match | fallback-all`；`diagnostics.retrievalMode` 使用 `hybrid | none` 作为当前 MVP 展示投影。`citations` 只能来自后端 retrieval/vector hit 投影，模型生成阶段返回的自带 citation 不得穿透到响应。
 
+Eval run 的最小后端语义是“部分失败可交付”：单个 case 失败时，`status` 返回 `partial`，`results` 保留成功 case 的 `KnowledgeEvalRunResult`，`failedCases[]` 记录 `{ caseId, code, message }`，其中 code 固定为 `knowledge_eval_run_failed`。全部成功为 `completed`，全部失败为 `failed`。
+
 Endpoint contract:
 
 | Method | Path                                   | Query / Body                                                              | Response                                                                  | 主要错误码                                                                                                                                                                                    | 权限                                        |

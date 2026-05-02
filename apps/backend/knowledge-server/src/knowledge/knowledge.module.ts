@@ -5,6 +5,7 @@ import { AuthTokenVerifier } from '../auth/auth-token-verifier';
 import { KnowledgeFrontendMvpController } from './knowledge-frontend-mvp.controller';
 import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeDocumentService } from './knowledge-document.service';
+import { KnowledgeEvalService } from './knowledge-eval.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
 import { KnowledgeProviderHealthService } from './knowledge-provider-health.service';
 import { KnowledgeRagService } from './knowledge-rag.service';
@@ -95,6 +96,24 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
         traces: KnowledgeTraceService
       ) => new KnowledgeRagService(repository, sdkRuntime, traces),
       inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME, KnowledgeTraceService]
+    },
+    {
+      provide: KnowledgeEvalService,
+      useFactory: (rag: KnowledgeRagService) =>
+        new KnowledgeEvalService({
+          answer: async ({ question }) => {
+            const response = await rag.answer(
+              { userId: 'eval-system' },
+              { conversationId: `eval_${Date.now()}`, message: question }
+            );
+            return {
+              id: response.assistantMessage.id,
+              citations: response.citations,
+              traceId: response.traceId
+            };
+          }
+        }),
+      inject: [KnowledgeRagService]
     },
     {
       provide: AuthTokenVerifier,

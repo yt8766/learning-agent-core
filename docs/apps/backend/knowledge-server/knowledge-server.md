@@ -179,6 +179,8 @@ RPC adapter 返回 `{ data, error }`，不把 `pg.Pool`、vendor response 或数
 
 SDK chat 分支保持 grounded citation 规则：`answer` 使用 provider 返回的 `generated.text`，但 `assistantMessage.citations` 与顶层 `citations` 只能来自 retrieval/vector hits 的项目投影，不能采信模型返回的自带 citation。embedding、vector search 或 generation 任一 SDK 错误都会在 service 层转换为 `KnowledgeServiceError('knowledge_chat_failed', message)`，避免第三方 provider / vector adapter error 直接穿透到 controller 或前端。
 
+`KnowledgeEvalService` 提供当前最小 eval 闭环：逐个 eval case 调用注入的 answerer，计算 `recallAtK`、`citationAccuracy` 与 `answerRelevance`，并保留成功 case 的结果。单个 case 失败时不会丢弃已完成结果；run 状态会变成 `partial`，失败项进入 `failedCases`，错误码固定为 `knowledge_eval_run_failed`。
+
 `DocumentProcessingJobRecord.progress` 是给前端进度条使用的稳定投影。同步 MVP 会在 `parsing -> chunking -> embedding -> indexing -> succeeded` 推进时写入 `15/35/60/85/100` 一组稳定百分比，并填充 `processedChunks` / `totalChunks`；后续异步 worker 可以按同一稳定 `stage` 更新，但不能让前端直接依赖内部 provider 状态或第三方向量库响应。`reprocessDocument()` 必须创建新的 job id，并把 `attempts` 设为上一条 job 的 `attempts + 1`，不得把失败 job 改回 running。
 
 Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动时由 `knowledge-schema.sql.ts` 的 `alter table ... add column if not exists` 补齐字段。`stages/currentStage/errorCode/errorMessage` 是兼容旧前端和旧测试的 legacy 投影，新增 UI 默认读取稳定字段。
