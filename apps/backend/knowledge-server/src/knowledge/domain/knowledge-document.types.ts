@@ -46,6 +46,11 @@ export interface DocumentProcessingJobRecord {
   status: KnowledgeJobStatus;
   currentStage: KnowledgeJobStage;
   stages: DocumentProcessingJobStageRecord[];
+  progress?: {
+    percent: number;
+    processedChunks?: number;
+    totalChunks?: number;
+  };
   errorCode?: string;
   errorMessage?: string;
   createdAt: string;
@@ -81,4 +86,100 @@ export interface CreateDocumentFromUploadResponse {
 export interface DocumentChunksResponse {
   items: DocumentChunkRecord[];
   total: number;
+}
+
+export type OpenAIChatMessageRole = 'developer' | 'system' | 'user' | 'assistant' | 'tool';
+
+export interface OpenAIChatTextContentPart {
+  type: 'text';
+  text: string;
+  [key: string]: unknown;
+}
+
+export interface OpenAIChatMessage {
+  role: OpenAIChatMessageRole;
+  content: string | OpenAIChatTextContentPart[];
+  [key: string]: unknown;
+}
+
+export interface KnowledgeChatMetadata {
+  conversationId?: string;
+  knowledgeBaseId?: string;
+  knowledgeBaseIds?: string[] | string;
+  mentions?: KnowledgeChatMention[];
+  debug?: boolean | string;
+  [key: string]: unknown;
+}
+
+export interface KnowledgeChatMention {
+  type: 'knowledge_base';
+  id?: string;
+  label?: string;
+  [key: string]: unknown;
+}
+
+export interface KnowledgeChatRequest {
+  model?: string;
+  messages?: OpenAIChatMessage[];
+  metadata?: KnowledgeChatMetadata;
+  stream?: boolean;
+  conversationId?: string;
+  knowledgeBaseId?: string;
+  knowledgeBaseIds?: string[];
+  message?: string;
+  retrievalConfigId?: string;
+  promptTemplateId?: string;
+  debug?: boolean;
+}
+
+export interface KnowledgeChatCitation {
+  id: string;
+  documentId: string;
+  chunkId: string;
+  title: string;
+  quote: string;
+  score: number;
+}
+
+export interface KnowledgeChatMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  citations?: KnowledgeChatCitation[];
+  traceId?: string;
+  feedback?: {
+    rating: 'positive' | 'negative';
+    category?:
+      | 'helpful'
+      | 'not_helpful'
+      | 'wrong_citation'
+      | 'hallucination'
+      | 'missing_knowledge'
+      | 'too_slow'
+      | 'unsafe'
+      | 'other';
+    comment?: string;
+  };
+  createdAt: string;
+}
+
+export interface KnowledgeChatResponse {
+  conversationId: string;
+  userMessage: KnowledgeChatMessage;
+  assistantMessage: KnowledgeChatMessage;
+  answer: string;
+  citations: KnowledgeChatCitation[];
+  traceId: string;
+}
+
+export interface KnowledgeEmbeddingModelOption {
+  id: string;
+  label: string;
+  provider: string;
+  status: 'available' | 'unconfigured';
+}
+
+export interface KnowledgeEmbeddingModelsResponse {
+  items: KnowledgeEmbeddingModelOption[];
 }

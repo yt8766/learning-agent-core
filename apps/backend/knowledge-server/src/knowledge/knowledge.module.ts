@@ -61,9 +61,13 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
     },
     {
       provide: KnowledgeDocumentService,
-      useFactory: (repository: KnowledgeRepository, worker: KnowledgeIngestionWorker, storage: OssStorageProvider) =>
-        new KnowledgeDocumentService(repository, worker, storage),
-      inject: [KNOWLEDGE_REPOSITORY, KnowledgeIngestionWorker, KNOWLEDGE_OSS_STORAGE]
+      useFactory: (
+        repository: KnowledgeRepository,
+        worker: KnowledgeIngestionWorker,
+        storage: OssStorageProvider,
+        sdkRuntime: KnowledgeSdkRuntimeProviderValue
+      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime),
+      inject: [KNOWLEDGE_REPOSITORY, KnowledgeIngestionWorker, KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_SDK_RUNTIME]
     },
     {
       provide: AuthTokenVerifier,
