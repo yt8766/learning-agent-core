@@ -1,26 +1,26 @@
 import { useEffect, useState } from 'react';
 
 import { approveWorkspaceSkillDraft, getWorkspaceCenter, rejectWorkspaceSkillDraft } from '@/api/admin-api-workspace';
-import { ApprovalsPanel } from '@/features/approvals-center/approvals-panel';
-import { ArchiveCenterPanel } from '@/features/archive-center/archive-center-panel';
-import { CompanyAgentsPanel } from '@/features/company-agents/company-agents-panel';
-import { ConnectorsCenterPanel } from '@/features/connectors-center/connectors-center-panel';
-import { EvidenceCenterPanel } from '@/features/evidence-center/evidence-center-panel';
-import { EvalsCenterPanel } from '@/features/evals-center/evals-center-panel';
-import { LearningCenterPanel } from '@/features/learning-center/learning-center-panel';
-import { MemoryCenterPanel } from '@/features/learning-center/memory-center-panel';
-import { MemoryGovernancePanel } from '@/features/learning-center/memory-governance-panel';
-import { MemoryResolutionQueueCard } from '@/features/learning-center/memory-resolution-queue-card';
-import { ProfileCenterPanel } from '@/features/learning-center/profile-center-panel';
-import { RuntimeOverviewPanel } from '@/features/runtime-overview/runtime-overview-panel';
-import { SkillLabPanel } from '@/features/skill-lab/skill-lab-panel';
-import { SkillSourcesCenterPanel } from '@/features/skill-sources-center/skill-sources-center-panel';
-import { WorkspaceCenterPanel } from '@/features/workspace-center/workspace-center-panel';
-import { WorkflowLabPage } from '@/features/workflow-lab/WorkflowLabPage';
+import { ApprovalsPanel } from '@/pages/approvals-center/approvals-panel';
+import { ArchiveCenterPanel } from '@/pages/archive-center/archive-center-panel';
+import { CompanyAgentsPanel } from '@/pages/company-agents/company-agents-panel';
+import { ConnectorsCenterPanel } from '@/pages/connectors-center/connectors-center-panel';
+import { EvidenceCenterPanel } from '@/pages/evidence-center/evidence-center-panel';
+import { EvalsCenterPanel } from '@/pages/evals-center/evals-center-panel';
+import { LearningCenterPanel } from '@/pages/learning-center/learning-center-panel';
+import { MemoryCenterPanel } from '@/pages/learning-center/memory-center-panel';
+import { MemoryGovernancePanel } from '@/pages/learning-center/memory-governance-panel';
+import { MemoryResolutionQueueCard } from '@/pages/learning-center/memory-resolution-queue-card';
+import { ProfileCenterPanel } from '@/pages/learning-center/profile-center-panel';
+import { RuntimeOverviewPanel } from '@/pages/runtime-overview/runtime-overview-panel';
+import { SkillLabPanel } from '@/pages/skill-lab/skill-lab-panel';
+import { SkillSourcesCenterPanel } from '@/pages/skill-sources-center/skill-sources-center-panel';
+import { WorkspaceCenterPanel } from '@/pages/workspace-center/workspace-center-panel';
+import { WorkflowLabPage } from '@/pages/workflow-lab/WorkflowLabPage';
 import type {
   WorkspaceCenterRecord,
   WorkspaceSkillDraftDecisionResponse
-} from '@/features/workspace-center/workspace-center-types';
+} from '@/pages/workspace-center/workspace-center-types';
 import type { AdminDashboardState } from '@/hooks/use-admin-dashboard';
 import { DashboardLoadingState } from './dashboard-loading-state';
 

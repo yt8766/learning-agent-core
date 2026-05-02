@@ -153,7 +153,6 @@
 - `packages/tools/src/mcp/index.ts`
 - `packages/tools/src/registry/index.ts`
 - `packages/tools/src/sandbox/index.ts`
-- `packages/tools/src/watchdog/index.ts`
 - `packages/runtime/src/flows/approval/index.ts`
 - `packages/runtime/src/flows/learning/index.ts`
 - `packages/runtime/src/flows/ministries/index.ts`

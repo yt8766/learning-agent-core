@@ -175,7 +175,12 @@ describe('@agent/runtime session inline capability integration', () => {
 
   it('persists session, messages, events and checkpoint for inline capability replies', async () => {
     const repository = new InMemoryRuntimeStateRepository();
-    const coordinator = new SessionCoordinator(createSessionOrchestratorStub() as never, repository, {} as never);
+    const llmProvider = createLlmProviderStub('Runtime 审批恢复状态总结');
+    const coordinator = new SessionCoordinator(
+      createSessionOrchestratorStub() as never,
+      repository,
+      llmProvider as never
+    );
 
     const session = await coordinator.createSession({});
 
@@ -199,7 +204,14 @@ describe('@agent/runtime session inline capability integration', () => {
 
     expect(userMessage.role).toBe('user');
     expect(userMessage.content).toBe('帮我总结 runtime approval recovery 的当前状态');
-    expect(persistedSession?.title).toBe('帮我总结 runtime approval recovery 的当前状态');
+    expect(llmProvider.generateText).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'system', content: expect.stringContaining('生成一个会话标题') }),
+        expect.objectContaining({ role: 'user', content: expect.stringContaining('runtime approval recovery') })
+      ]),
+      expect.objectContaining({ role: 'manager', temperature: 0.1, maxTokens: 24 })
+    );
+    expect(persistedSession?.title).toBe('Runtime 审批恢复状态总结');
     expect(persistedSession?.status).toBe('completed');
     expect(messages.map(item => item.role)).toEqual(['user', 'assistant']);
     expect(messages[1]?.content).toBe('approval recovery 主链已经具备最小 integration 覆盖。');

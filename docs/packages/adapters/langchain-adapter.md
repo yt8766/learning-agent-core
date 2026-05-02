@@ -2,19 +2,21 @@
 
 状态：current
 文档类型：guide
-适用范围：`packages/adapters/src/langchain/`
-最后核对：2026-04-28
+适用范围：历史入口；当前真实实现位于 `packages/knowledge/src/adapters/langchain/`
+
+> 迁移说明：LangChain indexing adapter 已迁入 `@agent/knowledge/adapters/langchain`。`@agent/adapters` 侧入口已删除，代码必须从 `@agent/knowledge` 或 `@agent/knowledge/adapters/langchain` 引入 LangChain indexing adapter。
+> 最后核对：2026-04-28
 
 ## 概述
 
-`packages/adapters` 提供三种 LangChain adapter，将 LangChain 生态的 loader / splitter / embedder 适配为 `@agent/knowledge` 定义的稳定 indexing 契约接口。
+`packages/knowledge` 提供三种 LangChain adapter，将 LangChain 生态的 loader / splitter / embedder 适配为 `@agent/knowledge` 定义的稳定 indexing 契约接口。
 
 ## 1. Loader — `LangChainLoaderAdapter`
 
 包装任意 LangChain `BaseDocumentLoader`，输出 `Document[]`（`@agent/knowledge` 类型）。
 
 ```ts
-import { LangChainLoaderAdapter, createMarkdownDirectoryLoader } from '@agent/adapters';
+import { LangChainLoaderAdapter, createMarkdownDirectoryLoader } from '@agent/knowledge/adapters/langchain';
 
 const inner = createMarkdownDirectoryLoader('./docs');
 const loader = new LangChainLoaderAdapter(inner);
@@ -39,7 +41,7 @@ const documents = await loader.load();
 包装任意 LangChain `BaseDocumentTransformer`（text splitter），输出 `Chunk[]`。
 
 ```ts
-import { LangChainChunkerAdapter, createRecursiveTextSplitterChunker } from '@agent/adapters';
+import { LangChainChunkerAdapter, createRecursiveTextSplitterChunker } from '@agent/knowledge/adapters/langchain';
 
 const splitter = await createRecursiveTextSplitterChunker({ chunkSize: 500, chunkOverlap: 100 });
 const chunker = new LangChainChunkerAdapter(splitter);
@@ -68,7 +70,7 @@ for (const doc of documents) {
 包装任意 LangChain `Embeddings`，输出 `Vector[]`。
 
 ```ts
-import { LangChainEmbedderAdapter } from '@agent/adapters';
+import { LangChainEmbedderAdapter } from '@agent/knowledge/adapters/langchain';
 import { OpenAIEmbeddings } from '@langchain/openai';
 
 const inner = new OpenAIEmbeddings({ model: 'text-embedding-3-small' });
@@ -95,7 +97,7 @@ import {
   LangChainEmbedderAdapter,
   createMarkdownDirectoryLoader,
   createRecursiveTextSplitterChunker
-} from '@agent/adapters';
+} from '@agent/knowledge/adapters/langchain';
 
 const documents = await new LangChainLoaderAdapter(createMarkdownDirectoryLoader('./docs')).load();
 

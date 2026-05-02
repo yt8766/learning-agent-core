@@ -1,15 +1,39 @@
 import type {
   ChatRequest,
   ChatResponse,
+  ChatMessage,
   CreateFeedbackRequest,
+  CreateDocumentFromUploadRequest,
+  CreateDocumentFromUploadResponse,
   CreateKnowledgeBaseRequest,
   DashboardOverview,
+  DeleteDocumentResponse,
+  DocumentChunksResponse,
+  DocumentProcessingJob,
+  EvalCaseResult,
+  EvalRunComparison,
   EvalDataset,
   EvalRun,
   KnowledgeBase,
-  PageResult
+  KnowledgeDocument,
+  KnowledgeUploadResult,
+  ObservabilityMetrics,
+  PageResult,
+  RagTrace,
+  RagTraceDetail,
+  ReprocessDocumentResponse,
+  UploadKnowledgeFileRequest,
+  UploadDocumentRequest,
+  UploadDocumentResponse
 } from '../types/api';
 import type { AuthClient } from './auth-client';
+import type { KnowledgeFrontendApi } from './knowledge-api-provider';
+
+export interface KnowledgeApiFactoryOptions {
+  baseUrl: string;
+  getAccessToken: () => string | undefined;
+  fetchImpl?: typeof fetch;
+}
 
 export interface KnowledgeApiClientOptions {
   baseUrl: string;
@@ -17,7 +41,7 @@ export interface KnowledgeApiClientOptions {
   fetcher?: typeof fetch;
 }
 
-export class KnowledgeApiClient {
+export class KnowledgeApiClient implements KnowledgeFrontendApi {
   private readonly baseUrl: string;
   private readonly authClient: AuthClient;
   private readonly fetcher: typeof fetch;
@@ -25,19 +49,79 @@ export class KnowledgeApiClient {
   constructor(options: KnowledgeApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.authClient = options.authClient;
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
   }
 
   getDashboardOverview() {
     return this.get<DashboardOverview>('/dashboard/overview');
   }
 
-  listKnowledgeBases() {
-    return this.get<PageResult<KnowledgeBase>>('/knowledge-bases');
+  async listKnowledgeBases() {
+    const result = await this.request<PageResult<KnowledgeBase> | KnowledgeBasesServiceResponse>('/knowledge/bases');
+    return normalizeKnowledgeBases(result);
   }
 
-  createKnowledgeBase(input: CreateKnowledgeBaseRequest) {
-    return this.post<KnowledgeBase>('/knowledge-bases', input);
+  listDocuments(input: { knowledgeBaseId?: string } = {}) {
+    const params = new URLSearchParams();
+    if (input.knowledgeBaseId) {
+      params.set('knowledgeBaseId', input.knowledgeBaseId);
+    }
+    const query = params.toString();
+    return this.get<PageResult<KnowledgeDocument>>(`/documents${query ? `?${query}` : ''}`);
+  }
+
+  uploadKnowledgeFile(input: UploadKnowledgeFileRequest) {
+    const body = new FormData();
+    body.set('file', input.file);
+    return this.request<KnowledgeUploadResult>(`/knowledge/bases/${input.knowledgeBaseId}/uploads`, {
+      body,
+      method: 'POST'
+    });
+  }
+
+  createDocumentFromUpload(knowledgeBaseId: string, input: CreateDocumentFromUploadRequest) {
+    return this.post<CreateDocumentFromUploadResponse>(`/knowledge/bases/${knowledgeBaseId}/documents`, input);
+  }
+
+  getDocument(documentId: string) {
+    return this.get<KnowledgeDocument>(`/knowledge/documents/${documentId}`);
+  }
+
+  getLatestDocumentJob(documentId: string) {
+    return this.get<DocumentProcessingJob>(`/knowledge/documents/${documentId}/jobs/latest`);
+  }
+
+  listDocumentChunks(documentId: string) {
+    return this.get<DocumentChunksResponse>(`/knowledge/documents/${documentId}/chunks`);
+  }
+
+  async uploadDocument(input: UploadDocumentRequest): Promise<UploadDocumentResponse> {
+    const uploadResult = await this.uploadKnowledgeFile({
+      file: input.file,
+      knowledgeBaseId: input.knowledgeBaseId
+    });
+    return this.createDocumentFromUpload(input.knowledgeBaseId, {
+      filename: uploadResult.filename,
+      metadata: input.metadata,
+      objectKey: uploadResult.objectKey,
+      uploadId: uploadResult.uploadId
+    });
+  }
+
+  reprocessDocument(documentId: string) {
+    return this.post<ReprocessDocumentResponse>(`/knowledge/documents/${documentId}/reprocess`, {});
+  }
+
+  deleteDocument(documentId: string) {
+    return this.request<DeleteDocumentResponse>(`/knowledge/documents/${documentId}`, { method: 'DELETE' });
+  }
+
+  async createKnowledgeBase(input: CreateKnowledgeBaseRequest) {
+    const base = await this.post<KnowledgeServiceBase>('/knowledge/bases', {
+      name: input.name,
+      description: input.description ?? ''
+    });
+    return normalizeKnowledgeBase(base);
   }
 
   chat(input: ChatRequest) {
@@ -45,7 +129,7 @@ export class KnowledgeApiClient {
   }
 
   createFeedback(messageId: string, input: CreateFeedbackRequest) {
-    return this.post(`/messages/${messageId}/feedback`, input);
+    return this.post<ChatMessage>(`/messages/${messageId}/feedback`, input);
   }
 
   listEvalDatasets() {
@@ -54,6 +138,26 @@ export class KnowledgeApiClient {
 
   listEvalRuns() {
     return this.get<PageResult<EvalRun>>('/eval/runs');
+  }
+
+  listEvalRunResults(runId: string) {
+    return this.get<PageResult<EvalCaseResult>>(`/eval/runs/${runId}/results`);
+  }
+
+  compareEvalRuns(input: { baselineRunId: string; candidateRunId: string }) {
+    return this.post<EvalRunComparison>('/eval/runs/compare', input);
+  }
+
+  getObservabilityMetrics() {
+    return this.get<ObservabilityMetrics>('/observability/metrics');
+  }
+
+  listTraces() {
+    return this.get<PageResult<RagTrace>>('/observability/traces');
+  }
+
+  getTrace(traceId: string) {
+    return this.get<RagTraceDetail>(`/observability/traces/${traceId}`);
   }
 
   get<T>(path: string) {
@@ -70,7 +174,17 @@ export class KnowledgeApiClient {
 
   async request<T>(path: string, init: RequestInit = {}, hasRetried = false): Promise<T> {
     const accessToken = await this.authClient.ensureValidAccessToken();
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+    return this.requestWithFetcher<T>(this.fetcher, path, init, accessToken, hasRetried);
+  }
+
+  private async requestWithFetcher<T>(
+    fetcher: typeof fetch,
+    path: string,
+    init: RequestInit,
+    accessToken: string | null,
+    hasRetried: boolean
+  ): Promise<T> {
+    const response = await fetcher(`${this.baseUrl}${path}`, {
       ...init,
       headers: mergeHeaders(init.headers, accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
     });
@@ -96,7 +210,13 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 function isAuthTokenExpired(body: unknown) {
-  return typeof body === 'object' && body && 'code' in body && body.code === 'auth_token_expired';
+  if (!isRecord(body)) {
+    return false;
+  }
+  if (body.code === 'auth_token_expired' || body.code === 'access_token_expired') {
+    return true;
+  }
+  return isRecord(body.error) && body.error.code === 'access_token_expired';
 }
 
 function getErrorMessage(body: unknown, status: number) {
@@ -112,4 +232,68 @@ function mergeHeaders(input: HeadersInit | undefined, extra: Record<string, stri
     headers.set(key, value);
   }
   return headers;
+}
+
+export function createKnowledgeApiClient(options: KnowledgeApiFactoryOptions) {
+  return new KnowledgeApiClient({
+    baseUrl: options.baseUrl,
+    authClient: {
+      ensureValidAccessToken: async () => options.getAccessToken() ?? null,
+      refreshTokensOnce: async () => {
+        throw new Error('Refresh is not available for this client factory');
+      }
+    } as unknown as AuthClient,
+    fetcher: options.fetchImpl
+  });
+}
+
+interface KnowledgeBasesServiceResponse {
+  bases: KnowledgeServiceBase[];
+}
+
+interface KnowledgeServiceBase {
+  id: string;
+  name: string;
+  description: string;
+  createdByUserId: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+function normalizeKnowledgeBases(
+  input: PageResult<KnowledgeBase> | KnowledgeBasesServiceResponse
+): PageResult<KnowledgeBase> {
+  if ('items' in input) {
+    return input;
+  }
+  return {
+    items: input.bases.map(normalizeKnowledgeBase),
+    total: input.bases.length,
+    page: 1,
+    pageSize: input.bases.length
+  };
+}
+
+function normalizeKnowledgeBase(base: KnowledgeServiceBase): KnowledgeBase {
+  return {
+    id: base.id,
+    workspaceId: 'default',
+    name: base.name,
+    description: base.description,
+    tags: [],
+    visibility: 'private',
+    status: base.status === 'active' ? 'active' : 'archived',
+    documentCount: 0,
+    chunkCount: 0,
+    readyDocumentCount: 0,
+    failedDocumentCount: 0,
+    createdBy: base.createdByUserId,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt
+  };
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null;
 }

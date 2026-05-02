@@ -1,10 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ArchiveCenterPanel } from '@/features/archive-center/archive-center-panel';
-import { EvidenceCenterPanel } from '@/features/evidence-center/evidence-center-panel';
-import { RuntimeSummaryOverview } from '@/features/runtime-overview/components/runtime-summary-overview';
-import { RuntimeSummaryVisuals } from '@/features/runtime-overview/components/runtime-summary-visuals';
+import { ArchiveCenterPanel } from '@/pages/archive-center/archive-center-panel';
+import { EvidenceCenterPanel } from '@/pages/evidence-center/evidence-center-panel';
+import { RuntimeSummaryOverview } from '@/pages/runtime-overview/components/runtime-summary-overview';
+import { RuntimeSummaryVisuals } from '@/pages/runtime-overview/components/runtime-summary-visuals';
 
 describe('agent-admin runtime contract smoke', () => {
   it('renders runtime overview, evidence checkpoint replay, and archive export summary from canonical shapes', () => {

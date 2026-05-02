@@ -26,6 +26,36 @@
         "default": "./build/cjs/core/index.js"
       }
     },
+    "./client": {
+      "import": {
+        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "default": "./build/esm/client/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "default": "./build/cjs/client/index.js"
+      }
+    },
+    "./browser": {
+      "import": {
+        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "default": "./build/esm/browser/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "default": "./build/cjs/browser/index.js"
+      }
+    },
+    "./node": {
+      "import": {
+        "types": "./build/types/knowledge/src/node/index.d.ts",
+        "default": "./build/esm/node/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/node/index.d.ts",
+        "default": "./build/cjs/node/index.js"
+      }
+    },
     "./adapters": {
       "import": {
         "types": "./build/types/knowledge/src/adapters/index.d.ts",
@@ -44,6 +74,36 @@
       "require": {
         "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
         "default": "./build/cjs/adapters/langchain/index.js"
+      }
+    },
+    "./adapters/chroma": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "default": "./build/esm/adapters/chroma/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "default": "./build/cjs/adapters/chroma/index.js"
+      }
+    },
+    "./adapters/opensearch": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "default": "./build/esm/adapters/opensearch/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "default": "./build/cjs/adapters/opensearch/index.js"
+      }
+    },
+    "./adapters/supabase": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "default": "./build/esm/adapters/supabase/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "default": "./build/cjs/adapters/supabase/index.js"
       }
     },
     "./adapters/minimax": {
@@ -107,7 +167,10 @@
     "@agent/adapters": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/memory": "workspace:*",
+    "@langchain/core": "^1.1.40",
     "@langchain/openai": "^1.4.1",
+    "@langchain/textsplitters": "^1.0.1",
+    "chromadb": "^3.4.3",
     "zod": "^4.3.6"
   }
 }

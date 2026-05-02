@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="360" viewBox="0 0 560 360" role="img" aria-labelledby="title desc">
+  <title id="title">500 server error illustration</title>
+  <desc id="desc">A person repairing a broken server panel in Ant Design Pro style.</desc>
+  <defs>
+    <linearGradient id="server" x1="183" x2="381" y1="72" y2="281" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f7fbff"/>
+      <stop offset="1" stop-color="#dcecff"/>
+    </linearGradient>
+    <linearGradient id="warn" x1="327" x2="412" y1="119" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffd666"/>
+      <stop offset="1" stop-color="#faad14"/>
+    </linearGradient>
+  </defs>
+  <path fill="#f2f6ff" d="M63 266c29-79 87-147 180-140 81 6 120-71 188-29 72 45 54 144 2 190-55 49-145 54-229 41-72-11-165 2-141-62Z"/>
+  <ellipse cx="286" cy="316" fill="#d7e6fb" rx="190" ry="18"/>
+  <rect width="220" height="186" x="170" y="70" fill="url(#server)" rx="20"/>
+  <rect width="176" height="42" x="192" y="96" fill="#fff" rx="10"/>
+  <rect width="176" height="42" x="192" y="153" fill="#fff" rx="10"/>
+  <rect width="176" height="42" x="192" y="210" fill="#fff" rx="10"/>
+  <circle cx="217" cy="117" r="8" fill="#52c41a"/>
+  <circle cx="217" cy="174" r="8" fill="#ff4d4f"/>
+  <circle cx="217" cy="231" r="8" fill="#faad14"/>
+  <path fill="#bfd5f6" d="M240 112h91v10h-91zM240 169h91v10h-91zM240 226h91v10h-91z"/>
+  <path fill="url(#warn)" d="m370 117 55 96c5 9-1 20-12 20H303c-11 0-17-11-12-20l55-96c5-9 19-9 24 0Z"/>
+  <path fill="#fff" d="M352 151h13l-3 41h-7l-3-41Zm0 55c0-4 3-8 7-8s8 4 8 8-4 8-8 8-7-4-7-8Z"/>
+  <path fill="#1d2b53" d="M128 251h27l5 60h-15l-5-38-8 38h-15l11-60Z"/>
+  <path fill="#1677ff" d="M118 175c10-15 31-15 41 0l20 43-17 8-9-22-3 50h-30l3-49-16 24-16-9 27-45Z"/>
+  <circle cx="141" cy="146" r="18" fill="#ffbf80"/>
+  <path fill="#1d2b53" d="M126 143c2-19 26-26 37-11-1 12-10 19-24 19-5 0-9-3-13-8Z"/>
+  <path fill="#ffbf80" d="M171 220c13 7 28 6 44-4l7 13c-18 16-39 18-58 6l7-15Z"/>
+  <path fill="#ff7875" d="M431 92h53v11h-53zM413 266h71v11h-71zM93 102h55v11H93z" opacity=".8"/>
+</svg>

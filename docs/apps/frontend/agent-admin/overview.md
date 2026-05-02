@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-admin`
-最后核对：2026-04-26
+最后核对：2026-05-01
 
 `agent-admin` 是后台指挥面，负责治理与运营，不和 `agent-chat` 做重复聊天产品。
 
@@ -40,7 +40,9 @@
 ## 当前目录职责
 
 - `src/app`
-  - 应用入口、路由、全局 provider
+  - 应用入口、React Router 路由表、全局 provider
+  - `app.tsx` 只负责 `QueryClientProvider` 与 `RouterProvider` 装配
+  - `admin-routes.tsx` 声明 `/login`、Dashboard path route、错误页与受保护路由，不再在应用入口手写 pathname 分发表
 - `src/api`
   - 面向 `agent-server` 的后台治理接口封装
   - `admin-api-sandbox.ts`
@@ -51,7 +53,7 @@
     - 承载 auto-review create / list / get / rerun / approval resume helper。
     - `AutoReviewRecord` 允许携带 gate / reviewer 展示边界字段，用于审批门、审查器来源、阻断原因和是否需要审批的 API 层投影；当前不要求 UI 页面直接消费。
     - 解析 auto-review 记录时会剔除 raw vendor/provider payload 字段；保留 `metadata` 中安全 correlation 字段，避免把 provider 原始响应透传到后台治理视图。
-- `src/features/runtime-overview`
+- `src/pages/runtime-overview`
   - Runtime 总览与运行态聚合
   - 当前采用“摘要区 + 工作区切换”布局：摘要区固定展示治理概况，`运行队列 / 运行分析 / 架构视图` 在下方按需切换，避免运行页一次性平铺全部内容
   - `components/runtime-agent-tool-execution-projections.ts`
@@ -72,9 +74,9 @@
     - 承载 critical path、trace waterfall、latest traces 与 audit replay 面板
   - `components/runtime-queue-section-support.ts`
     - 承载 trace view、critical path、route confidence、execution summary 等派生逻辑
-- `src/features/approvals-center`
+- `src/pages/approvals-center`
   - 审批中心
-- `src/features/learning-center`
+- `src/pages/learning-center`
   - 学习治理与学习记录视图
   - `learning-center-panel.tsx`
     - 只保留容器 orchestration、状态与派生装配
@@ -88,26 +90,28 @@
     - 承载 selector 过滤与 conflict governance 操作区
   - `learning-center-record-sections.tsx`
     - 承载 queue、实验、隔离、规则、候选与 recent jobs 记录区
-- `src/features/skill-lab`、`src/features/skill-sources-center`
+- `src/pages/skill-lab`、`src/pages/skill-sources-center`
   - 技能实验室、来源治理与安装来源管理
-- `src/features/evidence-center`
+- `src/pages/evidence-center`
   - 证据与引用治理
-- `src/features/connectors-center`
+- `src/pages/connectors-center`
   - Connector、策略和配置治理
-- `src/features/task-traces`
+- `src/pages/task-traces`
   - 任务链路与可观测轨迹
-- `src/features/run-observatory`
+- `src/pages/run-observatory`
   - Run Observatory 详情视图；当前会按选中 `taskId` 展示 agent-tools request/result/event/policy 最新项，并把 sandbox / auto-review 治理 badge 纳入详情摘要
   - `run-observatory-agent-tools.ts`
     - 承载 Run Observatory 的 agent-tools task-scoped 投影、过滤与安全摘要生成
-- `src/features/evals-center`
+- `src/pages/evals-center`
   - Prompt / 质量评估中心
-- `src/features/rules-browser`
+- `src/pages/rules-browser`
   - 规则浏览与治理
-- `src/features/archive-center`、`src/features/company-agents`
+- `src/pages/archive-center`、`src/pages/company-agents`
   - 归档与组织化运营视图
 - `src/components`、`src/hooks`、`src/store`
   - 复用 UI、hooks、状态管理
+- `src/pages/auth/store`
+  - 前端认证状态使用 Zustand；React 组件优先消费 selector / snapshot hook，API runtime 继续通过兼容 facade 读取 token
 - `src/pages`
   - 页面路由；当前含 `dashboard`、`approvals`、`tasks`、`skills`、`rules`
 - `src/styles`、`src/assets`、`src/types`、`src/lib`

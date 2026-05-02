@@ -7,7 +7,7 @@ import { AuthServiceError } from '../auth.errors';
 export class AuthAdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const roles = request.authUser?.roles ?? [];
+    const roles = request.user?.roles ?? [];
     if (roles.includes('super_admin') || roles.includes('admin')) {
       return true;
     }

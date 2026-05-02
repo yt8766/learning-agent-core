@@ -11,11 +11,11 @@
 
 ## 当前主要目录
 
-- `src/providers/`
+- `src/openai-compatible/provider/`、`src/anthropic/provider/`、`src/minimax/provider/`、`src/zhipu/provider/`
 - `src/factories/`
-- `src/chat/`
-- `src/embeddings/`
-- `src/retry/`
+- `src/openai-compatible/chat/`、`src/minimax/chat/`、`src/zhipu/chat/`
+- `src/openai-compatible/embeddings/`
+- `src/resilience/`
 - `src/structured-output/`
 - `src/prompts/`
 

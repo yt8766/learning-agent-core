@@ -40,7 +40,7 @@ import type { SessionTaskAggregate } from './session-task.types';
 import {
   buildTaskContextHints,
   compressConversationIfNeeded,
-  deriveSessionTitle,
+  generateSessionTitleFromSummary,
   runSessionTurn,
   shouldDeriveSessionTitle
 } from './session-coordinator-turns';
@@ -136,7 +136,7 @@ export class SessionCoordinator {
     await this.initialize();
     const now = new Date().toISOString();
     const initialMessage = dto.message?.trim() ?? '';
-    const derivedTitle = deriveSessionTitle(initialMessage);
+    const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, initialMessage);
     const session: ChatSessionRecord = {
       id: `session_${Date.now()}`,
       title: dto.title?.trim() || derivedTitle || '\u65b0\u4f1a\u8bdd',
@@ -189,7 +189,7 @@ export class SessionCoordinator {
       session.channelIdentity = dto.channelIdentity;
     }
     if (shouldDeriveSessionTitle(session.title)) {
-      const derivedTitle = deriveSessionTitle(dto.message);
+      const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, dto.message);
       if (derivedTitle) {
         session.title = derivedTitle;
       }
@@ -222,7 +222,7 @@ export class SessionCoordinator {
       session.channelIdentity = dto.channelIdentity;
     }
     if (shouldDeriveSessionTitle(session.title)) {
-      const derivedTitle = deriveSessionTitle(dto.message);
+      const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, dto.message);
       if (derivedTitle) {
         session.title = derivedTitle;
       }

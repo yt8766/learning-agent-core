@@ -1,90 +1,207 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 
 import { knowledgeApiFixtures } from './knowledge-api-fixtures';
-import { createKnowledgeAccessToken, createKnowledgeRefreshToken, parseKnowledgeRefreshToken } from './knowledge-jwt';
+import {
+  KNOWLEDGE_EVAL_DEFAULT_CREATED_BY,
+  KNOWLEDGE_EVAL_DEFAULT_TENANT_ID,
+  type CreateKnowledgeEvalDatasetInput,
+  type RunKnowledgeEvalDatasetInput
+} from './interfaces/knowledge-eval.types';
+import { KnowledgeObservabilityService } from './knowledge-observability.service';
+import { KnowledgeIngestionService } from './knowledge-ingestion.service';
+import { KnowledgeRagService } from './knowledge-rag.service';
+import {
+  KNOWLEDGE_RAG_DEFAULT_CREATED_BY,
+  KNOWLEDGE_RAG_DEFAULT_TENANT_ID,
+  type KnowledgeRagChatInput
+} from './interfaces/knowledge-rag.types';
+import type { KnowledgeDocumentRecord } from './interfaces/knowledge-records.types';
+import { KnowledgeEvalService } from './knowledge-eval.service';
+import { KNOWLEDGE_REPOSITORY, type KnowledgeRepository } from './repositories/knowledge.repository';
+import {
+  getEmptyKnowledgeMetrics,
+  getFixtureKnowledgeMetrics,
+  getFixtureTracePage,
+  page,
+  toKnowledgeBaseDto,
+  toKnowledgeDocumentDto,
+  toServerEvalDatasetInput,
+  toServerEvalRunInput,
+  toServerRagChatInput,
+  uploadKnowledgeDocument
+} from './knowledge.service.helpers';
 
-export interface KnowledgeLoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface KnowledgeRefreshRequest {
-  refreshToken: string;
+export interface KnowledgeServiceOptions {
+  repository?: KnowledgeRepository;
+  ragService?: KnowledgeRagService;
+  ingestionService?: KnowledgeIngestionService;
+  observabilityService?: KnowledgeObservabilityService;
+  evalService?: KnowledgeEvalService;
+  fixtureFallback?: boolean;
 }
 
 @Injectable()
 export class KnowledgeService {
-  async login(input: KnowledgeLoginRequest) {
-    if (!input.email || !input.password) {
-      throw new UnauthorizedException({ code: 'auth_invalid_credentials', message: 'Invalid credentials' });
-    }
-    const user = this.getStubUser(input.email);
-    return {
-      user,
-      tokens: {
-        accessToken: createKnowledgeAccessToken(user.id),
-        refreshToken: createKnowledgeRefreshToken(user.id),
-        tokenType: 'Bearer' as const,
-        expiresIn: 7200,
-        refreshExpiresIn: 1209600
-      }
-    };
-  }
+  private readonly repository?: KnowledgeRepository;
+  private readonly ragService?: KnowledgeRagService;
+  private readonly ingestionService?: KnowledgeIngestionService;
+  private readonly observabilityService?: KnowledgeObservabilityService;
+  private readonly evalService?: KnowledgeEvalService;
+  private readonly fixtureFallback: boolean;
 
-  async refresh(input: KnowledgeRefreshRequest) {
-    const parsed = parseKnowledgeRefreshToken(input.refreshToken);
-    if (!parsed) {
-      throw new UnauthorizedException({ code: 'auth_refresh_token_invalid', message: 'Invalid refresh token' });
+  constructor(
+    @Optional()
+    @Inject(KNOWLEDGE_REPOSITORY)
+    repositoryOrOptions?: KnowledgeRepository | KnowledgeServiceOptions,
+    @Optional()
+    ragService?: KnowledgeRagService,
+    @Optional()
+    ingestionService?: KnowledgeIngestionService,
+    @Optional()
+    observabilityService?: KnowledgeObservabilityService,
+    @Optional()
+    evalService?: KnowledgeEvalService,
+    @Optional()
+    options?: KnowledgeServiceOptions
+  ) {
+    if (isKnowledgeServiceOptions(repositoryOrOptions)) {
+      this.repository = repositoryOrOptions.repository;
+      this.ragService = repositoryOrOptions.ragService;
+      this.ingestionService = repositoryOrOptions.ingestionService;
+      this.observabilityService = repositoryOrOptions.observabilityService;
+      this.evalService = repositoryOrOptions.evalService;
+      this.fixtureFallback = repositoryOrOptions.fixtureFallback ?? true;
+      return;
     }
-    return {
-      tokens: {
-        accessToken: createKnowledgeAccessToken(parsed.userId, parsed.version + 1),
-        refreshToken: createKnowledgeRefreshToken(parsed.userId, parsed.version + 1),
-        tokenType: 'Bearer' as const,
-        expiresIn: 7200,
-        refreshExpiresIn: 1209600
-      }
-    };
-  }
 
-  async me() {
-    return {
-      user: this.getStubUser('dev@example.com')
-    };
+    this.repository = repositoryOrOptions;
+    this.ragService = ragService;
+    this.ingestionService = ingestionService;
+    this.observabilityService = observabilityService;
+    this.evalService = evalService;
+    this.fixtureFallback = options?.fixtureFallback ?? true;
   }
 
   getDashboardOverview() {
     return knowledgeApiFixtures.dashboard;
   }
 
-  listKnowledgeBases() {
+  async listKnowledgeBases() {
+    if (this.repository) {
+      const records = await this.repository.listKnowledgeBases({ tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID });
+      if (records.items.length > 0) {
+        return page(records.items.map(toKnowledgeBaseDto));
+      }
+      if (!this.fixtureFallback) {
+        return page([]);
+      }
+    }
+
     return knowledgeApiFixtures.knowledgeBases;
   }
 
-  getKnowledgeBase(id: string) {
-    return (
-      knowledgeApiFixtures.knowledgeBases.items.find(item => item.id === id) ??
-      knowledgeApiFixtures.knowledgeBases.items[0]
-    );
+  async getKnowledgeBase(id: string) {
+    if (this.repository) {
+      const records = await this.repository.listKnowledgeBases({ tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID });
+      const record = records.items.find(item => item.id === id);
+      if (record) {
+        return toKnowledgeBaseDto(record);
+      }
+      if (!this.fixtureFallback) {
+        throw new NotFoundException({ code: 'knowledge_base_not_found', message: 'Knowledge base not found.' });
+      }
+    }
+
+    const fixture = knowledgeApiFixtures.knowledgeBases.items.find(item => item.id === id);
+    if (!fixture) {
+      throw new NotFoundException({ code: 'knowledge_base_not_found', message: 'Knowledge base not found.' });
+    }
+    return fixture;
   }
 
-  listDocuments() {
+  async listDocuments() {
+    if (this.repository) {
+      const documents = await this.repository.listDocuments({
+        tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID,
+        knowledgeBaseId: 'kb_frontend'
+      });
+      if (documents.items.length > 0) {
+        return page(await Promise.all(documents.items.map(record => this.toDocumentDto(record))));
+      }
+      if (!this.fixtureFallback) {
+        return page([]);
+      }
+    }
     return knowledgeApiFixtures.documents;
   }
 
-  getDocument(id: string) {
-    return knowledgeApiFixtures.documents.items.find(item => item.id === id) ?? knowledgeApiFixtures.documents.items[0];
+  async getDocument(id: string) {
+    if (this.repository) {
+      const documents = await this.repository.listDocuments({
+        tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID,
+        knowledgeBaseId: 'kb_frontend'
+      });
+      const record = documents.items.find(item => item.id === id);
+      if (record) {
+        return this.toDocumentDto(record);
+      }
+      if (!this.fixtureFallback) {
+        throw new NotFoundException({ code: 'document_not_found', message: 'Document not found.' });
+      }
+    }
+    const fixture = knowledgeApiFixtures.documents.items.find(item => item.id === id);
+    if (!fixture) {
+      throw new NotFoundException({ code: 'document_not_found', message: 'Document not found.' });
+    }
+    return fixture;
   }
 
   listDocumentJobs() {
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
     return page(knowledgeApiFixtures.jobs);
   }
 
   listDocumentChunks() {
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
     return knowledgeApiFixtures.chunks;
   }
 
-  chat(input: { conversationId?: string; message?: string }) {
+  async uploadDocument(input: { knowledgeBaseId: string; fileName: string; bytes: Buffer }) {
+    return uploadKnowledgeDocument(input, this.ingestionService);
+  }
+
+  async reprocessDocument(id: string) {
+    const document = await this.getDocument(id);
+    return {
+      document,
+      job: {
+        id: `job_reprocess_${id}`,
+        documentId: id,
+        status: 'queued',
+        currentStage: 'upload_received',
+        stages: [],
+        createdAt: new Date().toISOString()
+      }
+    };
+  }
+
+  async chat(input: KnowledgeRagChatInput) {
+    const secureInput = toServerRagChatInput(input);
+    if (this.ragService) {
+      return this.ragService.answer(secureInput);
+    }
+    if (this.repository) {
+      return new KnowledgeRagService({ repo: this.repository }).answer(secureInput);
+    }
+
+    if (!this.fixtureFallback) {
+      throw new Error('knowledge RAG repository or service is required');
+    }
+
     return {
       ...knowledgeApiFixtures.chatResponse,
       conversationId: input.conversationId ?? knowledgeApiFixtures.chatResponse.conversationId,
@@ -111,78 +228,163 @@ export class KnowledgeService {
     };
   }
 
-  getObservabilityMetrics() {
-    return {
-      traceCount: 1,
-      questionCount: knowledgeApiFixtures.dashboard.todayQuestionCount,
-      averageLatencyMs: knowledgeApiFixtures.dashboard.averageLatencyMs,
-      p95LatencyMs: knowledgeApiFixtures.dashboard.p95LatencyMs,
-      p99LatencyMs: knowledgeApiFixtures.dashboard.p99LatencyMs,
-      errorRate: knowledgeApiFixtures.dashboard.errorRate,
-      timeoutRate: 0,
-      noAnswerRate: knowledgeApiFixtures.dashboard.noAnswerRate,
-      negativeFeedbackRate: knowledgeApiFixtures.dashboard.negativeFeedbackRate,
-      citationClickRate: 0.42,
-      stageLatency: [
-        { stage: 'embedding', averageLatencyMs: 100, p95LatencyMs: 130 },
-        { stage: 'vector_search', averageLatencyMs: 120, p95LatencyMs: 160 },
-        { stage: 'generation', averageLatencyMs: 600, p95LatencyMs: 820 }
-      ]
-    };
+  getObservabilityMetrics(query: { knowledgeBaseId?: string } = {}) {
+    const observabilityService = this.resolveObservabilityService();
+    if (observabilityService) {
+      return observabilityService.getMetrics({
+        tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID,
+        knowledgeBaseId: query.knowledgeBaseId
+      });
+    }
+
+    if (!this.fixtureFallback) {
+      return getEmptyKnowledgeMetrics();
+    }
+
+    return getFixtureKnowledgeMetrics();
   }
 
-  listTraces() {
-    return page([
-      {
-        id: knowledgeApiFixtures.traceDetail.id,
-        workspaceId: knowledgeApiFixtures.traceDetail.workspaceId,
-        conversationId: knowledgeApiFixtures.traceDetail.conversationId,
-        messageId: knowledgeApiFixtures.traceDetail.messageId,
-        knowledgeBaseIds: knowledgeApiFixtures.traceDetail.knowledgeBaseIds,
-        question: knowledgeApiFixtures.traceDetail.question,
-        answer: knowledgeApiFixtures.traceDetail.answer,
-        status: knowledgeApiFixtures.traceDetail.status,
-        latencyMs: knowledgeApiFixtures.traceDetail.latencyMs,
-        hitCount: knowledgeApiFixtures.traceDetail.hitCount,
-        citationCount: knowledgeApiFixtures.traceDetail.citationCount,
-        createdBy: knowledgeApiFixtures.traceDetail.createdBy,
-        createdAt: knowledgeApiFixtures.traceDetail.createdAt
-      }
-    ]);
+  listTraces(query: { knowledgeBaseId?: string } = {}) {
+    const observabilityService = this.resolveObservabilityService();
+    if (observabilityService) {
+      return observabilityService.listTraces({
+        tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID,
+        knowledgeBaseId: query.knowledgeBaseId
+      });
+    }
+
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
+
+    return getFixtureTracePage();
   }
 
-  getTrace() {
+  getTrace(id?: string) {
+    const observabilityService = this.resolveObservabilityService();
+    if (observabilityService && id) {
+      return observabilityService.getTrace({ tenantId: KNOWLEDGE_RAG_DEFAULT_TENANT_ID, id });
+    }
+
+    if (!this.fixtureFallback) {
+      throw new NotFoundException({ code: 'trace_not_found', message: 'Trace not found.' });
+    }
+
     return knowledgeApiFixtures.traceDetail;
   }
 
   listEvalDatasets() {
+    const evalService = this.resolveEvalService();
+    if (evalService) {
+      return evalService.listDatasets({ tenantId: KNOWLEDGE_EVAL_DEFAULT_TENANT_ID });
+    }
+
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
+
     return knowledgeApiFixtures.evalDatasets;
   }
 
-  listEvalRuns() {
+  createEvalDataset(input: CreateKnowledgeEvalDatasetInput) {
+    return this.requireEvalService().createDataset(toServerEvalDatasetInput(input));
+  }
+
+  listEvalRuns(query: { datasetId?: string } = {}) {
+    const evalService = this.resolveEvalService();
+    if (evalService) {
+      return evalService.listRuns({ tenantId: KNOWLEDGE_EVAL_DEFAULT_TENANT_ID, datasetId: query.datasetId });
+    }
+
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
+
     return knowledgeApiFixtures.evalRuns;
   }
 
   getEvalRun(id: string) {
+    const evalService = this.resolveEvalService();
+    if (evalService) {
+      return evalService.getRun({ tenantId: KNOWLEDGE_EVAL_DEFAULT_TENANT_ID, id });
+    }
+
+    if (!this.fixtureFallback) {
+      throw new NotFoundException({ code: 'eval_run_not_found', message: 'Eval run not found.' });
+    }
+
     return knowledgeApiFixtures.evalRuns.items.find(item => item.id === id) ?? knowledgeApiFixtures.evalRuns.items[0];
   }
 
-  listEvalRunResults() {
+  createEvalRun(input: RunKnowledgeEvalDatasetInput) {
+    return this.requireEvalService().runDataset(toServerEvalRunInput(input));
+  }
+
+  listEvalRunResults(runId?: string) {
+    const evalService = this.resolveEvalService();
+    if (evalService && runId) {
+      return evalService.listRunResults({ tenantId: KNOWLEDGE_EVAL_DEFAULT_TENANT_ID, runId });
+    }
+
+    if (!this.fixtureFallback) {
+      return page([]);
+    }
+
     return knowledgeApiFixtures.evalResults;
   }
 
-  private getStubUser(email: string) {
-    return {
-      id: 'user_1',
-      email,
-      name: 'Knowledge User',
-      currentWorkspaceId: 'ws_1',
-      roles: ['owner'],
-      permissions: ['knowledge:read', 'knowledge:write', 'document:upload', 'chat:write', 'eval:run', 'trace:read']
-    };
+  compareEvalRuns(input: { baselineRunId: string; candidateRunId: string; tenantId?: string }) {
+    return this.requireEvalService().compareRuns({
+      tenantId: KNOWLEDGE_EVAL_DEFAULT_TENANT_ID,
+      baselineRunId: input.baselineRunId,
+      candidateRunId: input.candidateRunId
+    });
+  }
+
+  private resolveObservabilityService(): KnowledgeObservabilityService | undefined {
+    if (this.observabilityService) {
+      return this.observabilityService;
+    }
+    if (this.repository) {
+      return new KnowledgeObservabilityService({ repo: this.repository });
+    }
+    return undefined;
+  }
+
+  private resolveEvalService(): KnowledgeEvalService | undefined {
+    if (this.evalService) {
+      return this.evalService;
+    }
+    if (this.repository) {
+      return new KnowledgeEvalService({ repo: this.repository });
+    }
+    return undefined;
+  }
+
+  private requireEvalService(): KnowledgeEvalService {
+    const evalService = this.resolveEvalService();
+    if (!evalService) {
+      throw new Error('knowledge eval repository is required');
+    }
+    return evalService;
+  }
+
+  private async toDocumentDto(record: KnowledgeDocumentRecord) {
+    return toKnowledgeDocumentDto(record, this.repository);
   }
 }
 
-function page<T>(items: readonly T[]) {
-  return { items, total: items.length, page: 1, pageSize: 20 };
+function isKnowledgeServiceOptions(
+  input: KnowledgeRepository | KnowledgeServiceOptions | undefined
+): input is KnowledgeServiceOptions {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    ('fixtureFallback' in input ||
+      'repository' in input ||
+      'ragService' in input ||
+      'ingestionService' in input ||
+      'observabilityService' in input ||
+      'evalService' in input)
+  );
 }

@@ -9,7 +9,7 @@
 
 `@agent/knowledge` 的 `packages/knowledge/src/contracts/indexing/` 是 indexing pipeline 所有参与方的共享契约层。
 
-- `@agent/adapters` 实现这些契约（LangChain / Chroma adapter）
+- `@agent/knowledge/adapters/*` 实现这些契约（LangChain / Chroma / OpenSearch / Supabase adapter）
 - `@agent/knowledge` 承载契约并编排 pipeline
 - `agents/*`、`apps/*` 间接使用
 
@@ -172,7 +172,7 @@ const vector = VectorSchema.parse(rawVector); // 验证 Vector
 ```
 @agent/knowledge (定义契约)
     ↓
-@agent/adapters (实现 — LangChain/Chroma adapter)
+@agent/knowledge/adapters (实现 — LangChain/Chroma/OpenSearch/Supabase adapter)
     ↓
 @agent/knowledge (编排 — runKnowledgeIndexing pipeline)
     ↓

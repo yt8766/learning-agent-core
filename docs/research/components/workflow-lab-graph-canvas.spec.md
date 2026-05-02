@@ -2,12 +2,12 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/frontend/agent-admin/src/features/workflow-lab/components/WorkflowGraphCanvas.tsx`
+适用范围：`apps/frontend/agent-admin/src/pages/workflow-lab/components/WorkflowGraphCanvas.tsx`
 最后核对：2026-04-30
 
 ## Overview
 
-- **Target file:** `apps/frontend/agent-admin/src/features/workflow-lab/components/WorkflowGraphCanvas.tsx`
+- **Target file:** `apps/frontend/agent-admin/src/pages/workflow-lab/components/WorkflowGraphCanvas.tsx`
 - **Interaction model:** click-driven node selection with live SSE status projection
 - **Reference:** LangSmith Studio Graph mode public docs; target Studio page requires authentication and could not be inspected beyond login screen.
 

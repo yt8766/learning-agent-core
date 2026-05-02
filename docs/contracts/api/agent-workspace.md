@@ -15,7 +15,7 @@
 - 后端 runtime facade：`RuntimeCentersService` 已暴露 `getWorkspaceCenter`、`listWorkspaceSkillDrafts`、`approveWorkspaceSkillDraft`、`rejectWorkspaceSkillDraft`。
 - 当前 workspace projection 构造入口：`packages/platform-runtime/src/centers/runtime-workspace-center.ts` 与 `runtime-workspace-center.build.ts`，只输出白名单字段，并在测试中断言不泄漏 `metadata` / `rawMetadata`、install raw staging path 或失败堆栈。
 - Skill draft repository/service：`packages/skill/src/drafts/repository.ts` 提供 file-backed 与 in-memory repository，`packages/skill/src/drafts/service.ts` 提供 create / list / approve / reject / promote / retire / reuse 语义；默认 runtime context 带 `workspaceRoot` 时走 file-backed，本地短生命周期或测试可注入 in-memory。
-- Admin 前端入口：`apps/frontend/agent-admin/src/api/admin-api-workspace.ts`、`src/features/workspace-center/workspace-center-panel.tsx`、`src/pages/dashboard/dashboard-center-content.tsx`，Workspace Center dashboard 已接入读取和 approve / reject 按钮；API facade 会把后端 runtime projection 归一化成面板消费的本地 workspace 视图。
+- Admin 前端入口：`apps/frontend/agent-admin/src/api/admin-api-workspace.ts`、`src/pages/workspace-center/workspace-center-panel.tsx`、`src/pages/dashboard/dashboard-center-content.tsx`，Workspace Center dashboard 已接入读取和 approve / reject 按钮；API facade 会把后端 runtime projection 归一化成面板消费的本地 workspace 视图。
 - Chat 前线 readiness：`apps/frontend/agent-chat/src/pages/chat-home/chat-home-workbench-section-renders.tsx` 已在 workbench 的 learning / reuse 区展示 Workspace learning 与 Skill Flywheel readiness，不把 learning summary 重新塞回主线程消息。
 
 当前实现核对 / 当前接线：

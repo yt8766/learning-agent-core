@@ -208,32 +208,32 @@
 - `apps/frontend/agent-chat/src/components/chat-message-cards/evidence-card.tsx`
   - 聊天主线程里的 `EvidenceCard` 与 inline source 也会显示 memory/rule reuse 的 `reason / score / scope / related entities`
   - 因此用户在主线程与 workbench 里看到的是同一套解释语义，不会出现一个能解释、一个只能看摘要的割裂体验
-- `apps/frontend/agent-admin/src/features/learning-center/memory-resolution-queue-card.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/memory-resolution-queue-card.tsx`
   - Learning Center 已新增独立的 memory resolution queue 卡片
   - 管理员可以直接接受或驳回 `ResolutionCandidateRecord`，并内联查看 challenger / incumbent 的当前快照、最近事件与 usage metrics
-- `apps/frontend/agent-admin/src/features/learning-center/memory-governance-tools-card.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/memory-governance-tools-card.tsx`
   - Learning Center 已新增 profile lookup / patch 与 memory history lookup 工具卡
   - 当前可直接查询并更新用户画像、查看最近 memory 事件链、usage metrics、从历史事件版本一键回滚 memory，并对当前 memory 做 admin override
-- `apps/frontend/agent-admin/src/features/learning-center/memory-browser-card.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/memory-browser-card.tsx`
   - Learning Center 现在还提供长期记忆浏览器，可通过结构化 `memory/search` 直接查看 active/stale/disputed/archived memory
   - 浏览器会展示 score / reason / verification / usage 指标，并可直接切换到选中 memory 的快照、事件链和 evidence link 视图
   - 常用状态迁移如 `失效 / 恢复 / 归档` 已直接挂到结果行，admin 不必先跳转到其他治理卡片
   - 当前还支持按 `constraint / preference / procedure / failure-pattern` 过滤，便于分别治理约束、偏好、经验与失败模式
   - `Memory Feedback Insight` 会对当前搜索结果里的 usageMetrics 做 adopted / dismissed / corrected 聚合，便于快速判断这批长期记忆的实际采纳效果
   - 当前已支持 version compare，可对比同一 memory 的两个版本快照，并显示 current version 与 latest event
-- `apps/frontend/agent-admin/src/features/learning-center/memory-center-panel.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/memory-center-panel.tsx`
   - `Memory Center` 已从 Learning 内嵌工具提升为独立 center，整合 Usage Insight 与治理浏览器
-- `apps/frontend/agent-admin/src/features/learning-center/profile-center-panel.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/profile-center-panel.tsx`
   - `Profile Center` 已作为独立 center 提供 profile lookup / patch，并显示 actor 与更新时间
 - `apps/frontend/agent-admin/src/api/admin-api-governance.ts`
   - 当前已提供 `GET /memory/insights/usage` 与 `GET /memory/:id/compare/:leftVersion/:rightVersion` 的前端调用封装
 - `packages/runtime/src/memory/active-memory-tools.ts`
   - runtime 已显式导出 `core_memory_append`、`core_memory_replace`、`archival_memory_search` 对应 facade
   - session / lifecycle / learning / supervisor-hubu 的结构化检索入口已优先改为 `archival_memory_search` 风格调用，而不是各处直接拼 `memorySearchService.search(...)`
-- `apps/frontend/agent-admin/src/features/learning-center/memory-insight-card.tsx`
+- `apps/frontend/agent-admin/src/pages/learning-center/memory-insight-card.tsx`
   - admin 侧 memory 快照、事件链与 usage metrics 展示已收敛为共享组件
   - resolution queue 与 governance tools 现在共用同一套 memory 详情视图，已可显示 verificationStatus、evidence 数量、lastVerifiedAt，并按需加载具体 evidence links
-- `apps/frontend/agent-admin/src/features/evidence-center/evidence-center-panel.tsx`
+- `apps/frontend/agent-admin/src/pages/evidence-center/evidence-center-panel.tsx`
   - admin 侧 Evidence Center 现在会读取 `Memory Insight` 写入的 evidence id 高亮上下文
   - 来自 memory 的 sourceEvidenceIds 会通过 `sessionStorage` 一跳带到 `#/evidence`，并在 Evidence Center 中优先排序、打上 `memory linked` 标记，支持手动清除高亮
 - `apps/frontend/agent-chat/src/pages/chat-home/chat-memory-chips.tsx`

@@ -1,4 +1,19 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import {
+  AppstoreOutlined,
+  DatabaseOutlined,
+  ExperimentOutlined,
+  FileTextOutlined,
+  HomeOutlined,
+  LeftOutlined,
+  LogoutOutlined,
+  MessageOutlined,
+  MonitorOutlined,
+  RightOutlined,
+  SettingOutlined,
+  UserOutlined
+} from '@ant-design/icons';
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Typography, type MenuProps } from 'antd';
 
 export type KnowledgeView =
   | 'overview'
@@ -7,108 +22,124 @@ export type KnowledgeView =
   | 'chatLab'
   | 'observability'
   | 'evals'
-  | 'settings';
+  | 'settings'
+  | 'accountSettings';
 
-const navItems: Array<{ id: KnowledgeView; label: string }> = [
-  { id: 'overview', label: '总览' },
-  { id: 'knowledgeBases', label: '知识库' },
-  { id: 'documents', label: '文档' },
-  { id: 'chatLab', label: '对话实验室' },
-  { id: 'observability', label: '观测中心' },
-  { id: 'evals', label: '评测中心' },
-  { id: 'settings', label: '设置' }
+const viewByMenuKey: Record<string, KnowledgeView> = {
+  chatLab: 'chatLab',
+  documents: 'documents',
+  evals: 'evals',
+  knowledgeBases: 'knowledgeBases',
+  observability: 'observability',
+  overview: 'overview',
+  settings: 'settings',
+  accountSettings: 'accountSettings'
+};
+
+const navItems: MenuProps['items'] = [
+  { icon: <HomeOutlined />, key: 'overview', label: '总览' },
+  { icon: <DatabaseOutlined />, key: 'knowledgeBases', label: '知识库' },
+  { icon: <FileTextOutlined />, key: 'documents', label: '文档' },
+  { icon: <MessageOutlined />, key: 'chatLab', label: '对话实验室' },
+  { icon: <MonitorOutlined />, key: 'observability', label: '观测中心' },
+  { icon: <ExperimentOutlined />, key: 'evals', label: '评测中心' },
+  { icon: <SettingOutlined />, key: 'settings', label: '设置' }
 ];
 
 export function AppShell({
   activeView,
   children,
+  displayName,
+  avatar,
   onLogout,
+  onUserNavigate,
   onNavigate
 }: {
-  activeView: KnowledgeView;
+  activeView?: KnowledgeView;
+  avatar: string;
   children: ReactNode;
+  displayName: string;
   onLogout: () => void;
+  onUserNavigate: (view: KnowledgeView) => void;
   onNavigate: (view: KnowledgeView) => void;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const collapseLabel = collapsed ? '展开左侧栏' : '收起左侧栏';
+
   return (
-    <div style={styles.frame}>
-      <aside style={styles.sidebar}>
-        <div>
-          <p style={styles.eyebrow}>RAG Workspace</p>
-          <h1 style={styles.brand}>Knowledge</h1>
+    <Layout className={`knowledge-pro-shell ${collapsed ? 'is-collapsed' : 'is-expanded'}`}>
+      <Layout.Header className="knowledge-pro-topbar">
+        <span className="knowledge-pro-sr-only">
+          Knowledge 知识库控制台 总览 知识库 文档 对话实验室 观测中心 评测中心 设置 个人设置 退出登录
+        </span>
+        <div className="knowledge-pro-brand-inline">
+          <span aria-hidden="true" className="knowledge-pro-brand-mark">
+            <AppstoreOutlined />
+          </span>
+          <Typography.Text strong>Knowledge 知识库控制台</Typography.Text>
         </div>
-        <nav style={styles.nav}>
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              style={{
-                ...styles.navButton,
-                ...(activeView === item.id ? styles.navButtonActive : {})
-              }}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <button onClick={onLogout} style={styles.logoutButton} type="button">
-          退出登录
-        </button>
-      </aside>
-      <main style={styles.main}>{children}</main>
-    </div>
+        <Space className="knowledge-pro-topbar-actions">
+          <Dropdown
+            menu={{
+              items: [
+                { icon: <SettingOutlined />, key: 'accountSettings', label: '个人设置' },
+                { type: 'divider' },
+                { icon: <LogoutOutlined />, key: 'logout', label: '退出登录' }
+              ],
+              onClick: ({ key }) => {
+                if (key === 'logout') {
+                  onLogout();
+                  return;
+                }
+                if (key === 'accountSettings') {
+                  onUserNavigate('accountSettings');
+                }
+              }
+            }}
+            placement="bottomRight"
+            trigger={['hover']}
+          >
+            <Button className="knowledge-pro-user" type="text">
+              <Avatar className="knowledge-pro-user-avatar" icon={<UserOutlined />} size={28} src={avatar} />
+              <Typography.Text className="knowledge-pro-user-name">{displayName}</Typography.Text>
+            </Button>
+          </Dropdown>
+        </Space>
+      </Layout.Header>
+      <Layout className="knowledge-pro-workspace">
+        <Layout.Sider
+          className="knowledge-pro-sider"
+          collapsed={collapsed}
+          collapsedWidth={72}
+          theme="light"
+          trigger={null}
+          width={256}
+        >
+          <Button
+            aria-label={collapseLabel}
+            className="knowledge-pro-collapse"
+            icon={collapsed ? <RightOutlined /> : <LeftOutlined />}
+            onClick={() => setCollapsed(nextCollapsed => !nextCollapsed)}
+            shape="circle"
+            style={{ minWidth: 32 }}
+          />
+          <Menu
+            className="knowledge-pro-menu"
+            inlineCollapsed={collapsed}
+            items={navItems}
+            mode="inline"
+            onClick={({ key }) => {
+              const nextView = viewByMenuKey[key];
+              if (nextView) {
+                onNavigate(nextView);
+              }
+            }}
+            selectedKeys={activeView ? [activeView] : []}
+            theme="light"
+          />
+        </Layout.Sider>
+        <Layout.Content className="knowledge-pro-content">{children}</Layout.Content>
+      </Layout>
+    </Layout>
   );
 }
-
-const styles = {
-  frame: {
-    background: '#f5f7fb',
-    color: '#172033',
-    display: 'grid',
-    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    gridTemplateColumns: '240px minmax(0, 1fr)',
-    minHeight: '100vh'
-  },
-  sidebar: {
-    alignContent: 'start',
-    background: '#101828',
-    color: '#f8fafc',
-    display: 'grid',
-    gap: 24,
-    padding: 20
-  },
-  eyebrow: { color: '#98a2b3', fontSize: 12, margin: 0 },
-  brand: { fontSize: 24, letterSpacing: 0, margin: '4px 0 0' },
-  nav: { display: 'grid', gap: 8 },
-  navButton: {
-    background: 'transparent',
-    border: '1px solid transparent',
-    borderRadius: 8,
-    color: '#cbd5e1',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '10px 12px',
-    textAlign: 'left'
-  },
-  navButtonActive: {
-    background: '#1d2939',
-    borderColor: '#344054',
-    color: '#ffffff'
-  },
-  logoutButton: {
-    alignSelf: 'end',
-    background: '#ffffff',
-    border: 0,
-    borderRadius: 8,
-    color: '#101828',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '10px 12px'
-  },
-  main: {
-    display: 'grid',
-    gap: 20,
-    padding: 24
-  }
-} as const;

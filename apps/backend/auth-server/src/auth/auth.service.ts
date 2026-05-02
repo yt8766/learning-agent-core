@@ -24,16 +24,25 @@ export class AuthService {
   ) {}
 
   async login(input: AuthLoginRequest): Promise<AuthLoginResponse> {
-    const user = await this.repository.findUserByUsername(input.username);
-    if (!user || !(await this.hasher.verify(input.password, user.passwordHash))) {
+    const user = await this.validateCredentials(input.username, input.password);
+    return this.loginValidatedUser(user, input.remember ?? false);
+  }
+
+  async validateCredentials(username: string, password: string): Promise<AuthUserRecord> {
+    const user = await this.repository.findUserByUsername(username);
+    if (!user || !(await this.hasher.verify(password, user.passwordHash))) {
       throw new AuthServiceError('invalid_credentials', '账号或密码错误');
     }
     if (user.status === 'disabled') {
       throw new AuthServiceError('account_disabled', '账号已禁用');
     }
 
+    return user;
+  }
+
+  async loginValidatedUser(user: AuthUserRecord, remember: boolean): Promise<AuthLoginResponse> {
     const now = Date.now();
-    const refreshExpiresAt = new Date(now + (input.remember ? REMEMBER_REFRESH_TOKEN_TTL_MS : REFRESH_TOKEN_TTL_MS));
+    const refreshExpiresAt = new Date(now + (remember ? REMEMBER_REFRESH_TOKEN_TTL_MS : REFRESH_TOKEN_TTL_MS));
     const session = await this.repository.createSession({
       id: `sess_${randomUUID()}`,
       userId: user.id,

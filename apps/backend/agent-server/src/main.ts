@@ -8,8 +8,6 @@ import { AppModule } from './app.module';
 import { createCorsOptions } from './cors/cors-options';
 import { AppLoggerService } from './logger/app-logger.service';
 
-const GLOBAL_PREFIX = 'api';
-
 const REQUEST_METHOD_LABEL: Record<number, string> = {
   [RequestMethod.GET]: 'GET',
   [RequestMethod.POST]: 'POST',
@@ -33,24 +31,25 @@ process.on('unhandledRejection', reason => {
 });
 
 async function bootstrap(): Promise<void> {
-  const port = Number(process.env.PORT ?? 3000);
-  const host = process.env.HOST ?? '127.0.0.1';
-
+  let port = Number(process.env.PORT ?? 3000);
   writeBootstrapLine('LOG', 'NestFactory', 'Starting Nest application...');
   try {
     const app = await NestFactory.create(AppModule, {
       logger: false,
       abortOnError: false
     });
+    port = Number(process.env.PORT ?? 3000);
+    const host = process.env.HOST ?? '127.0.0.1';
+    const globalPrefix = process.env.API_PREFIX ?? 'api';
 
     const logger = app.get(AppLoggerService);
     app.useLogger(logger);
-    app.setGlobalPrefix(GLOBAL_PREFIX);
+    app.setGlobalPrefix(globalPrefix);
     app.enableCors(createCorsOptions());
 
     const modules = app.get(ModulesContainer);
     logInitializedModules(modules, logger);
-    logMappedRoutes(modules, logger);
+    logMappedRoutes(modules, logger, globalPrefix);
 
     await app.listen(port, host);
     writeBootstrapLine('LOG', 'NestFactory', 'HTTP 服务已就绪', `Application is running on: http://${host}:${port}`);
@@ -96,7 +95,7 @@ function logInitializedModules(modules: ModulesContainer, logger: AppLoggerServi
   }
 }
 
-function logMappedRoutes(modules: ModulesContainer, logger: AppLoggerService): void {
+function logMappedRoutes(modules: ModulesContainer, logger: AppLoggerService, globalPrefix: string): void {
   const scanner = new MetadataScanner();
   const routeGroups: Array<{
     controllerName: string;
@@ -127,7 +126,7 @@ function logMappedRoutes(modules: ModulesContainer, logger: AppLoggerService): v
         const paths = Array.isArray(routePath) ? routePath : [routePath];
         for (const currentPath of paths) {
           routes.push({
-            path: joinRoute(`/${GLOBAL_PREFIX}`, controllerPath, normalizePath(currentPath)),
+            path: joinRoute(`/${globalPrefix}`, controllerPath, normalizePath(currentPath)),
             method: REQUEST_METHOD_LABEL[requestMethod] ?? 'GET'
           });
         }
@@ -136,7 +135,7 @@ function logMappedRoutes(modules: ModulesContainer, logger: AppLoggerService): v
       if (routes.length > 0) {
         routeGroups.push({
           controllerName: metatype.name,
-          controllerPath: joinRoute(`/${GLOBAL_PREFIX}`, controllerPath),
+          controllerPath: joinRoute(`/${globalPrefix}`, controllerPath),
           routes: routes.sort(
             (left, right) => left.path.localeCompare(right.path) || left.method.localeCompare(right.method)
           )

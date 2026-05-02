@@ -6,7 +6,7 @@ import {
   buildBrowserReplayUrl,
   buildRuntimeCenterExportUrl
 } from '@/api/chat-api';
-import { getRuntimeDrawerExportFilters } from '@/features/runtime-panel/chat-runtime-drawer';
+import { getRuntimeDrawerExportFilters } from '@/pages/runtime-panel/chat-runtime-drawer';
 import { formatSessionTime } from '@/hooks/use-chat-session';
 import { buildEventSummary } from './chat-home-helpers';
 

@@ -2,8 +2,10 @@
 
 状态：current
 文档类型：guide
-适用范围：`packages/adapters/src/chroma/`
-最后核对：2026-04-28
+适用范围：历史入口；当前真实实现位于 `packages/knowledge/src/adapters/chroma/`
+
+> 迁移说明：Chroma adapter 已迁入 `@agent/knowledge/adapters/chroma`。`@agent/adapters` 侧入口已删除，代码必须从 `@agent/knowledge` 或 `@agent/knowledge/adapters/chroma` 引入 Chroma。
+> 最后核对：2026-04-28
 
 ## 概述
 
@@ -12,7 +14,7 @@
 ## 基础用法
 
 ```ts
-import { ChromaVectorStoreAdapter } from '@agent/adapters';
+import { ChromaVectorStoreAdapter } from '@agent/knowledge/adapters/chroma';
 import type { Vector } from '@agent/knowledge';
 
 const store = new ChromaVectorStoreAdapter({
@@ -55,7 +57,7 @@ type ChromaClientOptions = {
 ## 注入自定义 client（测试用）
 
 ```ts
-import type { ChromaClientLike } from '@agent/adapters';
+import type { ChromaClientLike } from '@agent/knowledge/adapters/chroma';
 
 const mockClient: ChromaClientLike = {
   getOrCreateCollection: async () => ({

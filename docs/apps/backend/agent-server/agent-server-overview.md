@@ -108,6 +108,8 @@ Nest provider 约束：
 - `chat.service` 相关测试按主题拆到 `apps/backend/agent-server/test/chat/chat.service.*.spec.ts`
 - `apps/backend/agent-server/test/chat/chat.service.spec.ts` 只保留结构检查需要的标准入口，不再承载完整测试正文
 
+Chat response steps 通过 `chat-response-steps.adapter.ts` 投影为 `node_progress` payload。该投影保持 `/api/chat/stream` 的 `ChatEventRecord` framing 不变，同时让 `agent-chat` 呈现运行中 quick steps 和完成后 step detail。`ChatService.subscribe()` 会先用历史事件 seed projection state，避免历史回放后 realtime sequence 或 message ownership 断开。
+
 后续如果继续扩展 chat 直连能力，优先往 helper 或同域新文件里拆，不要把大段流式生成和 schema 编排逻辑塞回 `chat.service.ts`。
 
 ## 启动
@@ -128,6 +130,8 @@ pnpm --dir apps/backend/agent-server start:prod
 构建约束：
 
 - `apps/backend/agent-server/tsconfig.build.json` 必须覆盖开发态 `paths` 为 `{}`，让生产构建走 workspace 包解析，而不是继续命中 `packages/*/src`、`agents/*/src`
+- `apps/backend/auth-server` 与 `apps/backend/knowledge-server` 这类 standalone backend 也必须保持 `paths: {}`，通过 `@agent/core` 的 workspace 包 manifest 消费 `build/types`；不要在 app tsconfig 中把 `@agent/core` 指回 `packages/core/src`，否则 `rootDir: ./src` 的构建链路会把 core 源码拉进当前项目并触发 TS6059
+- standalone backend 的 `start` / `start:dev` 必须和 agent-server 一样先执行根级 `build:lib`，确保被 workspace 包 manifest 引用的 `build/types`、`build/cjs` 与 `build/esm` 已存在
 - `apps/backend/agent-server/tsconfig.build.json` 的生产构建应关闭 `incremental`，避免 `tsconfig.build.tsbuildinfo` 仍在但 `dist/` 已被清理时出现“`tsc` 成功、却没有任何发射产物”的假成功
 - 上游 workspace 包与专项 agent 的声明产物必须固定到各自 `build/types`，运行时代码产物固定到 `build/cjs` 与 `build/esm`；`package.json` 中 `types` / `exports.types` 也必须同步指向这些真实存在的构建产物，不要把 `.d.ts/.js/.js.map` 回写到 `packages/*/src`、`agents/*/src`
 - 生产构建输出应只落在 `apps/backend/agent-server/dist`

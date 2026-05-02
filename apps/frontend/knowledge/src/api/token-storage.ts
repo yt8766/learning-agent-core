@@ -17,8 +17,20 @@ export interface StoredTokens {
 export function saveTokens(tokens: AuthTokens, now = Date.now()) {
   localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, tokens.accessToken);
   localStorage.setItem(AUTH_STORAGE_KEYS.refreshToken, tokens.refreshToken);
-  localStorage.setItem(AUTH_STORAGE_KEYS.accessTokenExpiresAt, String(now + tokens.expiresIn * 1000));
-  localStorage.setItem(AUTH_STORAGE_KEYS.refreshTokenExpiresAt, String(now + tokens.refreshExpiresIn * 1000));
+  localStorage.setItem(
+    AUTH_STORAGE_KEYS.accessTokenExpiresAt,
+    String(
+      tokens.accessTokenExpiresAt ? new Date(tokens.accessTokenExpiresAt).getTime() : now + tokens.expiresIn * 1000
+    )
+  );
+  localStorage.setItem(
+    AUTH_STORAGE_KEYS.refreshTokenExpiresAt,
+    String(
+      tokens.refreshTokenExpiresAt
+        ? new Date(tokens.refreshTokenExpiresAt).getTime()
+        : now + tokens.refreshExpiresIn * 1000
+    )
+  );
 }
 
 export function readTokens(): StoredTokens | undefined {

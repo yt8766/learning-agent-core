@@ -326,22 +326,95 @@ export interface DocumentChunk {
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
+export interface KnowledgeUploadResult {
+  uploadId: ID;
+  knowledgeBaseId: ID;
+  filename: string;
+  size: number;
+  contentType: 'text/markdown' | 'text/plain';
+  objectKey: string;
+  ossUrl: string;
+  uploadedAt: ISODateTime;
+}
+
+export interface UploadKnowledgeFileRequest {
+  knowledgeBaseId: ID;
+  file: File;
+}
+
+export interface CreateDocumentFromUploadRequest {
+  uploadId: ID;
+  objectKey: string;
+  filename: string;
+  title?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateDocumentFromUploadResponse {
+  document: KnowledgeDocument;
+  job: DocumentProcessingJob;
+}
+
+export interface DocumentChunksResponse {
+  items: DocumentChunk[];
+  total: number;
+}
 ```
+
+`web-url` 是 Knowledge App 文档元数据里的来源枚举，用于承载人工策展或外部系统已经整理好的 URL 内容；当前知识库不建设真实网页抓取链路。进入 retrieval/runtime 前，API 层来源仍需由 host 映射到正式 `KnowledgeSource.sourceType`，例如 curated URL 内容映射为 `web-curated`。
+
+### 6.1 Two-step Markdown/TXT upload
+
+当前生产闭环只支持 Markdown/TXT 文件上传，不做网页抓取，也不支持 PDF/DOCX 等复杂文件解析。前端不得直连 OSS；前端只把文件提交给 `knowledge-server`，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`。
+
+Step 1：上传原始文件到 OSS。
+
+```http
+POST /api/knowledge/bases/:baseId/uploads
+Content-Type: multipart/form-data
+```
+
+Multipart fields:
+
+| Field  | Type | Required | Notes                                                          |
+| ------ | ---- | -------- | -------------------------------------------------------------- |
+| `file` | File | yes      | 仅接受 `.md` / `.txt`；MIME 为 `text/markdown` 或 `text/plain` |
+
+Response: `KnowledgeUploadResult`
+
+该接口只承诺原始文件已写入 OSS，不承诺已创建 document、已解析、已切块、已 embedding 或已可检索。
+
+Step 2：基于 upload result 创建 document 并启动 ingestion job。
+
+```http
+POST /api/knowledge/bases/:baseId/documents
+Content-Type: application/json
+```
+
+Body: `CreateDocumentFromUploadRequest`
+
+Response: `CreateDocumentFromUploadResponse`
+
+`uploadId` 与 `objectKey` 必须指向同一个 knowledge base 下由 Step 1 产生的上传结果。后端负责校验上传归属、当前用户权限、文件类型、幂等/冲突语义，并创建 `KnowledgeDocument` 与初始 `DocumentProcessingJob`。
 
 Endpoint contract:
 
-| Method | Path                                    | Query / Body                                                                | Response                            | 主要错误码                                                                                                                       | 权限                                        |
-| ------ | --------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| GET    | `/documents`                            | query: `PageQuery & { knowledgeBaseId?: ID; status?: DocumentStatus }`      | `PageResult<KnowledgeDocument>`     | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                        | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/documents/:id`                        | path: `id`                                                                  | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                      | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/knowledge-bases/:id/documents/upload` | path: `id`; multipart fields: `file`, optional `title`, optional `metadata` | `UploadDocumentResponse`            | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `unsupported_file_type`, `file_too_large`, `validation_error` | owner, admin, maintainer                    |
-| GET    | `/documents/:id/jobs`                   | path: `id`; query: `PageQuery`                                              | `PageResult<DocumentProcessingJob>` | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                  | owner, admin, maintainer                    |
-| GET    | `/documents/:id/chunks`                 | path: `id`; query: `PageQuery`                                              | `PageResult<DocumentChunk>`         | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                  | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/documents/:id/reprocess`              | path: `id`; optional body: `{ reason?: string }`                            | `ReprocessDocumentResponse`         | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                             | owner, admin, maintainer                    |
-| POST   | `/documents/:id/reembed`                | path: `id`; optional body: `{ embeddingModel?: string; reason?: string }`   | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                             | owner, admin, maintainer                    |
-| POST   | `/documents/:id/disable`                | path: `id`; optional body: `{ reason?: string }`                            | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                      | owner, admin, maintainer                    |
+| Method | Path                                   | Query / Body                                                              | Response                            | 主要错误码                                                                                                                                                                                    | 权限                                        |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| GET    | `/documents`                           | query: `PageQuery & { knowledgeBaseId?: ID; status?: DocumentStatus }`    | `PageResult<KnowledgeDocument>`     | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                     | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/knowledge/documents/:id`             | path: `id`                                                                | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge/bases/:id/uploads`         | path: `id`; multipart fields: `file`                                      | `KnowledgeUploadResult`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_invalid_type`, `knowledge_upload_too_large`, `knowledge_upload_oss_failed`, `validation_error`           | owner, admin, maintainer                    |
+| POST   | `/knowledge/bases/:id/documents`       | path: `id`; body: `CreateDocumentFromUploadRequest`                       | `CreateDocumentFromUploadResponse`  | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_not_found`, `knowledge_document_create_failed`, `knowledge_ingestion_enqueue_failed`, `validation_error` | owner, admin, maintainer                    |
+| GET    | `/knowledge/documents/:id/jobs/latest` | path: `id`                                                                | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_not_found`                                                                                                         | owner, admin, maintainer                    |
+| GET    | `/documents/:id/jobs`                  | path: `id`; query: `PageQuery`                                            | `PageResult<DocumentProcessingJob>` | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer                    |
+| GET    | `/knowledge/documents/:id/chunks`      | path: `id`; query: `PageQuery`                                            | `DocumentChunksResponse`            | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge/documents/:id/reprocess`   | path: `id`; optional body: `{ reason?: string }`                          | `ReprocessDocumentResponse`         | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
+| DELETE | `/knowledge/documents/:id`             | path: `id`                                                                | `DeleteDocumentResponse`            | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `knowledge_permission_denied`                                                                                                    | owner, admin, maintainer                    |
+| POST   | `/documents/:id/reembed`               | path: `id`; optional body: `{ embeddingModel?: string; reason?: string }` | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
+| POST   | `/documents/:id/disable`               | path: `id`; optional body: `{ reason?: string }`                          | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer                    |
 
-Upload response:
+Legacy single-step upload response retained for migration-only callers:
 
 ```ts
 export interface UploadDocumentResponse {
@@ -352,6 +425,10 @@ export interface UploadDocumentResponse {
 export interface ReprocessDocumentResponse {
   document: KnowledgeDocument;
   job: DocumentProcessingJob;
+}
+
+export interface DeleteDocumentResponse {
+  ok: true;
 }
 ```
 

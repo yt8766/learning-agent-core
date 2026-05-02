@@ -3,19 +3,19 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`packages/knowledge`
-最后核对：2026-05-01
+最后核对：2026-05-02（确认 web curated 保留为已整理内容入口，暂不做网页抓取）
 
-本文记录生产来源内容进入统一 knowledge ingestion 边界的最小 HTTP 契约。规范化 source payload 接口只接收已经由调用方完成鉴权、下载、清洗后的 source payload；user upload adapter 接口负责读取已经落在 workspace 内的上传文件并转换为相同 ingestion payload。
+本文记录生产来源内容进入统一 knowledge ingestion 边界的最小 HTTP 契约。规范化 source payload 接口只接收已经由调用方完成鉴权、下载、清洗后的 source payload；user upload adapter 接口负责读取已经落在 workspace 内的上传文件并转换为相同 ingestion payload。当前知识库不建设真实网页抓取链路，`web-curated` 仅保留为人工策展或外部系统已经完成抓取、清洗和安全策略判定后的内容入口。
 
 ## 入口
 
-| 方法   | 地址                                                    | 请求体                                   | 返回值                    | 说明                                                                                      |
-| ------ | ------------------------------------------------------- | ---------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------- |
-| `POST` | `/api/platform/knowledge/sources/ingest`                | `{ payloads: KnowledgeSourcePayload[] }` | `KnowledgeIndexingResult` | 将规范化来源 payload 写入 source/chunk/receipt snapshot 与向量边界。                      |
-| `POST` | `/api/platform/knowledge/sources/user-upload/ingest`    | `UserUploadIngestionRequest`             | `KnowledgeIndexingResult` | 读取 workspace 内已落盘的上传文件，构造 `user-upload` payload 后写入统一 ingestion 边界。 |
-| `POST` | `/api/platform/knowledge/sources/catalog-sync/ingest`   | `CatalogSyncIngestionRequest`            | `KnowledgeIndexingResult` | 接收已同步 catalog entry 产物，构造 `catalog-sync` payload 后写入统一 ingestion 边界。    |
-| `POST` | `/api/platform/knowledge/sources/web-curated/ingest`    | `WebCuratedIngestionRequest`             | `KnowledgeIndexingResult` | 接收已抓取清洗的 curated web 产物，构造 `web-curated` payload 后写入统一 ingestion 边界。 |
-| `POST` | `/api/platform/knowledge/sources/connector-sync/ingest` | `ConnectorSyncIngestionRequest`          | `KnowledgeIndexingResult` | 接收 connector 同步产物，构造 `connector-manifest` payload 后写入统一 ingestion 边界。    |
+| 方法   | 地址                                                    | 请求体                                   | 返回值                    | 说明                                                                                                  |
+| ------ | ------------------------------------------------------- | ---------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/platform/knowledge/sources/ingest`                | `{ payloads: KnowledgeSourcePayload[] }` | `KnowledgeIndexingResult` | 将规范化来源 payload 写入 source/chunk/receipt snapshot 与向量边界。                                  |
+| `POST` | `/api/platform/knowledge/sources/user-upload/ingest`    | `UserUploadIngestionRequest`             | `KnowledgeIndexingResult` | 读取 workspace 内已落盘的上传文件，构造 `user-upload` payload 后写入统一 ingestion 边界。             |
+| `POST` | `/api/platform/knowledge/sources/catalog-sync/ingest`   | `CatalogSyncIngestionRequest`            | `KnowledgeIndexingResult` | 接收已同步 catalog entry 产物，构造 `catalog-sync` payload 后写入统一 ingestion 边界。                |
+| `POST` | `/api/platform/knowledge/sources/web-curated/ingest`    | `WebCuratedIngestionRequest`             | `KnowledgeIndexingResult` | 接收已整理的 curated web 产物，构造 `web-curated` payload 后写入统一 ingestion 边界；不触发网页抓取。 |
+| `POST` | `/api/platform/knowledge/sources/connector-sync/ingest` | `ConnectorSyncIngestionRequest`          | `KnowledgeIndexingResult` | 接收 connector 同步产物，构造 `connector-manifest` payload 后写入统一 ingestion 边界。                |
 
 ## 请求体
 
@@ -75,9 +75,9 @@
 
 `WebCuratedIngestionRequest` 字段：
 
-| 字段      | 类型                | 必填 | 说明                                                                     |
-| --------- | ------------------- | ---- | ------------------------------------------------------------------------ |
-| `entries` | `WebCuratedEntry[]` | 是   | 已由上游 curated web job 完成 URL 拉取、清洗与安全策略判定后的条目数组。 |
+| 字段      | 类型                | 必填 | 说明                                                                      |
+| --------- | ------------------- | ---- | ------------------------------------------------------------------------- |
+| `entries` | `WebCuratedEntry[]` | 是   | 已由人工策展或外部系统完成 URL 内容整理、清洗与安全策略判定后的条目数组。 |
 
 `WebCuratedEntry` 字段：
 
@@ -87,7 +87,7 @@
 | `url`        | URL string                                               | 是   | 原始网页 URL，会映射到 payload `uri`。                                 |
 | `title`      | `string`                                                 | 是   | 网页标题或上游整理标题。                                               |
 | `content`    | `string`                                                 | 是   | 已清洗文本内容。                                                       |
-| `version`    | `string`                                                 | 否   | 上游抓取版本、etag 或时间戳。                                          |
+| `version`    | `string`                                                 | 否   | 上游内容版本、etag 或时间戳。                                          |
 | `curatedBy`  | `string`                                                 | 否   | 策展来源或团队，写入 `metadata.curatedBy`。                            |
 | `trustClass` | `"curated" \| "official" \| "community" \| "unverified"` | 否   | curated web 信任等级；缺省 `curated`。                                 |
 | `metadata`   | JSON object                                              | 否   | 额外 JSON-safe metadata；不得包含凭据、cookie、token 或 vendor raw。   |
@@ -148,8 +148,8 @@ Connector sync 当前不新增 `connector-sync` sourceType，而是复用正式 
 - `RuntimeKnowledgeService.ingestKnowledgeSources()` 是 backend 服务层调度入口。
 - `RuntimeKnowledgeService.ingestUserUploadSource()` 是 user upload 文件读取 adapter，负责受控路径解析、文件内容读取、权限 metadata 映射和 builder 调用；它不负责 multipart upload、病毒扫描或对象存储下载。
 - `RuntimeKnowledgeService.ingestCatalogSyncSources()` 是 catalog sync entry adapter，负责把上游已同步 catalog entries 映射为 payload；它不负责外部 catalog 拉取、租户鉴权或 vendor response 清洗。
-- `RuntimeKnowledgeService.ingestWebCuratedSources()` 是 web curated entry adapter，负责把上游已抓取清洗的 URL 内容映射为 payload；它不负责网页抓取、robots / 版权策略判定、cookie 会话或正文清洗。
-- `runtime-web-curated-ingestion-job.ts` 是 web curated 的最小来源 job 编排边界，负责通过注入的 `fetchUrl`、可选 `cleanContent` 与 `trustPolicy` 把 curated URL 来源转换成 `RuntimeKnowledgeService.ingestWebCuratedSources()` 可消费的 entries；真实 HTTP/MCP 抓取器、robots / 版权策略、cookie 会话和调度仍由上游注入。
+- `RuntimeKnowledgeService.ingestWebCuratedSources()` 是 web curated entry adapter，负责把上游已整理的 URL 内容映射为 payload；它不负责网页抓取、robots / 版权策略判定、cookie 会话或正文清洗。
+- `runtime-web-curated-ingestion-job.ts` 已删除；当前产品决策是不接真实 HTTP/MCP 抓取器、robots / 版权策略、cookie 会话或抓取调度，web curated 只接收已整理 entries。
 - `RuntimeKnowledgeService.ingestConnectorSyncSources()` 是 connector sync entry adapter，负责把上游 connector 同步产物映射为 `connector-manifest` payload；它不负责 connector API 调用、凭据使用、分页同步或 vendor response 清洗。
 - `@agent/knowledge` 的 `ingestKnowledgeSourcePayloads()` 是本地 runtime store 写入 facade，负责 source/chunk/receipt snapshot 与 vector writer fanout。
 - `@agent/knowledge` 的 source ingestion payload builders 是来源产物进入本接口前的推荐规范化入口：user upload、catalog sync、web curated、connector sync 分别使用对应 builder 生成 payload。

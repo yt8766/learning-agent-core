@@ -73,6 +73,89 @@ describe('KnowledgeApiClient', () => {
     expect(calls.at(-1)?.authorization).toBe('Bearer new');
   });
 
+  it('uses the production fetch path when no custom fetcher is injected', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          knowledgeBaseCount: 1,
+          documentCount: 0,
+          readyDocumentCount: 0,
+          failedDocumentCount: 0,
+          todayQuestionCount: 0,
+          activeAlertCount: 0,
+          recentFailedJobs: [],
+          recentLowScoreTraces: [],
+          recentEvalRuns: [],
+          topMissingKnowledgeQuestions: []
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient });
+
+    const result = await apiClient.getDashboardOverview();
+
+    expect(result.knowledgeBaseCount).toBe(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/knowledge/v1/dashboard/overview',
+      expect.objectContaining({
+        headers: expect.any(Headers)
+      })
+    );
+  });
+
+  it('binds the default browser fetch before API requests', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn(function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            knowledgeBaseCount: 1,
+            documentCount: 0,
+            readyDocumentCount: 0,
+            failedDocumentCount: 0,
+            todayQuestionCount: 0,
+            activeAlertCount: 0,
+            recentFailedJobs: [],
+            recentLowScoreTraces: [],
+            recentEvalRuns: [],
+            topMissingKnowledgeQuestions: []
+          }),
+          { status: 200 }
+        )
+      );
+    }) as typeof fetch;
+    vi.stubGlobal('fetch', fetcher);
+    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient });
+
+    const result = await apiClient.getDashboardOverview();
+
+    expect(result.knowledgeBaseCount).toBe(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/knowledge/v1/dashboard/overview',
+      expect.objectContaining({ headers: expect.any(Headers) })
+    );
+  });
+
   it('does not refresh on unrelated unauthorized responses', async () => {
     saveTokens({
       accessToken: 'access',

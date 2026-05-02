@@ -15,7 +15,7 @@ import { RuntimeIssueCard } from './chat-message-cards/runtime-issue-card';
 import { SkillSuggestionsCard } from './chat-message-cards/skill-suggestions-card';
 import { SkillReuseCard } from './chat-message-cards/skill-reuse-card';
 import { WorkerDispatchCard } from './chat-message-cards/worker-dispatch-card';
-import { stripThinkTags } from '@/features/chat/chat-message-adapter-helpers';
+import { stripThinkTags } from '@/pages/chat/chat-message-adapter-helpers';
 
 type EvidenceDigestSource = Extract<
   NonNullable<ChatMessageRecord['card']>,

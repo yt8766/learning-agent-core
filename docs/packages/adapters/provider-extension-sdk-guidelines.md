@@ -157,8 +157,8 @@ const settings = {
 
 此时建议：
 
-- 在 `packages/adapters/src/providers/llm/<vendor>/` 新增实现
-- 必要时在 `packages/adapters/src/chat/` 新增 vendor 专属 factory
+- 在 `packages/adapters/src/<vendor>/provider/` 新增实现
+- 必要时在 `packages/adapters/src/<vendor>/chat/` 新增 vendor 专属 factory
 - 通过 `customFactories` 或默认 factory 注册机制接入 runtime
 
 ## 6. 当前扩展点

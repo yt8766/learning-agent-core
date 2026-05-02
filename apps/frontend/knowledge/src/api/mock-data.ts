@@ -4,6 +4,7 @@ import type {
   EvalRun,
   KnowledgeBase,
   KnowledgeDocument,
+  ObservabilityMetrics,
   RagTraceDetail
 } from '../types/api';
 
@@ -162,6 +163,24 @@ export const mockTraceDetail = {
     ]
   }
 } satisfies RagTraceDetail;
+
+export const mockObservabilityMetrics = {
+  traceCount: 1,
+  questionCount: mockDashboard.todayQuestionCount,
+  averageLatencyMs: mockDashboard.averageLatencyMs ?? 0,
+  p95LatencyMs: mockDashboard.p95LatencyMs ?? 0,
+  p99LatencyMs: mockDashboard.p99LatencyMs ?? 0,
+  errorRate: mockDashboard.errorRate ?? 0,
+  timeoutRate: 0,
+  noAnswerRate: mockDashboard.noAnswerRate ?? 0,
+  negativeFeedbackRate: mockDashboard.negativeFeedbackRate ?? 0,
+  citationClickRate: 0.42,
+  stageLatency: [
+    { stage: 'embedding', averageLatencyMs: 100, p95LatencyMs: 130 },
+    { stage: 'vector_search', averageLatencyMs: 120, p95LatencyMs: 160 },
+    { stage: 'generation', averageLatencyMs: 600, p95LatencyMs: 820 }
+  ]
+} satisfies ObservabilityMetrics;
 
 export const mockEvalDatasets = [
   {

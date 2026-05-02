@@ -1,6 +1,5 @@
 import {
   DeleteOutlined,
-  EditOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -8,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import type { MouseEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
+import { stripWorkflowCommandPrefix } from '@/pages/chat/chat-message-adapter-helpers';
 import type { useChatSession } from '@/hooks/use-chat-session';
 
 import { buildSessionGroups, getSessionStatusTone } from './chat-home-sidebar-helpers';
@@ -19,7 +18,7 @@ const accountMenuSelector = '.chatx-account-menu';
 
 export type ChatHomeSidebarChat = Pick<
   ReturnType<typeof useChatSession>,
-  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'renameSessionById' | 'deleteSessionById'
+  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'deleteSessionById'
 >;
 
 interface ChatHomeSidebarProps {
@@ -161,23 +160,6 @@ export function ChatHomeSidebar({ chat, collapsed, onToggleCollapsed, onLogout }
                             <span aria-hidden="true">...</span>
                           </summary>
                           <div className="chatx-session-item__menu-panel" role="menu">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="chatx-session-item__menu-action"
-                              onClick={event => {
-                                stopMenuClick(event);
-                                setOpenSessionMenuId('');
-                                const nextTitle = window.prompt('重命名会话', session.title);
-                                if (nextTitle === null) {
-                                  return;
-                                }
-                                void chat.renameSessionById(session.id, nextTitle);
-                              }}
-                            >
-                              <EditOutlined className="chatx-session-item__menu-icon" aria-hidden="true" />
-                              <span>重命名</span>
-                            </button>
                             <button
                               type="button"
                               role="menuitem"

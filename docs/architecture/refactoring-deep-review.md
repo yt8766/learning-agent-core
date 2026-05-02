@@ -293,8 +293,10 @@ packages/adapters/src/chroma/chroma-store.ts
   → 迁移目标：packages/knowledge/src/adapters/chroma/chroma-store.ts
 
 # 保留不动（核心）
-packages/adapters/src/chat/
-packages/adapters/src/embedding/
+packages/adapters/src/openai-compatible/chat/
+packages/adapters/src/minimax/chat/
+packages/adapters/src/zhipu/chat/
+packages/adapters/src/openai-compatible/embeddings/
 packages/adapters/src/routing/
 packages/adapters/src/resilience/
 packages/adapters/src/anthropic/
@@ -351,7 +353,7 @@ pnpm exec vitest run --config vitest.config.js packages/adapters/test packages/k
 
 具体 React UI 组件应该在：
 
-- `apps/frontend/agent-chat/src/features/reports/blueprints/` 或
+- `apps/frontend/agent-chat/src/pages/reports/blueprints/` 或
 - 专属业务包 `packages/blueprints/` 或
 - 直接在前端 app 内
 

@@ -326,7 +326,7 @@ describe('chat-session-events', () => {
     expect(messages.filter(message => message.card?.type === 'compression_summary')).toHaveLength(0);
   });
 
-  it('syncProcessMessageFromEvent 会复用同一条 node status 系统消息，而不是不断追加', () => {
+  it('syncProcessMessageFromEvent 不再把 node status 写成主线程系统消息', () => {
     let messages: ChatMessageRecord[] = [];
 
     messages = syncProcessMessageFromEvent(messages, {
@@ -353,16 +353,10 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toEqual(
-      expect.objectContaining({
-        id: 'event_stream_status_session-1',
-        content: '文书科压缩 进行中：正在整理关键决策'
-      })
-    );
+    expect(messages).toHaveLength(0);
   });
 
-  it('syncProcessMessageFromEvent 会把 execution step 投影成可见系统事件', () => {
+  it('syncProcessMessageFromEvent 不再把 execution step 投影成可见系统事件', () => {
     const messages = syncProcessMessageFromEvent([], {
       id: 'evt-exec-1',
       sessionId: 'session-1',
@@ -379,13 +373,7 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(messages).toEqual([
-      expect.objectContaining({
-        id: 'event_evt-exec-1',
-        role: 'system',
-        content: '执行步骤开始：execute · pnpm test · test-runner。正在运行前端回归测试'
-      })
-    ]);
+    expect(messages).toEqual([]);
   });
 
   it('buildVisibleEventMessage 会把 trajectory step 投影成过程轨迹文案', () => {

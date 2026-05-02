@@ -129,7 +129,7 @@ vi.mock('@ant-design/x', () => ({
   }
 }));
 
-vi.mock('@/features/chat/chat-message-adapter', () => ({
+vi.mock('@/pages/chat/chat-message-adapter', () => ({
   buildBubbleItems: () => [{ key: 'bubble-1', content: 'assistant bubble' }]
 }));
 
@@ -262,7 +262,7 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('class="chatx-agent-codex is-sidebar-collapsed"');
   });
 
-  it('renders the empty conversation entry with own brand title and Agent Chat placeholder', () => {
+  it('renders the empty conversation entry without quick or expert mode controls', () => {
     mockUseChatSession.mockReturnValue(
       createChatSessionOverrides({
         activeSessionId: '',
@@ -280,12 +280,15 @@ describe('ChatHomePage shell', () => {
 
     expect(html).toContain('开始新对话');
     expect(html).toContain('给 Agent Chat 发送消息');
+    expect(html).not.toContain('使用快速模式开始对话');
+    expect(html).not.toContain('使用专家模式开始对话');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
+    expect(html).not.toContain('聊天模式');
     expect(html).not.toContain('连接错误');
   });
 
-  it('keeps quick and expert mode switch hidden even when expert state is selected', () => {
+  it('does not expose expert mode when stale state selects it', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
@@ -312,7 +315,6 @@ describe('ChatHomePage shell', () => {
 
     expect(html).toContain('开始新对话');
     expect(html).not.toContain('使用专家模式开始对话');
-    expect(html).not.toContain('使用快速模式开始对话');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
   });
@@ -335,7 +337,6 @@ describe('ChatHomePage shell', () => {
 
     expect(html).toContain('深度思考');
     expect(html).toContain('智能搜索');
-    expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('aria-pressed="false"');
     expect(html).toContain('aria-label="上传文件"');
     expect(html.match(/chatx-sender-footer__right/g)).toHaveLength(1);
@@ -343,7 +344,7 @@ describe('ChatHomePage shell', () => {
     expect(html).not.toContain('♧');
   });
 
-  it('submits deep-thinking composer input through the supported plan workflow payload', () => {
+  it('submits quick composer input as a direct reply payload', () => {
     const chat = createChatSessionOverrides({
       activeSessionId: '',
       activeSession: null,
@@ -363,7 +364,39 @@ describe('ChatHomePage shell', () => {
 
     expect(chat.sendMessage).toHaveBeenCalledWith({
       display: '给我一个实现方案',
-      payload: '/plan 给我一个实现方案'
+      payload: '给我一个实现方案'
+    });
+  });
+
+  it('ignores stale expert mode state and submits direct reply payloads', () => {
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 5) {
+        return ['expert', vi.fn()];
+      }
+      return actualUseState(initial);
+    };
+    const chat = createChatSessionOverrides({
+      activeSessionId: '',
+      activeSession: null,
+      hasMessages: false,
+      events: [],
+      checkpoint: undefined,
+      pendingApprovals: [],
+      showRightPanel: false,
+      error: ''
+    });
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const sender = renderedSenders[0] as { onSubmit?: (value: string) => void };
+    sender.onSubmit?.('给我一个实现方案');
+
+    expect(chat.sendMessage).toHaveBeenCalledWith({
+      display: '给我一个实现方案',
+      payload: '给我一个实现方案'
     });
   });
 
@@ -404,7 +437,7 @@ describe('ChatHomePage shell', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
-      if (stateCallIndex === 6) {
+      if (stateCallIndex === 5) {
         return ['', dismissedErrorSetter];
       }
       return actualUseState(initial);

@@ -1,5 +1,5 @@
 import type { ChatMessageRecord } from '@/types/chat';
-import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
+import { stripWorkflowCommandPrefix } from '@/pages/chat/chat-message-adapter-helpers';
 
 export type ConversationAnchorTone = 'user' | 'assistant' | 'approval' | 'evidence' | 'governance';
 

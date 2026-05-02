@@ -25,9 +25,13 @@ const {
   }))
 }));
 
-vi.mock('@agent/adapters', () => ({
+vi.mock('@agent/knowledge', async importOriginal => ({
+  ...(await importOriginal<typeof import('@agent/knowledge')>()),
   ChromaVectorSearchProvider: chromaVectorSearchProviderMock,
-  createOpenSearchKeywordSearchProvider: createOpenSearchKeywordSearchProviderMock,
+  createOpenSearchKeywordSearchProvider: createOpenSearchKeywordSearchProviderMock
+}));
+
+vi.mock('@agent/adapters', () => ({
   createRuntimeEmbeddingProvider: createRuntimeEmbeddingProviderMock
 }));
 

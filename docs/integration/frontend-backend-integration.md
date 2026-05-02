@@ -136,6 +136,12 @@ knowledge-server http://127.0.0.1:3020/api
 agent-server     http://127.0.0.1:3000/api
 ```
 
+后端服务 `.env` 加载：
+
+- `apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/backend/agent-server` 都通过 `@nestjs/config` 加载各自服务目录下的 `.env`。
+- `auth-server` 的登录校验使用 `passport-local`，Access Token 校验使用 `passport-jwt`，密码哈希使用 `bcrypt`。
+- `auth-server` 与 `knowledge-server` 的 `AUTH_SERVER_JWT_SECRET` 和 `AUTH_SERVER_JWT_ISSUER` 必须一致。
+
 ## 命名与兼容
 
 - 新运行语义优先使用 `supervisor / ministry / workflow / evidence / learning`。

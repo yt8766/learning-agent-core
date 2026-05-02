@@ -215,13 +215,13 @@ Adapter factories must accept host-provided configuration explicitly. They must 
 
 ## Adapter Placement
 
-Current MVP vendor adapters still live in `packages/adapters`. This includes concrete provider, vector-store, keyword-search, loader, and SDK-client integrations such as Chroma, OpenSearch-like search, embedding providers, and any service-key runtime wiring.
+Current MVP knowledge adapters live in `packages/knowledge/src/adapters/*`. This includes Chroma vector search/store, OpenSearch-like keyword search, Supabase pgvector, LangChain indexing adapters, and provider presets. `packages/adapters` no longer exposes compatibility re-exports for migrated knowledge adapters.
 
 `@agent/knowledge/adapters/*` is a target publishable SDK adapter surface, not a statement that all such subpath exports already exist today. Migration to that target must be incremental:
 
 - Keep real vendor SDK lifecycle, credentials, and host environment loading outside `@agent/knowledge/core`.
 - Do not duplicate an adapter implementation in `packages/knowledge` while the current implementation remains in `packages/adapters`.
-- Introduce thin compat re-exports only when a migration slice defines ownership, tests, and deprecation behavior.
+- Remove old adapter-package entrypoints once a migration slice has moved ownership, tests, docs, and call sites to `@agent/knowledge`.
 - Convert vendor responses and errors at the adapter boundary before returning SDK-owned contracts.
 - Never allow optional adapter dependencies to contaminate `@agent/knowledge/core`.
 

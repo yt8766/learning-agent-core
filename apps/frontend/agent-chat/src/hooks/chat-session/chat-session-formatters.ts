@@ -33,14 +33,6 @@ export const CHECKPOINT_REFRESH_EVENT_TYPES = new Set<ChatEventRecord['type']>([
 
 export const MESSAGE_VISIBLE_EVENT_TYPES = new Set<ChatEventRecord['type']>([
   'conversation_compacted',
-  'node_status',
-  'node_progress',
-  'execution_step_started',
-  'execution_step_completed',
-  'execution_step_blocked',
-  'execution_step_resumed',
-  'trajectory_step',
-  'task_trajectory',
   'interrupt_pending',
   'interrupt_resumed',
   'interrupt_rejected_with_feedback',

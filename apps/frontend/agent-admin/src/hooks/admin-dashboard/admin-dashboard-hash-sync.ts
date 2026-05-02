@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import type { DashboardPageKey } from '@/types/admin';
-import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
+import type { RunObservatoryFocusTarget } from '@/pages/run-observatory/run-observatory-panel-support';
 import type { ExecutionModeFilter, InteractionKindFilter } from './admin-dashboard-constants';
 import { buildDashboardRoute, readDashboardStateFromRoute } from './admin-dashboard-constants';
 

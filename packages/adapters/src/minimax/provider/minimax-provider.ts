@@ -134,7 +134,8 @@ export class MiniMaxProvider implements LlmProvider {
       maxTokens: options.maxTokens,
       apiKey: this.config.apiKey,
       baseUrl: this.config.baseUrl,
-      thinking: options.thinking
+      streamUsage: false,
+      thinking: false
     });
   }
 

@@ -8,11 +8,9 @@ import {
   createMiniMaxChatModel,
   createZhipuChatModel
 } from '@agent/adapters';
-import {
-  createChatOpenAIModel as canonicalCreateChatOpenAIModel,
-  createMiniMaxChatModel as canonicalCreateMiniMaxChatModel,
-  createZhipuChatModel as canonicalCreateZhipuChatModel
-} from '../src/chat';
+import { createChatOpenAIModel as canonicalCreateChatOpenAIModel } from '../src/openai-compatible/chat';
+import { createMiniMaxChatModel as canonicalCreateMiniMaxChatModel } from '../src/minimax/chat';
+import { createZhipuChatModel as canonicalCreateZhipuChatModel } from '../src/zhipu/chat';
 import { createDefaultRuntimeLlmProvider as canonicalCreateDefaultRuntimeLlmProvider } from '../src/factories/runtime';
 
 describe('@agent/adapters runtime host boundary', () => {
@@ -31,8 +29,18 @@ describe('@agent/adapters runtime host boundary', () => {
     expect(existsSync(new URL('../src/llm/runtime-provider-factory.ts', import.meta.url))).toBe(false);
   });
 
-  it('keeps the new factory host barrels in place', () => {
-    expect(existsSync(new URL('../src/chat/index.ts', import.meta.url))).toBe(true);
+  it('removes the legacy compat barrel directories', () => {
+    expect(existsSync(new URL('../src/chat/index.ts', import.meta.url))).toBe(false);
+    expect(existsSync(new URL('../src/providers/llm/index.ts', import.meta.url))).toBe(false);
+    expect(existsSync(new URL('../src/retry/index.ts', import.meta.url))).toBe(false);
+    expect(existsSync(new URL('../src/support/index.ts', import.meta.url))).toBe(false);
+    expect(existsSync(new URL('../src/utils/model-fallback.ts', import.meta.url))).toBe(false);
+  });
+
+  it('keeps the canonical factory host barrels in place', () => {
+    expect(existsSync(new URL('../src/openai-compatible/chat/index.ts', import.meta.url))).toBe(true);
+    expect(existsSync(new URL('../src/minimax/chat/index.ts', import.meta.url))).toBe(true);
+    expect(existsSync(new URL('../src/zhipu/chat/index.ts', import.meta.url))).toBe(true);
     expect(existsSync(new URL('../src/factories/runtime/index.ts', import.meta.url))).toBe(true);
   });
 });

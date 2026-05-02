@@ -40,9 +40,9 @@
 - `apps/backend/agent-server/src/runtime/skills/runtime-skill-install.service.ts` `3.84%`
 - `apps/backend/agent-server/src/runtime/centers/runtime-learning-evidence-center.evidence.ts` `15.78%`
 - `apps/backend/agent-server/src/runtime/actions/runtime-connector-governance-actions.ts` `20.00%`
-- `apps/frontend/agent-admin/src/features/connectors-center/connector-card.tsx` `0.00%`
-- `apps/frontend/agent-admin/src/features/connectors-center/connectors-center-summary.tsx` `0.00%`
-- `apps/frontend/agent-admin/src/features/connectors-center/connector-card-primitives.tsx` `0.00%`
+- `apps/frontend/agent-admin/src/pages/connectors-center/connector-card.tsx` `0.00%`
+- `apps/frontend/agent-admin/src/pages/connectors-center/connectors-center-summary.tsx` `0.00%`
+- `apps/frontend/agent-admin/src/pages/connectors-center/connector-card-primitives.tsx` `0.00%`
 - `apps/frontend/agent-chat/src/components/chat-message-cards/skill-suggestions-meta.ts` `25.00%`
 - `packages/agent-core/src/graphs/recovery.graph.ts` `0.00%`（已删除包的历史快照）
 
@@ -83,13 +83,13 @@
 - `apps/frontend/agent-chat/src/api/chat-api.ts`
 - `apps/frontend/agent-chat/src/components/chat-message-cards/plan-question-card.tsx`
 - `apps/frontend/agent-chat/src/components/chat-message-cards/card-meta.ts`
-- `apps/frontend/agent-admin/src/features/runtime-overview/components/runtime-summary-section.tsx`
+- `apps/frontend/agent-admin/src/pages/runtime-overview/components/runtime-summary-section.tsx`
 - `apps/frontend/agent-admin/src/components/ui/chart.tsx`
-- `apps/frontend/agent-admin/src/features/connectors-center/connectors-center-panel.tsx`
+- `apps/frontend/agent-admin/src/pages/connectors-center/connectors-center-panel.tsx`
 - `packages/agent-core/src/adapters/llm/chat-model-factory.ts`
 - `packages/agent-core/src/adapters/llm/zhipu-provider.ts`
 - `agents/supervisor/src/flows/supervisor/nodes/supervisor-plan-node.ts`
-- `packages/tools/src/watchdog/execution-watchdog.ts`
+- `packages/runtime/src/watchdog/execution-watchdog.ts`
 
 ## 下一轮建议优先级
 

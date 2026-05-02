@@ -52,8 +52,12 @@ Do not make mock data the default production path.
 
 ## 页面工作流
 
-- `KnowledgeBasesPage`：通过 provider 读取知识库列表。
-- `DocumentsPage`：通过 provider 读取文档列表；上传使用隐藏 file input 取得真实 `File`，调用 `POST /knowledge-bases/:id/documents/upload`；失败文档可调用 `POST /documents/:id/reprocess`；页面展示处理 stage 和错误原因。
+- `KnowledgeBasesPage`：通过 provider 读取知识库列表；支持新建知识库并进入 `/knowledge-bases/:baseId` 详情。
+- `KnowledgeBaseDetailPage`：读取知识库、文档列表和上传状态；上传入口只接受 Markdown/TXT，并按两步协议调用 provider。
+- `DocumentUploadPanel`：先调用 `uploadKnowledgeFile()`，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`；再调用 `createDocumentFromUpload()` 创建 document 和 ingestion job；非终态 job 通过 `getLatestDocumentJob()` 轮询。
+- `DocumentsPage`：通过 provider 读取文档列表并进入 `/documents/:documentId` 详情；上传目标必须来自 `listKnowledgeBases()` 返回的当前用户可访问知识库，不能硬编码 `kb_frontend` 这类 mock / fixture id；保留旧 `uploadDocument()` 兼容方法只用于迁移期，内部必须转到 `uploadKnowledgeFile()` + `createDocumentFromUpload()` 两步协议，不能再请求旧单步 `/knowledge-bases/:id/documents/upload` 路径；删除操作必须先通过行内确认提示，再走 `deleteDocument()`，由后端校验 membership、删除 document record 并 best-effort 清理 OSS object，页面删除后刷新列表。
+- `DocumentDetailPage`：读取 `getDocument()`、`getLatestDocumentJob()` 和 `listDocumentChunks()`，展示 job stage、错误和 chunks；点击重新处理时调用 `reprocessDocument()` 并刷新详情。
+- `OverviewPage`：ECharts 图表必须限制 tooltip 在图表容器内，并在 Ant Design `Space` / `Card` 嵌套下设置 `min-width: 0` 与 `width: 100%`，避免图表画布或 tooltip 撑出下方 card 范围。
 - `ChatLabPage`：通过 provider 调 `/chat`；回答 footer 展示 citation、trace link 和 feedback 按钮；feedback 调 `/messages/:id/feedback`。
 - `ObservabilityPage`：读取 metrics、trace list 和 trace detail；trace table 点击调用 `selectTrace()`；`/observability?traceId=<id>` 会自动打开对应 trace。
 - `EvalsPage`：读取 datasets/runs，并在至少两次 run 存在时调用 `/eval/runs/compare` 展示回归差异。
@@ -67,3 +71,16 @@ Do not make mock data the default production path.
 - `useKnowledgeDocuments` 将 upload/reprocess 的 action error 合并到页面 error 展示。
 
 新增工作流必须先补 provider 层方法，再由 hook 消费，最后页面接线；不要让页面绕过 provider。
+
+## Core Operations Routes
+
+当前已接线的知识库核心运营路由：
+
+```text
+/knowledge-bases
+/knowledge-bases/:baseId
+/documents
+/documents/:documentId
+```
+
+新上传闭环以 `docs/contracts/api/knowledge.md` 的两步 Markdown/TXT upload contract 为准。前端只能展示后端返回的 OSS URL 或 object key，不允许在浏览器中持有 OSS credential，也不允许新增网页抓取入口。

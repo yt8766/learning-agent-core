@@ -14,7 +14,6 @@ import {
   resolveComposerChange,
   resolveComposerPlanModeChange,
   resolveComposerSubmit,
-  resolveComposerSubmitForMode,
   resolveQuickActionSelection
 } from '@/pages/chat-home/chat-home-workbench-composer-helpers';
 
@@ -101,14 +100,14 @@ describe('chat-home-workbench composer helpers', () => {
     });
   });
 
-  it('resolves composer submissions from chat mode', () => {
-    expect(resolveComposerSubmitForMode('你好', null, 'quick')).toEqual({ display: '你好', payload: '你好' });
-    expect(resolveComposerSubmitForMode('拆解需求', null, 'expert')).toEqual({
+  it('resolves composer submissions from the single chat entry', () => {
+    expect(resolveComposerSubmit('你好', null, false)).toEqual({ display: '你好', payload: '你好' });
+    expect(resolveComposerSubmit('拆解需求', null, true)).toEqual({
       display: '拆解需求',
       payload: '/plan 拆解需求'
     });
     expect(
-      resolveComposerSubmitForMode('请审查我当前会话里的改动和风险', '/review 请审查我当前会话里的改动和风险', 'expert')
+      resolveComposerSubmit('请审查我当前会话里的改动和风险', '/review 请审查我当前会话里的改动和风险', false)
     ).toEqual({
       display: '请审查我当前会话里的改动和风险',
       payload: '/review 请审查我当前会话里的改动和风险'

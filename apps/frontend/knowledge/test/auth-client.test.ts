@@ -43,6 +43,35 @@ describe('AuthClient', () => {
     expect(readTokens()?.accessToken).toBe('access');
   });
 
+  it('binds the default browser fetch before login requests', async () => {
+    const fetcher = vi.fn(function (this: unknown) {
+      if (this !== globalThis) {
+        throw new TypeError('Illegal invocation');
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            user: { id: 'user_1', email: 'dev@example.com', roles: ['owner'], permissions: [] },
+            tokens: {
+              accessToken: 'access',
+              refreshToken: 'refresh',
+              tokenType: 'Bearer',
+              expiresIn: 7200,
+              refreshExpiresIn: 1209600
+            }
+          }),
+          { status: 200 }
+        )
+      );
+    }) as typeof fetch;
+    vi.stubGlobal('fetch', fetcher);
+    const client = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+
+    await client.login({ email: 'dev@example.com', password: 'secret' });
+
+    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/auth/login', expect.objectContaining({ method: 'POST' }));
+  });
+
   it('shares concurrent refresh requests', async () => {
     saveTokens({
       accessToken: 'old',

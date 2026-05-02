@@ -583,7 +583,7 @@ apps/backend/agent-server/src/modules/memory/
 ### 10.5 `apps/frontend/agent-admin`
 
 ```text
-apps/frontend/agent-admin/src/features/
+apps/frontend/agent-admin/src/pages/
   memory-center/
   learning-center/
   evidence-center/
@@ -593,7 +593,7 @@ apps/frontend/agent-admin/src/features/
 ### 10.6 `apps/frontend/agent-chat`
 
 ```text
-apps/frontend/agent-chat/src/features/memory/
+apps/frontend/agent-chat/src/pages/memory/
   memory-chip.tsx
   memory-reason-card.tsx
   profile-preference-editor.tsx

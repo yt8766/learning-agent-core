@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/runtime`
-最后核对：2026-04-20
+最后核对：2026-05-02
 
 本文档说明 `packages/runtime` 如何继续按“运行时编排层”而不是“全能 shared 层”收敛。
 
@@ -214,6 +214,7 @@ packages/runtime/
 - 不要把 graph wiring、执行编排、运行态 facade 三种不同语义都继续堆在 `runtime/`
 - 不要让 `session/` 重新退化成零散 helper；它已经是一个独立大域
 - 不要把 `bridges/` 当成长期公共 API；它只负责 runtime 内部 adapter 语义
+- 不要让 `package.json` 的 `types` / `exports.*.types` 指向历史迁移目录或源码目录；`@agent/runtime` 的声明入口必须固定到真实存在的 `build/types/runtime/src/**` 产物。backend 生产构建会清空源码 `paths` 并通过 workspace 包 manifest 解析类型，错误的 types 路径会直接导致 `@agent/runtime` 无法解析。
 
 ## 5. 第一批执行清单
 

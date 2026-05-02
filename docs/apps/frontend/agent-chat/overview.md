@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-chat`
-最后核对：2026-04-26
+最后核对：2026-05-02
 
 `agent-chat` 是前线作战面，不是普通聊天壳子。
 
@@ -11,7 +11,7 @@
 
 - DeepSeek-style lightweight frontline shell
 - Collapsible multi-session sidebar with time grouping and status indicators
-- Quick / expert chat entry mode
+- Single chat entry with per-message ability chips
 - Current-conversation anchor rail for long-thread navigation
 - Inline folded governance summaries for Think / ThoughtChain / Evidence / Approval / Learning
 - Chat thread 与多轮会话切换
@@ -24,6 +24,8 @@
 当前约束：
 
 - 前线发送框不再暴露模型切换下拉框；聊天模型选择统一交给 Runtime 路由与治理策略决定
+- 前线聊天不再暴露“快速模式 / 专家模式”入口；普通消息默认按直接发送处理，需要计划语义时由“深度思考”等能力 chip 显式触发
+- 侧栏会话菜单不再提供重命名；会话标题由 runtime 基于首条用户消息调用大模型生成摘要标题，失败时才使用本地短标题兜底
 - Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示轻量折叠摘要
 - Workspace Center projection 只允许在 chat 侧作为只读 readiness 摘要消费；不要在 `agent-chat` 中新增 Skill Draft 审批、安装或治理动作
 - 运行时代码导入 `@agent/*` workspace 包时，必须在 `apps/frontend/agent-chat/package.json` 显式声明对应 `workspace:*` 依赖；`tsconfig.app.json` 的 `paths` 只服务 TypeScript，不足以保证 Vite dev server 的 import-analysis 解析
@@ -73,9 +75,15 @@ pnpm --dir apps/frontend/agent-chat dev
 
 ## 轻量聊天壳与治理能力
 
-`pages/chat-home` 默认呈现轻量聊天壳。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用绿色胶囊和处理中图标突出阻塞态，审批完成后回落为普通会话项并保留右侧蓝点。中间主区域在无消息时展示快速/专家模式入口；快速模式走直接回答，专家模式复用计划/调度提交路径。
+`pages/chat-home` 默认呈现轻量聊天壳。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用绿色胶囊和处理中图标突出阻塞态，审批完成后回落为普通会话项并保留右侧蓝点。中间主区域在无消息时只展示单一输入入口；普通消息直接发送，计划语义由发送框里的“深度思考”等能力 chip 显式触发。
 
 右侧默认不占用完整工作台空间。长线程通过当前会话锚点浮条定位用户问题、助手回答、审批点、Evidence 段落与关键治理节点。Think、ThoughtChain、Evidence、Approval、Learning 与 Skill reuse 保留为消息内折叠摘要或高级面板详情，不回退成普通聊天机器人。
+
+`agent-chat` 会从 `node_progress` payload projection 渲染 Codex-style assistant response steps。运行中的回复使用 `QuickResponseSteps` 只展示轻量过程摘要，例如“处理中 2 个步骤”或“已探索 4 个文件”；完成后的回复使用 `ResponseStepSummary` 自动折叠为“已处理 …”摘要行，并可展开查看步骤细节。投影折叠 helper 是 `src/lib/chat-response-step-projections.ts`；它从 `chat.events` 派生 `responseStepsByMessageId`，不写入 `ChatMessageRecord.card`。
+
+主聊天线程不再把 `node_status`、`node_progress`、`execution_step_*`、`trajectory_step` 或 `task_trajectory` 直接写成系统消息卡片。过程事件仍保留在 `chat.events`，由 response-step projection、timeline 或 workbench 消费，避免聊天面回退到事件时间线卡片效果。
+
+`direct_reply_*` 是当前轮 assistant 流式文本的本地中间态。该消息在主线程中必须保留正文：运行中用于展示正在生成的 AI 回复，取消后如果后端还没有持久化最终 assistant message，也要保留取消前已经流出的非空文本。只有 `progress_stream_*` 与 `summary_stream_*` 这类能力状态中间态会在主线程中清空正文并折叠为治理摘要。
 
 ## Workspace Vault 摘要
 

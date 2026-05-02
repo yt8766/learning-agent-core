@@ -1,4 +1,4 @@
-import pg from 'pg';
+import { Pool } from 'pg';
 
 import type { PostgresAuthClient } from '../repositories/auth-postgres.repository';
 
@@ -7,5 +7,5 @@ export interface AuthDatabaseProviderOptions {
 }
 
 export function createAuthDatabaseClient(options: AuthDatabaseProviderOptions): PostgresAuthClient {
-  return new pg.Pool({ connectionString: options.databaseUrl });
+  return new Pool({ connectionString: options.databaseUrl });
 }

@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest';
 
+describe('@agent/knowledge SDK entrypoints', () => {
+  it('exports stable browser and node entrypoints without vendor objects', async () => {
+    const root = await import('../src');
+    const browser = await import('../src/browser');
+    const client = await import('../src/client');
+    const node = await import('../src/node');
+
+    expect(root.KnowledgeVectorSearchRequestSchema).toBeDefined();
+    expect(root.createKnowledgeRuntime).toBeDefined();
+    expect(browser.KnowledgeApiClient).toBeDefined();
+    expect(browser.createKnowledgeBrowserClient).toBeDefined();
+    expect(client.KnowledgeApiClient).toBeDefined();
+    expect(node.createKnowledgeRuntime).toBeDefined();
+  });
+
+  it('lets SDK consumers compose runtime providers instead of hard-wiring defaults', async () => {
+    const { createKnowledgeRuntime } = await import('../src/node');
+    const vectorStore = {
+      delete: async () => ({ deletedCount: 0 }),
+      search: async () => ({ hits: [] }),
+      upsert: async () => ({ upsertedCount: 0 })
+    };
+
+    const runtime = createKnowledgeRuntime({ vectorStore });
+
+    expect(runtime.vectorStore).toBe(vectorStore);
+    expect(runtime.embeddingProvider).toBeUndefined();
+    expect(runtime.providers.vectorStore).toBe(vectorStore);
+  });
+});
+
 describe('knowledge adapter entrypoints', () => {
   it('exports the adapter root entrypoint', async () => {
     const adapters = await import('../src/adapters');
@@ -14,11 +45,19 @@ describe('knowledge adapter entrypoints', () => {
     const glm = await import('../src/adapters/glm');
     const deepseek = await import('../src/adapters/deepseek');
     const compatible = await import('../src/adapters/openai-compatible');
+    const langchain = await import('../src/adapters/langchain');
+    const chroma = await import('../src/adapters/chroma');
+    const opensearch = await import('../src/adapters/opensearch');
+    const supabase = await import('../src/adapters/supabase');
 
     expect(minimax).toHaveProperty('createMiniMaxEmbeddingProvider');
     expect(glm).toHaveProperty('createGlmChatProvider');
     expect(deepseek).toHaveProperty('createDeepSeekChatProvider');
     expect(compatible).toHaveProperty('createOpenAICompatibleChatProvider');
+    expect(langchain).toHaveProperty('LangChainLoaderAdapter');
+    expect(chroma).toHaveProperty('ChromaVectorSearchProvider');
+    expect(opensearch).toHaveProperty('OpenSearchKeywordSearchProvider');
+    expect(supabase).toHaveProperty('SupabasePgVectorStoreAdapter');
   });
 });
 

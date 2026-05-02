@@ -15,6 +15,7 @@ import type { SessionTaskAggregate } from './session-task.types';
 export {
   deriveRequestedHints,
   deriveSessionTitle,
+  generateSessionTitleFromSummary,
   shouldDeriveSessionTitle
 } from './session-coordinator-routing-hints';
 

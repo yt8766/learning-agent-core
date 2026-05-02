@@ -19,7 +19,7 @@ import {
   SidebarMenuSubItem,
   SidebarRail
 } from '@/components/ui/sidebar';
-import { adminAuthStore } from '@/features/auth/store/admin-auth-store';
+import { adminAuthStore } from '@/pages/auth/store/admin-auth-store';
 import { cn } from '@/lib/utils';
 import type { DashboardPageKey, TaskRecord } from '@/types/admin';
 

@@ -21,7 +21,7 @@ vi.mock('@/api/chat-api', () => ({
   buildRuntimeCenterExportUrl: (params: Record<string, unknown>) => mockBuildRuntimeCenterExportUrl(params)
 }));
 
-vi.mock('@/features/runtime-panel/chat-runtime-drawer', () => ({
+vi.mock('@/pages/runtime-panel/chat-runtime-drawer', () => ({
   getRuntimeDrawerExportFilters: (checkpoint?: unknown) => mockGetRuntimeDrawerExportFilters(checkpoint)
 }));
 

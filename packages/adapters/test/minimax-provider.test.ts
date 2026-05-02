@@ -87,7 +87,8 @@ describe('MiniMaxProvider', () => {
         model: 'MiniMax-M2.7',
         apiKey: 'minimax-key',
         baseUrl: 'https://api.minimaxi.com/v1',
-        temperature: 0.2
+        temperature: 0.2,
+        streamUsage: false
       })
     );
     expect(onUsage).toHaveBeenCalledWith(
@@ -96,6 +97,69 @@ describe('MiniMaxProvider', () => {
         completionTokens: 7,
         totalTokens: 18,
         model: 'MiniMax-M2.7'
+      })
+    );
+  });
+
+  it('disables unsupported LangChain chat settings for MiniMax compatibility', async () => {
+    createMiniMaxChatModelMock.mockReturnValue({
+      stream: vi.fn(async function* () {
+        yield {
+          content: 'ok',
+          response_metadata: { model_name: 'MiniMax-M2.7' }
+        };
+      })
+    });
+    const provider = new MiniMaxProvider({
+      id: 'minimax',
+      type: 'minimax',
+      apiKey: 'minimax-key',
+      baseUrl: 'https://api.minimaxi.com/v1',
+      models: ['MiniMax-M2.7'],
+      roleModels: {
+        manager: 'MiniMax-M2.7'
+      }
+    });
+
+    await provider.streamText([{ role: 'user', content: '你好' }], { role: 'manager' }, () => undefined);
+
+    expect(createMiniMaxChatModelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'MiniMax-M2.7',
+        streamUsage: false
+      })
+    );
+  });
+
+  it('does not pass runtime thinking settings through to MiniMax chat models', async () => {
+    createMiniMaxChatModelMock.mockReturnValue({
+      stream: vi.fn(async function* () {
+        yield {
+          content: 'ok',
+          response_metadata: { model_name: 'MiniMax-M2.7' }
+        };
+      })
+    });
+    const provider = new MiniMaxProvider({
+      id: 'minimax',
+      type: 'minimax',
+      apiKey: 'minimax-key',
+      models: ['MiniMax-M2.7'],
+      roleModels: {
+        manager: 'MiniMax-M2.7'
+      }
+    });
+
+    await provider.streamText(
+      [{ role: 'user', content: '你好' }],
+      { role: 'manager', thinking: true },
+      () => undefined
+    );
+
+    expect(createMiniMaxChatModelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'MiniMax-M2.7',
+        thinking: false
       })
     );
   });

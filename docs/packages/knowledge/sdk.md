@@ -1,7 +1,7 @@
 状态：current
 文档类型：guide
 适用范围：Knowledge SDK 向量存储默认选型、adapter 边界与自定义 VectorStore 接入
-最后核对：2026-05-01
+最后核对：2026-05-02
 
 # Knowledge SDK 接入指南
 
@@ -9,7 +9,7 @@
 
 - `@agent/knowledge`：根入口，导出稳定 schema、类型、官方 adapter factory，以及既有本地检索默认实现。
 - `@agent/knowledge/core`：只放长期稳定 contract、provider interface、错误与 pipeline 基础类型。
-- `@agent/knowledge/adapters/*`：官方 provider adapter 子路径，当前包含 LangChain、MiniMax、GLM、DeepSeek 与 OpenAI-compatible。
+- `@agent/knowledge/adapters/*`：官方 adapter 子路径，当前包含 LangChain、Chroma、OpenSearch、Supabase pgvector、MiniMax、GLM、DeepSeek 与 OpenAI-compatible。
 
 ## 可由使用方实现的接口
 
@@ -38,7 +38,7 @@ export interface KnowledgeRuntimeProviders {
 仓库内提供一些默认实现，但它们都不是公共 contract 的硬绑定：
 
 - `@agent/knowledge`：本地检索、query normalizer、post retrieval filter/ranker/diversifier/context assembler、local knowledge store。
-- `@agent/adapters`：生产推荐的 `SupabasePgVectorStoreAdapter`。
+- `@agent/knowledge/adapters/supabase`：生产推荐的 `SupabasePgVectorStoreAdapter`。
 - `apps/backend/agent-server`：JWT 双 token、摄取、RAG、评测、观测的服务端默认装配。
 
 ## 官方 Adapter 层
@@ -47,6 +47,9 @@ export interface KnowledgeRuntimeProviders {
 
 - `@agent/knowledge/adapters`
 - `@agent/knowledge/adapters/langchain`
+- `@agent/knowledge/adapters/chroma`
+- `@agent/knowledge/adapters/opensearch`
+- `@agent/knowledge/adapters/supabase`
 - `@agent/knowledge/adapters/minimax`
 - `@agent/knowledge/adapters/glm`
 - `@agent/knowledge/adapters/deepseek`
@@ -81,7 +84,7 @@ Third-party provider objects must be adapted before crossing SDK or backend serv
 默认 adapter 可以直接接到 SDK 的 `VectorStore`：
 
 ```ts
-import { SupabasePgVectorStoreAdapter } from '@agent/adapters';
+import { SupabasePgVectorStoreAdapter } from '@agent/knowledge/adapters/supabase';
 
 const vectorStore = new SupabasePgVectorStoreAdapter({
   client: supabaseLikeClient,
@@ -97,10 +100,10 @@ const vectorStore = new SupabasePgVectorStoreAdapter({
 
 Knowledge SDK 的生产默认推荐使用 Supabase PostgreSQL + pgvector。这个选择让认证元数据、文档元数据、评测记录、trace 与向量检索可以落在同一套 PostgreSQL 运维体系内，减少早期生产化时的数据库数量、备份策略和权限边界复杂度。
 
-默认 adapter 位于 `@agent/adapters`：
+默认 adapter 位于 `@agent/knowledge/adapters/supabase`：
 
 ```ts
-import { SupabasePgVectorStoreAdapter } from '@agent/adapters';
+import { SupabasePgVectorStoreAdapter } from '@agent/knowledge/adapters/supabase';
 
 const vectorStore = new SupabasePgVectorStoreAdapter({
   client: supabaseLikeClient,

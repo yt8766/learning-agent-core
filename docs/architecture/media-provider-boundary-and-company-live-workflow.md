@@ -617,16 +617,16 @@ v1.0 已完成以下边界：
 
 ### 新增模块
 
-| 模块              | 路径                                                                                   | 说明                                                                          |
-| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Graph + 节点      | `agents/company-live/src/graphs/company-live.graph.ts`                                 | 顺序 pipeline：generateAudio → generateImage → generateVideo → assembleBundle |
-| Stub Registry     | `agents/company-live/src/runtime/company-live-domain-runtime.ts`                       | `createCompanyLiveStubRegistry()` 返回 mock asset，不发 HTTP                  |
-| 节点 trace schema | `packages/core/src/contracts/media/company-live-generate-result.schema.ts`             | `CompanyLiveNodeTraceSchema` + `CompanyLiveGenerateResultSchema`              |
-| 后端 endpoint     | `apps/backend/agent-server/src/company-live/`                                          | POST /company-live/generate → service → graph                                 |
-| 前端 API 客户端   | `apps/frontend/agent-admin/src/api/company-live.api.ts`                                | `generateCompanyLive(brief)`                                                  |
-| 前端生成表单      | `apps/frontend/agent-admin/src/features/company-agents/company-live-generate-form.tsx` | 输入 briefId/platform/script/duration/voiceId                                 |
-| 前端结果展示      | `apps/frontend/agent-admin/src/features/company-agents/company-live-bundle-result.tsx` | 展示 GeneratedMediaBundle.assets                                              |
-| 前端节点轨迹      | `apps/frontend/agent-admin/src/features/company-agents/company-live-node-trace.tsx`    | 时间线：nodeId、status、durationMs、input/output snapshot                     |
+| 模块              | 路径                                                                                | 说明                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Graph + 节点      | `agents/company-live/src/graphs/company-live.graph.ts`                              | 顺序 pipeline：generateAudio → generateImage → generateVideo → assembleBundle |
+| Stub Registry     | `agents/company-live/src/runtime/company-live-domain-runtime.ts`                    | `createCompanyLiveStubRegistry()` 返回 mock asset，不发 HTTP                  |
+| 节点 trace schema | `packages/core/src/contracts/media/company-live-generate-result.schema.ts`          | `CompanyLiveNodeTraceSchema` + `CompanyLiveGenerateResultSchema`              |
+| 后端 endpoint     | `apps/backend/agent-server/src/company-live/`                                       | POST /company-live/generate → service → graph                                 |
+| 前端 API 客户端   | `apps/frontend/agent-admin/src/api/company-live.api.ts`                             | `generateCompanyLive(brief)`                                                  |
+| 前端生成表单      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-generate-form.tsx` | 输入 briefId/platform/script/duration/voiceId                                 |
+| 前端结果展示      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-bundle-result.tsx` | 展示 GeneratedMediaBundle.assets                                              |
+| 前端节点轨迹      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-node-trace.tsx`    | 时间线：nodeId、status、durationMs、input/output snapshot                     |
 
 ### 接口文档
 

@@ -7,6 +7,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> 2026-05-02 状态补充：本计划是历史 snapshot。`DocumentSourceType.web-url` 只表示 Knowledge App 可承载人工策展或外部系统已整理好的 URL 内容；当前知识库不建设真实网页抓取、robots / 版权策略或抓取调度。实施时以 [Knowledge API Contract](/docs/contracts/api/knowledge.md)、[Knowledge Ingestion API](/docs/contracts/api/knowledge-ingestion.md) 与 [Knowledge Source Ingestion 接线状态](/docs/packages/knowledge/source-ingestion-status.md) 为准。
+
 **Goal:** Build the first API-first MVP slice for `apps/frontend/knowledge`, backed by a stable Knowledge API contract and a publishable `packages/knowledge` SDK core boundary.
 
 **Architecture:** The front end consumes stable API models and never runs RAG internals directly. The backend hosts authentication, permission checks, API mapping, document jobs, chat, traces, and eval stubs first; later it calls `packages/knowledge` runtime/adapters for real ingestion, retrieval, generation, tracing, and evaluation. The SDK is interface-first: `core` defines schema/type/interface/error/pipeline contracts, while default runtime and adapters remain replaceable.

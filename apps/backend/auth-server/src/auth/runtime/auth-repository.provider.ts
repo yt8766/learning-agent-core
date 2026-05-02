@@ -15,17 +15,16 @@ export type AuthRepositoryProvider = FactoryProvider<AuthRepository> & {
   useFactory: () => AuthRepository;
 };
 
-export function createAuthRepositoryProvider(options: AuthRepositoryProviderOptions): AuthRepositoryProvider {
+export function createAuthRepositoryProvider(options: AuthRepositoryProviderOptions = {}): AuthRepositoryProvider {
   return {
     provide: AUTH_REPOSITORY,
     useFactory: () => {
-      if (!options.databaseUrl) {
+      const databaseUrl = options.databaseUrl ?? process.env.DATABASE_URL;
+      if (!databaseUrl) {
         return new InMemoryAuthRepository();
       }
 
-      return new PostgresAuthRepository(
-        options.createClient?.() ?? createAuthDatabaseClient({ databaseUrl: options.databaseUrl })
-      );
+      return new PostgresAuthRepository(options.createClient?.() ?? createAuthDatabaseClient({ databaseUrl }));
     }
   };
 }

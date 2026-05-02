@@ -64,12 +64,12 @@ import * as mcpExports from '../src/mcp';
 import * as registryExports from '../src/registry';
 import * as sandboxExports from '../src/sandbox';
 import * as scaffoldExports from '../src/scaffold/scaffold-core';
-import * as watchdogExports from '../src/watchdog';
 
 describe('@agent/tools root exports', () => {
   it('re-exports the stable runtime-facing tool contracts explicitly', async () => {
     expect(ApprovalService).toBe(approvalExports.ApprovalService);
-    expect(ExecutionWatchdog).toBe(watchdogExports.ExecutionWatchdog);
+    const runtimeExports = await import('@agent/runtime');
+    expect(ExecutionWatchdog).toBe(runtimeExports.ExecutionWatchdog);
     expect(McpCapabilityRegistry).toBe(mcpExports.McpCapabilityRegistry);
     expect(McpClientManager).toBe(mcpExports.McpClientManager);
     expect(McpServerRegistry).toBe(mcpExports.McpServerRegistry);
@@ -83,7 +83,7 @@ describe('@agent/tools root exports', () => {
     expect(createDefaultToolRegistry).toBe(registryExports.createDefaultToolRegistry);
     expect(ToolRiskClassifier).toBe(registryExports.ToolRiskClassifier);
     expect(ToolRiskClassifier).toBe(contractRiskClassifierExports.ToolRiskClassifier);
-    const runtimeGovernanceExports = await import('@agent/runtime');
+    const runtimeGovernanceExports = runtimeExports;
     expect(buildToolsCenter).toBe(runtimeGovernanceExports.buildToolsCenter);
     const connectorGovernanceState = runtimeGovernanceExports;
     expect(setConnectorEnabledState).toBe(connectorGovernanceState.setConnectorEnabledState);
@@ -136,6 +136,10 @@ describe('@agent/tools root exports', () => {
   it('retains contract facade files as the stable contract-first tool entrypoints', () => {
     expect(existsSync(new URL('../src/contracts/tool-registry.ts', import.meta.url))).toBe(true);
     expect(existsSync(new URL('../src/contracts/tool-risk-classifier.ts', import.meta.url))).toBe(true);
+  });
+
+  it('removes the watchdog compat barrel after runtime became the canonical host', () => {
+    expect(existsSync(new URL('../src/watchdog/index.ts', import.meta.url))).toBe(false);
   });
 
   it('does not expose sandbox provider internals from the root entrypoint', () => {

@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 
-import { LoginPage } from '../features/auth/login-page';
-import { useAuth } from '../features/auth/auth-provider';
+import { useAuth } from '../pages/auth/auth-provider';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <LoginPage />;
+  const location = useLocation();
+  return isAuthenticated ? children : <Navigate replace state={{ from: location }} to="/login" />;
 }

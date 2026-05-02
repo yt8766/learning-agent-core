@@ -274,7 +274,6 @@ export function useChatSession() {
     submitLearningConfirmation: chatActions.submitLearningConfirmation,
     recoverActiveSession: chatActions.recoverActiveSession,
     cancelActiveSession: chatActions.cancelActiveSession,
-    renameSessionById: chatActions.renameSessionById,
     deleteSessionById: chatActions.deleteSessionById,
     deleteActiveSession: chatActions.deleteActiveSession
   };

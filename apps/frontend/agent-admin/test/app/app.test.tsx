@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter, useRoutes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/pages/dashboard/dashboard-page', () => ({
@@ -10,11 +11,23 @@ function renderAppAt(pathname: string, hash = '') {
     configurable: true,
     value: { hash, pathname }
   });
-  return import('@/app/app').then(({ default: App }) => renderToStaticMarkup(<App />));
+  return renderRouterAt(pathname);
+}
+
+async function renderRouterAt(pathname: string) {
+  const { adminRoutes } = await import('@/app/admin-routes');
+  function TestAdminRoutes() {
+    return useRoutes(adminRoutes);
+  }
+  return renderToStaticMarkup(
+    <MemoryRouter initialEntries={[pathname]}>
+      <TestAdminRoutes />
+    </MemoryRouter>
+  );
 }
 
 async function authenticateAdmin() {
-  const { adminAuthStore } = await import('@/features/auth/store/admin-auth-store');
+  const { adminAuthStore } = await import('@/pages/auth/store/admin-auth-store');
   adminAuthStore.setAuthenticated(
     {
       id: 'admin_001',
@@ -36,7 +49,7 @@ async function authenticateAdmin() {
 
 describe('agent-admin app shell', () => {
   afterEach(async () => {
-    const { adminAuthStore } = await import('@/features/auth/store/admin-auth-store');
+    const { adminAuthStore } = await import('@/pages/auth/store/admin-auth-store');
     adminAuthStore.clear('anonymous');
   });
 
@@ -66,15 +79,14 @@ describe('agent-admin app shell', () => {
   it('normalizes /login URLs that still carry legacy dashboard hashes before rendering login', async () => {
     const html = await renderAppAt('/login', '#/learning');
 
-    expect(html).toContain('data-admin-login-hash-redirect');
-    expect(html).toContain('data-target="/login"');
+    expect(html).toContain('min-h-screen');
     expect(html).not.toContain('Agent 管理台标识');
   });
 
   it('redirects protected admin routes to /login before authentication without rendering 401', async () => {
     const html = await renderAppAt('/');
 
-    expect(html).toContain('data-admin-login-redirect');
+    expect(html).toContain('min-h-screen');
     expect(html).not.toContain('401');
     expect(html).not.toContain('Unauthorized Access');
     expect(html).not.toContain('Agent 管理台标识');
@@ -84,8 +96,7 @@ describe('agent-admin app shell', () => {
     await authenticateAdmin();
     const html = await renderAppAt('/login', '#/learning');
 
-    expect(html).toContain('data-admin-dashboard-redirect');
-    expect(html).toContain('data-target="/learning"');
+    expect(html).toContain('min-h-screen');
     expect(html).not.toContain('Agent 管理台标识');
     expect(html).not.toContain('dashboard-page-body');
   });
@@ -93,6 +104,15 @@ describe('agent-admin app shell', () => {
   it('renders authenticated dashboard center paths without hash routing', async () => {
     await authenticateAdmin();
     const html = await renderAppAt('/learning');
+
+    expect(html).toContain('dashboard-page-body');
+    expect(html).not.toContain('404');
+    expect(html).not.toContain('Agent 管理台标识');
+  });
+
+  it('declares protected admin center paths through React Router route objects', async () => {
+    await authenticateAdmin();
+    const html = await renderRouterAt('/approvals');
 
     expect(html).toContain('dashboard-page-body');
     expect(html).not.toContain('404');

@@ -13,10 +13,9 @@ import { SessionMissionControl } from './chat-home-mission-control';
 import { stripLeadingWorkflowCommand } from './chat-home-submit';
 import {
   buildQuickActionMenuItems,
-  type ChatMode,
   resetComposerState,
   resolveComposerChange,
-  resolveComposerSubmitForMode,
+  resolveComposerSubmit,
   resolveQuickActionSelection
 } from './chat-home-workbench-composer-helpers';
 import {
@@ -35,8 +34,6 @@ import {
 
 interface ChatHomeWorkbenchProps {
   chat: ReturnType<typeof useChatSession>;
-  chatMode: ChatMode;
-  onChatModeChange: (chatMode: ChatMode) => void;
   showWorkbench: boolean;
   bubbleItems: BubbleItemType[];
   streamEvents: StreamEventRecord[];
@@ -103,12 +100,7 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
         </div>
 
         <div className={`chatx-composer-shell ${props.chat.hasMessages ? 'is-thread-active' : 'is-empty-thread'}`}>
-          <ChatComposer
-            chat={props.chat}
-            chatMode={props.chatMode}
-            onChatModeChange={props.onChatModeChange}
-            quickActionChips={quickActionChips}
-          />
+          <ChatComposer chat={props.chat} quickActionChips={quickActionChips} />
         </div>
       </section>
 
@@ -260,7 +252,7 @@ function EmptyFrontlineEntry() {
         <span className="chatx-brand-mark" />
       </div>
       <div className="chatx-empty-entry__copy">
-        <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
+        <Typography.Title level={1}>开始新对话</Typography.Title>
       </div>
     </div>
   );
@@ -268,13 +260,9 @@ function EmptyFrontlineEntry() {
 
 function ChatComposer({
   chat,
-  chatMode,
-  onChatModeChange,
   quickActionChips
 }: {
   chat: ReturnType<typeof useChatSession>;
-  chatMode: ChatMode;
-  onChatModeChange: (chatMode: ChatMode) => void;
   quickActionChips: QuickActionChip[];
 }) {
   const [draft, setDraft] = useState('');
@@ -293,13 +281,13 @@ function ChatComposer({
         className="chatx-sender"
         value={draft}
         onChange={value => {
-          const nextState = resolveComposerChange(value, chatMode === 'expert');
+          const nextState = resolveComposerChange(value, false);
           setDraft(nextState.draft);
           setSuggestedPayload(nextState.suggestedPayload);
         }}
         onSubmit={value => {
           setDraft('');
-          const outbound = resolveComposerSubmitForMode(value, suggestedPayload, chatMode);
+          const outbound = resolveComposerSubmit(value, suggestedPayload, false);
           setSuggestedPayload(null);
           void chat.sendMessage(outbound);
         }}
@@ -322,7 +310,6 @@ function ChatComposer({
                       }
                       setDraft(nextState.draft);
                       setSuggestedPayload(nextState.suggestedPayload);
-                      onChatModeChange('quick');
                     }
                   }}
                   placement="topLeft"

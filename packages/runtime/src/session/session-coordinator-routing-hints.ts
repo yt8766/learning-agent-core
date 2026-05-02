@@ -1,3 +1,5 @@
+import type { ILLMProvider } from '@agent/core';
+
 export function deriveRequestedHints(input: string) {
   const raw = input.trim();
   if (!raw) {
@@ -90,4 +92,48 @@ export function deriveSessionTitle(message: string) {
   }
 
   return normalized.slice(0, 48);
+}
+
+export async function generateSessionTitleFromSummary(
+  llmProvider: Pick<ILLMProvider, 'generateText' | 'isConfigured'> | undefined,
+  message: string
+): Promise<string> {
+  const fallbackTitle = deriveSessionTitle(message);
+  const normalized = message.trim();
+  if (!normalized || !llmProvider?.isConfigured?.()) {
+    return fallbackTitle;
+  }
+
+  try {
+    const title = await llmProvider.generateText(
+      [
+        {
+          role: 'system',
+          content:
+            '你要根据用户第一条消息生成一个会话标题。标题必须是摘要，不要照抄原文；使用中文；不要加引号、句号或解释；最多 18 个汉字或 8 个英文单词。'
+        },
+        {
+          role: 'user',
+          content: `用户消息：${normalized}`
+        }
+      ],
+      {
+        role: 'manager',
+        temperature: 0.1,
+        maxTokens: 24
+      }
+    );
+    return sanitizeGeneratedSessionTitle(title) || fallbackTitle;
+  } catch {
+    return fallbackTitle;
+  }
+}
+
+function sanitizeGeneratedSessionTitle(title: string) {
+  return title
+    .trim()
+    .replace(/^["'“”‘’`]+|["'“”‘’`。.!！]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 48);
 }

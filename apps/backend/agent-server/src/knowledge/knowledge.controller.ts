@@ -1,29 +1,41 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
-import { KnowledgeService, type KnowledgeLoginRequest, type KnowledgeRefreshRequest } from './knowledge.service';
+import {
+  type KnowledgeLoginRequest,
+  type KnowledgeLogoutRequest,
+  type KnowledgeRefreshRequest
+} from './interfaces/knowledge-auth.types';
+import type { CreateKnowledgeEvalDatasetInput, RunKnowledgeEvalDatasetInput } from './interfaces/knowledge-eval.types';
+import type { KnowledgeRagChatInput } from './interfaces/knowledge-rag.types';
+import { KnowledgeAuthService } from './knowledge-auth.service';
+import { KnowledgeService } from './knowledge.service';
 
 @Controller('knowledge/v1')
 export class KnowledgeController {
-  constructor(private readonly knowledgeService: KnowledgeService) {}
+  constructor(
+    private readonly knowledgeService: KnowledgeService,
+    private readonly knowledgeAuthService: KnowledgeAuthService
+  ) {}
 
   @Post('auth/login')
   login(@Body() body: KnowledgeLoginRequest) {
-    return this.knowledgeService.login(body);
+    return this.knowledgeAuthService.login(body);
   }
 
   @Post('auth/refresh')
   refresh(@Body() body: KnowledgeRefreshRequest) {
-    return this.knowledgeService.refresh(body);
+    return this.knowledgeAuthService.refresh(body);
   }
 
   @Get('auth/me')
-  me() {
-    return this.knowledgeService.me();
+  me(@Headers('authorization') authorization?: string) {
+    return this.knowledgeAuthService.me({ authorization });
   }
 
   @Post('auth/logout')
-  logout() {
-    return { ok: true };
+  logout(@Body() body: KnowledgeLogoutRequest = {}) {
+    return this.knowledgeAuthService.logout(body);
   }
 
   @Get('dashboard/overview')
@@ -56,6 +68,24 @@ export class KnowledgeController {
     return this.knowledgeService.getDocument(id);
   }
 
+  @Post('knowledge-bases/:id/documents/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadDocument(
+    @Param('id') knowledgeBaseId: string,
+    @UploadedFile() file?: { originalname?: string; buffer?: Buffer }
+  ) {
+    return this.knowledgeService.uploadDocument({
+      knowledgeBaseId,
+      fileName: file?.originalname ?? 'uploaded-document.txt',
+      bytes: file?.buffer ?? Buffer.alloc(0)
+    });
+  }
+
+  @Post('documents/:id/reprocess')
+  reprocessDocument(@Param('id') id: string) {
+    return this.knowledgeService.reprocessDocument(id);
+  }
+
   @Get('documents/:id/jobs')
   listDocumentJobs() {
     return this.knowledgeService.listDocumentJobs();
@@ -67,7 +97,7 @@ export class KnowledgeController {
   }
 
   @Post('chat')
-  chat(@Body() body: { conversationId?: string; message?: string }) {
+  chat(@Body() body: KnowledgeRagChatInput) {
     return this.knowledgeService.chat(body);
   }
 
@@ -80,18 +110,18 @@ export class KnowledgeController {
   }
 
   @Get('observability/metrics')
-  getObservabilityMetrics() {
-    return this.knowledgeService.getObservabilityMetrics();
+  getObservabilityMetrics(@Query('knowledgeBaseId') knowledgeBaseId?: string) {
+    return this.knowledgeService.getObservabilityMetrics({ knowledgeBaseId });
   }
 
   @Get('observability/traces')
-  listTraces() {
-    return this.knowledgeService.listTraces();
+  listTraces(@Query('knowledgeBaseId') knowledgeBaseId?: string) {
+    return this.knowledgeService.listTraces({ knowledgeBaseId });
   }
 
   @Get('observability/traces/:id')
-  getTrace() {
-    return this.knowledgeService.getTrace();
+  getTrace(@Param('id') id: string) {
+    return this.knowledgeService.getTrace(id);
   }
 
   @Get('eval/datasets')
@@ -100,18 +130,33 @@ export class KnowledgeController {
   }
 
   @Post('eval/datasets')
-  createEvalDataset() {
-    return this.knowledgeService.listEvalDatasets().items[0];
+  createEvalDataset(@Body() body: CreateKnowledgeEvalDatasetInput) {
+    return this.knowledgeService.createEvalDataset(body);
+  }
+
+  @Get('evals/datasets')
+  listEvalDatasetsAlias() {
+    return this.listEvalDatasets();
+  }
+
+  @Post('evals/datasets')
+  createEvalDatasetAlias(@Body() body: CreateKnowledgeEvalDatasetInput) {
+    return this.createEvalDataset(body);
   }
 
   @Get('eval/runs')
-  listEvalRuns() {
-    return this.knowledgeService.listEvalRuns();
+  listEvalRuns(@Query('datasetId') datasetId?: string) {
+    return this.knowledgeService.listEvalRuns({ datasetId });
   }
 
   @Post('eval/runs')
-  createEvalRun() {
-    return this.knowledgeService.listEvalRuns().items[0];
+  createEvalRun(@Body() body: RunKnowledgeEvalDatasetInput) {
+    return this.knowledgeService.createEvalRun(body);
+  }
+
+  @Post('eval/runs/compare')
+  compareEvalRuns(@Body() body: { baselineRunId: string; candidateRunId: string; tenantId?: string }) {
+    return this.knowledgeService.compareEvalRuns(body);
   }
 
   @Get('eval/runs/:id')
@@ -120,7 +165,32 @@ export class KnowledgeController {
   }
 
   @Get('eval/runs/:id/results')
-  listEvalRunResults() {
-    return this.knowledgeService.listEvalRunResults();
+  listEvalRunResults(@Param('id') id: string) {
+    return this.knowledgeService.listEvalRunResults(id);
+  }
+
+  @Get('evals/runs')
+  listEvalRunsAlias(@Query('datasetId') datasetId?: string) {
+    return this.listEvalRuns(datasetId);
+  }
+
+  @Post('evals/runs')
+  createEvalRunAlias(@Body() body: RunKnowledgeEvalDatasetInput) {
+    return this.createEvalRun(body);
+  }
+
+  @Post('evals/runs/compare')
+  compareEvalRunsAlias(@Body() body: { baselineRunId: string; candidateRunId: string; tenantId?: string }) {
+    return this.compareEvalRuns(body);
+  }
+
+  @Get('evals/runs/:id')
+  getEvalRunAlias(@Param('id') id: string) {
+    return this.getEvalRun(id);
+  }
+
+  @Get('evals/runs/:id/results')
+  listEvalRunResultsAlias(@Param('id') id: string) {
+    return this.listEvalRunResults(id);
   }
 }

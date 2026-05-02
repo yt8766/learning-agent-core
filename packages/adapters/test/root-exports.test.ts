@@ -21,30 +21,14 @@ import {
   validateVectorDimensions,
   createMiniMaxMcpSkillProvider,
   createZhipuMcpSkillProvider,
-  registerDefaultMcpSkillProviders,
-  // LangChain adapters
-  LangChainLoaderAdapter,
-  createMarkdownDirectoryLoader,
-  LangChainChunkerAdapter,
-  LangChainEmbedderAdapter,
-  // Chroma adapter
-  ChromaVectorStoreAdapter,
-  ChromaVectorSearchProvider,
-  buildChromaKnowledgeFilterWhere,
-  mapVectorMetadataToChromaMetadata,
-  OpenSearchKeywordSearchProvider,
-  buildOpenSearchKnowledgeFilter,
-  createOpenSearchKeywordSearchProvider,
-  parseOpenSearchKeywordSearchProviderConfig
+  registerDefaultMcpSkillProviders
 } from '@agent/adapters';
 import * as contractLlmProviderExports from '../src/contracts/llm';
 import * as embeddingExports from '../src/openai-compatible/embeddings';
-import { AnthropicProvider as canonicalAnthropicProvider } from '../src/providers/llm/anthropic';
-import { createLlmProviderFactory as canonicalCreateLlmProviderFactory } from '../src/providers/llm/factories/create-llm-provider-factory';
-import {
-  createChatOpenAIModel as canonicalCreateChatOpenAIModel,
-  createZhipuChatModel as canonicalCreateZhipuChatModel
-} from '../src/chat';
+import { AnthropicProvider as canonicalAnthropicProvider } from '../src/anthropic/provider';
+import { createLlmProviderFactory as canonicalCreateLlmProviderFactory } from '../src/factories/llm';
+import { createChatOpenAIModel as canonicalCreateChatOpenAIModel } from '../src/openai-compatible/chat';
+import { createZhipuChatModel as canonicalCreateZhipuChatModel } from '../src/zhipu/chat';
 import { createDefaultRuntimeLlmProvider as canonicalCreateDefaultRuntimeLlmProvider } from '../src/factories/runtime';
 
 describe('@agent/adapters root exports', () => {
@@ -75,27 +59,6 @@ describe('@agent/adapters root exports', () => {
     expect(chunkId).toBeTypeOf('function');
     expect(AdapterError).toBeTypeOf('function');
     expect(validateVectorDimensions).toBeTypeOf('function');
-  });
-
-  it('exports LangChain adapters', () => {
-    expect(LangChainLoaderAdapter).toBeTypeOf('function');
-    expect(createMarkdownDirectoryLoader).toBeTypeOf('function');
-    expect(LangChainChunkerAdapter).toBeTypeOf('function');
-    expect(LangChainEmbedderAdapter).toBeTypeOf('function');
-  });
-
-  it('exports Chroma adapter', () => {
-    expect(ChromaVectorStoreAdapter).toBeTypeOf('function');
-    expect(ChromaVectorSearchProvider).toBeTypeOf('function');
-    expect(buildChromaKnowledgeFilterWhere).toBeTypeOf('function');
-    expect(mapVectorMetadataToChromaMetadata).toBeTypeOf('function');
-  });
-
-  it('exports OpenSearch-like full-text adapter', () => {
-    expect(OpenSearchKeywordSearchProvider).toBeTypeOf('function');
-    expect(buildOpenSearchKnowledgeFilter).toBeTypeOf('function');
-    expect(createOpenSearchKeywordSearchProvider).toBeTypeOf('function');
-    expect(parseOpenSearchKeywordSearchProviderConfig).toBeTypeOf('function');
   });
 
   it('exports default MCP skill providers', () => {

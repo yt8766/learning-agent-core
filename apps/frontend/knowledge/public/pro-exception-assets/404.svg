@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="360" viewBox="0 0 560 360" role="img" aria-labelledby="title desc">
+  <title id="title">404 not found illustration</title>
+  <desc id="desc">A person searching beside a missing page illustration in Ant Design Pro style.</desc>
+  <defs>
+    <linearGradient id="doc" x1="193" x2="380" y1="69" y2="257" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f7fbff"/>
+      <stop offset="1" stop-color="#dcecff"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="342" x2="432" y1="126" y2="217" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#91caff"/>
+      <stop offset="1" stop-color="#1677ff"/>
+    </linearGradient>
+  </defs>
+  <path fill="#f2f6ff" d="M74 252c30-87 94-152 184-137 72 12 117-60 179-16 65 47 40 150-13 190-57 42-142 45-226 34-67-9-146-7-124-71Z"/>
+  <ellipse cx="286" cy="316" fill="#d7e6fb" rx="184" ry="18"/>
+  <path fill="url(#doc)" d="M190 70h138l54 54v131c0 12-10 22-22 22H190c-12 0-22-10-22-22V92c0-12 10-22 22-22Z"/>
+  <path fill="#c7dcfa" d="M328 70v43c0 8 6 14 14 14h40l-54-57Z"/>
+  <path fill="#bfd5f6" d="M206 130h92v10h-92zM206 156h121v10H206zM206 182h78v10h-78z" opacity=".9"/>
+  <path fill="#fff" stroke="url(#lens)" stroke-width="16" d="M372 205c31 0 56-25 56-56s-25-56-56-56-56 25-56 56 25 56 56 56Z"/>
+  <path stroke="#1677ff" stroke-linecap="round" stroke-width="18" d="m412 190 46 45"/>
+  <path fill="#1d2b53" d="M128 250h26l8 61h-15l-8-39-7 39h-15l11-61Z"/>
+  <path fill="#36cfc9" d="M119 174c9-14 29-14 39 0l23 48-17 8-11-25-4 48h-29l4-49-17 26-15-10 27-46Z"/>
+  <circle cx="141" cy="146" r="18" fill="#ffbf80"/>
+  <path fill="#1d2b53" d="M126 143c1-18 25-27 37-10-1 11-10 19-24 19-5 0-9-3-13-9Z"/>
+  <path fill="#ffbf80" d="M94 221c-10 7-18 8-23 3-4-5-1-11 7-13l13-4 3 14Z"/>
+  <path fill="#b7eb8f" d="M442 86h40v10h-40zM423 270h68v10h-68zM91 106h61v10H91z" opacity=".85"/>
+</svg>

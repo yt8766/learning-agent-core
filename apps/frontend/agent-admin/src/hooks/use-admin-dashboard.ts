@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminQueryKeys, fetchAdminHealth, fetchPlatformConsoleLogAnalysis } from '@/api/admin-query';
 import type { DashboardPageKey, PlatformConsoleRecord, TaskBundle } from '@/types/admin';
 import { createAdminDashboardActions } from '@/hooks/admin-dashboard/admin-dashboard-actions';
-import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
-import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/components/runtime-run-workbench-support';
+import type { RunObservatoryFocusTarget } from '@/pages/run-observatory/run-observatory-panel-support';
+import type { RuntimeReplayLaunchReceipt } from '@/pages/runtime-overview/components/runtime-run-workbench-support';
 import {
   PAGE_TITLES,
   buildDashboardShareUrl,

@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/apps/frontend/agent-chat/`
-最后核对：2026-04-15
+最后核对：2026-05-02
 
 本目录用于沉淀 `apps/frontend/agent-chat` 相关文档。
 
@@ -13,22 +13,22 @@
   - 应用入口与路由装配
 - `src/api`
   - 聊天、会话、SSE 与后台接口封装
-- `src/features/chat`、`src/features/chat-thread`
+- `src/pages/chat`、`src/pages/chat-thread`
   - 消息流与会话主界面
-- `src/features/approvals`
+- `src/pages/approvals`
   - 审批卡与审批动作
-- `src/features/event-timeline`
+- `src/pages/event-timeline`
   - ThoughtChain / timeline 展示
 - `src/lib/agent-tool-execution-api.ts`、`src/lib/agent-tool-event-projections.ts`
   - Agent Tool Execution REST helper 与 SSE/tool event 投影 helper
 - `src/pages/chat-home/*`
-  - 轻量聊天壳、多会话侧栏、快速/专家入口、当前会话锚点浮条与高级 workbench 承载区
+  - 轻量聊天壳、多会话侧栏、单一聊天输入入口、当前会话锚点浮条与高级 workbench 承载区
   - 消费 `tool_*`、`execution_step_*`、`tool_execution` interrupt 与 workspace projection 摘要；Workspace Vault 作为高级摘要，不作为默认主聊天视图
-- `src/features/runtime-panel`
+- `src/pages/runtime-panel`
   - 运行态面板
-- `src/features/learning`
+- `src/pages/learning`
   - 学习建议与复用提示
-- `src/features/session-list`
+- `src/pages/session-list`
   - 会话列表
 - `src/components`、`src/hooks`、`src/store`
   - 通用组件、hooks、状态管理

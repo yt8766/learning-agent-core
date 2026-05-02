@@ -9,6 +9,7 @@ export interface ChatOpenAIModelOptions {
   temperature?: number;
   maxTokens?: number;
   thinking?: boolean;
+  streamUsage?: boolean;
   apiKey?: string;
   baseUrl?: string;
   modelKwargs?: Record<string, unknown>;
@@ -37,6 +38,7 @@ export function createChatOpenAIModel(options: ChatOpenAIModelOptions) {
     temperature: options.temperature ?? 0.2,
     maxTokens: options.maxTokens,
     apiKey: options.apiKey,
+    streamUsage: options.streamUsage,
     configuration: options.baseUrl
       ? {
           baseURL: normalizeModelBaseUrl(options.baseUrl)

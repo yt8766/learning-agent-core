@@ -104,7 +104,7 @@ packages/knowledge/src/indexing/
 
 后续 AI 扩展时默认遵守：
 
-1. 新增真实文件系统 loader、飞书 loader、网页 loader 时，优先新增实现到 `packages/adapters`，这里只保留协议和 orchestration 接口。
+1. 新增真实文件系统 loader、飞书 loader 等来源 adapter 时，优先新增实现到 `packages/adapters`，这里只保留协议和 orchestration 接口。当前知识库暂不建设真实网页抓取 loader；`web-curated` 仅表示外部或人工已整理内容进入统一 ingestion 边界。
 2. 新增真实 embedding provider 时，优先新增 `@agent/memory` vector boundary 或 adapter 内部实现，不要让 embedding provider 类型穿透到 `runKnowledgeIndexing`。
 3. 新增 metadata builder、filter、retry、incremental strategy 时，优先新增独立实现点，不要持续堆叠 `if/else`。
 4. 如果 indexing 子域文件继续增长，优先补 `shared/` 或 `policies/`，不要把复杂逻辑堆回 `pipeline/run-knowledge-indexing.ts`。

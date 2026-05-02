@@ -6,6 +6,9 @@
     "paths": {
       "@agent/core": ["../../../packages/core/src/index.ts"],
       "@agent/knowledge": ["../../../packages/knowledge/src/index.ts"],
+      "@agent/knowledge/adapters/chroma": ["../../../packages/knowledge/src/adapters/chroma/index.ts"],
+      "@agent/knowledge/adapters/opensearch": ["../../../packages/knowledge/src/adapters/opensearch/index.ts"],
+      "@agent/knowledge/adapters/supabase": ["../../../packages/knowledge/src/adapters/supabase/index.ts"],
       "@agent/config": ["../../../packages/config/src/index.ts"],
       "@agent/runtime": ["../../../packages/runtime/src/index.ts"],
       "@agent/runtime/base-agent": ["../../../packages/runtime/src/agents/base-agent.ts"],

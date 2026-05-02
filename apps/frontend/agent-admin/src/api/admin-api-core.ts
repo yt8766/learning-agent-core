@@ -2,8 +2,9 @@ import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import type { AdminAuthErrorResponse, AdminTokenPair } from '@agent/core';
 
-import { adminAuthStore } from '@/features/auth/store/admin-auth-store';
-import { adminTokenManager } from '@/features/auth/runtime/admin-token-manager';
+import { refreshAdminAuth } from '@/pages/auth/api/admin-auth.api';
+import { adminAuthStore } from '@/pages/auth/store/admin-auth-store';
+import { adminTokenManager } from '@/pages/auth/runtime/admin-token-manager';
 import type { PlatformConsoleRecord } from '@/types/admin';
 
 export type AdminRequestInit = {
@@ -133,17 +134,10 @@ function withAuthHeaders(init?: AdminRequestInit): Record<string, string> | unde
 async function refreshAdminTokenPair(): Promise<AdminTokenPair> {
   if (!refreshPromise) {
     adminAuthStore.setRefreshing();
-    refreshPromise = http
-      .request<{ tokens: AdminTokenPair }>({
-        url: '/admin/auth/refresh',
-        method: 'POST',
-        data: JSON.stringify({
-          refreshToken: adminTokenManager.getRefreshToken()
-        })
-      })
+    refreshPromise = refreshAdminAuth(adminTokenManager.getRefreshToken())
       .then(response => {
-        adminTokenManager.setTokenPair(response.data.tokens);
-        return response.data.tokens;
+        adminTokenManager.setTokenPair(response.tokens);
+        return response.tokens;
       })
       .catch(error => {
         adminTokenManager.clearTokens();

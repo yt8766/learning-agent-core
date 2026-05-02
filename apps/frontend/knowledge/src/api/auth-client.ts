@@ -12,13 +12,13 @@ export class AuthClient {
   private readonly baseUrl: string;
   private readonly refreshBeforeMs: number;
   private readonly fetcher: typeof fetch;
-  private readonly onAuthLost?: () => void;
+  private onAuthLost?: () => void;
   private refreshPromise: Promise<AuthTokens> | undefined;
 
   constructor(options: AuthClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.refreshBeforeMs = options.refreshBeforeMs ?? 60_000;
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
     this.onAuthLost = options.onAuthLost;
   }
 
@@ -26,7 +26,11 @@ export class AuthClient {
     const response = await this.fetcher(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input)
+      body: JSON.stringify({
+        username: input.username ?? input.email,
+        password: input.password,
+        remember: input.remember ?? true
+      })
     });
     const session = await parseJson(response, parseLoginResponse);
     saveTokens(session.tokens);
@@ -35,6 +39,10 @@ export class AuthClient {
 
   logout() {
     clearTokens();
+  }
+
+  setAuthLostHandler(handler: (() => void) | undefined) {
+    this.onAuthLost = handler;
   }
 
   async getCurrentUser(): Promise<CurrentUser> {
@@ -160,7 +168,13 @@ function getErrorMessage(body: unknown, status: number) {
 }
 
 function isAuthTokenExpired(body: unknown) {
-  return typeof body === 'object' && body && 'code' in body && body.code === 'auth_token_expired';
+  if (!isRecord(body)) {
+    return false;
+  }
+  if (body.code === 'auth_token_expired' || body.code === 'access_token_expired') {
+    return true;
+  }
+  return isRecord(body.error) && body.error.code === 'access_token_expired';
 }
 
 function mergeHeaders(input: HeadersInit | undefined, extra: Record<string, string>) {
@@ -175,7 +189,7 @@ function parseLoginResponse(body: unknown): LoginResponse | undefined {
   if (!isRecord(body)) {
     return undefined;
   }
-  const user = parseCurrentUser(body.user);
+  const user = parseCurrentUser(body.user ?? body.account);
   const tokens = parseAuthTokens(body.tokens);
   return user && tokens ? { user, tokens } : undefined;
 }
@@ -192,25 +206,27 @@ function parseMeResponse(body: unknown): { user: CurrentUser } | undefined {
   if (!isRecord(body)) {
     return undefined;
   }
-  const user = parseCurrentUser(body.user);
+  const user = parseCurrentUser(body.user ?? body.account);
   return user ? { user } : undefined;
 }
 
 function parseCurrentUser(input: unknown): CurrentUser | undefined {
-  if (!isRecord(input) || typeof input.id !== 'string' || typeof input.email !== 'string') {
+  if (!isRecord(input) || typeof input.id !== 'string') {
     return undefined;
   }
-  if (!isWorkspaceRoleArray(input.roles) || !isStringArray(input.permissions)) {
+  const roles = mapWorkspaceRoles(input.roles);
+  if (!roles) {
     return undefined;
   }
   return {
     id: input.id,
-    email: input.email,
+    email: typeof input.email === 'string' ? input.email : String(input.username ?? input.id),
     ...(typeof input.name === 'string' ? { name: input.name } : {}),
+    ...(typeof input.displayName === 'string' ? { name: input.displayName } : {}),
     ...(typeof input.avatarUrl === 'string' ? { avatarUrl: input.avatarUrl } : {}),
     ...(typeof input.currentWorkspaceId === 'string' ? { currentWorkspaceId: input.currentWorkspaceId } : {}),
-    roles: input.roles,
-    permissions: input.permissions
+    roles,
+    permissions: isStringArray(input.permissions) ? input.permissions : []
   };
 }
 
@@ -218,21 +234,23 @@ function parseAuthTokens(input: unknown): AuthTokens | undefined {
   if (!isRecord(input)) {
     return undefined;
   }
-  if (
-    typeof input.accessToken !== 'string' ||
-    typeof input.refreshToken !== 'string' ||
-    input.tokenType !== 'Bearer' ||
-    typeof input.expiresIn !== 'number' ||
-    typeof input.refreshExpiresIn !== 'number'
-  ) {
+  if (typeof input.accessToken !== 'string' || typeof input.refreshToken !== 'string' || input.tokenType !== 'Bearer') {
+    return undefined;
+  }
+  const expiresIn = typeof input.expiresIn === 'number' ? input.expiresIn : secondsUntilIso(input.accessTokenExpiresAt);
+  const refreshExpiresIn =
+    typeof input.refreshExpiresIn === 'number' ? input.refreshExpiresIn : secondsUntilIso(input.refreshTokenExpiresAt);
+  if (expiresIn === undefined || refreshExpiresIn === undefined) {
     return undefined;
   }
   return {
     accessToken: input.accessToken,
     refreshToken: input.refreshToken,
     tokenType: input.tokenType,
-    expiresIn: input.expiresIn,
-    refreshExpiresIn: input.refreshExpiresIn
+    expiresIn,
+    refreshExpiresIn,
+    ...(typeof input.accessTokenExpiresAt === 'string' ? { accessTokenExpiresAt: input.accessTokenExpiresAt } : {}),
+    ...(typeof input.refreshTokenExpiresAt === 'string' ? { refreshTokenExpiresAt: input.refreshTokenExpiresAt } : {})
   };
 }
 
@@ -247,4 +265,31 @@ function isStringArray(input: unknown): input is string[] {
 function isWorkspaceRoleArray(input: unknown): input is CurrentUser['roles'] {
   const allowed = new Set(['owner', 'admin', 'maintainer', 'evaluator', 'viewer']);
   return Array.isArray(input) && input.every(item => typeof item === 'string' && allowed.has(item));
+}
+
+function mapWorkspaceRoles(input: unknown): CurrentUser['roles'] | undefined {
+  if (isWorkspaceRoleArray(input)) {
+    return input;
+  }
+  if (!Array.isArray(input) || !input.every(item => typeof item === 'string')) {
+    return undefined;
+  }
+  if (input.includes('super_admin') || input.includes('admin')) {
+    return ['admin'];
+  }
+  if (input.includes('knowledge_user')) {
+    return ['viewer'];
+  }
+  return ['viewer'];
+}
+
+function secondsUntilIso(input: unknown): number | undefined {
+  if (typeof input !== 'string') {
+    return undefined;
+  }
+  const timestamp = new Date(input).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return undefined;
+  }
+  return Math.max(0, Math.floor((timestamp - Date.now()) / 1000));
 }

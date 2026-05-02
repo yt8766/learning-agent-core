@@ -2,7 +2,10 @@ export {
   DEFAULT_RRF_K,
   DEFAULT_TOP_K,
   DEFAULT_TRACE_SAMPLE_RATE,
+  KnowledgeAuthSessionSchema,
+  KnowledgeAuthTokensSchema,
   KnowledgeBaseSchema,
+  KnowledgeEvalRunSchema,
   ProviderHealthSchema
 } from './core';
 export {
@@ -15,8 +18,12 @@ export {
   type EmbedTextInput,
   type EmbedTextResult,
   type KnowledgeBase,
+  type KnowledgeAuthTokens,
+  type KnowledgeAuthSession,
+  type KnowledgeEvalRun,
   type KnowledgeErrorCategory,
   type KnowledgeErrorOptions,
+  type KnowledgeUser,
   type ProviderHealth,
   type VectorDeleteInput as KnowledgeSdkVectorDeleteInput,
   type VectorDeleteResult as KnowledgeSdkVectorDeleteResult,
@@ -27,6 +34,22 @@ export {
   type VectorStore as KnowledgeSdkVectorStore,
   type VectorUpsertInput as KnowledgeSdkVectorUpsertInput,
   type VectorUpsertResult as KnowledgeSdkVectorUpsertResult
+} from './core';
+export {
+  KnowledgeCitationSchema,
+  KnowledgeRagAnswerSchema,
+  KnowledgeRefreshSessionSchema,
+  KnowledgeTraceSchema,
+  KnowledgeTraceSpanSchema,
+  KnowledgeVectorSearchRequestSchema
+} from './core';
+export type {
+  KnowledgeCitation,
+  KnowledgeRagAnswer,
+  KnowledgeRefreshSession,
+  KnowledgeTrace,
+  KnowledgeTraceSpan,
+  KnowledgeVectorSearchRequest
 } from './core';
 export type {
   ChromaClientConfig,
@@ -184,3 +207,38 @@ export * from './runtime/local-knowledge-source-ingestion';
 export * from './shared/knowledge-text-scoring';
 export * from './indexing';
 export * from './adapters';
+export {
+  OpenSearchKeywordSearchProvider,
+  buildOpenSearchKnowledgeFilter,
+  createOpenSearchKeywordSearchProvider,
+  parseOpenSearchKeywordSearchProviderConfig,
+  mapOpenSearchResponseToRetrievalResult
+} from './adapters/opensearch';
+export { SupabasePgVectorStoreAdapter } from './adapters/supabase';
+export type {
+  OpenSearchKeywordHealthCheckParams,
+  OpenSearchKeywordSearchClientLike,
+  OpenSearchKeywordSearchProviderConfig,
+  OpenSearchKeywordSearchParams,
+  OpenSearchKeywordSearchProviderOptions,
+  OpenSearchKnowledgeFilterClause,
+  OpenSearchTermValue
+} from './adapters/opensearch';
+export type {
+  SupabasePgVectorChunkInput,
+  SupabasePgVectorDeleteByDocumentIdInput,
+  SupabasePgVectorDeleteResult,
+  SupabasePgVectorSearchFilters,
+  SupabasePgVectorSearchInput,
+  SupabasePgVectorSearchMatch,
+  SupabasePgVectorSearchResult,
+  SupabasePgVectorStoreAdapterOptions,
+  SupabasePgVectorStoreRpcNames,
+  SupabasePgVectorUpsertInput,
+  SupabasePgVectorUpsertResult,
+  SupabaseRpcClientLike,
+  SupabaseRpcResult
+} from './adapters/supabase';
+export * from './client';
+export { createKnowledgeBrowserClient } from './browser';
+export * from './node';

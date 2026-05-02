@@ -24,11 +24,11 @@
 - `apps/frontend/agent-chat/src` 与 `apps/frontend/agent-admin/src` 下的手写源码，跨目录引用统一使用 `@/...`
 - 例如：
   - `@/hooks/use-chat-session`
-  - `@/features/runtime-panel/chat-runtime-drawer`
+  - `@/pages/runtime-panel/chat-runtime-drawer`
   - `@/components/ui/button`
 - 禁止继续新增这类“指回本应用 `src/`”的相对路径：
   - `../../hooks/use-chat-session`
-  - `../../../src/features/runtime-panel/chat-runtime-drawer`
+  - `../../../src/pages/runtime-panel/chat-runtime-drawer`
 - 允许保留相对路径的场景仅限：
   - 同目录或近邻目录内的局部文件组织，且不跨回 `src` 根语义
   - 非 `src` 根别名覆盖范围外的文件，例如测试 fixtures 之间的局部相对引用
@@ -257,7 +257,7 @@
 - `apps/frontend/agent-chat/src/pages/chat-home/chat-home-page.tsx`
 - `apps/frontend/agent-chat/src/hooks/use-chat-session.ts`
 - `apps/frontend/agent-admin/src/hooks/use-admin-dashboard.ts`
-- `apps/frontend/agent-admin/src/features/runtime-overview/runtime-overview-panel.tsx`
+- `apps/frontend/agent-admin/src/pages/runtime-overview/runtime-overview-panel.tsx`
 - `apps/frontend/agent-admin/src/types/admin.ts`
 
 补充建议：

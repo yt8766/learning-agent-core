@@ -21,4 +21,21 @@ describe('createKnowledgeRepositoryProvider', () => {
 
     expect(repository).toBeInstanceOf(PostgresKnowledgeRepository);
   });
+
+  it('applies the knowledge schema before exposing a postgres repository', async () => {
+    const queries: string[] = [];
+    const provider = createKnowledgeRepositoryProvider({
+      databaseUrl: 'postgres://user:pass@localhost:5432/knowledge',
+      createClient: () => ({
+        query: async sql => {
+          queries.push(sql);
+          return { rows: [] };
+        }
+      })
+    });
+
+    await provider.useFactory();
+
+    expect(queries[0]).toContain('create table if not exists knowledge_uploads');
+  });
 });

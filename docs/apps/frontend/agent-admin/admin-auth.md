@@ -21,7 +21,7 @@ VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3010/api
 认证模块位于：
 
 ```text
-apps/frontend/agent-admin/src/features/auth/
+apps/frontend/agent-admin/src/pages/auth/
 ```
 
 当前职责：

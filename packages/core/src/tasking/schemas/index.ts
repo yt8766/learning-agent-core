@@ -1,4 +1,5 @@
 export * from './tasking';
+export * from './chat-response-step';
 export * from './run-observability-semantics';
 export * from './chat';
 export * from './planning';
