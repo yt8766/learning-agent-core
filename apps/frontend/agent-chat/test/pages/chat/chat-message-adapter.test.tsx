@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import { buildBubbleItems, buildMainThreadMessages } from '@/pages/chat/chat-message-adapter';
-import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
 import type { ChatMessageRecord, ChatThinkState } from '@/types/chat';
 
 vi.mock('@ant-design/x-markdown', () => ({
@@ -35,6 +35,22 @@ vi.mock('@ant-design/x-markdown', () => ({
 
 vi.mock('@ant-design/x', async () => {
   return {
+    Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
+      <section>
+        <div>{title}</div>
+        <div>{children}</div>
+      </section>
+    ),
+    ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
+      <section>
+        {items?.map((item, index) => (
+          <article key={index}>
+            <div>{item.title}</div>
+            <div>{item.description}</div>
+          </article>
+        ))}
+      </section>
+    ),
     Sources: ({
       title,
       items
@@ -55,288 +71,6 @@ vi.mock('@ant-design/x', async () => {
   };
 });
 
-class MiniTextNode {
-  readonly nodeType = 3;
-  readonly nodeName = '#text';
-  parentNode: MiniElement | null = null;
-
-  constructor(
-    public nodeValue: string,
-    readonly ownerDocument: MiniDocument
-  ) {}
-
-  get textContent() {
-    return this.nodeValue;
-  }
-
-  set textContent(value: string) {
-    this.nodeValue = String(value);
-  }
-}
-
-class MiniElement {
-  readonly nodeType = 1;
-  readonly nodeName: string;
-  readonly tagName: string;
-  readonly localName: string;
-  readonly namespaceURI = 'http://www.w3.org/1999/xhtml';
-  readonly attributes = new Map<string, string>();
-  readonly childNodes: MiniNode[] = [];
-  readonly listeners = new Map<string, Array<(event: MiniEvent) => void>>();
-  readonly style: Record<string, string> = {};
-  className = '';
-  innerHTML = '';
-  parentNode: MiniElement | null = null;
-
-  constructor(
-    tagName: string,
-    readonly ownerDocument: MiniDocument
-  ) {
-    this.localName = tagName.toLowerCase();
-    this.tagName = tagName.toUpperCase();
-    this.nodeName = this.tagName;
-  }
-
-  appendChild(node: MiniNode) {
-    return this.insertBefore(node, null);
-  }
-
-  insertBefore(node: MiniNode, referenceNode: MiniNode | null) {
-    node.parentNode?.removeChild(node);
-    node.parentNode = this;
-    const index = referenceNode ? this.childNodes.indexOf(referenceNode) : -1;
-    if (index >= 0) {
-      this.childNodes.splice(index, 0, node);
-    } else {
-      this.childNodes.push(node);
-    }
-    return node;
-  }
-
-  removeChild(node: MiniNode) {
-    const index = this.childNodes.indexOf(node);
-    if (index >= 0) {
-      this.childNodes.splice(index, 1);
-    }
-    node.parentNode = null;
-    return node;
-  }
-
-  setAttribute(name: string, value: string) {
-    this.attributes.set(name, String(value));
-    if (name === 'class') {
-      this.className = String(value);
-    }
-  }
-
-  getAttribute(name: string) {
-    return this.attributes.get(name) ?? null;
-  }
-
-  removeAttribute(name: string) {
-    this.attributes.delete(name);
-  }
-
-  addEventListener(type: string, listener: (event: MiniEvent) => void) {
-    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-  }
-
-  removeEventListener(type: string, listener: (event: MiniEvent) => void) {
-    this.listeners.set(
-      type,
-      (this.listeners.get(type) ?? []).filter(candidate => candidate !== listener)
-    );
-  }
-
-  dispatchEvent(event: MiniEvent) {
-    event.target ??= this;
-    event.currentTarget = this;
-    for (const listener of this.listeners.get(event.type) ?? []) {
-      listener.call(this, event);
-    }
-    if (event.bubbles && this.parentNode) {
-      this.parentNode.dispatchEvent(event);
-    }
-    return !event.defaultPrevented;
-  }
-
-  click() {
-    return this.dispatchEvent(new MiniEvent('click', { bubbles: true }));
-  }
-
-  get firstChild() {
-    return this.childNodes[0] ?? null;
-  }
-
-  get nextSibling() {
-    if (!this.parentNode) {
-      return null;
-    }
-    const index = this.parentNode.childNodes.indexOf(this);
-    return this.parentNode.childNodes[index + 1] ?? null;
-  }
-
-  get children() {
-    return this.childNodes.filter((node): node is MiniElement => node instanceof MiniElement);
-  }
-
-  get parentElement() {
-    return this.parentNode;
-  }
-
-  getRootNode() {
-    return this.ownerDocument;
-  }
-
-  get textContent(): string {
-    return this.childNodes.map(node => node.textContent).join('');
-  }
-
-  set textContent(value: string) {
-    this.childNodes.splice(0, this.childNodes.length);
-    if (value) {
-      this.appendChild(new MiniTextNode(String(value), this.ownerDocument));
-    }
-  }
-
-  contains(node: MiniNode | MiniDocument | null): boolean {
-    if (!node) {
-      return false;
-    }
-    if (node === this) {
-      return true;
-    }
-    return this.childNodes.some(child => child === node || (child instanceof MiniElement && child.contains(node)));
-  }
-}
-
-class MiniDocument {
-  readonly nodeType = 9;
-  readonly nodeName = '#document';
-  readonly documentElement = new MiniElement('html', this);
-  readonly head = new MiniElement('head', this);
-  readonly body = new MiniElement('body', this);
-  readonly defaultView = globalThis;
-  activeElement: MiniElement = this.body;
-
-  createElement(tagName: string) {
-    return new MiniElement(tagName, this);
-  }
-
-  createElementNS(_namespace: string, tagName: string) {
-    return new MiniElement(tagName, this);
-  }
-
-  createTextNode(text: string) {
-    return new MiniTextNode(text, this);
-  }
-
-  addEventListener() {}
-
-  removeEventListener() {}
-
-  querySelector(selector: string) {
-    if (selector === 'head') {
-      return this.head;
-    }
-    if (selector === 'body') {
-      return this.body;
-    }
-    return null;
-  }
-
-  querySelectorAll() {
-    return [];
-  }
-
-  contains(node: MiniNode | MiniDocument | null) {
-    return node === this || this.documentElement.contains(node);
-  }
-}
-
-class MiniEvent {
-  target: MiniElement | null = null;
-  currentTarget: MiniElement | null = null;
-  defaultPrevented = false;
-
-  constructor(
-    readonly type: string,
-    private readonly init: { bubbles?: boolean } = {}
-  ) {}
-
-  get bubbles() {
-    return Boolean(this.init.bubbles);
-  }
-
-  preventDefault() {
-    this.defaultPrevented = true;
-  }
-
-  stopPropagation() {
-    this.init.bubbles = false;
-  }
-}
-
-type MiniNode = MiniElement | MiniTextNode;
-
-function installMiniDom() {
-  const miniDocument = new MiniDocument();
-  miniDocument.documentElement.appendChild(miniDocument.head);
-  miniDocument.documentElement.appendChild(miniDocument.body);
-  vi.stubGlobal('document', miniDocument);
-  vi.stubGlobal('window', globalThis);
-  vi.stubGlobal('HTMLElement', MiniElement);
-  vi.stubGlobal('HTMLIFrameElement', class HTMLIFrameElement {});
-  vi.stubGlobal('ShadowRoot', class ShadowRoot {});
-  vi.stubGlobal(
-    'Node',
-    class Node {
-      static readonly ELEMENT_NODE = 1;
-      static readonly TEXT_NODE = 3;
-      static readonly DOCUMENT_NODE = 9;
-    }
-  );
-  vi.stubGlobal('Event', MiniEvent);
-  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  return miniDocument;
-}
-
-function findMiniElement(root: MiniElement, predicate: (element: MiniElement) => boolean): MiniElement | undefined {
-  if (predicate(root)) {
-    return root;
-  }
-
-  for (const child of root.childNodes) {
-    if (child instanceof MiniElement) {
-      const match = findMiniElement(child, predicate);
-      if (match) {
-        return match;
-      }
-    }
-  }
-
-  return undefined;
-}
-
-function hasMiniClass(element: MiniElement, className: string) {
-  return (element.getAttribute('class') ?? '').split(/\s+/).includes(className);
-}
-
-function serializeMiniNode(node: MiniNode): string {
-  if (node instanceof MiniTextNode) {
-    return escapeHtml(node.textContent);
-  }
-
-  const attributes = Array.from(node.attributes.entries())
-    .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
-    .join('');
-  return `<${node.localName}${attributes}>${node.childNodes.map(serializeMiniNode).join('')}</${node.localName}>`;
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 describe('chat-message-adapter cognition rendering', () => {
   const responseSteps: ChatResponseStepsForMessage = {
     messageId: 'assistant_1',
@@ -349,48 +83,6 @@ describe('chat-message-adapter cognition rendering', () => {
       blockedCount: 0,
       failedCount: 0
     },
-    displayMode: 'agent_execution',
-    agentOsGroups: [
-      {
-        kind: 'exploration',
-        title: '探索',
-        status: 'completed',
-        steps: [
-          {
-            id: 'step-1',
-            sessionId: 'session-1',
-            messageId: 'assistant_1',
-            sequence: 0,
-            phase: 'explore',
-            status: 'completed',
-            title: 'Read chat-message-adapter.tsx',
-            startedAt: '2026-05-02T08:30:00.000Z',
-            completedAt: '2026-05-02T08:30:10.000Z',
-            sourceEventId: 'event-1',
-            sourceEventType: 'tool_called'
-          }
-        ]
-      },
-      {
-        kind: 'verification',
-        title: '验证',
-        status: 'running',
-        steps: [
-          {
-            id: 'step-2',
-            sessionId: 'session-1',
-            messageId: 'assistant_1',
-            sequence: 1,
-            phase: 'verify',
-            status: 'running',
-            title: 'Ran pnpm exec vitest',
-            startedAt: '2026-05-02T08:30:12.000Z',
-            sourceEventId: 'event-2',
-            sourceEventType: 'execution_step_started'
-          }
-        ]
-      }
-    ],
     steps: [
       {
         id: 'step-1',
@@ -489,7 +181,7 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).not.toContain('/plan');
   });
 
-  it('AI 回复会带 Agent 头像', () => {
+  it('AI 回复使用 Codex 风格的无头像无边框气泡', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -507,10 +199,11 @@ describe('chat-message-adapter cognition rendering', () => {
     });
     const avatarHtml = renderToStaticMarkup(<>{items[0]?.avatar}</>);
 
-    expect(avatarHtml).toContain('chatx-assistant-avatar');
+    expect(avatarHtml).not.toContain('chatx-assistant-avatar');
+    expect(items[0]?.variant).toBe('borderless');
   });
 
-  it('每条 AI 回复都会展示独立的已思考状态', () => {
+  it('AI 回复不再展示思维链状态，只保留正文内容', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -536,8 +229,12 @@ describe('chat-message-adapter cognition rendering', () => {
     const firstHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_1')?.content}</>);
     const secondHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_2')?.content}</>);
 
-    expect(firstHtml).toContain('已思考');
-    expect(secondHtml).toContain('已思考');
+    expect(firstHtml).toContain('成本超限，请简化问题或提高预算。');
+    expect(secondHtml).toContain('我是一个多 Agent 协作助手，负责理解你的目标。');
+    expect(firstHtml).not.toContain('已思考');
+    expect(secondHtml).not.toContain('已思考');
+    expect(firstHtml).not.toContain('chatx-inline-think');
+    expect(secondHtml).not.toContain('chatx-inline-think');
   });
 
   it('renders assistant think content in a default-expanded thinking panel without leaking tags', () => {
@@ -555,314 +252,18 @@ describe('chat-message-adapter cognition rendering', () => {
       messages,
       activeStatus: 'completed',
       onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
+      getAgentLabel: role => role ?? 'agent',
+      cognitionDurationLabel: '2 秒'
     });
     const html = renderToStaticMarkup(<>{items[0]?.content}</>);
 
-    expect(html).toContain('已思考');
+    expect(html).toContain('已思考（用时 2 秒）');
     expect(html).toContain('需要解释镜像和容器的区别。');
     expect(html).toContain('镜像是模板，容器是运行实例。');
     expect(html).not.toContain('<think>');
   });
 
-  it('renders assistant think panel without duplicate legacy inline cognition when no runtime cognition exists', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '<think>推理</think>正文',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).toContain('chatx-thinking-panel');
-    expect(html).toContain('已思考');
-    expect(html).toContain('推理');
-    expect(html).toContain('正文');
-    expect(html).not.toContain('chatx-inline-think__toggle');
-    expect(html).not.toContain('正在整理推理过程');
-  });
-
-  it('renders escaped assistant think content in the panel without leaking escaped tags', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '&lt;think&gt;隐藏推理&lt;/think&gt;正文',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).toContain('chatx-thinking-panel__body');
-    expect(html).toContain('隐藏推理');
-    expect(html).toContain('正文');
-    expect(html).not.toContain('<think>');
-    expect(html).not.toContain('&lt;think&gt;');
-    expect(html).not.toContain('&amp;lt;think&amp;gt;');
-  });
-
-  it('keeps literal escaped think examples in assistant body without converting them into a panel', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: 'Markdown 中可写 &lt;think&gt;示例&lt;/think&gt; 来解释语法。',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).not.toContain('chatx-thinking-panel__body');
-    expect(html).toContain('&amp;lt;think&amp;gt;示例&amp;lt;/think&amp;gt;');
-    expect(html).toContain('Markdown 中可写');
-  });
-
-  it('keeps completed runtime cognition expanded showing tag content in thinking section and thought items in processing section', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '<think>模型内部思路。</think>这是最终回复。',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionTargetMessageId: 'assistant_1',
-      cognitionExpanded: true,
-      cognitionCountLabel: '1 条推理',
-      thinkState: {
-        messageId: 'assistant_1',
-        title: '已思考',
-        content: '先判断问题类型，再选择执行路径。',
-        loading: false,
-        blink: false,
-        thinkingDurationMs: 2000
-      },
-      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).toContain('模型内部思路。');
-    expect(html).toContain('用现有上下文判断。');
-    expect(html).toContain('这是最终回复。');
-    expect(html).not.toContain('先判断问题类型，再选择执行路径。');
-  });
-
-  it('keeps collapsed runtime cognition summary using tag content instead of thinkState.content', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '<think>模型内部思路。</think>这是最终回复。',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionTargetMessageId: 'assistant_1',
-      cognitionExpanded: false,
-      cognitionCountLabel: '1 条推理',
-      thinkState: {
-        messageId: 'assistant_1',
-        title: '已思考',
-        content: '先判断问题类型，再选择执行路径。',
-        loading: false,
-        blink: false,
-        thinkingDurationMs: 2000
-      },
-      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).toContain('chatx-inline-think__toggle');
-    expect(html).toContain('已思考（用时约 2 秒）');
-    expect(html).toContain('模型内部思路');
-    expect(html).toContain('这是最终回复。');
-    expect(html).not.toContain('先判断问题类型，再选择执行路径');
-    expect(html).not.toContain('用现有上下文判断。');
-  });
-
-  it('keeps collapsed completed runtime cognition summary with thought item description when no think tags', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '这是最终回复。',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionTargetMessageId: 'assistant_1',
-      cognitionExpanded: false,
-      cognitionCountLabel: '1 条推理',
-      thinkState: {
-        messageId: 'assistant_1',
-        title: '已思考',
-        content: '先判断问题类型，再选择执行路径。',
-        loading: false,
-        blink: false,
-        thinkingDurationMs: 2000
-      },
-      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
-    });
-    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
-
-    expect(html).toContain('chatx-inline-think__toggle');
-    expect(html).toContain('用现有上下文判断');
-    expect(html).toContain('这是最终回复。');
-    expect(html).not.toContain('先判断问题类型，再选择执行路径');
-  });
-
-  it('serves cognition thoughts per assistant bubble from cognitionSnapshot without leaking live thoughtItems', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant-a',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '回答 A',
-        createdAt: '2026-05-03T00:00:01.000Z',
-        cognitionSnapshot: {
-          thoughtChain: [{ key: 'a1', title: '链 A', description: '仅 A', status: 'success' }],
-          thinkingDurationMs: 1000,
-          capturedAt: '2026-05-03T00:00:02.000Z'
-        }
-      },
-      {
-        id: 'assistant-b',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '回答 B',
-        createdAt: '2026-05-03T00:00:03.000Z',
-        cognitionSnapshot: {
-          thoughtChain: [{ key: 'b1', title: '链 B', description: '仅 B', status: 'success' }],
-          thinkingDurationMs: 2000,
-          capturedAt: '2026-05-03T00:00:04.000Z'
-        }
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionTargetMessageId: 'assistant-b',
-      cognitionExpandedByMessageId: {
-        'assistant-a': true,
-        'assistant-b': true
-      },
-      thoughtItems: [{ key: 'live-global', title: '实时', description: '只应对当前会话目标气泡' }]
-    });
-
-    const htmlA = renderToStaticMarkup(<>{items.find(entry => entry.key === 'assistant-a')?.content}</>);
-    const htmlB = renderToStaticMarkup(<>{items.find(entry => entry.key === 'assistant-b')?.content}</>);
-    expect(htmlA).toContain('仅 A');
-    expect(htmlA).not.toContain('仅 B');
-    expect(htmlA).not.toContain('只应对当前会话目标气泡');
-
-    expect(htmlB).toContain('仅 B');
-    expect(htmlB).not.toContain('仅 A');
-    expect(htmlB).not.toContain('只应对当前会话目标气泡');
-  });
-
-  it('toggles assistant think panel in the DOM without escaped think tag leakage', async () => {
-    const miniDocument = installMiniDom();
-    const { createRoot } = await import('react-dom/client');
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '<think>需要解释镜像和容器的区别。</think>镜像是模板，容器是运行实例。',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      }
-    ];
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const container = miniDocument.createElement('div');
-    miniDocument.body.appendChild(container);
-    const root = createRoot(container as unknown as Element);
-
-    try {
-      React.act(() => {
-        root.render(<>{items[0]?.content}</>);
-      });
-
-      const header = findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__header'));
-      const body = findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__body'));
-      const html = serializeMiniNode(container);
-
-      expect(header?.getAttribute('aria-expanded')).toBe('true');
-      expect(header?.getAttribute('aria-label')).toBe('收起思考内容');
-      expect(body?.textContent).toContain('需要解释镜像和容器的区别。');
-      expect(html).not.toContain('<think>');
-      expect(html).not.toContain('&lt;think&gt;');
-
-      React.act(() => {
-        header?.click();
-      });
-
-      expect(header?.getAttribute('aria-expanded')).toBe('false');
-      expect(header?.getAttribute('aria-label')).toBe('展开思考内容');
-      expect(
-        findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__body'))
-      ).toBeUndefined();
-    } finally {
-      React.act(() => {
-        root.unmount();
-      });
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('renders inline cognition bar for progress stream without leaking stream text into main body', () => {
+  it('会把 progress stream 作为 AI 回复占位，但不再把 Think 或 ThoughtChain 渲染到主聊天线程里', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'chat_msg_user_1',
@@ -898,13 +299,16 @@ describe('chat-message-adapter cognition rendering', () => {
       thoughtItems: [],
       cognitionTargetMessageId: thinkState.messageId,
       cognitionExpanded: true,
+      cognitionDurationLabel: '2s',
       cognitionCountLabel: '1 条推理'
     });
 
     const assistantItem = items.find(item => item.key === 'progress_stream_task-1');
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
-    expect(html).toContain('思考中');
+    expect(html).toContain('正在生成回复...');
+    expect(html).not.toContain('思考中');
+    expect(html).not.toContain('先判断问题类型，再选择执行路径。');
     expect(html).not.toContain('正在分析中');
   });
 
@@ -1499,8 +903,8 @@ describe('chat-message-adapter cognition rendering', () => {
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
     expect(html).toContain('正在生成回复...');
-    expect(html).toContain('思考中');
-    expect(html).toContain('正在整理上下文');
+    expect(html).not.toContain('思考中');
+    expect(html).not.toContain('正在整理上下文');
   });
 
   it('正式 assistant 内容已经到达后，会隐藏 pending assistant 占位，避免先分裂后合并', () => {
@@ -1531,202 +935,5 @@ describe('chat-message-adapter cognition rendering', () => {
     const mainThread = buildMainThreadMessages(messages, 'pending_assistant_session-1');
 
     expect(mainThread.map(message => message.id)).toEqual(['user-1', 'assistant-2']);
-  });
-
-  it('renders assistant copy regenerate thumbs actions and keeps user footer copy-only', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'user_1',
-        sessionId: 'session-1',
-        role: 'user',
-        content: 'docker 容器和镜像的区别',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      },
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '镜像是模板，容器是实例。',
-        createdAt: '2026-05-03T00:00:01.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      onRegenerate: () => undefined,
-      onMessageFeedback: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const html = renderToStaticMarkup(
-      <>
-        {items.map(item => (
-          <React.Fragment key={item.key}>{item.footer as React.ReactNode}</React.Fragment>
-        ))}
-      </>
-    );
-
-    expect(html).toContain('复制消息');
-    expect(html).toContain('重新生成');
-    expect(html).toContain('点赞');
-    expect(html).toContain('点踩');
-    expect(html).not.toContain('分享');
-    expect(html.match(/重新生成/g)).toHaveLength(1);
-    expect(html.match(/点赞/g)).toHaveLength(1);
-    expect(html.match(/点踩/g)).toHaveLength(1);
-  });
-
-  it('marks active assistant feedback as pressed and disables regenerate while thinking', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '镜像是模板，容器是实例。',
-        feedback: {
-          rating: 'helpful',
-          updatedAt: '2026-05-03T00:00:02.000Z'
-        },
-        createdAt: '2026-05-03T00:00:01.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'running',
-      agentThinking: true,
-      onCopy: () => undefined,
-      onRegenerate: () => undefined,
-      onMessageFeedback: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const html = renderToStaticMarkup(
-      <>
-        {items.map(item => (
-          <React.Fragment key={item.key}>{item.footer as React.ReactNode}</React.Fragment>
-        ))}
-      </>
-    );
-
-    expect(html).toContain('aria-label="重新生成"');
-    expect(html).toContain('disabled=""');
-    expect(html).toContain('aria-label="点赞"');
-    expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain('aria-label="点踩"');
-    expect(html).toContain('aria-pressed="false"');
-  });
-
-  it('disables regenerate on historical assistant footers', () => {
-    const messages: ChatMessageRecord[] = [
-      {
-        id: 'user_1',
-        sessionId: 'session-1',
-        role: 'user',
-        content: '第一问',
-        createdAt: '2026-05-03T00:00:00.000Z'
-      },
-      {
-        id: 'assistant_1',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '第一答',
-        createdAt: '2026-05-03T00:00:01.000Z'
-      },
-      {
-        id: 'assistant_2',
-        sessionId: 'session-1',
-        role: 'assistant',
-        content: '第二答',
-        createdAt: '2026-05-03T00:00:02.000Z'
-      }
-    ];
-
-    const items = buildBubbleItems({
-      messages,
-      activeStatus: 'completed',
-      onCopy: () => undefined,
-      onRegenerate: () => undefined,
-      onMessageFeedback: () => undefined,
-      getAgentLabel: role => role ?? 'agent'
-    });
-    const firstAssistantFooter = renderToStaticMarkup(
-      <>{items.find(item => item.key === 'assistant_1')?.footer as React.ReactNode}</>
-    );
-    const lastAssistantFooter = renderToStaticMarkup(
-      <>{items.find(item => item.key === 'assistant_2')?.footer as React.ReactNode}</>
-    );
-
-    expect(firstAssistantFooter).toContain('aria-label="重新生成"');
-    expect(firstAssistantFooter).toContain('disabled=""');
-    expect(lastAssistantFooter).toContain('aria-label="重新生成"');
-    expect(lastAssistantFooter).not.toContain('disabled=""');
-  });
-
-  it('sends assistant feedback payloads from footer clicks', async () => {
-    const miniDocument = installMiniDom();
-    const { createRoot } = await import('react-dom/client');
-    const onMessageFeedback = vi.fn();
-    const container = miniDocument.createElement('div');
-    miniDocument.body.appendChild(container);
-    const root = createRoot(container as unknown as Element);
-    const assistantMessage: ChatMessageRecord = {
-      id: 'assistant_1',
-      sessionId: 'session-1',
-      role: 'assistant',
-      content: '镜像是模板，容器是实例。',
-      createdAt: '2026-05-03T00:00:01.000Z'
-    };
-
-    const renderFooter = (message: ChatMessageRecord) => {
-      const items = buildBubbleItems({
-        messages: [message],
-        activeStatus: 'completed',
-        onCopy: () => undefined,
-        onRegenerate: () => undefined,
-        onMessageFeedback,
-        getAgentLabel: role => role ?? 'agent'
-      });
-
-      React.act(() => {
-        root.render(<>{items[0]?.footer as React.ReactNode}</>);
-      });
-    };
-    const findAction = (label: string) =>
-      findMiniElement(container, element => element.getAttribute('aria-label') === label);
-
-    try {
-      renderFooter(assistantMessage);
-      React.act(() => {
-        findAction('点赞')?.click();
-      });
-      expect(onMessageFeedback).toHaveBeenLastCalledWith(assistantMessage, { rating: 'helpful' });
-
-      const helpfulMessage = {
-        ...assistantMessage,
-        feedback: {
-          rating: 'helpful' as const
-        }
-      };
-      renderFooter(helpfulMessage);
-      React.act(() => {
-        findAction('点赞')?.click();
-      });
-      expect(onMessageFeedback).toHaveBeenLastCalledWith(helpfulMessage, { rating: 'none' });
-
-      renderFooter(assistantMessage);
-      React.act(() => {
-        findAction('点踩')?.click();
-      });
-      expect(onMessageFeedback).toHaveBeenLastCalledWith(assistantMessage, {
-        rating: 'unhelpful',
-        reasonCode: 'too_shallow'
-      });
-    } finally {
-      React.act(() => {
-        root.unmount();
-      });
-      vi.unstubAllGlobals();
-    }
   });
 });
