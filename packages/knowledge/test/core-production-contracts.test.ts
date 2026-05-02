@@ -207,8 +207,8 @@ describe('knowledge production core contracts', () => {
     ).toThrow();
   });
 
-  it('rejects legacy trace status and unknown span stages', () => {
-    expect(() =>
+  it('allows workbench trace status while rejecting unknown span stages', () => {
+    expect(
       KnowledgeTraceSchema.parse({
         traceId: 'trace-1',
         operation: 'rag.chat',
@@ -216,7 +216,7 @@ describe('knowledge production core contracts', () => {
         status: 'ok',
         spans: []
       })
-    ).toThrow();
+    ).toMatchObject({ status: 'ok', spans: [] });
 
     expect(() =>
       KnowledgeTraceSchema.parse({
