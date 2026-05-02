@@ -334,13 +334,53 @@ export function stripWorkflowCommandPrefix(content: string) {
   return content.replace(/^\/(?:browse|review|qa|ship|plan-ceo-review|plan-eng-review|plan)\b\s*/i, '').trimStart();
 }
 
+export type AssistantThinkingState = 'none' | 'streaming' | 'completed';
+
+export interface ParsedAssistantThinkingContent {
+  visibleContent: string;
+  thinkContent: string;
+  thinkingState: AssistantThinkingState;
+  hasMalformedThink: boolean;
+}
+
+const THINK_BLOCK_PATTERN = /<think>([\s\S]*?)<\/think>/gi;
+const OPEN_THINK_PATTERN = /<think>/i;
+
+export function parseAssistantThinkingContent(content: string, streaming: boolean): ParsedAssistantThinkingContent {
+  const thinkBlocks = Array.from(content.matchAll(THINK_BLOCK_PATTERN), match => match[1]?.trim() ?? '').filter(
+    Boolean
+  );
+  const withoutClosedBlocks = content.replace(THINK_BLOCK_PATTERN, '').trimStart();
+  const openMatch = withoutClosedBlocks.match(OPEN_THINK_PATTERN);
+  const hasMalformedThink = Boolean(openMatch);
+
+  if (!openMatch) {
+    return {
+      visibleContent: withoutClosedBlocks,
+      thinkContent: thinkBlocks.join('\n\n'),
+      thinkingState: thinkBlocks.length ? 'completed' : 'none',
+      hasMalformedThink: false
+    };
+  }
+
+  const visibleContent = withoutClosedBlocks.slice(0, openMatch.index).trimEnd();
+  const unfinishedThink = withoutClosedBlocks.slice((openMatch.index ?? 0) + '<think>'.length).trim();
+  const thinkContent = [...thinkBlocks, unfinishedThink].filter(Boolean).join('\n\n');
+
+  return {
+    visibleContent,
+    thinkContent,
+    thinkingState: streaming ? 'streaming' : thinkContent ? 'completed' : 'none',
+    hasMalformedThink
+  };
+}
+
 /** Strip <think>…</think> reasoning blocks from model output before display. */
 export function stripThinkTags(content: string) {
-  return content.replace(/<think>[\s\S]*?<\/think>/gi, '').trimStart();
+  return parseAssistantThinkingContent(content, false).visibleContent.trimStart();
 }
 
 /** Extract the combined text of all <think>…</think> blocks in model output. */
 export function extractThinkBlocks(content: string): string {
-  const matches = Array.from(content.matchAll(/<think>([\s\S]*?)<\/think>/gi), m => m[1]?.trim() ?? '').filter(Boolean);
-  return matches.join('\n\n');
+  return parseAssistantThinkingContent(content, false).thinkContent;
 }

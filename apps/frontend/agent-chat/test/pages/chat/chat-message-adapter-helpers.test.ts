@@ -10,6 +10,7 @@ import {
   formatConnectorTemplateLabel,
   mergeAssistantText,
   normalizeCapabilityMessageForMainThread,
+  parseAssistantThinkingContent,
   stripStreamingCursor,
   stripThinkTags,
   toPlainSummary
@@ -226,6 +227,37 @@ describe('chat-message-adapter helpers', () => {
     expect(stripThinkTags('<think>\n多行\n推理\n</think>\n\n正文段落')).toBe('正文段落');
     expect(stripThinkTags('没有 think 标签的纯文本')).toBe('没有 think 标签的纯文本');
     expect(stripThinkTags('<think>推理</think>')).toBe('');
+  });
+
+  it('parseAssistantThinkingContent splits completed think blocks from visible content', () => {
+    expect(parseAssistantThinkingContent('<think>先判断概念边界</think>镜像是模板。', false)).toEqual({
+      visibleContent: '镜像是模板。',
+      thinkContent: '先判断概念边界',
+      thinkingState: 'completed',
+      hasMalformedThink: false
+    });
+  });
+
+  it('parseAssistantThinkingContent hides unfinished streaming think content', () => {
+    expect(parseAssistantThinkingContent('<think>正在整理 Docker 类比', true)).toEqual({
+      visibleContent: '',
+      thinkContent: '正在整理 Docker 类比',
+      thinkingState: 'streaming',
+      hasMalformedThink: true
+    });
+  });
+
+  it('parseAssistantThinkingContent protects visible content when think is malformed after completion', () => {
+    expect(parseAssistantThinkingContent('正文之前\n<think>未闭合思考', false)).toEqual({
+      visibleContent: '正文之前',
+      thinkContent: '未闭合思考',
+      thinkingState: 'completed',
+      hasMalformedThink: true
+    });
+  });
+
+  it('stripThinkTags removes unfinished think blocks as a display safety fallback', () => {
+    expect(stripThinkTags('答案\n<think>内部推理')).toBe('答案');
   });
 
   it('extractThinkBlocks 提取所有 <think>…</think> 内容并拼接', () => {
