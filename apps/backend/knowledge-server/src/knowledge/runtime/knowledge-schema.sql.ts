@@ -98,6 +98,10 @@ declare
   upserted_count integer := 0;
   affected_rows integer := 0;
 begin
+  if upsert_knowledge_chunks.tenant_id is null or btrim(upsert_knowledge_chunks.tenant_id) = '' then
+    raise exception 'tenant_id is required for upsert_knowledge_chunks';
+  end if;
+
   for record_item in select value from jsonb_array_elements(records)
   loop
     insert into knowledge_document_chunks (
@@ -144,7 +148,7 @@ begin
       from knowledge_documents kd
       where kd.id = upsert_knowledge_chunks.document_id
         and kd.knowledge_base_id = upsert_knowledge_chunks.knowledge_base_id
-        and (upsert_knowledge_chunks.tenant_id is null or kd.workspace_id = upsert_knowledge_chunks.tenant_id)
+        and kd.workspace_id = upsert_knowledge_chunks.tenant_id
     )
     on conflict (id) do update set
       ordinal = excluded.ordinal,
@@ -184,9 +188,17 @@ create or replace function match_knowledge_chunks(
   score double precision,
   metadata jsonb
 )
-language sql
+language plpgsql
 stable
 as $function$
+declare
+  normalized_filters jsonb := coalesce(match_knowledge_chunks.filters, '{}'::jsonb);
+begin
+  if match_knowledge_chunks.tenant_id is null or btrim(match_knowledge_chunks.tenant_id) = '' then
+    raise exception 'tenant_id is required for match_knowledge_chunks';
+  end if;
+
+  return query
   select
     kdc.id as chunk_id,
     kdc.document_id,
@@ -196,24 +208,41 @@ as $function$
   from knowledge_document_chunks kdc
   join knowledge_documents kd on kd.id = kdc.document_id
   where kd.knowledge_base_id = match_knowledge_chunks.knowledge_base_id
-    and (match_knowledge_chunks.tenant_id is null or kd.workspace_id = match_knowledge_chunks.tenant_id)
+    and kd.workspace_id = match_knowledge_chunks.tenant_id
     and kdc.embedding is not null
     and (
-      (not (match_knowledge_chunks.filters ? 'document_ids') and not (match_knowledge_chunks.filters ? 'documentIds'))
+      (
+        (not (normalized_filters ? 'document_ids') or jsonb_array_length(coalesce(normalized_filters -> 'document_ids', '[]'::jsonb)) = 0)
+        and (not (normalized_filters ? 'documentIds') or jsonb_array_length(coalesce(normalized_filters -> 'documentIds', '[]'::jsonb)) = 0)
+      )
       or kdc.document_id in (
         select document_id_filter.value
-        from jsonb_array_elements_text(match_knowledge_chunks.filters -> 'document_ids') as document_id_filter(value)
+        from jsonb_array_elements_text(coalesce(normalized_filters -> 'document_ids', '[]'::jsonb)) as document_id_filter(value)
       )
       or (
-        not (match_knowledge_chunks.filters ? 'document_ids')
+        not (normalized_filters ? 'document_ids')
         and kdc.document_id in (
           select document_id_filter.value
-          from jsonb_array_elements_text(match_knowledge_chunks.filters -> 'documentIds') as document_id_filter(value)
+          from jsonb_array_elements_text(coalesce(normalized_filters -> 'documentIds', '[]'::jsonb)) as document_id_filter(value)
         )
       )
     )
+    and (
+      not (normalized_filters ? 'tags')
+      or jsonb_array_length(coalesce(normalized_filters -> 'tags', '[]'::jsonb)) = 0
+      or (kdc.metadata -> 'tags') ?| array(
+        select tag_filter.value
+        from jsonb_array_elements_text(coalesce(normalized_filters -> 'tags', '[]'::jsonb)) as tag_filter(value)
+      )
+    )
+    and (
+      not (normalized_filters ? 'metadata')
+      or coalesce(normalized_filters -> 'metadata', '{}'::jsonb) = '{}'::jsonb
+      or kdc.metadata @> (normalized_filters -> 'metadata')
+    )
   order by kdc.embedding <=> match_knowledge_chunks.embedding
-  limit greatest(match_knowledge_chunks.top_k, 0)
+  limit greatest(match_knowledge_chunks.top_k, 0);
+end;
 $function$;
 
 create or replace function delete_knowledge_document_chunks(
@@ -226,12 +255,16 @@ as $function$
 declare
   deleted_count integer := 0;
 begin
+  if delete_knowledge_document_chunks.tenant_id is null or btrim(delete_knowledge_document_chunks.tenant_id) = '' then
+    raise exception 'tenant_id is required for delete_knowledge_document_chunks';
+  end if;
+
   delete from knowledge_document_chunks kdc
   using knowledge_documents kd
   where kd.id = kdc.document_id
     and kd.id = delete_knowledge_document_chunks.document_id
     and kd.knowledge_base_id = delete_knowledge_document_chunks.knowledge_base_id
-    and (delete_knowledge_document_chunks.tenant_id is null or kd.workspace_id = delete_knowledge_document_chunks.tenant_id);
+    and kd.workspace_id = delete_knowledge_document_chunks.tenant_id;
 
   get diagnostics deleted_count = row_count;
 
