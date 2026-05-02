@@ -1,5 +1,6 @@
-﻿import { http, toApiUrl, API_BASE } from '@/utils/http-client';
-import { normalizeExecutionMode } from '@/utils/runtime-semantics';
+﻿import axios from 'axios';
+
+import { normalizeExecutionMode } from '@/lib/runtime-semantics';
 import type {
   ChatCheckpointRecord,
   ChatEventRecord,
@@ -7,6 +8,16 @@ import type {
   ChatMessageRecord,
   ChatSessionRecord
 } from '@/types/chat';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const http = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+  timeout: 12000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
 const resolvedRequestCache = new Map<string, { expiresAt: number; data: unknown }>();
@@ -75,6 +86,10 @@ function withSessionId(path: string, sessionId?: string) {
 
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}sessionId=${encodeURIComponent(sessionId)}`;
+}
+
+function toApiUrl(path: string) {
+  return `${API_BASE}${path}`;
 }
 
 export function listSessions() {
@@ -263,7 +278,7 @@ export function deleteSession(sessionId: string) {
 export function updateSession(sessionId: string, title: string) {
   return request<ChatSessionRecord>(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH',
-    data: { title }
+    data: { title, titleSource: 'manual' }
   });
 }
 
