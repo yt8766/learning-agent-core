@@ -1,3 +1,19 @@
+export type ChatMessageFeedbackRating = 'helpful' | 'unhelpful' | 'none';
+export type ChatMessageFeedbackReasonCode = 'too_shallow' | 'incorrect' | 'missed_point' | 'bad_format' | 'other';
+
+export interface ChatMessageFeedbackState {
+  rating: ChatMessageFeedbackRating;
+  reasonCode?: ChatMessageFeedbackReasonCode;
+  comment?: string;
+  updatedAt?: string;
+}
+
+export interface ChatMessageFeedbackInput {
+  rating: ChatMessageFeedbackRating;
+  reasonCode?: ChatMessageFeedbackReasonCode;
+  comment?: string;
+}
+
 export interface ChatMessageRecord {
   id: string;
   sessionId: string;
@@ -5,6 +21,7 @@ export interface ChatMessageRecord {
   content: string;
   taskId?: string;
   linkedAgent?: string;
+  feedback?: ChatMessageFeedbackState;
   card?:
     | {
         type: 'approval_request';

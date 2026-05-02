@@ -101,6 +101,7 @@ export function useChatSession() {
   const chatActions = createChatSessionActions({
     activeSessionId,
     activeSession,
+    messages,
     checkpoint,
     draft,
     setDraft,
@@ -267,6 +268,8 @@ export function useChatSession() {
     refreshSessionDetail: chatActions.refreshSessionDetail,
     createNewSession: chatActions.createNewSession,
     sendMessage: chatActions.sendMessage,
+    regenerateMessage: chatActions.regenerateMessage,
+    submitMessageFeedback: chatActions.submitMessageFeedback,
     updateApproval: chatActions.updateApproval,
     updatePlanInterrupt: chatActions.updatePlanInterrupt,
     allowApprovalAndApprove: chatActions.allowApprovalAndApprove,
@@ -274,6 +277,7 @@ export function useChatSession() {
     submitLearningConfirmation: chatActions.submitLearningConfirmation,
     recoverActiveSession: chatActions.recoverActiveSession,
     cancelActiveSession: chatActions.cancelActiveSession,
+    renameSessionById: chatActions.renameSessionById,
     deleteSessionById: chatActions.deleteSessionById,
     deleteActiveSession: chatActions.deleteActiveSession
   };

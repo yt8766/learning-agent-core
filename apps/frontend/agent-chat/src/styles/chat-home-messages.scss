@@ -102,6 +102,8 @@
 
 .chatx-bubble-footer {
   display: flex;
+  align-items: center;
+  gap: 4px;
   justify-content: flex-end;
   margin-top: 4px;
   opacity: 0;
@@ -938,6 +940,7 @@
   overflow-wrap: anywhere;
 }
 
+.chatx-message-action-button.ant-btn.ant-btn-text,
 .chatx-copy-button.ant-btn.ant-btn-text {
   width: 24px;
   min-width: 24px;
@@ -951,6 +954,17 @@
   &:hover {
     background: #ffffff;
     color: $color-blue-600;
+  }
+
+  &.is-active {
+    background: rgba(37, 99, 235, 0.1);
+    color: $color-blue-600;
+  }
+
+  &:disabled {
+    background: rgba(255, 255, 255, 0.54);
+    color: #cbd5e1;
+    box-shadow: none;
   }
 }
 

@@ -1,10 +1,17 @@
 import { Button, Tag, Typography } from 'antd';
+import { DislikeOutlined, LikeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Think, ThoughtChain } from '@ant-design/x';
 import type { BubbleItemType, ThoughtChainItemType } from '@ant-design/x';
 
 import { CopyGlyph, renderStructuredMessageCard } from '@/components/chat-message-cards';
 import type { ChatResponseStepsState } from '@/lib/chat-response-step-projections';
-import type { ChatMessageRecord, ChatSessionRecord, ChatThinkState } from '@/types/chat';
+import type {
+  ChatMessageFeedbackInput,
+  ChatMessageFeedbackReasonCode,
+  ChatMessageRecord,
+  ChatSessionRecord,
+  ChatThinkState
+} from '@/types/chat';
 import {
   buildCognitionSummary,
   buildMainThreadMessages,
@@ -28,6 +35,8 @@ export interface BuildBubbleItemsOptions {
   agentThinking?: boolean;
   copiedMessageId?: string;
   onCopy: (message: ChatMessageRecord) => void;
+  onRegenerate?: (message: ChatMessageRecord) => void;
+  onMessageFeedback?: (message: ChatMessageRecord, feedback: ChatMessageFeedbackInput) => void;
   onApprovalAction?: (intent: string, approved: boolean, scope?: 'once' | 'session' | 'always') => void;
   onApprovalAllowAlways?: (intent: string, serverId?: string, capabilityId?: string) => void;
   onApprovalFeedback?: (intent: string, reason?: string) => void;
@@ -290,12 +299,87 @@ function formatCognitionDurationCopy(durationLabel: string) {
   return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
 }
 
+const DEFAULT_UNHELPFUL_REASON: ChatMessageFeedbackReasonCode = 'too_shallow';
+
+function renderMessageFooter(
+  message: ChatMessageRecord,
+  options: Pick<
+    BuildBubbleItemsOptions,
+    'activeStatus' | 'agentThinking' | 'copiedMessageId' | 'onCopy' | 'onRegenerate' | 'onMessageFeedback'
+  >
+) {
+  if (message.role !== 'assistant' && message.role !== 'user') {
+    return undefined;
+  }
+
+  const copied = options.copiedMessageId === message.id;
+  const isAssistant = message.role === 'assistant';
+  const regenerateDisabled = options.activeStatus === 'running' || Boolean(options.agentThinking);
+  const helpfulPressed = message.feedback?.rating === 'helpful';
+  const unhelpfulPressed = message.feedback?.rating === 'unhelpful';
+
+  return (
+    <div className={`chatx-bubble-footer ${isAssistant ? 'is-assistant' : 'is-user'}`}>
+      <Button
+        size="small"
+        type="text"
+        className="chatx-copy-button chatx-message-action-button"
+        icon={<CopyGlyph copied={copied} />}
+        onClick={() => options.onCopy(message)}
+        aria-label={copied ? '已复制' : '复制消息'}
+      />
+      {isAssistant ? (
+        <>
+          <Button
+            size="small"
+            type="text"
+            className="chatx-message-action-button"
+            icon={<ReloadOutlined />}
+            onClick={() => options.onRegenerate?.(message)}
+            disabled={regenerateDisabled}
+            aria-label="重新生成"
+          />
+          <Button
+            size="small"
+            type="text"
+            className={`chatx-message-action-button ${helpfulPressed ? 'is-active' : ''}`}
+            icon={<LikeOutlined />}
+            onClick={() =>
+              options.onMessageFeedback?.(message, {
+                rating: helpfulPressed ? 'none' : 'helpful'
+              })
+            }
+            aria-label="点赞"
+            aria-pressed={helpfulPressed}
+          />
+          <Button
+            size="small"
+            type="text"
+            className={`chatx-message-action-button ${unhelpfulPressed ? 'is-active' : ''}`}
+            icon={<DislikeOutlined />}
+            onClick={() =>
+              options.onMessageFeedback?.(message, {
+                rating: unhelpfulPressed ? 'none' : 'unhelpful',
+                reasonCode: unhelpfulPressed ? undefined : DEFAULT_UNHELPFUL_REASON
+              })
+            }
+            aria-label="点踩"
+            aria-pressed={unhelpfulPressed}
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function buildBubbleItems({
   messages,
   activeStatus,
   agentThinking,
   copiedMessageId,
   onCopy,
+  onRegenerate,
+  onMessageFeedback,
   onApprovalAction,
   onApprovalAllowAlways,
   onApprovalFeedback,
@@ -375,19 +459,14 @@ export function buildBubbleItems({
           message.role === 'system' && message.linkedAgent ? (
             <Tag color="geekblue">{getAgentLabel(message.linkedAgent)}</Tag>
           ) : undefined,
-        footer:
-          message.role === 'assistant' || message.role === 'user' ? (
-            <div className="chatx-bubble-footer">
-              <Button
-                size="small"
-                type="text"
-                className="chatx-copy-button"
-                icon={<CopyGlyph copied={copiedMessageId === message.id} />}
-                onClick={() => onCopy(message)}
-                aria-label={copiedMessageId === message.id ? '已复制' : '复制消息'}
-              />
-            </div>
-          ) : undefined,
+        footer: renderMessageFooter(message, {
+          activeStatus,
+          agentThinking,
+          copiedMessageId,
+          onCopy,
+          onRegenerate,
+          onMessageFeedback
+        }),
         footerPlacement: message.role === 'user' ? 'outer-end' : 'outer-start',
         placement: message.role === 'user' ? 'end' : 'start',
         variant: message.role === 'user' ? 'filled' : message.role === 'system' ? 'outlined' : 'shadow',

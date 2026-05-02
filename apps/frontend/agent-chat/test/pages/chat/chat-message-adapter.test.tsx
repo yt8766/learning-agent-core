@@ -1460,4 +1460,88 @@ describe('chat-message-adapter cognition rendering', () => {
 
     expect(mainThread.map(message => message.id)).toEqual(['user-1', 'assistant-2']);
   });
+
+  it('renders assistant copy regenerate thumbs actions and keeps user footer copy-only', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'user_1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: 'docker 容器和镜像的区别',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      },
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      onRegenerate: () => undefined,
+      onMessageFeedback: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(
+      <>
+        {items.map(item => (
+          <React.Fragment key={item.key}>{item.footer as React.ReactNode}</React.Fragment>
+        ))}
+      </>
+    );
+
+    expect(html).toContain('复制消息');
+    expect(html).toContain('重新生成');
+    expect(html).toContain('点赞');
+    expect(html).toContain('点踩');
+    expect(html).not.toContain('分享');
+    expect(html.match(/重新生成/g)).toHaveLength(1);
+    expect(html.match(/点赞/g)).toHaveLength(1);
+    expect(html.match(/点踩/g)).toHaveLength(1);
+  });
+
+  it('marks active assistant feedback as pressed and disables regenerate while thinking', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        feedback: {
+          rating: 'helpful',
+          updatedAt: '2026-05-03T00:00:02.000Z'
+        },
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'running',
+      agentThinking: true,
+      onCopy: () => undefined,
+      onRegenerate: () => undefined,
+      onMessageFeedback: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(
+      <>
+        {items.map(item => (
+          <React.Fragment key={item.key}>{item.footer as React.ReactNode}</React.Fragment>
+        ))}
+      </>
+    );
+
+    expect(html).toContain('aria-label="重新生成"');
+    expect(html).toContain('disabled=""');
+    expect(html).toContain('aria-label="点赞"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('aria-label="点踩"');
+    expect(html).toContain('aria-pressed="false"');
+  });
 });

@@ -1,7 +1,13 @@
 ﻿import axios from 'axios';
 
 import { normalizeExecutionMode } from '@/lib/runtime-semantics';
-import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
+import type {
+  ChatCheckpointRecord,
+  ChatEventRecord,
+  ChatMessageFeedbackInput,
+  ChatMessageRecord,
+  ChatSessionRecord
+} from '@/types/chat';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 const http = axios.create({
@@ -135,6 +141,16 @@ export function appendMessage(sessionId: string, message: string, options?: { mo
   });
 }
 
+export function submitMessageFeedback(sessionId: string, messageId: string, feedback: ChatMessageFeedbackInput) {
+  return request<ChatMessageRecord>(`/chat/messages/${encodeURIComponent(messageId)}/feedback`, {
+    method: 'POST',
+    data: {
+      sessionId,
+      ...feedback
+    }
+  });
+}
+
 export function approveSession(
   sessionId: string,
   intent: string,
@@ -262,7 +278,7 @@ export function deleteSession(sessionId: string) {
 export function updateSession(sessionId: string, title: string) {
   return request<ChatSessionRecord>(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH',
-    data: { title }
+    data: { title, titleSource: 'manual' }
   });
 }
 
