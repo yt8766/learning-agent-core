@@ -1,16 +1,18 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 
 import { AuthController } from './auth.controller';
+import { AuthExceptionFilter } from './filters/auth-exception.filter';
+import { AuthAdminGuard } from './guards/auth-admin.guard';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
+import { AUTH_REPOSITORY } from './auth.tokens';
 import { JwtProvider } from './jwt.provider';
 import { PasswordHasherProvider } from './password-hasher.provider';
-import { InMemoryAuthRepository } from './repositories/auth-memory.repository';
 import type { AuthRepository } from './repositories/auth.repository';
+import { createAuthRepositoryProvider } from './runtime/auth-repository.provider';
 import { UserManagementController } from './user-management.controller';
 import { UserManagementService } from './user-management.service';
-
-export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
 
 @Module({
   controllers: [AuthController, UserManagementController],
@@ -24,10 +26,7 @@ export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
           issuer: 'auth-server'
         })
     },
-    {
-      provide: AUTH_REPOSITORY,
-      useClass: InMemoryAuthRepository
-    },
+    createAuthRepositoryProvider({ databaseUrl: process.env.DATABASE_URL }),
     {
       provide: AuthService,
       useFactory: (repository: AuthRepository, hasher: PasswordHasherProvider, jwt: JwtProvider) =>
@@ -40,7 +39,12 @@ export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
         new UserManagementService(repository, hasher),
       inject: [AUTH_REPOSITORY, PasswordHasherProvider]
     },
-    AuthGuard
+    AuthGuard,
+    AuthAdminGuard,
+    {
+      provide: APP_FILTER,
+      useClass: AuthExceptionFilter
+    }
   ]
 })
 export class AuthModule {}

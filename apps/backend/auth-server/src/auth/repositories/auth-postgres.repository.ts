@@ -8,12 +8,12 @@ import type {
   CreateAuthUserInput
 } from './auth.repository';
 
-interface PgClientLike {
+export interface PostgresAuthClient {
   query(sql: string, values?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
 }
 
 export class PostgresAuthRepository implements AuthRepository {
-  constructor(private readonly client: PgClientLike) {}
+  constructor(private readonly client: PostgresAuthClient) {}
 
   async createUser(input: CreateAuthUserInput): Promise<AuthUserRecord> {
     const result = await this.client.query(

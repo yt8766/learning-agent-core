@@ -1,5 +1,11 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { AuthLoginRequest, AuthLoginResponse, AuthRefreshRequest, AuthRefreshResponse } from '@agent/core';
+import type {
+  AuthLoginRequest,
+  AuthLoginResponse,
+  AuthMeResponse,
+  AuthRefreshRequest,
+  AuthRefreshResponse
+} from '@agent/core';
 
 import { AuthServiceError } from './auth.errors';
 import { JwtProvider } from './jwt.provider';
@@ -85,6 +91,28 @@ export class AuthService {
     return this.jwt.verify(accessToken);
   }
 
+  async getCurrentUser(accessToken: string): Promise<AuthMeResponse> {
+    return this.getCurrentUserFromPayload(this.verifyAccessToken(accessToken));
+  }
+
+  async getCurrentUserFromPayload(payload: ReturnType<JwtProvider['verify']>): Promise<AuthMeResponse> {
+    const session = await this.repository.findSession(payload.sid);
+    const user = await this.repository.findUserById(payload.sub);
+    if (!session || session.status !== 'active' || !user || user.status !== 'enabled') {
+      throw new AuthServiceError('access_token_invalid', 'Access Token 无效');
+    }
+
+    return { account: toAccount(user) };
+  }
+
+  async logout(input: { refreshToken: string }): Promise<{ success: true }> {
+    const existingToken = await this.repository.findRefreshTokenByHash(hashToken(input.refreshToken));
+    if (existingToken) {
+      await this.repository.revokeSession(existingToken.sessionId, 'logout');
+    }
+    return { success: true };
+  }
+
   private async issueTokens(
     user: AuthUserRecord,
     sessionId: string,
@@ -104,6 +132,7 @@ export class AuthService {
       tokenType: 'Bearer',
       accessToken: this.jwt.sign({
         sub: user.id,
+        sid: sessionId,
         username: user.username,
         roles: user.roles,
         status: user.status,

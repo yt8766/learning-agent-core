@@ -8,12 +8,12 @@ import type {
 
 import type { KnowledgeRepository } from './knowledge.repository';
 
-interface PgClientLike {
+export interface PostgresKnowledgeClient {
   query(sql: string, values?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
 }
 
 export class PostgresKnowledgeRepository implements KnowledgeRepository {
-  constructor(private readonly client: PgClientLike) {}
+  constructor(private readonly client: PostgresKnowledgeClient) {}
 
   async createBase(
     input: KnowledgeBaseCreateRequest & { id: string; createdByUserId: string }

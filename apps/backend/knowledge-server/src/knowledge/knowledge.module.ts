@@ -4,18 +4,14 @@ import { AuthGuard } from '../auth/auth.guard';
 import { AuthTokenVerifier } from '../auth/auth-token-verifier';
 import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeService } from './knowledge.service';
-import { InMemoryKnowledgeRepository } from './repositories/knowledge-memory.repository';
+import { KNOWLEDGE_REPOSITORY } from './knowledge.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
-
-export const KNOWLEDGE_REPOSITORY = Symbol('KNOWLEDGE_REPOSITORY');
+import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
 
 @Module({
   controllers: [KnowledgeController],
   providers: [
-    {
-      provide: KNOWLEDGE_REPOSITORY,
-      useClass: InMemoryKnowledgeRepository
-    },
+    createKnowledgeRepositoryProvider({ databaseUrl: process.env.DATABASE_URL }),
     {
       provide: KnowledgeService,
       useFactory: (repository: KnowledgeRepository) => new KnowledgeService(repository),
