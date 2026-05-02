@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import type { CompanyExpertConsultation, CompanyLiveContentBrief, CompanyLiveGenerateResult } from '@agent/core';
 import {
@@ -8,9 +8,12 @@ import {
   type CompanyLiveExpertConsultOptions,
   type CompanyLiveGraphOptions
 } from '@agent/agents-company-live';
+import { RuntimeHost } from './runtime.host';
 
 @Injectable()
 export class RuntimeCompanyLiveFacade {
+  constructor(@Optional() private readonly runtimeHost?: Pick<RuntimeHost, 'llmProvider'>) {}
+
   async generate(
     brief: CompanyLiveContentBrief,
     options?: CompanyLiveGraphOptions
@@ -20,6 +23,9 @@ export class RuntimeCompanyLiveFacade {
   }
 
   async consultExperts(params: CompanyLiveExpertConsultOptions): Promise<CompanyExpertConsultation> {
-    return consultCompanyLiveExperts(params);
+    return consultCompanyLiveExperts({
+      ...params,
+      llm: params.llm ?? this.runtimeHost?.llmProvider
+    });
   }
 }
