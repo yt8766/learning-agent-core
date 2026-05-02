@@ -385,7 +385,7 @@ describe('chat-api url builders', () => {
       expect.objectContaining({
         url: '/chat/sessions/session%2F1',
         method: 'PATCH',
-        data: { title: 'renamed', titleSource: 'manual' }
+        data: { title: 'renamed' }
       })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
