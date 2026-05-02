@@ -5,12 +5,16 @@ export {
   KnowledgeAuthSessionSchema,
   KnowledgeAuthTokensSchema,
   KnowledgeBaseHealthSchema,
+  KnowledgeBaseHealthStatusSchema,
   KnowledgeBaseSchema,
   KnowledgeErrorResponseSchema,
   KnowledgeEvalCaseSchema,
   KnowledgeEvalRunResultSchema,
   KnowledgeEvalRunSchema,
   KnowledgeIngestionJobProjectionSchema,
+  KnowledgeIngestionJobStatusSchema,
+  KnowledgeIngestionStageSchema,
+  KnowledgeProviderHealthStatusSchema,
   ProviderHealthSchema
 } from './core';
 export {
@@ -24,13 +28,17 @@ export {
   type EmbedTextResult,
   type KnowledgeBase,
   type KnowledgeBaseHealth,
+  type KnowledgeBaseHealthStatus,
   type KnowledgeAuthTokens,
   type KnowledgeAuthSession,
   type KnowledgeErrorResponse,
   type KnowledgeEvalCase,
   type KnowledgeEvalRunResult,
   type KnowledgeEvalRun,
+  type KnowledgeIngestionJobStatus,
   type KnowledgeIngestionJobProjection,
+  type KnowledgeIngestionStage,
+  type KnowledgeProviderHealthStatus,
   type KnowledgeErrorCategory,
   type KnowledgeErrorOptions,
   type KnowledgeUser,
@@ -49,27 +57,35 @@ export {
   KnowledgeCitationSchema,
   KnowledgeRagAnswerSchema,
   KnowledgeRagDiagnosticsSchema,
+  KnowledgeRagRouteReasonSchema,
   KnowledgeRagRouteSchema,
   KnowledgeRefreshSessionSchema,
+  KnowledgeRetrievalModeSchema,
   KnowledgeTokenUsageSchema,
   KnowledgeTraceOperationSchema,
   KnowledgeTraceSchema,
+  KnowledgeTraceSpanStatusSchema,
   KnowledgeTraceSpanSchema,
   KnowledgeVectorSearchRequestSchema,
-  KnowledgeWorkbenchSpanNameSchema
+  KnowledgeWorkbenchSpanNameSchema,
+  KnowledgeWorkbenchTraceStatusSchema
 } from './core';
 export type {
   KnowledgeCitation,
   KnowledgeRagAnswer,
   KnowledgeRagDiagnostics,
+  KnowledgeRagRouteReason,
   KnowledgeRagRoute,
   KnowledgeRefreshSession,
+  KnowledgeRetrievalMode,
   KnowledgeTokenUsage,
   KnowledgeTraceOperation,
   KnowledgeTrace,
+  KnowledgeTraceSpanStatus,
   KnowledgeTraceSpan,
   KnowledgeVectorSearchRequest,
-  KnowledgeWorkbenchSpanName
+  KnowledgeWorkbenchSpanName,
+  KnowledgeWorkbenchTraceStatus
 } from './core';
 export type {
   ChromaClientConfig,
