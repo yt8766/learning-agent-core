@@ -134,11 +134,9 @@ function renderMessageContent(
     isCognitionTarget &&
     (messageThinkState || (messageThoughtItems?.length ?? 0) > 0 || Boolean(assistantParsed?.thinkContent));
   const hasRuntimeTargetCognition = Boolean(messageThinkState || (messageThoughtItems?.length ?? 0) > 0);
-  const shouldShowRuntimeCognition =
-    !isCognitionTarget || messageCognitionExpanded || Boolean(messageThinkState?.loading) || Boolean(thinkingPanel);
   const shouldShowCognition =
     message.role === 'assistant' &&
-    ((hasTargetCognition && shouldShowRuntimeCognition) ||
+    (hasTargetCognition ||
       Boolean(assistantParsed?.thinkContent) ||
       (!hasRuntimeTargetCognition && Boolean(normalizedMessage.content.trim())));
 
@@ -158,7 +156,7 @@ function renderMessageContent(
     );
   }
 
-  const inlineThinkContent = assistantParsed?.thinkContent ?? '';
+  const inlineThinkContent = thinkingPanel ? '' : (assistantParsed?.thinkContent ?? '');
   const isThinking = Boolean(messageThinkState?.loading);
   const cognitionSummary = buildCognitionSummary(
     messageThinkState?.loading && messageThoughtItems?.[0]?.description
@@ -168,25 +166,37 @@ function renderMessageContent(
   );
   const statusLabel = isThinking ? '思考中' : '已思考';
   const showCountLabel = isThinking && options.cognitionCountLabel;
+  const shouldUseQuietCollapsedRuntimeSummary = Boolean(
+    isCognitionTarget && hasRuntimeTargetCognition && !messageCognitionExpanded && !isThinking && !thinkingPanel
+  );
   const titleLabel =
-    isCognitionTarget && options.cognitionDurationLabel
+    !shouldUseQuietCollapsedRuntimeSummary && isCognitionTarget && options.cognitionDurationLabel
       ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
-      : statusLabel;
+      : shouldUseQuietCollapsedRuntimeSummary
+        ? ''
+        : statusLabel;
   const canExpandCognition =
     Boolean(messageThinkState) || Boolean(inlineThinkContent) || Boolean(messageThoughtItems?.length);
+  const cognitionSummaryClassName = shouldUseQuietCollapsedRuntimeSummary
+    ? 'chatx-inline-think'
+    : 'chatx-inline-think chatx-governance-summary';
+  const cognitionToggleClassName = shouldUseQuietCollapsedRuntimeSummary
+    ? `chatx-inline-think__toggle ${isThinking ? 'is-thinking' : 'is-complete'}`
+    : `chatx-inline-think__toggle chatx-governance-summary__toggle ${isThinking ? 'is-thinking' : 'is-complete'}`;
+  const cognitionBadgeClassName = shouldUseQuietCollapsedRuntimeSummary
+    ? `chatx-inline-think__badge ${isThinking ? 'is-thinking' : 'is-complete'}`
+    : `chatx-inline-think__badge chatx-governance-summary__icon ${isThinking ? 'is-thinking' : 'is-complete'}`;
 
   return (
     <div className="chatx-assistant-stack">
-      <div className="chatx-inline-think chatx-governance-summary">
+      <div className={cognitionSummaryClassName}>
         <button
           type="button"
-          className={`chatx-inline-think__toggle chatx-governance-summary__toggle ${
-            isThinking ? 'is-thinking' : 'is-complete'
-          }`}
+          className={cognitionToggleClassName}
           onClick={canExpandCognition ? options.onToggleCognition : undefined}
         >
           {isThinking ? (
-            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-thinking" aria-hidden="true">
+            <span className={cognitionBadgeClassName} aria-hidden="true">
               <span className="chatx-inline-think__loader">
                 <span className="chatx-inline-think__bar" />
                 <span className="chatx-inline-think__bar" />
@@ -194,17 +204,19 @@ function renderMessageContent(
               </span>
             </span>
           ) : (
-            <span className="chatx-inline-think__badge chatx-governance-summary__icon is-complete" aria-hidden="true">
+            <span className={cognitionBadgeClassName} aria-hidden="true">
               <span className="chatx-inline-think__dot" />
             </span>
           )}
           <span className="chatx-inline-think__copy">
-            <span className={`chatx-inline-think__label ${isThinking ? 'is-thinking' : 'is-complete'}`}>
-              {titleLabel}
-              {showCountLabel ? (
-                <span className="chatx-inline-think__meta"> · {options.cognitionCountLabel}</span>
-              ) : null}
-            </span>
+            {titleLabel ? (
+              <span className={`chatx-inline-think__label ${isThinking ? 'is-thinking' : 'is-complete'}`}>
+                {titleLabel}
+                {showCountLabel ? (
+                  <span className="chatx-inline-think__meta"> · {options.cognitionCountLabel}</span>
+                ) : null}
+              </span>
+            ) : null}
             <span className="chatx-inline-think__summary">{cognitionSummary}</span>
           </span>
           <span
@@ -262,7 +274,9 @@ function renderMessageContent(
 }
 
 function normalizeEscapedThinkTags(content: string) {
-  return content.replace(/&lt;(\/?think)&gt;/gi, '<$1>');
+  return content
+    .replace(/^(\s*)&lt;think&gt;/i, '$1<think>')
+    .replace(/^(\s*<think>[\s\S]*?)&lt;\/think&gt;/i, '$1</think>');
 }
 
 function formatCognitionDurationCopy(durationLabel: string) {
