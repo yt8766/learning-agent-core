@@ -16,7 +16,8 @@ export function MessageThinkingPanel({ content, state, durationLabel }: MessageT
     return null;
   }
 
-  const title = state === 'streaming' ? '思考中' : durationLabel ? `已思考（用时 ${durationLabel}）` : '已思考';
+  const title =
+    state === 'streaming' ? '思考中' : durationLabel ? `已思考（${formatDurationCopy(durationLabel)}）` : '已思考';
 
   return (
     <section className={`chatx-thinking-panel is-${state}`} aria-label={title}>
@@ -38,4 +39,9 @@ export function MessageThinkingPanel({ content, state, durationLabel }: MessageT
       {expanded && content.trim() ? <div className="chatx-thinking-panel__body">{content}</div> : null}
     </section>
   );
+}
+
+function formatDurationCopy(durationLabel: string) {
+  const normalized = durationLabel.trim();
+  return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
 }
