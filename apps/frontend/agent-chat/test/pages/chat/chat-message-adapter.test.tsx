@@ -71,6 +71,284 @@ vi.mock('@ant-design/x', async () => {
   };
 });
 
+class MiniTextNode {
+  readonly nodeType = 3;
+  readonly nodeName = '#text';
+  parentNode: MiniElement | null = null;
+
+  constructor(
+    public nodeValue: string,
+    readonly ownerDocument: MiniDocument
+  ) {}
+
+  get textContent() {
+    return this.nodeValue;
+  }
+
+  set textContent(value: string) {
+    this.nodeValue = String(value);
+  }
+}
+
+class MiniElement {
+  readonly nodeType = 1;
+  readonly nodeName: string;
+  readonly tagName: string;
+  readonly localName: string;
+  readonly namespaceURI = 'http://www.w3.org/1999/xhtml';
+  readonly attributes = new Map<string, string>();
+  readonly childNodes: MiniNode[] = [];
+  readonly listeners = new Map<string, Array<(event: MiniEvent) => void>>();
+  readonly style: Record<string, string> = {};
+  className = '';
+  innerHTML = '';
+  parentNode: MiniElement | null = null;
+
+  constructor(
+    tagName: string,
+    readonly ownerDocument: MiniDocument
+  ) {
+    this.localName = tagName.toLowerCase();
+    this.tagName = tagName.toUpperCase();
+    this.nodeName = this.tagName;
+  }
+
+  appendChild(node: MiniNode) {
+    return this.insertBefore(node, null);
+  }
+
+  insertBefore(node: MiniNode, referenceNode: MiniNode | null) {
+    node.parentNode?.removeChild(node);
+    node.parentNode = this;
+    const index = referenceNode ? this.childNodes.indexOf(referenceNode) : -1;
+    if (index >= 0) {
+      this.childNodes.splice(index, 0, node);
+    } else {
+      this.childNodes.push(node);
+    }
+    return node;
+  }
+
+  removeChild(node: MiniNode) {
+    const index = this.childNodes.indexOf(node);
+    if (index >= 0) {
+      this.childNodes.splice(index, 1);
+    }
+    node.parentNode = null;
+    return node;
+  }
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, String(value));
+    if (name === 'class') {
+      this.className = String(value);
+    }
+  }
+
+  getAttribute(name: string) {
+    return this.attributes.get(name) ?? null;
+  }
+
+  removeAttribute(name: string) {
+    this.attributes.delete(name);
+  }
+
+  addEventListener(type: string, listener: (event: MiniEvent) => void) {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  removeEventListener(type: string, listener: (event: MiniEvent) => void) {
+    this.listeners.set(
+      type,
+      (this.listeners.get(type) ?? []).filter(candidate => candidate !== listener)
+    );
+  }
+
+  dispatchEvent(event: MiniEvent) {
+    event.target ??= this;
+    event.currentTarget = this;
+    for (const listener of this.listeners.get(event.type) ?? []) {
+      listener.call(this, event);
+    }
+    if (event.bubbles && this.parentNode) {
+      this.parentNode.dispatchEvent(event);
+    }
+    return !event.defaultPrevented;
+  }
+
+  click() {
+    return this.dispatchEvent(new MiniEvent('click', { bubbles: true }));
+  }
+
+  get firstChild() {
+    return this.childNodes[0] ?? null;
+  }
+
+  get nextSibling() {
+    if (!this.parentNode) {
+      return null;
+    }
+    const index = this.parentNode.childNodes.indexOf(this);
+    return this.parentNode.childNodes[index + 1] ?? null;
+  }
+
+  get children() {
+    return this.childNodes.filter((node): node is MiniElement => node instanceof MiniElement);
+  }
+
+  get parentElement() {
+    return this.parentNode;
+  }
+
+  getRootNode() {
+    return this.ownerDocument;
+  }
+
+  get textContent(): string {
+    return this.childNodes.map(node => node.textContent).join('');
+  }
+
+  set textContent(value: string) {
+    this.childNodes.splice(0, this.childNodes.length);
+    if (value) {
+      this.appendChild(new MiniTextNode(String(value), this.ownerDocument));
+    }
+  }
+
+  contains(node: MiniNode | MiniDocument | null): boolean {
+    if (!node) {
+      return false;
+    }
+    if (node === this) {
+      return true;
+    }
+    return this.childNodes.some(child => child === node || (child instanceof MiniElement && child.contains(node)));
+  }
+}
+
+class MiniDocument {
+  readonly nodeType = 9;
+  readonly nodeName = '#document';
+  readonly documentElement = new MiniElement('html', this);
+  readonly head = new MiniElement('head', this);
+  readonly body = new MiniElement('body', this);
+  readonly defaultView = globalThis;
+  activeElement: MiniElement = this.body;
+
+  createElement(tagName: string) {
+    return new MiniElement(tagName, this);
+  }
+
+  createElementNS(_namespace: string, tagName: string) {
+    return new MiniElement(tagName, this);
+  }
+
+  createTextNode(text: string) {
+    return new MiniTextNode(text, this);
+  }
+
+  addEventListener() {}
+
+  removeEventListener() {}
+
+  querySelector(selector: string) {
+    if (selector === 'head') {
+      return this.head;
+    }
+    if (selector === 'body') {
+      return this.body;
+    }
+    return null;
+  }
+
+  contains(node: MiniNode | MiniDocument | null) {
+    return node === this || this.documentElement.contains(node);
+  }
+}
+
+class MiniEvent {
+  target: MiniElement | null = null;
+  currentTarget: MiniElement | null = null;
+  defaultPrevented = false;
+
+  constructor(
+    readonly type: string,
+    private readonly init: { bubbles?: boolean } = {}
+  ) {}
+
+  get bubbles() {
+    return Boolean(this.init.bubbles);
+  }
+
+  preventDefault() {
+    this.defaultPrevented = true;
+  }
+
+  stopPropagation() {
+    this.init.bubbles = false;
+  }
+}
+
+type MiniNode = MiniElement | MiniTextNode;
+
+function installMiniDom() {
+  const miniDocument = new MiniDocument();
+  miniDocument.documentElement.appendChild(miniDocument.head);
+  miniDocument.documentElement.appendChild(miniDocument.body);
+  vi.stubGlobal('document', miniDocument);
+  vi.stubGlobal('window', globalThis);
+  vi.stubGlobal('HTMLElement', MiniElement);
+  vi.stubGlobal('HTMLIFrameElement', class HTMLIFrameElement {});
+  vi.stubGlobal('ShadowRoot', class ShadowRoot {});
+  vi.stubGlobal(
+    'Node',
+    class Node {
+      static readonly ELEMENT_NODE = 1;
+      static readonly TEXT_NODE = 3;
+      static readonly DOCUMENT_NODE = 9;
+    }
+  );
+  vi.stubGlobal('Event', MiniEvent);
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  return miniDocument;
+}
+
+function findMiniElement(root: MiniElement, predicate: (element: MiniElement) => boolean): MiniElement | undefined {
+  if (predicate(root)) {
+    return root;
+  }
+
+  for (const child of root.childNodes) {
+    if (child instanceof MiniElement) {
+      const match = findMiniElement(child, predicate);
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function hasMiniClass(element: MiniElement, className: string) {
+  return (element.getAttribute('class') ?? '').split(/\s+/).includes(className);
+}
+
+function serializeMiniNode(node: MiniNode): string {
+  if (node instanceof MiniTextNode) {
+    return escapeHtml(node.textContent);
+  }
+
+  const attributes = Array.from(node.attributes.entries())
+    .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
+    .join('');
+  return `<${node.localName}${attributes}>${node.childNodes.map(serializeMiniNode).join('')}</${node.localName}>`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 describe('chat-message-adapter cognition rendering', () => {
   const responseSteps: ChatResponseStepsForMessage = {
     messageId: 'assistant_1',
@@ -256,6 +534,99 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('需要解释镜像和容器的区别。');
     expect(html).toContain('镜像是模板，容器是运行实例。');
     expect(html).not.toContain('<think>');
+  });
+
+  it('keeps completed runtime cognition expanded while rendering assistant think panel', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '<think>模型内部思路。</think>这是最终回复。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionTargetMessageId: 'assistant_1',
+      cognitionExpanded: true,
+      cognitionDurationLabel: '约 2 秒',
+      cognitionCountLabel: '1 条推理',
+      thinkState: {
+        messageId: 'assistant_1',
+        title: '已思考',
+        content: '先判断问题类型，再选择执行路径。',
+        loading: false,
+        blink: false,
+        thinkingDurationMs: 2000
+      },
+      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('模型内部思路。');
+    expect(html).toContain('先判断问题类型，再选择执行路径。');
+    expect(html).toContain('用现有上下文判断。');
+    expect(html).toContain('这是最终回复。');
+  });
+
+  it('toggles assistant think panel in the DOM without escaped think tag leakage', async () => {
+    const miniDocument = installMiniDom();
+    const { createRoot } = await import('react-dom/client');
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '<think>需要解释镜像和容器的区别。</think>镜像是模板，容器是运行实例。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionDurationLabel: '2 秒'
+    });
+    const container = miniDocument.createElement('div');
+    miniDocument.body.appendChild(container);
+    const root = createRoot(container as unknown as Element);
+
+    try {
+      React.act(() => {
+        root.render(<>{items[0]?.content}</>);
+      });
+
+      const header = findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__header'));
+      const body = findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__body'));
+      const html = serializeMiniNode(container);
+
+      expect(header?.getAttribute('aria-expanded')).toBe('true');
+      expect(header?.getAttribute('aria-label')).toBe('收起思考内容');
+      expect(body?.textContent).toContain('需要解释镜像和容器的区别。');
+      expect(html).not.toContain('<think>');
+      expect(html).not.toContain('&lt;think&gt;');
+
+      React.act(() => {
+        header?.click();
+      });
+
+      expect(header?.getAttribute('aria-expanded')).toBe('false');
+      expect(header?.getAttribute('aria-label')).toBe('展开思考内容');
+      expect(
+        findMiniElement(container, element => hasMiniClass(element, 'chatx-thinking-panel__body'))
+      ).toBeUndefined();
+    } finally {
+      React.act(() => {
+        root.unmount();
+      });
+      vi.unstubAllGlobals();
+    }
   });
 
   it('会把绑定到 progress stream 的 Think 渲染到主聊天线程里，但不再把运行态战报混进正文', () => {
