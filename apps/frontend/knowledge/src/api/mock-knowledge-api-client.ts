@@ -25,6 +25,7 @@ import {
   mockDocuments,
   mockEvalDatasets,
   mockEvalRuns,
+  mockFailedIngestionJob,
   mockObservabilityMetrics,
   mockKnowledgeBases,
   mockTraceDetail
@@ -90,7 +91,7 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   async getLatestDocumentJob(documentId: string): Promise<DocumentProcessingJob> {
-    return createMockJob(documentId);
+    return { ...mockFailedIngestionJob, documentId };
   }
 
   async listDocumentChunks(documentId: string): Promise<DocumentChunksResponse> {
@@ -115,8 +116,11 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       job: {
         id: 'job_upload_mock',
         documentId: document.id,
+        stage: 'uploaded',
         status: 'queued',
         stages: [],
+        progress: { percent: 0 },
+        attempts: 1,
         createdAt: new Date().toISOString()
       }
     };
@@ -129,8 +133,11 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       job: {
         id: 'job_reprocess_mock',
         documentId,
+        stage: 'uploaded',
         status: 'queued',
         stages: [],
+        progress: { percent: 0 },
+        attempts: 2,
         createdAt: new Date().toISOString()
       }
     };
@@ -148,6 +155,14 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       conversationId,
       answer,
       traceId: mockTraceDetail.id,
+      route: { reason: 'mentions', requestedMentions: ['前端知识库'], selectedKnowledgeBaseIds: ['kb_frontend'] },
+      diagnostics: {
+        normalizedQuery: message,
+        queryVariants: [message],
+        retrievalMode: 'hybrid',
+        hitCount: 1,
+        contextChunkCount: 1
+      },
       citations: mockTraceDetail.citations,
       userMessage: {
         id: 'msg_user',
@@ -161,6 +176,14 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         conversationId,
         role: 'assistant',
         content: answer,
+        diagnostics: {
+          normalizedQuery: message,
+          queryVariants: [message],
+          retrievalMode: 'hybrid',
+          hitCount: 1,
+          contextChunkCount: 1
+        },
+        route: { reason: 'mentions', requestedMentions: ['前端知识库'], selectedKnowledgeBaseIds: ['kb_frontend'] },
         traceId: mockTraceDetail.id,
         citations: mockTraceDetail.citations,
         createdAt: new Date().toISOString()
@@ -240,8 +263,11 @@ function createMockJob(documentId: string): DocumentProcessingJob {
   return {
     id: 'job_mock_latest',
     documentId,
+    stage: 'uploaded',
     status: 'queued',
     stages: [],
+    progress: { percent: 0 },
+    attempts: 1,
     createdAt: new Date().toISOString()
   };
 }

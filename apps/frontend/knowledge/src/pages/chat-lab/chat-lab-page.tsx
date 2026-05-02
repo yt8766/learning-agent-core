@@ -25,8 +25,10 @@ type FeedbackValue = 'default' | 'like' | 'dislike';
 
 interface ChatLabAiExtraInfo {
   citations: Citation[];
+  diagnostics?: ChatMessage['diagnostics'];
   feedback?: FeedbackValue;
   messageId: string;
+  route?: ChatMessage['route'];
   traceId?: string;
 }
 
@@ -155,8 +157,14 @@ export function ChatLabPage() {
                   ]}
                 />
                 <Space wrap>
+                  {info.route ? <Tag>{info.route.reason}</Tag> : null}
+                  {info.diagnostics ? (
+                    <Typography.Text type="secondary">{info.diagnostics.retrievalMode}</Typography.Text>
+                  ) : null}
                   {info.traceId ? (
-                    <Typography.Link href={`/observability?traceId=${info.traceId}`}>Trace</Typography.Link>
+                    <Typography.Link href={`/observability?traceId=${info.traceId}`}>
+                      Trace {info.traceId}
+                    </Typography.Link>
                   ) : null}
                   <CitationList citations={info.citations} />
                 </Space>
@@ -261,6 +269,8 @@ export function ChatLabPage() {
                   ...nextResponse.assistantMessage,
                   citations: nextResponse.citations,
                   content: nextResponse.answer,
+                  diagnostics: nextResponse.diagnostics,
+                  route: nextResponse.route,
                   traceId: nextResponse.traceId
                 }
               ],
@@ -435,8 +445,10 @@ function toBubbleMessage(message: ChatMessage, feedback: Record<string, Feedback
       content: message.content,
       extraInfo: {
         citations: message.citations ?? [],
+        diagnostics: message.diagnostics,
         feedback: feedback[message.id],
         messageId: message.id,
+        route: message.route,
         traceId: message.traceId
       } satisfies ChatLabAiExtraInfo,
       key: message.id,

@@ -1,7 +1,7 @@
 状态：current
 文档类型：architecture
 适用范围：`apps/frontend/knowledge`
-最后核对：2026-05-02
+最后核对：2026-05-03
 
 # Knowledge 前端架构
 
@@ -16,7 +16,7 @@ UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和
 
 `KnowledgeApiClient` 统一走 fetch 路径。请求前通过 `AuthClient.ensureValidAccessToken()` 取 access token；业务接口返回 `401 + code=auth_token_expired` 时，调用 `AuthClient.refreshTokensOnce()` 并重试原请求一次。
 
-前端 DTO 以 `docs/contracts/api/knowledge.md` 为准；稳定共享模型优先从 `@agent/knowledge` 消费，例如 `KnowledgeBase` 继承 SDK core contract。新增字段时先更新 API contract / SDK schema，再更新前端类型和实现。
+前端 DTO 以 `docs/contracts/api/knowledge.md` 为准；稳定共享模型优先从 `@agent/knowledge` 消费，例如 `KnowledgeBaseHealth`、RAG answer route/diagnostics 和 trace projection。新增字段时先更新 API contract / SDK schema，再更新前端类型和实现。
 
 ## Backend Connection
 
@@ -52,14 +52,14 @@ Do not make mock data the default production path.
 
 ## 页面工作流
 
-- `KnowledgeBasesPage`：通过 provider 读取知识库列表；支持新建知识库并进入 `/knowledge-bases/:baseId` 详情。
+- `KnowledgeBasesPage`：通过 provider 读取知识库列表；支持新建知识库并进入 `/knowledge-bases/:baseId` 详情。列表可展示 `health.status` 与 `health.warnings`，用于把后端知识库健康投影直接暴露给运营人员。
 - `KnowledgeBaseDetailPage`：读取知识库、文档列表和上传状态；上传入口只接受 Markdown/TXT，并按两步协议调用 provider。
 - `DocumentUploadPanel`：先调用 `uploadKnowledgeFile()`，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`；再调用 `createDocumentFromUpload()` 创建 document 和 ingestion job；非终态 job 通过 `getLatestDocumentJob()` 轮询。面板必须展示 `Progress`，优先使用后端 `job.progress.percent`，后端未返回时才使用 stage fallback。
 - `DocumentsPage`：通过 provider 读取文档列表并进入 `/documents/:documentId` 详情；文档 Table 必须有行内处理进度列，直接展示每个文档的入库/向量化进展。上传入口是“上传文档”按钮触发的弹窗，不在页面顶部常驻选择器；弹窗内选择目标知识库、embedding model，并选择 Markdown/TXT 文件。上传目标必须来自 `listKnowledgeBases()` 返回的当前用户可访问知识库，不能硬编码 `kb_frontend` 这类 mock / fixture id。单知识库可默认选中，但选择控件仍在弹窗内可见；`listEmbeddingModels()` 用于展示 embedding model 选择器，创建 document 时把 `embeddingModelId` 写入 `metadata.embeddingModelId`。保留旧 `uploadDocument()` 兼容方法只用于迁移期，内部必须转到 `uploadKnowledgeFile()` + `createDocumentFromUpload()` 两步协议，不能再请求旧单步 `/knowledge-bases/:id/documents/upload` 路径；删除操作必须先通过行内确认提示，再走 `deleteDocument()`，由后端校验 membership、删除 document record 并 best-effort 清理 OSS object，页面删除后刷新列表。
-- `DocumentDetailPage`：读取 `getDocument()`、`getLatestDocumentJob()` 和 `listDocumentChunks()`，展示 job stage、错误和 chunks；点击重新处理时调用 `reprocessDocument()` 并刷新详情。
+- `DocumentDetailPage`：读取 `getDocument()`、`getLatestDocumentJob()` 和 `listDocumentChunks()`，展示稳定 `job.stage`、`job.progress.percent`、可重试错误和 chunks；点击重新处理或失败 job 的重试按钮时调用 `reprocessDocument()` 并刷新详情。旧 `currentStage` / `stages` timeline 只作为详细进度保留，页面主状态以稳定 ingestion job projection 为准。
 - `OverviewPage`：ECharts 图表必须限制 tooltip 在图表容器内，并在 Ant Design `Space` / `Card` 嵌套下设置 `min-width: 0` 与 `width: 100%`，避免图表画布或 tooltip 撑出下方 card 范围。
-- `ChatLabPage`：通过 provider 调 `/chat`；进入页面后读取 `listKnowledgeBases()` 用于输入框 `@` 候选和解析文本中的 `@知识库名`，不得再渲染常驻知识库 Select，也不得把会话 key 映射成 `kb_frontend` / `kb_runtime` 这类 fixture ID。页面采用 Codex 风格双栏工作台：左侧是会话与知识库入口，右侧是顶部运行栏、居中空态标题、消息线程和底部 composer，不再使用嵌套 Card demo 布局。输入框使用 Ant Design X `Suggestion` 包裹普通受控 `Sender`，避免 `slotConfig` contenteditable 影响普通文字和空格输入；用户输入 `@` 时展示当前可访问知识库候选，选择候选后将当前 `@` token 从文本框移除，并在 `Sender.header` 内展示蓝色知识库标签。发送时必须从 header 标签状态和文本 `@知识库名` 解析 `metadata.mentions`，不直接发送 knowledgeBaseIds。左侧会话栏支持“新建会话”，会话内容来自当前本地会话消息列表。发送请求时必须采用 OpenAI Chat Completions 风格 payload：`model`、`messages: [{ role: 'user', content }]`、`metadata.conversationId`、`metadata.mentions`、`stream: false`；没有 `@mentions` 时发送空 mentions，让后端在检索前根据问题和 knowledge base 元信息自动路由。新 Chat Lab 不能继续发送旧的顶层 `message` / `knowledgeBaseIds` payload，也不能主动发送 `metadata.knowledgeBaseIds`。AI 回复必须通过 Ant Design X `Bubble.List.role.ai` 统一配置 `contentRender`、`footer` 和 `loadingRender`：正文用 Markdown 渲染，footer 使用 `Actions.Copy` 与 `Actions.Feedback`，并继续展示 trace link 和 citation cards；citation card 至少展示 title、quote、score 或 uri，不能退回只展示标题列表。feedback 调 `/messages/:id/feedback`。
-- `ObservabilityPage`：读取 metrics、trace list 和 trace detail；trace table 点击调用 `selectTrace()`；`/observability?traceId=<id>` 会自动打开对应 trace。
+- `ChatLabPage`：通过 provider 调 `/chat`；进入页面后读取 `listKnowledgeBases()` 用于输入框 `@` 候选和解析文本中的 `@知识库名`，不得再渲染常驻知识库 Select，也不得把会话 key 映射成 `kb_frontend` / `kb_runtime` 这类 fixture ID。页面采用 Codex 风格双栏工作台：左侧是会话与知识库入口，右侧是顶部运行栏、居中空态标题、消息线程和底部 composer，不再使用嵌套 Card demo 布局。输入框使用 Ant Design X `Suggestion` 包裹普通受控 `Sender`，避免 `slotConfig` contenteditable 影响普通文字和空格输入；用户输入 `@` 时展示当前可访问知识库候选，选择候选后将当前 `@` token 从文本框移除，并在 `Sender.header` 内展示蓝色知识库标签。发送时必须从 header 标签状态和文本 `@知识库名` 解析 `metadata.mentions`，不直接发送 knowledgeBaseIds。左侧会话栏支持“新建会话”，会话内容来自当前本地会话消息列表。发送请求时必须采用 OpenAI Chat Completions 风格 payload：`model`、`messages: [{ role: 'user', content }]`、`metadata.conversationId`、`metadata.mentions`、`stream: false`；没有 `@mentions` 时发送空 mentions，让后端在检索前根据问题和 knowledge base 元信息自动路由。新 Chat Lab 不能继续发送旧的顶层 `message` / `knowledgeBaseIds` payload，也不能主动发送 `metadata.knowledgeBaseIds`。AI 回复必须通过 Ant Design X `Bubble.List.role.ai` 统一配置 `contentRender`、`footer` 和 `loadingRender`：正文用 Markdown 渲染，footer 使用 `Actions.Copy` 与 `Actions.Feedback`，并继续展示 route reason、retrieval diagnostics、trace link 和 citation cards；citation card 至少展示 title、quote、score 或 uri，不能退回只展示标题列表。feedback 调 `/messages/:id/feedback`。
+- `ObservabilityPage`：读取 metrics、trace list 和 trace detail；trace table 点击调用 `selectTrace()`；`/observability?traceId=<id>` 会自动打开对应 trace。页面同时兼容稳定 trace projection 的 `id/question/spans` 和历史 raw trace 的 `traceId/operation/spans.status=ok`，Table 主列优先展示 question，缺失时回退 operation。
 - `EvalsPage`：读取 datasets/runs，并在至少两次 run 存在时调用 `/eval/runs/compare` 展示回归差异。
 
 ## 并发与状态

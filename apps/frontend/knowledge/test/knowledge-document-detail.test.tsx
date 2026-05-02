@@ -58,23 +58,6 @@ vi.mock('antd', () => {
     Progress({ percent }: { percent?: number }) {
       return <span>{percent}</span>;
     },
-    Statistic({
-      title,
-      value,
-      suffix
-    }: {
-      title?: React.ReactNode;
-      value?: React.ReactNode;
-      suffix?: React.ReactNode;
-    }) {
-      return (
-        <span>
-          {title}
-          {value}
-          {suffix}
-        </span>
-      );
-    },
     Space({ children }: { children?: React.ReactNode }) {
       return <span>{children}</span>;
     },
@@ -306,7 +289,6 @@ describe('knowledge document detail', () => {
 function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>(),
-    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>(),
     compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>(),
     createDocumentFromUpload: vi.fn<KnowledgeFrontendApi['createDocumentFromUpload']>().mockResolvedValue({
       document: documentRecord,
@@ -342,60 +324,6 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
       page: 1,
       pageSize: 20
     } satisfies PageResult<never>),
-    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
-    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    listWorkspaceUsers: vi.fn().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      summary: { totalUsers: 0, activeUsers: 0, adminUsers: 0, pendingUsers: 0 }
-    }),
-    getSettingsModelProviders: vi.fn().mockResolvedValue({ items: [], updatedAt: '2026-05-04T08:00:00.000Z' }),
-    getSettingsApiKeys: vi.fn().mockResolvedValue({ items: [] }),
-    getSettingsStorage: vi
-      .fn()
-      .mockResolvedValue({ buckets: [], knowledgeBases: [], updatedAt: '2026-05-04T08:00:00.000Z' }),
-    getSettingsSecurity: vi.fn().mockResolvedValue({
-      auditLogEnabled: true,
-      encryption: { enabled: true, transport: 'TLS 1.3', atRest: 'AES-256' },
-      ipAllowlist: [],
-      ipAllowlistEnabled: false,
-      mfaRequired: false,
-      passwordPolicy: '基础',
-      securityScore: 80,
-      ssoEnabled: true,
-      updatedAt: '2026-05-04T08:00:00.000Z'
-    }),
-    getChatAssistantConfig: vi.fn().mockResolvedValue({
-      deepThinkEnabled: true,
-      webSearchEnabled: false,
-      modelProfileId: 'knowledge-rag',
-      defaultKnowledgeBaseIds: [],
-      quickPrompts: [],
-      thinkingSteps: [],
-      updatedAt: '2026-05-04T08:00:00.000Z'
-    }),
-    listAgentFlows: vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
-      items: [],
-      total: 0,
-      page: 1,
-      pageSize: 20
-    }),
-    saveAgentFlow: vi.fn<KnowledgeFrontendApi['saveAgentFlow']>(),
-    updateAgentFlow: vi.fn<KnowledgeFrontendApi['updateAgentFlow']>(),
-    runAgentFlow: vi.fn<KnowledgeFrontendApi['runAgentFlow']>(),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     reprocessDocument: vi.fn<KnowledgeFrontendApi['reprocessDocument']>(),
     deleteDocument: vi.fn<KnowledgeFrontendApi['deleteDocument']>(),
