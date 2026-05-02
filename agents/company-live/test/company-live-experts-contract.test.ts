@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { CompanyExpertDefinitionSchema } from '@agent/core';
+
 import { companyLiveCoreExpertIds, companyLiveExpertDefinitions } from '../src';
 
 describe('company-live expert definitions', () => {
@@ -28,5 +30,16 @@ describe('company-live expert definitions', () => {
       'riskAgent',
       'financeAgent'
     ]);
+  });
+
+  it('parses production definitions with the core schema and keeps core ids available', () => {
+    const parsedDefinitions = companyLiveExpertDefinitions.map(definition =>
+      CompanyExpertDefinitionSchema.parse(definition)
+    );
+
+    for (const expertId of companyLiveCoreExpertIds) {
+      const definition = parsedDefinitions.find(parsedDefinition => parsedDefinition.expertId === expertId);
+      expect(definition?.phase).toBe('core');
+    }
   });
 });
