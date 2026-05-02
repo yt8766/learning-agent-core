@@ -11,11 +11,13 @@ import {
   DefaultPostRetrievalFilter,
   DefaultPostRetrievalRanker,
   HybridRetrievalEngine,
+  KnowledgeChatRoutingError,
   createKnowledgeSearchServiceRetriever,
   InMemoryKnowledgeChunkRepository,
   InMemoryKnowledgeSourceRepository,
   RrfFusionStrategy,
   SmallToBigContextExpander,
+  resolveKnowledgeChatRoute,
   ingestLocalKnowledge,
   LocalKnowledgeFacade,
   listKnowledgeArtifacts,
@@ -77,6 +79,11 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.HybridRetrievalEngine).toBe(HybridRetrievalEngine);
     expect(rootExports.RrfFusionStrategy).toBe(RrfFusionStrategy);
     expect(rootExports.createKnowledgeSearchServiceRetriever).toBe(createKnowledgeSearchServiceRetriever);
+  });
+
+  it('re-exports chat pre-retrieval routing APIs', () => {
+    expect(rootExports.resolveKnowledgeChatRoute).toBe(resolveKnowledgeChatRoute);
+    expect(rootExports.KnowledgeChatRoutingError).toBe(KnowledgeChatRoutingError);
   });
 
   it('re-exports the Small-to-Big context expander implementation', () => {

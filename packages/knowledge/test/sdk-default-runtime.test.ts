@@ -61,6 +61,27 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
     ).toThrow(KnowledgeSdkRuntimeConfigError);
   });
 
+  it('wraps unsupported provider ids in a config error', () => {
+    expect(() =>
+      createDefaultKnowledgeSdkRuntime({
+        chat: {
+          provider: 'unsupported' as never,
+          apiKey: 'chat-key',
+          model: 'chat-model',
+          baseURL: 'https://llm.local/v1'
+        },
+        embedding: {
+          provider: 'openai-compatible',
+          apiKey: 'embed-key',
+          model: 'embed-model',
+          baseURL: 'https://embed.local/v1',
+          dimensions: 1536
+        },
+        vectorStore: { client: supabaseClient().client, knowledgeBaseId: 'kb_default' }
+      })
+    ).toThrow(KnowledgeSdkRuntimeConfigError);
+  });
+
   it('wraps provider construction failures in a config error', async () => {
     vi.resetModules();
     vi.doMock('../src/adapters', async importOriginal => {
@@ -70,6 +91,44 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
         ...actual,
         createOpenAICompatibleChatProvider: () => {
           throw new Error('vendor constructor failed');
+        }
+      };
+    });
+
+    const { createDefaultKnowledgeSdkRuntime: createRuntime, KnowledgeSdkRuntimeConfigError: ConfigError } =
+      await import('../src/node/knowledge-sdk-runtime');
+
+    expect(() =>
+      createRuntime({
+        chat: {
+          provider: 'openai-compatible',
+          apiKey: 'chat-key',
+          model: 'chat-model',
+          baseURL: 'https://llm.local/v1'
+        },
+        embedding: {
+          provider: 'openai-compatible',
+          apiKey: 'embed-key',
+          model: 'embed-model',
+          baseURL: 'https://embed.local/v1',
+          dimensions: 1536
+        },
+        vectorStore: { client: supabaseClient().client, knowledgeBaseId: 'kb_default' }
+      })
+    ).toThrow(ConfigError);
+  });
+
+  it('wraps vector store construction failures in a config error', async () => {
+    vi.resetModules();
+    vi.doMock('../src/adapters', async importOriginal => {
+      const actual = await importOriginal<typeof import('../src/adapters')>();
+
+      return {
+        ...actual,
+        SupabasePgVectorStoreAdapter: class {
+          constructor() {
+            throw new Error('vector store constructor failed');
+          }
         }
       };
     });
