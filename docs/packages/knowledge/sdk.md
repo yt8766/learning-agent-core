@@ -31,15 +31,93 @@ export interface KnowledgeRuntimeProviders {
 }
 ```
 
-浏览器 HTTP client、Node runtime factory 与 token refresh 是后续 SDK 子路径草稿；在正式导出前，不应写入发布包接入说明。
+浏览器 HTTP client 与 token refresh 属于 `@agent/knowledge/browser` / `@agent/knowledge/client` 的后续方向；不要让浏览器直接持有 provider secret、database URL 或向量库凭据。
 
 ## 默认实现
 
 仓库内提供一些默认实现，但它们都不是公共 contract 的硬绑定：
 
 - `@agent/knowledge`：本地检索、query normalizer、post retrieval filter/ranker/diversifier/context assembler、local knowledge store。
+- `@agent/knowledge/node`：Node-only 默认 runtime factory，当前导出 `createDefaultKnowledgeSdkRuntime()`、`createKnowledgeRuntime()` 与相关类型。
 - `@agent/knowledge/adapters/supabase`：生产推荐的 `SupabasePgVectorStoreAdapter`。
 - `apps/backend/agent-server`：JWT 双 token、摄取、RAG、评测、观测的服务端默认装配。
+
+根入口不会导出 `createDefaultKnowledgeSdkRuntime()`。这是刻意边界：默认 runtime 会创建 OpenAI-compatible provider 与 Supabase pgvector adapter，只允许 Node/backend 层使用，前端和浏览器代码不得从根入口误拿到 node-only 能力。
+
+## Node 默认 Runtime
+
+后端想先使用 SDK 提供的默认实现时，使用 `@agent/knowledge/node`：
+
+```ts
+import { createDefaultKnowledgeSdkRuntime } from '@agent/knowledge/node';
+
+const runtime = createDefaultKnowledgeSdkRuntime({
+  chat: {
+    provider: 'openai-compatible',
+    model: process.env.KNOWLEDGE_CHAT_MODEL!,
+    apiKey: process.env.KNOWLEDGE_LLM_API_KEY,
+    baseURL: process.env.KNOWLEDGE_LLM_BASE_URL,
+    maxTokens: 2048
+  },
+  embedding: {
+    provider: 'openai-compatible',
+    model: process.env.KNOWLEDGE_EMBEDDING_MODEL!,
+    apiKey: process.env.KNOWLEDGE_LLM_API_KEY,
+    baseURL: process.env.KNOWLEDGE_LLM_BASE_URL,
+    dimensions: 1536,
+    batchSize: 64
+  },
+  vectorStore: {
+    client: supabaseRpcClientLike,
+    tenantId: workspaceId,
+    knowledgeBaseId: baseId,
+    documentId
+  }
+});
+
+await runtime.vectorStore.upsert({ records });
+const queryEmbedding = await runtime.embeddingProvider.embedText({ text: '如何接入 SDK？' });
+const { hits } = await runtime.vectorStore.search({
+  embedding: queryEmbedding.embedding,
+  topK: 5,
+  filters: { tenantId: workspaceId, knowledgeBaseId: baseId, query: '如何接入 SDK？' }
+});
+const answer = await runtime.chatProvider.generate({
+  messages: [
+    { role: 'system', content: '只基于 citations/context 回答。' },
+    { role: 'user', content: '如何接入 SDK？' }
+  ],
+  metadata: { citationCount: hits.length }
+});
+```
+
+`supabaseRpcClientLike` 只需要实现：
+
+```ts
+interface SupabaseRpcClientLike {
+  rpc(name: string, args: Record<string, unknown>): Promise<{ data: unknown | null; error: unknown | null }>;
+}
+```
+
+SDK 不要求后端一定使用 `@supabase/supabase-js`。`knowledge-server` 当前就是用项目自有 Postgres client 包装出这个最小 RPC 形状，再把 RPC 调用映射到数据库函数；这样 `pg.Pool`、数据库错误和 vendor response 都不会穿透到 SDK consumer 或 API DTO。
+
+### 后端默认接入方式
+
+`apps/backend/knowledge-server` 已经把默认 runtime 收敛到 `src/knowledge/runtime/knowledge-sdk-runtime.provider.ts`，并通过 Nest token 注入：
+
+```ts
+export const KNOWLEDGE_SDK_RUNTIME = Symbol('KNOWLEDGE_SDK_RUNTIME');
+```
+
+后端模块不直接在 controller/service 里创建 SDK provider。接入步骤是：
+
+1. 配置 `DATABASE_URL`，让 repository 和 Supabase pgvector RPC schema 初始化到同一套 PostgreSQL/Supabase。
+2. 配置 `KNOWLEDGE_CHAT_MODEL`、`KNOWLEDGE_EMBEDDING_MODEL`、`KNOWLEDGE_LLM_API_KEY`；可选配置 `KNOWLEDGE_LLM_BASE_URL`、`KNOWLEDGE_CHAT_MAX_TOKENS`、`KNOWLEDGE_EMBEDDING_DIMENSIONS`、`KNOWLEDGE_EMBEDDING_BATCH_SIZE`。
+3. `KnowledgeModule` 注册 `createKnowledgeSdkRuntimeProvider()`；provider 校验 env，创建 Postgres-backed RPC client，再调用 `createDefaultKnowledgeSdkRuntime()`。
+4. `KnowledgeIngestionWorker` 使用 `runtime.embeddingProvider.embedBatch()` 和 `runtime.vectorStore.upsert()` 把文档 chunks 写入向量库。
+5. `KnowledgeDocumentService.chat()` 使用 `runtime.embeddingProvider.embedText()`、`runtime.vectorStore.search()` 和 `runtime.chatProvider.generate()` 完成 RAG 对话。
+
+如果没有配置 SDK 专用 env，provider 返回 disabled runtime，保留本地 deterministic fallback；如果出现任一 SDK env 但缺少关键项，服务启动失败，避免半配置时误以为已经使用大模型或向量库。
 
 ## 官方 Adapter 层
 
@@ -99,6 +177,8 @@ const vectorStore = new SupabasePgVectorStoreAdapter({
 ## Supabase pgvector 推荐选型
 
 Knowledge SDK 的生产默认推荐使用 Supabase PostgreSQL + pgvector。这个选择让认证元数据、文档元数据、评测记录、trace 与向量检索可以落在同一套 PostgreSQL 运维体系内，减少早期生产化时的数据库数量、备份策略和权限边界复杂度。
+
+当前 knowledge-server 的向量不会存进前端、本地内存、普通 JSON 字段或 `packages/knowledge` 包内部文件；生产路径写入 PostgreSQL/Supabase 中的 `knowledge_document_chunks.embedding vector(1536)`。`knowledge_document_chunks.metadata jsonb` 只保存 display / filter metadata，例如 `tenantId`、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`、`tags`，真正的 embedding 数组由 pgvector 列保存和索引。
 
 默认 adapter 位于 `@agent/knowledge/adapters/supabase`：
 

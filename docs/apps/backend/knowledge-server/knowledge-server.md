@@ -181,7 +181,7 @@ SDK chat 分支不改变 `POST /api/chat` response schema：`answer` 使用 prov
 
 `DocumentProcessingJobRecord.progress` 是给前端进度条使用的稳定投影。同步 MVP 在处理完成后返回 `percent: 100`，并填充 `processedChunks` / `totalChunks`；后续异步 worker 可以按 stage 更新，但不能让前端直接依赖内部 provider 状态或第三方向量库响应。
 
-`GET /api/knowledge/embedding-models` 返回前端可选择的 embedding model display projection。当前 MVP 从 `KNOWLEDGE_EMBEDDING_MODEL_ID`、`KNOWLEDGE_EMBEDDING_PROVIDER` 和是否存在 embedding API key 推导默认项，只暴露 `id/label/provider/status`，不暴露任何 secret。前端把选择结果写入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，后端先保存为 metadata；真实 embedding provider 接入时应在 worker/provider 边界读取并校验该字段。
+`GET /api/knowledge/embedding-models` 返回前端可选择的 embedding model display projection。当前 MVP 与 SDK runtime 使用同一组默认配置：`KNOWLEDGE_EMBEDDING_MODEL` 决定 `id/label`，provider 固定展示为 `openai-compatible`，是否存在 `KNOWLEDGE_LLM_API_KEY` 决定 `available/unconfigured`。该 endpoint 只暴露 `id/label/provider/status`，不暴露任何 secret。前端把选择结果写入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，后端先保存为 metadata；真实多 embedding provider 接入时应在 worker/provider 边界读取并校验该字段。
 
 `DELETE /api/knowledge/documents/:documentId` 使用 document 所属 knowledge base 的 membership 做权限校验。删除时以数据库 document record 为主记录，`knowledge_document_jobs` 和 `knowledge_document_chunks` 通过外键级联清理；OSS object 通过 `OssStorageProvider.deleteObject()` 做 best-effort 清理，OSS 404 / NoSuchKey 按幂等删除处理，不把第三方 SDK 细节暴露给 API caller。
 

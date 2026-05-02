@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 import { KnowledgeFrontendMvpController } from '../../src/knowledge/knowledge-frontend-mvp.controller';
@@ -14,6 +14,10 @@ const actor = { userId: 'user_1', username: 'dev', roles: ['user'] };
 
 describe('KnowledgeFrontendMvpController', () => {
   const controller = new KnowledgeFrontendMvpController();
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
   it('serves frontend dashboard, documents, observability and eval list endpoints', () => {
     expect(controller.getDashboardOverview()).toMatchObject({
@@ -305,14 +309,17 @@ describe('KnowledgeFrontendMvpController', () => {
   });
 
   it('serves embedding model options without exposing provider secrets', () => {
+    vi.stubEnv('KNOWLEDGE_EMBEDDING_MODEL', 'embed-default');
+    vi.stubEnv('KNOWLEDGE_LLM_API_KEY', 'secret-key');
+
     expect(controller.listEmbeddingModels()).toEqual({
       items: [
-        expect.objectContaining({
-          id: expect.any(String),
-          label: expect.any(String),
-          provider: expect.any(String),
-          status: expect.stringMatching(/^(available|unconfigured)$/)
-        })
+        {
+          id: 'embed-default',
+          label: 'embed-default',
+          provider: 'openai-compatible',
+          status: 'available'
+        }
       ]
     });
     expect(JSON.stringify(controller.listEmbeddingModels())).not.toMatch(/apiKey|secret|token|password/i);

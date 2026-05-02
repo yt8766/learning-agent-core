@@ -271,6 +271,7 @@ export interface KnowledgeDocument {
 }
 
 export type DocumentProcessingStage =
+  | 'queued'
   | 'upload_received'
   | 'parse'
   | 'clean'
@@ -304,6 +305,11 @@ export interface DocumentProcessingJob {
   status: ProcessingJobStatus;
   currentStage?: DocumentProcessingStage;
   stages: DocumentProcessingStageRecord[];
+  progress?: {
+    percent: number;
+    processedChunks?: number;
+    totalChunks?: number;
+  };
   error?: ProcessingErrorSummary;
   startedAt?: ISODateTime;
   completedAt?: ISODateTime;
@@ -336,6 +342,15 @@ export interface KnowledgeUploadResult {
   objectKey: string;
   ossUrl: string;
   uploadedAt: ISODateTime;
+}
+
+export interface EmbeddingModelOption {
+  id: ID;
+  name: string;
+  provider: string;
+  dimension?: number;
+  description?: string;
+  status?: 'active' | 'disabled' | 'available' | 'unconfigured' | 'degraded';
 }
 
 export interface UploadKnowledgeFileRequest {
@@ -398,21 +413,26 @@ Response: `CreateDocumentFromUploadResponse`
 
 `uploadId` 与 `objectKey` 必须指向同一个 knowledge base 下由 Step 1 产生的上传结果。后端负责校验上传归属、当前用户权限、文件类型、幂等/冲突语义，并创建 `KnowledgeDocument` 与初始 `DocumentProcessingJob`。
 
+前端上传页必须通过上传弹窗显式展示目标 knowledge base 与 embedding model 选择，不能把这些选择器常驻在文档列表顶部。当前横向 MVP 允许把 `embeddingModelId` 放入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，由后端保存为 document metadata；后续接入真实异步 embedding provider 时应继续使用同一 display contract，不让 provider secret、SDK response 或向量细节穿透到前端。
+
+`DocumentProcessingJob.progress.percent` 是前端进度条的稳定投影，取值范围 `0-100`。文档列表 Table 必须以行内进度列展示每个 document 的线上处理进度；上传弹窗内的进度只表示当前文件选择/上传动作。同步 MVP 可在 job 完成后直接返回 `100`；异步实现必须在 `parse/chunk/embed/index_vector/commit` 等 stage 更新时保持单调推进。`processedChunks` 与 `totalChunks` 只用于展示，不作为前端判断任务终态的依据；终态仍以 `status` 为准。
+
 Endpoint contract:
 
-| Method | Path                                   | Query / Body                                                              | Response                            | 主要错误码                                                                                                                                                                                    | 权限                                        |
-| ------ | -------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| GET    | `/documents`                           | query: `PageQuery & { knowledgeBaseId?: ID; status?: DocumentStatus }`    | `PageResult<KnowledgeDocument>`     | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                     | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/knowledge/documents/:id`             | path: `id`                                                                | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/knowledge/bases/:id/uploads`         | path: `id`; multipart fields: `file`                                      | `KnowledgeUploadResult`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_invalid_type`, `knowledge_upload_too_large`, `knowledge_upload_oss_failed`, `validation_error`           | owner, admin, maintainer                    |
-| POST   | `/knowledge/bases/:id/documents`       | path: `id`; body: `CreateDocumentFromUploadRequest`                       | `CreateDocumentFromUploadResponse`  | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_not_found`, `knowledge_document_create_failed`, `knowledge_ingestion_enqueue_failed`, `validation_error` | owner, admin, maintainer                    |
-| GET    | `/knowledge/documents/:id/jobs/latest` | path: `id`                                                                | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_not_found`                                                                                                         | owner, admin, maintainer                    |
-| GET    | `/documents/:id/jobs`                  | path: `id`; query: `PageQuery`                                            | `PageResult<DocumentProcessingJob>` | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer                    |
-| GET    | `/knowledge/documents/:id/chunks`      | path: `id`; query: `PageQuery`                                            | `DocumentChunksResponse`            | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/knowledge/documents/:id/reprocess`   | path: `id`; optional body: `{ reason?: string }`                          | `ReprocessDocumentResponse`         | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
-| DELETE | `/knowledge/documents/:id`             | path: `id`                                                                | `DeleteDocumentResponse`            | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `knowledge_permission_denied`                                                                                                    | owner, admin, maintainer                    |
-| POST   | `/documents/:id/reembed`               | path: `id`; optional body: `{ embeddingModel?: string; reason?: string }` | `DocumentProcessingJob`             | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
-| POST   | `/documents/:id/disable`               | path: `id`; optional body: `{ reason?: string }`                          | `KnowledgeDocument`                 | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer                    |
+| Method | Path                                   | Query / Body                                                              | Response                                                                  | 主要错误码                                                                                                                                                                                    | 权限                                        |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| GET    | `/documents`                           | query: `PageQuery & { knowledgeBaseId?: ID; status?: DocumentStatus }`    | `PageResult<KnowledgeDocument>`                                           | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                     | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/knowledge/embedding-models`          | none                                                                      | `PageResult<EmbeddingModelOption>` 或 `{ items: EmbeddingModelOption[] }` | `auth_unauthorized`, `auth_forbidden`                                                                                                                                                         | owner, admin, maintainer                    |
+| GET    | `/knowledge/documents/:id`             | path: `id`                                                                | `KnowledgeDocument`                                                       | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge/bases/:id/uploads`         | path: `id`; multipart fields: `file`                                      | `KnowledgeUploadResult`                                                   | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_invalid_type`, `knowledge_upload_too_large`, `knowledge_upload_oss_failed`, `validation_error`           | owner, admin, maintainer                    |
+| POST   | `/knowledge/bases/:id/documents`       | path: `id`; body: `CreateDocumentFromUploadRequest`                       | `CreateDocumentFromUploadResponse`                                        | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `knowledge_upload_not_found`, `knowledge_document_create_failed`, `knowledge_ingestion_enqueue_failed`, `validation_error` | owner, admin, maintainer                    |
+| GET    | `/knowledge/documents/:id/jobs/latest` | path: `id`                                                                | `DocumentProcessingJob`                                                   | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_not_found`                                                                                                         | owner, admin, maintainer                    |
+| GET    | `/documents/:id/jobs`                  | path: `id`; query: `PageQuery`                                            | `PageResult<DocumentProcessingJob>`                                       | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer                    |
+| GET    | `/knowledge/documents/:id/chunks`      | path: `id`; query: `PageQuery`                                            | `DocumentChunksResponse`                                                  | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `validation_error`                                                                                                               | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/knowledge/documents/:id/reprocess`   | path: `id`; optional body: `{ reason?: string }`                          | `ReprocessDocumentResponse`                                               | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
+| DELETE | `/knowledge/documents/:id`             | path: `id`                                                                | `DeleteDocumentResponse`                                                  | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `knowledge_permission_denied`                                                                                                    | owner, admin, maintainer                    |
+| POST   | `/documents/:id/reembed`               | path: `id`; optional body: `{ embeddingModel?: string; reason?: string }` | `DocumentProcessingJob`                                                   | `auth_unauthorized`, `auth_forbidden`, `document_not_found`, `document_job_conflict`                                                                                                          | owner, admin, maintainer                    |
+| POST   | `/documents/:id/disable`               | path: `id`; optional body: `{ reason?: string }`                          | `KnowledgeDocument`                                                       | `auth_unauthorized`, `auth_forbidden`, `document_not_found`                                                                                                                                   | owner, admin, maintainer                    |
 
 Legacy single-step upload response retained for migration-only callers:
 
@@ -462,6 +482,24 @@ export interface TokenUsage {
 
 export type ChatMessageRole = 'user' | 'assistant' | 'system';
 
+export type OpenAIChatMessageRole = 'developer' | 'system' | 'user' | 'assistant' | 'tool';
+
+export interface OpenAIChatTextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface OpenAIChatMessage {
+  role: OpenAIChatMessageRole;
+  content: string | OpenAIChatTextContentPart[];
+}
+
+export interface KnowledgeChatMention {
+  type: 'knowledge_base';
+  id?: ID;
+  label?: string;
+}
+
 export interface ChatMessage {
   id: ID;
   conversationId: ID;
@@ -474,14 +512,29 @@ export interface ChatMessage {
 }
 
 export interface ChatRequest {
-  conversationId?: ID;
   /**
-   * MVP backend also accepts a singular knowledgeBaseId for the current
-   * repository-backed RAG path. New callers should prefer knowledgeBaseIds.
+   * OpenAI Chat Completions compatible request surface. `model` is accepted
+   * for API shape compatibility. Backend model/provider selection is owned by
+   * the Knowledge SDK runtime provider, not by browser-side secrets.
    */
+  model?: string;
+  messages?: OpenAIChatMessage[];
+  metadata?: {
+    conversationId?: ID;
+    knowledgeBaseId?: ID;
+    knowledgeBaseIds?: ID[] | string;
+    mentions?: KnowledgeChatMention[];
+    debug?: boolean | string;
+  };
+  stream?: false;
+  /**
+   * Legacy compatibility fields. New frontend callers must prefer
+   * model/messages/metadata.
+   */
+  conversationId?: ID;
   knowledgeBaseId?: ID;
-  knowledgeBaseIds: ID[];
-  message: string;
+  knowledgeBaseIds?: ID[];
+  message?: string;
   retrievalConfigId?: ID;
   promptTemplateId?: ID;
   debug?: boolean;
@@ -523,21 +576,38 @@ export interface CreateFeedbackRequest {
 }
 ```
 
-`ChatRequest.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
+`POST /chat` 的请求面优先对齐 OpenAI Chat Completions：客户端传 `model`、`messages` 和 `metadata`，后端从最后一条 `role: "user"` 的 message 归一化出查询文本。新 Chat Lab 只发送 `metadata.conversationId`、`metadata.debug` 和从文本 `@知识库名` 中解析出的 `metadata.mentions`，不再发送 `metadata.knowledgeBaseIds`；检索范围由后端在检索前根据 mention、问题内容和可访问 knowledge base 元信息决定。`metadata.knowledgeBaseIds` 可为数组或逗号分隔字符串，仅保留迁移兼容；这是 knowledge server 的扩展字段，不得透传给 OpenAI provider。`stream: true` 尚未承诺，当前 MVP 只返回普通 JSON `ChatResponse`。旧字段 `conversationId`、`knowledgeBaseId`、`knowledgeBaseIds`、`message` 仅保留迁移兼容，新前端不得继续发送旧 payload。
 
-当前后端横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 repository-backed deterministic RAG：先按知识库检索 chunks，再用命中内容生成回答，随后保存 user message、`rag.chat` trace 和 assistant message。公开 body 为兼容旧前端仍可携带历史 `tenantId` / `createdBy` 字段，但服务端组装 RAG input 时必须忽略这些字段，当前 MVP 固定使用服务端上下文 `ws_1` / `user_demo`；内部调用 `KnowledgeRagService.answer()` 仍可显式传入租户和创建人。未配置 repository / rag service 的旧测试路径仍允许返回 fixture fallback。空 `message` 返回稳定 `400 validation_error` 语义；无检索命中时返回“未在当前知识库中找到足够依据。”并写入 succeeded trace。
+```json
+{
+  "model": "knowledge-rag",
+  "messages": [{ "role": "user", "content": "core包如何设计的" }],
+  "metadata": {
+    "conversationId": "frontend",
+    "debug": true,
+    "mentions": [{ "type": "knowledge_base", "label": "前端知识库" }]
+  },
+  "stream": false
+}
+```
+
+`ChatRequest.metadata.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
+
+当前 `knowledge-server` 横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 SDK RAG：检索前通过 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 解析路由，兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 按知识库 id / name 绑定范围；没有 mention 时，用问题 tokens 与可访问知识库 `name` / `description` / metadata 做 deterministic metadata routing；仍无命中时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时仅保留 repository-backed deterministic fallback，用于本地测试和 demo。空 user message 返回稳定 `400 knowledge_chat_message_required`；显式 mention 找不到可访问知识库返回 `400 knowledge_mention_not_found`；缺失 base 返回 `404 knowledge_base_not_found`；未授权 base 返回 `403 knowledge_permission_denied`；SDK embedding/vector/generation 失败返回 `503 knowledge_chat_failed`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
 
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 
+Chat Lab 前端必须把 `citations` 展示为引用卡片，而不是只展示标题列表。每张卡片至少展示 `title`、`quote` 或 `contentPreview`、`score` 或 `uri`，并保留 trace link 与 feedback 操作。`POST /messages/:id/feedback` 当前 MVP 返回带 `feedback` 的 assistant message projection，用于验证反馈按钮真实模式不再 404；它不承诺已经接入长期反馈仓储。
+
 Endpoint contract:
 
-| Method | Path                          | Query / Body                                           | Response                                                                                 | 主要错误码                                                                                                    | 权限                                        |
-| ------ | ----------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| POST   | `/chat`                       | body: `ChatRequest`                                    | `ChatResponse`                                                                           | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_base_not_found`, `provider_unavailable` | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/conversations`              | query: `PageQuery & { knowledgeBaseId?: ID }`          | `PageResult<{ id: ID; title?: string; createdAt: ISODateTime; updatedAt: ISODateTime }>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                     | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/conversations/:id/messages` | path: `id`; query: `PageQuery`                         | `PageResult<ChatMessage>`                                                                | `auth_unauthorized`, `auth_forbidden`, `conversation_not_found`, `validation_error`                           | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                                                                            | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                                                                               | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`      | owner, admin, maintainer, evaluator         |
+| Method | Path                          | Query / Body                                           | Response                                                                                 | 主要错误码                                                                                                                                                                                                      | 权限                                        |
+| ------ | ----------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| POST   | `/chat`                       | body: `ChatRequest`                                    | `ChatResponse`                                                                           | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_chat_message_required`, `knowledge_mention_not_found`, `knowledge_base_not_found`, `knowledge_permission_denied`, `knowledge_chat_failed` | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations`              | query: `PageQuery & { knowledgeBaseId?: ID }`          | `PageResult<{ id: ID; title?: string; createdAt: ISODateTime; updatedAt: ISODateTime }>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                                       | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations/:id/messages` | path: `id`; query: `PageQuery`                         | `PageResult<ChatMessage>`                                                                | `auth_unauthorized`, `auth_forbidden`, `conversation_not_found`, `validation_error`                                                                                                                             | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                                                                            | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                                                                                                                  | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                                                                               | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`                                                                                                        | owner, admin, maintainer, evaluator         |
 
 ## 8. Observability
 
