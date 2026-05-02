@@ -51,7 +51,7 @@ describe('knowledge provider presets', () => {
     expect(createdChatModels[0]).toMatchObject({
       model: 'MiniMax-M2.7',
       apiKey: 'key',
-      configuration: { baseURL: 'https://api.minimaxi.com/v1' }
+      configuration: { baseURL: 'https://api.minimax.io/v1' }
     });
     expect(createdEmbeddings[0]).toMatchObject({
       model: 'minimax-embedding',

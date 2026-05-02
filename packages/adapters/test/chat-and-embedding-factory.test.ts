@@ -129,13 +129,16 @@ describe('@agent/adapters chat and embedding factories', () => {
     expect(model).toBe(chatOpenAIInstances[0]);
     expect(chatOpenAIInstances[0]?.config).toEqual({
       model: 'MiniMax-M2.7',
-      temperature: 0.15,
-      maxTokens: 1024,
+      temperature: undefined,
+      maxTokens: undefined,
       apiKey: 'minimax-key',
       configuration: {
-        baseURL: 'https://api.minimaxi.com/v1'
+        baseURL: 'https://api.minimax.io/v1'
       },
-      modelKwargs: undefined
+      modelKwargs: {
+        max_completion_tokens: 1024
+      },
+      streamUsage: undefined
     });
   });
 

@@ -183,6 +183,7 @@ export const CompanyExpertConsultationSchema = z
   })
   .superRefine((consultation, ctx) => {
     const selectedExperts = new Set(consultation.selectedExperts);
+    const findingExpertIds = new Set(consultation.expertFindings.map(finding => finding.expertId));
 
     addDuplicateIssues(ctx, consultation.selectedExperts, ['selectedExperts']);
     addDuplicateIssues(
@@ -197,6 +198,16 @@ export const CompanyExpertConsultationSchema = z
           code: 'custom',
           path: ['expertFindings', index, 'expertId'],
           message: `Expert "${finding.expertId}" must be selected before it can provide findings`
+        });
+      }
+    });
+
+    consultation.selectedExperts.forEach((expertId, index) => {
+      if (!findingExpertIds.has(expertId)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['selectedExperts', index],
+          message: `Selected expert "${expertId}" must provide exactly one finding`
         });
       }
     });

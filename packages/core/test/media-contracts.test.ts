@@ -204,6 +204,50 @@ describe('company-live expert consultation contracts', () => {
         risks: ['卖点分散会降低转化。'],
         confidence: 0.66,
         source: 'fallback'
+      },
+      {
+        expertId: 'operationsAgent',
+        role: 'operations',
+        summary: '直播执行排期需要拆到可操作节点。',
+        diagnosis: ['主播协作和场控流程还缺少明确负责人。'],
+        recommendations: ['补充直播排期和场控 checklist。'],
+        questionsToUser: ['首场直播计划在哪一天？'],
+        risks: ['执行节奏不清会影响开播质量。'],
+        confidence: 0.62,
+        source: 'fallback'
+      },
+      {
+        expertId: 'contentAgent',
+        role: 'content',
+        summary: '内容话术需要贴近目标区域。',
+        diagnosis: ['脚本缺少本地化表达和素材节奏。'],
+        recommendations: ['补充平台首屏话术和素材分镜。'],
+        questionsToUser: ['目标平台主推哪种内容形式？'],
+        risks: ['内容表达泛化会降低停留时长。'],
+        confidence: 0.64,
+        source: 'fallback'
+      },
+      {
+        expertId: 'growthAgent',
+        role: 'growth',
+        summary: '增长目标需要量化。',
+        diagnosis: ['GMV、转化率和复购目标尚未拆分。'],
+        recommendations: ['先定义首场直播转化目标。'],
+        questionsToUser: ['首场直播目标 GMV 是多少？'],
+        risks: ['缺少目标会影响投放和复盘。'],
+        confidence: 0.61,
+        source: 'fallback'
+      },
+      {
+        expertId: 'financeAgent',
+        role: 'finance',
+        summary: '财务护栏需要补齐。',
+        diagnosis: ['缺少成本、库存和折扣边界。'],
+        recommendations: ['补充商品成本和目标毛利。'],
+        questionsToUser: ['每个 SKU 的成本是多少？'],
+        risks: ['折扣策略可能压缩毛利。'],
+        confidence: 0.6,
+        source: 'fallback'
       }
     ],
     missingInputs: ['商品成本', '库存'],
@@ -319,6 +363,31 @@ describe('company-live expert consultation contracts', () => {
               source: 'fallback'
             }
           ]
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects selected company experts without matching findings', () => {
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          selectedExperts: ['productAgent', 'riskAgent'],
+          expertFindings: [
+            {
+              expertId: 'productAgent',
+              role: 'product',
+              summary: '产品定位需要更清楚。',
+              diagnosis: ['目标用户和购买理由仍偏泛。'],
+              recommendations: ['补充核心用户画像。'],
+              questionsToUser: ['主推 SKU 是哪一个？'],
+              risks: ['卖点分散会降低转化。'],
+              confidence: 0.66,
+              source: 'fallback'
+            }
+          ],
+          conflicts: [],
+          nextActions: []
         })
       )
     ).toThrow();

@@ -98,6 +98,9 @@ importers:
 
   agents/company-live:
     dependencies:
+      '@agent/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@agent/core':
         specifier: workspace:*
         version: link:../../packages/core

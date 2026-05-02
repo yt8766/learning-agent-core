@@ -395,6 +395,33 @@ describe('loadSettings', () => {
     );
   });
 
+  it('defaults MiniMax chat providers to the official global OpenAI-compatible endpoint', () => {
+    const settings = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        ACTIVE_MODEL_PROVIDER: '',
+        MINIMAX_API_KEY: 'minimax-key',
+        MINIMAX_MANAGER_MODEL: '',
+        MINIMAX_RESEARCH_MODEL: '',
+        MINIMAX_EXECUTOR_MODEL: '',
+        MINIMAX_REVIEWER_MODEL: '',
+        MINIMAX_DIALOG_MODEL: '',
+        MINIMAX_PROVIDER_ID: '',
+        MINIMAX_PROVIDER_NAME: ''
+      } as unknown as NodeJS.ProcessEnv
+    });
+
+    expect(settings.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'minimax',
+          type: 'minimax',
+          baseUrl: 'https://api.minimax.io/v1'
+        })
+      ])
+    );
+  });
+
   it('supports overriding MiniMax role models through env', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,

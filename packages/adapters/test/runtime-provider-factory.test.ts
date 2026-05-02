@@ -449,4 +449,91 @@ describe('@agent/adapters runtime provider factory', () => {
       })
     ).resolves.toBe('provider=text-ready;model=text-chat');
   });
+
+  it('ignores empty semantic cache entries and does not persist empty provider output', async () => {
+    const cacheSet = vi.fn();
+    const providerStreamText = vi.fn(async (_messages, _options, onToken) => {
+      onToken('fresh output');
+      return 'fresh output';
+    });
+    const llm = createDefaultRuntimeLlmProvider({
+      settings: {
+        providers: [
+          {
+            id: 'text-ready',
+            type: 'text-ready',
+            displayName: 'Text Ready',
+            models: ['text-chat'],
+            roleModels: {
+              manager: 'text-chat'
+            }
+          }
+        ],
+        routing: {
+          manager: { primary: 'text-ready/text-chat' }
+        },
+        zhipuApiKey: '',
+        zhipuApiBaseUrl: '',
+        zhipuModels: {
+          manager: 'glm-5',
+          research: 'glm-5.1',
+          executor: 'glm-4.6',
+          reviewer: 'glm-4.7'
+        },
+        zhipuThinking: {
+          manager: true,
+          research: false,
+          executor: false,
+          reviewer: true
+        }
+      } as unknown as RuntimeProviderSettings,
+      semanticCacheRepository: {
+        get: vi.fn(async () => ({
+          id: 'cache-empty',
+          key: 'cache-key',
+          role: 'manager',
+          modelId: 'text-ready/text-chat',
+          responseText: '',
+          promptFingerprint: 'cache-key',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          hitCount: 1
+        })),
+        set: cacheSet
+      },
+      customFactories: [
+        createLlmProviderFactory({
+          type: 'text-ready',
+          create: config => ({
+            providerId: config.id,
+            displayName: config.displayName ?? config.id,
+            supportedModels: () => [
+              {
+                id: 'text-chat',
+                displayName: 'text-chat',
+                providerId: config.id,
+                contextWindow: 8_000,
+                maxOutput: 2_048,
+                capabilities: createModelCapabilities(MODEL_CAPABILITIES.TEXT)
+              }
+            ],
+            isConfigured: () => true,
+            generateText: async () => '',
+            streamText: providerStreamText,
+            generateObject: async () => ({ ok: true })
+          })
+        })
+      ]
+    });
+
+    const onToken = vi.fn();
+
+    await expect(llm.streamText([{ role: 'user', content: 'hello' }], { role: 'manager' }, onToken)).resolves.toBe(
+      'fresh output'
+    );
+
+    expect(providerStreamText).toHaveBeenCalledTimes(1);
+    expect(onToken.mock.calls).toEqual([['fresh output']]);
+    expect(cacheSet).toHaveBeenCalledWith(expect.objectContaining({ responseText: 'fresh output' }));
+  });
 });
