@@ -13,6 +13,7 @@ import {
   Optional,
   UseGuards
 } from '@nestjs/common';
+import type { KnowledgeTrace } from '@agent/knowledge';
 import { ZodError } from 'zod';
 
 import { AuthUser } from '../auth/auth-user.decorator';
@@ -135,7 +136,7 @@ export class KnowledgeFrontendMvpController {
 
   @Get('observability/traces')
   listTraces() {
-    return page(this.traces?.listTraces() ?? []);
+    return page((this.traces?.listTraces() ?? []).map(toRagTraceProjection));
   }
 
   @Get('observability/traces/:traceId')
@@ -144,7 +145,7 @@ export class KnowledgeFrontendMvpController {
     if (!trace) {
       throw new NotFoundException({ code: 'knowledge_trace_not_found', message: 'Trace not found' });
     }
-    return trace;
+    return toRagTraceDetailProjection(trace);
   }
 
   @Get('eval/datasets')
@@ -239,4 +240,58 @@ function defaultEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
   return {
     items: [{ id, label: id, provider, status }]
   };
+}
+
+function toRagTraceProjection(trace: KnowledgeTrace) {
+  return {
+    id: trace.traceId,
+    workspaceId: 'default',
+    knowledgeBaseIds: trace.knowledgeBaseId ? [trace.knowledgeBaseId] : [],
+    question: '',
+    status: toLegacyTraceStatus(trace.status),
+    createdAt: trace.startedAt,
+    latencyMs: getLatencyMs(trace.startedAt, trace.endedAt)
+  };
+}
+
+function toRagTraceDetailProjection(trace: KnowledgeTrace) {
+  return {
+    ...toRagTraceProjection(trace),
+    spans: trace.spans.map(span => ({
+      id: span.spanId,
+      traceId: trace.traceId,
+      stage: span.stage ?? span.name,
+      name: span.name,
+      status: toLegacyTraceStatus(span.status ?? trace.status),
+      input: span.attributes ? { data: span.attributes } : undefined,
+      error: span.error ? { code: span.error.code, message: span.error.message } : undefined,
+      startedAt: span.startedAt,
+      endedAt: span.endedAt,
+      latencyMs: getLatencyMs(span.startedAt, span.endedAt)
+    })),
+    citations: []
+  };
+}
+
+function toLegacyTraceStatus(
+  status: KnowledgeTrace['status'] | NonNullable<KnowledgeTrace['spans'][number]['status']>
+) {
+  if (status === 'ok' || status === 'succeeded') {
+    return 'succeeded';
+  }
+  if (status === 'error' || status === 'failed') {
+    return 'failed';
+  }
+  if (status === 'cancelled' || status === 'canceled') {
+    return 'canceled';
+  }
+  return status;
+}
+
+function getLatencyMs(startedAt: string, endedAt?: string): number | undefined {
+  if (!endedAt) {
+    return undefined;
+  }
+  const latency = Date.parse(endedAt) - Date.parse(startedAt);
+  return Number.isFinite(latency) && latency >= 0 ? latency : undefined;
 }
