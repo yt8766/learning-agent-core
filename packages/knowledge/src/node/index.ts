@@ -36,6 +36,8 @@ export function createKnowledgeRuntime(providers: KnowledgeRuntimeProviders): Kn
   };
 }
 
+export * from './knowledge-sdk-runtime';
+
 export type {
   EmbedBatchInput,
   EmbedBatchResult,
