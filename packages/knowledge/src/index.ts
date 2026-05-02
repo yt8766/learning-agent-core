@@ -4,17 +4,8 @@ export {
   DEFAULT_TRACE_SAMPLE_RATE,
   KnowledgeAuthSessionSchema,
   KnowledgeAuthTokensSchema,
-  KnowledgeBaseHealthSchema,
-  KnowledgeBaseHealthStatusSchema,
   KnowledgeBaseSchema,
-  KnowledgeErrorResponseSchema,
-  KnowledgeEvalCaseSchema,
-  KnowledgeEvalRunResultSchema,
   KnowledgeEvalRunSchema,
-  KnowledgeIngestionJobProjectionSchema,
-  KnowledgeIngestionJobStatusSchema,
-  KnowledgeIngestionStageSchema,
-  KnowledgeProviderHealthStatusSchema,
   ProviderHealthSchema
 } from './core';
 export {
@@ -27,18 +18,9 @@ export {
   type EmbedTextInput,
   type EmbedTextResult,
   type KnowledgeBase,
-  type KnowledgeBaseHealth,
-  type KnowledgeBaseHealthStatus,
   type KnowledgeAuthTokens,
   type KnowledgeAuthSession,
-  type KnowledgeErrorResponse,
-  type KnowledgeEvalCase,
-  type KnowledgeEvalRunResult,
   type KnowledgeEvalRun,
-  type KnowledgeIngestionJobStatus,
-  type KnowledgeIngestionJobProjection,
-  type KnowledgeIngestionStage,
-  type KnowledgeProviderHealthStatus,
   type KnowledgeErrorCategory,
   type KnowledgeErrorOptions,
   type KnowledgeUser,
@@ -56,36 +38,18 @@ export {
 export {
   KnowledgeCitationSchema,
   KnowledgeRagAnswerSchema,
-  KnowledgeRagDiagnosticsSchema,
-  KnowledgeRagRouteReasonSchema,
-  KnowledgeRagRouteSchema,
   KnowledgeRefreshSessionSchema,
-  KnowledgeRetrievalModeSchema,
-  KnowledgeTokenUsageSchema,
-  KnowledgeTraceOperationSchema,
   KnowledgeTraceSchema,
-  KnowledgeTraceSpanStatusSchema,
   KnowledgeTraceSpanSchema,
-  KnowledgeVectorSearchRequestSchema,
-  KnowledgeWorkbenchSpanNameSchema,
-  KnowledgeWorkbenchTraceStatusSchema
+  KnowledgeVectorSearchRequestSchema
 } from './core';
 export type {
   KnowledgeCitation,
   KnowledgeRagAnswer,
-  KnowledgeRagDiagnostics,
-  KnowledgeRagRouteReason,
-  KnowledgeRagRoute,
   KnowledgeRefreshSession,
-  KnowledgeRetrievalMode,
-  KnowledgeTokenUsage,
-  KnowledgeTraceOperation,
   KnowledgeTrace,
-  KnowledgeTraceSpanStatus,
   KnowledgeTraceSpan,
-  KnowledgeVectorSearchRequest,
-  KnowledgeWorkbenchSpanName,
-  KnowledgeWorkbenchTraceStatus
+  KnowledgeVectorSearchRequest
 } from './core';
 export type {
   ChromaClientConfig,
@@ -148,7 +112,6 @@ export {
   resolveKnowledgeRetrievalFilters
 } from './retrieval/knowledge-retrieval-filters';
 export * from './retrieval/knowledge-search-service';
-export * from './retrieval/knowledge-chat-routing';
 export type { VectorSearchHit, VectorSearchOptions, VectorSearchProvider } from './retrieval/vector-search-provider';
 export { InMemoryVectorSearchProvider } from './retrieval/in-memory-vector-search-provider';
 export { VectorKnowledgeSearchService } from './retrieval/vector-knowledge-search-service';
@@ -166,43 +129,6 @@ export { rrfFusion } from './retrieval/rrf-fusion';
 export type { HybridSearchConfig } from './retrieval/hybrid-knowledge-search-service';
 export { HybridKnowledgeSearchService } from './retrieval/hybrid-knowledge-search-service';
 export type { KnowledgeRetrievalRuntime, RetrievalPipelineConfig } from './contracts/knowledge-retrieval-runtime';
-export {
-  JsonObjectSchema as KnowledgeAgentFlowJsonObjectSchema,
-  JsonValueSchema as KnowledgeAgentFlowJsonValueSchema,
-  KnowledgeAgentFlowEdgeSchema,
-  KnowledgeAgentFlowListRequestSchema,
-  KnowledgeAgentFlowListResponseSchema,
-  KnowledgeAgentFlowNodeSchema,
-  KnowledgeAgentFlowNodeTypeSchema,
-  KnowledgeAgentFlowPositionSchema,
-  KnowledgeAgentFlowRunInputSchema,
-  KnowledgeAgentFlowRunRequestSchema,
-  KnowledgeAgentFlowRunResponseSchema,
-  KnowledgeAgentFlowRunStatusSchema,
-  KnowledgeAgentFlowSaveRequestSchema,
-  KnowledgeAgentFlowSaveResponseSchema,
-  KnowledgeAgentFlowSchema,
-  KnowledgeAgentFlowStatusSchema
-} from './contracts/knowledge-agent-flow';
-export type {
-  JsonObject as KnowledgeAgentFlowJsonObject,
-  JsonPrimitive as KnowledgeAgentFlowJsonPrimitive,
-  JsonValue as KnowledgeAgentFlowJsonValue,
-  KnowledgeAgentFlow,
-  KnowledgeAgentFlowEdge,
-  KnowledgeAgentFlowListRequest,
-  KnowledgeAgentFlowListResponse,
-  KnowledgeAgentFlowNode,
-  KnowledgeAgentFlowNodeType,
-  KnowledgeAgentFlowPosition,
-  KnowledgeAgentFlowRunInput,
-  KnowledgeAgentFlowRunRequest,
-  KnowledgeAgentFlowRunResponse,
-  KnowledgeAgentFlowRunStatus,
-  KnowledgeAgentFlowSaveRequest,
-  KnowledgeAgentFlowSaveResponse,
-  KnowledgeAgentFlowStatus
-} from './contracts/knowledge-agent-flow';
 export type { ContextAssembler } from './runtime/stages/context-assembler';
 export type {
   ContextExpander,
@@ -254,7 +180,6 @@ export {
   HybridRetrievalDiagnosticsSchema,
   HybridRetrievalModeSchema,
   HybridRetrieverIdSchema,
-  RetrievalDiagnosticsSchema,
   RetrievalFusionStrategyNameSchema
 } from './runtime/types/retrieval-runtime.types';
 export { DefaultContextAssembler } from './runtime/defaults/default-context-assembler';
@@ -276,7 +201,6 @@ export {
 } from './runtime/defaults/retrieval-runtime-defaults';
 export type { KnowledgeRetrievalRunOptions } from './runtime/pipeline/run-knowledge-retrieval';
 export { runKnowledgeRetrieval } from './runtime/pipeline/run-knowledge-retrieval';
-export * from './rag';
 export * from './runtime/local-knowledge-facade';
 export * from './runtime/local-knowledge-store';
 export * from './runtime/local-knowledge-source-ingestion';
@@ -317,5 +241,4 @@ export type {
 } from './adapters/supabase';
 export * from './client';
 export { createKnowledgeBrowserClient } from './browser';
-export { createKnowledgeRuntime } from './node/knowledge-runtime';
-export type { KnowledgeRuntime, KnowledgeRuntimeProviders } from './node/knowledge-runtime';
+export * from './node';

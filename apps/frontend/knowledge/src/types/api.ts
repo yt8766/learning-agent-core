@@ -77,11 +77,15 @@ export interface AuthTokens {
   tokenType: 'Bearer';
   expiresIn: number;
   refreshExpiresIn: number;
+  accessTokenExpiresAt?: ISODateTime;
+  refreshTokenExpiresAt?: ISODateTime;
 }
 
 export interface LoginRequest {
   email: string;
+  username?: string;
   password: string;
+  remember?: boolean;
 }
 
 export interface LoginResponse {
@@ -104,7 +108,7 @@ export interface MeResponse {
 export type KnowledgeBaseStatus = 'active' | 'disabled' | 'archived';
 export type KnowledgeBaseVisibility = 'private' | 'workspace' | 'public';
 
-export interface KnowledgeBase {
+export interface KnowledgeBase extends CoreKnowledgeBase {
   id: ID;
   workspaceId: ID;
   name: string;
@@ -226,9 +230,53 @@ export interface DocumentProcessingJob {
   createdAt: ISODateTime;
 }
 
+export interface KnowledgeUploadResult {
+  uploadId: ID;
+  knowledgeBaseId: ID;
+  filename: string;
+  size: number;
+  contentType: 'text/markdown' | 'text/plain';
+  objectKey: string;
+  ossUrl: string;
+  uploadedAt: ISODateTime;
+}
+
+export interface UploadKnowledgeFileRequest {
+  knowledgeBaseId: ID;
+  file: File;
+}
+
+export interface CreateDocumentFromUploadRequest {
+  uploadId: ID;
+  objectKey: string;
+  filename: string;
+  title?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateDocumentFromUploadResponse {
+  document: KnowledgeDocument;
+  job: DocumentProcessingJob;
+}
+
 export interface UploadDocumentResponse {
   document: KnowledgeDocument;
   job: DocumentProcessingJob;
+}
+
+export interface UploadDocumentRequest {
+  file: File;
+  knowledgeBaseId: ID;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ReprocessDocumentResponse {
+  document: KnowledgeDocument;
+  job: DocumentProcessingJob;
+}
+
+export interface DeleteDocumentResponse {
+  ok: true;
 }
 
 export type ChunkStatus = 'ready' | 'failed' | 'disabled' | 'deprecated';
@@ -246,6 +294,11 @@ export interface DocumentChunk {
   metadata?: Record<string, unknown>;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
+}
+
+export interface DocumentChunksResponse {
+  items: DocumentChunk[];
+  total: number;
 }
 
 export interface Citation {
@@ -342,7 +395,8 @@ export type TraceSpanStage =
   | 'context_assembly'
   | 'generation'
   | 'citation_check'
-  | 'eval_judge';
+  | 'eval_judge'
+  | (string & {});
 
 export interface RetrievalHitPreview {
   chunkId: ID;
@@ -502,6 +556,15 @@ export interface EvalRun {
   completedAt?: ISODateTime;
   createdBy: ID;
   createdAt: ISODateTime;
+}
+
+export interface EvalRunComparison {
+  baselineRunId: ID;
+  candidateRunId: ID;
+  totalScoreDelta: number;
+  retrievalScoreDelta: number;
+  generationScoreDelta: number;
+  perMetricDelta: Record<string, number>;
 }
 
 export interface CreateEvalRunRequest {

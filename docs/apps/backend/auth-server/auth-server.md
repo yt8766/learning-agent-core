@@ -11,6 +11,26 @@
 
 `auth-server` 负责统一登录、用户状态、全局角色、Session 与 Refresh Token 轮换。知识库成员权限、chat 项目权限和后端运行权限不写入 auth 服务，由各自业务服务独立治理。
 
+## Runtime Config
+
+`auth-server` 通过 `@nestjs/config` 加载服务目录下的 `.env`。启动时优先读取当前工作目录 `.env`，也兼容从仓库根启动时读取 `apps/backend/auth-server/.env`。
+
+当前生效 key：
+
+- `PORT` / `HOST`：HTTP 监听地址。
+- `API_PREFIX`：全局 API 前缀，默认 `api`。
+- `DATABASE_URL`：存在时使用 `PostgresAuthRepository`，缺失时使用 `InMemoryAuthRepository`。
+- `AUTH_SERVER_JWT_SECRET`：JWT HS256 签名密钥。
+- `AUTH_SERVER_JWT_ISSUER`：JWT issuer，默认 `auth-server`。
+- `AUTH_SEED_ADMIN_USERNAME`：启动时自动补齐的开发管理员用户名，默认 `admin`。
+- `AUTH_SEED_ADMIN_PASSWORD`：开发管理员初始密码；为空时跳过自动 seed。
+- `AUTH_SEED_ADMIN_DISPLAY_NAME`：开发管理员展示名，默认 `Admin`。
+- `AUTH_SERVER_CORS_ORIGIN` 或 `CORS_ORIGINS`：逗号分隔的 CORS origin。
+
+开发环境会在显式 CORS 配置之外自动允许本地前端 origin：`5173`、`5174`、`5175` 的 `localhost` 与 `127.0.0.1`。生产环境只使用显式配置，不自动加入本地开发 origin。
+
+当前登录链路使用 `passport-local` 校验用户名密码，Bearer token 使用 `passport-jwt` 校验，密码哈希使用 `bcrypt`。`bcrypt` 必须通过 `import { hash, compare } from 'bcrypt'` 命名导入，避免 CommonJS 启动链路访问不存在的 default export。
+
 ## PostgreSQL Tables
 
 ```sql
@@ -55,8 +75,15 @@ create table if not exists auth_refresh_tokens (
 - 未配置 `DATABASE_URL` 时，`AuthModule` 使用 `InMemoryAuthRepository`，用于本地开发和单元测试闭环。
 - 配置 `DATABASE_URL` 时，`AuthModule` 使用 `PostgresAuthRepository`。
 - `AUTH_SERVER_JWT_SECRET` 必须与 `knowledge-server` 的 verifier secret 一致，否则 knowledge API 会拒绝 auth-server token。
+- 配置 `AUTH_SEED_ADMIN_PASSWORD` 后，`AuthSeedService` 会在服务启动时检查 `AUTH_SEED_ADMIN_USERNAME` 是否存在；不存在才创建 `admin` 角色账号，已存在时不会覆盖密码、展示名或状态。
 
-PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PostgresAuthClient`，避免让 `pg` 的第三方类型穿透到 auth 业务层。`pg.Pool` 只在 `src/auth/runtime/auth-database.provider.ts` 中创建。
+PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PostgresAuthClient`，避免让 `pg` 的第三方类型穿透到 auth 业务层。`pg.Pool` 只在 `src/auth/runtime/auth-database.provider.ts` 中创建，并通过 `import { Pool } from 'pg'` 命名导入；不要改回默认导入，否则 CommonJS 启动链路会在运行时得到 `undefined.Pool`。
+
+## Build Boundary
+
+`tsconfig.json` 在开发与测试阶段会把 `@agent/core` 映射到 `packages/core/src/index.ts`，便于类型检查直接消费源码。`tsconfig.build.json` 必须清空 `paths`，让生产构建按 workspace 包边界解析 `@agent/core`，否则 `tsc -p tsconfig.build.json` 会把 `packages/core/src` 拉进当前服务编译图，并触发 `TS6059: file is not under rootDir`。
+
+该模式与 `apps/backend/agent-server` 保持一致；后续新增 backend Nest 服务如果同时设置 `rootDir: "./src"` 和源码期 workspace path mapping，也应在 build tsconfig 中显式覆盖 `baseUrl` 与 `paths`。
 
 ## HTTP Behavior
 
@@ -73,5 +100,6 @@ PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 
 ```bash
 pnpm exec vitest run --config vitest.config.js apps/backend/auth-server/test/auth
 pnpm exec tsc -p apps/backend/auth-server/tsconfig.json --noEmit
+pnpm --dir apps/backend/auth-server build
 pnpm check:docs
 ```

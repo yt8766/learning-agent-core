@@ -3,9 +3,9 @@
 状态：current
 文档类型：guide
 适用范围：历史入口；当前真实实现位于 `packages/knowledge/src/adapters/langchain/`
-最后核对：2026-04-28
 
 > 迁移说明：LangChain indexing adapter 已迁入 `@agent/knowledge/adapters/langchain`。`@agent/adapters` 侧入口已删除，代码必须从 `@agent/knowledge` 或 `@agent/knowledge/adapters/langchain` 引入 LangChain indexing adapter。
+> 最后核对：2026-04-28
 
 ## 概述
 

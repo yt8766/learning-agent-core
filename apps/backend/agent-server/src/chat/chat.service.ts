@@ -5,6 +5,7 @@ import {
 } from '../runtime/core/runtime-data-report-facade';
 import {
   AppendChatMessageDto,
+  ChatEventRecordSchema,
   CreateChatSessionDto,
   LearningConfirmationDto,
   RecoverToCheckpointDto,

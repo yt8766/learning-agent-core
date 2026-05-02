@@ -1,34 +1,30 @@
-import {
-  TaskStatus,
-  type CapabilityAttachmentRecord,
-  type CapabilityAugmentationRecord,
-  type ChatSessionRecord,
-  type ILLMProvider,
-  type RequestedExecutionHints
+import type {
+  CapabilityAttachmentRecord,
+  CapabilityAugmentationRecord,
+  ChatSessionRecord,
+  ILLMProvider,
+  RequestedExecutionHints
 } from '@agent/core';
-import { AgentOrchestrator } from '../../orchestration/agent-orchestrator';
+import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { runSessionDirectReply, shouldUseSessionDirectReply } from './session-coordinator-direct-reply';
-import type { DirectReplySearchFn } from './direct-reply-web-search';
 import { deriveRequestedHints } from './session-coordinator-routing-hints';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
-import type { SessionTaskAggregate } from '../session-task.types';
+import type { SessionTaskAggregate } from './session-task.types';
 
 export {
   deriveRequestedHints,
   deriveSessionTitle,
   generateSessionTitleFromSummary,
-  shouldDeriveSessionTitle,
-  shouldGenerateSessionTitle
+  shouldDeriveSessionTitle
 } from './session-coordinator-routing-hints';
 
-export type SessionCoordinatorTurnDeps = {
+type SessionCoordinatorTurnDeps = {
   orchestrator: AgentOrchestrator;
   store: SessionCoordinatorStore;
   thinking: SessionCoordinatorThinking;
   llmProvider: ILLMProvider;
   syncTask: (sessionId: string, task: SessionTaskAggregate) => void;
-  webSearchFn?: DirectReplySearchFn;
 };
 
 export async function runSessionTurn(
@@ -51,19 +47,7 @@ export async function runSessionTurn(
     }
     const taskContextHints = buildTaskContextHints(deps.store, sessionId, { modelId: input.modelId });
     if (shouldUseSessionDirectReply(input.message, taskContextHints)) {
-      await runSessionDirectReply(
-        {
-          orchestrator: deps.orchestrator,
-          store: deps.store,
-          thinking: deps.thinking,
-          llmProvider: deps.llmProvider,
-          syncTask: deps.syncTask,
-          webSearchFn: deps.webSearchFn
-        },
-        sessionId,
-        input,
-        taskContextHints
-      );
+      await runSessionDirectReply(deps, sessionId, input, taskContextHints);
       return;
     }
     const conversationContext = await deps.thinking.buildConversationContext(
@@ -90,64 +74,13 @@ export async function runSessionTurn(
     deps.syncTask(sessionId, task);
     await deps.store.persistRuntimeState();
   } catch (error) {
-    const failedAt = new Date().toISOString();
-    const failureMessage = ensureVisibleAssistantFailureMessage(deps.store, sessionId, error);
     session.status = 'failed';
-    session.updatedAt = failedAt;
-    const checkpoint = deps.store.getCheckpoint(sessionId);
-    if (checkpoint) {
-      checkpoint.graphState = {
-        ...checkpoint.graphState,
-        status: TaskStatus.FAILED
-      };
-      checkpoint.thinkState = {
-        title: checkpoint.thinkState?.title ?? '直接回复',
-        content: checkpoint.thinkState?.content ?? '当前回复未能完成。',
-        messageId: checkpoint.thinkState?.messageId,
-        thinkingDurationMs: checkpoint.thinkState?.thinkingDurationMs,
-        loading: false,
-        blink: false
-      };
-      checkpoint.streamStatus = undefined;
-      checkpoint.updatedAt = failedAt;
-      deps.store.checkpoints.set(sessionId, checkpoint);
-    }
+    session.updatedAt = new Date().toISOString();
     deps.store.addEvent(sessionId, 'session_failed', {
       error: error instanceof Error ? error.message : String(error)
     });
-    if (failureMessage) {
-      deps.store.addEvent(sessionId, 'assistant_message', {
-        messageId: failureMessage.id,
-        content: failureMessage.content,
-        summary: failureMessage.content,
-        route: 'error-fallback'
-      });
-    }
     await deps.store.persistRuntimeState();
   }
-}
-
-function ensureVisibleAssistantFailureMessage(store: SessionCoordinatorStore, sessionId: string, error: unknown) {
-  const messages = store.getMessages(sessionId);
-  let lastUserIndex = -1;
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index]?.role === 'user') {
-      lastUserIndex = index;
-      break;
-    }
-  }
-  const hasAssistantAfterLastUser = messages.slice(lastUserIndex + 1).some(message => message.role === 'assistant');
-  if (hasAssistantAfterLastUser) {
-    return undefined;
-  }
-
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  return store.addMessage(
-    sessionId,
-    'assistant',
-    `这轮回复生成失败了。${errorMessage ? `原因：${errorMessage}` : '请稍后重试。'}`,
-    'manager'
-  );
 }
 
 export function buildTaskContextHints(

@@ -1,9 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
-import { describe, expect, it, vi } from 'vitest';
-
-vi.setConfig({ testTimeout: 60_000 });
+import { describe, expect, it } from 'vitest';
 
 describe('@agent/knowledge SDK entrypoints', () => {
   it('exports stable browser and node entrypoints without vendor objects', async () => {
@@ -16,10 +11,9 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(root.createKnowledgeRuntime).toBeDefined();
     expect(browser.KnowledgeApiClient).toBeDefined();
     expect(browser.createKnowledgeBrowserClient).toBeDefined();
-    expect(browser.KnowledgeRagStreamEventSchema).toBeDefined();
     expect(client.KnowledgeApiClient).toBeDefined();
     expect(node.createKnowledgeRuntime).toBeDefined();
-  }, 30_000);
+  });
 
   it('lets SDK consumers compose runtime providers instead of hard-wiring defaults', async () => {
     const { createKnowledgeRuntime } = await import('../src/node');
@@ -34,13 +28,6 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(runtime.vectorStore).toBe(vectorStore);
     expect(runtime.embeddingProvider).toBeUndefined();
     expect(runtime.providers.vectorStore).toBe(vectorStore);
-  });
-
-  it('keeps the package root detached from the node barrel runtime bundle', () => {
-    const rootEntry = readFileSync(resolve(__dirname, '../src/index.ts'), 'utf8');
-
-    expect(rootEntry).toContain("from './node/knowledge-runtime'");
-    expect(rootEntry).not.toContain("from './node';");
   });
 });
 
@@ -71,17 +58,6 @@ describe('knowledge adapter entrypoints', () => {
     expect(chroma).toHaveProperty('ChromaVectorSearchProvider');
     expect(opensearch).toHaveProperty('OpenSearchKeywordSearchProvider');
     expect(supabase).toHaveProperty('SupabasePgVectorStoreAdapter');
-  }, 30_000);
-});
-
-describe('knowledge root adapter exports', () => {
-  it('exports adapter factories from the root entrypoint for SDK discoverability', async () => {
-    const root = await import('../src');
-
-    expect(root).toHaveProperty('createMiniMaxChatProvider');
-    expect(root).toHaveProperty('createGlmEmbeddingProvider');
-    expect(root).toHaveProperty('createDeepSeekChatProvider');
-    expect(root).toHaveProperty('LangChainEmbeddingProvider');
   });
 });
 

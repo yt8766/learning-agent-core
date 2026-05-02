@@ -7,7 +7,7 @@ import type {
   KnowledgeSdkVectorStore,
   KnowledgeSdkVectorUpsertInput,
   KnowledgeSdkVectorUpsertResult
-} from '../../index';
+} from '@agent/knowledge';
 
 import { AdapterError } from '../shared/errors/adapter-error';
 import {

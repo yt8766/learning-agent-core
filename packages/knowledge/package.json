@@ -16,6 +16,36 @@
         "default": "./build/cjs/index.js"
       }
     },
+    "./core": {
+      "import": {
+        "types": "./build/types/knowledge/src/core/index.d.ts",
+        "default": "./build/esm/core/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/core/index.d.ts",
+        "default": "./build/cjs/core/index.js"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "default": "./build/esm/client/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "default": "./build/cjs/client/index.js"
+      }
+    },
+    "./browser": {
+      "import": {
+        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "default": "./build/esm/browser/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "default": "./build/cjs/browser/index.js"
+      }
+    },
     "./node": {
       "import": {
         "types": "./build/types/knowledge/src/node/index.d.ts",
@@ -26,14 +56,95 @@
         "default": "./build/cjs/node/index.js"
       }
     },
-    "./browser-entry": {
-      "types": "./build/types/knowledge/src/browser/index.d.ts",
-      "module": "./build/esm/browser/index.mjs",
-      "browser": "./build/esm/browser/index.mjs",
-      "development": "./build/esm/browser/index.mjs",
-      "import": "./build/esm/browser/index.mjs",
-      "require": "./build/cjs/browser/index.js",
-      "default": "./build/esm/browser/index.mjs"
+    "./adapters": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/index.d.ts",
+        "default": "./build/esm/adapters/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/index.d.ts",
+        "default": "./build/cjs/adapters/index.js"
+      }
+    },
+    "./adapters/langchain": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+        "default": "./build/esm/adapters/langchain/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+        "default": "./build/cjs/adapters/langchain/index.js"
+      }
+    },
+    "./adapters/chroma": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "default": "./build/esm/adapters/chroma/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "default": "./build/cjs/adapters/chroma/index.js"
+      }
+    },
+    "./adapters/opensearch": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "default": "./build/esm/adapters/opensearch/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "default": "./build/cjs/adapters/opensearch/index.js"
+      }
+    },
+    "./adapters/supabase": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "default": "./build/esm/adapters/supabase/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "default": "./build/cjs/adapters/supabase/index.js"
+      }
+    },
+    "./adapters/minimax": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+        "default": "./build/esm/adapters/minimax/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+        "default": "./build/cjs/adapters/minimax/index.js"
+      }
+    },
+    "./adapters/glm": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+        "default": "./build/esm/adapters/glm/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+        "default": "./build/cjs/adapters/glm/index.js"
+      }
+    },
+    "./adapters/deepseek": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+        "default": "./build/esm/adapters/deepseek/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+        "default": "./build/cjs/adapters/deepseek/index.js"
+      }
+    },
+    "./adapters/openai-compatible": {
+      "import": {
+        "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+        "default": "./build/esm/adapters/openai-compatible/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+        "default": "./build/cjs/adapters/openai-compatible/index.js"
+      }
     }
   },
   "scripts": {
@@ -53,7 +164,7 @@
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
   },
   "dependencies": {
-    "@agent/core": "workspace:*",
+    "@agent/adapters": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/memory": "workspace:*",
     "@langchain/core": "^1.1.40",

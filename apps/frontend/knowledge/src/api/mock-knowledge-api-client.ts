@@ -380,3 +380,13 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
     };
   }
 }
+
+function createMockJob(documentId: string): DocumentProcessingJob {
+  return {
+    id: 'job_mock_latest',
+    documentId,
+    status: 'queued',
+    stages: [],
+    createdAt: new Date().toISOString()
+  };
+}

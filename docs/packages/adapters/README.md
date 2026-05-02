@@ -59,9 +59,7 @@
   - 历史 `src/chat`、`src/providers`、`src/retry`、`src/support`、`src/utils` 兼容入口已删除；新代码必须使用 provider-first 目录或根入口
   - `prompts/`、`resilience/`、`structured-output/`、`shared/` 分别承载共享提示、安全重试、结构化输出和底层支撑 helper
   - `mcp/` 后续作为 MiniMax、智谱等 MCP provider / MCP skills adapter 的真实宿主；`@agent/tools` 只保留 MCP contract、registry 与 transport runtime
-  - MiniMax text provider 使用 OpenAI-compatible endpoint，但必须做 MiniMax 参数白名单：不要把 LangChain `stream_options.include_usage`、runtime `thinking` setting、OpenAI `max_tokens` 或采样 `temperature` 透传到 `/v1/chat/completions`，否则可能触发 MiniMax 400 `invalid chat setting (2013)`。MiniMax M2.7 当前使用 `max_completion_tokens`，最大值 2048；adapter 层负责把内部 `maxTokens` 映射并裁剪到该上限。即使上层传入 `temperature`，`createMiniMaxChatModel` 也会剥离该字段，保持请求体只包含当前已验证的最小 chat setting。
-  - Zhipu GLM 4.6 / 4.7 / 5 默认可能先输出 reasoning tokens；direct chat 要传 `thinking: false`，由 Zhipu OpenAI-compatible adapter 映射成 `thinking: { type: "disabled" }`，避免最终 `content` 为空导致 `finalOutput.text` 校验失败。
-  - 语义缓存只允许命中和写入非空文本；空字符串视为上游失败或 reasoning-only 异常结果，不能作为可复用回答返回给 chat。
+  - MiniMax text provider 使用 OpenAI-compatible endpoint，但必须做 MiniMax 参数白名单：不要把 LangChain `stream_options.include_usage` 或 runtime `thinking` setting 透传到 `/v1/chat/completions`，否则会触发 MiniMax 400 `invalid chat setting (2013)`。官方 OpenAI 兼容文档当前要求 `temperature` 在 `(0.0, 1.0]`，推荐 `1.0`，并说明部分 OpenAI 参数会被忽略。
 
 约定：
 

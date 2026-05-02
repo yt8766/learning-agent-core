@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthUserCreateRequestSchema, type AuthAccount, type AuthUsersListResponse } from '@agent/core';
 
 import { AuthGuard } from './auth.guard';
@@ -8,7 +8,7 @@ import { UserManagementService } from './user-management.service';
 @UseGuards(AuthGuard, AuthAdminGuard)
 @Controller('auth/users')
 export class UserManagementController {
-  constructor(private readonly users: UserManagementService) {}
+  constructor(@Inject(UserManagementService) private readonly users: UserManagementService) {}
 
   @Get()
   listUsers(): Promise<AuthUsersListResponse> {

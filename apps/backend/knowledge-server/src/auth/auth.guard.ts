@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { AuthTokenVerifier, type KnowledgeAuthUser } from './auth-token-verifier';
 
@@ -9,7 +9,7 @@ export interface KnowledgeAuthenticatedRequest {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly verifier: AuthTokenVerifier) {}
+  constructor(@Inject(AuthTokenVerifier) private readonly verifier: AuthTokenVerifier) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<KnowledgeAuthenticatedRequest>();
