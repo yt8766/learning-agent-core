@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/knowledge`
-最后核对：2026-05-01
+最后核对：2026-05-02
 
 ## Positioning
 
@@ -13,7 +13,7 @@
 
 - 不重复 `agent-chat`：Knowledge App 的 Chat Lab 用于验证指定知识库的检索、回答、引用、反馈和 trace，不承载 OpenClaw 作战面、审批恢复、ThoughtChain 或多 Agent 执行体验。
 - 不重复 `agent-admin`：Knowledge App 的观测和评测只围绕知识库问答质量、检索表现、文档处理和 RAG 链路，不承载全局 Runtime Center、Approvals Center、Skill Lab 或治理后台。
-- 默认 API-first：前端消费 `/api/knowledge/v1` 稳定接口和 mock client，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
+- 默认 API-first：前端消费 `auth-server` 与 `knowledge-server` 稳定接口和 mock client，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
 - MVP 优先打通横向闭环：登录、知识库、文档、对话、引用、反馈、trace、评测数据集、评测运行和结果指标先能连起来，再扩展高级治理。
 
 ## Routes
@@ -84,7 +84,7 @@ Knowledge App 使用 JWT 双 token：
 
 - `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
 - `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
-- `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
+- `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责 `knowledge-server` 业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 或 `401 access_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
 - `apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`：当前横向 MVP 页面使用的本地 fixture / mock client；真实后端联调时应替换为 `KnowledgeApiClient`，不要让页面直接读取后端或 SDK runtime。
 - `apps/frontend/knowledge/src/features/auth/*`：当前登录门使用本地 mock token 写入，退出登录只删除本地 token；真实后端联调时保持双 token 行为，替换 login 调用来源。
 - `apps/frontend/knowledge/src/features/*`：当前已落地总览、知识库、文档、对话实验室、观测中心、评测中心和设置的 mock-first 页面，第一屏是可操作工作台，不是 landing page。

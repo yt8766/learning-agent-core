@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/contracts/api/`
-最后核对：2026-05-01
+最后核对：2026-05-02
 
 本目录是前后端 API 契约的唯一主入口。后端按这里实现接口，前端按这里接入接口；跨模块调用时序和联调背景放在 [integration](/docs/integration/README.md)。
 
@@ -12,6 +12,7 @@
 - 接口风格选择：[interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 - 聊天 API：[agent-chat.md](/docs/contracts/api/agent-chat.md)
 - Admin API：[agent-admin.md](/docs/contracts/api/agent-admin.md)
+- Auth Service API：[auth.md](/docs/contracts/api/auth.md)
 - Admin Auth API：[admin-auth.md](/docs/contracts/api/admin-auth.md)
 - Runtime API：[runtime.md](/docs/contracts/api/runtime.md)
 - Knowledge API：[knowledge.md](/docs/contracts/api/knowledge.md)
@@ -30,18 +31,19 @@
 1. [interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 2. [agent-chat.md](/docs/contracts/api/agent-chat.md)
 3. [agent-admin.md](/docs/contracts/api/agent-admin.md)
-4. [admin-auth.md](/docs/contracts/api/admin-auth.md)
-5. [runtime.md](/docs/contracts/api/runtime.md)
-6. [knowledge.md](/docs/contracts/api/knowledge.md)
-7. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
-8. [approvals.md](/docs/contracts/api/approvals.md)
-9. [run-observatory.md](/docs/contracts/api/run-observatory.md)
-10. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
-11. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
-12. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
-13. [tool-execution.md](/docs/contracts/api/tool-execution.md)
-14. [sandbox.md](/docs/contracts/api/sandbox.md)
-15. [auto-review.md](/docs/contracts/api/auto-review.md)
+4. [auth.md](/docs/contracts/api/auth.md)
+5. [admin-auth.md](/docs/contracts/api/admin-auth.md)
+6. [runtime.md](/docs/contracts/api/runtime.md)
+7. [knowledge.md](/docs/contracts/api/knowledge.md)
+8. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
+9. [approvals.md](/docs/contracts/api/approvals.md)
+10. [run-observatory.md](/docs/contracts/api/run-observatory.md)
+11. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
+12. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
+13. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
+14. [tool-execution.md](/docs/contracts/api/tool-execution.md)
+15. [sandbox.md](/docs/contracts/api/sandbox.md)
+16. [auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 工具执行治理 API 关系
 
@@ -79,9 +81,10 @@
 
 - `agent-chat.md`：`apps/frontend/agent-chat` 消费的聊天、会话、SSE 与 direct reply 接口。
 - `agent-admin.md`：`apps/frontend/agent-admin` 的控制台聚合入口和刷新语义。
-- `admin-auth.md`：`apps/frontend/agent-admin` 的账号密码登录、JWT 双 Token、自动刷新、退出登录与当前用户恢复契约。
+- `auth.md`：独立 `auth-server` 的统一登录、用户管理、JWT 双 Token 与权限边界契约。
+- `admin-auth.md`：`agent-server` 历史 admin auth 兼容契约；新增统一登录优先读 `auth.md`。
 - `runtime.md`：Runtime Center 查询、导出与筛选契约。
-- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约。
+- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、迁移期 `apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约。
 - `knowledge-ingestion.md`：规范化 source payload 写入统一 source/chunk/receipt snapshot 与 vector 边界的 ingestion 契约。
 - `approvals.md`：Approvals Center、聊天审批动作、恢复与 interrupt 兼容契约。
 - `run-observatory.md`：workflow catalog、run list/detail 与 observability 投影契约。
