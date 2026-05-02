@@ -9,6 +9,7 @@ const mockUseChatSession = vi.fn();
 const renderedAlerts: Array<Record<string, unknown>> = [];
 const renderedModals: Array<Record<string, unknown>> = [];
 const renderedSenders: Array<Record<string, unknown>> = [];
+const buildBubbleItemsMock = vi.fn((_: Record<string, unknown>) => [{ key: 'bubble-1', content: 'assistant bubble' }]);
 
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
@@ -130,7 +131,7 @@ vi.mock('@ant-design/x', () => ({
 }));
 
 vi.mock('@/pages/chat/chat-message-adapter', () => ({
-  buildBubbleItems: () => [{ key: 'bubble-1', content: 'assistant bubble' }]
+  buildBubbleItems: (options: Record<string, unknown>) => buildBubbleItemsMock(options)
 }));
 
 vi.mock('@/hooks/use-chat-session', () => ({
@@ -214,6 +215,8 @@ describe('ChatHomePage shell', () => {
       updateApproval: vi.fn(),
       updatePlanInterrupt: vi.fn(),
       installSuggestedSkill: vi.fn(),
+      regenerateMessage: vi.fn(),
+      submitMessageFeedback: vi.fn(),
       refreshSessionDetail: vi.fn(),
       ...overrides
     };
@@ -223,6 +226,7 @@ describe('ChatHomePage shell', () => {
     renderedAlerts.length = 0;
     renderedModals.length = 0;
     renderedSenders.length = 0;
+    buildBubbleItemsMock.mockClear();
     useStateOverride = null;
   });
 
@@ -413,6 +417,36 @@ describe('ChatHomePage shell', () => {
     sender.onCancel?.();
 
     expect(chat.cancelActiveSession).toHaveBeenCalledWith('用户停止当前会话');
+  });
+
+  it('forwards assistant regenerate and feedback actions into buildBubbleItems', () => {
+    const chat = createChatSessionOverrides();
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const latestCall = buildBubbleItemsMock.mock.calls.at(-1);
+    expect(latestCall).toBeDefined();
+    const options = latestCall?.[0] as unknown as {
+      onRegenerate?: (message: unknown) => void;
+      onMessageFeedback?: (message: unknown, feedback: unknown) => void;
+    };
+    const message = {
+      id: 'assistant-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '镜像是模板，容器是实例。'
+    };
+    const feedback = { rating: 'helpful' };
+
+    expect(typeof options.onRegenerate).toBe('function');
+    expect(typeof options.onMessageFeedback).toBe('function');
+
+    options.onRegenerate?.(message);
+    options.onMessageFeedback?.(message, feedback);
+
+    expect(chat.regenerateMessage).toHaveBeenCalledWith(message);
+    expect(chat.submitMessageFeedback).toHaveBeenCalledWith(message, feedback);
   });
 
   it('filters workflow command prefixes from the active session title', () => {

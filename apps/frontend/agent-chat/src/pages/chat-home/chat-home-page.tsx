@@ -119,6 +119,12 @@ export function ChatHomePage() {
         onSkillInstall: suggestion => {
           void chat.installSuggestedSkill(suggestion);
         },
+        onRegenerate: message => {
+          void chat.regenerateMessage(message);
+        },
+        onMessageFeedback: (message, feedback) => {
+          void chat.submitMessageFeedback(message, feedback);
+        },
         onCopy: message => {
           void navigator.clipboard.writeText(message.content);
           setCopiedMessageId(message.id);
@@ -138,7 +144,9 @@ export function ChatHomePage() {
       cognitionCountLabel,
       responseSteps.byMessageId,
       chat.updatePlanInterrupt,
-      chat.installSuggestedSkill
+      chat.installSuggestedSkill,
+      chat.regenerateMessage,
+      chat.submitMessageFeedback
     ]
   );
 
