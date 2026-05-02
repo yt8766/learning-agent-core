@@ -35,6 +35,12 @@ VITE_KNOWLEDGE_API_MODE=mock
 
 Do not make mock data the default production path.
 
+## Trustworthy Workbench UI
+
+Knowledge pages display backend health projections and warnings; they do not infer readiness locally. Document pages render ingestion stage, progress, error, and retry actions from `getLatestDocumentJob()`.
+
+Chat Lab displays route reason, retrieval diagnostics, grounded citations, feedback, and trace links from `/chat`. Observability displays trace spans for route, retrieval, generation, and eval stages while keeping legacy raw trace fallback display-only.
+
 ## 登录与 Token
 
 登录使用 JWT 双 token：

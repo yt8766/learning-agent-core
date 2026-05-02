@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
-最后核对：2026-05-02
+最后核对：2026-05-03
 
 > 当前 canonical 业务入口：`apps/backend/knowledge-server`。`apps/backend/agent-server` 中仍存在的 knowledge 入口仅作为迁移期间兼容路径，不再承接新增 knowledge 主业务。
 
@@ -173,6 +173,26 @@ Endpoint contract:
 ```ts
 export type KnowledgeBaseStatus = 'active' | 'disabled' | 'archived';
 export type KnowledgeBaseVisibility = 'private' | 'workspace' | 'public';
+export type KnowledgeProviderHealthStatus = 'ok' | 'degraded' | 'unconfigured';
+export type KnowledgeBaseHealthStatus = 'ready' | 'indexing' | 'degraded' | 'empty' | 'error';
+
+export interface KnowledgeBaseHealth {
+  knowledgeBaseId: ID;
+  status: KnowledgeBaseHealthStatus;
+  documentCount: number;
+  searchableDocumentCount: number;
+  chunkCount: number;
+  failedJobCount: number;
+  lastIndexedAt?: ISODateTime;
+  lastQueriedAt?: ISODateTime;
+  providerHealth: {
+    embedding: KnowledgeProviderHealthStatus;
+    vector: KnowledgeProviderHealthStatus;
+    keyword: KnowledgeProviderHealthStatus;
+    generation: KnowledgeProviderHealthStatus;
+  };
+  warnings: Array<{ code: string; message: string }>;
+}
 
 export interface KnowledgeBase {
   id: ID;
@@ -192,6 +212,7 @@ export interface KnowledgeBase {
   latestTraceAt?: ISODateTime;
   defaultRetrievalConfigId?: ID;
   defaultPromptTemplateId?: ID;
+  health?: KnowledgeBaseHealth;
   createdBy: ID;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
@@ -223,6 +244,16 @@ Endpoint contract:
 | POST   | `/knowledge-bases`     | body: `CreateKnowledgeBaseRequest`             | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `kb_name_conflict`         | owner, admin, maintainer                    |
 | GET    | `/knowledge-bases/:id` | path: `id`                                     | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`                     | owner, admin, maintainer, evaluator, viewer |
 | PATCH  | `/knowledge-bases/:id` | path: `id`; body: `UpdateKnowledgeBaseRequest` | `KnowledgeBase`             | `auth_unauthorized`, `auth_forbidden`, `knowledge_base_not_found`, `validation_error` | owner, admin, maintainer                    |
+
+### 5.1 Knowledge Base Health
+
+`GET /api/knowledge/bases` and `GET /api/knowledge/bases/:id` may return each base with optional `health`.
+
+`health.status` is the backend-owned readiness projection: `ready | indexing | degraded | empty | error`. Clients must display it and must not infer readiness from local document counts alone.
+
+`health.providerHealth.embedding/vector/keyword/generation` is a stable provider health map with values `ok | degraded | unconfigured`. It is a project projection, not a vendor SDK status object.
+
+`health.warnings[]` contains stable `{ code, message }` pairs. Warning `code` values are intended for filtering and alert grouping; warning `message` values are display-safe and redacted.
 
 ## 6. Document and Chunk
 
@@ -430,6 +461,14 @@ Response: `CreateDocumentFromUploadResponse`
 
 失败 job 的 `error` 必须包含稳定 `code/message/stage`，可重试失败还必须包含 `retryable: true`。当前 embedding / indexing 失败分别返回 `knowledge_ingestion_embedding_failed` 与 `knowledge_ingestion_index_failed`；`POST /documents/:documentId/reprocess` 必须创建新的 job id，并把 `attempts` 设置为上一条 job attempts + 1。
 
+### 6.2 Ingestion Job Projection
+
+`GET /api/knowledge/documents/:documentId/jobs/latest` returns stageful job progress.
+
+Stable stages are `uploaded`, `parsing`, `chunking`, `embedding`, `indexing`, `succeeded`, `failed`, and `cancelled`. Legacy timeline stages may still be returned under `currentStage` and `stages[]`, but new UI must read `stage`, `progress`, `error`, and `attempts`.
+
+Failed jobs include `error.code`, `error.message`, `error.retryable`, and `error.stage`. Retryable failures expose `retryable: true`; clients may show a retry action, but recovery must call `POST /api/knowledge/documents/:documentId/reprocess` so the backend creates a new attempt.
+
 `POST /chat` 的 Chat Lab 响应在 legacy `answer/citations/traceId` 外还返回 `route` 与 `diagnostics`。`route.reason` 使用稳定枚举 `legacy-ids | mentions | metadata-match | fallback-all`；`diagnostics.retrievalMode` 使用 `hybrid | none` 作为当前 MVP 展示投影。`citations` 只能来自后端 retrieval/vector hit 投影，模型生成阶段返回的自带 citation 不得穿透到响应。
 
 Eval run 的最小后端语义是“部分失败可交付”：单个 case 失败时，`status` 返回 `partial`，`results` 保留成功 case 的 `KnowledgeEvalRunResult`，`failedCases[]` 记录 `{ caseId, code, message }`，其中 code 固定为 `knowledge_eval_run_failed`。全部成功为 `completed`，全部失败为 `failed`。
@@ -524,6 +563,8 @@ export interface ChatMessage {
   content: string;
   citations?: Citation[];
   traceId?: ID;
+  route?: KnowledgeChatRoute;
+  diagnostics?: KnowledgeChatDiagnostics;
   feedback?: MessageFeedbackSummary;
   createdAt: ISODateTime;
 }
@@ -564,11 +605,27 @@ export interface ChatResponse {
   answer: string;
   citations: Citation[];
   traceId: ID;
+  route?: KnowledgeChatRoute;
+  diagnostics?: KnowledgeChatDiagnostics;
   retrieval?: {
     matches: Citation[];
     topK: number;
   };
   usage?: TokenUsage;
+}
+
+export interface KnowledgeChatRoute {
+  requestedMentions: string[];
+  selectedKnowledgeBaseIds: ID[];
+  reason: 'legacy-ids' | 'mentions' | 'metadata-match' | 'fallback-all';
+}
+
+export interface KnowledgeChatDiagnostics {
+  normalizedQuery: string;
+  queryVariants: string[];
+  retrievalMode: 'hybrid' | 'none';
+  hitCount: number;
+  contextChunkCount: number;
 }
 
 export type FeedbackCategory =
@@ -615,6 +672,14 @@ export interface CreateFeedbackRequest {
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 
 Chat Lab 前端必须把 `citations` 展示为引用卡片，而不是只展示标题列表。每张卡片至少展示 `title`、`quote` 或 `contentPreview`、`score` 或 `uri`，并保留 trace link 与 feedback 操作。`POST /messages/:id/feedback` 当前 MVP 返回带 `feedback` 的 assistant message projection，用于验证反馈按钮真实模式不再 404；它不承诺已经接入长期反馈仓储。
+
+### 7.1 Chat Lab RAG Answer
+
+`POST /api/chat` returns `answer`, grounded `citations`, `route`, `diagnostics`, `traceId`, and optional `usage`.
+
+`route` explains why the backend selected the retrieval scope. `diagnostics` is a redacted display projection for normalized query, query variants, retrieval mode, hit count, and assembled context chunk count.
+
+Citations are service-generated from retrieval hits. Clients must not trust model-invented citation IDs, model-authored source references, or vendor-specific citation objects.
 
 Endpoint contract:
 
@@ -755,7 +820,7 @@ Endpoint contract:
 
 ```ts
 export type EvalDifficulty = 'easy' | 'medium' | 'hard';
-export type EvalRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+export type EvalRunStatus = 'queued' | 'running' | 'completed' | 'partial' | 'failed' | 'canceled';
 
 export interface EvalDataset {
   id: ID;
