@@ -132,13 +132,15 @@ function renderMessageContent(
   const messageCognitionExpanded = Boolean(isCognitionTarget && options.cognitionExpanded);
   const hasTargetCognition =
     isCognitionTarget &&
-    (messageThinkState || (messageThoughtItems?.length ?? 0) > 0 || Boolean(assistantParsed?.thinkContent));
+    (messageThinkState ||
+      (messageThoughtItems?.length ?? 0) > 0 ||
+      (!thinkingPanel && Boolean(assistantParsed?.thinkContent)));
   const hasRuntimeTargetCognition = Boolean(messageThinkState || (messageThoughtItems?.length ?? 0) > 0);
   const shouldShowCognition =
     message.role === 'assistant' &&
     (hasTargetCognition ||
-      Boolean(assistantParsed?.thinkContent) ||
-      (!hasRuntimeTargetCognition && Boolean(normalizedMessage.content.trim())));
+      (!thinkingPanel && Boolean(assistantParsed?.thinkContent)) ||
+      (!thinkingPanel && !hasRuntimeTargetCognition && Boolean(normalizedMessage.content.trim())));
 
   if (!shouldShowCognition) {
     if (!thinkingPanel && !beforeContent && !afterContent && !evidenceContent) {

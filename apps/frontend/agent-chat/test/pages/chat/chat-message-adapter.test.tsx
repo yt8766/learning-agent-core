@@ -536,6 +536,35 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).not.toContain('<think>');
   });
 
+  it('renders assistant think panel without duplicate legacy inline cognition when no runtime cognition exists', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '<think>推理</think>正文',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionDurationLabel: '约 2 秒'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('chatx-thinking-panel');
+    expect(html).toContain('已思考（用时约 2 秒）');
+    expect(html).toContain('推理');
+    expect(html).toContain('正文');
+    expect(html).not.toContain('chatx-inline-think__toggle');
+    expect(html).not.toContain('正在整理推理过程');
+    expect(html).not.toContain('用时 约 2 秒');
+  });
+
   it('renders escaped assistant think content in the panel without leaking escaped tags', () => {
     const messages: ChatMessageRecord[] = [
       {
