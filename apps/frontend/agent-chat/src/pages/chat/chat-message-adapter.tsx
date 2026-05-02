@@ -79,7 +79,7 @@ function renderMessageContent(
 ) {
   const assistantParsed =
     message.role === 'assistant'
-      ? parseAssistantThinkingContent(stripStreamingCursor(message.content), streaming)
+      ? parseAssistantThinkingContent(normalizeEscapedThinkTags(stripStreamingCursor(message.content)), streaming)
       : undefined;
   const normalizedMessage =
     message.role === 'assistant'
@@ -259,6 +259,10 @@ function renderMessageContent(
       {evidenceContent}
     </div>
   );
+}
+
+function normalizeEscapedThinkTags(content: string) {
+  return content.replace(/&lt;(\/?think)&gt;/gi, '<$1>');
 }
 
 function formatCognitionDurationCopy(durationLabel: string) {

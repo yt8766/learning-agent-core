@@ -536,6 +536,33 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).not.toContain('<think>');
   });
 
+  it('renders escaped assistant think content in the panel without leaking escaped tags', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '&lt;think&gt;隐藏推理&lt;/think&gt;正文',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('chatx-thinking-panel__body');
+    expect(html).toContain('隐藏推理');
+    expect(html).toContain('正文');
+    expect(html).not.toContain('<think>');
+    expect(html).not.toContain('&lt;think&gt;');
+    expect(html).not.toContain('&amp;lt;think&amp;gt;');
+  });
+
   it('keeps completed runtime cognition expanded while rendering assistant think panel', () => {
     const messages: ChatMessageRecord[] = [
       {
