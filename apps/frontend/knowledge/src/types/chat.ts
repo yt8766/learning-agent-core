@@ -1,4 +1,5 @@
 import type { ID, ISODateTime } from './common';
+import type { KnowledgeRagAnswer } from '@agent/knowledge';
 
 export interface Citation {
   id: ID;
@@ -52,6 +53,8 @@ export interface ChatMessage {
   content: string;
   citations?: Citation[];
   traceId?: ID;
+  route?: KnowledgeRagAnswer['route'];
+  diagnostics?: KnowledgeRagAnswer['diagnostics'];
   feedback?: MessageFeedbackSummary;
   createdAt: ISODateTime;
 }
@@ -86,6 +89,8 @@ export interface ChatResponse {
   answer: string;
   citations: Citation[];
   traceId: ID;
+  route?: KnowledgeRagAnswer['route'];
+  diagnostics?: KnowledgeRagAnswer['diagnostics'];
   usage?: TokenUsage;
 }
 

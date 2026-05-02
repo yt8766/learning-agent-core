@@ -1,4 +1,16 @@
-import { Button, Card, Descriptions, Space, Table, Tag, Timeline, Typography, type TableProps } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Timeline,
+  Typography,
+  type TableProps
+} from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 
@@ -67,8 +79,24 @@ export function DocumentDetailPage() {
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           <Space>
             <Tag>{detail.job?.status ?? '-'}</Tag>
+            {detail.job?.stage ? <Tag>{detail.job.stage}</Tag> : null}
             <Typography.Text>{detail.job?.id ?? '-'}</Typography.Text>
           </Space>
+          {detail.job?.progress ? <Progress percent={detail.job.progress.percent} /> : null}
+          {detail.job?.error ? (
+            <Alert
+              action={
+                detail.job.error.retryable ? (
+                  <Button onClick={() => void detail.reprocess()} size="small">
+                    重试
+                  </Button>
+                ) : undefined
+              }
+              message={detail.job.error.message}
+              showIcon
+              type="error"
+            />
+          ) : null}
           <Timeline
             items={(detail.job?.stages ?? []).map(stage => ({
               children: (

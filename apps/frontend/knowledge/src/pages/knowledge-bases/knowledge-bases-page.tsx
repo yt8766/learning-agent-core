@@ -27,6 +27,11 @@ const columns: TableProps<KnowledgeBase>['columns'] = [
     render: (name, record) => (
       <Space orientation="vertical" size={0}>
         <strong>{name}</strong>
+        {record.health?.warnings?.map(warning => (
+          <Typography.Text key={warning.code} type="warning">
+            {warning.message}
+          </Typography.Text>
+        ))}
         <span>
           {record.tags.map(tag => (
             <Tag key={tag}>{tag}</Tag>
@@ -38,7 +43,20 @@ const columns: TableProps<KnowledgeBase>['columns'] = [
   },
   {
     dataIndex: 'status',
-    render: status => <Tag color={status === 'active' ? 'success' : 'default'}>{status}</Tag>,
+    render: (status, record) => (
+      <Space>
+        <Tag color={status === 'active' ? 'success' : 'default'}>{status}</Tag>
+        {record.health?.status ? (
+          <Tag
+            color={
+              record.health.status === 'ready' ? 'success' : record.health.status === 'degraded' ? 'warning' : 'default'
+            }
+          >
+            {record.health.status}
+          </Tag>
+        ) : null}
+      </Space>
+    ),
     title: '状态'
   },
   { dataIndex: 'documentCount', title: '文档' },

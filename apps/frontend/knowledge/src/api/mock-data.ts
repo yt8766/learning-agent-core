@@ -25,6 +25,21 @@ export const mockKnowledgeBases = [
     latestEvalScore: 86,
     latestQuestionCount: 12,
     latestTraceAt: now,
+    health: {
+      knowledgeBaseId: 'kb_frontend',
+      status: 'degraded',
+      documentCount: 1,
+      searchableDocumentCount: 1,
+      chunkCount: 2,
+      failedJobCount: 1,
+      providerHealth: {
+        embedding: 'ok',
+        vector: 'degraded',
+        keyword: 'ok',
+        generation: 'ok'
+      },
+      warnings: [{ code: 'knowledge.vector.degraded', message: 'Vector provider is degraded.' }]
+    },
     createdBy: 'user_1',
     createdAt: now,
     updatedAt: now
@@ -182,6 +197,24 @@ export const mockObservabilityMetrics = {
     { stage: 'generation', averageLatencyMs: 600, p95LatencyMs: 820 }
   ]
 } satisfies ObservabilityMetrics;
+
+export const mockFailedIngestionJob = {
+  id: 'job_1',
+  documentId: 'doc_frontend_conventions',
+  stage: 'embedding',
+  status: 'failed',
+  currentStage: 'embed',
+  stages: [],
+  progress: { percent: 60 },
+  error: {
+    code: 'knowledge_ingestion_embedding_failed',
+    message: 'Embedding provider failed.',
+    retryable: true,
+    stage: 'embedding'
+  },
+  attempts: 1,
+  createdAt: now
+} satisfies import('../types/api').DocumentProcessingJob;
 
 export const mockEvalDatasets = [
   {

@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { Card, Spin, Statistic, Table, Timeline, Typography, type TableProps } from 'antd';
+import { Card, Space, Spin, Statistic, Table, Tag, Timeline, Typography, type TableProps } from 'antd';
 
 import { useKnowledgeObservability } from '../../hooks/use-knowledge-observability';
 import type { RagTrace } from '../../types/api';
 import { CardGrid, PageSection } from '../shared/ui';
 
 const traceColumns: TableProps<RagTrace>['columns'] = [
-  { dataIndex: 'question', title: '问题' },
+  { dataIndex: 'question', render: (question, record) => question || readTraceOperation(record), title: '问题' },
   { dataIndex: 'status', title: '状态', width: 96 },
   { dataIndex: 'latencyMs', title: '延迟(ms)', width: 100 },
   { dataIndex: 'hitCount', title: '命中', width: 80 },
@@ -54,10 +54,10 @@ export function ObservabilityPage() {
               dataSource={traces}
               loading={loading}
               onRow={record => ({
-                onClick: () => void selectTrace(record.id)
+                onClick: () => void selectTrace(readTraceId(record))
               })}
               pagination={false}
-              rowKey="id"
+              rowKey={readTraceId}
               size="small"
             />
             {traceError ? <Typography.Text type="danger">{traceError.message}</Typography.Text> : null}
@@ -65,8 +65,13 @@ export function ObservabilityPage() {
             <Typography.Paragraph>{trace?.answer ?? selectedTrace?.answer}</Typography.Paragraph>
             <Timeline
               items={(trace?.spans ?? []).map(span => ({
-                children: `${span.name} · ${span.latencyMs}ms`,
-                color: span.status === 'succeeded' ? 'green' : 'red'
+                children: (
+                  <Space>
+                    <Typography.Text>{span.name}</Typography.Text>
+                    <Tag>{span.status}</Tag>
+                  </Space>
+                ),
+                color: span.status === 'succeeded' || String(span.status) === 'ok' ? 'green' : 'red'
               }))}
             />
           </Card>
@@ -74,4 +79,12 @@ export function ObservabilityPage() {
       ) : null}
     </PageSection>
   );
+}
+
+function readTraceId(trace: RagTrace): string {
+  return (trace as RagTrace & { traceId?: string }).traceId ?? trace.id;
+}
+
+function readTraceOperation(trace: RagTrace): string {
+  return (trace as RagTrace & { operation?: string }).operation ?? '-';
 }

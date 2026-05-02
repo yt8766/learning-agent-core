@@ -22,6 +22,14 @@ export type DocumentStatus =
   | 'deprecated';
 
 export type DocumentProcessingStage =
+  | 'uploaded'
+  | 'parsing'
+  | 'chunking'
+  | 'embedding'
+  | 'indexing'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
   | 'queued'
   | 'upload_received'
   | 'parse'
@@ -37,6 +45,7 @@ export type ProcessingJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' 
 export interface ProcessingErrorSummary {
   code: string;
   message: string;
+  retryable?: boolean;
   stage?: DocumentProcessingStage;
 }
 
@@ -75,6 +84,7 @@ export interface DocumentProcessingJob {
   id: ID;
   documentId: ID;
   status: ProcessingJobStatus;
+  stage?: DocumentProcessingStage;
   currentStage?: DocumentProcessingStage;
   stages: DocumentProcessingStageRecord[];
   progress?: {
@@ -83,6 +93,7 @@ export interface DocumentProcessingJob {
     totalChunks?: number;
   };
   error?: ProcessingErrorSummary;
+  attempts?: number;
   startedAt?: ISODateTime;
   completedAt?: ISODateTime;
   createdAt: ISODateTime;

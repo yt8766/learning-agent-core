@@ -29,7 +29,11 @@ vi.mock('antd', () => {
   return {
     Button({ children, disabled, onClick }: { children?: React.ReactNode; disabled?: boolean; onClick?: () => void }) {
       return (
-        <button data-disabled={disabled ? 'true' : 'false'} data-has-click={onClick ? 'true' : 'false'}>
+        <button
+          data-disabled={disabled ? 'true' : 'false'}
+          data-has-click={onClick ? 'true' : 'false'}
+          onClick={onClick}
+        >
           {children}
         </button>
       );
@@ -43,6 +47,17 @@ vi.mock('antd', () => {
       );
     },
     Descriptions,
+    Alert({ action, message }: { action?: React.ReactNode; message?: React.ReactNode }) {
+      return (
+        <div>
+          {message}
+          {action}
+        </div>
+      );
+    },
+    Progress({ percent }: { percent?: number }) {
+      return <span>{percent}</span>;
+    },
     Space({ children }: { children?: React.ReactNode }) {
       return <span>{children}</span>;
     },
@@ -234,6 +249,40 @@ describe('knowledge document detail', () => {
     expect(container?.textContent).toContain('重新处理');
     expect(container?.textContent).not.toContain('等待 Worker A 接入 reprocessDocument');
     expect(client.reprocessDocument).not.toHaveBeenCalled();
+  });
+
+  it('surfaces retryable ingestion failure details from the latest job projection', async () => {
+    const failedJob: DocumentProcessingJob = {
+      ...latestJob,
+      status: 'failed',
+      stage: 'embedding',
+      progress: { percent: 75 },
+      error: {
+        code: 'knowledge_ingestion_embedding_failed',
+        message: 'Embedding provider failed.',
+        retryable: true,
+        stage: 'embedding'
+      }
+    };
+    const client = createClient();
+    client.getLatestDocumentJob = vi.fn<CoreOpsApi['getLatestDocumentJob']>().mockResolvedValue(failedJob);
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <MemoryRouter initialEntries={['/documents/doc_detail']}>
+          <Routes>
+            <Route element={<DocumentDetailPage />} path="/documents/:documentId" />
+          </Routes>
+        </MemoryRouter>
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+
+    expect(container?.textContent).toContain('failed');
+    expect(container?.textContent).toContain('embedding');
+    expect(container?.textContent).toContain('75');
+    expect(container?.textContent).toContain('Embedding provider failed.');
+    expect(container?.textContent).toContain('重试');
   });
 });
 

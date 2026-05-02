@@ -58,8 +58,16 @@ export interface KnowledgeFrontendApi {
 
 const KnowledgeApiContext = createContext<KnowledgeFrontendApi | undefined>(undefined);
 
-export function KnowledgeApiProvider({ children, client }: { children: ReactNode; client: KnowledgeFrontendApi }) {
-  return <KnowledgeApiContext.Provider value={client}>{children}</KnowledgeApiContext.Provider>;
+export function KnowledgeApiProvider({
+  api,
+  children,
+  client
+}: {
+  api?: KnowledgeFrontendApi;
+  children: ReactNode;
+  client?: KnowledgeFrontendApi;
+}) {
+  return <KnowledgeApiContext.Provider value={client ?? api}>{children}</KnowledgeApiContext.Provider>;
 }
 
 export function useKnowledgeApi(): KnowledgeFrontendApi {
