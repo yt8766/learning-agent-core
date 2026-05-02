@@ -112,6 +112,7 @@ export {
   resolveKnowledgeRetrievalFilters
 } from './retrieval/knowledge-retrieval-filters';
 export * from './retrieval/knowledge-search-service';
+export * from './retrieval/knowledge-chat-routing';
 export type { VectorSearchHit, VectorSearchOptions, VectorSearchProvider } from './retrieval/vector-search-provider';
 export { InMemoryVectorSearchProvider } from './retrieval/in-memory-vector-search-provider';
 export { VectorKnowledgeSearchService } from './retrieval/vector-knowledge-search-service';
@@ -241,4 +242,5 @@ export type {
 } from './adapters/supabase';
 export * from './client';
 export { createKnowledgeBrowserClient } from './browser';
-export * from './node';
+export { createKnowledgeRuntime } from './node';
+export type { KnowledgeRuntime, KnowledgeRuntimeProviders } from './node';
