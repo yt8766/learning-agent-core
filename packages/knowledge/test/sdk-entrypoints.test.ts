@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 describe('@agent/knowledge SDK entrypoints', () => {
@@ -28,6 +31,13 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(runtime.vectorStore).toBe(vectorStore);
     expect(runtime.embeddingProvider).toBeUndefined();
     expect(runtime.providers.vectorStore).toBe(vectorStore);
+  });
+
+  it('keeps the package root detached from the node barrel runtime bundle', () => {
+    const rootEntry = readFileSync(resolve(__dirname, '../src/index.ts'), 'utf8');
+
+    expect(rootEntry).toContain("from './node/knowledge-runtime'");
+    expect(rootEntry).not.toContain("from './node';");
   });
 });
 
