@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`
-最后核对：2026-04-26
+最后核对：2026-05-02
 
 本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
 
@@ -34,6 +34,8 @@
 
 ## API 入口
 
+- Auth Service：[auth.md](/docs/contracts/api/auth.md)
+- Knowledge Service：[knowledge.md](/docs/contracts/api/knowledge.md)
 - 聊天、会话与 SSE：[agent-chat.md](/docs/contracts/api/agent-chat.md)
 - Admin 控制台聚合：[agent-admin.md](/docs/contracts/api/agent-admin.md)
 - Runtime Center：[runtime.md](/docs/contracts/api/runtime.md)
@@ -107,6 +109,25 @@
 - Approvals 页面读 Approvals Center。
 - Run 详情读 Run Observatory detail。
 - Console diagnostics 只做观测展示，不驱动业务状态。
+
+## Auth / Knowledge Service Split
+
+`agent-admin` 和 `apps/frontend/knowledge` 第一阶段直接调用 `auth-server` 完成登录。`apps/frontend/knowledge` 的知识库业务请求直接调用 `knowledge-server`，并携带 `auth-server` 签发的 Access Token。
+
+```text
+agent-admin login -> auth-server /api/auth/login
+agent-admin users -> auth-server /api/auth/users
+knowledge login -> auth-server /api/auth/login
+knowledge bases -> knowledge-server /api/knowledge/bases
+```
+
+默认本地端口：
+
+```text
+auth-server      http://127.0.0.1:3010/api
+knowledge-server http://127.0.0.1:3020/api
+agent-server     http://127.0.0.1:3000/api
+```
 
 ## 命名与兼容
 
