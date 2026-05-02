@@ -1,16 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
+import {
+  answerKnowledgeChat,
+  isPresent,
+  normalizeChatRequest,
+  resolveChatTargetBaseIds
+} from './knowledge-document-chat.helpers';
 import { KnowledgeServiceError } from './knowledge.errors';
 import type {
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
   DocumentChunksResponse,
   DocumentProcessingJobRecord,
-  KnowledgeDocumentRecord
+  KnowledgeChatRequest,
+  KnowledgeChatResponse,
+  KnowledgeDocumentRecord,
+  KnowledgeEmbeddingModelsResponse
 } from './domain/knowledge-document.types';
 import type { KnowledgeActor } from './knowledge.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
+import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-runtime.provider';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import type { OssStorageProvider } from './storage/oss-storage.provider';
 
@@ -19,7 +29,8 @@ export class KnowledgeDocumentService {
   constructor(
     private readonly repository: KnowledgeRepository,
     private readonly worker: KnowledgeIngestionWorker,
-    private readonly storage: OssStorageProvider
+    private readonly storage: OssStorageProvider,
+    private readonly sdkRuntime: KnowledgeSdkRuntimeProviderValue = disabledSdkRuntime()
   ) {}
 
   async createFromUpload(
@@ -66,7 +77,7 @@ export class KnowledgeDocumentService {
     await this.repository.createJob(job);
     const completedJob = await this.worker.process(job);
     const completedDocument = await this.getDocument(actor, document.id);
-    return { document: completedDocument, job: completedJob };
+    return { document: completedDocument, job: this.withProgress(completedJob, completedDocument) };
   }
 
   async getDocument(actor: KnowledgeActor, documentId: string): Promise<KnowledgeDocumentRecord> {
@@ -109,7 +120,7 @@ export class KnowledgeDocumentService {
     if (!job) {
       throw new KnowledgeServiceError('knowledge_job_not_found', '文档处理任务不存在');
     }
-    return job;
+    return this.withProgress(job, document);
   }
 
   async listChunks(actor: KnowledgeActor, documentId: string): Promise<DocumentChunksResponse> {
@@ -138,7 +149,44 @@ export class KnowledgeDocumentService {
     await this.repository.createJob(job);
     const completedJob = await this.worker.process(job);
     const completedDocument = await this.getDocument(actor, document.id);
-    return { document: completedDocument, job: completedJob };
+    return { document: completedDocument, job: this.withProgress(completedJob, completedDocument) };
+  }
+
+  async chat(actor: KnowledgeActor, input: KnowledgeChatRequest): Promise<KnowledgeChatResponse> {
+    const request = normalizeChatRequest(input);
+    const accessibleBases = await this.repository.listBasesForUser(actor.userId);
+    const targetBaseIds = resolveChatTargetBaseIds({
+      accessibleBases,
+      legacyBaseIds: [...(request.knowledgeBaseIds ?? []), request.knowledgeBaseId].filter(isPresent),
+      mentions: request.mentions,
+      message: request.message
+    });
+    for (const baseId of targetBaseIds) {
+      await this.assertCanView(actor.userId, baseId);
+    }
+
+    return answerKnowledgeChat({
+      repository: this.repository,
+      sdkRuntime: this.sdkRuntime,
+      request,
+      targetBaseIds
+    });
+  }
+
+  listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
+    const id = process.env.KNOWLEDGE_EMBEDDING_MODEL_ID ?? 'text-embedding-3-small';
+    const provider = process.env.KNOWLEDGE_EMBEDDING_PROVIDER ?? 'openai';
+    const status = process.env.KNOWLEDGE_EMBEDDING_API_KEY || process.env.OPENAI_API_KEY ? 'available' : 'unconfigured';
+    return {
+      items: [
+        {
+          id,
+          label: id,
+          provider,
+          status
+        }
+      ]
+    };
   }
 
   async deleteDocument(actor: KnowledgeActor, documentId: string): Promise<{ ok: true }> {
@@ -149,13 +197,55 @@ export class KnowledgeDocumentService {
   }
 
   private async assertCanView(userId: string, baseId: string): Promise<void> {
+    const base = await this.repository.findBase(baseId);
+    if (!base) {
+      throw new KnowledgeServiceError('knowledge_base_not_found', '知识库不存在');
+    }
     const member = await this.repository.findMember(baseId, userId);
     if (!member) {
       throw new KnowledgeServiceError('knowledge_permission_denied', '无权访问该知识库');
     }
   }
+
+  private withProgress(
+    job: DocumentProcessingJobRecord,
+    document: KnowledgeDocumentRecord
+  ): DocumentProcessingJobRecord {
+    const totalChunks = document.chunkCount;
+    const processedChunks = document.embeddedChunkCount;
+    return {
+      ...job,
+      progress: {
+        percent: deriveProgressPercent(job, processedChunks, totalChunks),
+        processedChunks,
+        totalChunks
+      }
+    };
+  }
 }
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^.]+$/, '');
+}
+
+function deriveProgressPercent(job: DocumentProcessingJobRecord, processedChunks: number, totalChunks: number): number {
+  if (job.status === 'succeeded') {
+    return 100;
+  }
+  if (job.status === 'failed') {
+    return Math.max(0, Math.min(99, Math.round((processedChunks / Math.max(totalChunks, 1)) * 100)));
+  }
+  if (totalChunks > 0) {
+    return Math.max(1, Math.min(99, Math.round((processedChunks / totalChunks) * 100)));
+  }
+  return job.status === 'running' ? 10 : 0;
+}
+
+function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {
+  return {
+    enabled: false,
+    reason: 'missing_env',
+    missingEnv: ['DATABASE_URL', 'KNOWLEDGE_CHAT_MODEL', 'KNOWLEDGE_EMBEDDING_MODEL', 'KNOWLEDGE_LLM_API_KEY'],
+    runtime: null
+  };
 }
