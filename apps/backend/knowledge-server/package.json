@@ -1,0 +1,34 @@
+{
+  "name": "@agent/knowledge-server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:server": "tsc -p tsconfig.build.json",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "turbo:typecheck": "pnpm typecheck",
+    "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/backend/knowledge-server/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "test": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/backend/knowledge-server/test"
+  },
+  "dependencies": {
+    "@agent/core": "workspace:*",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/node": "^22.10.7",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
