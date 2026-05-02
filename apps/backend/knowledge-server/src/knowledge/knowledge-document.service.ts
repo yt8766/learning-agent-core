@@ -1,12 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
-import {
-  answerKnowledgeChat,
-  isPresent,
-  normalizeChatRequest,
-  resolveChatTargetBaseIds
-} from './knowledge-document-chat.helpers';
+import { normalizeChatRequest } from './knowledge-document-chat.helpers';
 import { KnowledgeServiceError } from './knowledge.errors';
 import type {
   CreateDocumentFromUploadRequest,
@@ -20,6 +15,8 @@ import type {
 } from './domain/knowledge-document.types';
 import type { KnowledgeActor } from './knowledge.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
+import { KnowledgeRagService } from './knowledge-rag.service';
+import { KnowledgeTraceService } from './knowledge-trace.service';
 import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-runtime.provider';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import type { OssStorageProvider } from './storage/oss-storage.provider';
@@ -30,7 +27,12 @@ export class KnowledgeDocumentService {
     private readonly repository: KnowledgeRepository,
     private readonly worker: KnowledgeIngestionWorker,
     private readonly storage: OssStorageProvider,
-    private readonly sdkRuntime: KnowledgeSdkRuntimeProviderValue = disabledSdkRuntime()
+    private readonly sdkRuntime: KnowledgeSdkRuntimeProviderValue = disabledSdkRuntime(),
+    private readonly ragService: KnowledgeRagService = new KnowledgeRagService(
+      repository,
+      sdkRuntime,
+      new KnowledgeTraceService()
+    )
   ) {}
 
   async createFromUpload(
@@ -162,23 +164,7 @@ export class KnowledgeDocumentService {
 
   async chat(actor: KnowledgeActor, input: KnowledgeChatRequest): Promise<KnowledgeChatResponse> {
     const request = normalizeChatRequest(input);
-    const accessibleBases = await this.repository.listBasesForUser(actor.userId);
-    const targetBaseIds = resolveChatTargetBaseIds({
-      accessibleBases,
-      legacyBaseIds: [...(request.knowledgeBaseIds ?? []), request.knowledgeBaseId].filter(isPresent),
-      mentions: request.mentions,
-      message: request.message
-    });
-    for (const baseId of targetBaseIds) {
-      await this.assertCanView(actor.userId, baseId);
-    }
-
-    return answerKnowledgeChat({
-      repository: this.repository,
-      sdkRuntime: this.sdkRuntime,
-      request,
-      targetBaseIds
-    });
+    return this.ragService.answer(actor, request);
   }
 
   listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {

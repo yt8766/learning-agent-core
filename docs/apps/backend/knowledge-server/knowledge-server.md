@@ -172,12 +172,12 @@ RPC adapter 返回 `{ data, error }`，不把 `pg.Pool`、vendor response 或数
 
 当 `KNOWLEDGE_SDK_RUNTIME` 为 disabled 时，Worker 保留本地测试和 demo fallback：chunks 的 embedding/vector/keyword 状态直接标记为 `succeeded`，document/job 进入成功状态，但不会写入 Supabase pgvector。这个模式只用于本地开发、单元测试和横向 demo，不是生产 ingestion 路径。
 
-`KnowledgeDocumentService.chat()` 复用同一个 runtime token。权限与 routing 始终先由 service 完成：从 OpenAI-compatible 请求或旧字段归一化最后一条用户问题，读取当前用户可访问知识库，通过 `resolveKnowledgeChatRoute()` 得到目标 knowledge base，并逐一校验 membership。随后：
+`KnowledgeDocumentService.chat()` 只负责请求归一化并委托 `KnowledgeRagService`。`KnowledgeRagService` 是 Chat Lab 的后端编排边界：读取当前用户可访问知识库，通过 `resolveKnowledgeChatRoute()` 得到目标 knowledge base，逐一校验 membership，记录 `route/retrieve/generate` trace span，并返回稳定 `route` 与 `diagnostics` 投影。随后：
 
 - `KNOWLEDGE_SDK_RUNTIME.enabled = false`：保留 repository deterministic RAG，读取目标知识库 document chunks，按查询词命中率生成 citation projection，并把命中的 quote 拼为 answer；这是本地测试和 demo fallback。
 - `KNOWLEDGE_SDK_RUNTIME.enabled = true`：调用 `embeddingProvider.embedText({ text: message })` 得到 query embedding；对每个目标 knowledge base 调用 `vectorStore.search({ embedding, topK: 5, filters: { tenantId, knowledgeBaseId, query } })`，其中 `tenantId` 优先取该 base 下 document 的 `workspaceId`，没有 document 时使用 `default`；再把 vector hits 投影为 API 既有 `KnowledgeChatCitation`，优先读取 hit metadata 中的 `documentId`、`title` / `filename`、`ordinal`，`quote` 使用 hit content，`score` 使用 hit score。最后调用 `chatProvider.generate()`，messages 内包含 system/developer context prompt、原始用户问题和 citation context，要求模型只基于 citations/context 回答，依据不足时明确说明依据不足。
 
-SDK chat 分支不改变 `POST /api/chat` response schema：`answer` 使用 provider 返回的 `generated.text`，`assistantMessage.citations` 与顶层 `citations` 仍是相同的 citation projection。embedding、vector search 或 generation 任一 SDK 错误都会在 service 层转换为 `KnowledgeServiceError('knowledge_chat_failed', message)`，避免第三方 provider / vector adapter error 直接穿透到 controller 或前端。
+SDK chat 分支保持 grounded citation 规则：`answer` 使用 provider 返回的 `generated.text`，但 `assistantMessage.citations` 与顶层 `citations` 只能来自 retrieval/vector hits 的项目投影，不能采信模型返回的自带 citation。embedding、vector search 或 generation 任一 SDK 错误都会在 service 层转换为 `KnowledgeServiceError('knowledge_chat_failed', message)`，避免第三方 provider / vector adapter error 直接穿透到 controller 或前端。
 
 `DocumentProcessingJobRecord.progress` 是给前端进度条使用的稳定投影。同步 MVP 会在 `parsing -> chunking -> embedding -> indexing -> succeeded` 推进时写入 `15/35/60/85/100` 一组稳定百分比，并填充 `processedChunks` / `totalChunks`；后续异步 worker 可以按同一稳定 `stage` 更新，但不能让前端直接依赖内部 provider 状态或第三方向量库响应。`reprocessDocument()` 必须创建新的 job id，并把 `attempts` 设为上一条 job 的 `attempts + 1`，不得把失败 job 改回 running。
 

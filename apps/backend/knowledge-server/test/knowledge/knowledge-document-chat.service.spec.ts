@@ -70,6 +70,8 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     );
     expect(response).toMatchObject({
       answer: 'Keys should rotate every 90 days.',
+      route: { selectedKnowledgeBaseIds: [baseId], reason: 'legacy-ids' },
+      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
       citations: [
         {
           documentId: 'doc_1',
@@ -83,6 +85,55 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
         content: 'Keys should rotate every 90 days.',
         citations: [expect.objectContaining({ documentId: 'doc_1' })]
       }
+    });
+  });
+
+  it('returns route diagnostics and repository citations grounded in retrieved chunks', async () => {
+    const { documents, repository, baseId } = await createService(disabledSdkRuntime());
+    await repository.createDocument({
+      id: 'doc_1',
+      workspaceId: 'default',
+      knowledgeBaseId: baseId,
+      uploadId: 'upload_1',
+      objectKey: 'knowledge/kb_1/upload_1/rag.md',
+      filename: 'rag.md',
+      title: 'Trustworthy RAG',
+      sourceType: 'user-upload',
+      status: 'ready',
+      version: 'v1',
+      chunkCount: 1,
+      embeddedChunkCount: 1,
+      createdBy: actor.userId,
+      metadata: {},
+      createdAt: '2026-05-03T08:00:00.000Z',
+      updatedAt: '2026-05-03T08:00:00.000Z'
+    });
+    await repository.saveChunks('doc_1', [
+      {
+        id: 'chunk_1',
+        documentId: 'doc_1',
+        ordinal: 0,
+        content: 'citation 必须来自 retrieval hits',
+        tokenCount: 4,
+        embeddingStatus: 'succeeded',
+        vectorIndexStatus: 'succeeded',
+        keywordIndexStatus: 'succeeded',
+        createdAt: '2026-05-03T08:00:00.000Z',
+        updatedAt: '2026-05-03T08:00:00.000Z'
+      }
+    ]);
+
+    const response = await documents.chat(actor, {
+      model: 'knowledge-default',
+      messages: [{ role: 'user', content: '@Engineering KB citation retrieval hits 怎么保证可信？' }],
+      metadata: { conversationId: 'conv_1', mentions: [{ type: 'knowledge_base', label: 'Engineering KB' }] },
+      stream: false
+    });
+
+    expect(response).toMatchObject({
+      route: { selectedKnowledgeBaseIds: [baseId], reason: 'mentions' },
+      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
+      citations: [{ chunkId: 'chunk_1', documentId: 'doc_1', quote: 'citation 必须来自 retrieval hits' }]
     });
   });
 
@@ -137,6 +188,30 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
         ])
       })
     );
+  });
+
+  it('does not return model-invented citations when retrieval has no grounded hits', async () => {
+    const { documents, baseId } = await createService(
+      enabledSdkRuntime({
+        search: vi.fn(async () => ({ hits: [] })),
+        generate: vi.fn(async () => ({
+          text: '模型声称引用了不存在的文档。',
+          model: 'fake-chat',
+          providerId: 'fake',
+          citations: [{ chunkId: 'invented', documentId: 'invented' }]
+        }))
+      })
+    );
+
+    const response = await documents.chat(actor, {
+      knowledgeBaseIds: [baseId],
+      message: '没有命中时怎么办？'
+    });
+
+    expect(response).toMatchObject({
+      citations: [],
+      diagnostics: { hitCount: 0, contextChunkCount: 0 }
+    });
   });
 
   it('keeps the document_id metadata compatibility fallback for vector citations', async () => {
@@ -199,7 +274,7 @@ async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
   const worker = new KnowledgeIngestionWorker(repository, storage, disabledSdkRuntime());
   const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
-  return { documents, baseId: base.id };
+  return { documents, repository, baseId: base.id };
 }
 
 function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {

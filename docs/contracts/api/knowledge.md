@@ -430,6 +430,8 @@ Response: `CreateDocumentFromUploadResponse`
 
 失败 job 的 `error` 必须包含稳定 `code/message/stage`，可重试失败还必须包含 `retryable: true`。当前 embedding / indexing 失败分别返回 `knowledge_ingestion_embedding_failed` 与 `knowledge_ingestion_index_failed`；`POST /documents/:documentId/reprocess` 必须创建新的 job id，并把 `attempts` 设置为上一条 job attempts + 1。
 
+`POST /chat` 的 Chat Lab 响应在 legacy `answer/citations/traceId` 外还返回 `route` 与 `diagnostics`。`route.reason` 使用稳定枚举 `legacy-ids | mentions | metadata-match | fallback-all`；`diagnostics.retrievalMode` 使用 `hybrid | none` 作为当前 MVP 展示投影。`citations` 只能来自后端 retrieval/vector hit 投影，模型生成阶段返回的自带 citation 不得穿透到响应。
+
 Endpoint contract:
 
 | Method | Path                                   | Query / Body                                                              | Response                                                                  | 主要错误码                                                                                                                                                                                    | 权限                                        |
