@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import type { CompanyLiveContentBrief } from '@agent/core';
 import { CompanyLiveContentBriefSchema } from '@agent/core';
 import { z } from 'zod';
@@ -34,29 +33,16 @@ export interface CompanyLiveExpertConsultDto {
 }
 
 export function parseCompanyLiveGenerateDto(body: unknown): CompanyLiveGenerateDto {
-  const partial = parseCompanyLiveDto(CompanyLiveGenerateDtoSchema, body);
+  const partial = CompanyLiveGenerateDtoSchema.parse(body);
   return parseCompanyLiveBrief(partial);
 }
 
 export function parseCompanyLiveExpertConsultDto(body: unknown): CompanyLiveExpertConsultDto {
-  const partial = parseCompanyLiveDto(CompanyLiveExpertConsultDtoSchema, body);
+  const partial = CompanyLiveExpertConsultDtoSchema.parse(body);
   return {
     brief: parseCompanyLiveBrief(partial.brief),
     question: partial.question
   };
-}
-
-function parseCompanyLiveDto<T>(schema: z.ZodType<T>, body: unknown): T {
-  const result = schema.safeParse(body);
-  if (result.success) {
-    return result.data;
-  }
-
-  throw new BadRequestException({
-    error: 'Bad Request',
-    message: 'Invalid company-live request payload',
-    details: result.error.issues
-  });
 }
 
 function parseCompanyLiveBrief(partial: z.infer<typeof CompanyLiveGenerateDtoSchema>): CompanyLiveContentBrief {
