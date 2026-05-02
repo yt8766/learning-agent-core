@@ -4,8 +4,13 @@ export {
   DEFAULT_TRACE_SAMPLE_RATE,
   KnowledgeAuthSessionSchema,
   KnowledgeAuthTokensSchema,
+  KnowledgeBaseHealthSchema,
   KnowledgeBaseSchema,
+  KnowledgeErrorResponseSchema,
+  KnowledgeEvalCaseSchema,
+  KnowledgeEvalRunResultSchema,
   KnowledgeEvalRunSchema,
+  KnowledgeIngestionJobProjectionSchema,
   ProviderHealthSchema
 } from './core';
 export {
@@ -18,9 +23,14 @@ export {
   type EmbedTextInput,
   type EmbedTextResult,
   type KnowledgeBase,
+  type KnowledgeBaseHealth,
   type KnowledgeAuthTokens,
   type KnowledgeAuthSession,
+  type KnowledgeErrorResponse,
+  type KnowledgeEvalCase,
+  type KnowledgeEvalRunResult,
   type KnowledgeEvalRun,
+  type KnowledgeIngestionJobProjection,
   type KnowledgeErrorCategory,
   type KnowledgeErrorOptions,
   type KnowledgeUser,
@@ -38,18 +48,28 @@ export {
 export {
   KnowledgeCitationSchema,
   KnowledgeRagAnswerSchema,
+  KnowledgeRagDiagnosticsSchema,
+  KnowledgeRagRouteSchema,
   KnowledgeRefreshSessionSchema,
+  KnowledgeTokenUsageSchema,
+  KnowledgeTraceOperationSchema,
   KnowledgeTraceSchema,
   KnowledgeTraceSpanSchema,
-  KnowledgeVectorSearchRequestSchema
+  KnowledgeVectorSearchRequestSchema,
+  KnowledgeWorkbenchSpanNameSchema
 } from './core';
 export type {
   KnowledgeCitation,
   KnowledgeRagAnswer,
+  KnowledgeRagDiagnostics,
+  KnowledgeRagRoute,
   KnowledgeRefreshSession,
+  KnowledgeTokenUsage,
+  KnowledgeTraceOperation,
   KnowledgeTrace,
   KnowledgeTraceSpan,
-  KnowledgeVectorSearchRequest
+  KnowledgeVectorSearchRequest,
+  KnowledgeWorkbenchSpanName
 } from './core';
 export type {
   ChromaClientConfig,

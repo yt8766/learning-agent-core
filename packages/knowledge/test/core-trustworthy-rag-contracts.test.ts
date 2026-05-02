@@ -6,7 +6,9 @@ import {
   KnowledgeEvalCaseSchema,
   KnowledgeEvalRunResultSchema,
   KnowledgeIngestionJobProjectionSchema,
+  KnowledgeCitationSchema,
   KnowledgeRagAnswerSchema,
+  KnowledgeTokenUsageSchema,
   KnowledgeTraceSchema
 } from '../src/core';
 
@@ -315,6 +317,44 @@ describe('trustworthy RAG workbench core contracts', () => {
     };
 
     expect(() => KnowledgeRagAnswerSchema.parse(ragAnswer)).toThrow();
+    expect(() =>
+      KnowledgeRagAnswerSchema.parse({
+        id: 'answer-extra',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        answer: '答案顶层不允许透传 vendor 字段。',
+        vendorRaw: true
+      })
+    ).toThrow();
+    expect(() =>
+      KnowledgeCitationSchema.parse({
+        chunkId: 'chunk-1',
+        documentId: 'doc-1',
+        vendorRaw: true
+      })
+    ).toThrow();
+    expect(() =>
+      KnowledgeTokenUsageSchema.parse({
+        inputTokens: 10,
+        outputTokens: 20,
+        totalTokens: 30,
+        vendorRaw: true
+      })
+    ).toThrow();
+    expect(() =>
+      KnowledgeRagAnswerSchema.parse({
+        id: 'answer-usage-extra',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        answer: 'usage 子对象不允许透传 vendor 字段。',
+        usage: {
+          inputTokens: 10,
+          outputTokens: 20,
+          totalTokens: 30,
+          vendorRaw: true
+        }
+      })
+    ).toThrow();
 
     const traceSpan = {
       spanId: 'span-1',
@@ -368,6 +408,46 @@ describe('trustworthy RAG workbench core contracts', () => {
           vendorRaw: true
         },
         traceId: 'trace-1'
+      })
+    ).toThrow();
+  });
+
+  it('allows unknown trace operation and span name for compatibility while keeping trace fields strict', () => {
+    expect(
+      KnowledgeTraceSchema.parse({
+        traceId: 'trace-legacy-1',
+        operation: 'legacy.rag.workflow',
+        startedAt: '2026-05-03T08:00:00.000Z',
+        status: 'ok',
+        spans: [
+          {
+            spanId: 'span-legacy-1',
+            name: 'legacy-retrieve',
+            startedAt: '2026-05-03T08:00:00.100Z',
+            status: 'ok'
+          }
+        ]
+      })
+    ).toMatchObject({
+      operation: 'legacy.rag.workflow',
+      spans: [{ name: 'legacy-retrieve' }]
+    });
+
+    expect(() =>
+      KnowledgeTraceSchema.parse({
+        traceId: 'trace-legacy-extra-1',
+        operation: 'legacy.rag.workflow',
+        startedAt: '2026-05-03T08:00:00.000Z',
+        status: 'ok',
+        spans: [
+          {
+            spanId: 'span-legacy-extra-1',
+            name: 'legacy-retrieve',
+            startedAt: '2026-05-03T08:00:00.100Z',
+            status: 'ok',
+            vendorRaw: true
+          }
+        ]
       })
     ).toThrow();
   });
