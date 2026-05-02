@@ -33,6 +33,7 @@ describe('createKnowledgeDatabaseClient', () => {
     expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function upsert_knowledge_chunks');
     expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function match_knowledge_chunks');
     expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function delete_knowledge_document_chunks');
+    expect(KNOWLEDGE_SCHEMA_SQL).not.toContain('skipping knowledge vector RPC contract');
   });
 });
 

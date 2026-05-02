@@ -1,4 +1,6 @@
 export const KNOWLEDGE_SCHEMA_SQL = `
+create extension if not exists vector;
+
 create table if not exists knowledge_bases (
   id text primary key,
   name text not null,
@@ -68,6 +70,7 @@ create table if not exists knowledge_document_chunks (
   content text not null,
   token_count integer not null,
   metadata jsonb not null default '{}'::jsonb,
+  embedding vector(1536),
   embedding_status text not null,
   vector_index_status text not null,
   keyword_index_status text not null,
@@ -79,19 +82,9 @@ create table if not exists knowledge_document_chunks (
 alter table knowledge_document_chunks
   add column if not exists metadata jsonb not null default '{}'::jsonb;
 
-do $knowledge_pgvector$
-begin
-  begin
-    create extension if not exists vector;
-  exception
-    when undefined_file or feature_not_supported then
-      raise notice 'pgvector extension is not available; skipping knowledge vector RPC contract';
-      return;
-  end;
+alter table knowledge_document_chunks
+  add column if not exists embedding vector(1536);
 
-  execute 'alter table knowledge_document_chunks add column if not exists embedding vector(1536)';
-
-  execute $rpc$
 create or replace function upsert_knowledge_chunks(
   knowledge_base_id text,
   document_id text,
@@ -171,9 +164,7 @@ begin
   return jsonb_build_object('upserted_count', upserted_count);
 end;
 $function$;
-$rpc$;
 
-  execute $rpc$
 create or replace function match_knowledge_chunks(
   knowledge_base_id text,
   embedding vector(1536),
@@ -212,9 +203,7 @@ as $function$
   order by kdc.embedding <=> match_knowledge_chunks.embedding
   limit greatest(match_knowledge_chunks.top_k, 0)
 $function$;
-$rpc$;
 
-  execute $rpc$
 create or replace function delete_knowledge_document_chunks(
   knowledge_base_id text,
   document_id text,
@@ -237,7 +226,4 @@ begin
   return jsonb_build_object('deleted_count', deleted_count);
 end;
 $function$;
-$rpc$;
-end;
-$knowledge_pgvector$;
 `;
