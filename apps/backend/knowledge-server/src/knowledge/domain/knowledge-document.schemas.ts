@@ -1,5 +1,35 @@
 import { z } from 'zod';
 
+export const DocumentProcessingStageSchema = z.enum([
+  'uploaded',
+  'parsing',
+  'chunking',
+  'embedding',
+  'indexing',
+  'succeeded',
+  'failed',
+  'cancelled'
+]);
+
+export const DocumentProcessingStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']);
+
+export const DocumentProcessingJobProgressSchema = z
+  .object({
+    percent: z.number().min(0).max(100),
+    processedChunks: z.number().int().nonnegative().optional(),
+    totalChunks: z.number().int().nonnegative().optional()
+  })
+  .strict();
+
+export const DocumentProcessingJobErrorSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string().min(1),
+    retryable: z.boolean(),
+    stage: DocumentProcessingStageSchema
+  })
+  .strict();
+
 export const CreateDocumentFromUploadRequestSchema = z.object({
   uploadId: z.string().min(1),
   objectKey: z.string().min(1),

@@ -168,7 +168,7 @@ RPC adapter 返回 `{ data, error }`，不把 `pg.Pool`、vendor response 或数
 
 当 `KNOWLEDGE_SDK_RUNTIME` 为 enabled 时，Worker 会调用 SDK 默认 runtime 的 `embeddingProvider.embedBatch({ texts })` 生成 chunk embeddings，再调用 `vectorStore.upsert({ records })` 写入 Supabase/PostgreSQL pgvector。每条 vector record 使用 chunk 自身的 `id/content/embedding`，metadata 至少包含 `tenantId`（来自 `document.workspaceId`）、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`，并在 `document.metadata.tags` 是 `string[]` 时透传 `tags`。成功后 repository 只保存 `DocumentChunkRecord` 已定义的 chunk 状态字段，不把 embedding 数组强塞回文档 chunk record；document 会进入 `ready`，`embeddedChunkCount = chunkCount`，job stages 会记录 `embed` 与 `index_vector` 成功。
 
-当 SDK embedding 或 vector upsert 失败时，Worker 会把 document 标为 `failed`，把 latest job 标为 `failed`，`currentStage` 停在失败阶段，并写入 `knowledge_embedding_failed` 或 `knowledge_index_failed` 以及错误消息；失败文档不能被标成 `ready`。当前同步调用链会把该 `KnowledgeServiceError` 抛回调用方，同时保留 repository 中可查询的 failed document/job 状态。
+当 SDK embedding 或 vector upsert 失败时，Worker 会把 document 标为 `failed`，把 latest job 标为 `failed`，`currentStage` 继续保留 legacy 阶段名（`embed` / `index_vector`），同时写入稳定展示字段 `stage: embedding | indexing`、`progress`、`attempts` 和结构化 `error`。同步调用链仍向调用方抛出兼容错误码 `knowledge_embedding_failed` / `knowledge_index_failed`；job 详情里的结构化错误使用 `knowledge_ingestion_embedding_failed` / `knowledge_ingestion_index_failed`，包含 `retryable` 与失败 `stage`，供前端判断是否显示重试。失败文档不能被标成 `ready`。
 
 当 `KNOWLEDGE_SDK_RUNTIME` 为 disabled 时，Worker 保留本地测试和 demo fallback：chunks 的 embedding/vector/keyword 状态直接标记为 `succeeded`，document/job 进入成功状态，但不会写入 Supabase pgvector。这个模式只用于本地开发、单元测试和横向 demo，不是生产 ingestion 路径。
 
@@ -179,7 +179,9 @@ RPC adapter 返回 `{ data, error }`，不把 `pg.Pool`、vendor response 或数
 
 SDK chat 分支不改变 `POST /api/chat` response schema：`answer` 使用 provider 返回的 `generated.text`，`assistantMessage.citations` 与顶层 `citations` 仍是相同的 citation projection。embedding、vector search 或 generation 任一 SDK 错误都会在 service 层转换为 `KnowledgeServiceError('knowledge_chat_failed', message)`，避免第三方 provider / vector adapter error 直接穿透到 controller 或前端。
 
-`DocumentProcessingJobRecord.progress` 是给前端进度条使用的稳定投影。同步 MVP 在处理完成后返回 `percent: 100`，并填充 `processedChunks` / `totalChunks`；后续异步 worker 可以按 stage 更新，但不能让前端直接依赖内部 provider 状态或第三方向量库响应。
+`DocumentProcessingJobRecord.progress` 是给前端进度条使用的稳定投影。同步 MVP 会在 `parsing -> chunking -> embedding -> indexing -> succeeded` 推进时写入 `15/35/60/85/100` 一组稳定百分比，并填充 `processedChunks` / `totalChunks`；后续异步 worker 可以按同一稳定 `stage` 更新，但不能让前端直接依赖内部 provider 状态或第三方向量库响应。`reprocessDocument()` 必须创建新的 job id，并把 `attempts` 设为上一条 job 的 `attempts + 1`，不得把失败 job 改回 running。
+
+Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动时由 `knowledge-schema.sql.ts` 的 `alter table ... add column if not exists` 补齐字段。`stages/currentStage/errorCode/errorMessage` 是兼容旧前端和旧测试的 legacy 投影，新增 UI 默认读取稳定字段。
 
 `GET /api/knowledge/embedding-models` 返回前端可选择的 embedding model display projection。当前 MVP 与 SDK runtime 使用同一组默认配置：`KNOWLEDGE_EMBEDDING_MODEL` 决定 `id/label`，provider 固定展示为 `openai-compatible`，是否存在 `KNOWLEDGE_LLM_API_KEY` 决定 `available/unconfigured`。该 endpoint 只暴露 `id/label/provider/status`，不暴露任何 secret。前端把选择结果写入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，后端先保存为 metadata；真实多 embedding provider 接入时应在 worker/provider 边界读取并校验该字段。
 

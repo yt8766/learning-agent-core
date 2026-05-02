@@ -295,6 +295,92 @@ describe('Knowledge document ingestion', () => {
     });
   });
 
+  it('records a retryable embedding failure without marking the document searchable', async () => {
+    const sdkRuntime = createEnabledSdkRuntime({
+      embedBatch: async () => {
+        throw new Error('embedding unavailable');
+      },
+      upsert: async input => ({ upsertedCount: input.records.length })
+    });
+    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const upload = await controller.uploadKnowledgeFile(actor, baseId, {
+      originalname: 'retryable.md',
+      mimetype: 'text/markdown',
+      size: Buffer.byteLength('alpha'),
+      buffer: Buffer.from('alpha')
+    });
+
+    await expect(
+      controller.createDocumentFromUpload(actor, baseId, {
+        uploadId: upload.uploadId,
+        objectKey: upload.objectKey,
+        filename: upload.filename
+      })
+    ).rejects.toMatchObject({
+      code: 'knowledge_embedding_failed'
+    });
+
+    const failedDocument = (await documents.listDocuments(actor)).items[0];
+    expect(failedDocument).toMatchObject({ status: 'failed', chunkCount: 1, embeddedChunkCount: 0 });
+    await expect(controller.getLatestDocumentJob(actor, failedDocument.id)).resolves.toMatchObject({
+      status: 'failed',
+      stage: 'embedding',
+      progress: { percent: 60, processedChunks: 0, totalChunks: 1 },
+      attempts: 1,
+      error: {
+        code: 'knowledge_ingestion_embedding_failed',
+        message: 'embedding unavailable',
+        retryable: true,
+        stage: 'embedding'
+      }
+    });
+  });
+
+  it('creates a new job attempt when reprocessing a failed document', async () => {
+    let shouldFailEmbedding = true;
+    const sdkRuntime = createEnabledSdkRuntime({
+      embedBatch: async ({ texts }) => {
+        if (shouldFailEmbedding) {
+          shouldFailEmbedding = false;
+          throw new Error('embedding unavailable');
+        }
+        return {
+          embeddings: texts.map((_, index) => [index + 0.1, index + 0.2]),
+          model: 'fake-embedding'
+        };
+      },
+      upsert: async input => ({ upsertedCount: input.records.length })
+    });
+    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const upload = await controller.uploadKnowledgeFile(actor, baseId, {
+      originalname: 'retry.md',
+      mimetype: 'text/markdown',
+      size: Buffer.byteLength('alpha'),
+      buffer: Buffer.from('alpha')
+    });
+
+    await expect(
+      controller.createDocumentFromUpload(actor, baseId, {
+        uploadId: upload.uploadId,
+        objectKey: upload.objectKey,
+        filename: upload.filename
+      })
+    ).rejects.toMatchObject({ code: 'knowledge_embedding_failed' });
+
+    const failedDocument = (await documents.listDocuments(actor)).items[0];
+    const failedJob = await controller.getLatestDocumentJob(actor, failedDocument.id);
+    const retry = await controller.reprocessDocument(actor, failedDocument.id);
+
+    expect(retry.job.id).not.toBe(failedJob.id);
+    expect(retry.job).toMatchObject({
+      documentId: failedDocument.id,
+      status: 'succeeded',
+      stage: 'succeeded',
+      attempts: 2,
+      progress: { percent: 100, processedChunks: 1, totalChunks: 1 }
+    });
+  });
+
   it('marks ingestion failed when vector upsert writes fewer chunks than requested', async () => {
     const sdkRuntime = createEnabledSdkRuntime({
       upsert: async () => ({ upsertedCount: 0 })
@@ -382,6 +468,7 @@ function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {
 
 function createEnabledSdkRuntime(input: {
   embeddings?: number[][];
+  embedBatch?: (input: { texts: string[] }) => Promise<{ embeddings: number[][]; model: string }>;
   upsert: (input: {
     records: Array<{ id: string; embedding: number[]; content?: string; metadata?: Record<string, unknown> }>;
   }) => Promise<{ upsertedCount: number }>;
@@ -398,10 +485,12 @@ function createEnabledSdkRuntime(input: {
         providerId: 'fake',
         defaultModel: 'fake-embedding',
         embedText: async ({ text }) => ({ embedding: [text.length, text.length + 1], model: 'fake-embedding' }),
-        embedBatch: async ({ texts }) => ({
-          embeddings: input.embeddings ?? texts.map((_, index) => [index + 0.1, index + 0.2]),
-          model: 'fake-embedding'
-        })
+        embedBatch:
+          input.embedBatch ??
+          (async ({ texts }) => ({
+            embeddings: input.embeddings ?? texts.map((_, index) => [index + 0.1, index + 0.2]),
+            model: 'fake-embedding'
+          }))
       },
       vectorStore: {
         upsert: input.upsert,
