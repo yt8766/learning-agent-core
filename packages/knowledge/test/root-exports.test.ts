@@ -24,6 +24,15 @@ import {
   readKnowledgeOverview,
   RetrievalRequestSchema,
   HybridKnowledgeSearchProductionConfigSchema,
+  KnowledgeBaseHealthSchema,
+  KnowledgeErrorResponseSchema,
+  KnowledgeEvalCaseSchema,
+  KnowledgeEvalRunResultSchema,
+  KnowledgeIngestionJobProjectionSchema,
+  KnowledgeRagDiagnosticsSchema,
+  KnowledgeRagRouteSchema,
+  KnowledgeTraceOperationSchema,
+  KnowledgeWorkbenchSpanNameSchema,
   buildCatalogSyncKnowledgePayload,
   buildConnectorSyncKnowledgePayload,
   buildUserUploadKnowledgePayload,
@@ -31,6 +40,17 @@ import {
   createKnowledgeSourceIngestionLoader,
   ingestKnowledgeSourcePayloads,
   runKnowledgeIndexing
+} from '../src/index';
+import type {
+  KnowledgeBaseHealth,
+  KnowledgeErrorResponse,
+  KnowledgeEvalCase,
+  KnowledgeEvalRunResult,
+  KnowledgeIngestionJobProjection,
+  KnowledgeRagDiagnostics,
+  KnowledgeRagRoute,
+  KnowledgeTraceOperation,
+  KnowledgeWorkbenchSpanName
 } from '../src/index';
 import * as rootExports from '../src/index';
 import * as contractExports from '../src/contracts/knowledge-facade';
@@ -57,6 +77,103 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.RetrievalRequestSchema).toBe(RetrievalRequestSchema);
     expect(RetrievalRequestSchema.safeParse({ query: 'RAG 是什么' }).success).toBe(true);
     expect(rootExports.HybridKnowledgeSearchProductionConfigSchema).toBe(HybridKnowledgeSearchProductionConfigSchema);
+  });
+
+  it('re-exports trustworthy RAG workbench schemas and types from the root entrypoint', () => {
+    expect(rootExports.KnowledgeBaseHealthSchema).toBe(KnowledgeBaseHealthSchema);
+    expect(rootExports.KnowledgeIngestionJobProjectionSchema).toBe(KnowledgeIngestionJobProjectionSchema);
+    expect(rootExports.KnowledgeErrorResponseSchema).toBe(KnowledgeErrorResponseSchema);
+    expect(rootExports.KnowledgeEvalCaseSchema).toBe(KnowledgeEvalCaseSchema);
+    expect(rootExports.KnowledgeEvalRunResultSchema).toBe(KnowledgeEvalRunResultSchema);
+    expect(rootExports.KnowledgeRagRouteSchema).toBe(KnowledgeRagRouteSchema);
+    expect(rootExports.KnowledgeRagDiagnosticsSchema).toBe(KnowledgeRagDiagnosticsSchema);
+    expect(rootExports.KnowledgeTraceOperationSchema).toBe(KnowledgeTraceOperationSchema);
+    expect(rootExports.KnowledgeWorkbenchSpanNameSchema).toBe(KnowledgeWorkbenchSpanNameSchema);
+    expect(
+      KnowledgeBaseHealthSchema.safeParse({
+        knowledgeBaseId: 'kb-1',
+        status: 'ready',
+        documentCount: 1,
+        searchableDocumentCount: 1,
+        chunkCount: 3,
+        failedJobCount: 0,
+        providerHealth: {
+          embedding: 'ok',
+          vector: 'ok',
+          keyword: 'ok',
+          generation: 'ok'
+        }
+      }).success
+    ).toBe(true);
+
+    const typeSmoke: {
+      health: KnowledgeBaseHealth;
+      job: KnowledgeIngestionJobProjection;
+      error: KnowledgeErrorResponse;
+      evalCase: KnowledgeEvalCase;
+      evalResult: KnowledgeEvalRunResult;
+      route: KnowledgeRagRoute;
+      diagnostics: KnowledgeRagDiagnostics;
+      operation: KnowledgeTraceOperation;
+      spanName: KnowledgeWorkbenchSpanName;
+    } = {
+      health: KnowledgeBaseHealthSchema.parse({
+        knowledgeBaseId: 'kb-type',
+        status: 'empty',
+        documentCount: 0,
+        searchableDocumentCount: 0,
+        chunkCount: 0,
+        failedJobCount: 0,
+        providerHealth: {
+          embedding: 'unconfigured',
+          vector: 'unconfigured',
+          keyword: 'unconfigured',
+          generation: 'unconfigured'
+        }
+      }),
+      job: KnowledgeIngestionJobProjectionSchema.parse({
+        id: 'job-type',
+        documentId: 'doc-type',
+        stage: 'uploaded',
+        status: 'queued',
+        progress: { percent: 0 },
+        attempts: 1,
+        createdAt: '2026-05-03T08:00:00.000Z',
+        updatedAt: '2026-05-03T08:00:00.000Z'
+      }),
+      error: KnowledgeErrorResponseSchema.parse({
+        code: 'KNOWLEDGE_PROVIDER_UNAVAILABLE',
+        message: 'Embedding provider is unavailable.',
+        retryable: true
+      }),
+      evalCase: KnowledgeEvalCaseSchema.parse({
+        id: 'case-type',
+        datasetId: 'dataset-type',
+        question: '如何验证根入口类型导出？'
+      }),
+      evalResult: KnowledgeEvalRunResultSchema.parse({
+        runId: 'run-type',
+        caseId: 'case-type',
+        answerId: 'answer-type',
+        metrics: { citationAccuracy: 1 },
+        traceId: 'trace-type'
+      }),
+      route: KnowledgeRagRouteSchema.parse({
+        selectedKnowledgeBaseIds: ['kb-type'],
+        reason: 'fallback-all'
+      }),
+      diagnostics: KnowledgeRagDiagnosticsSchema.parse({
+        normalizedQuery: '根入口导出',
+        retrievalMode: 'hybrid',
+        hitCount: 1,
+        contextChunkCount: 1
+      }),
+      operation: KnowledgeTraceOperationSchema.parse('rag.chat'),
+      spanName: KnowledgeWorkbenchSpanNameSchema.parse('retrieve')
+    };
+
+    expect(typeSmoke.operation).toBe('rag.chat');
+    expect(typeSmoke.spanName).toBe('retrieve');
   });
 
   it('retains the contract facade file as a stable contract-first entrypoint', () => {

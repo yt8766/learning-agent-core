@@ -120,11 +120,13 @@ export const KnowledgeIngestionJobProjectionSchema = z
   })
   .strict();
 
-export const KnowledgeTokenUsageSchema = z.object({
-  inputTokens: z.number().int().nonnegative().optional(),
-  outputTokens: z.number().int().nonnegative().optional(),
-  totalTokens: z.number().int().nonnegative().optional()
-});
+export const KnowledgeTokenUsageSchema = z
+  .object({
+    inputTokens: z.number().int().nonnegative().optional(),
+    outputTokens: z.number().int().nonnegative().optional(),
+    totalTokens: z.number().int().nonnegative().optional()
+  })
+  .strict();
 
 export const KnowledgeUserSchema = z
   .object({
@@ -177,14 +179,16 @@ export const KnowledgeVectorSearchRequestSchema = z
   })
   .strict();
 
-export const KnowledgeCitationSchema = z.object({
-  chunkId: z.string().min(1),
-  documentId: z.string().min(1),
-  title: z.string().min(1).optional(),
-  score: z.number().min(0).max(1).optional(),
-  text: z.string().min(1).optional(),
-  quote: z.string().min(1).optional()
-});
+export const KnowledgeCitationSchema = z
+  .object({
+    chunkId: z.string().min(1),
+    documentId: z.string().min(1),
+    title: z.string().min(1).optional(),
+    score: z.number().min(0).max(1).optional(),
+    text: z.string().min(1).optional(),
+    quote: z.string().min(1).optional()
+  })
+  .strict();
 
 export const KnowledgeRagRouteReasonSchema = z.enum(['mentions', 'metadata-match', 'fallback-all', 'legacy-ids']);
 
@@ -208,17 +212,19 @@ export const KnowledgeRagDiagnosticsSchema = z
   })
   .strict();
 
-export const KnowledgeRagAnswerSchema = z.object({
-  id: z.string().min(1),
-  conversationId: z.string().min(1),
-  messageId: z.string().min(1),
-  answer: z.string().min(1),
-  citations: z.array(KnowledgeCitationSchema).default([]),
-  usage: KnowledgeTokenUsageSchema.optional(),
-  route: KnowledgeRagRouteSchema.optional(),
-  diagnostics: KnowledgeRagDiagnosticsSchema.optional(),
-  traceId: z.string().min(1).optional()
-});
+export const KnowledgeRagAnswerSchema = z
+  .object({
+    id: z.string().min(1),
+    conversationId: z.string().min(1),
+    messageId: z.string().min(1),
+    answer: z.string().min(1),
+    citations: z.array(KnowledgeCitationSchema).default([]),
+    usage: KnowledgeTokenUsageSchema.optional(),
+    route: KnowledgeRagRouteSchema.optional(),
+    diagnostics: KnowledgeRagDiagnosticsSchema.optional(),
+    traceId: z.string().min(1).optional()
+  })
+  .strict();
 
 export const KnowledgeEvalRunMetricsSchema = z.object({
   recallAtK: z.number().min(0).max(1).optional(),
