@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/knowledge-server`
-最后核对：2026-05-02
+最后核对：2026-05-03
 
 ## 本主题主文档
 
@@ -125,6 +125,12 @@ vector store 使用 Supabase RPC 兼容 client 结构，但底层仍只持有 `P
 - `delete_knowledge_document_chunks(knowledge_base_id, document_id, tenant_id)` -> `select * from delete_knowledge_document_chunks($1, $2, $3)`
 
 RPC adapter 返回 `{ data, error }`，不把 `pg.Pool`、vendor response 或数据库异常类型穿透给 SDK 之外的业务层。
+
+## Trustworthy RAG Workbench Boundaries
+
+`KnowledgeDocumentService` owns document/job creation and retry semantics. `KnowledgeIngestionWorker` advances stable ingestion stages and records retryable failures. `KnowledgeRagService` owns route -> retrieval -> context assembly -> generation -> citation grounding. `KnowledgeTraceService` records JSON-safe trace/span projections. `KnowledgeProviderHealthService` aggregates embedding, vector, keyword, and generation provider health.
+
+Failed jobs are immutable for recovery purposes: retry/reprocess creates a new attempt and trace instead of mutating the failed job back to running. Frontend-facing state must be projected through stable DTOs (`stage`, `progress`, `error`, `attempts`, `route`, `diagnostics`, `traceId`) rather than provider internals or repository raw records.
 
 ### Supabase / pgvector Contract
 
