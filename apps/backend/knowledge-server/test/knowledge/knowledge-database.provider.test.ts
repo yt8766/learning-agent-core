@@ -46,15 +46,55 @@ describe('createKnowledgeDatabaseClient', () => {
 
   it('uses snake_case document_ids as the primary match_knowledge_chunks filter contract', () => {
     expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'document_ids'");
-    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
-      "jsonb_array_elements_text(match_knowledge_chunks.filters -> 'document_ids')"
-    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("jsonb_array_elements_text(coalesce(normalized_filters -> 'document_ids'");
   });
 
   it('keeps camelCase documentIds only as a compatibility fallback for chunk matching', () => {
     expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'document_ids'");
     expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'documentIds'");
-    expect(KNOWLEDGE_SCHEMA_SQL).toContain("not (match_knowledge_chunks.filters ? 'document_ids')");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("not (normalized_filters ? 'document_ids')");
+  });
+
+  it('rejects missing tenant_id inside vector RPC functions instead of allowing a null wildcard', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('tenant_id text default null');
+    expect(KNOWLEDGE_SCHEMA_SQL).not.toContain(
+      'tenant_id is null or kd.workspace_id = upsert_knowledge_chunks.tenant_id'
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).not.toContain(
+      'tenant_id is null or kd.workspace_id = match_knowledge_chunks.tenant_id'
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).not.toContain(
+      'tenant_id is null or kd.workspace_id = delete_knowledge_document_chunks.tenant_id'
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("raise exception 'tenant_id is required for upsert_knowledge_chunks'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("raise exception 'tenant_id is required for match_knowledge_chunks'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "raise exception 'tenant_id is required for delete_knowledge_document_chunks'"
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('and kd.workspace_id = upsert_knowledge_chunks.tenant_id');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('and kd.workspace_id = match_knowledge_chunks.tenant_id');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('and kd.workspace_id = delete_knowledge_document_chunks.tenant_id');
+  });
+
+  it('pushes tags and metadata filters into match_knowledge_chunks', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'tags'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("kdc.metadata -> 'tags'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("jsonb_array_elements_text(coalesce(normalized_filters -> 'tags'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'metadata'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("kdc.metadata @> (normalized_filters -> 'metadata')");
+  });
+
+  it('treats empty array and empty metadata filters as disabled pushdown filters', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "jsonb_array_length(coalesce(normalized_filters -> 'document_ids', '[]'::jsonb)) = 0"
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "jsonb_array_length(coalesce(normalized_filters -> 'documentIds', '[]'::jsonb)) = 0"
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "jsonb_array_length(coalesce(normalized_filters -> 'tags', '[]'::jsonb)) = 0"
+    );
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("coalesce(normalized_filters -> 'metadata', '{}'::jsonb) = '{}'::jsonb");
   });
 });
 
