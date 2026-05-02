@@ -71,6 +71,20 @@ describe('consultCompanyLiveExperts', () => {
     expect(llm.generateObject).toHaveBeenCalled();
   });
 
+  it('keeps next actions within selected experts for content-only script questions', async () => {
+    const consultation = await consultCompanyLiveExperts({
+      brief: stubBrief,
+      question: '脚本和话术应该怎么改？',
+      now: () => new Date('2026-05-02T00:00:00.000Z')
+    });
+
+    expect(consultation.selectedExperts).toEqual(['contentAgent']);
+    for (const action of consultation.nextActions) {
+      expect(consultation.selectedExperts).toContain(action.ownerExpertId);
+      expect(action.label).not.toMatch(/风控|riskAgent|交给/);
+    }
+  });
+
   it('falls back for an expert when llm generation throws', async () => {
     const llm = {
       isConfigured: vi.fn(() => true),

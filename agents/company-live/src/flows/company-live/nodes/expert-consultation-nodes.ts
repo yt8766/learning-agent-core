@@ -144,7 +144,9 @@ function buildNextActions(selectedExperts: CompanyExpertId[]) {
     actions.push({
       actionId: 'draft-script-and-risk-review',
       ownerExpertId: 'contentAgent' as const,
-      label: '输出脚本初稿并交给风控检查禁用表达',
+      label: selectedExperts.includes('riskAgent')
+        ? '输出脚本初稿并同步风控复核禁用表达'
+        : '输出脚本初稿并依据禁用词/合规清单自查表达',
       priority: 'medium' as const
     });
   }
