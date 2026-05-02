@@ -261,6 +261,10 @@ class MiniDocument {
     return null;
   }
 
+  querySelectorAll() {
+    return [];
+  }
+
   contains(node: MiniNode | MiniDocument | null) {
     return node === this || this.documentElement.contains(node);
   }
@@ -1543,5 +1547,118 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('aria-label="点踩"');
     expect(html).toContain('aria-pressed="false"');
+  });
+
+  it('disables regenerate on historical assistant footers', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'user_1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '第一问',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      },
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '第一答',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      },
+      {
+        id: 'assistant_2',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '第二答',
+        createdAt: '2026-05-03T00:00:02.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      onRegenerate: () => undefined,
+      onMessageFeedback: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const firstAssistantFooter = renderToStaticMarkup(
+      <>{items.find(item => item.key === 'assistant_1')?.footer as React.ReactNode}</>
+    );
+    const lastAssistantFooter = renderToStaticMarkup(
+      <>{items.find(item => item.key === 'assistant_2')?.footer as React.ReactNode}</>
+    );
+
+    expect(firstAssistantFooter).toContain('aria-label="重新生成"');
+    expect(firstAssistantFooter).toContain('disabled=""');
+    expect(lastAssistantFooter).toContain('aria-label="重新生成"');
+    expect(lastAssistantFooter).not.toContain('disabled=""');
+  });
+
+  it('sends assistant feedback payloads from footer clicks', async () => {
+    const miniDocument = installMiniDom();
+    const { createRoot } = await import('react-dom/client');
+    const onMessageFeedback = vi.fn();
+    const container = miniDocument.createElement('div');
+    miniDocument.body.appendChild(container);
+    const root = createRoot(container as unknown as Element);
+    const assistantMessage: ChatMessageRecord = {
+      id: 'assistant_1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '镜像是模板，容器是实例。',
+      createdAt: '2026-05-03T00:00:01.000Z'
+    };
+
+    const renderFooter = (message: ChatMessageRecord) => {
+      const items = buildBubbleItems({
+        messages: [message],
+        activeStatus: 'completed',
+        onCopy: () => undefined,
+        onRegenerate: () => undefined,
+        onMessageFeedback,
+        getAgentLabel: role => role ?? 'agent'
+      });
+
+      React.act(() => {
+        root.render(<>{items[0]?.footer as React.ReactNode}</>);
+      });
+    };
+    const findAction = (label: string) =>
+      findMiniElement(container, element => element.getAttribute('aria-label') === label);
+
+    try {
+      renderFooter(assistantMessage);
+      React.act(() => {
+        findAction('点赞')?.click();
+      });
+      expect(onMessageFeedback).toHaveBeenLastCalledWith(assistantMessage, { rating: 'helpful' });
+
+      const helpfulMessage = {
+        ...assistantMessage,
+        feedback: {
+          rating: 'helpful' as const
+        }
+      };
+      renderFooter(helpfulMessage);
+      React.act(() => {
+        findAction('点赞')?.click();
+      });
+      expect(onMessageFeedback).toHaveBeenLastCalledWith(helpfulMessage, { rating: 'none' });
+
+      renderFooter(assistantMessage);
+      React.act(() => {
+        findAction('点踩')?.click();
+      });
+      expect(onMessageFeedback).toHaveBeenLastCalledWith(assistantMessage, {
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow'
+      });
+    } finally {
+      React.act(() => {
+        root.unmount();
+      });
+      vi.unstubAllGlobals();
+    }
   });
 });

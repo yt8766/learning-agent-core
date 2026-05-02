@@ -306,7 +306,9 @@ function renderMessageFooter(
   options: Pick<
     BuildBubbleItemsOptions,
     'activeStatus' | 'agentThinking' | 'copiedMessageId' | 'onCopy' | 'onRegenerate' | 'onMessageFeedback'
-  >
+  > & {
+    isLatestAssistant?: boolean;
+  }
 ) {
   if (message.role !== 'assistant' && message.role !== 'user') {
     return undefined;
@@ -314,7 +316,8 @@ function renderMessageFooter(
 
   const copied = options.copiedMessageId === message.id;
   const isAssistant = message.role === 'assistant';
-  const regenerateDisabled = options.activeStatus === 'running' || Boolean(options.agentThinking);
+  const regenerateDisabled =
+    options.activeStatus === 'running' || Boolean(options.agentThinking) || (isAssistant && !options.isLatestAssistant);
   const helpfulPressed = message.feedback?.rating === 'helpful';
   const unhelpfulPressed = message.feedback?.rating === 'unhelpful';
 
@@ -463,6 +466,7 @@ export function buildBubbleItems({
           activeStatus,
           agentThinking,
           copiedMessageId,
+          isLatestAssistant: message.id === lastAssistantMessageId,
           onCopy,
           onRegenerate,
           onMessageFeedback

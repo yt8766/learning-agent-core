@@ -32,7 +32,8 @@
       color: #fff;
     }
 
-    &:hover .chatx-bubble-footer {
+    &:hover .chatx-bubble-footer,
+    &:focus-within .chatx-bubble-footer {
       opacity: 1;
       transform: translateY(0);
     }
@@ -111,6 +112,11 @@
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
+
+  &:focus-within {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chatx-plain-message {
