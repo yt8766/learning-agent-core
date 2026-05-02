@@ -1,4 +1,6 @@
 export { buildCompanyLiveMediaRequest } from './flows/content/company-live-content-brief';
+export { companyLiveCoreExpertIds, companyLiveExpertDefinitions } from './flows/company-live/expert-definitions';
+export { routeCompanyLiveExperts } from './flows/company-live/nodes/expert-router-node';
 export { executeCompanyLiveGraph } from './graphs/company-live.graph';
 export { createCompanyLiveStubRegistry } from './runtime/company-live-domain-runtime';
 
