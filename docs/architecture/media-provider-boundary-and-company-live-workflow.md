@@ -3,7 +3,7 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
-最后核对：2026-05-12
+最后核对：2026-05-02
 
 本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求、专家会诊结论与经营判断，不直接调用厂商 API。
 

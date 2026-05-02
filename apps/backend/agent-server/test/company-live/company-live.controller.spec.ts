@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BadRequestException } from '@nestjs/common';
 
 import { CompanyExpertConsultationSchema } from '@agent/core';
 
@@ -115,7 +116,7 @@ describe('CompanyLiveController', () => {
     expect(result).toEqual(stubConsultationResult);
   });
 
-  it('rejects blank expert consultation questions', async () => {
+  it('rejects blank expert consultation questions with a bad request error', async () => {
     const service = {
       consultExperts: vi.fn().mockResolvedValue(stubConsultationResult)
     } as unknown as CompanyLiveService;
@@ -126,7 +127,7 @@ describe('CompanyLiveController', () => {
         brief: stubFormBody,
         question: '   '
       })
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(service.consultExperts).not.toHaveBeenCalled();
   });
 });
