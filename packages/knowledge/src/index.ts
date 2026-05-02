@@ -242,5 +242,5 @@ export type {
 } from './adapters/supabase';
 export * from './client';
 export { createKnowledgeBrowserClient } from './browser';
-export { createKnowledgeRuntime } from './node';
-export type { KnowledgeRuntime, KnowledgeRuntimeProviders } from './node';
+export { createKnowledgeRuntime } from './node/knowledge-runtime';
+export type { KnowledgeRuntime, KnowledgeRuntimeProviders } from './node/knowledge-runtime';
