@@ -3,6 +3,7 @@ import type { KnowledgeTrace, KnowledgeTraceOperation, KnowledgeWorkbenchSpanNam
 import { randomUUID } from 'node:crypto';
 
 export type KnowledgeTraceAttributes = Record<string, string | number | boolean | null>;
+const MAX_TRACES = 200;
 
 export interface StartKnowledgeTraceInput {
   operation: KnowledgeTraceOperation;
@@ -36,6 +37,7 @@ export class KnowledgeTraceService {
       startedAt: now,
       spans: []
     });
+    this.trimTraceStore();
     return traceId;
   }
 
@@ -51,8 +53,8 @@ export class KnowledgeTraceService {
       startedAt: now,
       endedAt: now,
       status: input.status,
-      attributes: input.attributes,
-      error: input.error
+      attributes: sanitizeTraceAttributes(input.attributes),
+      error: input.error ? { ...input.error } : undefined
     });
   }
 
@@ -66,14 +68,58 @@ export class KnowledgeTraceService {
   }
 
   getTrace(traceId: string): KnowledgeTrace | undefined {
-    return this.traces.get(traceId);
+    return cloneTrace(this.traces.get(traceId));
   }
 
   listTraces(): KnowledgeTrace[] {
-    return [...this.traces.values()].sort((left, right) => right.startedAt.localeCompare(left.startedAt));
+    return [...this.traces.values()]
+      .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
+      .map(trace => cloneTrace(trace))
+      .filter((trace): trace is KnowledgeTrace => Boolean(trace));
+  }
+
+  private trimTraceStore(): void {
+    if (this.traces.size <= MAX_TRACES) {
+      return;
+    }
+    const oldestTraceId = [...this.traces.values()].sort((left, right) =>
+      left.startedAt.localeCompare(right.startedAt)
+    )[0]?.traceId;
+    if (oldestTraceId) {
+      this.traces.delete(oldestTraceId);
+    }
   }
 }
 
 function currentIsoTime(): string {
   return new Date().toISOString();
+}
+
+function sanitizeTraceAttributes(
+  attributes: KnowledgeTraceAttributes | undefined
+): KnowledgeTraceAttributes | undefined {
+  if (!attributes) {
+    return undefined;
+  }
+  const sanitized: KnowledgeTraceAttributes = {};
+  for (const [key, value] of Object.entries(attributes)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
+function cloneTrace(trace: KnowledgeTrace | undefined): KnowledgeTrace | undefined {
+  if (!trace) {
+    return undefined;
+  }
+  return {
+    ...trace,
+    spans: trace.spans.map(span => ({
+      ...span,
+      attributes: span.attributes ? { ...span.attributes } : undefined,
+      error: span.error ? { ...span.error } : undefined
+    }))
+  };
 }

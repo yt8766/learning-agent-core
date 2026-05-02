@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-export type KnowledgeProviderHealthStatus = 'ok' | 'degraded' | 'unconfigured';
+import type { KnowledgeProviderHealthStatus } from '@agent/knowledge';
 
 export interface KnowledgeProviderHealthProbeResult {
   status: KnowledgeProviderHealthStatus;
