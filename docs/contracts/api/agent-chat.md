@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`
-最后核对：2026-04-25
+最后核对：2026-05-03
 
 本文是 `agent-chat` 的稳定接口契约。链路时序和断流补偿背景见 [前后端集成链路](/docs/integration/frontend-backend-integration.md)。
 
@@ -19,26 +19,27 @@
 
 ## 返回结构速查
 
-| 类型                   | 关键字段                                                                                                                                                                                            | 说明                                                                                                                                                                    |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ChatSessionRecord`    | `id`、`title`、`status`、`currentTaskId?`、`channelIdentity?`、`compression?`、`approvalPolicies?`、`createdAt`、`updatedAt`                                                                        | 会话摘要和当前运行状态。`status` 可为 `idle`、`running`、`waiting_interrupt`、`waiting_approval`、`waiting_learning_confirmation`、`cancelled`、`completed`、`failed`。 |
-| `ChatMessageRecord`    | `id`、`sessionId`、`role`、`content`、`taskId?`、`linkedAgent?`、`card?`、`createdAt`                                                                                                               | 聊天消息。`role` 使用 core 中的 `ChatRole`；`card` 可承载 approval、plan question、capability catalog 等结构化卡片。                                                    |
-| `ChatEventRecord`      | `id`、`sessionId`、`type`、`at`、`payload`                                                                                                                                                          | SSE 与历史事件统一记录。`payload` 由事件类型决定。                                                                                                                      |
-| `ChatCheckpointRecord` | `checkpointId`、`sessionId`、`taskId`、`graphState`、`pendingApprovals`、`agentStates`、`traceCursor`、`messageCursor`、`approvalCursor`、`learningCursor`、`activeInterrupt?`、`interruptHistory?` | 运行态快照，用于断流恢复、审批恢复、终态校准。                                                                                                                          |
+| 类型                   | 关键字段                                                                                                                                                                                            | 说明                                                                                                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ChatSessionRecord`    | `id`、`title`、`status`、`currentTaskId?`、`titleSource?`、`channelIdentity?`、`compression?`、`approvalPolicies?`、`createdAt`、`updatedAt`                                                        | 会话摘要和当前运行状态。`titleSource` 可为 `placeholder`、`generated`、`manual`；`status` 可为 `idle`、`running`、`waiting_interrupt`、`waiting_approval`、`waiting_learning_confirmation`、`cancelled`、`completed`、`failed`。 |
+| `ChatMessageRecord`    | `id`、`sessionId`、`role`、`content`、`taskId?`、`linkedAgent?`、`card?`、`feedback?`、`createdAt`                                                                                                  | 聊天消息。`role` 使用 core 中的 `ChatRole`；`card` 可承载 approval、plan question、capability catalog 等结构化卡片；`feedback` 只出现在已提交反馈的 assistant 消息上。                                                           |
+| `ChatEventRecord`      | `id`、`sessionId`、`type`、`at`、`payload`                                                                                                                                                          | SSE 与历史事件统一记录。`payload` 由事件类型决定。                                                                                                                                                                               |
+| `ChatCheckpointRecord` | `checkpointId`、`sessionId`、`taskId`、`graphState`、`pendingApprovals`、`agentStates`、`traceCursor`、`messageCursor`、`approvalCursor`、`learningCursor`、`activeInterrupt?`、`interruptHistory?` | 运行态快照，用于断流恢复、审批恢复、终态校准。                                                                                                                                                                                   |
 
 ## 会话接口
 
-| 方法     | 地址                                 | 参数                                                                            | 返回值                              | 说明                                                                                                                                                                        |
-| -------- | ------------------------------------ | ------------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/chat/sessions`                 | 无                                                                              | `ChatSessionRecord[]`               | 获取会话列表。                                                                                                                                                              |
-| `POST`   | `/api/chat/sessions`                 | body: `{ message?: string; title?: string; channelIdentity?: ChannelIdentity }` | `ChatSessionRecord`                 | 创建会话并写入 `agent_session_id` cookie。`message` 只作为创建上下文，不替代 `POST /api/chat/messages`。                                                                    |
-| `GET`    | `/api/chat/sessions/:id`             | path: `id`                                                                      | `ChatSessionRecord`                 | 获取会话详情，并写入同名 cookie。                                                                                                                                           |
-| `PATCH`  | `/api/chat/sessions/:id`             | path: `id`; body: `{ title: string }`                                           | `ChatSessionRecord`                 | 更新会话标题。                                                                                                                                                              |
-| `DELETE` | `/api/chat/sessions/:id`             | path: `id`                                                                      | `void`                              | 删除会话。                                                                                                                                                                  |
-| `GET`    | `/api/chat/messages?sessionId=...`   | query: `sessionId`                                                              | `ChatMessageRecord[]`               | 获取消息历史；兼容层可从 cookie 读取 `sessionId`。                                                                                                                          |
-| `GET`    | `/api/chat/events?sessionId=...`     | query: `sessionId`                                                              | `ChatEventRecord[]`                 | 获取事件历史；用于重连和终态补偿。                                                                                                                                          |
-| `GET`    | `/api/chat/checkpoint?sessionId=...` | query: `sessionId`                                                              | `ChatCheckpointRecord \| undefined` | 获取最新运行态快照。                                                                                                                                                        |
-| `POST`   | `/api/chat/messages`                 | body: `{ sessionId: string; message: string; modelId?: string }`                | `ChatMessageRecord`                 | 提交首条或后续用户消息。普通问答会在 session 层走 `direct-reply` fast path；执行、检索、审批、connector、skill、报表、代码修改等意图才进入 runtime task / supervisor 主链。 |
+| 方法     | 地址                                     | 参数                                                                                                                                                                                                   | 返回值                              | 说明                                                                                                                                                                        |
+| -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/chat/sessions`                     | 无                                                                                                                                                                                                     | `ChatSessionRecord[]`               | 获取会话列表。                                                                                                                                                              |
+| `POST`   | `/api/chat/sessions`                     | body: `{ message?: string; title?: string; channelIdentity?: ChannelIdentity }`                                                                                                                        | `ChatSessionRecord`                 | 创建会话并写入 `agent_session_id` cookie。`message` 只作为创建上下文，不替代 `POST /api/chat/messages`。                                                                    |
+| `GET`    | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `ChatSessionRecord`                 | 获取会话详情，并写入同名 cookie。                                                                                                                                           |
+| `PATCH`  | `/api/chat/sessions/:id`                 | path: `id`; body: `{ title: string; titleSource?: "manual" }`                                                                                                                                          | `ChatSessionRecord`                 | 更新会话标题。前端手动重命名必须传 `titleSource: "manual"`，runtime 后续不会再用自动摘要覆盖该标题。                                                                        |
+| `DELETE` | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `void`                              | 删除会话。                                                                                                                                                                  |
+| `GET`    | `/api/chat/messages?sessionId=...`       | query: `sessionId`                                                                                                                                                                                     | `ChatMessageRecord[]`               | 获取消息历史；兼容层可从 cookie 读取 `sessionId`。                                                                                                                          |
+| `POST`   | `/api/chat/messages/:messageId/feedback` | path: `messageId`; body: `{ sessionId: string; rating: "helpful" \| "unhelpful" \| "none"; reasonCode?: "too_shallow" \| "incorrect" \| "missed_point" \| "bad_format" \| "other"; comment?: string }` | `ChatMessageRecord`                 | 提交或取消 assistant 消息反馈。`unhelpful` 必须带 `reasonCode`；`helpful` / `none` 不允许带 `reasonCode`。`none` 会清除当前消息反馈。                                       |
+| `GET`    | `/api/chat/events?sessionId=...`         | query: `sessionId`                                                                                                                                                                                     | `ChatEventRecord[]`                 | 获取事件历史；用于重连和终态补偿。                                                                                                                                          |
+| `GET`    | `/api/chat/checkpoint?sessionId=...`     | query: `sessionId`                                                                                                                                                                                     | `ChatCheckpointRecord \| undefined` | 获取最新运行态快照。                                                                                                                                                        |
+| `POST`   | `/api/chat/messages`                     | body: `{ sessionId: string; message: string; modelId?: string }`                                                                                                                                       | `ChatMessageRecord`                 | 提交首条或后续用户消息。普通问答会在 session 层走 `direct-reply` fast path；执行、检索、审批、connector、skill、报表、代码修改等意图才进入 runtime task / supervisor 主链。 |
 
 `POST /api/chat/messages` 只提交输入，不直接把 assistant 内容放进 HTTP 响应。输出通过 `/api/chat/stream`、`GET /api/chat/messages` 与 checkpoint 终态补偿同步。
 
@@ -48,6 +49,7 @@
 - 运行路径：`packages/runtime/src/session/session-coordinator-direct-reply.ts` 直接调用通用 LLM provider 的 `streamText`，写入 `assistant_token`、`assistant_message`、`final_response_completed` 和 `chatRoute.flow = "direct-reply"` checkpoint。
 - 非目标：不创建 runtime task，不进入 supervisor / 六部 graph，不触发 tool、approval、research 或 learning 编排。
 - 回退：LLM provider 未配置时，后端回退到原 runtime task 路径，避免会话无响应。
+- 输出清洗：direct-reply 最终持久化的 `assistant_message` 与 `final_response_completed` payload 不允许包含 `<think>` 或未闭合 `<think>` 后续内容；前端仍会对历史脏数据和流式阶段做解析兜底。
 
 如果写接口显式传 `modelId`，后端应写入 `requestedHints.preferredModelId`，由 Runtime 路由决定最终调用模型。
 
@@ -107,6 +109,7 @@
 - `review_completed`
 - `learning_pending_confirmation`
 - `learning_confirmed`
+- `message_feedback_learning_candidate`
 - `conversation_compacted`
 - `context_compaction_applied`
 - `context_compaction_retried`
@@ -156,6 +159,21 @@ The stream framing remains `data: <ChatEventRecord JSON>\n\n`; no custom SSE `ev
 - `approval_rejected_with_feedback`
 
 `assistant_token.payload.messageId` 与 `assistant_token.payload.content` 用于追加同一条 assistant 消息；`assistant_message` 是最终完整消息和兜底展示来源。
+
+### Message Feedback Learning Candidate
+
+`message_feedback_learning_candidate` 由 `POST /api/chat/messages/:messageId/feedback` 在可行动的点踩原因下产生，当前作为可观察的学习候选事件，而不是立即确认的长期记忆。
+
+稳定 payload 字段：
+
+| 字段            | 类型                                                         | 说明                                               |
+| --------------- | ------------------------------------------------------------ | -------------------------------------------------- |
+| `messageId`     | `string`                                                     | 被反馈的 assistant 消息。                          |
+| `rating`        | `"unhelpful"`                                                | 只有点踩会生成候选。                               |
+| `reasonCode`    | `"too_shallow" \| "missed_point" \| "bad_format" \| "other"` | `incorrect` 不自动沉淀，避免把事实纠错误学成偏好。 |
+| `comment?`      | `string`                                                     | 用户补充说明。                                     |
+| `candidateText` | `string`                                                     | 后续学习链路可审查、确认或转写的候选偏好。         |
+| `source`        | `"message_feedback"`                                         | 来源标记。                                         |
 
 ## Direct Reply
 

@@ -321,31 +321,6 @@ describe('@agent/core type contracts', () => {
     });
   });
 
-  it('preserves cognition snapshot on assistant chat message records', () => {
-    const parsed = ChatMessageRecordSchema.parse({
-      id: 'message-1',
-      sessionId: 'session-1',
-      role: 'assistant',
-      content: '回答',
-      createdAt: '2026-05-03T00:00:00.000Z',
-      cognitionSnapshot: {
-        thoughtChain: [{ key: 'step-1', title: '推理', status: 'success', messageId: 'message-1' }],
-        thinkingDurationMs: 2100,
-        capturedAt: '2026-05-03T00:00:05.000Z',
-        thinkState: {
-          messageId: 'message-1',
-          title: '已思考',
-          content: '摘要',
-          loading: false
-        }
-      }
-    });
-
-    expect(parsed.cognitionSnapshot?.thoughtChain?.[0]?.title).toBe('推理');
-    expect(parsed.cognitionSnapshot?.thinkingDurationMs).toBe(2100);
-    expect(parsed.cognitionSnapshot?.thinkState?.content).toBe('摘要');
-  });
-
   it('parses message feedback learning candidate chat events', () => {
     const parsed = ChatEventRecordSchema.parse({
       id: 'event-1',
@@ -651,71 +626,6 @@ describe('@agent/core type contracts', () => {
     expect(ChatEventRecordSchema.parse(event).type).toBe('assistant_message');
     expect(ChatThoughtChainItemSchema.parse(thought).status).toBe('success');
     expect(ChatThinkStateSchema.parse(think).loading).toBe(true);
-  });
-
-  it('ChatThoughtChainItemSchema supports optional kind and webSearch fields', () => {
-    const searchThought: ChatThoughtChainItem = {
-      key: 'web-search-1',
-      title: '搜索网页',
-      kind: 'web_search',
-      webSearch: {
-        query: 'Docker 镜像与容器区别',
-        resultCount: 15,
-        topHosts: ['docs.docker.com', 'developer.aliyun.com'],
-        hitIds: ['web:task-1:0', 'web:task-1:1']
-      },
-      status: 'success'
-    };
-
-    const parsed = ChatThoughtChainItemSchema.parse(searchThought);
-    expect(parsed.kind).toBe('web_search');
-    expect(parsed.webSearch?.query).toBe('Docker 镜像与容器区别');
-    expect(parsed.webSearch?.resultCount).toBe(15);
-    expect(parsed.webSearch?.topHosts).toEqual(['docs.docker.com', 'developer.aliyun.com']);
-
-    const reasoningThought: ChatThoughtChainItem = {
-      key: 'reasoning-1',
-      title: '分析用户意图',
-      kind: 'reasoning',
-      status: 'loading'
-    };
-    expect(ChatThoughtChainItemSchema.parse(reasoningThought).kind).toBe('reasoning');
-
-    const legacyThought: ChatThoughtChainItem = {
-      key: 'legacy-no-kind',
-      title: '计划中'
-    };
-    expect(ChatThoughtChainItemSchema.parse(legacyThought).kind).toBeUndefined();
-
-    const searchWithHits: ChatThoughtChainItem = {
-      key: 'web-search-hits',
-      title: '搜索网页',
-      kind: 'web_search',
-      webSearch: {
-        query: 'brew install',
-        resultCount: 3,
-        hits: [
-          { url: 'https://brew.sh', title: 'Homebrew', host: 'brew.sh' },
-          { url: 'https://example.com', title: 'Example', host: 'example.com' }
-        ]
-      },
-      status: 'success'
-    };
-    const parsedHits = ChatThoughtChainItemSchema.parse(searchWithHits);
-    expect(parsedHits.webSearch?.hits?.[0]?.url).toBe('https://brew.sh');
-
-    const browseThought: ChatThoughtChainItem = {
-      key: 'browse-1',
-      title: '浏览页面',
-      kind: 'browser',
-      description: '已阅读 2 个网页摘要',
-      browser: {
-        pageCount: 2,
-        pages: [{ url: 'https://brew.sh', title: 'The Missing Package Manager', host: 'brew.sh' }]
-      },
-      status: 'success'
-    };
-    expect(ChatThoughtChainItemSchema.parse(browseThought).browser?.pages?.[0]?.title).toContain('Package Manager');
   });
 
   it('parses task runtime state contracts from schema-first core definitions', () => {

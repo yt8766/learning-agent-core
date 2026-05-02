@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   type DataReportBundleGenerateResult,
   type DataReportSandpackFiles
@@ -14,12 +14,13 @@ import {
   UpdateChatSessionDto,
   type ChatMessageFeedbackRequest,
   type ChatMessageRecord,
-  type ChatEventRecord
+  type ChatEventRecord,
+  type ChatResponseStepRecord,
+  type ChatResponseStepSnapshot
 } from '@agent/core';
 
 import { RuntimeHost } from '../runtime/core/runtime.host';
 import { RuntimeSessionService } from '../runtime/services/runtime-session.service';
-import { AgentToolsService } from '../agent-tools/agent-tools.service';
 import { ChatCapabilityIntentsService } from './chat-capability-intents.service';
 import { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';
 import {
@@ -32,15 +33,7 @@ import {
 } from './chat-direct-response.helpers';
 import { submitChatMessageFeedback } from './chat-message-feedback.helpers';
 import { resolveReportSchemaArtifactCacheKey, streamReportSchema } from './chat-report-schema.helpers';
-import {
-  createResponseStepProjectionState,
-  projectRealtimeResponseStepEvent,
-  projectResponseStepEvents
-} from './chat-response-step-events.helpers';
-import { interpretApprovalReply } from './approval-reply-interpreter';
-import { PendingInteractionService } from './pending-interaction.service';
-import { ChatRunRepository } from './chat-run.repository';
-import { ChatRunService } from './chat-run.service';
+import { buildChatResponseStepEvent, buildChatResponseStepSnapshot } from './chat-response-steps.adapter';
 
 type SandpackFiles = Record<string, { code: string }>;
 type SandpackStringFiles = DataReportSandpackFiles;
@@ -56,15 +49,7 @@ export class ChatService {
   constructor(
     private readonly runtimeSessionService: RuntimeSessionService,
     private readonly chatCapabilityIntentsService: ChatCapabilityIntentsService,
-    private readonly runtimeHost: RuntimeHost,
-    @Optional()
-    @Inject(ChatRunService)
-    private readonly chatRunService = new ChatRunService(new ChatRunRepository()),
-    @Optional()
-    @Inject(PendingInteractionService)
-    private readonly pendingInteractionService = new PendingInteractionService(),
-    @Optional()
-    private readonly agentToolsService?: AgentToolsService
+    private readonly runtimeHost: RuntimeHost
   ) {}
 
   listSessions() {
@@ -110,53 +95,11 @@ export class ChatService {
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
   }
 
-  listRuns(sessionId: string) {
-    this.runtimeSessionService.getSession(sessionId);
-    return this.chatRunService.listRuns(sessionId);
-  }
-
-  getRun(runId: string) {
-    return this.chatRunService.getRun(runId);
-  }
-
-  cancelRun(runId: string) {
-    return this.chatRunService.cancelRun(runId);
-  }
-
   getCheckpoint(sessionId: string) {
     return this.runtimeSessionService.getSessionCheckpoint(sessionId);
   }
 
   appendMessage(sessionId: string, dto: AppendChatMessageDto) {
-    const pendingInteraction = this.pendingInteractionService.getActive(sessionId);
-    if (pendingInteraction) {
-      const intent = interpretApprovalReply({
-        interactionId: pendingInteraction.id,
-        text: dto.message,
-        expectedActions: pendingInteraction.expectedActions,
-        requiredConfirmationPhrase: pendingInteraction.requiredConfirmationPhrase
-      });
-      const resolvedInteraction = this.pendingInteractionService.resolve(pendingInteraction.id, intent);
-      return Promise.resolve({
-        message: {
-          id: `interaction_reply_${Date.now()}`,
-          sessionId,
-          role: 'user' as const,
-          content: dto.message,
-          createdAt: new Date().toISOString()
-        },
-        handledAs: 'pending_interaction_reply' as const,
-        interactionResolution: {
-          interactionId: pendingInteraction.id,
-          intent,
-          resolvedInteraction
-        }
-      });
-    }
-    const agentToolApprovalReply = this.tryHandleAgentToolApprovalReply(sessionId, dto.message);
-    if (agentToolApprovalReply) {
-      return Promise.resolve(agentToolApprovalReply);
-    }
     return this.chatCapabilityIntentsService
       .tryHandle(sessionId, dto)
       .then(result => result ?? this.runtimeSessionService.appendSessionMessage(sessionId, dto));
@@ -258,57 +201,139 @@ export class ChatService {
   private resolveReportSchemaArtifactCacheKey(dto: DirectChatRequestDto) {
     return resolveReportSchemaArtifactCacheKey(this.runtimeHost, dto);
   }
-
-  private tryHandleAgentToolApprovalReply(sessionId: string, message: string) {
-    const request = this.agentToolsService
-      ?.getProjection({ sessionId })
-      .requests.slice()
-      .reverse()
-      .find(candidate => candidate.status === 'pending_approval' && candidate.sessionId === sessionId);
-    if (!request) {
-      return undefined;
-    }
-
-    const interactionId = `agent_tool:${request.requestId}`;
-    const intent = interpretApprovalReply({
-      interactionId,
-      text: message,
-      expectedActions: ['approve', 'reject', 'feedback'],
-      requiredConfirmationPhrase: getAgentToolRequiredConfirmationPhrase(request.riskClass)
-    });
-    const action = intent.action;
-    if (action === 'approve' || action === 'reject' || action === 'feedback') {
-      this.agentToolsService?.resumeApproval(request.requestId, {
-        sessionId,
-        actor: 'agent-chat-user',
-        reason: 'natural-language-chat-reply',
-        interrupt: {
-          action,
-          requestId: request.requestId,
-          approvalId: request.approvalId,
-          interruptId: `interrupt_${request.requestId}`,
-          feedback: intent.feedback
-        }
-      });
-    }
-
-    return {
-      message: {
-        id: `interaction_reply_${Date.now()}`,
-        sessionId,
-        role: 'user' as const,
-        content: message,
-        createdAt: new Date().toISOString()
-      },
-      handledAs: 'pending_interaction_reply' as const,
-      interactionResolution: {
-        interactionId,
-        intent
-      }
-    };
-  }
 }
 
-function getAgentToolRequiredConfirmationPhrase(riskClass?: string) {
-  return riskClass === 'medium' || riskClass === 'high' || riskClass === 'critical' ? '确认执行' : undefined;
+type ResponseStepProjectionState = {
+  assistantMessageId?: string;
+  stepsByMessageId: Record<string, ChatResponseStepRecord[]>;
+};
+
+function projectResponseStepEvents(events: ChatEventRecord[]): ChatEventRecord[] {
+  const projectionState = createResponseStepProjectionState();
+  return events.flatMap(event => [event, ...projectRealtimeResponseStepEvent(event, projectionState)]);
+}
+
+function createResponseStepProjectionState(): ResponseStepProjectionState {
+  return {
+    stepsByMessageId: {}
+  };
+}
+
+function projectRealtimeResponseStepEvent(
+  sourceEvent: ChatEventRecord,
+  projectionState: ResponseStepProjectionState
+): ChatEventRecord[] {
+  if (sourceEvent.type === 'user_message') {
+    projectionState.assistantMessageId = undefined;
+    return [];
+  }
+
+  const messageId = readPayloadMessageId(sourceEvent) ?? projectionState.assistantMessageId;
+  if (messageId) {
+    projectionState.assistantMessageId = messageId;
+  }
+
+  if (sourceEvent.type === 'assistant_token') {
+    return [];
+  }
+
+  if (!projectionState.assistantMessageId) {
+    return [];
+  }
+
+  const projectedStep = buildChatResponseStepEvent(sourceEvent, {
+    messageId: projectionState.assistantMessageId,
+    sequence: projectionState.stepsByMessageId[projectionState.assistantMessageId]?.length ?? 0
+  });
+  if (!projectedStep) {
+    return [];
+  }
+
+  const stepsForMessage = [
+    ...(projectionState.stepsByMessageId[projectionState.assistantMessageId] ?? []),
+    projectedStep.step
+  ];
+  projectionState.stepsByMessageId[projectionState.assistantMessageId] = stepsForMessage;
+
+  const projectedEvents = [buildResponseStepChatEvent(sourceEvent, projectedStep)];
+  const snapshotStatus = resolveSnapshotStatus(sourceEvent);
+  if (snapshotStatus) {
+    const snapshotSteps = resolveSnapshotSteps(stepsForMessage, snapshotStatus, sourceEvent.at);
+    projectedEvents.push(
+      buildResponseStepSnapshotChatEvent(sourceEvent, {
+        sessionId: sourceEvent.sessionId,
+        messageId: projectionState.assistantMessageId,
+        status: snapshotStatus,
+        steps: snapshotSteps,
+        updatedAt: sourceEvent.at
+      })
+    );
+    projectionState.stepsByMessageId[projectionState.assistantMessageId] = snapshotSteps;
+  }
+
+  return projectedEvents;
+}
+
+function buildResponseStepChatEvent(
+  sourceEvent: ChatEventRecord,
+  payload: NonNullable<ReturnType<typeof buildChatResponseStepEvent>>
+): ChatEventRecord {
+  return ChatEventRecordSchema.parse({
+    id: `response-step-event-${sourceEvent.id}`,
+    sessionId: sourceEvent.sessionId,
+    type: 'node_progress',
+    at: sourceEvent.at,
+    payload
+  });
+}
+
+function buildResponseStepSnapshotChatEvent(
+  sourceEvent: ChatEventRecord,
+  input: Parameters<typeof buildChatResponseStepSnapshot>[0]
+): ChatEventRecord {
+  return ChatEventRecordSchema.parse({
+    id: `response-step-snapshot-${input.messageId}`,
+    sessionId: sourceEvent.sessionId,
+    type: 'node_progress',
+    at: input.updatedAt,
+    payload: buildChatResponseStepSnapshot(input)
+  });
+}
+
+function resolveSnapshotStatus(sourceEvent: ChatEventRecord): ChatResponseStepSnapshot['status'] | null {
+  if (sourceEvent.type === 'final_response_completed' || sourceEvent.type === 'session_finished') {
+    return 'completed';
+  }
+  if (sourceEvent.type === 'session_failed') {
+    return 'failed';
+  }
+  if (sourceEvent.type === 'run_cancelled') {
+    return 'cancelled';
+  }
+  return null;
+}
+
+function readPayloadMessageId(sourceEvent: ChatEventRecord): string | undefined {
+  const messageId = sourceEvent.payload?.messageId;
+  return typeof messageId === 'string' && messageId.length > 0 ? messageId : undefined;
+}
+
+function resolveSnapshotSteps(
+  steps: ChatResponseStepRecord[],
+  status: ChatResponseStepSnapshot['status'],
+  completedAt: string
+): ChatResponseStepRecord[] {
+  if (status !== 'completed') {
+    return steps;
+  }
+
+  return steps.map(step =>
+    step.status === 'queued' || step.status === 'running'
+      ? {
+          ...step,
+          status: 'completed',
+          completedAt: step.completedAt ?? completedAt
+        }
+      : step
+  );
 }
