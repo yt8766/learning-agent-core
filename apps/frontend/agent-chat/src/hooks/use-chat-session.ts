@@ -53,6 +53,7 @@ export function useChatSession() {
   const pendingUserIds = useRef<Record<string, string>>({});
   const pendingAssistantIds = useRef<Record<string, string>>({});
   const optimisticThinkingStartedAt = useRef<Record<string, string>>({});
+  const feedbackRequestVersions = useRef<Record<string, number>>({});
   const [agentToolGovernanceProjection, setAgentToolGovernanceProjection] = useState<
     AgentToolGovernanceProjection | undefined
   >(undefined);
@@ -119,7 +120,8 @@ export function useChatSession() {
     pendingInitialMessage,
     pendingUserIds,
     pendingAssistantIds,
-    optimisticThinkingStartedAt
+    optimisticThinkingStartedAt,
+    feedbackRequestVersions
   });
 
   // hydrateSessionSnapshot is recreated every render (createChatSessionActions is not memoized).

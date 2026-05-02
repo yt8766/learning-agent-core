@@ -52,7 +52,10 @@ import { createApprovalActions } from './chat-session-approval-actions';
 import { createLifecycleActions } from './chat-session-lifecycle-actions';
 
 export function createChatSessionActions(
-  options: CreateChatSessionActionsOptions & { messages?: ChatMessageRecord[] }
+  options: CreateChatSessionActionsOptions & {
+    messages?: ChatMessageRecord[];
+    feedbackRequestVersions?: { current: Record<string, number> };
+  }
 ) {
   const handleMissingSession = async (sessionId: string) => {
     if (options.pendingInitialMessage.current?.sessionId === sessionId) {
@@ -74,6 +77,7 @@ export function createChatSessionActions(
   };
 
   const runLoading = createRunLoading(options, handleMissingSession);
+  const feedbackRequestVersions = options.feedbackRequestVersions?.current ?? {};
 
   const refreshSessions = async () => {
     const nextSessions = await runLoading(() => listSessions(), '加载会话失败', false);
@@ -294,6 +298,11 @@ export function createChatSessionActions(
     }
 
     const threadMessages = options.messages ?? [];
+    const lastAssistantMessage = [...threadMessages].reverse().find(candidate => candidate.role === 'assistant');
+    if (lastAssistantMessage?.id !== message.id) {
+      return;
+    }
+
     const messageIndex = threadMessages.findIndex(candidate => candidate.id === message.id);
     const priorMessages = messageIndex >= 0 ? threadMessages.slice(0, messageIndex) : threadMessages;
     const priorUserMessage = [...priorMessages].reverse().find(candidate => candidate.role === 'user');
@@ -310,12 +319,17 @@ export function createChatSessionActions(
       return;
     }
 
+    const nextVersion = (feedbackRequestVersions[message.id] ?? 0) + 1;
+    feedbackRequestVersions[message.id] = nextVersion;
     const updatedMessage = await runLoading(
       () => submitMessageFeedbackApi(sessionId, message.id, feedback),
       '提交消息反馈失败',
       { withLoading: false, sessionId }
     );
     if (!updatedMessage) {
+      return;
+    }
+    if (feedbackRequestVersions[message.id] !== nextVersion) {
       return;
     }
 
