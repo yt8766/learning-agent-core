@@ -5,7 +5,7 @@
 适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
 最后核对：2026-05-12
 
-本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求与经营判断，不直接调用厂商 API。
+本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求、专家会诊结论与经营判断，不直接调用厂商 API。
 
 ## 1. 目标
 
@@ -645,3 +645,63 @@ v1.0 已完成以下边界：
 - stub registry 返回固定 mock asset，不发真实 HTTP
 - video stub 直接构造 MediaAsset，不经 task polling
 - GeneratedMediaBundle.assets 无 `sourceNodeId` 字段（schema 未定义此字段）
+
+## 18. Experts Consultation 边界
+
+状态：completed
+最后核对：2026-05-02
+
+CompanyLive 已新增专家会诊能力，入口是：
+
+```text
+POST /api/company-live/experts/consult
+```
+
+该入口接收 `{ question, brief }`，其中 `brief` 是 Admin 简化输入 `CompanyLiveGenerateBrief`；后端 DTO 会补全默认值并 parse 成 `CompanyLiveContentBrief`，再调用 `agents/company-live` 的专家会诊 graph。响应是 `CompanyExpertConsultation`，稳定 schema 位于 `packages/core/src/contracts/media/company-live-experts.schema.ts`。
+
+专家会诊不强制绑定媒体生成：
+
+```text
+CompanyLiveExpertConsultation
+-> Expert routing
+-> Expert findings / fallback findings
+-> Missing inputs
+-> Conflicts
+-> Next actions
+-> Business plan patch
+```
+
+只有当业务明确需要生成图片、口播、音乐或视频资产时，才进入媒体生成链路：
+
+```text
+CompanyLiveContentBrief
+-> CompanyLiveMediaRequest
+-> Audio / Image / Video Domain
+-> Media Provider Interface
+-> Provider Adapter
+```
+
+当前专家池共 10 个专家：
+
+| Expert id           | 阶段     | 职责摘要                       |
+| ------------------- | -------- | ------------------------------ |
+| `productAgent`      | core     | 商品定位、用户体验、卖点包装。 |
+| `operationsAgent`   | core     | 直播排期、主播协作、场控流程。 |
+| `contentAgent`      | core     | 直播脚本、话术、素材、本地化。 |
+| `growthAgent`       | core     | GMV、转化率、拉新、复购。      |
+| `riskAgent`         | core     | 违规话术、平台封禁、审批审计。 |
+| `financeAgent`      | core     | 毛利、折扣、预算、ROI、结算。  |
+| `marketingAgent`    | reserved | 投放、Campaign、达人合作。     |
+| `intelligenceAgent` | reserved | 竞品、平台政策、区域趋势。     |
+| `supportAgent`      | reserved | 用户问题、投诉、退货退款。     |
+| `supplyAgent`       | reserved | 库存、备货、发货、物流时效。   |
+
+v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；关键词命中时可按路由规则选中对应专家，包括 reserved 专家。
+
+边界约束：
+
+- `CompanyExpertConsultation` 是专家会诊对外唯一稳定响应 contract。
+- Admin 页面只消费 `CompanyExpertConsultation`，不读取 `agents/company-live` 内部 graph state、node trace、prompt、fallback reason 或 LLM 原始响应。
+- 专家会诊可以产出 `businessPlanPatch`，但不直接写入业务计划、不发布素材、不触发审批恢复。
+- 媒体 provider 边界保持不变：Agent 侧只消费 `packages/runtime` provider interface，默认装配在 `packages/platform-runtime`，vendor 映射在 `packages/adapters`。
+- MiniMax 或其他媒体 vendor 字段不得穿透到专家会诊 response、Admin 页面或 `packages/core` 专家会诊 contract。
