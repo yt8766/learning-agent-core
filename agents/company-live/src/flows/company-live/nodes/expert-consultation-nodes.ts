@@ -22,11 +22,8 @@ export interface CompanyLiveExpertConsultInput {
   brief: CompanyLiveContentBrief;
   question: string;
   llm?: Pick<ILLMProvider, 'isConfigured' | 'generateObject'>;
-  onExpertFallback?: (event: { expertId: CompanyExpertId; reason: CompanyLiveExpertFallbackReason }) => void;
   now?: () => Date;
 }
-
-type CompanyLiveExpertFallbackReason = 'llm_not_configured' | 'llm_error' | 'schema_invalid' | 'expert_mismatch';
 
 const expertDefinitionById = new Map<CompanyExpertId, CompanyExpertDefinition>(
   companyLiveExpertDefinitions.map(definition => [definition.expertId, definition])
@@ -46,23 +43,16 @@ async function runExpertFinding(input: {
   question: string;
   expert: CompanyExpertDefinition;
   llm?: Pick<ILLMProvider, 'isConfigured' | 'generateObject'>;
-  onExpertFallback?: (event: { expertId: CompanyExpertId; reason: CompanyLiveExpertFallbackReason }) => void;
 }): Promise<ExpertFinding> {
-  const fallback = (reason: CompanyLiveExpertFallbackReason) => {
-    input.onExpertFallback?.({
-      expertId: input.expert.expertId,
-      reason
-    });
-
-    return buildCompanyLiveFallbackFinding({
+  const fallback = () =>
+    buildCompanyLiveFallbackFinding({
       brief: input.brief,
       question: input.question,
       expert: input.expert
     });
-  };
 
   if (!input.llm?.isConfigured()) {
-    return fallback('llm_not_configured');
+    return fallback();
   }
 
   try {
@@ -90,18 +80,13 @@ async function runExpertFinding(input: {
     });
 
     if (finding.expertId !== input.expert.expertId || finding.role !== input.expert.role || finding.source !== 'llm') {
-      return fallback('expert_mismatch');
+      return fallback();
     }
 
     return finding;
-  } catch (error) {
-    return fallback(isSchemaInvalidError(error) ? 'schema_invalid' : 'llm_error');
+  } catch {
+    return fallback();
   }
-}
-
-function isSchemaInvalidError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error ?? '');
-  return /zod|schema|json|object|parse|validation|invalid input|expected/i.test(message);
 }
 
 function collectMissingInputs(input: { brief: CompanyLiveContentBrief; selectedExperts: CompanyExpertId[] }): string[] {
@@ -159,9 +144,7 @@ function buildNextActions(selectedExperts: CompanyExpertId[]) {
     actions.push({
       actionId: 'draft-script-and-risk-review',
       ownerExpertId: 'contentAgent' as const,
-      label: selectedExperts.includes('riskAgent')
-        ? '输出脚本初稿并同步风控复核禁用表达'
-        : '输出脚本初稿并依据禁用词/合规清单自查表达',
+      label: '输出脚本初稿并交给风控检查禁用表达',
       priority: 'medium' as const
     });
   }
@@ -203,10 +186,6 @@ function buildBusinessPlanPatch(input: {
 export async function runCompanyLiveExpertConsultation(input: CompanyLiveExpertConsultInput) {
   const brief = CompanyLiveContentBriefSchema.parse(input.brief);
   const question = input.question.trim();
-  if (!question) {
-    throw new Error('company-live expert consultation requires a non-empty question');
-  }
-
   const selectedExperts = routeCompanyLiveExperts(question);
   const createdAt = (input.now?.() ?? new Date()).toISOString();
   const expertFindings = await Promise.all(
@@ -215,8 +194,7 @@ export async function runCompanyLiveExpertConsultation(input: CompanyLiveExpertC
         brief,
         question,
         expert: getExpertDefinition(expertId),
-        llm: input.llm,
-        onExpertFallback: input.onExpertFallback
+        llm: input.llm
       })
     )
   );

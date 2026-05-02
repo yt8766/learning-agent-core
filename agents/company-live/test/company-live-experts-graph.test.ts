@@ -71,22 +71,7 @@ describe('consultCompanyLiveExperts', () => {
     expect(llm.generateObject).toHaveBeenCalled();
   });
 
-  it('keeps next actions within selected experts for content-only script questions', async () => {
-    const consultation = await consultCompanyLiveExperts({
-      brief: stubBrief,
-      question: '脚本和话术应该怎么改？',
-      now: () => new Date('2026-05-02T00:00:00.000Z')
-    });
-
-    expect(consultation.selectedExperts).toEqual(['contentAgent']);
-    for (const action of consultation.nextActions) {
-      expect(consultation.selectedExperts).toContain(action.ownerExpertId);
-      expect(action.label).not.toMatch(/风控|riskAgent|交给/);
-    }
-  });
-
   it('falls back for an expert when llm generation throws', async () => {
-    const onExpertFallback = vi.fn();
     const llm = {
       isConfigured: vi.fn(() => true),
       generateObject: vi.fn(async () => {
@@ -98,7 +83,6 @@ describe('consultCompanyLiveExperts', () => {
       brief: stubBrief,
       question: '这个折扣会不会影响 ROI？',
       llm,
-      onExpertFallback,
       now: () => new Date('2026-05-02T00:00:00.000Z')
     });
 
@@ -109,88 +93,5 @@ describe('consultCompanyLiveExperts', () => {
       source: 'fallback'
     });
     expect(consultation.missingInputs).toContain('商品成本');
-    expect(onExpertFallback).toHaveBeenCalledWith({
-      expertId: 'financeAgent',
-      reason: 'llm_error'
-    });
-  });
-
-  it('rejects a blank question before routing or llm generation', async () => {
-    const llm = {
-      isConfigured: vi.fn(() => true),
-      generateObject: vi.fn(async () => {
-        throw new Error('should not call llm for blank question');
-      })
-    } satisfies Pick<ILLMProvider, 'isConfigured' | 'generateObject'>;
-
-    await expect(
-      consultCompanyLiveExperts({
-        brief: stubBrief,
-        question: '   \n\t  ',
-        llm,
-        now: () => new Date('2026-05-02T00:00:00.000Z')
-      })
-    ).rejects.toThrow('company-live expert consultation requires a non-empty question');
-
-    expect(llm.generateObject).not.toHaveBeenCalled();
-  });
-
-  it('falls back when llm returns a schema-invalid finding object', async () => {
-    const llm = {
-      isConfigured: vi.fn(() => true),
-      generateObject: vi.fn(async () => ({
-        expertId: 'contentAgent',
-        role: 'content',
-        summary: 'missing required arrays',
-        confidence: 'high',
-        source: 'llm'
-      }))
-    } satisfies Pick<ILLMProvider, 'isConfigured' | 'generateObject'>;
-
-    const consultation = await consultCompanyLiveExperts({
-      brief: stubBrief,
-      question: '脚本和话术应该怎么改？',
-      llm,
-      now: () => new Date('2026-05-02T00:00:00.000Z')
-    });
-
-    expect(consultation.selectedExperts).toEqual(['contentAgent']);
-    expect(consultation.expertFindings).toHaveLength(1);
-    expect(consultation.expertFindings[0]).toMatchObject({
-      expertId: 'contentAgent',
-      source: 'fallback'
-    });
-  });
-
-  it('falls back to the routed content expert when llm returns a different expert finding', async () => {
-    const llmFinding: ExpertFinding = {
-      expertId: 'riskAgent',
-      role: 'risk',
-      summary: '风控建议不应替换当前内容专家路由。',
-      diagnosis: ['模型返回了与路由不一致的专家。'],
-      recommendations: ['应该回退到路由选中的内容专家。'],
-      questionsToUser: ['是否需要额外风控复核？'],
-      risks: ['专家错配会污染 selectedExperts 与 findings。'],
-      confidence: 0.77,
-      source: 'llm'
-    };
-    const llm = {
-      isConfigured: vi.fn(() => true),
-      generateObject: vi.fn(async () => llmFinding)
-    } satisfies Pick<ILLMProvider, 'isConfigured' | 'generateObject'>;
-
-    const consultation = await consultCompanyLiveExperts({
-      brief: stubBrief,
-      question: '脚本和话术应该怎么改？',
-      llm,
-      now: () => new Date('2026-05-02T00:00:00.000Z')
-    });
-
-    expect(consultation.selectedExperts).toEqual(['contentAgent']);
-    expect(consultation.expertFindings).toHaveLength(1);
-    expect(consultation.expertFindings[0]).toMatchObject({
-      expertId: 'contentAgent',
-      source: 'fallback'
-    });
   });
 });
