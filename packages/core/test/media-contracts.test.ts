@@ -9,6 +9,11 @@ import {
   SpeechSynthesisRequestSchema,
   VoiceCloneRequestSchema
 } from '../src';
+import {
+  CompanyExpertConsultationSchema,
+  CompanyExpertDefinitionSchema,
+  ExpertFindingSchema
+} from '../src/contracts/media/company-live-experts.schema';
 
 describe('@agent/core media contracts', () => {
   it('parses a generated audio asset and completed media task', () => {
@@ -178,5 +183,89 @@ describe('@agent/core media contracts', () => {
         outputSnapshot: {}
       })
     ).toThrow();
+  });
+});
+
+describe('company-live expert consultation contracts', () => {
+  it('parses a company expert definition', () => {
+    const definition = CompanyExpertDefinitionSchema.parse({
+      expertId: 'productAgent',
+      displayName: '产品专家',
+      role: 'product',
+      phase: 'core',
+      responsibilities: ['商品定位', '用户体验'],
+      boundaries: ['不审批预算'],
+      keywords: ['商品', '卖点']
+    });
+
+    expect(definition.expertId).toBe('productAgent');
+  });
+
+  it('parses an expert finding', () => {
+    const finding = ExpertFindingSchema.parse({
+      expertId: 'riskAgent',
+      role: 'risk',
+      summary: '存在平台合规风险。',
+      diagnosis: ['话术中包含未经证据支持的功效表达。'],
+      recommendations: ['删除绝对化功效承诺。'],
+      questionsToUser: ['是否有第三方检测报告？'],
+      risks: ['可能触发平台审核。'],
+      confidence: 0.72,
+      source: 'fallback'
+    });
+
+    expect(finding.source).toBe('fallback');
+  });
+
+  it('parses a company expert consultation result', () => {
+    const consultation = CompanyExpertConsultationSchema.parse({
+      consultationId: 'consult-brief-1-001',
+      briefId: 'brief-1',
+      userQuestion: '这个项目缺什么？',
+      selectedExperts: ['productAgent', 'operationsAgent', 'contentAgent'],
+      expertFindings: [
+        {
+          expertId: 'productAgent',
+          role: 'product',
+          summary: '产品定位需要更清楚。',
+          diagnosis: ['目标用户和购买理由仍偏泛。'],
+          recommendations: ['补充核心用户画像。'],
+          questionsToUser: ['主推 SKU 是哪一个？'],
+          risks: ['卖点分散会降低转化。'],
+          confidence: 0.66,
+          source: 'fallback'
+        }
+      ],
+      missingInputs: ['商品成本', '库存'],
+      conflicts: [
+        {
+          conflictId: 'conflict-discount-margin',
+          summary: '增长折扣与毛利护栏存在冲突。',
+          expertIds: ['growthAgent', 'financeAgent'],
+          resolutionHint: '先补成本和目标毛利，再确认折扣。'
+        }
+      ],
+      nextActions: [
+        {
+          actionId: 'action-fill-cost',
+          ownerExpertId: 'financeAgent',
+          label: '补充商品成本和折扣边界',
+          priority: 'high'
+        }
+      ],
+      businessPlanPatch: {
+        briefId: 'brief-1',
+        updates: [
+          {
+            path: 'finance.missingInputs',
+            value: ['商品成本', '物流成本'],
+            reason: '财务专家无法在缺少成本时判断 ROI。'
+          }
+        ]
+      },
+      createdAt: '2026-05-02T00:00:00.000Z'
+    });
+
+    expect(consultation.selectedExperts).toContain('productAgent');
   });
 });
