@@ -20,10 +20,32 @@ const CompanyLiveGenerateDtoSchema = z.object({
   requestedBy: z.string().optional()
 });
 
+const CompanyLiveExpertConsultDtoSchema = z.object({
+  question: z.string().trim().min(1),
+  brief: CompanyLiveGenerateDtoSchema
+});
+
 export type CompanyLiveGenerateDto = CompanyLiveContentBrief;
+
+export interface CompanyLiveExpertConsultDto {
+  brief: CompanyLiveContentBrief;
+  question: string;
+}
 
 export function parseCompanyLiveGenerateDto(body: unknown): CompanyLiveGenerateDto {
   const partial = CompanyLiveGenerateDtoSchema.parse(body);
+  return parseCompanyLiveBrief(partial);
+}
+
+export function parseCompanyLiveExpertConsultDto(body: unknown): CompanyLiveExpertConsultDto {
+  const partial = CompanyLiveExpertConsultDtoSchema.parse(body);
+  return {
+    brief: parseCompanyLiveBrief(partial.brief),
+    question: partial.question
+  };
+}
+
+function parseCompanyLiveBrief(partial: z.infer<typeof CompanyLiveGenerateDtoSchema>): CompanyLiveContentBrief {
   return CompanyLiveContentBriefSchema.parse({
     briefId: partial.briefId,
     targetPlatform: partial.targetPlatform,
