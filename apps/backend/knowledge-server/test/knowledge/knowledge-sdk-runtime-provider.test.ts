@@ -60,6 +60,22 @@ describe('createKnowledgeSdkRuntimeProvider', () => {
     expect(createDefaultKnowledgeSdkRuntime).not.toHaveBeenCalled();
   });
 
+  it('returns disabled when only DATABASE_URL is configured for the repository', async () => {
+    const provider = createKnowledgeSdkRuntimeProvider({
+      env: {
+        DATABASE_URL: 'postgres://user:pass@localhost:5432/knowledge'
+      }
+    });
+
+    await expect(provider.useFactory()).resolves.toMatchObject({
+      enabled: false,
+      reason: 'missing_env',
+      missingEnv: ['KNOWLEDGE_CHAT_MODEL', 'KNOWLEDGE_EMBEDDING_MODEL', 'KNOWLEDGE_LLM_API_KEY'],
+      runtime: null
+    });
+    expect(createDefaultKnowledgeSdkRuntime).not.toHaveBeenCalled();
+  });
+
   it('initializes schema and creates the default SDK runtime when env is complete', async () => {
     const queries: Array<{ sql: string; values?: unknown[] }> = [];
     const provider = createKnowledgeSdkRuntimeProvider({
@@ -191,21 +207,21 @@ describe('createPostgresKnowledgeSdkRpcClient', () => {
 
     expect(queries).toEqual([
       {
-        sql: 'select * from upsert_knowledge_chunks($1, $2, $3, $4::jsonb)',
+        sql: 'select * from upsert_knowledge_chunks($1, $2, $3::jsonb, $4)',
         values: [
-          'tenant_1',
           'kb_1',
           'doc_1',
-          JSON.stringify([{ chunk_id: 'chunk_1', text: 'hello', embedding: [0.1], metadata: {} }])
+          JSON.stringify([{ chunk_id: 'chunk_1', text: 'hello', embedding: [0.1], metadata: {} }]),
+          'tenant_1'
         ]
       },
       {
-        sql: 'select * from match_knowledge_chunks($1, $2, $3, $4::vector, $5, $6::jsonb)',
-        values: ['tenant_1', 'kb_1', 'hello', '[0.1]', 5, JSON.stringify({ document_ids: ['doc_1'] })]
+        sql: 'select * from match_knowledge_chunks($1, $2::vector, $3, $4, $5::jsonb, $6)',
+        values: ['kb_1', '[0.1]', 5, 'hello', JSON.stringify({ document_ids: ['doc_1'] }), 'tenant_1']
       },
       {
         sql: 'select * from delete_knowledge_document_chunks($1, $2, $3)',
-        values: ['tenant_1', 'kb_1', 'doc_1']
+        values: ['kb_1', 'doc_1', 'tenant_1']
       }
     ]);
   });
