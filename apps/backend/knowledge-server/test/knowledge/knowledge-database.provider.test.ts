@@ -4,6 +4,8 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
+import { KNOWLEDGE_SCHEMA_SQL } from '../../src/knowledge/runtime/knowledge-schema.sql';
+
 describe('createKnowledgeDatabaseClient', () => {
   it('loads pg Pool under CommonJS without relying on a default export', () => {
     class Pool {
@@ -23,6 +25,14 @@ describe('createKnowledgeDatabaseClient', () => {
 
     expect(client).toBeInstanceOf(Pool);
     expect(client).toMatchObject({ connectionString: 'postgres://local/knowledge' });
+  });
+
+  it('defines pgvector extension, embedding column, and vector RPC functions', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('create extension if not exists vector');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('embedding vector(');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function upsert_knowledge_chunks');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function match_knowledge_chunks');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function delete_knowledge_document_chunks');
   });
 });
 
