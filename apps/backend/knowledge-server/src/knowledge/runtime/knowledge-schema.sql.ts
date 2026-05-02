@@ -96,7 +96,7 @@ as $function$
 declare
   record_item jsonb;
   upserted_count integer := 0;
-  affected_count integer := 0;
+  affected_rows integer := 0;
 begin
   for record_item in select value from jsonb_array_elements(records)
   loop
@@ -155,10 +155,15 @@ begin
       embedding_status = excluded.embedding_status,
       vector_index_status = excluded.vector_index_status,
       keyword_index_status = excluded.keyword_index_status,
-      updated_at = excluded.updated_at;
+      updated_at = excluded.updated_at
+    where knowledge_document_chunks.document_id = excluded.document_id;
 
-    get diagnostics affected_count = row_count;
-    upserted_count := upserted_count + affected_count;
+    get diagnostics affected_rows = row_count;
+    if affected_rows <> 1 then
+      raise exception 'knowledge chunk upsert conflict for chunk_id=% document_id=%', record_item ->> 'chunk_id', document_id;
+    end if;
+
+    upserted_count := upserted_count + affected_rows;
   end loop;
 
   return jsonb_build_object('upserted_count', upserted_count);
@@ -194,10 +199,17 @@ as $function$
     and (match_knowledge_chunks.tenant_id is null or kd.workspace_id = match_knowledge_chunks.tenant_id)
     and kdc.embedding is not null
     and (
-      not (match_knowledge_chunks.filters ? 'documentIds')
+      (not (match_knowledge_chunks.filters ? 'document_ids') and not (match_knowledge_chunks.filters ? 'documentIds'))
       or kdc.document_id in (
         select document_id_filter.value
-        from jsonb_array_elements_text(match_knowledge_chunks.filters -> 'documentIds') as document_id_filter(value)
+        from jsonb_array_elements_text(match_knowledge_chunks.filters -> 'document_ids') as document_id_filter(value)
+      )
+      or (
+        not (match_knowledge_chunks.filters ? 'document_ids')
+        and kdc.document_id in (
+          select document_id_filter.value
+          from jsonb_array_elements_text(match_knowledge_chunks.filters -> 'documentIds') as document_id_filter(value)
+        )
       )
     )
   order by kdc.embedding <=> match_knowledge_chunks.embedding

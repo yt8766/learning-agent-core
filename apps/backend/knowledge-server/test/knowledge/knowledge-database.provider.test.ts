@@ -35,6 +35,27 @@ describe('createKnowledgeDatabaseClient', () => {
     expect(KNOWLEDGE_SCHEMA_SQL).toContain('create or replace function delete_knowledge_document_chunks');
     expect(KNOWLEDGE_SCHEMA_SQL).not.toContain('skipping knowledge vector RPC contract');
   });
+
+  it('guards pgvector chunk upserts against cross-document chunk id conflicts', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('where knowledge_document_chunks.document_id = excluded.document_id');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain('get diagnostics affected_rows = row_count');
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "raise exception 'knowledge chunk upsert conflict for chunk_id=% document_id=%'"
+    );
+  });
+
+  it('uses snake_case document_ids as the primary match_knowledge_chunks filter contract', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'document_ids'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain(
+      "jsonb_array_elements_text(match_knowledge_chunks.filters -> 'document_ids')"
+    );
+  });
+
+  it('keeps camelCase documentIds only as a compatibility fallback for chunk matching', () => {
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'document_ids'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("filters ? 'documentIds'");
+    expect(KNOWLEDGE_SCHEMA_SQL).toContain("not (match_knowledge_chunks.filters ? 'document_ids')");
+  });
 });
 
 function loadProviderModule(filePath: string, modules: Record<string, unknown>) {
