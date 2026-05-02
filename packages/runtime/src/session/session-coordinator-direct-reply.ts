@@ -9,6 +9,7 @@ import {
 } from '@agent/core';
 
 import type { AgentOrchestrator } from '../orchestration/agent-orchestrator';
+import { mergeSystemMessages } from '../utils/system-messages';
 import type { SessionCoordinatorStore } from './session-coordinator-store';
 import type { SessionCoordinatorThinking } from './session-coordinator-thinking';
 import type { SessionTaskAggregate } from './session-task.types';
@@ -37,6 +38,8 @@ export type SessionDirectReplyDeps = {
   llmProvider: ILLMProvider;
   syncTask: (sessionId: string, task: SessionTaskAggregate) => void;
 };
+
+const DIRECT_REPLY_STREAM_TIMEOUT_MS = 30_000;
 
 export function shouldUseSessionDirectReply(message: string, hints?: SessionTurnHints): boolean {
   const raw = message.trim();
@@ -131,32 +134,38 @@ export async function runSessionDirectReply(
   let streamedMessage: ChatMessageRecord | undefined;
   let tokenCount = 0;
 
-  const content = await llm.streamText(
-    buildDirectReplyMessages(input.message, hints),
-    {
-      role: 'manager',
-      modelId: input.modelId ?? hints.requestedHints?.preferredModelId,
-      temperature: 0.2,
-      maxTokens: 1200
-    },
-    token => {
-      tokenCount += 1;
-      streamedMessage = deps.store.appendStreamingMessage(
-        sessionId,
-        assistantMessageId,
-        token,
-        'manager',
-        assistantCreatedAt
-      );
-      deps.store.addEvent(sessionId, 'assistant_token', {
-        messageId: assistantMessageId,
-        content: token,
-        route: 'direct-reply'
-      });
-    }
+  const content = await withTimeout(
+    llm.streamText(
+      buildDirectReplyMessages(input.message, hints),
+      {
+        role: 'manager',
+        modelId: input.modelId ?? hints.requestedHints?.preferredModelId,
+        temperature: 0.2,
+        maxTokens: 1200
+      },
+      token => {
+        tokenCount += 1;
+        streamedMessage = deps.store.appendStreamingMessage(
+          sessionId,
+          assistantMessageId,
+          token,
+          'manager',
+          assistantCreatedAt
+        );
+        deps.store.addEvent(sessionId, 'assistant_token', {
+          messageId: assistantMessageId,
+          content: token,
+          route: 'direct-reply'
+        });
+      }
+    ),
+    DIRECT_REPLY_STREAM_TIMEOUT_MS
   );
 
-  const finalContent = (streamedMessage?.content || content || '').trim();
+  const finalContent = sanitizeDirectReplyContent(streamedMessage?.content || content || '');
+  if (streamedMessage && finalContent) {
+    streamedMessage.content = finalContent;
+  }
   const assistantMessage =
     streamedMessage && finalContent
       ? streamedMessage
@@ -201,6 +210,31 @@ export async function runSessionDirectReply(
   await deps.store.persistRuntimeState();
 }
 
+function sanitizeDirectReplyContent(content: string): string {
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('direct reply stream timed out')), timeoutMs);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
 function buildDirectReplyMessages(message: string, hints: SessionTurnHints) {
   const recentTurns = (hints.recentTurns ?? [])
     .slice(-6)
@@ -210,7 +244,7 @@ function buildDirectReplyMessages(message: string, hints: SessionTurnHints) {
     .filter(Boolean)
     .join('\n\n');
 
-  return [
+  return mergeSystemMessages([
     {
       role: 'system' as const,
       content:
@@ -228,7 +262,7 @@ function buildDirectReplyMessages(message: string, hints: SessionTurnHints) {
       role: 'user' as const,
       content: message
     }
-  ];
+  ]);
 }
 
 function isExecutionOrResearchRequest(message: string): boolean {
@@ -236,7 +270,7 @@ function isExecutionOrResearchRequest(message: string): boolean {
   return (
     /^(\/(?:browse|review|qa|ship|plan|plan-ceo-review|plan-eng-review|exec)\b)/i.test(normalized) ||
     /(实现|修改|修复|改一下|重构|新增|加一个|优化|删除|迁移|接入|联调|运行|测试|发布|提交|创建分支|开\s*pr|审批|安装|连接器|生成报表|生成页面|写文件|改代码|查资料|调研|检索|搜索|联网|最新|今天|现在|实时|新闻)/i.test(
-      normalized
+      normalized.replace(/现在(?=.{0,24}(是什么|是啥|介绍|能做什么|会做什么))/g, '')
     ) ||
     /\b(implement|modify|change|fix|refactor|add|delete|migrate|run|test|build|deploy|release|commit|pull request|install|connector|browse|research|search|latest|today|realtime)\b/i.test(
       normalized

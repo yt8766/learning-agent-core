@@ -73,6 +73,9 @@ import {
   ChatCheckpointRecordSchema,
   ChatCheckpointSharedStringRefsSchema,
   ChatCheckpointSpecialistStateSchema,
+  ChatMessageFeedbackRecordSchema,
+  ChatMessageFeedbackRequestSchema,
+  ChatSessionTitleSourceSchema,
   ChatApprovalRequestPreviewItemSchema,
   ChatCapabilityCatalogGroupSchema,
   ChatCapabilityCatalogItemSchema,
@@ -225,6 +228,149 @@ describe('@agent/core type contracts', () => {
         latestTraceSummary: 'connector policy passed'
       }).approvalCount
     ).toBe(1);
+  });
+
+  it('parses chat message feedback contracts', () => {
+    const request = ChatMessageFeedbackRequestSchema.parse({
+      sessionId: 'session-1',
+      rating: 'unhelpful',
+      reasonCode: 'too_shallow',
+      comment: '需要对比表'
+    });
+
+    expect(request.rating).toBe('unhelpful');
+    expect(
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow',
+        comment: '需要对比表',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      }).messageId
+    ).toBe('message-1');
+
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'unhelpful'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'helpful',
+        reasonCode: 'too_shallow'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'none',
+        reasonCode: 'other'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'helpful',
+        reasonCode: 'too_shallow',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      })
+    ).toThrow();
+
+    expect(ChatMessageFeedbackRequestSchema.parse({ sessionId: 'session-1', rating: 'helpful' }).rating).toBe(
+      'helpful'
+    );
+    expect(ChatMessageFeedbackRequestSchema.parse({ sessionId: 'session-1', rating: 'none' }).rating).toBe('none');
+  });
+
+  it('preserves valid assistant feedback on chat message records', () => {
+    const parsed = ChatMessageRecordSchema.parse({
+      id: 'message-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '可以这样做',
+      createdAt: '2026-05-03T00:00:00.000Z',
+      feedback: {
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        reasonCode: 'missed_point',
+        comment: '漏了约束',
+        updatedAt: '2026-05-03T01:00:00.000Z'
+      }
+    });
+
+    expect(parsed.feedback).toEqual({
+      messageId: 'message-1',
+      sessionId: 'session-1',
+      rating: 'unhelpful',
+      reasonCode: 'missed_point',
+      comment: '漏了约束',
+      updatedAt: '2026-05-03T01:00:00.000Z'
+    });
+  });
+
+  it('parses message feedback learning candidate chat events', () => {
+    const parsed = ChatEventRecordSchema.parse({
+      id: 'event-1',
+      sessionId: 'session-1',
+      type: 'message_feedback_learning_candidate',
+      at: '2026-05-03T00:00:00.000Z',
+      payload: {
+        messageId: 'message-1',
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow',
+        candidateText: '基础技术概念题回答时先给核心结论。',
+        source: 'message_feedback'
+      }
+    });
+
+    expect(parsed.type).toBe('message_feedback_learning_candidate');
+  });
+
+  it('rejects invalid embedded feedback on chat message records', () => {
+    const baseMessage = {
+      id: 'message-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '可以这样做',
+      createdAt: '2026-05-03T00:00:00.000Z'
+    };
+
+    expect(() =>
+      ChatMessageRecordSchema.parse({
+        ...baseMessage,
+        feedback: {
+          messageId: 'message-1',
+          sessionId: 'session-1',
+          rating: 'helpful',
+          reasonCode: 'missed_point',
+          updatedAt: '2026-05-03T01:00:00.000Z'
+        }
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageRecordSchema.parse({
+        ...baseMessage,
+        feedback: {
+          messageId: 'message-1',
+          sessionId: 'session-1',
+          rating: 'unhelpful',
+          updatedAt: '2026-05-03T01:00:00.000Z'
+        }
+      })
+    ).toThrow();
   });
 
   it('keeps evaluation result as a schema-first core contract', () => {
@@ -691,6 +837,7 @@ describe('@agent/core type contracts', () => {
     const session: ChatSessionRecord = {
       id: 'session-1',
       title: 'Runtime contract audit',
+      titleSource: 'manual',
       status: 'running',
       currentTaskId: 'task-1',
       channelIdentity: {
@@ -729,6 +876,7 @@ describe('@agent/core type contracts', () => {
     };
 
     expect(ChannelIdentitySchema.parse(session.channelIdentity).channel).toBe('web');
+    expect(ChatSessionTitleSourceSchema.parse(session.titleSource)).toBe('manual');
     expect(ChatSessionRecordSchema.parse(session).compression?.previewMessages?.[0]?.role).toBe('assistant');
   });
 

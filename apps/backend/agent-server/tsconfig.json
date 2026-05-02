@@ -45,6 +45,6 @@
       "@agent/agents-reviewer": ["../../../agents/reviewer/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "../../../packages/runtime/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "logs"]
 }

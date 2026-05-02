@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { ApprovalScopeSchema, ChatRoleSchema, RiskLevelSchema } from '../../primitives';
 import { PlanQuestionRecordSchema } from './planning';
+import { ChatMessageFeedbackRecordSchema } from './session';
 
 const AgentRoleSchema = z.enum(['manager', 'research', 'executor', 'reviewer']);
 export const ChatCapabilityCatalogItemSchema = z.object({
@@ -106,6 +107,7 @@ export const ChatMessageRecordSchema = z.object({
   taskId: z.string().optional(),
   linkedAgent: AgentRoleSchema.optional(),
   card: ChatMessageCardSchema.optional(),
+  feedback: ChatMessageFeedbackRecordSchema.optional(),
   createdAt: z.string()
 });
 
@@ -144,6 +146,7 @@ export const ChatEventRecordSchema = z.object({
     'review_completed',
     'learning_pending_confirmation',
     'learning_confirmed',
+    'message_feedback_learning_candidate',
     'conversation_compacted',
     'context_compaction_applied',
     'context_compaction_retried',

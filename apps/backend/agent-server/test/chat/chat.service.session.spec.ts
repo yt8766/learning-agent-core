@@ -117,6 +117,7 @@ describe('ChatService', () => {
         contextHints: expect.objectContaining({
           temperature: 0.6,
           maxTokens: 256,
+          thinking: false,
           onToken: expect.any(Function)
         }),
         budgetSnapshot: expect.objectContaining({
@@ -140,6 +141,7 @@ describe('ChatService', () => {
         modelId: 'glm-4.5',
         temperature: 0.6,
         maxTokens: 256,
+        thinking: false,
         budgetState: {
           costConsumedUsd: undefined,
           costBudgetUsd: 5,

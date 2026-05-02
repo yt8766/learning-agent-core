@@ -12,6 +12,8 @@ import {
   SessionApprovalDto,
   SessionCancelDto,
   UpdateChatSessionDto,
+  type ChatMessageFeedbackRequest,
+  type ChatMessageRecord,
   type ChatEventRecord,
   type ChatResponseStepRecord,
   type ChatResponseStepSnapshot
@@ -29,6 +31,7 @@ import {
   streamSandpackCode,
   streamSandpackPreview
 } from './chat-direct-response.helpers';
+import { submitChatMessageFeedback } from './chat-message-feedback.helpers';
 import { resolveReportSchemaArtifactCacheKey, streamReportSchema } from './chat-report-schema.helpers';
 import { buildChatResponseStepEvent, buildChatResponseStepSnapshot } from './chat-response-steps.adapter';
 
@@ -71,6 +74,10 @@ export class ChatService {
 
   listMessages(sessionId: string) {
     return this.runtimeSessionService.listSessionMessages(sessionId);
+  }
+
+  async submitMessageFeedback(messageId: string, input: ChatMessageFeedbackRequest): Promise<ChatMessageRecord> {
+    return submitChatMessageFeedback(this.runtimeSessionService, messageId, input);
   }
 
   listEvents(sessionId: string) {

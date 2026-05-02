@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 
 import {
   AppendChatMessageDto,
+  ChatMessageFeedbackRequestSchema,
   CreateChatSessionDto,
   LearningConfirmationDto,
   RecoverToCheckpointDto,
@@ -200,6 +201,11 @@ export class ChatController {
     const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
     this.setSessionCookie(response, resolvedSessionId);
     return this.chatService.appendMessage(resolvedSessionId, { message: dto.message, modelId: dto.modelId });
+  }
+
+  @Post('messages/:messageId/feedback')
+  submitMessageFeedback(@Param('messageId') messageId: string, @Body() body: unknown) {
+    return this.chatService.submitMessageFeedback(messageId, ChatMessageFeedbackRequestSchema.parse(body));
   }
 
   @Post('approve')

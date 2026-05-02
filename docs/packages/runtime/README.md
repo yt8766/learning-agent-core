@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/runtime/`
-最后核对：2026-04-24
+最后核对：2026-05-03
 
 本目录用于沉淀 `packages/runtime` 相关文档。
 
@@ -41,6 +41,7 @@
   - canonical runtime host
   - 负责主链编排、session lifecycle、approval/recover、background semantics、runtime-facing facade
   - `session/session-coordinator-direct-reply.ts` 是 agent-chat 会话普通问答 fast path：在无执行、检索、审批、skill、connector、报表或代码修改意图时，直接调用通用 LLM provider 并写入 session messages/events/checkpoint，不创建 runtime task，也不进入 supervisor / 六部 graph
+  - direct-reply 在持久化最终 assistant 消息和完成事件前会清理 `<think>...</think>` 与未闭合 `<think>` 尾段；前端 thinking panel 负责展示可见思考块，runtime 只保证最终正文不泄漏模型内部标签
   - `runtime/provider-audit.ts`、`runtime/runtime-analytics.ts`、`runtime/runtime-metrics-store.ts` 已作为 metrics 子域主宿主
   - `runtime/runtime-metrics-refresh.ts` 当前作为 runtime/evals persisted snapshot refresh facade 主宿主；这层默认顺序写入同一份 `RuntimeStateSnapshot`，避免 usage/eval history 并发落盘时互相覆盖
   - `governance/runtime-governance-store.ts`、`governance/runtime-governance-aggregation.ts`、`governance/runtime-counselor-selector-store.ts`、`governance/runtime-approval-scope-policy-store.ts` 已作为 governance 子域主宿主
@@ -56,6 +57,7 @@
 
 - `packages/runtime` 的专项文档统一放在 `docs/packages/runtime/`
 - 新增 runtime facade、session 语义、governance 边界或 graph 主链宿主变化后，需同步更新本目录文档
+- `ChatSessionRecord.titleSource` 是 session title 自动生成与手动改名保护的稳定字段：`manual` 和 `generated` 会阻止后续自动摘要覆盖标题，旧会话缺省视为可继续派生
 - `runtime/llm-facade.ts` 当前作为 LLM retry / structured generation facade 的真实宿主
 - `runtime/concurrency` 当前作为 agent 批量异步任务并发控制 helper 的真实宿主；它提供 `runWithConcurrency`，用于保序结果、失败汇总、取消信号透传与并发上限控制
 - `contracts/llm-facade.ts` 已删除；这类 helper 不再额外包一层 runtime contract 壳
@@ -70,6 +72,7 @@
 
 - [contract-import-boundaries.md](/docs/packages/runtime/contract-import-boundaries.md) — P3-1 后 runtime/backend/agents 的迁出 contract 导入边界
 - [execution-trajectory-factories.md](/docs/packages/runtime/execution-trajectory-factories.md) — Execution Fabric 与 Task Trajectory runtime factories
+- [langgraph-postgres-checkpointer.md](/docs/packages/runtime/langgraph-postgres-checkpointer.md) — LangGraph `MemorySaver` / PostgreSQL `PostgresSaver` 切换与初始化边界
 - [llm-invocation-lifecycle-plan.md](/docs/packages/runtime/llm-invocation-lifecycle-plan.md) — LLM 前处理、能力注入、token/cost 预检、后处理与计费结算计划
 - [package-structure-guidelines.md](/docs/packages/runtime/package-structure-guidelines.md)
 - [runtime-concurrency.md](/docs/packages/runtime/runtime-concurrency.md) — agent 运行期批量异步任务并发控制 helper
