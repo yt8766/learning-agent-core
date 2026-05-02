@@ -12,6 +12,7 @@ import {
 import {
   CompanyExpertConsultationSchema,
   CompanyExpertDefinitionSchema,
+  CompanyLiveBusinessPlanPatchSchema,
   ExpertFindingSchema
 } from '../src/contracts/media/company-live-experts.schema';
 
@@ -187,6 +188,55 @@ describe('@agent/core media contracts', () => {
 });
 
 describe('company-live expert consultation contracts', () => {
+  const buildConsultation = (overrides: Record<string, unknown> = {}) => ({
+    consultationId: 'consult-brief-1-001',
+    briefId: 'brief-1',
+    userQuestion: '这个项目缺什么？',
+    selectedExperts: ['productAgent', 'operationsAgent', 'contentAgent', 'growthAgent', 'financeAgent'],
+    expertFindings: [
+      {
+        expertId: 'productAgent',
+        role: 'product',
+        summary: '产品定位需要更清楚。',
+        diagnosis: ['目标用户和购买理由仍偏泛。'],
+        recommendations: ['补充核心用户画像。'],
+        questionsToUser: ['主推 SKU 是哪一个？'],
+        risks: ['卖点分散会降低转化。'],
+        confidence: 0.66,
+        source: 'fallback'
+      }
+    ],
+    missingInputs: ['商品成本', '库存'],
+    conflicts: [
+      {
+        conflictId: 'conflict-discount-margin',
+        summary: '增长折扣与毛利护栏存在冲突。',
+        expertIds: ['growthAgent', 'financeAgent'],
+        resolutionHint: '先补成本和目标毛利，再确认折扣。'
+      }
+    ],
+    nextActions: [
+      {
+        actionId: 'action-fill-cost',
+        ownerExpertId: 'financeAgent',
+        label: '补充商品成本和折扣边界',
+        priority: 'high'
+      }
+    ],
+    businessPlanPatch: {
+      briefId: 'brief-1',
+      updates: [
+        {
+          path: 'finance.missingInputs',
+          value: ['商品成本', '物流成本'],
+          reason: '财务专家无法在缺少成本时判断 ROI。'
+        }
+      ]
+    },
+    createdAt: '2026-05-02T00:00:00.000Z',
+    ...overrides
+  });
+
   it('parses a company expert definition', () => {
     const definition = CompanyExpertDefinitionSchema.parse({
       expertId: 'productAgent',
@@ -218,54 +268,216 @@ describe('company-live expert consultation contracts', () => {
   });
 
   it('parses a company expert consultation result', () => {
-    const consultation = CompanyExpertConsultationSchema.parse({
-      consultationId: 'consult-brief-1-001',
-      briefId: 'brief-1',
-      userQuestion: '这个项目缺什么？',
-      selectedExperts: ['productAgent', 'operationsAgent', 'contentAgent'],
-      expertFindings: [
-        {
-          expertId: 'productAgent',
-          role: 'product',
-          summary: '产品定位需要更清楚。',
-          diagnosis: ['目标用户和购买理由仍偏泛。'],
-          recommendations: ['补充核心用户画像。'],
-          questionsToUser: ['主推 SKU 是哪一个？'],
-          risks: ['卖点分散会降低转化。'],
-          confidence: 0.66,
-          source: 'fallback'
-        }
-      ],
-      missingInputs: ['商品成本', '库存'],
-      conflicts: [
-        {
-          conflictId: 'conflict-discount-margin',
-          summary: '增长折扣与毛利护栏存在冲突。',
-          expertIds: ['growthAgent', 'financeAgent'],
-          resolutionHint: '先补成本和目标毛利，再确认折扣。'
-        }
-      ],
-      nextActions: [
-        {
-          actionId: 'action-fill-cost',
-          ownerExpertId: 'financeAgent',
-          label: '补充商品成本和折扣边界',
-          priority: 'high'
-        }
-      ],
-      businessPlanPatch: {
-        briefId: 'brief-1',
-        updates: [
-          {
-            path: 'finance.missingInputs',
-            value: ['商品成本', '物流成本'],
-            reason: '财务专家无法在缺少成本时判断 ROI。'
-          }
-        ]
-      },
-      createdAt: '2026-05-02T00:00:00.000Z'
-    });
+    const consultation = CompanyExpertConsultationSchema.parse(buildConsultation());
 
     expect(consultation.selectedExperts).toContain('productAgent');
+  });
+
+  it('rejects mismatched company expert role identities', () => {
+    expect(() =>
+      ExpertFindingSchema.parse({
+        expertId: 'riskAgent',
+        role: 'finance',
+        summary: '存在平台合规风险。',
+        diagnosis: ['话术中包含未经证据支持的功效表达。'],
+        recommendations: ['删除绝对化功效承诺。'],
+        questionsToUser: ['是否有第三方检测报告？'],
+        risks: ['可能触发平台审核。'],
+        confidence: 0.72,
+        source: 'fallback'
+      })
+    ).toThrow();
+  });
+
+  it('rejects duplicate selected company experts', () => {
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          selectedExperts: ['productAgent', 'productAgent'],
+          conflicts: [],
+          nextActions: []
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects expert findings outside selected company experts', () => {
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          selectedExperts: ['productAgent', 'growthAgent', 'financeAgent'],
+          expertFindings: [
+            {
+              expertId: 'riskAgent',
+              role: 'risk',
+              summary: '存在平台合规风险。',
+              diagnosis: ['话术中包含未经证据支持的功效表达。'],
+              recommendations: ['删除绝对化功效承诺。'],
+              questionsToUser: ['是否有第三方检测报告？'],
+              risks: ['可能触发平台审核。'],
+              confidence: 0.72,
+              source: 'fallback'
+            }
+          ]
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects duplicate expert findings and conflict participants', () => {
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          expertFindings: [
+            {
+              expertId: 'productAgent',
+              role: 'product',
+              summary: '产品定位需要更清楚。',
+              diagnosis: ['目标用户和购买理由仍偏泛。'],
+              recommendations: ['补充核心用户画像。'],
+              questionsToUser: ['主推 SKU 是哪一个？'],
+              risks: ['卖点分散会降低转化。'],
+              confidence: 0.66,
+              source: 'fallback'
+            },
+            {
+              expertId: 'productAgent',
+              role: 'product',
+              summary: '重复产品专家结论。',
+              diagnosis: ['重复诊断。'],
+              recommendations: ['合并结论。'],
+              questionsToUser: [],
+              risks: [],
+              confidence: 0.6,
+              source: 'fallback'
+            }
+          ]
+        })
+      )
+    ).toThrow();
+
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          conflicts: [
+            {
+              conflictId: 'conflict-duplicate-expert',
+              summary: '同一专家不应在冲突参与方中重复出现。',
+              expertIds: ['growthAgent', 'growthAgent'],
+              resolutionHint: '去重后再表达冲突。'
+            }
+          ]
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects conflict and next-action experts outside selected company experts', () => {
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          selectedExperts: ['productAgent', 'growthAgent'],
+          conflicts: [
+            {
+              conflictId: 'conflict-unselected-expert',
+              summary: '冲突参与方包含未选专家。',
+              expertIds: ['growthAgent', 'financeAgent'],
+              resolutionHint: '只能引用已选专家。'
+            }
+          ],
+          nextActions: []
+        })
+      )
+    ).toThrow();
+
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          selectedExperts: ['productAgent', 'growthAgent', 'financeAgent'],
+          nextActions: [
+            {
+              actionId: 'action-risk-review',
+              ownerExpertId: 'riskAgent',
+              label: '复核合规风险',
+              priority: 'high'
+            }
+          ]
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects non-json company live business plan patch values', () => {
+    class RuntimePatchValue {
+      value = 'not-json';
+    }
+
+    const nonJsonValues = [
+      () => 'not-json',
+      Symbol('not-json'),
+      new Date('2026-05-02T00:00:00.000Z'),
+      new Map([['key', 'value']]),
+      new RuntimePatchValue()
+    ];
+
+    nonJsonValues.forEach(value => {
+      expect(() =>
+        CompanyLiveBusinessPlanPatchSchema.parse({
+          briefId: 'brief-1',
+          updates: [
+            {
+              path: 'runtime.value',
+              value,
+              reason: '非 JSON 值不能进入 JSON patch。'
+            }
+          ]
+        })
+      ).toThrow();
+    });
+  });
+
+  it('rejects invalid confidence source and action priority values', () => {
+    expect(() =>
+      ExpertFindingSchema.parse({
+        expertId: 'riskAgent',
+        role: 'risk',
+        summary: '存在平台合规风险。',
+        diagnosis: ['话术中包含未经证据支持的功效表达。'],
+        recommendations: ['删除绝对化功效承诺。'],
+        questionsToUser: ['是否有第三方检测报告？'],
+        risks: ['可能触发平台审核。'],
+        confidence: 1.2,
+        source: 'fallback'
+      })
+    ).toThrow();
+
+    expect(() =>
+      ExpertFindingSchema.parse({
+        expertId: 'riskAgent',
+        role: 'risk',
+        summary: '存在平台合规风险。',
+        diagnosis: ['话术中包含未经证据支持的功效表达。'],
+        recommendations: ['删除绝对化功效承诺。'],
+        questionsToUser: ['是否有第三方检测报告？'],
+        risks: ['可能触发平台审核。'],
+        confidence: 0.72,
+        source: 'manual'
+      })
+    ).toThrow();
+
+    expect(() =>
+      CompanyExpertConsultationSchema.parse(
+        buildConsultation({
+          nextActions: [
+            {
+              actionId: 'action-fill-cost',
+              ownerExpertId: 'financeAgent',
+              label: '补充商品成本和折扣边界',
+              priority: 'urgent'
+            }
+          ]
+        })
+      )
+    ).toThrow();
   });
 });
