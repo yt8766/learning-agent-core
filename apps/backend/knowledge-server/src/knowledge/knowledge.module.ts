@@ -8,10 +8,13 @@ import { KnowledgeDocumentService } from './knowledge-document.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
 import { KnowledgeService } from './knowledge.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
-import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY } from './knowledge.tokens';
+import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
-import { createKnowledgeSdkRuntimeProvider } from './runtime/knowledge-sdk-runtime.provider';
+import {
+  createKnowledgeSdkRuntimeProvider,
+  type KnowledgeSdkRuntimeProviderValue
+} from './runtime/knowledge-sdk-runtime.provider';
 import { createAliyunOssStorageProviderFromEnv, describeAliyunOssEnv } from './storage/aliyun-oss-storage.provider';
 import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.provider';
 import type { OssStorageProvider } from './storage/oss-storage.provider';
@@ -49,9 +52,12 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
     },
     {
       provide: KnowledgeIngestionWorker,
-      useFactory: (repository: KnowledgeRepository, storage: OssStorageProvider) =>
-        new KnowledgeIngestionWorker(repository, storage),
-      inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_OSS_STORAGE]
+      useFactory: (
+        repository: KnowledgeRepository,
+        storage: OssStorageProvider,
+        sdkRuntime: KnowledgeSdkRuntimeProviderValue
+      ) => new KnowledgeIngestionWorker(repository, storage, sdkRuntime),
+      inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_SDK_RUNTIME]
     },
     {
       provide: KnowledgeDocumentService,
