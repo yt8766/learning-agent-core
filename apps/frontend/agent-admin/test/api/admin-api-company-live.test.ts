@@ -6,7 +6,8 @@ vi.mock('@/api/admin-api-core', () => ({
   request: (...args: unknown[]) => requestMock(...args)
 }));
 
-import { generateCompanyLive } from '@/api/company-live.api';
+import { consultCompanyLiveExperts, generateCompanyLive } from '@/api/company-live.api';
+import { CompanyExpertConsultationSchema } from '@agent/core';
 
 describe('admin-api-company-live', () => {
   beforeEach(() => {
@@ -72,5 +73,60 @@ describe('admin-api-company-live', () => {
     const parsed = JSON.parse(init.body);
     expect(parsed.briefId).toBe('b2');
     expect(parsed.targetPlatform).toBe('bilibili');
+  });
+
+  it('calls POST /company-live/experts/consult with the question and brief body', async () => {
+    const mockResult = {
+      consultationId: 'consultation-test-1',
+      briefId: 'brief-consult-1',
+      userQuestion: '如何优化开场转化？',
+      selectedExperts: ['productAgent'],
+      expertFindings: [
+        {
+          expertId: 'productAgent',
+          role: 'product',
+          summary: '开场需要更快说明用户收益。',
+          diagnosis: ['当前脚本前 15 秒缺少核心购买理由。'],
+          recommendations: ['把核心卖点前置到第一句话。'],
+          questionsToUser: ['主推 SKU 是哪一个？'],
+          risks: ['卖点铺陈过慢会降低停留。'],
+          confidence: 0.72,
+          source: 'fallback'
+        }
+      ],
+      missingInputs: [],
+      conflicts: [],
+      nextActions: [],
+      businessPlanPatch: {
+        briefId: 'brief-consult-1',
+        updates: [
+          {
+            path: 'script.opening',
+            value: '把核心卖点前置到第一句话。',
+            reason: '产品专家建议先解释用户收益。'
+          }
+        ]
+      },
+      createdAt: '2026-05-02T00:00:00.000Z'
+    };
+    const parsedMockResult = CompanyExpertConsultationSchema.parse(mockResult);
+    requestMock.mockResolvedValue(parsedMockResult);
+    const brief = {
+      briefId: 'brief-consult-1',
+      targetPlatform: 'douyin',
+      script: '欢迎来到直播间，今天给大家介绍新品。',
+      durationSeconds: 60,
+      speakerVoiceId: 'voice-default',
+      requestedBy: 'test-user'
+    };
+    const question = '如何优化开场转化？';
+
+    const result = await consultCompanyLiveExperts({ question, brief });
+
+    expect(requestMock).toHaveBeenCalledWith('/company-live/experts/consult', {
+      method: 'POST',
+      body: JSON.stringify({ question, brief })
+    });
+    expect(result).toEqual(parsedMockResult);
   });
 });

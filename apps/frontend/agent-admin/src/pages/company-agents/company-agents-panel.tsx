@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardCenterShell, DashboardEmptyState } from '@/components/dashboard-center-shell';
 
 import type { CompanyAgentRecord } from '@/types/admin';
-import type { CompanyLiveGenerateResult } from '@agent/core';
-import { generateCompanyLive } from '@/api/company-live.api';
+import type { CompanyExpertConsultation, CompanyLiveGenerateResult } from '@agent/core';
+import { consultCompanyLiveExperts, generateCompanyLive } from '@/api/company-live.api';
+import { CompanyLiveExpertConsultForm } from './company-live-expert-consult-form';
+import { CompanyLiveExpertConsultResult } from './company-live-expert-consult-result';
 import { CompanyLiveGenerateForm } from './company-live-generate-form';
 import { CompanyLiveBundleResult } from './company-live-bundle-result';
 import { CompanyLiveNodeTracePanel } from './company-live-node-trace';
@@ -19,9 +21,26 @@ interface CompanyAgentsPanelProps {
 }
 
 export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: CompanyAgentsPanelProps) {
+  const [consultResult, setConsultResult] = useState<CompanyExpertConsultation | null>(null);
+  const [consultLoading, setConsultLoading] = useState(false);
+  const [consultError, setConsultError] = useState<string | null>(null);
   const [generateResult, setGenerateResult] = useState<CompanyLiveGenerateResult | null>(null);
   const [generateLoading, setGenerateLoading] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+
+  async function handleConsult(input: Parameters<typeof consultCompanyLiveExperts>[0]) {
+    setConsultLoading(true);
+    setConsultError(null);
+    setConsultResult(null);
+    try {
+      const result = await consultCompanyLiveExperts(input);
+      setConsultResult(result);
+    } catch (err) {
+      setConsultError(err instanceof Error ? err.message : '专家会诊失败');
+    } finally {
+      setConsultLoading(false);
+    }
+  }
 
   async function handleGenerate(brief: Parameters<typeof generateCompanyLive>[0]) {
     setGenerateLoading(true);
@@ -44,6 +63,18 @@ export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: Co
       count={agents.length}
     >
       <div className="grid gap-6">
+        {/* 专家会诊区 */}
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-foreground">专家会诊</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <CompanyLiveExpertConsultForm onSubmit={handleConsult} loading={consultLoading} />
+            {consultError && <p className="text-sm text-destructive">{consultError}</p>}
+            {consultResult && <CompanyLiveExpertConsultResult result={consultResult} />}
+          </CardContent>
+        </Card>
+
         {/* 直播内容生成区 */}
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
