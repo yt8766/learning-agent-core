@@ -181,7 +181,7 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).not.toContain('/plan');
   });
 
-  it('AI 回复会带 Agent 头像', () => {
+  it('AI 回复使用 Codex 风格的无头像无边框气泡', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -199,10 +199,11 @@ describe('chat-message-adapter cognition rendering', () => {
     });
     const avatarHtml = renderToStaticMarkup(<>{items[0]?.avatar}</>);
 
-    expect(avatarHtml).toContain('chatx-assistant-avatar');
+    expect(avatarHtml).not.toContain('chatx-assistant-avatar');
+    expect(items[0]?.variant).toBe('borderless');
   });
 
-  it('每条 AI 回复都会展示独立的已思考状态', () => {
+  it('AI 回复不再展示思维链状态，只保留正文内容', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -228,11 +229,41 @@ describe('chat-message-adapter cognition rendering', () => {
     const firstHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_1')?.content}</>);
     const secondHtml = renderToStaticMarkup(<>{items.find(item => item.key === 'assistant_2')?.content}</>);
 
-    expect(firstHtml).toContain('已思考');
-    expect(secondHtml).toContain('已思考');
+    expect(firstHtml).toContain('成本超限，请简化问题或提高预算。');
+    expect(secondHtml).toContain('我是一个多 Agent 协作助手，负责理解你的目标。');
+    expect(firstHtml).not.toContain('已思考');
+    expect(secondHtml).not.toContain('已思考');
+    expect(firstHtml).not.toContain('chatx-inline-think');
+    expect(secondHtml).not.toContain('chatx-inline-think');
   });
 
-  it('会把绑定到 progress stream 的 Think 渲染到主聊天线程里，但不再把运行态战报混进正文', () => {
+  it('renders assistant think content in a default-expanded thinking panel without leaking tags', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '<think>需要解释镜像和容器的区别。</think>镜像是模板，容器是运行实例。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionDurationLabel: '2 秒'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('已思考（用时 2 秒）');
+    expect(html).toContain('需要解释镜像和容器的区别。');
+    expect(html).toContain('镜像是模板，容器是运行实例。');
+    expect(html).not.toContain('<think>');
+  });
+
+  it('会把 progress stream 作为 AI 回复占位，但不再把 Think 或 ThoughtChain 渲染到主聊天线程里', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'chat_msg_user_1',
@@ -275,8 +306,9 @@ describe('chat-message-adapter cognition rendering', () => {
     const assistantItem = items.find(item => item.key === 'progress_stream_task-1');
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
-    expect(html).toContain('思考中');
-    expect(html).toContain('先判断问题类型，再选择执行路径。');
+    expect(html).toContain('正在生成回复...');
+    expect(html).not.toContain('思考中');
+    expect(html).not.toContain('先判断问题类型，再选择执行路径。');
     expect(html).not.toContain('正在分析中');
   });
 
@@ -871,8 +903,8 @@ describe('chat-message-adapter cognition rendering', () => {
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
     expect(html).toContain('正在生成回复...');
-    expect(html).toContain('思考中');
-    expect(html).toContain('正在整理上下文');
+    expect(html).not.toContain('思考中');
+    expect(html).not.toContain('正在整理上下文');
   });
 
   it('正式 assistant 内容已经到达后，会隐藏 pending assistant 占位，避免先分裂后合并', () => {
