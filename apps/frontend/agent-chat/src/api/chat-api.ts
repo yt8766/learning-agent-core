@@ -278,7 +278,7 @@ export function deleteSession(sessionId: string) {
 export function updateSession(sessionId: string, title: string) {
   return request<ChatSessionRecord>(`/chat/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH',
-    data: { title, titleSource: 'manual' }
+    data: { title }
   });
 }
 
