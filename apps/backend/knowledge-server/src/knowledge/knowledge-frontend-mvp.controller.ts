@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   ServiceUnavailableException,
+  Optional,
   UseGuards
 } from '@nestjs/common';
 import { ZodError } from 'zod';
@@ -29,13 +30,17 @@ import type {
 } from './domain/knowledge-document.types';
 import { KnowledgeServiceError } from './knowledge.errors';
 import { KnowledgeDocumentService } from './knowledge-document.service';
+import { KnowledgeTraceService } from './knowledge-trace.service';
 
 const now = '2026-05-02T00:00:00.000Z';
 
 @UseGuards(AuthGuard)
 @Controller()
 export class KnowledgeFrontendMvpController {
-  constructor(@Inject(KnowledgeDocumentService) private readonly documents?: KnowledgeDocumentService) {}
+  constructor(
+    @Optional() @Inject(KnowledgeDocumentService) private readonly documents?: KnowledgeDocumentService,
+    @Optional() @Inject(KnowledgeTraceService) private readonly traces?: KnowledgeTraceService
+  ) {}
 
   @Get('dashboard/overview')
   getDashboardOverview() {
@@ -130,21 +135,16 @@ export class KnowledgeFrontendMvpController {
 
   @Get('observability/traces')
   listTraces() {
-    return page([]);
+    return page(this.traces?.listTraces() ?? []);
   }
 
   @Get('observability/traces/:traceId')
   getTrace(@Param('traceId') traceId: string) {
-    return {
-      id: traceId,
-      workspaceId: 'default',
-      knowledgeBaseIds: [],
-      question: '',
-      status: 'succeeded',
-      createdAt: now,
-      spans: [],
-      citations: []
-    };
+    const trace = this.traces?.getTrace(traceId);
+    if (!trace) {
+      throw new NotFoundException({ code: 'knowledge_trace_not_found', message: 'Trace not found' });
+    }
+    return trace;
   }
 
   @Get('eval/datasets')

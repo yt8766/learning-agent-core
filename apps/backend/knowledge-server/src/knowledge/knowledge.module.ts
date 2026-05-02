@@ -6,7 +6,9 @@ import { KnowledgeFrontendMvpController } from './knowledge-frontend-mvp.control
 import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeDocumentService } from './knowledge-document.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
+import { KnowledgeProviderHealthService } from './knowledge-provider-health.service';
 import { KnowledgeService } from './knowledge.service';
+import { KnowledgeTraceService } from './knowledge-trace.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
@@ -68,6 +70,14 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
         sdkRuntime: KnowledgeSdkRuntimeProviderValue
       ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime),
       inject: [KNOWLEDGE_REPOSITORY, KnowledgeIngestionWorker, KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_SDK_RUNTIME]
+    },
+    {
+      provide: KnowledgeTraceService,
+      useFactory: () => new KnowledgeTraceService()
+    },
+    {
+      provide: KnowledgeProviderHealthService,
+      useFactory: () => new KnowledgeProviderHealthService()
     },
     {
       provide: AuthTokenVerifier,
