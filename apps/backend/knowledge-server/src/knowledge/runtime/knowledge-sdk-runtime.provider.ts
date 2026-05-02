@@ -21,6 +21,8 @@ const SDK_ENV = [
   'KNOWLEDGE_EMBEDDING_BATCH_SIZE'
 ] as const;
 
+const SDK_ACTIVATION_ENV = SDK_ENV.filter(name => name !== 'DATABASE_URL');
+
 type RequiredEnvName = (typeof REQUIRED_ENV)[number];
 type SdkEnvName = (typeof SDK_ENV)[number];
 type KnowledgeSdkRuntimeEnv = Partial<Record<SdkEnvName, string | undefined>>;
@@ -74,8 +76,9 @@ export function createKnowledgeSdkRuntimeProvider(
     useFactory: async (): Promise<KnowledgeSdkRuntimeProviderValue> => {
       const env = readKnowledgeSdkRuntimeEnv(options.env ?? process.env);
       const missingEnv = REQUIRED_ENV.filter(name => !env[name]);
+      const hasSdkConfig = SDK_ACTIVATION_ENV.some(name => Boolean(env[name]));
 
-      if (!env.DATABASE_URL) {
+      if (!env.DATABASE_URL || !hasSdkConfig) {
         return { enabled: false as const, reason: 'missing_env' as const, missingEnv, runtime: null };
       }
 
@@ -152,12 +155,12 @@ function readOptionalInteger(value: string | undefined, name: string): number | 
 function mapRpcCall(name: string, args: Record<string, unknown>): PostgresRpcCall {
   if (name === 'upsert_knowledge_chunks') {
     return {
-      sql: 'select * from upsert_knowledge_chunks($1, $2, $3, $4::jsonb)',
+      sql: 'select * from upsert_knowledge_chunks($1, $2, $3::jsonb, $4)',
       values: [
-        args.tenant_id ?? null,
         requiredString(args, 'knowledge_base_id', name),
         requiredString(args, 'document_id', name),
-        JSON.stringify(args.records ?? [])
+        JSON.stringify(args.records ?? []),
+        args.tenant_id ?? null
       ],
       unwrapSingleRow: true
     };
@@ -165,14 +168,14 @@ function mapRpcCall(name: string, args: Record<string, unknown>): PostgresRpcCal
 
   if (name === 'match_knowledge_chunks') {
     return {
-      sql: 'select * from match_knowledge_chunks($1, $2, $3, $4::vector, $5, $6::jsonb)',
+      sql: 'select * from match_knowledge_chunks($1, $2::vector, $3, $4, $5::jsonb, $6)',
       values: [
-        args.tenant_id ?? null,
         requiredString(args, 'knowledge_base_id', name),
-        args.query_text ?? null,
         toPgVector(args.embedding, name),
         args.top_k,
-        JSON.stringify(args.filters ?? {})
+        args.query_text ?? null,
+        JSON.stringify(args.filters ?? {}),
+        args.tenant_id ?? null
       ],
       unwrapSingleRow: false
     };
@@ -182,9 +185,9 @@ function mapRpcCall(name: string, args: Record<string, unknown>): PostgresRpcCal
     return {
       sql: 'select * from delete_knowledge_document_chunks($1, $2, $3)',
       values: [
-        args.tenant_id ?? null,
         requiredString(args, 'knowledge_base_id', name),
-        requiredString(args, 'document_id', name)
+        requiredString(args, 'document_id', name),
+        args.tenant_id ?? null
       ],
       unwrapSingleRow: true
     };
