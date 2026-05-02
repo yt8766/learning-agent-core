@@ -132,23 +132,16 @@ user 消息底部显示：
 - `comment` 可选，最大长度由后端限制。
 - 只允许对 assistant 消息提交反馈。
 
-响应 schema 当前返回更新后的 `ChatMessageRecord`，其中 `feedback` 为当前生效状态：
+响应 schema：
 
 ```json
 {
-  "id": "string",
+  "messageId": "string",
   "sessionId": "string",
-  "role": "assistant",
-  "content": "string",
-  "feedback": {
-    "messageId": "string",
-    "sessionId": "string",
-    "rating": "helpful | unhelpful",
-    "reasonCode": "string",
-    "comment": "string",
-    "updatedAt": "string"
-  },
-  "createdAt": "string"
+  "rating": "helpful | unhelpful | none",
+  "reasonCode": "string",
+  "comment": "string",
+  "updatedAt": "string"
 }
 ```
 
@@ -171,7 +164,7 @@ user 消息底部显示：
 - `createdAt`
 - `updatedAt`
 
-同一 `sessionId + messageId` 保持一条当前反馈记录，重复提交覆盖状态。取消反馈时当前实现会删除消息上的 `feedback` 字段；前端读取结果表现为无反馈态。
+同一 `sessionId + messageId` 保持一条当前反馈记录，重复提交覆盖状态。取消反馈时保留审计记录还是物理删除由当前 store 模式决定，但前端读取结果必须表现为无反馈态。
 
 ### 学习沉淀
 
@@ -180,8 +173,7 @@ user 消息底部显示：
 - `too_shallow`：基础概念题需要更完整结构。
 - `bad_format`：回答需要更清晰层级、表格或示例。
 - `missed_point`：后续回答要先确认用户真正问点。
-- `incorrect`：不自动生成学习候选，避免学习错误事实。
-- 事件出口：`message_feedback_learning_candidate`，payload 包含 `messageId`、`rating`、`reasonCode`、`comment?`、`candidateText`、`source: "message_feedback"`。
+- `incorrect`：进入较低置信候选，不自动沉淀为偏好，避免学习错误事实。
 
 示例偏好候选：
 
