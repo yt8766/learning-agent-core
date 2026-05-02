@@ -407,6 +407,38 @@ describe('company-live expert consultation contracts', () => {
     ).toThrow();
   });
 
+  it('parses json company live business plan patch values', () => {
+    const validJsonValues = [
+      null,
+      'launch plan',
+      12.5,
+      true,
+      ['商品成本', '物流成本'],
+      { key: 'value' },
+      {
+        finance: {
+          missingInputs: ['商品成本', '物流成本'],
+          ready: false
+        }
+      }
+    ];
+
+    validJsonValues.forEach((value, index) => {
+      const patch = CompanyLiveBusinessPlanPatchSchema.parse({
+        briefId: 'brief-1',
+        updates: [
+          {
+            path: `runtime.value.${index}`,
+            value,
+            reason: '合法 JSON 值可以进入业务计划 patch。'
+          }
+        ]
+      });
+
+      expect(patch.updates[0]?.value).toEqual(value);
+    });
+  });
+
   it('rejects non-json company live business plan patch values', () => {
     class RuntimePatchValue {
       value = 'not-json';
