@@ -1,9 +1,4 @@
 import {
-  createDeepSeekChatProvider,
-  createGlmChatProvider,
-  createGlmEmbeddingProvider,
-  createMiniMaxChatProvider,
-  createMiniMaxEmbeddingProvider,
   createOpenAICompatibleChatProvider,
   createOpenAICompatibleEmbeddingProvider,
   SupabasePgVectorStoreAdapter,
@@ -11,17 +6,23 @@ import {
 } from '../adapters';
 import type { KnowledgeChatProvider, KnowledgeEmbeddingProvider, VectorStore } from '../core';
 
-export type KnowledgeDefaultProviderId = 'openai-compatible' | 'minimax' | 'glm' | 'deepseek';
+export type KnowledgeDefaultChatProviderId = 'openai-compatible';
+export type KnowledgeDefaultEmbeddingProviderId = 'openai-compatible';
+export type KnowledgeDefaultProviderId = KnowledgeDefaultChatProviderId | KnowledgeDefaultEmbeddingProviderId;
 
 export class KnowledgeSdkRuntimeConfigError extends Error {
-  constructor(message: string) {
+  readonly cause?: unknown;
+
+  constructor(message: string, options?: { cause?: unknown }) {
     super(message);
     this.name = 'KnowledgeSdkRuntimeConfigError';
+    if (options && 'cause' in options) {
+      this.cause = options.cause;
+    }
   }
 }
 
-export interface KnowledgeSdkProviderConfig {
-  provider: KnowledgeDefaultProviderId;
+interface KnowledgeSdkBaseProviderConfig {
   apiKey?: string;
   model: string;
   baseURL?: string;
@@ -31,9 +32,17 @@ export interface KnowledgeSdkProviderConfig {
   batchSize?: number;
 }
 
+export interface KnowledgeSdkChatProviderConfig extends KnowledgeSdkBaseProviderConfig {
+  provider: KnowledgeDefaultChatProviderId;
+}
+
+export interface KnowledgeSdkEmbeddingProviderConfig extends KnowledgeSdkBaseProviderConfig {
+  provider: KnowledgeDefaultEmbeddingProviderId;
+}
+
 export interface KnowledgeSdkRuntimeConfig {
-  chat: KnowledgeSdkProviderConfig;
-  embedding: KnowledgeSdkProviderConfig;
+  chat: KnowledgeSdkChatProviderConfig;
+  embedding: KnowledgeSdkEmbeddingProviderConfig;
   vectorStore?: SupabasePgVectorStoreAdapterOptions;
 }
 
@@ -48,77 +57,55 @@ export function createDefaultKnowledgeSdkRuntime(config: KnowledgeSdkRuntimeConf
     throw new KnowledgeSdkRuntimeConfigError('Knowledge SDK runtime requires a vectorStore.client.');
   }
 
-  return {
-    chatProvider: createChatProvider(config.chat),
-    embeddingProvider: createEmbeddingProvider(config.embedding),
-    vectorStore: new SupabasePgVectorStoreAdapter(config.vectorStore)
-  };
-}
-
-function createChatProvider(config: KnowledgeSdkProviderConfig): KnowledgeChatProvider {
-  switch (config.provider) {
-    case 'openai-compatible':
-      return createOpenAICompatibleChatProvider({
-        providerId: config.provider,
-        model: config.model,
-        apiKey: config.apiKey,
-        baseUrl: config.baseURL,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens
-      });
-    case 'minimax':
-      return createMiniMaxChatProvider(toOpenAIStyleOptions(config));
-    case 'glm':
-      return createGlmChatProvider(toOpenAIStyleOptions(config));
-    case 'deepseek':
-      return createDeepSeekChatProvider(toOpenAIStyleOptions(config));
-    default:
-      return assertUnsupportedProvider(config.provider, 'chat');
+  try {
+    return {
+      chatProvider: createChatProvider(config.chat),
+      embeddingProvider: createEmbeddingProvider(config.embedding),
+      vectorStore: new SupabasePgVectorStoreAdapter(config.vectorStore)
+    };
+  } catch (error) {
+    throw toConfigError(error, 'Failed to create default Knowledge SDK runtime.');
   }
 }
 
-function createEmbeddingProvider(config: KnowledgeSdkProviderConfig): KnowledgeEmbeddingProvider {
-  switch (config.provider) {
-    case 'openai-compatible':
-      return createOpenAICompatibleEmbeddingProvider({
-        providerId: config.provider,
-        model: config.model,
-        apiKey: config.apiKey,
-        baseUrl: config.baseURL,
-        dimensions: config.dimensions,
-        batchSize: config.batchSize
-      });
-    case 'minimax':
-      return createMiniMaxEmbeddingProvider(toEmbeddingOptions(config));
-    case 'glm':
-      return createGlmEmbeddingProvider(toEmbeddingOptions(config));
-    case 'deepseek':
-      throw new KnowledgeSdkRuntimeConfigError('Knowledge SDK runtime does not support deepseek embeddings.');
-    default:
-      return assertUnsupportedProvider(config.provider, 'embedding');
+function createChatProvider(config: KnowledgeSdkChatProviderConfig): KnowledgeChatProvider {
+  if (config.provider !== 'openai-compatible') {
+    return assertUnsupportedProvider(config.provider, 'chat');
   }
-}
 
-function toOpenAIStyleOptions(config: KnowledgeSdkProviderConfig) {
-  return {
+  return createOpenAICompatibleChatProvider({
+    providerId: config.provider,
     model: config.model,
     apiKey: config.apiKey,
     baseUrl: config.baseURL,
     temperature: config.temperature,
     maxTokens: config.maxTokens
-  };
+  });
 }
 
-function toEmbeddingOptions(config: KnowledgeSdkProviderConfig) {
-  return {
+function createEmbeddingProvider(config: KnowledgeSdkEmbeddingProviderConfig): KnowledgeEmbeddingProvider {
+  if (config.provider !== 'openai-compatible') {
+    return assertUnsupportedProvider(config.provider, 'embedding');
+  }
+
+  return createOpenAICompatibleEmbeddingProvider({
+    providerId: config.provider,
     model: config.model,
     apiKey: config.apiKey,
     baseUrl: config.baseURL,
     dimensions: config.dimensions,
     batchSize: config.batchSize
-  };
+  });
 }
 
 function assertUnsupportedProvider(provider: never, capability: string): never {
   throw new KnowledgeSdkRuntimeConfigError(`Unsupported ${capability} provider: ${provider}`);
+}
+
+function toConfigError(error: unknown, message: string): KnowledgeSdkRuntimeConfigError {
+  if (error instanceof KnowledgeSdkRuntimeConfigError) {
+    return error;
+  }
+
+  return new KnowledgeSdkRuntimeConfigError(message, { cause: error });
 }
