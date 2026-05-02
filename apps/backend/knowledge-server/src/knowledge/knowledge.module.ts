@@ -7,6 +7,7 @@ import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeDocumentService } from './knowledge-document.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
 import { KnowledgeProviderHealthService } from './knowledge-provider-health.service';
+import { KnowledgeRagService } from './knowledge-rag.service';
 import { KnowledgeService } from './knowledge.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
@@ -67,9 +68,16 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
         repository: KnowledgeRepository,
         worker: KnowledgeIngestionWorker,
         storage: OssStorageProvider,
-        sdkRuntime: KnowledgeSdkRuntimeProviderValue
-      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime),
-      inject: [KNOWLEDGE_REPOSITORY, KnowledgeIngestionWorker, KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_SDK_RUNTIME]
+        sdkRuntime: KnowledgeSdkRuntimeProviderValue,
+        ragService: KnowledgeRagService
+      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService),
+      inject: [
+        KNOWLEDGE_REPOSITORY,
+        KnowledgeIngestionWorker,
+        KNOWLEDGE_OSS_STORAGE,
+        KNOWLEDGE_SDK_RUNTIME,
+        KnowledgeRagService
+      ]
     },
     {
       provide: KnowledgeTraceService,
@@ -78,6 +86,15 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
     {
       provide: KnowledgeProviderHealthService,
       useFactory: () => new KnowledgeProviderHealthService()
+    },
+    {
+      provide: KnowledgeRagService,
+      useFactory: (
+        repository: KnowledgeRepository,
+        sdkRuntime: KnowledgeSdkRuntimeProviderValue,
+        traces: KnowledgeTraceService
+      ) => new KnowledgeRagService(repository, sdkRuntime, traces),
+      inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME, KnowledgeTraceService]
     },
     {
       provide: AuthTokenVerifier,

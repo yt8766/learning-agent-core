@@ -1,3 +1,4 @@
+import type { KnowledgeRagAnswer } from '@agent/knowledge';
 import type { z } from 'zod';
 
 import type {
@@ -182,6 +183,9 @@ export interface KnowledgeChatResponse {
   assistantMessage: KnowledgeChatMessage;
   answer: string;
   citations: KnowledgeChatCitation[];
+  route?: KnowledgeRagAnswer['route'];
+  diagnostics?: KnowledgeRagAnswer['diagnostics'];
+  usage?: KnowledgeRagAnswer['usage'];
   traceId: string;
 }
 
