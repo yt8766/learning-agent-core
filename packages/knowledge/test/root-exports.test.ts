@@ -25,14 +25,22 @@ import {
   RetrievalRequestSchema,
   HybridKnowledgeSearchProductionConfigSchema,
   KnowledgeBaseHealthSchema,
+  KnowledgeBaseHealthStatusSchema,
   KnowledgeErrorResponseSchema,
   KnowledgeEvalCaseSchema,
   KnowledgeEvalRunResultSchema,
   KnowledgeIngestionJobProjectionSchema,
+  KnowledgeIngestionJobStatusSchema,
+  KnowledgeIngestionStageSchema,
+  KnowledgeProviderHealthStatusSchema,
   KnowledgeRagDiagnosticsSchema,
+  KnowledgeRagRouteReasonSchema,
   KnowledgeRagRouteSchema,
+  KnowledgeRetrievalModeSchema,
   KnowledgeTraceOperationSchema,
+  KnowledgeTraceSpanStatusSchema,
   KnowledgeWorkbenchSpanNameSchema,
+  KnowledgeWorkbenchTraceStatusSchema,
   buildCatalogSyncKnowledgePayload,
   buildConnectorSyncKnowledgePayload,
   buildUserUploadKnowledgePayload,
@@ -43,14 +51,22 @@ import {
 } from '../src/index';
 import type {
   KnowledgeBaseHealth,
+  KnowledgeBaseHealthStatus,
   KnowledgeErrorResponse,
   KnowledgeEvalCase,
   KnowledgeEvalRunResult,
   KnowledgeIngestionJobProjection,
+  KnowledgeIngestionJobStatus,
+  KnowledgeIngestionStage,
+  KnowledgeProviderHealthStatus,
   KnowledgeRagDiagnostics,
   KnowledgeRagRoute,
+  KnowledgeRagRouteReason,
+  KnowledgeRetrievalMode,
   KnowledgeTraceOperation,
-  KnowledgeWorkbenchSpanName
+  KnowledgeTraceSpanStatus,
+  KnowledgeWorkbenchSpanName,
+  KnowledgeWorkbenchTraceStatus
 } from '../src/index';
 import * as rootExports from '../src/index';
 import * as contractExports from '../src/contracts/knowledge-facade';
@@ -81,14 +97,22 @@ describe('@agent/knowledge root exports', () => {
 
   it('re-exports trustworthy RAG workbench schemas and types from the root entrypoint', () => {
     expect(rootExports.KnowledgeBaseHealthSchema).toBe(KnowledgeBaseHealthSchema);
+    expect(rootExports.KnowledgeBaseHealthStatusSchema).toBe(KnowledgeBaseHealthStatusSchema);
+    expect(rootExports.KnowledgeProviderHealthStatusSchema).toBe(KnowledgeProviderHealthStatusSchema);
     expect(rootExports.KnowledgeIngestionJobProjectionSchema).toBe(KnowledgeIngestionJobProjectionSchema);
+    expect(rootExports.KnowledgeIngestionStageSchema).toBe(KnowledgeIngestionStageSchema);
+    expect(rootExports.KnowledgeIngestionJobStatusSchema).toBe(KnowledgeIngestionJobStatusSchema);
     expect(rootExports.KnowledgeErrorResponseSchema).toBe(KnowledgeErrorResponseSchema);
     expect(rootExports.KnowledgeEvalCaseSchema).toBe(KnowledgeEvalCaseSchema);
     expect(rootExports.KnowledgeEvalRunResultSchema).toBe(KnowledgeEvalRunResultSchema);
     expect(rootExports.KnowledgeRagRouteSchema).toBe(KnowledgeRagRouteSchema);
+    expect(rootExports.KnowledgeRagRouteReasonSchema).toBe(KnowledgeRagRouteReasonSchema);
     expect(rootExports.KnowledgeRagDiagnosticsSchema).toBe(KnowledgeRagDiagnosticsSchema);
+    expect(rootExports.KnowledgeRetrievalModeSchema).toBe(KnowledgeRetrievalModeSchema);
     expect(rootExports.KnowledgeTraceOperationSchema).toBe(KnowledgeTraceOperationSchema);
     expect(rootExports.KnowledgeWorkbenchSpanNameSchema).toBe(KnowledgeWorkbenchSpanNameSchema);
+    expect(rootExports.KnowledgeWorkbenchTraceStatusSchema).toBe(KnowledgeWorkbenchTraceStatusSchema);
+    expect(rootExports.KnowledgeTraceSpanStatusSchema).toBe(KnowledgeTraceSpanStatusSchema);
     expect(
       KnowledgeBaseHealthSchema.safeParse({
         knowledgeBaseId: 'kb-1',
@@ -116,6 +140,14 @@ describe('@agent/knowledge root exports', () => {
       diagnostics: KnowledgeRagDiagnostics;
       operation: KnowledgeTraceOperation;
       spanName: KnowledgeWorkbenchSpanName;
+      healthStatus: KnowledgeBaseHealthStatus;
+      providerStatus: KnowledgeProviderHealthStatus;
+      ingestionStage: KnowledgeIngestionStage;
+      ingestionStatus: KnowledgeIngestionJobStatus;
+      routeReason: KnowledgeRagRouteReason;
+      retrievalMode: KnowledgeRetrievalMode;
+      workbenchTraceStatus: KnowledgeWorkbenchTraceStatus;
+      traceSpanStatus: KnowledgeTraceSpanStatus;
     } = {
       health: KnowledgeBaseHealthSchema.parse({
         knowledgeBaseId: 'kb-type',
@@ -169,11 +201,21 @@ describe('@agent/knowledge root exports', () => {
         contextChunkCount: 1
       }),
       operation: KnowledgeTraceOperationSchema.parse('rag.chat'),
-      spanName: KnowledgeWorkbenchSpanNameSchema.parse('retrieve')
+      spanName: KnowledgeWorkbenchSpanNameSchema.parse('retrieve'),
+      healthStatus: KnowledgeBaseHealthStatusSchema.parse('empty'),
+      providerStatus: KnowledgeProviderHealthStatusSchema.parse('unconfigured'),
+      ingestionStage: KnowledgeIngestionStageSchema.parse('uploaded'),
+      ingestionStatus: KnowledgeIngestionJobStatusSchema.parse('queued'),
+      routeReason: KnowledgeRagRouteReasonSchema.parse('fallback-all'),
+      retrievalMode: KnowledgeRetrievalModeSchema.parse('hybrid'),
+      workbenchTraceStatus: KnowledgeWorkbenchTraceStatusSchema.parse('ok'),
+      traceSpanStatus: KnowledgeTraceSpanStatusSchema.parse('ok')
     };
 
     expect(typeSmoke.operation).toBe('rag.chat');
     expect(typeSmoke.spanName).toBe('retrieve');
+    expect(typeSmoke.ingestionStage).toBe('uploaded');
+    expect(typeSmoke.retrievalMode).toBe('hybrid');
   });
 
   it('retains the contract facade file as a stable contract-first entrypoint', () => {
