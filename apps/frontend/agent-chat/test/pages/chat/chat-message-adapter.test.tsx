@@ -563,6 +563,30 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).not.toContain('&amp;lt;think&amp;gt;');
   });
 
+  it('keeps literal escaped think examples in assistant body without converting them into a panel', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: 'Markdown 中可写 &lt;think&gt;示例&lt;/think&gt; 来解释语法。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).not.toContain('chatx-thinking-panel__body');
+    expect(html).toContain('&amp;lt;think&amp;gt;示例&amp;lt;/think&amp;gt;');
+    expect(html).toContain('Markdown 中可写');
+  });
+
   it('keeps completed runtime cognition expanded while rendering assistant think panel', () => {
     const messages: ChatMessageRecord[] = [
       {
@@ -599,6 +623,7 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('先判断问题类型，再选择执行路径。');
     expect(html).toContain('用现有上下文判断。');
     expect(html).toContain('这是最终回复。');
+    expect(html).not.toContain('模型推理');
   });
 
   it('keeps collapsed runtime cognition summary entry while rendering assistant think panel', () => {
@@ -637,6 +662,44 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('已思考（用时约 2 秒）');
     expect(html).toContain('先判断问题类型，再选择执行路径');
     expect(html).toContain('模型内部思路。');
+    expect(html).toContain('这是最终回复。');
+    expect(html).not.toContain('用现有上下文判断。');
+  });
+
+  it('keeps collapsed completed runtime cognition summary without assistant think panel', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '这是最终回复。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionTargetMessageId: 'assistant_1',
+      cognitionExpanded: false,
+      cognitionDurationLabel: '约 2 秒',
+      cognitionCountLabel: '1 条推理',
+      thinkState: {
+        messageId: 'assistant_1',
+        title: '已思考',
+        content: '先判断问题类型，再选择执行路径。',
+        loading: false,
+        blink: false,
+        thinkingDurationMs: 2000
+      },
+      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('chatx-inline-think__toggle');
+    expect(html).toContain('先判断问题类型，再选择执行路径');
     expect(html).toContain('这是最终回复。');
     expect(html).not.toContain('用现有上下文判断。');
   });
