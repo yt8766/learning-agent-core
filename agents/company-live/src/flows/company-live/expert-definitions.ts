@@ -9,15 +9,6 @@ export const companyLiveCoreExpertIds = [
   'financeAgent'
 ] satisfies CompanyExpertId[];
 
-export const companyLiveCoreRoutingPriority = [
-  'contentAgent',
-  'riskAgent',
-  'financeAgent',
-  'growthAgent',
-  'operationsAgent',
-  'productAgent'
-] as const satisfies readonly CompanyExpertId[];
-
 export const companyLiveExpertDefinitions = [
   {
     expertId: 'productAgent',
