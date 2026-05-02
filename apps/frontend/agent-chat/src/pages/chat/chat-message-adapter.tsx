@@ -134,7 +134,11 @@ function renderMessageContent(
     isCognitionTarget &&
     (messageThinkState || (messageThoughtItems?.length ?? 0) > 0 || Boolean(assistantParsed?.thinkContent));
   const shouldSuppressCompletedTargetCognition = Boolean(
-    isCognitionTarget && messageThinkState && !messageThinkState.loading && normalizedMessage.content.trim()
+    isCognitionTarget &&
+    messageThinkState &&
+    !messageThinkState.loading &&
+    !messageCognitionExpanded &&
+    normalizedMessage.content.trim()
   );
   const shouldShowCognition =
     message.role === 'assistant' &&
