@@ -25,6 +25,18 @@ describe('routeCompanyLiveExperts', () => {
     ]);
   });
 
+  it.each([
+    ['productAgent', '商品卖点'],
+    ['operationsAgent', '直播间排期'],
+    ['contentAgent', '脚本话术'],
+    ['growthAgent', 'GMV 增长'],
+    ['riskAgent', '合规风险'],
+    ['financeAgent', '预算 ROI']
+  ] as const)('routes %s when a matching keyword is present', (expertId, keyword) => {
+    const selected = routeCompanyLiveExperts(keyword);
+    expect(selected).toContain(expertId);
+  });
+
   it('keeps the same expert only once when multiple keywords match', () => {
     const selected = routeCompanyLiveExperts('脚本、话术、短视频素材都需要本地化');
     expect(selected).toEqual(['contentAgent']);
