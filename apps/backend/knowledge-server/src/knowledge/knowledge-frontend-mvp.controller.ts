@@ -31,6 +31,7 @@ import type {
 } from './domain/knowledge-document.types';
 import { KnowledgeServiceError } from './knowledge.errors';
 import { KnowledgeDocumentService } from './knowledge-document.service';
+import { KnowledgeEvalService } from './knowledge-eval.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 
 const now = '2026-05-02T00:00:00.000Z';
@@ -40,7 +41,8 @@ const now = '2026-05-02T00:00:00.000Z';
 export class KnowledgeFrontendMvpController {
   constructor(
     @Optional() @Inject(KnowledgeDocumentService) private readonly documents?: KnowledgeDocumentService,
-    @Optional() @Inject(KnowledgeTraceService) private readonly traces?: KnowledgeTraceService
+    @Optional() @Inject(KnowledgeTraceService) private readonly traces?: KnowledgeTraceService,
+    @Optional() @Inject(KnowledgeEvalService) private readonly evals?: KnowledgeEvalService
   ) {}
 
   @Get('dashboard/overview')
@@ -165,14 +167,16 @@ export class KnowledgeFrontendMvpController {
 
   @Post('eval/runs/compare')
   compareEvalRuns(@Body() body: { baselineRunId?: string; candidateRunId?: string }) {
-    return {
-      baselineRunId: body.baselineRunId ?? '',
-      candidateRunId: body.candidateRunId ?? '',
-      totalScoreDelta: 0,
-      retrievalScoreDelta: 0,
-      generationScoreDelta: 0,
-      perMetricDelta: {}
-    };
+    return (
+      this.evals?.compareRuns(body) ?? {
+        baselineRunId: body.baselineRunId ?? '',
+        candidateRunId: body.candidateRunId ?? '',
+        totalScoreDelta: 0,
+        retrievalScoreDelta: 0,
+        generationScoreDelta: 0,
+        perMetricDelta: {}
+      }
+    );
   }
 
   private requireDocuments(): KnowledgeDocumentService {
