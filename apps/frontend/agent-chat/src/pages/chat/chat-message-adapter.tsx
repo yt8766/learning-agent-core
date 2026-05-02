@@ -133,17 +133,14 @@ function renderMessageContent(
   const hasTargetCognition =
     isCognitionTarget &&
     (messageThinkState || (messageThoughtItems?.length ?? 0) > 0 || Boolean(assistantParsed?.thinkContent));
-  const shouldSuppressCompletedTargetCognition = Boolean(
-    isCognitionTarget &&
-    messageThinkState &&
-    !messageThinkState.loading &&
-    !messageCognitionExpanded &&
-    normalizedMessage.content.trim()
-  );
+  const hasRuntimeTargetCognition = Boolean(messageThinkState || (messageThoughtItems?.length ?? 0) > 0);
+  const shouldShowRuntimeCognition =
+    !isCognitionTarget || messageCognitionExpanded || Boolean(messageThinkState?.loading) || Boolean(thinkingPanel);
   const shouldShowCognition =
     message.role === 'assistant' &&
-    !shouldSuppressCompletedTargetCognition &&
-    (hasTargetCognition || Boolean(assistantParsed?.thinkContent) || Boolean(normalizedMessage.content.trim()));
+    ((hasTargetCognition && shouldShowRuntimeCognition) ||
+      Boolean(assistantParsed?.thinkContent) ||
+      (!hasRuntimeTargetCognition && Boolean(normalizedMessage.content.trim())));
 
   if (!shouldShowCognition) {
     if (!thinkingPanel && !beforeContent && !afterContent && !evidenceContent) {

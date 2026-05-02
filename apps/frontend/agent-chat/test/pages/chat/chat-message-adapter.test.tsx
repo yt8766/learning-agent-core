@@ -574,6 +574,46 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('这是最终回复。');
   });
 
+  it('keeps collapsed runtime cognition summary entry while rendering assistant think panel', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant_1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '<think>模型内部思路。</think>这是最终回复。',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionTargetMessageId: 'assistant_1',
+      cognitionExpanded: false,
+      cognitionDurationLabel: '约 2 秒',
+      cognitionCountLabel: '1 条推理',
+      thinkState: {
+        messageId: 'assistant_1',
+        title: '已思考',
+        content: '先判断问题类型，再选择执行路径。',
+        loading: false,
+        blink: false,
+        thinkingDurationMs: 2000
+      },
+      thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }]
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('chatx-inline-think__toggle');
+    expect(html).toContain('已思考（用时约 2 秒）');
+    expect(html).toContain('先判断问题类型，再选择执行路径');
+    expect(html).toContain('模型内部思路。');
+    expect(html).toContain('这是最终回复。');
+    expect(html).not.toContain('用现有上下文判断。');
+  });
+
   it('toggles assistant think panel in the DOM without escaped think tag leakage', async () => {
     const miniDocument = installMiniDom();
     const { createRoot } = await import('react-dom/client');
