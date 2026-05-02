@@ -12,7 +12,7 @@ import { RuntimeHost } from './runtime.host';
 
 @Injectable()
 export class RuntimeCompanyLiveFacade {
-  constructor(@Optional() private readonly runtimeHost?: Pick<RuntimeHost, 'llmProvider'>) {}
+  constructor(@Optional() private readonly runtimeHost?: RuntimeHost) {}
 
   async generate(
     brief: CompanyLiveContentBrief,
