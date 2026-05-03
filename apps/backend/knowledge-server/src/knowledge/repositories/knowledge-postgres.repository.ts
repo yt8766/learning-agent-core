@@ -15,6 +15,7 @@ import type {
   KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
+import { CreateKnowledgeChatMessageRecordInputSchema } from '../domain/knowledge-document.schemas';
 import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
 import {
   mapBase,
@@ -333,7 +334,8 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
   }
 
   async appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord> {
-    await this.ensureChatConversationForUser(input.conversationId, input.userId);
+    const messageInput = CreateKnowledgeChatMessageRecordInputSchema.parse(input);
+    await this.ensureChatConversationForUser(messageInput.conversationId, messageInput.userId);
     const result = await this.client.query(
       `insert into knowledge_chat_messages
         (id, conversation_id, user_id, role, content, model_profile_id, trace_id, citations, route, diagnostics, feedback)
@@ -341,23 +343,23 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
        returning id, conversation_id, user_id, role, content, model_profile_id, trace_id, citations, route, diagnostics, feedback, created_at`,
       [
         `msg_${randomUUID()}`,
-        input.conversationId,
-        input.userId,
-        input.role,
-        input.content,
-        input.modelProfileId ?? null,
-        input.traceId ?? null,
-        JSON.stringify(input.citations ?? []),
-        stringifyJsonParam(input.route),
-        stringifyJsonParam(input.diagnostics),
-        stringifyJsonParam(input.feedback)
+        messageInput.conversationId,
+        messageInput.userId,
+        messageInput.role,
+        messageInput.content,
+        messageInput.modelProfileId ?? null,
+        messageInput.traceId ?? null,
+        JSON.stringify(messageInput.citations ?? []),
+        stringifyJsonParam(messageInput.route),
+        stringifyJsonParam(messageInput.diagnostics),
+        stringifyJsonParam(messageInput.feedback)
       ]
     );
     await this.client.query(
       `update knowledge_chat_conversations
        set updated_at = now()
        where id = $1 and user_id = $2`,
-      [input.conversationId, input.userId]
+      [messageInput.conversationId, messageInput.userId]
     );
     return mapChatMessage(requiredRow(result.rows[0], 'knowledge chat message'));
   }
@@ -377,7 +379,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     userId: string
   ): Promise<{ items: KnowledgeChatMessageRecord[]; total: number }> {
     const result = await this.client.query(
-      `select m.id, m.conversation_id, m.user_id, m.role, m.content, m.model_profile_id, m.trace_id, m.citations, m.route, m.diagnostics, m.feedback, m.created_at from knowledge_chat_messages m join knowledge_chat_conversations c on c.id = m.conversation_id where m.conversation_id = $1 and c.user_id = $2 order by m.created_at asc`,
+      `select m.id, m.conversation_id, m.user_id, m.role, m.content, m.model_profile_id, m.trace_id, m.citations, m.route, m.diagnostics, m.feedback, m.created_at from knowledge_chat_messages m join knowledge_chat_conversations c on c.id = m.conversation_id where m.conversation_id = $1 and c.user_id = $2 and m.user_id = $2 order by m.created_at asc, m.id asc`,
       [conversationId, userId]
     );
     const items = result.rows.map(mapChatMessage);
