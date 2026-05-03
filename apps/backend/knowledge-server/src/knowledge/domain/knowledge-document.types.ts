@@ -5,7 +5,10 @@ import type {
   DocumentProcessingJobErrorSchema,
   DocumentProcessingJobProgressSchema,
   DocumentProcessingStageSchema,
-  DocumentProcessingStatusSchema
+  DocumentProcessingStatusSchema,
+  KnowledgeChatConversationRecordSchema,
+  RagModelProfileSchema,
+  RagModelProfileSummarySchema
 } from './knowledge-document.schemas';
 
 export type KnowledgeDocumentStatus = 'queued' | 'processing' | 'ready' | 'failed';
@@ -14,6 +17,9 @@ export type DocumentProcessingStage = z.infer<typeof DocumentProcessingStageSche
 export type DocumentProcessingStatus = z.infer<typeof DocumentProcessingStatusSchema>;
 export type DocumentProcessingJobProgress = z.infer<typeof DocumentProcessingJobProgressSchema>;
 export type DocumentProcessingJobError = z.infer<typeof DocumentProcessingJobErrorSchema>;
+export type RagModelProfile = z.infer<typeof RagModelProfileSchema>;
+export type RagModelProfileSummary = z.infer<typeof RagModelProfileSummarySchema>;
+export type KnowledgeChatConversationRecord = z.infer<typeof KnowledgeChatConversationRecordSchema>;
 export type KnowledgeJobStatus = DocumentProcessingStatus;
 export type KnowledgeJobStage =
   | 'queued'
@@ -175,6 +181,34 @@ export interface KnowledgeChatMessage {
     comment?: string;
   };
   createdAt: string;
+}
+
+export interface KnowledgeChatMessageRecord {
+  id: string;
+  conversationId: string;
+  userId: string;
+  role: KnowledgeChatMessage['role'];
+  content: string;
+  modelProfileId?: string;
+  traceId?: string;
+  citations: KnowledgeChatCitation[];
+  route?: unknown;
+  diagnostics?: unknown;
+  feedback?: KnowledgeChatMessage['feedback'];
+  createdAt: string;
+}
+
+export interface CreateKnowledgeChatMessageRecordInput {
+  conversationId: string;
+  userId: string;
+  role: KnowledgeChatMessageRecord['role'];
+  content: string;
+  modelProfileId?: string;
+  traceId?: string;
+  citations?: KnowledgeChatCitation[];
+  route?: unknown;
+  diagnostics?: unknown;
+  feedback?: KnowledgeChatMessage['feedback'];
 }
 
 export interface KnowledgeChatResponse {

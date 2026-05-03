@@ -5,11 +5,19 @@ import type {
   KnowledgeBaseMemberCreateRequest
 } from '@agent/core';
 import type {
+  CreateKnowledgeChatMessageRecordInput,
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
+
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+}
 
 export interface KnowledgeRepository {
   createBase(input: KnowledgeBaseCreateRequest & { id: string; createdByUserId: string }): Promise<KnowledgeBase>;
@@ -30,4 +38,12 @@ export interface KnowledgeRepository {
   findLatestJobForDocument(documentId: string): Promise<DocumentProcessingJobRecord | undefined>;
   saveChunks(documentId: string, chunks: DocumentChunkRecord[]): Promise<DocumentChunkRecord[]>;
   listChunks(documentId: string): Promise<DocumentChunkRecord[]>;
+  createChatConversation(input: {
+    userId: string;
+    title: string;
+    activeModelProfileId: string;
+  }): Promise<KnowledgeChatConversationRecord>;
+  listChatConversationsForUser(userId: string): Promise<PageResult<KnowledgeChatConversationRecord>>;
+  appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord>;
+  listChatMessages(conversationId: string, userId: string): Promise<PageResult<KnowledgeChatMessageRecord>>;
 }

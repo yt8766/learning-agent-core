@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type {
   KnowledgeBase,
   KnowledgeBaseCreateRequest,
@@ -6,12 +8,24 @@ import type {
 } from '@agent/core';
 
 import type {
+  CreateKnowledgeChatMessageRecordInput,
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
-import { mapBase, mapChunk, mapDocument, mapJob, mapMember, mapUpload } from './knowledge-postgres.mappers';
+import {
+  mapBase,
+  mapChatConversation,
+  mapChatMessage,
+  mapChunk,
+  mapDocument,
+  mapJob,
+  mapMember,
+  mapUpload
+} from './knowledge-postgres.mappers';
 import type { KnowledgeRepository } from './knowledge.repository';
 
 export interface PostgresKnowledgeClient {
@@ -292,6 +306,83 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     );
     return result.rows.map(mapChunk);
   }
+
+  async createChatConversation(input: {
+    userId: string;
+    title: string;
+    activeModelProfileId: string;
+  }): Promise<KnowledgeChatConversationRecord> {
+    const result = await this.client.query(
+      `insert into knowledge_chat_conversations (id, user_id, title, active_model_profile_id)
+       values ($1, $2, $3, $4)
+       returning id, user_id, title, active_model_profile_id, created_at, updated_at`,
+      [`conv_${randomUUID()}`, input.userId, input.title, input.activeModelProfileId]
+    );
+    return mapChatConversation(requiredRow(result.rows[0], 'knowledge chat conversation'));
+  }
+
+  async listChatConversationsForUser(
+    userId: string
+  ): Promise<{ items: KnowledgeChatConversationRecord[]; total: number }> {
+    const result = await this.client.query(
+      `select id, user_id, title, active_model_profile_id, created_at, updated_at from knowledge_chat_conversations where user_id = $1 order by updated_at desc`,
+      [userId]
+    );
+    const items = result.rows.map(mapChatConversation);
+    return { items, total: items.length };
+  }
+
+  async appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord> {
+    await this.ensureChatConversationForUser(input.conversationId, input.userId);
+    const result = await this.client.query(
+      `insert into knowledge_chat_messages
+        (id, conversation_id, user_id, role, content, model_profile_id, trace_id, citations, route, diagnostics, feedback)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       returning id, conversation_id, user_id, role, content, model_profile_id, trace_id, citations, route, diagnostics, feedback, created_at`,
+      [
+        `msg_${randomUUID()}`,
+        input.conversationId,
+        input.userId,
+        input.role,
+        input.content,
+        input.modelProfileId ?? null,
+        input.traceId ?? null,
+        JSON.stringify(input.citations ?? []),
+        stringifyJsonParam(input.route),
+        stringifyJsonParam(input.diagnostics),
+        stringifyJsonParam(input.feedback)
+      ]
+    );
+    await this.client.query(
+      `update knowledge_chat_conversations
+       set updated_at = now()
+       where id = $1 and user_id = $2`,
+      [input.conversationId, input.userId]
+    );
+    return mapChatMessage(requiredRow(result.rows[0], 'knowledge chat message'));
+  }
+
+  private async ensureChatConversationForUser(conversationId: string, userId: string): Promise<void> {
+    const result = await this.client.query(
+      `select id from knowledge_chat_conversations where id = $1 and user_id = $2 limit 1`,
+      [conversationId, userId]
+    );
+    if (!result.rows[0]) {
+      throw new Error('knowledge_chat_conversation_not_found');
+    }
+  }
+
+  async listChatMessages(
+    conversationId: string,
+    userId: string
+  ): Promise<{ items: KnowledgeChatMessageRecord[]; total: number }> {
+    const result = await this.client.query(
+      `select m.id, m.conversation_id, m.user_id, m.role, m.content, m.model_profile_id, m.trace_id, m.citations, m.route, m.diagnostics, m.feedback, m.created_at from knowledge_chat_messages m join knowledge_chat_conversations c on c.id = m.conversation_id where m.conversation_id = $1 and c.user_id = $2 order by m.created_at asc`,
+      [conversationId, userId]
+    );
+    const items = result.rows.map(mapChatMessage);
+    return { items, total: items.length };
+  }
 }
 
 function requiredRow(row: Record<string, unknown> | undefined, name: string): Record<string, unknown> {
@@ -299,4 +390,8 @@ function requiredRow(row: Record<string, unknown> | undefined, name: string): Re
     throw new Error(`Missing ${name} row`);
   }
   return row;
+}
+
+function stringifyJsonParam(value: unknown): string | null {
+  return value === undefined ? null : JSON.stringify(value);
 }

@@ -3,6 +3,8 @@ import type { KnowledgeBase, KnowledgeBaseMember, KnowledgeBaseMemberRole } from
 import type {
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import type { KnowledgeUploadContentType, KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
@@ -97,6 +99,34 @@ export function mapChunk(row: Record<string, unknown>): DocumentChunkRecord {
   };
 }
 
+export function mapChatConversation(row: Record<string, unknown>): KnowledgeChatConversationRecord {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    title: String(row.title),
+    activeModelProfileId: String(row.active_model_profile_id),
+    createdAt: toIsoString(row.created_at),
+    updatedAt: toIsoString(row.updated_at)
+  };
+}
+
+export function mapChatMessage(row: Record<string, unknown>): KnowledgeChatMessageRecord {
+  return {
+    id: String(row.id),
+    conversationId: String(row.conversation_id),
+    userId: String(row.user_id),
+    role: row.role as KnowledgeChatMessageRecord['role'],
+    content: String(row.content),
+    modelProfileId: row.model_profile_id ? String(row.model_profile_id) : undefined,
+    traceId: row.trace_id ? String(row.trace_id) : undefined,
+    citations: parseJson(row.citations, []) as KnowledgeChatMessageRecord['citations'],
+    route: parseJson(row.route, undefined) as KnowledgeChatMessageRecord['route'],
+    diagnostics: parseJson(row.diagnostics, undefined) as KnowledgeChatMessageRecord['diagnostics'],
+    feedback: parseJson(row.feedback, undefined) as KnowledgeChatMessageRecord['feedback'],
+    createdAt: toIsoString(row.created_at)
+  };
+}
+
 function parseJsonObject(value: unknown): Record<string, unknown> {
   if (!value) {
     return {};
@@ -106,6 +136,13 @@ function parseJsonObject(value: unknown): Record<string, unknown> {
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
   }
   return typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function parseJson<T>(value: unknown, fallback: T): unknown | T {
+  if (!value) {
+    return fallback;
+  }
+  return typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
 }
 
 function parseJobProgress(value: unknown): DocumentProcessingJobRecord['progress'] {
