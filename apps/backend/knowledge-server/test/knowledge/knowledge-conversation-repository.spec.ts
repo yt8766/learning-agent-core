@@ -166,6 +166,45 @@ describe('KnowledgeRepository chat conversations', () => {
     });
   });
 
+  it('persists current RAG response route and flat diagnostics projections', async () => {
+    const repository = createTestKnowledgeRepository();
+    const conversation = await repository.createChatConversation({
+      userId: 'user_1',
+      title: '当前 RAG 响应契约',
+      activeModelProfileId: 'coding-pro'
+    });
+
+    await repository.appendChatMessage({
+      conversationId: conversation.id,
+      userId: 'user_1',
+      role: 'assistant',
+      content: '依据如下。',
+      modelProfileId: 'coding-pro',
+      citations: [],
+      route: {
+        requestedMentions: ['kb_core'],
+        selectedKnowledgeBaseIds: ['kb_core'],
+        reason: 'mentions'
+      },
+      diagnostics: {
+        normalizedQuery: 'PreRetrievalPlanner',
+        queryVariants: ['PreRetrievalPlanner'],
+        retrievalMode: 'hybrid',
+        hitCount: 1,
+        contextChunkCount: 1
+      }
+    });
+
+    await expect(repository.listChatMessages(conversation.id, 'user_1')).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          route: expect.objectContaining({ reason: 'mentions' }),
+          diagnostics: expect.objectContaining({ retrievalMode: 'hybrid', hitCount: 1 })
+        })
+      ]
+    });
+  });
+
   it('rejects invalid chat message create input contracts', () => {
     expect(() =>
       CreateKnowledgeChatMessageRecordInputSchema.parse({

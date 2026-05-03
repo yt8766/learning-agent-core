@@ -82,6 +82,10 @@ export const KnowledgeChatJsonValueSchema: z.ZodType<
 export const KnowledgeChatJsonObjectSchema = z.record(z.string(), KnowledgeChatJsonValueSchema);
 
 export const KnowledgeChatRouteReasonSchema = z.enum([
+  'mentions',
+  'metadata-match',
+  'fallback-all',
+  'legacy-ids',
   'explicit_mention',
   'planner_selected',
   'fallback_all',
@@ -160,6 +164,21 @@ export const KnowledgeChatDiagnosticsSchema = z
   })
   .strict();
 
+export const KnowledgeChatFlatDiagnosticsSchema = z
+  .object({
+    normalizedQuery: z.string().min(1),
+    queryVariants: z.array(z.string().min(1)).default([]),
+    retrievalMode: z.enum(['keyword-only', 'vector-only', 'hybrid', 'none']),
+    hitCount: z.number().int().nonnegative(),
+    contextChunkCount: z.number().int().nonnegative()
+  })
+  .strict();
+
+export const KnowledgeChatMessageDiagnosticsSchema = z.union([
+  KnowledgeChatFlatDiagnosticsSchema,
+  KnowledgeChatDiagnosticsSchema
+]);
+
 export const KnowledgeChatCitationSchema = z
   .object({
     id: z.string().min(1),
@@ -201,7 +220,7 @@ export const KnowledgeChatMessageRecordSchema = z
     traceId: z.string().min(1).optional(),
     citations: z.array(KnowledgeChatCitationSchema),
     route: KnowledgeChatRouteSchema.optional(),
-    diagnostics: KnowledgeChatDiagnosticsSchema.optional(),
+    diagnostics: KnowledgeChatMessageDiagnosticsSchema.optional(),
     feedback: KnowledgeChatMessageFeedbackSchema.optional(),
     createdAt: z.string().min(1)
   })
