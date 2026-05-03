@@ -29,6 +29,38 @@ describe('chat response step contracts', () => {
     expect(parsed.target?.kind).toBe('file');
   });
 
+  it('parses Agent-aware response step presentation metadata', () => {
+    expect(
+      ChatResponseStepRecordSchema.parse({
+        id: 'step-agent-aware',
+        sessionId: 'session-1',
+        messageId: 'assistant-1',
+        sequence: 0,
+        phase: 'execute',
+        status: 'completed',
+        title: '整理最终答复',
+        startedAt: '2026-05-03T00:00:00.000Z',
+        completedAt: '2026-05-03T00:00:05.000Z',
+        sourceEventId: 'event-1',
+        sourceEventType: 'final_response_completed',
+        agentScope: 'main',
+        agentId: 'supervisor',
+        agentLabel: '礼部',
+        ownerLabel: '主 Agent',
+        nodeId: 'delivery',
+        nodeLabel: '交付整理',
+        fromNodeId: 'review',
+        toNodeId: 'delivery',
+        durationMs: 5000
+      })
+    ).toMatchObject({
+      agentScope: 'main',
+      agentLabel: '礼部',
+      nodeLabel: '交付整理',
+      durationMs: 5000
+    });
+  });
+
   it('parses a completed snapshot for quick and detail rendering', () => {
     const parsed = ChatResponseStepSnapshotSchema.parse({
       projection: 'chat_response_steps',
@@ -66,6 +98,109 @@ describe('chat response step contracts', () => {
 
     expect(parsed.projection).toBe('chat_response_steps');
     expect(parsed.steps[0]?.status).toBe('completed');
+  });
+
+  it('parses an Agent OS grouped snapshot for agent execution display', () => {
+    const baseStep = {
+      id: 'step-1',
+      sessionId: 'session-1',
+      messageId: 'assistant-1',
+      sequence: 0,
+      phase: 'execute',
+      status: 'completed',
+      title: 'Ran agent-chat tests',
+      target: {
+        kind: 'command',
+        label: 'pnpm --dir apps/frontend/agent-chat exec vitest run test/components/chat-response-steps.test.tsx'
+      },
+      startedAt: '2026-05-03T08:00:00.000Z',
+      completedAt: '2026-05-03T08:00:05.000Z',
+      sourceEventId: 'event-1',
+      sourceEventType: 'execution_step_completed'
+    } as const;
+
+    const parsed = ChatResponseStepSnapshotSchema.parse({
+      projection: 'chat_response_steps',
+      sessionId: 'session-1',
+      messageId: 'assistant-1',
+      status: 'completed',
+      displayMode: 'agent_execution',
+      steps: [baseStep],
+      agentOsGroups: [
+        {
+          kind: 'execution',
+          title: '执行',
+          status: 'completed',
+          steps: [baseStep]
+        }
+      ],
+      summary: {
+        title: '已处理 1 个步骤',
+        completedCount: 1,
+        runningCount: 0,
+        blockedCount: 0,
+        failedCount: 0
+      },
+      updatedAt: '2026-05-03T08:00:05.000Z'
+    });
+
+    expect(parsed.displayMode).toBe('agent_execution');
+    expect(parsed.agentOsGroups?.[0]?.kind).toBe('execution');
+    expect(parsed.agentOsGroups?.[0]?.steps[0]?.id).toBe('step-1');
+  });
+
+  it('rejects Agent OS group steps whose messageId does not match the snapshot', () => {
+    const baseStep = {
+      id: 'step-1',
+      sessionId: 'session-1',
+      messageId: 'assistant-1',
+      sequence: 0,
+      phase: 'execute',
+      status: 'completed',
+      title: 'Ran agent-chat tests',
+      target: {
+        kind: 'command',
+        label: 'pnpm --dir apps/frontend/agent-chat exec vitest run test/components/chat-response-steps.test.tsx'
+      },
+      startedAt: '2026-05-03T08:00:00.000Z',
+      completedAt: '2026-05-03T08:00:05.000Z',
+      sourceEventId: 'event-1',
+      sourceEventType: 'execution_step_completed'
+    } as const;
+
+    const result = ChatResponseStepSnapshotSchema.safeParse({
+      projection: 'chat_response_steps',
+      sessionId: 'session-1',
+      messageId: 'assistant-1',
+      status: 'completed',
+      steps: [baseStep],
+      agentOsGroups: [
+        {
+          kind: 'execution',
+          title: '执行',
+          status: 'completed',
+          steps: [
+            {
+              ...baseStep,
+              messageId: 'assistant-2'
+            }
+          ]
+        }
+      ],
+      summary: {
+        title: '已处理 1 个步骤',
+        completedCount: 1,
+        runningCount: 0,
+        blockedCount: 0,
+        failedCount: 0
+      },
+      updatedAt: '2026-05-03T08:00:05.000Z'
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map(issue => issue.message)).toContain(
+      'Agent OS group step messageId must match snapshot messageId.'
+    );
   });
 
   it('rejects unknown phase and status values', () => {

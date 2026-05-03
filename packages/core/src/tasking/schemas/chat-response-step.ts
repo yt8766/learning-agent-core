@@ -20,6 +20,19 @@ export const ChatResponseStepStatusSchema = z.enum([
   'cancelled'
 ]);
 
+export const ChatResponseStepAgentScopeSchema = z.enum(['main', 'sub', 'system']);
+
+export const ChatTurnDisplayModeSchema = z.enum(['answer_only', 'agent_execution']);
+
+export const ChatAgentOsGroupKindSchema = z.enum([
+  'thinking',
+  'exploration',
+  'execution',
+  'collaboration',
+  'verification',
+  'delivery'
+]);
+
 const ChatResponseStepBaseTargetSchema = z
   .object({
     label: z.string().min(1)
@@ -66,11 +79,30 @@ export const ChatResponseStepRecordSchema = z
     title: z.string().min(1),
     detail: z.string().min(1).optional(),
     target: ChatResponseStepTargetSchema.optional(),
+    agentScope: ChatResponseStepAgentScopeSchema.optional(),
+    agentId: z.string().min(1).optional(),
+    agentLabel: z.string().min(1).optional(),
+    ownerLabel: z.string().min(1).optional(),
+    nodeId: z.string().min(1).optional(),
+    nodeLabel: z.string().min(1).optional(),
+    fromNodeId: z.string().min(1).optional(),
+    toNodeId: z.string().min(1).optional(),
+    durationMs: z.number().int().nonnegative().optional(),
     startedAt: z.string().datetime(),
     completedAt: z.string().datetime().optional(),
     sourceEventId: z.string().min(1),
     sourceEventType: z.string().min(1),
     metadata: z.record(z.string(), z.unknown()).optional()
+  })
+  .strict();
+
+export const ChatAgentOsGroupSchema = z
+  .object({
+    kind: ChatAgentOsGroupKindSchema,
+    title: z.string().min(1),
+    summary: z.string().min(1).optional(),
+    status: ChatResponseStepStatusSchema,
+    steps: z.array(ChatResponseStepRecordSchema)
   })
   .strict();
 
@@ -90,7 +122,9 @@ export const ChatResponseStepSnapshotSchema = z
     sessionId: z.string().min(1),
     messageId: z.string().min(1),
     status: z.enum(['running', 'completed', 'blocked', 'failed', 'cancelled']),
+    displayMode: ChatTurnDisplayModeSchema.optional(),
     steps: z.array(ChatResponseStepRecordSchema),
+    agentOsGroups: z.array(ChatAgentOsGroupSchema).optional(),
     summary: ChatResponseStepSummarySchema,
     updatedAt: z.string().datetime()
   })
@@ -119,6 +153,26 @@ export const ChatResponseStepSnapshotSchema = z
           message: 'Step messageId must match snapshot messageId.'
         });
       }
+    });
+
+    snapshot.agentOsGroups?.forEach((group, groupIndex) => {
+      group.steps.forEach((step, stepIndex) => {
+        if (step.sessionId !== snapshot.sessionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['agentOsGroups', groupIndex, 'steps', stepIndex, 'sessionId'],
+            message: 'Agent OS group step sessionId must match snapshot sessionId.'
+          });
+        }
+
+        if (step.messageId !== snapshot.messageId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['agentOsGroups', groupIndex, 'steps', stepIndex, 'messageId'],
+            message: 'Agent OS group step messageId must match snapshot messageId.'
+          });
+        }
+      });
     });
 
     for (const [field, expectedValue] of Object.entries(expectedSummary)) {
