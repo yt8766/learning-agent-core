@@ -129,7 +129,7 @@ create index if not exists knowledge_chat_conversations_user_updated_idx
   on knowledge_chat_conversations (user_id, updated_at desc);
 
 create index if not exists knowledge_chat_messages_conversation_created_idx
-  on knowledge_chat_messages (conversation_id, created_at asc);
+  on knowledge_chat_messages (conversation_id, created_at asc, id asc);
 
 create or replace function upsert_knowledge_chunks(
   knowledge_base_id text,
