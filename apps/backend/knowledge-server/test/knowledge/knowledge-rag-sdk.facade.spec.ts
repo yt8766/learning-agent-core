@@ -5,6 +5,7 @@ import { KnowledgeIngestionWorker } from '../../src/knowledge/knowledge-ingestio
 import { KnowledgeRagService } from '../../src/knowledge/knowledge-rag.service';
 import { KnowledgeService } from '../../src/knowledge/knowledge.service';
 import { KnowledgeTraceService } from '../../src/knowledge/knowledge-trace.service';
+import { KnowledgeRagModelProfileService } from '../../src/knowledge/rag/knowledge-rag-model-profile.service';
 import { KnowledgeRagSdkFacade } from '../../src/knowledge/rag/knowledge-rag-sdk.facade';
 import type { KnowledgeSdkRuntimeProviderValue } from '../../src/knowledge/runtime/knowledge-sdk-runtime.provider';
 import { InMemoryKnowledgeRepository } from '../../src/knowledge/repositories/knowledge-memory.repository';
@@ -354,16 +355,265 @@ describe('Knowledge RAG SDK facade', () => {
       diagnostics: { hitCount: 1 }
     });
   });
+
+  it('uses deterministic fallback without calling the LLM planner when SDK runtime is disabled', async () => {
+    const { repository, baseId } = await createService(disabledSdkRuntime());
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_disabled_runtime',
+      chunkId: 'chunk_disabled_runtime',
+      title: 'Disabled Runtime Runbook',
+      content: 'Disabled runtime still searches accessible knowledge base content.'
+    });
+
+    const response = await new KnowledgeRagSdkFacade(repository, disabledSdkRuntime()).answer({
+      actor,
+      request: { message: 'disabled runtime searches accessible content' },
+      accessibleBases: await repository.listBasesForUser(actor.userId),
+      preferredKnowledgeBaseIds: [],
+      modelProfile: {
+        id: 'coding-pro',
+        label: 'Coding Pro',
+        description: 'Planner profile',
+        useCase: 'coding',
+        plannerModelId: 'planner-model',
+        answerModelId: 'answer-model',
+        embeddingModelId: 'embedding-model',
+        enabled: true
+      },
+      traceId: 'trace_disabled_runtime',
+      routeReason: 'fallback-all'
+    });
+
+    expect(response).toMatchObject({
+      answer: 'Disabled runtime still searches accessible knowledge base content.',
+      diagnostics: { hitCount: 1 },
+      route: { selectedKnowledgeBaseIds: [baseId] }
+    });
+  });
+
+  it('uses deterministic fallback without calling the LLM planner when explicit knowledge base ids are preferred', async () => {
+    const generate = vi.fn(async () => ({
+      text: 'Answer from explicit preferred KB route.',
+      model: 'fake-chat',
+      providerId: 'fake'
+    }));
+    const runtime = enabledSdkRuntime({ generate });
+    const { repository, baseId } = await createService(runtime);
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_explicit_route',
+      chunkId: 'chunk_explicit_route',
+      title: 'Explicit Route Runbook',
+      content: 'Explicit preferred knowledge base ids bypass the LLM planner.'
+    });
+
+    const response = await new KnowledgeRagSdkFacade(repository, runtime).answer({
+      actor,
+      request: { message: 'explicit preferred knowledge base ids' },
+      accessibleBases: await repository.listBasesForUser(actor.userId),
+      preferredKnowledgeBaseIds: [baseId],
+      modelProfile: {
+        id: 'coding-pro',
+        label: 'Coding Pro',
+        description: 'Planner profile',
+        useCase: 'coding',
+        plannerModelId: 'planner-model',
+        answerModelId: 'answer-model',
+        embeddingModelId: 'embedding-model',
+        enabled: true
+      },
+      traceId: 'trace_explicit_route',
+      routeReason: 'legacy-ids'
+    });
+
+    expect(generate).toHaveBeenCalledOnce();
+    expect(generate).toHaveBeenCalledWith(expect.not.objectContaining({ model: 'planner-model' }));
+    expect(response).toMatchObject({
+      answer: 'Answer from explicit preferred KB route.',
+      diagnostics: { hitCount: 1 },
+      route: { selectedKnowledgeBaseIds: [baseId] }
+    });
+  });
+
+  it('falls back to accessible knowledge bases when the LLM planner fails', async () => {
+    const generate = vi.fn(async input => {
+      if (isGenerateInput(input) && input.model === 'planner-model') {
+        throw new Error('planner failed');
+      }
+      return {
+        text: 'Answer after planner fallback.',
+        model: 'fake-chat',
+        providerId: 'fake'
+      };
+    });
+    const runtime = enabledSdkRuntime({ generate });
+    const { repository, baseId } = await createService(runtime);
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_planner_fallback',
+      chunkId: 'chunk_planner_fallback',
+      title: 'Planner Fallback Runbook',
+      content: 'Planner fallback searches all accessible knowledge bases.'
+    });
+
+    const response = await new KnowledgeRagSdkFacade(repository, runtime).answer({
+      actor,
+      request: { message: 'planner fallback searches accessible bases' },
+      accessibleBases: await repository.listBasesForUser(actor.userId),
+      preferredKnowledgeBaseIds: [],
+      modelProfile: {
+        id: 'coding-pro',
+        label: 'Coding Pro',
+        description: 'Planner profile',
+        useCase: 'coding',
+        plannerModelId: 'planner-model',
+        answerModelId: 'answer-model',
+        embeddingModelId: 'embedding-model',
+        enabled: true
+      },
+      traceId: 'trace_planner_fallback',
+      routeReason: 'fallback-all'
+    });
+
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: 'planner-model' }));
+    expect(response).toMatchObject({
+      answer: 'Answer after planner fallback.',
+      diagnostics: { hitCount: 1 },
+      route: { selectedKnowledgeBaseIds: [baseId] }
+    });
+  });
+
+  it('resolves request model profiles on the public chat path and passes planner model to the facade', async () => {
+    let selectedBaseId = '';
+    const generate = vi.fn(async input => {
+      if (isGenerateInput(input) && input.model === 'planner-model-from-profile') {
+        return {
+          text: JSON.stringify({
+            queryVariants: ['public chat model profile'],
+            selectedKnowledgeBaseIds: [selectedBaseId],
+            searchMode: 'hybrid',
+            selectionReason: 'public chat selected profile planner',
+            confidence: 0.92
+          }),
+          model: 'planner-model-from-profile',
+          providerId: 'fake'
+        };
+      }
+
+      return {
+        text: 'Answer using public chat model profile.',
+        model: 'fake-chat',
+        providerId: 'fake'
+      };
+    });
+    const runtime = enabledSdkRuntime({ generate });
+    const modelProfiles = new KnowledgeRagModelProfileService({
+      profiles: [
+        {
+          id: 'planner-profile',
+          label: 'Planner Profile',
+          description: 'Routes with a specific planner model.',
+          useCase: 'coding',
+          plannerModelId: 'planner-model-from-profile',
+          answerModelId: 'answer-model',
+          embeddingModelId: 'embedding-model',
+          enabled: true
+        }
+      ]
+    });
+    const { documents, repository, baseId } = await createService(runtime, modelProfiles);
+    selectedBaseId = baseId;
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_public_model',
+      chunkId: 'chunk_public_model',
+      title: 'Public Model Runbook',
+      content: 'Public chat model profile selects the planner model.'
+    });
+
+    const response = await documents.chat(actor, {
+      model: 'planner-profile',
+      message: 'public chat model profile'
+    });
+
+    expect(generate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        model: 'planner-model-from-profile'
+      })
+    );
+    expect(response).toMatchObject({
+      answer: 'Answer using public chat model profile.',
+      diagnostics: { hitCount: 1 },
+      route: { selectedKnowledgeBaseIds: [baseId] }
+    });
+  });
+
+  it('maps disabled public chat model profiles to stable service errors', async () => {
+    const modelProfiles = new KnowledgeRagModelProfileService({
+      profiles: [
+        {
+          id: 'disabled-profile',
+          label: 'Disabled Profile',
+          description: 'Disabled for testing.',
+          useCase: 'coding',
+          plannerModelId: 'planner-model',
+          answerModelId: 'answer-model',
+          embeddingModelId: 'embedding-model',
+          enabled: false
+        }
+      ]
+    });
+    const { documents } = await createService(enabledSdkRuntime({}), modelProfiles);
+
+    await expect(
+      documents.chat(actor, {
+        model: 'disabled-profile',
+        message: 'should reject disabled profile'
+      })
+    ).rejects.toMatchObject({
+      name: 'KnowledgeServiceError',
+      code: 'rag_model_profile_disabled'
+    });
+  });
+
+  it('maps unknown public chat model profiles to stable service errors', async () => {
+    const modelProfiles = new KnowledgeRagModelProfileService({
+      profiles: [
+        {
+          id: 'planner-profile',
+          label: 'Planner Profile',
+          description: 'Enabled profile for testing.',
+          useCase: 'coding',
+          plannerModelId: 'planner-model',
+          answerModelId: 'answer-model',
+          embeddingModelId: 'embedding-model',
+          enabled: true
+        }
+      ]
+    });
+    const { documents } = await createService(enabledSdkRuntime({}), modelProfiles);
+
+    await expect(
+      documents.chat(actor, {
+        model: 'missing-profile',
+        message: 'should reject missing profile'
+      })
+    ).rejects.toMatchObject({
+      name: 'KnowledgeServiceError',
+      code: 'rag_model_profile_not_found'
+    });
+  });
 });
 
-async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
+async function createService(
+  sdkRuntime: KnowledgeSdkRuntimeProviderValue,
+  modelProfiles?: KnowledgeRagModelProfileService
+) {
   const repository = new InMemoryKnowledgeRepository();
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage, disabledSdkRuntime());
   const traces = new KnowledgeTraceService();
   const ragService = new KnowledgeRagService(repository, sdkRuntime, traces);
-  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService);
+  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService, modelProfiles);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
   return { documents, repository, traces, baseId: base.id };
 }
