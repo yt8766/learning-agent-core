@@ -1,4 +1,4 @@
-import type { NormalizedChatResponseStepsForMessage } from '../../src/utils/chat-response-step-projections';
+import type { NormalizedChatResponseStepsForMessage } from '../../src/lib/chat-response-step-projections';
 
 export const responseStepsState: NormalizedChatResponseStepsForMessage = {
   messageId: 'assistant-1',
