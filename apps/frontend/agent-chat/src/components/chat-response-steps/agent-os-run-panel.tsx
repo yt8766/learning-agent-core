@@ -12,13 +12,12 @@ export function AgentOsRunPanel({ responseSteps, defaultOpen }: AgentOsRunPanelP
     return null;
   }
 
-  const groups = responseSteps.agentOsGroups ?? [];
+  const groups = (responseSteps.agentOsGroups ?? []).filter(group => group.kind !== 'thinking');
+  const isOpen = defaultOpen && responseSteps.status === 'running';
+  const statusClassName = responseSteps.status === 'completed' ? 'is-complete' : `is-${responseSteps.status}`;
 
   return (
-    <details
-      className={`chat-response-steps chat-response-steps--agent-os ${defaultOpen ? 'is-running' : 'is-complete'}`}
-      open={defaultOpen}
-    >
+    <details className={`chat-response-steps chat-response-steps--agent-os ${statusClassName}`} open={isOpen}>
       <summary className="chat-response-steps__complete-summary">
         <span>{buildResponseStepSummaryTitle(responseSteps)}</span>
         <span className="chat-response-steps__chevron" aria-hidden="true">

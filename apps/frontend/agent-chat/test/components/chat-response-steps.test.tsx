@@ -80,6 +80,75 @@ describe('chat response step components', () => {
     expect(html).not.toContain('礼部');
   });
 
+  it('keeps ordinary thinking groups out of the inline Agent OS panel', () => {
+    const html = renderToStaticMarkup(
+      <QuickResponseSteps
+        responseSteps={{
+          ...state,
+          agentOsGroups: [
+            {
+              kind: 'thinking' as const,
+              title: '思考',
+              summary: '普通模型思考',
+              status: 'completed' as const,
+              steps: [
+                {
+                  ...state.steps[0],
+                  id: 'thinking-step',
+                  title: '这段思考应该留在普通 thinking 通道'
+                }
+              ]
+            },
+            ...state.agentOsGroups
+          ]
+        }}
+      />
+    );
+
+    expect(html).not.toContain('这段思考应该留在普通 thinking 通道');
+    expect(html).not.toContain('普通模型思考');
+    expect(html).toContain('探索');
+    expect(html).toContain('验证');
+  });
+
+  it('renders interrupted terminal states without marking the panel as running', () => {
+    const html = renderToStaticMarkup(
+      <QuickResponseSteps
+        responseSteps={{
+          ...state,
+          status: 'failed',
+          summary: {
+            ...state.summary,
+            title: '处理失败 1 个动作',
+            runningCount: 0,
+            failedCount: 1
+          },
+          agentOsGroups: [
+            {
+              kind: 'execution' as const,
+              title: '执行',
+              summary: '命令失败',
+              status: 'failed' as const,
+              steps: [
+                {
+                  ...state.steps[1],
+                  status: 'failed' as const,
+                  title: '运行失败的命令'
+                }
+              ]
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(html).toContain('chat-response-steps--agent-os is-failed');
+    expect(html).not.toContain('chat-response-steps--agent-os is-running');
+    expect(html).not.toContain('open=""');
+    expect(html).toContain('失败');
+    expect(html).toContain('aria-label="失败：运行失败的命令"');
+  });
+
   it('does not construct legacy groups when projection did not provide Agent OS groups', () => {
     const html = renderToStaticMarkup(
       <QuickResponseSteps

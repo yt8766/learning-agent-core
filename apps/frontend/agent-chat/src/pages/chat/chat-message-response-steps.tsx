@@ -7,17 +7,17 @@ type RenderMessageResponseStepsOptions = {
 };
 
 export function renderMessageResponseSteps({ responseSteps, placement }: RenderMessageResponseStepsOptions) {
-  if (!responseSteps) {
+  if (!responseSteps || responseSteps.displayMode === 'answer_only') {
     return null;
   }
 
-  if (placement === 'before-content' && responseSteps.status !== 'completed') {
-    return <QuickResponseSteps responseSteps={responseSteps} />;
+  if (placement !== 'before-content') {
+    return null;
   }
 
-  if (placement === 'after-content' && responseSteps.status === 'completed') {
+  if (responseSteps.status === 'completed') {
     return <ResponseStepSummary responseSteps={responseSteps} />;
   }
 
-  return null;
+  return <QuickResponseSteps responseSteps={responseSteps} />;
 }

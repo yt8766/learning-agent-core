@@ -164,7 +164,8 @@
 }
 
 .chat-response-steps__agent-os-group.is-blocked,
-.chat-response-steps__agent-os-group.is-failed {
+.chat-response-steps__agent-os-group.is-failed,
+.chat-response-steps__agent-os-group.is-cancelled {
   border-left-color: rgba(217, 119, 6, 0.6);
 }
 
@@ -221,7 +222,8 @@
 }
 
 .chat-response-steps__agent-os-step.is-blocked .chat-response-steps__agent-os-status,
-.chat-response-steps__agent-os-step.is-failed .chat-response-steps__agent-os-status {
+.chat-response-steps__agent-os-step.is-failed .chat-response-steps__agent-os-status,
+.chat-response-steps__agent-os-step.is-cancelled .chat-response-steps__agent-os-status {
   background: #d97706;
 }
 
@@ -235,6 +237,13 @@
   min-width: 0;
   color: var(--chat-text, #24292f);
   overflow-wrap: break-word;
+}
+
+.chat-response-steps__agent-os-step-state {
+  display: inline-block;
+  margin-right: 0.4rem;
+  color: var(--chat-subtle-text, #9aa0aa);
+  font-size: 0.78rem;
 }
 
 .chat-response-steps__agent-os-step-detail {
