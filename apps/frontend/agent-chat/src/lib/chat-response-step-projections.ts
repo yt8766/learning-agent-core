@@ -12,15 +12,25 @@ import {
 
 import type { ChatEventRecord } from '@/types/chat';
 
-export type ChatResponseStepsForMessage = {
+type ChatResponseStepsForMessageBase = {
   messageId: string;
   status: ChatResponseStepSnapshot['status'] | 'running';
-  displayMode?: ChatTurnDisplayMode;
-  agentOsGroups?: ChatAgentOsGroup[];
   steps: ChatResponseStepRecord[];
   summary: ChatResponseStepSummary;
   updatedAt: string;
 };
+
+export type NormalizedChatResponseStepsForMessage = ChatResponseStepsForMessageBase & {
+  displayMode: ChatTurnDisplayMode;
+  agentOsGroups: ChatAgentOsGroup[];
+};
+
+type LegacyChatResponseStepsForMessage = ChatResponseStepsForMessageBase & {
+  displayMode?: undefined;
+  agentOsGroups?: undefined;
+};
+
+export type ChatResponseStepsForMessage = NormalizedChatResponseStepsForMessage | LegacyChatResponseStepsForMessage;
 
 export type ChatResponseStepsState = {
   byMessageId: Record<string, ChatResponseStepsForMessage>;
@@ -148,7 +158,7 @@ function summarizeSteps(steps: ChatResponseStepRecord[], displayMode: ChatTurnDi
   }
 
   const titlePrefix = runningCount > 0 ? '处理中' : '已处理';
-  const visibleActionCount = buildFallbackAgentOsGroups(steps).reduce((count, group) => count + group.steps.length, 0);
+  const visibleActionCount = countVisibleAgentOsActions(buildFallbackAgentOsGroups(steps));
 
   return {
     title: `${titlePrefix} ${visibleActionCount} 个动作`,
@@ -264,6 +274,20 @@ function deriveGroupStatus(steps: ChatResponseStepRecord[]): ChatAgentOsGroup['s
   if (steps.some(step => step.status === 'cancelled')) return 'cancelled';
   if (steps.some(step => step.status === 'running' || step.status === 'queued')) return 'running';
   return 'completed';
+}
+
+function countVisibleAgentOsActions(groups: ChatAgentOsGroup[]) {
+  return groups.reduce(
+    (count, group) => count + group.steps.filter(step => !isLowValueDeliveryStep(group, step)).length,
+    0
+  );
+}
+
+function isLowValueDeliveryStep(group: ChatAgentOsGroup, step: ChatResponseStepRecord) {
+  return (
+    group.kind === 'delivery' &&
+    (step.sourceEventType === 'final_response_completed' || step.sourceEventType === 'session_finished')
+  );
 }
 
 function sanitizeStepForAgentOs(step: ChatResponseStepRecord): ChatResponseStepRecord {
