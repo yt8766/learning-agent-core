@@ -62,30 +62,37 @@ export default defineConfig({
     }
   ],
   resolve: {
-    alias: {
-      '@agent/core': resolvePath('./packages/core/src'),
-      '@agent/knowledge': resolvePath('./packages/knowledge/src'),
-      '@agent/knowledge/node': resolvePath('./packages/knowledge/src/node/index.ts'),
-      '@agent/config': resolvePath('./packages/config/src'),
-      '@agent/runtime': resolvePath('./packages/runtime/src'),
-      '@agent/platform-runtime': resolvePath('./packages/platform-runtime/src'),
-      '@agent/adapters': resolvePath('./packages/adapters/src'),
-      '@agent/tools': resolvePath('./packages/tools/src'),
-      '@agent/memory': resolvePath('./packages/memory/src'),
-      '@agent/report-kit': resolvePath('./packages/report-kit/src'),
-      '@agent/skill': resolvePath('./packages/skill/src'),
-      '@agent/templates': resolvePath('./packages/templates/src'),
-      '@agent/evals': resolvePath('./packages/evals/src'),
-      '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),
-      '@agent/agents-audio': resolvePath('./agents/audio/src'),
-      '@agent/agents-company-live': resolvePath('./agents/company-live/src'),
-      '@agent/agents-data-report': resolvePath('./agents/data-report/src'),
-      '@agent/agents-image': resolvePath('./agents/image/src'),
-      '@agent/agents-intel-engine': resolvePath('./agents/intel-engine/src'),
-      '@agent/agents-video': resolvePath('./agents/video/src'),
-      '@agent/agents-coder': resolvePath('./agents/coder/src'),
-      '@agent/agents-reviewer': resolvePath('./agents/reviewer/src')
-    }
+    alias: [
+      {
+        find: '@agent/knowledge/browser-entry',
+        replacement: resolvePath('./packages/knowledge/src/browser/index.ts')
+      },
+      {
+        find: '@agent/knowledge/node',
+        replacement: resolvePath('./packages/knowledge/src/node/index.ts')
+      },
+      { find: '@agent/knowledge', replacement: resolvePath('./packages/knowledge/src') },
+      { find: '@agent/core', replacement: resolvePath('./packages/core/src') },
+      { find: '@agent/config', replacement: resolvePath('./packages/config/src') },
+      { find: '@agent/runtime', replacement: resolvePath('./packages/runtime/src') },
+      { find: '@agent/platform-runtime', replacement: resolvePath('./packages/platform-runtime/src') },
+      { find: '@agent/adapters', replacement: resolvePath('./packages/adapters/src') },
+      { find: '@agent/tools', replacement: resolvePath('./packages/tools/src') },
+      { find: '@agent/memory', replacement: resolvePath('./packages/memory/src') },
+      { find: '@agent/report-kit', replacement: resolvePath('./packages/report-kit/src') },
+      { find: '@agent/skill', replacement: resolvePath('./packages/skill/src') },
+      { find: '@agent/templates', replacement: resolvePath('./packages/templates/src') },
+      { find: '@agent/evals', replacement: resolvePath('./packages/evals/src') },
+      { find: '@agent/agents-supervisor', replacement: resolvePath('./agents/supervisor/src') },
+      { find: '@agent/agents-audio', replacement: resolvePath('./agents/audio/src') },
+      { find: '@agent/agents-company-live', replacement: resolvePath('./agents/company-live/src') },
+      { find: '@agent/agents-data-report', replacement: resolvePath('./agents/data-report/src') },
+      { find: '@agent/agents-image', replacement: resolvePath('./agents/image/src') },
+      { find: '@agent/agents-intel-engine', replacement: resolvePath('./agents/intel-engine/src') },
+      { find: '@agent/agents-video', replacement: resolvePath('./agents/video/src') },
+      { find: '@agent/agents-coder', replacement: resolvePath('./agents/coder/src') },
+      { find: '@agent/agents-reviewer', replacement: resolvePath('./agents/reviewer/src') }
+    ]
   },
   test: {
     globals: true,
