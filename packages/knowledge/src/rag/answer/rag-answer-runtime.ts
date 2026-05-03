@@ -71,9 +71,6 @@ export class RagAnswerRuntime {
       }
     });
     const providerResult = await this.generateWithProvider(input);
-    if (!providerResult) {
-      return buildNoAnswer(startedAt, getGroundedCitationCount(retrieval), 'insufficient_evidence', noAnswerPolicy);
-    }
     const text = providerResult.text.trim();
 
     if (!text) {
@@ -98,12 +95,8 @@ export class RagAnswerRuntime {
 
   private async generateWithProvider(
     input: ReturnType<typeof KnowledgeAnswerProviderInputSchema.parse>
-  ): Promise<ReturnType<typeof KnowledgeAnswerProviderResultSchema.parse> | undefined> {
-    try {
-      return KnowledgeAnswerProviderResultSchema.parse(await this.provider.generate(input));
-    } catch {
-      return undefined;
-    }
+  ): Promise<ReturnType<typeof KnowledgeAnswerProviderResultSchema.parse>> {
+    return KnowledgeAnswerProviderResultSchema.parse(await this.provider.generate(input));
   }
 }
 
