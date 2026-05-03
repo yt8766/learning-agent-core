@@ -5,6 +5,10 @@
 适用范围：`apps/frontend/agent-chat`、`apps/backend/agent-server`、`packages/core`
 最后核对：2026-05-02
 
+> 当前实现补充（2026-05-02）：主聊天 AI 回复已切到 Codex-style `Bubble.List` 呈现：AI bubble 使用无头像、无边框正文流；`QuickResponseSteps` 在正文上方展示运行中展开步骤，`ResponseStepSummary` 在正文上方展示完成后折叠摘要。`Think` / `ThoughtChain` 不再嵌入主聊天 AI 回复，只保留在高级面板或专门 timeline 中。
+
+> 后续设计（2026-05-03）：聊天主线程 response steps 已收敛为 inline Agent OS 方向。普通问答只显示 `已思考`；执行任务显示 `处理中 / 已处理` 并在同一条 assistant 回复内展开 Agent OS 过程分组。后续实现以 `docs/superpowers/specs/2026-05-03-agent-chat-inline-agent-os-design.md` 为准。
+
 ## 背景
 
 `agent-chat` 当前已经能展示消息、审批、Think、ThoughtChain、Evidence、Learning 与 Skill reuse，但用户在任务执行过程中更希望看到类似 Codex 的两层反馈：
