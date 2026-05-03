@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
 import { buildBubbleItems } from '@/pages/chat/chat-message-adapter';
 import type { ChatMessageRecord } from '@/types/chat';
 
@@ -13,12 +13,21 @@ vi.mock('@ant-design/x-markdown', () => ({
 }));
 
 vi.mock('@ant-design/x', async () => ({
-  Sources: ({ items }: { items?: Array<{ title: React.ReactNode }> }) => (
-    <div>
+  Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
+    <section>
+      <div>{title}</div>
+      <div>{children}</div>
+    </section>
+  ),
+  ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
+    <section>
       {items?.map((item, index) => (
-        <span key={index}>{item.title}</span>
+        <article key={index}>
+          <div>{item.title}</div>
+          <div>{item.description}</div>
+        </article>
       ))}
-    </div>
+    </section>
   )
 }));
 

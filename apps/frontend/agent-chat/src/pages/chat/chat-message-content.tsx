@@ -1,14 +1,13 @@
-import type { WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
+import { Typography } from 'antd';
+import { Think, ThoughtChain } from '@ant-design/x';
+import type { ThoughtChainItemType } from '@ant-design/x';
 
 import { renderStructuredMessageCard } from '@/components/chat-message-cards';
-import { CognitionThoughtLog } from '@/components/cognition';
-import type { ChatResponseStepsState } from '@/utils/chat-response-step-projections';
+import type { ChatResponseStepsState } from '@/lib/chat-response-step-projections';
 import type { ChatMessageFeedbackInput, ChatMessageRecord, ChatThinkState } from '@/types/chat';
-import { cn } from '@/utils/cn';
-
 import {
   buildCognitionSummary,
-  formatCognitionDurationLabelFromMs,
+  containsCitationSection,
   parseAssistantThinkingContent,
   stripStreamingCursor,
   stripWorkflowCommandPrefix,
@@ -16,23 +15,8 @@ import {
 } from './chat-message-adapter-helpers';
 import { renderMessageResponseSteps } from './chat-message-response-steps';
 import { MessageThinkingPanel } from './message-thinking-panel';
-import { useEffect, useState } from 'react';
 
-function shouldSuppressBeforeContentResponseSteps(
-  message: ChatMessageRecord,
-  thoughtItems?: WorkbenchThoughtProjectionItem[]
-): boolean {
-  if (message.role !== 'assistant') {
-    return false;
-  }
-  const fromSnapshot = message.cognitionSnapshot?.thoughtChain?.some(
-    item => item.kind === 'reasoning' || item.kind === 'web_search' || item.kind === 'browser'
-  );
-  if (fromSnapshot) {
-    return true;
-  }
-  return Boolean(thoughtItems?.some(item => item.itemVariant === 'web_search' || item.itemVariant === 'browser'));
-}
+const { Text } = Typography;
 
 type RenderMessageContentOptions = {
   onApprovalAction?: (intent: string, approved: boolean, scope?: 'once' | 'session' | 'always') => void;
@@ -52,14 +36,14 @@ type RenderMessageContentOptions = {
   ) => void;
   onMessageFeedback?: (message: ChatMessageRecord, feedback: ChatMessageFeedbackInput) => void;
   thinkState?: ChatThinkState;
-  thoughtItems?: WorkbenchThoughtProjectionItem[];
-  cognitionExpandedForMessage?: boolean;
-  onToggleCognition?: (messageId: string) => void;
+  thoughtItems?: ThoughtChainItemType[];
+  cognitionTargetMessageId?: string;
+  cognitionExpanded?: boolean;
+  onToggleCognition?: () => void;
   cognitionDurationLabel?: string;
   cognitionCountLabel?: string;
   inlineEvidenceMessage?: ChatMessageRecord;
   responseSteps?: ChatResponseStepsState['byMessageId'][string];
-  hasNextChunk?: boolean;
 };
 
 export function renderMessageContent(
@@ -98,42 +82,43 @@ export function renderMessageContent(
   });
   const beforeContent = renderMessageResponseSteps({
     responseSteps: options.responseSteps,
-    placement: 'before-content',
-    suppressForNarrativeCognition: shouldSuppressBeforeContentResponseSteps(message, options.thoughtItems)
+    placement: 'before-content'
   });
   const afterContent = renderMessageResponseSteps({
     responseSteps: options.responseSteps,
     placement: 'after-content'
   });
   const isAgentExecutionResponse = options.responseSteps?.displayMode === 'agent_execution';
-  const hasBubbleCognitionData = Boolean(options.thinkState || (options.thoughtItems?.length ?? 0) > 0);
-  const suppressStandaloneThinkingPanel = hasBubbleCognitionData;
   const thinkingPanel =
     !isAgentExecutionResponse &&
-    !suppressStandaloneThinkingPanel &&
     message.role === 'assistant' &&
     assistantParsed &&
     assistantParsed.thinkingState !== 'none' ? (
       <MessageThinkingPanel
         content={assistantParsed.thinkContent}
         state={assistantParsed.thinkingState}
-        durationLabel={<ThinkingDurationLabel thinkState={options.thinkState} />}
+        durationLabel={options.cognitionDurationLabel}
       />
     ) : null;
   const evidenceContent =
     !shouldInlineEvidence && options.inlineEvidenceMessage
       ? renderStructuredMessageCard(options.inlineEvidenceMessage, false, options)
       : null;
-  const messageThinkState = options.thinkState;
-  const messageThoughtItems = options.thoughtItems;
-  const messageCognitionExpanded = Boolean(options.cognitionExpandedForMessage);
+  const isCognitionTarget = message.role === 'assistant' && message.id === options.cognitionTargetMessageId;
+  const messageThinkState = isCognitionTarget ? options.thinkState : undefined;
+  const messageThoughtItems = isCognitionTarget ? options.thoughtItems : undefined;
+  const messageCognitionExpanded = Boolean(isCognitionTarget && options.cognitionExpanded);
+  const hasTargetCognition =
+    isCognitionTarget &&
+    (messageThinkState ||
+      (messageThoughtItems?.length ?? 0) > 0 ||
+      (!thinkingPanel && Boolean(assistantParsed?.thinkContent)));
   const hasRuntimeTargetCognition = Boolean(messageThinkState || (messageThoughtItems?.length ?? 0) > 0);
-  const hasInlineModelThink = Boolean(assistantParsed?.thinkContent);
   const shouldShowCognition =
     !isAgentExecutionResponse &&
     message.role === 'assistant' &&
-    (hasRuntimeTargetCognition ||
-      (!thinkingPanel && hasInlineModelThink) ||
+    (hasTargetCognition ||
+      (!thinkingPanel && Boolean(assistantParsed?.thinkContent)) ||
       (!thinkingPanel && !hasRuntimeTargetCognition && Boolean(normalizedMessage.content.trim())));
 
   if (!shouldShowCognition) {
@@ -142,7 +127,7 @@ export function renderMessageContent(
     }
 
     return (
-      <div className={cn('chatx-assistant-stack', 'flex min-w-0 flex-col gap-4')}>
+      <div className="chatx-assistant-stack">
         {thinkingPanel}
         {beforeContent}
         {content}
@@ -152,36 +137,27 @@ export function renderMessageContent(
     );
   }
 
-  const inlineThinkContent = assistantParsed?.thinkContent ?? '';
+  const inlineThinkContent = thinkingPanel ? '' : (assistantParsed?.thinkContent ?? '');
   const isThinking = Boolean(messageThinkState?.loading);
-  const summarySource = isThinking
-    ? messageThoughtItems?.[0]?.description
+  const cognitionSummary = buildCognitionSummary(
+    messageThinkState?.loading && messageThoughtItems?.[0]?.description
       ? toPlainSummary(messageThoughtItems[0].description)
-      : (messageThinkState?.content ?? inlineThinkContent)
-    : inlineThinkContent;
-  const cognitionSummary = buildCognitionSummary(summarySource, toPlainSummary(messageThoughtItems?.[0]?.description));
+      : (messageThinkState?.content ?? inlineThinkContent),
+    toPlainSummary(messageThoughtItems?.[0]?.description)
+  );
   const statusLabel = isThinking ? '思考中' : '已思考';
   const showCountLabel = isThinking && options.cognitionCountLabel;
   const shouldUseQuietCollapsedRuntimeSummary = Boolean(
-    hasRuntimeTargetCognition && !messageCognitionExpanded && !isThinking && !thinkingPanel
+    isCognitionTarget && hasRuntimeTargetCognition && !messageCognitionExpanded && !isThinking && !thinkingPanel
   );
-  const durationNode = options.thinkState ? <ThinkingDurationLabel thinkState={options.thinkState} /> : null;
-  const titleLabel = shouldUseQuietCollapsedRuntimeSummary ? (
-    durationNode ? (
-      <>
-        {statusLabel}（{durationNode}）
-      </>
-    ) : (
-      ''
-    )
-  ) : (
-    <>
-      {statusLabel}
-      {durationNode ? <>（{durationNode}）</> : null}
-    </>
-  );
+  const titleLabel =
+    !shouldUseQuietCollapsedRuntimeSummary && isCognitionTarget && options.cognitionDurationLabel
+      ? `${statusLabel}（${formatCognitionDurationCopy(options.cognitionDurationLabel)}）`
+      : shouldUseQuietCollapsedRuntimeSummary
+        ? ''
+        : statusLabel;
   const canExpandCognition =
-    Boolean(inlineThinkContent) || Boolean(messageThoughtItems?.length) || Boolean(messageThinkState);
+    Boolean(messageThinkState) || Boolean(inlineThinkContent) || Boolean(messageThoughtItems?.length);
   const cognitionSummaryClassName = shouldUseQuietCollapsedRuntimeSummary
     ? 'chatx-inline-think'
     : 'chatx-inline-think chatx-governance-summary';
@@ -193,12 +169,12 @@ export function renderMessageContent(
     : `chatx-inline-think__badge chatx-governance-summary__icon ${isThinking ? 'is-thinking' : 'is-complete'}`;
 
   return (
-    <div className={cn('chatx-assistant-stack', 'flex min-w-0 flex-col gap-4')}>
+    <div className="chatx-assistant-stack">
       <div className={cognitionSummaryClassName}>
         <button
           type="button"
           className={cognitionToggleClassName}
-          onClick={canExpandCognition ? () => options.onToggleCognition?.(message.id) : undefined}
+          onClick={canExpandCognition ? options.onToggleCognition : undefined}
         >
           {isThinking ? (
             <span className={cognitionBadgeClassName} aria-hidden="true">
@@ -235,14 +211,37 @@ export function renderMessageContent(
         </button>
         {messageCognitionExpanded ? (
           <div className="chatx-inline-think__panel">
-            <CognitionThoughtLog
-              items={buildUnifiedCognitionItems(
-                inlineThinkContent,
-                assistantParsed?.thinkingState,
-                messageThoughtItems
-              )}
-              variant={isThinking ? 'processing' : 'processed'}
-            />
+            {messageThinkState ? (
+              <div className="chatx-inline-think__block">
+                <Think
+                  title={messageThinkState.title}
+                  loading={messageThinkState.loading}
+                  blink={messageThinkState.blink}
+                  defaultExpanded
+                >
+                  <Text>
+                    {messageThinkState.loading && messageThoughtItems?.[0]?.description
+                      ? toPlainSummary(messageThoughtItems[0].description)
+                      : messageThinkState.content}
+                  </Text>
+                </Think>
+              </div>
+            ) : null}
+            {inlineThinkContent ? (
+              <div className="chatx-inline-think__block">
+                <Think title="模型推理" defaultExpanded>
+                  <Text>{inlineThinkContent}</Text>
+                </Think>
+              </div>
+            ) : null}
+            {messageThoughtItems?.length ? (
+              <div className="chatx-inline-think__block">
+                <ThoughtChain
+                  items={messageThoughtItems}
+                  defaultExpandedKeys={messageThoughtItems.slice(0, 2).map(item => item.key as string)}
+                />
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -256,11 +255,9 @@ export function renderMessageContent(
 }
 
 function normalizeEscapedThinkTags(content: string) {
-  if (!content.startsWith('&lt;think&gt;') && !/^\s*&lt;think&gt;/i.test(content)) {
-    return content;
-  }
-
-  return content.replace(/&lt;think&gt;/gi, '<think>').replace(/&lt;\/think&gt;/gi, '</think>');
+  return content
+    .replace(/^(\s*)&lt;think&gt;/i, '$1<think>')
+    .replace(/^(\s*<think>[\s\S]*?)&lt;\/think&gt;/i, '$1</think>');
 }
 
 function formatCognitionDurationCopy(durationLabel: string) {
@@ -270,79 +267,4 @@ function formatCognitionDurationCopy(durationLabel: string) {
   }
 
   return normalized.startsWith('约') ? `用时${normalized}` : `用时 ${normalized}`;
-}
-
-function buildUnifiedCognitionItems(
-  inlineThinkContent: string | undefined,
-  thinkingState: string | undefined,
-  thoughtItems: WorkbenchThoughtProjectionItem[] | undefined
-): WorkbenchThoughtProjectionItem[] {
-  const items: WorkbenchThoughtProjectionItem[] = [];
-
-  if (inlineThinkContent) {
-    items.push({
-      key: 'inline-think-reasoning',
-      title: '推理',
-      description: inlineThinkContent.length > 120 ? `${inlineThinkContent.slice(0, 120)}…` : inlineThinkContent,
-      status: thinkingState === 'streaming' ? 'loading' : 'success',
-      itemVariant: 'reasoning'
-    });
-  }
-
-  if (thoughtItems?.length) {
-    // 按 key 去重，保留第一个出现的
-    const seenKeys = new Set<string>();
-    for (const item of thoughtItems) {
-      if (!seenKeys.has(item.key)) {
-        seenKeys.add(item.key);
-        items.push(item);
-      }
-    }
-  }
-
-  return items;
-}
-
-const MAX_COGNITION_MS = 30 * 60 * 1000;
-
-function formatLoadingDurationLabel(ms: number): string {
-  const totalMs = Math.min(Math.max(0, ms), MAX_COGNITION_MS);
-  const seconds = Math.max(1, Math.round(totalMs / 1000));
-  return `用时 ${seconds}s`;
-}
-
-function formatCompletedDurationLabel(durationMs?: number): string {
-  if (typeof durationMs !== 'number' || durationMs <= 0) {
-    return '';
-  }
-  const formatted = formatCognitionDurationLabelFromMs(durationMs);
-  if (!formatted) return '';
-  return formatted.startsWith('约') ? `用时${formatted}` : `用时 ${formatted}`;
-}
-
-function ThinkingDurationLabel({ thinkState }: { thinkState?: ChatThinkState }) {
-  const [label, setLabel] = useState(() =>
-    thinkState?.loading
-      ? formatLoadingDurationLabel(thinkState.thinkingDurationMs ?? 0)
-      : formatCompletedDurationLabel(thinkState?.thinkingDurationMs)
-  );
-
-  useEffect(() => {
-    if (!thinkState?.loading) {
-      setLabel(formatCompletedDurationLabel(thinkState?.thinkingDurationMs));
-      return;
-    }
-    const baseMs = thinkState.thinkingDurationMs ?? 0;
-    const startAt = Date.now();
-    const tick = () => {
-      const elapsed = Date.now() - startAt;
-      setLabel(formatLoadingDurationLabel(baseMs + elapsed));
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [thinkState?.loading, thinkState?.thinkingDurationMs]);
-
-  if (!label) return null;
-  return <>{label}</>;
 }
