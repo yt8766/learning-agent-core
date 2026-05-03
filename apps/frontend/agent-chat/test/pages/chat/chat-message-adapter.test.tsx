@@ -365,6 +365,48 @@ describe('chat-message-adapter cognition rendering', () => {
       blockedCount: 0,
       failedCount: 0
     },
+    displayMode: 'agent_execution',
+    agentOsGroups: [
+      {
+        kind: 'exploration',
+        title: '探索',
+        status: 'completed',
+        steps: [
+          {
+            id: 'step-1',
+            sessionId: 'session-1',
+            messageId: 'assistant_1',
+            sequence: 0,
+            phase: 'explore',
+            status: 'completed',
+            title: 'Read chat-message-adapter.tsx',
+            startedAt: '2026-05-02T08:30:00.000Z',
+            completedAt: '2026-05-02T08:30:10.000Z',
+            sourceEventId: 'event-1',
+            sourceEventType: 'tool_called'
+          }
+        ]
+      },
+      {
+        kind: 'verification',
+        title: '验证',
+        status: 'running',
+        steps: [
+          {
+            id: 'step-2',
+            sessionId: 'session-1',
+            messageId: 'assistant_1',
+            sequence: 1,
+            phase: 'verify',
+            status: 'running',
+            title: 'Ran pnpm exec vitest',
+            startedAt: '2026-05-02T08:30:12.000Z',
+            sourceEventId: 'event-2',
+            sourceEventType: 'execution_step_started'
+          }
+        ]
+      }
+    ],
     steps: [
       {
         id: 'step-1',

@@ -163,6 +163,7 @@ describe('chat response step components', () => {
                 {
                   ...state.steps[1],
                   title: '运行 agent-chat response steps tests',
+                  agentLabel: '礼部',
                   nodeId: undefined
                 }
               ]
@@ -181,6 +182,24 @@ describe('chat response step components', () => {
     expect(html).not.toContain('route-selection');
     expect(html).not.toContain('主 Agent');
     expect(html).not.toContain('礼部');
+  });
+
+  it('does not construct legacy groups when projection did not provide Agent OS groups', () => {
+    const html = renderToStaticMarkup(
+      <QuickResponseSteps
+        responseSteps={{
+          messageId: state.messageId,
+          status: 'running',
+          updatedAt: state.updatedAt,
+          summary: state.summary,
+          steps: state.steps
+        }}
+      />
+    );
+
+    expect(html).toContain('chat-response-steps--agent-os is-running');
+    expect(html).not.toContain('Read chat-message-adapter.tsx');
+    expect(html).not.toContain('Ran pnpm exec vitest');
   });
 
   it('renders completed execution summaries collapsed by default', () => {
