@@ -101,6 +101,30 @@ alter table knowledge_document_chunks
 alter table knowledge_document_chunks
   add column if not exists embedding vector(1536);
 
+create table if not exists knowledge_chat_conversations (
+  id text primary key,
+  user_id text not null,
+  title text not null,
+  active_model_profile_id text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists knowledge_chat_messages (
+  id text primary key,
+  conversation_id text not null references knowledge_chat_conversations(id) on delete cascade,
+  user_id text not null,
+  role text not null,
+  content text not null,
+  model_profile_id text,
+  trace_id text,
+  citations jsonb not null default '[]'::jsonb,
+  route jsonb,
+  diagnostics jsonb,
+  feedback jsonb,
+  created_at timestamptz not null default now()
+);
+
 create or replace function upsert_knowledge_chunks(
   knowledge_base_id text,
   document_id text,

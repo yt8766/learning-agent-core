@@ -30,6 +30,40 @@ export const DocumentProcessingJobErrorSchema = z
   })
   .strict();
 
+export const RagModelProfileUseCaseSchema = z.enum(['coding', 'daily', 'balanced']);
+
+export const RagModelProfileSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    description: z.string().min(1).optional(),
+    useCase: RagModelProfileUseCaseSchema,
+    plannerModelId: z.string().min(1),
+    answerModelId: z.string().min(1),
+    embeddingModelId: z.string().min(1),
+    enabled: z.boolean()
+  })
+  .strict();
+
+export const RagModelProfileSummarySchema = RagModelProfileSchema.pick({
+  id: true,
+  label: true,
+  description: true,
+  useCase: true,
+  enabled: true
+});
+
+export const KnowledgeChatConversationRecordSchema = z
+  .object({
+    id: z.string().min(1),
+    userId: z.string().min(1),
+    title: z.string().min(1),
+    activeModelProfileId: z.string().min(1),
+    createdAt: z.string().min(1),
+    updatedAt: z.string().min(1)
+  })
+  .strict();
+
 export const CreateDocumentFromUploadRequestSchema = z.object({
   uploadId: z.string().min(1),
   objectKey: z.string().min(1),

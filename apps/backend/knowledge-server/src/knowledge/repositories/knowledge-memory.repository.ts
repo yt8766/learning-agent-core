@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import type {
   KnowledgeBase,
@@ -7,8 +9,11 @@ import type {
 } from '@agent/core';
 
 import type {
+  CreateKnowledgeChatMessageRecordInput,
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
@@ -22,6 +27,8 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
   private readonly documents = new Map<string, KnowledgeDocumentRecord>();
   private readonly jobs = new Map<string, DocumentProcessingJobRecord>();
   private readonly chunks = new Map<string, DocumentChunkRecord[]>();
+  private readonly chatConversations = new Map<string, KnowledgeChatConversationRecord>();
+  private readonly chatMessages = new Map<string, KnowledgeChatMessageRecord[]>();
 
   async createBase(
     input: KnowledgeBaseCreateRequest & { id: string; createdByUserId: string }
@@ -139,6 +146,81 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
   async listChunks(documentId: string): Promise<DocumentChunkRecord[]> {
     return (this.chunks.get(documentId) ?? []).map(cloneChunk);
   }
+
+  async createChatConversation(input: {
+    userId: string;
+    title: string;
+    activeModelProfileId: string;
+  }): Promise<KnowledgeChatConversationRecord> {
+    const now = new Date().toISOString();
+    const conversation: KnowledgeChatConversationRecord = {
+      id: `conv_${randomUUID()}`,
+      userId: input.userId,
+      title: input.title,
+      activeModelProfileId: input.activeModelProfileId,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.chatConversations.set(conversation.id, cloneChatConversation(conversation));
+    return cloneChatConversation(conversation);
+  }
+
+  async listChatConversationsForUser(
+    userId: string
+  ): Promise<{ items: KnowledgeChatConversationRecord[]; total: number }> {
+    const items = [...this.chatConversations.values()]
+      .filter(conversation => conversation.userId === userId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .map(cloneChatConversation);
+
+    return { items, total: items.length };
+  }
+
+  async appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord> {
+    const conversation = this.chatConversations.get(input.conversationId);
+    if (!conversation || conversation.userId !== input.userId) {
+      throw new Error('knowledge_chat_conversation_not_found');
+    }
+
+    const now = new Date().toISOString();
+    const message: KnowledgeChatMessageRecord = {
+      id: `msg_${randomUUID()}`,
+      conversationId: input.conversationId,
+      userId: input.userId,
+      role: input.role,
+      content: input.content,
+      modelProfileId: input.modelProfileId,
+      traceId: input.traceId,
+      citations: input.citations ?? [],
+      route: input.route,
+      diagnostics: input.diagnostics,
+      feedback: input.feedback,
+      createdAt: now
+    };
+    const messages = this.chatMessages.get(input.conversationId) ?? [];
+    messages.push(cloneChatMessage(message));
+    this.chatMessages.set(input.conversationId, messages);
+    this.chatConversations.set(input.conversationId, { ...conversation, updatedAt: now });
+
+    return cloneChatMessage(message);
+  }
+
+  async listChatMessages(
+    conversationId: string,
+    userId: string
+  ): Promise<{ items: KnowledgeChatMessageRecord[]; total: number }> {
+    const conversation = this.chatConversations.get(conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      return { items: [], total: 0 };
+    }
+
+    const items = (this.chatMessages.get(conversationId) ?? [])
+      .filter(message => message.userId === userId)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .map(cloneChatMessage);
+
+    return { items, total: items.length };
+  }
 }
 
 function cloneDocument(document: KnowledgeDocumentRecord): KnowledgeDocumentRecord {
@@ -156,4 +238,22 @@ function cloneJob(job: DocumentProcessingJobRecord): DocumentProcessingJobRecord
 
 function cloneChunk(chunk: DocumentChunkRecord): DocumentChunkRecord {
   return { ...chunk };
+}
+
+function cloneChatConversation(conversation: KnowledgeChatConversationRecord): KnowledgeChatConversationRecord {
+  return { ...conversation };
+}
+
+function cloneChatMessage(message: KnowledgeChatMessageRecord): KnowledgeChatMessageRecord {
+  return {
+    ...message,
+    citations: message.citations.map(citation => ({ ...citation })),
+    route: cloneJson(message.route),
+    diagnostics: cloneJson(message.diagnostics),
+    feedback: message.feedback ? { ...message.feedback } : undefined
+  };
+}
+
+function cloneJson<T>(value: T): T {
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
