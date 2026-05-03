@@ -64,6 +64,78 @@ export const KnowledgeChatConversationRecordSchema = z
   })
   .strict();
 
+export const KnowledgeChatMessageRoleSchema = z.enum(['user', 'assistant', 'system']);
+
+export const KnowledgeChatJsonValueSchema: z.ZodType<
+  string | number | boolean | null | { [key: string]: unknown } | unknown[]
+> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(KnowledgeChatJsonValueSchema),
+    z.record(z.string(), KnowledgeChatJsonValueSchema)
+  ])
+);
+
+export const KnowledgeChatJsonObjectSchema = z.record(z.string(), KnowledgeChatJsonValueSchema);
+
+export const KnowledgeChatCitationSchema = z
+  .object({
+    id: z.string().min(1),
+    documentId: z.string().min(1),
+    chunkId: z.string().min(1),
+    title: z.string().min(1),
+    quote: z.string().min(1),
+    score: z.number()
+  })
+  .strict();
+
+export const KnowledgeChatMessageFeedbackSchema = z
+  .object({
+    rating: z.enum(['positive', 'negative']),
+    category: z
+      .enum([
+        'helpful',
+        'not_helpful',
+        'wrong_citation',
+        'hallucination',
+        'missing_knowledge',
+        'too_slow',
+        'unsafe',
+        'other'
+      ])
+      .optional(),
+    comment: z.string().max(2000).optional()
+  })
+  .strict();
+
+export const KnowledgeChatMessageRecordSchema = z
+  .object({
+    id: z.string().min(1),
+    conversationId: z.string().min(1),
+    userId: z.string().min(1),
+    role: KnowledgeChatMessageRoleSchema,
+    content: z.string().trim().min(1),
+    modelProfileId: z.string().min(1).optional(),
+    traceId: z.string().min(1).optional(),
+    citations: z.array(KnowledgeChatCitationSchema),
+    route: KnowledgeChatJsonObjectSchema.optional(),
+    diagnostics: KnowledgeChatJsonObjectSchema.optional(),
+    feedback: KnowledgeChatMessageFeedbackSchema.optional(),
+    createdAt: z.string().min(1)
+  })
+  .strict();
+
+export const CreateKnowledgeChatMessageRecordInputSchema = KnowledgeChatMessageRecordSchema.omit({
+  id: true,
+  citations: true,
+  createdAt: true
+}).extend({
+  citations: z.array(KnowledgeChatCitationSchema).optional()
+});
+
 export const CreateDocumentFromUploadRequestSchema = z.object({
   uploadId: z.string().min(1),
   objectKey: z.string().min(1),
@@ -120,19 +192,4 @@ export const KnowledgeChatRequestSchema = z.object({
   debug: z.boolean().optional()
 });
 
-export const CreateKnowledgeMessageFeedbackRequestSchema = z.object({
-  rating: z.enum(['positive', 'negative']),
-  category: z
-    .enum([
-      'helpful',
-      'not_helpful',
-      'wrong_citation',
-      'hallucination',
-      'missing_knowledge',
-      'too_slow',
-      'unsafe',
-      'other'
-    ])
-    .optional(),
-  comment: z.string().max(2000).optional()
-});
+export const CreateKnowledgeMessageFeedbackRequestSchema = KnowledgeChatMessageFeedbackSchema;

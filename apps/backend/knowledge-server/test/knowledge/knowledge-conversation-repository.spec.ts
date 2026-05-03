@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  CreateKnowledgeChatMessageRecordInputSchema,
+  KnowledgeChatMessageRecordSchema
+} from '../../src/knowledge/domain/knowledge-document.schemas';
 import { InMemoryKnowledgeRepository } from '../../src/knowledge/repositories/knowledge-memory.repository';
 
 function createTestKnowledgeRepository(): InMemoryKnowledgeRepository {
@@ -7,6 +11,60 @@ function createTestKnowledgeRepository(): InMemoryKnowledgeRepository {
 }
 
 describe('KnowledgeRepository chat conversations', () => {
+  it('parses assistant chat message records with citations and diagnostics', () => {
+    expect(
+      KnowledgeChatMessageRecordSchema.parse({
+        id: 'msg_1',
+        conversationId: 'conv_1',
+        userId: 'user_1',
+        role: 'assistant',
+        content: '依据如下。',
+        modelProfileId: 'coding-pro',
+        citations: [
+          {
+            id: 'citation_1',
+            documentId: 'doc_1',
+            chunkId: 'chunk_1',
+            title: 'Core',
+            quote: 'PreRetrievalPlanner',
+            score: 0.91
+          }
+        ],
+        diagnostics: {
+          retrieval: {
+            effectiveSearchMode: 'vector',
+            vectorHitCount: 1
+          }
+        },
+        createdAt: '2026-05-03T00:00:00.000Z'
+      })
+    ).toMatchObject({
+      role: 'assistant',
+      citations: [expect.objectContaining({ chunkId: 'chunk_1' })],
+      diagnostics: expect.any(Object)
+    });
+  });
+
+  it('rejects invalid chat message create input contracts', () => {
+    expect(() =>
+      CreateKnowledgeChatMessageRecordInputSchema.parse({
+        conversationId: 'conv_1',
+        userId: 'user_1',
+        role: 'user',
+        content: ''
+      })
+    ).toThrow();
+
+    expect(() =>
+      CreateKnowledgeChatMessageRecordInputSchema.parse({
+        conversationId: 'conv_1',
+        userId: 'user_1',
+        role: 'tool',
+        content: 'hello'
+      })
+    ).toThrow();
+  });
+
   it('persists and lists chat conversations with messages', async () => {
     const repository = createTestKnowledgeRepository();
     const conversation = await repository.createChatConversation({
