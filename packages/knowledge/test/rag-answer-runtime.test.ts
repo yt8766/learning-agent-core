@@ -312,7 +312,7 @@ describe('RagAnswerRuntime', () => {
     });
   });
 
-  it('returns no-answer when provider throws or returns an invalid result', async () => {
+  it('propagates provider failures and invalid provider results', async () => {
     const throwingProvider = makeProvider(async () => {
       throw new Error('model unavailable');
     });
@@ -320,15 +320,9 @@ describe('RagAnswerRuntime', () => {
 
     await expect(
       new RagAnswerRuntime({ provider: throwingProvider }).generate(makePlan(), makeRetrievalResult())
-    ).resolves.toMatchObject({
-      noAnswer: true,
-      diagnostics: { noAnswerReason: 'insufficient_evidence' }
-    });
+    ).rejects.toThrow('model unavailable');
     await expect(
       new RagAnswerRuntime({ provider: invalidProvider }).generate(makePlan(), makeRetrievalResult())
-    ).resolves.toMatchObject({
-      noAnswer: true,
-      diagnostics: { noAnswerReason: 'insufficient_evidence' }
-    });
+    ).rejects.toThrow();
   });
 });

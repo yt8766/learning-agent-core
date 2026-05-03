@@ -328,6 +328,45 @@ describe('streamKnowledgeRag', () => {
     });
   });
 
+  it('emits rag.error when fallback answer generation fails', async () => {
+    const answerProvider: KnowledgeAnswerProvider = {
+      generate: vi.fn(async () => {
+        throw new Error('answer provider unavailable');
+      })
+    };
+
+    const events = await collectEvents(
+      streamKnowledgeRag({
+        query: 'runtime docs',
+        accessibleKnowledgeBases,
+        policy,
+        plannerProvider: makePlannerProvider(),
+        searchService: makeSearchService([makeHit()]),
+        answerProvider,
+        idFactory: () => 'stream-answer-error-run'
+      })
+    );
+
+    expect(events.map(event => event.type)).toEqual([
+      'rag.started',
+      'planner.started',
+      'planner.completed',
+      'retrieval.started',
+      'retrieval.completed',
+      'answer.started',
+      'rag.error'
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      type: 'rag.error',
+      runId: 'stream-answer-error-run',
+      stage: 'answer',
+      error: {
+        code: 'answer_failed',
+        message: 'answer provider unavailable'
+      }
+    });
+  });
+
   it('passes high-level metadata to the answer provider', async () => {
     const answerProvider = makeRecordingAnswerProvider();
 

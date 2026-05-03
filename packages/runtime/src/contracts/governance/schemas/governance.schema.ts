@@ -76,7 +76,7 @@ export const ToolExecutionResultSchema = z.object({
   durationMs: z.number(),
   serverId: z.string().optional(),
   capabilityId: z.string().optional(),
-  transportUsed: z.enum(['local-adapter', 'stdio', 'http']).optional(),
+  transportUsed: z.enum(['local-adapter', 'stdio', 'http', 'cli']).optional(),
   fallbackUsed: z.boolean().optional()
 });
 
