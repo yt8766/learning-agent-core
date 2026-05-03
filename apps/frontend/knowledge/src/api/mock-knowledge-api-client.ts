@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   ChatRequest,
   ChatResponse,
+  ChatConversation,
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
@@ -14,10 +15,12 @@ import type {
   KnowledgeDocument,
   KnowledgeUploadResult,
   PageResult,
+  RagModelProfileSummary,
   ReprocessDocumentResponse,
   UploadKnowledgeFileRequest,
   UploadDocumentRequest,
-  UploadDocumentResponse
+  UploadDocumentResponse,
+  KnowledgeRagStreamEvent
 } from '../types/api';
 import type { KnowledgeFrontendApi } from './knowledge-api-provider';
 import {
@@ -147,6 +150,35 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
     return { ok: true };
   }
 
+  async listRagModelProfiles(): Promise<{ items: RagModelProfileSummary[] }> {
+    return {
+      items: [
+        {
+          id: 'coding-pro',
+          label: '用于编程',
+          description: '更专业的回答与控制',
+          useCase: 'coding',
+          enabled: true
+        },
+        {
+          id: 'daily-balanced',
+          label: '适合日常工作',
+          description: '同样强大，技术细节更少',
+          useCase: 'daily',
+          enabled: true
+        }
+      ]
+    };
+  }
+
+  async listConversations(): Promise<PageResult<ChatConversation>> {
+    return page([]);
+  }
+
+  async listConversationMessages(): Promise<PageResult<ChatMessage>> {
+    return page([]);
+  }
+
   async chat(input: ChatRequest): Promise<ChatResponse> {
     const conversationId = input.metadata?.conversationId ?? input.conversationId ?? 'conv_1';
     const message = input.message ?? latestUserMessage(input.messages) ?? '';
@@ -187,6 +219,28 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         traceId: mockTraceDetail.id,
         citations: mockTraceDetail.citations,
         createdAt: new Date().toISOString()
+      }
+    };
+  }
+
+  async *streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
+    const response = await this.chat({ ...input, stream: true });
+    const runId = response.traceId;
+    yield { type: 'rag.started' as const, runId };
+    yield { type: 'planner.started' as const, runId };
+    yield { type: 'retrieval.started' as const, runId };
+    yield {
+      type: 'answer.delta' as const,
+      runId,
+      delta: response.answer
+    };
+    yield {
+      type: 'answer.completed' as const,
+      runId,
+      answer: {
+        text: response.answer,
+        noAnswer: false,
+        citations: response.citations.map(toSdkCitation)
       }
     };
   }
@@ -239,6 +293,19 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       perMetricDelta: {}
     };
   }
+}
+
+function toSdkCitation(citation: ChatResponse['citations'][number]) {
+  return {
+    sourceId: citation.documentId,
+    chunkId: citation.chunkId,
+    title: citation.title,
+    uri: citation.uri ?? '',
+    quote: citation.quote,
+    sourceType: 'user-upload' as const,
+    trustClass: 'internal' as const,
+    score: citation.score
+  };
 }
 
 function latestUserMessage(messages: ChatRequest['messages']): string | undefined {

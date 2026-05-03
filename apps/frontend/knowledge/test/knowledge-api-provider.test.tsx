@@ -193,6 +193,7 @@ describe('KnowledgeApiProvider', () => {
 function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFrontendApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>(),
+    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>(),
     createFeedback: vi.fn<KnowledgeFrontendApi['createFeedback']>(),
     compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>(),
     getDashboardOverview: vi.fn().mockResolvedValue(overview),
@@ -207,6 +208,9 @@ function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFron
     listDocuments: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listEmbeddingModels: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listKnowledgeBases: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listRagModelProfiles: vi.fn().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listConversationMessages: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     createDocumentFromUpload: vi.fn<KnowledgeFrontendApi['createDocumentFromUpload']>(),
     reprocessDocument: vi.fn<KnowledgeFrontendApi['reprocessDocument']>(),

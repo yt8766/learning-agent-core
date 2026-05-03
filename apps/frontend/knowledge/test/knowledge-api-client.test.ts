@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthClient } from '../src/api/auth-client';
 import { KnowledgeApiClient } from '../src/api/knowledge-api-client';
+import { parseKnowledgeChatSseFrame } from '../src/api/knowledge-chat-stream';
 import { saveTokens } from '../src/api/token-storage';
 import { installLocalStorageMock } from './local-storage-mock';
 
@@ -216,4 +217,161 @@ describe('KnowledgeApiClient', () => {
     expect(refreshCalls).toBe(1);
     expect(dashboardCalls).toBe(2);
   });
+
+  it('posts chat requests as SSE and parses knowledge RAG stream events', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          streamFromText(
+            [
+              'event: rag.started',
+              'data: {"type":"rag.started","runId":"rag_stream"}',
+              '',
+              'event: answer.delta',
+              'data: {"type":"answer.delta","runId":"rag_stream","delta":"你好"}',
+              '',
+              ''
+            ].join('\n')
+          ),
+          { status: 200 }
+        )
+      );
+    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+
+    const events = [];
+    for await (const event of apiClient.streamChat({
+      messages: [{ content: '检索前有什么', role: 'user' }],
+      model: 'knowledge-rag'
+    })) {
+      events.push(event);
+    }
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/knowledge/v1/chat',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ content: '检索前有什么', role: 'user' }],
+          model: 'knowledge-rag',
+          stream: true
+        }),
+        headers: expect.any(Headers)
+      })
+    );
+    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('Accept')).toBe('text/event-stream');
+    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer access');
+    expect(events).toEqual([
+      { type: 'rag.started', runId: 'rag_stream' },
+      { type: 'answer.delta', runId: 'rag_stream', delta: '你好' }
+    ]);
+  });
+
+  it('loads RAG model profiles and persisted conversation messages from backend endpoints', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>(async url => {
+      if (String(url).endsWith('/rag/model-profiles')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'coding-pro',
+                label: '用于编程',
+                description: '更专业的回答与控制',
+                useCase: 'coding',
+                enabled: true
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+      if (String(url).endsWith('/conversations')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'conv_backend',
+                userId: 'user_1',
+                title: '检索前技术名词',
+                activeModelProfileId: 'coding-pro',
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:01:00.000Z'
+              }
+            ],
+            total: 1,
+            page: 1,
+            pageSize: 20
+          }),
+          { status: 200 }
+        );
+      }
+      if (String(url).endsWith('/conversations/conv_backend/messages')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'msg_user_backend',
+                conversationId: 'conv_backend',
+                userId: 'user_1',
+                role: 'user',
+                content: '检索前技术名词',
+                citations: [],
+                createdAt: '2026-05-01T00:00:00.000Z'
+              }
+            ],
+            total: 1,
+            page: 1,
+            pageSize: 20
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response('{}', { status: 404 });
+    });
+    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+
+    await expect(apiClient.listRagModelProfiles()).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: 'coding-pro', label: '用于编程' })]
+    });
+    await expect(apiClient.listConversations()).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: 'conv_backend', activeModelProfileId: 'coding-pro' })]
+    });
+    await expect(apiClient.listConversationMessages('conv_backend')).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: 'msg_user_backend', content: '检索前技术名词' })]
+    });
+    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/rag/model-profiles', expect.any(Object));
+    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/conversations', expect.any(Object));
+    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/conversations/conv_backend/messages', expect.any(Object));
+  });
+
+  it('rejects malformed knowledge chat SSE frames before hooks consume them', () => {
+    expect(() => parseKnowledgeChatSseFrame('data: {"type":"answer.completed","runId":"rag_stream"}')).toThrow(
+      'Invalid knowledge chat stream event.'
+    );
+  });
 });
+
+function streamFromText(text: string) {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(text));
+      controller.close();
+    }
+  });
+}

@@ -3,7 +3,9 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type {
   ChatRequest,
   ChatResponse,
+  ChatConversation,
   ChatMessage,
+  KnowledgeRagStreamEvent,
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
@@ -21,6 +23,7 @@ import type {
   KnowledgeUploadResult,
   ObservabilityMetrics,
   PageResult,
+  RagModelProfileSummary,
   RagTrace,
   RagTraceDetail,
   ReprocessDocumentResponse,
@@ -45,7 +48,11 @@ export interface KnowledgeFrontendApi {
   uploadDocument(input: UploadDocumentRequest): Promise<UploadDocumentResponse>;
   reprocessDocument(documentId: string): Promise<ReprocessDocumentResponse>;
   deleteDocument(documentId: string): Promise<DeleteDocumentResponse>;
+  listRagModelProfiles(): Promise<{ items: RagModelProfileSummary[] }>;
+  listConversations(): Promise<PageResult<ChatConversation>>;
+  listConversationMessages(conversationId: string): Promise<PageResult<ChatMessage>>;
   chat(input: ChatRequest): Promise<ChatResponse>;
+  streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent>;
   createFeedback(messageId: string, input: CreateFeedbackRequest): Promise<ChatMessage>;
   listEvalDatasets(): Promise<PageResult<EvalDataset>>;
   listEvalRuns(): Promise<PageResult<EvalRun>>;

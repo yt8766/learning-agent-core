@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResponse,
+  ChatConversation,
   ChatMessage,
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
@@ -16,10 +17,12 @@ import type {
   EvalDataset,
   EvalRun,
   KnowledgeBase,
+  KnowledgeRagStreamEvent,
   KnowledgeDocument,
   KnowledgeUploadResult,
   ObservabilityMetrics,
   PageResult,
+  RagModelProfileSummary,
   RagTrace,
   RagTraceDetail,
   ReprocessDocumentResponse,
@@ -28,6 +31,7 @@ import type {
   UploadDocumentResponse
 } from '../types/api';
 import type { AuthClient } from './auth-client';
+import { streamKnowledgeChat } from './knowledge-chat-stream';
 import type { KnowledgeFrontendApi } from './knowledge-api-provider';
 
 export interface KnowledgeApiFactoryOptions {
@@ -124,6 +128,18 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
     return this.request<DeleteDocumentResponse>(`/knowledge/documents/${documentId}`, { method: 'DELETE' });
   }
 
+  listRagModelProfiles() {
+    return this.get<{ items: RagModelProfileSummary[] }>('/rag/model-profiles');
+  }
+
+  listConversations() {
+    return this.get<PageResult<ChatConversation>>('/conversations');
+  }
+
+  listConversationMessages(conversationId: string) {
+    return this.get<PageResult<ChatMessage>>(`/conversations/${encodeURIComponent(conversationId)}/messages`);
+  }
+
   async createKnowledgeBase(input: CreateKnowledgeBaseRequest) {
     const base = await this.post<KnowledgeServiceBase>('/knowledge/bases', {
       name: input.name,
@@ -134,6 +150,16 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
 
   chat(input: ChatRequest) {
     return this.post<ChatResponse>('/chat', input);
+  }
+
+  async *streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
+    const accessToken = await this.authClient.ensureValidAccessToken();
+    yield* streamKnowledgeChat({
+      accessToken,
+      baseUrl: this.baseUrl,
+      fetcher: this.fetcher,
+      input
+    });
   }
 
   createFeedback(messageId: string, input: CreateFeedbackRequest) {
