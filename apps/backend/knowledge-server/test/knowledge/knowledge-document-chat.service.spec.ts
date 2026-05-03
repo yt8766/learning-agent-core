@@ -42,8 +42,13 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
       message: 'How often should we rotate signing keys?'
     });
 
-    expect(embedText).not.toHaveBeenCalled();
-    expect(search).not.toHaveBeenCalled();
+    expect(embedText).toHaveBeenCalledWith({ text: 'How often should we rotate signing keys?' });
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embedding: ['How often should we rotate signing keys?'.length, 1],
+        filters: expect.objectContaining({ knowledgeBaseId: baseId, tenantId: 'default' })
+      })
+    );
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: expect.arrayContaining([
@@ -57,7 +62,7 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     expect(response).toMatchObject({
       answer: 'Keys should rotate every 90 days.',
       route: { selectedKnowledgeBaseIds: [baseId], reason: 'legacy-ids' },
-      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
+      diagnostics: { retrievalMode: 'keyword-only', hitCount: 1, contextChunkCount: 1 },
       citations: [
         {
           documentId: 'doc_1',
@@ -117,12 +122,12 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
 
     expect(response).toMatchObject({
       route: { selectedKnowledgeBaseIds: [baseId], reason: 'mentions' },
-      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
+      diagnostics: { retrievalMode: 'keyword-only', hitCount: 1, contextChunkCount: 1 },
       citations: [{ chunkId: 'chunk_1', documentId: 'doc_1', quote: 'citation 必须来自 retrieval hits' }]
     });
   });
 
-  it('does not call the legacy vector runtime when explicit knowledgeBaseIds are handled by SDK RAG', async () => {
+  it('falls back to repository keyword retrieval when SDK vector search fails', async () => {
     const search = vi.fn(async () => {
       throw new Error('vector backend unavailable');
     });
@@ -144,7 +149,7 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
       route: { selectedKnowledgeBaseIds: [baseId], reason: 'legacy-ids' },
       diagnostics: { hitCount: 1 }
     });
-    expect(search).not.toHaveBeenCalled();
+    expect(search).toHaveBeenCalledOnce();
   });
 
   it('does not prompt the chat provider when repository retrieval has no grounded hits', async () => {
@@ -276,7 +281,7 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
 
     const trace = traces.listTraces()[0];
     expect(trace?.spans.find(span => span.name === 'retrieve')).toMatchObject({
-      attributes: { retrievalMode: 'hybrid', hitCount: 1 }
+      attributes: { retrievalMode: 'keyword-only', hitCount: 1 }
     });
     expect(trace?.spans.find(span => span.name === 'generate')).toMatchObject({
       attributes: { contextChunkCount: 1 }
@@ -365,23 +370,12 @@ function enabledSdkRuntime(input: {
       chatProvider: {
         providerId: 'fake',
         defaultModel: 'fake-chat',
-        generate:
-          input.generate ??
-          (async () => ({
-            text: 'generated answer',
-            model: 'fake-chat',
-            providerId: 'fake'
-          }))
+        generate: input.generate ?? (async () => ({ text: 'generated answer', model: 'fake-chat', providerId: 'fake' }))
       },
       embeddingProvider: {
         providerId: 'fake',
         defaultModel: 'fake-embedding',
-        embedText:
-          input.embedText ??
-          (async () => ({
-            embedding: [1, 2],
-            model: 'fake-embedding'
-          })),
+        embedText: input.embedText ?? (async () => ({ embedding: [1, 2], model: 'fake-embedding' })),
         embedBatch: async ({ texts }) => ({
           embeddings: texts.map((_, index) => [index + 1, index + 2]),
           model: 'fake-embedding'
