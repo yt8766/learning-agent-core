@@ -148,12 +148,12 @@ describe('Knowledge RAG SDK contracts', () => {
           queryVariants: ['PreRetrievalPlanner query rewrite', '检索前规划 查询改写 查询变体'],
           executedQueries: [
             { query: 'PreRetrievalPlanner query rewrite', mode: 'vector', hitCount: 2 },
-            { query: '检索前规划 查询改写 查询变体', mode: 'keyword', hitCount: 0, fallbackReason: 'vector-no-hit' }
+            { query: '检索前规划 查询改写 查询变体', mode: 'keyword', hitCount: 1, fallbackReason: 'vector-no-hit' }
           ],
           effectiveSearchMode: 'hybrid',
           vectorHitCount: 2,
-          keywordHitCount: 0,
-          finalHitCount: 2
+          keywordHitCount: 1,
+          finalHitCount: 3
         }
       },
       answer: {
@@ -188,7 +188,7 @@ describe('Knowledge RAG SDK contracts', () => {
       retrieval: {
         diagnostics: {
           executedQueries: parsed.retrieval.diagnostics?.executedQueries,
-          finalHitCount: 2
+          finalHitCount: 3
         }
       }
     });
@@ -197,7 +197,7 @@ describe('Knowledge RAG SDK contracts', () => {
         retrieval: {
           diagnostics: {
             executedQueries: parsed.retrieval.diagnostics?.executedQueries,
-            finalHitCount: 2
+            finalHitCount: 3
           }
         },
         answer: {
@@ -295,6 +295,82 @@ describe('Knowledge RAG SDK contracts', () => {
         }
       }).success
     ).toBe(true);
+  });
+
+  it('rejects empty or unknown-only answer diagnostics while accepting known answer fields', () => {
+    const baseAnswer = {
+      text: '依据不足。',
+      citations: []
+    };
+
+    expect(KnowledgeRagRunAnswerSchema.safeParse({ ...baseAnswer, diagnostics: {} }).success).toBe(false);
+    expect(KnowledgeRagRunAnswerSchema.safeParse({ ...baseAnswer, diagnostics: { typo: 'x' } }).success).toBe(false);
+    expect(
+      KnowledgeRagRunAnswerSchema.safeParse({
+        ...baseAnswer,
+        diagnostics: {
+          provider: 'openai-compatible',
+          model: 'knowledge-answer',
+          durationMs: 30
+        }
+      }).success
+    ).toBe(true);
+  });
+
+  it('validates mature effective search mode against observed retrieval hits', () => {
+    expect(
+      KnowledgeRagStreamEventSchema.safeParse({
+        type: 'retrieval.completed',
+        runId: 'rag_1',
+        retrieval: {
+          hits: [],
+          citations: [],
+          diagnostics: {
+            executedQueries: [{ query: 'fallback query', mode: 'keyword', hitCount: 1 }],
+            effectiveSearchMode: 'vector'
+          }
+        }
+      }).success
+    ).toBe(false);
+
+    const validDiagnostics = [
+      {
+        executedQueries: [{ query: 'vector query', mode: 'vector', hitCount: 1 }],
+        effectiveSearchMode: 'vector'
+      },
+      {
+        executedQueries: [{ query: 'keyword query', mode: 'keyword', hitCount: 1 }],
+        effectiveSearchMode: 'keyword'
+      },
+      {
+        executedQueries: [{ query: 'substring fallback', mode: 'substring', hitCount: 1 }],
+        effectiveSearchMode: 'fallback-keyword'
+      },
+      {
+        vectorHitCount: 1,
+        keywordHitCount: 1,
+        effectiveSearchMode: 'hybrid'
+      },
+      {
+        finalHitCount: 0,
+        effectiveSearchMode: 'none'
+      }
+    ];
+
+    expect(
+      validDiagnostics.map(
+        diagnostics =>
+          KnowledgeRagStreamEventSchema.safeParse({
+            type: 'retrieval.completed',
+            runId: 'rag_1',
+            retrieval: {
+              hits: [],
+              citations: [],
+              diagnostics
+            }
+          }).success
+      )
+    ).toEqual([true, true, true, true, true]);
   });
 
   it('parses every required RAG stream event variant and rejects unrequested event names', () => {
