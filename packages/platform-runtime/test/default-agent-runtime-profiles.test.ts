@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { AgentRuntimeProfileSchema } from '@agent/core';
-import type { AgentRuntimeProfile } from '@agent/core';
 import {
   defaultAgentRuntimeProfiles,
   resolveDefaultAgentRuntimeProfile
@@ -28,12 +27,9 @@ describe('defaultAgentRuntimeProfiles', () => {
   });
 
   it('protects exported defaults from consumer mutation', () => {
-    const mutableProfiles = defaultAgentRuntimeProfiles as unknown as AgentRuntimeProfile[];
-    const mutableProfile = defaultAgentRuntimeProfiles[0] as unknown as AgentRuntimeProfile;
-
-    expect(() => mutableProfiles.push(mutableProfiles[0]!)).toThrow(TypeError);
+    expect(() => defaultAgentRuntimeProfiles.push(defaultAgentRuntimeProfiles[0])).toThrow(TypeError);
     expect(() => {
-      mutableProfile.observability.audit = false;
+      defaultAgentRuntimeProfiles[0].observability.audit = false;
     }).toThrow(TypeError);
   });
 
