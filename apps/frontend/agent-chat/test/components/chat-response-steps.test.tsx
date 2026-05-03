@@ -223,4 +223,51 @@ describe('chat response step components', () => {
     expect(responseSteps.agentOsGroups).toEqual([]);
     expect(responseSteps.summary.title).toBe('已思考');
   });
+
+  it('excludes final-response delivery steps from derived visible action counts', () => {
+    const stateWithExecution = foldChatResponseStepProjection(initialChatResponseStepsState(), {
+      projection: 'chat_response_step',
+      action: 'started',
+      step: {
+        id: 'step-command',
+        sessionId: 'session-1',
+        messageId: 'assistant-command',
+        sequence: 0,
+        phase: 'execute',
+        status: 'running',
+        title: 'Run pnpm test',
+        target: {
+          kind: 'command',
+          label: 'pnpm test'
+        },
+        startedAt: '2026-05-03T09:00:00.000Z',
+        sourceEventId: 'event-command',
+        sourceEventType: 'execution_step_started'
+      }
+    });
+
+    const nextState = foldChatResponseStepProjection(stateWithExecution, {
+      projection: 'chat_response_step',
+      action: 'completed',
+      step: {
+        id: 'step-final',
+        sessionId: 'session-1',
+        messageId: 'assistant-command',
+        sequence: 1,
+        phase: 'summarize',
+        status: 'completed',
+        title: '整理最终回复',
+        startedAt: '2026-05-03T09:00:01.000Z',
+        completedAt: '2026-05-03T09:00:01.000Z',
+        sourceEventId: 'event-final',
+        sourceEventType: 'final_response_completed'
+      }
+    });
+
+    const responseSteps = nextState.byMessageId['assistant-command'];
+
+    expect(responseSteps.displayMode).toBe('agent_execution');
+    expect(responseSteps.agentOsGroups?.map(group => group.kind)).toEqual(['execution', 'delivery']);
+    expect(responseSteps.summary.title).toBe('处理中 1 个动作');
+  });
 });
