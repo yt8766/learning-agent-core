@@ -35,6 +35,9 @@ GET  /api/knowledge/embedding-models
 POST /api/knowledge/documents/:documentId/reprocess
 DELETE /api/knowledge/documents/:documentId
 POST /api/chat
+GET  /api/rag/model-profiles
+GET  /api/conversations
+GET  /api/conversations/:id/messages
 POST /api/messages/:messageId/feedback
 ```
 
@@ -142,11 +145,15 @@ Failed jobs are immutable for recovery purposes: retry/reprocess creates a new a
 
 缺少 pgvector 时，配置 `DATABASE_URL` 的 schema init 会失败，服务不应静默降级；需要先在目标 Postgres/Supabase 环境安装或启用 pgvector。
 
+本地开发推荐使用仓库根级 `docker-compose.yml` 的 `pgvector/pgvector:pg16` 服务，并通过根级脚本 `pnpm docker:up` 启动。如果 `DATABASE_URL` 指向普通 PostgreSQL 镜像或本机未安装 pgvector 的实例，启动会在 `create extension if not exists vector` 阶段报 `extension "vector" is not available`；临时只跑内存 demo 时可以移除 `DATABASE_URL`，让服务回落到 `InMemoryKnowledgeRepository`。
+
 `InMemoryKnowledgeRepository` 只适合本地测试和 demo 闭环。生产环境必须配置真实 `DATABASE_URL` 指向 Postgres/Supabase，避免 RAG chunk、embedding 和 RPC contract 只存在于进程内存。
 
 ## Build Boundary
 
 `tsconfig.json` 在开发与测试阶段会把 `@agent/core` 映射到 `packages/core/src/index.ts`，便于本地类型检查直接消费 core 源码。`tsconfig.build.json` 必须清空 `paths`，让生产构建通过 workspace 包边界解析 `@agent/core`；如果继承开发期 paths 且保持 `rootDir: "./src"`，`tsc -p tsconfig.build.json` 会把 `packages/core/src` 纳入当前服务编译图，并触发 `TS6059: file is not under rootDir`。
+
+`tsconfig.build.json` 还必须显式保持 `module: "Node16"` 与 `moduleResolution: "node16"` 配套。TypeScript 5 会校验这两个选项必须成对出现；Nest watch 读取 build config 时不能依赖开发配置继承链隐式补齐，否则可能触发 `TS5110: Option 'module' must be set to 'Node16' when option 'moduleResolution' is set to 'Node16'`。
 
 该 build 边界与 `apps/backend/agent-server`、`apps/backend/auth-server` 保持一致。后续修改 knowledge API contract 或引入更多 `@agent/*` workspace 包时，不要把包源码路径重新写回 build tsconfig。
 
@@ -178,12 +185,20 @@ Failed jobs are immutable for recovery purposes: retry/reprocess creates a new a
 
 当 `KNOWLEDGE_SDK_RUNTIME` 为 disabled 时，Worker 保留本地测试和 demo fallback：chunks 的 embedding/vector/keyword 状态直接标记为 `succeeded`，document/job 进入成功状态，但不会写入 Supabase pgvector。这个模式只用于本地开发、单元测试和横向 demo，不是生产 ingestion 路径。
 
-`KnowledgeDocumentService.chat()` 只负责请求归一化并委托 `KnowledgeRagService`。`KnowledgeRagService` 是 Chat Lab 的后端编排边界：读取当前用户可访问知识库，通过 `resolveKnowledgeChatRoute()` 得到目标 knowledge base，逐一校验 membership，记录 `route/retrieve/generate` trace span，并返回稳定 `route` 与 `diagnostics` 投影。随后：
+`KnowledgeDocumentService.chat()` 只负责请求归一化、解析 RAG model profile，并委托 `KnowledgeRagService`。`KnowledgeRagService` 是 Chat Lab 的后端编排边界：读取当前用户可访问知识库，通过 `resolveKnowledgeChatRoute()` 得到目标 knowledge base，逐一校验 membership，记录 `route/retrieve/generate` trace span，并返回稳定 `route` 与 `diagnostics` 投影。随后：
 
 - `KNOWLEDGE_SDK_RUNTIME.enabled = false`：保留 repository deterministic RAG，读取目标知识库 document chunks，按查询词命中率生成 citation projection，并把命中的 quote 拼为 answer；这是本地测试和 demo fallback。
-- `KNOWLEDGE_SDK_RUNTIME.enabled = true`：调用 `embeddingProvider.embedText({ text: message })` 得到 query embedding；对每个目标 knowledge base 调用 `vectorStore.search({ embedding, topK: 5, filters: { tenantId, knowledgeBaseId, query } })`，其中 `tenantId` 优先取该 base 下 document 的 `workspaceId`，没有 document 时使用 `default`；再把 vector hits 投影为 API 既有 `KnowledgeChatCitation`，优先读取 hit metadata 中的 `documentId`、`title` / `filename`、`ordinal`，`quote` 使用 hit content，`score` 使用 hit score。最后调用 `chatProvider.generate()`，messages 内包含 system/developer context prompt、原始用户问题和 citation context，要求模型只基于 citations/context 回答，依据不足时明确说明依据不足。
+- `KNOWLEDGE_SDK_RUNTIME.enabled = true`：通过 `KnowledgeRagSdkFacade` 调用 `@agent/knowledge` RAG runtime。没有显式知识库约束时，pre-retrieval planner provider 会使用配置的 planner model profile 生成 `selectedKnowledgeBaseIds`、`rewrittenQuery` 和 `queryVariants`；显式传入 `knowledgeBaseIds` 时继续使用 deterministic planner 保持兼容。retrieval 阶段由 `KnowledgeServerSearchServiceAdapter` 接入 SDK runtime：先调用 `embeddingProvider.embedText({ text: query })`，再按目标 knowledge base fan-out 调用 `vectorStore.search({ embedding, topK, filters: { tenantId, knowledgeBaseId, query } })`。vector 命中会回查 repository document/chunk 后投影为项目自有 `RetrievalHit` / citation，不把 vector store 原始 hit 泄漏给 service 或前端。
+
+如果 vector search 返回 0 hit 或抛错，`KnowledgeServerSearchServiceAdapter` 会回退到 repository keyword retrieval，并额外用中文 bigram 子串命中兜底连续中文 query，例如 `风险动作审批` 可以命中包含 `风险动作` 与 `审批` 的 chunk。该 fallback 只作为召回兜底，diagnostics 会记录 `enabledRetrievers`、`failedRetrievers`、`candidateCount` 和最终 hit 数；answer 阶段仍只能基于 retrieval hits 生成 grounded citation。非流式回答调用 `chatProvider.generate()`，messages 内包含 system/developer context prompt、原始用户问题和 citation context，要求模型只基于 citations/context 回答，依据不足时明确说明依据不足。
 
 SDK chat 分支保持 grounded citation 规则：`answer` 使用 provider 返回的 `generated.text`，但 `assistantMessage.citations` 与顶层 `citations` 只能来自 retrieval/vector hits 的项目投影，不能采信模型返回的自带 citation。embedding、vector search 或 generation 任一 SDK 错误都会在 service 层转换为 `KnowledgeServiceError('knowledge_chat_failed', message)`，避免第三方 provider / vector adapter error 直接穿透到 controller 或前端。
+
+`KnowledgeRagModelProfileService` 是 Chat Lab 模型选择的权威来源。`GET /api/rag/model-profiles` 只暴露 display-safe summary：`id/label/description/useCase/enabled`，不会返回 planner/answer/embedding provider 内部模型 ID 或 secret。`POST /api/chat` 的 `model` 字段接受 enabled profile id；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。
+
+`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，并先持久化 user message。非流式成功返回前会持久化 assistant message；SSE 模式在收到 SDK `rag.completed` 后持久化 assistant message。assistant record 保存 answer、grounded citations、route、diagnostics、traceId 和 modelProfileId；provider error 或 stream 中断不会写成功 assistant message，只保留可 retry 的 user message。
+
+`POST /api/chat` 支持 `stream: true` 时返回 `text/event-stream`。Controller 只负责把 SDK `KnowledgeRagStreamEvent` 包装为 SSE frame：`event: <event.type>` 加 `data: <JSON event>`，再以空行结尾；`KnowledgeDocumentService`、`KnowledgeRagService` 和 `KnowledgeRagSdkFacade` 只传递结构化 SDK stream event，不拼接 SSE 字符串。SDK 仅在 answer provider 暴露 `stream()` 且 retrieval 已满足 no-answer policy 的 citation/evidence 要求时发送 `answer.delta`；provider 不支持 stream 或检索依据不足时，仍保持 `rag.started -> ... -> answer.completed -> rag.completed` 的非 delta 事件序列。SDK 产出的 `rag.error` 会按同一 SSE framing 写出，HTTP stream 随后关闭。
 
 `KnowledgeEvalService` 提供当前最小 eval 闭环：逐个 eval case 调用注入的 answerer，计算 `recallAtK`、`citationAccuracy` 与 `answerRelevance`，并保留成功 case 的结果。单个 case 失败时不会丢弃已完成结果；run 状态会变成 `partial`，失败项进入 `failedCases`，错误码固定为 `knowledge_eval_run_failed`。
 
@@ -206,6 +221,9 @@ Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动
 - `GET /api/dashboard/overview`
 - `GET /api/documents`
 - `POST /api/chat`
+- `GET /api/rag/model-profiles`
+- `GET /api/conversations`
+- `GET /api/conversations/:id/messages`
 - `POST /api/messages/:messageId/feedback`
 - `POST /api/documents/:documentId/reprocess`
 - `GET /api/observability/metrics`
@@ -216,7 +234,7 @@ Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动
 - `GET /api/eval/runs/:runId/results`
 - `POST /api/eval/runs/compare`
 
-`POST /api/chat` 入口优先接受 OpenAI Chat Completions 风格请求，即 `model`、`messages`、`metadata`、`stream: false`。服务层从最后一条 user message 归一化查询文本，前端新 Chat Lab 只发送 `metadata.conversationId`、`metadata.debug` 与 `metadata.mentions`；`metadata.knowledgeBaseIds` 和旧的顶层 `message` / `knowledgeBaseIds` 字段仅保留兼容。检索前路由由 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 承担，顺序为：兼容 knowledge base ids 优先；显式 `@mentions` 按当前用户可访问知识库的 id / name 绑定范围；无 mention 时按问题 tokens 与知识库 name / description / metadata 做 deterministic metadata routing；仍无命中时回退全部可访问知识库。`KnowledgeChatRoutingError` 在 service 层转换为 `KnowledgeServiceError`，再由 controller 映射为 HTTP 400。随后校验当前用户对目标知识库的 membership，并根据 `KNOWLEDGE_SDK_RUNTIME` 决定走真实 SDK vector RAG 或 repository deterministic fallback。citation 只包含 display-safe 字段，例如 `title`、`quote`、`score`、`documentId`、`chunkId`。请求中的知识库 ID 必须是真实存在且当前用户具备 membership 的 base；缺失 base 返回 `knowledge_base_not_found` 对应的 404，未授权 base 返回 `knowledge_permission_denied` 对应的 403，缺少 user message 返回 `knowledge_chat_message_required` 对应的 400，显式 mention 找不到可访问知识库返回 `knowledge_mention_not_found` 对应的 400，不能泄漏为 500。`POST /api/messages/:messageId/feedback` 是横向 MVP 的反馈回显 endpoint，用于前端按钮真实模式闭环；长期反馈仓储后续应另行接入 repository。
+`POST /api/chat` 入口优先接受 OpenAI Chat Completions 风格请求，即 `model`、`messages`、`metadata`、`stream`。`stream: false` 或未传 `stream` 时返回原 JSON `KnowledgeChatResponse`；`stream: true` 时返回 SSE，事件类型直接沿用 SDK RAG stream event type。服务层从最后一条 user message 归一化查询文本，前端新 Chat Lab 只发送 `metadata.conversationId`、`metadata.debug` 与 `metadata.mentions`；`metadata.knowledgeBaseIds` 和旧的顶层 `message` / `knowledgeBaseIds` 字段仅保留兼容。检索前路由由 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 承担，顺序为：兼容 knowledge base ids 优先；显式 `@mentions` 按当前用户可访问知识库的 id / name 绑定范围；无 mention 时按问题 tokens 与知识库 name / description / metadata 做 deterministic metadata routing；仍无命中时回退全部可访问知识库。`KnowledgeChatRoutingError` 在 service 层转换为 `KnowledgeServiceError`，再由 controller 映射为 HTTP 400。随后校验当前用户对目标知识库的 membership，并根据 `KNOWLEDGE_SDK_RUNTIME` 决定走真实 SDK vector RAG 或 repository deterministic fallback。citation 只包含 display-safe 字段，例如 `title`、`quote`、`score`、`documentId`、`chunkId`。请求中的知识库 ID 必须是真实存在且当前用户具备 membership 的 base；缺失 base 返回 `knowledge_base_not_found` 对应的 404，未授权 base 返回 `knowledge_permission_denied` 对应的 403，缺少 user message 返回 `knowledge_chat_message_required` 对应的 400，显式 mention 找不到可访问知识库返回 `knowledge_mention_not_found` 对应的 400，不能泄漏为 500。`POST /api/messages/:messageId/feedback` 是横向 MVP 的反馈回显 endpoint，用于前端按钮真实模式闭环；长期反馈仓储后续应另行接入 repository。
 
 ## PostgreSQL Tables
 

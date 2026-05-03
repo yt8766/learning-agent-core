@@ -623,9 +623,26 @@ export interface KnowledgeChatRoute {
 export interface KnowledgeChatDiagnostics {
   normalizedQuery: string;
   queryVariants: string[];
-  retrievalMode: 'hybrid' | 'none';
+  retrievalMode: 'keyword-only' | 'vector-only' | 'hybrid' | 'none';
   hitCount: number;
   contextChunkCount: number;
+}
+
+export interface RagModelProfileSummary {
+  id: ID;
+  label: string;
+  description?: string;
+  useCase: 'coding' | 'daily' | 'balanced';
+  enabled: boolean;
+}
+
+export interface KnowledgeChatConversation {
+  id: ID;
+  userId: ID;
+  title: string;
+  activeModelProfileId: ID;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
 }
 
 export type FeedbackCategory =
@@ -650,7 +667,7 @@ export interface CreateFeedbackRequest {
 }
 ```
 
-`POST /chat` 的请求面优先对齐 OpenAI Chat Completions：客户端传 `model`、`messages` 和 `metadata`，后端从最后一条 `role: "user"` 的 message 归一化出查询文本。新 Chat Lab 只发送 `metadata.conversationId`、`metadata.debug` 和从文本 `@知识库名` 中解析出的 `metadata.mentions`，不再发送 `metadata.knowledgeBaseIds`；检索范围由后端在检索前根据 mention、问题内容和可访问 knowledge base 元信息决定。`metadata.knowledgeBaseIds` 可为数组或逗号分隔字符串，仅保留迁移兼容；这是 knowledge server 的扩展字段，不得透传给 OpenAI provider。`stream: true` 尚未承诺，当前 MVP 只返回普通 JSON `ChatResponse`。旧字段 `conversationId`、`knowledgeBaseId`、`knowledgeBaseIds`、`message` 仅保留迁移兼容，新前端不得继续发送旧 payload。
+`POST /chat` 的请求面优先对齐 OpenAI Chat Completions：客户端传 `model`、`messages` 和 `metadata`，后端从最后一条 `role: "user"` 的 message 归一化出查询文本。新 Chat Lab 只发送 `metadata.conversationId`、`metadata.debug` 和从文本 `@知识库名` 中解析出的 `metadata.mentions`，不再发送 `metadata.knowledgeBaseIds`；检索范围由后端在检索前根据 mention、问题内容和可访问 knowledge base 元信息决定。`metadata.knowledgeBaseIds` 可为数组或逗号分隔字符串，仅保留迁移兼容；这是 knowledge server 的扩展字段，不得透传给 OpenAI provider。`stream: true` 已支持 Server-Sent Events；服务端会发送 SDK RAG event，包括 `planner.completed`、`retrieval.completed`、`answer.delta`、`answer.completed`、`rag.completed` 和 `rag.error`。客户端必须把 `rag.completed.result` 视为最终 answer projection；非 delta 场景仍可能只有 `answer.completed` 和 `rag.completed`，不保证每次都有 token delta。旧字段 `conversationId`、`knowledgeBaseId`、`knowledgeBaseIds`、`message` 仅保留迁移兼容，新前端不得继续发送旧 payload。
 
 ```json
 {
@@ -661,13 +678,13 @@ export interface CreateFeedbackRequest {
     "debug": true,
     "mentions": [{ "type": "knowledge_base", "label": "前端知识库" }]
   },
-  "stream": false
+  "stream": true
 }
 ```
 
 `ChatRequest.metadata.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
 
-当前 `knowledge-server` 横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 SDK RAG：检索前通过 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 解析路由，兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 按知识库 id / name 绑定范围；没有 mention 时，用问题 tokens 与可访问知识库 `name` / `description` / metadata 做 deterministic metadata routing；仍无命中时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时仅保留 repository-backed deterministic fallback，用于本地测试和 demo。空 user message 返回稳定 `400 knowledge_chat_message_required`；显式 mention 找不到可访问知识库返回 `400 knowledge_mention_not_found`；缺失 base 返回 `404 knowledge_base_not_found`；未授权 base 返回 `403 knowledge_permission_denied`；SDK embedding/vector/generation 失败返回 `503 knowledge_chat_failed`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
+当前 `knowledge-server` 横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 SDK RAG：检索前通过 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 解析路由，兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 按知识库 id / name 绑定范围；没有 mention 时，用问题 tokens 与可访问知识库 `name` / `description` / metadata 做 deterministic metadata routing；仍无命中时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`model` 传入 `RagModelProfileSummary.id`；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，先持久化 user message；非流式成功或 SSE `rag.completed` 后持久化 assistant message，包含 answer、citations、route、diagnostics、traceId 和 modelProfileId。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时仅保留 repository-backed deterministic fallback，用于本地测试和 demo。空 user message 返回稳定 `400 knowledge_chat_message_required`；显式 mention 找不到可访问知识库返回 `400 knowledge_mention_not_found`；缺失 base 返回 `404 knowledge_base_not_found`；未授权 base 返回 `403 knowledge_permission_denied`；禁用或不存在的 model profile 返回 `rag_model_profile_disabled` / `rag_model_profile_not_found`；SDK embedding/vector/generation 失败返回 `503 knowledge_chat_failed`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
 
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 
@@ -683,13 +700,14 @@ Citations are service-generated from retrieval hits. Clients must not trust mode
 
 Endpoint contract:
 
-| Method | Path                          | Query / Body                                           | Response                                                                                 | 主要错误码                                                                                                                                                                                                      | 权限                                        |
-| ------ | ----------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| POST   | `/chat`                       | body: `ChatRequest`                                    | `ChatResponse`                                                                           | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_chat_message_required`, `knowledge_mention_not_found`, `knowledge_base_not_found`, `knowledge_permission_denied`, `knowledge_chat_failed` | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/conversations`              | query: `PageQuery & { knowledgeBaseId?: ID }`          | `PageResult<{ id: ID; title?: string; createdAt: ISODateTime; updatedAt: ISODateTime }>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                                       | owner, admin, maintainer, evaluator, viewer |
-| GET    | `/conversations/:id/messages` | path: `id`; query: `PageQuery`                         | `PageResult<ChatMessage>`                                                                | `auth_unauthorized`, `auth_forbidden`, `conversation_not_found`, `validation_error`                                                                                                                             | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                                                                            | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                                                                                                                  | owner, admin, maintainer, evaluator, viewer |
-| POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                                                                               | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`                                                                                                        | owner, admin, maintainer, evaluator         |
+| Method | Path                          | Query / Body                                           | Response                                | 主要错误码                                                                                                                                                                                                      | 权限                                        |
+| ------ | ----------------------------- | ------------------------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| POST   | `/chat`                       | body: `ChatRequest`                                    | `ChatResponse`                          | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_chat_message_required`, `knowledge_mention_not_found`, `knowledge_base_not_found`, `knowledge_permission_denied`, `knowledge_chat_failed` | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/rag/model-profiles`         | none                                                   | `{ items: RagModelProfileSummary[] }`   | `auth_unauthorized`, `auth_forbidden`                                                                                                                                                                           | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations`              | query: `PageQuery`                                     | `PageResult<KnowledgeChatConversation>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                                                                       | owner, admin, maintainer, evaluator, viewer |
+| GET    | `/conversations/:id/messages` | path: `id`; query: `PageQuery`                         | `PageResult<ChatMessage>`               | `auth_unauthorized`, `auth_forbidden`, `conversation_not_found`, `validation_error`                                                                                                                             | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                           | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                                                                                                                  | owner, admin, maintainer, evaluator, viewer |
+| POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                              | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`                                                                                                        | owner, admin, maintainer, evaluator         |
 
 ## 8. Observability
 

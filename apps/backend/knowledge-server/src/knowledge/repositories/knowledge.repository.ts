@@ -39,6 +39,7 @@ export interface KnowledgeRepository {
   saveChunks(documentId: string, chunks: DocumentChunkRecord[]): Promise<DocumentChunkRecord[]>;
   listChunks(documentId: string): Promise<DocumentChunkRecord[]>;
   createChatConversation(input: {
+    id?: string;
     userId: string;
     title: string;
     activeModelProfileId: string;

@@ -309,6 +309,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
   }
 
   async createChatConversation(input: {
+    id?: string;
     userId: string;
     title: string;
     activeModelProfileId: string;
@@ -317,7 +318,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
       `insert into knowledge_chat_conversations (id, user_id, title, active_model_profile_id)
        values ($1, $2, $3, $4)
        returning id, user_id, title, active_model_profile_id, created_at, updated_at`,
-      [`conv_${randomUUID()}`, input.userId, input.title, input.activeModelProfileId]
+      [input.id ?? `conv_${randomUUID()}`, input.userId, input.title, input.activeModelProfileId]
     );
     return mapChatConversation(requiredRow(result.rows[0], 'knowledge chat conversation'));
   }

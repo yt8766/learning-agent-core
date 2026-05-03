@@ -149,13 +149,14 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
   }
 
   async createChatConversation(input: {
+    id?: string;
     userId: string;
     title: string;
     activeModelProfileId: string;
   }): Promise<KnowledgeChatConversationRecord> {
     const now = new Date().toISOString();
     const conversation: KnowledgeChatConversationRecord = {
-      id: `conv_${randomUUID()}`,
+      id: input.id ?? `conv_${randomUUID()}`,
       userId: input.userId,
       title: input.title,
       activeModelProfileId: input.activeModelProfileId,
