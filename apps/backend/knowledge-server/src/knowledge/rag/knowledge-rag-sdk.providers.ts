@@ -8,6 +8,7 @@ import type {
 } from '@agent/knowledge';
 
 import type { KnowledgeSdkRuntimeProviderValue } from '../runtime/knowledge-sdk-runtime.provider';
+import type { RagModelProfile } from '../domain/knowledge-document.types';
 
 export interface KnowledgeRagPlannerProviderOptions {
   preferredKnowledgeBaseIds?: string[];
@@ -50,7 +51,8 @@ export function createDeterministicKnowledgeRagPlannerProvider(
 }
 
 export function createKnowledgeRagAnswerProvider(
-  sdkRuntime: KnowledgeSdkRuntimeProviderValue
+  sdkRuntime: KnowledgeSdkRuntimeProviderValue,
+  modelProfile?: Pick<RagModelProfile, 'answerModelId'>
 ): KnowledgeServerRagAnswerProvider {
   if (sdkRuntime.enabled) {
     let lastError: Error | undefined;
@@ -61,6 +63,7 @@ export function createKnowledgeRagAnswerProvider(
         lastError = undefined;
         const generated = await chatProvider
           .generate({
+            ...(modelProfile?.answerModelId ? { model: modelProfile.answerModelId } : {}),
             messages: buildSdkChatMessages(input),
             metadata: input.metadata
           })
@@ -87,6 +90,7 @@ export function createKnowledgeRagAnswerProvider(
               lastError = undefined;
               try {
                 for await (const event of stream({
+                  ...(modelProfile?.answerModelId ? { model: modelProfile.answerModelId } : {}),
                   messages: buildSdkChatMessages(input),
                   metadata: input.metadata
                 })) {

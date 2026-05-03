@@ -217,6 +217,7 @@ export {
   HybridRetrievalDiagnosticsSchema,
   HybridRetrievalModeSchema,
   HybridRetrieverIdSchema,
+  RetrievalDiagnosticsSchema,
   RetrievalFusionStrategyNameSchema
 } from './runtime/types/retrieval-runtime.types';
 export { DefaultContextAssembler } from './runtime/defaults/default-context-assembler';
@@ -238,6 +239,7 @@ export {
 } from './runtime/defaults/retrieval-runtime-defaults';
 export type { KnowledgeRetrievalRunOptions } from './runtime/pipeline/run-knowledge-retrieval';
 export { runKnowledgeRetrieval } from './runtime/pipeline/run-knowledge-retrieval';
+export * from './rag';
 export * from './runtime/local-knowledge-facade';
 export * from './runtime/local-knowledge-store';
 export * from './runtime/local-knowledge-source-ingestion';

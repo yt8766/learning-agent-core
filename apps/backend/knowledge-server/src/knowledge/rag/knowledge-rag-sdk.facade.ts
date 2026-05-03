@@ -41,7 +41,7 @@ export class KnowledgeRagSdkFacade {
 
   async answer(input: KnowledgeRagSdkFacadeAnswerInput): Promise<KnowledgeChatResponse> {
     try {
-      const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime);
+      const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime, input.modelProfile);
       const result = await runKnowledgeRag({
         query: input.request.message,
         accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
@@ -68,7 +68,7 @@ export class KnowledgeRagSdkFacade {
   }
 
   async *stream(input: KnowledgeRagSdkFacadeAnswerInput): AsyncIterable<KnowledgeRagStreamEvent> {
-    const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime);
+    const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime, input.modelProfile);
     for await (const event of streamKnowledgeRag({
       query: input.request.message,
       accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
