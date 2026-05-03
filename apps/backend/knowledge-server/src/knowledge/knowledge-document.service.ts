@@ -170,12 +170,12 @@ export class KnowledgeDocumentService {
 
   async chat(actor: KnowledgeActor, input: KnowledgeChatRequest): Promise<KnowledgeChatResponse> {
     const request = normalizeChatRequest(input);
-    return this.ragService.answer(actor, request);
+    return this.ragService.answer(actor, request, this.resolveModelProfile(input.model));
   }
 
   streamChat(actor: KnowledgeActor, input: KnowledgeChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
     const request = normalizeChatRequest(input);
-    return this.ragService.stream(actor, request);
+    return this.ragService.stream(actor, request, this.resolveModelProfile(input.model));
   }
 
   listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
@@ -234,6 +234,14 @@ export class KnowledgeDocumentService {
     }
   }
 
+  private resolveModelProfile(model: string | undefined) {
+    try {
+      return this.modelProfiles.resolveEnabled(normalizeChatModelProfileId(model));
+    } catch (error) {
+      throw toRagModelProfileServiceError(error);
+    }
+  }
+
   private withProgress(
     job: DocumentProcessingJobRecord,
     document: KnowledgeDocumentRecord
@@ -253,6 +261,23 @@ export class KnowledgeDocumentService {
       }
     };
   }
+}
+
+function normalizeChatModelProfileId(model: string | undefined): string | undefined {
+  if (model === 'knowledge-default' || model === 'knowledge-rag') {
+    return undefined;
+  }
+  return model;
+}
+
+function toRagModelProfileServiceError(error: unknown): KnowledgeServiceError {
+  if (error instanceof Error && error.message === 'rag_model_profile_disabled') {
+    return new KnowledgeServiceError('rag_model_profile_disabled' as never, 'RAG model profile is disabled.');
+  }
+  if (error instanceof Error && error.message === 'rag_model_profile_not_found') {
+    return new KnowledgeServiceError('rag_model_profile_not_found' as never, 'RAG model profile was not found.');
+  }
+  throw error;
 }
 
 export interface PageQuery {
