@@ -71,7 +71,7 @@ export const KnowledgeChatJsonValueSchema: z.ZodType<
 > = z.lazy(() =>
   z.union([
     z.string(),
-    z.number(),
+    z.number().finite(),
     z.boolean(),
     z.null(),
     z.array(KnowledgeChatJsonValueSchema),
@@ -80,6 +80,85 @@ export const KnowledgeChatJsonValueSchema: z.ZodType<
 );
 
 export const KnowledgeChatJsonObjectSchema = z.record(z.string(), KnowledgeChatJsonValueSchema);
+
+export const KnowledgeChatRouteReasonSchema = z.enum([
+  'explicit_mention',
+  'planner_selected',
+  'fallback_all',
+  'legacy_ids',
+  'default'
+]);
+
+export const KnowledgeChatRouteSchema = z
+  .object({
+    requestedMentions: z.array(z.string().min(1)).default([]),
+    selectedKnowledgeBaseIds: z.array(z.string().min(1)).default([]),
+    reason: KnowledgeChatRouteReasonSchema
+  })
+  .strict();
+
+export const KnowledgeChatRoutingDecisionSchema = z
+  .object({
+    knowledgeBaseId: z.string().min(1).optional(),
+    decision: z.enum(['selected', 'rejected', 'fallback']).optional(),
+    reason: z.string().trim().min(1).optional(),
+    confidence: z.number().finite().min(0).max(1).optional()
+  })
+  .strict();
+
+export const KnowledgeChatPlannerDiagnosticsSchema = z
+  .object({
+    queryVariants: z.array(z.string().min(1)),
+    selectedKnowledgeBaseIds: z.array(z.string().min(1)),
+    routingDecisions: z.array(KnowledgeChatRoutingDecisionSchema),
+    confidence: z.number().finite().min(0).max(1),
+    fallbackApplied: z.boolean(),
+    fallbackReason: z.string().trim().min(1).optional()
+  })
+  .strict();
+
+export const KnowledgeChatExecutedQuerySchema = z
+  .object({
+    query: z.string().min(1),
+    mode: z.enum(['hybrid', 'vector', 'keyword', 'none', 'vector-only', 'keyword-only']),
+    hitCount: z.number().int().nonnegative()
+  })
+  .strict();
+
+export const KnowledgeChatRetrievalDiagnosticsSchema = z
+  .object({
+    effectiveSearchMode: z.enum(['hybrid', 'vector', 'keyword', 'none', 'vector-only', 'keyword-only']),
+    executedQueries: z.array(KnowledgeChatExecutedQuerySchema),
+    vectorHitCount: z.number().int().nonnegative(),
+    keywordHitCount: z.number().int().nonnegative(),
+    finalHitCount: z.number().int().nonnegative()
+  })
+  .strict();
+
+export const KnowledgeChatGenerationDiagnosticsSchema = z
+  .object({
+    provider: z.string().trim().min(1),
+    model: z.string().trim().min(1),
+    tokens: z
+      .object({
+        input: z.number().int().nonnegative().optional(),
+        output: z.number().int().nonnegative().optional(),
+        total: z.number().int().nonnegative().optional()
+      })
+      .strict()
+      .optional(),
+    durationMs: z.number().finite().nonnegative().optional(),
+    duration: z.number().finite().nonnegative().optional()
+  })
+  .strict();
+
+export const KnowledgeChatDiagnosticsSchema = z
+  .object({
+    planner: KnowledgeChatPlannerDiagnosticsSchema.optional(),
+    retrieval: KnowledgeChatRetrievalDiagnosticsSchema.optional(),
+    generation: KnowledgeChatGenerationDiagnosticsSchema.optional()
+  })
+  .strict();
 
 export const KnowledgeChatCitationSchema = z
   .object({
@@ -107,7 +186,7 @@ export const KnowledgeChatMessageFeedbackSchema = z
         'other'
       ])
       .optional(),
-    comment: z.string().max(2000).optional()
+    comment: z.string().trim().min(1).max(2000).optional()
   })
   .strict();
 
@@ -121,8 +200,8 @@ export const KnowledgeChatMessageRecordSchema = z
     modelProfileId: z.string().min(1).optional(),
     traceId: z.string().min(1).optional(),
     citations: z.array(KnowledgeChatCitationSchema),
-    route: KnowledgeChatJsonObjectSchema.optional(),
-    diagnostics: KnowledgeChatJsonObjectSchema.optional(),
+    route: KnowledgeChatRouteSchema.optional(),
+    diagnostics: KnowledgeChatDiagnosticsSchema.optional(),
     feedback: KnowledgeChatMessageFeedbackSchema.optional(),
     createdAt: z.string().min(1)
   })

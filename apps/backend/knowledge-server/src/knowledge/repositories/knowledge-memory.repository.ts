@@ -17,6 +17,7 @@ import type {
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import type { KnowledgeUploadRecord } from '../domain/knowledge-upload.types';
+import { CreateKnowledgeChatMessageRecordInputSchema } from '../domain/knowledge-document.schemas';
 import type { KnowledgeRepository } from './knowledge.repository';
 
 @Injectable()
@@ -177,30 +178,31 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
   }
 
   async appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord> {
-    const conversation = this.chatConversations.get(input.conversationId);
-    if (!conversation || conversation.userId !== input.userId) {
+    const messageInput = CreateKnowledgeChatMessageRecordInputSchema.parse(input);
+    const conversation = this.chatConversations.get(messageInput.conversationId);
+    if (!conversation || conversation.userId !== messageInput.userId) {
       throw new Error('knowledge_chat_conversation_not_found');
     }
 
     const now = new Date().toISOString();
     const message: KnowledgeChatMessageRecord = {
       id: `msg_${randomUUID()}`,
-      conversationId: input.conversationId,
-      userId: input.userId,
-      role: input.role,
-      content: input.content,
-      modelProfileId: input.modelProfileId,
-      traceId: input.traceId,
-      citations: input.citations ?? [],
-      route: input.route,
-      diagnostics: input.diagnostics,
-      feedback: input.feedback,
+      conversationId: messageInput.conversationId,
+      userId: messageInput.userId,
+      role: messageInput.role,
+      content: messageInput.content,
+      modelProfileId: messageInput.modelProfileId,
+      traceId: messageInput.traceId,
+      citations: messageInput.citations ?? [],
+      route: messageInput.route,
+      diagnostics: messageInput.diagnostics,
+      feedback: messageInput.feedback,
       createdAt: now
     };
-    const messages = this.chatMessages.get(input.conversationId) ?? [];
+    const messages = this.chatMessages.get(messageInput.conversationId) ?? [];
     messages.push(cloneChatMessage(message));
-    this.chatMessages.set(input.conversationId, messages);
-    this.chatConversations.set(input.conversationId, { ...conversation, updatedAt: now });
+    this.chatMessages.set(messageInput.conversationId, messages);
+    this.chatConversations.set(messageInput.conversationId, { ...conversation, updatedAt: now });
 
     return cloneChatMessage(message);
   }

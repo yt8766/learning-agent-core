@@ -1,5 +1,6 @@
 import type { KnowledgeBase, KnowledgeBaseMember, KnowledgeBaseMemberRole } from '@agent/core';
 
+import { KnowledgeChatMessageRecordSchema } from '../domain/knowledge-document.schemas';
 import type {
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
@@ -111,20 +112,20 @@ export function mapChatConversation(row: Record<string, unknown>): KnowledgeChat
 }
 
 export function mapChatMessage(row: Record<string, unknown>): KnowledgeChatMessageRecord {
-  return {
+  return KnowledgeChatMessageRecordSchema.parse({
     id: String(row.id),
     conversationId: String(row.conversation_id),
     userId: String(row.user_id),
-    role: row.role as KnowledgeChatMessageRecord['role'],
+    role: row.role,
     content: String(row.content),
     modelProfileId: row.model_profile_id ? String(row.model_profile_id) : undefined,
     traceId: row.trace_id ? String(row.trace_id) : undefined,
-    citations: parseJson(row.citations, []) as KnowledgeChatMessageRecord['citations'],
-    route: parseJson(row.route, undefined) as KnowledgeChatMessageRecord['route'],
-    diagnostics: parseJson(row.diagnostics, undefined) as KnowledgeChatMessageRecord['diagnostics'],
-    feedback: parseJson(row.feedback, undefined) as KnowledgeChatMessageRecord['feedback'],
+    citations: parseJson(row.citations, []),
+    route: parseJson(row.route, undefined),
+    diagnostics: parseJson(row.diagnostics, undefined),
+    feedback: parseJson(row.feedback, undefined),
     createdAt: toIsoString(row.created_at)
-  };
+  });
 }
 
 function parseJsonObject(value: unknown): Record<string, unknown> {
