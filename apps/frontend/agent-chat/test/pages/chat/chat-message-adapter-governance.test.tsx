@@ -13,6 +13,22 @@ vi.mock('@ant-design/x-markdown', () => ({
 }));
 
 vi.mock('@ant-design/x', async () => ({
+  Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
+    <section>
+      <div>{title}</div>
+      <div>{children}</div>
+    </section>
+  ),
+  ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
+    <section>
+      {items?.map((item, index) => (
+        <article key={index}>
+          <div>{item.title}</div>
+          <div>{item.description}</div>
+        </article>
+      ))}
+    </section>
+  ),
   Sources: ({ title, items }: { title?: React.ReactNode; items?: Array<{ title: React.ReactNode }> }) => (
     <div>
       <span>{title}</span>
@@ -59,6 +75,7 @@ describe('chat-message-adapter governance summary', () => {
       thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }],
       cognitionTargetMessageId: 'assistant-1',
       cognitionExpanded: false,
+      cognitionDurationLabel: '约 2 秒',
       cognitionCountLabel: '1 条推理'
     });
 
@@ -67,9 +84,8 @@ describe('chat-message-adapter governance summary', () => {
 
     expect(html).toContain('chatx-inline-think');
     expect(html).not.toContain('chatx-governance-summary');
-    expect(html).toContain('已思考（用时约 2 秒）');
-    expect(html).toContain('用现有上下文判断');
-    expect(html).not.toContain('先判断问题类型，再选择执行路径');
+    expect(html).toContain('先判断问题类型，再选择执行路径');
+    expect(html).not.toContain('已思考（用时约 2 秒）');
     expect(html).not.toContain('ThoughtChain timeline');
   });
 });
