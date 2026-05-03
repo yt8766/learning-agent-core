@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatEventRecord } from '@agent/core';
 
 import { ChatService } from '../../src/chat/chat.service';
+import { buildChatResponseStepEvent, buildChatResponseStepSnapshot } from '../../src/chat/chat-response-steps.adapter';
+
+const at = '2026-05-03T09:00:00.000Z';
 
 describe('ChatService response step projections', () => {
   it('projects historical response steps and a completion snapshot from ordered session events', () => {
@@ -22,7 +25,14 @@ describe('ChatService response step projections', () => {
         payload: {
           messageId: 'assistant-1',
           title: 'Read chat-message-adapter.tsx',
-          path: 'apps/frontend/agent-chat/src/pages/chat/chat-message-adapter.tsx'
+          path: 'apps/frontend/agent-chat/src/pages/chat/chat-message-adapter.tsx',
+          agentScope: 'main',
+          agentId: 'supervisor',
+          agentLabel: '首辅',
+          ownerLabel: '主 Agent',
+          nodeId: 'request-received',
+          nodeLabel: '接收请求',
+          toNodeId: 'route-selection'
         }
       },
       {
@@ -48,7 +58,14 @@ describe('ChatService response step projections', () => {
             sequence: 0,
             phase: 'explore',
             status: 'running',
-            title: 'Read chat-message-adapter.tsx'
+            title: 'Read chat-message-adapter.tsx',
+            agentScope: 'main',
+            agentId: 'supervisor',
+            agentLabel: '首辅',
+            ownerLabel: '主 Agent',
+            nodeId: 'request-received',
+            nodeLabel: '接收请求',
+            toNodeId: 'route-selection'
           })
         })
       })
@@ -314,6 +331,46 @@ describe('ChatService response step projections', () => {
     );
   });
 });
+
+describe('chat response steps Agent OS grouping', () => {
+  it('marks snapshots with command and verification steps as agent execution', () => {
+    const command = buildAgentOsStep('execution_step_started', 0, {
+      title: 'Ran pnpm --dir apps/frontend/agent-chat exec vitest run test/components/chat-response-steps.test.tsx',
+      command: 'pnpm --dir apps/frontend/agent-chat exec vitest run test/components/chat-response-steps.test.tsx'
+    });
+    const finished = buildAgentOsStep('final_response_completed', 1, { title: '整理最终回复' });
+    const snapshot = buildAgentOsSnapshot([command, finished]);
+
+    expect(snapshot.displayMode).toBe('agent_execution');
+    expect(snapshot.summary.title).toBe('已处理 1 个动作');
+    expect(snapshot.agentOsGroups?.map(group => group.kind)).toEqual(['execution', 'delivery']);
+  });
+
+  it('keeps final-response-only snapshots as answer only', () => {
+    const snapshot = buildAgentOsSnapshot([buildAgentOsStep('final_response_completed', 0, {})]);
+
+    expect(snapshot.displayMode).toBe('answer_only');
+    expect(snapshot.agentOsGroups).toEqual([]);
+    expect(snapshot.summary.title).not.toContain('1 个步骤');
+  });
+});
+
+function buildAgentOsStep(type: ChatEventRecord['type'], sequence: number, payload: ChatEventRecord['payload']) {
+  return buildChatResponseStepEvent(
+    { id: `event-${sequence}`, sessionId: 'session-1', type, at, payload } as ChatEventRecord,
+    { messageId: 'assistant-1', sequence }
+  )!.step;
+}
+
+function buildAgentOsSnapshot(steps: ReturnType<typeof buildAgentOsStep>[]) {
+  return buildChatResponseStepSnapshot({
+    sessionId: 'session-1',
+    messageId: 'assistant-1',
+    status: 'completed',
+    steps,
+    updatedAt: at
+  });
+}
 
 function createRealChatServiceWithEvents(events: ChatEventRecord[]) {
   return new ChatService(

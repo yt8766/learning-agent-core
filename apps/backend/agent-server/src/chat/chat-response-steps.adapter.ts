@@ -3,13 +3,16 @@ import { z } from 'zod';
 import {
   ChatResponseStepEventSchema,
   ChatResponseStepSnapshotSchema,
+  type ChatAgentOsGroup,
+  type ChatAgentOsGroupKind,
   type ChatEventRecord,
   type ChatResponseStepEvent,
   type ChatResponseStepPhase,
   type ChatResponseStepRecord,
   type ChatResponseStepSnapshot,
   type ChatResponseStepStatus,
-  type ChatResponseStepTarget
+  type ChatResponseStepTarget,
+  type ChatTurnDisplayMode
 } from '@agent/core';
 
 type BuildStepContext = {
@@ -33,7 +36,16 @@ const StepPayloadSchema = z
     file: z.string().optional(),
     command: z.string().optional(),
     url: z.string().optional(),
-    approvalId: z.string().optional()
+    approvalId: z.string().optional(),
+    agentScope: z.enum(['main', 'sub', 'system']).optional(),
+    agentId: z.string().optional(),
+    agentLabel: z.string().optional(),
+    ownerLabel: z.string().optional(),
+    nodeId: z.string().optional(),
+    nodeLabel: z.string().optional(),
+    fromNodeId: z.string().optional(),
+    toNodeId: z.string().optional(),
+    durationMs: z.number().int().nonnegative().optional()
   })
   .passthrough();
 
@@ -82,6 +94,15 @@ export function buildChatResponseStepEvent(
     title: payload.title ?? fallbackTitle(sourceEvent.type),
     detail: payload.summary,
     target: buildTarget(payload, mapping.phase),
+    agentScope: payload.agentScope ?? fallbackAgentScope(sourceEvent.type),
+    agentId: payload.agentId,
+    agentLabel: payload.agentLabel ?? fallbackAgentLabel(sourceEvent.type),
+    ownerLabel: payload.ownerLabel ?? fallbackOwnerLabel(payload.agentScope ?? fallbackAgentScope(sourceEvent.type)),
+    nodeId: payload.nodeId ?? sourceEvent.type,
+    nodeLabel: payload.nodeLabel ?? fallbackNodeLabel(sourceEvent.type),
+    fromNodeId: payload.fromNodeId,
+    toNodeId: payload.toNodeId,
+    durationMs: payload.durationMs,
     startedAt: sourceEvent.at,
     completedAt: isTerminalStepStatus(mapping.status) ? sourceEvent.at : undefined,
     sourceEventId: sourceEvent.id,
@@ -100,16 +121,28 @@ export function buildChatResponseStepSnapshot(input: BuildSnapshotInput): ChatRe
   const runningCount = input.steps.filter(step => step.status === 'running' || step.status === 'queued').length;
   const blockedCount = input.steps.filter(step => step.status === 'blocked').length;
   const failedCount = input.steps.filter(step => step.status === 'failed').length;
+  const displayMode = resolveDisplayMode(input.steps);
+  const agentOsGroups = buildAgentOsGroups(input.steps, displayMode);
+  const visibleActionCount = agentOsGroups.reduce(
+    (total, group) => total + group.steps.filter(step => !isLowValueDeliveryStep(step)).length,
+    0
+  );
 
   return ChatResponseStepSnapshotSchema.parse({
     projection: 'chat_response_steps',
     sessionId: input.sessionId,
     messageId: input.messageId,
     status: input.status,
+    displayMode,
     steps: input.steps,
+    agentOsGroups,
     summary: {
       title:
-        input.status === 'completed' ? `已处理 ${input.steps.length} 个步骤` : `处理中 ${input.steps.length} 个步骤`,
+        displayMode === 'answer_only'
+          ? '已思考'
+          : input.status === 'completed'
+            ? appendDuration(`已处理 ${visibleActionCount} 个动作`, input.steps)
+            : appendDuration(`处理中 ${visibleActionCount} 个动作`, input.steps),
       completedCount,
       runningCount,
       blockedCount,
@@ -117,6 +150,153 @@ export function buildChatResponseStepSnapshot(input: BuildSnapshotInput): ChatRe
     },
     updatedAt: input.updatedAt
   });
+}
+
+function resolveDisplayMode(steps: ChatResponseStepRecord[]): ChatTurnDisplayMode {
+  return steps.some(hasExecutionSignal) ? 'agent_execution' : 'answer_only';
+}
+
+function hasExecutionSignal(step: ChatResponseStepRecord) {
+  if (isLowValueDeliveryStep(step)) {
+    return false;
+  }
+  return (
+    step.agentScope === 'sub' ||
+    step.phase === 'execute' ||
+    step.phase === 'edit' ||
+    step.phase === 'verify' ||
+    step.target?.kind === 'command' ||
+    step.target?.kind === 'file' ||
+    step.target?.kind === 'approval' ||
+    step.target?.kind === 'test'
+  );
+}
+
+const AGENT_OS_GROUP_TITLES: Record<ChatAgentOsGroupKind, string> = {
+  thinking: '思考',
+  exploration: '上下文',
+  execution: '执行',
+  collaboration: '协作',
+  verification: '验证',
+  delivery: '交付'
+};
+
+function buildAgentOsGroups(steps: ChatResponseStepRecord[], displayMode: ChatTurnDisplayMode): ChatAgentOsGroup[] {
+  if (displayMode === 'answer_only') {
+    return [];
+  }
+
+  const grouped = new Map<ChatAgentOsGroupKind, ChatResponseStepRecord[]>();
+  for (const step of steps) {
+    const kind = resolveAgentOsGroupKind(step);
+    const groupSteps = grouped.get(kind) ?? [];
+    groupSteps.push(toUserReadableStep(step));
+    grouped.set(kind, groupSteps);
+  }
+
+  return (Object.keys(AGENT_OS_GROUP_TITLES) as ChatAgentOsGroupKind[]).flatMap(kind => {
+    const groupSteps = grouped.get(kind);
+    if (!groupSteps?.length) {
+      return [];
+    }
+    return [
+      {
+        kind,
+        title: AGENT_OS_GROUP_TITLES[kind],
+        summary: summarizeAgentOsGroup(kind, groupSteps),
+        status: deriveGroupStatus(groupSteps),
+        steps: groupSteps
+      }
+    ];
+  });
+}
+
+function resolveAgentOsGroupKind(step: ChatResponseStepRecord): ChatAgentOsGroupKind {
+  if (step.agentScope === 'sub') {
+    return 'collaboration';
+  }
+  if (
+    step.phase === 'context' ||
+    step.phase === 'explore' ||
+    step.target?.kind === 'file' ||
+    step.target?.kind === 'url'
+  ) {
+    return 'exploration';
+  }
+  if (
+    step.phase === 'approve' ||
+    step.phase === 'verify' ||
+    step.target?.kind === 'approval' ||
+    step.target?.kind === 'test'
+  ) {
+    return 'verification';
+  }
+  if (step.phase === 'execute' || step.phase === 'edit' || step.target?.kind === 'command') {
+    return 'execution';
+  }
+  if (step.phase === 'summarize') {
+    return 'delivery';
+  }
+  return 'thinking';
+}
+
+function toUserReadableStep(step: ChatResponseStepRecord): ChatResponseStepRecord {
+  const readableStep = { ...step };
+  delete readableStep.nodeId;
+  delete readableStep.nodeLabel;
+  delete readableStep.fromNodeId;
+  delete readableStep.toNodeId;
+
+  if (isLowValueDeliveryStep(step)) {
+    return { ...readableStep, title: '最终回复完成' };
+  }
+  if (step.target?.kind === 'file') {
+    return { ...readableStep, title: `查看 ${step.target.label}` };
+  }
+  if (step.agentScope === 'sub') {
+    return { ...readableStep, title: step.agentLabel ? `${step.agentLabel} 完成协作任务` : '子 Agent 完成协作任务' };
+  }
+  return readableStep;
+}
+
+function deriveGroupStatus(steps: ChatResponseStepRecord[]): ChatResponseStepStatus {
+  if (steps.some(step => step.status === 'failed')) {
+    return 'failed';
+  }
+  if (steps.some(step => step.status === 'blocked')) {
+    return 'blocked';
+  }
+  if (steps.some(step => step.status === 'cancelled')) {
+    return 'cancelled';
+  }
+  if (steps.some(step => step.status === 'running' || step.status === 'queued')) {
+    return 'running';
+  }
+  return 'completed';
+}
+
+function summarizeAgentOsGroup(kind: ChatAgentOsGroupKind, steps: ChatResponseStepRecord[]) {
+  if (kind === 'execution') {
+    const commandCount = steps.filter(step => step.target?.kind === 'command').length;
+    return commandCount > 0 ? `Ran ${commandCount} command(s)` : `执行 ${steps.length} 项`;
+  }
+  if (kind === 'exploration') {
+    return `已查看 ${steps.length} 个上下文`;
+  }
+  if (kind === 'collaboration') {
+    return `协作 ${steps.length} 项`;
+  }
+  if (kind === 'verification') {
+    return `验证 ${steps.length} 项`;
+  }
+  if (kind === 'delivery') {
+    return '最终交付已整理';
+  }
+  return `思考 ${steps.length} 项`;
+}
+
+function isLowValueDeliveryStep(step: ChatResponseStepRecord) {
+  return step.sourceEventType === 'final_response_completed' || step.sourceEventType === 'session_finished';
 }
 
 function buildTarget(
@@ -142,8 +322,72 @@ function buildTarget(
   return undefined;
 }
 
+function appendDuration(title: string, steps: ChatResponseStepRecord[]) {
+  const durationMs = steps.reduce((total, step) => total + (step.durationMs ?? 0), 0);
+  if (durationMs <= 0) {
+    return title;
+  }
+  return `${title} · 用时 ${formatDuration(durationMs)}`;
+}
+
+function formatDuration(durationMs: number) {
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+}
+
 function fallbackTitle(eventType: ChatEventRecord['type']) {
+  if (eventType === 'final_response_completed' || eventType === 'session_finished') {
+    return '整理最终答复';
+  }
   return eventType.split('_').join(' ');
+}
+
+function fallbackAgentScope(eventType: ChatEventRecord['type']) {
+  if (eventType === 'session_failed' || eventType === 'run_cancelled') {
+    return 'system' as const;
+  }
+  return 'main' as const;
+}
+
+function fallbackAgentLabel(eventType: ChatEventRecord['type']) {
+  if (eventType === 'final_response_completed' || eventType === 'session_finished') {
+    return '礼部';
+  }
+  if (eventType === 'review_completed') {
+    return '刑部';
+  }
+  if (eventType === 'tool_called' || eventType.startsWith('tool_stream_')) {
+    return '兵部';
+  }
+  return undefined;
+}
+
+function fallbackOwnerLabel(scope: 'main' | 'sub' | 'system') {
+  if (scope === 'sub') {
+    return '子 Agent';
+  }
+  if (scope === 'system') {
+    return '系统';
+  }
+  return '主 Agent';
+}
+
+function fallbackNodeLabel(eventType: ChatEventRecord['type']) {
+  if (eventType === 'final_response_completed' || eventType === 'session_finished') {
+    return '最终答复完成';
+  }
+  if (eventType === 'tool_called') {
+    return '工具调用';
+  }
+  if (eventType === 'review_completed') {
+    return '审查完成';
+  }
+  return undefined;
 }
 
 function isTerminalStepStatus(status: ChatResponseStepStatus) {
