@@ -50,16 +50,13 @@ describe('KnowledgeFrontendMvpController', () => {
   });
   it('answers chat lab requests from stored document chunks with citation projections', async () => {
     const { controller: frontend, upload, documents, baseId } = await createFrontendController();
-    const uploaded = await upload.uploadFile(actor, baseId, {
-      originalname: 'rotation-runbook.md',
-      mimetype: 'text/markdown',
-      size: Buffer.byteLength('Rotate signing keys every 90 days.\n\nEscalate expired credentials.'),
-      buffer: Buffer.from('Rotate signing keys every 90 days.\n\nEscalate expired credentials.')
-    });
     const { document } = await documents.createFromUpload(actor, baseId, {
-      uploadId: uploaded.uploadId,
-      objectKey: uploaded.objectKey,
-      filename: uploaded.filename,
+      ...(await uploadFixture(
+        upload,
+        baseId,
+        'rotation-runbook.md',
+        'Rotate signing keys every 90 days.\n\nEscalate expired credentials.'
+      )),
       title: 'Rotation Runbook'
     });
     await expect(
@@ -89,16 +86,8 @@ describe('KnowledgeFrontendMvpController', () => {
   it('accepts OpenAI-compatible chat completion requests for chat lab', async () => {
     const { controller: frontend, upload, documents, baseId } = await createFrontendController();
     const content = 'core包如何设计的：core 包采用 schema-first contract 设计，稳定 DTO 统一从 zod schema 推导。';
-    const uploaded = await upload.uploadFile(actor, baseId, {
-      originalname: 'core-design.md',
-      mimetype: 'text/markdown',
-      size: Buffer.byteLength(content),
-      buffer: Buffer.from(content)
-    });
     await documents.createFromUpload(actor, baseId, {
-      uploadId: uploaded.uploadId,
-      objectKey: uploaded.objectKey,
-      filename: uploaded.filename,
+      ...(await uploadFixture(upload, baseId, 'core-design.md', content)),
       title: 'Core Design'
     });
     await expect(
@@ -153,36 +142,33 @@ describe('KnowledgeFrontendMvpController', () => {
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
+  it('writes SSE error frames when stream iteration fails after headers are sent', async () => {
+    const chunks: string[] = [];
+    const controller = new KnowledgeFrontendMvpController({
+      streamChat: async function* () {
+        throw new KnowledgeServiceError('knowledge_permission_denied', '无权访问该知识库');
+        yield undefined as never;
+      }
+    } as unknown as KnowledgeDocumentService);
+    await expect(
+      controller.chat(actor, { message: 'private', stream: true }, createSseResponse(chunks))
+    ).resolves.toBeUndefined();
+    expect(chunks.join('')).toContain('event: rag.error');
+    expect(chunks.join('')).toContain('knowledge_permission_denied');
+  });
+
   it('routes chat retrieval to an explicitly mentioned knowledge base', async () => {
-    const {
-      controller: frontend,
-      upload,
-      documents,
-      knowledge,
-      baseId: engineeringBaseId
-    } = await createFrontendController();
-    const frontendBase = await knowledge.createBase(actor, {
+    const setup = await createFrontendController();
+    const frontendBase = await setup.knowledge.createBase(actor, {
       name: 'Frontend KB',
       description: 'React dynamic import guidance'
     });
-    await addReadyDocument(
-      upload,
-      documents,
-      engineeringBaseId,
-      'backend.md',
-      'Backend keys rotate every 90 days.',
-      'Backend Runbook'
-    );
-    await addReadyDocument(
-      upload,
-      documents,
-      frontendBase.id,
-      'frontend.md',
-      'Dynamic imports require explicit code splitting approval.',
-      'Frontend Guide'
-    );
+    await addReadyDocuments(setup, [
+      [setup.baseId, 'backend.md', 'Backend keys rotate every 90 days.', 'Backend Runbook'],
+      [frontendBase.id, 'frontend.md', 'Dynamic imports require explicit code splitting approval.', 'Frontend Guide']
+    ]);
     await expect(
-      frontend.chat(actor, {
+      setup.controller.chat(actor, {
         model: 'knowledge-rag',
         messages: [{ role: 'user', content: '@Frontend KB dynamic imports?' }],
         metadata: {
@@ -211,35 +197,22 @@ describe('KnowledgeFrontendMvpController', () => {
   });
 
   it('automatically routes chat retrieval by knowledge base metadata before searching chunks', async () => {
-    const {
-      controller: frontend,
-      upload,
-      documents,
-      knowledge,
-      baseId: engineeringBaseId
-    } = await createFrontendController();
-    const frontendBase = await knowledge.createBase(actor, {
+    const setup = await createFrontendController();
+    const frontendBase = await setup.knowledge.createBase(actor, {
       name: 'Frontend KB',
       description: 'frontend react import'
     });
-    await addReadyDocument(
-      upload,
-      documents,
-      engineeringBaseId,
-      'runtime.md',
-      'Runtime budgets control graph execution.',
-      'Runtime Guide'
-    );
-    await addReadyDocument(
-      upload,
-      documents,
-      frontendBase.id,
-      'frontend-routing.md',
-      'Dynamic imports are only allowed for explicit code splitting.',
-      'Frontend Routing'
-    );
+    await addReadyDocuments(setup, [
+      [setup.baseId, 'runtime.md', 'Runtime budgets control graph execution.', 'Runtime Guide'],
+      [
+        frontendBase.id,
+        'frontend-routing.md',
+        'Dynamic imports are only allowed for explicit code splitting.',
+        'Frontend Routing'
+      ]
+    ]);
     await expect(
-      frontend.chat(actor, {
+      setup.controller.chat(actor, {
         model: 'knowledge-rag',
         messages: [{ role: 'user', content: 'frontend dynamic imports' }],
         metadata: { debug: true },
@@ -252,35 +225,17 @@ describe('KnowledgeFrontendMvpController', () => {
   });
 
   it('falls back to all accessible knowledge bases when routing has no metadata hit', async () => {
-    const {
-      controller: frontend,
-      upload,
-      documents,
-      knowledge,
-      baseId: engineeringBaseId
-    } = await createFrontendController();
-    const operationsBase = await knowledge.createBase(actor, {
+    const setup = await createFrontendController();
+    const operationsBase = await setup.knowledge.createBase(actor, {
       name: 'Operations KB',
       description: 'incident response'
     });
-    await addReadyDocument(
-      upload,
-      documents,
-      engineeringBaseId,
-      'engineering.md',
-      'Shared policy requires design review.',
-      'Engineering Policy'
-    );
-    await addReadyDocument(
-      upload,
-      documents,
-      operationsBase.id,
-      'operations.md',
-      'Shared policy requires audit notes.',
-      'Operations Policy'
-    );
+    await addReadyDocuments(setup, [
+      [setup.baseId, 'engineering.md', 'Shared policy requires design review.', 'Engineering Policy'],
+      [operationsBase.id, 'operations.md', 'Shared policy requires audit notes.', 'Operations Policy']
+    ]);
     await expect(
-      frontend.chat(actor, {
+      setup.controller.chat(actor, {
         model: 'knowledge-rag',
         messages: [{ role: 'user', content: 'shared policy' }],
         stream: false
@@ -318,7 +273,7 @@ describe('KnowledgeFrontendMvpController', () => {
     );
   });
 
-  it('lists persisted conversations and messages', async () => {
+  it('lists persisted conversations and messages with service pagination', async () => {
     const { controller: frontend, repository } = await createFrontendController();
     const conversation = await repository.createChatConversation({
       userId: actor.userId,
@@ -327,17 +282,41 @@ describe('KnowledgeFrontendMvpController', () => {
     });
     for (const [role, content] of [
       ['user', '检索前技术名词'],
-      ['assistant', '依据如下。']
+      ['assistant', '依据如下。'],
+      ['assistant', '补充说明。']
     ] as const) {
       await repository.appendChatMessage({ conversationId: conversation.id, userId: actor.userId, role, content });
     }
-    const conversations = await frontend.listConversations(actor, {});
-    expect(conversations.items[0]).toMatchObject({
-      id: conversation.id,
+    await repository.createChatConversation({
+      userId: actor.userId,
+      title: '第二个会话',
       activeModelProfileId: 'coding-pro'
     });
-    const messages = await frontend.listConversationMessages(actor, conversation.id, {});
-    expect(messages.items.map(item => item.role)).toEqual(['user', 'assistant']);
+    const conversations = await frontend.listConversations(actor, {});
+    expect(conversations).toMatchObject({ total: 2, page: 1, pageSize: 20 });
+    expect(conversations.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: conversation.id })]));
+    await expect(frontend.listConversations(actor, { page: 2, pageSize: 1 })).resolves.toMatchObject({
+      items: [conversations.items[1]],
+      total: 2,
+      page: 2,
+      pageSize: 1
+    });
+    await expect(
+      frontend.listConversationMessages(actor, conversation.id, { page: 2, pageSize: 1 })
+    ).resolves.toMatchObject({
+      items: [expect.objectContaining({ role: 'assistant', content: '依据如下。' })],
+      total: 3,
+      page: 2,
+      pageSize: 1
+    });
+    await expect(
+      frontend.listConversationMessages(actor, 'conv_missing', { page: -1, pageSize: 500 })
+    ).resolves.toEqual({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 100
+    });
   });
 
   it('records chat lab message feedback through the frontend MVP endpoint', () => {
@@ -377,6 +356,14 @@ async function createFrontendController() {
   };
 }
 
+function createSseResponse(chunks: string[]) {
+  return {
+    setHeader: vi.fn(),
+    write: (chunk: string) => chunks.push(chunk),
+    end: () => chunks.push('[end]')
+  };
+}
+
 async function addReadyDocument(
   upload: KnowledgeUploadService,
   documents: KnowledgeDocumentService,
@@ -385,16 +372,27 @@ async function addReadyDocument(
   content: string,
   title: string
 ) {
+  return documents.createFromUpload(actor, baseId, {
+    ...(await uploadFixture(upload, baseId, filename, content)),
+    title
+  });
+}
+
+async function addReadyDocuments(
+  setup: Awaited<ReturnType<typeof createFrontendController>>,
+  documents: Array<[string, string, string, string]>
+) {
+  for (const [baseId, filename, content, title] of documents) {
+    await addReadyDocument(setup.upload, setup.documents, baseId, filename, content, title);
+  }
+}
+
+async function uploadFixture(upload: KnowledgeUploadService, baseId: string, filename: string, content: string) {
   const uploaded = await upload.uploadFile(actor, baseId, {
     originalname: filename,
     mimetype: filename.endsWith('.md') ? 'text/markdown' : 'text/plain',
     size: Buffer.byteLength(content),
     buffer: Buffer.from(content)
   });
-  return documents.createFromUpload(actor, baseId, {
-    uploadId: uploaded.uploadId,
-    objectKey: uploaded.objectKey,
-    filename: uploaded.filename,
-    title
-  });
+  return { uploadId: uploaded.uploadId, objectKey: uploaded.objectKey, filename: uploaded.filename };
 }

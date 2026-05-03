@@ -202,18 +202,18 @@ export class KnowledgeDocumentService {
   async listConversations(
     actor: KnowledgeActor,
     query: PageQuery = {}
-  ): Promise<{ items: KnowledgeChatConversationRecord[]; total: number }> {
-    void query;
-    return this.repository.listChatConversationsForUser(actor.userId);
+  ): Promise<PageResult<KnowledgeChatConversationRecord>> {
+    const pageInput = normalizePageQuery(query);
+    return paginate(await this.repository.listChatConversationsForUser(actor.userId), pageInput);
   }
 
   async listConversationMessages(
     actor: KnowledgeActor,
     conversationId: string,
     query: PageQuery = {}
-  ): Promise<{ items: KnowledgeChatMessageRecord[]; total: number }> {
-    void query;
-    return this.repository.listChatMessages(conversationId, actor.userId);
+  ): Promise<PageResult<KnowledgeChatMessageRecord>> {
+    const pageInput = normalizePageQuery(query);
+    return paginate(await this.repository.listChatMessages(conversationId, actor.userId), pageInput);
   }
 
   async deleteDocument(actor: KnowledgeActor, documentId: string): Promise<{ ok: true }> {
@@ -258,6 +258,18 @@ export class KnowledgeDocumentService {
 export interface PageQuery {
   page?: string | number;
   pageSize?: string | number;
+}
+
+interface PageInput {
+  page: number;
+  pageSize: number;
+}
+
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 function stripExtension(filename: string): string {
@@ -316,4 +328,26 @@ function createDefaultRagModelProfileService(): KnowledgeRagModelProfileService 
 function readModelEnv(name: string, fallback: string): string {
   const value = process.env[name]?.trim();
   return value ? value : fallback;
+}
+
+function normalizePageQuery(query: PageQuery): PageInput {
+  return {
+    page: readPositiveInteger(query.page, 1),
+    pageSize: Math.min(readPositiveInteger(query.pageSize, 20), 100)
+  };
+}
+
+function paginate<T>(result: { items: T[]; total: number }, input: PageInput): PageResult<T> {
+  const start = (input.page - 1) * input.pageSize;
+  return {
+    items: result.items.slice(start, start + input.pageSize),
+    total: result.total,
+    page: input.page,
+    pageSize: input.pageSize
+  };
+}
+
+function readPositiveInteger(value: string | number | undefined, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
 }

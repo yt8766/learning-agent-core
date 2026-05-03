@@ -104,6 +104,8 @@ export class KnowledgeFrontendMvpController {
           for await (const event of this.requireDocuments().streamChat(user, request)) {
             response.write(toSseFrame(event));
           }
+        } catch (error) {
+          response.write(toSseFrame(toSseErrorEvent(error)));
         } finally {
           response.end();
         }
@@ -241,6 +243,23 @@ export function toSseFrame(event: KnowledgeRagStreamEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 
+function toSseErrorEvent(error: unknown): KnowledgeRagStreamEvent {
+  const serviceError =
+    error instanceof KnowledgeServiceError
+      ? error
+      : new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
+  return {
+    runId: 'knowledge_frontend_stream',
+    type: 'rag.error',
+    error: {
+      code: 'unknown',
+      message: serviceError.message,
+      cause: serviceError.code
+    },
+    stage: 'answer'
+  };
+}
+
 function toKnowledgeHttpException(error: unknown): unknown {
   if (error instanceof ZodError) {
     return new BadRequestException({ code: 'validation_error', message: '请求参数不合法', details: error.issues });
@@ -263,6 +282,13 @@ function toKnowledgeHttpException(error: unknown): unknown {
     }
   }
   return error;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Knowledge RAG stream failed.';
 }
 
 function page<T>(items: T[]) {
