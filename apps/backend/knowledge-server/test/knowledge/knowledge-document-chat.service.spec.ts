@@ -127,6 +127,64 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     });
   });
 
+  it('persists user and assistant messages for non-stream chat', async () => {
+    const { documents, repository, baseId } = await createService(disabledSdkRuntime());
+    await seedDocument(repository, baseId, {
+      content: 'PreRetrievalPlanner 是检索前规划器，会生成 query rewrite 和 query variants。'
+    });
+
+    const response = await documents.chat(actor, {
+      model: 'coding-pro',
+      messages: [{ role: 'user', content: '检索前技术名词' }],
+      stream: false
+    });
+
+    const messages = await repository.listChatMessages(response.conversationId, actor.userId);
+    expect(messages.items).toEqual([
+      expect.objectContaining({
+        role: 'user',
+        content: '检索前技术名词',
+        modelProfileId: 'coding-pro'
+      }),
+      expect.objectContaining({
+        role: 'assistant',
+        content: response.answer,
+        traceId: response.traceId,
+        modelProfileId: 'coding-pro',
+        diagnostics: response.diagnostics,
+        citations: response.citations
+      })
+    ]);
+  });
+
+  it('persists final assistant message after rag.completed stream event', async () => {
+    const { documents, repository, baseId } = await createService(disabledSdkRuntime());
+    await seedDocument(repository, baseId, {
+      content: 'PreRetrievalPlanner stream completion should persist assistant messages.'
+    });
+    const events = [];
+
+    for await (const event of documents.streamChat(actor, {
+      model: 'coding-pro',
+      messages: [{ role: 'user', content: 'PreRetrievalPlanner stream completion' }],
+      stream: true
+    })) {
+      events.push(event);
+    }
+
+    const completed = events.find(event => event.type === 'rag.completed');
+    expect(completed).toBeDefined();
+    const conversations = await repository.listChatConversationsForUser(actor.userId);
+    expect(conversations.items).toHaveLength(1);
+    const messages = await repository.listChatMessages(conversations.items[0]!.id, actor.userId);
+    expect(messages.items.map(message => message.role)).toEqual(['user', 'assistant']);
+    expect(messages.items[1]).toMatchObject({
+      modelProfileId: 'coding-pro',
+      traceId: expect.stringMatching(/^trace_/),
+      diagnostics: expect.any(Object)
+    });
+  });
+
   it('falls back to repository keyword retrieval when SDK vector search fails', async () => {
     const search = vi.fn(async () => {
       throw new Error('vector backend unavailable');

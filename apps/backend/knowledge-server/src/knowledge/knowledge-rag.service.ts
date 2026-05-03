@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { KnowledgeChatRoutingError, resolveKnowledgeChatRoute, type KnowledgeRagStreamEvent } from '@agent/knowledge';
 
-import type { KnowledgeChatResponse, RagModelProfile } from './domain/knowledge-document.types';
+import type {
+  KnowledgeChatCitation,
+  KnowledgeChatResponse,
+  KnowledgeChatConversationRecord,
+  RagModelProfile
+} from './domain/knowledge-document.types';
 import type { NormalizedKnowledgeChatRequest } from './knowledge-document-chat.helpers';
 import { KnowledgeServiceError } from './knowledge.errors';
 import { KnowledgeTraceService } from './knowledge-trace.service';
@@ -23,8 +28,17 @@ export class KnowledgeRagService {
     request: NormalizedKnowledgeChatRequest,
     modelProfile?: RagModelProfile
   ): Promise<KnowledgeChatResponse> {
+    const conversation = await this.ensureConversation(actor, request, modelProfile);
+    const persistedRequest = { ...request, conversationId: conversation.id };
+    await this.repository.appendChatMessage({
+      conversationId: conversation.id,
+      userId: actor.userId,
+      role: 'user',
+      content: request.message,
+      modelProfileId: modelProfile?.id
+    });
     const accessibleBases = await this.repository.listBasesForUser(actor.userId);
-    const route = this.resolveRoute({ accessibleBases, request });
+    const route = this.resolveRoute({ accessibleBases, request: persistedRequest });
     for (const baseId of route.knowledgeBaseIds) {
       await this.assertCanView(actor.userId, baseId);
     }
@@ -42,12 +56,23 @@ export class KnowledgeRagService {
     try {
       const response = await new KnowledgeRagSdkFacade(this.repository, this.sdkRuntime).answer({
         actor,
-        request,
+        request: persistedRequest,
         accessibleBases,
         preferredKnowledgeBaseIds: route.reason === 'fallback_all' ? [] : route.knowledgeBaseIds,
         modelProfile,
         traceId,
         routeReason: toStableRouteReason(route.reason)
+      });
+      await this.repository.appendChatMessage({
+        conversationId: conversation.id,
+        userId: actor.userId,
+        role: 'assistant',
+        content: response.answer,
+        modelProfileId: modelProfile?.id,
+        traceId: response.traceId,
+        citations: response.citations,
+        route: response.route,
+        diagnostics: response.diagnostics
       });
       this.traces.addSpan(traceId, {
         name: 'retrieve',
@@ -75,8 +100,17 @@ export class KnowledgeRagService {
     request: NormalizedKnowledgeChatRequest,
     modelProfile?: RagModelProfile
   ): AsyncIterable<KnowledgeRagStreamEvent> {
+    const conversation = await this.ensureConversation(actor, request, modelProfile);
+    const persistedRequest = { ...request, conversationId: conversation.id };
+    await this.repository.appendChatMessage({
+      conversationId: conversation.id,
+      userId: actor.userId,
+      role: 'user',
+      content: request.message,
+      modelProfileId: modelProfile?.id
+    });
     const accessibleBases = await this.repository.listBasesForUser(actor.userId);
-    const route = this.resolveRoute({ accessibleBases, request });
+    const route = this.resolveRoute({ accessibleBases, request: persistedRequest });
     for (const baseId of route.knowledgeBaseIds) {
       await this.assertCanView(actor.userId, baseId);
     }
@@ -95,7 +129,7 @@ export class KnowledgeRagService {
     try {
       for await (const event of new KnowledgeRagSdkFacade(this.repository, this.sdkRuntime).stream({
         actor,
-        request,
+        request: persistedRequest,
         accessibleBases,
         preferredKnowledgeBaseIds: route.reason === 'fallback_all' ? [] : route.knowledgeBaseIds,
         modelProfile,
@@ -120,6 +154,31 @@ export class KnowledgeRagService {
           });
         }
         if (event.type === 'rag.completed') {
+          await this.repository.appendChatMessage({
+            conversationId: conversation.id,
+            userId: actor.userId,
+            role: 'assistant',
+            content: event.result.answer.text,
+            modelProfileId: modelProfile?.id,
+            traceId,
+            citations: toChatCitations(event.result),
+            route: {
+              requestedMentions:
+                request.mentions?.map(mention => mention.label ?? mention.id ?? '').filter(isPresent) ?? [],
+              selectedKnowledgeBaseIds: event.result.plan.selectedKnowledgeBaseIds,
+              reason: toStableRouteReason(route.reason)
+            },
+            diagnostics: {
+              normalizedQuery: event.result.retrieval.diagnostics?.normalizedQuery ?? request.message.trim(),
+              queryVariants:
+                (event.result.retrieval.diagnostics?.queryVariants?.length ?? 0) > 0
+                  ? (event.result.retrieval.diagnostics?.queryVariants ?? [])
+                  : [request.message.trim()],
+              retrievalMode: event.result.retrieval.hits.length > 0 ? 'hybrid' : 'none',
+              hitCount: event.result.retrieval.hits.length,
+              contextChunkCount: event.result.retrieval.hits.length
+            }
+          });
           this.traces.finishTrace(traceId, 'ok');
           traceFinished = true;
         }
@@ -169,6 +228,58 @@ export class KnowledgeRagService {
       throw new KnowledgeServiceError('knowledge_permission_denied', '无权访问该知识库');
     }
   }
+
+  private async ensureConversation(
+    actor: KnowledgeActor,
+    request: NormalizedKnowledgeChatRequest,
+    modelProfile?: RagModelProfile
+  ): Promise<KnowledgeChatConversationRecord> {
+    const conversations = await this.repository.listChatConversationsForUser(actor.userId);
+    const existing = request.conversationId
+      ? conversations.items.find(conversation => conversation.id === request.conversationId)
+      : undefined;
+    if (existing) {
+      return existing;
+    }
+    return this.repository.createChatConversation({
+      id: request.conversationId,
+      userId: actor.userId,
+      title: deriveConversationTitle(request.message),
+      activeModelProfileId: modelProfile?.id ?? 'knowledge-rag'
+    });
+  }
+}
+
+function deriveConversationTitle(message: string): string {
+  const normalized = message.replace(/\s+/g, ' ').trim();
+  return normalized.length > 30 ? `${normalized.slice(0, 30)}...` : normalized || '新会话';
+}
+
+function toChatCitations(
+  result: Extract<KnowledgeRagStreamEvent, { type: 'rag.completed' }>['result']
+): KnowledgeChatCitation[] {
+  return result.answer.citations
+    .map(citation => {
+      const hit = result.retrieval.hits.find(
+        item => item.sourceId === citation.sourceId && item.chunkId === citation.chunkId
+      );
+      if (!hit || !citation.quote) {
+        return undefined;
+      }
+      return {
+        id: `cit_${hit.documentId}_${hit.chunkId}`,
+        documentId: hit.documentId,
+        chunkId: hit.chunkId,
+        title: citation.title,
+        quote: citation.quote,
+        score: hit.score
+      };
+    })
+    .filter(isDefined);
+}
+
+function isDefined<T>(value: T | undefined): value is T {
+  return value !== undefined;
 }
 
 function toStableRouteReason(reason: ReturnType<typeof resolveKnowledgeChatRoute>['reason']) {
