@@ -3,6 +3,7 @@ import type { KnowledgeBase } from '@agent/core';
 import {
   runKnowledgeRag,
   streamKnowledgeRag,
+  type KnowledgeRagAnswer,
   type KnowledgeRagPolicy,
   type KnowledgeRagResult,
   type KnowledgeRagStreamEvent
@@ -47,7 +48,7 @@ export class KnowledgeRagSdkFacade {
         accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
         policy: createDefaultRagPolicy(),
         plannerProvider: this.createPlannerProvider(input),
-        searchService: new KnowledgeServerSearchServiceAdapter(this.repository),
+        searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
         answerProvider,
         metadata: {
           actorUserId: input.actor.userId,
@@ -74,7 +75,7 @@ export class KnowledgeRagSdkFacade {
       accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
       policy: createDefaultRagPolicy(),
       plannerProvider: this.createPlannerProvider(input),
-      searchService: new KnowledgeServerSearchServiceAdapter(this.repository),
+      searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
       answerProvider,
       metadata: {
         actorUserId: input.actor.userId,
@@ -193,14 +194,35 @@ function toChatResponse(
     diagnostics: {
       normalizedQuery: result.retrieval.diagnostics?.normalizedQuery ?? request.message.trim(),
       queryVariants:
-        (result.retrieval.diagnostics?.queryVariants.length ?? 0 > 0)
+        (result.retrieval.diagnostics?.queryVariants.length ?? 0) > 0
           ? (result.retrieval.diagnostics?.queryVariants ?? [])
           : [request.message.trim()],
-      retrievalMode: result.retrieval.hits.length > 0 ? 'hybrid' : 'none',
+      retrievalMode: resolveChatRetrievalMode(result),
       hitCount: result.retrieval.hits.length,
       contextChunkCount: result.retrieval.hits.length
     }
   };
+}
+
+function resolveChatRetrievalMode(
+  result: KnowledgeRagResult
+): NonNullable<KnowledgeRagAnswer['diagnostics']>['retrievalMode'] {
+  if (result.retrieval.hits.length === 0) {
+    return 'none';
+  }
+  switch (result.retrieval.diagnostics?.effectiveSearchMode) {
+    case 'keyword':
+    case 'fallback-keyword':
+      return 'keyword-only';
+    case 'vector':
+      return 'vector-only';
+    case 'hybrid':
+      return 'hybrid';
+    case 'none':
+      return 'none';
+    default:
+      return 'hybrid';
+  }
 }
 
 function createDefaultRagPolicy(): KnowledgeRagPolicy {

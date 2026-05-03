@@ -84,7 +84,7 @@ describe('Knowledge RAG SDK facade', () => {
     expect(response).toMatchObject({
       answer: 'SDK answer: SDK planner 可以在没有 metadata 时选择用户可访问知识库。',
       route: { requestedMentions: [], selectedKnowledgeBaseIds: [baseId], reason: 'fallback-all' },
-      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
+      diagnostics: { retrievalMode: 'keyword-only', hitCount: 1, contextChunkCount: 1 },
       citations: [
         {
           documentId: 'doc_rag',
@@ -159,7 +159,7 @@ describe('Knowledge RAG SDK facade', () => {
       })
     );
     expect(response).toMatchObject({
-      diagnostics: { retrievalMode: 'hybrid', hitCount: 1, contextChunkCount: 1 },
+      diagnostics: { retrievalMode: 'keyword-only', hitCount: 1, contextChunkCount: 1 },
       citations: [
         {
           documentId: 'doc_ready',
