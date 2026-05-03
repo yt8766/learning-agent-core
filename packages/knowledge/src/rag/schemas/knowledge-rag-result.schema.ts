@@ -38,18 +38,21 @@ export const KnowledgeRagEffectiveSearchModeSchema = z.enum([
 export const KnowledgeRagRetrievalDiagnosticsSchema = z
   .object({
     normalizedQuery: z.string().min(1).optional(),
-    queryVariants: z.array(z.string().min(1)).default([]),
-    executedQueries: z.array(KnowledgeRagExecutedQuerySchema).default([]),
+    queryVariants: z.array(z.string().min(1)).optional(),
+    executedQueries: z.array(KnowledgeRagExecutedQuerySchema).optional(),
     effectiveSearchMode: KnowledgeRagEffectiveSearchModeSchema.optional(),
     vectorHitCount: z.number().int().min(0).optional(),
     keywordHitCount: z.number().int().min(0).optional(),
     finalHitCount: z.number().int().min(0).optional()
   })
-  .strict();
+  .strict()
+  .refine(diagnostics => Object.keys(diagnostics).length > 0, {
+    message: 'At least one retrieval diagnostic field is required'
+  });
 
 export const KnowledgeRagRuntimeRetrievalDiagnosticsSchema = RetrievalDiagnosticsSchema.extend({
   requestedSearchMode: KnowledgeRagSearchModeSchema.optional(),
-  effectiveSearchMode: KnowledgeRagSearchModeSchema.optional()
+  effectiveSearchMode: KnowledgeRagEffectiveSearchModeSchema.optional()
 });
 
 export const KnowledgeRagRetrievalResultSchema = z.object({

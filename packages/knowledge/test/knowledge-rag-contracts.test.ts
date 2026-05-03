@@ -210,6 +210,93 @@ describe('Knowledge RAG SDK contracts', () => {
     });
   });
 
+  it('rejects empty mature retrieval diagnostics instead of materializing default arrays', () => {
+    expect(
+      KnowledgeRagResultSchema.safeParse({
+        runId: 'rag_empty_diagnostics',
+        plan: {
+          id: 'plan_1',
+          originalQuery: '检索前技术名词',
+          rewrittenQuery: 'PreRetrievalPlanner query rewrite',
+          queryVariants: ['PreRetrievalPlanner query rewrite'],
+          selectedKnowledgeBaseIds: ['kb_core'],
+          searchMode: 'hybrid',
+          selectionReason: 'Selected SDK knowledge base',
+          confidence: 0.86,
+          fallbackPolicy: 'search-all-accessible',
+          routingDecisions: [],
+          diagnostics: {
+            planner: 'llm',
+            consideredKnowledgeBaseCount: 1,
+            rewriteApplied: true,
+            fallbackApplied: false
+          }
+        },
+        retrieval: {
+          hits: [],
+          citations: [],
+          diagnostics: {}
+        },
+        answer: {
+          text: '依据不足。',
+          citations: []
+        },
+        diagnostics: {
+          durationMs: 50
+        }
+      }).success
+    ).toBe(false);
+  });
+
+  it('keeps effective search mode on executed retrieval semantics only', () => {
+    const runtimeDiagnostics = {
+      runId: 'retrieval_1',
+      startedAt: '2026-05-03T00:00:00.000Z',
+      durationMs: 1,
+      originalQuery: '检索前有什么',
+      normalizedQuery: 'RAG 检索前阶段包括哪些能力',
+      rewriteApplied: true,
+      queryVariants: ['RAG 检索前阶段'],
+      executedQueries: ['RAG 检索前阶段'],
+      preHitCount: 0,
+      postHitCount: 0,
+      contextAssembled: false
+    };
+
+    expect(
+      KnowledgeRagStreamEventSchema.safeParse({
+        type: 'retrieval.completed',
+        runId: 'rag_1',
+        retrieval: {
+          hits: [],
+          total: 0,
+          citations: [],
+          diagnostics: {
+            ...runtimeDiagnostics,
+            effectiveSearchMode: 'vector-only'
+          }
+        }
+      }).success
+    ).toBe(false);
+
+    expect(
+      KnowledgeRagStreamEventSchema.safeParse({
+        type: 'retrieval.completed',
+        runId: 'rag_1',
+        retrieval: {
+          hits: [],
+          total: 0,
+          citations: [],
+          diagnostics: {
+            ...runtimeDiagnostics,
+            requestedSearchMode: 'vector-only',
+            effectiveSearchMode: 'vector'
+          }
+        }
+      }).success
+    ).toBe(true);
+  });
+
   it('parses every required RAG stream event variant and rejects unrequested event names', () => {
     const plan = KnowledgePreRetrievalPlanSchema.parse({
       id: 'plan_1',
