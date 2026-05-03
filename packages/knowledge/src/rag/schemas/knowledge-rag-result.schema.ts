@@ -9,10 +9,6 @@ export const KnowledgeRagErrorCodeSchema = z.enum([
   'planner_failed',
   'retrieval_failed',
   'answer_failed',
-  'knowledge_chat_failed',
-  'knowledge_permission_denied',
-  'rag_model_profile_disabled',
-  'rag_model_profile_not_found',
   'cancelled',
   'unknown'
 ]);
@@ -39,73 +35,21 @@ export const KnowledgeRagEffectiveSearchModeSchema = z.enum([
   'none'
 ]);
 
-const countExecutedHits = (
-  diagnostics: {
-    executedQueries?: Array<{ mode: 'vector' | 'keyword' | 'substring'; hitCount: number }>;
-  },
-  modes: Array<'vector' | 'keyword' | 'substring'>
-) =>
-  diagnostics.executedQueries?.some(
-    executedQuery => modes.includes(executedQuery.mode) && executedQuery.hitCount > 0
-  ) ?? false;
-
-const hasVectorHit = (diagnostics: {
-  executedQueries?: Array<{ mode: 'vector' | 'keyword' | 'substring'; hitCount: number }>;
-  vectorHitCount?: number;
-}) => (diagnostics.vectorHitCount ?? 0) > 0 || countExecutedHits(diagnostics, ['vector']);
-
-const hasKeywordLikeHit = (diagnostics: {
-  executedQueries?: Array<{ mode: 'vector' | 'keyword' | 'substring'; hitCount: number }>;
-  keywordHitCount?: number;
-}) => (diagnostics.keywordHitCount ?? 0) > 0 || countExecutedHits(diagnostics, ['keyword', 'substring']);
-
-const allExecutedQueriesMissed = (diagnostics: {
-  executedQueries?: Array<{ mode: 'vector' | 'keyword' | 'substring'; hitCount: number }>;
-}) => diagnostics.executedQueries?.every(executedQuery => executedQuery.hitCount === 0) ?? false;
-
-const isEffectiveSearchModeConsistent = (diagnostics: {
-  executedQueries?: Array<{ mode: 'vector' | 'keyword' | 'substring'; hitCount: number }>;
-  effectiveSearchMode?: 'vector' | 'keyword' | 'hybrid' | 'fallback-keyword' | 'none';
-  vectorHitCount?: number;
-  keywordHitCount?: number;
-  finalHitCount?: number;
-}) => {
-  switch (diagnostics.effectiveSearchMode) {
-    case undefined:
-      return true;
-    case 'vector':
-      return hasVectorHit(diagnostics);
-    case 'keyword':
-    case 'fallback-keyword':
-      return hasKeywordLikeHit(diagnostics);
-    case 'hybrid':
-      return hasVectorHit(diagnostics) && hasKeywordLikeHit(diagnostics);
-    case 'none':
-      return diagnostics.finalHitCount === 0 || allExecutedQueriesMissed(diagnostics);
-  }
-};
-
 export const KnowledgeRagRetrievalDiagnosticsSchema = z
   .object({
     normalizedQuery: z.string().min(1).optional(),
-    queryVariants: z.array(z.string().min(1)).optional(),
-    executedQueries: z.array(KnowledgeRagExecutedQuerySchema).optional(),
+    queryVariants: z.array(z.string().min(1)).default([]),
+    executedQueries: z.array(KnowledgeRagExecutedQuerySchema).default([]),
     effectiveSearchMode: KnowledgeRagEffectiveSearchModeSchema.optional(),
     vectorHitCount: z.number().int().min(0).optional(),
     keywordHitCount: z.number().int().min(0).optional(),
     finalHitCount: z.number().int().min(0).optional()
   })
-  .strict()
-  .refine(diagnostics => Object.keys(diagnostics).length > 0, {
-    message: 'At least one retrieval diagnostic field is required'
-  })
-  .refine(isEffectiveSearchModeConsistent, {
-    message: 'effectiveSearchMode must match observed retrieval hits'
-  });
+  .strict();
 
 export const KnowledgeRagRuntimeRetrievalDiagnosticsSchema = RetrievalDiagnosticsSchema.extend({
   requestedSearchMode: KnowledgeRagSearchModeSchema.optional(),
-  effectiveSearchMode: KnowledgeRagEffectiveSearchModeSchema.optional()
+  effectiveSearchMode: KnowledgeRagSearchModeSchema.optional()
 });
 
 export const KnowledgeRagRetrievalResultSchema = z.object({
@@ -126,20 +70,15 @@ export const KnowledgeRagNoAnswerReasonSchema = z.enum([
   'insufficient_evidence'
 ]);
 
-export const KnowledgeRagAnswerDiagnosticsSchema = z
-  .object({
-    provider: z.string().min(1).optional(),
-    model: z.string().min(1).optional(),
-    inputTokens: z.number().int().min(0).optional(),
-    outputTokens: z.number().int().min(0).optional(),
-    durationMs: z.number().min(0).optional(),
-    groundedCitationCount: z.number().int().nonnegative().optional(),
-    noAnswerReason: KnowledgeRagNoAnswerReasonSchema.optional()
-  })
-  .strict()
-  .refine(diagnostics => Object.keys(diagnostics).length > 0, {
-    message: 'At least one answer diagnostic field is required'
-  });
+export const KnowledgeRagAnswerDiagnosticsSchema = z.object({
+  provider: z.string().min(1).optional(),
+  model: z.string().min(1).optional(),
+  inputTokens: z.number().int().min(0).optional(),
+  outputTokens: z.number().int().min(0).optional(),
+  durationMs: z.number().min(0).optional(),
+  groundedCitationCount: z.number().int().nonnegative().optional(),
+  noAnswerReason: KnowledgeRagNoAnswerReasonSchema.optional()
+});
 
 export const KnowledgeRagRunAnswerSchema = z.object({
   text: z.string(),
