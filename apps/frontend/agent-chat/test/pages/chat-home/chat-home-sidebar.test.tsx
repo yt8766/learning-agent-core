@@ -121,7 +121,7 @@ describe('ChatHomeSidebar', () => {
     expect(html).not.toContain('正在准备会话');
   });
 
-  it('keeps session menus compact with delete as the only title-affecting action', () => {
+  it('keeps session menus compact with rename and delete actions', () => {
     const { chat } = createChatFixture();
     const html = renderToStaticMarkup(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }));
 
@@ -131,7 +131,7 @@ describe('ChatHomeSidebar', () => {
     expect(html).toContain('role="menu"');
     expect(html).toContain('chatx-session-item__menu-action');
     expect(html).toContain('chatx-session-item__menu-icon');
-    expect(html).not.toContain('重命名');
+    expect(html).toContain('重命名');
     expect(html).toContain('删除');
   });
 

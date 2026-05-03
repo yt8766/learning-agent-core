@@ -6,8 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildBubbleItems } from '@/pages/chat/chat-message-adapter';
 import { stripWorkflowCommandPrefix } from '@/pages/chat/chat-message-adapter-helpers';
 import { useChatSession } from '@/hooks/use-chat-session';
-import { cn } from '@/utils/cn';
-import { foldChatResponseStepProjectionsFromEvents } from '@/utils/chat-response-step-projections';
+import { foldChatResponseStepProjectionsFromEvents } from '@/lib/chat-response-step-projections';
 import '@/styles/chat-home-page.scss';
 import { getAgentLabel, getErrorCopy } from './chat-home-helpers';
 import {
@@ -19,11 +18,10 @@ import {
   resolveNextCognitionExpansionPatch,
   shouldShowErrorAlert
 } from './chat-home-page-helpers';
-import { buildConversationAnchors, dedupeMessagesById } from './chat-home-anchor-rail-helpers';
+import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
 import { ActiveConversation, EmptyConversation } from './chat-home-conversation';
 import { ChatHomeSidebar } from './chat-home-sidebar';
-import { buildThoughtItemsFromFields } from './chat-home-workbench-thoughts';
-import { debugAgentChat, summarizeDebugMessages } from '@/utils/agent-chat-debug';
+import { buildThoughtItems } from './chat-home-workbench-thoughts';
 
 const { Text } = Typography;
 
@@ -58,17 +56,7 @@ export function ChatHomePage() {
   }, [chat.checkpoint?.thinkState?.loading, chat.checkpoint?.taskId]);
 
   const agentThinking = Boolean(chat.checkpoint?.thinkState?.loading);
-  const agentToolGovernanceProjection = chat.agentToolGovernanceProjection;
-  const thoughtItems = useMemo(
-    () =>
-      buildThoughtItemsFromFields({
-        activeSessionId: chat.activeSessionId,
-        agentToolGovernanceProjection,
-        checkpoint: chat.checkpoint,
-        events: chat.events
-      }),
-    [agentToolGovernanceProjection, chat.activeSessionId, chat.checkpoint, chat.events]
-  );
+  const thoughtItems = useMemo(() => buildThoughtItems(chat), [chat]);
   const cognitionTargetMessageId = useMemo(
     () => resolveCognitionTargetMessageId(chat.checkpoint, chat.checkpoint?.thoughtChain),
     [chat.checkpoint?.thinkState?.messageId, chat.checkpoint?.thoughtChain]
@@ -79,19 +67,11 @@ export function ChatHomePage() {
     chat.checkpoint?.thinkState?.thinkingDurationMs,
     chat.checkpoint?.thinkState?.loading,
     chat.checkpoint?.thoughtChain,
-    chat.checkpoint?.chatRoute?.flow,
-    chat.checkpoint?.createdAt,
     chat.checkpoint?.updatedAt,
     thinkingNow
   ]);
   const cognitionCountLabel = thoughtItems.length ? `${thoughtItems.length} 条推理` : '';
-  const effectiveSessionStatus = useMemo(
-    () => (chat.isRequesting ? 'running' : chat.activeSession?.status),
-    [chat.isRequesting, chat.activeSession?.status]
-  );
-  const isThinking = Boolean(
-    chat.isRequesting || chat.activeSession?.status === 'running' || chat.checkpoint?.thinkState?.loading
-  );
+  const isThinking = Boolean(chat.activeSession?.status === 'running' || chat.checkpoint?.thinkState?.loading);
   const responseSteps = useMemo(() => foldChatResponseStepProjectionsFromEvents(chat.events), [chat.events]);
 
   useEffect(() => {
@@ -101,30 +81,20 @@ export function ChatHomePage() {
       wasThinkLoading,
       isThinkLoading: agentThinking,
       hasCognitionTarget: Boolean(cognitionTargetMessageId),
-      isSessionRunning: Boolean(chat.isRequesting || chat.activeSession?.status === 'running'),
+      isSessionRunning: chat.activeSession?.status === 'running',
       cognitionTargetMessageId
     });
 
     if (patch) {
       setCognitionExpandedByMessageId(current => ({ ...current, ...patch }));
     }
-  }, [agentThinking, cognitionTargetMessageId, chat.activeSession?.status, chat.isRequesting]);
+  }, [agentThinking, cognitionTargetMessageId, chat.activeSession?.status]);
 
-  useEffect(() => {
-    debugAgentChat('chat-home.render-messages', {
-      activeSessionId: chat.activeSessionId,
-      activeStatus: effectiveSessionStatus,
-      streamingCompleted: chat.streamingCompleted,
-      messages: summarizeDebugMessages(chat.messages)
-    });
-  }, [effectiveSessionStatus, chat.activeSessionId, chat.messages, chat.streamingCompleted]);
-
-  const visibleMessages = useMemo(() => dedupeMessagesById(chat.messages), [chat.messages]);
   const bubbleItems = useMemo(
     () =>
       buildBubbleItems({
-        messages: visibleMessages,
-        activeStatus: effectiveSessionStatus,
+        messages: chat.messages,
+        activeStatus: chat.activeSession?.status,
         agentThinking,
         copiedMessageId,
         thinkState: chat.checkpoint?.thinkState,
@@ -134,7 +104,6 @@ export function ChatHomePage() {
         cognitionDurationLabel,
         cognitionCountLabel,
         responseStepsByMessageId: responseSteps.byMessageId,
-        streamingCompleted: chat.streamingCompleted,
         onToggleCognition: messageId =>
           setCognitionExpandedByMessageId(current => ({
             ...current,
@@ -168,8 +137,8 @@ export function ChatHomePage() {
         }
       }),
     [
-      visibleMessages,
-      effectiveSessionStatus,
+      chat.messages,
+      chat.activeSession?.status,
       agentThinking,
       copiedMessageId,
       chat.checkpoint?.thinkState,
@@ -179,7 +148,6 @@ export function ChatHomePage() {
       cognitionDurationLabel,
       cognitionCountLabel,
       responseSteps.byMessageId,
-      chat.streamingCompleted,
       chat.updatePlanInterrupt,
       chat.installSuggestedSkill,
       chat.regenerateMessage,
@@ -188,8 +156,8 @@ export function ChatHomePage() {
   );
 
   const conversationAnchors = useMemo(
-    () => filterVisibleConversationAnchors(buildConversationAnchors(visibleMessages), bubbleItems),
-    [visibleMessages, bubbleItems]
+    () => filterVisibleConversationAnchors(buildConversationAnchors(chat.messages), bubbleItems),
+    [chat.messages, bubbleItems]
   );
   const anchoredBubbleItems = useMemo(
     () => attachConversationAnchorTargets(bubbleItems, conversationAnchors),
@@ -207,12 +175,7 @@ export function ChatHomePage() {
     <ConfigProvider>
       <XProvider>
         <AntApp>
-          <main
-            className={cn(
-              'chatx-agent-codex antialiased transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none',
-              sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'
-            )}
-          >
+          <main className={`chatx-agent-codex ${sidebarCollapsed ? 'is-sidebar-collapsed' : 'is-sidebar-expanded'}`}>
             <div className="chatx-agent-codex__sidebar" aria-label="Agent Chat 会话侧栏">
               <ChatHomeSidebar
                 chat={chat}
@@ -222,7 +185,7 @@ export function ChatHomePage() {
               />
             </div>
 
-            <section className="chatx-agent-codex__main chatx-main-stage min-w-0" aria-label="Codex 对话区">
+            <section className="chatx-agent-codex__main" aria-label="Codex 对话区">
               {showErrorAlert && errorCopy ? (
                 <Alert
                   type="error"
@@ -238,7 +201,7 @@ export function ChatHomePage() {
               {chat.hasMessages ? (
                 <ActiveConversation
                   activeTitle={stripWorkflowCommandPrefix(chat.activeSession?.title ?? '当前会话')}
-                  activeStatus={effectiveSessionStatus}
+                  activeStatus={chat.activeSession?.status}
                   bubbleItems={anchoredBubbleItems}
                   anchors={conversationAnchors}
                   onSend={value => chat.sendMessage(value)}

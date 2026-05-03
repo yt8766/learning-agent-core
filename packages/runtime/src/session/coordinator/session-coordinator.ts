@@ -18,7 +18,8 @@ import type {
 } from '@agent/core';
 import { RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 
-import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
+import { AgentOrchestrator } from '../../orchestration/agent-orchestrator';
+import type { DirectReplySearchFn } from './direct-reply-web-search';
 import { autoConfirmLearningIfNeeded, runLearningConfirmation } from './session-coordinator-learning';
 import {
   cancelSessionRun,
@@ -36,13 +37,13 @@ import {
 import { completeInlineCapabilitySession, dedupeById } from './session-coordinator-inline';
 import { SessionCoordinatorStore } from './session-coordinator-store';
 import { SessionCoordinatorThinking } from './session-coordinator-thinking';
-import type { SessionTaskAggregate } from './session-task.types';
+import type { SessionTaskAggregate } from '../session-task.types';
 import {
   buildTaskContextHints,
   compressConversationIfNeeded,
   generateSessionTitleFromSummary,
   runSessionTurn,
-  shouldDeriveSessionTitle
+  shouldGenerateSessionTitle
 } from './session-coordinator-turns';
 
 type ChatEventType = ChatEventRecord['type'];
@@ -59,7 +60,8 @@ export class SessionCoordinator {
     private readonly runtimeStateRepository: RuntimeStateRepository,
     private readonly llmProvider: LlmProvider,
     private readonly contextStrategy?: ContextStrategy,
-    private readonly memorySearchService?: MemorySearchService
+    private readonly memorySearchService?: MemorySearchService,
+    private readonly directReplyWebSearch?: DirectReplySearchFn
   ) {
     this.store = new SessionCoordinatorStore(runtimeStateRepository);
     this.thinking = new SessionCoordinatorThinking(llmProvider, contextStrategy, memorySearchService);
@@ -140,6 +142,7 @@ export class SessionCoordinator {
     const session: ChatSessionRecord = {
       id: `session_${Date.now()}`,
       title: dto.title?.trim() || derivedTitle || '\u65b0\u4f1a\u8bdd',
+      titleSource: dto.title?.trim() ? 'manual' : derivedTitle ? 'generated' : 'placeholder',
       status: 'idle',
       channelIdentity: dto.channelIdentity,
       createdAt: now,
@@ -177,6 +180,7 @@ export class SessionCoordinator {
     }
 
     session.title = nextTitle;
+    session.titleSource = dto.titleSource ?? 'manual';
     session.updatedAt = new Date().toISOString();
     await this.store.persistRuntimeState();
     return session;
@@ -188,10 +192,11 @@ export class SessionCoordinator {
     if (dto.channelIdentity) {
       session.channelIdentity = dto.channelIdentity;
     }
-    if (shouldDeriveSessionTitle(session.title)) {
+    if (shouldGenerateSessionTitle(session)) {
       const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, dto.message);
       if (derivedTitle) {
         session.title = derivedTitle;
+        session.titleSource = 'generated';
       }
     }
     const message = this.store.addMessage(sessionId, 'user', dto.message);
@@ -221,10 +226,11 @@ export class SessionCoordinator {
     if (dto.channelIdentity) {
       session.channelIdentity = dto.channelIdentity;
     }
-    if (shouldDeriveSessionTitle(session.title)) {
+    if (shouldGenerateSessionTitle(session)) {
       const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, dto.message);
       if (derivedTitle) {
         session.title = derivedTitle;
+        session.titleSource = 'generated';
       }
     }
     const { userMessage } = completeInlineCapabilitySession({
@@ -348,7 +354,8 @@ export class SessionCoordinator {
         store: this.store,
         thinking: this.thinking,
         llmProvider: this.llmProvider,
-        syncTask: (nextSessionId, task) => this.syncTask(nextSessionId, task)
+        syncTask: (nextSessionId, task) => this.syncTask(nextSessionId, task),
+        webSearchFn: this.directReplyWebSearch
       },
       sessionId,
       input

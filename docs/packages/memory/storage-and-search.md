@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：reference
-适用范围：`packages/memory`、memory legacy import、memory repository contracts
-最后核对：2026-05-08
+适用范围：`packages/memory`、`data/memory`、`data/knowledge`
+最后核对：2026-05-02
 
 ## 1. 这篇文档说明什么
 
@@ -43,8 +43,6 @@
   - 保存快照时先写入同目录临时文件，再通过 rename 替换目标文件，避免并发读到半写 JSON
 - `semantic-cache-repository.ts`
   - 承载语义缓存记录
-  - 语义缓存记录使用 `SemanticCacheRecordSchema` 作为显式 JSON contract
-  - 当前提供 `InMemorySemanticCacheRepository` 作为 root data deprecation Phase 4 的 ephemeral fallback；本地文件实现仅作为过渡/legacy 文件适配保留，不应成为新的默认写路径
 - `user-profile.repository.ts`
   - 承载用户画像 patch/get 基础存储
 - `reflection.repository.ts`
@@ -96,22 +94,17 @@
 - 主动内存管理中的 `core_memory_append`、`core_memory_replace`、`archival_memory_search` 由 runtime / tool facade 暴露
 - `packages/memory` 只提供底层存储、检索、排序、治理能力，不直接承载 agent 决策
 
-## 4. Root `data/*` 过渡状态
+## 4. `data/memory` 与 `data/knowledge`
 
-Root `data/*` 正在按 root data deprecation 计划退出“当前默认运行时持久层”角色。
-
-对 `packages/memory` 而言：
-
-- 新增 repository 能力必须先有显式 contract，并优先提供 in-memory ephemeral 实现
-- `File*Repository` 仍可读取既有 JSON/JSONL 文件，作为过渡兼容和 legacy import 输入
-- 新代码不应新增 root `data/memory`、`data/rules` 或语义缓存的默认写路径
-- 需要可恢复持久化时，应通过后续业务 Postgres repository/provider 注入，而不是让调用方直接依赖 root path
+- `data/memory`
+  - 面向可复用沉淀，例如 memory / rule / 相关本地存储
+- `data/knowledge`
+  - 面向知识检索副产物，例如 catalog、sources、chunks、vectors、ingestion
 
 简单理解：
 
-- memory 更偏“沉淀后的复用知识与治理对象”
-- knowledge 更偏“检索与索引过程中的原料和索引产物”
-- root `data/*` 只应被视为迁移期 legacy 输入，而不是新功能的持久化入口
+- `memory` 更偏“沉淀后的复用知识与治理对象”
+- `knowledge` 更偏“检索与索引过程中的原料和索引产物”
 
 ### 4.1 LangGraph Store 与 RAG 的关系
 

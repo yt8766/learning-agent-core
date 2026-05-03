@@ -1,6 +1,8 @@
 import { Button, Tag } from 'antd';
 import { DislikeOutlined, LikeOutlined, ReloadOutlined } from '@ant-design/icons';
-import type { BubbleItemType, ThoughtChainItemType } from '@ant-design/x';
+import type { BubbleItemType } from '@ant-design/x';
+
+import type { WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
 
 import { CopyGlyph } from '@/components/chat-message-cards';
 import type { ChatResponseStepsState } from '@/lib/chat-response-step-projections';
@@ -11,6 +13,8 @@ import type {
   ChatSessionRecord,
   ChatThinkState
 } from '@/types/chat';
+import { mapThoughtChainToProjectionItems } from '@/lib/map-thought-chain-to-projection';
+import { formatCognitionDurationLabelFromMs } from '@/pages/chat-home/chat-home-page-helpers';
 import { buildMainThreadMessages, containsCitationSection } from './chat-message-adapter-helpers';
 import { renderMessageContent } from './chat-message-content';
 
@@ -44,10 +48,12 @@ export interface BuildBubbleItemsOptions {
   getAgentLabel: AgentLabelResolver;
   runningHint?: string;
   thinkState?: ChatThinkState;
-  thoughtItems?: ThoughtChainItemType[];
+  thoughtItems?: WorkbenchThoughtProjectionItem[];
   cognitionTargetMessageId?: string;
+  cognitionExpandedByMessageId?: Record<string, boolean | undefined>;
+  /** 仅作用于当前 cognition 目标气泡；优先使用 cognitionExpandedByMessageId[messageId] */
   cognitionExpanded?: boolean;
-  onToggleCognition?: () => void;
+  onToggleCognition?: (messageId: string) => void;
   cognitionDurationLabel?: string;
   cognitionCountLabel?: string;
   responseStepsByMessageId?: ChatResponseStepsState['byMessageId'];
@@ -145,6 +151,7 @@ export function buildBubbleItems({
   thinkState,
   thoughtItems,
   cognitionTargetMessageId,
+  cognitionExpandedByMessageId,
   cognitionExpanded,
   onToggleCognition,
   cognitionDurationLabel,
@@ -189,6 +196,46 @@ export function buildBubbleItems({
       const shouldAttachEvidence =
         message.id === lastAssistantMessageId && inlineEvidenceMessage && !containsCitationSection(message.content);
       const responseSteps = message.role === 'assistant' ? responseStepsByMessageId?.[message.id] : undefined;
+      const chainFromSnap = message.cognitionSnapshot?.thoughtChain;
+      const bubbleThoughtItems =
+        chainFromSnap && chainFromSnap.length > 0
+          ? mapThoughtChainToProjectionItems(chainFromSnap)
+          : message.id === resolvedCognitionTargetMessageId
+            ? (thoughtItems ?? [])
+            : [];
+
+      const bubbleThinkState =
+        message.id === resolvedCognitionTargetMessageId
+          ? (thinkState ??
+            (message.cognitionSnapshot?.thinkState
+              ? { ...message.cognitionSnapshot.thinkState, loading: false, blink: false }
+              : undefined))
+          : message.cognitionSnapshot?.thinkState
+            ? { ...message.cognitionSnapshot.thinkState, loading: false, blink: false }
+            : undefined;
+
+      const snapshotDurationCandidate =
+        message.cognitionSnapshot?.thinkingDurationMs ?? message.cognitionSnapshot?.thinkState?.thinkingDurationMs;
+      let bubbleCognitionDurationLabel = '';
+      if (message.id === resolvedCognitionTargetMessageId && cognitionDurationLabel) {
+        bubbleCognitionDurationLabel = cognitionDurationLabel;
+      }
+      if (!bubbleCognitionDurationLabel && typeof snapshotDurationCandidate === 'number') {
+        bubbleCognitionDurationLabel = formatCognitionDurationLabelFromMs(snapshotDurationCandidate);
+      }
+
+      let bubbleCountLabel: string | undefined;
+      if (message.id === resolvedCognitionTargetMessageId && cognitionCountLabel && Boolean(thinkState?.loading)) {
+        bubbleCountLabel = cognitionCountLabel;
+      }
+
+      const mappedExpanded = cognitionExpandedByMessageId?.[message.id];
+      const bubbleCognitionExpanded =
+        typeof mappedExpanded === 'boolean'
+          ? mappedExpanded
+          : message.id === resolvedCognitionTargetMessageId && typeof cognitionExpanded === 'boolean'
+            ? cognitionExpanded
+            : false;
 
       return {
         key: message.id,
@@ -202,13 +249,12 @@ export function buildBubbleItems({
           onApprovalAllowAlways,
           onApprovalFeedback,
           onSkillInstall,
-          thinkState,
-          thoughtItems,
-          cognitionTargetMessageId: resolvedCognitionTargetMessageId,
-          cognitionExpanded,
+          thinkState: bubbleThinkState,
+          thoughtItems: bubbleThoughtItems,
+          cognitionExpandedForMessage: bubbleCognitionExpanded,
           onToggleCognition,
-          cognitionDurationLabel,
-          cognitionCountLabel,
+          cognitionDurationLabel: bubbleCognitionDurationLabel,
+          cognitionCountLabel: bubbleCountLabel,
           inlineEvidenceMessage: shouldAttachEvidence ? inlineEvidenceMessage : undefined,
           responseSteps
         }),

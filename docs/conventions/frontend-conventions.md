@@ -15,19 +15,9 @@
 - 前端统一使用 `React + TypeScript`
 - 组件文件使用 `.tsx`
 - 非视图逻辑使用 `.ts`
-- 编写、审查或重构 React / Next.js 代码时，必须先使用仓库代理技能
-  [vercel-react-best-practices](/.agents/skills/vercel-react-best-practices/SKILL.md)，并按其性能优先级检查实现
 - 样式默认使用 Tailwind utility，详见 [样式规范](/docs/conventions/styling-conventions.md)
 - 不为每个前端应用重复维护一套独立格式化配置
 - 前端依赖默认使用静态 `import`，例如 `import { Badge } from '@/components/ui/badge';`
-
-React / Next.js 性能规范：
-
-- React 组件、Next.js 页面、数据获取、bundle 优化、渲染性能、重渲染控制等相关任务，都必须应用
-  [vercel-react-best-practices](/.agents/skills/vercel-react-best-practices/SKILL.md)。
-- 默认按该技能的优先级检查：消除异步瀑布流、控制 bundle 大小、服务端性能、客户端数据获取、重渲染优化、渲染性能、JavaScript 热路径和高级模式。
-- 当该技能与本仓库更高优先级约束冲突时，遵循 [AGENTS](/AGENTS.md)、当前文档和仓库工具链；同时在实现或评审说明中记录取舍原因。
-- 当前 `agent-chat` 与 `agent-admin` 仍以 Vite React 应用为主；若后续新增 Next.js 应用或页面，同样必须应用该技能中的 Next.js server-side、data fetching、bundle 与 hydration 规则。
 
 路径别名约束：
 
@@ -65,29 +55,6 @@ React / Next.js 性能规范：
 
 ## 3. 目录规范
 
-### 组件归属原则
-
-组件按归属范围分为两类：
-
-**公共组件**（`src/components/`）
-
-- 可跨页面复用的基础 UI 组件
-- 不与单一页面强绑定
-- 例如：`Button`、`Badge`、`Modal`、`Card`
-
-**页面私有组件**（`pages/<page-name>/components/`）
-
-- 仅服务于特定页面的组件
-- 与页面逻辑紧耦合
-- 例如：`runtime-overview/components/RuntimeQueueCard.tsx`、`chat-home/components/ChatHomeSidebar.tsx`
-
-约束：
-
-- 禁止将页面私有组件放入 `src/components/`（会造成路径污染和归属模糊）
-- 页面目录下的 `components/` 命名统一使用小写 kebab-case：`pages/<page-name>/components/`
-- 页面 `components/` 下可继续按职责细分子目录：`components/`、`hooks/`、`constants/`、`types.ts`
-- 页面间如需共享组件，必须先抽象到 `src/components/`（或 `features/` 下），不能直接跨页面引用 `pages/*/components/`
-
 ### `agent-chat/src`
 
 - `app/`：应用壳层
@@ -98,7 +65,7 @@ React / Next.js 性能规范：
 - `hooks/chat-session/`：会话格式化与会话相关派生逻辑
 - `store/`：前端状态管理
 - `types/`：前端本地类型
-- `utils/`：轻量工具与适配函数（统一使用 `utils` 命名，禁止使用 `lib`）
+- `lib/`：轻量工具与适配函数
 - `assets/`：静态资源
 - `styles/`：全局与页面样式
 - `pages/`：页面级入口
@@ -198,8 +165,6 @@ React / Next.js 性能规范：
 - 禁止多个 effect 对同一资源重复建链；同一类资源连接只能有一个 owner
 - 页面切换、会话切换、tab 切换后，不得继续保留上一上下文的轮询、流连接或定时器
 - effect 里发请求时，优先先做 `shouldRun` 判定，再进入异步逻辑，避免“先发请求再判断”
-- 任何会打开 stream、轮询、长连接、checkpoint refresh 的 effect，禁止直接依赖每次 render 都会重建的 `actions / manager / provider` 对象；必须通过稳定 facade、`ref` 或显式激活键（如 `sessionId`、`requestNonce`）驱动
-- 同一 session 任意时刻只允许一条 active stream 和一种 polling mode；stream 主链、fallback 轮询和 checkpoint refresh 必须共享统一停机条件，禁止通过多个 effect 各自重试把同一资源反复建链
 - 对 `messages / events / checkpoint / sessions` 这类高频资源：
   - 需要区分初始化加载、手动刷新、运行中同步、fallback 轮询
   - 不能让一次状态恢复同时触发两套以上同步链路

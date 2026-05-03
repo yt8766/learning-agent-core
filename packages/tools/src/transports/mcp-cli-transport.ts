@@ -27,10 +27,7 @@ export type CliRunner = (command: string, args: string[], options: CliRunnerOpti
 
 export interface CliCapabilityBinding {
   capabilityId: string;
-  buildPayload(
-    request: ToolExecutionRequest,
-    capability: McpCapabilityDefinition
-  ): { args: string[]; stdin?: string };
+  buildPayload(request: ToolExecutionRequest, capability: McpCapabilityDefinition): { args: string[]; stdin?: string };
   parseResponse(raw: CliRunOutput, capability: McpCapabilityDefinition): unknown;
   timeoutMs?: number;
 }
@@ -58,7 +55,8 @@ export const defaultCliRunner: CliRunner = (command, args, options) =>
           const exitCode =
             typeof (error as NodeJS.ErrnoException).code === 'number'
               ? ((error as NodeJS.ErrnoException).code as unknown as number)
-              : typeof (error as { code?: string }).code === 'string' && (error as { code?: string }).code === 'ETIMEDOUT'
+              : typeof (error as { code?: string }).code === 'string' &&
+                  (error as { code?: string }).code === 'ETIMEDOUT'
                 ? 124
                 : 1;
           resolve({
@@ -81,7 +79,11 @@ export const defaultCliRunner: CliRunner = (command, args, options) =>
     }
   });
 
-function buildOutputSummary(server: McpServerDefinition, capability: McpCapabilityDefinition, raw: CliRunOutput): string {
+function buildOutputSummary(
+  server: McpServerDefinition,
+  capability: McpCapabilityDefinition,
+  raw: CliRunOutput
+): string {
   const snippet = raw.stdout.trim().split(/\r?\n/, 1)[0]?.slice(0, 200);
   if (snippet) {
     return snippet;

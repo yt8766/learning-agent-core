@@ -13,21 +13,12 @@ vi.mock('@ant-design/x-markdown', () => ({
 }));
 
 vi.mock('@ant-design/x', async () => ({
-  Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
-    <section>
-      <div>{title}</div>
-      <div>{children}</div>
-    </section>
-  ),
-  ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
-    <section>
+  Sources: ({ items }: { items?: Array<{ title: React.ReactNode }> }) => (
+    <div>
       {items?.map((item, index) => (
-        <article key={index}>
-          <div>{item.title}</div>
-          <div>{item.description}</div>
-        </article>
+        <span key={index}>{item.title}</span>
       ))}
-    </section>
+    </div>
   )
 }));
 

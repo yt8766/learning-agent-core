@@ -28,10 +28,9 @@ describe('@agent/knowledge migrated adapter exports', () => {
     expect(knowledgeAdapters.LangChainChunkerAdapter).toBe(langchainAdapters.LangChainChunkerAdapter);
   });
 
-  it('declares publishable subpath exports for migrated adapter families', () => {
-    expect(packageJson.exports).toHaveProperty('./adapters/chroma');
-    expect(packageJson.exports).toHaveProperty('./adapters/langchain');
-    expect(packageJson.exports).toHaveProperty('./adapters/opensearch');
-    expect(packageJson.exports).toHaveProperty('./adapters/supabase');
+  it('scopes package.json exports to the supported publish surfaces', () => {
+    expect(new Set(Object.keys(packageJson.exports))).toEqual(
+      new Set(['.', './node', './browser-entry', './package.json'])
+    );
   });
 });

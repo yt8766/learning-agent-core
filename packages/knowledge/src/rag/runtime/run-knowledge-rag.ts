@@ -93,6 +93,10 @@ function elapsedMs(now: () => number, startedAt: number): number {
   return Math.max(0, now() - startedAt);
 }
 
+function isScalarRagMetadataValue(value: KnowledgeRagJsonValue): value is string | number | boolean | null {
+  return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
 export function toKnowledgeRagAnswerMetadata(
   metadata: Record<string, KnowledgeRagJsonValue> | undefined
 ): Record<string, string | number | boolean | null> | undefined {
@@ -103,7 +107,7 @@ export function toKnowledgeRagAnswerMetadata(
   const answerMetadata: Record<string, string | number | boolean | null> = {};
 
   for (const [key, value] of Object.entries(metadata)) {
-    if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    if (isScalarRagMetadataValue(value)) {
       answerMetadata[key] = value;
     }
   }

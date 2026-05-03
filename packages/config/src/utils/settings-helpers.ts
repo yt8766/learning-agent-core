@@ -243,7 +243,7 @@ export function parseProvidersConfig(
       type: 'minimax',
       displayName: runtimeEnv.MINIMAX_PROVIDER_NAME || 'MiniMax',
       apiKey: runtimeEnv.MINIMAX_API_KEY ?? '',
-      baseUrl: normalizeProviderBaseUrl(runtimeEnv.MINIMAX_BASE_URL || 'https://api.minimax.io/v1', 'minimax'),
+      baseUrl: normalizeProviderBaseUrl(runtimeEnv.MINIMAX_BASE_URL ?? 'https://api.minimax.io/v1', 'minimax'),
       models: Array.from(new Set([...Object.values(minimaxRoleModels), runtimeEnv.MINIMAX_DIALOG_MODEL || 'M2-her'])),
       roleModels: minimaxRoleModels
     });

@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ActionIntent, TaskStatus } from '@agent/core';
 import type { RuntimeStateRepository, RuntimeStateSnapshot } from '@agent/memory';
 
-import { SessionCoordinator } from '../src/session/session-coordinator';
-import { generateSessionTitleFromSummary } from '../src/session/session-coordinator-routing-hints';
+import { SessionCoordinator } from '../src/session/coordinator/session-coordinator';
+import { generateSessionTitleFromSummary } from '../src/session/coordinator/session-coordinator-routing-hints';
 
 function createEmptyRuntimeState(): RuntimeStateSnapshot {
   return {
@@ -139,6 +139,8 @@ describe('@agent/runtime session inline capability integration', () => {
     );
     expect(messages.map(item => item.role)).toEqual(['user', 'assistant']);
     expect(messages[1]?.content).toBe('Codex 是 OpenAI 的代码协作智能体。');
+    expect(messages[1]?.cognitionSnapshot?.thoughtChain?.length).toBeGreaterThan(0);
+    expect(messages[1]?.cognitionSnapshot?.thinkState?.loading).toBeFalsy();
     expect(events.map(item => item.type)).toEqual(
       expect.arrayContaining(['user_message', 'node_status', 'assistant_token', 'assistant_message'])
     );

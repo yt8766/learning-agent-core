@@ -261,22 +261,19 @@ describe('AliyunOssStorageProvider', () => {
   });
 });
 
-function createClient(
-  overrides: Partial<{
-    delete: ReturnType<typeof vi.fn>;
-    get: ReturnType<typeof vi.fn>;
-    list: ReturnType<typeof vi.fn>;
-    put: ReturnType<typeof vi.fn>;
-  }> = {}
-): MockAliOssClient {
+function createClient(overrides: Partial<MockAliOssClient> = {}): MockAliOssClient {
   return {
-    delete: vi.fn().mockResolvedValue({}),
-    get: vi.fn().mockResolvedValue({
+    delete: vi.fn<MockAliOssClient['delete']>().mockResolvedValue({}),
+    get: vi.fn<MockAliOssClient['get']>().mockResolvedValue({
       content: Buffer.from(''),
       res: { headers: {} }
     }),
-    list: vi.fn().mockResolvedValue({ objects: [], nextMarker: undefined, isTruncated: false }),
-    put: vi.fn().mockResolvedValue({}),
+    list: vi.fn<MockAliOssClient['list']>().mockResolvedValue({
+      objects: [],
+      nextMarker: undefined,
+      isTruncated: false
+    }),
+    put: vi.fn<MockAliOssClient['put']>().mockResolvedValue({}),
     ...overrides
   };
 }

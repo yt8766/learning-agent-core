@@ -1,3 +1,5 @@
+import type { ChatCognitionSnapshot } from '@agent/core';
+
 export type ChatMessageFeedbackRating = 'helpful' | 'unhelpful' | 'none';
 export type ChatMessageFeedbackReasonCode = 'too_shallow' | 'incorrect' | 'missed_point' | 'bad_format' | 'other';
 
@@ -278,5 +280,6 @@ export interface ChatMessageRecord {
         };
         nextActions: string[];
       };
+  cognitionSnapshot?: ChatCognitionSnapshot;
   createdAt: string;
 }

@@ -49,7 +49,7 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
         id: 'embed_mock_default',
         name: 'Mock Embedding Small',
         provider: 'mock',
-        dimension: 1536,
+        dimension: 1024,
         status: 'active'
       }
     ]);

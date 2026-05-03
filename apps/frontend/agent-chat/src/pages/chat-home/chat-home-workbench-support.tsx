@@ -4,11 +4,7 @@ import type { WorkspaceCenterReadinessSummary } from '@/api/workspace-center-api
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { buildProjectContextSnapshot } from './chat-home-helpers';
 import { buildSubmitMessage, stripLeadingWorkflowCommand } from './chat-home-submit';
-export {
-  buildThoughtItems,
-  buildThoughtItemsFromFields,
-  shouldIncludeEventInThoughtLog
-} from './chat-home-workbench-thoughts';
+export { buildThoughtItems, shouldIncludeEventInThoughtLog } from './chat-home-workbench-thoughts';
 
 export interface QuickActionChip {
   label: string;
@@ -27,45 +23,6 @@ export interface WorkspaceVaultSignal {
 type SkillInstallState = NonNullable<
   NonNullable<ReturnType<typeof useChatSession>['checkpoint']>['skillSearch']
 >['suggestions'][number]['installState'];
-type ChatSessionCheckpoint = ReturnType<typeof useChatSession>['checkpoint'];
-type ChatSessionMessage = ReturnType<typeof useChatSession>['messages'][number];
-type ChatSessionRecord = ReturnType<typeof useChatSession>['activeSession'];
-type NonNullableCheckpoint = NonNullable<ChatSessionCheckpoint>;
-
-export interface QuickActionChipsInput {
-  activeSession?: Pick<NonNullable<ChatSessionRecord>, 'status'>;
-  checkpoint?: Pick<NonNullableCheckpoint, 'graphState'>;
-  messages: Array<Pick<ChatSessionMessage, 'content' | 'id' | 'role'>>;
-}
-
-export interface WorkspaceVaultSignalsInput {
-  activeSession?: Pick<NonNullable<ChatSessionRecord>, 'status'>;
-  checkpoint?: Pick<
-    NonNullableCheckpoint,
-    | 'connectorRefs'
-    | 'currentMinistry'
-    | 'currentWorker'
-    | 'externalSources'
-    | 'learningEvaluation'
-    | 'reusedMemories'
-    | 'reusedRules'
-    | 'reusedSkills'
-    | 'skillSearch'
-    | 'usedCompanyWorkers'
-    | 'usedInstalledSkills'
-  >;
-}
-
-export interface WorkspaceShareTextInput {
-  activeSession?: Pick<NonNullable<ChatSessionRecord>, 'title'> &
-    Partial<Pick<NonNullable<ChatSessionRecord>, 'status'>>;
-  checkpoint?: Pick<
-    NonNullableCheckpoint,
-    'connectorRefs' | 'currentMinistry' | 'currentWorker' | 'externalSources' | 'thinkState' | 'usedInstalledSkills'
-  >;
-  messages: Array<Pick<ChatSessionMessage, 'content' | 'role'>>;
-  pendingApprovals: unknown[];
-}
 
 const QUICK_SUGGESTIONS: QuickActionChip[] = [
   {
@@ -120,17 +77,9 @@ export function shouldShowMissionControl(chat: ReturnType<typeof useChatSession>
 }
 
 export function buildQuickActionChips(chat: ReturnType<typeof useChatSession>): QuickActionChip[] {
-  return buildQuickActionChipsFromFields({
-    activeSession: chat.activeSession,
-    checkpoint: chat.checkpoint,
-    messages: chat.messages
-  });
-}
-
-export function buildQuickActionChipsFromFields(input: QuickActionChipsInput): QuickActionChip[] {
-  const currentStep = input.checkpoint?.graphState?.currentStep;
-  const status = input.activeSession?.status;
-  const hasSettledAssistantReply = input.messages.some(
+  const currentStep = chat.checkpoint?.graphState?.currentStep;
+  const status = chat.activeSession?.status;
+  const hasSettledAssistantReply = chat.messages.some(
     message => message.role === 'assistant' && message.content.trim() && !message.id.startsWith('pending_assistant_')
   );
   const resultFollowUps: QuickActionChip[] = hasSettledAssistantReply
@@ -215,29 +164,11 @@ export function buildWorkspaceFollowUpActions(chat: ReturnType<typeof useChatSes
   return chips.filter(item => ['继续深挖', '改成计划', '生成执行任务', '输出检查单'].includes(item.label));
 }
 
-export function buildWorkspaceFollowUpActionsFromFields(input: QuickActionChipsInput) {
-  const chips = buildQuickActionChipsFromFields(input);
-  return chips.filter(item => ['继续深挖', '改成计划', '生成执行任务', '输出检查单'].includes(item.label));
-}
-
 export function buildWorkspaceVaultSignals(
   chat: ReturnType<typeof useChatSession>,
   workspaceCenterReadiness?: WorkspaceCenterReadinessSummary
 ): WorkspaceVaultSignal[] {
-  return buildWorkspaceVaultSignalsFromFields(
-    {
-      activeSession: chat.activeSession,
-      checkpoint: chat.checkpoint
-    },
-    workspaceCenterReadiness
-  );
-}
-
-export function buildWorkspaceVaultSignalsFromFields(
-  input: WorkspaceVaultSignalsInput,
-  workspaceCenterReadiness?: WorkspaceCenterReadinessSummary
-): WorkspaceVaultSignal[] {
-  const checkpoint = input.checkpoint;
+  const checkpoint = chat.checkpoint;
   const evidenceCount = checkpoint?.externalSources?.length ?? 0;
   const reusedMemoryCount = checkpoint?.reusedMemories?.length ?? 0;
   const reusedRuleCount = checkpoint?.reusedRules?.length ?? 0;
@@ -265,7 +196,7 @@ export function buildWorkspaceVaultSignalsFromFields(
     {
       label: 'Workspace signals',
       value: `${workspaceSignalCount} 项`,
-      detail: checkpoint?.currentWorker ?? checkpoint?.currentMinistry ?? input.activeSession?.status ?? 'idle',
+      detail: checkpoint?.currentWorker ?? checkpoint?.currentMinistry ?? chat.activeSession?.status ?? 'idle',
       tone: 'blue'
     },
     {
@@ -339,16 +270,7 @@ function buildInstallReceiptSignal(installStates: SkillInstallState[]): Workspac
 }
 
 export function buildWorkspaceShareText(chat: ReturnType<typeof useChatSession>) {
-  return buildWorkspaceShareTextFromFields({
-    activeSession: chat.activeSession,
-    checkpoint: chat.checkpoint,
-    messages: chat.messages,
-    pendingApprovals: chat.pendingApprovals
-  });
-}
-
-export function buildWorkspaceShareTextFromFields(input: WorkspaceShareTextInput) {
-  const snapshot = buildProjectContextSnapshot(input);
+  const snapshot = buildProjectContextSnapshot(chat);
   const lines = [
     `当前目标：${snapshot.objective}`,
     `最新结论：${snapshot.latestOutcome}`,

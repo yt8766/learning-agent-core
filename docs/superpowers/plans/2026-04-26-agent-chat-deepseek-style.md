@@ -5,7 +5,7 @@
 适用范围：`apps/frontend/agent-chat`
 最后核对：2026-04-26
 
-> 过时说明（2026-05-02）：本文是历史实施计划快照。当前 `agent-chat` 已移除快速/专家模式与手动重命名入口；真实实现以 `docs/apps/frontend/agent-chat/overview.md` 和 `docs/packages/runtime/session-title-generation.md` 为准。
+> 过时说明（2026-05-02）：本文是历史实施计划快照。当前 `agent-chat` 已移除快速/专家模式，已恢复侧栏手动重命名入口，并且主聊天 AI 回复不再内嵌 `Think` / `ThoughtChain` 折叠行；真实实现以 `docs/apps/frontend/agent-chat/overview.md` 和 `docs/packages/runtime/session-title-generation.md` 为准。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

@@ -15,7 +15,6 @@ interface ConversationProps {
   onSend: ReturnType<typeof useChatSession>['sendMessage'];
   onCancel: ReturnType<typeof useChatSession>['cancelActiveSession'];
   loading: boolean;
-  placeholder?: string;
 }
 
 interface ActiveConversationProps extends ConversationProps {
@@ -26,18 +25,14 @@ interface ActiveConversationProps extends ConversationProps {
 }
 
 export function ActiveConversation(props: ActiveConversationProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [showScrollFab, setShowScrollFab] = useState(false);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    const scrollEl = scrollRef.current;
-    if (!sentinel || !scrollEl) return;
-    const observer = new IntersectionObserver(([entry]) => setShowScrollFab(!entry.isIntersecting), {
-      root: scrollEl,
-      threshold: 0.1
-    });
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) => setShowScrollFab(!entry.isIntersecting), { threshold: 0.1 });
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, []);
@@ -57,36 +52,23 @@ export function ActiveConversation(props: ActiveConversationProps) {
         </div>
       </header>
 
-      {/* 锚点为 fixed；主列为「滚动消息区 + 底部 Composer」，避免 Composer 占用滚动文档流 */}
-      <div className="chatx-conversation__body">
-        <ConversationAnchorRail anchors={props.anchors} />
+      <ConversationAnchorRail anchors={props.anchors} />
 
-        <div className="chatx-conversation__column">
-          <div className="chatx-conversation__stream">
-            <div className="chatx-conversation__stream-scroll" ref={scrollRef}>
-              <Bubble.List items={props.bubbleItems} autoScroll className="chatx-bubble-list" />
-              <div ref={sentinelRef} className="chatx-conversation__sentinel" aria-hidden="true" />
-              {showScrollFab ? (
-                <button
-                  type="button"
-                  className="chatx-conversation__scroll-fab"
-                  onClick={scrollToBottom}
-                  aria-label="滚动到底部"
-                >
-                  <ArrowDownOutlined />
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="chatx-conversation__composer">
-            <ChatComposer
-              onSend={props.onSend}
-              onCancel={props.onCancel}
-              loading={props.loading}
-              placeholder={props.placeholder}
-              active
-            />
-          </div>
+      <div className="chatx-conversation__stream" ref={streamRef}>
+        <Bubble.List items={props.bubbleItems} autoScroll className="chatx-bubble-list" />
+        <div ref={sentinelRef} className="chatx-conversation__sentinel" aria-hidden="true" />
+        {showScrollFab ? (
+          <button
+            type="button"
+            className="chatx-conversation__scroll-fab"
+            onClick={scrollToBottom}
+            aria-label="滚动到底部"
+          >
+            <ArrowDownOutlined />
+          </button>
+        ) : null}
+        <div className="chatx-conversation__composer">
+          <ChatComposer onSend={props.onSend} onCancel={props.onCancel} loading={props.loading} active />
         </div>
       </div>
     </div>
@@ -97,20 +79,11 @@ export function EmptyConversation(props: ConversationProps) {
   return (
     <div className="chatx-empty-conversation">
       <div className="chatx-empty-conversation__hero">
-        <div className="chatx-empty-conversation__intro">
-          <p className="chatx-empty-conversation__tagline">从一条消息起步</p>
-          <div className="chatx-empty-conversation__title">
-            <span className="chatx-brand-mark" aria-hidden="true" />
-            <Title level={1}>你今天想搞定什么？</Title>
-          </div>
-          <span className="chatx-empty-conversation__hint">支持长对话、推理过程与执行任务，侧边栏可随时切换会话。</span>
+        <div className="chatx-empty-conversation__title">
+          <span className="chatx-brand-mark" aria-hidden="true" />
+          <Title level={1}>开始新对话</Title>
         </div>
-        <ChatComposer
-          onSend={props.onSend}
-          onCancel={props.onCancel}
-          loading={props.loading}
-          placeholder={props.placeholder}
-        />
+        <ChatComposer onSend={props.onSend} onCancel={props.onCancel} loading={props.loading} />
       </div>
     </div>
   );
@@ -144,7 +117,7 @@ function ChatComposer(props: ConversationProps & { active?: boolean }) {
         onCancel={props.onCancel}
         suffix={false}
         loading={props.loading}
-        placeholder={props.placeholder ?? '给 Agent Chat 发送消息'}
+        placeholder="给 Agent Chat 发送消息"
         autoSize={{ minRows: 2, maxRows: 3 }}
         footer={actionNode => (
           <div className="chatx-sender-footer">

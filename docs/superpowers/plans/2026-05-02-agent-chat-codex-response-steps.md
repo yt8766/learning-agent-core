@@ -5,6 +5,8 @@
 适用范围：`packages/core`、`apps/backend/agent-server`、`apps/frontend/agent-chat`、`docs/contracts/api`、`docs/apps/frontend/agent-chat`、`docs/apps/backend/agent-server`
 最后核对：2026-05-02
 
+> 当前实现补充（2026-05-02）：主聊天 AI 回复已切到 Codex-style `Bubble.List` 呈现：AI bubble 使用无头像、无边框正文流；运行中 response steps 在正文上方展开，完成后 response steps 在正文上方折叠。`Think` / `ThoughtChain` 不再嵌入主聊天 AI 回复。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `agent-chat` assistant replies show Codex-style fast response steps while running, then fold into a completed response with expandable step details, backed by a stable schema-first contract and backend SSE projection.
