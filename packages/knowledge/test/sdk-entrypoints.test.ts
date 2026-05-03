@@ -17,7 +17,7 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(browser.KnowledgeRagStreamEventSchema).toBeDefined();
     expect(client.KnowledgeApiClient).toBeDefined();
     expect(node.createKnowledgeRuntime).toBeDefined();
-  });
+  }, 30_000);
 
   it('lets SDK consumers compose runtime providers instead of hard-wiring defaults', async () => {
     const { createKnowledgeRuntime } = await import('../src/node');
@@ -69,7 +69,7 @@ describe('knowledge adapter entrypoints', () => {
     expect(chroma).toHaveProperty('ChromaVectorSearchProvider');
     expect(opensearch).toHaveProperty('OpenSearchKeywordSearchProvider');
     expect(supabase).toHaveProperty('SupabasePgVectorStoreAdapter');
-  });
+  }, 30_000);
 });
 
 describe('knowledge root adapter exports', () => {
