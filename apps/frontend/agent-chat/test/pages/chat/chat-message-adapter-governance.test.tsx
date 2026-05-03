@@ -40,7 +40,7 @@ vi.mock('@ant-design/x', async () => ({
 }));
 
 describe('chat-message-adapter governance summary', () => {
-  it('folds cognition status into a lightweight assistant summary row', () => {
+  it('folds completed runtime cognition into a quiet inline summary row', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'user-1',
@@ -82,9 +82,10 @@ describe('chat-message-adapter governance summary', () => {
     const assistantItem = items.find(item => item.key === 'assistant-1');
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
-    expect(html).toContain('chatx-governance-summary');
-    expect(html).toContain('已思考');
-    expect(html).toContain('用时约 2 秒');
+    expect(html).toContain('chatx-inline-think');
+    expect(html).not.toContain('chatx-governance-summary');
+    expect(html).toContain('先判断问题类型，再选择执行路径');
+    expect(html).not.toContain('已思考（用时约 2 秒）');
     expect(html).not.toContain('ThoughtChain timeline');
   });
 });
