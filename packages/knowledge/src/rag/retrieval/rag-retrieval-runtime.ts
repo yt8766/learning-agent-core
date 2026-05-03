@@ -77,7 +77,7 @@ export class RagRetrievalRuntime {
         ? {
             ...result.diagnostics,
             requestedSearchMode: plan.searchMode,
-            effectiveSearchMode: toEffectiveSearchMode(plan.searchMode, result.diagnostics.hybrid?.retrievalMode)
+            effectiveSearchMode: toEffectiveSearchMode(plan.searchMode)
           }
         : undefined
     };
@@ -126,21 +126,7 @@ function buildRetrievalRequest(plan: KnowledgePreRetrievalPlan, primaryQuery: st
   };
 }
 
-function toEffectiveSearchMode(
-  searchMode: KnowledgePreRetrievalPlan['searchMode'],
-  retrievalMode?: 'hybrid' | 'keyword-only' | 'vector-only' | 'none'
-): KnowledgeRagEffectiveSearchMode {
-  switch (retrievalMode) {
-    case 'keyword-only':
-      return 'keyword';
-    case 'vector-only':
-      return 'vector';
-    case 'hybrid':
-      return 'hybrid';
-    case 'none':
-      return 'none';
-  }
-
+function toEffectiveSearchMode(searchMode: KnowledgePreRetrievalPlan['searchMode']): KnowledgeRagEffectiveSearchMode {
   switch (searchMode) {
     case 'keyword-only':
       return 'keyword';
