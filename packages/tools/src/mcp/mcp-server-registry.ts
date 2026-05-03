@@ -1,7 +1,7 @@
 export interface McpServerDefinition {
   id: string;
   displayName: string;
-  transport: 'local-adapter' | 'stdio' | 'http';
+  transport: 'local-adapter' | 'stdio' | 'http' | 'cli';
   enabled: boolean;
   source?: string;
   trustClass?: 'official' | 'curated' | 'community' | 'unverified' | 'internal';

@@ -1,9 +1,9 @@
-export type AdapterMcpTransport = 'local-adapter' | 'stdio' | 'http' | 'sse' | 'streamable-http';
+export type AdapterMcpTransport = 'local-adapter' | 'stdio' | 'http' | 'sse' | 'streamable-http' | 'cli';
 
 export interface AdapterMcpServerDefinition {
   id: string;
   displayName: string;
-  transport: 'local-adapter' | 'stdio' | 'http';
+  transport: 'local-adapter' | 'stdio' | 'http' | 'cli';
   enabled: boolean;
   source?: string;
   trustClass?: 'official' | 'curated' | 'community' | 'unverified' | 'internal';
