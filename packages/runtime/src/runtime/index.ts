@@ -24,6 +24,12 @@ export {
 } from './concurrency';
 export { buildCheckpointRef } from './runtime-checkpoint-ref';
 export {
+  createLangGraphStore,
+  type CreateLangGraphStoreParams,
+  type LangGraphStoreEmbeddingProvider,
+  type LangGraphStoreHandle
+} from './langgraph-store';
+export {
   generateObjectWithRetry,
   generateTextWithRetry,
   streamTextWithRetry,
@@ -53,3 +59,4 @@ export type {
   ModelInvocationProviderExecuteParams,
   ModelInvocationProviderExecuteResult
 } from './model-invocation/model-invocation.types';
+export * from './agentos';
