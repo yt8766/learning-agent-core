@@ -13,21 +13,12 @@ vi.mock('@ant-design/x-markdown', () => ({
 }));
 
 vi.mock('@ant-design/x', async () => ({
-  Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
-    <section>
-      <div>{title}</div>
-      <div>{children}</div>
-    </section>
-  ),
-  ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
-    <section>
+  Sources: ({ items }: { items?: Array<{ title: React.ReactNode }> }) => (
+    <div>
       {items?.map((item, index) => (
-        <article key={index}>
-          <div>{item.title}</div>
-          <div>{item.description}</div>
-        </article>
+        <span key={index}>{item.title}</span>
       ))}
-    </section>
+    </div>
   )
 }));
 
@@ -82,7 +73,41 @@ describe('chat-message-adapter direct reply streaming', () => {
 
     expect(html).toContain('我会先快速查现有链路，然后补最小闭环。');
     expect(html).toContain('已探索 4 个文件');
-    expect(html).toContain('hidden');
+    expect(html).not.toContain('<ol class="chat-response-steps__list" hidden');
+  });
+
+  it('keeps the running cognition summary clickable when only runtime thinking state exists', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'direct_reply_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '正在处理。',
+        createdAt: '2026-05-02T08:30:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      cognitionTargetMessageId: 'direct_reply_task-1',
+      cognitionExpanded: false,
+      cognitionDurationLabel: '12s',
+      thinkState: {
+        messageId: 'direct_reply_task-1',
+        title: '正在思考',
+        content: '',
+        loading: true,
+        blink: true
+      },
+      onToggleCognition: () => undefined,
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('思考中（用时 12s）');
+    expect(html).toContain('chatx-inline-think__action');
+    expect(html).toContain('⌄');
   });
 
   it('keeps partial direct reply text after cancellation when no final assistant message exists', () => {
@@ -158,5 +183,6 @@ describe('chat-message-adapter direct reply streaming', () => {
     expect(html).toContain('已处理 1m 13s');
     expect(html).toContain('chat-response-steps__chevron');
     expect(html).not.toContain('查看步骤细节');
+    expect(html.indexOf('已处理 1m 13s')).toBeLessThan(html.indexOf('处理完成。'));
   });
 });

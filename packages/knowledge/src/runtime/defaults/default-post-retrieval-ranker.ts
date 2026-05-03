@@ -1,4 +1,4 @@
-import type { RetrievalHit } from '@agent/knowledge';
+import type { RetrievalHit } from '../../index';
 
 import type {
   PostRetrievalRanker,

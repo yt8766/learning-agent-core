@@ -17,7 +17,7 @@ describe('knowledge provider contracts', () => {
           adapter: 'langchain-chat-openai',
           model: 'minimax-embedding',
           baseUrl: 'https://api.minimaxi.com/v1',
-          dimensions: 1536
+          dimensions: 1024
         },
         chat: {
           providerId: 'minimax',
@@ -33,7 +33,7 @@ describe('knowledge provider contracts', () => {
         }
       })
     ).toMatchObject({
-      embedding: { providerId: 'minimax', dimensions: 1536 },
+      embedding: { providerId: 'minimax', dimensions: 1024 },
       rerank: { enabled: false }
     });
   });

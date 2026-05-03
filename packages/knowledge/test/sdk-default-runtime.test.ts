@@ -27,7 +27,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
         apiKey: 'embed-key',
         model: 'embed-model',
         baseURL: 'https://embed.local/v1',
-        dimensions: 1536
+        dimensions: 1024
       },
       vectorStore: { client: supabase.client, knowledgeBaseId: 'kb_default' }
     });
@@ -36,7 +36,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
     expect(runtime.chatProvider.defaultModel).toBe('chat-model');
     expect(runtime.embeddingProvider.providerId).toBe('openai-compatible');
     expect(runtime.embeddingProvider.defaultModel).toBe('embed-model');
-    expect(runtime.embeddingProvider.dimensions).toBe(1536);
+    expect(runtime.embeddingProvider.dimensions).toBe(1024);
     expect(runtime.vectorStore).toBeInstanceOf(SupabasePgVectorStoreAdapter);
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
@@ -55,7 +55,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
           apiKey: 'embed-key',
           model: 'embed-model',
           baseURL: 'https://embed.local/v1',
-          dimensions: 1536
+          dimensions: 1024
         }
       })
     ).toThrow(KnowledgeSdkRuntimeConfigError);
@@ -75,7 +75,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
           apiKey: 'embed-key',
           model: 'embed-model',
           baseURL: 'https://embed.local/v1',
-          dimensions: 1536
+          dimensions: 1024
         },
         vectorStore: { client: supabaseClient().client, knowledgeBaseId: 'kb_default' }
       })
@@ -111,7 +111,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
           apiKey: 'embed-key',
           model: 'embed-model',
           baseURL: 'https://embed.local/v1',
-          dimensions: 1536
+          dimensions: 1024
         },
         vectorStore: { client: supabaseClient().client, knowledgeBaseId: 'kb_default' }
       })
@@ -149,7 +149,7 @@ describe('createDefaultKnowledgeSdkRuntime', () => {
           apiKey: 'embed-key',
           model: 'embed-model',
           baseURL: 'https://embed.local/v1',
-          dimensions: 1536
+          dimensions: 1024
         },
         vectorStore: { client: supabaseClient().client, knowledgeBaseId: 'kb_default' }
       })

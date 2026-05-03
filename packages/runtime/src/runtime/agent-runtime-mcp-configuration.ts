@@ -1,4 +1,5 @@
 import type { RuntimeSettings } from '@agent/config';
+import type { CliCapabilityBinding } from '@agent/tools';
 import { createMiniMaxMcpSkillProvider } from '@agent/adapters';
 import {
   installMcpSkillProvider,
@@ -7,14 +8,22 @@ import {
   type McpServerRegistry
 } from '@agent/tools';
 
+import { createMiniMaxCliBindings } from './minimax-cli-bindings';
+
 export interface McpConfigurationDeps {
   settings: RuntimeSettings;
   mcpServerRegistry: McpServerRegistry;
   mcpCapabilityRegistry: McpCapabilityRegistry;
 }
 
-export function registerBuiltinMcpServers(deps: McpConfigurationDeps): void {
+export interface BuiltinMcpRegistrationResult {
+  miniMaxCliBindings?: Map<string, CliCapabilityBinding>;
+}
+
+export function registerBuiltinMcpServers(deps: McpConfigurationDeps): BuiltinMcpRegistrationResult {
   const { settings, mcpServerRegistry, mcpCapabilityRegistry } = deps;
+
+  let miniMaxCliBindings: Map<string, CliCapabilityBinding> | undefined;
 
   mcpServerRegistry.register({
     id: 'local-workspace',
@@ -46,6 +55,7 @@ export function registerBuiltinMcpServers(deps: McpConfigurationDeps): void {
         }
       }
     });
+    miniMaxCliBindings = createMiniMaxCliBindings(miniMaxProviderSettings.apiKey);
   }
 
   if (settings.mcp.bigmodelApiKey) {
@@ -256,4 +266,5 @@ export function registerBuiltinMcpServers(deps: McpConfigurationDeps): void {
     installationMode: 'configured',
     allowedProfiles: ['platform', 'company', 'personal', 'cli']
   });
+  return { miniMaxCliBindings };
 }

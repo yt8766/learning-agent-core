@@ -26,6 +26,7 @@ import type {
   CreateDocumentFromUploadResponse,
   DocumentChunksResponse,
   DocumentProcessingJobRecord,
+  KnowledgeEmbeddingModelsResponse,
   KnowledgeDocumentRecord
 } from './domain/knowledge-document.types';
 import { CreateDocumentFromUploadRequestSchema } from './domain/knowledge-document.schemas';
@@ -111,6 +112,11 @@ export class KnowledgeController {
     @Param('documentId') documentId: string
   ): Promise<DocumentChunksResponse> {
     return this.requireDocuments().listChunks(user, documentId);
+  }
+
+  @Get('embedding-models')
+  listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
+    return this.requireDocuments().listEmbeddingModels();
   }
 
   @Post('documents/:documentId/reprocess')

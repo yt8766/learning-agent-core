@@ -7,7 +7,7 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord,
   KnowledgeStoreRecord
-} from '@agent/knowledge';
+} from '../index';
 
 import {
   chunkDocumentContent,

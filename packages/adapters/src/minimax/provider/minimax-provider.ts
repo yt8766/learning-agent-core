@@ -130,7 +130,6 @@ export class MiniMaxProvider implements LlmProvider {
 
     return createMiniMaxChatModel({
       model,
-      temperature: options.temperature ?? 0.2,
       maxTokens: options.maxTokens,
       apiKey: this.config.apiKey,
       baseUrl: this.config.baseUrl,
@@ -150,7 +149,7 @@ export class MiniMaxProvider implements LlmProvider {
     error: unknown
   ) {
     const model = this.resolveModelId(options) ?? 'unknown-model';
-    const baseUrl = this.config.baseUrl ? normalizeModelBaseUrl(this.config.baseUrl) : 'https://api.minimaxi.com/v1';
+    const baseUrl = this.config.baseUrl ? normalizeModelBaseUrl(this.config.baseUrl) : 'https://api.minimax.io/v1';
     return new Error(
       `[provider=${this.providerId} stage=${stage} model=${model} baseUrl=${baseUrl}] ${describeProviderError(error)}`
     );

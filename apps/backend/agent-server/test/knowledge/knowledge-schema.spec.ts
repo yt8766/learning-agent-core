@@ -34,7 +34,7 @@ describe('knowledge database schema', () => {
 
   it('keeps chunks compatible with pgvector retrieval', () => {
     expect(schema).toContain('create extension if not exists vector');
-    expect(schema).toContain('embedding vector(1536)');
+    expect(schema).toContain('embedding vector(1024)');
     expect(schema).toContain('knowledge_chunks_embedding_idx');
     expect(schema).toContain('using ivfflat (embedding vector_cosine_ops)');
   });

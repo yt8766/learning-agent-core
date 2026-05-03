@@ -9,15 +9,17 @@
 
 `apps/llm-gateway` 登录第一版使用 PostgreSQL 作为管理员身份数据的持久化存储，并通过后台 auth route 签发本地浏览器保存的长短 JWT。登录域不使用服务端 session cookie，也不为登录态创建 session 表。
 
-本地 PostgreSQL 固定使用仓库根级 `docker-compose.yml` 的 `postgres:16-alpine` 镜像。该 compose 只启动数据库，不容器化 `llm-gateway` 应用。
+本地 PostgreSQL 固定使用仓库根级 `docker-compose.yml` 的 `pgvector/pgvector:pg16` 镜像。该 compose 只启动数据库，不容器化 `llm-gateway` 应用；镜像内置 pgvector，供 `knowledge-server` 的 `vector` extension 和 llm-gateway 管理数据共用同一个本地 PG16 实例。
 
 ## 2. 本地 PostgreSQL
 
 仓库根目录的 `docker-compose.yml` 提供全局 `postgres` 服务。`apps/llm-gateway` 不再维护自己的本地开发 compose 文件；应用仍通过 `pnpm --dir apps/llm-gateway dev` 在宿主机运行。
 
 ```bash
-docker compose up -d postgres
+pnpm docker:up
 ```
+
+该根级脚本等价于 `docker compose up -d postgres`。需要查看状态、日志或停止本地 PostgreSQL 时，优先使用 `pnpm docker:ps`、`pnpm docker:logs`、`pnpm docker:down`。
 
 本地数据目录统一绑定到仓库根目录的 `db/` 目录：
 
@@ -66,7 +68,7 @@ Vercel 生产部署优先配置 `UPSTASH_REDIS_REST_URL` 与 `UPSTASH_REDIS_REST
 
 后台登录表单提交 `username + password`。当前登录仍保持单 owner 数据模型，不新增 PostgreSQL 用户名列；服务端用 owner `displayName` 作为用户名匹配值，bootstrap 默认用户名为 `admin`。旧的 `{ account, password }` 或 `{ password }` 登录 payload 会在 contract parse 阶段归一为 `username`，用于兼容已有脚本；前端必须始终展示并提交用户名字段。
 
-如果登录返回 `admin_auth_bad_request`，优先检查本地 PostgreSQL 是否启动：`docker compose up -d postgres`。当 `DATABASE_URL` 指向本地 PostgreSQL 而容器未运行时，底层连接错误会进入 auth route 的兜底错误响应。容器启动并健康后，`admin / <configured-password>` 应返回 token pair；密码与 `LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD` 不一致会返回 `admin_login_invalid_password`。
+如果登录返回 `admin_auth_bad_request`，优先检查本地 PostgreSQL 是否启动：`pnpm docker:up`。当 `DATABASE_URL` 指向本地 PostgreSQL 而容器未运行时，底层连接错误会进入 auth route 的兜底错误响应。容器启动并健康后，`admin / <configured-password>` 应返回 token pair；密码与 `LLM_GATEWAY_BOOTSTRAP_ADMIN_PASSWORD` 不一致会返回 `admin_login_invalid_password`。
 
 ## 4. 登录持久化边界
 
@@ -94,7 +96,7 @@ PostgreSQL 负责持久化以下管理员登录相关表：
 
 1. 确认根目录 `db/` 已被 `.gitignore` 忽略。
 2. 复制 `apps/llm-gateway/.env.example` 中的变量到本地环境，并替换 `LLM_GATEWAY_ADMIN_JWT_SECRET` 等 secret。
-3. 从仓库根目录启动 PostgreSQL：`docker compose up -d postgres`。
+3. 从仓库根目录启动 PostgreSQL：`pnpm docker:up`。
 4. 启动应用：`pnpm --dir apps/llm-gateway dev`。该脚本固定使用 `http://localhost:3100`。
 5. 打开后台登录页 `http://localhost:3100/admin`，用 `admin / <configured-password>` 首次登录；后端会把该管理员持久化到 PostgreSQL。
 

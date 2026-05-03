@@ -1,10 +1,4 @@
-import {
-  MemoryRecord,
-  MemorySearchReason,
-  MemorySearchRequest,
-  MemorySearchResult,
-  ReflectionRecord
-} from '@agent/memory';
+import { MemoryRecord, MemorySearchReason, MemorySearchRequest, MemorySearchResult, ReflectionRecord } from '../index';
 
 export function normalizeMemoryRecord(record: MemoryRecord): MemoryRecord {
   const status = record.status ?? 'active';

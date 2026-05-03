@@ -63,6 +63,11 @@
 
 ## 3. 前端实现原则
 
+代码风格与样式参考：
+
+- [JS/TS 代码风格规范](/docs/conventions/javascript-typescript-style.md)（对齐 Google / Airbnb 指南，与本仓库工具链的优先级）
+- [样式规范](/docs/conventions/styling-conventions.md)（Tailwind 优先，Sass 仅作为最后手段）
+
 前端导入约束：
 
 - 默认使用顶层静态 `import`
@@ -390,13 +395,6 @@ pnpm --dir apps/backend/agent-server build
 - 特别是不要触碰以下目录：
   - `~/Library/Application Support/Google/Chrome`
   - `~/Library/Caches/Google/Chrome`
-
-### 横向优先原则（MVP 先行）
-
-- 每个功能默认先走**横向**：以最小代价打通完整端到端流程，让流程能跑通，形成可演示的 MVP，**必须等用户确认流程已通**后，才允许进入**纵向**扩展（完善细节、提升质量、处理边界场景）。
-- 横向阶段的目标是"流程跑通"，而不是"每一层都完善"：接口可以是 stub、实现可以是 mock、UI 可以是最小骨架，但数据必须能从入口流到出口，关键节点必须可验证。
-- 纵向阶段（功能完善、错误处理、性能优化、边界覆盖）只有在用户明确确认"横向流程已通"后才开始；不允许在用户未确认前自行判断"流程已通"并继续深入。
-- 如果一个功能涉及多层（前端、后端、agent、adapter），横向阶段必须每层都有最小可运行实现，不能只做其中几层后停止并声称"横向完成"。
 
 ### 完成条件
 

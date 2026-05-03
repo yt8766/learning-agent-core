@@ -221,6 +221,42 @@ describe('VectorKnowledgeSearchService', () => {
     expect(result.hits[0]?.metadata).toEqual({ status: 'active' });
   });
 
+  it('filters direct vector search by metadata knowledgeBaseId and projects it to hits', async () => {
+    const source = makeSource();
+    const chunks = [
+      makeChunk({
+        id: 'chunk-rag',
+        documentId: 'doc-rag',
+        metadata: { knowledgeBaseId: 'kb_rag' }
+      }),
+      makeChunk({
+        id: 'chunk-other',
+        documentId: 'doc-other',
+        metadata: { knowledgeBaseId: 'kb_other' }
+      })
+    ];
+    const sourceRepo = new InMemoryKnowledgeSourceRepository([source]);
+    const chunkRepo = new InMemoryKnowledgeChunkRepository(chunks);
+    const provider: VectorSearchProvider = {
+      searchSimilar: async () => [
+        { chunkId: 'chunk-rag', score: 0.9 },
+        { chunkId: 'chunk-other', score: 0.8 }
+      ]
+    };
+
+    const service = new VectorKnowledgeSearchService(provider, chunkRepo, sourceRepo);
+    const result = await service.search({
+      query: 'retrieval',
+      limit: 5,
+      filters: {
+        knowledgeBaseIds: ['kb_rag']
+      }
+    });
+
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['chunk-rag']);
+    expect(result.hits[0]?.knowledgeBaseId).toBe('kb_rag');
+  });
+
   it('expands provider topK and slices filtered hits back to request limit', async () => {
     const source = makeSource();
     const chunks = [

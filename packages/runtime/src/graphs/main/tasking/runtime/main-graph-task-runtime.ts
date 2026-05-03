@@ -40,7 +40,7 @@ import {
   upsertRuntimeAgentState
 } from './main-graph-task-runtime-trace';
 import { TaskBudgetExceededError, TaskCancelledError } from './main-graph-task-runtime-errors';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 
 interface MainGraphTaskRuntimeDependencies {
   mcpClientManager?: McpClientManager;

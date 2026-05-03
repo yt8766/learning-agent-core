@@ -13,7 +13,7 @@ import type {
   ReviewRecord,
   WorkerDefinition
 } from '@agent/core';
-import type { LearningConflictRecord } from '@agent/knowledge';
+import type { LearningConflictRecord } from '@agent/core';
 import type { LearningCandidateRecord, RuleRecord } from '@agent/memory';
 import type {
   RuntimeLearningJob as LearningJob,
@@ -57,6 +57,10 @@ export class AgentOrchestrator {
   private readonly learningJobsRuntime: MainGraphRuntimeModuleBundle['learningJobsRuntime'];
   private readonly lifecycle: MainGraphRuntimeModuleBundle['lifecycle'];
   private readonly bridge: MainGraphRuntimeModuleBundle['bridge'];
+  private readonly initializeGraphCheckpointer: MainGraphRuntimeModuleBundle['initializeGraphCheckpointer'];
+  private readonly closeGraphCheckpointer: MainGraphRuntimeModuleBundle['closeGraphCheckpointer'];
+  private readonly initializeGraphStore: MainGraphRuntimeModuleBundle['initializeGraphStore'];
+  private readonly closeGraphStore: MainGraphRuntimeModuleBundle['closeGraphStore'];
   private localSkillSuggestionResolver?: LocalSkillSuggestionResolver;
   private preExecutionSkillInterventionResolver?: PreExecutionSkillInterventionResolver;
   private runtimeSkillInterventionResolver?: RuntimeSkillInterventionResolver;
@@ -103,10 +107,21 @@ export class AgentOrchestrator {
     this.learningJobsRuntime = modules.learningJobsRuntime;
     this.lifecycle = modules.lifecycle;
     this.bridge = modules.bridge;
+    this.initializeGraphCheckpointer = modules.initializeGraphCheckpointer;
+    this.closeGraphCheckpointer = modules.closeGraphCheckpointer;
+    this.initializeGraphStore = modules.initializeGraphStore;
+    this.closeGraphStore = modules.closeGraphStore;
   }
 
   async initialize(): Promise<void> {
+    await this.initializeGraphCheckpointer();
+    await this.initializeGraphStore();
     await this.lifecycle.initialize();
+  }
+
+  async close(): Promise<void> {
+    await this.closeGraphStore();
+    await this.closeGraphCheckpointer();
   }
 
   subscribe(listener: (task: TaskRecord) => void): () => void {

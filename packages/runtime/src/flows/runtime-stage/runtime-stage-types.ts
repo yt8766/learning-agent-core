@@ -5,7 +5,7 @@ import type { AgentRoleValue as AgentRole } from '@agent/core';
 import type { PendingExecutionContext } from '../approval';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../types/chat-graph';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../index';
 
 export interface PipelineRuntimeCallbacks {
   ensureTaskNotCancelled: (task: TaskRecord) => void;

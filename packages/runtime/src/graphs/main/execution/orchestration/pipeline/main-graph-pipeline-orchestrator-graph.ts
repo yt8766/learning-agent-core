@@ -72,7 +72,8 @@ export function buildDirectReplyGraphRunner(
       resolveSkillInstallInterruptResume: callbacks.resolveSkillInstallInterruptResume,
       runDirectReplyTask: callbacks.runDirectReplyTask
     },
-    checkpointer: callbacks.getGraphCheckpointer()
+    checkpointer: callbacks.getGraphCheckpointer(),
+    store: callbacks.getGraphStore()
   });
 }
 
@@ -126,7 +127,8 @@ export function buildTaskPipelineRunner(
       resolveRuntimeSkillIntervention: callbacks.resolveRuntimeSkillIntervention,
       resolveSkillInstallInterruptResume: callbacks.resolveSkillInstallInterruptResume
     },
-    checkpointer: callbacks.getGraphCheckpointer()
+    checkpointer: callbacks.getGraphCheckpointer(),
+    store: callbacks.getGraphStore()
   });
 }
 

@@ -25,24 +25,7 @@ vi.mock('antd', async () => {
   };
 });
 
-vi.mock('@ant-design/x', () => ({
-  Think: ({ title, children }: { title?: ReactNode; children?: ReactNode }) => (
-    <section data-testid="think-mock">
-      <div>{title}</div>
-      <div>{children}</div>
-    </section>
-  ),
-  ThoughtChain: ({ items }: { items?: Array<{ title?: ReactNode; description?: ReactNode }> }) => (
-    <section data-testid="thought-chain-mock">
-      {items?.map((item, index) => (
-        <article key={index}>
-          <div>{item.title}</div>
-          <div>{item.description}</div>
-        </article>
-      ))}
-    </section>
-  )
-}));
+vi.mock('@ant-design/x', () => ({}));
 
 describe('chat-runtime-drawer helpers', () => {
   it('formats plan-question interrupt summary', () => {

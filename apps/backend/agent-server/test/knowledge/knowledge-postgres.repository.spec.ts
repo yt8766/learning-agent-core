@@ -13,7 +13,7 @@ import { PostgresKnowledgeRepository } from '../../src/knowledge/repositories/kn
 import { FakeKnowledgeSqlClient } from './knowledge-postgres.repository.helpers';
 
 const now = '2026-05-01T09:00:00.000Z';
-const embedding1536 = Array.from({ length: 1536 }, (_, index) => (index < 3 ? [0.1, 0.2, 0.3][index]! : 0));
+const embedding1024 = Array.from({ length: 1024 }, (_, index) => (index < 3 ? [0.1, 0.2, 0.3][index]! : 0));
 
 describe('PostgresKnowledgeRepository', () => {
   it('serializes jsonb and vector write parameters before sending them to SQL', async () => {
@@ -82,7 +82,7 @@ describe('PostgresKnowledgeRepository', () => {
     const result = await repository.listChunks({ tenantId: 'tenant-1', knowledgeBaseId: 'kb-1', documentId: 'doc-1' });
 
     expect(result.items[0]).toMatchObject({ id: 'chunk-1', metadata: { page: 1 } });
-    expect(result.items[0]?.embedding).toHaveLength(1536);
+    expect(result.items[0]?.embedding).toHaveLength(1024);
     expect(result.items[0]?.embedding?.slice(0, 3)).toEqual([0.1, 0.2, 0.3]);
   });
 
@@ -91,7 +91,7 @@ describe('PostgresKnowledgeRepository', () => {
     const repository = new PostgresKnowledgeRepository(client);
 
     await expect(repository.createChunk(chunkRecord({ embedding: [0.1, 0.2, 0.3] }))).rejects.toThrow(
-      'Knowledge chunk embedding must contain 1536 dimensions for pgvector storage'
+      'Knowledge chunk embedding must contain 1024 dimensions for pgvector storage'
     );
     expect(client.query).not.toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ function chunkRecord(overrides: Partial<KnowledgeChunkRecord> = {}): KnowledgeCh
     text: '常见的评测内容有检索评测、生成评测、端到端评测。',
     ordinal: 1,
     tokenCount: 42,
-    embedding: embedding1536,
+    embedding: embedding1024,
     metadata: { page: 1 },
     createdAt: now,
     updatedAt: now,

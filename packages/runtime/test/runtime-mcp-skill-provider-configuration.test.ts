@@ -8,7 +8,7 @@ describe('registerBuiltinMcpServers MCP skill providers', () => {
     const mcpServerRegistry = new McpServerRegistry();
     const mcpCapabilityRegistry = new McpCapabilityRegistry();
 
-    registerBuiltinMcpServers({
+    const { miniMaxCliBindings } = registerBuiltinMcpServers({
       mcpServerRegistry,
       mcpCapabilityRegistry,
       settings: {
@@ -45,6 +45,16 @@ describe('registerBuiltinMcpServers MCP skill providers', () => {
         env: expect.objectContaining({ MINIMAX_API_KEY: 'minimax-key' })
       })
     );
+    expect(mcpServerRegistry.get('minimax-cli')).toEqual(
+      expect.objectContaining({
+        source: 'minimax',
+        transport: 'cli',
+        command: 'mmx',
+        env: expect.objectContaining({ MINIMAX_API_KEY: 'minimax-key' })
+      })
+    );
+    expect(miniMaxCliBindings?.has('minimax:web_search')).toBe(true);
+    expect(miniMaxCliBindings?.has('minimax:understand_image')).toBe(true);
     expect(mcpCapabilityRegistry.get('minimax:voice_clone')).toEqual(
       expect.objectContaining({ riskLevel: 'critical', requiresApproval: true })
     );

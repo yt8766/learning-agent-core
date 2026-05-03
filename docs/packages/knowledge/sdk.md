@@ -31,7 +31,7 @@ export interface KnowledgeRuntimeProviders {
 }
 ```
 
-浏览器 HTTP client 与 token refresh 属于 `@agent/knowledge/browser` / `@agent/knowledge/client` 的后续方向；不要让浏览器直接持有 provider secret、database URL 或向量库凭据。
+浏览器 HTTP client 与 token refresh 属于 `@agent/knowledge/browser-entry` / `@agent/knowledge/client` 的后续方向；不要让浏览器直接持有 provider secret、database URL 或向量库凭据。
 
 ## 默认实现
 
@@ -115,7 +115,9 @@ export const KNOWLEDGE_SDK_RUNTIME = Symbol('KNOWLEDGE_SDK_RUNTIME');
 2. 配置 `KNOWLEDGE_CHAT_MODEL`、`KNOWLEDGE_EMBEDDING_MODEL`、`KNOWLEDGE_LLM_API_KEY`；可选配置 `KNOWLEDGE_LLM_BASE_URL`、`KNOWLEDGE_CHAT_MAX_TOKENS`、`KNOWLEDGE_EMBEDDING_DIMENSIONS`、`KNOWLEDGE_EMBEDDING_BATCH_SIZE`。
 3. `KnowledgeModule` 注册 `createKnowledgeSdkRuntimeProvider()`；provider 校验 env，创建 Postgres-backed RPC client，再调用 `createDefaultKnowledgeSdkRuntime()`。
 4. `KnowledgeIngestionWorker` 使用 `runtime.embeddingProvider.embedBatch()` 和 `runtime.vectorStore.upsert()` 把文档 chunks 写入向量库。
-5. `KnowledgeDocumentService.chat()` 使用 `runtime.embeddingProvider.embedText()`、`runtime.vectorStore.search()` 和 `runtime.chatProvider.generate()` 完成 RAG 对话。
+5. `KnowledgeDocumentService.chat()` 使用 `runtime.embeddingProvider.embedText()`、`runtime.vectorStore.search()` 和 `runtime.chatProvider.generate()` 完成非流式 RAG 对话。
+6. `KnowledgeDocumentService.streamChat()` 复用同一 policy、planner、search adapter 和 answer provider 调用 `streamKnowledgeRag()`；当 answer provider 暴露 `stream()` 且 retrieval 满足 no-answer policy 的 citation/evidence 要求时，SDK 会在 `answer.started` 之后发送 `answer.delta`，最终仍发送 `answer.completed` 和 `rag.completed`。stream 分支不会再回落二次调用 `generate()`；最终 `answer.completed` 优先使用 provider stream 的 done result，缺少 done result 时使用累计 delta 文本，并继续只允许引用 retrieval 已返回的 grounded citations。provider 不支持 stream 或依据不足时不发送 delta，保持稳定 lifecycle event 序列。
+7. `knowledge-server` 的 RAG answer provider 会把已启用 SDK runtime 的 `chatProvider.stream()` 桥接到 `KnowledgeAnswerProvider.stream()`：底层 `{ type: 'delta', text }` 会转成 `{ textDelta }`，底层 `{ type: 'done', result }` 会转成最终 answer result 的 metadata/文本来源；citations 仍由 RAG retrieval 结果统一约束，避免 vendor stream 事件直接穿透 API contract。
 
 如果没有配置 SDK 专用 env，provider 返回 disabled runtime，保留本地 deterministic fallback；如果出现任一 SDK env 但缺少关键项，服务启动失败，避免半配置时误以为已经使用大模型或向量库。
 

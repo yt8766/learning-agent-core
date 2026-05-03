@@ -7,7 +7,11 @@ import {
   CapabilityAugmentationRecordSchema,
   RequestedExecutionHintsSchema
 } from '../../skills/schemas/capability';
-import { ChannelIdentitySchema, ChatSessionCompressionRecordSchema } from '../../tasking/schemas/session';
+import {
+  ChannelIdentitySchema,
+  ChatSessionCompressionRecordSchema,
+  ChatSessionTitleSourceSchema
+} from '../../tasking/schemas/session';
 import { TaskLineageRecordSchema } from '../../tasking/schemas/task-lineage';
 import { MemoryScopeTypeSchema, MemoryTypeSchema } from '../../tasking/schemas/memory-fields';
 
@@ -57,7 +61,8 @@ export const CreateChatSessionDtoSchema = z.object({
 });
 
 export const UpdateChatSessionDtoSchema = z.object({
-  title: z.string()
+  title: z.string(),
+  titleSource: ChatSessionTitleSourceSchema.optional()
 });
 
 export const AppendChatMessageDtoSchema = z.object({

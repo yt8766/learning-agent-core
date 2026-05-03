@@ -7,7 +7,7 @@ import type { RuntimeAgentGraphState } from '../../types/chat-graph';
 import { markExecutionStepBlocked, markExecutionStepResumed } from '../../bridges/supervisor-runtime-bridge';
 import { recordPendingApprovalOnce, recordPendingInterruptOnce } from './interrupt-idempotency';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from './risk-interrupts';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../index';
 
 type PipelineRuntimeCallbacks = {
   attachTool: (

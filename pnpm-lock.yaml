@@ -452,6 +452,9 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../../../packages/core
+      '@agent/knowledge':
+        specifier: workspace:*
+        version: link:../../../packages/knowledge
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -686,10 +689,19 @@ importers:
       react-router-dom:
         specifier: ^7.14.2
         version: 7.14.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      tailwind-merge:
+        specifier: ^3.5.0
+        version: 3.5.0
+      tailwindcss:
+        specifier: ^4.2.4
+        version: 4.2.4
       zustand:
         specifier: ^5.0.12
         version: 5.0.12(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.2.2
+        version: 4.2.2(vite@8.0.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -737,7 +749,7 @@ importers:
         version: 0.577.0(react@19.2.4)
       next:
         specifier: ^16.0.0
-        version: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0)
+        version: 16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0)
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -840,18 +852,21 @@ importers:
 
   packages/evals:
     dependencies:
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../core
       '@agent/runtime':
         specifier: workspace:*
         version: link:../runtime
 
   packages/knowledge:
     dependencies:
-      '@agent/adapters':
-        specifier: workspace:*
-        version: link:../adapters
       '@agent/config':
         specifier: workspace:*
         version: link:../config
+      '@agent/core':
+        specifier: workspace:*
+        version: link:../core
       '@agent/memory':
         specifier: workspace:*
         version: link:../memory
@@ -930,9 +945,15 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../core
+      '@agent/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@agent/memory':
         specifier: workspace:*
         version: link:../memory
+      '@agent/report-kit':
+        specifier: workspace:*
+        version: link:../report-kit
       '@agent/skill':
         specifier: workspace:*
         version: link:../skill
@@ -942,6 +963,9 @@ importers:
       '@langchain/langgraph':
         specifier: ^1.2.5
         version: 1.2.5(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6)
+      '@langchain/langgraph-checkpoint-postgres':
+        specifier: ^1.0.1
+        version: 1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(@langchain/langgraph-checkpoint@1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0)))
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -984,18 +1008,9 @@ importers:
 
   packages/tools:
     dependencies:
-      '@agent/config':
-        specifier: workspace:*
-        version: link:../config
       '@agent/core':
         specifier: workspace:*
         version: link:../core
-      '@agent/memory':
-        specifier: workspace:*
-        version: link:../memory
-      '@agent/report-kit':
-        specifier: workspace:*
-        version: link:../report-kit
       '@agent/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -2927,6 +2942,13 @@ packages:
   '@langchain/core@1.1.40':
     resolution: {integrity: sha512-RJ41GQEMxr9ZEZNoIiPgW0+v9nAY6FEZGlk+MjBghr2GR8He50abLam0XCe1aqUJjuKbqt2lUD6M+6SZ+2NIJg==}
     engines: {node: '>=20'}
+
+  '@langchain/langgraph-checkpoint-postgres@1.0.1':
+    resolution: {integrity: sha512-cRXOLYZc0egMjyAQfBblWXdoBS+WKwEbCEuE+/f88XHJ1bq5jVz7aycbpjF/7F5EykG7xmybQOz5eUdg3neRzg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': ^1.0.1
+      '@langchain/langgraph-checkpoint': ^1.0.0
 
   '@langchain/langgraph-checkpoint@1.0.1':
     resolution: {integrity: sha512-HM0cJLRpIsSlWBQ/xuDC67l52SqZ62Bh2Y61DX+Xorqwoh5e1KxYvfCD7GnSTbWWhjBOutvnR0vPhu4orFkZfw==}
@@ -14393,6 +14415,14 @@ snapshots:
       - openai
       - ws
 
+  '@langchain/langgraph-checkpoint-postgres@1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))(@langchain/langgraph-checkpoint@1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0)))':
+    dependencies:
+      '@langchain/core': 1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0)
+      '@langchain/langgraph-checkpoint': 1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))
+      pg: 8.20.0
+    transitivePeerDependencies:
+      - pg-native
+
   '@langchain/langgraph-checkpoint@1.0.1(@langchain/core@1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0))':
     dependencies:
       '@langchain/core': 1.1.40(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.6.1(@opentelemetry/api@1.9.1))(openai@6.34.0(ws@8.20.0)(zod@4.3.6))(ws@8.20.0)
@@ -20749,7 +20779,7 @@ snapshots:
 
   netmask@2.1.1: {}
 
-  next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0):
+  next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0):
     dependencies:
       '@next/env': 16.2.4
       '@swc/helpers': 0.5.15
@@ -20758,7 +20788,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.4)
+      styled-jsx: 5.1.6(react@19.2.4)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.4
       '@next/swc-darwin-x64': 16.2.4
@@ -23072,12 +23102,10 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.7
 
-  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.2.4):
+  styled-jsx@5.1.6(react@19.2.4):
     dependencies:
       client-only: 0.0.1
       react: 19.2.4
-    optionalDependencies:
-      '@babel/core': 7.29.0
 
   stylis@4.3.6: {}
 

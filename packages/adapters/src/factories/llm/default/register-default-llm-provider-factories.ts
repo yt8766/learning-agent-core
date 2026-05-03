@@ -2,6 +2,7 @@ import type { LlmProviderFactoryRegistry } from '../llm-provider-factory-registr
 
 import { AnthropicProvider } from '../../../anthropic/provider';
 import { MiniMaxProvider } from '../../../minimax/provider';
+import { KimiProvider } from '../../../kimi/provider';
 import { OpenAICompatibleProvider } from '../../../openai-compatible/provider';
 
 export function registerDefaultLlmProviderFactories(registry: LlmProviderFactoryRegistry): void {
@@ -28,5 +29,9 @@ export function registerDefaultLlmProviderFactories(registry: LlmProviderFactory
   registry.register({
     type: 'minimax',
     create: config => MiniMaxProvider.fromConfig(config)
+  });
+  registry.register({
+    type: 'kimi',
+    create: config => KimiProvider.fromConfig(config)
   });
 }

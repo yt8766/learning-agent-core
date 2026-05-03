@@ -1,4 +1,4 @@
-import type { Vector, VectorStore } from '@agent/knowledge';
+import type { Vector, VectorStore } from '../../../index';
 
 import { AdapterError } from '../../shared/errors/adapter-error';
 import { validateVectorDimensions } from '../../shared/validation/vector-dimensions';

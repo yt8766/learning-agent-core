@@ -1,4 +1,4 @@
-export type KnownProviderType = 'zhipu' | 'openai' | 'openai-compatible' | 'ollama' | 'anthropic' | 'minimax';
+export type KnownProviderType = 'zhipu' | 'openai' | 'openai-compatible' | 'ollama' | 'anthropic' | 'minimax' | 'kimi';
 export type ProviderType = KnownProviderType | (string & {});
 
 export interface ProviderSettingsRecord {
@@ -81,6 +81,29 @@ export interface RuntimeBackgroundConfig {
   runnerIdPrefix: string;
 }
 
+export interface LangGraphCheckpointerConfig {
+  provider: 'memory' | 'postgres';
+  postgres?: {
+    connectionString?: string;
+    schema: string;
+    setupOnInitialize: boolean;
+  };
+}
+
+export interface LangGraphStoreConfig {
+  provider: 'memory' | 'postgres';
+  postgres?: {
+    connectionString?: string;
+    schema: string;
+    setupOnInitialize: boolean;
+  };
+  semanticSearch: {
+    enabled: boolean;
+    fields: string[];
+    distanceMetric?: 'cosine' | 'l2' | 'inner_product';
+  };
+}
+
 export interface DailyTechBriefingConfig {
   enabled: boolean;
   schedule: string;
@@ -151,6 +174,13 @@ export interface RuntimeSettingsOverrides {
   policy?: Partial<Omit<PolicyConfig, 'budget'>> & { budget?: Partial<BudgetPolicy> };
   contextStrategy?: Partial<ContextStrategy>;
   runtimeBackground?: Partial<RuntimeBackgroundConfig>;
+  langGraphCheckpointer?: Partial<LangGraphCheckpointerConfig> & {
+    postgres?: Partial<NonNullable<LangGraphCheckpointerConfig['postgres']>>;
+  };
+  langGraphStore?: Partial<LangGraphStoreConfig> & {
+    postgres?: Partial<NonNullable<LangGraphStoreConfig['postgres']>>;
+    semanticSearch?: Partial<LangGraphStoreConfig['semanticSearch']>;
+  };
   dailyTechBriefing?: Partial<DailyTechBriefingConfig>;
 }
 
@@ -198,6 +228,8 @@ export interface RuntimeSettings {
   policy: PolicyConfig;
   contextStrategy: ContextStrategy;
   runtimeBackground: RuntimeBackgroundConfig;
+  langGraphCheckpointer: LangGraphCheckpointerConfig;
+  langGraphStore: LangGraphStoreConfig;
   dailyTechBriefing: DailyTechBriefingConfig;
   embeddings: {
     provider: string;

@@ -302,13 +302,10 @@ export function getErrorCopy(error: string) {
 
 export const CHAT_ROLE_CONFIG = {
   ai: {
-    avatar: <Avatar style={{ background: '#1677ff' }}>AI</Avatar>,
     placement: 'start' as const,
-    variant: 'shadow' as const,
-    shape: 'round' as const
+    variant: 'borderless' as const
   },
   user: {
-    avatar: <Avatar style={{ background: '#111827' }}>U</Avatar>,
     placement: 'end' as const,
     variant: 'shadow' as const,
     shape: 'round' as const

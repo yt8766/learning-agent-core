@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`packages/memory`、`data/memory`、`data/knowledge`
-最后核对：2026-04-25
+最后核对：2026-05-02
 
 ## 1. 这篇文档说明什么
 
@@ -105,6 +105,23 @@
 
 - `memory` 更偏“沉淀后的复用知识与治理对象”
 - `knowledge` 更偏“检索与索引过程中的原料和索引产物”
+
+### 4.1 LangGraph Store 与 RAG 的关系
+
+`2026-05-02` 起，runtime 可装配 LangGraph 长期 Store：
+
+- 默认是 `InMemoryStore`，用于本地开发与测试
+- 生产可切到 `@langchain/langgraph-checkpoint-postgres/store` 的 `PostgresStore`
+- 开启语义搜索时，Store 使用 runtime embedding provider 建索引
+- Store 注入 graph 的 `compile({ store })`，节点可通过 LangGraph runtime 读取跨 thread 记忆
+
+这里的 Store 不替代 `packages/memory` 的治理模型，也不替代知识库 RAG：
+
+- LangGraph Store：保存跨 thread 的用户偏好、长期事实、程序性经验等小粒度长期记忆
+- `packages/memory`：承载本仓长期记忆 contract、事件、证据、治理、画像与统一搜索 facade
+- RAG / `packages/knowledge`：检索外部文档、知识库 chunk、产品资料、研究资料与权限化语料
+
+三者不冲突。运行时可以先检索长期记忆，再检索 RAG 知识，把来源分别标记为 `memory_reuse`、`rule_reuse`、`knowledge_retrieval` 或更具体的 evidence source。禁止把用户画像和长期偏好塞进知识库 chunk，也禁止把 RAG 命中的临时资料直接写成长期记忆；必须经过 evidence、confidence、scope 与治理判断。
 
 ## 5. 搜索链路约束
 

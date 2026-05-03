@@ -340,5 +340,6 @@ export {
   buildWorkspaceVaultSignals,
   buildWorkspaceShareText,
   resolveSuggestedDraftSubmission,
+  shouldIncludeEventInThoughtLog,
   shouldShowMissionControl
 } from './chat-home-workbench-support';

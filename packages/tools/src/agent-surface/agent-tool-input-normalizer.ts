@@ -1,4 +1,4 @@
-import type { AgentToolAlias, AgentToolAliasRequest } from '@agent/tools';
+import type { AgentToolAlias, AgentToolAliasRequest } from '../index';
 
 export interface NormalizedAgentToolInput {
   toolName: string;

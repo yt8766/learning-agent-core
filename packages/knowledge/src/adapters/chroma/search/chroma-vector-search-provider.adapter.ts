@@ -4,7 +4,7 @@ import type {
   ResolvedKnowledgeRetrievalFilters,
   VectorSearchHit,
   VectorSearchProvider
-} from '@agent/knowledge';
+} from '../../../index';
 
 import { AdapterError } from '../../shared/errors/adapter-error';
 import {
@@ -41,7 +41,8 @@ export interface ChromaVectorSearchProviderOptions {
 
 const ChromaQueryResultSchema = z.object({
   ids: z.array(z.array(z.string())),
-  distances: z.array(z.array(z.number())).optional()
+  distances: z.array(z.array(z.number())).optional(),
+  metadatas: z.array(z.array(z.record(z.string(), z.unknown()).nullable())).optional()
 });
 
 const TRUST_CLASSES: KnowledgeTrustClass[] = ['unverified', 'community', 'curated', 'official', 'internal'];
@@ -113,6 +114,7 @@ export function buildChromaKnowledgeFilterWhere(
 
   const clauses: Array<Record<string, ChromaWhereValue>> = [];
   addInClause(clauses, 'sourceId', filters.sourceIds);
+  addInClause(clauses, 'knowledgeBaseId', filters.knowledgeBaseIds);
   addInClause(clauses, 'sourceType', filters.sourceTypes);
   addInClause(clauses, 'documentId', filters.documentIds);
   addInClause(clauses, 'docType', filters.docTypes);
@@ -134,11 +136,18 @@ function mapChromaQueryResultToVectorHits(rawResult: unknown): VectorSearchHit[]
   const result = ChromaQueryResultSchema.parse(rawResult);
   const ids = result.ids[0] ?? [];
   const distances = result.distances?.[0] ?? [];
+  const metadatas = result.metadatas?.[0] ?? [];
 
   return ids.map((chunkId, index) => ({
     chunkId,
+    knowledgeBaseId: getStringMetadata(metadatas[index], 'knowledgeBaseId'),
     score: distanceToSimilarityScore(distances[index])
   }));
+}
+
+function getStringMetadata(metadata: Record<string, unknown> | null | undefined, key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function distanceToSimilarityScore(distance: number | undefined): number {

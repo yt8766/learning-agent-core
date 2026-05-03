@@ -1,4 +1,4 @@
-import type { LearningEvaluationRecord } from '@agent/knowledge';
+import type { LearningEvaluationRecord } from '@agent/core';
 import type { MemoryRecord, MemoryRepository } from '@agent/memory';
 import type { RuntimeLearningJob as LearningJob } from '../../runtime/runtime-learning.types';
 

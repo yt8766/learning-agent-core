@@ -34,6 +34,7 @@ export const KnowledgeChunkMetadataSchema = z
 export const KnowledgeRetrievalFiltersSchema = z.object({
   sourceTypes: z.array(KnowledgeSourceTypeSchema).optional(),
   sourceIds: z.array(z.string()).optional(),
+  knowledgeBaseIds: z.array(z.string().trim().min(1)).optional(),
   documentIds: z.array(z.string()).optional(),
   minTrustClass: KnowledgeTrustClassSchema.optional(),
   trustClasses: z.array(KnowledgeTrustClassSchema).optional(),
@@ -237,6 +238,7 @@ export const RetrievalHitSchema = z.object({
   chunkId: z.string(),
   documentId: z.string(),
   sourceId: z.string(),
+  knowledgeBaseId: z.string().optional(),
   title: z.string(),
   uri: z.string(),
   sourceType: KnowledgeSourceTypeSchema,

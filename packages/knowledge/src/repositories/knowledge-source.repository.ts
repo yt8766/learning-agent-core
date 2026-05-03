@@ -1,4 +1,4 @@
-import type { KnowledgeSource } from '@agent/knowledge';
+import type { KnowledgeSource } from '../index';
 
 import type { KnowledgeSourceRepository } from '../contracts/knowledge-facade';
 

@@ -8,7 +8,7 @@ import type {
 import { markExecutionStepBlocked, markExecutionStepResumed } from '../../../bridges/supervisor-runtime-bridge';
 import { recordPendingApprovalOnce, recordPendingInterruptOnce } from '../../approval/interrupt-idempotency';
 import { extendInterruptWithRiskMetadata, extendPendingApprovalWithRiskMetadata } from '../../approval/risk-interrupts';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../index';
 function shouldAttemptRuntimeSkillIntervention(
   task: Parameters<DirectReplyInterruptGraphCallbacks['persistAndEmitTask']>[0]
 ) {

@@ -65,6 +65,46 @@ export function buildTaskTrajectoryEventCopy(payload: Record<string, unknown>) {
   return suffixes.length ? `${title}：${suffixes.join(' · ')}` : title;
 }
 
+export function buildNodeLifecycleEventCopy(payload: Record<string, unknown>): string | undefined {
+  const detail = getString(payload.detail);
+  const nodeLabel = getString(payload.nodeLabel) ?? getString(payload.nodeId);
+  const legacyNode = getString(payload.node);
+  const phase = getString(payload.phase);
+  const status = getString(payload.status);
+  const route = getString(payload.route);
+  const ministry = getString(payload.ministry);
+  const progressPercent = typeof payload.progressPercent === 'number' ? payload.progressPercent : undefined;
+
+  const label = nodeLabel ?? legacyNode;
+  if (!label && !detail && !status && !route && progressPercent === undefined && !ministry) {
+    return undefined;
+  }
+
+  const phaseCopy =
+    phase === 'start' ? '开始' : phase === 'progress' ? '进行中' : phase === 'end' ? '已完成' : (phase ?? '');
+
+  const humanizedLabel = label ? humanizeNodeLabelToken(label) : '';
+  const segments = [
+    ministry ?? '',
+    humanizedLabel,
+    phaseCopy,
+    detail ?? '',
+    status ? `状态：${status}` : '',
+    route ? `路径：${route}` : '',
+    typeof progressPercent === 'number' ? `进度 ${progressPercent}%` : ''
+  ].filter(Boolean);
+
+  return segments.length ? segments.join(' · ') : undefined;
+}
+
+function humanizeNodeLabelToken(raw: string): string {
+  return raw
+    .replace(/direct_reply/gi, '直接回复')
+    .replace(/direct-reply/gi, '直接回复')
+    .replace(/_/g, ' ')
+    .trim();
+}
+
 export function buildProjectedEventSummary(eventItem: Pick<ChatEventRecord, 'type' | 'payload'>) {
   const payload = eventItem.payload ?? {};
   if (isExecutionStepEvent(eventItem.type)) {
@@ -79,6 +119,9 @@ export function buildProjectedEventSummary(eventItem: Pick<ChatEventRecord, 'typ
   if (eventItem.type === 'node_progress' && payload.projection === 'task_trajectory') {
     return buildTaskTrajectoryEventCopy(payload);
   }
+  if (eventItem.type === 'node_status' || eventItem.type === 'node_progress') {
+    return buildNodeLifecycleEventCopy(payload);
+  }
   return undefined;
 }
 
@@ -87,6 +130,10 @@ export function resolveProjectedEventThoughtStatus(eventItem: Pick<ChatEventReco
   const trajectoryStep = getObject(payload.trajectoryStep);
   const taskTrajectory = getObject(payload.taskTrajectory);
   const status = getString(payload.status) ?? getString(trajectoryStep?.status) ?? getString(taskTrajectory?.status);
+
+  if ((eventItem.type === 'node_status' || eventItem.type === 'node_progress') && getString(payload.phase) === 'end') {
+    return 'success' as const;
+  }
 
   if (eventItem.type === 'execution_step_blocked' || status === 'failed') {
     return 'error' as const;

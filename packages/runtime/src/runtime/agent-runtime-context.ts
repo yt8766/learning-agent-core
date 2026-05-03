@@ -10,7 +10,7 @@ import type {
   SpecialistDomain,
   WorkflowPresetDefinition
 } from '@agent/core';
-import type { BudgetState } from '@agent/knowledge';
+import type { BudgetState } from '@agent/core';
 import type { EvidenceRecord } from '@agent/memory';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 import { SkillRegistry } from '@agent/skill';

@@ -8,7 +8,7 @@ import type {
   ReviewRecord,
   WorkerDefinition
 } from '@agent/core';
-import type { LearningConflictRecord } from '@agent/knowledge';
+import type { LearningConflictRecord } from '@agent/core';
 import type { LearningCandidateRecord, RuleRecord } from '@agent/memory';
 import type {
   RuntimeLearningJob as LearningJob,

@@ -73,7 +73,7 @@ pnpm --dir apps/frontend/agent-admin dev
 
 - 未配置模型 key 时，direct-reply 与研究能力会退化
 - `ZHIPU_API_BASE_URL` 不再有代码默认值，本地联调必须通过 `.env` 或显式 overrides 提供
-- `MINIMAX_BASE_URL` 默认会回落到 `https://api.minimaxi.com/v1`
+- `MINIMAX_BASE_URL` 默认会回落到 `https://api.minimax.io/v1`；本地 `.env` 若仍写旧的 `https://api.minimaxi.com/v1`，MiniMax M2.x chat 可能返回 `invalid chat setting (2013)`
 - 若只配置 `MINIMAX_API_KEY`，系统会自动注册 `minimax` provider，并默认带上：
   - `MiniMax-M2.7`
   - `MiniMax-M2.7-highspeed`

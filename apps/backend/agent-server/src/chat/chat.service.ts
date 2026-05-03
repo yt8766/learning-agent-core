@@ -332,8 +332,18 @@ function resolveSnapshotSteps(
       ? {
           ...step,
           status: 'completed',
-          completedAt: step.completedAt ?? completedAt
+          completedAt: step.completedAt ?? completedAt,
+          durationMs: step.durationMs ?? calculateStepDurationMs(step.startedAt, step.completedAt ?? completedAt)
         }
       : step
   );
+}
+
+function calculateStepDurationMs(startedAt: string, completedAt: string): number | undefined {
+  const startMs = Date.parse(startedAt);
+  const endMs = Date.parse(completedAt);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    return undefined;
+  }
+  return endMs - startMs;
 }

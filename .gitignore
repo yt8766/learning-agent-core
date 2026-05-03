@@ -96,3 +96,9 @@ Desktop.ini
 
 # LangGraph API
 .langgraph_api
+
+# tsup bundled temp files
+tsup.config.bundled_*.mjs
+
+# promptfoo ephemeral output
+**/promptfoo/latest-summary.json

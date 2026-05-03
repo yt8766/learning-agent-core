@@ -67,6 +67,39 @@ describe('chat response steps adapter', () => {
     expect(buildChatResponseStepEvent(event, { messageId: 'assistant-1', sequence: 2 })).toBeNull();
   });
 
+  it('prefers summary over outputPreview for step detail', () => {
+    const event = {
+      ...baseEvent,
+      id: 'event-detail-priority',
+      type: 'execution_step_completed',
+      payload: {
+        title: 'read_local_file',
+        path: 'package.json',
+        summary: 'first',
+        outputPreview: 'second'
+      }
+    } as ChatEventRecord;
+
+    expect(buildChatResponseStepEvent(event, { messageId: 'assistant-1', sequence: 0 })?.step.detail).toBe('first');
+  });
+
+  it('uses outputPreview as step detail when summary is absent', () => {
+    const event = {
+      ...baseEvent,
+      id: 'event-detail-preview',
+      type: 'execution_step_completed',
+      payload: {
+        title: 'read_local_file',
+        path: 'package.json',
+        outputPreview: '已读取文件 package.json（42 字符）'
+      }
+    } as ChatEventRecord;
+
+    expect(buildChatResponseStepEvent(event, { messageId: 'assistant-1', sequence: 0 })?.step.detail).toBe(
+      '已读取文件 package.json（42 字符）'
+    );
+  });
+
   it('ignores invalid optional url payloads instead of throwing', () => {
     const event = {
       ...baseEvent,

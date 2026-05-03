@@ -340,7 +340,7 @@ describe('ChatHomePage shell', () => {
     const html = renderToStaticMarkup(<ChatHomePage />);
 
     expect(html).toContain('深度思考');
-    expect(html).toContain('智能搜索');
+    expect(html).not.toContain('智能搜索');
     expect(html).toContain('aria-pressed="false"');
     expect(html).toContain('aria-label="上传文件"');
     expect(html.match(/chatx-sender-footer__right/g)).toHaveLength(1);

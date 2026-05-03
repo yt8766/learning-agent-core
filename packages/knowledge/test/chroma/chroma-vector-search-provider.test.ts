@@ -15,7 +15,8 @@ describe('ChromaVectorSearchProvider', () => {
     const embedQuery = vi.fn().mockResolvedValue([0.1, 0.2, 0.3]);
     const query = vi.fn().mockResolvedValue({
       ids: [['chunk-1', 'chunk-2']],
-      distances: [[0.12, 0.37]]
+      distances: [[0.12, 0.37]],
+      metadatas: [[{ knowledgeBaseId: 'kb_rag' }, { knowledgeBaseId: 'kb_rag' }]]
     });
 
     const provider = new ChromaVectorSearchProvider({
@@ -29,6 +30,7 @@ describe('ChromaVectorSearchProvider', () => {
     const hits = await provider.searchSimilar('hybrid search', 2, {
       filters: {
         sourceIds: ['repo-docs'],
+        knowledgeBaseIds: ['kb_rag'],
         sourceTypes: ['repo-docs'],
         documentIds: ['doc-1'],
         docTypes: ['design'],
@@ -46,6 +48,7 @@ describe('ChromaVectorSearchProvider', () => {
       where: {
         $and: [
           { sourceId: { $in: ['repo-docs'] } },
+          { knowledgeBaseId: { $in: ['kb_rag'] } },
           { sourceType: { $in: ['repo-docs'] } },
           { documentId: { $in: ['doc-1'] } },
           { docType: { $in: ['design'] } },
@@ -56,8 +59,8 @@ describe('ChromaVectorSearchProvider', () => {
       }
     });
     expect(hits).toEqual([
-      { chunkId: 'chunk-1', score: 0.88 },
-      { chunkId: 'chunk-2', score: 0.63 }
+      { chunkId: 'chunk-1', knowledgeBaseId: 'kb_rag', score: 0.88 },
+      { chunkId: 'chunk-2', knowledgeBaseId: 'kb_rag', score: 0.63 }
     ]);
   });
 

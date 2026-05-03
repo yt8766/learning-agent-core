@@ -7,7 +7,7 @@ import {
   runExecuteApprovedNode
 } from '../../flows/approval/approval-recovery-graph-nodes';
 import { PendingExecutionContext } from '../../flows/approval';
-import type { ToolExecutionResult } from '@agent/runtime';
+import type { ToolExecutionResult } from '../../index';
 
 type ApprovalDecisionValue = (typeof ApprovalDecision)[keyof typeof ApprovalDecision];
 

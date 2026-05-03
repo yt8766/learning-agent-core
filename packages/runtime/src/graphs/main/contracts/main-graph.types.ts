@@ -11,7 +11,7 @@ import type { LlmProvider } from '@agent/adapters';
 import type { PendingExecutionContext } from '../../../flows/approval';
 import type { RuntimeAgentDependencies } from '../../../contracts/runtime-agent-dependencies';
 import type { SandboxExecutor } from '../../../sandbox';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../index';
 
 export interface AgentRuntimeSettings {
   zhipuModels: {

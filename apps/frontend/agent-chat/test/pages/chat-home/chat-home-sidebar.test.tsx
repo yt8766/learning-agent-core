@@ -34,6 +34,7 @@ interface ChatFixture {
   createNewSession: ReturnType<typeof vi.fn<ChatHomeSidebarChat['createNewSession']>>;
   setActiveSessionId: ReturnType<typeof vi.fn<ChatHomeSidebarChat['setActiveSessionId']>>;
   deleteSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['deleteSessionById']>>;
+  renameSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['renameSessionById']>>;
   logout: ReturnType<typeof vi.fn<() => void>>;
 }
 
@@ -41,6 +42,7 @@ function createChatFixture(): ChatFixture {
   const createNewSession = vi.fn<ChatHomeSidebarChat['createNewSession']>(async () => undefined);
   const setActiveSessionId = vi.fn<ChatHomeSidebarChat['setActiveSessionId']>();
   const deleteSessionById = vi.fn<ChatHomeSidebarChat['deleteSessionById']>(async () => undefined);
+  const renameSessionById = vi.fn<ChatHomeSidebarChat['renameSessionById']>(async () => undefined);
   const logout = vi.fn<() => void>();
 
   return {
@@ -49,11 +51,13 @@ function createChatFixture(): ChatFixture {
       activeSessionId: 'session-running',
       createNewSession,
       setActiveSessionId,
-      deleteSessionById
+      deleteSessionById,
+      renameSessionById
     },
     createNewSession,
     setActiveSessionId,
     deleteSessionById,
+    renameSessionById,
     logout
   };
 }
@@ -117,7 +121,7 @@ describe('ChatHomeSidebar', () => {
     expect(html).not.toContain('正在准备会话');
   });
 
-  it('keeps session menus compact with delete as the only title-affecting action', () => {
+  it('keeps session menus compact with rename and delete actions', () => {
     const { chat } = createChatFixture();
     const html = renderToStaticMarkup(renderSidebarElement({ chat, collapsed: false, onToggleCollapsed: vi.fn() }));
 
@@ -127,7 +131,7 @@ describe('ChatHomeSidebar', () => {
     expect(html).toContain('role="menu"');
     expect(html).toContain('chatx-session-item__menu-action');
     expect(html).toContain('chatx-session-item__menu-icon');
-    expect(html).not.toContain('重命名');
+    expect(html).toContain('重命名');
     expect(html).toContain('删除');
   });
 

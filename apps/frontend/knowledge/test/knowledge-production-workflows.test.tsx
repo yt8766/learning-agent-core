@@ -524,7 +524,7 @@ const embeddingModel: EmbeddingModelOption = {
   id: 'embed_openai_small',
   name: 'OpenAI Small',
   provider: 'openai',
-  dimension: 1536,
+  dimension: 1024,
   status: 'active'
 };
 

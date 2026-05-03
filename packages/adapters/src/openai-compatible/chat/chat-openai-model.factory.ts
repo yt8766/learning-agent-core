@@ -13,6 +13,7 @@ export interface ChatOpenAIModelOptions {
   apiKey?: string;
   baseUrl?: string;
   modelKwargs?: Record<string, unknown>;
+  disableDefaultTemperature?: boolean;
 }
 
 export type AgentCoreModelSettings = Pick<
@@ -35,7 +36,7 @@ export function createChatOpenAIModel(options: ChatOpenAIModelOptions) {
 
   return new ChatOpenAI({
     model: options.model,
-    temperature: options.temperature ?? 0.2,
+    temperature: options.disableDefaultTemperature ? undefined : (options.temperature ?? 0.2),
     maxTokens: options.maxTokens,
     apiKey: options.apiKey,
     streamUsage: options.streamUsage,

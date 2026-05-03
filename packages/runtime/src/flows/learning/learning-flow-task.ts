@@ -1,11 +1,9 @@
-import type { LearningEvaluationRecord } from '@agent/knowledge';
+import { ReviewRecord, TaskStatus, type EvaluationResult, type LearningEvaluationRecord } from '@agent/core';
 import type { LearningCandidateRecord } from '@agent/memory';
-import { ReviewRecord, TaskStatus } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';
 import { isDiagnosisTask } from './shared/learning-task-diagnosis';
 import { deriveEvidence, mergeEvidence, normalizeInstalledSkillId } from './shared/learning-task-evidence';
 import { shouldExtractSkillForTask } from './shared/learning-skill-extraction';
-import type { EvaluationResult } from '@agent/knowledge';
 
 export function prepareTaskLearning(
   task: TaskRecord,

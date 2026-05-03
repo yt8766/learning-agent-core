@@ -112,6 +112,8 @@ Chat response steps 通过 `chat-response-steps.adapter.ts` 投影为 `node_prog
 
 后续如果继续扩展 chat 直连能力，优先往 helper 或同域新文件里拆，不要把大段流式生成和 schema 编排逻辑塞回 `chat.service.ts`。
 
+`/api/chat` direct-reply 会通过 `RuntimeHost.modelInvocationFacade` 进入统一模型调用链。当前直连对话默认显式关闭 thinking，防止 GLM 4.6 / GLM 5 只产出 reasoning tokens 而没有最终 `content`；adapter 层负责把该语义转换为各供应商自己的稳定参数。MiniMax 本地联调应按 key 所属区域配置 base URL：国际站通常使用 `https://api.minimax.io/v1`，国内站使用 `https://api.minimaxi.com/v1`。进入 provider 前必须保持单条 `system` message；profile system、用户 system prompt 与 direct-reply 历史上下文由 runtime 合并，避免 MiniMax 国内 OpenAI-compatible 返回 `400 invalid chat setting (2013)`。
+
 ## 启动
 
 ```bash

@@ -228,6 +228,56 @@ describe('OpenSearchKeywordSearchProvider', () => {
     });
   });
 
+  it('pushes knowledgeBaseIds to OpenSearch and maps knowledgeBaseId from search hits', async () => {
+    const search = vi.fn().mockResolvedValue({
+      hits: {
+        total: { value: 1 },
+        hits: [
+          {
+            _id: 'chunk-rag',
+            _score: 10,
+            _source: {
+              chunkId: 'chunk-rag',
+              documentId: 'doc-rag',
+              sourceId: 'source-rag',
+              knowledgeBaseId: 'kb_rag',
+              title: 'RAG Runtime',
+              uri: 'file://docs/rag.md',
+              sourceType: 'repo-docs',
+              trustClass: 'official',
+              content: 'RAG retrieval runtime.'
+            }
+          }
+        ]
+      }
+    });
+    const provider = new OpenSearchKeywordSearchProvider({
+      client: { search },
+      indexName: 'knowledge-chunks'
+    });
+
+    const result = await provider.search({
+      query: 'rag runtime',
+      limit: 1,
+      filters: {
+        knowledgeBaseIds: ['kb_rag'],
+        searchableOnly: false
+      }
+    });
+
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          bool: expect.objectContaining({
+            filter: [{ terms: { knowledgeBaseId: ['kb_rag'] } }]
+          })
+        })
+      })
+    );
+    expect(result.hits).toHaveLength(1);
+    expect(result.hits[0]?.knowledgeBaseId).toBe('kb_rag');
+  });
+
   it('does not push down allowedRoles because OpenSearch role semantics are authorization-specific', () => {
     expect(
       buildOpenSearchKnowledgeFilter({

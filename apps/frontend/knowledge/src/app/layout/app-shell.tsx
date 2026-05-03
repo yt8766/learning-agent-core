@@ -121,7 +121,7 @@ export function AppShell({
             icon={collapsed ? <RightOutlined /> : <LeftOutlined />}
             onClick={() => setCollapsed(nextCollapsed => !nextCollapsed)}
             shape="circle"
-            style={{ minWidth: 32 }}
+            style={{ minWidth: 24 }}
           />
           <Menu
             className="knowledge-pro-menu"

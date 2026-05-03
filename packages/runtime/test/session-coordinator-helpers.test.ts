@@ -6,13 +6,13 @@ import { buildApprovalScopeMatchKey } from '@agent/runtime';
 import {
   resolveApprovalEventType,
   resolveSessionAutoApprovalPolicy
-} from '../src/session/session-coordinator-approvals';
+} from '../src/session/coordinator/session-coordinator-approvals';
 import {
   buildApprovalScopeMatchInput,
   upsertRuntimeApprovalPolicy,
   upsertSessionApprovalPolicy
-} from '../src/session/session-coordinator-approval-policy';
-import { dedupeById, finalizeInlineCapabilityCheckpoint } from '../src/session/session-coordinator-inline';
+} from '../src/session/coordinator/session-coordinator-approval-policy';
+import { dedupeById, finalizeInlineCapabilityCheckpoint } from '../src/session/coordinator/session-coordinator-inline';
 
 describe('session coordinator helpers', () => {
   it('dedupes capability records by id while keeping the latest entry', () => {

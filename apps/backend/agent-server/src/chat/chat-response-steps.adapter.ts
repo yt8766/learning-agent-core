@@ -45,7 +45,10 @@ const StepPayloadSchema = z
     nodeLabel: z.string().optional(),
     fromNodeId: z.string().optional(),
     toNodeId: z.string().optional(),
-    durationMs: z.number().int().nonnegative().optional()
+    durationMs: z.number().int().nonnegative().optional(),
+    /** Tool / execution node completion preview; prefer `summary` when both are set. */
+    outputPreview: z.string().optional(),
+    chunk: z.string().optional()
   })
   .passthrough();
 
@@ -92,7 +95,7 @@ export function buildChatResponseStepEvent(
     phase: mapping.phase,
     status: mapping.status,
     title: payload.title ?? fallbackTitle(sourceEvent.type),
-    detail: payload.summary,
+    detail: resolveStepPayloadDetail(payload),
     target: buildTarget(payload, mapping.phase),
     agentScope: payload.agentScope ?? fallbackAgentScope(sourceEvent.type),
     agentId: payload.agentId,
@@ -392,4 +395,17 @@ function fallbackNodeLabel(eventType: ChatEventRecord['type']) {
 
 function isTerminalStepStatus(status: ChatResponseStepStatus) {
   return status === 'completed' || status === 'failed' || status === 'cancelled';
+}
+
+function resolveStepPayloadDetail(payload: z.infer<typeof StepPayloadSchema>): string | undefined {
+  if (typeof payload.summary === 'string' && payload.summary.trim()) {
+    return payload.summary.trim();
+  }
+  if (typeof payload.outputPreview === 'string' && payload.outputPreview.trim()) {
+    return payload.outputPreview.trim();
+  }
+  if (typeof payload.chunk === 'string' && payload.chunk.trim()) {
+    return payload.chunk.trim();
+  }
+  return undefined;
 }

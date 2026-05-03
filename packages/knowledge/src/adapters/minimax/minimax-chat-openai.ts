@@ -13,7 +13,7 @@ export function createMiniMaxChatProvider(options: MiniMaxChatProviderOptions) {
     providerId: 'minimax',
     model: options.model,
     apiKey: options.apiKey,
-    baseUrl: options.baseUrl ?? 'https://api.minimaxi.com/v1',
+    baseUrl: options.baseUrl ?? 'https://api.minimax.io/v1',
     temperature: options.temperature,
     maxTokens: options.maxTokens
   });

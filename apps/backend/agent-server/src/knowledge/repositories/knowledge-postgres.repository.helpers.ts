@@ -12,8 +12,8 @@ export function jsonParam(value: unknown): string {
 
 export function vectorParam(value: readonly number[] | undefined): string | null {
   if (!value) return null;
-  if (value.length !== 1536) {
-    throw new Error('Knowledge chunk embedding must contain 1536 dimensions for pgvector storage');
+  if (value.length !== 1024) {
+    throw new Error('Knowledge chunk embedding must contain 1024 dimensions for pgvector storage');
   }
   return `[${value.join(',')}]`;
 }

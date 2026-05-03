@@ -149,7 +149,8 @@ function mergeMessageVersions(currentMessage: ChatMessageRecord, fetchedMessage:
     taskId: currentMessage.taskId ?? fetchedMessage.taskId,
     linkedAgent: currentMessage.linkedAgent ?? fetchedMessage.linkedAgent,
     card: currentMessage.card ?? fetchedMessage.card,
-    createdAt: currentMessage.createdAt || fetchedMessage.createdAt
+    createdAt: currentMessage.createdAt || fetchedMessage.createdAt,
+    cognitionSnapshot: fetchedMessage.cognitionSnapshot ?? currentMessage.cognitionSnapshot
   };
 }
 

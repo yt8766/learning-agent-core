@@ -7,7 +7,7 @@ import {
   ReviewRecord,
   TaskStatus
 } from '@agent/core';
-import type { EvaluationResult } from '@agent/knowledge';
+import type { EvaluationResult } from '@agent/core';
 import type { WorkflowPresetDefinition } from '@agent/core';
 import type {
   CodeExecutionMinistryLike,
@@ -29,7 +29,7 @@ import type { RuntimeTaskRecord } from '../../../../../runtime/runtime-task.type
 import { TaskCancelledError } from '../../../tasking/runtime/main-graph-task-runtime-errors';
 import type { RuntimeAgentGraphState } from '../../../../../types/chat-graph';
 import { createInitialState } from '../../../../chat/chat.graph';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../../../index';
 
 export class MainGraphExecutionHelpers {
   constructor(

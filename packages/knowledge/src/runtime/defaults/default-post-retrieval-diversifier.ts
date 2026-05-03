@@ -5,7 +5,7 @@ import type {
   PostRetrievalDiversifyResult
 } from '../stages/post-retrieval-diversifier';
 import type { NormalizedRetrievalRequest } from '../types/retrieval-runtime.types';
-import type { RetrievalHit } from '@agent/knowledge';
+import type { RetrievalHit } from '../../index';
 
 function resolvePolicy(
   policy: PostRetrievalDiversificationPolicy | undefined,

@@ -14,6 +14,7 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(root.createKnowledgeRuntime).toBeDefined();
     expect(browser.KnowledgeApiClient).toBeDefined();
     expect(browser.createKnowledgeBrowserClient).toBeDefined();
+    expect(browser.KnowledgeRagStreamEventSchema).toBeDefined();
     expect(client.KnowledgeApiClient).toBeDefined();
     expect(node.createKnowledgeRuntime).toBeDefined();
   });

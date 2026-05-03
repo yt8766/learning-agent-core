@@ -15,7 +15,7 @@ import type {
 import { buildTaskRecord } from './task-record-builder';
 import { applyLocalSkillSuggestions } from './task-skill-intervention';
 import { resolveTaskWorkflowResolution } from './task-workflow-resolution';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 
 export class MainGraphTaskFactory {
   constructor(

@@ -66,7 +66,8 @@ export function mergeOrAppendMessage(
               taskId: nextMessage.taskId ?? message.taskId,
               linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
               card: nextMessage.card ?? message.card,
-              createdAt: nextMessage.createdAt
+              createdAt: nextMessage.createdAt,
+              cognitionSnapshot: nextMessage.cognitionSnapshot ?? message.cognitionSnapshot
             }
           : message
       );
@@ -84,7 +85,8 @@ export function mergeOrAppendMessage(
             taskId: nextMessage.taskId ?? message.taskId,
             linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
             card: nextMessage.card ?? message.card,
-            createdAt: nextMessage.createdAt
+            createdAt: nextMessage.createdAt,
+            cognitionSnapshot: nextMessage.cognitionSnapshot ?? message.cognitionSnapshot
           }
         : message
     );
@@ -99,7 +101,8 @@ export function mergeOrAppendMessage(
           content: nextAppendedContent,
           taskId: nextMessage.taskId ?? message.taskId,
           linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
-          card: nextMessage.card ?? message.card
+          card: nextMessage.card ?? message.card,
+          cognitionSnapshot: nextMessage.cognitionSnapshot ?? message.cognitionSnapshot
         }
       : message
   );

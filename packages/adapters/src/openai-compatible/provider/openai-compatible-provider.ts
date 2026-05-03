@@ -142,14 +142,29 @@ export class OpenAICompatibleProvider implements LlmProvider {
       throw new Error(`Provider ${this.providerId} has no configured model.`);
     }
 
+    const zhipuThinkingKwargs =
+      this.config.type === 'zhipu' && typeof options.thinking === 'boolean'
+        ? {
+            thinking: {
+              type: options.thinking ? 'enabled' : 'disabled'
+            }
+          }
+        : undefined;
+
     return createChatOpenAIModel({
       model,
       temperature: options.temperature ?? 0.2,
       maxTokens: options.maxTokens,
       apiKey: this.config.apiKey,
       baseUrl: this.config.baseUrl,
-      thinking: options.thinking,
-      modelKwargs
+      thinking: this.config.type === 'zhipu' ? undefined : options.thinking,
+      modelKwargs:
+        zhipuThinkingKwargs || modelKwargs
+          ? {
+              ...(zhipuThinkingKwargs ?? {}),
+              ...(modelKwargs ?? {})
+            }
+          : undefined
     });
   }
 

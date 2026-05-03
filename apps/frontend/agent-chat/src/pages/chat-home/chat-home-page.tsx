@@ -15,7 +15,7 @@ import {
   resetApprovalFeedbackState,
   resolveApprovalFeedbackSubmission,
   resolveCognitionTargetMessageId,
-  resolveNextCognitionExpansion,
+  resolveNextCognitionExpansionPatch,
   shouldShowErrorAlert
 } from './chat-home-page-helpers';
 import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
@@ -32,7 +32,7 @@ export function ChatHomePage() {
   const [copiedMessageId, setCopiedMessageId] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dismissedError, setDismissedError] = useState('');
-  const [cognitionExpanded, setCognitionExpanded] = useState(false);
+  const [cognitionExpandedByMessageId, setCognitionExpandedByMessageId] = useState<Record<string, boolean>>({});
   const [thinkingNow, setThinkingNow] = useState(Date.now());
   const previousThinkLoadingRef = useRef(false);
 
@@ -77,15 +77,16 @@ export function ChatHomePage() {
   useEffect(() => {
     const wasThinkLoading = previousThinkLoadingRef.current;
     previousThinkLoadingRef.current = agentThinking;
-    const nextExpanded = resolveNextCognitionExpansion({
+    const patch = resolveNextCognitionExpansionPatch({
       wasThinkLoading,
       isThinkLoading: agentThinking,
       hasCognitionTarget: Boolean(cognitionTargetMessageId),
-      isSessionRunning: chat.activeSession?.status === 'running'
+      isSessionRunning: chat.activeSession?.status === 'running',
+      cognitionTargetMessageId
     });
 
-    if (typeof nextExpanded === 'boolean') {
-      setCognitionExpanded(nextExpanded);
+    if (patch) {
+      setCognitionExpandedByMessageId(current => ({ ...current, ...patch }));
     }
   }, [agentThinking, cognitionTargetMessageId, chat.activeSession?.status]);
 
@@ -99,11 +100,15 @@ export function ChatHomePage() {
         thinkState: chat.checkpoint?.thinkState,
         thoughtItems,
         cognitionTargetMessageId,
-        cognitionExpanded,
+        cognitionExpandedByMessageId,
         cognitionDurationLabel,
         cognitionCountLabel,
         responseStepsByMessageId: responseSteps.byMessageId,
-        onToggleCognition: () => setCognitionExpanded(current => !current),
+        onToggleCognition: messageId =>
+          setCognitionExpandedByMessageId(current => ({
+            ...current,
+            [messageId]: !current[messageId]
+          })),
         getAgentLabel,
         onApprovalAction: (intent, approved, scope) => {
           void chat.updateApproval(intent, approved, undefined, scope);
@@ -139,7 +144,7 @@ export function ChatHomePage() {
       chat.checkpoint?.thinkState,
       thoughtItems,
       cognitionTargetMessageId,
-      cognitionExpanded,
+      cognitionExpandedByMessageId,
       cognitionDurationLabel,
       cognitionCountLabel,
       responseSteps.byMessageId,

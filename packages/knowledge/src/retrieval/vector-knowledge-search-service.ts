@@ -5,7 +5,7 @@ import type {
   RetrievalHit,
   RetrievalRequest,
   RetrievalResult
-} from '@agent/knowledge';
+} from '../index';
 
 import type {
   KnowledgeChunkRepository,
@@ -13,6 +13,7 @@ import type {
   KnowledgeSourceRepository
 } from '../contracts/knowledge-facade';
 import {
+  getKnowledgeBaseIdFromMetadata,
   matchesKnowledgeChunkFilters,
   matchesKnowledgeSourceFilters,
   resolveKnowledgeRetrievalFilters
@@ -79,6 +80,7 @@ function toRetrievalHit(chunk: KnowledgeChunk, source: KnowledgeSource, score: n
     chunkId: chunk.id,
     documentId: chunk.documentId,
     sourceId: source.id,
+    knowledgeBaseId: getKnowledgeBaseIdFromMetadata(chunk.metadata),
     title: source.title,
     uri: source.uri,
     sourceType: source.sourceType,

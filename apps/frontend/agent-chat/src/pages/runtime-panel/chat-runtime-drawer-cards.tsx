@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Descriptions, Empty, Space, Tag, Typography } from 'antd';
-import { ThoughtChain } from '@ant-design/x';
-import type { ThoughtChainItemType } from '@ant-design/x';
+
+import type { WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
+import { CognitionThoughtLog } from '@/components/cognition';
 
 import type { ApprovalRecord, ChatCheckpointRecord, ChatSessionRecord } from '@/types/chat';
 import {
@@ -278,14 +279,13 @@ export function LearningRecoveryCard({
   );
 }
 
-export function ThoughtTimelineCard({ thoughtItems }: { thoughtItems: ThoughtChainItemType[] }) {
+export function ThoughtTimelineCard({ thoughtItems }: { thoughtItems: WorkbenchThoughtProjectionItem[] }) {
+  const variant = thoughtItems.some(item => item.status === 'loading') ? 'processing' : 'processed';
+
   return (
     <Card title="过程时间线" variant="borderless">
       {thoughtItems.length ? (
-        <ThoughtChain
-          items={thoughtItems}
-          defaultExpandedKeys={thoughtItems.slice(0, 3).map(item => item.key as string)}
-        />
+        <CognitionThoughtLog items={thoughtItems} variant={variant} />
       ) : (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的过程记录。" />
       )}

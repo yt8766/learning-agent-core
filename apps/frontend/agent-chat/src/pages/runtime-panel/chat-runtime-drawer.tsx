@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Collapse, Descriptions, Drawer, Empty, Space, Tag, Typography } from 'antd';
-import { Think } from '@ant-design/x';
-import type { ThoughtChainItemType } from '@ant-design/x';
+
+import type { WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
+import { CognitionInferenceSection } from '@/components/cognition';
 
 import type { ChatCheckpointRecord, ChatSessionRecord, ApprovalRecord, ChatThinkState } from '@/types/chat';
 import {
@@ -40,7 +41,7 @@ interface ChatRuntimeDrawerProps {
   checkpoint?: ChatCheckpointRecord;
   thinkState?: ChatThinkState;
   pendingApprovals: ApprovalRecord[];
-  thoughtItems: ThoughtChainItemType[];
+  thoughtItems: WorkbenchThoughtProjectionItem[];
   onClose: () => void;
   onConfirmLearning: () => void;
   onRecover: () => void;
@@ -176,9 +177,9 @@ export function ChatRuntimeDrawer({
 
         <Card title="处理过程" variant="borderless">
           {thinkState ? (
-            <Think title={thinkState.title} loading={thinkState.loading} blink={thinkState.blink} defaultExpanded>
-              <Text>{thinkState.content}</Text>
-            </Think>
+            <CognitionInferenceSection title={thinkState.title} loading={thinkState.loading}>
+              {thinkState.content}
+            </CognitionInferenceSection>
           ) : (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前还没有可展示的处理过程。" />
           )}

@@ -1,8 +1,8 @@
-import { AimOutlined, GlobalOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { AimOutlined, ArrowDownOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { Bubble, Sender } from '@ant-design/x';
 import type { BubbleItemType } from '@ant-design/x';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getSessionStatusLabel, useChatSession } from '@/hooks/use-chat-session';
 import { ConversationAnchorRail } from './chat-home-anchor-rail';
@@ -25,6 +25,22 @@ interface ActiveConversationProps extends ConversationProps {
 }
 
 export function ActiveConversation(props: ActiveConversationProps) {
+  const streamRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [showScrollFab, setShowScrollFab] = useState(false);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) => setShowScrollFab(!entry.isIntersecting), { threshold: 0.1 });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    sentinelRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   return (
     <div className="chatx-conversation">
       <header className="chatx-conversation__header">
@@ -38,8 +54,19 @@ export function ActiveConversation(props: ActiveConversationProps) {
 
       <ConversationAnchorRail anchors={props.anchors} />
 
-      <div className="chatx-conversation__stream">
+      <div className="chatx-conversation__stream" ref={streamRef}>
         <Bubble.List items={props.bubbleItems} autoScroll className="chatx-bubble-list" />
+        <div ref={sentinelRef} className="chatx-conversation__sentinel" aria-hidden="true" />
+        {showScrollFab ? (
+          <button
+            type="button"
+            className="chatx-conversation__scroll-fab"
+            onClick={scrollToBottom}
+            aria-label="滚动到底部"
+          >
+            <ArrowDownOutlined />
+          </button>
+        ) : null}
         <div className="chatx-conversation__composer">
           <ChatComposer onSend={props.onSend} onCancel={props.onCancel} loading={props.loading} active />
         </div>
@@ -65,7 +92,6 @@ export function EmptyConversation(props: ConversationProps) {
 function ChatComposer(props: ConversationProps & { active?: boolean }) {
   const [draft, setDraft] = useState('');
   const [deepThinkingEnabled, setDeepThinkingEnabled] = useState(false);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   useEffect(() => {
     setDraft('');
@@ -83,7 +109,7 @@ function ChatComposer(props: ConversationProps & { active?: boolean }) {
           if (!nextValue) {
             return;
           }
-          const activeModes = [deepThinkingEnabled ? 'plan' : '', webSearchEnabled ? 'browse' : ''].filter(Boolean);
+          const activeModes = [deepThinkingEnabled ? 'plan' : ''].filter(Boolean);
           const outbound = buildSubmitMessage(nextValue, activeModes);
           setDraft('');
           props.onSend(outbound);
@@ -104,15 +130,6 @@ function ChatComposer(props: ConversationProps & { active?: boolean }) {
               >
                 <AimOutlined aria-hidden="true" />
                 <span>深度思考</span>
-              </button>
-              <button
-                type="button"
-                className={`chatx-sender-chip${webSearchEnabled ? ' is-active' : ''}`}
-                aria-pressed={webSearchEnabled}
-                onClick={() => setWebSearchEnabled(enabled => !enabled)}
-              >
-                <GlobalOutlined aria-hidden="true" />
-                <span>智能搜索</span>
               </button>
             </div>
             <div className="chatx-sender-footer__right">

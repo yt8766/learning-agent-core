@@ -155,6 +155,44 @@ describe('loadSettings', () => {
     expect(settings.embeddings.model).toBe('Embedding-3');
   });
 
+  it('defaults LangGraph long-term memory store to in-memory semantic search', () => {
+    const settings = loadSettings({
+      env: {} as NodeJS.ProcessEnv
+    });
+
+    expect(settings.langGraphStore.provider).toBe('memory');
+    expect(settings.langGraphStore.semanticSearch.enabled).toBe(true);
+    expect(settings.langGraphStore.semanticSearch.fields).toEqual(['$.text', '$.summary', '$.content']);
+  });
+
+  it('parses LangGraph Postgres long-term memory store with semantic search settings', () => {
+    const settings = loadSettings({
+      env: {
+        LANGGRAPH_STORE: 'postgres',
+        LANGGRAPH_STORE_POSTGRES_URI: 'postgresql://postgres:postgres@localhost:5442/postgres?sslmode=disable',
+        LANGGRAPH_STORE_POSTGRES_SCHEMA: 'agent_memory',
+        LANGGRAPH_STORE_POSTGRES_SETUP_ON_INITIALIZE: 'false',
+        LANGGRAPH_STORE_SEMANTIC_SEARCH: 'true',
+        LANGGRAPH_STORE_INDEX_FIELDS: '$.data,$.summary',
+        LANGGRAPH_STORE_DISTANCE_METRIC: 'inner_product'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(settings.langGraphStore).toEqual({
+      provider: 'postgres',
+      postgres: {
+        connectionString: 'postgresql://postgres:postgres@localhost:5442/postgres?sslmode=disable',
+        schema: 'agent_memory',
+        setupOnInitialize: false
+      },
+      semanticSearch: {
+        enabled: true,
+        fields: ['$.data', '$.summary'],
+        distanceMetric: 'inner_product'
+      }
+    });
+  });
+
   it('支持显式 workspaceRoot 和 overrides 注入', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
@@ -358,6 +396,41 @@ describe('loadSettings', () => {
     });
   });
 
+  it('defaults LangGraph checkpoints to memory and supports Postgres env configuration', () => {
+    const defaults = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {} as NodeJS.ProcessEnv
+    });
+
+    expect(defaults.langGraphCheckpointer).toEqual({
+      provider: 'memory',
+      postgres: {
+        connectionString: undefined,
+        schema: 'public',
+        setupOnInitialize: true
+      }
+    });
+
+    const postgres = loadSettings({
+      workspaceRoot: REPO_ROOT,
+      env: {
+        LANGGRAPH_CHECKPOINTER: 'postgres',
+        LANGGRAPH_POSTGRES_URI: 'postgresql://postgres:postgres@localhost:5442/postgres?sslmode=disable',
+        LANGGRAPH_POSTGRES_SCHEMA: 'agent_runtime',
+        LANGGRAPH_POSTGRES_SETUP_ON_INITIALIZE: 'false'
+      } as NodeJS.ProcessEnv
+    });
+
+    expect(postgres.langGraphCheckpointer).toEqual({
+      provider: 'postgres',
+      postgres: {
+        connectionString: 'postgresql://postgres:postgres@localhost:5442/postgres?sslmode=disable',
+        schema: 'agent_runtime',
+        setupOnInitialize: false
+      }
+    });
+  });
+
   it('supports MiniMax provider defaults through env-backed provider discovery', () => {
     const settings = loadSettings({
       workspaceRoot: REPO_ROOT,
@@ -416,7 +489,7 @@ describe('loadSettings', () => {
         expect.objectContaining({
           id: 'minimax',
           type: 'minimax',
-          baseUrl: 'https://api.minimax.io/v1'
+          baseUrl: 'https://api.minimaxi.com/v1'
         })
       ])
     );

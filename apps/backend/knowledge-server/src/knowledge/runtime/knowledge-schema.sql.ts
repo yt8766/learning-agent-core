@@ -86,7 +86,7 @@ create table if not exists knowledge_document_chunks (
   content text not null,
   token_count integer not null,
   metadata jsonb not null default '{}'::jsonb,
-  embedding vector(1536),
+  embedding vector(1024),
   embedding_status text not null,
   vector_index_status text not null,
   keyword_index_status text not null,
@@ -99,7 +99,7 @@ alter table knowledge_document_chunks
   add column if not exists metadata jsonb not null default '{}'::jsonb;
 
 alter table knowledge_document_chunks
-  add column if not exists embedding vector(1536);
+  add column if not exists embedding vector(1024);
 
 create table if not exists knowledge_chat_conversations (
   id text primary key,
@@ -222,7 +222,7 @@ $function$;
 
 create or replace function match_knowledge_chunks(
   knowledge_base_id text,
-  embedding vector(1536),
+  embedding vector(1024),
   top_k integer,
   query_text text default null,
   filters jsonb default '{}'::jsonb,

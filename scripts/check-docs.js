@@ -18,7 +18,10 @@ const REQUIRED_TOP_LEVEL_DIRS = [
   'evals',
   'context',
   'workflows',
-  'archive'
+  'archive',
+  'superpowers',
+  'research',
+  'design-references'
 ];
 const REQUIRED_INDEX_DIRS = [
   'docs/architecture',
@@ -27,10 +30,13 @@ const REQUIRED_INDEX_DIRS = [
   'docs/apps',
   'docs/apps/backend',
   'docs/apps/backend/agent-server',
+  'docs/apps/backend/auth-server',
+  'docs/apps/backend/knowledge-server',
   'docs/apps/backend/worker',
   'docs/apps/frontend',
   'docs/apps/frontend/agent-admin',
   'docs/apps/frontend/agent-chat',
+  'docs/apps/frontend/knowledge',
   'docs/apps/frontend/llm-gateway',
   'docs/packages',
   'docs/packages/adapters',
@@ -46,7 +52,12 @@ const REQUIRED_INDEX_DIRS = [
   'docs/packages/templates',
   'docs/packages/tools',
   'docs/agents',
+  'docs/agents/coder',
+  'docs/agents/company-live',
   'docs/agents/data-report',
+  'docs/agents/intel-engine',
+  'docs/agents/reviewer',
+  'docs/agents/supervisor',
   'docs/skills',
   'docs/contracts',
   'docs/contracts/api',
@@ -57,9 +68,12 @@ const REQUIRED_INDEX_DIRS = [
   'docs/workflows',
   'docs/archive',
   'docs/archive/model',
-  'docs/archive/shared'
+  'docs/archive/shared',
+  'docs/superpowers',
+  'docs/research',
+  'docs/design-references'
 ];
-const ALLOWED_STATUSES = new Set(['current', 'completed', 'snapshot', 'history', 'archive']);
+const ALLOWED_STATUSES = new Set(['current', 'completed', 'snapshot', 'history', 'archive', 'proposed', 'draft']);
 const ALLOWED_TYPES = new Set([
   'index',
   'architecture',
@@ -71,6 +85,7 @@ const ALLOWED_TYPES = new Set([
   'evaluation',
   'baseline',
   'plan',
+  'spec',
   'history',
   'archive',
   'template',
@@ -162,6 +177,14 @@ for (const dirPath of REQUIRED_INDEX_DIRS) {
   }
 }
 
+const topLevelAllowSet = new Set(REQUIRED_TOP_LEVEL_DIRS);
+for (const entry of fs.readdirSync(DOCS_ROOT, { withFileTypes: true })) {
+  if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+  if (!topLevelAllowSet.has(entry.name)) {
+    errors.push(`unregistered top-level docs directory: docs/${entry.name} (add to REQUIRED_TOP_LEVEL_DIRS or remove)`);
+  }
+}
+
 for (const file of files) {
   const rel = path.relative(process.cwd(), file).replace(/\\/g, '/');
   const content = fs.readFileSync(file, 'utf8');
@@ -195,7 +218,7 @@ for (const file of files) {
     errors.push(`${rel}: still references legacy docs/agent-core path`);
   }
 
-  if (typeLine?.includes('plan') && statusLine?.includes('current')) {
+  if (typeLine?.includes('plan') && statusLine?.includes('current') && !rel.startsWith('docs/superpowers/')) {
     errors.push(`${rel}: plan documents should not stay in 状态：current`);
   }
 

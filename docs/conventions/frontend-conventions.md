@@ -15,7 +15,7 @@
 - 前端统一使用 `React + TypeScript`
 - 组件文件使用 `.tsx`
 - 非视图逻辑使用 `.ts`
-- 样式默认使用 `.css`
+- 样式默认使用 Tailwind utility，详见 [样式规范](/docs/conventions/styling-conventions.md)
 - 不为每个前端应用重复维护一套独立格式化配置
 - 前端依赖默认使用静态 `import`，例如 `import { Badge } from '@/components/ui/badge';`
 
@@ -265,7 +265,7 @@
 - 一个文件最多承担一种主职责：页面装配、业务展示、状态编排、数据适配、类型声明、常量映射
 - 一个组件不要直接管理多类异步资源；如果同时处理 `sessions / messages / events / checkpoint`，应拆成容器组件和展示组件
 - 大型标签映射、事件映射、风险映射统一提取到 `constants/` 或 `mappers/`
-- CSS 文件同样建议不超过 400 行，超过后按页面区块或 feature 拆分
+- CSS / SCSS 文件同样建议不超过 400 行，超过后按页面区块或 feature 拆分，或迁移到 Tailwind utility（详见 [样式规范](/docs/conventions/styling-conventions.md)）
 
 ## 8. 前端检查建议
 

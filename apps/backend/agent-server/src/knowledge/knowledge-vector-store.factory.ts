@@ -19,8 +19,8 @@ type SupabaseVectorStoreConfig = Extract<KnowledgeVectorStoreProviderConfig, { k
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 type JsonObject = { [key: string]: JsonValue };
 
-const SUPABASE_PGVECTOR_EMBEDDING_DIMENSIONS = 1536;
-const SUPABASE_PGVECTOR_DIMENSION_ERROR = 'Supabase pgvector embeddings must contain 1536 dimensions';
+const SUPABASE_PGVECTOR_EMBEDDING_DIMENSIONS = 1024;
+const SUPABASE_PGVECTOR_DIMENSION_ERROR = 'Supabase pgvector embeddings must contain 1024 dimensions';
 
 export type KnowledgeVectorStoreProviderKind = KnowledgeVectorStoreProviderConfig['kind'];
 

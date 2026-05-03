@@ -99,6 +99,65 @@ export const ChatMessageCardSchema = z.discriminatedUnion('type', [
   SkillDraftCreatedChatMessageCardSchema
 ]);
 
+export const ChatThoughtChainWebSearchSchema = z.object({
+  query: z.string(),
+  resultCount: z.number().optional(),
+  topHosts: z.array(z.string()).optional(),
+  hitIds: z.array(z.string()).optional(),
+  hits: z
+    .array(
+      z.object({
+        url: z.string(),
+        title: z.string().optional(),
+        host: z.string().optional()
+      })
+    )
+    .optional()
+});
+
+export const ChatThoughtChainBrowserSchema = z.object({
+  pageCount: z.number().optional(),
+  pages: z.array(
+    z.object({
+      url: z.string(),
+      title: z.string().optional(),
+      host: z.string().optional()
+    })
+  )
+});
+
+export const ChatThoughtChainItemSchema = z.object({
+  key: z.string(),
+  messageId: z.string().optional(),
+  thinkingDurationMs: z.number().optional(),
+  kind: z.enum(['reasoning', 'web_search', 'browser']).optional(),
+  title: z.string(),
+  description: z.string().optional(),
+  content: z.string().optional(),
+  footer: z.string().optional(),
+  status: z.enum(['loading', 'success', 'error', 'abort']).optional(),
+  collapsible: z.boolean().optional(),
+  blink: z.boolean().optional(),
+  webSearch: ChatThoughtChainWebSearchSchema.optional(),
+  browser: ChatThoughtChainBrowserSchema.optional()
+});
+
+export const ChatThinkStateSchema = z.object({
+  messageId: z.string().optional(),
+  thinkingDurationMs: z.number().optional(),
+  title: z.string(),
+  content: z.string(),
+  loading: z.boolean().optional(),
+  blink: z.boolean().optional()
+});
+
+export const ChatCognitionSnapshotSchema = z.object({
+  thoughtChain: z.array(ChatThoughtChainItemSchema),
+  thinkingDurationMs: z.number().optional(),
+  capturedAt: z.string().optional(),
+  thinkState: ChatThinkStateSchema.optional()
+});
+
 export const ChatMessageRecordSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
@@ -108,7 +167,8 @@ export const ChatMessageRecordSchema = z.object({
   linkedAgent: AgentRoleSchema.optional(),
   card: ChatMessageCardSchema.optional(),
   feedback: ChatMessageFeedbackRecordSchema.optional(),
-  createdAt: z.string()
+  createdAt: z.string(),
+  cognitionSnapshot: ChatCognitionSnapshotSchema.optional()
 });
 
 export const ChatEventRecordSchema = z.object({
@@ -167,26 +227,4 @@ export const ChatEventRecordSchema = z.object({
   ]),
   at: z.string(),
   payload: z.record(z.string(), z.unknown())
-});
-
-export const ChatThoughtChainItemSchema = z.object({
-  key: z.string(),
-  messageId: z.string().optional(),
-  thinkingDurationMs: z.number().optional(),
-  title: z.string(),
-  description: z.string().optional(),
-  content: z.string().optional(),
-  footer: z.string().optional(),
-  status: z.enum(['loading', 'success', 'error', 'abort']).optional(),
-  collapsible: z.boolean().optional(),
-  blink: z.boolean().optional()
-});
-
-export const ChatThinkStateSchema = z.object({
-  messageId: z.string().optional(),
-  thinkingDurationMs: z.number().optional(),
-  title: z.string(),
-  content: z.string(),
-  loading: z.boolean().optional(),
-  blink: z.boolean().optional()
 });

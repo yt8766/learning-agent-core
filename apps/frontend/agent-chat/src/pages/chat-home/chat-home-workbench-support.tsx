@@ -4,7 +4,7 @@ import type { WorkspaceCenterReadinessSummary } from '@/api/workspace-center-api
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { buildProjectContextSnapshot } from './chat-home-helpers';
 import { buildSubmitMessage, stripLeadingWorkflowCommand } from './chat-home-submit';
-export { buildThoughtItems } from './chat-home-workbench-thoughts';
+export { buildThoughtItems, shouldIncludeEventInThoughtLog } from './chat-home-workbench-thoughts';
 
 export interface QuickActionChip {
   label: string;

@@ -132,6 +132,12 @@ export function buildProviderAuditAdapters(runtimeEnv: NodeJS.ProcessEnv) {
     'anthropic-http'
   );
   pushAdapter(
+    'kimi',
+    runtimeEnv.KIMI_USAGE_AUDIT_HTTP_ENDPOINT,
+    runtimeEnv.KIMI_USAGE_AUDIT_HTTP_API_KEY ?? runtimeEnv.KIMI_API_KEY,
+    'kimi-http'
+  );
+  pushAdapter(
     runtimeEnv.CUSTOM_PROVIDER_AUDIT_NAME ?? 'custom',
     runtimeEnv.CUSTOM_PROVIDER_AUDIT_HTTP_ENDPOINT,
     runtimeEnv.CUSTOM_PROVIDER_AUDIT_HTTP_API_KEY,
@@ -237,7 +243,7 @@ export function parseProvidersConfig(
       type: 'minimax',
       displayName: runtimeEnv.MINIMAX_PROVIDER_NAME || 'MiniMax',
       apiKey: runtimeEnv.MINIMAX_API_KEY ?? '',
-      baseUrl: normalizeProviderBaseUrl(runtimeEnv.MINIMAX_BASE_URL ?? 'https://api.minimaxi.com/v1', 'minimax'),
+      baseUrl: normalizeProviderBaseUrl(runtimeEnv.MINIMAX_BASE_URL ?? 'https://api.minimax.io/v1', 'minimax'),
       models: Array.from(new Set([...Object.values(minimaxRoleModels), runtimeEnv.MINIMAX_DIALOG_MODEL || 'M2-her'])),
       roleModels: minimaxRoleModels
     });
@@ -251,6 +257,25 @@ export function parseProvidersConfig(
       apiKey: runtimeEnv.OLLAMA_API_KEY ?? '',
       baseUrl: normalizeProviderBaseUrl(runtimeEnv.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1', 'ollama'),
       models: [runtimeEnv.OLLAMA_MODEL ?? 'qwen2.5']
+    });
+  }
+
+  if (runtimeEnv.KIMI_API_KEY || runtimeEnv.KIMI_BASE_URL) {
+    const kimiRoleModels = {
+      manager: runtimeEnv.KIMI_MANAGER_MODEL || 'kimi-k2.6',
+      research: runtimeEnv.KIMI_RESEARCH_MODEL || 'kimi-k2.6',
+      executor: runtimeEnv.KIMI_EXECUTOR_MODEL || 'kimi-k2.6',
+      reviewer: runtimeEnv.KIMI_REVIEWER_MODEL || 'kimi-k2.6'
+    } satisfies NonNullable<ProviderSettingsRecord['roleModels']>;
+
+    providers.push({
+      id: runtimeEnv.KIMI_PROVIDER_ID || 'kimi',
+      type: 'kimi',
+      displayName: runtimeEnv.KIMI_PROVIDER_NAME || 'Kimi',
+      apiKey: runtimeEnv.KIMI_API_KEY ?? '',
+      baseUrl: normalizeProviderBaseUrl(runtimeEnv.KIMI_BASE_URL ?? 'https://api.moonshot.cn/v1', 'kimi'),
+      models: Array.from(new Set(Object.values(kimiRoleModels))),
+      roleModels: kimiRoleModels
     });
   }
 

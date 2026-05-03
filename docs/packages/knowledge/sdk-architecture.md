@@ -58,7 +58,7 @@ Entrypoint status:
 - Target-only: `@agent/knowledge/client` is a planned public facade. Frontend code must not import it until a later slice actually adds `src/client` plus matching package exports, tests, and docs.
 - Current: `@agent/knowledge/node` exposes node-only runtime factories, including `createDefaultKnowledgeSdkRuntime()` for OpenAI-compatible chat/embedding plus Supabase pgvector vector store, and `createKnowledgeRuntime()` for custom provider composition. It is intentionally not re-exported from the root package.
 - Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Supabase pgvector and OpenAI-compatible providers.
-- Target planned: `@agent/knowledge/browser` and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
+- Target planned: `@agent/knowledge/browser-entry` and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
 
 Current implemented public package entrypoint:
@@ -81,7 +81,7 @@ Target-only public subpaths. Each subpath below requires source ownership, packa
 @agent/knowledge/retrieval
 @agent/knowledge/eval
 @agent/knowledge/observability
-@agent/knowledge/browser
+@agent/knowledge/browser-entry
 @agent/knowledge/adapters/openai
 @agent/knowledge/adapters/qdrant
 @agent/knowledge/adapters/weaviate

@@ -5,6 +5,8 @@
     "outDir": "./build/tmp",
     "types": ["node"],
     "lib": ["DOM", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true
   }
 }

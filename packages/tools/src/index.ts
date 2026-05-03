@@ -29,9 +29,14 @@ export type {
   McpSkillProviderValidationResult
 } from './mcp/mcp-skill-provider-types';
 export {
+  CliTransportHandler,
+  defaultCliRunner,
   HttpTransportHandler,
   LocalAdapterTransportHandler,
   StdioTransportHandler,
+  type CliCapabilityBinding,
+  type CliRunOutput,
+  type CliRunner,
   type McpTransportDiscovery,
   type McpTransportHandler,
   type McpTransportHealth

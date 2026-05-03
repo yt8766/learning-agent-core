@@ -1,5 +1,5 @@
 import { AgentRole, type AgentRoleValue, type RouterMinistryLike } from '@agent/core';
-import { Annotation, BaseCheckpointSaver, END, START, StateGraph } from '@langchain/langgraph';
+import { Annotation, BaseCheckpointSaver, BaseStore, END, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../../flows/approval';
 import {
@@ -8,7 +8,7 @@ import {
   runDirectReplySkillGateNode
 } from '../../../../flows/chat/direct-reply/direct-reply-interrupt-nodes';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across direct-reply resumes.
 export interface DirectReplyInterruptGraphState {
   taskId: string;
@@ -116,10 +116,11 @@ interface BuildDirectReplyInterruptGraphParams {
   libu: RouterMinistryLike;
   callbacks: DirectReplyInterruptGraphCallbacks;
   checkpointer: BaseCheckpointSaver;
+  store: BaseStore;
 }
 
 export function buildDirectReplyInterruptGraph(params: BuildDirectReplyInterruptGraphParams) {
-  const { task, libu, callbacks, checkpointer } = params;
+  const { task, libu, callbacks, checkpointer, store } = params;
 
   return new StateGraph(DirectReplyInterruptAnnotation)
     .addNode('skill_gate', state => runDirectReplySkillGateNode(state, task, callbacks))
@@ -129,5 +130,5 @@ export function buildDirectReplyInterruptGraph(params: BuildDirectReplyInterrupt
     .addConditionalEdges('skill_gate', state => (state.blocked ? 'finish' : 'direct_reply'))
     .addEdge('direct_reply', 'finish')
     .addEdge('finish', END)
-    .compile({ checkpointer });
+    .compile({ checkpointer, store });
 }

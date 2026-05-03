@@ -5,13 +5,13 @@ import type {
   RetrievalHit,
   RetrievalRequest,
   RetrievalResult
-} from '@agent/knowledge';
+} from '../../../index';
 import {
   KnowledgeChunkMetadataSchema,
   matchesKnowledgeHitFilters,
   resolveKnowledgeRetrievalFilters
-} from '@agent/knowledge';
-import type { KnowledgeSearchService } from '@agent/knowledge';
+} from '../../../index';
+import type { KnowledgeSearchService } from '../../../index';
 
 import { AdapterError } from '../../shared/errors/adapter-error';
 
@@ -64,6 +64,7 @@ const SearchHitSourceSchema = z.object({
   chunkId: z.string().optional(),
   documentId: z.string(),
   sourceId: z.string(),
+  knowledgeBaseId: z.string().optional(),
   title: z.string(),
   uri: z.string(),
   sourceType: z.enum([
@@ -210,6 +211,7 @@ export function buildOpenSearchKnowledgeFilter(
 
   const clauses: OpenSearchKnowledgeFilterClause[] = [];
   addTermsClause(clauses, 'sourceId', filters.sourceIds);
+  addTermsClause(clauses, 'knowledgeBaseId', filters.knowledgeBaseIds);
   addTermsClause(clauses, 'sourceType', filters.sourceTypes);
   addTermsClause(clauses, 'documentId', filters.documentIds);
   addTermsClause(clauses, 'metadata.docType', filters.docTypes);
@@ -250,6 +252,7 @@ function mapOpenSearchHitToRetrievalHit(
     chunkId,
     documentId: source.documentId,
     sourceId: source.sourceId,
+    knowledgeBaseId: source.knowledgeBaseId,
     title: source.title,
     uri: source.uri,
     sourceType: source.sourceType,

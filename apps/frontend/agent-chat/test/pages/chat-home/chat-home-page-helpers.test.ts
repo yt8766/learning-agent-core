@@ -33,7 +33,9 @@ import {
   buildRuntimeExportRequest,
   buildShareLinksText,
   buildCognitionDurationLabel,
+  formatCognitionDurationLabelFromMs,
   resolveNextCognitionExpansion,
+  resolveNextCognitionExpansionPatch,
   buildStreamEventItems,
   downloadTextFile,
   getWorkbenchToggleLabel,
@@ -119,6 +121,151 @@ describe('chat-home-page helpers', () => {
     ).toBe('约 1 秒');
   });
 
+  it('builds running cognition duration from checkpoint update time when explicit duration is missing', () => {
+    expect(
+      buildCognitionDurationLabel(
+        {
+          updatedAt: '2026-04-08T00:00:00.000Z',
+          thinkState: {
+            messageId: 'assistant-1',
+            title: 'thinking',
+            content: 'content',
+            loading: true,
+            blink: true
+          }
+        } as never,
+        undefined,
+        new Date('2026-04-08T00:00:12.300Z').getTime()
+      )
+    ).toBe('12s');
+  });
+
+  it('falls back to checkpoint createdAt-updatedAt delta when thinkingDurationMs is missing and not loading', () => {
+    expect(
+      buildCognitionDurationLabel(
+        {
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:05.800Z',
+          thinkState: {
+            messageId: 'assistant-1',
+            title: 'done',
+            content: 'done',
+            loading: false,
+            blink: false
+          }
+        } as never,
+        undefined,
+        Date.now()
+      )
+    ).toBe('约 6 秒');
+  });
+
+  it('direct-reply uses only thinkState thinkingDurationMs and ignores chain and checkpoint age fallback', () => {
+    expect(
+      buildCognitionDurationLabel(
+        {
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:20:00.000Z',
+          chatRoute: { flow: 'direct-reply' } as never,
+          thinkState: {
+            messageId: 'assistant-1',
+            title: '直接回复',
+            content: 'done',
+            loading: false,
+            blink: false,
+            thinkingDurationMs: 3200
+          }
+        } as never,
+        [{ key: 'step-1', title: 'trace', thinkingDurationMs: 999_999 }] as never,
+        Date.now()
+      )
+    ).toBe('约 3 秒');
+
+    expect(
+      buildCognitionDurationLabel(
+        {
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:20:00.000Z',
+          chatRoute: { flow: 'direct-reply' } as never,
+          thinkState: {
+            messageId: 'assistant-1',
+            title: '直接回复',
+            content: 'done',
+            loading: false,
+            blink: false
+          }
+        } as never,
+        undefined,
+        Date.now()
+      )
+    ).toBe('');
+  });
+
+  it('returns empty string when no duration source is available', () => {
+    expect(buildCognitionDurationLabel(undefined, undefined, Date.now())).toBe('');
+  });
+
+  it('ignores stale thinkingDurationMs over the cap while loading', () => {
+    const staleMs = 40 * 60 * 1000;
+    expect(
+      buildCognitionDurationLabel(
+        {
+          updatedAt: '2026-04-08T00:00:00.000Z',
+          thinkState: {
+            messageId: 'assistant-1',
+            title: 'thinking',
+            content: 'content',
+            loading: true,
+            blink: true,
+            thinkingDurationMs: staleMs
+          }
+        } as never,
+        undefined,
+        new Date('2026-04-08T00:00:03.000Z').getTime()
+      )
+    ).toBe('3s');
+  });
+
+  it('caps settled cognition duration labels beyond the reasonable window', () => {
+    expect(
+      buildCognitionDurationLabel(
+        {
+          updatedAt: '2026-04-08T00:00:00.000Z',
+          thinkState: {
+            messageId: 'assistant-1',
+            title: 'thinking',
+            content: 'content',
+            loading: false,
+            blink: false,
+            thinkingDurationMs: 40 * 60 * 1000
+          }
+        } as never,
+        undefined,
+        Date.now()
+      )
+    ).toBe('较长');
+  });
+
+  it('formats longer durations as minutes when under the cap', () => {
+    expect(
+      buildCognitionDurationLabel(
+        {
+          updatedAt: '2026-04-08T00:00:00.000Z',
+          thinkState: {
+            messageId: 'assistant-1',
+            title: 'thinking',
+            content: 'content',
+            loading: false,
+            blink: false,
+            thinkingDurationMs: 125_000
+          }
+        } as never,
+        undefined,
+        Date.now()
+      )
+    ).toBe('约 2 分 5 秒');
+  });
+
   it('collapses cognition when model thinking finishes while the session is still running', () => {
     expect(
       resolveNextCognitionExpansion({
@@ -128,6 +275,33 @@ describe('chat-home-page helpers', () => {
         isSessionRunning: true
       })
     ).toBe(false);
+  });
+
+  it('formats persisted cognition durations from milliseconds', () => {
+    expect(formatCognitionDurationLabelFromMs(3000)).toBe('约 3 秒');
+    expect(formatCognitionDurationLabelFromMs(121_000)).toBe('约 2 分 1 秒');
+  });
+
+  it('addresses cognition expansion patches to the cognition target message id', () => {
+    expect(
+      resolveNextCognitionExpansionPatch({
+        wasThinkLoading: true,
+        isThinkLoading: false,
+        hasCognitionTarget: true,
+        isSessionRunning: true,
+        cognitionTargetMessageId: 'assistant-1'
+      })
+    ).toEqual({ 'assistant-1': false });
+
+    expect(
+      resolveNextCognitionExpansionPatch({
+        wasThinkLoading: false,
+        isThinkLoading: true,
+        hasCognitionTarget: true,
+        isSessionRunning: true,
+        cognitionTargetMessageId: 'assistant-2'
+      })
+    ).toEqual({ 'assistant-2': true });
   });
 
   it('maps stream events into reversed, formatted items', () => {

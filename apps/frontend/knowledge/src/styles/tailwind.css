@@ -1,0 +1,8 @@
+/*
+ * Tailwind v4 entry — Preflight omitted to coexist with Ant Design's reset.css.
+ * See: https://tailwindcss.com/docs/preflight#disabling-preflight
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);

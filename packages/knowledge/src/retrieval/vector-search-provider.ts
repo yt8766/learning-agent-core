@@ -3,6 +3,8 @@ import type { ResolvedKnowledgeRetrievalFilters } from './knowledge-retrieval-fi
 /** 单个向量搜索命中结果 */
 export interface VectorSearchHit {
   chunkId: string;
+  /** Optional provider-side knowledge base projection, when the vector backend returns scoped metadata. */
+  knowledgeBaseId?: string;
   /** 余弦相似度，范围 [0, 1] */
   score: number;
 }

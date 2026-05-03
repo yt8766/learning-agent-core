@@ -36,6 +36,14 @@ function ensureBaselineTextCapability(options: GenerateTextOptions): GenerateTex
   return createModelCapabilities(MODEL_CAPABILITIES.TEXT, ...current);
 }
 
+function hasUsableCachedText(cached: { responseText: string } | undefined): cached is { responseText: string } {
+  return Boolean(cached?.responseText.trim());
+}
+
+function hasUsableProviderText(responseText: string): boolean {
+  return Boolean(responseText.trim());
+}
+
 export class RoutedLlmProvider implements LlmProvider {
   readonly providerId = 'router';
   readonly displayName = 'Model Router';
@@ -67,7 +75,7 @@ export class RoutedLlmProvider implements LlmProvider {
     const cacheKey = this.semanticCache ? buildSemanticCacheKey(messages, options, resolved.modelId) : undefined;
     if (cacheKey && this.semanticCache) {
       const cached = await this.semanticCache.get(cacheKey);
-      if (cached) {
+      if (hasUsableCachedText(cached)) {
         return cached.responseText;
       }
     }
@@ -75,7 +83,7 @@ export class RoutedLlmProvider implements LlmProvider {
       ...options,
       modelId: resolved.modelId
     });
-    if (cacheKey && this.semanticCache) {
+    if (cacheKey && this.semanticCache && hasUsableProviderText(responseText)) {
       const now = new Date().toISOString();
       await this.semanticCache.set({
         id: `semantic_cache_${cacheKey.slice(0, 12)}`,
@@ -109,7 +117,7 @@ export class RoutedLlmProvider implements LlmProvider {
     const cacheKey = this.semanticCache ? buildSemanticCacheKey(messages, options, resolved.modelId) : undefined;
     if (cacheKey && this.semanticCache) {
       const cached = await this.semanticCache.get(cacheKey);
-      if (cached) {
+      if (hasUsableCachedText(cached)) {
         onToken(cached.responseText, { model: resolved.modelId });
         return cached.responseText;
       }
@@ -122,7 +130,7 @@ export class RoutedLlmProvider implements LlmProvider {
       },
       onToken
     );
-    if (cacheKey && this.semanticCache) {
+    if (cacheKey && this.semanticCache && hasUsableProviderText(responseText)) {
       const now = new Date().toISOString();
       await this.semanticCache.set({
         id: `semantic_cache_${cacheKey.slice(0, 12)}`,

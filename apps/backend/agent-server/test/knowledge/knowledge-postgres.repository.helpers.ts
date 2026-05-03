@@ -195,7 +195,7 @@ export class FakeKnowledgeSqlClient implements KnowledgeSqlClient {
     expect(sql).toContain('::vector');
     expect(typeof value).toBe('string');
     const dimensions = JSON.parse(value as string) as number[];
-    expect(dimensions).toHaveLength(1536);
+    expect(dimensions).toHaveLength(1024);
     expect(dimensions.slice(0, 3)).toEqual([0.1, 0.2, 0.3]);
     this.serializedWrites.push(label);
     return value;

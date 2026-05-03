@@ -1,4 +1,4 @@
-import type { RetrievalHit } from '@agent/knowledge';
+import type { RetrievalHit } from '../index';
 
 import type { RetrievalFusionStrategyName } from '../runtime/types/retrieval-runtime.types';
 import { rrfFusion } from './rrf-fusion';

@@ -74,10 +74,11 @@ create table if not exists auth_refresh_tokens (
 
 - 未配置 `DATABASE_URL` 时，`AuthModule` 使用 `InMemoryAuthRepository`，用于本地开发和单元测试闭环。
 - 配置 `DATABASE_URL` 时，`AuthModule` 使用 `PostgresAuthRepository`。
+- `DATABASE_URL` 指向的 PostgreSQL database 必须已经存在；服务启动期只负责在该 database 内执行 auth schema 初始化，不负责 `CREATE DATABASE`。本地 Docker 默认只创建根级 `docker-compose.yml` 里的 `${DB_NAME:-agent_db}`，如果 `apps/backend/auth-server/.env` 指向 `agent_auth`，需要先在本地 Postgres 中创建该 database。
 - `AUTH_SERVER_JWT_SECRET` 必须与 `knowledge-server` 的 verifier secret 一致，否则 knowledge API 会拒绝 auth-server token。
 - 配置 `AUTH_SEED_ADMIN_PASSWORD` 后，`AuthSeedService` 会在服务启动时检查 `AUTH_SEED_ADMIN_USERNAME` 是否存在；不存在才创建 `admin` 角色账号，已存在时不会覆盖密码、展示名或状态。
 
-PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PostgresAuthClient`，避免让 `pg` 的第三方类型穿透到 auth 业务层。`pg.Pool` 只在 `src/auth/runtime/auth-database.provider.ts` 中创建，并通过 `import { Pool } from 'pg'` 命名导入；不要改回默认导入，否则 CommonJS 启动链路会在运行时得到 `undefined.Pool`。
+PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 `PostgresAuthClient`，避免让 `pg` 的第三方类型穿透到 auth 业务层。`createAuthRepositoryProvider()` 在暴露 `PostgresAuthRepository` 前会先执行 `src/auth/runtime/auth-schema.sql.ts` 中的 `AUTH_SCHEMA_SQL`，确保 `auth_users`、`auth_sessions` 与 `auth_refresh_tokens` 表存在。`pg.Pool` 只在 `src/auth/runtime/auth-database.provider.ts` 中创建，并通过 `import { Pool } from 'pg'` 命名导入；不要改回默认导入，否则 CommonJS 启动链路会在运行时得到 `undefined.Pool`。
 
 ## Build Boundary
 

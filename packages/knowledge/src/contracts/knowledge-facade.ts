@@ -1,4 +1,4 @@
-import type { KnowledgeChunk, KnowledgeSource, RetrievalRequest, RetrievalResult } from '@agent/knowledge';
+import type { KnowledgeChunk, KnowledgeSource, RetrievalRequest, RetrievalResult } from '../index';
 
 export interface KnowledgeSourceRepository {
   list(): Promise<KnowledgeSource[]>;

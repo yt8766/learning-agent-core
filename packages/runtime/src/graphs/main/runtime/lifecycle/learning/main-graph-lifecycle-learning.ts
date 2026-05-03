@@ -1,5 +1,5 @@
 import type { CreateDocumentLearningJobDto, CreateResearchLearningJobDto } from '@agent/core';
-import { LearningConflictScanResultSchema, type LearningConflictRecord } from '@agent/knowledge';
+import { LearningConflictScanResultSchema, type LearningConflictRecord } from '@agent/core';
 import type { MemoryRepository, RuleRecord, RuleRepository, RuntimeStateRepository } from '@agent/memory';
 
 import type { LearningFlow } from '../../../../../flows/learning';

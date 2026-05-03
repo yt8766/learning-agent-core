@@ -217,10 +217,7 @@ describe('ModelInvocationFacade', () => {
     expect(providerExecute).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        messages: [
-          { role: 'system', content: 'profile:direct-reply' },
-          { role: 'user', content: 'hello runtime facade' }
-        ]
+        messages: [{ role: 'user', content: 'hello runtime facade' }]
       })
     );
     expect(providerExecute).toHaveBeenNthCalledWith(
@@ -232,6 +229,33 @@ describe('ModelInvocationFacade', () => {
         ]
       })
     );
+  });
+
+  it('merges profile and request system messages before provider execution', async () => {
+    const providerExecute = createProviderExecute();
+    const facade = new ModelInvocationFacade({
+      provider: { execute: providerExecute }
+    });
+
+    await facade.invoke(
+      createRequest({
+        modeProfile: 'direct-reply',
+        messages: [
+          { role: 'system', content: '用户指定的直连回复规则' },
+          { role: 'user', content: 'hello runtime facade' }
+        ]
+      })
+    );
+
+    const messages = providerExecute.mock.calls[0]?.[0].messages;
+    const systemMessages = messages.filter(message => message.role === 'system');
+
+    expect(systemMessages).toHaveLength(1);
+    expect(systemMessages[0]?.content).toBe('用户指定的直连回复规则');
+    expect(messages).toEqual([
+      expect.objectContaining({ role: 'system' }),
+      { role: 'user', content: 'hello runtime facade' }
+    ]);
   });
 
   it('counts system messages in the budget estimate', async () => {

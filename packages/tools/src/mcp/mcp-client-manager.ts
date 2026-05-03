@@ -5,11 +5,13 @@ import type { ExecutionWatchdog } from '@agent/runtime';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';
 import {
+  CliTransportHandler,
   HttpTransportHandler,
   LocalAdapterTransportHandler,
   McpTransportDiscovery,
   McpTransportHandler,
-  StdioTransportHandler
+  StdioTransportHandler,
+  type CliCapabilityBinding
 } from '../transports/mcp-transport-handlers';
 
 interface McpServerDiscoveryRecord {
@@ -48,11 +50,15 @@ export class McpClientManager {
     options?: {
       stdioMaxSessions?: number;
       watchdog?: ExecutionWatchdog;
+      cliBindings?: Map<string, CliCapabilityBinding>;
     }
   ) {
     this.registerHandler(new LocalAdapterTransportHandler(this.fallbackExecutor));
     this.registerHandler(new HttpTransportHandler());
     this.registerHandler(new StdioTransportHandler({ maxSessions: options?.stdioMaxSessions }));
+    if (options?.cliBindings && options.cliBindings.size > 0) {
+      this.registerHandler(new CliTransportHandler(options.cliBindings));
+    }
     this.watchdog = options?.watchdog;
   }
   private readonly watchdog?: ExecutionWatchdog;

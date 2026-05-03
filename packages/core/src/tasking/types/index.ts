@@ -7,3 +7,4 @@ export type * from './agent-runtime-projection';
 export * from './chat-response-step';
 export * from './chat';
 export * from './session';
+export * from './knowledge-fields';

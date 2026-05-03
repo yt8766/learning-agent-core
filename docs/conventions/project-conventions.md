@@ -17,6 +17,8 @@
 - [GitHub Flow 规范](/docs/conventions/github-flow.md)
 - [后端规范](/docs/conventions/backend-conventions.md)
 - [前端规范](/docs/conventions/frontend-conventions.md)
+- [JS/TS 代码风格规范](/docs/conventions/javascript-typescript-style.md)
+- [样式规范](/docs/conventions/styling-conventions.md)
 - [提示词规范](/docs/conventions/prompt-conventions.md)
 - [依赖安装与声明策略](/docs/packages/config/package-installation-strategy.md)
 - [模板示例](/docs/conventions/project-template-guidelines.md)

@@ -1,1 +1,1 @@
-export { SessionCoordinator } from '../session/session-coordinator';
+export { SessionCoordinator } from '../session/coordinator/session-coordinator';

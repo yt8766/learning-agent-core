@@ -1,5 +1,6 @@
 import {
   DeleteOutlined,
+  EditOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -18,7 +19,7 @@ const accountMenuSelector = '.chatx-account-menu';
 
 export type ChatHomeSidebarChat = Pick<
   ReturnType<typeof useChatSession>,
-  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'deleteSessionById'
+  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'deleteSessionById' | 'renameSessionById'
 >;
 
 interface ChatHomeSidebarProps {
@@ -160,6 +161,23 @@ export function ChatHomeSidebar({ chat, collapsed, onToggleCollapsed, onLogout }
                             <span aria-hidden="true">...</span>
                           </summary>
                           <div className="chatx-session-item__menu-panel" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="chatx-session-item__menu-action"
+                              onClick={event => {
+                                stopMenuClick(event);
+                                setOpenSessionMenuId('');
+                                const nextTitle = window.prompt('重命名会话', sessionDisplayTitle)?.trim();
+                                if (!nextTitle || nextTitle === session.title) {
+                                  return;
+                                }
+                                void chat.renameSessionById(session.id, nextTitle);
+                              }}
+                            >
+                              <EditOutlined className="chatx-session-item__menu-icon" aria-hidden="true" />
+                              <span>重命名</span>
+                            </button>
                             <button
                               type="button"
                               role="menuitem"

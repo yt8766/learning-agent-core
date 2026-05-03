@@ -1,5 +1,6 @@
 import {
   buildExecutionStepEventCopy,
+  buildNodeLifecycleEventCopy,
   buildTaskTrajectoryEventCopy,
   buildTrajectoryStepEventCopy
 } from '@/lib/chat-trajectory-projections';
@@ -62,6 +63,11 @@ export function buildPlanQuestionCopy(payload: Record<string, unknown>) {
 }
 
 export function buildNodeStatusCopy(payload: Record<string, unknown>) {
+  const lifecycleCopy = buildNodeLifecycleEventCopy(payload);
+  if (lifecycleCopy) {
+    return lifecycleCopy;
+  }
+
   const nodeLabel = typeof payload.nodeLabel === 'string' ? payload.nodeLabel : '当前节点';
   const detail = typeof payload.detail === 'string' ? payload.detail : '';
   const ministry = typeof payload.ministry === 'string' ? payload.ministry : '';

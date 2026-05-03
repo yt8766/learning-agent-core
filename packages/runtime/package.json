@@ -6,146 +6,6 @@
   "types": "build/types/runtime/src/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
-    "./agent-runtime-context": {
-      "import": {
-        "types": "./build/types/runtime/src/runtime/agent-runtime-context.d.ts",
-        "default": "./build/esm/runtime/agent-runtime-context.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/runtime/agent-runtime-context.d.ts",
-        "default": "./build/cjs/runtime/agent-runtime-context.js"
-      }
-    },
-    "./base-agent": {
-      "import": {
-        "types": "./build/types/runtime/src/agents/base-agent.d.ts",
-        "default": "./build/esm/agents/base-agent.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/agents/base-agent.d.ts",
-        "default": "./build/cjs/agents/base-agent.js"
-      }
-    },
-    "./agent-registry": {
-      "import": {
-        "types": "./build/types/runtime/src/agents/agent-registry.d.ts",
-        "default": "./build/esm/agents/agent-registry.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/agents/agent-registry.d.ts",
-        "default": "./build/cjs/agents/agent-registry.js"
-      }
-    },
-    "./agents": {
-      "import": {
-        "types": "./build/types/runtime/src/agents/index.d.ts",
-        "default": "./build/esm/agents/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/agents/index.d.ts",
-        "default": "./build/cjs/agents/index.js"
-      }
-    },
-    "./planner-strategy": {
-      "import": {
-        "types": "./build/types/runtime/src/agents/planner-strategy.d.ts",
-        "default": "./build/esm/agents/planner-strategy.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/agents/planner-strategy.d.ts",
-        "default": "./build/cjs/agents/planner-strategy.js"
-      }
-    },
-    "./memory": {
-      "import": {
-        "types": "./build/types/runtime/src/memory/index.d.ts",
-        "default": "./build/esm/memory/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/memory/index.d.ts",
-        "default": "./build/cjs/memory/index.js"
-      }
-    },
-    "./media": {
-      "import": {
-        "types": "./build/types/runtime/src/media/index.d.ts",
-        "default": "./build/esm/media/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/media/index.d.ts",
-        "default": "./build/cjs/media/index.js"
-      }
-    },
-    "./streaming-execution": {
-      "import": {
-        "types": "./build/types/runtime/src/runtime/streaming-execution.d.ts",
-        "default": "./build/esm/runtime/streaming-execution.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/runtime/streaming-execution.d.ts",
-        "default": "./build/cjs/runtime/streaming-execution.js"
-      }
-    },
-    "./concurrency": {
-      "import": {
-        "types": "./build/types/runtime/src/runtime/concurrency/index.d.ts",
-        "default": "./build/esm/runtime/concurrency/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/runtime/concurrency/index.d.ts",
-        "default": "./build/cjs/runtime/concurrency/index.js"
-      }
-    },
-    "./governance/approval": {
-      "import": {
-        "types": "./build/types/runtime/src/governance/approval/index.d.ts",
-        "default": "./build/esm/governance/approval/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/governance/approval/index.d.ts",
-        "default": "./build/cjs/governance/approval/index.js"
-      }
-    },
-    "./governance/runtime-governance": {
-      "import": {
-        "types": "./build/types/runtime/src/governance/runtime-governance/index.d.ts",
-        "default": "./build/esm/governance/runtime-governance/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/governance/runtime-governance/index.d.ts",
-        "default": "./build/cjs/governance/runtime-governance/index.js"
-      }
-    },
-    "./sandbox": {
-      "import": {
-        "types": "./build/types/runtime/src/sandbox/index.d.ts",
-        "default": "./build/esm/sandbox/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/sandbox/index.d.ts",
-        "default": "./build/cjs/sandbox/index.js"
-      }
-    },
-    "./sandbox-utils": {
-      "import": {
-        "types": "./build/types/runtime/src/sandbox/sandbox-executor-utils.d.ts",
-        "default": "./build/esm/sandbox/sandbox-executor-utils.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/sandbox/sandbox-executor-utils.d.ts",
-        "default": "./build/cjs/sandbox/sandbox-executor-utils.js"
-      }
-    },
-    "./watchdog": {
-      "import": {
-        "types": "./build/types/runtime/src/watchdog/index.d.ts",
-        "default": "./build/esm/watchdog/index.mjs"
-      },
-      "require": {
-        "types": "./build/types/runtime/src/watchdog/index.d.ts",
-        "default": "./build/cjs/watchdog/index.js"
-      }
-    },
     ".": {
       "import": {
         "types": "./build/types/runtime/src/index.d.ts",
@@ -177,10 +37,13 @@
     "@agent/adapters": "workspace:*",
     "@agent/config": "workspace:*",
     "@agent/core": "workspace:*",
+    "@agent/knowledge": "workspace:*",
     "@agent/memory": "workspace:*",
+    "@agent/report-kit": "workspace:*",
     "@agent/skill": "workspace:*",
     "@agent/tools": "workspace:*",
     "@langchain/langgraph": "^1.2.5",
+    "@langchain/langgraph-checkpoint-postgres": "^1.0.1",
     "zod": "^4.3.6"
   }
 }

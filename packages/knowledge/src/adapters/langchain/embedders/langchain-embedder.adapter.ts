@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { Chunk, Embedder, Vector } from '@agent/knowledge';
+import type { Chunk, Embedder, Vector } from '../../../index';
 
 import { AdapterError } from '../../shared/errors/adapter-error';
 import { validateVectorDimensions } from '../../shared/validation/vector-dimensions';

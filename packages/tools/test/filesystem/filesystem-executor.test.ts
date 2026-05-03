@@ -40,6 +40,32 @@ describe('executeFilesystemTool', () => {
     expect(await readFile(targetFile, 'utf8')).toContain('"after"');
   });
 
+  it('formats read and list output summaries as localized success lines', async () => {
+    const root = await createTempWorkspace('filesystem-read-list');
+    tempWorkspaces.push(root);
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'src', 'demo.txt'), '你好');
+
+    process.chdir(root);
+    const readResult = await executeFilesystemTool({
+      taskId: 'task-read',
+      toolName: 'read_local_file',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: { path: 'src/demo.txt' }
+    });
+    expect(readResult?.outputSummary).toMatch(/^已读取文件 src\/demo\.txt（\d+ 字符）$/);
+
+    const listResult = await executeFilesystemTool({
+      taskId: 'task-list',
+      toolName: 'list_directory',
+      intent: ActionIntent.READ_FILE,
+      requestedBy: 'agent',
+      input: { path: '.' }
+    });
+    expect(listResult?.outputSummary).toMatch(/^已列出目录 \. 下的 \d+ 个项目$/);
+  });
+
   it('searches in files and returns line-level matches', async () => {
     const root = await createTempWorkspace('filesystem-search');
     tempWorkspaces.push(root);

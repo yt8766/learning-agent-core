@@ -1,4 +1,4 @@
-import type { EvaluationResult } from '@agent/knowledge';
+import type { EvaluationResult } from '@agent/core';
 import type { AgentRoleValue, ReviewRecord } from '@agent/core';
 import type { MinistryContractMeta, ReviewMinistryLike } from '@agent/core';
 import type { RuntimeTaskRecord as TaskRecord } from '../../runtime/runtime-task.types';

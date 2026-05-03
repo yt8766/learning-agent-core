@@ -1,2 +1,2 @@
-export { SessionCoordinator } from './session-coordinator';
+export { SessionCoordinator } from './coordinator/session-coordinator';
 export type { SessionStoreSnapshot } from './session-store';

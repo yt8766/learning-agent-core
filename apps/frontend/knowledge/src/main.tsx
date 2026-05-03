@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import './styles/tailwind.css';
 import 'antd/dist/reset.css';
 import './styles/knowledge-pro.css';
 

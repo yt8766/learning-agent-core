@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`agents/coder`
-最后核对：2026-04-18
+最后核对：2026-05-02
 
 本文档说明 `agents/coder` 如何继续作为工部/兵部执行智能体宿主收敛结构。
 
@@ -63,6 +63,10 @@ agents/coder/
   - 共享 agent foundation 仅允许通过 `@agent/runtime` 根入口消费
   - runtime facade 仅允许通过 `@agent/runtime` 根入口消费
   - 不允许直接依赖 `packages/runtime/src/*`，也不允许依赖 `runtime/agent-bridges/*` 这类 runtime 内部过渡层
+- 工具执行边界
+  - `read_local_file`、`list_directory` 等 `capabilityType: "local-tool"` 必须通过 runtime sandbox 执行，不能仅因为 context 存在 `mcpClientManager` 就当作 MCP capability 调用。
+  - 只有 `mcpClientManager.hasCapability(toolName)` 为 true 时，`gongbu-code` runner 才能调用 `invokeCapability(toolName, request)`；否则必须 fallback 到 `context.sandbox.execute(request)`。
+  - 这个边界避免主聊天出现 `MCP capability read_local_file is not registered` / `list_directory is not registered` 这类本地工具误投 MCP 的错误。
 
 后续继续收敛时：
 

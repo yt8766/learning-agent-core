@@ -34,7 +34,7 @@ function completeEnv() {
     KNOWLEDGE_LLM_API_KEY: 'test-key',
     KNOWLEDGE_LLM_BASE_URL: 'https://llm.local/v1',
     KNOWLEDGE_CHAT_MAX_TOKENS: '1200',
-    KNOWLEDGE_EMBEDDING_DIMENSIONS: '1536'
+    KNOWLEDGE_EMBEDDING_DIMENSIONS: '1024'
   };
 }
 
@@ -96,7 +96,7 @@ describe('createKnowledgeSdkRuntimeProvider', () => {
       embeddingProvider: {
         providerId: 'openai-compatible',
         defaultModel: 'text-embedding-3-small',
-        dimensions: 1536
+        dimensions: 1024
       },
       vectorStore: expect.any(Object)
     });
@@ -114,7 +114,7 @@ describe('createKnowledgeSdkRuntimeProvider', () => {
         apiKey: 'test-key',
         model: 'text-embedding-3-small',
         baseURL: 'https://llm.local/v1',
-        dimensions: 1536
+        dimensions: 1024
       },
       vectorStore: { client: expect.objectContaining({ rpc: expect.any(Function) }) }
     });

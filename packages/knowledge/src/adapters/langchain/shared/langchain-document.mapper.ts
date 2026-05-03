@@ -1,5 +1,5 @@
 import type { Document as LangChainDocument } from '@langchain/core/documents';
-import type { Document } from '@agent/knowledge';
+import type { Document } from '../../../index';
 
 import { documentId } from '../../shared/ids/stable-id';
 import { normalizeMetadata } from '../../shared/metadata/normalize-metadata';

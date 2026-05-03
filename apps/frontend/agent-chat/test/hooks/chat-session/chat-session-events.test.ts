@@ -128,7 +128,23 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(content).toBe('gongbu-code · 工部执行 进行中：正在修复 plugin.ts（60%）');
+    expect(content).toBe('gongbu-code · 工部执行 · 进行中 · 正在修复 plugin.ts · 进度 60%');
+  });
+
+  it('buildVisibleEventMessage 会把遗留 node 形态的 node_status 投影成可读摘要', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-legacy-node',
+      sessionId: 'session-1',
+      type: 'node_status',
+      at: '2026-03-28T00:00:00.000Z',
+      payload: {
+        node: 'direct_reply',
+        status: 'running',
+        route: 'direct-reply'
+      }
+    } as any);
+
+    expect(content).toBe('直接回复 · 状态：running · 路径：direct-reply');
   });
 
   it('buildEventCard 会把 plan-question interrupt 映射成计划问题卡片', () => {

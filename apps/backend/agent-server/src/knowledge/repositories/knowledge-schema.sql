@@ -38,7 +38,7 @@ create table if not exists knowledge_chunks (
   text text not null,
   ordinal integer not null,
   token_count integer,
-  embedding vector(1536),
+  embedding vector(1024),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null,
   updated_at timestamptz not null,

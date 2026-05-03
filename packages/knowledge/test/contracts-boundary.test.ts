@@ -180,7 +180,7 @@ describe('@agent/knowledge contracts boundary', () => {
         chroma: {
           collection: {
             name: 'knowledge_chunks',
-            embeddingDimension: 1536,
+            embeddingDimension: 1024,
             idField: 'chunkId',
             documentField: 'content',
             metadataField: 'metadata'
@@ -210,7 +210,7 @@ describe('@agent/knowledge contracts boundary', () => {
 
     expect(config.mode).toBe('hybrid');
     expect(config.keyword?.opensearch.index.textField).toBe('content');
-    expect(config.vector?.chroma.collection.embeddingDimension).toBe(1536);
+    expect(config.vector?.chroma.collection.embeddingDimension).toBe(1024);
     expect(config.diagnostics?.includeProviderHealth).toBe(true);
     expect(config.health?.degradedAfterConsecutiveFailures).toBe(2);
 

@@ -17,25 +17,110 @@ export function resolveCognitionTargetMessageId(
   return checkpoint?.thinkState?.messageId ?? thoughtChain?.find(item => item.messageId)?.messageId ?? '';
 }
 
+function isDirectReplyCheckpoint(checkpoint: ChatCheckpointRecord | undefined): boolean {
+  return checkpoint?.chatRoute?.flow === 'direct-reply';
+}
+
 export function buildCognitionDurationLabel(
   checkpoint: ChatCheckpointRecord | undefined,
   thoughtChain: ChatThoughtChainItem[] | undefined,
   thinkingNow: number
 ) {
-  const durationMs =
-    checkpoint?.thinkState?.thinkingDurationMs ??
-    thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs;
+  const MAX_COGNITION_MS = 30 * 60 * 1000;
+  const directReply = isDirectReplyCheckpoint(checkpoint);
+
+  const durationMs = directReply
+    ? typeof checkpoint?.thinkState?.thinkingDurationMs === 'number'
+      ? checkpoint.thinkState.thinkingDurationMs
+      : undefined
+    : (checkpoint?.thinkState?.thinkingDurationMs ??
+      thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs);
+
+  if (checkpoint?.thinkState?.loading) {
+    const extraMs = Math.max(0, thinkingNow - new Date(checkpoint.updatedAt).getTime());
+    const staleMs = typeof durationMs === 'number' && durationMs <= MAX_COGNITION_MS ? durationMs : 0;
+    const totalMs = Math.min(staleMs + extraMs, MAX_COGNITION_MS);
+    const seconds = Math.max(1, Math.round(totalMs / 1000));
+    return `${seconds}s`;
+  }
+
+  if (typeof durationMs === 'number') {
+    if (durationMs > MAX_COGNITION_MS) {
+      return '较长';
+    }
+    const seconds = Math.max(1, Math.round(durationMs / 1000));
+    if (seconds >= 120) {
+      const minutes = Math.floor(seconds / 60);
+      const rem = seconds % 60;
+      return `约 ${minutes} 分 ${rem} 秒`;
+    }
+    return `约 ${seconds} 秒`;
+  }
+
+  if (!directReply && checkpoint?.createdAt && checkpoint?.updatedAt) {
+    const fallbackMs = new Date(checkpoint.updatedAt).getTime() - new Date(checkpoint.createdAt).getTime();
+    if (fallbackMs > 0 && fallbackMs <= MAX_COGNITION_MS) {
+      const seconds = Math.max(1, Math.round(fallbackMs / 1000));
+      return seconds >= 120 ? `约 ${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒` : `约 ${seconds} 秒`;
+    }
+    if (fallbackMs > MAX_COGNITION_MS) {
+      return '较长';
+    }
+  }
+
+  return '';
+}
+
+const MAX_COGNITION_MS = 30 * 60 * 1000;
+
+/** 用于单条消息的持久化 cognition 快照耗时展示（checkpoint 不可用时的等价逻辑） */
+export function formatCognitionDurationLabelFromMs(durationMs?: number): string {
   if (typeof durationMs !== 'number') {
     return '';
   }
 
-  const extraMs = checkpoint?.thinkState?.loading
-    ? Math.max(0, thinkingNow - new Date(checkpoint.updatedAt).getTime())
-    : 0;
-  const seconds = Math.max(1, Math.round((durationMs + extraMs) / 1000));
-  return checkpoint?.thinkState?.loading ? `${seconds}s` : `约 ${seconds} 秒`;
+  if (durationMs > MAX_COGNITION_MS) {
+    return '较长';
+  }
+
+  const seconds = Math.max(1, Math.round(durationMs / 1000));
+  if (seconds >= 120) {
+    const minutes = Math.floor(seconds / 60);
+    const rem = seconds % 60;
+    return `约 ${minutes} 分 ${rem} 秒`;
+  }
+
+  return `约 ${seconds} 秒`;
 }
 
+export function resolveNextCognitionExpansionPatch(params: {
+  wasThinkLoading: boolean;
+  isThinkLoading: boolean;
+  hasCognitionTarget: boolean;
+  isSessionRunning: boolean;
+  cognitionTargetMessageId?: string;
+}): Record<string, boolean> | undefined {
+  const id = params.cognitionTargetMessageId;
+  if (!id) {
+    return undefined;
+  }
+
+  if (params.isThinkLoading) {
+    return { [id]: true };
+  }
+
+  if (params.wasThinkLoading && params.hasCognitionTarget) {
+    return { [id]: false };
+  }
+
+  if (params.hasCognitionTarget && !params.wasThinkLoading && !params.isSessionRunning) {
+    return { [id]: false };
+  }
+
+  return undefined;
+}
+
+/** @deprecated 使用 resolveNextCognitionExpansionPatch 按 messageId 合并展开状态 */
 export function resolveNextCognitionExpansion(params: {
   wasThinkLoading: boolean;
   isThinkLoading: boolean;

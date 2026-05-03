@@ -2,13 +2,13 @@ import type { AgentRoleValue as AgentRole, SourcePolicyMode } from '@agent/core'
 import type { CreateTaskDto, WorkflowPresetDefinition } from '@agent/core';
 import { ActionIntent } from '@agent/core';
 import type { ReviewMinistryLike, RouterMinistryLike } from '@agent/core';
-import type { BaseCheckpointSaver } from '@langchain/langgraph';
+import type { BaseCheckpointSaver, BaseStore } from '@langchain/langgraph';
 
 import type { PendingExecutionContext } from '../../../../../flows/approval';
 import type { AgentRuntimeContext } from '../../../../../runtime/agent-runtime-context';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../../../types/chat-graph';
-import type { ApprovalResumeInput, ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ApprovalResumeInput, ToolUsageSummaryRecord } from '../../../../../index';
 
 export type TaskMode = 'initial' | 'retry' | 'approval_resume';
 export type GraphTaskMode = TaskMode | 'interrupt_resume';
@@ -151,6 +151,7 @@ export interface TaskPipelineCallbacks {
   ) => RuntimeAgentGraphState;
   resolveGraphThreadId: (task: TaskRecord) => string;
   getGraphCheckpointer: () => BaseCheckpointSaver;
+  getGraphStore: () => BaseStore;
   runDirectReplyTask: (task: TaskRecord, libu: RouterMinistryLike) => Promise<void>;
   recordAgentError: (
     task: TaskRecord,

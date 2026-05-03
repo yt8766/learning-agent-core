@@ -330,5 +330,5 @@ function isProviderObject(provider: unknown): provider is { provide: unknown } {
 }
 
 function createEmbedding(seed: number): number[] {
-  return Array.from({ length: 1536 }, (_, index) => seed + index / 10000);
+  return Array.from({ length: 1024 }, (_, index) => seed + index / 10000);
 }

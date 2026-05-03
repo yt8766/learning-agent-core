@@ -1,4 +1,4 @@
-import type { LearningEvaluationRecord } from '@agent/knowledge';
+import type { LearningEvaluationRecord } from '@agent/core';
 import type { EvidenceRecord } from '@agent/memory';
 import type { ExecutionTrace, TrustClass } from '@agent/core';
 

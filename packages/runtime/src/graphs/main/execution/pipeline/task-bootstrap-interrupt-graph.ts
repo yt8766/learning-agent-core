@@ -1,5 +1,5 @@
 import { ActionIntent, AgentRole, TaskStatus } from '@agent/core';
-import { Annotation, BaseCheckpointSaver, END, interrupt, START, StateGraph } from '@langchain/langgraph';
+import { Annotation, BaseCheckpointSaver, BaseStore, END, interrupt, START, StateGraph } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../../flows/approval';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
@@ -7,7 +7,7 @@ import {
   runPreExecutionSkillGateNode,
   runTaskBootstrapFinishNode
 } from '../../../../flows/approval/bootstrap/task-bootstrap-interrupt-nodes';
-import type { ApprovalResumeInput, ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ApprovalResumeInput, ToolUsageSummaryRecord } from '../../../../index';
 
 // task.activeInterrupt and task.interruptHistory persist 司礼监 / InterruptController state across bootstrap resumes.
 export interface TaskBootstrapGraphState {
@@ -107,10 +107,11 @@ interface BuildTaskBootstrapInterruptGraphParams {
   task: RuntimeTaskRecord;
   callbacks: TaskBootstrapCallbacks;
   checkpointer: BaseCheckpointSaver;
+  store: BaseStore;
 }
 
 export function buildTaskBootstrapInterruptGraph(params: BuildTaskBootstrapInterruptGraphParams) {
-  const { task, callbacks, checkpointer } = params;
+  const { task, callbacks, checkpointer, store } = params;
 
   return new StateGraph(TaskBootstrapAnnotation)
     .addNode('pre_execution_skill_gate', state => runPreExecutionSkillGateNode(state, task, callbacks))
@@ -118,5 +119,5 @@ export function buildTaskBootstrapInterruptGraph(params: BuildTaskBootstrapInter
     .addEdge(START, 'pre_execution_skill_gate')
     .addEdge('pre_execution_skill_gate', 'finish')
     .addEdge('finish', END)
-    .compile({ checkpointer });
+    .compile({ checkpointer, store });
 }

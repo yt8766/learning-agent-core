@@ -840,7 +840,7 @@ packages/knowledge/src/
 @agent/knowledge/retrieval
 @agent/knowledge/eval
 @agent/knowledge/observability
-@agent/knowledge/browser
+@agent/knowledge/browser-entry
 @agent/knowledge/node
 @agent/knowledge/adapters/supabase
 @agent/knowledge/adapters/openai

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-agent_db}
@@ -15,3 +15,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  postgrest:
+    image: postgrest/postgrest:v12
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-agent_db}
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: postgres
+      PGRST_OPENAPI_MODE: ignore-privileges
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy

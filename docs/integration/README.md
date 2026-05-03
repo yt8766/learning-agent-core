@@ -11,7 +11,6 @@
 
 1. [API 文档目录](/docs/contracts/api/README.md)
 2. [frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
-3. [system-flow-current-state.md](/docs/maps/system-flow-current-state.md)
 
 改前后端协议、SSE、审批恢复前，优先阅读：
 

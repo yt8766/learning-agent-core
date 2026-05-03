@@ -87,8 +87,12 @@ describe('MiniMaxProvider', () => {
         model: 'MiniMax-M2.7',
         apiKey: 'minimax-key',
         baseUrl: 'https://api.minimaxi.com/v1',
-        temperature: 0.2,
         streamUsage: false
+      })
+    );
+    expect(createMiniMaxChatModelMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        temperature: expect.any(Number)
       })
     );
     expect(onUsage).toHaveBeenCalledWith(
@@ -121,7 +125,11 @@ describe('MiniMaxProvider', () => {
       }
     });
 
-    await provider.streamText([{ role: 'user', content: '你好' }], { role: 'manager' }, () => undefined);
+    await provider.streamText(
+      [{ role: 'user', content: '你好' }],
+      { role: 'manager', temperature: 0.2 },
+      () => undefined
+    );
 
     expect(createMiniMaxChatModelMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,6 +137,7 @@ describe('MiniMaxProvider', () => {
         streamUsage: false
       })
     );
+    expect(createMiniMaxChatModelMock.mock.calls[0]?.[0]).not.toHaveProperty('temperature');
   });
 
   it('does not pass runtime thinking settings through to MiniMax chat models', async () => {

@@ -1,5 +1,5 @@
-import type { Chunker, Document, KnowledgeChunk, KnowledgeSource, Loader } from '@agent/knowledge';
-import type { KnowledgeSourceType, KnowledgeTrustClass } from '@agent/knowledge';
+import type { Chunker, Document, KnowledgeChunk, KnowledgeSource, Loader } from '../../index';
+import type { KnowledgeSourceType, KnowledgeTrustClass } from '../../index';
 import type { KnowledgeVectorIndexWriter } from '@agent/memory';
 
 export interface KnowledgeSourceConfig {

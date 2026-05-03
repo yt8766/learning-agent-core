@@ -130,7 +130,7 @@ describe('knowledge vector store factory', () => {
     ).resolves.toEqual({ inserted: 2 });
   });
 
-  it('rejects Supabase upsert chunks without 1536-dimension embeddings', async () => {
+  it('rejects Supabase upsert chunks without 1024-dimension embeddings', async () => {
     const vectorStore = createKnowledgeVectorStore({
       kind: 'supabase-pgvector',
       supabaseUrl: 'https://example.supabase.co',
@@ -157,7 +157,7 @@ describe('knowledge vector store factory', () => {
           }
         ]
       })
-    ).rejects.toThrow('Supabase pgvector embeddings must contain 1536 dimensions');
+    ).rejects.toThrow('Supabase pgvector embeddings must contain 1024 dimensions');
   });
 
   it('maps adapter deletedCount to the ingestion vector store deleted result', async () => {
@@ -220,7 +220,7 @@ describe('knowledge vector store factory', () => {
     });
   });
 
-  it('rejects Supabase search without a 1536-dimension query embedding', async () => {
+  it('rejects Supabase search without a 1024-dimension query embedding', async () => {
     const vectorStore = createKnowledgeVectorStore({
       kind: 'supabase-pgvector',
       supabaseUrl: 'https://example.supabase.co',
@@ -235,7 +235,7 @@ describe('knowledge vector store factory', () => {
         embedding: [0.1, 0.2],
         topK: 5
       })
-    ).rejects.toThrow('Supabase pgvector embeddings must contain 1536 dimensions');
+    ).rejects.toThrow('Supabase pgvector embeddings must contain 1024 dimensions');
   });
 
   it('keeps memory mode as a no-op vector store', async () => {
@@ -288,5 +288,5 @@ describe('knowledge vector store factory', () => {
 });
 
 function createEmbedding(seed: number): number[] {
-  return Array.from({ length: 1536 }, (_, index) => seed + index / 10000);
+  return Array.from({ length: 1024 }, (_, index) => seed + index / 10000);
 }

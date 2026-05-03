@@ -19,7 +19,7 @@ export async function executeGongbuToolRequest(
     requestedBy: 'agent' as const
   };
 
-  return context.mcpClientManager
+  return context.mcpClientManager?.hasCapability(tool.name)
     ? await context.mcpClientManager.invokeCapability(tool.name, request)
     : await context.sandbox.execute(request);
 }
@@ -67,7 +67,7 @@ export async function maybeReadGongbuSearchResult(params: {
     requestedBy: 'agent' as const
   };
 
-  const followupResult = params.context.mcpClientManager
+  const followupResult = params.context.mcpClientManager?.hasCapability(followupToolName)
     ? await params.context.mcpClientManager.invokeCapability(followupToolName, followupRequest)
     : await params.context.sandbox.execute(followupRequest);
 

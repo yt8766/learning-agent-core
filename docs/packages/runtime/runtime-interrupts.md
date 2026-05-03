@@ -253,5 +253,6 @@ Supervisor 计划问题中断必须在恢复重放时识别已有 pending `plan-
 ## 7. 当前阶段说明
 
 当前仓库仍以 `approval-recovery` 为主恢复链。
-在真正接入 LangGraph checkpointer + `Command({ resume })` 前，`ApprovalInterruptRecord.resumeStrategy` 允许暂时为 `approval-recovery`。
-这不是终态，只是为了让前后端先围绕统一中断协议收敛。
+LangGraph checkpointer 已可通过 `LANGGRAPH_CHECKPOINTER=postgres` 切换为官方 `PostgresSaver`，详见 [langgraph-postgres-checkpointer.md](/docs/packages/runtime/langgraph-postgres-checkpointer.md)。
+在主链完全切到 `Command({ resume })` 前，`ApprovalInterruptRecord.resumeStrategy` 仍允许暂时为 `approval-recovery`。
+这不是终态，只是为了让前后端先围绕统一中断协议收敛，并把 checkpoint 持久化能力先落到 runtime 装配边界。

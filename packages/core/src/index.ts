@@ -88,3 +88,4 @@ export * from './primitives';
 export * from './tasking';
 export * from './contracts/approval/index';
 export * from './workspace';
+export * from './prompts';

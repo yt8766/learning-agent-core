@@ -4,9 +4,18 @@ import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-proje
 type RenderMessageResponseStepsOptions = {
   responseSteps?: ChatResponseStepsForMessage;
   placement: 'before-content' | 'after-content';
+  /** DeepSeek-style cognition log already covers retrieval; hide duplicate node-telemetry strip. */
+  suppressForNarrativeCognition?: boolean;
 };
 
-export function renderMessageResponseSteps({ responseSteps, placement }: RenderMessageResponseStepsOptions) {
+export function renderMessageResponseSteps({
+  responseSteps,
+  placement,
+  suppressForNarrativeCognition
+}: RenderMessageResponseStepsOptions) {
+  if (suppressForNarrativeCognition) {
+    return null;
+  }
   if (!responseSteps || responseSteps.displayMode === 'answer_only') {
     return null;
   }

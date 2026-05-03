@@ -35,22 +35,6 @@ vi.mock('@ant-design/x-markdown', () => ({
 
 vi.mock('@ant-design/x', async () => {
   return {
-    Think: ({ title, children }: { title?: React.ReactNode; children?: React.ReactNode }) => (
-      <section>
-        <div>{title}</div>
-        <div>{children}</div>
-      </section>
-    ),
-    ThoughtChain: ({ items }: { items?: Array<{ title?: React.ReactNode; description?: React.ReactNode }> }) => (
-      <section>
-        {items?.map((item, index) => (
-          <article key={index}>
-            <div>{item.title}</div>
-            <div>{item.description}</div>
-          </article>
-        ))}
-      </section>
-    ),
     Sources: ({
       title,
       items
@@ -662,7 +646,7 @@ describe('chat-message-adapter cognition rendering', () => {
     expect(html).toContain('Markdown 中可写');
   });
 
-  it('keeps completed runtime cognition expanded while rendering assistant think panel', () => {
+  it('keeps completed runtime cognition expanded showing tag content in thinking section and thought items in processing section', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -695,13 +679,12 @@ describe('chat-message-adapter cognition rendering', () => {
     const html = renderToStaticMarkup(<>{items[0]?.content}</>);
 
     expect(html).toContain('模型内部思路。');
-    expect(html).toContain('先判断问题类型，再选择执行路径。');
     expect(html).toContain('用现有上下文判断。');
     expect(html).toContain('这是最终回复。');
-    expect(html).not.toContain('模型推理');
+    expect(html).not.toContain('先判断问题类型，再选择执行路径。');
   });
 
-  it('keeps collapsed runtime cognition summary entry while rendering assistant think panel', () => {
+  it('keeps collapsed runtime cognition summary using tag content instead of thinkState.content', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -735,13 +718,13 @@ describe('chat-message-adapter cognition rendering', () => {
 
     expect(html).toContain('chatx-inline-think__toggle');
     expect(html).toContain('已思考（用时约 2 秒）');
-    expect(html).toContain('先判断问题类型，再选择执行路径');
-    expect(html).toContain('模型内部思路。');
+    expect(html).toContain('模型内部思路');
     expect(html).toContain('这是最终回复。');
+    expect(html).not.toContain('先判断问题类型，再选择执行路径');
     expect(html).not.toContain('用现有上下文判断。');
   });
 
-  it('keeps collapsed completed runtime cognition summary without assistant think panel', () => {
+  it('keeps collapsed completed runtime cognition summary with thought item description when no think tags', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'assistant_1',
@@ -774,9 +757,61 @@ describe('chat-message-adapter cognition rendering', () => {
     const html = renderToStaticMarkup(<>{items[0]?.content}</>);
 
     expect(html).toContain('chatx-inline-think__toggle');
-    expect(html).toContain('先判断问题类型，再选择执行路径');
+    expect(html).toContain('用现有上下文判断');
     expect(html).toContain('这是最终回复。');
-    expect(html).not.toContain('用现有上下文判断。');
+    expect(html).not.toContain('先判断问题类型，再选择执行路径');
+  });
+
+  it('serves cognition thoughts per assistant bubble from cognitionSnapshot without leaking live thoughtItems', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-a',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '回答 A',
+        createdAt: '2026-05-03T00:00:01.000Z',
+        cognitionSnapshot: {
+          thoughtChain: [{ key: 'a1', title: '链 A', description: '仅 A', status: 'success' }],
+          thinkingDurationMs: 1000,
+          capturedAt: '2026-05-03T00:00:02.000Z'
+        }
+      },
+      {
+        id: 'assistant-b',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '回答 B',
+        createdAt: '2026-05-03T00:00:03.000Z',
+        cognitionSnapshot: {
+          thoughtChain: [{ key: 'b1', title: '链 B', description: '仅 B', status: 'success' }],
+          thinkingDurationMs: 2000,
+          capturedAt: '2026-05-03T00:00:04.000Z'
+        }
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent',
+      cognitionTargetMessageId: 'assistant-b',
+      cognitionExpandedByMessageId: {
+        'assistant-a': true,
+        'assistant-b': true
+      },
+      thoughtItems: [{ key: 'live-global', title: '实时', description: '只应对当前会话目标气泡' }]
+    });
+
+    const htmlA = renderToStaticMarkup(<>{items.find(entry => entry.key === 'assistant-a')?.content}</>);
+    const htmlB = renderToStaticMarkup(<>{items.find(entry => entry.key === 'assistant-b')?.content}</>);
+    expect(htmlA).toContain('仅 A');
+    expect(htmlA).not.toContain('仅 B');
+    expect(htmlA).not.toContain('只应对当前会话目标气泡');
+
+    expect(htmlB).toContain('仅 B');
+    expect(htmlB).not.toContain('仅 A');
+    expect(htmlB).not.toContain('只应对当前会话目标气泡');
   });
 
   it('toggles assistant think panel in the DOM without escaped think tag leakage', async () => {
@@ -834,7 +869,7 @@ describe('chat-message-adapter cognition rendering', () => {
     }
   });
 
-  it('会把绑定到 progress stream 的 Think 渲染到主聊天线程里，但不再把运行态战报混进正文', () => {
+  it('renders inline cognition bar for progress stream without leaking stream text into main body', () => {
     const messages: ChatMessageRecord[] = [
       {
         id: 'chat_msg_user_1',
@@ -878,7 +913,6 @@ describe('chat-message-adapter cognition rendering', () => {
     const html = renderToStaticMarkup(<>{assistantItem?.content}</>);
 
     expect(html).toContain('思考中');
-    expect(html).toContain('先判断问题类型，再选择执行路径。');
     expect(html).not.toContain('正在分析中');
   });
 
