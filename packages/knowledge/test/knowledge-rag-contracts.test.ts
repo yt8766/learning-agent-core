@@ -461,6 +461,14 @@ describe('Knowledge RAG SDK contracts', () => {
           message: 'retrieval provider failed',
           retryable: true
         }
+      },
+      {
+        type: 'rag.error',
+        runId: 'rag_1',
+        error: {
+          code: 'rag_model_profile_not_found',
+          message: 'RAG model profile was not found.'
+        }
       }
     ];
 
@@ -474,6 +482,7 @@ describe('Knowledge RAG SDK contracts', () => {
       'answer.delta',
       'answer.completed',
       'rag.completed',
+      'rag.error',
       'rag.error'
     ]);
 

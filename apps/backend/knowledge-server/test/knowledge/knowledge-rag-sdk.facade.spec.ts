@@ -287,6 +287,39 @@ describe('Knowledge RAG SDK facade', () => {
     });
   });
 
+  it('fails stream responses when fallback generate records an answer provider error', async () => {
+    const generate = vi.fn(async () => {
+      throw new Error('llm unavailable');
+    });
+    const { documents, repository, traces, baseId } = await createService(enabledSdkRuntime({ generate }));
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_stream_generate_error',
+      chunkId: 'chunk_stream_generate_error',
+      title: 'Stream Generate Error Runbook',
+      content: 'Stream generate errors must not complete successfully.'
+    });
+
+    const events: unknown[] = [];
+    await expect(async () => {
+      for await (const event of documents.streamChat(actor, {
+        knowledgeBaseIds: [baseId],
+        message: 'stream generate errors'
+      })) {
+        events.push(event);
+      }
+    }).rejects.toMatchObject({
+      name: 'KnowledgeServiceError',
+      code: 'knowledge_chat_failed',
+      message: 'llm unavailable'
+    });
+
+    expect(events.some(event => isStreamEventType(event, 'rag.completed'))).toBe(false);
+    expect(traces.listTraces()[0]).toMatchObject({
+      status: 'error',
+      endedAt: expect.any(String)
+    });
+  });
+
   it('uses the requested model profile planner model before facade retrieval', async () => {
     let selectedBaseId = '';
     const generate = vi.fn(async input => {
@@ -664,6 +697,10 @@ function enabledSdkRuntime(input: {
 
 function isGenerateInput(value: unknown): value is { model?: string } {
   return typeof value === 'object' && value !== null && 'messages' in value;
+}
+
+function isStreamEventType(value: unknown, type: string): boolean {
+  return typeof value === 'object' && value !== null && 'type' in value && value.type === type;
 }
 
 async function seedDocument(

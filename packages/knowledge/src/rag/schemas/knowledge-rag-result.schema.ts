@@ -9,6 +9,10 @@ export const KnowledgeRagErrorCodeSchema = z.enum([
   'planner_failed',
   'retrieval_failed',
   'answer_failed',
+  'knowledge_chat_failed',
+  'knowledge_permission_denied',
+  'rag_model_profile_disabled',
+  'rag_model_profile_not_found',
   'cancelled',
   'unknown'
 ]);

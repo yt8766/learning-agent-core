@@ -142,6 +142,20 @@ describe('KnowledgeFrontendMvpController', () => {
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
+  it('maps invalid RAG model profiles to stable bad request errors', async () => {
+    const controller = new KnowledgeFrontendMvpController({
+      chat: async () => {
+        throw new KnowledgeServiceError('rag_model_profile_not_found', 'RAG model profile was not found.');
+      }
+    } as unknown as KnowledgeDocumentService);
+    await expect(
+      controller.chat(actor, {
+        model: 'missing-profile',
+        message: 'rotation policy'
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('writes SSE error frames when stream iteration fails after headers are sent', async () => {
     const chunks: string[] = [];
     const controller = new KnowledgeFrontendMvpController({
@@ -155,6 +169,22 @@ describe('KnowledgeFrontendMvpController', () => {
     ).resolves.toBeUndefined();
     expect(chunks.join('')).toContain('event: rag.error');
     expect(chunks.join('')).toContain('knowledge_permission_denied');
+  });
+
+  it('writes stable RAG model profile codes in SSE error frames', async () => {
+    const chunks: string[] = [];
+    const controller = new KnowledgeFrontendMvpController({
+      streamChat: async function* () {
+        throw new KnowledgeServiceError('rag_model_profile_disabled', 'RAG model profile is disabled.');
+        yield undefined as never;
+      }
+    } as unknown as KnowledgeDocumentService);
+
+    await expect(
+      controller.chat(actor, { model: 'disabled-profile', message: 'private', stream: true }, createSseResponse(chunks))
+    ).resolves.toBeUndefined();
+    expect(chunks.join('')).toContain('event: rag.error');
+    expect(chunks.join('')).toContain('"code":"rag_model_profile_disabled"');
   });
 
   it('routes chat retrieval to an explicitly mentioned knowledge base', async () => {
