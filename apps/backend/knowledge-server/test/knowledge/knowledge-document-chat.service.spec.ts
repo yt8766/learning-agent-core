@@ -6,58 +6,44 @@ import { KnowledgeService } from '../../src/knowledge/knowledge.service';
 import type { KnowledgeSdkRuntimeProviderValue } from '../../src/knowledge/runtime/knowledge-sdk-runtime.provider';
 import { InMemoryKnowledgeRepository } from '../../src/knowledge/repositories/knowledge-memory.repository';
 import { InMemoryOssStorageProvider } from '../../src/knowledge/storage/in-memory-oss-storage.provider';
+import { KnowledgeRagService } from '../../src/knowledge/knowledge-rag.service';
+import { KnowledgeTraceService } from '../../src/knowledge/knowledge-trace.service';
 
 const actor = { userId: 'user_1', username: 'dev', roles: ['user'] };
 
 describe('KnowledgeDocumentService chat SDK RAG', () => {
-  it('answers through the enabled SDK runtime with projected vector citations', async () => {
+  it('answers through the enabled SDK answer provider with repository-backed SDK RAG citations', async () => {
     const embedText = vi.fn(async ({ text }: { text: string }) => ({
       embedding: [text.length, 1],
       model: 'fake-embed'
     }));
-    const search = vi.fn(async () => ({
-      hits: [
-        {
-          id: 'chunk_1',
-          score: 0.91,
-          content: 'Rotate signing keys every 90 days.',
-          metadata: {
-            documentId: 'doc_1',
-            title: 'Rotation Runbook',
-            filename: 'rotation-runbook.md',
-            ordinal: 7
-          }
-        }
-      ]
-    }));
+    const search = vi.fn(async () => ({ hits: [] }));
     const generate = vi.fn(async () => ({
       text: 'Keys should rotate every 90 days.',
       model: 'fake-chat',
       providerId: 'fake'
     }));
-    const { documents, baseId } = await createService(
+    const { documents, repository, baseId } = await createService(
       enabledSdkRuntime({
         embedText,
         search,
         generate
       })
     );
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_1',
+      chunkId: 'chunk_1',
+      title: 'Rotation Runbook',
+      content: 'Rotate signing keys every 90 days.'
+    });
 
     const response = await documents.chat(actor, {
       knowledgeBaseIds: [baseId],
       message: 'How often should we rotate signing keys?'
     });
 
-    expect(embedText).toHaveBeenCalledWith({ text: 'How often should we rotate signing keys?' });
-    expect(search).toHaveBeenCalledWith({
-      embedding: [40, 1],
-      topK: 5,
-      filters: {
-        tenantId: 'default',
-        knowledgeBaseId: baseId,
-        query: 'How often should we rotate signing keys?'
-      }
-    });
+    expect(embedText).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: expect.arrayContaining([
@@ -65,7 +51,7 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
           expect.objectContaining({ role: 'user', content: 'How often should we rotate signing keys?' }),
           expect.objectContaining({ content: expect.stringContaining('Rotate signing keys every 90 days.') })
         ]),
-        metadata: expect.objectContaining({ knowledgeBaseIds: [baseId] })
+        metadata: expect.objectContaining({ selectedKnowledgeBaseIds: [baseId], hitCount: 1, citationCount: 1 })
       })
     );
     expect(response).toMatchObject({
@@ -77,8 +63,7 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
           documentId: 'doc_1',
           chunkId: 'chunk_1',
           title: 'Rotation Runbook',
-          quote: 'Rotate signing keys every 90 days.',
-          score: 0.91
+          quote: 'Rotate signing keys every 90 days.'
         }
       ],
       assistantMessage: {
@@ -137,27 +122,32 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     });
   });
 
-  it('maps SDK vector search failures to a stable chat error code', async () => {
-    const { documents, baseId } = await createService(
+  it('does not call the legacy vector runtime when explicit knowledgeBaseIds are handled by SDK RAG', async () => {
+    const search = vi.fn(async () => {
+      throw new Error('vector backend unavailable');
+    });
+    const { documents, repository, baseId } = await createService(
       enabledSdkRuntime({
-        search: vi.fn(async () => {
-          throw new Error('vector backend unavailable');
-        })
+        search
       })
     );
+    await seedDocument(repository, baseId, {
+      content: 'rotation policy comes from repository chunks'
+    });
 
     await expect(
       documents.chat(actor, {
         knowledgeBaseIds: [baseId],
         message: 'rotation policy'
       })
-    ).rejects.toMatchObject({
-      code: 'knowledge_chat_failed',
-      message: 'vector backend unavailable'
+    ).resolves.toMatchObject({
+      route: { selectedKnowledgeBaseIds: [baseId], reason: 'legacy-ids' },
+      diagnostics: { hitCount: 1 }
     });
+    expect(search).not.toHaveBeenCalled();
   });
 
-  it('filters vector hits without document metadata or quote before prompting the chat provider', async () => {
+  it('does not prompt the chat provider when repository retrieval has no grounded hits', async () => {
     const generate = vi.fn(async () => ({
       text: '依据不足。',
       model: 'fake-chat',
@@ -165,12 +155,6 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     }));
     const { documents, baseId } = await createService(
       enabledSdkRuntime({
-        search: vi.fn(async () => ({
-          hits: [
-            { id: 'missing_document', score: 0.9, content: 'orphan quote', metadata: { title: 'Orphan' } },
-            { id: 'missing_quote', score: 0.8, metadata: { documentId: 'doc_1', title: 'Blank' } }
-          ]
-        })),
         generate
       })
     );
@@ -181,13 +165,8 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     });
 
     expect(response.citations).toEqual([]);
-    expect(generate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: expect.arrayContaining([
-          expect.objectContaining({ content: expect.stringContaining('未检索到可引用片段') })
-        ])
-      })
-    );
+    expect(response.answer).toBe('未在当前知识库中找到足够依据。');
+    expect(generate).not.toHaveBeenCalled();
   });
 
   it('does not return model-invented citations when retrieval has no grounded hits', async () => {
@@ -214,21 +193,22 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
     });
   });
 
-  it('keeps the document_id metadata compatibility fallback for vector citations', async () => {
-    const { documents, baseId } = await createService(
+  it('keeps explicit knowledgeBaseIds compatible while reading citations from repository chunks', async () => {
+    const { documents, repository, baseId } = await createService(
       enabledSdkRuntime({
-        search: vi.fn(async () => ({
-          hits: [
-            {
-              id: 'chunk_legacy',
-              score: 0.7,
-              content: 'Legacy snake case metadata quote.',
-              metadata: { document_id: 'doc_legacy', filename: 'legacy.md' }
-            }
-          ]
+        generate: vi.fn(async () => ({
+          text: 'Repository citation answer.',
+          model: 'fake-chat',
+          providerId: 'fake'
         }))
       })
     );
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_legacy',
+      chunkId: 'chunk_legacy',
+      title: 'legacy.md',
+      content: 'Legacy repository metadata quote.'
+    });
 
     await expect(
       documents.chat(actor, {
@@ -240,20 +220,23 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
         expect.objectContaining({
           documentId: 'doc_legacy',
           chunkId: 'chunk_legacy',
-          quote: 'Legacy snake case metadata quote.'
+          quote: 'Legacy repository metadata quote.'
         })
       ]
     });
   });
 
-  it('maps SDK chat generation failures to a stable chat error code', async () => {
-    const { documents, baseId } = await createService(
+  it('surfaces knowledge_chat_failed when SDK chat generation fails', async () => {
+    const { documents, repository, baseId } = await createService(
       enabledSdkRuntime({
         generate: vi.fn(async () => {
           throw new Error('llm unavailable');
         })
       })
     );
+    await seedDocument(repository, baseId, {
+      content: 'rotation policy requires generated answer'
+    });
 
     await expect(
       documents.chat(actor, {
@@ -265,6 +248,40 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
       message: 'llm unavailable'
     });
   });
+
+  it('records retrieve trace hitCount from retrieval diagnostics instead of final citations', async () => {
+    const { documents, repository, traces, baseId } = await createService(
+      enabledSdkRuntime({
+        generate: vi.fn(async () => ({
+          text: '   ',
+          model: 'fake-chat',
+          providerId: 'fake'
+        }))
+      })
+    );
+    await seedDocument(repository, baseId, {
+      content: 'rotation policy requires generated answer'
+    });
+
+    await expect(
+      documents.chat(actor, {
+        knowledgeBaseIds: [baseId],
+        message: 'rotation policy'
+      })
+    ).resolves.toMatchObject({
+      answer: '未在当前知识库中找到足够依据。',
+      citations: [],
+      diagnostics: { hitCount: 1, contextChunkCount: 1 }
+    });
+
+    const trace = traces.listTraces()[0];
+    expect(trace?.spans.find(span => span.name === 'retrieve')).toMatchObject({
+      attributes: { retrievalMode: 'hybrid', hitCount: 1 }
+    });
+    expect(trace?.spans.find(span => span.name === 'generate')).toMatchObject({
+      attributes: { contextChunkCount: 1 }
+    });
+  });
 });
 
 async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
@@ -272,9 +289,56 @@ async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage, disabledSdkRuntime());
-  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime);
+  const traces = new KnowledgeTraceService();
+  const ragService = new KnowledgeRagService(repository, sdkRuntime, traces);
+  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
-  return { documents, repository, baseId: base.id };
+  return { documents, repository, traces, baseId: base.id };
+}
+
+async function seedDocument(
+  repository: InMemoryKnowledgeRepository,
+  baseId: string,
+  input: {
+    documentId?: string;
+    chunkId?: string;
+    title?: string;
+    content: string;
+  }
+) {
+  const documentId = input.documentId ?? 'doc_seed';
+  await repository.createDocument({
+    id: documentId,
+    workspaceId: 'default',
+    knowledgeBaseId: baseId,
+    uploadId: `upload_${documentId}`,
+    objectKey: `knowledge/${baseId}/${documentId}.md`,
+    filename: `${documentId}.md`,
+    title: input.title ?? 'Seed Document',
+    sourceType: 'user-upload',
+    status: 'ready',
+    version: 'v1',
+    chunkCount: 1,
+    embeddedChunkCount: 1,
+    createdBy: actor.userId,
+    metadata: {},
+    createdAt: '2026-05-03T08:00:00.000Z',
+    updatedAt: '2026-05-03T08:00:00.000Z'
+  });
+  await repository.saveChunks(documentId, [
+    {
+      id: input.chunkId ?? 'chunk_seed',
+      documentId,
+      ordinal: 0,
+      content: input.content,
+      tokenCount: 8,
+      embeddingStatus: 'succeeded',
+      vectorIndexStatus: 'succeeded',
+      keywordIndexStatus: 'succeeded',
+      createdAt: '2026-05-03T08:00:00.000Z',
+      updatedAt: '2026-05-03T08:00:00.000Z'
+    }
+  ]);
 }
 
 function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {

@@ -272,10 +272,10 @@ function normalizeChatModelProfileId(model: string | undefined): string | undefi
 
 function toRagModelProfileServiceError(error: unknown): KnowledgeServiceError {
   if (error instanceof Error && error.message === 'rag_model_profile_disabled') {
-    return new KnowledgeServiceError('rag_model_profile_disabled' as never, 'RAG model profile is disabled.');
+    return new KnowledgeServiceError('rag_model_profile_disabled', 'RAG model profile is disabled.');
   }
   if (error instanceof Error && error.message === 'rag_model_profile_not_found') {
-    return new KnowledgeServiceError('rag_model_profile_not_found' as never, 'RAG model profile was not found.');
+    return new KnowledgeServiceError('rag_model_profile_not_found', 'RAG model profile was not found.');
   }
   throw error;
 }

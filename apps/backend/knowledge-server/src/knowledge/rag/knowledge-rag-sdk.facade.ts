@@ -83,6 +83,12 @@ export class KnowledgeRagSdkFacade {
         requestedMentions: readRequestedMentions(input.request)
       }
     })) {
+      if (event.type === 'answer.completed' || event.type === 'rag.completed') {
+        const answerProviderError = readKnowledgeRagAnswerProviderError(answerProvider);
+        if (answerProviderError) {
+          throw new KnowledgeServiceError('knowledge_chat_failed', answerProviderError.message);
+        }
+      }
       yield event;
     }
   }

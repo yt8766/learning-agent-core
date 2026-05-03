@@ -13,6 +13,8 @@ export type KnowledgeServerErrorCode =
   | 'knowledge_chat_failed'
   | 'knowledge_chat_message_required'
   | 'knowledge_mention_not_found'
+  | 'rag_model_profile_disabled'
+  | 'rag_model_profile_not_found'
   | 'knowledge_job_not_found'
   | 'knowledge_ingestion_enqueue_failed'
   | 'knowledge_parse_failed'

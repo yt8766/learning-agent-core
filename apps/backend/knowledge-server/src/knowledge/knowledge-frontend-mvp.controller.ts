@@ -45,6 +45,8 @@ interface SseResponse {
   json?(body: unknown): void;
 }
 
+type KnowledgeRagStreamErrorCode = Extract<KnowledgeRagStreamEvent, { type: 'rag.error' }>['error']['code'];
+
 @UseGuards(AuthGuard)
 @Controller()
 export class KnowledgeFrontendMvpController {
@@ -252,12 +254,24 @@ function toSseErrorEvent(error: unknown): KnowledgeRagStreamEvent {
     runId: 'knowledge_frontend_stream',
     type: 'rag.error',
     error: {
-      code: 'unknown',
+      code: toSseErrorCode(serviceError.code),
       message: serviceError.message,
       cause: serviceError.code
     },
     stage: 'answer'
   };
+}
+
+function toSseErrorCode(code: KnowledgeServiceError['code']): KnowledgeRagStreamErrorCode {
+  if (
+    code === 'knowledge_chat_failed' ||
+    code === 'knowledge_permission_denied' ||
+    code === 'rag_model_profile_disabled' ||
+    code === 'rag_model_profile_not_found'
+  ) {
+    return code as KnowledgeRagStreamErrorCode;
+  }
+  return 'unknown';
 }
 
 function toKnowledgeHttpException(error: unknown): unknown {
@@ -269,6 +283,9 @@ function toKnowledgeHttpException(error: unknown): unknown {
       return new BadRequestException({ code: error.code, message: error.message });
     }
     if (error.code === 'knowledge_mention_not_found') {
+      return new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'rag_model_profile_disabled' || error.code === 'rag_model_profile_not_found') {
       return new BadRequestException({ code: error.code, message: error.message });
     }
     if (error.code === 'knowledge_base_not_found') {
