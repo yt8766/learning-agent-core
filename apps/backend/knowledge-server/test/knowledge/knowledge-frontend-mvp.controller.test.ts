@@ -37,7 +37,6 @@ describe('KnowledgeFrontendMvpController', () => {
     expect(controller.listEvalRuns()).toMatchObject({ items: expect.any(Array), page: 1 });
     expect(controller.reprocessDocument('doc_1').job).toMatchObject({ progress: { percent: 0 } });
   });
-
   it('serves eval run details and comparisons for frontend workflows', () => {
     expect(controller.listEvalRunResults()).toMatchObject({ items: expect.any(Array), page: 1 });
     expect(controller.compareEvalRuns({ baselineRunId: 'run_1', candidateRunId: 'run_2' })).toEqual({
@@ -49,7 +48,6 @@ describe('KnowledgeFrontendMvpController', () => {
       totalScoreDelta: 0
     });
   });
-
   it('answers chat lab requests from stored document chunks with citation projections', async () => {
     const { controller: frontend, upload, documents, baseId } = await createFrontendController();
     const uploaded = await upload.uploadFile(actor, baseId, {
@@ -64,7 +62,6 @@ describe('KnowledgeFrontendMvpController', () => {
       filename: uploaded.filename,
       title: 'Rotation Runbook'
     });
-
     await expect(
       frontend.chat(actor, {
         knowledgeBaseId: baseId,
@@ -89,7 +86,6 @@ describe('KnowledgeFrontendMvpController', () => {
       traceId: expect.any(String)
     });
   });
-
   it('accepts OpenAI-compatible chat completion requests for chat lab', async () => {
     const { controller: frontend, upload, documents, baseId } = await createFrontendController();
     const content = 'core包如何设计的：core 包采用 schema-first contract 设计，稳定 DTO 统一从 zod schema 推导。';
@@ -105,7 +101,6 @@ describe('KnowledgeFrontendMvpController', () => {
       filename: uploaded.filename,
       title: 'Core Design'
     });
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -125,10 +120,8 @@ describe('KnowledgeFrontendMvpController', () => {
       traceId: expect.any(String)
     });
   });
-
   it('maps missing chat knowledge bases to a stable not found error instead of leaking a 500', async () => {
     const { controller: frontend } = await createFrontendController();
-
     await expect(
       frontend.chat(actor, {
         knowledgeBaseIds: ['kb_frontend'],
@@ -136,10 +129,8 @@ describe('KnowledgeFrontendMvpController', () => {
       })
     ).rejects.toBeInstanceOf(NotFoundException);
   });
-
   it('maps chat requests without a user message to a stable bad request error', async () => {
     const { controller: frontend } = await createFrontendController();
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -148,14 +139,12 @@ describe('KnowledgeFrontendMvpController', () => {
       })
     ).rejects.toBeInstanceOf(BadRequestException);
   });
-
   it('maps SDK chat failures to a stable service unavailable error', async () => {
     const controller = new KnowledgeFrontendMvpController({
       chat: async () => {
         throw new KnowledgeServiceError('knowledge_chat_failed', 'vector backend unavailable');
       }
     } as unknown as KnowledgeDocumentService);
-
     await expect(
       controller.chat(actor, {
         knowledgeBaseIds: ['kb_1'],
@@ -192,7 +181,6 @@ describe('KnowledgeFrontendMvpController', () => {
       'Dynamic imports require explicit code splitting approval.',
       'Frontend Guide'
     );
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -210,7 +198,6 @@ describe('KnowledgeFrontendMvpController', () => {
 
   it('maps missing knowledge base mentions to a stable bad request error', async () => {
     const { controller: frontend } = await createFrontendController();
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -251,7 +238,6 @@ describe('KnowledgeFrontendMvpController', () => {
       'Dynamic imports are only allowed for explicit code splitting.',
       'Frontend Routing'
     );
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -293,7 +279,6 @@ describe('KnowledgeFrontendMvpController', () => {
       'Shared policy requires audit notes.',
       'Operations Policy'
     );
-
     await expect(
       frontend.chat(actor, {
         model: 'knowledge-rag',
@@ -311,7 +296,6 @@ describe('KnowledgeFrontendMvpController', () => {
   it('serves embedding model options without exposing provider secrets', () => {
     vi.stubEnv('KNOWLEDGE_EMBEDDING_MODEL', 'embed-default');
     vi.stubEnv('KNOWLEDGE_LLM_API_KEY', 'secret-key');
-
     expect(controller.listEmbeddingModels()).toEqual({
       items: [
         {
@@ -323,6 +307,37 @@ describe('KnowledgeFrontendMvpController', () => {
       ]
     });
     expect(JSON.stringify(controller.listEmbeddingModels())).not.toMatch(/apiKey|secret|token|password/i);
+  });
+
+  it('serves RAG model profile summaries', async () => {
+    const { controller: frontend } = await createFrontendController();
+    expect(frontend.listRagModelProfiles(actor).items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'coding-pro', label: '用于编程', useCase: 'coding', enabled: true })
+      ])
+    );
+  });
+
+  it('lists persisted conversations and messages', async () => {
+    const { controller: frontend, repository } = await createFrontendController();
+    const conversation = await repository.createChatConversation({
+      userId: actor.userId,
+      title: '检索前技术名词',
+      activeModelProfileId: 'coding-pro'
+    });
+    for (const [role, content] of [
+      ['user', '检索前技术名词'],
+      ['assistant', '依据如下。']
+    ] as const) {
+      await repository.appendChatMessage({ conversationId: conversation.id, userId: actor.userId, role, content });
+    }
+    const conversations = await frontend.listConversations(actor, {});
+    expect(conversations.items[0]).toMatchObject({
+      id: conversation.id,
+      activeModelProfileId: 'coding-pro'
+    });
+    const messages = await frontend.listConversationMessages(actor, conversation.id, {});
+    expect(messages.items.map(item => item.role)).toEqual(['user', 'assistant']);
   });
 
   it('records chat lab message feedback through the frontend MVP endpoint', () => {
@@ -357,6 +372,7 @@ async function createFrontendController() {
     controller: new KnowledgeFrontendMvpController(documents),
     documents,
     knowledge,
+    repository,
     upload
   };
 }

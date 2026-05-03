@@ -13,6 +13,7 @@ import { KnowledgeService } from './knowledge.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge.tokens';
+import { KnowledgeRagModelProfileService } from './rag/knowledge-rag-model-profile.service';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
 import {
@@ -70,14 +71,16 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
         worker: KnowledgeIngestionWorker,
         storage: OssStorageProvider,
         sdkRuntime: KnowledgeSdkRuntimeProviderValue,
-        ragService: KnowledgeRagService
-      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService),
+        ragService: KnowledgeRagService,
+        modelProfiles: KnowledgeRagModelProfileService
+      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService, modelProfiles),
       inject: [
         KNOWLEDGE_REPOSITORY,
         KnowledgeIngestionWorker,
         KNOWLEDGE_OSS_STORAGE,
         KNOWLEDGE_SDK_RUNTIME,
-        KnowledgeRagService
+        KnowledgeRagService,
+        KnowledgeRagModelProfileService
       ]
     },
     {
@@ -96,6 +99,40 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
         traces: KnowledgeTraceService
       ) => new KnowledgeRagService(repository, sdkRuntime, traces),
       inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME, KnowledgeTraceService]
+    },
+    {
+      provide: KnowledgeRagModelProfileService,
+      useFactory: () =>
+        new KnowledgeRagModelProfileService({
+          profiles: [
+            {
+              id: 'coding-pro',
+              label: '用于编程',
+              description: '更专业的回答与控制',
+              useCase: 'coding',
+              plannerModelId: readModelEnv(
+                'KNOWLEDGE_PLANNER_MODEL',
+                readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')
+              ),
+              answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+              embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+              enabled: true
+            },
+            {
+              id: 'daily-balanced',
+              label: '适合日常工作',
+              description: '同样强大，技术细节更少',
+              useCase: 'daily',
+              plannerModelId: readModelEnv(
+                'KNOWLEDGE_PLANNER_MODEL',
+                readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')
+              ),
+              answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+              embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+              enabled: true
+            }
+          ]
+        })
     },
     {
       provide: KnowledgeEvalService,
@@ -128,3 +165,8 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
   ]
 })
 export class KnowledgeModule {}
+
+function readModelEnv(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value ? value : fallback;
+}

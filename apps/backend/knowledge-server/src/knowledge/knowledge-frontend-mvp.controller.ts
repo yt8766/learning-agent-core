@@ -9,11 +9,12 @@ import {
   Param,
   Post,
   Query,
+  Res,
   ServiceUnavailableException,
   Optional,
   UseGuards
 } from '@nestjs/common';
-import type { KnowledgeTrace } from '@agent/knowledge';
+import type { KnowledgeRagStreamEvent, KnowledgeTrace } from '@agent/knowledge';
 import { ZodError } from 'zod';
 
 import { AuthUser } from '../auth/auth-user.decorator';
@@ -23,6 +24,7 @@ import {
   CreateKnowledgeMessageFeedbackRequestSchema,
   KnowledgeChatRequestSchema
 } from './domain/knowledge-document.schemas';
+import type { PageQuery } from './knowledge-document.service';
 import type {
   KnowledgeChatMessage,
   KnowledgeChatRequest,
@@ -35,6 +37,13 @@ import { KnowledgeEvalService } from './knowledge-eval.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 
 const now = '2026-05-02T00:00:00.000Z';
+
+interface SseResponse {
+  setHeader(name: string, value: string): void;
+  write(chunk: string): void;
+  end(): void;
+  json?(body: unknown): void;
+}
 
 @UseGuards(AuthGuard)
 @Controller()
@@ -77,9 +86,35 @@ export class KnowledgeFrontendMvpController {
   }
 
   @Post('chat')
-  async chat(@AuthUser() user: KnowledgeAuthUser, @Body() body: unknown): Promise<KnowledgeChatResponse> {
+  async chat(
+    @AuthUser() user: KnowledgeAuthUser,
+    @Body() body: unknown,
+    @Res() response?: SseResponse
+  ): Promise<KnowledgeChatResponse | void> {
     try {
-      return await this.requireDocuments().chat(user, KnowledgeChatRequestSchema.parse(body) as KnowledgeChatRequest);
+      const request = KnowledgeChatRequestSchema.parse(body) as KnowledgeChatRequest;
+      if (request.stream) {
+        if (!response) {
+          throw new Error('SSE response is not configured');
+        }
+        response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-cache, no-transform');
+        response.setHeader('Connection', 'keep-alive');
+        try {
+          for await (const event of this.requireDocuments().streamChat(user, request)) {
+            response.write(toSseFrame(event));
+          }
+        } finally {
+          response.end();
+        }
+        return undefined;
+      }
+      const chatResponse = await this.requireDocuments().chat(user, request);
+      if (response?.json) {
+        response.json(chatResponse);
+        return undefined;
+      }
+      return chatResponse;
     } catch (error) {
       throw toKnowledgeHttpException(error);
     }
@@ -88,6 +123,21 @@ export class KnowledgeFrontendMvpController {
   @Get('embedding-models')
   listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
     return this.documents?.listEmbeddingModels() ?? defaultEmbeddingModels();
+  }
+
+  @Get('rag/model-profiles')
+  listRagModelProfiles(@AuthUser() user: KnowledgeAuthUser) {
+    return this.requireDocuments().listRagModelProfiles(user);
+  }
+
+  @Get('conversations')
+  listConversations(@AuthUser() user: KnowledgeAuthUser, @Query() query: PageQuery) {
+    return this.requireDocuments().listConversations(user, query);
+  }
+
+  @Get('conversations/:id/messages')
+  listConversationMessages(@AuthUser() user: KnowledgeAuthUser, @Param('id') id: string, @Query() query: PageQuery) {
+    return this.requireDocuments().listConversationMessages(user, id, query);
   }
 
   @Post('messages/:messageId/feedback')
@@ -185,6 +235,10 @@ export class KnowledgeFrontendMvpController {
     }
     return this.documents;
   }
+}
+
+export function toSseFrame(event: KnowledgeRagStreamEvent): string {
+  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 
 function toKnowledgeHttpException(error: unknown): unknown {

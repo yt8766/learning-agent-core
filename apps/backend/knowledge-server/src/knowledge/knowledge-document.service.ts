@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import type { KnowledgeRagStreamEvent } from '@agent/knowledge';
 
 import { normalizeChatRequest } from './knowledge-document-chat.helpers';
 import { KnowledgeServiceError } from './knowledge.errors';
@@ -10,13 +11,17 @@ import type {
   DocumentProcessingJobRecord,
   KnowledgeChatRequest,
   KnowledgeChatResponse,
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord,
-  KnowledgeEmbeddingModelsResponse
+  KnowledgeEmbeddingModelsResponse,
+  RagModelProfileSummary
 } from './domain/knowledge-document.types';
 import type { KnowledgeActor } from './knowledge.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
 import { KnowledgeRagService } from './knowledge-rag.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
+import { KnowledgeRagModelProfileService } from './rag/knowledge-rag-model-profile.service';
 import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-runtime.provider';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import type { OssStorageProvider } from './storage/oss-storage.provider';
@@ -32,7 +37,8 @@ export class KnowledgeDocumentService {
       repository,
       sdkRuntime,
       new KnowledgeTraceService()
-    )
+    ),
+    private readonly modelProfiles: KnowledgeRagModelProfileService = createDefaultRagModelProfileService()
   ) {}
 
   async createFromUpload(
@@ -167,6 +173,11 @@ export class KnowledgeDocumentService {
     return this.ragService.answer(actor, request);
   }
 
+  streamChat(actor: KnowledgeActor, input: KnowledgeChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
+    const request = normalizeChatRequest(input);
+    return this.ragService.stream(actor, request);
+  }
+
   listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
     const id = process.env.KNOWLEDGE_EMBEDDING_MODEL ?? 'text-embedding-3-small';
     const provider = 'openai-compatible';
@@ -181,6 +192,28 @@ export class KnowledgeDocumentService {
         }
       ]
     };
+  }
+
+  listRagModelProfiles(actor: KnowledgeActor): { items: RagModelProfileSummary[] } {
+    void actor;
+    return { items: this.modelProfiles.listSummaries() };
+  }
+
+  async listConversations(
+    actor: KnowledgeActor,
+    query: PageQuery = {}
+  ): Promise<{ items: KnowledgeChatConversationRecord[]; total: number }> {
+    void query;
+    return this.repository.listChatConversationsForUser(actor.userId);
+  }
+
+  async listConversationMessages(
+    actor: KnowledgeActor,
+    conversationId: string,
+    query: PageQuery = {}
+  ): Promise<{ items: KnowledgeChatMessageRecord[]; total: number }> {
+    void query;
+    return this.repository.listChatMessages(conversationId, actor.userId);
   }
 
   async deleteDocument(actor: KnowledgeActor, documentId: string): Promise<{ ok: true }> {
@@ -222,6 +255,11 @@ export class KnowledgeDocumentService {
   }
 }
 
+export interface PageQuery {
+  page?: string | number;
+  pageSize?: string | number;
+}
+
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^.]+$/, '');
 }
@@ -246,4 +284,36 @@ function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {
     missingEnv: ['DATABASE_URL', 'KNOWLEDGE_CHAT_MODEL', 'KNOWLEDGE_EMBEDDING_MODEL', 'KNOWLEDGE_LLM_API_KEY'],
     runtime: null
   };
+}
+
+function createDefaultRagModelProfileService(): KnowledgeRagModelProfileService {
+  return new KnowledgeRagModelProfileService({
+    profiles: [
+      {
+        id: 'coding-pro',
+        label: '用于编程',
+        description: '更专业的回答与控制',
+        useCase: 'coding',
+        plannerModelId: readModelEnv('KNOWLEDGE_PLANNER_MODEL', readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')),
+        answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+        embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+        enabled: true
+      },
+      {
+        id: 'daily-balanced',
+        label: '适合日常工作',
+        description: '同样强大，技术细节更少',
+        useCase: 'daily',
+        plannerModelId: readModelEnv('KNOWLEDGE_PLANNER_MODEL', readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')),
+        answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+        embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+        enabled: true
+      }
+    ]
+  });
+}
+
+function readModelEnv(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value ? value : fallback;
 }
