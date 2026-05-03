@@ -1,4 +1,6 @@
-import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
+import type { ChatAgentOsGroup } from '@agent/core';
+
+import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
 
 import { AgentOsGroup } from './agent-os-group';
 
@@ -12,12 +14,16 @@ export function AgentOsRunPanel({ responseSteps, defaultOpen }: AgentOsRunPanelP
     return null;
   }
 
-  const groups = (responseSteps.agentOsGroups ?? []).filter(group => group.kind !== 'thinking');
-  const isOpen = defaultOpen && responseSteps.status === 'running';
-  const statusClassName = responseSteps.status === 'completed' ? 'is-complete' : `is-${responseSteps.status}`;
+  const groups =
+    responseSteps.displayMode === undefined
+      ? buildLegacyAgentOsGroups(responseSteps)
+      : (responseSteps.agentOsGroups ?? []);
 
   return (
-    <details className={`chat-response-steps chat-response-steps--agent-os ${statusClassName}`} open={isOpen}>
+    <details
+      className={`chat-response-steps chat-response-steps--agent-os ${defaultOpen ? 'is-running' : 'is-complete'}`}
+      open={defaultOpen}
+    >
       <summary className="chat-response-steps__complete-summary">
         <span>{buildResponseStepSummaryTitle(responseSteps)}</span>
         <span className="chat-response-steps__chevron" aria-hidden="true">
@@ -31,6 +37,21 @@ export function AgentOsRunPanel({ responseSteps, defaultOpen }: AgentOsRunPanelP
       </div>
     </details>
   );
+}
+
+function buildLegacyAgentOsGroups(responseSteps: ChatResponseStepsForMessage): ChatAgentOsGroup[] {
+  if (responseSteps.steps.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      kind: 'execution',
+      title: '执行',
+      status: responseSteps.status,
+      steps: responseSteps.steps
+    }
+  ];
 }
 
 export function buildResponseStepSummaryTitle(responseSteps: ChatResponseStepsForMessage) {
