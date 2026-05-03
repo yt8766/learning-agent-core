@@ -78,6 +78,8 @@ Boundary decisions:
 - Modify: `packages/core/src/tasking/types/chat-response-step.ts`
 - Test: `packages/core/test/chat-response-step-contracts.test.ts`
 
+**Clarification:** This task also preserves and schema-tests the response-step presentation metadata that already exists in the current checkout and is required by later tasks: `agentScope`, `agentId`, `agentLabel`, `ownerLabel`, `nodeId`, `nodeLabel`, `fromNodeId`, `toNodeId`, and `durationMs`. These fields support backend Agent OS grouping and frontend hiding of debug node details; they should not be removed while implementing this plan.
+
 - [ ] **Step 1: Write the failing contract test**
 
 Append these tests to `packages/core/test/chat-response-step-contracts.test.ts` inside the existing `describe` block for chat response steps, or create a new `describe('chat response step Agent OS contract', ...)` in the same file:
@@ -182,7 +184,27 @@ Expected: FAIL because `displayMode` and `agentOsGroups` are unknown fields on `
 
 - [ ] **Step 3: Add schema enums and group schema**
 
-In `packages/core/src/tasking/schemas/chat-response-step.ts`, add these exports after `ChatResponseStepAgentScopeSchema`:
+In `packages/core/src/tasking/schemas/chat-response-step.ts`, preserve or add this response-step presentation metadata schema:
+
+```ts
+export const ChatResponseStepAgentScopeSchema = z.enum(['main', 'sub', 'system']);
+```
+
+Ensure `ChatResponseStepRecordSchema` includes these optional fields:
+
+```ts
+agentScope: ChatResponseStepAgentScopeSchema.optional(),
+agentId: z.string().min(1).optional(),
+agentLabel: z.string().min(1).optional(),
+ownerLabel: z.string().min(1).optional(),
+nodeId: z.string().min(1).optional(),
+nodeLabel: z.string().min(1).optional(),
+fromNodeId: z.string().min(1).optional(),
+toNodeId: z.string().min(1).optional(),
+durationMs: z.number().int().nonnegative().optional(),
+```
+
+Then add these exports after `ChatResponseStepAgentScopeSchema`:
 
 ```ts
 export const ChatTurnDisplayModeSchema = z.enum(['answer_only', 'agent_execution']);
@@ -247,6 +269,7 @@ snapshot.agentOsGroups?.forEach((group, groupIndex) => {
 In `packages/core/src/tasking/types/chat-response-step.ts`, extend the import list:
 
 ```ts
+  ChatResponseStepAgentScopeSchema,
   ChatAgentOsGroupKindSchema,
   ChatAgentOsGroupSchema,
   ChatTurnDisplayModeSchema,
@@ -255,6 +278,7 @@ In `packages/core/src/tasking/types/chat-response-step.ts`, extend the import li
 Add inferred types:
 
 ```ts
+export type ChatResponseStepAgentScope = z.infer<typeof ChatResponseStepAgentScopeSchema>;
 export type ChatTurnDisplayMode = z.infer<typeof ChatTurnDisplayModeSchema>;
 export type ChatAgentOsGroupKind = z.infer<typeof ChatAgentOsGroupKindSchema>;
 export type ChatAgentOsGroup = z.infer<typeof ChatAgentOsGroupSchema>;
