@@ -2,12 +2,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import type { ChatResponseStepsForMessage } from '../../src/lib/chat-response-step-projections';
+import {
+  foldChatResponseStepProjection,
+  initialChatResponseStepsState
+} from '../../src/lib/chat-response-step-projections';
 import { QuickResponseSteps, ResponseStepSummary } from '../../src/components/chat-response-steps';
 
 const state: ChatResponseStepsForMessage = {
   messageId: 'assistant-1',
   status: 'running',
   updatedAt: '2026-05-02T08:30:00.000Z',
+  displayMode: 'agent_execution',
+  agentOsGroups: [],
   summary: {
     title: '处理中 2 个步骤',
     completedCount: 1,
@@ -27,7 +33,14 @@ const state: ChatResponseStepsForMessage = {
       startedAt: '2026-05-02T08:30:00.000Z',
       completedAt: '2026-05-02T08:30:10.000Z',
       sourceEventId: 'event-1',
-      sourceEventType: 'tool_called'
+      sourceEventType: 'tool_called',
+      agentScope: 'main',
+      agentLabel: '首辅',
+      ownerLabel: '主 Agent',
+      nodeId: 'request-received',
+      nodeLabel: '接收请求',
+      toNodeId: 'route-selection',
+      durationMs: 10000
     },
     {
       id: 'step-2',
@@ -37,9 +50,14 @@ const state: ChatResponseStepsForMessage = {
       phase: 'verify',
       status: 'running',
       title: 'Ran pnpm exec vitest',
+      detail: '运行受影响测试',
       startedAt: '2026-05-02T08:30:12.000Z',
       sourceEventId: 'event-2',
-      sourceEventType: 'execution_step_started'
+      sourceEventType: 'execution_step_started',
+      agentScope: 'sub',
+      agentLabel: '兵部',
+      ownerLabel: '子 Agent',
+      nodeId: 'verify'
     }
   ]
 };
@@ -49,16 +67,160 @@ describe('chat response step components', () => {
     const html = renderToStaticMarkup(<QuickResponseSteps responseSteps={state} />);
 
     expect(html).toContain('处理中 2 个步骤');
-    expect(html).toContain('hidden');
+    expect(html).toContain('用时 10s');
+    expect(html).not.toContain('<ol class="chat-response-steps__list" hidden');
+    expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('Read chat-message-adapter.tsx');
     expect(html).toContain('Ran pnpm exec vitest');
+    expect(html).toContain('主 Agent');
+    expect(html).toContain('首辅');
+    expect(html).toContain('接收请求');
+    expect(html).toContain('request-received → route-selection');
   });
 
-  it('renders completed summary and detail toggle', () => {
-    const html = renderToStaticMarkup(<ResponseStepSummary responseSteps={{ ...state, status: 'completed' }} />);
+  it('renders completed execution summaries collapsed by default', () => {
+    const html = renderToStaticMarkup(
+      <ResponseStepSummary
+        responseSteps={{
+          ...state,
+          status: 'completed',
+          displayMode: 'agent_execution',
+          agentOsGroups: [
+            {
+              kind: 'execution',
+              title: '执行',
+              summary: 'Ran 1 command',
+              status: 'completed',
+              steps: [state.steps[1]]
+            }
+          ]
+        }}
+      />
+    );
 
     expect(html).toContain('处理中 2 个步骤');
+    expect(html).toContain('<details class="chat-response-steps chat-response-steps--complete">');
+    expect(html).not.toContain('open=""');
+    expect(html).toContain('执行');
+    expect(html).not.toContain('request-received → route-selection');
+  });
+
+  it('does not render response steps for answer-only final-response snapshots', () => {
+    const html = renderToStaticMarkup(
+      <ResponseStepSummary
+        responseSteps={{
+          messageId: 'assistant-answer',
+          status: 'completed',
+          updatedAt: '2026-05-03T09:00:00.000Z',
+          displayMode: 'answer_only',
+          summary: {
+            title: '已思考',
+            completedCount: 1,
+            runningCount: 0,
+            blockedCount: 0,
+            failedCount: 0
+          },
+          steps: [
+            {
+              id: 'step-final',
+              sessionId: 'session-1',
+              messageId: 'assistant-answer',
+              sequence: 0,
+              phase: 'summarize',
+              status: 'completed',
+              title: '整理最终回复',
+              startedAt: '2026-05-03T09:00:00.000Z',
+              completedAt: '2026-05-03T09:00:00.000Z',
+              sourceEventId: 'event-final',
+              sourceEventType: 'final_response_completed'
+            }
+          ],
+          agentOsGroups: []
+        }}
+      />
+    );
+
+    expect(html).toBe('');
+  });
+
+  it('renders completed summary detail metadata', () => {
+    const html = renderToStaticMarkup(
+      <ResponseStepSummary responseSteps={{ ...state, status: 'completed', displayMode: 'agent_execution' }} />
+    );
+
     expect(html).toContain('chat-response-steps__chevron');
+    expect(html).toContain('子 Agent');
+    expect(html).toContain('运行受影响测试');
     expect(html).not.toContain('查看步骤细节');
+  });
+
+  it('falls back to agent scope labels when owner label is missing', () => {
+    const html = renderToStaticMarkup(
+      <QuickResponseSteps
+        responseSteps={{
+          ...state,
+          steps: [
+            {
+              ...state.steps[0],
+              ownerLabel: undefined,
+              agentScope: 'main'
+            },
+            {
+              ...state.steps[1],
+              ownerLabel: undefined,
+              agentScope: 'sub'
+            }
+          ]
+        }}
+      />
+    );
+
+    expect(html).toContain('主 Agent');
+    expect(html).toContain('子 Agent');
+  });
+
+  it('derives agent execution groups for legacy snapshots', () => {
+    const nextState = foldChatResponseStepProjection(initialChatResponseStepsState(), {
+      projection: 'chat_response_steps',
+      sessionId: 'session-1',
+      messageId: state.messageId,
+      status: 'running',
+      steps: state.steps,
+      summary: state.summary,
+      updatedAt: state.updatedAt
+    });
+
+    const responseSteps = nextState.byMessageId[state.messageId];
+
+    expect(responseSteps.displayMode).toBe('agent_execution');
+    expect(responseSteps.agentOsGroups?.map(group => group.kind)).toEqual(['exploration', 'collaboration']);
+    expect(responseSteps.agentOsGroups?.[0]?.steps[0]).not.toHaveProperty('nodeId');
+    expect(responseSteps.agentOsGroups?.[0]?.steps[0]).not.toHaveProperty('toNodeId');
+  });
+
+  it('derives answer-only mode for final-response-only events', () => {
+    const nextState = foldChatResponseStepProjection(initialChatResponseStepsState(), {
+      projection: 'chat_response_step',
+      action: 'completed',
+      step: {
+        id: 'step-final',
+        sessionId: 'session-1',
+        messageId: 'assistant-answer',
+        sequence: 0,
+        phase: 'summarize',
+        status: 'completed',
+        title: '整理最终回复',
+        startedAt: '2026-05-03T09:00:00.000Z',
+        completedAt: '2026-05-03T09:00:00.000Z',
+        sourceEventId: 'event-final',
+        sourceEventType: 'final_response_completed'
+      }
+    });
+
+    const responseSteps = nextState.byMessageId['assistant-answer'];
+
+    expect(responseSteps.displayMode).toBe('answer_only');
+    expect(responseSteps.agentOsGroups).toEqual([]);
+    expect(responseSteps.summary.title).toBe('已思考');
   });
 });
