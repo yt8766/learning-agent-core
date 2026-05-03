@@ -1,5 +1,3 @@
-import type { ChatAgentOsGroup } from '@agent/core';
-
 import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
 
 import { AgentOsGroup } from './agent-os-group';
@@ -14,10 +12,7 @@ export function AgentOsRunPanel({ responseSteps, defaultOpen }: AgentOsRunPanelP
     return null;
   }
 
-  const groups =
-    responseSteps.displayMode === undefined
-      ? buildLegacyAgentOsGroups(responseSteps)
-      : (responseSteps.agentOsGroups ?? []);
+  const groups = responseSteps.agentOsGroups ?? [];
 
   return (
     <details
@@ -37,21 +32,6 @@ export function AgentOsRunPanel({ responseSteps, defaultOpen }: AgentOsRunPanelP
       </div>
     </details>
   );
-}
-
-function buildLegacyAgentOsGroups(responseSteps: ChatResponseStepsForMessage): ChatAgentOsGroup[] {
-  if (responseSteps.steps.length === 0) {
-    return [];
-  }
-
-  return [
-    {
-      kind: 'execution',
-      title: '执行',
-      status: responseSteps.status,
-      steps: responseSteps.steps
-    }
-  ];
 }
 
 export function buildResponseStepSummaryTitle(responseSteps: ChatResponseStepsForMessage) {
