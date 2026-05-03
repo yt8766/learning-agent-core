@@ -17,12 +17,13 @@ services:
       retries: 5
 
   postgrest:
-    image: postgrest/postgrest:v12
+    image: postgrest/postgrest
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-agent_db}
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: postgres
+      PGRST_JWT_SECRET: local-dev-jwt-secret-key-for-postgrest-only-32chars
       PGRST_OPENAPI_MODE: ignore-privileges
     ports:
       - '3000:3000'
