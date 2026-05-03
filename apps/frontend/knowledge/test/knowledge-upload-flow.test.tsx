@@ -189,6 +189,7 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   });
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>(),
+    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>(),
     compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>(),
     createDocumentFromUpload: vi.fn<CoreOpsApi['createDocumentFromUpload']>().mockResolvedValue({
       document: documentRecord,
@@ -223,6 +224,19 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
       pageSize: 20
     }),
     listEmbeddingModels: vi.fn<() => Promise<PageResult<EmbeddingModelOption>>>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
       items: [],
       total: 0,
       page: 1,

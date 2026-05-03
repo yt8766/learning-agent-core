@@ -9,6 +9,8 @@ export interface KnowledgeBaseMention {
 export interface ChatLabConversation {
   id: string;
   title: string;
+  activeModelProfileId?: string;
+  persisted?: boolean;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;

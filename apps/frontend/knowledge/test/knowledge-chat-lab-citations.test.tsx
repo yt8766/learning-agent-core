@@ -13,7 +13,14 @@ import {
   stripKnowledgeMentions,
   uniqueKnowledgeMentions
 } from '../src/pages/chat-lab/chat-lab-helpers';
-import type { ChatMessage, ChatResponse, CreateFeedbackRequest, KnowledgeBase, PageResult } from '../src/types/api';
+import type {
+  ChatMessage,
+  ChatResponse,
+  CreateFeedbackRequest,
+  KnowledgeBase,
+  KnowledgeRagStreamEvent,
+  PageResult
+} from '../src/types/api';
 
 const testState = vi.hoisted(() => ({
   autoSubmitMessage: undefined as string | undefined,
@@ -35,6 +42,10 @@ const testState = vi.hoisted(() => ({
   renderedSuggestions: [] as Array<{
     items: Array<{ label?: React.ReactNode; value: string }>;
     onSelect?: (value: string, info: Array<{ label?: React.ReactNode; value: string }>) => void;
+  }>,
+  renderedConversations: [] as Array<{
+    items: Array<{ key: string; label: React.ReactNode }>;
+    onActiveChange?: (key: string) => void;
   }>,
   submitted: false
 }));
@@ -112,11 +123,20 @@ vi.mock('@ant-design/x/es/actions', () => {
 });
 
 vi.mock('@ant-design/x/es/conversations', () => ({
-  default({ items }: { items: Array<{ key: string; label: React.ReactNode }> }) {
+  default({
+    items,
+    onActiveChange
+  }: {
+    items: Array<{ key: string; label: React.ReactNode }>;
+    onActiveChange?: (key: string) => void;
+  }) {
+    testState.renderedConversations.push({ items, onActiveChange });
     return (
       <nav>
         {items.map(item => (
-          <span key={item.key}>{item.label}</span>
+          <button key={item.key} onClick={() => onActiveChange?.(item.key)}>
+            {item.label}
+          </button>
         ))}
       </nav>
     );
@@ -243,9 +263,26 @@ vi.mock('antd', () => ({
   Progress({ percent }: { percent?: number }) {
     return <span>{percent}</span>;
   },
-  Select({ options, value }: { options?: Array<{ label?: React.ReactNode; value?: string }>; value?: string }) {
+  Select({
+    onChange,
+    options,
+    value
+  }: {
+    onChange?: (value: string) => void;
+    options?: Array<{ label?: React.ReactNode; value?: string }>;
+    value?: string;
+  }) {
     const selected = options?.find(option => option.value === value);
-    return <span>{selected?.label ?? value}</span>;
+    return (
+      <span>
+        <span>{selected?.label ?? value}</span>
+        {(options ?? []).map(option => (
+          <button key={option.value} onClick={() => option.value && onChange?.(option.value)}>
+            {option.label}
+          </button>
+        ))}
+      </span>
+    );
   },
   Space({ children }: { children?: React.ReactNode }) {
     return <span>{children}</span>;
@@ -377,6 +414,57 @@ const knowledgeBase: KnowledgeBase = {
 function createClient(): KnowledgeFrontendApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>().mockResolvedValue(chatResponse),
+    streamChat: vi
+      .fn<KnowledgeFrontendApi['streamChat']>()
+      .mockImplementation(async function* (): AsyncIterable<KnowledgeRagStreamEvent> {
+        yield { type: 'rag.started', runId: 'trace_card' };
+        yield { type: 'planner.started', runId: 'trace_card' };
+        yield {
+          type: 'planner.completed',
+          runId: 'trace_card',
+          plan: {
+            id: 'plan_card',
+            originalQuery: '检索前技术名词',
+            rewrittenQuery: 'PreRetrievalPlanner query rewrite',
+            queryVariants: ['PreRetrievalPlanner query rewrite'],
+            selectedKnowledgeBaseIds: ['kb_real_user'],
+            searchMode: 'hybrid',
+            selectionReason: 'Selected real knowledge base',
+            confidence: 0.86,
+            fallbackPolicy: 'search-all-accessible',
+            routingDecisions: [],
+            diagnostics: {
+              planner: 'llm',
+              consideredKnowledgeBaseCount: 1,
+              rewriteApplied: true,
+              fallbackApplied: false
+            }
+          }
+        } as KnowledgeRagStreamEvent;
+        yield { type: 'retrieval.started', runId: 'trace_card' };
+        yield {
+          type: 'retrieval.completed',
+          runId: 'trace_card',
+          retrieval: {
+            hits: [],
+            citations: [],
+            diagnostics: {
+              effectiveSearchMode: 'hybrid',
+              executedQueries: [{ query: 'PreRetrievalPlanner query rewrite', mode: 'vector', hitCount: 1 }],
+              vectorHitCount: 1,
+              keywordHitCount: 0,
+              finalHitCount: 1
+            }
+          }
+        } as KnowledgeRagStreamEvent;
+        yield { type: 'answer.delta', runId: 'trace_card', delta: '引用卡片' };
+        yield { type: 'answer.delta', runId: 'trace_card', delta: '回答' };
+        yield {
+          type: 'answer.completed',
+          runId: 'trace_card',
+          answer: { text: chatResponse.answer, noAnswer: false, citations: chatResponse.citations.map(toSdkCitation) }
+        };
+      }),
     createFeedback: vi
       .fn<(messageId: string, input: CreateFeedbackRequest) => Promise<ChatMessage>>()
       .mockResolvedValue({
@@ -392,8 +480,51 @@ function createClient(): KnowledgeFrontendApi {
       total: 1,
       page: 1,
       pageSize: 20
+    }),
+    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({
+      items: [
+        {
+          id: 'coding-pro',
+          label: '用于编程',
+          description: '更专业的回答与控制',
+          useCase: 'coding',
+          enabled: true
+        },
+        {
+          id: 'daily-balanced',
+          label: '适合日常工作',
+          description: '同样强大，技术细节更少',
+          useCase: 'daily',
+          enabled: true
+        }
+      ]
+    }),
+    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
     })
   } as unknown as KnowledgeFrontendApi;
+}
+
+function toSdkCitation(citation: ChatResponse['citations'][number]) {
+  return {
+    sourceId: citation.documentId,
+    chunkId: citation.chunkId,
+    title: citation.title,
+    uri: citation.uri ?? '',
+    quote: citation.quote,
+    sourceType: 'user-upload' as const,
+    trustClass: 'internal' as const,
+    score: citation.score
+  };
 }
 
 let mountedRoot: Root | undefined;
@@ -408,6 +539,7 @@ beforeEach(() => {
   testState.renderedSenders = [];
   testState.renderedPopconfirms = [];
   testState.renderedSuggestions = [];
+  testState.renderedConversations = [];
   testState.submitted = false;
 });
 
@@ -435,7 +567,7 @@ describe('ChatLabPage citations', () => {
     await flushEffects();
     await flushEffects();
 
-    expect(client.chat).toHaveBeenCalledWith({
+    expect(client.streamChat).toHaveBeenCalledWith({
       messages: [{ content: '@真实知识库 动态导入有什么限制？', role: 'user' }],
       metadata: {
         conversationId: expect.any(String),
@@ -443,7 +575,7 @@ describe('ChatLabPage citations', () => {
         mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }]
       },
       model: 'knowledge-rag',
-      stream: false
+      stream: true
     });
     expect(container?.textContent).toContain('新建会话');
     expect(container?.textContent).not.toContain('选择对话知识库');
@@ -458,6 +590,12 @@ describe('ChatLabPage citations', () => {
     expect(container?.textContent).toContain('like');
     expect(container?.textContent).toContain('dislike');
     expect(container?.textContent).toContain('Trace');
+    expect(container?.textContent).toContain('Selected real knowledge base');
+    expect(container?.textContent).toContain('hybrid');
+    expect(container?.textContent).toContain('0.86');
+    expect(container?.textContent).toContain('llm');
+    expect(container?.textContent).toContain('PreRetrievalPlanner query rewrite');
+    expect(container?.textContent).toContain('1 hits');
   });
 
   it('resolves chat knowledge base id from visible real knowledge bases', () => {
@@ -528,7 +666,7 @@ describe('ChatLabPage citations', () => {
     await flushEffects();
     await flushEffects();
 
-    expect(client.chat).toHaveBeenCalledWith({
+    expect(client.streamChat).toHaveBeenCalledWith({
       messages: [{ content: '123123 123123 动态导入有什么限制？', role: 'user' }],
       metadata: {
         conversationId: expect.any(String),
@@ -536,8 +674,241 @@ describe('ChatLabPage citations', () => {
         mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }]
       },
       model: 'knowledge-rag',
-      stream: false
+      stream: true
     });
+  });
+
+  it('restores backend conversations, loads messages, and sends with selected model profile', async () => {
+    const client = createClient();
+    vi.mocked(client.listConversations).mockResolvedValue({
+      items: [
+        {
+          id: 'conv_backend',
+          userId: 'user_1',
+          title: '检索前技术名词',
+          activeModelProfileId: 'daily-balanced',
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20
+    });
+    vi.mocked(client.listConversationMessages).mockResolvedValue({
+      items: [
+        {
+          id: 'msg_backend_user',
+          conversationId: 'conv_backend',
+          userId: 'user_1',
+          role: 'user',
+          content: '检索前技术名词',
+          citations: [],
+          createdAt: now
+        }
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20
+    });
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <ChatLabPage />
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+    await flushEffects();
+    await flushEffects();
+
+    expect(client.listRagModelProfiles).toHaveBeenCalledTimes(1);
+    expect(client.listConversations).toHaveBeenCalledTimes(1);
+    expect(client.listConversationMessages).toHaveBeenCalledWith('conv_backend');
+    expect(container?.textContent).toContain('检索前技术名词');
+    expect(container?.textContent).toContain('适合日常工作');
+
+    await act(async () => {
+      testState.renderedSenders.at(-1)?.onChange?.('继续解释 query rewrite');
+    });
+    await flushEffects();
+
+    await act(async () => {
+      testState.renderedSenders.at(-1)?.onSubmit?.('继续解释 query rewrite');
+    });
+    await flushEffects();
+    await flushEffects();
+
+    expect(client.streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ conversationId: 'conv_backend' }),
+        model: 'daily-balanced',
+        stream: true
+      })
+    );
+  });
+
+  it('shows zero-hit retrieval diagnostics from the stream', async () => {
+    testState.autoSubmitMessage = '没有命中的问题';
+    const client = createClient();
+    vi.mocked(client.streamChat).mockImplementation(async function* (): AsyncIterable<KnowledgeRagStreamEvent> {
+      yield { type: 'rag.started', runId: 'trace_zero' };
+      yield {
+        type: 'retrieval.completed',
+        runId: 'trace_zero',
+        retrieval: {
+          hits: [],
+          citations: [],
+          diagnostics: {
+            effectiveSearchMode: 'none',
+            executedQueries: [{ query: '没有命中的问题', mode: 'vector', hitCount: 0 }],
+            vectorHitCount: 0,
+            keywordHitCount: 0,
+            finalHitCount: 0
+          }
+        }
+      } as KnowledgeRagStreamEvent;
+      yield {
+        type: 'answer.completed',
+        runId: 'trace_zero',
+        answer: { text: '依据不足。', noAnswer: true, citations: [] }
+      };
+    });
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <ChatLabPage />
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+    await flushEffects();
+
+    expect(container?.textContent).toContain('none');
+    expect(container?.textContent).toContain('0 hits');
+    expect(container?.textContent).toContain('没有命中的问题');
+  });
+
+  it('loads messages when switching restored backend conversations', async () => {
+    const client = createClient();
+    vi.mocked(client.listConversations).mockResolvedValue({
+      items: [
+        {
+          id: 'conv_first',
+          userId: 'user_1',
+          title: '第一个会话',
+          activeModelProfileId: 'coding-pro',
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 'conv_second',
+          userId: 'user_1',
+          title: '第二个会话',
+          activeModelProfileId: 'daily-balanced',
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 20
+    });
+    vi.mocked(client.listConversationMessages).mockImplementation(async conversationId => ({
+      items: [
+        {
+          id: `msg_${conversationId}`,
+          conversationId,
+          userId: 'user_1',
+          role: 'user',
+          content: conversationId === 'conv_second' ? '第二个会话的历史消息' : '第一个会话的历史消息',
+          citations: [],
+          createdAt: now
+        }
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20
+    }));
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <ChatLabPage />
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+    await flushEffects();
+
+    await act(async () => {
+      testState.renderedConversations.at(-1)?.onActiveChange?.('conv_second');
+    });
+    await flushEffects();
+    await flushEffects();
+
+    expect(client.listConversationMessages).toHaveBeenCalledWith('conv_second');
+    expect(container?.textContent).toContain('第二个会话的历史消息');
+    expect(container?.textContent).toContain('适合日常工作');
+  });
+
+  it('does not let delayed conversation hydration overwrite locally sent messages', async () => {
+    const client = createClient();
+    const messages = deferred<PageResult<ChatMessage>>();
+    vi.mocked(client.listConversations).mockResolvedValue({
+      items: [
+        {
+          id: 'conv_backend',
+          userId: 'user_1',
+          title: '检索前技术名词',
+          activeModelProfileId: 'daily-balanced',
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20
+    });
+    vi.mocked(client.listConversationMessages).mockReturnValue(messages.promise);
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <ChatLabPage />
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+    await flushEffects();
+
+    await act(async () => {
+      testState.renderedSenders.at(-1)?.onChange?.('继续解释 query rewrite');
+    });
+    await act(async () => {
+      testState.renderedSenders.at(-1)?.onSubmit?.('继续解释 query rewrite');
+    });
+    await flushEffects();
+    await flushEffects();
+
+    await act(async () => {
+      messages.resolve({
+        items: [
+          {
+            id: 'msg_backend_old',
+            conversationId: 'conv_backend',
+            userId: 'user_1',
+            role: 'user',
+            content: '检索前技术名词',
+            citations: [],
+            createdAt: now
+          }
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20
+      });
+      await messages.promise;
+    });
+    await flushEffects();
+
+    expect(container?.textContent).toContain('检索前技术名词');
+    expect(container?.textContent).toContain('继续解释 query rewrite');
+    expect(container?.textContent).toContain('引用卡片回答');
   });
 });
 
@@ -560,6 +931,16 @@ function flushEffects() {
     await Promise.resolve();
     await Promise.resolve();
   });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve;
+    reject = innerReject;
+  });
+  return { promise, reject, resolve };
 }
 
 function installTinyDom() {

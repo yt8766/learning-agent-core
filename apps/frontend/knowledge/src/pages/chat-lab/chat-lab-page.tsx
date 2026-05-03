@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Actions from '@ant-design/x/es/actions';
 import XMarkdown from '@ant-design/x-markdown/es';
 import Bubble, { type BubbleItemType, type BubbleListProps } from '@ant-design/x/es/bubble';
 import Conversations from '@ant-design/x/es/conversations';
 import Sender from '@ant-design/x/es/sender';
 import Suggestion from '@ant-design/x/es/suggestion';
-import { Button, Flex, Space, Spin, Tag, Typography } from 'antd';
+import { Button, Flex, Select, Space, Spin, Tag, Typography } from 'antd';
 
 import { useKnowledgeApi } from '../../api/knowledge-api-provider';
 import { useKnowledgeChat } from '../../hooks/use-knowledge-chat';
-import type { ChatMessage, Citation, KnowledgeBase } from '../../types/api';
+import type { ChatConversation, ChatMessage, Citation, KnowledgeBase, RagModelProfileSummary } from '../../types/api';
 import { PageSection } from '../shared/ui';
 import {
   createChatLabConversation,
@@ -69,16 +69,20 @@ function CitationList({ citations }: { citations: Citation[] }) {
 
 export function ChatLabPage() {
   const api = useKnowledgeApi();
+  const conversationMessagesRequestIdRef = useRef(0);
   const [question, setQuestion] = useState('');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [knowledgeBasesError, setKnowledgeBasesError] = useState<Error | null>(null);
+  const [modelProfiles, setModelProfiles] = useState<RagModelProfileSummary[]>([]);
+  const [chatLabError, setChatLabError] = useState<Error | null>(null);
+  const [selectedModelProfileId, setSelectedModelProfileId] = useState('knowledge-rag');
   const [messageFeedback, setMessageFeedback] = useState<Record<string, FeedbackValue>>({});
   const [selectedMentions, setSelectedMentions] = useState<KnowledgeBaseMention[]>([]);
   const [chatConversations, setChatConversations] = useState<ChatLabConversation[]>(() => [
     createChatLabConversation('')
   ]);
   const [activeConversationKey, setActiveConversationKey] = useState(() => chatConversations[0]!.id);
-  const { error, feedbackMessage, loading, sendMessage, submitFeedback } = useKnowledgeChat();
+  const { error, feedbackMessage, loading, sendMessage, streamState, submitFeedback } = useKnowledgeChat();
   const activeConversation = chatConversations.find(item => item.id === activeConversationKey) ?? chatConversations[0]!;
   const conversationItems = useMemo(
     () => chatConversations.map(item => ({ key: item.id, label: item.title })),
@@ -88,27 +92,88 @@ export function ChatLabPage() {
     () => knowledgeBases.map(item => ({ label: item.name, value: item.id })),
     [knowledgeBases]
   );
+  const modelProfileOptions = useMemo(
+    () => [
+      { label: 'SDK RAG', value: 'knowledge-rag' },
+      ...modelProfiles.filter(profile => profile.enabled).map(profile => ({ label: profile.label, value: profile.id }))
+    ],
+    [modelProfiles]
+  );
+  const streamDiagnostics = useMemo(() => summarizeStreamDiagnostics(streamState.events), [streamState.events]);
 
   useEffect(() => {
     let mounted = true;
     setKnowledgeBasesError(null);
-    void api
-      .listKnowledgeBases()
-      .then(result => {
+    void Promise.all([api.listKnowledgeBases(), api.listRagModelProfiles(), api.listConversations()])
+      .then(async ([knowledgeBaseResult, modelProfileResult, conversationResult]) => {
         if (!mounted) {
           return;
         }
-        setKnowledgeBases(result.items);
+        setKnowledgeBases(knowledgeBaseResult.items);
+        setModelProfiles(modelProfileResult.items);
+        const backendConversations = conversationResult.items.map(toChatLabConversation);
+        if (backendConversations.length === 0) {
+          return;
+        }
+        const activeConversation = backendConversations[0]!;
+        setChatConversations(backendConversations);
+        setActiveConversationKey(activeConversation.id);
+        setSelectedModelProfileId(activeConversation.activeModelProfileId ?? 'knowledge-rag');
       })
       .catch(error => {
         if (mounted) {
-          setKnowledgeBasesError(toError(error));
+          const nextError = toError(error);
+          setKnowledgeBasesError(nextError);
+          setChatLabError(nextError);
         }
       });
     return () => {
       mounted = false;
     };
   }, [api]);
+
+  useEffect(() => {
+    const active = chatConversations.find(item => item.id === activeConversationKey);
+    if (!active?.activeModelProfileId) {
+      return;
+    }
+    setSelectedModelProfileId(active.activeModelProfileId);
+  }, [activeConversationKey, chatConversations]);
+
+  useEffect(() => {
+    const active = chatConversations.find(item => item.id === activeConversationKey);
+    if (!active?.persisted) {
+      return;
+    }
+    const requestId = conversationMessagesRequestIdRef.current + 1;
+    conversationMessagesRequestIdRef.current = requestId;
+    let mounted = true;
+    void api
+      .listConversationMessages(active.id)
+      .then(result => {
+        if (!mounted || requestId !== conversationMessagesRequestIdRef.current) {
+          return;
+        }
+        setChatConversations(current =>
+          current.map(conversation =>
+            conversation.id === active.id
+              ? {
+                  ...conversation,
+                  messages: mergeChatMessages(result.items, conversation.messages)
+                }
+              : conversation
+          )
+        );
+      })
+      .catch(error => {
+        if (mounted && requestId === conversationMessagesRequestIdRef.current) {
+          setChatLabError(toError(error));
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [activeConversationKey, api]);
 
   const chatRoles = useMemo(
     () =>
@@ -192,11 +257,11 @@ export function ChatLabPage() {
     ...activeConversation.messages.map(message => toBubbleMessage(message, messageFeedback)),
     loading
       ? {
-          content: '',
+          content: streamState.answerText,
           key: 'answer-loading',
-          loading: true,
+          loading: streamState.answerText.length === 0,
           role: 'ai',
-          status: 'loading'
+          status: streamState.answerText.length > 0 ? 'updating' : 'loading'
         }
       : null
   ].filter(Boolean) as BubbleItemType[];
@@ -252,8 +317,8 @@ export function ChatLabPage() {
         debug: true,
         mentions
       },
-      model: 'knowledge-rag',
-      stream: false
+      model: selectedModelProfileId,
+      stream: true
     });
     if (!nextResponse) {
       return;
@@ -341,8 +406,12 @@ export function ChatLabPage() {
             </Space>
             <Space className="knowledge-chat-run-meta" size={8}>
               <span aria-hidden className="knowledge-chat-icon is-branch" />
-              <Typography.Text type="secondary">SDK RAG</Typography.Text>
-              <Tag>5.5</Tag>
+              <Select
+                options={modelProfileOptions}
+                onChange={setSelectedModelProfileId}
+                size="small"
+                value={selectedModelProfileId}
+              />
             </Space>
           </div>
 
@@ -426,13 +495,135 @@ export function ChatLabPage() {
               {knowledgeBasesError ? (
                 <Typography.Text type="danger">{knowledgeBasesError.message}</Typography.Text>
               ) : null}
+              {chatLabError && chatLabError !== knowledgeBasesError ? (
+                <Typography.Text type="danger">{chatLabError.message}</Typography.Text>
+              ) : null}
               {feedbackMessage ? <Typography.Text type="success">反馈已记录</Typography.Text> : null}
+              {loading && streamState.phase !== 'idle' ? (
+                <Typography.Text type="secondary">
+                  {formatStreamPhase(streamState.phase)} · {streamState.events.length} events
+                </Typography.Text>
+              ) : null}
+              {streamDiagnostics ? (
+                <Space wrap>
+                  {streamDiagnostics.planner ? <Tag>{streamDiagnostics.planner}</Tag> : null}
+                  {streamDiagnostics.selectionReason ? (
+                    <Typography.Text>{streamDiagnostics.selectionReason}</Typography.Text>
+                  ) : null}
+                  {streamDiagnostics.confidence ? <Tag>{streamDiagnostics.confidence}</Tag> : null}
+                  {streamDiagnostics.searchMode ? <Tag>{streamDiagnostics.searchMode}</Tag> : null}
+                  {streamDiagnostics.retrievalMode ? <Tag>{streamDiagnostics.retrievalMode}</Tag> : null}
+                  {typeof streamDiagnostics.finalHitCount === 'number' ? (
+                    <Tag>{streamDiagnostics.finalHitCount} hits</Tag>
+                  ) : null}
+                  {streamDiagnostics.executedQuery ? (
+                    <Typography.Text>{streamDiagnostics.executedQuery}</Typography.Text>
+                  ) : null}
+                </Space>
+              ) : null}
             </div>
           </div>
         </section>
       </div>
     </PageSection>
   );
+}
+
+function formatStreamPhase(phase: ReturnType<typeof useKnowledgeChat>['streamState']['phase']) {
+  if (phase === 'planner') {
+    return '正在选库';
+  }
+  if (phase === 'retrieval') {
+    return '正在检索';
+  }
+  if (phase === 'answer') {
+    return '正在生成';
+  }
+  if (phase === 'completed') {
+    return '已完成';
+  }
+  if (phase === 'error') {
+    return '生成失败';
+  }
+  return '准备中';
+}
+
+function toChatLabConversation(conversation: ChatConversation): ChatLabConversation {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    activeModelProfileId: conversation.activeModelProfileId,
+    persisted: true,
+    messages: [],
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt
+  };
+}
+
+function mergeChatMessages(
+  backendMessages: readonly ChatMessage[],
+  currentMessages: readonly ChatMessage[]
+): ChatMessage[] {
+  const merged = new Map<string, ChatMessage>();
+  for (const message of backendMessages) {
+    merged.set(message.id, message);
+  }
+  for (const message of currentMessages) {
+    merged.set(message.id, message);
+  }
+  return [...merged.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+function summarizeStreamDiagnostics(events: ReturnType<typeof useKnowledgeChat>['streamState']['events']) {
+  const plannerEvent = [...events].reverse().find(event => event.type === 'planner.completed');
+  const retrievalEvent = [...events].reverse().find(event => event.type === 'retrieval.completed');
+  const plan = plannerEvent?.type === 'planner.completed' ? plannerEvent.plan : undefined;
+  const retrieval = retrievalEvent?.type === 'retrieval.completed' ? retrievalEvent.retrieval : undefined;
+  const diagnostics = toDiagnosticRecord(retrieval?.diagnostics);
+  const executedQuery = toExecutedQuery(diagnostics.executedQueries);
+  const finalHitCount =
+    typeof diagnostics.finalHitCount === 'number' ? diagnostics.finalHitCount : retrieval?.hits.length;
+  const hasRetrievalDiagnostics = Object.keys(diagnostics).length > 0;
+  if (!plan && !hasRetrievalDiagnostics && typeof finalHitCount !== 'number') {
+    return undefined;
+  }
+  return {
+    planner: plan?.diagnostics.planner,
+    selectionReason: plan?.selectionReason,
+    confidence: typeof plan?.confidence === 'number' ? plan.confidence.toFixed(2) : undefined,
+    searchMode: plan?.searchMode,
+    retrievalMode: typeof diagnostics.effectiveSearchMode === 'string' ? diagnostics.effectiveSearchMode : undefined,
+    finalHitCount,
+    executedQuery: executedQuery
+      ? `${executedQuery.query} · ${executedQuery.mode} · ${executedQuery.hitCount}`
+      : undefined
+  };
+}
+
+function toDiagnosticRecord(diagnostics: unknown): Record<string, unknown> {
+  return typeof diagnostics === 'object' && diagnostics !== null ? (diagnostics as Record<string, unknown>) : {};
+}
+
+function toExecutedQuery(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const first = value[0];
+  if (typeof first === 'string') {
+    return { query: first, mode: 'query', hitCount: 0 };
+  }
+  if (typeof first !== 'object' || first === null) {
+    return undefined;
+  }
+  const record = first as Record<string, unknown>;
+  if (typeof record.query !== 'string') {
+    return undefined;
+  }
+  return {
+    query: record.query,
+    mode: typeof record.mode === 'string' ? record.mode : 'query',
+    hitCount: typeof record.hitCount === 'number' ? record.hitCount : 0
+  };
 }
 
 function toError(error: unknown): Error {

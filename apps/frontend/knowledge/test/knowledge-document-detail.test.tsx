@@ -289,6 +289,7 @@ describe('knowledge document detail', () => {
 function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>(),
+    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>(),
     compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>(),
     createDocumentFromUpload: vi.fn<KnowledgeFrontendApi['createDocumentFromUpload']>().mockResolvedValue({
       document: documentRecord,
@@ -324,6 +325,19 @@ function createClient(): KnowledgeFrontendApi & CoreOpsApi {
       page: 1,
       pageSize: 20
     } satisfies PageResult<never>),
+    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     reprocessDocument: vi.fn<KnowledgeFrontendApi['reprocessDocument']>(),
     deleteDocument: vi.fn<KnowledgeFrontendApi['deleteDocument']>(),

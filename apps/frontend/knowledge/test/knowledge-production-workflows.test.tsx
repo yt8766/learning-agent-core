@@ -428,6 +428,19 @@ const chatResponse: ChatResponse = {
   }
 };
 
+function toSdkCitation(citation: ChatResponse['citations'][number]) {
+  return {
+    sourceId: citation.documentId,
+    chunkId: citation.chunkId,
+    title: citation.title,
+    uri: citation.uri ?? '',
+    quote: citation.quote,
+    sourceType: 'user-upload' as const,
+    trustClass: 'internal' as const,
+    score: citation.score
+  };
+}
+
 const dataset: EvalDataset = {
   id: 'dataset_provider',
   workspaceId: 'ws_1',
@@ -544,6 +557,15 @@ const trace: RagTraceDetail = {
 function createClient(): KnowledgeFrontendApi {
   return {
     chat: vi.fn<KnowledgeFrontendApi['chat']>().mockResolvedValue(chatResponse),
+    streamChat: vi.fn<KnowledgeFrontendApi['streamChat']>().mockImplementation(async function* () {
+      yield { type: 'rag.started', runId: 'trace_real' };
+      yield { type: 'answer.delta', runId: 'trace_real', delta: chatResponse.answer };
+      yield {
+        type: 'answer.completed',
+        runId: 'trace_real',
+        answer: { text: chatResponse.answer, noAnswer: false, citations: chatResponse.citations.map(toSdkCitation) }
+      };
+    }),
     createFeedback: vi
       .fn<(messageId: string, input: CreateFeedbackRequest) => Promise<ChatMessage>>()
       .mockResolvedValue({
@@ -604,6 +626,19 @@ function createClient(): KnowledgeFrontendApi {
     listEmbeddingModels: vi.fn<() => Promise<PageResult<EmbeddingModelOption>>>().mockResolvedValue({
       items: [embeddingModel],
       total: 1,
+      page: 1,
+      pageSize: 20
+    }),
+    listRagModelProfiles: vi.fn<KnowledgeFrontendApi['listRagModelProfiles']>().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn<KnowledgeFrontendApi['listConversations']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    listConversationMessages: vi.fn<KnowledgeFrontendApi['listConversationMessages']>().mockResolvedValue({
+      items: [],
+      total: 0,
       page: 1,
       pageSize: 20
     }),
@@ -678,7 +713,7 @@ describe('knowledge production workflow pages', () => {
     );
     await flushEffects();
 
-    expect(client.chat).toHaveBeenCalledWith({
+    expect(client.streamChat).toHaveBeenCalledWith({
       messages: [{ content: '如何接入 provider？', role: 'user' }],
       metadata: {
         conversationId: expect.any(String),
@@ -686,7 +721,7 @@ describe('knowledge production workflow pages', () => {
         mentions: []
       },
       model: 'knowledge-rag',
-      stream: false
+      stream: true
     });
     expect(container?.textContent).toContain('新建会话');
     expect(container?.textContent).not.toContain('选择对话知识库');
