@@ -358,9 +358,6 @@ export function ChatLabPage() {
             >
               新建会话
             </Button>
-            <Button icon={<span aria-hidden className="knowledge-chat-icon is-search" />} type="text">
-              搜索
-            </Button>
           </div>
           <div className="knowledge-chat-sidebar-block">
             <div className="knowledge-chat-sidebar-title">对话</div>
