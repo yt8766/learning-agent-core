@@ -389,6 +389,67 @@ describe('Knowledge RAG SDK facade', () => {
     });
   });
 
+  it('passes the requested model profile answer model to the public chat answer provider', async () => {
+    let selectedBaseId = '';
+    const generate = vi.fn(async input => {
+      if (isGenerateInput(input) && input.model === 'planner-model-from-profile') {
+        return {
+          text: JSON.stringify({
+            queryVariants: ['answer model profile'],
+            selectedKnowledgeBaseIds: [selectedBaseId],
+            searchMode: 'hybrid',
+            selectionReason: 'public chat selected profile planner',
+            confidence: 0.92
+          }),
+          model: 'planner-model-from-profile',
+          providerId: 'fake'
+        };
+      }
+
+      return {
+        text: 'Answer using selected answer model.',
+        model: 'answer-model-from-profile',
+        providerId: 'fake'
+      };
+    });
+    const runtime = enabledSdkRuntime({ generate });
+    const modelProfiles = new KnowledgeRagModelProfileService({
+      profiles: [
+        {
+          id: 'planner-profile',
+          label: 'Planner Profile',
+          description: 'Routes and answers with profile-specific models.',
+          useCase: 'coding',
+          plannerModelId: 'planner-model-from-profile',
+          answerModelId: 'answer-model-from-profile',
+          embeddingModelId: 'embedding-model',
+          enabled: true
+        }
+      ]
+    });
+    const { documents, repository, baseId } = await createService(runtime, modelProfiles);
+    selectedBaseId = baseId;
+    await seedDocument(repository, baseId, {
+      documentId: 'doc_public_answer_model',
+      chunkId: 'chunk_public_answer_model',
+      title: 'Public Answer Model Runbook',
+      content: 'Answer model profile should be used by the final response provider.'
+    });
+
+    const response = await documents.chat(actor, {
+      model: 'planner-profile',
+      message: 'answer model profile'
+    });
+
+    expect(generate).toHaveBeenNthCalledWith(1, expect.objectContaining({ model: 'planner-model-from-profile' }));
+    expect(generate).toHaveBeenNthCalledWith(2, expect.objectContaining({ model: 'answer-model-from-profile' }));
+    expect(response).toMatchObject({
+      answer: 'Answer using selected answer model.',
+      diagnostics: { hitCount: 1 },
+      route: { selectedKnowledgeBaseIds: [baseId] }
+    });
+  });
+
   it('uses deterministic fallback without calling the LLM planner when SDK runtime is disabled', async () => {
     const { repository, baseId } = await createService(disabledSdkRuntime());
     await seedDocument(repository, baseId, {

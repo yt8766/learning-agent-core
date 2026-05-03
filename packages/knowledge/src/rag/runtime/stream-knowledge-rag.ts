@@ -368,14 +368,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 function getErrorCause(error: unknown): string | undefined {
-  if (!(error instanceof Error)) {
+  if (!(error instanceof Error) || !error.cause) {
     return undefined;
   }
 
-  const withCause = error as Error & { cause?: unknown };
-  if (!('cause' in withCause) || withCause.cause === undefined || withCause.cause === null) {
-    return undefined;
-  }
-
-  return withCause.cause instanceof Error ? withCause.cause.message : String(withCause.cause);
+  return error.cause instanceof Error ? error.cause.message : String(error.cause);
 }

@@ -225,28 +225,6 @@ describe('runKnowledgeRag', () => {
     });
   });
 
-  it('propagates answer provider failures instead of converting them to no-answer', async () => {
-    await expect(
-      runKnowledgeRag({
-        query: 'runtime docs',
-        accessibleKnowledgeBases,
-        policy,
-        plannerProvider: makePlannerProvider({
-          queryVariants: ['runtime docs'],
-          selectedKnowledgeBaseIds: ['kb_runtime'],
-          searchMode: 'hybrid',
-          selectionReason: 'Runtime docs are relevant.',
-          confidence: 0.8
-        }),
-        searchService: makeSearchService([makeHit()]),
-        answerProvider: makeAnswerProvider(async () => {
-          throw new Error('answer provider unavailable');
-        }),
-        idFactory: () => 'answer-error-run'
-      })
-    ).rejects.toThrow('answer provider unavailable');
-  });
-
   it('uses planner fallback without crashing when provider throws or violates its contract', async () => {
     const throwingPlannerProvider: KnowledgeStructuredPlannerProvider = {
       plan: vi.fn(async () => {

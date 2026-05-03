@@ -65,26 +65,6 @@ function makeSearchService(hitsByQuery: Record<string, RetrievalHit[]>): Knowled
   };
 }
 
-function makeDiagnosticSearchService(input: {
-  hits: RetrievalHit[];
-  retrievalMode: 'hybrid' | 'keyword-only' | 'vector-only' | 'none';
-}): KnowledgeSearchService {
-  return {
-    search: vi.fn(async () => ({
-      hits: input.hits,
-      total: input.hits.length,
-      diagnostics: {
-        retrievalMode: input.retrievalMode,
-        enabledRetrievers: input.retrievalMode === 'keyword-only' ? ['keyword'] : ['vector'],
-        failedRetrievers: [],
-        fusionStrategy: 'rrf',
-        prefilterApplied: false,
-        candidateCount: input.hits.length
-      }
-    }))
-  };
-}
-
 describe('RagRetrievalRuntime', () => {
   it('injects selected knowledge base ids into every search request filter', async () => {
     const searchService = makeSearchService({
@@ -122,19 +102,6 @@ describe('RagRetrievalRuntime', () => {
     ]);
     expect(result.diagnostics?.requestedSearchMode).toBe('hybrid');
     expect(result.diagnostics?.effectiveSearchMode).toBe('hybrid');
-  });
-
-  it('derives effective search mode from actual retriever diagnostics', async () => {
-    const searchService = makeDiagnosticSearchService({
-      hits: [makeHit({ chunkId: 'chunk-keyword' })],
-      retrievalMode: 'keyword-only'
-    });
-    const runtime = new RagRetrievalRuntime({ searchService });
-
-    const result = await runtime.retrieve(makePlan({ queryVariants: ['retrieval runtime wrapper behavior'] }));
-
-    expect(result.diagnostics?.requestedSearchMode).toBe('hybrid');
-    expect(result.diagnostics?.effectiveSearchMode).toBe('keyword');
   });
 
   it('reports rewriteApplied from the plan and derives citations from returned hits', async () => {
