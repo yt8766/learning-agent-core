@@ -6,7 +6,9 @@ import type {
   DocumentProcessingJobProgressSchema,
   DocumentProcessingStageSchema,
   DocumentProcessingStatusSchema,
+  CreateKnowledgeChatMessageRecordInputSchema,
   KnowledgeChatConversationRecordSchema,
+  KnowledgeChatMessageRecordSchema,
   RagModelProfileSchema,
   RagModelProfileSummarySchema
 } from './knowledge-document.schemas';
@@ -20,6 +22,8 @@ export type DocumentProcessingJobError = z.infer<typeof DocumentProcessingJobErr
 export type RagModelProfile = z.infer<typeof RagModelProfileSchema>;
 export type RagModelProfileSummary = z.infer<typeof RagModelProfileSummarySchema>;
 export type KnowledgeChatConversationRecord = z.infer<typeof KnowledgeChatConversationRecordSchema>;
+export type KnowledgeChatMessageRecord = z.infer<typeof KnowledgeChatMessageRecordSchema>;
+export type CreateKnowledgeChatMessageRecordInput = z.infer<typeof CreateKnowledgeChatMessageRecordInputSchema>;
 export type KnowledgeJobStatus = DocumentProcessingStatus;
 export type KnowledgeJobStage =
   | 'queued'
@@ -181,34 +185,6 @@ export interface KnowledgeChatMessage {
     comment?: string;
   };
   createdAt: string;
-}
-
-export interface KnowledgeChatMessageRecord {
-  id: string;
-  conversationId: string;
-  userId: string;
-  role: KnowledgeChatMessage['role'];
-  content: string;
-  modelProfileId?: string;
-  traceId?: string;
-  citations: KnowledgeChatCitation[];
-  route?: unknown;
-  diagnostics?: unknown;
-  feedback?: KnowledgeChatMessage['feedback'];
-  createdAt: string;
-}
-
-export interface CreateKnowledgeChatMessageRecordInput {
-  conversationId: string;
-  userId: string;
-  role: KnowledgeChatMessageRecord['role'];
-  content: string;
-  modelProfileId?: string;
-  traceId?: string;
-  citations?: KnowledgeChatCitation[];
-  route?: unknown;
-  diagnostics?: unknown;
-  feedback?: KnowledgeChatMessage['feedback'];
 }
 
 export interface KnowledgeChatResponse {
