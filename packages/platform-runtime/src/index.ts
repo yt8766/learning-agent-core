@@ -21,3 +21,4 @@ export { createRuntimeAgentProvider } from './adapters';
 export type { RuntimeAgentAdapterOptions } from './adapters';
 export * from './centers';
 export * from './media';
+export * from './agentos';
