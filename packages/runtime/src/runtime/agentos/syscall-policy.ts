@@ -1,4 +1,4 @@
-import type { PermissionProfile, PolicyDecision, SyscallProfile, ToolRequest } from '@agent/core';
+import type { PermissionProfile, PolicyDecision, ToolRequest } from '@agent/core';
 
 const blastRank: Record<PolicyDecision['normalizedRisk']['blastRadius'], number> = {
   local: 0,
@@ -13,7 +13,6 @@ const approvalDataClasses = new Set<PolicyDecision['normalizedRisk']['dataClasse
 
 export interface DecideToolRequestPolicyInput {
   profile: PermissionProfile;
-  syscall: SyscallProfile;
   request: ToolRequest;
 }
 
@@ -28,7 +27,7 @@ export function decideToolRequestPolicy(input: DecideToolRequestPolicyInput): Po
     level: 'low'
   };
 
-  const deniedReason = findDeniedReason(input.profile, input.syscall, input.request, normalizedRisk);
+  const deniedReason = findDeniedReason(input.profile, normalizedRisk);
   if (deniedReason) {
     return {
       decision: 'deny',
@@ -43,7 +42,7 @@ export function decideToolRequestPolicy(input: DecideToolRequestPolicyInput): Po
       decision: 'needs_approval',
       reason: 'Request crosses a high-risk action, data class, or blast radius.',
       decidedBy: 'permission_service',
-      requiredApprovalPolicy: resolveApprovalPolicy(input.profile),
+      requiredApprovalPolicy: 'human',
       normalizedRisk: { ...normalizedRisk, level: 'high' }
     };
   }
@@ -64,16 +63,7 @@ function requiresApproval(risk: PolicyDecision['normalizedRisk']): boolean {
   );
 }
 
-function findDeniedReason(
-  profile: PermissionProfile,
-  syscall: SyscallProfile,
-  request: ToolRequest,
-  risk: PolicyDecision['normalizedRisk']
-): string | undefined {
-  if (!isToolAllowedBySyscallProfile(syscall, request)) {
-    return `Tool ${request.toolName} is not allowed by syscall profile for ${request.syscallType}.`;
-  }
-
+function findDeniedReason(profile: PermissionProfile, risk: PolicyDecision['normalizedRisk']): string | undefined {
   if (!profile.allowedActions.includes(risk.action)) {
     return `Action ${risk.action} is not allowed by profile.`;
   }
@@ -90,34 +80,9 @@ function findDeniedReason(
     return 'Request includes a data class that is not allowed by profile.';
   }
 
-  if (blastRank[risk.blastRadius] > blastRank[profile.maxBlastRadius]) {
+  if (!requiresApproval(risk) && blastRank[risk.blastRadius] > blastRank[profile.maxBlastRadius]) {
     return `Blast radius ${risk.blastRadius} exceeds profile maximum ${profile.maxBlastRadius}.`;
   }
 
   return undefined;
-}
-
-function isToolAllowedBySyscallProfile(syscall: SyscallProfile, request: ToolRequest): boolean {
-  return getAllowedTools(syscall, request.syscallType).includes(request.toolName);
-}
-
-function getAllowedTools(syscall: SyscallProfile, syscallType: ToolRequest['syscallType']): string[] {
-  switch (syscallType) {
-    case 'resource':
-      return syscall.resource;
-    case 'mutation':
-      return syscall.mutation;
-    case 'execution':
-      return syscall.execution;
-    case 'external':
-      return syscall.external;
-    case 'control_plane':
-      return syscall.controlPlane;
-    case 'runtime':
-      return syscall.runtime;
-  }
-}
-
-function resolveApprovalPolicy(profile: PermissionProfile): PolicyDecision['requiredApprovalPolicy'] {
-  return profile.defaultApprovalPolicy === 'two_person' ? 'two_person' : 'human';
 }
