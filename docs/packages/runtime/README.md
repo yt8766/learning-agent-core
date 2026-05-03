@@ -70,6 +70,7 @@
 
 当前文档：
 
+- [agentos-runtime-profile.md](/docs/packages/runtime/agentos-runtime-profile.md) — Agent Runtime Profile、Context Manifest、ToolRequest / PolicyDecision 与 QualityGate 的第一阶段治理模型
 - [contract-import-boundaries.md](/docs/packages/runtime/contract-import-boundaries.md) — P3-1 后 runtime/backend/agents 的迁出 contract 导入边界
 - [execution-trajectory-factories.md](/docs/packages/runtime/execution-trajectory-factories.md) — Execution Fabric 与 Task Trajectory runtime factories
 - [langgraph-postgres-checkpointer.md](/docs/packages/runtime/langgraph-postgres-checkpointer.md) — LangGraph `MemorySaver` / PostgreSQL `PostgresSaver` 切换与初始化边界
