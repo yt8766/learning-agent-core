@@ -95,11 +95,13 @@ describe('CliTransportHandler', () => {
   const server = { id: 'minimax-cli', transport: 'cli' as const, enabled: true, command: 'mmx' } as any;
 
   it('spawns mmx with built args and parses JSON stdout', async () => {
-    const runner = vi.fn().mockResolvedValue({
-      stdout: '{"results":[{"title":"t","url":"https://x","summary":"s"}]}',
-      stderr: '',
-      exitCode: 0
-    });
+    const runner = vi
+      .fn()
+      .mockResolvedValue({
+        stdout: '{"results":[{"title":"t","url":"https://x","summary":"s"}]}',
+        stderr: '',
+        exitCode: 0
+      });
     const handler = new CliTransportHandler(
       new Map([
         [
