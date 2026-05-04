@@ -1,4 +1,4 @@
-import type { BubbleItemType } from '@ant-design/x';
+import type { BubbleItemType } from '@ant-design/x/es/bubble';
 
 import type { ChatMessage, KnowledgeChatStreamState } from '@/types/api';
 
@@ -10,15 +10,10 @@ export function toKnowledgeBubbleItems(input: {
   streamState: KnowledgeChatStreamState;
   isRequesting: boolean;
 }): BubbleItemType[] {
-  const isStreamActive =
-    input.isRequesting &&
-    input.streamState.runId !== undefined &&
-    !['idle', 'completed', 'error'].includes(input.streamState.phase);
-
   return input.messages.map(message => ({
     key: message.id,
     role: message.role === 'assistant' ? 'assistant' : message.role === 'system' ? 'system' : 'user',
-    loading: message.role === 'assistant' && isStreamActive && message.traceId === input.streamState.runId,
+    loading: false,
     content:
       message.role === 'assistant'
         ? ({
