@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeDocumentService } from '../../src/knowledge/knowledge-document.service';
+import { KnowledgeIngestionQueue } from '../../src/knowledge/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from '../../src/knowledge/knowledge-ingestion.worker';
 import { KnowledgeService } from '../../src/knowledge/knowledge.service';
 import type { KnowledgeSdkRuntimeProviderValue } from '../../src/knowledge/runtime/knowledge-sdk-runtime.provider';
@@ -347,6 +348,44 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
       attributes: { contextChunkCount: 1 }
     });
   });
+
+  it('records feedback on an existing assistant message', async () => {
+    const { documents, repository, baseId } = await createService(disabledSdkRuntime());
+    await seedDocument(repository, baseId, {
+      content: 'Feedback loop test document.'
+    });
+
+    const response = await documents.chat(actor, {
+      model: 'coding-pro',
+      messages: [{ role: 'user', content: 'feedback test' }],
+      stream: false
+    });
+
+    const messages = await repository.listChatMessages(response.conversationId, actor.userId);
+    const assistantMessage = messages.items.find(m => m.role === 'assistant');
+    expect(assistantMessage).toBeDefined();
+
+    const updated = await documents.recordFeedback(assistantMessage!.id, { rating: 'positive', comment: ' helpful ' });
+
+    expect(updated).toMatchObject({
+      id: assistantMessage!.id,
+      feedback: { rating: 'positive', comment: ' helpful ' }
+    });
+
+    const refreshed = await repository.listChatMessages(response.conversationId, actor.userId);
+    const found = refreshed.items.find(m => m.id === assistantMessage!.id);
+    expect(found?.feedback).toEqual({ rating: 'positive', comment: ' helpful ' });
+  });
+
+  it('throws knowledge_chat_message_not_found when recording feedback for missing message', async () => {
+    const { documents } = await createService(disabledSdkRuntime());
+
+    await expect(
+      documents.recordFeedback('msg_nonexistent', { rating: 'negative', category: 'hallucination' })
+    ).rejects.toMatchObject({
+      code: 'knowledge_chat_message_not_found'
+    });
+  });
 });
 
 async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
@@ -354,9 +393,10 @@ async function createService(sdkRuntime: KnowledgeSdkRuntimeProviderValue) {
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage, disabledSdkRuntime());
+  const queue = new KnowledgeIngestionQueue(worker);
   const traces = new KnowledgeTraceService();
   const ragService = new KnowledgeRagService(repository, sdkRuntime, traces);
-  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService);
+  const documents = new KnowledgeDocumentService(repository, queue, storage, sdkRuntime, ragService);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
   return { documents, repository, traces, baseId: base.id };
 }

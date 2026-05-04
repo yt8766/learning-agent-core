@@ -688,7 +688,7 @@ export interface CreateFeedbackRequest {
 
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 
-Chat Lab 前端必须把 `citations` 展示为引用卡片，而不是只展示标题列表。每张卡片至少展示 `title`、`quote` 或 `contentPreview`、`score` 或 `uri`，并保留 trace link 与 feedback 操作。`POST /messages/:id/feedback` 当前 MVP 返回带 `feedback` 的 assistant message projection，用于验证反馈按钮真实模式不再 404；它不承诺已经接入长期反馈仓储。
+Chat Lab 前端必须把 `citations` 展示为引用卡片，而不是只展示标题列表。每张卡片至少展示 `title`、`quote` 或 `contentPreview`、`score` 或 `uri`，并保留 trace link 与 feedback 操作。`POST /messages/:id/feedback` 接收 `CreateFeedbackRequest`，校验通过后通过 `KnowledgeDocumentService.recordFeedback()` 写入 `knowledge_chat_messages.feedback` JSONB 字段并返回更新后的 `ChatMessage`；消息不存在时返回 `404 knowledge_chat_message_not_found`。
 
 ### 7.1 Chat Lab RAG Answer
 

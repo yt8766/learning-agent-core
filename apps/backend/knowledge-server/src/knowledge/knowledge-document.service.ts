@@ -12,13 +12,14 @@ import type {
   KnowledgeChatRequest,
   KnowledgeChatResponse,
   KnowledgeChatConversationRecord,
+  KnowledgeChatMessageFeedback,
   KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord,
   KnowledgeEmbeddingModelsResponse,
   RagModelProfileSummary
 } from './domain/knowledge-document.types';
 import type { KnowledgeActor } from './knowledge.service';
-import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
+import { KnowledgeIngestionQueue } from './knowledge-ingestion.queue';
 import { KnowledgeRagService } from './knowledge-rag.service';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 import { KnowledgeRagModelProfileService } from './rag/knowledge-rag-model-profile.service';
@@ -30,7 +31,7 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
 export class KnowledgeDocumentService {
   constructor(
     private readonly repository: KnowledgeRepository,
-    private readonly worker: KnowledgeIngestionWorker,
+    private readonly queue: KnowledgeIngestionQueue,
     private readonly storage: OssStorageProvider,
     private readonly sdkRuntime: KnowledgeSdkRuntimeProviderValue = disabledSdkRuntime(),
     private readonly ragService: KnowledgeRagService = new KnowledgeRagService(
@@ -86,9 +87,8 @@ export class KnowledgeDocumentService {
       updatedAt: now
     };
     await this.repository.createJob(job);
-    const completedJob = await this.worker.process(job);
-    const completedDocument = await this.getDocument(actor, document.id);
-    return { document: completedDocument, job: this.withProgress(completedJob, completedDocument) };
+    this.queue.enqueue(job);
+    return { document, job: this.withProgress(job, document) };
   }
 
   async getDocument(actor: KnowledgeActor, documentId: string): Promise<KnowledgeDocumentRecord> {
@@ -163,9 +163,8 @@ export class KnowledgeDocumentService {
       updatedAt: now
     };
     await this.repository.createJob(job);
-    const completedJob = await this.worker.process(job);
-    const completedDocument = await this.getDocument(actor, document.id);
-    return { document: completedDocument, job: this.withProgress(completedJob, completedDocument) };
+    this.queue.enqueue(job);
+    return { document: await this.getDocument(actor, document.id), job: this.withProgress(job, document) };
   }
 
   async chat(actor: KnowledgeActor, input: KnowledgeChatRequest): Promise<KnowledgeChatResponse> {
@@ -214,6 +213,14 @@ export class KnowledgeDocumentService {
   ): Promise<PageResult<KnowledgeChatMessageRecord>> {
     const pageInput = normalizePageQuery(query);
     return paginate(await this.repository.listChatMessages(conversationId, actor.userId), pageInput);
+  }
+
+  async recordFeedback(messageId: string, feedback: KnowledgeChatMessageFeedback): Promise<KnowledgeChatMessageRecord> {
+    const updated = await this.repository.updateMessageFeedback(messageId, feedback);
+    if (!updated) {
+      throw new KnowledgeServiceError('knowledge_chat_message_not_found', '消息不存在');
+    }
+    return updated;
   }
 
   async deleteDocument(actor: KnowledgeActor, documentId: string): Promise<{ ok: true }> {

@@ -224,6 +224,22 @@ export class InMemoryKnowledgeRepository implements KnowledgeRepository {
 
     return { items, total: items.length };
   }
+
+  async updateMessageFeedback(messageId: string, feedback: unknown): Promise<KnowledgeChatMessageRecord | undefined> {
+    for (const [conversationId, messages] of this.chatMessages.entries()) {
+      const index = messages.findIndex(message => message.id === messageId);
+      if (index !== -1) {
+        const updated = { ...messages[index], feedback: feedback as KnowledgeChatMessageRecord['feedback'] };
+        messages[index] = updated;
+        const conversation = this.chatConversations.get(conversationId);
+        if (conversation) {
+          this.chatConversations.set(conversationId, { ...conversation, updatedAt: new Date().toISOString() });
+        }
+        return cloneChatMessage(updated);
+      }
+    }
+    return undefined;
+  }
 }
 
 function cloneDocument(document: KnowledgeDocumentRecord): KnowledgeDocumentRecord {

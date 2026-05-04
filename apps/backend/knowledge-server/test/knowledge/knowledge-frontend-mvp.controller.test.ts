@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException, ServiceUnavailableException } f
 
 import { KnowledgeFrontendMvpController } from '../../src/knowledge/knowledge-frontend-mvp.controller';
 import { KnowledgeDocumentService } from '../../src/knowledge/knowledge-document.service';
+import { KnowledgeIngestionQueue } from '../../src/knowledge/knowledge-ingestion.queue';
 import { KnowledgeServiceError } from '../../src/knowledge/knowledge.errors';
 import { KnowledgeIngestionWorker } from '../../src/knowledge/knowledge-ingestion.worker';
 import { KnowledgeService } from '../../src/knowledge/knowledge.service';
@@ -349,21 +350,16 @@ describe('KnowledgeFrontendMvpController', () => {
     });
   });
 
-  it('records chat lab message feedback through the frontend MVP endpoint', () => {
-    expect(
+  it('records chat lab message feedback through the frontend MVP endpoint', async () => {
+    const { controller } = await createFrontendController();
+    await expect(
       controller.createFeedback('msg_assistant', {
         rating: 'negative',
         category: 'wrong_citation',
         comment: '引用段落不匹配'
       })
-    ).toMatchObject({
-      id: 'msg_assistant',
-      role: 'assistant',
-      feedback: {
-        rating: 'negative',
-        category: 'wrong_citation',
-        comment: '引用段落不匹配'
-      }
+    ).rejects.toMatchObject({
+      code: 'knowledge_chat_message_not_found'
     });
   });
 });
@@ -373,14 +369,17 @@ async function createFrontendController() {
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage);
+  const queue = new KnowledgeIngestionQueue(worker);
+  queue.start();
   const upload = new KnowledgeUploadService(repository, storage);
-  const documents = new KnowledgeDocumentService(repository, worker, storage);
+  const documents = new KnowledgeDocumentService(repository, queue, storage);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
   return {
     baseId: base.id,
     controller: new KnowledgeFrontendMvpController(documents),
     documents,
     knowledge,
+    queue,
     repository,
     upload
   };
@@ -400,12 +399,15 @@ async function addReadyDocument(
   baseId: string,
   filename: string,
   content: string,
-  title: string
+  title: string,
+  queue: KnowledgeIngestionQueue
 ) {
-  return documents.createFromUpload(actor, baseId, {
+  const result = await documents.createFromUpload(actor, baseId, {
     ...(await uploadFixture(upload, baseId, filename, content)),
     title
   });
+  await queue.waitForIdle();
+  return result;
 }
 
 async function addReadyDocuments(
@@ -413,7 +415,7 @@ async function addReadyDocuments(
   documents: Array<[string, string, string, string]>
 ) {
   for (const [baseId, filename, content, title] of documents) {
-    await addReadyDocument(setup.upload, setup.documents, baseId, filename, content, title);
+    await addReadyDocument(setup.upload, setup.documents, baseId, filename, content, title, setup.queue);
   }
 }
 

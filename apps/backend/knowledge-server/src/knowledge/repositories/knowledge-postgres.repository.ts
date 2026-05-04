@@ -386,6 +386,17 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
     const items = result.rows.map(mapChatMessage);
     return { items, total: items.length };
   }
+
+  async updateMessageFeedback(messageId: string, feedback: unknown): Promise<KnowledgeChatMessageRecord | undefined> {
+    const result = await this.client.query(
+      `update knowledge_chat_messages set feedback = $1 where id = $2 returning id, conversation_id, user_id, role, content, model_profile_id, trace_id, citations, route, diagnostics, feedback, created_at`,
+      [stringifyJsonParam(feedback), messageId]
+    );
+    if (result.rows.length === 0) {
+      return undefined;
+    }
+    return mapChatMessage(requiredRow(result.rows[0], 'knowledge chat message'));
+  }
 }
 
 function requiredRow(row: Record<string, unknown> | undefined, name: string): Record<string, unknown> {

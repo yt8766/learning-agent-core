@@ -9,6 +9,7 @@ import type {
   DocumentChunkRecord,
   DocumentProcessingJobRecord,
   KnowledgeChatConversationRecord,
+  KnowledgeChatMessageFeedback,
   KnowledgeChatMessageRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
@@ -47,4 +48,8 @@ export interface KnowledgeRepository {
   listChatConversationsForUser(userId: string): Promise<PageResult<KnowledgeChatConversationRecord>>;
   appendChatMessage(input: CreateKnowledgeChatMessageRecordInput): Promise<KnowledgeChatMessageRecord>;
   listChatMessages(conversationId: string, userId: string): Promise<PageResult<KnowledgeChatMessageRecord>>;
+  updateMessageFeedback(
+    messageId: string,
+    feedback: KnowledgeChatMessageFeedback
+  ): Promise<KnowledgeChatMessageRecord | undefined>;
 }

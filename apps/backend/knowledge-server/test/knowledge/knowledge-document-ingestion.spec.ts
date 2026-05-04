@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { KnowledgeController } from '../../src/knowledge/knowledge.controller';
 import { KnowledgeDocumentService } from '../../src/knowledge/knowledge-document.service';
+import { KnowledgeIngestionQueue } from '../../src/knowledge/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from '../../src/knowledge/knowledge-ingestion.worker';
 import { KnowledgeService } from '../../src/knowledge/knowledge.service';
 import { KnowledgeUploadService } from '../../src/knowledge/knowledge-upload.service';
@@ -13,7 +14,7 @@ const actor = { userId: 'user_1', username: 'dev', roles: ['user'] };
 
 describe('Knowledge document ingestion', () => {
   it('creates a document and processing job from an upload result', async () => {
-    const { controller, baseId } = await createController();
+    const { controller, baseId, queue } = await createController();
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'runbook.md',
       mimetype: 'text/markdown',
@@ -27,15 +28,18 @@ describe('Knowledge document ingestion', () => {
       filename: upload.filename,
       title: 'Ops Runbook'
     });
+    await queue.waitForIdle();
 
-    expect(result.document).toMatchObject({
+    const document = await controller.getDocument(actor, result.document.id);
+    expect(document).toMatchObject({
       knowledgeBaseId: baseId,
       title: 'Ops Runbook',
       filename: 'runbook.md',
       sourceType: 'user-upload',
       status: 'ready'
     });
-    expect(result.job).toMatchObject({
+    const job = await controller.getLatestDocumentJob(actor, result.document.id);
+    expect(job).toMatchObject({
       documentId: result.document.id,
       status: 'succeeded',
       currentStage: 'commit'
@@ -43,7 +47,7 @@ describe('Knowledge document ingestion', () => {
   });
 
   it('returns document detail, latest job and chunks for an ingested upload', async () => {
-    const { controller, baseId } = await createController();
+    const { controller, baseId, queue } = await createController();
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'notes.txt',
       mimetype: 'text/plain',
@@ -55,6 +59,7 @@ describe('Knowledge document ingestion', () => {
       objectKey: upload.objectKey,
       filename: upload.filename
     });
+    await queue.waitForIdle();
 
     await expect(controller.getDocument(actor, document.id)).resolves.toMatchObject({
       id: document.id,
@@ -76,7 +81,7 @@ describe('Knowledge document ingestion', () => {
   });
 
   it('lists ingested documents for the current actor', async () => {
-    const { baseId, controller, documents } = await createController();
+    const { baseId, controller, documents, queue } = await createController();
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'visible.md',
       mimetype: 'text/markdown',
@@ -88,6 +93,7 @@ describe('Knowledge document ingestion', () => {
       objectKey: upload.objectKey,
       filename: upload.filename
     });
+    await queue.waitForIdle();
 
     await expect(documents.listDocuments(actor)).resolves.toMatchObject({
       items: [expect.objectContaining({ id: document.id, knowledgeBaseId: baseId, title: 'visible' })],
@@ -98,7 +104,7 @@ describe('Knowledge document ingestion', () => {
   });
 
   it('deletes an ingested document and its stored object for the current actor', async () => {
-    const { baseId, controller, documents, storage } = await createController();
+    const { baseId, controller, documents, storage, queue } = await createController();
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'delete-me.md',
       mimetype: 'text/markdown',
@@ -110,6 +116,7 @@ describe('Knowledge document ingestion', () => {
       objectKey: upload.objectKey,
       filename: upload.filename
     });
+    await queue.waitForIdle();
 
     await expect(documents.deleteDocument(actor, document.id)).resolves.toMatchObject({ ok: true });
 
@@ -120,7 +127,7 @@ describe('Knowledge document ingestion', () => {
   });
 
   it('reprocesses an existing document and replaces the latest job', async () => {
-    const { controller, baseId } = await createController();
+    const { controller, baseId, queue } = await createController();
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'notes.txt',
       mimetype: 'text/plain',
@@ -132,23 +139,24 @@ describe('Knowledge document ingestion', () => {
       objectKey: upload.objectKey,
       filename: upload.filename
     });
+    await queue.waitForIdle();
 
-    const second = await controller.reprocessDocument(actor, first.document.id);
+    await controller.reprocessDocument(actor, first.document.id);
+    await queue.waitForIdle();
 
-    expect(second.document).toMatchObject({
+    const reprocessedDocument = await controller.getDocument(actor, first.document.id);
+    expect(reprocessedDocument).toMatchObject({
       id: first.document.id,
       status: 'ready',
       chunkCount: 2
     });
-    expect(second.job).toMatchObject({
+    const latestJob = await controller.getLatestDocumentJob(actor, first.document.id);
+    expect(latestJob).toMatchObject({
       documentId: first.document.id,
       status: 'succeeded',
       currentStage: 'commit'
     });
-    expect(second.job.id).not.toBe(first.job.id);
-    await expect(controller.getLatestDocumentJob(actor, first.document.id)).resolves.toMatchObject({
-      id: second.job.id
-    });
+    expect(latestJob.id).not.toBe(first.job.id);
   });
 
   it('embeds and upserts chunks through the enabled SDK runtime', async () => {
@@ -161,7 +169,7 @@ describe('Knowledge document ingestion', () => {
         return { upsertedCount: input.records.length };
       }
     });
-    const { controller, baseId } = await createController(sdkRuntime);
+    const { controller, baseId, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'vectors.md',
       mimetype: 'text/markdown',
@@ -176,17 +184,20 @@ describe('Knowledge document ingestion', () => {
       title: 'Vector Runbook',
       metadata: { tags: ['ops', 'runtime'] }
     });
+    await queue.waitForIdle();
 
-    expect(result.document).toMatchObject({
+    const document = await controller.getDocument(actor, result.document.id);
+    expect(document).toMatchObject({
       status: 'ready',
       chunkCount: 2,
       embeddedChunkCount: 2
     });
-    expect(result.job).toMatchObject({
+    const job = await controller.getLatestDocumentJob(actor, result.document.id);
+    expect(job).toMatchObject({
       status: 'succeeded',
       currentStage: 'commit'
     });
-    expect(result.job.stages).toEqual(
+    expect(job.stages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ stage: 'embed', status: 'succeeded' }),
         expect.objectContaining({ stage: 'index_vector', status: 'succeeded' })
@@ -228,7 +239,7 @@ describe('Knowledge document ingestion', () => {
         throw new Error('pgvector unavailable');
       }
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'broken.md',
       mimetype: 'text/markdown',
@@ -236,15 +247,12 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('alpha')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({
-      code: 'knowledge_index_failed'
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
     });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     expect(failedDocument).toMatchObject({
@@ -267,7 +275,7 @@ describe('Knowledge document ingestion', () => {
       embeddings: [[0.1, 0.2]],
       upsert: async input => ({ upsertedCount: input.records.length })
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'mismatch.md',
       mimetype: 'text/markdown',
@@ -275,15 +283,12 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('alpha\n\nbeta')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({
-      code: 'knowledge_embedding_failed'
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
     });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     expect(failedDocument).toMatchObject({ status: 'failed', chunkCount: 2, embeddedChunkCount: 0 });
@@ -302,7 +307,7 @@ describe('Knowledge document ingestion', () => {
       },
       upsert: async input => ({ upsertedCount: input.records.length })
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'retryable.md',
       mimetype: 'text/markdown',
@@ -310,15 +315,12 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('alpha')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({
-      code: 'knowledge_embedding_failed'
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
     });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     expect(failedDocument).toMatchObject({ status: 'failed', chunkCount: 1, embeddedChunkCount: 0 });
@@ -351,7 +353,7 @@ describe('Knowledge document ingestion', () => {
       },
       upsert: async input => ({ upsertedCount: input.records.length })
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'retry.md',
       mimetype: 'text/markdown',
@@ -359,20 +361,21 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('alpha')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({ code: 'knowledge_embedding_failed' });
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
+    });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     const failedJob = await controller.getLatestDocumentJob(actor, failedDocument.id);
-    const retry = await controller.reprocessDocument(actor, failedDocument.id);
+    await controller.reprocessDocument(actor, failedDocument.id);
+    await queue.waitForIdle();
 
-    expect(retry.job.id).not.toBe(failedJob.id);
-    expect(retry.job).toMatchObject({
+    const latestJob = await controller.getLatestDocumentJob(actor, failedDocument.id);
+    expect(latestJob.id).not.toBe(failedJob.id);
+    expect(latestJob).toMatchObject({
       documentId: failedDocument.id,
       status: 'succeeded',
       stage: 'succeeded',
@@ -385,7 +388,7 @@ describe('Knowledge document ingestion', () => {
     const sdkRuntime = createEnabledSdkRuntime({
       upsert: async () => ({ upsertedCount: 0 })
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'partial.md',
       mimetype: 'text/markdown',
@@ -393,15 +396,12 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('alpha')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({
-      code: 'knowledge_index_failed'
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
     });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     expect(failedDocument).toMatchObject({ status: 'failed', chunkCount: 1, embeddedChunkCount: 1 });
@@ -417,7 +417,7 @@ describe('Knowledge document ingestion', () => {
     const sdkRuntime = createEnabledSdkRuntime({
       upsert: async input => ({ upsertedCount: input.records.length })
     });
-    const { controller, baseId, documents } = await createController(sdkRuntime);
+    const { controller, baseId, documents, queue } = await createController(sdkRuntime);
     const upload = await controller.uploadKnowledgeFile(actor, baseId, {
       originalname: 'blank.md',
       mimetype: 'text/markdown',
@@ -425,15 +425,12 @@ describe('Knowledge document ingestion', () => {
       buffer: Buffer.from('   \n\n   ')
     });
 
-    await expect(
-      controller.createDocumentFromUpload(actor, baseId, {
-        uploadId: upload.uploadId,
-        objectKey: upload.objectKey,
-        filename: upload.filename
-      })
-    ).rejects.toMatchObject({
-      code: 'knowledge_embedding_failed'
+    await controller.createDocumentFromUpload(actor, baseId, {
+      uploadId: upload.uploadId,
+      objectKey: upload.objectKey,
+      filename: upload.filename
     });
+    await queue.waitForIdle();
 
     const failedDocument = (await documents.listDocuments(actor)).items[0];
     expect(failedDocument).toMatchObject({ status: 'failed', chunkCount: 0, embeddedChunkCount: 0 });
@@ -450,11 +447,13 @@ async function createController(sdkRuntime: KnowledgeSdkRuntimeProviderValue = d
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage, sdkRuntime);
+  const queue = new KnowledgeIngestionQueue(worker);
+  queue.start();
   const upload = new KnowledgeUploadService(repository, storage);
-  const documents = new KnowledgeDocumentService(repository, worker, storage);
+  const documents = new KnowledgeDocumentService(repository, queue, storage);
   const controller = new KnowledgeController(knowledge, upload, documents);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
-  return { controller, documents, storage, baseId: base.id };
+  return { controller, documents, storage, baseId: base.id, queue };
 }
 
 function disabledSdkRuntime(): KnowledgeSdkRuntimeProviderValue {

@@ -22,6 +22,10 @@ import {
   readKnowledgeRagAnswerProviderError
 } from './knowledge-rag-sdk.providers';
 import { createKnowledgeHydeProvider } from './knowledge-hyde.provider';
+import {
+  createKnowledgeRagHallucinationDetector,
+  type HallucinationCheckResult
+} from './knowledge-rag-hallucination-detector';
 import { createKnowledgeRagPlannerProvider } from './knowledge-rag-planner.provider';
 import { createKnowledgeRagRerankProvider } from './knowledge-rag-rerank.provider';
 import { KnowledgeServerSearchServiceAdapter } from './knowledge-server-search-service.adapter';
@@ -66,7 +70,8 @@ export class KnowledgeRagSdkFacade {
         throw answerProviderError;
       }
 
-      return toChatResponse(input.request, result, input.traceId, input.routeReason);
+      const hallucinationCheck = await this.runHallucinationCheck(result);
+      return toChatResponse(input.request, result, input.traceId, input.routeReason, hallucinationCheck);
     } catch (error) {
       throw new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
     }
@@ -168,13 +173,35 @@ export class KnowledgeRagSdkFacade {
       })
     };
   }
+
+  private async runHallucinationCheck(result: KnowledgeRagResult): Promise<HallucinationCheckResult | undefined> {
+    if (
+      !this.sdkRuntime.enabled ||
+      process.env.KNOWLEDGE_HALLUCINATION_CHECK_ENABLED !== 'true' ||
+      result.answer.citations.length === 0
+    ) {
+      return undefined;
+    }
+
+    const modelId = this.sdkRuntime.runtime.chatProvider.defaultModel;
+    const detector = createKnowledgeRagHallucinationDetector({
+      generate: async generateInput => this.sdkRuntime.runtime.chatProvider.generate(generateInput),
+      modelId
+    });
+
+    return detector.detect({
+      answer: result.answer.text,
+      citations: result.answer.citations
+    });
+  }
 }
 
 function toChatResponse(
   request: NormalizedKnowledgeChatRequest,
   result: KnowledgeRagResult,
   traceId: string,
-  routeReason: NonNullable<KnowledgeChatResponse['route']>['reason']
+  routeReason: NonNullable<KnowledgeChatResponse['route']>['reason'],
+  hallucinationCheck?: HallucinationCheckResult
 ): KnowledgeChatResponse {
   const now = new Date().toISOString();
   const conversationId = request.conversationId ?? `conv_${randomUUID()}`;
@@ -234,7 +261,16 @@ function toChatResponse(
       retrievalMode: resolveChatRetrievalMode(result),
       hitCount: result.retrieval.hits.length,
       contextChunkCount: result.retrieval.hits.length
-    }
+    },
+    ...(hallucinationCheck
+      ? {
+          hallucinationCheck: {
+            score: hallucinationCheck.hallucinationScore,
+            flagged: hallucinationCheck.flagged,
+            reasoning: hallucinationCheck.reasoning
+          }
+        }
+      : {})
   };
 }
 
