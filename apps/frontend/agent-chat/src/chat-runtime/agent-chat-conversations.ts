@@ -6,7 +6,6 @@ const AGENT_CHAT_CONVERSATION_KEY_PREFIX = 'session:';
 
 export interface AgentChatConversationData extends ConversationData {
   createdAt: string;
-  currentTaskId?: string;
   label: string;
   status: ChatSessionRecord['status'];
   updatedAt: string;
@@ -18,10 +17,13 @@ export function buildAgentChatConversationKey(sessionId: string) {
 
 export function parseAgentChatConversationKey(key?: string | null) {
   const normalizedKey = key?.trim();
-  if (!normalizedKey || !normalizedKey.startsWith(AGENT_CHAT_CONVERSATION_KEY_PREFIX)) {
+  if (!normalizedKey) {
     return undefined;
   }
-  return normalizedKey.slice(AGENT_CHAT_CONVERSATION_KEY_PREFIX.length);
+
+  return normalizedKey.startsWith(AGENT_CHAT_CONVERSATION_KEY_PREFIX)
+    ? normalizedKey.slice(AGENT_CHAT_CONVERSATION_KEY_PREFIX.length)
+    : normalizedKey;
 }
 
 export function toAgentChatConversationData(session: ChatSessionRecord): AgentChatConversationData {
@@ -30,7 +32,6 @@ export function toAgentChatConversationData(session: ChatSessionRecord): AgentCh
     label: session.title,
     status: session.status,
     createdAt: session.createdAt,
-    currentTaskId: session.currentTaskId,
     updatedAt: session.updatedAt
   };
 }

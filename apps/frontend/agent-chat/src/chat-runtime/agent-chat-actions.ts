@@ -10,7 +10,7 @@ import {
 } from '@/api/chat-api';
 import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 
-import { toAgentChatConversationData } from './agent-chat-conversations';
+import { parseAgentChatConversationKey, toAgentChatConversationData } from './agent-chat-conversations';
 
 export interface AgentChatActionsApi {
   appendMessage: (sessionId: string, message: string, options?: { modelId?: string }) => Promise<ChatMessageRecord>;
@@ -45,7 +45,8 @@ export function createAgentChatActions({
       return sessions.map(toAgentChatConversationData);
     },
 
-    async ensureSession(sessionId?: string, initialUserText?: string) {
+    async ensureSession(conversationKey?: string, initialUserText?: string) {
+      const sessionId = parseAgentChatConversationKey(conversationKey);
       if (sessionId) {
         return api.selectSession(sessionId);
       }
