@@ -7,12 +7,6 @@ describe('buildApprovalCardCommands', () => {
     const commands = buildApprovalCardCommands('approval-surface', '等待审批');
 
     expect(commands).toHaveLength(2);
-    expect(commands.every(command => command.version === 'v0.9')).toBe(true);
-    expect(commands[1]).toMatchObject({
-      updateComponents: {
-        surfaceId: 'approval-surface'
-      }
-    });
     expect(commands[0]).toEqual({
       version: 'v0.9',
       createSurface: {

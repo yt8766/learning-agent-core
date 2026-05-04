@@ -4,15 +4,13 @@ export function foldAgentChatRuntimeEvent(input: {
   currentMessage: AgentFrontendChatMessage;
   event: AgentChatRuntimeEvent;
 }): AgentFrontendChatMessage {
-  const currentMeta = input.currentMessage.meta;
-
   return {
     ...input.currentMessage,
     meta: {
-      ...currentMeta,
-      think: input.event.thinkState ?? currentMeta?.think,
-      thoughtChain: input.event.thoughtChain ?? currentMeta?.thoughtChain,
-      responseSteps: input.event.responseSteps ?? currentMeta?.responseSteps
+      ...input.currentMessage.meta,
+      think: input.event.thinkState,
+      thoughtChain: input.event.thoughtChain ?? [],
+      responseSteps: input.event.responseSteps ?? []
     }
   };
 }

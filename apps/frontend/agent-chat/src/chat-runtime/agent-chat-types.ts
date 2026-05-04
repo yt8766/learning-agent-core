@@ -14,16 +14,10 @@ export interface AgentChatRuntimeResponseStep {
   label: string;
 }
 
-export interface AgentFrontendChatMessageCard {
-  surfaceId: string;
-  commands: AgentChatCardCommand[];
-}
-
 export interface AgentFrontendChatMessageMeta {
   think?: AgentChatRuntimeThinkState;
   thoughtChain?: AgentChatRuntimeThoughtChainItem[];
   responseSteps?: AgentChatRuntimeResponseStep[];
-  cards?: AgentFrontendChatMessageCard[];
 }
 
 export interface AgentFrontendChatMessage {
