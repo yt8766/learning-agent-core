@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bubble, Sender, Suggestion } from '@ant-design/x';
+import Bubble from '@ant-design/x/es/bubble';
+import Sender from '@ant-design/x/es/sender';
+import Suggestion from '@ant-design/x/es/suggestion';
 import { useXChat, useXConversations, type ConversationData } from '@ant-design/x-sdk';
 import { Space, Tag, Typography } from 'antd';
 

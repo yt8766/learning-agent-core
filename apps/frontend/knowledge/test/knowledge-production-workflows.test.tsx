@@ -51,8 +51,8 @@ const testState = vi.hoisted(() => ({
   submitted: false
 }));
 
-vi.mock('@ant-design/x', () => {
-  const Bubble = {
+vi.mock('@ant-design/x/es/bubble', () => ({
+  default: {
     List({
       items,
       role
@@ -93,7 +93,10 @@ vi.mock('@ant-design/x', () => {
         </div>
       );
     }
-  };
+  }
+}));
+
+vi.mock('@ant-design/x/es/actions', () => {
   function Actions({
     items
   }: {
@@ -117,7 +120,11 @@ vi.mock('@ant-design/x', () => {
       <span>{value}</span>
     </span>
   );
-  function Conversations({
+  return { default: Actions };
+});
+
+vi.mock('@ant-design/x/es/conversations', () => ({
+  default({
     items,
     menu
   }: {
@@ -143,7 +150,10 @@ vi.mock('@ant-design/x', () => {
       </nav>
     );
   }
-  function Suggestion({
+}));
+
+vi.mock('@ant-design/x/es/suggestion', () => ({
+  default({
     children,
     items,
     onSelect
@@ -163,6 +173,9 @@ vi.mock('@ant-design/x', () => {
       </div>
     );
   }
+}));
+
+vi.mock('@ant-design/x/es/sender', () => {
   function Sender({
     header,
     onSubmit,
@@ -189,7 +202,11 @@ vi.mock('@ant-design/x', () => {
       </div>
     );
   }
-  function Welcome({ description, title }: { description?: React.ReactNode; title?: React.ReactNode }) {
+  return { default: Sender };
+});
+
+vi.mock('@ant-design/x/es/welcome', () => ({
+  default({ description, title }: { description?: React.ReactNode; title?: React.ReactNode }) {
     return (
       <section>
         <h2>{title}</h2>
@@ -197,8 +214,7 @@ vi.mock('@ant-design/x', () => {
       </section>
     );
   }
-  return { Actions, Bubble, Conversations, Sender, Suggestion, Welcome };
-});
+}));
 
 vi.mock('@ant-design/x-sdk', async importOriginal => {
   const actual = await importOriginal<typeof import('@ant-design/x-sdk')>();
@@ -215,7 +231,7 @@ vi.mock('@ant-design/x-sdk', async importOriginal => {
   };
 });
 
-vi.mock('@ant-design/x-markdown', () => ({
+vi.mock('@ant-design/x-markdown/es', () => ({
   default({ children }: { children?: React.ReactNode }) {
     return <div>{children}</div>;
   }
