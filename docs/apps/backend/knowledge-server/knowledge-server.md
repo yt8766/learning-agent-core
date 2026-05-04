@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/knowledge-server`
-最后核对：2026-05-03
+最后核对：2026-05-04
 
 ## 本主题主文档
 
@@ -63,6 +63,7 @@ VITE_KNOWLEDGE_SERVICE_BASE_URL=http://127.0.0.1:3020/api
 - `KNOWLEDGE_CHAT_MAX_TOKENS`：可选，chat provider 最大输出 token 数，必须为正整数。
 - `KNOWLEDGE_EMBEDDING_DIMENSIONS`：可选，embedding provider 维度，必须为正整数。
 - `KNOWLEDGE_EMBEDDING_BATCH_SIZE`：可选，embedding provider 批大小，必须为正整数。
+- `KNOWLEDGE_HYDE_ENABLED`：可选，设为 `true` 且 SDK runtime 已启用时，`KnowledgeServerSearchServiceAdapter` 可在向量检索前对查询生成 HyDE 假想答案以辅助 embedding（失败时回退原始查询）。
 - `AUTH_SERVER_JWT_SECRET`：用于校验 auth-server 签发的 JWT。
 - `AUTH_SERVER_JWT_ISSUER`：JWT issuer，默认 `auth-server`。
 - `AUTH_SERVER_JWT_AUDIENCE`：knowledge 接受的 JWT audience，默认 `knowledge`。
@@ -188,7 +189,7 @@ Failed jobs are immutable for recovery purposes: retry/reprocess creates a new a
 `KnowledgeDocumentService.chat()` 只负责请求归一化、解析 RAG model profile，并委托 `KnowledgeRagService`。`KnowledgeRagService` 是 Chat Lab 的后端编排边界：读取当前用户可访问知识库，通过 `resolveKnowledgeChatRoute()` 得到目标 knowledge base，逐一校验 membership，记录 `route/retrieve/generate` trace span，并返回稳定 `route` 与 `diagnostics` 投影。随后：
 
 - `KNOWLEDGE_SDK_RUNTIME.enabled = false`：保留 repository deterministic RAG，读取目标知识库 document chunks，按查询词命中率生成 citation projection，并把命中的 quote 拼为 answer；这是本地测试和 demo fallback。
-- `KNOWLEDGE_SDK_RUNTIME.enabled = true`：通过 `KnowledgeRagSdkFacade` 调用 `@agent/knowledge` RAG runtime。没有显式知识库约束时，pre-retrieval planner provider 会使用配置的 planner model profile 生成 `selectedKnowledgeBaseIds`、`rewrittenQuery` 和 `queryVariants`；显式传入 `knowledgeBaseIds` 时继续使用 deterministic planner 保持兼容。retrieval 阶段由 `KnowledgeServerSearchServiceAdapter` 接入 SDK runtime：先调用 `embeddingProvider.embedText({ text: query })`，再按目标 knowledge base fan-out 调用 `vectorStore.search({ embedding, topK, filters: { tenantId, knowledgeBaseId, query } })`。vector 命中会回查 repository document/chunk 后投影为项目自有 `RetrievalHit` / citation，不把 vector store 原始 hit 泄漏给 service 或前端。
+- `KNOWLEDGE_SDK_RUNTIME.enabled = true`：通过 `KnowledgeRagSdkFacade` 调用 `@agent/knowledge` RAG runtime。SDK 启用时始终使用 LLM pre-retrieval planner（`plannerModelId` / 默认 chat model），显式 `knowledgeBaseIds` 作为偏好约束写入 planner 提示而非静默改走确定性 planner；SDK 未启用时仍使用 deterministic planner。检索管道向 `runKnowledgeRag` / `streamKnowledgeRag` 传入 `RetrievalPipelineConfig`，包含基于同一 chat provider 的 `rerankProvider`，由 `@agent/knowledge` 默认 post-retrieval ranker 在命中列表上做一次语义重排（失败则回退纯 deterministic 排序）。retrieval 阶段由 `KnowledgeServerSearchServiceAdapter` 接入 SDK runtime：可选 HyDE 扩展查询后调用 `embeddingProvider.embedText`，再按目标 knowledge base fan-out 调用 `vectorStore.search({ embedding, topK, filters: { tenantId, knowledgeBaseId, query } })`。vector 命中会回查 repository document/chunk 后投影为项目自有 `RetrievalHit` / citation，不把 vector store 原始 hit 泄漏给 service 或前端。
 
 如果 vector search 返回 0 hit 或抛错，`KnowledgeServerSearchServiceAdapter` 会回退到 repository keyword retrieval，并额外用中文 bigram 子串命中兜底连续中文 query，例如 `风险动作审批` 可以命中包含 `风险动作` 与 `审批` 的 chunk。该 fallback 只作为召回兜底，diagnostics 会记录 `enabledRetrievers`、`failedRetrievers`、`candidateCount` 和最终 hit 数；answer 阶段仍只能基于 retrieval hits 生成 grounded citation。非流式回答调用 `chatProvider.generate()`，messages 内包含 system/developer context prompt、原始用户问题和 citation context，要求模型只基于 citations/context 回答，依据不足时明确说明依据不足。
 

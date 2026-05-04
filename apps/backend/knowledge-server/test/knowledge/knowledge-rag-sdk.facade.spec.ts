@@ -193,7 +193,9 @@ describe('Knowledge RAG SDK facade', () => {
       message: 'rotate signing keys'
     });
 
-    expect(generate).not.toHaveBeenCalled();
+    // Planner is called once (default enabled); answer generate is skipped because no hits.
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: 'knowledge-chat' }));
     expect(response).toMatchObject({
       answer: '未在当前知识库中找到足够依据。',
       citations: [],
@@ -241,7 +243,9 @@ describe('Knowledge RAG SDK facade', () => {
     }
 
     expect(stream).toHaveBeenCalledOnce();
-    expect(generate).not.toHaveBeenCalled();
+    // Planner + rerank each call generate once (default enabled); answer uses stream.
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: 'knowledge-chat' }));
     expect(events.filter(event => event.type === 'answer.delta')).toEqual([
       expect.objectContaining({ type: 'answer.delta', delta: 'streamed ' }),
       expect.objectContaining({ type: 'answer.delta', delta: 'answer' })
@@ -485,19 +489,33 @@ describe('Knowledge RAG SDK facade', () => {
     });
   });
 
-  it('uses deterministic fallback without calling the LLM planner when explicit knowledge base ids are preferred', async () => {
-    const generate = vi.fn(async () => ({
-      text: 'Answer from explicit preferred KB route.',
-      model: 'fake-chat',
-      providerId: 'fake'
-    }));
+  it('calls the LLM planner even when explicit knowledge base ids are preferred', async () => {
+    const generate = vi.fn(async input => {
+      if (isGenerateInput(input) && input.model === 'planner-model') {
+        return {
+          text: JSON.stringify({
+            selectedKnowledgeBaseIds: [baseId],
+            searchMode: 'hybrid',
+            selectionReason: 'Explicit ids preferred',
+            confidence: 0.95
+          }),
+          model: 'planner-model',
+          providerId: 'fake'
+        };
+      }
+      return {
+        text: 'Answer from explicit preferred KB route.',
+        model: 'fake-chat',
+        providerId: 'fake'
+      };
+    });
     const runtime = enabledSdkRuntime({ generate });
     const { repository, baseId } = await createService(runtime);
     await seedDocument(repository, baseId, {
       documentId: 'doc_explicit_route',
       chunkId: 'chunk_explicit_route',
       title: 'Explicit Route Runbook',
-      content: 'Explicit preferred knowledge base ids bypass the LLM planner.'
+      content: 'Explicit preferred knowledge base ids are passed to LLM planner as constraints.'
     });
 
     const response = await new KnowledgeRagSdkFacade(repository, runtime).answer({
@@ -519,8 +537,8 @@ describe('Knowledge RAG SDK facade', () => {
       routeReason: 'legacy-ids'
     });
 
-    expect(generate).toHaveBeenCalledOnce();
-    expect(generate).toHaveBeenCalledWith(expect.not.objectContaining({ model: 'planner-model' }));
+    // Planner + rerank + answer = 3 generate calls.
+    expect(generate).toHaveBeenCalledTimes(3);
     expect(response).toMatchObject({
       answer: 'Answer from explicit preferred KB route.',
       diagnostics: { hitCount: 1 },

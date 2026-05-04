@@ -3,6 +3,7 @@ import type { KnowledgeSearchService, RetrievalHit, RetrievalRequest, RetrievalR
 import type { DocumentChunkRecord, KnowledgeDocumentRecord } from '../domain/knowledge-document.types';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 import type { KnowledgeSdkRuntimeProviderValue } from '../runtime/knowledge-sdk-runtime.provider';
+import type { HyDeProvider } from './knowledge-hyde.provider';
 
 interface RetrievalDiagnostics {
   retrievalMode: 'hybrid' | 'keyword-only' | 'vector-only' | 'none';
@@ -28,7 +29,8 @@ interface IndexedChunk {
 export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchService {
   constructor(
     private readonly repository: KnowledgeRepository,
-    private readonly sdkRuntime?: KnowledgeSdkRuntimeProviderValue
+    private readonly sdkRuntime?: KnowledgeSdkRuntimeProviderValue,
+    private readonly hydeProvider?: HyDeProvider
   ) {}
 
   async search(request: RetrievalRequest): Promise<KnowledgeServerSearchResult> {
@@ -113,7 +115,10 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
 
     try {
       const runtime = this.sdkRuntime.runtime;
-      const embedding = await runtime.embeddingProvider.embedText({ text: input.query });
+      const queryForEmbedding = this.hydeProvider
+        ? await this.hydeProvider.generateHypotheticalAnswer(input.query)
+        : input.query;
+      const embedding = await runtime.embeddingProvider.embedText({ text: queryForEmbedding });
       const hits = (
         await Promise.all(
           input.knowledgeBaseIds.map(async knowledgeBaseId =>
