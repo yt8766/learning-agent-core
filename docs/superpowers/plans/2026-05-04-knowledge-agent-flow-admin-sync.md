@@ -1,6 +1,6 @@
 # Knowledge Agent Flow Admin Sync Implementation Plan
 
-状态：completed
+状态：snapshot
 文档类型：plan
 适用范围：`apps/frontend/knowledge`、`apps/frontend/agent-admin`、`apps/backend/agent-server`、`packages/knowledge`、`packages/core`
 最后核对：2026-05-04
@@ -12,26 +12,6 @@
 **Architecture:** `apps/frontend/knowledge` 承载知识库使用者与运营者的核心体验：知识库、文档、上传、RAG 对话、智能代理流程画布。`apps/frontend/agent-admin` 承载治理体验：知识健康、ingestion 来源、检索诊断、证据与 agent 使用链路，不复制 knowledge 产品页。跨前端共享的 DTO 先落稳定 contract，再由各自 UI adapter 转换成 Ant Design 或 shadcn/radix 组件可消费的 view model。
 
 **Tech Stack:** TypeScript, React 19, Vite, Ant Design 6, Ant Design X, shadcn/radix UI, Tailwind CSS, `@xyflow/react`, `@agent/knowledge`, `@agent/core`, Zod, Vitest, React Testing Library, pnpm workspace.
-
----
-
-## Execution Status
-
-状态：计划已实现并已暂存，等待提交。Task 1 已独立提交为 `76ea58b1 feat: define knowledge agent flow contract`；Task 2-8 的实现、测试、文档和 lockfile 更新已在当前 index 中暂存。
-
-已完成范围：
-
-- Task 2-4：`apps/frontend/knowledge` 新增 agent flow API boundary、React Flow 智能代理页、知识库筛选和文档拖拽上传体验。
-- Task 5：`packages/core` 新增 `KnowledgeGovernanceProjection` schema-first contract，并补脱敏边界测试。
-- Task 6：`apps/frontend/agent-admin` 新增知识治理中心、React Flow 治理链路图、dashboard 导航/API 接线。
-- Task 7：`apps/backend/agent-server` 暴露 `GET /api/platform/knowledge/governance` 的安全 MVP projection。
-- Task 8：更新 knowledge、agent-admin 与 API 索引文档。
-
-验证结论：
-
-- 聚焦 contract/frontend/backend 测试、三端 TypeScript 检查、`pnpm build:lib` 和 `pnpm --dir apps/backend/agent-server build` 已通过。
-- `pnpm check:docs` 仍被无关未暂存文件 `docs/apps/backend/agent-server/chat-api.md` 缺少文档元信息阻断；本计划新增的 `knowledge-admin-governance.md` 已修正为 `状态：current` / `文档类型：reference` 后不再报错。
-- 计划中 `pnpm --dir apps/frontend/agent-admin exec vitest run ../../apps/frontend/agent-admin/test/pages/knowledge-governance` 与 `pnpm --dir apps/backend/agent-server exec vitest run test/platform/knowledge-governance.controller.spec.ts` 在当前 Vitest 配置下匹配不到测试文件；已用可匹配的 workspace-root / package-relative 命令完成真实验证。
 
 ---
 
