@@ -709,6 +709,93 @@ Endpoint contract:
 | POST   | `/messages/:id/feedback`      | path: `id`; body: `CreateFeedbackRequest`              | `ChatMessage`                           | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `validation_error`                                                                                                                                  | owner, admin, maintainer, evaluator, viewer |
 | POST   | `/messages/:id/add-to-eval`   | path: `id`; body: `{ datasetId: ID; tags?: string[] }` | `EvalCase`                              | `auth_unauthorized`, `auth_forbidden`, `message_not_found`, `eval_dataset_not_found`, `validation_error`                                                                                                        | owner, admin, maintainer, evaluator         |
 
+### 7.2 Agent Flow
+
+Agent Flow 是 `apps/frontend/knowledge` 智能代理画布与后端保存、运行流程之间的稳定项目契约。服务端只保存项目自定义节点、边、配置和运行输入输出，不保存 React Flow vendor 对象、内部事件、viewport、selection、drag state 或第三方组件实例。浏览器侧如果使用 React Flow，必须在 adapter 层把 vendor node / edge 转换成 `@agent/knowledge` 的 schema-first contract 后再提交。
+
+固定节点类型：
+
+- `input`
+- `intent_classify`
+- `knowledge_retrieve`
+- `rerank`
+- `llm_generate`
+- `approval_gate`
+- `connector_action`
+- `output`
+
+```ts
+export type KnowledgeAgentFlowNodeType =
+  | 'input'
+  | 'intent_classify'
+  | 'knowledge_retrieve'
+  | 'rerank'
+  | 'llm_generate'
+  | 'approval_gate'
+  | 'connector_action'
+  | 'output';
+
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export interface KnowledgeAgentFlowNode {
+  id: ID;
+  type: KnowledgeAgentFlowNodeType;
+  label: string;
+  description?: string;
+  position: { x: number; y: number };
+  config: Record<string, JsonValue>;
+}
+
+export interface KnowledgeAgentFlowEdge {
+  id: ID;
+  source: ID;
+  target: ID;
+  sourceHandle?: string;
+  targetHandle?: string;
+  label?: string;
+}
+
+export interface KnowledgeAgentFlow {
+  id: ID;
+  name: string;
+  description: string;
+  version: number;
+  status: 'draft' | 'active' | 'archived';
+  nodes: KnowledgeAgentFlowNode[];
+  edges: KnowledgeAgentFlowEdge[];
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+
+export interface KnowledgeAgentFlowRunRequest {
+  flowId: ID;
+  input: {
+    message: string;
+    knowledgeBaseIds: ID[];
+    variables?: Record<string, JsonValue>;
+  };
+}
+
+export interface KnowledgeAgentFlowRunResponse {
+  runId: ID;
+  flowId: ID;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  output?: Record<string, JsonValue>;
+  error?: { code: string; message: string };
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+```
+
+Endpoint contract:
+
+| Method | Path                                 | Query / Body                                                        | Response                         | 主要错误码                                                                                                                     | 权限                                |
+| ------ | ------------------------------------ | ------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| GET    | `/knowledge/agent-flows`             | query: `PageQuery & { status?: 'draft' \| 'active' \| 'archived' }` | `PageResult<KnowledgeAgentFlow>` | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                      | owner, admin, maintainer, evaluator |
+| POST   | `/knowledge/agent-flows`             | body: `{ flow: KnowledgeAgentFlow }`                                | `{ flow: KnowledgeAgentFlow }`   | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_agent_flow_conflict`                                     | owner, admin, maintainer            |
+| PUT    | `/knowledge/agent-flows/:flowId`     | path: `flowId`; body: `{ flow: KnowledgeAgentFlow }`                | `{ flow: KnowledgeAgentFlow }`   | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_agent_flow_not_found`, `knowledge_agent_flow_conflict`   | owner, admin, maintainer            |
+| POST   | `/knowledge/agent-flows/:flowId/run` | path: `flowId`; body: `KnowledgeAgentFlowRunRequest`                | `KnowledgeAgentFlowRunResponse`  | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `knowledge_agent_flow_not_found`, `knowledge_agent_flow_run_failed` | owner, admin, maintainer, evaluator |
+
 ## 8. Observability
 
 ```ts

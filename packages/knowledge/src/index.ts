@@ -166,6 +166,43 @@ export { rrfFusion } from './retrieval/rrf-fusion';
 export type { HybridSearchConfig } from './retrieval/hybrid-knowledge-search-service';
 export { HybridKnowledgeSearchService } from './retrieval/hybrid-knowledge-search-service';
 export type { KnowledgeRetrievalRuntime, RetrievalPipelineConfig } from './contracts/knowledge-retrieval-runtime';
+export {
+  JsonObjectSchema as KnowledgeAgentFlowJsonObjectSchema,
+  JsonValueSchema as KnowledgeAgentFlowJsonValueSchema,
+  KnowledgeAgentFlowEdgeSchema,
+  KnowledgeAgentFlowListRequestSchema,
+  KnowledgeAgentFlowListResponseSchema,
+  KnowledgeAgentFlowNodeSchema,
+  KnowledgeAgentFlowNodeTypeSchema,
+  KnowledgeAgentFlowPositionSchema,
+  KnowledgeAgentFlowRunInputSchema,
+  KnowledgeAgentFlowRunRequestSchema,
+  KnowledgeAgentFlowRunResponseSchema,
+  KnowledgeAgentFlowRunStatusSchema,
+  KnowledgeAgentFlowSaveRequestSchema,
+  KnowledgeAgentFlowSaveResponseSchema,
+  KnowledgeAgentFlowSchema,
+  KnowledgeAgentFlowStatusSchema
+} from './contracts/knowledge-agent-flow';
+export type {
+  JsonObject as KnowledgeAgentFlowJsonObject,
+  JsonPrimitive as KnowledgeAgentFlowJsonPrimitive,
+  JsonValue as KnowledgeAgentFlowJsonValue,
+  KnowledgeAgentFlow,
+  KnowledgeAgentFlowEdge,
+  KnowledgeAgentFlowListRequest,
+  KnowledgeAgentFlowListResponse,
+  KnowledgeAgentFlowNode,
+  KnowledgeAgentFlowNodeType,
+  KnowledgeAgentFlowPosition,
+  KnowledgeAgentFlowRunInput,
+  KnowledgeAgentFlowRunRequest,
+  KnowledgeAgentFlowRunResponse,
+  KnowledgeAgentFlowRunStatus,
+  KnowledgeAgentFlowSaveRequest,
+  KnowledgeAgentFlowSaveResponse,
+  KnowledgeAgentFlowStatus
+} from './contracts/knowledge-agent-flow';
 export type { ContextAssembler } from './runtime/stages/context-assembler';
 export type {
   ContextExpander,
