@@ -6,7 +6,8 @@ import {
   type KnowledgeRagAnswer,
   type KnowledgeRagPolicy,
   type KnowledgeRagResult,
-  type KnowledgeRagStreamEvent
+  type KnowledgeRagStreamEvent,
+  type RetrievalPipelineConfig
 } from '@agent/knowledge';
 
 import type { KnowledgeChatResponse } from '../domain/knowledge-document.types';
@@ -20,7 +21,9 @@ import {
   createDeterministicKnowledgeRagPlannerProvider,
   readKnowledgeRagAnswerProviderError
 } from './knowledge-rag-sdk.providers';
+import { createKnowledgeHydeProvider } from './knowledge-hyde.provider';
 import { createKnowledgeRagPlannerProvider } from './knowledge-rag-planner.provider';
+import { createKnowledgeRagRerankProvider } from './knowledge-rag-rerank.provider';
 import { KnowledgeServerSearchServiceAdapter } from './knowledge-server-search-service.adapter';
 import type { RagModelProfile } from '../domain/knowledge-document.types';
 
@@ -48,8 +51,9 @@ export class KnowledgeRagSdkFacade {
         accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
         policy: createDefaultRagPolicy(),
         plannerProvider: this.createPlannerProvider(input),
-        searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
+        searchService: this.createSearchService(input),
         answerProvider,
+        pipeline: this.createRetrievalPipeline(input),
         metadata: {
           actorUserId: input.actor.userId,
           conversationId: input.request.conversationId ?? null,
@@ -75,8 +79,9 @@ export class KnowledgeRagSdkFacade {
       accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
       policy: createDefaultRagPolicy(),
       plannerProvider: this.createPlannerProvider(input),
-      searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
+      searchService: this.createSearchService(input),
       answerProvider,
+      pipeline: this.createRetrievalPipeline(input),
       metadata: {
         actorUserId: input.actor.userId,
         conversationId: input.request.conversationId ?? null,
@@ -116,7 +121,7 @@ export class KnowledgeRagSdkFacade {
   }
 
   private createPlannerProvider(input: KnowledgeRagSdkFacadeAnswerInput) {
-    if (this.sdkRuntime.enabled && input.preferredKnowledgeBaseIds.length === 0) {
+    if (this.sdkRuntime.enabled) {
       return createKnowledgeRagPlannerProvider({
         chatProvider: this.sdkRuntime.runtime.chatProvider,
         modelProfile: input.modelProfile ?? this.createRuntimeDefaultModelProfile(),
@@ -132,6 +137,35 @@ export class KnowledgeRagSdkFacade {
   private createRuntimeDefaultModelProfile(): Pick<RagModelProfile, 'plannerModelId'> {
     return {
       plannerModelId: this.sdkRuntime.enabled ? this.sdkRuntime.runtime.chatProvider.defaultModel : 'knowledge-chat'
+    };
+  }
+
+  private createSearchService(input: KnowledgeRagSdkFacadeAnswerInput): KnowledgeServerSearchServiceAdapter {
+    if (!this.sdkRuntime.enabled) {
+      return new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime, undefined);
+    }
+
+    const modelId = input.modelProfile?.answerModelId ?? this.sdkRuntime.runtime.chatProvider.defaultModel;
+    const hydeProvider =
+      process.env.KNOWLEDGE_HYDE_ENABLED === 'true'
+        ? createKnowledgeHydeProvider({
+            generate: async generateInput => this.sdkRuntime.runtime.chatProvider.generate(generateInput),
+            modelId
+          })
+        : undefined;
+    return new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime, hydeProvider);
+  }
+
+  private createRetrievalPipeline(input: KnowledgeRagSdkFacadeAnswerInput): RetrievalPipelineConfig | undefined {
+    if (!this.sdkRuntime.enabled) {
+      return undefined;
+    }
+    const modelId = input.modelProfile?.answerModelId ?? this.sdkRuntime.runtime.chatProvider.defaultModel;
+    return {
+      rerankProvider: createKnowledgeRagRerankProvider({
+        generate: async generateInput => this.sdkRuntime.runtime.chatProvider.generate(generateInput),
+        modelId
+      })
     };
   }
 }

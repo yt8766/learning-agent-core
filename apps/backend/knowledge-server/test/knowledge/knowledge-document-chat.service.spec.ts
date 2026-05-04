@@ -229,7 +229,9 @@ describe('KnowledgeDocumentService chat SDK RAG', () => {
 
     expect(response.citations).toEqual([]);
     expect(response.answer).toBe('未在当前知识库中找到足够依据。');
-    expect(generate).not.toHaveBeenCalled();
+    // Planner is called once (default enabled); answer generate is skipped because no hits.
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ model: 'knowledge-chat' }));
   });
 
   it('does not return model-invented citations when retrieval has no grounded hits', async () => {
