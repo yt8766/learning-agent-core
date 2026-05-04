@@ -1,4 +1,10 @@
 import type {
+  AgentFlowListResponse,
+  AgentFlowRecord,
+  AgentFlowRunRequest,
+  AgentFlowRunResponse,
+  AgentFlowSaveRequest,
+  AgentFlowSaveResponse,
   ChatMessage,
   ChatRequest,
   ChatResponse,
@@ -6,8 +12,8 @@ import type {
   CreateFeedbackRequest,
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
-  DocumentChunksResponse,
   DocumentProcessingJob,
+  DocumentChunksResponse,
   DeleteDocumentResponse,
   EmbeddingModelOption,
   EvalCaseResult,
@@ -33,8 +39,26 @@ import {
   mockKnowledgeBases,
   mockTraceDetail
 } from './mock-data';
+import {
+  createDefaultAgentFlow,
+  createMockJob,
+  latestUserMessage,
+  page,
+  toSdkCitation,
+  upsertAgentFlow
+} from './mock-knowledge-api-client.helpers';
+import {
+  mockChatAssistantConfig,
+  mockSettingsApiKeys,
+  mockSettingsModelProviders,
+  mockSettingsSecurity,
+  mockSettingsStorage,
+  mockWorkspaceUsers
+} from './mock-knowledge-governance-data';
 
 export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
+  private agentFlows: AgentFlowRecord[] = [createDefaultAgentFlow()];
+
   async getDashboardOverview() {
     return mockDashboard;
   }
@@ -175,7 +199,40 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
     return page([]);
   }
 
-  async listConversationMessages(): Promise<PageResult<ChatMessage>> {
+  async listWorkspaceUsers() {
+    return {
+      ...page(mockWorkspaceUsers),
+      summary: {
+        activeUsers: mockWorkspaceUsers.filter(user => user.status === 'active').length,
+        adminUsers: mockWorkspaceUsers.filter(user => user.role === 'admin').length,
+        pendingUsers: mockWorkspaceUsers.filter(user => user.status === 'pending').length,
+        totalUsers: mockWorkspaceUsers.length
+      }
+    };
+  }
+
+  async getSettingsModelProviders() {
+    return { items: mockSettingsModelProviders, updatedAt: '2026-05-04T08:00:00.000Z' };
+  }
+
+  async getSettingsApiKeys() {
+    return { items: mockSettingsApiKeys };
+  }
+
+  async getSettingsStorage() {
+    return mockSettingsStorage;
+  }
+
+  async getSettingsSecurity() {
+    return mockSettingsSecurity;
+  }
+
+  async getChatAssistantConfig() {
+    return mockChatAssistantConfig;
+  }
+
+  async listConversationMessages(conversationId: string): Promise<PageResult<ChatMessage>> {
+    void conversationId;
     return page([]);
   }
 
@@ -293,48 +350,33 @@ export class MockKnowledgeApiClient implements KnowledgeFrontendApi {
       perMetricDelta: {}
     };
   }
-}
 
-function toSdkCitation(citation: ChatResponse['citations'][number]) {
-  return {
-    sourceId: citation.documentId,
-    chunkId: citation.chunkId,
-    title: citation.title,
-    uri: citation.uri ?? '',
-    quote: citation.quote,
-    sourceType: 'user-upload' as const,
-    trustClass: 'internal' as const,
-    score: citation.score
-  };
-}
-
-function latestUserMessage(messages: ChatRequest['messages']): string | undefined {
-  const message = [...(messages ?? [])].reverse().find(item => item.role === 'user');
-  if (!message) {
-    return undefined;
+  async listAgentFlows(): Promise<AgentFlowListResponse> {
+    return page(this.agentFlows);
   }
-  if (typeof message.content === 'string') {
-    return message.content;
+
+  async saveAgentFlow(input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse> {
+    this.agentFlows = upsertAgentFlow(this.agentFlows, input.flow);
+    return { flow: input.flow };
   }
-  return message.content
-    .filter(part => part.type === 'text')
-    .map(part => part.text)
-    .join('\n');
-}
 
-function page<T>(items: T[]): PageResult<T> {
-  return { items, total: items.length, page: 1, pageSize: 20 };
-}
+  async updateAgentFlow(flowId: string, input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse> {
+    const flow = { ...input.flow, id: flowId };
+    this.agentFlows = upsertAgentFlow(this.agentFlows, flow);
+    return { flow };
+  }
 
-function createMockJob(documentId: string): DocumentProcessingJob {
-  return {
-    id: 'job_mock_latest',
-    documentId,
-    stage: 'uploaded',
-    status: 'queued',
-    stages: [],
-    progress: { percent: 0 },
-    attempts: 1,
-    createdAt: new Date().toISOString()
-  };
+  async runAgentFlow(flowId: string, input: AgentFlowRunRequest): Promise<AgentFlowRunResponse> {
+    return {
+      runId: `run_${flowId}`,
+      flowId: input.flowId,
+      status: 'completed',
+      output: {
+        answer: `Mock answer for: ${input.input.message}`,
+        knowledgeBaseIds: input.input.knowledgeBaseIds
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
 }
