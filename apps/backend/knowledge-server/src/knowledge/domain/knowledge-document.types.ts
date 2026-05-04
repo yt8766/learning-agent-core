@@ -9,6 +9,7 @@ import type {
   CreateKnowledgeChatMessageRecordInputSchema,
   KnowledgeChatConversationRecordSchema,
   KnowledgeChatMessageRecordSchema,
+  KnowledgeChatMessageFeedbackSchema,
   RagModelProfileSchema,
   RagModelProfileSummarySchema
 } from './knowledge-document.schemas';
@@ -24,6 +25,7 @@ export type RagModelProfileSummary = z.infer<typeof RagModelProfileSummarySchema
 export type KnowledgeChatConversationRecord = z.infer<typeof KnowledgeChatConversationRecordSchema>;
 export type KnowledgeChatMessageRecord = z.infer<typeof KnowledgeChatMessageRecordSchema>;
 export type CreateKnowledgeChatMessageRecordInput = z.infer<typeof CreateKnowledgeChatMessageRecordInputSchema>;
+export type KnowledgeChatMessageFeedback = z.infer<typeof KnowledgeChatMessageFeedbackSchema>;
 export type KnowledgeJobStatus = DocumentProcessingStatus;
 export type KnowledgeJobStage =
   | 'queued'
@@ -197,6 +199,11 @@ export interface KnowledgeChatResponse {
   diagnostics?: KnowledgeRagAnswer['diagnostics'];
   usage?: KnowledgeRagAnswer['usage'];
   traceId: string;
+  hallucinationCheck?: {
+    score: number;
+    flagged: boolean;
+    reasoning?: string;
+  };
 }
 
 export interface KnowledgeEmbeddingModelOption {

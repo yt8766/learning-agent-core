@@ -11,6 +11,7 @@ export type KnowledgeServerErrorCode =
   | 'knowledge_document_create_failed'
   | 'knowledge_document_not_found'
   | 'knowledge_chat_failed'
+  | 'knowledge_chat_message_not_found'
   | 'knowledge_chat_message_required'
   | 'knowledge_mention_not_found'
   | 'rag_model_profile_disabled'
@@ -30,4 +31,8 @@ export class KnowledgeServiceError extends Error {
     super(message);
     this.name = 'KnowledgeServiceError';
   }
+}
+
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

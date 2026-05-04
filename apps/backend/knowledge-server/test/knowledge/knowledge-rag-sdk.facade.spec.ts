@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeDocumentService } from '../../src/knowledge/knowledge-document.service';
+import { KnowledgeIngestionQueue } from '../../src/knowledge/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from '../../src/knowledge/knowledge-ingestion.worker';
 import { KnowledgeRagService } from '../../src/knowledge/knowledge-rag.service';
 import { KnowledgeService } from '../../src/knowledge/knowledge.service';
@@ -723,9 +724,10 @@ async function createService(
   const storage = new InMemoryOssStorageProvider();
   const knowledge = new KnowledgeService(repository);
   const worker = new KnowledgeIngestionWorker(repository, storage, disabledSdkRuntime());
+  const queue = new KnowledgeIngestionQueue(worker);
   const traces = new KnowledgeTraceService();
   const ragService = new KnowledgeRagService(repository, sdkRuntime, traces);
-  const documents = new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService, modelProfiles);
+  const documents = new KnowledgeDocumentService(repository, queue, storage, sdkRuntime, ragService, modelProfiles);
   const base = await knowledge.createBase(actor, { name: 'Engineering KB', description: '' });
   return { documents, repository, traces, baseId: base.id };
 }

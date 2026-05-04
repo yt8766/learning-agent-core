@@ -145,15 +145,16 @@ export class KnowledgeFrontendMvpController {
   }
 
   @Post('messages/:messageId/feedback')
-  createFeedback(@Param('messageId') messageId: string, @Body() body: unknown): KnowledgeChatMessage {
+  async createFeedback(@Param('messageId') messageId: string, @Body() body: unknown): Promise<KnowledgeChatMessage> {
     const feedback = CreateKnowledgeMessageFeedbackRequestSchema.parse(body);
+    const updated = await this.requireDocuments().recordFeedback(messageId, feedback);
     return {
-      id: messageId,
-      conversationId: 'conv_feedback',
-      role: 'assistant',
-      content: '',
-      feedback,
-      createdAt: new Date().toISOString()
+      id: updated.id,
+      conversationId: updated.conversationId,
+      role: updated.role as 'assistant',
+      content: updated.content,
+      feedback: updated.feedback,
+      createdAt: updated.createdAt
     };
   }
 

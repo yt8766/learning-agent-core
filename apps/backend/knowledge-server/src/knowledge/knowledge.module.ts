@@ -1,4 +1,4 @@
-import { Logger, Module } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthTokenVerifier } from '../auth/auth-token-verifier';
@@ -7,6 +7,7 @@ import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeDocumentService } from './knowledge-document.service';
 import { KnowledgeEvalService } from './knowledge-eval.service';
 import { KnowledgeIngestionWorker } from './knowledge-ingestion.worker';
+import { KnowledgeIngestionQueue } from './knowledge-ingestion.queue';
 import { KnowledgeProviderHealthService } from './knowledge-provider-health.service';
 import { KnowledgeRagService } from './knowledge-rag.service';
 import { KnowledgeService } from './knowledge.service';
@@ -65,18 +66,23 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
       inject: [KNOWLEDGE_REPOSITORY, KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_SDK_RUNTIME]
     },
     {
+      provide: KnowledgeIngestionQueue,
+      useFactory: (worker: KnowledgeIngestionWorker) => new KnowledgeIngestionQueue(worker),
+      inject: [KnowledgeIngestionWorker]
+    },
+    {
       provide: KnowledgeDocumentService,
       useFactory: (
         repository: KnowledgeRepository,
-        worker: KnowledgeIngestionWorker,
+        queue: KnowledgeIngestionQueue,
         storage: OssStorageProvider,
         sdkRuntime: KnowledgeSdkRuntimeProviderValue,
         ragService: KnowledgeRagService,
         modelProfiles: KnowledgeRagModelProfileService
-      ) => new KnowledgeDocumentService(repository, worker, storage, sdkRuntime, ragService, modelProfiles),
+      ) => new KnowledgeDocumentService(repository, queue, storage, sdkRuntime, ragService, modelProfiles),
       inject: [
         KNOWLEDGE_REPOSITORY,
-        KnowledgeIngestionWorker,
+        KnowledgeIngestionQueue,
         KNOWLEDGE_OSS_STORAGE,
         KNOWLEDGE_SDK_RUNTIME,
         KnowledgeRagService,
@@ -164,7 +170,13 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
     AuthGuard
   ]
 })
-export class KnowledgeModule {}
+export class KnowledgeModule implements OnModuleInit {
+  constructor(private readonly queue: KnowledgeIngestionQueue) {}
+
+  onModuleInit(): void {
+    this.queue.start();
+  }
+}
 
 function readModelEnv(name: string, fallback: string): string {
   const value = process.env[name]?.trim();

@@ -295,4 +295,82 @@ describe('KnowledgeRepository chat conversations', () => {
       })
     ).rejects.toThrow('knowledge_chat_conversation_not_found');
   });
+
+  it('updates message feedback in memory', async () => {
+    const repository = createTestKnowledgeRepository();
+    const conversation = await repository.createChatConversation({
+      userId: 'user_1',
+      title: 'Feedback test',
+      activeModelProfileId: 'coding-pro'
+    });
+    const message = await repository.appendChatMessage({
+      conversationId: conversation.id,
+      userId: 'user_1',
+      role: 'assistant',
+      content: 'Answer.',
+      modelProfileId: 'coding-pro'
+    });
+
+    const updated = await repository.updateMessageFeedback(message.id, { rating: 'positive', comment: 'Great!' });
+    expect(updated).toMatchObject({
+      id: message.id,
+      feedback: { rating: 'positive', comment: 'Great!' }
+    });
+
+    const messages = await repository.listChatMessages(conversation.id, 'user_1');
+    expect(messages.items[0]).toMatchObject({
+      feedback: { rating: 'positive', comment: 'Great!' }
+    });
+  });
+
+  it('returns undefined when updating feedback for non-existent message', async () => {
+    const repository = createTestKnowledgeRepository();
+    const updated = await repository.updateMessageFeedback('msg_nonexistent', { rating: 'negative' });
+    expect(updated).toBeUndefined();
+  });
+
+  it('updates message feedback through postgres repository', async () => {
+    const queries: { sql: string; values: unknown[] }[] = [];
+    const repository = new PostgresKnowledgeRepository({
+      query: async (sql, values) => {
+        queries.push({ sql, values });
+        return {
+          rows: [
+            {
+              id: 'msg_1',
+              conversation_id: 'conv_1',
+              user_id: 'user_1',
+              role: 'assistant',
+              content: 'Answer.',
+              model_profile_id: 'coding-pro',
+              trace_id: null,
+              citations: '[]',
+              route: null,
+              diagnostics: null,
+              feedback: JSON.stringify({ rating: 'positive', category: 'helpful' }),
+              created_at: '2026-05-03T00:00:00.000Z'
+            }
+          ]
+        };
+      }
+    });
+
+    const updated = await repository.updateMessageFeedback('msg_1', { rating: 'positive', category: 'helpful' });
+    expect(updated).toMatchObject({
+      id: 'msg_1',
+      feedback: { rating: 'positive', category: 'helpful' }
+    });
+    expect(queries[0]!.sql).toContain('update knowledge_chat_messages');
+    expect(queries[0]!.sql).toContain('feedback = $1');
+    expect(queries[0]!.values).toEqual([JSON.stringify({ rating: 'positive', category: 'helpful' }), 'msg_1']);
+  });
+
+  it('returns undefined when postgres update affects no rows', async () => {
+    const repository = new PostgresKnowledgeRepository({
+      query: async () => ({ rows: [] })
+    });
+
+    const updated = await repository.updateMessageFeedback('msg_missing', { rating: 'negative' });
+    expect(updated).toBeUndefined();
+  });
 });
