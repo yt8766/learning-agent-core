@@ -45,13 +45,19 @@ const testState = vi.hoisted(() => ({
   }>,
   renderedConversations: [] as Array<{
     items: Array<{ key: string; label: React.ReactNode }>;
+    menu?: (conversation: { key: string; label: React.ReactNode }) => {
+      items: Array<{ danger?: boolean; key: string; label: React.ReactNode }>;
+      onClick?: (info: { domEvent: { stopPropagation: () => void }; key: string }) => void;
+    };
     onActiveChange?: (key: string) => void;
   }>,
+  useXChatCalls: [] as Array<Record<string, unknown>>,
+  useXConversationsCalls: [] as Array<Record<string, unknown>>,
   submitted: false
 }));
 
-vi.mock('@ant-design/x/es/bubble', () => ({
-  default: {
+vi.mock('@ant-design/x', () => {
+  const Bubble = {
     List({
       items,
       role
@@ -92,10 +98,7 @@ vi.mock('@ant-design/x/es/bubble', () => ({
         </div>
       );
     }
-  }
-}));
-
-vi.mock('@ant-design/x/es/actions', () => {
+  };
   function Actions({
     items
   }: {
@@ -119,32 +122,36 @@ vi.mock('@ant-design/x/es/actions', () => {
       <span>{value}</span>
     </span>
   );
-  return { default: Actions };
-});
-
-vi.mock('@ant-design/x/es/conversations', () => ({
-  default({
+  function Conversations({
     items,
+    menu,
     onActiveChange
   }: {
     items: Array<{ key: string; label: React.ReactNode }>;
+    menu?: (conversation: { key: string; label: React.ReactNode }) => {
+      items: Array<{ danger?: boolean; key: string; label: React.ReactNode }>;
+      onClick?: (info: { domEvent: { stopPropagation: () => void }; key: string }) => void;
+    };
     onActiveChange?: (key: string) => void;
   }) {
-    testState.renderedConversations.push({ items, onActiveChange });
+    testState.renderedConversations.push({ items, menu, onActiveChange });
     return (
       <nav>
-        {items.map(item => (
-          <button key={item.key} onClick={() => onActiveChange?.(item.key)}>
-            {item.label}
-          </button>
-        ))}
+        {items.map(item => {
+          const menuConfig = menu?.(item);
+          return (
+            <div key={item.key}>
+              <button onClick={() => onActiveChange?.(item.key)}>{item.label}</button>
+              {menuConfig?.items.map(menuItem => (
+                <span key={`${item.key}-${menuItem.key}`}>{menuItem.label}</span>
+              ))}
+            </div>
+          );
+        })}
       </nav>
     );
   }
-}));
-
-vi.mock('@ant-design/x/es/suggestion', () => ({
-  default({
+  function Suggestion({
     children,
     items,
     onSelect
@@ -165,9 +172,6 @@ vi.mock('@ant-design/x/es/suggestion', () => ({
       </div>
     );
   }
-}));
-
-vi.mock('@ant-design/x/es/sender', () => {
   function Sender({
     header,
     onChange,
@@ -197,11 +201,7 @@ vi.mock('@ant-design/x/es/sender', () => {
       </div>
     );
   }
-  return { default: Sender };
-});
-
-vi.mock('@ant-design/x/es/welcome', () => ({
-  default({ description, title }: { description?: React.ReactNode; title?: React.ReactNode }) {
+  function Welcome({ description, title }: { description?: React.ReactNode; title?: React.ReactNode }) {
     return (
       <section>
         <h2>{title}</h2>
@@ -209,12 +209,34 @@ vi.mock('@ant-design/x/es/welcome', () => ({
       </section>
     );
   }
-}));
+  return { Actions, Bubble, Conversations, Sender, Suggestion, Welcome };
+});
 
-vi.mock('@ant-design/x-markdown/es', () => ({
+vi.mock('@ant-design/x-sdk', async importOriginal => {
+  const actual = await importOriginal<typeof import('@ant-design/x-sdk')>();
+  return {
+    ...actual,
+    useXChat: (options: Record<string, unknown>) => {
+      testState.useXChatCalls.push(options);
+      return actual.useXChat(options as never);
+    },
+    useXConversations: (options: Record<string, unknown>) => {
+      testState.useXConversationsCalls.push(options);
+      return actual.useXConversations(options as never);
+    }
+  };
+});
+
+vi.mock('@ant-design/x-markdown', () => ({
   default({ children }: { children?: React.ReactNode }) {
     return <div>{children}</div>;
   }
+}));
+
+vi.mock('@ant-design/icons', () => ({
+  BulbOutlined: () => <span>bulb</span>,
+  GlobalOutlined: () => <span>global</span>,
+  ThunderboltOutlined: () => <span>quick</span>
 }));
 
 vi.mock('antd', () => ({
@@ -290,6 +312,9 @@ vi.mock('antd', () => ({
   Spin() {
     return <span>loading</span>;
   },
+  Switch({ checked, onChange }: { checked?: boolean; onChange?: (checked: boolean) => void }) {
+    return <button onClick={() => onChange?.(!checked)}>{checked ? 'on' : 'off'}</button>;
+  },
   Statistic({ suffix, title, value }: { suffix?: React.ReactNode; title?: React.ReactNode; value?: React.ReactNode }) {
     return (
       <div>
@@ -340,14 +365,17 @@ vi.mock('antd', () => ({
   Tag({ children }: { children?: React.ReactNode }) {
     return <span>{children}</span>;
   },
-  Timeline({ items }: { items?: Array<{ children?: React.ReactNode }> }) {
+  Timeline({ items }: { items?: Array<{ children?: React.ReactNode; content?: React.ReactNode }> }) {
     return (
       <ol>
         {(items ?? []).map((item, index) => (
-          <li key={index}>{item.children}</li>
+          <li key={index}>{item.content ?? item.children}</li>
         ))}
       </ol>
     );
+  },
+  theme: {
+    defaultAlgorithm: {}
   },
   Typography: {
     Link({ children, href }: { children?: React.ReactNode; href?: string }) {
@@ -540,6 +568,8 @@ beforeEach(() => {
   testState.renderedPopconfirms = [];
   testState.renderedSuggestions = [];
   testState.renderedConversations = [];
+  testState.useXChatCalls = [];
+  testState.useXConversationsCalls = [];
   testState.submitted = false;
 });
 
@@ -572,12 +602,17 @@ describe('ChatLabPage citations', () => {
       metadata: {
         conversationId: expect.any(String),
         debug: true,
-        mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }]
+        mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }],
+        reasoningMode: 'deep',
+        webSearchMode: 'off'
       },
       model: 'knowledge-rag',
       stream: true
     });
-    expect(container?.textContent).toContain('新建会话');
+    expect(container?.textContent).toContain('新会话');
+    expect(container?.textContent).toContain('重命名');
+    expect(container?.textContent).toContain('删除');
+    expect(container?.textContent).not.toContain('用于编程');
     expect(container?.textContent).not.toContain('选择对话知识库');
     expect(container?.textContent).toContain('引用卡片回答');
     expect(container?.textContent).toContain('引用来源');
@@ -596,6 +631,8 @@ describe('ChatLabPage citations', () => {
     expect(container?.textContent).toContain('llm');
     expect(container?.textContent).toContain('PreRetrievalPlanner query rewrite');
     expect(container?.textContent).toContain('1 hits');
+    expect(testState.useXConversationsCalls).not.toHaveLength(0);
+    expect(testState.useXChatCalls).not.toHaveLength(0);
   });
 
   it('resolves chat knowledge base id from visible real knowledge bases', () => {
@@ -671,7 +708,9 @@ describe('ChatLabPage citations', () => {
       metadata: {
         conversationId: expect.any(String),
         debug: true,
-        mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }]
+        mentions: [{ id: 'kb_real_user', label: '真实知识库', type: 'knowledge_base' }],
+        reasoningMode: 'deep',
+        webSearchMode: 'off'
       },
       model: 'knowledge-rag',
       stream: true
@@ -725,7 +764,7 @@ describe('ChatLabPage citations', () => {
     expect(client.listConversations).toHaveBeenCalledTimes(1);
     expect(client.listConversationMessages).toHaveBeenCalledWith('conv_backend');
     expect(container?.textContent).toContain('检索前技术名词');
-    expect(container?.textContent).toContain('适合日常工作');
+    expect(container?.textContent).not.toContain('适合日常工作');
 
     await act(async () => {
       testState.renderedSenders.at(-1)?.onChange?.('继续解释 query rewrite');
@@ -845,7 +884,7 @@ describe('ChatLabPage citations', () => {
 
     expect(client.listConversationMessages).toHaveBeenCalledWith('conv_second');
     expect(container?.textContent).toContain('第二个会话的历史消息');
-    expect(container?.textContent).toContain('适合日常工作');
+    expect(container?.textContent).not.toContain('适合日常工作');
   });
 
   it('does not let delayed conversation hydration overwrite locally sent messages', async () => {
@@ -1043,6 +1082,10 @@ function installTinyDom() {
       return new TinyElement(tagName, this);
     }
 
+    createElementNS(_namespace: string, tagName: string) {
+      return new TinyElement(tagName, this);
+    }
+
     createTextNode(text: string) {
       return new TinyText(text, this);
     }
@@ -1057,4 +1100,5 @@ function installTinyDom() {
   vi.stubGlobal('Element', TinyElement);
   vi.stubGlobal('HTMLElement', TinyElement);
   vi.stubGlobal('HTMLIFrameElement', class HTMLIFrameElement {});
+  vi.stubGlobal('ShadowRoot', class ShadowRoot {});
 }
