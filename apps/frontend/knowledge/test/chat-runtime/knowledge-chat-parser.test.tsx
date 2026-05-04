@@ -83,4 +83,35 @@ describe('toKnowledgeBubbleItems', () => {
       loading: true
     });
   });
+
+  it('does not infer loading from the message id pattern when traceId does not match the active stream', () => {
+    const assistantMessage: ChatMessage = {
+      id: 'stream_assistant_trace-3',
+      conversationId: 'conv-1',
+      role: 'assistant',
+      content: 'Completed answer',
+      createdAt: '2026-05-04T00:00:00.000Z',
+      traceId: 'trace-old'
+    };
+
+    const items = toKnowledgeBubbleItems({
+      messages: [assistantMessage],
+      feedbackByMessageId: {},
+      streamState: {
+        phase: 'answer',
+        answerText: 'New answer',
+        citations: [],
+        events: [],
+        runId: 'trace-3'
+      },
+      isRequesting: true
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      key: 'stream_assistant_trace-3',
+      role: 'assistant',
+      loading: false
+    });
+  });
 });

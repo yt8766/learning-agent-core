@@ -1,4 +1,4 @@
-import type { BubbleItemType } from '@ant-design/x/es/bubble';
+import type { BubbleItemType } from '@ant-design/x';
 
 import type { ChatMessage, KnowledgeChatStreamState } from '@/types/api';
 
@@ -18,10 +18,7 @@ export function toKnowledgeBubbleItems(input: {
   return input.messages.map(message => ({
     key: message.id,
     role: message.role === 'assistant' ? 'assistant' : message.role === 'system' ? 'system' : 'user',
-    loading:
-      message.role === 'assistant' &&
-      isStreamActive &&
-      (message.traceId === input.streamState.runId || message.id === `stream_assistant_${input.streamState.runId}`),
+    loading: message.role === 'assistant' && isStreamActive && message.traceId === input.streamState.runId,
     content:
       message.role === 'assistant'
         ? ({
