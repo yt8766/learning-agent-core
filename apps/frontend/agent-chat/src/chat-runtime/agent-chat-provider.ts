@@ -3,6 +3,7 @@ import { AbstractXRequestClass } from '@ant-design/x-sdk/es/x-request';
 
 import type { ChatEventRecord, ChatSessionRecord } from '@/types/chat';
 
+import { parseAgentChatConversationKey } from './agent-chat-conversations';
 import { foldAgentChatRuntimeEvent } from './agent-chat-event-adapter';
 import type { AgentChatRuntimeEvent, AgentFrontendChatMessage } from './agent-chat-types';
 
@@ -31,6 +32,7 @@ export interface AgentChatProviderHooks {
 }
 
 export interface AgentChatProviderDeps {
+  appendMessage: (sessionId: string, message: string, options?: { modelId?: string }) => Promise<unknown>;
   bindStream: (
     stream: EventSource,
     handlers: {
@@ -169,6 +171,7 @@ async function streamAgentChatProvider(
   hooks: AgentChatProviderHooks
 ) {
   const initialUserText = getLatestUserText(input.messages);
+  const existingSessionId = parseAgentChatConversationKey(input.conversationKey);
   const session = await deps.ensureSession(input.conversationKey, initialUserText);
   let currentMessage = createAssistantPlaceholderMessage();
   let latestChunk: AgentChatProviderChunk = {
@@ -180,6 +183,10 @@ async function streamAgentChatProvider(
     message: currentMessage,
     sessionId: session.id
   });
+
+  if (existingSessionId && initialUserText) {
+    await deps.appendMessage(session.id, initialUserText);
+  }
 
   const stream = deps.createSessionStream(session.id);
 
