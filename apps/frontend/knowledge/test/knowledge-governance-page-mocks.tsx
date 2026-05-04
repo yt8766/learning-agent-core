@@ -22,8 +22,8 @@ vi.mock('@ant-design/icons', () => {
   return Object.fromEntries(iconNames.map(name => [name, () => <span>{name}</span>]));
 });
 
-vi.mock('@ant-design/x/es/bubble', () => ({
-  default: {
+vi.mock('@ant-design/x', () => {
+  const Bubble = {
     List({ items }: { items: Array<{ content?: React.ReactNode; key: string }> }) {
       return (
         <div>
@@ -33,11 +33,9 @@ vi.mock('@ant-design/x/es/bubble', () => ({
         </div>
       );
     }
-  }
-}));
+  };
 
-vi.mock('@ant-design/x/es/conversations', () => ({
-  default({ items }: { items: Array<{ key: string; label: React.ReactNode }> }) {
+  function Conversations({ items }: { items: Array<{ key: string; label: React.ReactNode }> }) {
     return (
       <nav>
         {items.map(item => (
@@ -46,10 +44,8 @@ vi.mock('@ant-design/x/es/conversations', () => ({
       </nav>
     );
   }
-}));
 
-vi.mock('@ant-design/x/es/sender', () => ({
-  default({ header, placeholder, value }: { header?: React.ReactNode; placeholder?: string; value?: string }) {
+  function Sender({ header, placeholder, value }: { header?: React.ReactNode; placeholder?: string; value?: string }) {
     return (
       <div>
         {header}
@@ -57,10 +53,8 @@ vi.mock('@ant-design/x/es/sender', () => ({
       </div>
     );
   }
-}));
 
-vi.mock('@ant-design/x/es/suggestion', () => ({
-  default({
+  function Suggestion({
     children,
     items
   }: {
@@ -76,9 +70,11 @@ vi.mock('@ant-design/x/es/suggestion', () => ({
       </div>
     );
   }
-}));
 
-vi.mock('@ant-design/x-markdown/es', () => ({
+  return { Bubble, Conversations, Sender, Suggestion };
+});
+
+vi.mock('@ant-design/x-markdown', () => ({
   default({ children }: { children?: React.ReactNode }) {
     return <div>{children}</div>;
   }

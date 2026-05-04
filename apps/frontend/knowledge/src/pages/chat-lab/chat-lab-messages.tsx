@@ -1,6 +1,5 @@
-import Actions from '@ant-design/x/es/actions';
-import XMarkdown from '@ant-design/x-markdown/es';
-import { type BubbleItemType, type BubbleListProps } from '@ant-design/x/es/bubble';
+import { Actions, type BubbleItemType, type BubbleListProps } from '@ant-design/x';
+import XMarkdown from '@ant-design/x-markdown';
 import { Flex, Space, Spin, Tag, Typography } from 'antd';
 import type { Dispatch, SetStateAction } from 'react';
 

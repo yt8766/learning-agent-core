@@ -1,4 +1,4 @@
-import Conversations from '@ant-design/x/es/conversations';
+import { Conversations } from '@ant-design/x';
 import { Button } from 'antd';
 import type { Dispatch, SetStateAction } from 'react';
 
