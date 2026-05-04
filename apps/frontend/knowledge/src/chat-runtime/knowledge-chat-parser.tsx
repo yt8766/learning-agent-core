@@ -10,10 +10,18 @@ export function toKnowledgeBubbleItems(input: {
   streamState: KnowledgeChatStreamState;
   isRequesting: boolean;
 }): BubbleItemType[] {
+  const isStreamActive =
+    input.isRequesting &&
+    input.streamState.runId !== undefined &&
+    !['idle', 'completed', 'error'].includes(input.streamState.phase);
+
   return input.messages.map(message => ({
     key: message.id,
     role: message.role === 'assistant' ? 'assistant' : message.role === 'system' ? 'system' : 'user',
-    loading: false,
+    loading:
+      message.role === 'assistant' &&
+      isStreamActive &&
+      (message.traceId === input.streamState.runId || message.id === `stream_assistant_${input.streamState.runId}`),
     content:
       message.role === 'assistant'
         ? ({
