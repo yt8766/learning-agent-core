@@ -199,6 +199,15 @@ describe('LazyCenterBoundary', () => {
     expect(dashboardLoadingStateProps.latestMessage).toBe('正在加载 Runtime Center...');
   });
 
+  it('renders the center child after it resolves', async () => {
+    const Loaded = lazy(() => Promise.resolve({ default: () => <div>Runtime center loaded</div> }));
+
+    await renderBoundary(<Loaded />);
+    await flushLazyWork();
+
+    expect(container?.textContent).toContain('Runtime center loaded');
+  });
+
   it('renders error copy when a center chunk fails', async () => {
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const Broken = lazy(() => Promise.reject(new Error('chunk failed')));
