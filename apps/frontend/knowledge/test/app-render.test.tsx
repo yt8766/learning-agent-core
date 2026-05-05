@@ -1,13 +1,129 @@
+import { act } from 'react';
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('antd', () => {
+  const Container = ({ children, title }: { children?: ReactNode; title?: ReactNode }) => (
+    <div>
+      {title}
+      {children}
+    </div>
+  );
+  const Text = ({ children }: { children?: ReactNode }) => <span>{children}</span>;
+  const renderMenuItems = (items?: { children?: unknown; key?: string; label?: ReactNode }[]) =>
+    items?.map(item => (
+      <div key={item.key}>
+        {item.label}
+        {Array.isArray(item.children)
+          ? renderMenuItems(item.children as { children?: unknown; key?: string; label?: ReactNode }[])
+          : null}
+      </div>
+    ));
+
+  function Form({ children }: { children?: ReactNode }) {
+    return <form>{children}</form>;
+  }
+  Form.Item = Container;
+
+  function Layout({ children }: { children?: ReactNode }) {
+    return <div>{children}</div>;
+  }
+  Layout.Content = Container;
+  Layout.Header = Container;
+  Layout.Sider = Container;
+
+  function Descriptions({ children }: { children?: ReactNode }) {
+    return <div>{children}</div>;
+  }
+  Descriptions.Item = Container;
+
+  function Input() {
+    return <input />;
+  }
+  Input.Password = Input;
+
+  const Typography = {
+    Paragraph: Text,
+    Text,
+    Title: ({ children }: { children?: ReactNode }) => <h1>{children}</h1>
+  };
+
+  return {
+    Alert: ({ message }: { message?: ReactNode }) => <div>{message}</div>,
+    App: Container,
+    Avatar: Container,
+    Button: Container,
+    Card: Container,
+    Checkbox: () => <input type="checkbox" />,
+    Col: Container,
+    ConfigProvider: Container,
+    Descriptions,
+    Divider: () => <hr />,
+    Dropdown: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Empty: ({ description }: { description?: ReactNode }) => <div>{description}</div>,
+    Flex: Container,
+    Form,
+    Input,
+    Layout,
+    Menu: ({ items }: { items?: { children?: unknown; key?: string; label?: ReactNode }[] }) => (
+      <nav>{renderMenuItems(items)}</nav>
+    ),
+    Modal: Container,
+    Popconfirm: Container,
+    Progress: ({ percent }: { percent?: number }) => <span>{percent}</span>,
+    Row: Container,
+    Select: Container,
+    Space: Container,
+    Spin: () => <span>loading</span>,
+    Statistic: ({ title, value }: { title?: ReactNode; value?: ReactNode }) => (
+      <span>
+        {title}
+        {value}
+      </span>
+    ),
+    Switch: () => <button type="button" />,
+    Table: () => <table />,
+    Tag: Text,
+    theme: {
+      defaultAlgorithm: {},
+      useToken: () => ({ hashId: '', theme: {}, token: {} })
+    },
+    Timeline: Container,
+    Typography,
+    Upload: Container
+  };
+});
+
+vi.mock('@ant-design/icons', () =>
+  Object.fromEntries(
+    'ApartmentOutlined ApiOutlined AppstoreOutlined BookOutlined BranchesOutlined CameraOutlined CheckCircleOutlined CloudServerOutlined CloudSyncOutlined DatabaseOutlined DeleteOutlined DeploymentUnitOutlined ExperimentOutlined EyeInvisibleOutlined FileTextOutlined HddOutlined HomeOutlined InboxOutlined KeyOutlined LeftOutlined LockOutlined LogoutOutlined MessageOutlined MonitorOutlined MoreOutlined PlayCircleOutlined PlusOutlined QuestionCircleOutlined ReloadOutlined RightOutlined SafetyCertificateOutlined SafetyOutlined SaveOutlined SearchOutlined SendOutlined SettingOutlined ThunderboltOutlined UploadOutlined UserOutlined'
+      .split(' ')
+      .map(name => [name, () => null])
+  )
+);
+
 import { App, KnowledgeRoutes, resolvePostLoginPath, resolveViewFromPath } from '../src/app/App';
+import { KnowledgeApiProvider } from '../src/api/knowledge-api-provider';
+import { MockKnowledgeApiClient } from '../src/api/mock-knowledge-api-client';
 import { AuthProvider } from '../src/pages/auth/auth-provider';
+import { installTinyDom } from './tiny-dom';
 import { installLocalStorageMock } from './local-storage-mock';
 
 describe('Knowledge App shell', () => {
-  afterEach(() => {
+  let root: Root | undefined;
+  let container: HTMLElement | undefined;
+
+  afterEach(async () => {
+    if (root) {
+      await act(async () => {
+        root?.unmount();
+      });
+    }
+    root = undefined;
+    container = undefined;
     vi.unstubAllGlobals();
   });
 
@@ -74,21 +190,23 @@ describe('Knowledge App shell', () => {
 
     expect(html).toContain('ProUser');
     expect(html).toContain('Knowledge');
-    expect(html).toContain('知识库控制台');
+    expect(html).toContain('RAG Ops 控制台');
     expect(html).toContain('总览');
-    expect(html).toContain('Knowledge 运行总览');
-    expect(html).toContain('知识库治理驾驶舱');
+    expect(html).toContain('RAG 运行健康');
+    expect(html).toContain('摄取管线');
+    expect(html).toContain('检索实验室');
+    expect(html).toContain('Trace 观测');
+    expect(html).toContain('评测回归');
     expect(html).toContain('检索质量');
-    expect(html).toContain('检索质量趋势');
-    expect(html).toContain('文档摄取趋势');
-    expect(html).toContain('文档摄取');
+    expect(html).toContain('引用覆盖');
+    expect(html).toContain('反馈闭环');
     expect(html).toContain('治理策略');
-    expect(html).toContain('知识库');
-    expect(html).toContain('文档');
-    expect(html).toContain('对话实验室');
-    expect(html).toContain('观测中心');
-    expect(html).toContain('评测中心');
-    expect(html).toContain('设置');
+    expect(html).toContain('知识空间');
+    expect(html).toContain('摄取管线');
+    expect(html).toContain('检索实验室');
+    expect(html).toContain('Trace 观测');
+    expect(html).toContain('评测回归');
+    expect(html).toContain('系统策略');
     expect(html).toContain('个人设置');
     expect(html).toContain('退出登录');
     expect(html).not.toContain('主题设置');
@@ -107,6 +225,34 @@ describe('Knowledge App shell', () => {
     expect(html).not.toContain('aria-label="语言"');
   });
 
+  it('renders the authenticated evals route content', async () => {
+    installTinyBrowserDom();
+    installLocalStorageMock();
+    localStorage.setItem('knowledge_access_token', 'access');
+    localStorage.setItem('knowledge_refresh_token', 'refresh');
+    localStorage.setItem('knowledge_access_token_expires_at', String(Date.now() + 120_000));
+    localStorage.setItem('knowledge_refresh_token_expires_at', String(Date.now() + 600_000));
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
+          <AuthProvider>
+            <MemoryRouter initialEntries={['/evals']}>
+              <KnowledgeRoutes />
+            </MemoryRouter>
+          </AuthProvider>
+        </KnowledgeApiProvider>
+      );
+    });
+
+    await waitForText('运行记录');
+    expect(container.textContent).toContain('评测回归');
+  });
+
   it('does not map exception routes into a sidebar navigation item', () => {
     expect(resolveViewFromPath('/exception/403')).toBeUndefined();
     expect(resolveViewFromPath('/exception/404')).toBeUndefined();
@@ -120,3 +266,51 @@ describe('Knowledge App shell', () => {
     expect(resolvePostLoginPath(undefined)).toBe('/');
   });
 });
+
+async function waitForText(text: string) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    await act(async () => {
+      await Promise.resolve();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    if (document.body.textContent.includes(text)) {
+      return;
+    }
+  }
+  throw new Error(`Expected text not found: ${text}`);
+}
+
+function installTinyBrowserDom() {
+  installTinyDom();
+
+  const head = document.createElement('head');
+  document.body.appendChild(head);
+  Object.assign(document, {
+    createElementNS: (_namespaceURI: string | null, qualifiedName: string) => document.createElement(qualifiedName),
+    head,
+    querySelector: (selector: string) => (selector === 'head' ? head : null),
+    querySelectorAll: () => []
+  });
+  Object.assign(globalThis.Node, {
+    ELEMENT_NODE: 1,
+    TEXT_NODE: 3
+  });
+  vi.stubGlobal('SVGElement', globalThis.Element);
+  vi.stubGlobal('ShadowRoot', class ShadowRoot {});
+  vi.stubGlobal('getComputedStyle', () => ({
+    getPropertyValue: () => '',
+    overflow: 'visible',
+    overflowX: 'visible',
+    overflowY: 'visible'
+  }));
+  globalThis.matchMedia = vi.fn().mockReturnValue({
+    addEventListener: vi.fn(),
+    addListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    matches: false,
+    media: '',
+    onchange: null,
+    removeEventListener: vi.fn(),
+    removeListener: vi.fn()
+  });
+}
