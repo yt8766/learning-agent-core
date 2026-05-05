@@ -56,6 +56,17 @@ export interface WorkspaceVaultSignalsInput {
   >;
 }
 
+export interface WorkspaceShareTextInput {
+  activeSession?: Pick<NonNullable<ChatSessionRecord>, 'title'> &
+    Partial<Pick<NonNullable<ChatSessionRecord>, 'status'>>;
+  checkpoint?: Pick<
+    NonNullableCheckpoint,
+    'connectorRefs' | 'currentMinistry' | 'currentWorker' | 'externalSources' | 'thinkState' | 'usedInstalledSkills'
+  >;
+  messages: Array<Pick<ChatSessionMessage, 'content' | 'role'>>;
+  pendingApprovals: unknown[];
+}
+
 const QUICK_SUGGESTIONS: QuickActionChip[] = [
   {
     label: '普通聊天',
@@ -336,7 +347,7 @@ export function buildWorkspaceShareText(chat: ReturnType<typeof useChatSession>)
   });
 }
 
-export function buildWorkspaceShareTextFromFields(input: Parameters<typeof buildProjectContextSnapshot>[0]) {
+export function buildWorkspaceShareTextFromFields(input: WorkspaceShareTextInput) {
   const snapshot = buildProjectContextSnapshot(input);
   const lines = [
     `当前目标：${snapshot.objective}`,

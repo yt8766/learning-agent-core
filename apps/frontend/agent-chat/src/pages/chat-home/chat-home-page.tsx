@@ -15,7 +15,6 @@ import {
   openApprovalFeedbackState,
   resetApprovalFeedbackState,
   resolveApprovalFeedbackSubmission,
-  resolveComposerPlaceholder,
   resolveCognitionTargetMessageId,
   resolveNextCognitionExpansionPatch,
   shouldShowErrorAlert
@@ -80,6 +79,8 @@ export function ChatHomePage() {
     chat.checkpoint?.thinkState?.thinkingDurationMs,
     chat.checkpoint?.thinkState?.loading,
     chat.checkpoint?.thoughtChain,
+    chat.checkpoint?.chatRoute?.flow,
+    chat.checkpoint?.createdAt,
     chat.checkpoint?.updatedAt,
     thinkingNow
   ]);
@@ -92,7 +93,6 @@ export function ChatHomePage() {
     chat.isRequesting || chat.activeSession?.status === 'running' || chat.checkpoint?.thinkState?.loading
   );
   const responseSteps = useMemo(() => foldChatResponseStepProjectionsFromEvents(chat.events), [chat.events]);
-  const composerPlaceholder = useMemo(() => resolveComposerPlaceholder(chat.checkpoint), [chat.checkpoint]);
 
   useEffect(() => {
     const wasThinkLoading = previousThinkLoadingRef.current;
@@ -222,7 +222,7 @@ export function ChatHomePage() {
               />
             </div>
 
-            <section className="chatx-agent-codex__main chatx-main-stage min-w-0" aria-label="对话主区域">
+            <section className="chatx-agent-codex__main chatx-main-stage min-w-0" aria-label="Codex 对话区">
               {showErrorAlert && errorCopy ? (
                 <Alert
                   type="error"
@@ -244,14 +244,12 @@ export function ChatHomePage() {
                   onSend={value => chat.sendMessage(value)}
                   onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
                   loading={isThinking}
-                  placeholder={composerPlaceholder}
                 />
               ) : (
                 <EmptyConversation
                   onSend={value => chat.sendMessage(value)}
                   onCancel={() => chat.cancelActiveSession('用户停止当前会话')}
                   loading={chat.loading}
-                  placeholder={composerPlaceholder}
                 />
               )}
             </section>
