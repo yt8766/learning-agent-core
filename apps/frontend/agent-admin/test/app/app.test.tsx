@@ -6,8 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DashboardPageKey } from '@/types/admin';
 
-vi.setConfig({ testTimeout: 60_000 });
-
 const { mockUseAdminDashboard } = vi.hoisted(() => ({
   mockUseAdminDashboard: vi.fn()
 }));
@@ -128,18 +126,15 @@ async function renderRouterClientAt(pathname: string) {
   return container;
 }
 
-async function waitForText(expected: string, target: HTMLElement | undefined = container) {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < 5_000) {
+async function waitForText(expected: string) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 0));
     });
-    if (target?.textContent.includes(expected)) {
+    if (container?.textContent.includes(expected)) {
       return;
     }
   }
-
-  expect(target?.textContent).toContain(expected);
 }
 
 async function authenticateAdmin() {

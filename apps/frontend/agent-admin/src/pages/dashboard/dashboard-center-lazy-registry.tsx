@@ -1,23 +1,16 @@
-import { lazy, useEffect, useRef, useState, type ComponentProps, type ComponentType, type RefObject } from 'react';
+import { lazy, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 
 import { getKnowledgeGovernanceProjection } from '@/api/admin-api-platform';
-import type { ArchiveCenterPanel } from '@/pages/archive-center/archive-center-panel';
-import type { CompanyAgentsPanel } from '@/pages/company-agents/company-agents-panel';
-import type { EvalsCenterPanel } from '@/pages/evals-center/evals-center-panel';
 import type { KnowledgeGovernanceProjection } from '@/pages/knowledge-governance/knowledge-governance-types';
-import type { RuntimeOverviewPanel } from '@/pages/runtime-overview/runtime-overview-panel';
 
-type RuntimeOverviewPanelProps = ComponentProps<typeof RuntimeOverviewPanel>;
-type EvalsCenterPanelProps = ComponentProps<typeof EvalsCenterPanel>;
-type CompanyAgentsPanelProps = ComponentProps<typeof CompanyAgentsPanel>;
-type ArchiveCenterPanelProps = ComponentProps<typeof ArchiveCenterPanel>;
+type LazyCenterProps = Record<string, unknown>;
 
-function createLazyCenter<TProps extends object>(
-  load: () => Promise<{ default: ComponentType<TProps> }>,
+function createLazyCenter(
+  load: () => Promise<{ default: ComponentType<LazyCenterProps> }>,
   ServerRenderTestFallback: ComponentType
 ) {
   const LazyCenter = lazy(load);
-  return function LazyCenterWithServerRenderFallback(props: TProps) {
+  return function LazyCenterWithServerRenderFallback(props: LazyCenterProps) {
     if (import.meta.env.MODE === 'test' && typeof window === 'undefined') {
       return <ServerRenderTestFallback />;
     }
@@ -26,18 +19,18 @@ function createLazyCenter<TProps extends object>(
 }
 
 // Intentional route-center split points for lower-frequency or chart-heavy admin centers.
-export const LazyRuntimeOverviewPanel = createLazyCenter<RuntimeOverviewPanelProps>(
+export const LazyRuntimeOverviewPanel = createLazyCenter(
   () =>
     import('@/pages/runtime-overview/runtime-overview-panel').then(module => ({
-      default: module.RuntimeOverviewPanel
+      default: module.RuntimeOverviewPanel as unknown as ComponentType<LazyCenterProps>
     })),
   () => <div>runtime panel body</div>
 );
 
-export const LazyEvalsCenterPanel = createLazyCenter<EvalsCenterPanelProps>(
+export const LazyEvalsCenterPanel = createLazyCenter(
   () =>
     import('@/pages/evals-center/evals-center-panel').then(module => ({
-      default: module.EvalsCenterPanel
+      default: module.EvalsCenterPanel as unknown as ComponentType<LazyCenterProps>
     })),
   () => <div>evals panel body</div>
 );
@@ -48,26 +41,26 @@ const LazyKnowledgeGovernancePanel = lazy(() =>
   }))
 );
 
-export const LazyWorkflowLabPage = createLazyCenter<Record<string, never>>(
+export const LazyWorkflowLabPage = createLazyCenter(
   () =>
     import('@/pages/workflow-lab/WorkflowLabPage').then(module => ({
-      default: module.WorkflowLabPage
+      default: module.WorkflowLabPage as unknown as ComponentType<LazyCenterProps>
     })),
   () => <div>workflow lab body</div>
 );
 
-export const LazyCompanyAgentsPanel = createLazyCenter<CompanyAgentsPanelProps>(
+export const LazyCompanyAgentsPanel = createLazyCenter(
   () =>
     import('@/pages/company-agents/company-agents-panel').then(module => ({
-      default: module.CompanyAgentsPanel
+      default: module.CompanyAgentsPanel as unknown as ComponentType<LazyCenterProps>
     })),
   () => <div>company agents panel body</div>
 );
 
-export const LazyArchiveCenterPanel = createLazyCenter<ArchiveCenterPanelProps>(
+export const LazyArchiveCenterPanel = createLazyCenter(
   () =>
     import('@/pages/archive-center/archive-center-panel').then(module => ({
-      default: module.ArchiveCenterPanel
+      default: module.ArchiveCenterPanel as unknown as ComponentType<LazyCenterProps>
     })),
   () => <div>archive panel body</div>
 );
