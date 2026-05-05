@@ -247,7 +247,7 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('chatx-agent-codex');
     expect(html).toContain('is-sidebar-expanded');
     expect(html).toContain('Agent Chat');
-    expect(html).toContain('aria-label="Codex 对话区"');
+    expect(html).toContain('aria-label="对话主区域"');
     expect(html).toContain('覆盖率冲刺');
     expect(html).toContain('running');
     expect(html).not.toContain('回到当前会话');
@@ -259,7 +259,7 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('给 Agent Chat 发送消息');
   });
 
-  it('keeps the default composer placeholder while tool approvals are pending', () => {
+  it('guides pending tool approvals through natural-language confirmation in the composer', () => {
     mockUseChatSession.mockReturnValue(
       createChatSessionOverrides({
         checkpoint: {
@@ -287,9 +287,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('给 Agent Chat 发送消息');
-    expect(html).not.toContain('回复「确认执行」继续，或输入取消 / 修改要求');
-    expect(renderedSenders[0]?.placeholder).toBe('给 Agent Chat 发送消息');
+    expect(html).toContain('回复「确认执行」继续，或输入取消 / 修改要求');
+    expect(renderedSenders[0]?.placeholder).toBe('回复「确认执行」继续，或输入取消 / 修改要求');
   });
 
   it('marks the shell as collapsed when the sidebar starts collapsed', () => {
