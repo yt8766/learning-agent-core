@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import type { RuntimeOverviewPanelProps } from './runtime-overview-types';
-import { RuntimeAnalyticsCharts } from './runtime-analytics-charts';
+import { LazyRuntimeAnalyticsCharts } from './lazy-runtime-analytics-charts';
 import {
   buildCapacityData,
   buildModelDistributionData,
@@ -115,7 +115,7 @@ export function RuntimeAnalyticsSection({
           ) : null}
         </CardHeader>
         <CardContent className="pt-5">
-          <RuntimeAnalyticsCharts
+          <LazyRuntimeAnalyticsCharts
             activeChart={activeChart}
             usageTrendData={usageTrendData}
             modelDistributionData={modelDistributionData}

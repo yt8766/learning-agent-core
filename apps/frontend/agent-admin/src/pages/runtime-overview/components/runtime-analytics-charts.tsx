@@ -30,7 +30,7 @@ import {
   type RuntimeChartView
 } from './runtime-analytics-support';
 
-interface RuntimeAnalyticsChartsProps {
+export interface RuntimeAnalyticsChartsProps {
   activeChart: RuntimeChartView;
   usageTrendData: Array<{ dayLabel: string; tokens: number; costCny: number }>;
   modelDistributionData: Array<{ model: string; tokens: number }>;
