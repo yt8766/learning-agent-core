@@ -1,5 +1,6 @@
 import { act } from 'react';
 import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
@@ -285,16 +286,23 @@ async function renderAuthenticatedRoute(path: string) {
   const routeContainer = document.createElement('div');
   document.body.appendChild(routeContainer);
   root = createRoot(routeContainer);
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  });
 
   await act(async () => {
     root?.render(
-      <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
-        <AuthProvider>
-          <MemoryRouter initialEntries={[path]}>
-            <KnowledgeRoutes />
-          </MemoryRouter>
-        </AuthProvider>
-      </KnowledgeApiProvider>
+      <QueryClientProvider client={queryClient}>
+        <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
+          <AuthProvider>
+            <MemoryRouter initialEntries={[path]}>
+              <KnowledgeRoutes />
+            </MemoryRouter>
+          </AuthProvider>
+        </KnowledgeApiProvider>
+      </QueryClientProvider>
     );
   });
 

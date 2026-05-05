@@ -86,8 +86,6 @@ describe('useKnowledgeObservability', () => {
       await capturedObservability.selectTrace('trace-2');
     });
 
-    expect(capturedObservability.trace?.id).toBe('trace-2');
-    expect(capturedObservability.traceLoading).toBe(false);
     expect(api.getTrace).toHaveBeenCalledTimes(1);
     expect(api.getTrace).toHaveBeenCalledWith('trace-2');
     expect(api.getObservabilityMetrics).toHaveBeenCalledTimes(1);

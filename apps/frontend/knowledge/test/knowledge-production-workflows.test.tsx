@@ -1104,8 +1104,12 @@ function renderClient(element: React.ReactNode) {
 
 function flushEffects() {
   return act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let index = 0; index < 5; index += 1) {
+      await Promise.resolve();
+      await new Promise(resolve => {
+        globalThis.setTimeout(resolve, 0);
+      });
+    }
   });
 }
 

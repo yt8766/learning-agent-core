@@ -1,17 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import './knowledge-governance-page-mocks';
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
-import {
-  useChatAssistantConfig,
-  useSettingsApiKeys,
-  useSettingsModelProviders,
-  useSettingsSecurity,
-  useSettingsStorage,
-  useWorkspaceUsers
-} from '../src/hooks/use-knowledge-governance';
+import { ChatLabPage } from '../src/pages/chat-lab/chat-lab-page';
+import { SettingsKeysPage } from '../src/pages/settings/settings-keys-page';
+import { SettingsModelsPage } from '../src/pages/settings/settings-models-page';
+import { SettingsSecurityPage } from '../src/pages/settings/settings-security-page';
+import { SettingsStoragePage } from '../src/pages/settings/settings-storage-page';
+import { UsersPage } from '../src/pages/users/users-page';
 import { installTinyDom } from './tiny-dom';
 
 let root: Root | undefined;
@@ -31,8 +30,8 @@ afterEach(async () => {
   container = undefined;
 });
 
-describe('Knowledge governance hooks API data flow', () => {
-  it('projects workspace users from the injected API', async () => {
+describe('Knowledge governance pages API data flow', () => {
+  it('renders workspace users from the injected API instead of page fixtures', async () => {
     const api = createApi({
       listWorkspaceUsers: vi.fn().mockResolvedValue({
         items: [
@@ -60,15 +59,16 @@ describe('Knowledge governance hooks API data flow', () => {
       })
     });
 
-    await renderWithApi(api, <WorkspaceUsersProbe />);
+    await renderWithApi(api, <UsersPage />);
     await flushEffects();
 
     expect(api.listWorkspaceUsers).toHaveBeenCalledTimes(1);
     expect(container?.textContent).toContain('林 API');
     expect(container?.textContent).toContain('研究部');
+    expect(container?.textContent).not.toContain('张经理');
   });
 
-  it('projects settings sections from the injected API', async () => {
+  it('renders settings sections from the injected API projections', async () => {
     const api = createApi({
       getSettingsApiKeys: vi.fn().mockResolvedValue({
         items: [
@@ -135,7 +135,15 @@ describe('Knowledge governance hooks API data flow', () => {
       })
     });
 
-    await renderWithApi(api, <SettingsProjectionProbe />);
+    await renderWithApi(
+      api,
+      <>
+        <SettingsModelsPage />
+        <SettingsKeysPage />
+        <SettingsStoragePage />
+        <SettingsSecurityPage />
+      </>
+    );
     await flushEffects();
 
     expect(api.getSettingsModelProviders).toHaveBeenCalledTimes(1);
@@ -146,9 +154,10 @@ describe('Knowledge governance hooks API data flow', () => {
     expect(container?.textContent).toContain('API 注入密钥');
     expect(container?.textContent).toContain('API 存储库');
     expect(container?.textContent).toContain('AES-256 API');
+    expect(container?.textContent).not.toContain('生产环境 API Key');
   });
 
-  it('projects Chat Lab assistant config from the injected API', async () => {
+  it('loads Chat Lab assistant config from the injected API while keeping chat data APIs', async () => {
     const api = createApi({
       getChatAssistantConfig: vi.fn().mockResolvedValue({
         deepThinkEnabled: false,
@@ -161,63 +170,18 @@ describe('Knowledge governance hooks API data flow', () => {
       })
     });
 
-    await renderWithApi(api, <AssistantConfigProbe />);
+    await renderWithApi(api, <ChatLabPage />);
     await flushEffects();
 
     expect(api.getChatAssistantConfig).toHaveBeenCalledTimes(1);
+    expect(api.listKnowledgeBases).toHaveBeenCalledTimes(1);
+    expect(api.listRagModelProfiles).toHaveBeenCalledTimes(1);
+    expect(api.listConversations).toHaveBeenCalledTimes(1);
     expect(container?.textContent).toContain('API 快捷问题');
     expect(container?.textContent).toContain('API 检索');
+    expect(container?.textContent).not.toContain('总结 2026 年知识库检索质量');
   });
 });
-
-function WorkspaceUsersProbe() {
-  const { users } = useWorkspaceUsers();
-  return (
-    <div>
-      {users.map(user => (
-        <span key={user.id}>
-          {user.name}
-          {user.department}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function SettingsProjectionProbe() {
-  const { apiKeys } = useSettingsApiKeys();
-  const { providers } = useSettingsModelProviders();
-  const { security } = useSettingsSecurity();
-  const { storage } = useSettingsStorage();
-  return (
-    <div>
-      {providers.map(provider => (
-        <span key={provider.id}>{provider.name}</span>
-      ))}
-      {apiKeys.map(apiKey => (
-        <span key={apiKey.id}>{apiKey.name}</span>
-      ))}
-      {storage.knowledgeBases.map(knowledgeBase => (
-        <span key={knowledgeBase.id}>{knowledgeBase.name}</span>
-      ))}
-      <span>{security?.encryption.atRest}</span>
-    </div>
-  );
-}
-
-function AssistantConfigProbe() {
-  const { config } = useChatAssistantConfig();
-  return (
-    <div>
-      {config?.quickPrompts.map(prompt => (
-        <span key={prompt}>{prompt}</span>
-      ))}
-      {config?.thinkingSteps.map(step => (
-        <span key={step.id}>{step.label}</span>
-      ))}
-    </div>
-  );
-}
 
 function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFrontendApi {
   return {
@@ -313,9 +277,9 @@ function flushEffects() {
   return act(async () => {
     for (let index = 0; index < 5; index += 1) {
       await Promise.resolve();
-      await new Promise(resolve => {
-        globalThis.setTimeout(resolve, 0);
-      });
     }
+    await new Promise(resolve => {
+      globalThis.setTimeout(resolve, 0);
+    });
   });
 }
