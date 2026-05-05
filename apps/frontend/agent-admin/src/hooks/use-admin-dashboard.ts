@@ -208,7 +208,18 @@ export function useAdminDashboard() {
         page,
         filters
       }),
-    [page, filters]
+    [
+      page,
+      filters.runtimeStatusFilter,
+      filters.runtimeModelFilter,
+      filters.runtimePricingSourceFilter,
+      filters.runtimeExecutionModeFilter,
+      filters.runtimeInteractionKindFilter,
+      filters.approvalsExecutionModeFilter,
+      filters.approvalsInteractionKindFilter,
+      filters.evalScenarioFilter,
+      filters.evalOutcomeFilter
+    ]
   );
   const refreshIntentKey = JSON.stringify(refreshIntent);
 
@@ -295,7 +306,6 @@ export function useAdminDashboard() {
     page,
     setPage: (nextPage: DashboardPageKey) => {
       setPage(nextPage);
-      void actions.refreshPageCenter(nextPage);
     },
     shareUrl,
     title: PAGE_TITLES[page],

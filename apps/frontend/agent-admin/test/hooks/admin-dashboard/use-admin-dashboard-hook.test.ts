@@ -308,7 +308,7 @@ describe('use-admin-dashboard hook coverage', () => {
     result = harness.render(() => useAdminDashboard());
     await harness.runEffects();
     expect(result.page).toBe('learning');
-    expect(actions.refreshPageCenter).toHaveBeenCalledWith('learning');
+    expect(actions.refreshPageCenter).not.toHaveBeenCalledWith('learning');
 
     harness.unmount();
   });
@@ -417,6 +417,15 @@ describe('use-admin-dashboard hook coverage', () => {
 
     intervalCallbacks[0]?.();
     expect(actions.refreshTask).toHaveBeenCalledWith('task-1', false);
+
+    actions.refreshPageCenter.mockClear();
+    const result = harness.render(() => useAdminDashboard());
+    result.setPage('approvals');
+    harness.render(() => useAdminDashboard());
+    await harness.runEffects();
+
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(1);
+    expect(actions.refreshPageCenter).toHaveBeenCalledWith('approvals');
 
     harness.unmount();
     expect(window.clearInterval).toHaveBeenCalled();

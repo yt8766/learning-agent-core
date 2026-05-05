@@ -136,12 +136,14 @@ export function createAdminDashboardRefreshActions(context: AdminDashboardAction
     });
 
     const runtimeFilters = context.getRuntimeFilters();
+    const approvalFilters = context.getApprovalFilters();
     const evalFilters = context.getEvalFilters();
     const requestKey = JSON.stringify({
       targetPage,
       runtimeDays: options?.runtimeDays ?? context.getRuntimeHistoryDays(),
       evalsDays: options?.evalsDays ?? context.getEvalsHistoryDays(),
       runtimeFilters,
+      approvalFilters,
       evalFilters
     });
     const currentRequest = inFlightCenterRefreshes.get(requestKey);
