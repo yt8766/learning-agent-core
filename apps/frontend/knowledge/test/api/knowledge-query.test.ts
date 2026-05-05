@@ -19,6 +19,15 @@ describe('knowledgeQueryKeys', () => {
     expect(knowledgeQueryKeys.documents()).toEqual(['knowledge', 'documents', {}]);
   });
 
+  it('keeps document keys stable when caller params are mutated after key creation', () => {
+    const params = { knowledgeBaseId: 'kb-1' };
+    const key = knowledgeQueryKeys.documents(params);
+
+    params.knowledgeBaseId = 'kb-2';
+
+    expect(key).toEqual(['knowledge', 'documents', { knowledgeBaseId: 'kb-1' }]);
+  });
+
   it('builds observability trace keys', () => {
     expect(knowledgeQueryKeys.trace('trace-1')).toEqual(['knowledge', 'observability', 'trace', 'trace-1']);
   });
@@ -30,6 +39,27 @@ describe('knowledgeQueryKeys', () => {
         candidateRunId: 'run-b'
       })
     ).toEqual([
+      'knowledge',
+      'evals',
+      'run-comparison',
+      {
+        baselineRunId: 'run-a',
+        candidateRunId: 'run-b'
+      }
+    ]);
+  });
+
+  it('keeps eval run comparison keys stable when caller params are mutated after key creation', () => {
+    const params = {
+      baselineRunId: 'run-a',
+      candidateRunId: 'run-b'
+    };
+    const key = knowledgeQueryKeys.evalRunComparison(params);
+
+    params.baselineRunId = 'run-c';
+    params.candidateRunId = 'run-d';
+
+    expect(key).toEqual([
       'knowledge',
       'evals',
       'run-comparison',
