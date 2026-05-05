@@ -121,6 +121,23 @@ describe('AuthClient', () => {
     expect(readTokens()).toBeUndefined();
   });
 
+  it('keeps an instance token cache until the client clears auth state', () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const client = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+
+    localStorage.clear();
+
+    expect(client.getAccessToken()).toBe('access');
+    client.clearTokens();
+    expect(client.getAccessToken()).toBeNull();
+  });
+
   it('clears tokens when refresh fails', async () => {
     const onAuthLost = vi.fn();
     saveTokens({

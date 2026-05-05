@@ -1,5 +1,5 @@
 import type { AuthTokens, CurrentUser, LoginRequest, LoginResponse } from '../types/api';
-import { clearTokens, isRefreshTokenExpired, readTokens, saveTokens, shouldRefreshAccessToken } from './token-storage';
+import { clearTokens, readTokens, saveTokens, type StoredTokens } from './token-storage';
 
 export interface AuthClientOptions {
   baseUrl: string;
@@ -14,12 +14,14 @@ export class AuthClient {
   private readonly fetcher: typeof fetch;
   private onAuthLost?: () => void;
   private refreshPromise: Promise<AuthTokens> | undefined;
+  private cachedTokens: StoredTokens | undefined;
 
   constructor(options: AuthClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
     this.refreshBeforeMs = options.refreshBeforeMs ?? 60_000;
     this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
     this.onAuthLost = options.onAuthLost;
+    this.cachedTokens = readTokens();
   }
 
   async login(input: LoginRequest): Promise<LoginResponse> {
@@ -33,12 +35,12 @@ export class AuthClient {
       })
     });
     const session = await parseJson(response, parseLoginResponse);
-    saveTokens(session.tokens);
+    this.setTokens(session.tokens);
     return session;
   }
 
   logout() {
-    clearTokens();
+    this.clearAuthTokens();
   }
 
   setAuthLostHandler(handler: (() => void) | undefined) {
@@ -77,33 +79,33 @@ export class AuthClient {
   }
 
   getAccessToken() {
-    return readTokens()?.accessToken ?? null;
+    return this.cachedTokens?.accessToken ?? null;
   }
 
   getRefreshToken() {
-    return readTokens()?.refreshToken ?? null;
+    return this.cachedTokens?.refreshToken ?? null;
   }
 
   hasTokens() {
-    return Boolean(readTokens());
+    return Boolean(this.cachedTokens);
   }
 
   clearTokens() {
-    clearTokens();
+    this.clearAuthTokens();
   }
 
   async ensureValidAccessToken(): Promise<string | null> {
-    if (!readTokens()) {
+    if (!this.cachedTokens) {
       return null;
     }
-    if (isRefreshTokenExpired()) {
+    if (this.isRefreshTokenExpired()) {
       this.handleAuthLost();
       return null;
     }
-    if (shouldRefreshAccessToken(this.refreshBeforeMs)) {
+    if (this.shouldRefreshAccessToken()) {
       await this.refreshTokensOnce();
     }
-    return readTokens()?.accessToken ?? null;
+    return this.cachedTokens?.accessToken ?? null;
   }
 
   refreshTokensOnce(): Promise<AuthTokens> {
@@ -117,7 +119,7 @@ export class AuthClient {
 
   async refreshTokens(): Promise<AuthTokens> {
     const refreshToken = this.getRefreshToken();
-    if (!refreshToken || isRefreshTokenExpired()) {
+    if (!refreshToken || this.isRefreshTokenExpired()) {
       this.handleAuthLost();
       throw new Error('Refresh token expired');
     }
@@ -128,7 +130,7 @@ export class AuthClient {
         body: JSON.stringify({ refreshToken })
       });
       const result = await parseJson(response, parseRefreshTokenResponse);
-      saveTokens(result.tokens);
+      this.setTokens(result.tokens);
       return result.tokens;
     } catch (error) {
       this.handleAuthLost();
@@ -137,8 +139,26 @@ export class AuthClient {
   }
 
   private handleAuthLost() {
-    clearTokens();
+    this.clearAuthTokens();
     this.onAuthLost?.();
+  }
+
+  private setTokens(tokens: AuthTokens) {
+    saveTokens(tokens);
+    this.cachedTokens = readTokens();
+  }
+
+  private clearAuthTokens() {
+    clearTokens();
+    this.cachedTokens = undefined;
+  }
+
+  private shouldRefreshAccessToken(now = Date.now()) {
+    return !this.cachedTokens || now >= this.cachedTokens.accessTokenExpiresAt - this.refreshBeforeMs;
+  }
+
+  private isRefreshTokenExpired(now = Date.now()) {
+    return !this.cachedTokens || now >= this.cachedTokens.refreshTokenExpiresAt;
   }
 }
 

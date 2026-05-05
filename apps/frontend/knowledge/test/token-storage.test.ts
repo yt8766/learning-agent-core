@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { clearTokens, readTokens, saveTokens, shouldRefreshAccessToken } from '../src/api/token-storage';
+import {
+  AUTH_STORAGE_KEYS,
+  clearTokens,
+  readTokens,
+  saveTokens,
+  shouldRefreshAccessToken
+} from '../src/api/token-storage';
 import { installLocalStorageMock } from './local-storage-mock';
 
 describe('token storage', () => {
@@ -56,6 +62,25 @@ describe('token storage', () => {
     clearTokens();
 
     expect(readTokens()).toBeUndefined();
+  });
+
+  it('reads legacy four-key tokens and migrates them to versioned storage', () => {
+    localStorage.setItem(AUTH_STORAGE_KEYS.accessToken, 'access');
+    localStorage.setItem(AUTH_STORAGE_KEYS.refreshToken, 'refresh');
+    localStorage.setItem(AUTH_STORAGE_KEYS.accessTokenExpiresAt, String(Date.now() + 60_000));
+    localStorage.setItem(AUTH_STORAGE_KEYS.refreshTokenExpiresAt, String(Date.now() + 120_000));
+
+    const tokens = readTokens();
+
+    expect(tokens?.accessToken).toBe('access');
+    expect(localStorage.getItem(AUTH_STORAGE_KEYS.versionedTokens)).toContain('"version":1');
+  });
+
+  it('clears corrupted versioned storage', () => {
+    localStorage.setItem(AUTH_STORAGE_KEYS.versionedTokens, '{broken');
+
+    expect(readTokens()).toBeUndefined();
+    expect(localStorage.getItem(AUTH_STORAGE_KEYS.versionedTokens)).toBeNull();
   });
 
   it('ignores partial token records', () => {

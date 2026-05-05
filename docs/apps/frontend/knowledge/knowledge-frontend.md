@@ -53,7 +53,8 @@ Chat Lab displays route reason, retrieval diagnostics, grounded citations, feedb
 - `AuthClient` 调用 `auth-server /api/auth/login` 和 `/api/auth/refresh`；`KnowledgeApiClient` 调用 `knowledge-server /api/knowledge/bases` 等业务接口。
 - `/login` 是唯一规范登录入口。未登录访问任何受保护业务路径时，`ProtectedRoute` 必须 `Navigate` 到 `/login`，不能在原业务 URL 下直接渲染登录页。
 - 已登录用户访问 `/login` 时必须重定向回工作台；如果登录页带有 `location.state.from`，登录成功后优先回到原受保护路径，否则回到 `/`。
-- token 存在本地浏览器 storage；退出登录只删除本地 token。
+- token 存在本地浏览器 storage；主键为 `knowledge_auth_tokens` 的 versioned JSON。`token-storage.ts` 会兼容读取并迁移历史 `knowledge_access_token`、`knowledge_refresh_token`、`knowledge_access_token_expires_at`、`knowledge_refresh_token_expires_at` 四 key，遇到损坏 versioned JSON 时清理认证存储。
+- `AuthClient` 在实例初始化时读取一次 token cache；登录或刷新成功后同步 cache，退出登录和 auth lost 时同时清理 cache 与本地 token，避免高频请求反复同步读取 `localStorage`。
 - `AuthClient` 支持 `setAuthLostHandler()`，refresh token 过期或 refresh 失败时清理 token，并通知 `AuthProvider` 把 UI 切回未登录状态。
 
 ## 页面工作流
