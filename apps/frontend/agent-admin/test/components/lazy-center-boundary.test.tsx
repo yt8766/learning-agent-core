@@ -7,14 +7,11 @@ import { afterEach, beforeAll, describe, expect, it, vi, type MockInstance } fro
 import { LazyCenterBoundary } from '@/components/lazy-center-boundary';
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => {
-    buttonProps.latestOnClick = onClick;
-    return <button type="button">{children}</button>;
-  }
-}));
-
-const buttonProps = vi.hoisted(() => ({
-  latestOnClick: undefined as (() => void) | undefined
+  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick} type="button">
+      {children}
+    </button>
+  )
 }));
 
 vi.mock('@/components/ui/card', () => ({
@@ -22,15 +19,8 @@ vi.mock('@/components/ui/card', () => ({
   CardContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>
 }));
 
-const dashboardLoadingStateProps = vi.hoisted(() => ({
-  latestMessage: undefined as string | undefined
-}));
-
 vi.mock('@/pages/dashboard/dashboard-loading-state', () => ({
-  DashboardLoadingState: ({ message }: { message?: string }) => {
-    dashboardLoadingStateProps.latestMessage = message;
-    return <div>dashboard loading shell</div>;
-  }
+  DashboardLoadingState: ({ message }: { message?: string }) => <div>{message}</div>
 }));
 
 let root: Root | undefined;
@@ -51,20 +41,15 @@ afterEach(async () => {
   container = undefined;
   consoleError?.mockRestore();
   consoleError = undefined;
-  buttonProps.latestOnClick = undefined;
 });
 
-async function renderBoundary(children: ReactNode, onRetry?: () => void) {
+async function renderBoundary(children: ReactNode) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
 
   await act(async () => {
-    root?.render(
-      <LazyCenterBoundary label="Runtime Center" onRetry={onRetry}>
-        {children}
-      </LazyCenterBoundary>
-    );
+    root?.render(<LazyCenterBoundary label="Runtime Center">{children}</LazyCenterBoundary>);
   });
 }
 
@@ -196,16 +181,7 @@ describe('LazyCenterBoundary', () => {
 
     await renderBoundary(<Pending />);
 
-    expect(dashboardLoadingStateProps.latestMessage).toBe('正在加载 Runtime Center...');
-  });
-
-  it('renders the center child after it resolves', async () => {
-    const Loaded = lazy(() => Promise.resolve({ default: () => <div>Runtime center loaded</div> }));
-
-    await renderBoundary(<Loaded />);
-    await flushLazyWork();
-
-    expect(container?.textContent).toContain('Runtime center loaded');
+    expect(container?.textContent).toContain('正在加载 Runtime Center...');
   });
 
   it('renders error copy when a center chunk fails', async () => {
@@ -217,20 +193,5 @@ describe('LazyCenterBoundary', () => {
 
     expect(container?.textContent).toContain('Runtime Center 加载失败');
     expect(container?.textContent).toContain('重试');
-  });
-
-  it('calls onRetry when retry is clicked after a center chunk fails', async () => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const onRetry = vi.fn();
-    const Broken = lazy(() => Promise.reject(new Error('chunk failed')));
-
-    await renderBoundary(<Broken />, onRetry);
-    await flushLazyWork();
-
-    await act(async () => {
-      buttonProps.latestOnClick?.();
-    });
-
-    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

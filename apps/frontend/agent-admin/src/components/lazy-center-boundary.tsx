@@ -7,7 +7,6 @@ import { DashboardLoadingState } from '@/pages/dashboard/dashboard-loading-state
 interface LazyCenterBoundaryProps {
   children: ReactNode;
   label: string;
-  onRetry?: () => void;
 }
 
 interface LazyCenterBoundaryState {
@@ -25,10 +24,9 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
     return { error };
   }
 
-  private handleRetry = () => {
-    this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }));
-    this.props.onRetry?.();
-  };
+  componentDidCatch() {
+    // React still requires this lifecycle for class error boundaries.
+  }
 
   render() {
     if (this.state.error) {
@@ -36,7 +34,10 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
         <Card>
           <CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
             <p className="text-sm font-medium">{this.props.label} 加载失败</p>
-            <Button onClick={this.handleRetry} size="sm">
+            <Button
+              onClick={() => this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }))}
+              size="sm"
+            >
               重试
             </Button>
           </CardContent>
@@ -48,14 +49,19 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
   }
 }
 
-function reloadCurrentPage() {
-  globalThis.location.reload();
-}
-
-export function LazyCenterBoundary({ children, label, onRetry = reloadCurrentPage }: LazyCenterBoundaryProps) {
+export function LazyCenterBoundary({ children, label }: LazyCenterBoundaryProps) {
   return (
-    <LazyCenterErrorBoundary label={label} onRetry={onRetry}>
-      <Suspense fallback={<DashboardLoadingState message={`正在加载 ${label}...`} />}>{children}</Suspense>
+    <LazyCenterErrorBoundary label={label}>
+      <Suspense
+        fallback={
+          <div>
+            <p className="sr-only">{`正在加载 ${label}...`}</p>
+            <DashboardLoadingState />
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
     </LazyCenterErrorBoundary>
   );
 }

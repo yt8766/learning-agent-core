@@ -4,7 +4,6 @@ import { Alert, Button, Spin } from 'antd';
 interface KnowledgeLazyBoundaryProps {
   children: ReactNode;
   label: string;
-  onRetry?: () => void;
 }
 
 interface KnowledgeLazyBoundaryState {
@@ -22,17 +21,19 @@ class KnowledgeLazyErrorBoundary extends Component<KnowledgeLazyBoundaryProps, K
     return { error };
   }
 
-  private handleRetry = () => {
-    this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }));
-    this.props.onRetry?.();
-  };
+  componentDidCatch() {
+    // React still requires this lifecycle for class error boundaries.
+  }
 
   render() {
     if (this.state.error) {
       return (
         <Alert
           action={
-            <Button onClick={this.handleRetry} size="small">
+            <Button
+              onClick={() => this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }))}
+              size="small"
+            >
               重试
             </Button>
           }
@@ -47,13 +48,9 @@ class KnowledgeLazyErrorBoundary extends Component<KnowledgeLazyBoundaryProps, K
   }
 }
 
-function reloadCurrentPage() {
-  globalThis.location.reload();
-}
-
-export function KnowledgeLazyBoundary({ children, label, onRetry = reloadCurrentPage }: KnowledgeLazyBoundaryProps) {
+export function KnowledgeLazyBoundary({ children, label }: KnowledgeLazyBoundaryProps) {
   return (
-    <KnowledgeLazyErrorBoundary label={label} onRetry={onRetry}>
+    <KnowledgeLazyErrorBoundary label={label}>
       <Suspense fallback={<Spin tip={`正在加载${label}...`} />}>{children}</Suspense>
     </KnowledgeLazyErrorBoundary>
   );

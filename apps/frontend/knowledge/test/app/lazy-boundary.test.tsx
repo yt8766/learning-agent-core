@@ -15,15 +15,12 @@ vi.mock('antd', () => ({
       {action}
     </div>
   ),
-  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => {
-    buttonProps.latestOnClick = onClick;
-    return <button type="button">{children}</button>;
-  },
+  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick} type="button">
+      {children}
+    </button>
+  ),
   Spin: ({ tip }: { tip?: ReactNode }) => <span>{tip}</span>
-}));
-
-const buttonProps = vi.hoisted(() => ({
-  latestOnClick: undefined as (() => void) | undefined
 }));
 
 let root: Root | undefined;
@@ -44,20 +41,15 @@ afterEach(async () => {
   container = undefined;
   consoleError?.mockRestore();
   consoleError = undefined;
-  buttonProps.latestOnClick = undefined;
 });
 
-async function renderBoundary(children: ReactNode, onRetry?: () => void) {
+async function renderBoundary(children: ReactNode) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
 
   await act(async () => {
-    root?.render(
-      <KnowledgeLazyBoundary label="知识库页面" onRetry={onRetry}>
-        {children}
-      </KnowledgeLazyBoundary>
-    );
+    root?.render(<KnowledgeLazyBoundary label="知识库页面">{children}</KnowledgeLazyBoundary>);
   });
 }
 
@@ -94,20 +86,5 @@ describe('KnowledgeLazyBoundary', () => {
 
     expect(container?.textContent).toContain('知识库页面加载失败');
     expect(container?.textContent).toContain('重试');
-  });
-
-  it('calls onRetry when retry is clicked after a lazy module fails', async () => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const onRetry = vi.fn();
-    const Broken = lazy(() => Promise.reject(new Error('chunk failed')));
-
-    await renderBoundary(<Broken />, onRetry);
-    await flushLazyWork();
-
-    await act(async () => {
-      buttonProps.latestOnClick?.();
-    });
-
-    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
