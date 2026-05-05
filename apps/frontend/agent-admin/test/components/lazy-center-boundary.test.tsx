@@ -7,11 +7,14 @@ import { afterEach, beforeAll, describe, expect, it, vi, type MockInstance } fro
 import { LazyCenterBoundary } from '@/components/lazy-center-boundary';
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
-    <button onClick={onClick} type="button">
-      {children}
-    </button>
-  )
+  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => {
+    buttonProps.latestOnClick = onClick;
+    return <button type="button">{children}</button>;
+  }
+}));
+
+const buttonProps = vi.hoisted(() => ({
+  latestOnClick: undefined as (() => void) | undefined
 }));
 
 vi.mock('@/components/ui/card', () => ({
@@ -48,15 +51,20 @@ afterEach(async () => {
   container = undefined;
   consoleError?.mockRestore();
   consoleError = undefined;
+  buttonProps.latestOnClick = undefined;
 });
 
-async function renderBoundary(children: ReactNode) {
+async function renderBoundary(children: ReactNode, onRetry?: () => void) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
 
   await act(async () => {
-    root?.render(<LazyCenterBoundary label="Runtime Center">{children}</LazyCenterBoundary>);
+    root?.render(
+      <LazyCenterBoundary label="Runtime Center" onRetry={onRetry}>
+        {children}
+      </LazyCenterBoundary>
+    );
   });
 }
 
@@ -200,5 +208,20 @@ describe('LazyCenterBoundary', () => {
 
     expect(container?.textContent).toContain('Runtime Center 加载失败');
     expect(container?.textContent).toContain('重试');
+  });
+
+  it('calls onRetry when retry is clicked after a center chunk fails', async () => {
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const onRetry = vi.fn();
+    const Broken = lazy(() => Promise.reject(new Error('chunk failed')));
+
+    await renderBoundary(<Broken />, onRetry);
+    await flushLazyWork();
+
+    await act(async () => {
+      buttonProps.latestOnClick?.();
+    });
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

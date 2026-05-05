@@ -7,6 +7,7 @@ import { DashboardLoadingState } from '@/pages/dashboard/dashboard-loading-state
 interface LazyCenterBoundaryProps {
   children: ReactNode;
   label: string;
+  onRetry?: () => void;
 }
 
 interface LazyCenterBoundaryState {
@@ -24,9 +25,10 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
     return { error };
   }
 
-  componentDidCatch() {
-    // React still requires this lifecycle for class error boundaries.
-  }
+  private handleRetry = () => {
+    this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }));
+    this.props.onRetry?.();
+  };
 
   render() {
     if (this.state.error) {
@@ -34,10 +36,7 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
         <Card>
           <CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
             <p className="text-sm font-medium">{this.props.label} 加载失败</p>
-            <Button
-              onClick={() => this.setState(current => ({ error: null, retryKey: current.retryKey + 1 }))}
-              size="sm"
-            >
+            <Button onClick={this.handleRetry} size="sm">
               重试
             </Button>
           </CardContent>
@@ -49,9 +48,13 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
   }
 }
 
-export function LazyCenterBoundary({ children, label }: LazyCenterBoundaryProps) {
+function reloadCurrentPage() {
+  globalThis.location.reload();
+}
+
+export function LazyCenterBoundary({ children, label, onRetry = reloadCurrentPage }: LazyCenterBoundaryProps) {
   return (
-    <LazyCenterErrorBoundary label={label}>
+    <LazyCenterErrorBoundary label={label} onRetry={onRetry}>
       <Suspense fallback={<DashboardLoadingState message={`正在加载 ${label}...`} />}>{children}</Suspense>
     </LazyCenterErrorBoundary>
   );
