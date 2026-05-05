@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
 import type { EvalDataset, EvalRun } from '../types/api';
 
 interface KnowledgeEvalsState {
@@ -19,62 +21,58 @@ function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+const EMPTY_COMPARISON_TEXT = '至少需要两次运行后展示评测对比。';
+const EVAL_DATASETS_QUERY_KEY = [...knowledgeQueryKeys.root(), 'evals', 'datasets'] as const;
+const EVAL_RUNS_QUERY_KEY = [...knowledgeQueryKeys.root(), 'evals', 'runs'] as const;
+
 export function useKnowledgeEvals(): KnowledgeEvalsResult {
   const api = useKnowledgeApi();
-  const mountedRef = useRef(true);
-  const requestIdRef = useRef(0);
-  const [state, setState] = useState<KnowledgeEvalsState>({
-    loading: true,
-    error: null,
-    datasets: [],
-    runs: [],
-    comparisonText: '至少需要两次运行后展示评测对比。'
+  const datasetsQuery = useQuery({
+    queryKey: EVAL_DATASETS_QUERY_KEY,
+    queryFn: () => api.listEvalDatasets(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
+  const runsQuery = useQuery({
+    queryKey: EVAL_RUNS_QUERY_KEY,
+    queryFn: () => api.listEvalRuns(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const [candidateRun, baselineRun] = runsQuery.data?.items ?? [];
+  const comparisonEnabled = Boolean(candidateRun && baselineRun);
+  const comparisonQuery = useQuery({
+    queryKey:
+      candidateRun && baselineRun
+        ? knowledgeQueryKeys.evalRunComparison({ baselineRunId: baselineRun.id, candidateRunId: candidateRun.id })
+        : [...knowledgeQueryKeys.root(), 'evals', 'run-comparison', {}],
+    queryFn: () => {
+      if (!candidateRun || !baselineRun) {
+        throw new Error('至少需要两次运行后展示评测对比。');
+      }
+      return api.compareEvalRuns({ baselineRunId: baselineRun.id, candidateRunId: candidateRun.id });
+    },
+    enabled: comparisonEnabled,
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const { refetch: refetchComparison } = comparisonQuery;
+  const { refetch: refetchDatasets } = datasetsQuery;
+  const { refetch: refetchRuns } = runsQuery;
 
   const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    if (!mountedRef.current) {
-      return;
-    }
-    setState(current => ({ ...current, loading: true, error: null }));
-    try {
-      const [datasets, runs] = await Promise.all([api.listEvalDatasets(), api.listEvalRuns()]);
-      const [candidateRun, baselineRun] = runs.items;
-      const comparison =
-        candidateRun && baselineRun
-          ? await api.compareEvalRuns({ baselineRunId: baselineRun.id, candidateRunId: candidateRun.id })
-          : null;
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState({
-        loading: false,
-        error: null,
-        datasets: datasets.items,
-        runs: runs.items,
-        comparisonText: comparison
-          ? `${comparison.candidateRunId} 相比 ${comparison.baselineRunId}：总分变化 ${comparison.totalScoreDelta}`
-          : '至少需要两次运行后展示评测对比。'
-      });
-    } catch (error) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, loading: false, error: toError(error) }));
-    }
-  }, [api]);
+    await Promise.all([refetchDatasets(), refetchRuns(), comparisonEnabled ? refetchComparison() : Promise.resolve()]);
+  }, [comparisonEnabled, refetchComparison, refetchDatasets, refetchRuns]);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  return {
+    loading: datasetsQuery.isFetching || runsQuery.isFetching || (comparisonEnabled && comparisonQuery.isFetching),
+    error: toErrorOrNull(datasetsQuery.error ?? runsQuery.error ?? comparisonQuery.error),
+    datasets: datasetsQuery.data?.items ?? [],
+    runs: runsQuery.data?.items ?? [],
+    comparisonText: comparisonQuery.data
+      ? `${comparisonQuery.data.candidateRunId} 相比 ${comparisonQuery.data.baselineRunId}：总分变化 ${comparisonQuery.data.totalScoreDelta}`
+      : EMPTY_COMPARISON_TEXT,
+    reload
+  };
+}
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  return { ...state, reload };
+function toErrorOrNull(error: unknown): Error | null {
+  return error ? toError(error) : null;
 }

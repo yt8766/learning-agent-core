@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
 import type { ObservabilityMetrics, RagTrace, RagTraceDetail } from '../types/api';
 
 interface KnowledgeObservabilityState {
@@ -22,105 +24,54 @@ function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+const OBSERVABILITY_METRICS_QUERY_KEY = [...knowledgeQueryKeys.root(), 'observability', 'metrics'] as const;
+const OBSERVABILITY_TRACES_QUERY_KEY = [...knowledgeQueryKeys.root(), 'observability', 'traces'] as const;
+
 export function useKnowledgeObservability(): KnowledgeObservabilityResult {
   const api = useKnowledgeApi();
-  const mountedRef = useRef(true);
-  const requestIdRef = useRef(0);
-  const traceRequestIdRef = useRef(0);
-  const selectedTraceIdRef = useRef<string | null>(null);
-  const [state, setState] = useState<KnowledgeObservabilityState>({
-    loading: true,
-    error: null,
-    metrics: null,
-    traces: [],
-    trace: null,
-    traceLoading: false,
-    traceError: null
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const metricsQuery = useQuery({
+    queryKey: OBSERVABILITY_METRICS_QUERY_KEY,
+    queryFn: () => api.getObservabilityMetrics(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
+  const tracesQuery = useQuery({
+    queryKey: OBSERVABILITY_TRACES_QUERY_KEY,
+    queryFn: () => api.listTraces(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const traceDetailId = selectedTraceId ?? tracesQuery.data?.items[0]?.id ?? null;
+  const traceQuery = useQuery({
+    queryKey: knowledgeQueryKeys.trace(traceDetailId ?? ''),
+    queryFn: () => api.getTrace(traceDetailId ?? ''),
+    enabled: Boolean(traceDetailId),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const { refetch: refetchMetrics } = metricsQuery;
+  const { refetch: refetchTrace } = traceQuery;
+  const { refetch: refetchTraces } = tracesQuery;
 
-  const selectTrace = useCallback(
-    async (traceId: string) => {
-      const requestId = traceRequestIdRef.current + 1;
-      traceRequestIdRef.current = requestId;
-      selectedTraceIdRef.current = traceId;
-      if (!mountedRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, traceLoading: true, traceError: null }));
-      try {
-        const trace = await api.getTrace(traceId);
-        if (!mountedRef.current || requestId !== traceRequestIdRef.current) {
-          return;
-        }
-        setState(current => ({ ...current, trace, traceLoading: false, traceError: null }));
-      } catch (error) {
-        if (!mountedRef.current || requestId !== traceRequestIdRef.current) {
-          return;
-        }
-        setState(current => ({ ...current, traceLoading: false, traceError: toError(error) }));
-      }
-    },
-    [api]
-  );
-
-  const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    traceRequestIdRef.current += 1;
-    const traceRequestId = traceRequestIdRef.current;
-    if (!mountedRef.current) {
-      return;
-    }
-    setState(current => ({ ...current, loading: true, error: null, traceError: null }));
-    try {
-      const [metrics, traces] = await Promise.all([api.getObservabilityMetrics(), api.listTraces()]);
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      const selectedTraceId = selectedTraceIdRef.current;
-      const firstTraceId = selectedTraceId
-        ? (traces.items.find(item => item.id === selectedTraceId)?.id ?? selectedTraceId)
-        : traces.items[0]?.id;
-      let trace: RagTraceDetail | null = null;
-      let traceError: Error | null = null;
-      if (firstTraceId) {
-        try {
-          trace = await api.getTrace(firstTraceId);
-        } catch (error) {
-          traceError = toError(error);
-        }
-      }
-      const shouldApplyTrace = traceRequestId === traceRequestIdRef.current;
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({
-        loading: false,
-        error: null,
-        metrics,
-        traces: traces.items,
-        trace: shouldApplyTrace ? trace : current.trace,
-        traceLoading: false,
-        traceError: shouldApplyTrace ? traceError : current.traceError
-      }));
-    } catch (error) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, loading: false, traceLoading: false, error: toError(error) }));
-    }
-  }, [api]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
+  const selectTrace = useCallback(async (traceId: string) => {
+    setSelectedTraceId(traceId);
   }, []);
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const reload = useCallback(async () => {
+    await Promise.all([refetchMetrics(), refetchTraces(), traceDetailId ? refetchTrace() : Promise.resolve()]);
+  }, [refetchMetrics, refetchTrace, refetchTraces, traceDetailId]);
 
-  return { ...state, reload, selectTrace };
+  return {
+    loading: metricsQuery.isFetching || tracesQuery.isFetching,
+    error: toErrorOrNull(metricsQuery.error ?? tracesQuery.error),
+    metrics: metricsQuery.data ?? null,
+    traces: tracesQuery.data?.items ?? [],
+    trace: traceQuery.data ?? null,
+    traceLoading: traceQuery.isFetching,
+    traceError: toErrorOrNull(traceQuery.error),
+    reload,
+    selectTrace
+  };
+}
+
+function toErrorOrNull(error: unknown): Error | null {
+  return error ? toError(error) : null;
 }
