@@ -412,6 +412,7 @@ describe('use-admin-dashboard hook coverage', () => {
     await flushAsyncWork();
 
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('runtime');
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(1);
     expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), 4000);
 
     intervalCallbacks[0]?.();
@@ -573,6 +574,7 @@ describe('use-admin-dashboard hook coverage', () => {
 
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('approvals');
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('evals');
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(2);
     expect(approvalsHarness.stateSlots[1]).toBe('离线');
     expect(evalsHarness.stateSlots[1]).toBe('离线');
   });

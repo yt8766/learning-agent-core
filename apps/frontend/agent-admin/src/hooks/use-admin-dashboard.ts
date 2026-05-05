@@ -15,6 +15,7 @@ import {
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 import { useHashChangeListener, useHashWriter } from '@/hooks/admin-dashboard/admin-dashboard-hash-sync';
 import { useAdminDashboardFilters } from '@/hooks/admin-dashboard/admin-dashboard-filter-state';
+import { buildAdminDashboardRefreshIntent } from '@/hooks/admin-dashboard/admin-dashboard-refresh-intent';
 
 export { PAGE_TITLES };
 
@@ -201,37 +202,21 @@ export function useAdminDashboard() {
     approvalsInteractionKindFilter: filters.approvalsInteractionKindFilter
   });
 
+  const refreshIntent = useMemo(
+    () =>
+      buildAdminDashboardRefreshIntent({
+        page,
+        filters
+      }),
+    [page, filters]
+  );
+  const refreshIntentKey = JSON.stringify(refreshIntent);
+
   useEffect(() => {
     if (consoleDataRef.current) {
-      void actions.refreshPageCenter(pageRef.current);
+      void actions.refreshPageCenter(refreshIntent.page);
     }
-  }, [actions, page]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'runtime') {
-      void actions.refreshPageCenter('runtime');
-    }
-  }, [
-    actions,
-    page,
-    filters.runtimeStatusFilter,
-    filters.runtimeModelFilter,
-    filters.runtimePricingSourceFilter,
-    filters.runtimeExecutionModeFilter,
-    filters.runtimeInteractionKindFilter
-  ]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'approvals') {
-      void actions.refreshPageCenter('approvals');
-    }
-  }, [actions, page, filters.approvalsExecutionModeFilter, filters.approvalsInteractionKindFilter]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'evals') {
-      void actions.refreshPageCenter('evals');
-    }
-  }, [actions, page, filters.evalScenarioFilter, filters.evalOutcomeFilter]);
+  }, [actions, refreshIntent.page, refreshIntentKey]);
 
   useEffect(() => {
     if (!initialDashboardRefreshPromise) {
