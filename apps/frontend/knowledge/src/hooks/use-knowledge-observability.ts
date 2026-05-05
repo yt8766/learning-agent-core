@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
 import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
@@ -29,6 +29,7 @@ const OBSERVABILITY_TRACES_QUERY_KEY = [...knowledgeQueryKeys.root(), 'observabi
 
 export function useKnowledgeObservability(): KnowledgeObservabilityResult {
   const api = useKnowledgeApi();
+  const queryClient = useQueryClient();
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const metricsQuery = useQuery({
     queryKey: OBSERVABILITY_METRICS_QUERY_KEY,
@@ -47,17 +48,49 @@ export function useKnowledgeObservability(): KnowledgeObservabilityResult {
     enabled: Boolean(traceDetailId),
     staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
-  const { refetch: refetchMetrics } = metricsQuery;
-  const { refetch: refetchTrace } = traceQuery;
-  const { refetch: refetchTraces } = tracesQuery;
-
-  const selectTrace = useCallback(async (traceId: string) => {
-    setSelectedTraceId(traceId);
-  }, []);
+  const selectTrace = useCallback(
+    async (traceId: string) => {
+      setSelectedTraceId(traceId);
+      try {
+        await queryClient.fetchQuery({
+          queryKey: knowledgeQueryKeys.trace(traceId),
+          queryFn: () => api.getTrace(traceId),
+          staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+        });
+      } catch {
+        // Keep the legacy facade behavior: expose traceError through query state without rejecting selectTrace().
+      }
+    },
+    [api, queryClient]
+  );
 
   const reload = useCallback(async () => {
-    await Promise.all([refetchMetrics(), refetchTraces(), traceDetailId ? refetchTrace() : Promise.resolve()]);
-  }, [refetchMetrics, refetchTrace, refetchTraces, traceDetailId]);
+    try {
+      const [, traces] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: OBSERVABILITY_METRICS_QUERY_KEY,
+          queryFn: () => api.getObservabilityMetrics(),
+          staleTime: 0
+        }),
+        queryClient.fetchQuery({
+          queryKey: OBSERVABILITY_TRACES_QUERY_KEY,
+          queryFn: () => api.listTraces(),
+          staleTime: 0
+        })
+      ]);
+      const nextTraceId = selectedTraceId ?? traces.items[0]?.id ?? null;
+      if (nextTraceId) {
+        setSelectedTraceId(nextTraceId);
+        await queryClient.fetchQuery({
+          queryKey: knowledgeQueryKeys.trace(nextTraceId),
+          queryFn: () => api.getTrace(nextTraceId),
+          staleTime: 0
+        });
+      }
+    } catch {
+      // Query state carries the error for the facade; reload keeps the previous non-throwing contract.
+    }
+  }, [api, queryClient, selectedTraceId]);
 
   return {
     loading: metricsQuery.isFetching || tracesQuery.isFetching,

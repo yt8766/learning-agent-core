@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
 import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
@@ -27,6 +27,7 @@ const EVAL_RUNS_QUERY_KEY = [...knowledgeQueryKeys.root(), 'evals', 'runs'] as c
 
 export function useKnowledgeEvals(): KnowledgeEvalsResult {
   const api = useKnowledgeApi();
+  const queryClient = useQueryClient();
   const datasetsQuery = useQuery({
     queryKey: EVAL_DATASETS_QUERY_KEY,
     queryFn: () => api.listEvalDatasets(),
@@ -53,13 +54,39 @@ export function useKnowledgeEvals(): KnowledgeEvalsResult {
     enabled: comparisonEnabled,
     staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
-  const { refetch: refetchComparison } = comparisonQuery;
-  const { refetch: refetchDatasets } = datasetsQuery;
-  const { refetch: refetchRuns } = runsQuery;
-
   const reload = useCallback(async () => {
-    await Promise.all([refetchDatasets(), refetchRuns(), comparisonEnabled ? refetchComparison() : Promise.resolve()]);
-  }, [comparisonEnabled, refetchComparison, refetchDatasets, refetchRuns]);
+    try {
+      const [, runs] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: EVAL_DATASETS_QUERY_KEY,
+          queryFn: () => api.listEvalDatasets(),
+          staleTime: 0
+        }),
+        queryClient.fetchQuery({
+          queryKey: EVAL_RUNS_QUERY_KEY,
+          queryFn: () => api.listEvalRuns(),
+          staleTime: 0
+        })
+      ]);
+      const [nextCandidateRun, nextBaselineRun] = runs.items;
+      if (nextCandidateRun && nextBaselineRun) {
+        await queryClient.fetchQuery({
+          queryKey: knowledgeQueryKeys.evalRunComparison({
+            baselineRunId: nextBaselineRun.id,
+            candidateRunId: nextCandidateRun.id
+          }),
+          queryFn: () =>
+            api.compareEvalRuns({
+              baselineRunId: nextBaselineRun.id,
+              candidateRunId: nextCandidateRun.id
+            }),
+          staleTime: 0
+        });
+      }
+    } catch {
+      // Query state carries the error for the facade; reload keeps the previous non-throwing contract.
+    }
+  }, [api, queryClient]);
 
   return {
     loading: datasetsQuery.isFetching || runsQuery.isFetching || (comparisonEnabled && comparisonQuery.isFetching),

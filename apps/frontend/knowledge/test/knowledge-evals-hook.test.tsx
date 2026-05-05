@@ -4,57 +4,44 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
-import { useKnowledgeObservability } from '../src/hooks/use-knowledge-observability';
-import type { ObservabilityMetrics, PageResult, RagTrace, RagTraceDetail } from '../src/types/api';
+import { useKnowledgeEvals } from '../src/hooks/use-knowledge-evals';
+import type { EvalDataset, EvalRun, PageResult } from '../src/types/api';
 import { installTinyDom } from './tiny-dom';
 
 const now = '2026-05-06T00:00:00.000Z';
 
-const metrics: ObservabilityMetrics = {
-  averageLatencyMs: 120,
-  citationClickRate: 0.3,
-  errorRate: 0,
-  negativeFeedbackRate: 0.1,
-  noAnswerRate: 0.05,
-  p95LatencyMs: 220,
-  p99LatencyMs: 300,
-  questionCount: 2,
-  stageLatency: [],
-  timeoutRate: 0,
-  traceCount: 2
-};
-
-const traceOne: RagTrace = {
-  id: 'trace-1',
+const dataset: EvalDataset = {
+  id: 'dataset-1',
   workspaceId: 'ws-1',
-  knowledgeBaseIds: ['kb-1'],
-  question: 'Trace one?',
-  status: 'succeeded',
-  createdAt: now
+  name: '评测集',
+  tags: [],
+  caseCount: 2,
+  createdBy: 'user-1',
+  createdAt: now,
+  updatedAt: now
 };
 
-const traceTwo: RagTrace = {
-  id: 'trace-2',
-  workspaceId: 'ws-1',
-  knowledgeBaseIds: ['kb-1'],
-  question: 'Trace two?',
-  status: 'succeeded',
-  createdAt: now
-};
-
-const traceTwoDetail: RagTraceDetail = {
-  ...traceTwo,
-  answer: 'Trace two answer',
-  citations: [],
-  spans: []
-};
-
-function ObservabilityProbe() {
-  capturedObservability = useKnowledgeObservability();
-  return <span>{capturedObservability.trace?.id ?? 'no-trace'}</span>;
+function createRun(id: string): EvalRun {
+  return {
+    id,
+    workspaceId: 'ws-1',
+    datasetId: dataset.id,
+    knowledgeBaseIds: ['kb-1'],
+    status: 'succeeded',
+    caseCount: 2,
+    completedCaseCount: 2,
+    failedCaseCount: 0,
+    createdBy: 'user-1',
+    createdAt: now
+  };
 }
 
-let capturedObservability: ReturnType<typeof useKnowledgeObservability>;
+function EvalsProbe() {
+  capturedEvals = useKnowledgeEvals();
+  return <span>{capturedEvals.comparisonText}</span>;
+}
+
+let capturedEvals: ReturnType<typeof useKnowledgeEvals>;
 let mountedRoot: Root | undefined;
 
 beforeAll(() => {
@@ -70,38 +57,39 @@ afterEach(async () => {
   mountedRoot = undefined;
 });
 
-describe('useKnowledgeObservability', () => {
-  it('selects trace detail without refetching metrics or waiting for the trace list round trip', async () => {
-    const metricsResult = deferred<ObservabilityMetrics>();
-    const tracesResult = deferred<PageResult<RagTrace>>();
+describe('useKnowledgeEvals', () => {
+  it('reloads comparison with the latest runs pair', async () => {
+    const firstCandidate = createRun('run-candidate-old');
+    const firstBaseline = createRun('run-baseline-old');
+    const latestCandidate = createRun('run-candidate-new');
+    const latestBaseline = createRun('run-baseline-new');
     const api = createApi({
-      getObservabilityMetrics: vi.fn().mockReturnValue(metricsResult.promise),
-      getTrace: vi.fn().mockResolvedValue(traceTwoDetail),
-      listTraces: vi.fn().mockReturnValue(tracesResult.promise)
+      compareEvalRuns: vi.fn<KnowledgeFrontendApi['compareEvalRuns']>().mockResolvedValue({
+        baselineRunId: latestBaseline.id,
+        candidateRunId: latestCandidate.id,
+        totalScoreDelta: 4,
+        retrievalScoreDelta: 2,
+        generationScoreDelta: 1,
+        perMetricDelta: { totalScore: 4 }
+      }),
+      listEvalRuns: vi
+        .fn<KnowledgeFrontendApi['listEvalRuns']>()
+        .mockResolvedValueOnce({ items: [firstCandidate, firstBaseline], page: 1, pageSize: 20, total: 2 })
+        .mockResolvedValueOnce({ items: [latestCandidate, latestBaseline], page: 1, pageSize: 20, total: 2 })
     });
 
     await renderWithApi(api);
-
-    await act(async () => {
-      await capturedObservability.selectTrace('trace-2');
-    });
-
-    expect(capturedObservability.trace?.id).toBe('trace-2');
-    expect(capturedObservability.traceLoading).toBe(false);
-    expect(api.getTrace).toHaveBeenCalledTimes(1);
-    expect(api.getTrace).toHaveBeenCalledWith('trace-2');
-    expect(api.getObservabilityMetrics).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      metricsResult.resolve(metrics);
-      tracesResult.resolve({ items: [traceOne, traceTwo], page: 1, pageSize: 20, total: 2 });
-      await metricsResult.promise;
-      await tracesResult.promise;
-    });
     await flushEffects();
 
-    expect(api.getTrace).toHaveBeenCalledTimes(1);
-    expect(api.getObservabilityMetrics).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await capturedEvals.reload();
+    });
+
+    expect(api.compareEvalRuns).toHaveBeenLastCalledWith({
+      baselineRunId: latestBaseline.id,
+      candidateRunId: latestCandidate.id
+    });
+    expect(capturedEvals.comparisonText).toContain('总分变化 4');
   });
 });
 
@@ -128,7 +116,12 @@ function createApi(overrides: Partial<KnowledgeFrontendApi>): KnowledgeFrontendA
     listDocumentChunks: vi.fn<KnowledgeFrontendApi['listDocumentChunks']>(),
     listDocuments: vi.fn<KnowledgeFrontendApi['listDocuments']>(),
     listEmbeddingModels: vi.fn<KnowledgeFrontendApi['listEmbeddingModels']>(),
-    listEvalDatasets: vi.fn<KnowledgeFrontendApi['listEvalDatasets']>(),
+    listEvalDatasets: vi.fn<KnowledgeFrontendApi['listEvalDatasets']>().mockResolvedValue({
+      items: [dataset],
+      page: 1,
+      pageSize: 20,
+      total: 1
+    } satisfies PageResult<EvalDataset>),
     listEvalRunResults: vi.fn<KnowledgeFrontendApi['listEvalRunResults']>(),
     listEvalRuns: vi.fn<KnowledgeFrontendApi['listEvalRuns']>(),
     listKnowledgeBases: vi.fn<KnowledgeFrontendApi['listKnowledgeBases']>(),
@@ -158,7 +151,7 @@ function renderWithApi(api: KnowledgeFrontendApi) {
     mountedRoot?.render(
       <QueryClientProvider client={queryClient}>
         <KnowledgeApiProvider client={api}>
-          <ObservabilityProbe />
+          <EvalsProbe />
         </KnowledgeApiProvider>
       </QueryClientProvider>
     );
@@ -167,17 +160,11 @@ function renderWithApi(api: KnowledgeFrontendApi) {
 
 function flushEffects() {
   return act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let index = 0; index < 5; index += 1) {
+      await Promise.resolve();
+      await new Promise(resolve => {
+        globalThis.setTimeout(resolve, 0);
+      });
+    }
   });
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((innerResolve, innerReject) => {
-    resolve = innerResolve;
-    reject = innerReject;
-  });
-  return { promise, reject, resolve };
 }
