@@ -19,8 +19,15 @@ vi.mock('@/components/ui/card', () => ({
   CardContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>
 }));
 
+const dashboardLoadingStateProps = vi.hoisted(() => ({
+  latestMessage: undefined as string | undefined
+}));
+
 vi.mock('@/pages/dashboard/dashboard-loading-state', () => ({
-  DashboardLoadingState: ({ message }: { message?: string }) => <div>{message}</div>
+  DashboardLoadingState: ({ message }: { message?: string }) => {
+    dashboardLoadingStateProps.latestMessage = message;
+    return <div>dashboard loading shell</div>;
+  }
 }));
 
 let root: Root | undefined;
@@ -181,7 +188,7 @@ describe('LazyCenterBoundary', () => {
 
     await renderBoundary(<Pending />);
 
-    expect(container?.textContent).toContain('正在加载 Runtime Center...');
+    expect(dashboardLoadingStateProps.latestMessage).toBe('正在加载 Runtime Center...');
   });
 
   it('renders error copy when a center chunk fails', async () => {

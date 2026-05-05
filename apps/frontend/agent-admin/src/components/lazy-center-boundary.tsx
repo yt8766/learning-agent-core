@@ -52,16 +52,7 @@ class LazyCenterErrorBoundary extends Component<LazyCenterBoundaryProps, LazyCen
 export function LazyCenterBoundary({ children, label }: LazyCenterBoundaryProps) {
   return (
     <LazyCenterErrorBoundary label={label}>
-      <Suspense
-        fallback={
-          <div>
-            <p className="sr-only">{`正在加载 ${label}...`}</p>
-            <DashboardLoadingState />
-          </div>
-        }
-      >
-        {children}
-      </Suspense>
+      <Suspense fallback={<DashboardLoadingState message={`正在加载 ${label}...`} />}>{children}</Suspense>
     </LazyCenterErrorBoundary>
   );
 }
