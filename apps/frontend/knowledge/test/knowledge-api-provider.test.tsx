@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -211,27 +212,79 @@ function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFron
     listRagModelProfiles: vi.fn().mockResolvedValue({ items: [] }),
     listConversations: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
     listConversationMessages: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listWorkspaceUsers: vi.fn().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      summary: { totalUsers: 0, activeUsers: 0, adminUsers: 0, pendingUsers: 0 }
+    }),
+    getSettingsModelProviders: vi.fn().mockResolvedValue({ items: [], updatedAt: '2026-05-04T08:00:00.000Z' }),
+    getSettingsApiKeys: vi.fn().mockResolvedValue({ items: [] }),
+    getSettingsStorage: vi
+      .fn()
+      .mockResolvedValue({ buckets: [], knowledgeBases: [], updatedAt: '2026-05-04T08:00:00.000Z' }),
+    getSettingsSecurity: vi.fn().mockResolvedValue({
+      auditLogEnabled: true,
+      encryption: { enabled: true, transport: 'TLS 1.3', atRest: 'AES-256' },
+      ipAllowlist: [],
+      ipAllowlistEnabled: false,
+      mfaRequired: false,
+      passwordPolicy: '基础',
+      securityScore: 80,
+      ssoEnabled: true,
+      updatedAt: '2026-05-04T08:00:00.000Z'
+    }),
+    getChatAssistantConfig: vi.fn().mockResolvedValue({
+      deepThinkEnabled: true,
+      webSearchEnabled: false,
+      modelProfileId: 'knowledge-rag',
+      defaultKnowledgeBaseIds: [],
+      quickPrompts: [],
+      thinkingSteps: [],
+      updatedAt: '2026-05-04T08:00:00.000Z'
+    }),
     listTraces: vi.fn<KnowledgeFrontendApi['listTraces']>(),
     createDocumentFromUpload: vi.fn<KnowledgeFrontendApi['createDocumentFromUpload']>(),
     reprocessDocument: vi.fn<KnowledgeFrontendApi['reprocessDocument']>(),
     deleteDocument: vi.fn<KnowledgeFrontendApi['deleteDocument']>(),
     uploadDocument: vi.fn<KnowledgeFrontendApi['uploadDocument']>(),
     uploadKnowledgeFile: vi.fn<KnowledgeFrontendApi['uploadKnowledgeFile']>(),
+    listAgentFlows: vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    }),
+    saveAgentFlow: vi.fn<KnowledgeFrontendApi['saveAgentFlow']>(),
+    updateAgentFlow: vi.fn<KnowledgeFrontendApi['updateAgentFlow']>(),
+    runAgentFlow: vi.fn<KnowledgeFrontendApi['runAgentFlow']>(),
     ...overrides
   };
 }
 
 function renderClient(element: React.ReactNode) {
   const container = document.createElement('div');
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false }
+    }
+  });
   mountedRoot = createRoot(container);
   return act(async () => {
-    mountedRoot?.render(element);
+    mountedRoot?.render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
   });
 }
 
 function flushEffects() {
   return act(async () => {
-    await Promise.resolve();
+    for (let index = 0; index < 5; index += 1) {
+      await Promise.resolve();
+    }
+    await new Promise(resolve => {
+      globalThis.setTimeout(resolve, 0);
+    });
   });
 }
 

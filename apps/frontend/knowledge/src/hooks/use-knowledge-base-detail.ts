@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
 import type { KnowledgeBase, KnowledgeDocument, PageResult } from '../types/api';
 
 interface KnowledgeBaseDetailState {
@@ -18,62 +20,74 @@ type ListDocumentsApi = {
   listDocuments(input?: { knowledgeBaseId?: string }): Promise<PageResult<KnowledgeDocument>>;
 };
 
+const KNOWLEDGE_BASES_QUERY_KEY = knowledgeQueryKeys.knowledgeBases();
+
 export function useKnowledgeBaseDetail(knowledgeBaseId: string | undefined): UseKnowledgeBaseDetailResult {
   const api = useKnowledgeApi() as ReturnType<typeof useKnowledgeApi> & ListDocumentsApi;
-  const mountedRef = useRef(true);
-  const requestIdRef = useRef(0);
-  const [state, setState] = useState<KnowledgeBaseDetailState>({
-    documents: [],
-    error: null,
-    knowledgeBase: null,
-    loading: true
+  const enabled = Boolean(knowledgeBaseId);
+  const knowledgeBasesQuery = useQuery({
+    queryKey: KNOWLEDGE_BASES_QUERY_KEY,
+    queryFn: () => api.listKnowledgeBases(),
+    enabled,
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
+  const documentsQuery = useQuery({
+    queryKey: knowledgeQueryKeys.documents(knowledgeBaseId ? { knowledgeBaseId } : {}),
+    queryFn: async () => {
+      if (!knowledgeBaseId) {
+        throw new Error('缺少知识库 ID');
+      }
+      return readDocumentItems(await api.listDocuments({ knowledgeBaseId }));
+    },
+    enabled,
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const { refetch: refetchKnowledgeBases } = knowledgeBasesQuery;
+  const { refetch: refetchDocuments } = documentsQuery;
 
   const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
     if (!knowledgeBaseId) {
-      setState(current => ({ ...current, error: new Error('缺少知识库 ID'), loading: false }));
       return;
     }
-    setState(current => ({ ...current, error: null, loading: true }));
-    try {
-      const [knowledgeBases, documents] = await Promise.all([
-        api.listKnowledgeBases(),
-        api.listDocuments({ knowledgeBaseId })
-      ]);
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      const knowledgeBase = knowledgeBases.items.find(item => item.id === knowledgeBaseId) ?? null;
-      setState({
-        documents: documents.items,
-        error: knowledgeBase ? null : new Error('未找到知识库'),
-        knowledgeBase,
-        loading: false
-      });
-    } catch (error) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, error: toError(error), loading: false }));
-    }
-  }, [api, knowledgeBaseId]);
+    await Promise.all([refetchKnowledgeBases(), refetchDocuments()]);
+  }, [knowledgeBaseId, refetchDocuments, refetchKnowledgeBases]);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
+  if (!knowledgeBaseId) {
+    return {
+      documents: [],
+      error: new Error('缺少知识库 ID'),
+      knowledgeBase: null,
+      loading: false,
+      reload
     };
-  }, []);
+  }
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const queryError = toErrorOrNull(knowledgeBasesQuery.error ?? documentsQuery.error);
+  const loading = knowledgeBasesQuery.isFetching || documentsQuery.isFetching;
+  const knowledgeBase = knowledgeBasesQuery.data?.items.find(item => item.id === knowledgeBaseId) ?? null;
+  const missingKnowledgeBaseError =
+    !loading && !queryError && knowledgeBasesQuery.isSuccess && !knowledgeBase ? new Error('未找到知识库') : null;
 
-  return { ...state, reload };
+  return {
+    documents: documentsQuery.data ?? [],
+    error: queryError ?? missingKnowledgeBaseError,
+    knowledgeBase,
+    loading,
+    reload
+  };
 }
 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function toErrorOrNull(error: unknown): Error | null {
+  return error ? toError(error) : null;
+}
+
+function readDocumentItems(response: unknown): KnowledgeDocument[] {
+  if (typeof response === 'object' && response !== null && 'items' in response && Array.isArray(response.items)) {
+    return response.items as KnowledgeDocument[];
+  }
+  throw new Error('文档列表响应结构不正确');
 }

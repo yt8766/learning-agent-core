@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
 import type { KnowledgeDocument } from '../types/api';
 
 interface KnowledgeDocumentsState {
@@ -17,6 +19,8 @@ export interface KnowledgeDocumentsResult extends KnowledgeDocumentsState {
   uploadDocument(file: File, knowledgeBaseId: string): Promise<void>;
 }
 
+const DOCUMENTS_QUERY_KEY = knowledgeQueryKeys.documents();
+
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -30,99 +34,94 @@ function readDocumentItems(response: unknown): KnowledgeDocument[] {
 
 export function useKnowledgeDocuments(): KnowledgeDocumentsResult {
   const api = useKnowledgeApi();
-  const mountedRef = useRef(true);
-  const requestIdRef = useRef(0);
-  const [state, setState] = useState<KnowledgeDocumentsState>({
-    loading: true,
-    error: null,
-    actionError: null,
-    documents: []
+  const queryClient = useQueryClient();
+  const [actionError, setActionError] = useState<Error | null>(null);
+  const documentsQuery = useQuery({
+    queryKey: DOCUMENTS_QUERY_KEY,
+    queryFn: async () => readDocumentItems(await api.listDocuments()),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
+  const { refetch } = documentsQuery;
 
   const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    if (!mountedRef.current) {
-      return;
-    }
-    setState(current => ({ ...current, loading: true, error: null }));
-    try {
-      const documents = await api.listDocuments();
-      const documentItems = readDocumentItems(documents);
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, loading: false, error: null, documents: documentItems }));
-    } catch (error) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({ ...current, loading: false, error: toError(error) }));
-    }
-  }, [api]);
+    await refetch();
+  }, [refetch]);
+
+  const invalidateDocuments = useCallback(
+    async () => queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY }),
+    [queryClient]
+  );
+
+  const reprocessMutation = useMutation({
+    mutationFn: (documentId: string) => api.reprocessDocument(documentId),
+    onMutate: () => setActionError(null),
+    onSuccess: invalidateDocuments,
+    onError: error => setActionError(toError(error))
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ file, knowledgeBaseId }: { file: File; knowledgeBaseId: string }) =>
+      api.uploadDocument({ file, knowledgeBaseId }),
+    onMutate: () => setActionError(null),
+    onSuccess: invalidateDocuments,
+    onError: error => setActionError(toError(error))
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (documentId: string) => api.deleteDocument(documentId),
+    onMutate: () => setActionError(null),
+    onSuccess: invalidateDocuments,
+    onError: error => setActionError(toError(error))
+  });
+  const { mutateAsync: deleteDocumentMutation } = deleteMutation;
+  const { mutateAsync: reprocessDocumentMutation } = reprocessMutation;
+  const { mutateAsync: uploadDocumentMutation } = uploadMutation;
 
   const reprocessDocument = useCallback(
     async (documentId: string) => {
       try {
-        setState(current => ({ ...current, actionError: null }));
-        await api.reprocessDocument(documentId);
-        await reload();
+        await reprocessDocumentMutation(documentId);
       } catch (error) {
-        if (mountedRef.current) {
-          setState(current => ({ ...current, actionError: toError(error) }));
-        }
+        setActionError(toError(error));
       }
     },
-    [api, reload]
+    [reprocessDocumentMutation]
   );
 
   const uploadDocument = useCallback(
     async (file: File, knowledgeBaseId: string) => {
       try {
-        setState(current => ({ ...current, actionError: null }));
-        await api.uploadDocument({ file, knowledgeBaseId });
-        await reload();
+        await uploadDocumentMutation({ file, knowledgeBaseId });
       } catch (error) {
-        if (mountedRef.current) {
-          setState(current => ({ ...current, actionError: toError(error) }));
-        }
+        setActionError(toError(error));
       }
     },
-    [api, reload]
+    [uploadDocumentMutation]
   );
 
   const deleteDocument = useCallback(
     async (documentId: string) => {
       try {
-        setState(current => ({ ...current, actionError: null }));
-        await api.deleteDocument(documentId);
-        await reload();
+        await deleteDocumentMutation(documentId);
       } catch (error) {
-        if (mountedRef.current) {
-          setState(current => ({ ...current, actionError: toError(error) }));
-        }
+        setActionError(toError(error));
       }
     },
-    [api, reload]
+    [deleteDocumentMutation]
   );
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
   return {
-    ...state,
-    error: state.error ?? state.actionError,
+    loading: documentsQuery.isFetching,
+    error: toErrorOrNull(documentsQuery.error) ?? actionError,
+    actionError,
+    documents: documentsQuery.data ?? [],
     reload,
     reprocessDocument,
     deleteDocument,
     uploadDocument
   };
+}
+
+function toErrorOrNull(error: unknown): Error | null {
+  return error ? toError(error) : null;
 }

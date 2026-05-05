@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useKnowledgeApi } from '../api/knowledge-api-provider';
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '../api/knowledge-query';
 import type { DashboardOverview, KnowledgeBase } from '../types/api';
 
 interface KnowledgeDashboardState {
@@ -14,61 +16,46 @@ export interface KnowledgeDashboardResult extends KnowledgeDashboardState {
   reload(): Promise<void>;
 }
 
+const DASHBOARD_QUERY_KEY = knowledgeQueryKeys.dashboard();
+const KNOWLEDGE_BASES_QUERY_KEY = knowledgeQueryKeys.knowledgeBases();
+
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
 export function useKnowledgeDashboard(): KnowledgeDashboardResult {
   const api = useKnowledgeApi();
-  const mountedRef = useRef(true);
-  const requestIdRef = useRef(0);
-  const [state, setState] = useState<KnowledgeDashboardState>({
-    loading: true,
-    error: null,
-    overview: null,
-    knowledgeBases: []
+  const queryClient = useQueryClient();
+  const overviewQuery = useQuery({
+    queryKey: DASHBOARD_QUERY_KEY,
+    queryFn: () => api.getDashboardOverview(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
+  const knowledgeBasesQuery = useQuery({
+    queryKey: KNOWLEDGE_BASES_QUERY_KEY,
+    queryFn: () => api.listKnowledgeBases(),
+    staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
+  });
+  const { refetch: refetchOverview } = overviewQuery;
+  const { refetch: refetchKnowledgeBases } = knowledgeBasesQuery;
 
   const reload = useCallback(async () => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    if (!mountedRef.current) {
-      return;
-    }
-    setState(current => ({ ...current, loading: true, error: null }));
-    try {
-      const [overview, knowledgeBases] = await Promise.all([api.getDashboardOverview(), api.listKnowledgeBases()]);
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState({
-        loading: false,
-        error: null,
-        overview,
-        knowledgeBases: knowledgeBases.items
-      });
-    } catch (error) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) {
-        return;
-      }
-      setState(current => ({
-        ...current,
-        loading: false,
-        error: toError(error)
-      }));
-    }
-  }, [api]);
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: DASHBOARD_QUERY_KEY }),
+      queryClient.cancelQueries({ queryKey: KNOWLEDGE_BASES_QUERY_KEY })
+    ]);
+    await Promise.all([refetchOverview(), refetchKnowledgeBases()]);
+  }, [queryClient, refetchKnowledgeBases, refetchOverview]);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  return {
+    loading: overviewQuery.isFetching || knowledgeBasesQuery.isFetching,
+    error: toErrorOrNull(overviewQuery.error ?? knowledgeBasesQuery.error),
+    overview: overviewQuery.data ?? null,
+    knowledgeBases: knowledgeBasesQuery.data?.items ?? [],
+    reload
+  };
+}
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  return { ...state, reload };
+function toErrorOrNull(error: unknown): Error | null {
+  return error ? toError(error) : null;
 }
