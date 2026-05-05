@@ -47,10 +47,6 @@ export class AuthClient {
     this.onAuthLost = handler;
   }
 
-  setAuthLostHandler(handler: (() => void) | undefined) {
-    this.onAuthLost = handler;
-  }
-
   async getCurrentUser(): Promise<CurrentUser> {
     const result = await this.requestWithAccessToken('/auth/me', parseMeResponse);
     return result.user;
