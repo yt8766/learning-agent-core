@@ -105,6 +105,25 @@ vi.mock('@ant-design/icons', () =>
   )
 );
 
+vi.mock('@xyflow/react', () => ({
+  Background: () => <div>background</div>,
+  Controls: () => <div>controls</div>,
+  Handle: () => <span />,
+  MiniMap: () => <div>mini-map</div>,
+  Position: { Bottom: 'bottom', Top: 'top' },
+  ReactFlow: ({ children, nodes }: { children?: ReactNode; nodes: { id: string; data: { label: string } }[] }) => (
+    <div>
+      {nodes.map(node => (
+        <button key={node.id} type="button">
+          {node.data.label}
+        </button>
+      ))}
+      {children}
+    </div>
+  ),
+  ReactFlowProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>
+}));
+
 import { App, KnowledgeRoutes, resolvePostLoginPath, resolveViewFromPath } from '../src/app/App';
 import { KnowledgeApiProvider } from '../src/api/knowledge-api-provider';
 import { MockKnowledgeApiClient } from '../src/api/mock-knowledge-api-client';
@@ -112,10 +131,10 @@ import { AuthProvider } from '../src/pages/auth/auth-provider';
 import { installTinyDom } from './tiny-dom';
 import { installLocalStorageMock } from './local-storage-mock';
 
-describe('Knowledge App shell', () => {
-  let root: Root | undefined;
-  let container: HTMLElement | undefined;
+let root: Root | undefined;
+let container: HTMLElement | undefined;
 
+describe('Knowledge App shell', () => {
   afterEach(async () => {
     if (root) {
       await act(async () => {
@@ -226,31 +245,19 @@ describe('Knowledge App shell', () => {
   });
 
   it('renders the authenticated evals route content', async () => {
-    installTinyBrowserDom();
-    installLocalStorageMock();
-    localStorage.setItem('knowledge_access_token', 'access');
-    localStorage.setItem('knowledge_refresh_token', 'refresh');
-    localStorage.setItem('knowledge_access_token_expires_at', String(Date.now() + 120_000));
-    localStorage.setItem('knowledge_refresh_token_expires_at', String(Date.now() + 600_000));
-
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-
-    await act(async () => {
-      root?.render(
-        <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
-          <AuthProvider>
-            <MemoryRouter initialEntries={['/evals']}>
-              <KnowledgeRoutes />
-            </MemoryRouter>
-          </AuthProvider>
-        </KnowledgeApiProvider>
-      );
-    });
+    container = await renderAuthenticatedRoute('/evals');
 
     await waitForText('运行记录');
     expect(container.textContent).toContain('评测回归');
+  });
+
+  it('renders the authenticated agent flow route and resolves the lazy canvas chunk', async () => {
+    container = await renderAuthenticatedRoute('/agent-flow');
+
+    await waitForText('background');
+    expect(container.textContent).toContain('Agent Flow');
+    expect(container.textContent).toContain('Input');
+    expect(container.textContent).toContain('Retrieve Knowledge');
   });
 
   it('does not map exception routes into a sidebar navigation item', () => {
@@ -266,6 +273,33 @@ describe('Knowledge App shell', () => {
     expect(resolvePostLoginPath(undefined)).toBe('/');
   });
 });
+
+async function renderAuthenticatedRoute(path: string) {
+  installTinyBrowserDom();
+  installLocalStorageMock();
+  localStorage.setItem('knowledge_access_token', 'access');
+  localStorage.setItem('knowledge_refresh_token', 'refresh');
+  localStorage.setItem('knowledge_access_token_expires_at', String(Date.now() + 120_000));
+  localStorage.setItem('knowledge_refresh_token_expires_at', String(Date.now() + 600_000));
+
+  const routeContainer = document.createElement('div');
+  document.body.appendChild(routeContainer);
+  root = createRoot(routeContainer);
+
+  await act(async () => {
+    root?.render(
+      <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <KnowledgeRoutes />
+          </MemoryRouter>
+        </AuthProvider>
+      </KnowledgeApiProvider>
+    );
+  });
+
+  return routeContainer;
+}
 
 async function waitForText(text: string) {
   for (let attempt = 0; attempt < 50; attempt += 1) {
