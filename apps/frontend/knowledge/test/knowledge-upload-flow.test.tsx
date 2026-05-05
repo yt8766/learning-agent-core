@@ -185,21 +185,7 @@ describe('knowledge upload flow', () => {
   });
 
   it('invalidates the documents query after uploading a document', async () => {
-    const client = createClient();
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false }
-      }
-    });
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
-
-    await renderClient(
-      <QueryClientProvider client={queryClient}>
-        <KnowledgeApiProvider client={client}>
-          <DocumentsProbe />
-        </KnowledgeApiProvider>
-      </QueryClientProvider>
-    );
+    const { invalidateQueries } = await renderDocumentsProbe();
 
     const file = new File(['# Runbook'], 'runbook.md', { type: 'text/markdown' });
     await act(async () => {
@@ -208,7 +194,47 @@ describe('knowledge upload flow', () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
   });
+
+  it('invalidates the documents query after deleting a document', async () => {
+    const { invalidateQueries } = await renderDocumentsProbe();
+
+    await act(async () => {
+      await capturedDocuments.deleteDocument('doc_upload');
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
+  });
+
+  it('invalidates the documents query after reprocessing a document', async () => {
+    const { invalidateQueries } = await renderDocumentsProbe();
+
+    await act(async () => {
+      await capturedDocuments.reprocessDocument('doc_upload');
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: knowledgeQueryKeys.documents() });
+  });
 });
+
+async function renderDocumentsProbe() {
+  const client = createClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false }
+    }
+  });
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+
+  await renderClient(
+    <QueryClientProvider client={queryClient}>
+      <KnowledgeApiProvider client={client}>
+        <DocumentsProbe />
+      </KnowledgeApiProvider>
+    </QueryClientProvider>
+  );
+
+  return { client, invalidateQueries };
+}
 
 function createClient(): KnowledgeFrontendApi & CoreOpsApi {
   const uploadKnowledgeFile = vi.fn<CoreOpsApi['uploadKnowledgeFile']>().mockResolvedValue({
