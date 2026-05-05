@@ -7,6 +7,7 @@ import {
   buildWorkspaceShareText,
   buildWorkspaceVaultSignals,
   buildThoughtItems,
+  buildThoughtItemsFromFields,
   resolveSuggestedDraftSubmission,
   shouldShowMissionControl
 } from '@/pages/chat-home/chat-home-workbench';
@@ -290,6 +291,50 @@ describe('chat-home-workbench empty session chrome', () => {
 });
 
 describe('chat-home-workbench thought items', () => {
+  it('builds thought items from explicit fields without requiring the full chat facade', () => {
+    const items = buildThoughtItemsFromFields({
+      activeSessionId: 'session-1',
+      events: [
+        {
+          id: 'evt-1',
+          sessionId: 'session-1',
+          type: 'ministry_started',
+          at: '2026-05-06T00:00:00.000Z',
+          payload: { summary: '工部开始处理' }
+        }
+      ],
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-fields',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: { status: 'running' },
+        usedInstalledSkills: ['find-skills'],
+        connectorRefs: ['github-mcp'],
+        currentWorker: 'code-worker',
+        createdAt: '2026-05-06T00:00:00.000Z',
+        updatedAt: '2026-05-06T00:00:00.000Z'
+      }
+    });
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: '能力链路',
+          description: expect.stringContaining('已复用 find-skills')
+        }),
+        expect.objectContaining({
+          key: 'evt-1',
+          description: '工部开始处理'
+        })
+      ])
+    );
+  });
+
   it('adds capability usage summary into thought items instead of relying on skill cards', () => {
     const items = buildThoughtItems({
       events: [],

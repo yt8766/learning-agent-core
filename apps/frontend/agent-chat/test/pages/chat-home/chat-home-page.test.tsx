@@ -130,6 +130,12 @@ vi.mock('@ant-design/x', () => ({
   }
 }));
 
+vi.mock('@ant-design/x-markdown', () => ({
+  XMarkdown: ({ content, className }: { content: string; className?: string }) => (
+    <div className={className}>{content}</div>
+  )
+}));
+
 vi.mock('@/pages/chat/chat-message-adapter', () => ({
   buildBubbleItems: (options: Record<string, unknown>) => buildBubbleItemsMock(options)
 }));
@@ -154,7 +160,8 @@ vi.mock('@/pages/chat-home/chat-home-sidebar', () => ({
 }));
 
 vi.mock('@/pages/chat-home/chat-home-workbench-thoughts', () => ({
-  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }]
+  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }],
+  buildThoughtItemsFromFields: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }]
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail', () => ({
@@ -164,6 +171,7 @@ vi.mock('@/pages/chat-home/chat-home-anchor-rail', () => ({
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
+  dedupeMessagesById: <T extends { id: string }>(messages: T[]) => messages,
   buildConversationAnchors: () => [
     { id: 'anchor-user', messageId: 'msg-user', label: '用户问题' },
     { id: 'anchor-assistant', messageId: 'bubble-1', label: '助手回答' }
@@ -206,6 +214,7 @@ describe('ChatHomePage shell', () => {
       showRightPanel: true,
       error: 'provider timeout',
       loading: false,
+      isRequesting: false,
       sendMessage: vi.fn(),
       cancelActiveSession: vi.fn(),
       deleteActiveSession: vi.fn(),
@@ -235,9 +244,10 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-expanded"');
+    expect(html).toContain('chatx-agent-codex');
+    expect(html).toContain('is-sidebar-expanded');
     expect(html).toContain('Agent Chat');
-    expect(html).toContain('aria-label="Codex 对话区"');
+    expect(html).toContain('aria-label="对话主区域"');
     expect(html).toContain('覆盖率冲刺');
     expect(html).toContain('running');
     expect(html).not.toContain('回到当前会话');
@@ -247,6 +257,38 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('chat-home-sidebar');
     expect(html).toContain('assistant bubble');
     expect(html).toContain('给 Agent Chat 发送消息');
+  });
+
+  it('guides pending tool approvals through natural-language confirmation in the composer', () => {
+    mockUseChatSession.mockReturnValue(
+      createChatSessionOverrides({
+        checkpoint: {
+          pendingApprovals: [],
+          activeInterrupt: {
+            id: 'interrupt-1',
+            status: 'pending',
+            mode: 'blocking',
+            source: 'tool',
+            kind: 'tool-approval',
+            resumeStrategy: 'approval-recovery',
+            payload: {
+              requiredConfirmationPhrase: '确认执行'
+            },
+            createdAt: '2026-05-05T10:00:00.000Z'
+          },
+          approvalCursor: 0,
+          learningCursor: 0,
+          agentStates: [],
+          createdAt: '2026-05-05T10:00:00.000Z',
+          updatedAt: '2026-05-05T10:00:00.000Z'
+        }
+      })
+    );
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('回复「确认执行」继续，或输入取消 / 修改要求');
+    expect(renderedSenders[0]?.placeholder).toBe('回复「确认执行」继续，或输入取消 / 修改要求');
   });
 
   it('marks the shell as collapsed when the sidebar starts collapsed', () => {
@@ -263,7 +305,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-collapsed"');
+    expect(html).toContain('chatx-agent-codex');
+    expect(html).toContain('is-sidebar-collapsed');
   });
 
   it('renders the empty conversation entry without quick or expert mode controls', () => {
@@ -282,7 +325,7 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('开始新对话');
+    expect(html).toContain('你今天想搞定什么？');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).not.toContain('使用快速模式开始对话');
     expect(html).not.toContain('使用专家模式开始对话');
@@ -317,7 +360,7 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('开始新对话');
+    expect(html).toContain('你今天想搞定什么？');
     expect(html).not.toContain('使用专家模式开始对话');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
