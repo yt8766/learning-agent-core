@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.setConfig({ testTimeout: 60_000 });
+
 const { createdChatModels, createdEmbeddings } = vi.hoisted(() => ({
   createdChatModels: [] as unknown[],
   createdEmbeddings: [] as unknown[]

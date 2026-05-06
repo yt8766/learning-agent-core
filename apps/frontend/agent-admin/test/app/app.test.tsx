@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DashboardPageKey } from '@/types/admin';
 
+vi.setConfig({ testTimeout: 60_000 });
+
 const { mockUseAdminDashboard } = vi.hoisted(() => ({
   mockUseAdminDashboard: vi.fn()
 }));

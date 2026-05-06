@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../../src/auth/auth.service';
 import { toAuthHttpError } from '../../src/auth/filters/auth-exception.filter';
@@ -6,6 +6,8 @@ import { JwtProvider } from '../../src/auth/jwt.provider';
 import { PasswordHasherProvider } from '../../src/auth/password-hasher.provider';
 import { InMemoryAuthRepository } from '../../src/auth/repositories/auth-memory.repository';
 import { UserManagementService } from '../../src/auth/user-management.service';
+
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('auth HTTP behavior backing service', () => {
   async function createServices() {

@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-VERIFY_INCLUDE_WORKTREE=0 VERIFY_INCLUDE_STAGED=0 VERIFY_INCLUDE_UNTRACKED=0 pnpm verify:affected
-pnpm test:workspace:smoke
+# Push should only push; commit-msg owns the local verification gate.
+exit 0

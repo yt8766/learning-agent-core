@@ -57,7 +57,8 @@ function withWorkspacePackageFallback(loader) {
       }
     }
 
-    return originalResolveFilename.call(this, request, parent, isMain, options);
+    const resolvedPath = originalResolveFilename.call(this, request, parent, isMain, options);
+    return coerceTypeDeclarationResolution(resolvedPath);
   };
 
   try {
@@ -65,6 +66,20 @@ function withWorkspacePackageFallback(loader) {
   } finally {
     Module._resolveFilename = originalResolveFilename;
   }
+}
+
+function coerceTypeDeclarationResolution(resolvedPath) {
+  if (typeof resolvedPath !== 'string') {
+    return resolvedPath;
+  }
+
+  const runtimeCandidates = resolvedPath.endsWith('.d.cts')
+    ? [resolvedPath.replace(/\.d\.cts$/, '.cjs'), resolvedPath.replace(/\.d\.cts$/, '.js')]
+    : resolvedPath.endsWith('.d.ts')
+      ? [resolvedPath.replace(/\.d\.ts$/, '.cjs'), resolvedPath.replace(/\.d\.ts$/, '.js')]
+      : [];
+
+  return runtimeCandidates.find(candidate => existsSync(candidate)) ?? resolvedPath;
 }
 
 function resolveWorkspacePackageEntry(packageName) {

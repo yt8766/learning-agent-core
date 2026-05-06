@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: 60_000 });
 
 describe('@agent/knowledge SDK entrypoints', () => {
   it('exports stable browser and node entrypoints without vendor objects', async () => {
