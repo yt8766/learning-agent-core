@@ -474,6 +474,7 @@ describe('loadSettings', () => {
       env: {
         ACTIVE_MODEL_PROVIDER: '',
         MINIMAX_API_KEY: 'minimax-key',
+        MINIMAX_BASE_URL: '',
         MINIMAX_MANAGER_MODEL: '',
         MINIMAX_RESEARCH_MODEL: '',
         MINIMAX_EXECUTOR_MODEL: '',
@@ -489,7 +490,7 @@ describe('loadSettings', () => {
         expect.objectContaining({
           id: 'minimax',
           type: 'minimax',
-          baseUrl: 'https://api.minimaxi.com/v1'
+          baseUrl: 'https://api.minimax.io/v1'
         })
       ])
     );

@@ -12,7 +12,7 @@
     "dev:backend": "nest start --watch",
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "turbo:typecheck": "pnpm typecheck",
+    "turbo:typecheck": "pnpm --dir ../../.. --filter @agent/core --filter @agent/knowledge build:lib && pnpm typecheck",
     "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/backend/knowledge-server/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "test": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/backend/knowledge-server/test"
   },
