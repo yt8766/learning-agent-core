@@ -1,4 +1,0 @@
-#!/usr/bin/env sh
-
-# Push should only push; commit-msg owns the local verification gate.
-exit 0
