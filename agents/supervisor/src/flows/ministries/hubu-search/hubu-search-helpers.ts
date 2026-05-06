@@ -45,16 +45,13 @@ export function buildHeuristicResearchPlan(goal: string, availableTools: Researc
   const normalizedGoal = goal.toLowerCase();
   const ranked: ResearchToolId[] = [];
 
-  if (/(最新|最近|today|latest|recent|本周|今天|近况)/i.test(normalizedGoal) && availableTools.includes('web-search')) {
+  if (availableTools.includes('web-search')) {
     ranked.push('web-search');
   }
   if (/(文档|架构|规范|repo|repository|源码|runtime|knowledge|设计)/i.test(normalizedGoal)) {
     ranked.push('knowledge-search');
   }
   ranked.push('memory-search', 'skill-search');
-  if (availableTools.includes('web-search')) {
-    ranked.push('web-search');
-  }
 
   return Array.from(new Set(ranked))
     .filter(tool => availableTools.includes(tool))

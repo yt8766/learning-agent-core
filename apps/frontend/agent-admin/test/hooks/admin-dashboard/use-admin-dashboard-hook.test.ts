@@ -308,7 +308,7 @@ describe('use-admin-dashboard hook coverage', () => {
     result = harness.render(() => useAdminDashboard());
     await harness.runEffects();
     expect(result.page).toBe('learning');
-    expect(actions.refreshPageCenter).toHaveBeenCalledWith('learning');
+    expect(actions.refreshPageCenter).not.toHaveBeenCalledWith('learning');
 
     harness.unmount();
   });
@@ -412,10 +412,20 @@ describe('use-admin-dashboard hook coverage', () => {
     await flushAsyncWork();
 
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('runtime');
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(1);
     expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), 4000);
 
     intervalCallbacks[0]?.();
     expect(actions.refreshTask).toHaveBeenCalledWith('task-1', false);
+
+    actions.refreshPageCenter.mockClear();
+    const result = harness.render(() => useAdminDashboard());
+    result.setPage('approvals');
+    harness.render(() => useAdminDashboard());
+    await harness.runEffects();
+
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(1);
+    expect(actions.refreshPageCenter).toHaveBeenCalledWith('approvals');
 
     harness.unmount();
     expect(window.clearInterval).toHaveBeenCalled();
@@ -573,6 +583,7 @@ describe('use-admin-dashboard hook coverage', () => {
 
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('approvals');
     expect(actions.refreshPageCenter).toHaveBeenCalledWith('evals');
+    expect(actions.refreshPageCenter).toHaveBeenCalledTimes(2);
     expect(approvalsHarness.stateSlots[1]).toBe('离线');
     expect(evalsHarness.stateSlots[1]).toBe('离线');
   });

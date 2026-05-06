@@ -1,16 +1,5 @@
-import axios from 'axios';
+import { http } from '@/utils/http-client';
 import type { PatchUserProfileDto } from '@agent/core';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
-
-const http = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,
-  timeout: 12000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
 
 export type ChatMemoryFeedbackKind = 'adopted' | 'dismissed' | 'corrected';
 

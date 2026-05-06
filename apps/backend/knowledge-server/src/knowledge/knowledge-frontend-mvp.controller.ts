@@ -1,0 +1,399 @@
+import {
+  Body,
+  BadRequestException,
+  Controller,
+  ForbiddenException,
+  Get,
+  Inject,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  Res,
+  ServiceUnavailableException,
+  Optional,
+  UseGuards
+} from '@nestjs/common';
+import type { KnowledgeRagStreamEvent, KnowledgeTrace } from '@agent/knowledge';
+import { ZodError } from 'zod';
+
+import { AuthUser } from '../auth/auth-user.decorator';
+import { AuthGuard } from '../auth/auth.guard';
+import type { KnowledgeAuthUser } from '../auth/auth-token-verifier';
+import {
+  CreateKnowledgeMessageFeedbackRequestSchema,
+  KnowledgeChatRequestSchema
+} from './domain/knowledge-document.schemas';
+import type { PageQuery } from './knowledge-document.service';
+import type {
+  KnowledgeChatMessage,
+  KnowledgeChatRequest,
+  KnowledgeChatResponse,
+  KnowledgeEmbeddingModelsResponse
+} from './domain/knowledge-document.types';
+import { KnowledgeServiceError } from './knowledge.errors';
+import { KnowledgeDocumentService } from './knowledge-document.service';
+import { KnowledgeEvalService } from './knowledge-eval.service';
+import { KnowledgeTraceService } from './knowledge-trace.service';
+
+const now = '2026-05-02T00:00:00.000Z';
+
+interface SseResponse {
+  setHeader(name: string, value: string): void;
+  write(chunk: string): void;
+  end(): void;
+  json?(body: unknown): void;
+}
+
+type KnowledgeRagStreamErrorCode = Extract<KnowledgeRagStreamEvent, { type: 'rag.error' }>['error']['code'];
+
+@UseGuards(AuthGuard)
+@Controller()
+export class KnowledgeFrontendMvpController {
+  constructor(
+    @Optional() @Inject(KnowledgeDocumentService) private readonly documents?: KnowledgeDocumentService,
+    @Optional() @Inject(KnowledgeTraceService) private readonly traces?: KnowledgeTraceService,
+    @Optional() @Inject(KnowledgeEvalService) private readonly evals?: KnowledgeEvalService
+  ) {}
+
+  @Get('dashboard/overview')
+  getDashboardOverview() {
+    return {
+      knowledgeBaseCount: 0,
+      documentCount: 0,
+      readyDocumentCount: 0,
+      failedDocumentCount: 0,
+      todayQuestionCount: 0,
+      averageLatencyMs: 0,
+      p95LatencyMs: 0,
+      p99LatencyMs: 0,
+      errorRate: 0,
+      noAnswerRate: 0,
+      negativeFeedbackRate: 0,
+      latestEvalScore: 0,
+      activeAlertCount: 0,
+      recentFailedJobs: [],
+      recentLowScoreTraces: [],
+      recentEvalRuns: [],
+      topMissingKnowledgeQuestions: []
+    };
+  }
+
+  @Get('documents')
+  listDocuments(@AuthUser() user?: KnowledgeAuthUser, @Query('knowledgeBaseId') knowledgeBaseId?: string) {
+    if (!this.documents || !user) {
+      return page([]);
+    }
+    return this.documents.listDocuments(user, { knowledgeBaseId });
+  }
+
+  @Post('chat')
+  async chat(
+    @AuthUser() user: KnowledgeAuthUser,
+    @Body() body: unknown,
+    @Res() response?: SseResponse
+  ): Promise<KnowledgeChatResponse | void> {
+    try {
+      const request = KnowledgeChatRequestSchema.parse(body) as KnowledgeChatRequest;
+      if (request.stream) {
+        if (!response) {
+          throw new Error('SSE response is not configured');
+        }
+        response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-cache, no-transform');
+        response.setHeader('Connection', 'keep-alive');
+        try {
+          for await (const event of this.requireDocuments().streamChat(user, request)) {
+            response.write(toSseFrame(event));
+          }
+        } catch (error) {
+          response.write(toSseFrame(toSseErrorEvent(error)));
+        } finally {
+          response.end();
+        }
+        return undefined;
+      }
+      const chatResponse = await this.requireDocuments().chat(user, request);
+      if (response?.json) {
+        response.json(chatResponse);
+        return undefined;
+      }
+      return chatResponse;
+    } catch (error) {
+      throw toKnowledgeHttpException(error);
+    }
+  }
+
+  @Get('embedding-models')
+  listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
+    return this.documents?.listEmbeddingModels() ?? defaultEmbeddingModels();
+  }
+
+  @Get('rag/model-profiles')
+  listRagModelProfiles(@AuthUser() user: KnowledgeAuthUser) {
+    return this.requireDocuments().listRagModelProfiles(user);
+  }
+
+  @Get('conversations')
+  listConversations(@AuthUser() user: KnowledgeAuthUser, @Query() query: PageQuery) {
+    return this.requireDocuments().listConversations(user, query);
+  }
+
+  @Get('conversations/:id/messages')
+  listConversationMessages(@AuthUser() user: KnowledgeAuthUser, @Param('id') id: string, @Query() query: PageQuery) {
+    return this.requireDocuments().listConversationMessages(user, id, query);
+  }
+
+  @Post('messages/:messageId/feedback')
+  async createFeedback(@Param('messageId') messageId: string, @Body() body: unknown): Promise<KnowledgeChatMessage> {
+    const feedback = CreateKnowledgeMessageFeedbackRequestSchema.parse(body);
+    const updated = await this.requireDocuments().recordFeedback(messageId, feedback);
+    return {
+      id: updated.id,
+      conversationId: updated.conversationId,
+      role: updated.role as 'assistant',
+      content: updated.content,
+      feedback: updated.feedback,
+      createdAt: updated.createdAt
+    };
+  }
+
+  @Post('documents/:documentId/reprocess')
+  reprocessDocument(@Param('documentId') documentId: string) {
+    const document = createPlaceholderDocument(documentId);
+    return {
+      document,
+      job: {
+        id: `job_${documentId}`,
+        documentId,
+        status: 'queued',
+        stages: [],
+        progress: { percent: 0, processedChunks: 0, totalChunks: 0 },
+        createdAt: now
+      }
+    };
+  }
+
+  @Get('observability/metrics')
+  getObservabilityMetrics() {
+    return {
+      traceCount: 0,
+      questionCount: 0,
+      averageLatencyMs: 0,
+      p95LatencyMs: 0,
+      p99LatencyMs: 0,
+      errorRate: 0,
+      timeoutRate: 0,
+      noAnswerRate: 0,
+      negativeFeedbackRate: 0,
+      citationClickRate: 0,
+      stageLatency: []
+    };
+  }
+
+  @Get('observability/traces')
+  listTraces() {
+    return page((this.traces?.listTraces() ?? []).map(toRagTraceProjection));
+  }
+
+  @Get('observability/traces/:traceId')
+  getTrace(@Param('traceId') traceId: string) {
+    const trace = this.traces?.getTrace(traceId);
+    if (!trace) {
+      throw new NotFoundException({ code: 'knowledge_trace_not_found', message: 'Trace not found' });
+    }
+    return toRagTraceDetailProjection(trace);
+  }
+
+  @Get('eval/datasets')
+  listEvalDatasets() {
+    return page([]);
+  }
+
+  @Get('eval/runs')
+  listEvalRuns() {
+    return page([]);
+  }
+
+  @Get('eval/runs/:runId/results')
+  listEvalRunResults() {
+    return page([]);
+  }
+
+  @Post('eval/runs/compare')
+  compareEvalRuns(@Body() body: { baselineRunId?: string; candidateRunId?: string }) {
+    return (
+      this.evals?.compareRuns(body) ?? {
+        baselineRunId: body.baselineRunId ?? '',
+        candidateRunId: body.candidateRunId ?? '',
+        totalScoreDelta: 0,
+        retrievalScoreDelta: 0,
+        generationScoreDelta: 0,
+        perMetricDelta: {}
+      }
+    );
+  }
+
+  private requireDocuments(): KnowledgeDocumentService {
+    if (!this.documents) {
+      throw new Error('KnowledgeDocumentService is not configured');
+    }
+    return this.documents;
+  }
+}
+
+export function toSseFrame(event: KnowledgeRagStreamEvent): string {
+  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+}
+
+function toSseErrorEvent(error: unknown): KnowledgeRagStreamEvent {
+  const serviceError =
+    error instanceof KnowledgeServiceError
+      ? error
+      : new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
+  return {
+    runId: 'knowledge_frontend_stream',
+    type: 'rag.error',
+    error: {
+      code: toSseErrorCode(serviceError.code),
+      message: serviceError.message,
+      cause: serviceError.code
+    },
+    stage: 'answer'
+  };
+}
+
+function toSseErrorCode(code: KnowledgeServiceError['code']): KnowledgeRagStreamErrorCode {
+  if (
+    code === 'knowledge_chat_failed' ||
+    code === 'knowledge_permission_denied' ||
+    code === 'rag_model_profile_disabled' ||
+    code === 'rag_model_profile_not_found'
+  ) {
+    return code as KnowledgeRagStreamErrorCode;
+  }
+  return 'unknown';
+}
+
+function toKnowledgeHttpException(error: unknown): unknown {
+  if (error instanceof ZodError) {
+    return new BadRequestException({ code: 'validation_error', message: '请求参数不合法', details: error.issues });
+  }
+  if (error instanceof KnowledgeServiceError) {
+    if (error.code === 'knowledge_chat_message_required') {
+      return new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'knowledge_mention_not_found') {
+      return new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'rag_model_profile_disabled' || error.code === 'rag_model_profile_not_found') {
+      return new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'knowledge_base_not_found') {
+      return new NotFoundException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'knowledge_permission_denied') {
+      return new ForbiddenException({ code: error.code, message: error.message });
+    }
+    if (error.code === 'knowledge_chat_failed') {
+      return new ServiceUnavailableException({ code: error.code, message: error.message });
+    }
+  }
+  return error;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Knowledge RAG stream failed.';
+}
+
+function page<T>(items: T[]) {
+  return {
+    items,
+    total: items.length,
+    page: 1,
+    pageSize: 20
+  };
+}
+
+function createPlaceholderDocument(documentId: string) {
+  return {
+    id: documentId,
+    workspaceId: 'default',
+    knowledgeBaseId: 'default',
+    title: documentId,
+    sourceType: 'user-upload',
+    status: 'queued',
+    version: 'v1',
+    chunkCount: 0,
+    embeddedChunkCount: 0,
+    createdBy: 'system',
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function defaultEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
+  const id = process.env.KNOWLEDGE_EMBEDDING_MODEL ?? 'text-embedding-3-small';
+  const provider = 'openai-compatible';
+  const status = process.env.KNOWLEDGE_LLM_API_KEY ? 'available' : 'unconfigured';
+  return {
+    items: [{ id, label: id, provider, status }]
+  };
+}
+
+function toRagTraceProjection(trace: KnowledgeTrace) {
+  return {
+    id: trace.traceId,
+    workspaceId: 'default',
+    knowledgeBaseIds: trace.knowledgeBaseId ? [trace.knowledgeBaseId] : [],
+    question: '',
+    status: toLegacyTraceStatus(trace.status),
+    createdAt: trace.startedAt,
+    latencyMs: getLatencyMs(trace.startedAt, trace.endedAt)
+  };
+}
+
+function toRagTraceDetailProjection(trace: KnowledgeTrace) {
+  return {
+    ...toRagTraceProjection(trace),
+    spans: trace.spans.map(span => ({
+      id: span.spanId,
+      traceId: trace.traceId,
+      stage: span.stage ?? span.name,
+      name: span.name,
+      status: toLegacyTraceStatus(span.status ?? trace.status),
+      input: span.attributes ? { data: span.attributes } : undefined,
+      error: span.error ? { code: span.error.code, message: span.error.message } : undefined,
+      startedAt: span.startedAt,
+      endedAt: span.endedAt,
+      latencyMs: getLatencyMs(span.startedAt, span.endedAt)
+    })),
+    citations: []
+  };
+}
+
+function toLegacyTraceStatus(
+  status: KnowledgeTrace['status'] | NonNullable<KnowledgeTrace['spans'][number]['status']>
+) {
+  if (status === 'ok' || status === 'succeeded') {
+    return 'succeeded';
+  }
+  if (status === 'error' || status === 'failed') {
+    return 'failed';
+  }
+  if (status === 'cancelled' || status === 'canceled') {
+    return 'canceled';
+  }
+  return status;
+}
+
+function getLatencyMs(startedAt: string, endedAt?: string): number | undefined {
+  if (!endedAt) {
+    return undefined;
+  }
+  const latency = Date.parse(endedAt) - Date.parse(startedAt);
+  return Number.isFinite(latency) && latency >= 0 ? latency : undefined;
+}

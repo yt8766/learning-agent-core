@@ -48,6 +48,7 @@ export type MainChainNode =
 export interface ChatSessionRecord {
   id: string;
   title: string;
+  titleSource?: 'placeholder' | 'generated' | 'manual';
   status: ChatSessionStatus;
   currentTaskId?: string;
   compression?: {

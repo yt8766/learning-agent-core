@@ -1,14 +1,4 @@
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
-const http = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,
-  timeout: 12000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+import { http } from '@/utils/http-client';
 
 export interface WorkspaceCenterReadinessSummary {
   workspaceId: string;

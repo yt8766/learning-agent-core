@@ -1,13 +1,15 @@
 # adapters indexing adapter 规范
 
-状态：current
-文档类型：convention
-适用范围：`packages/adapters/src/langchain/`、`packages/adapters/src/chroma/`
-最后核对：2026-05-09
+状态：history
+文档类型：history
+适用范围：历史 `packages/adapters/src/langchain/`、`packages/adapters/src/chroma/`
+最后核对：2026-05-02
+
+> 本规范已被 `packages/knowledge/src/adapters/*` 的真实落位取代。Chroma、OpenSearch、Supabase pgvector 与 LangChain indexing adapter 现在属于 `@agent/knowledge/adapters/*`；`@agent/adapters` 侧入口已删除。
 
 ## 1. 定位
 
-`packages/adapters` 的 LangChain / Chroma 模块是项目的**外部生态 indexing 转化层**。
+`packages/knowledge` 的 LangChain / Chroma / OpenSearch / Supabase 模块是项目的**知识域外部生态转化层**。
 
 职责：
 
@@ -23,7 +25,7 @@
 ## 2. 目录结构
 
 ```text
-packages/adapters/src/
+packages/knowledge/src/adapters/
 ├─ shared/                      # 跨生态通用转化能力
 │  ├─ metadata/                 # metadata 标准化
 │  │  ├─ normalize-metadata.ts  # Date/URL/bigint -> JSON safe
@@ -49,13 +51,15 @@ packages/adapters/src/
 │  └─ embedders/                # Embedder 角色
 │     └─ langchain-embedder.adapter.ts
 │
-└─ chroma/                      # Chroma 生态 adapter
+├─ chroma/                      # Chroma 生态 adapter
    ├─ shared/                   # Chroma 专属工具
    │  ├─ chroma-client.factory.ts   (通过 chroma-collection.ts 提供)
    │  ├─ chroma-collection.ts
    │  └─ chroma-metadata.mapper.ts
    └─ stores/                   # VectorStore 角色
       └─ chroma-vector-store.adapter.ts
+├─ opensearch/                  # OpenSearch-like keyword search provider
+└─ supabase/                    # Supabase pgvector VectorStore adapter
 ```
 
 ## 3. 契约来源
@@ -79,7 +83,7 @@ import type { Vector } from '@agent/knowledge'; // { id, values, metadata, sourc
 
 ## 4. 第三方类型隔离规则
 
-- **所有 `@langchain/*` / `chromadb` 类型只能出现在 `packages/adapters/src/langchain/` 或 `packages/adapters/src/chroma/` 内**
+- **所有 `@langchain/*` / `chromadb` 类型只能出现在 `packages/knowledge/src/adapters/langchain/` 或 `packages/knowledge/src/adapters/chroma/` 内**
 - 严禁第三方类型泄露到：`@agent/core`、`@agent/knowledge`、`@agent/runtime`、`agents/*`、`apps/*`
 - adapter 对外暴露的 indexing 接口只使用 `@agent/knowledge` 契约类型
 

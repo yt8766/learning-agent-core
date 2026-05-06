@@ -28,6 +28,7 @@
     "verify": "pnpm typecheck && pnpm test && pnpm build:lib"
   },
   "dependencies": {
+    "@agent/adapters": "workspace:*",
     "@agent/core": "workspace:*",
     "@agent/runtime": "workspace:*",
     "zod": "^4.3.6"

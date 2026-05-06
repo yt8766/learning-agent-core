@@ -1,0 +1,179 @@
+import { useState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardCenterShell, DashboardEmptyState } from '@/components/dashboard-center-shell';
+
+import type { CompanyAgentRecord } from '@/types/admin';
+import type { CompanyExpertConsultation, CompanyLiveGenerateResult } from '@agent/core';
+import { consultCompanyLiveExperts, generateCompanyLive } from '@/api/company-live.api';
+import { CompanyLiveExpertConsultForm } from './company-live-expert-consult-form';
+import { CompanyLiveExpertConsultResult } from './company-live-expert-consult-result';
+import { CompanyLiveGenerateForm } from './company-live-generate-form';
+import { CompanyLiveBundleResult } from './company-live-bundle-result';
+import { CompanyLiveNodeTracePanel } from './company-live-node-trace';
+
+interface CompanyAgentsPanelProps {
+  agents: CompanyAgentRecord[];
+  onEnableAgent: (workerId: string) => void;
+  onDisableAgent: (workerId: string) => void;
+}
+
+export function CompanyAgentsPanel({ agents, onEnableAgent, onDisableAgent }: CompanyAgentsPanelProps) {
+  const [consultResult, setConsultResult] = useState<CompanyExpertConsultation | null>(null);
+  const [consultLoading, setConsultLoading] = useState(false);
+  const [consultError, setConsultError] = useState<string | null>(null);
+  const [generateResult, setGenerateResult] = useState<CompanyLiveGenerateResult | null>(null);
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  async function handleConsult(input: Parameters<typeof consultCompanyLiveExperts>[0]) {
+    setConsultLoading(true);
+    setConsultError(null);
+    setConsultResult(null);
+    try {
+      const result = await consultCompanyLiveExperts(input);
+      setConsultResult(result);
+    } catch (err) {
+      setConsultError(err instanceof Error ? err.message : '专家会诊失败');
+    } finally {
+      setConsultLoading(false);
+    }
+  }
+
+  async function handleGenerate(brief: Parameters<typeof generateCompanyLive>[0]) {
+    setGenerateLoading(true);
+    setGenerateError(null);
+    setGenerateResult(null);
+    try {
+      const result = await generateCompanyLive(brief);
+      setGenerateResult(result);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : '生成失败');
+    } finally {
+      setGenerateLoading(false);
+    }
+  }
+
+  return (
+    <DashboardCenterShell
+      title="公司专员编排"
+      description="查看专员治理状态、能力依赖与最近目标。"
+      count={agents.length}
+    >
+      <div className="grid gap-6">
+        {/* 专家会诊区 */}
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-foreground">专家会诊</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <CompanyLiveExpertConsultForm onSubmit={handleConsult} loading={consultLoading} />
+            {consultError && <p className="text-sm text-destructive">{consultError}</p>}
+            {consultResult && <CompanyLiveExpertConsultResult result={consultResult} />}
+          </CardContent>
+        </Card>
+
+        {/* 直播内容生成区 */}
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-foreground">直播内容生成</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <CompanyLiveGenerateForm onSubmit={handleGenerate} loading={generateLoading} />
+            {generateError && <p className="text-sm text-destructive">{generateError}</p>}
+            {generateResult && (
+              <div className="grid gap-3">
+                <CompanyLiveBundleResult result={generateResult} />
+                <CompanyLiveNodeTracePanel trace={generateResult.trace} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 专员列表区 */}
+        <div className="grid gap-4">
+          {agents.length === 0 ? (
+            <DashboardEmptyState message="当前还没有已注册的公司专员。" />
+          ) : (
+            agents.map(agent => (
+              <article key={agent.id} className="rounded-2xl border border-border/70 bg-card/90 px-4 py-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{agent.displayName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{agent.id}</p>
+                  </div>
+                  <Badge
+                    variant={agent.enabled === false ? 'warning' : agent.activeTaskCount ? 'success' : 'secondary'}
+                  >
+                    {agent.governanceStatus ?? 'ready'}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="secondary">{agent.ministry}</Badge>
+                  <Badge variant="secondary">{agent.defaultModel}</Badge>
+                  {agent.owner ? <Badge variant="secondary">{agent.owner}</Badge> : null}
+                  {typeof agent.activeTaskCount === 'number' ? (
+                    <Badge variant="outline">活跃 {agent.activeTaskCount}</Badge>
+                  ) : null}
+                  {typeof agent.totalTaskCount === 'number' ? (
+                    <Badge variant="outline">累计 {agent.totalTaskCount}</Badge>
+                  ) : null}
+                  {typeof agent.successRate === 'number' ? (
+                    <Badge variant="secondary">成功率 {(agent.successRate * 100).toFixed(0)}%</Badge>
+                  ) : null}
+                  {agent.promotionState ? <Badge variant="secondary">{agent.promotionState}</Badge> : null}
+                </div>
+                {agent.tags?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {agent.tags.map(tag => (
+                      <span key={`${agent.id}-${tag}`}>
+                        <Badge variant="outline">{tag}</Badge>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {agent.requiredConnectors?.length ? (
+                  <p className="mt-3 text-xs text-muted-foreground">连接器：{agent.requiredConnectors.join(', ')}</p>
+                ) : null}
+                {agent.recentTaskGoals?.length ? (
+                  <div className="mt-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">近期目标</p>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {agent.recentTaskGoals.map(goal => (
+                        <li key={`${agent.id}-${goal}`}>{goal}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {agent.sourceRuns?.length ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    来源运行：{agent.sourceRuns.slice(0, 3).join(', ')}
+                  </p>
+                ) : null}
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={agent.enabled === false ? 'default' : 'outline'}
+                    onClick={() => (agent.enabled === false ? onEnableAgent(agent.id) : onDisableAgent(agent.id))}
+                  >
+                    {agent.enabled === false ? '启用专员' : '停用专员'}
+                  </Button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {agent.supportedCapabilities.map(capability => (
+                    <span key={`${agent.id}-${capability}`}>
+                      <Badge variant="outline">{capability}</Badge>
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+    </DashboardCenterShell>
+  );
+}

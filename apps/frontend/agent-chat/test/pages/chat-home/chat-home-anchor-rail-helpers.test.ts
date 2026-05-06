@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildConversationAnchors, scrollToConversationAnchor } from '@/pages/chat-home/chat-home-anchor-rail-helpers';
+import {
+  buildConversationAnchors,
+  dedupeMessagesById,
+  scrollToConversationAnchor
+} from '@/pages/chat-home/chat-home-anchor-rail-helpers';
 import type { ChatMessageRecord } from '@/types/chat';
 
 function message(partial: Partial<ChatMessageRecord> & Pick<ChatMessageRecord, 'id' | 'role'>): ChatMessageRecord {
@@ -119,6 +123,55 @@ describe('chat-home conversation anchor rail helpers', () => {
     ]);
 
     expect(anchors[0]?.label).toBe('你是谁');
+  });
+
+  it('keeps the first message for each id before anchor projection consumes the list', () => {
+    const messages = [
+      message({
+        id: 'user-1',
+        role: 'user',
+        content: '第一次用户输入'
+      }),
+      message({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '助手回复'
+      }),
+      message({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '重复助手回复'
+      })
+    ];
+
+    expect(dedupeMessagesById(messages).map(item => item.content)).toEqual(['第一次用户输入', '助手回复']);
+  });
+
+  it('dedupes duplicate message ids before building anchors so rail keys stay unique', () => {
+    const anchors = buildConversationAnchors([
+      message({
+        id: 'user-1',
+        role: 'user',
+        content: '第一次用户输入'
+      }),
+      message({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '第一条助手回复'
+      }),
+      message({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '重复助手回复'
+      })
+    ]);
+
+    expect(anchors.map(anchor => anchor.id)).toEqual([
+      'chatx-message-anchor-user-1',
+      'chatx-message-anchor-assistant-1'
+    ]);
+    expect(new Set(anchors.map(anchor => anchor.id)).size).toBe(anchors.length);
+    expect(anchors[1]?.label).toBe('第一条助手回复');
   });
 
   it('scrolls to the target anchor and updates the active anchor id', () => {

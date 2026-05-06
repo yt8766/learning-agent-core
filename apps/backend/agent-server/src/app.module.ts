@@ -1,4 +1,5 @@
 ﻿import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AgentToolsModule } from './agent-tools/agent-tools.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { createPersistenceImports } from './app.persistence';
@@ -22,6 +23,10 @@ import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath: ['.env', 'apps/backend/agent-server/.env'],
+      isGlobal: true
+    }),
     LoggerModule,
     AdminAuthModule,
     RuntimeModule,

@@ -5,11 +5,13 @@ import type { ExecutionWatchdog } from '@agent/runtime';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';
 import {
+  CliTransportHandler,
   HttpTransportHandler,
   LocalAdapterTransportHandler,
   McpTransportDiscovery,
   McpTransportHandler,
-  StdioTransportHandler
+  StdioTransportHandler,
+  type CliCapabilityBinding
 } from '../transports/mcp-transport-handlers';
 
 interface McpServerDiscoveryRecord {
@@ -23,16 +25,21 @@ interface McpServerDiscoveryRecord {
 interface PreferredToolRoute {
   capabilityId: string;
   serverId: string;
-  transport: 'http' | 'stdio' | 'local-adapter';
+  transport: 'http' | 'stdio' | 'local-adapter' | 'cli';
   requiresApproval: boolean;
+}
+
+function isStatelessTransport(transport: 'http' | 'stdio' | 'local-adapter' | 'cli'): boolean {
+  return transport === 'local-adapter' || transport === 'http' || transport === 'cli';
 }
 
 export class McpClientManager {
   private readonly handlers = new Map<string, McpTransportHandler>();
   private readonly discoveryCache = new Map<string, McpServerDiscoveryRecord>();
-  private readonly transportPriority: Record<'http' | 'stdio' | 'local-adapter', number> = {
+  private readonly transportPriority: Record<'http' | 'stdio' | 'local-adapter' | 'cli', number> = {
     http: 3,
     stdio: 2,
+    cli: 2,
     'local-adapter': 1
   };
 
@@ -43,11 +50,15 @@ export class McpClientManager {
     options?: {
       stdioMaxSessions?: number;
       watchdog?: ExecutionWatchdog;
+      cliBindings?: Map<string, CliCapabilityBinding>;
     }
   ) {
     this.registerHandler(new LocalAdapterTransportHandler(this.fallbackExecutor));
     this.registerHandler(new HttpTransportHandler());
     this.registerHandler(new StdioTransportHandler({ maxSessions: options?.stdioMaxSessions }));
+    if (options?.cliBindings && options.cliBindings.size > 0) {
+      this.registerHandler(new CliTransportHandler(options.cliBindings));
+    }
     this.watchdog = options?.watchdog;
   }
   private readonly watchdog?: ExecutionWatchdog;
@@ -71,8 +82,7 @@ export class McpClientManager {
 
     if (!handler?.discover) {
       this.discoveryCache.set(server.id, {
-        sessionState:
-          server.transport === 'local-adapter' || server.transport === 'http' ? 'stateless' : 'disconnected',
+        sessionState: isStatelessTransport(server.transport) ? 'stateless' : 'disconnected',
         discoveredCapabilities: capabilities.map(capability => capability.toolName),
         discoveryMode: 'registered',
         discoveredAt
@@ -302,8 +312,7 @@ export class McpClientManager {
           discovery?.discoveredCapabilities ?? capabilities.map(capability => capability.toolName),
         discoveryMode: discovery?.discoveryMode ?? 'registered',
         sessionState:
-          discovery?.sessionState ??
-          (server.transport === 'local-adapter' || server.transport === 'http' ? 'stateless' : 'disconnected'),
+          discovery?.sessionState ?? (isStatelessTransport(server.transport) ? 'stateless' : 'disconnected'),
         sessionCreatedAt: sessionMetadata?.createdAt,
         sessionLastActivityAt: sessionMetadata?.lastActivityAt,
         sessionRequestCount: sessionMetadata?.requestCount,

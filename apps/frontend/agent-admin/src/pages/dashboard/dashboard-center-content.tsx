@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
 
 import { approveWorkspaceSkillDraft, getWorkspaceCenter, rejectWorkspaceSkillDraft } from '@/api/admin-api-workspace';
-import { ApprovalsPanel } from '@/features/approvals-center/approvals-panel';
-import { ArchiveCenterPanel } from '@/features/archive-center/archive-center-panel';
-import { CompanyAgentsPanel } from '@/features/company-agents/company-agents-panel';
-import { ConnectorsCenterPanel } from '@/features/connectors-center/connectors-center-panel';
-import { EvidenceCenterPanel } from '@/features/evidence-center/evidence-center-panel';
-import { EvalsCenterPanel } from '@/features/evals-center/evals-center-panel';
-import { LearningCenterPanel } from '@/features/learning-center/learning-center-panel';
-import { MemoryCenterPanel } from '@/features/learning-center/memory-center-panel';
-import { MemoryGovernancePanel } from '@/features/learning-center/memory-governance-panel';
-import { MemoryResolutionQueueCard } from '@/features/learning-center/memory-resolution-queue-card';
-import { ProfileCenterPanel } from '@/features/learning-center/profile-center-panel';
-import { RuntimeOverviewPanel } from '@/features/runtime-overview/runtime-overview-panel';
-import { SkillLabPanel } from '@/features/skill-lab/skill-lab-panel';
-import { SkillSourcesCenterPanel } from '@/features/skill-sources-center/skill-sources-center-panel';
-import { WorkspaceCenterPanel } from '@/features/workspace-center/workspace-center-panel';
-import { WorkflowLabPage } from '@/features/workflow-lab/WorkflowLabPage';
+import { ApprovalsPanel } from '@/pages/approvals-center/approvals-panel';
+import { LazyCenterBoundary } from '@/components/lazy-center-boundary';
+import { ConnectorsCenterPanel } from '@/pages/connectors-center/connectors-center-panel';
+import { EvidenceCenterPanel } from '@/pages/evidence-center/evidence-center-panel';
+import { LearningCenterPanel } from '@/pages/learning-center/learning-center-panel';
+import { MemoryCenterPanel } from '@/pages/learning-center/memory-center-panel';
+import { MemoryGovernancePanel } from '@/pages/learning-center/memory-governance-panel';
+import { MemoryResolutionQueueCard } from '@/pages/learning-center/memory-resolution-queue-card';
+import { ProfileCenterPanel } from '@/pages/learning-center/profile-center-panel';
+import { SkillLabPanel } from '@/pages/skill-lab/skill-lab-panel';
+import { SkillSourcesCenterPanel } from '@/pages/skill-sources-center/skill-sources-center-panel';
+import { WorkspaceCenterPanel } from '@/pages/workspace-center/workspace-center-panel';
 import type {
   WorkspaceCenterRecord,
   WorkspaceSkillDraftDecisionResponse
-} from '@/features/workspace-center/workspace-center-types';
+} from '@/pages/workspace-center/workspace-center-types';
 import type { AdminDashboardState } from '@/hooks/use-admin-dashboard';
+import {
+  KnowledgeGovernanceDashboardCenter,
+  LazyArchiveCenterPanel,
+  LazyCompanyAgentsPanel,
+  LazyEvalsCenterPanel,
+  LazyRuntimeOverviewPanel,
+  LazyWorkflowLabPage
+} from './dashboard-center-lazy-registry';
 import { DashboardLoadingState } from './dashboard-loading-state';
 
 const EMPTY_WORKSPACE_CENTER: WorkspaceCenterRecord = {
@@ -63,39 +67,41 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
   switch (dashboard.page) {
     case 'runtime':
       return (
-        <RuntimeOverviewPanel
-          runtime={consoleData.runtime}
-          bundle={dashboard.bundle}
-          historyDays={dashboard.runtimeHistoryDays}
-          statusFilter={dashboard.runtimeStatusFilter}
-          onStatusFilterChange={dashboard.setRuntimeStatusFilter}
-          modelFilter={dashboard.runtimeModelFilter}
-          onModelFilterChange={dashboard.setRuntimeModelFilter}
-          pricingSourceFilter={dashboard.runtimePricingSourceFilter}
-          onPricingSourceFilterChange={dashboard.setRuntimePricingSourceFilter}
-          executionModeFilter={dashboard.runtimeExecutionModeFilter}
-          onExecutionModeFilterChange={dashboard.setRuntimeExecutionModeFilter}
-          interactionKindFilter={dashboard.runtimeInteractionKindFilter}
-          onInteractionKindFilterChange={dashboard.setRuntimeInteractionKindFilter}
-          observatoryFocusTarget={dashboard.observatoryFocusTarget}
-          onObservatoryFocusTargetChange={dashboard.setObservatoryFocusTarget}
-          compareTaskId={dashboard.runtimeCompareTaskId}
-          onCompareTaskIdChange={dashboard.setRuntimeCompareTaskId}
-          graphNodeId={dashboard.runtimeGraphNodeId}
-          onGraphNodeIdChange={dashboard.setRuntimeGraphNodeId}
-          onCopyShareLink={copyShareUrl}
-          onHistoryDaysChange={days => {
-            dashboard.setRuntimeHistoryDays(days);
-            void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
-          }}
-          onExport={dashboard.downloadRuntimeExport}
-          onSelectTask={dashboard.selectTask}
-          onRetryTask={dashboard.handleRetryTask}
-          onLaunchWorkflowTask={dashboard.handleLaunchWorkflowTask}
-          onRefreshRuntime={() => dashboard.refreshPageCenter('runtime')}
-          onCreateDiagnosisTask={dashboard.handleCreateDiagnosisTask}
-          onRevokeApprovalPolicy={dashboard.handleRevokeApprovalPolicy}
-        />
+        <LazyCenterBoundary label="Runtime Center">
+          <LazyRuntimeOverviewPanel
+            runtime={consoleData.runtime}
+            bundle={dashboard.bundle}
+            historyDays={dashboard.runtimeHistoryDays}
+            statusFilter={dashboard.runtimeStatusFilter}
+            onStatusFilterChange={dashboard.setRuntimeStatusFilter}
+            modelFilter={dashboard.runtimeModelFilter}
+            onModelFilterChange={dashboard.setRuntimeModelFilter}
+            pricingSourceFilter={dashboard.runtimePricingSourceFilter}
+            onPricingSourceFilterChange={dashboard.setRuntimePricingSourceFilter}
+            executionModeFilter={dashboard.runtimeExecutionModeFilter}
+            onExecutionModeFilterChange={dashboard.setRuntimeExecutionModeFilter}
+            interactionKindFilter={dashboard.runtimeInteractionKindFilter}
+            onInteractionKindFilterChange={dashboard.setRuntimeInteractionKindFilter}
+            observatoryFocusTarget={dashboard.observatoryFocusTarget}
+            onObservatoryFocusTargetChange={dashboard.setObservatoryFocusTarget}
+            compareTaskId={dashboard.runtimeCompareTaskId}
+            onCompareTaskIdChange={dashboard.setRuntimeCompareTaskId}
+            graphNodeId={dashboard.runtimeGraphNodeId}
+            onGraphNodeIdChange={dashboard.setRuntimeGraphNodeId}
+            onCopyShareLink={copyShareUrl}
+            onHistoryDaysChange={(days: number) => {
+              dashboard.setRuntimeHistoryDays(days);
+              void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
+            }}
+            onExport={dashboard.downloadRuntimeExport}
+            onSelectTask={dashboard.selectTask}
+            onRetryTask={dashboard.handleRetryTask}
+            onLaunchWorkflowTask={dashboard.handleLaunchWorkflowTask}
+            onRefreshRuntime={() => dashboard.refreshPageCenter('runtime')}
+            onCreateDiagnosisTask={dashboard.handleCreateDiagnosisTask}
+            onRevokeApprovalPolicy={dashboard.handleRevokeApprovalPolicy}
+          />
+        </LazyCenterBoundary>
       );
     case 'approvals':
       return (
@@ -153,54 +159,60 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
       return <ProfileCenterPanel />;
     case 'evals':
       return (
-        <EvalsCenterPanel
-          evals={consoleData.evals}
-          historyDays={dashboard.evalsHistoryDays}
-          scenarioFilter={dashboard.evalScenarioFilter}
-          onScenarioFilterChange={dashboard.setEvalScenarioFilter}
-          outcomeFilter={dashboard.evalOutcomeFilter}
-          onOutcomeFilterChange={dashboard.setEvalOutcomeFilter}
-          onHistoryDaysChange={days => {
-            dashboard.setEvalsHistoryDays(days);
-            void dashboard.refreshPageCenter('evals', { evalsDays: days });
-          }}
-          onExport={dashboard.downloadEvalsExport}
-        />
+        <LazyCenterBoundary label="Evals Center">
+          <LazyEvalsCenterPanel
+            evals={consoleData.evals}
+            historyDays={dashboard.evalsHistoryDays}
+            scenarioFilter={dashboard.evalScenarioFilter}
+            onScenarioFilterChange={dashboard.setEvalScenarioFilter}
+            outcomeFilter={dashboard.evalOutcomeFilter}
+            onOutcomeFilterChange={dashboard.setEvalOutcomeFilter}
+            onHistoryDaysChange={(days: number) => {
+              dashboard.setEvalsHistoryDays(days);
+              void dashboard.refreshPageCenter('evals', { evalsDays: days });
+            }}
+            onExport={dashboard.downloadEvalsExport}
+          />
+        </LazyCenterBoundary>
       );
     case 'archives':
       return (
-        <ArchiveCenterPanel
-          runtime={consoleData.runtime}
-          evals={consoleData.evals}
-          runtimeHistoryDays={dashboard.runtimeHistoryDays}
-          evalsHistoryDays={dashboard.evalsHistoryDays}
-          runtimeExportFilters={{
-            status: dashboard.runtimeStatusFilter || undefined,
-            model: dashboard.runtimeModelFilter || undefined,
-            pricingSource: dashboard.runtimePricingSourceFilter || undefined,
-            executionMode:
-              dashboard.runtimeExecutionModeFilter === 'all' ? undefined : dashboard.runtimeExecutionModeFilter,
-            interactionKind:
-              dashboard.runtimeInteractionKindFilter === 'all' ? undefined : dashboard.runtimeInteractionKindFilter
-          }}
-          approvalsExportFilters={{
-            executionMode:
-              dashboard.approvalsExecutionModeFilter === 'all' ? undefined : dashboard.approvalsExecutionModeFilter,
-            interactionKind:
-              dashboard.approvalsInteractionKindFilter === 'all' ? undefined : dashboard.approvalsInteractionKindFilter
-          }}
-          onRuntimeHistoryDaysChange={days => {
-            dashboard.setRuntimeHistoryDays(days);
-            void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
-          }}
-          onEvalsHistoryDaysChange={days => {
-            dashboard.setEvalsHistoryDays(days);
-            void dashboard.refreshPageCenter('evals', { evalsDays: days });
-          }}
-          onExportRuntime={dashboard.downloadRuntimeExport}
-          onExportApprovals={dashboard.downloadApprovalsExport}
-          onExportEvals={dashboard.downloadEvalsExport}
-        />
+        <LazyCenterBoundary label="Archive Center">
+          <LazyArchiveCenterPanel
+            runtime={consoleData.runtime}
+            evals={consoleData.evals}
+            runtimeHistoryDays={dashboard.runtimeHistoryDays}
+            evalsHistoryDays={dashboard.evalsHistoryDays}
+            runtimeExportFilters={{
+              status: dashboard.runtimeStatusFilter || undefined,
+              model: dashboard.runtimeModelFilter || undefined,
+              pricingSource: dashboard.runtimePricingSourceFilter || undefined,
+              executionMode:
+                dashboard.runtimeExecutionModeFilter === 'all' ? undefined : dashboard.runtimeExecutionModeFilter,
+              interactionKind:
+                dashboard.runtimeInteractionKindFilter === 'all' ? undefined : dashboard.runtimeInteractionKindFilter
+            }}
+            approvalsExportFilters={{
+              executionMode:
+                dashboard.approvalsExecutionModeFilter === 'all' ? undefined : dashboard.approvalsExecutionModeFilter,
+              interactionKind:
+                dashboard.approvalsInteractionKindFilter === 'all'
+                  ? undefined
+                  : dashboard.approvalsInteractionKindFilter
+            }}
+            onRuntimeHistoryDaysChange={(days: number) => {
+              dashboard.setRuntimeHistoryDays(days);
+              void dashboard.refreshPageCenter('runtime', { runtimeDays: days });
+            }}
+            onEvalsHistoryDaysChange={(days: number) => {
+              dashboard.setEvalsHistoryDays(days);
+              void dashboard.refreshPageCenter('evals', { evalsDays: days });
+            }}
+            onExportRuntime={dashboard.downloadRuntimeExport}
+            onExportApprovals={dashboard.downloadApprovalsExport}
+            onExportEvals={dashboard.downloadEvalsExport}
+          />
+        </LazyCenterBoundary>
       );
     case 'skills':
       return (
@@ -251,14 +263,26 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
       );
     case 'companyAgents':
       return (
-        <CompanyAgentsPanel
-          agents={consoleData.companyAgents}
-          onEnableAgent={dashboard.handleEnableCompanyAgent}
-          onDisableAgent={dashboard.handleDisableCompanyAgent}
-        />
+        <LazyCenterBoundary label="Company Agents Center">
+          <LazyCompanyAgentsPanel
+            agents={consoleData.companyAgents}
+            onEnableAgent={dashboard.handleEnableCompanyAgent}
+            onDisableAgent={dashboard.handleDisableCompanyAgent}
+          />
+        </LazyCenterBoundary>
+      );
+    case 'knowledgeGovernance':
+      return (
+        <LazyCenterBoundary label="Knowledge Governance Center">
+          <KnowledgeGovernanceDashboardCenter />
+        </LazyCenterBoundary>
       );
     case 'workflowLab':
-      return <WorkflowLabPage />;
+      return (
+        <LazyCenterBoundary label="Workflow Lab">
+          <LazyWorkflowLabPage />
+        </LazyCenterBoundary>
+      );
     default:
       return null;
   }

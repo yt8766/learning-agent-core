@@ -10,13 +10,14 @@ import {
   ReviewRecord,
   SkillCard,
   type SubgraphIdValue as SubgraphId,
-  WorkflowPresetDefinition
+  WorkflowPresetDefinition,
+  type EvaluationResult,
+  type ReviewMinistryLike,
+  type RouterMinistryLike
 } from '@agent/core';
 import { Command } from '@langchain/langgraph';
-import type { EvaluationResult } from '@agent/knowledge';
+import type { BaseStore } from '@langchain/langgraph';
 import type { MemoryRecord, RuleRecord } from '@agent/memory';
-import type { ReviewMinistryLike, RouterMinistryLike } from '@agent/core';
-
 import { MainGraphExecutionHelpers } from '../recovery/main-graph-execution-helpers';
 import { MainGraphLifecycle } from '../../../runtime/lifecycle';
 import {
@@ -29,7 +30,7 @@ import { PendingExecutionContext } from '../../../../../flows/approval';
 import { LearningFlow } from '../../../../../flows/learning';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../../../types/chat-graph';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../../../index';
 
 interface MainGraphBridgeParams {
   pendingExecutions: Map<string, PendingExecutionContext>;
@@ -42,6 +43,7 @@ interface MainGraphBridgeParams {
   runtime: MainGraphTaskRuntime;
   executionHelpers: MainGraphExecutionHelpers;
   graphCheckpointer: any;
+  graphStore: BaseStore;
 }
 
 export class MainGraphBridge {
@@ -121,6 +123,7 @@ export class MainGraphBridge {
         createGraphStartState: this.createGraphStartState.bind(this),
         resolveGraphThreadId: this.resolveGraphThreadId.bind(this),
         getGraphCheckpointer: () => this.params.graphCheckpointer,
+        getGraphStore: () => this.params.graphStore,
         runDirectReplyTask: this.runDirectReplyTask.bind(this),
         recordAgentError: this.params.lifecycle.recordAgentError.bind(this.params.lifecycle)
       }
@@ -154,7 +157,8 @@ export class MainGraphBridge {
           this.params.lifecycle
         )
       },
-      checkpointer: this.params.graphCheckpointer
+      checkpointer: this.params.graphCheckpointer,
+      store: this.params.graphStore
     });
 
     if (options.mode === 'interrupt_resume' && options.resume) {

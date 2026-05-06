@@ -1,4 +1,4 @@
-import type { EvidenceRecord, MemoryRecord } from '@agent/memory';
+import type { EvidenceRecord, MemoryRecord } from '../index';
 
 import type { MemoryRepository } from '../repositories/memory-repository';
 

@@ -4,7 +4,7 @@ import {
   normalizeAgentToolEvent,
   projectAgentToolEventsToTimeline,
   projectAgentToolGovernanceProjectionToTimeline
-} from '../../src/lib/agent-tool-event-projections';
+} from '../../src/utils/agent-tool-event-projections';
 
 describe('agent tool event projections', () => {
   it('projects tool selection and call events into stable view models', () => {

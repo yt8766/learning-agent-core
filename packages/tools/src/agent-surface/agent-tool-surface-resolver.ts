@@ -3,7 +3,7 @@ import {
   AgentToolResolutionSchema,
   type AgentToolAliasRequest,
   type AgentToolResolution
-} from '@agent/tools';
+} from '../index';
 
 import type { ToolRegistry } from '../registry/tool-registry';
 import { decideAgentToolApprovalMode } from './agent-tool-approval-mode-policy';

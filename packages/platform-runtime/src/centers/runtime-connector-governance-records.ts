@@ -5,7 +5,7 @@ export {
   type RuntimeConnectorGovernanceAuditRecord
 } from './runtime-connectors-center.helpers';
 
-export function defaultConnectorSessionState(transport?: 'http' | 'stdio' | 'local-adapter') {
+export function defaultConnectorSessionState(transport?: 'http' | 'stdio' | 'local-adapter' | 'cli') {
   if (transport === 'stdio') {
     return 'disconnected' as const;
   }

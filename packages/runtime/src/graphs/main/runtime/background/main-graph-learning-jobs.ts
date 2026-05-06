@@ -213,7 +213,7 @@ export class MainGraphLearningJobsRuntime {
     return completedJob;
   }
 
-  private selectResearchCapability(source: EvidenceRecord): string {
+  private selectResearchCapability(source: EvidenceRecord): string | undefined {
     const sourceUrl = source.sourceUrl?.toLowerCase();
     if (sourceUrl?.includes('github.com') && this.mcpClientManager?.hasCapability('search_doc')) {
       return 'search_doc';
@@ -224,7 +224,10 @@ export class MainGraphLearningJobsRuntime {
     if (this.mcpClientManager?.hasCapability('webSearchPrime')) {
       return 'webSearchPrime';
     }
-    return 'collect_research_source';
+    if (this.mcpClientManager?.hasCapability('collect_research_source')) {
+      return 'collect_research_source';
+    }
+    return undefined;
   }
 
   private buildResearchCapabilityInput(

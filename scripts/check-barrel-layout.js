@@ -6,7 +6,19 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ignoredDirs = new Set(['node_modules', 'build', 'dist', '.turbo', '.git']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs']);
-const namedBarrelDirs = new Set(['repositories', 'search', 'vector', 'embeddings', 'approval', 'watchdog']);
+const namedBarrelDirs = new Set([
+  'repositories',
+  'search',
+  'vector',
+  'embeddings',
+  'approval',
+  'watchdog',
+  'settings',
+  'filesystem',
+  'scheduling',
+  'runtime-governance',
+  'sandbox'
+]);
 
 function walk(dir, files = []) {
   if (!fs.existsSync(dir)) {

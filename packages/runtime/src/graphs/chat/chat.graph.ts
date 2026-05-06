@@ -20,7 +20,7 @@ import {
   runRouteNode
 } from '../../flows/chat/chat-graph-nodes';
 import type { MemoryRecord } from '@agent/memory';
-import type { ToolExecutionResult } from '@agent/runtime';
+import type { ToolExecutionResult } from '../../index';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
 

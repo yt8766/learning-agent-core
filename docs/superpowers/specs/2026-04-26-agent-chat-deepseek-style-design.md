@@ -5,6 +5,8 @@
 适用范围：`apps/frontend/agent-chat`
 最后核对：2026-04-26
 
+> 过时说明（2026-05-02）：本文是历史设计快照。当前 `agent-chat` 已移除快速/专家模式，已恢复侧栏手动重命名入口，并且主聊天 AI 回复不再内嵌 `Think` / `ThoughtChain` 折叠行；真实实现以 `docs/apps/frontend/agent-chat/overview.md` 和 `docs/packages/runtime/session-title-generation.md` 为准。
+
 ## 目标
 
 将 `agent-chat` 的默认体验从控制台式 OpenClaw 工作区，优化为更接近 DeepSeek 的轻量聊天界面，同时保留本项目的多 Agent 前线能力。

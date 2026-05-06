@@ -3,7 +3,7 @@ import type { QueueStateRecord, SubgraphIdValue as SubgraphId } from '@agent/cor
 
 import type { PendingExecutionContext } from '../../../../flows/approval';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../../index';
 
 export class MainGraphBackgroundRuntime {
   constructor(

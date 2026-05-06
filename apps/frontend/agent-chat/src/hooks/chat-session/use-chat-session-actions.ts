@@ -1,5 +1,14 @@
-import { appendMessage, createSession, getCheckpoint, listEvents, listMessages, listSessions } from '@/api/chat-api';
-import type { ChatSessionRecord } from '@/types/chat';
+import {
+  appendMessage,
+  createSession,
+  getCheckpoint,
+  listEvents,
+  listMessages,
+  listSessions,
+  submitMessageFeedback as submitMessageFeedbackApi,
+  updateSession
+} from '@/api/chat-api';
+import type { ChatMessageFeedbackInput, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 import {
   attachEventTaskIdsToMessages,
   deriveSessionStatusFromCheckpoint,
@@ -42,7 +51,12 @@ import {
 import { createApprovalActions } from './chat-session-approval-actions';
 import { createLifecycleActions } from './chat-session-lifecycle-actions';
 
-export function createChatSessionActions(options: CreateChatSessionActionsOptions) {
+export function createChatSessionActions(
+  options: CreateChatSessionActionsOptions & {
+    messages?: ChatMessageRecord[];
+    feedbackRequestVersions?: { current: Record<string, number> };
+  }
+) {
   const handleMissingSession = async (sessionId: string) => {
     if (options.pendingInitialMessage.current?.sessionId === sessionId) {
       options.pendingInitialMessage.current = null;
@@ -63,6 +77,7 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
   };
 
   const runLoading = createRunLoading(options, handleMissingSession);
+  const feedbackRequestVersions = options.feedbackRequestVersions?.current ?? {};
 
   const refreshSessions = async () => {
     const nextSessions = await runLoading(() => listSessions(), '加载会话失败', false);
@@ -222,6 +237,23 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     options.setActiveSessionId(session.id);
   };
 
+  const renameSessionById = async (sessionId: string, title: string) => {
+    const nextTitle = title.trim();
+    if (!sessionId || !nextTitle) return;
+
+    const updatedSession = await runLoading(() => updateSession(sessionId, nextTitle), '重命名会话失败', {
+      withLoading: false,
+      sessionId
+    });
+    if (!updatedSession) {
+      return;
+    }
+
+    options.setSessions(current =>
+      current.map(session => (session.id === updatedSession.id ? { ...session, ...updatedSession } : session))
+    );
+  };
+
   const sendMessage = async (nextMessage?: string | OutboundChatMessage) => {
     const resolvedMessage = normalizeOutboundMessage(nextMessage ?? options.draft);
     const content = resolvedMessage.payload.trim();
@@ -260,6 +292,52 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     }
   };
 
+  const regenerateMessage = async (message: ChatMessageRecord) => {
+    if (message.role !== 'assistant') {
+      return;
+    }
+
+    const threadMessages = options.messages ?? [];
+    const lastAssistantMessage = [...threadMessages].reverse().find(candidate => candidate.role === 'assistant');
+    if (lastAssistantMessage?.id !== message.id) {
+      return;
+    }
+
+    const messageIndex = threadMessages.findIndex(candidate => candidate.id === message.id);
+    const priorMessages = messageIndex >= 0 ? threadMessages.slice(0, messageIndex) : threadMessages;
+    const priorUserMessage = [...priorMessages].reverse().find(candidate => candidate.role === 'user');
+    if (!priorUserMessage) {
+      return;
+    }
+
+    await sendMessage(priorUserMessage.content);
+  };
+
+  const submitMessageFeedback = async (message: ChatMessageRecord, feedback: ChatMessageFeedbackInput) => {
+    const sessionId = message.sessionId || options.activeSessionId;
+    if (!sessionId) {
+      return;
+    }
+
+    const nextVersion = (feedbackRequestVersions[message.id] ?? 0) + 1;
+    feedbackRequestVersions[message.id] = nextVersion;
+    const updatedMessage = await runLoading(
+      () => submitMessageFeedbackApi(sessionId, message.id, feedback),
+      '提交消息反馈失败',
+      { withLoading: false, sessionId }
+    );
+    if (!updatedMessage) {
+      return;
+    }
+    if (feedbackRequestVersions[message.id] !== nextVersion) {
+      return;
+    }
+
+    options.setMessages(current =>
+      current.map(candidate => (candidate.id === updatedMessage.id ? { ...candidate, ...updatedMessage } : candidate))
+    );
+  };
+
   const approvalActions = createApprovalActions({ options, runLoading, hydrateSessionSnapshot });
   const lifecycleActions = createLifecycleActions({
     options,
@@ -275,7 +353,10 @@ export function createChatSessionActions(options: CreateChatSessionActionsOption
     refreshCheckpointOnly,
     refreshSessionDetail,
     refreshSessions,
+    renameSessionById,
+    regenerateMessage,
     sendMessage,
+    submitMessageFeedback,
     ...approvalActions,
     ...lifecycleActions,
     markSessionStatus: (sessionId: string, status: ChatSessionRecord['status']) =>

@@ -180,7 +180,8 @@
 
 ## 开发入口
 
-- 后端开发：`pnpm --dir apps/backend/agent-server start:dev`
+- 后端开发（三个后端一起启动）：`pnpm start:dev`
+- 仅启动 agent-server：`pnpm start:dev:agent`
 - 后端生产：`pnpm --dir apps/backend/agent-server start:prod`
 - 聊天前端：`pnpm --dir apps/frontend/agent-chat dev`（默认 `127.0.0.1:5173`）
 - 管理前端：`pnpm --dir apps/frontend/agent-admin dev`（默认 `127.0.0.1:5174`）

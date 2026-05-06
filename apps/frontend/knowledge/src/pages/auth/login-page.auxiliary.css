@@ -1,0 +1,55 @@
+.knowledge-login-options {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: -2px 0 18px;
+}
+
+.knowledge-login-options .ant-checkbox-wrapper {
+  color: #64748b;
+  font-size: 16px;
+}
+
+.knowledge-login-link.ant-btn {
+  color: var(--knowledge-login-blue);
+  font-size: 16px;
+  font-weight: 700;
+  padding-inline: 0;
+}
+
+.knowledge-login-divider.ant-divider-horizontal {
+  color: #94a3b8;
+  font-size: 15px;
+  margin: 30px 0 20px;
+}
+
+.knowledge-login-divider.ant-divider-horizontal::before,
+.knowledge-login-divider.ant-divider-horizontal::after {
+  border-block-start-color: #dbe4ef;
+}
+
+.knowledge-login-third-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.knowledge-login-third-button.ant-btn {
+  align-items: center;
+  border-color: #dbe4ef;
+  border-radius: 8px;
+  color: #334155;
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 16px;
+  font-weight: 800;
+  gap: 8px;
+  height: 72px;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.knowledge-login-third-button.ant-btn .anticon {
+  color: var(--knowledge-login-blue);
+  font-size: 22px;
+}

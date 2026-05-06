@@ -1,17 +1,12 @@
-﻿import axios from 'axios';
-
-import { normalizeExecutionMode } from '@/lib/runtime-semantics';
-import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
-const http = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,
-  timeout: 12000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+﻿import { http, toApiUrl, API_BASE } from '@/utils/http-client';
+import { normalizeExecutionMode } from '@/utils/runtime-semantics';
+import type {
+  ChatCheckpointRecord,
+  ChatEventRecord,
+  ChatMessageFeedbackInput,
+  ChatMessageRecord,
+  ChatSessionRecord
+} from '@/types/chat';
 
 const inFlightRequests = new Map<string, Promise<unknown>>();
 const resolvedRequestCache = new Map<string, { expiresAt: number; data: unknown }>();
@@ -82,10 +77,6 @@ function withSessionId(path: string, sessionId?: string) {
   return `${path}${separator}sessionId=${encodeURIComponent(sessionId)}`;
 }
 
-function toApiUrl(path: string) {
-  return `${API_BASE}${path}`;
-}
-
 export function listSessions() {
   return request<ChatSessionRecord[]>('/chat/sessions', {
     dedupeKey: 'GET:/chat/sessions',
@@ -132,6 +123,16 @@ export function appendMessage(sessionId: string, message: string, options?: { mo
   return request<ChatMessageRecord>('/chat/messages', {
     method: 'POST',
     data: { message, sessionId, modelId: options?.modelId }
+  });
+}
+
+export function submitMessageFeedback(sessionId: string, messageId: string, feedback: ChatMessageFeedbackInput) {
+  return request<ChatMessageRecord>(`/chat/messages/${encodeURIComponent(messageId)}/feedback`, {
+    method: 'POST',
+    data: {
+      sessionId,
+      ...feedback
+    }
   });
 }
 

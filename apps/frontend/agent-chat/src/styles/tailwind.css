@@ -1,0 +1,30 @@
+/*
+ * Tailwind v4 — Preflight omitted for Ant Design reset compatibility.
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: Syne, ui-serif, Georgia, serif;
+
+  --color-chat-canvas: #f8fafc;
+  --color-chat-elevated: rgba(255, 255, 255, 0.86);
+  --color-chat-sidebar: #0f172a;
+  --color-chat-sidebar-rail: #070b14;
+  --color-chat-border: #e2e8f0;
+  --color-chat-ink: #0f172a;
+  --color-chat-ink-muted: #64748b;
+  --color-chat-accent: #6366f1;
+  --color-chat-accent-soft: #e0e7ff;
+
+  --radius-chat: 1rem;
+  --radius-chat-sm: 0.5rem;
+
+  --shadow-chat-composer: 0 -12px 40px rgba(15, 23, 42, 0.08);
+
+  --spacing-sidebar-expanded: 18.5rem;
+  --spacing-sidebar-rail: 3.25rem;
+}

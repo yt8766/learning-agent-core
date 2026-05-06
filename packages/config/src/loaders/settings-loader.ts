@@ -10,6 +10,23 @@ import {
 import { resolveSettingsPaths, buildMergedOverrides } from './settings-paths';
 import type { LoadSettingsOptions, RuntimeSettings } from '../schemas/settings.types';
 
+const DEFAULT_LANGGRAPH_STORE_INDEX_FIELDS = ['$.text', '$.summary', '$.content'];
+
+function parseLangGraphStoreIndexFields(value: string | undefined): string[] {
+  const fields = value
+    ?.split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+  return fields && fields.length > 0 ? fields : DEFAULT_LANGGRAPH_STORE_INDEX_FIELDS;
+}
+
+function parseLangGraphStoreDistanceMetric(value: string | undefined) {
+  if (value === 'cosine' || value === 'l2' || value === 'inner_product') {
+    return value;
+  }
+  return undefined;
+}
+
 export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = process.env): RuntimeSettings {
   const options =
     'env' in input || 'workspaceRoot' in input || 'overrides' in input
@@ -134,6 +151,60 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
       pollMs: Number(runtimeEnv.RUNTIME_BACKGROUND_POLL_MS ?? overrides.runtimeBackground?.pollMs ?? 3_000),
       runnerIdPrefix:
         runtimeEnv.RUNTIME_BACKGROUND_RUNNER_ID_PREFIX ?? overrides.runtimeBackground?.runnerIdPrefix ?? 'runtime'
+    },
+    langGraphCheckpointer: {
+      provider:
+        runtimeEnv.LANGGRAPH_CHECKPOINTER === 'postgres' || overrides.langGraphCheckpointer?.provider === 'postgres'
+          ? 'postgres'
+          : 'memory',
+      postgres: {
+        connectionString:
+          runtimeEnv.LANGGRAPH_POSTGRES_URI ??
+          runtimeEnv.LANGGRAPH_CHECKPOINT_POSTGRES_URI ??
+          overrides.langGraphCheckpointer?.postgres?.connectionString,
+        schema:
+          runtimeEnv.LANGGRAPH_POSTGRES_SCHEMA ??
+          runtimeEnv.LANGGRAPH_CHECKPOINT_POSTGRES_SCHEMA ??
+          overrides.langGraphCheckpointer?.postgres?.schema ??
+          'public',
+        setupOnInitialize:
+          runtimeEnv.LANGGRAPH_POSTGRES_SETUP_ON_INITIALIZE != null
+            ? runtimeEnv.LANGGRAPH_POSTGRES_SETUP_ON_INITIALIZE !== 'false'
+            : (overrides.langGraphCheckpointer?.postgres?.setupOnInitialize ?? true)
+      }
+    },
+    langGraphStore: {
+      provider:
+        runtimeEnv.LANGGRAPH_STORE === 'postgres' || overrides.langGraphStore?.provider === 'postgres'
+          ? 'postgres'
+          : 'memory',
+      postgres: {
+        connectionString:
+          runtimeEnv.LANGGRAPH_STORE_POSTGRES_URI ??
+          runtimeEnv.LANGGRAPH_STORE_URI ??
+          overrides.langGraphStore?.postgres?.connectionString,
+        schema:
+          runtimeEnv.LANGGRAPH_STORE_POSTGRES_SCHEMA ??
+          runtimeEnv.LANGGRAPH_STORE_SCHEMA ??
+          overrides.langGraphStore?.postgres?.schema ??
+          'public',
+        setupOnInitialize:
+          runtimeEnv.LANGGRAPH_STORE_POSTGRES_SETUP_ON_INITIALIZE != null
+            ? runtimeEnv.LANGGRAPH_STORE_POSTGRES_SETUP_ON_INITIALIZE !== 'false'
+            : (overrides.langGraphStore?.postgres?.setupOnInitialize ?? true)
+      },
+      semanticSearch: {
+        enabled:
+          runtimeEnv.LANGGRAPH_STORE_SEMANTIC_SEARCH != null
+            ? runtimeEnv.LANGGRAPH_STORE_SEMANTIC_SEARCH !== 'false'
+            : (overrides.langGraphStore?.semanticSearch?.enabled ?? true),
+        fields:
+          overrides.langGraphStore?.semanticSearch?.fields ??
+          parseLangGraphStoreIndexFields(runtimeEnv.LANGGRAPH_STORE_INDEX_FIELDS),
+        distanceMetric:
+          parseLangGraphStoreDistanceMetric(runtimeEnv.LANGGRAPH_STORE_DISTANCE_METRIC) ??
+          overrides.langGraphStore?.semanticSearch?.distanceMetric
+      }
     },
     dailyTechBriefing: buildDailyTechBriefingConfig(runtimeEnv, overrides, zhipuModels),
     embeddings: {

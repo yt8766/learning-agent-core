@@ -61,13 +61,13 @@
 - `packages/tools/src/runtime-governance/runtime-governance-executor.ts`
 - `packages/tools/src/tool-registry.ts`
 - `packages/tools/src/tool-risk-classifier.ts`
-- `packages/adapters/src/chat/chat-model-factory.ts`
+- `packages/adapters/src/chat/*`、`src/providers/*`、`src/retry/*`、`src/support/*`、`src/utils/model-fallback.ts`
 - `packages/adapters/src/llm/runtime-provider-factory.ts`
 - `packages/runtime/src/contracts/llm-facade.ts`
 
 说明：
 
-- legacy 根文件已删除
+- legacy 根文件与上述 adapters 历史 compat 目录已删除
 - 测试已切到“包根入口 vs canonical host”校验
 - 文档已同步更新为“包根直接导出 canonical host”
 

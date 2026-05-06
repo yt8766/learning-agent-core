@@ -73,6 +73,9 @@ import {
   ChatCheckpointRecordSchema,
   ChatCheckpointSharedStringRefsSchema,
   ChatCheckpointSpecialistStateSchema,
+  ChatMessageFeedbackRecordSchema,
+  ChatMessageFeedbackRequestSchema,
+  ChatSessionTitleSourceSchema,
   ChatApprovalRequestPreviewItemSchema,
   ChatCapabilityCatalogGroupSchema,
   ChatCapabilityCatalogItemSchema,
@@ -225,6 +228,174 @@ describe('@agent/core type contracts', () => {
         latestTraceSummary: 'connector policy passed'
       }).approvalCount
     ).toBe(1);
+  });
+
+  it('parses chat message feedback contracts', () => {
+    const request = ChatMessageFeedbackRequestSchema.parse({
+      sessionId: 'session-1',
+      rating: 'unhelpful',
+      reasonCode: 'too_shallow',
+      comment: '需要对比表'
+    });
+
+    expect(request.rating).toBe('unhelpful');
+    expect(
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow',
+        comment: '需要对比表',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      }).messageId
+    ).toBe('message-1');
+
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'unhelpful'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'helpful',
+        reasonCode: 'too_shallow'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRequestSchema.parse({
+        sessionId: 'session-1',
+        rating: 'none',
+        reasonCode: 'other'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageFeedbackRecordSchema.parse({
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'helpful',
+        reasonCode: 'too_shallow',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      })
+    ).toThrow();
+
+    expect(ChatMessageFeedbackRequestSchema.parse({ sessionId: 'session-1', rating: 'helpful' }).rating).toBe(
+      'helpful'
+    );
+    expect(ChatMessageFeedbackRequestSchema.parse({ sessionId: 'session-1', rating: 'none' }).rating).toBe('none');
+  });
+
+  it('preserves valid assistant feedback on chat message records', () => {
+    const parsed = ChatMessageRecordSchema.parse({
+      id: 'message-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '可以这样做',
+      createdAt: '2026-05-03T00:00:00.000Z',
+      feedback: {
+        messageId: 'message-1',
+        sessionId: 'session-1',
+        rating: 'unhelpful',
+        reasonCode: 'missed_point',
+        comment: '漏了约束',
+        updatedAt: '2026-05-03T01:00:00.000Z'
+      }
+    });
+
+    expect(parsed.feedback).toEqual({
+      messageId: 'message-1',
+      sessionId: 'session-1',
+      rating: 'unhelpful',
+      reasonCode: 'missed_point',
+      comment: '漏了约束',
+      updatedAt: '2026-05-03T01:00:00.000Z'
+    });
+  });
+
+  it('preserves cognition snapshot on assistant chat message records', () => {
+    const parsed = ChatMessageRecordSchema.parse({
+      id: 'message-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '回答',
+      createdAt: '2026-05-03T00:00:00.000Z',
+      cognitionSnapshot: {
+        thoughtChain: [{ key: 'step-1', title: '推理', status: 'success', messageId: 'message-1' }],
+        thinkingDurationMs: 2100,
+        capturedAt: '2026-05-03T00:00:05.000Z',
+        thinkState: {
+          messageId: 'message-1',
+          title: '已思考',
+          content: '摘要',
+          loading: false
+        }
+      }
+    });
+
+    expect(parsed.cognitionSnapshot?.thoughtChain?.[0]?.title).toBe('推理');
+    expect(parsed.cognitionSnapshot?.thinkingDurationMs).toBe(2100);
+    expect(parsed.cognitionSnapshot?.thinkState?.content).toBe('摘要');
+  });
+
+  it('parses message feedback learning candidate chat events', () => {
+    const parsed = ChatEventRecordSchema.parse({
+      id: 'event-1',
+      sessionId: 'session-1',
+      type: 'message_feedback_learning_candidate',
+      at: '2026-05-03T00:00:00.000Z',
+      payload: {
+        messageId: 'message-1',
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow',
+        candidateText: '基础技术概念题回答时先给核心结论。',
+        source: 'message_feedback'
+      }
+    });
+
+    expect(parsed.type).toBe('message_feedback_learning_candidate');
+  });
+
+  it('rejects invalid embedded feedback on chat message records', () => {
+    const baseMessage = {
+      id: 'message-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '可以这样做',
+      createdAt: '2026-05-03T00:00:00.000Z'
+    };
+
+    expect(() =>
+      ChatMessageRecordSchema.parse({
+        ...baseMessage,
+        feedback: {
+          messageId: 'message-1',
+          sessionId: 'session-1',
+          rating: 'helpful',
+          reasonCode: 'missed_point',
+          updatedAt: '2026-05-03T01:00:00.000Z'
+        }
+      })
+    ).toThrow();
+    expect(() =>
+      ChatMessageRecordSchema.parse({
+        ...baseMessage,
+        feedback: {
+          messageId: 'message-1',
+          sessionId: 'session-1',
+          rating: 'unhelpful',
+          updatedAt: '2026-05-03T01:00:00.000Z'
+        }
+      })
+    ).toThrow();
   });
 
   it('keeps evaluation result as a schema-first core contract', () => {
@@ -482,6 +653,71 @@ describe('@agent/core type contracts', () => {
     expect(ChatThinkStateSchema.parse(think).loading).toBe(true);
   });
 
+  it('ChatThoughtChainItemSchema supports optional kind and webSearch fields', () => {
+    const searchThought: ChatThoughtChainItem = {
+      key: 'web-search-1',
+      title: '搜索网页',
+      kind: 'web_search',
+      webSearch: {
+        query: 'Docker 镜像与容器区别',
+        resultCount: 15,
+        topHosts: ['docs.docker.com', 'developer.aliyun.com'],
+        hitIds: ['web:task-1:0', 'web:task-1:1']
+      },
+      status: 'success'
+    };
+
+    const parsed = ChatThoughtChainItemSchema.parse(searchThought);
+    expect(parsed.kind).toBe('web_search');
+    expect(parsed.webSearch?.query).toBe('Docker 镜像与容器区别');
+    expect(parsed.webSearch?.resultCount).toBe(15);
+    expect(parsed.webSearch?.topHosts).toEqual(['docs.docker.com', 'developer.aliyun.com']);
+
+    const reasoningThought: ChatThoughtChainItem = {
+      key: 'reasoning-1',
+      title: '分析用户意图',
+      kind: 'reasoning',
+      status: 'loading'
+    };
+    expect(ChatThoughtChainItemSchema.parse(reasoningThought).kind).toBe('reasoning');
+
+    const legacyThought: ChatThoughtChainItem = {
+      key: 'legacy-no-kind',
+      title: '计划中'
+    };
+    expect(ChatThoughtChainItemSchema.parse(legacyThought).kind).toBeUndefined();
+
+    const searchWithHits: ChatThoughtChainItem = {
+      key: 'web-search-hits',
+      title: '搜索网页',
+      kind: 'web_search',
+      webSearch: {
+        query: 'brew install',
+        resultCount: 3,
+        hits: [
+          { url: 'https://brew.sh', title: 'Homebrew', host: 'brew.sh' },
+          { url: 'https://example.com', title: 'Example', host: 'example.com' }
+        ]
+      },
+      status: 'success'
+    };
+    const parsedHits = ChatThoughtChainItemSchema.parse(searchWithHits);
+    expect(parsedHits.webSearch?.hits?.[0]?.url).toBe('https://brew.sh');
+
+    const browseThought: ChatThoughtChainItem = {
+      key: 'browse-1',
+      title: '浏览页面',
+      kind: 'browser',
+      description: '已阅读 2 个网页摘要',
+      browser: {
+        pageCount: 2,
+        pages: [{ url: 'https://brew.sh', title: 'The Missing Package Manager', host: 'brew.sh' }]
+      },
+      status: 'success'
+    };
+    expect(ChatThoughtChainItemSchema.parse(browseThought).browser?.pages?.[0]?.title).toContain('Package Manager');
+  });
+
   it('parses task runtime state contracts from schema-first core definitions', () => {
     expect(
       TaskModeGateStateSchema.parse({
@@ -691,6 +927,7 @@ describe('@agent/core type contracts', () => {
     const session: ChatSessionRecord = {
       id: 'session-1',
       title: 'Runtime contract audit',
+      titleSource: 'manual',
       status: 'running',
       currentTaskId: 'task-1',
       channelIdentity: {
@@ -729,6 +966,7 @@ describe('@agent/core type contracts', () => {
     };
 
     expect(ChannelIdentitySchema.parse(session.channelIdentity).channel).toBe('web');
+    expect(ChatSessionTitleSourceSchema.parse(session.titleSource)).toBe('manual');
     expect(ChatSessionRecordSchema.parse(session).compression?.previewMessages?.[0]?.role).toBe('assistant');
   });
 

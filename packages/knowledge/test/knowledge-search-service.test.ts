@@ -144,4 +144,55 @@ describe('DefaultKnowledgeSearchService', () => {
       allowedRoles: ['sales']
     });
   });
+
+  it('filters direct search by metadata knowledgeBaseId and projects it to hits', async () => {
+    const sourceRepository = new InMemoryKnowledgeSourceRepository([
+      {
+        id: 'source-1',
+        sourceType: 'repo-docs',
+        uri: '/docs/rag.md',
+        title: 'RAG Guide',
+        trustClass: 'internal',
+        updatedAt: '2026-04-18T00:00:00.000Z'
+      }
+    ]);
+    const chunkRepository = new InMemoryKnowledgeChunkRepository([
+      {
+        id: 'chunk-rag',
+        sourceId: 'source-1',
+        documentId: 'doc-rag',
+        chunkIndex: 0,
+        content: 'retrieval planner knowledge base scope',
+        searchable: true,
+        updatedAt: '2026-04-18T00:00:00.000Z',
+        metadata: {
+          knowledgeBaseId: 'kb_rag'
+        }
+      },
+      {
+        id: 'chunk-other',
+        sourceId: 'source-1',
+        documentId: 'doc-other',
+        chunkIndex: 1,
+        content: 'retrieval planner knowledge base scope',
+        searchable: true,
+        updatedAt: '2026-04-18T00:00:00.000Z',
+        metadata: {
+          knowledgeBaseId: 'kb_other'
+        }
+      }
+    ]);
+
+    const service = new DefaultKnowledgeSearchService(sourceRepository, chunkRepository);
+    const result = await service.search({
+      query: 'retrieval planner scope',
+      limit: 5,
+      filters: {
+        knowledgeBaseIds: ['kb_rag']
+      }
+    });
+
+    expect(result.hits.map(hit => hit.chunkId)).toEqual(['chunk-rag']);
+    expect(result.hits[0]?.knowledgeBaseId).toBe('kb_rag');
+  });
 });

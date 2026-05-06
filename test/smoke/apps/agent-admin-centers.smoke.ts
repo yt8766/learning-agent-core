@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   ApprovalsPanel,
   filterApprovals
-} from '../../../apps/frontend/agent-admin/src/features/approvals-center/approvals-panel';
-import { ConnectorsCenterPanel } from '../../../apps/frontend/agent-admin/src/features/connectors-center/connectors-center-panel';
-import { EvidenceCenterPanel } from '../../../apps/frontend/agent-admin/src/features/evidence-center/evidence-center-panel';
-import { prioritizeEvidenceRecords } from '../../../apps/frontend/agent-admin/src/features/evidence-center/evidence-center-panel.helpers';
-import { LearningCenterPanel } from '../../../apps/frontend/agent-admin/src/features/learning-center/learning-center-panel';
-import { RuntimeOverviewPanel } from '../../../apps/frontend/agent-admin/src/features/runtime-overview/runtime-overview-panel';
-import { SkillLabPanel } from '../../../apps/frontend/agent-admin/src/features/skill-lab/skill-lab-panel';
+} from '../../../apps/frontend/agent-admin/src/pages/approvals-center/approvals-panel';
+import { ConnectorsCenterPanel } from '../../../apps/frontend/agent-admin/src/pages/connectors-center/connectors-center-panel';
+import { EvidenceCenterPanel } from '../../../apps/frontend/agent-admin/src/pages/evidence-center/evidence-center-panel';
+import { prioritizeEvidenceRecords } from '../../../apps/frontend/agent-admin/src/pages/evidence-center/evidence-center-panel.helpers';
+import { LearningCenterPanel } from '../../../apps/frontend/agent-admin/src/pages/learning-center/learning-center-panel';
+import { RuntimeOverviewPanel } from '../../../apps/frontend/agent-admin/src/pages/runtime-overview/runtime-overview-panel';
+import { SkillLabPanel } from '../../../apps/frontend/agent-admin/src/pages/skill-lab/skill-lab-panel';
 import { PAGE_TITLES } from '../../../apps/frontend/agent-admin/src/hooks/use-admin-dashboard';
 import type { ApprovalCenterItem } from '../../../apps/frontend/agent-admin/src/types/admin';
 

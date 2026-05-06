@@ -13,6 +13,7 @@ const listMessagesMock = vi.fn();
 const listEventsMock = vi.fn();
 const getCheckpointMock = vi.fn();
 const installRemoteSkillMock = vi.fn();
+const submitMessageFeedbackMock = vi.fn();
 
 vi.mock('../../../src/api/chat-api', () => ({
   allowApprovalCapability: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('../../../src/api/chat-api', () => ({
   recoverSession: vi.fn(),
   rejectSession: vi.fn(),
   respondInterrupt: vi.fn(),
+  submitMessageFeedback: (...args: unknown[]) => submitMessageFeedbackMock(...args),
   updateSession: vi.fn()
 }));
 
@@ -1593,5 +1595,285 @@ describe('use-chat-session-actions optimistic sending', () => {
 
     expect(refreshed?.graphState?.status).toBe('completed');
     expect(checkpoint?.graphState?.status).toBe('completed');
+  });
+
+  it('regenerates an assistant response by resending the closest prior user message', async () => {
+    appendMessageMock.mockReset();
+    getCheckpointMock.mockReset();
+    appendMessageMock.mockResolvedValue({
+      id: 'user-msg-regenerated',
+      sessionId: 'session-1',
+      role: 'user',
+      content: '请解释容器和镜像',
+      createdAt: '2026-05-03T00:00:03.000Z'
+    } satisfies ChatMessageRecord);
+    getCheckpointMock.mockResolvedValue(undefined);
+
+    let draft = '';
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'user-msg-1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '请解释容器和镜像',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      },
+      {
+        id: 'assistant-msg-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+    let sessions: ChatSessionRecord[] = [
+      {
+        id: 'session-1',
+        title: '会话 1',
+        status: 'completed',
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+
+    const actions = createChatSessionActions({
+      activeSessionId: 'session-1',
+      activeSession: sessions[0],
+      messages,
+      checkpoint: undefined,
+      draft,
+      setDraft: next => {
+        draft = applySetter(draft, next);
+      },
+      setError: vi.fn(),
+      setLoading: vi.fn(),
+      setSessions: next => {
+        sessions = applySetter(sessions, next);
+      },
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: vi.fn(),
+      setCheckpoint: vi.fn(),
+      setActiveSessionId: vi.fn(),
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} }
+    });
+
+    await actions.regenerateMessage(messages[1]);
+
+    expect(appendMessageMock).toHaveBeenCalledWith('session-1', '请解释容器和镜像', {
+      modelId: undefined
+    });
+    expect(messages.some(message => message.id === 'assistant-msg-1')).toBe(true);
+    expect(messages.some(message => message.id === 'pending_assistant_session-1')).toBe(true);
+  });
+
+  it('does not regenerate historical assistant messages', async () => {
+    appendMessageMock.mockReset();
+    getCheckpointMock.mockReset();
+
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'user-msg-1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '第一问',
+        createdAt: '2026-05-03T00:00:00.000Z'
+      },
+      {
+        id: 'assistant-msg-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '第一答',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      },
+      {
+        id: 'user-msg-2',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '第二问',
+        createdAt: '2026-05-03T00:00:02.000Z'
+      },
+      {
+        id: 'assistant-msg-2',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '第二答',
+        createdAt: '2026-05-03T00:00:03.000Z'
+      }
+    ];
+
+    const actions = createChatSessionActions({
+      activeSessionId: 'session-1',
+      activeSession: {
+        id: 'session-1',
+        title: '会话 1',
+        status: 'completed',
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:03.000Z'
+      },
+      messages,
+      checkpoint: undefined,
+      draft: '',
+      setDraft: vi.fn(),
+      setError: vi.fn(),
+      setLoading: vi.fn(),
+      setSessions: vi.fn(),
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: vi.fn(),
+      setCheckpoint: vi.fn(),
+      setActiveSessionId: vi.fn(),
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} }
+    });
+
+    await actions.regenerateMessage(messages[1]);
+
+    expect(appendMessageMock).not.toHaveBeenCalled();
+    expect(messages.map(message => message.id)).toEqual([
+      'user-msg-1',
+      'assistant-msg-1',
+      'user-msg-2',
+      'assistant-msg-2'
+    ]);
+  });
+
+  it('submits feedback and replaces the matching message with the API response', async () => {
+    submitMessageFeedbackMock.mockReset();
+    submitMessageFeedbackMock.mockResolvedValue({
+      id: 'assistant-msg-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '镜像是模板，容器是实例。',
+      feedback: {
+        rating: 'helpful',
+        updatedAt: '2026-05-03T00:00:02.000Z'
+      },
+      createdAt: '2026-05-03T00:00:01.000Z'
+    } satisfies ChatMessageRecord);
+
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-msg-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+
+    const actions = createChatSessionActions({
+      activeSessionId: 'session-1',
+      activeSession: {
+        id: 'session-1',
+        title: '会话 1',
+        status: 'completed',
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:01.000Z'
+      },
+      checkpoint: undefined,
+      draft: '',
+      setDraft: vi.fn(),
+      setError: vi.fn(),
+      setLoading: vi.fn(),
+      setSessions: vi.fn(),
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: vi.fn(),
+      setCheckpoint: vi.fn(),
+      setActiveSessionId: vi.fn(),
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} }
+    });
+
+    await actions.submitMessageFeedback(messages[0], { rating: 'helpful' });
+
+    expect(submitMessageFeedbackMock).toHaveBeenCalledWith('session-1', 'assistant-msg-1', {
+      rating: 'helpful'
+    });
+    expect(messages[0]?.feedback).toEqual({
+      rating: 'helpful',
+      updatedAt: '2026-05-03T00:00:02.000Z'
+    });
+  });
+
+  it('keeps the latest feedback when same-message feedback responses resolve out of order', async () => {
+    submitMessageFeedbackMock.mockReset();
+    const helpful = createDeferred<ChatMessageRecord>();
+    const unhelpful = createDeferred<ChatMessageRecord>();
+    submitMessageFeedbackMock.mockReturnValueOnce(helpful.promise).mockReturnValueOnce(unhelpful.promise);
+
+    let messages: ChatMessageRecord[] = [
+      {
+        id: 'assistant-msg-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    ];
+
+    const actions = createChatSessionActions({
+      activeSessionId: 'session-1',
+      activeSession: {
+        id: 'session-1',
+        title: '会话 1',
+        status: 'completed',
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:01.000Z'
+      },
+      checkpoint: undefined,
+      draft: '',
+      setDraft: vi.fn(),
+      setError: vi.fn(),
+      setLoading: vi.fn(),
+      setSessions: vi.fn(),
+      setMessages: next => {
+        messages = applySetter(messages, next);
+      },
+      setEvents: vi.fn(),
+      setCheckpoint: vi.fn(),
+      setActiveSessionId: vi.fn(),
+      requestStreamReconnect: vi.fn(),
+      pendingInitialMessage: { current: null },
+      pendingUserIds: { current: {} },
+      pendingAssistantIds: { current: {} },
+      optimisticThinkingStartedAt: { current: {} },
+      feedbackRequestVersions: { current: {} }
+    });
+
+    const firstSubmit = actions.submitMessageFeedback(messages[0], { rating: 'helpful' });
+    const secondSubmit = actions.submitMessageFeedback(messages[0], {
+      rating: 'unhelpful',
+      reasonCode: 'too_shallow'
+    });
+
+    unhelpful.resolve({
+      ...messages[0],
+      feedback: { rating: 'unhelpful', reasonCode: 'too_shallow', updatedAt: '2026-05-03T00:00:03.000Z' }
+    });
+    await secondSubmit;
+
+    helpful.resolve({
+      ...messages[0],
+      feedback: { rating: 'helpful', updatedAt: '2026-05-03T00:00:02.000Z' }
+    });
+    await firstSubmit;
+
+    expect(messages[0]?.feedback?.rating).toBe('unhelpful');
+    expect(messages[0]?.feedback?.reasonCode).toBe('too_shallow');
   });
 });

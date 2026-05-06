@@ -36,6 +36,15 @@ export function stripOperationalBoilerplate(content: string): string {
     .trim();
 }
 
+export function stripThinkBlocks(content: string): string {
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function sanitizeTaskContextForModel(content?: string): string {
   if (!content?.trim()) {
     return '';

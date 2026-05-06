@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const gatewayRoot = join(process.cwd(), 'apps/llm-gateway');
+const rootPackageJsonPath = join(process.cwd(), 'package.json');
 const rootEnvExamplePath = join(process.cwd(), '.env.example');
 const rootComposePath = join(process.cwd(), 'docker-compose.yml');
 const integrationDocPath = join(process.cwd(), 'docs/integration/llm-gateway-postgres-login.md');
@@ -42,13 +43,20 @@ describe('llm gateway env docs', () => {
   it('keeps local Postgres on the root compose file with root db volume storage', async () => {
     const rootEnvExample = await readFile(rootEnvExamplePath, 'utf8');
     const rootCompose = await readFile(rootComposePath, 'utf8');
+    const rootPackageJson = JSON.parse(await readFile(rootPackageJsonPath, 'utf8')) as {
+      scripts?: Record<string, string>;
+    };
     const gatewayEnvExample = await readGatewayFile('.env.example');
     const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as { scripts?: Record<string, string> };
 
     await expect(access(join(gatewayRoot, 'docker-compose.yml'))).rejects.toThrow();
     expect(packageJson.scripts).not.toHaveProperty('docker:up');
     expect(packageJson.scripts).not.toHaveProperty('docker:down');
-    expect(rootCompose).toContain('postgres:16');
+    expect(rootPackageJson.scripts?.['docker:up']).toBe('docker compose up -d postgres');
+    expect(rootPackageJson.scripts?.['docker:down']).toBe('docker compose down');
+    expect(rootPackageJson.scripts?.['docker:ps']).toBe('docker compose ps');
+    expect(rootPackageJson.scripts?.['docker:logs']).toBe('docker compose logs -f postgres');
+    expect(rootCompose).toContain('pgvector/pgvector:pg16');
     expect(rootCompose).toContain('./db/postgres:/var/lib/postgresql/data');
     expect(rootCompose).not.toContain('llm-gateway');
     expect(rootEnvExample).toContain('DB_NAME=agent_db');
@@ -68,6 +76,10 @@ describe('llm gateway env docs', () => {
   it('keeps the Postgres/login integration doc aligned with bootstrap commands and verification', async () => {
     const doc = await readFile(integrationDocPath, 'utf8');
 
+    expect(doc).toContain('pnpm docker:up');
+    expect(doc).toContain('pnpm docker:ps');
+    expect(doc).toContain('pnpm docker:logs');
+    expect(doc).toContain('pnpm docker:down');
     expect(doc).toContain('docker compose up -d postgres');
     expect(doc).toContain('./db/postgres:/var/lib/postgresql/data');
     expect(doc).toContain('pnpm --dir apps/llm-gateway dev');

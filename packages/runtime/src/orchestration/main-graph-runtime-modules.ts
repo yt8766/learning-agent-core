@@ -1,6 +1,6 @@
 import type { AgentTokenEvent } from '@agent/core';
+import { createRuntimeEmbeddingProvider } from '@agent/adapters';
 import { createDefaultToolRegistry } from '@agent/tools';
-import { MemorySaver } from '@langchain/langgraph';
 
 import { LearningFlow } from '../flows/learning';
 import type { PendingExecutionContext } from '../flows/approval';
@@ -28,6 +28,8 @@ import type {
 } from '../graphs/main/contracts/main-graph.types';
 import type { RuntimeLearningJob, RuntimeLearningQueueItem } from '../runtime/runtime-learning.types';
 import type { RuntimeTaskRecord as TaskRecord } from '../runtime/runtime-task.types';
+import { createLangGraphCheckpointer } from '../runtime/langgraph-checkpointer';
+import { createLangGraphStore } from '../runtime/langgraph-store';
 
 interface MainGraphRuntimeModuleParams {
   dependencies: AgentOrchestratorDependencies;
@@ -60,13 +62,27 @@ export interface MainGraphRuntimeModuleBundle {
   learningJobsRuntime: MainGraphLearningJobsRuntime;
   lifecycle: MainGraphLifecycle;
   bridge: MainGraphBridge;
+  initializeGraphCheckpointer: () => Promise<void>;
+  closeGraphCheckpointer: () => Promise<void>;
+  initializeGraphStore: () => Promise<void>;
+  closeGraphStore: () => Promise<void>;
 }
 
 export function createMainGraphRuntimeModules(params: MainGraphRuntimeModuleParams): MainGraphRuntimeModuleBundle {
   const toolRegistry = params.dependencies.toolRegistry ?? createDefaultToolRegistry();
   const workerRegistry = params.dependencies.workerRegistry ?? createDefaultWorkerRegistry();
   const modelRoutingPolicy = new ModelRoutingPolicy(workerRegistry, params.settings.routing);
-  const graphCheckpointer = new MemorySaver();
+  const graphCheckpointerHandle = createLangGraphCheckpointer(params.settings.langGraphCheckpointer);
+  const graphCheckpointer = graphCheckpointerHandle.checkpointer;
+  const graphStoreHandle = createLangGraphStore({
+    config: params.settings.langGraphStore,
+    embeddingProvider:
+      params.settings.langGraphStore.semanticSearch.enabled && params.settings.embeddings.dimensions > 0
+        ? createRuntimeEmbeddingProvider(params.settings)
+        : undefined,
+    embeddingDimensions: params.settings.embeddings.dimensions
+  });
+  const graphStore = graphStoreHandle.store;
   const refs: {
     lifecycle?: MainGraphLifecycle;
     bridge?: MainGraphBridge;
@@ -238,7 +254,8 @@ export function createMainGraphRuntimeModules(params: MainGraphRuntimeModulePara
     taskContextRuntime,
     runtime,
     executionHelpers,
-    graphCheckpointer
+    graphCheckpointer,
+    graphStore
   });
   refs.bridge = bridge;
 
@@ -255,6 +272,10 @@ export function createMainGraphRuntimeModules(params: MainGraphRuntimeModulePara
     executionHelpers,
     learningJobsRuntime,
     lifecycle,
-    bridge
+    bridge,
+    initializeGraphCheckpointer: graphCheckpointerHandle.initialize,
+    closeGraphCheckpointer: graphCheckpointerHandle.close,
+    initializeGraphStore: graphStoreHandle.initialize,
+    closeGraphStore: graphStoreHandle.close
   };
 }

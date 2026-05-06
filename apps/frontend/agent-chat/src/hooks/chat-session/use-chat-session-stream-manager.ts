@@ -35,6 +35,7 @@ interface StreamManagerDeps {
   setSessions: React.Dispatch<React.SetStateAction<ChatSessionRecord[]>>;
   setError: React.Dispatch<React.SetStateAction<string>>;
   checkpointRef: React.RefObject<ChatCheckpointRecord | undefined>;
+  onStreamComplete?: () => void;
 }
 
 export function useChatSessionStreamManager(deps: StreamManagerDeps) {
@@ -129,6 +130,13 @@ export function useChatSessionStreamManager(deps: StreamManagerDeps) {
       intentionalClose: boolean;
       idleTimer: ReturnType<typeof setTimeout> | null;
       hasAssistantContent?: boolean;
+    },
+    handlers?: {
+      onDone?: () => void;
+      onError?: (error: Error) => void;
+      onEvent?: (event: ChatEventRecord) => void;
+      syncAssistantMessages?: boolean;
+      syncUserMessages?: boolean;
     }
   ) {
     bindChatSessionStream({
@@ -162,7 +170,15 @@ export function useChatSessionStreamManager(deps: StreamManagerDeps) {
       startSessionPolling,
       stopSessionPolling,
       scheduleCheckpointRefresh,
-      streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS
+      streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS,
+      syncAssistantMessages: handlers?.syncAssistantMessages,
+      syncUserMessages: handlers?.syncUserMessages,
+      onStreamComplete: () => {
+        deps.onStreamComplete?.();
+        handlers?.onDone?.();
+      },
+      onStreamEvent: handlers?.onEvent,
+      onStreamError: handlers?.onError
     });
   }
 

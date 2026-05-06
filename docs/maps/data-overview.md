@@ -1,41 +1,10 @@
-# Data 目录说明
+# 数据与存储鸟瞰
 
 状态：current
-文档类型：overview
-适用范围：`data/*`
-最后核对：2026-04-15
+文档类型：reference
+适用范围：持久化、检索、向量与报表数据路径
+最后核对：2026-05-04
 
-`data/` 放本地运行数据，不放源码。
+数据相关能力分散在多个包与应用中：关系库、向量检索、报表产物、证据与学习记录等。实现与 schema 以各宿主包及 `docs/packages/memory`、`docs/packages/knowledge` 等文档为准。
 
-本主题主文档：
-
-- 本文是 `data/*` 的总入口
-
-本文只覆盖：
-
-- 运行时数据目录职责
-- 数据目录边界和使用约束
-- 继续阅读的入口文档
-
-当前目录职责：
-
-- `data/runtime`
-  - 运行态持久化数据，例如任务状态、briefings、schedules、缓存衍生物
-- `data/memory`
-  - 本地 memory / rule / 相关存储
-- `data/knowledge`
-  - 知识检索链路的 catalog、sources、chunks、vectors、ingestion 产物
-- `data/skills`
-  - 运行时技能安装、稳定区、实验区和安装回执
-
-约束：
-
-- 这是运行时产物目录，不要把业务源码、长期设计文档或手写实现放进来
-- 修改路径策略时，优先同步更新 `@agent/config` 和相关文档
-- 根级 `data/*` 是运行时数据唯一 canonical 宿主；`apps/backend/agent-server/data/*` 仅允许作为待清理历史遗留
-
-建议阅读：
-
-- [README](/README.md)
-- [config 文档目录](/docs/packages/config/README.md)
-- [Runtime State Machine](/docs/packages/runtime/runtime-state-machine.md)
+集成与部署层面的登录、Postgres、网关等参见 [docs/integration/README.md](/docs/integration/README.md) 与相关专题文档。

@@ -147,7 +147,7 @@ MVP 不包含：
 - `apps/backend/agent-server/test/runtime/centers/runtime-centers-query.service.workspace.test.ts`：workspace projection、draft store 读取、真实 task learning / evidence / reuse / capability gap 聚合的稳定形状。
 - `apps/backend/agent-server/test/runtime/centers/runtime-centers.service.workspace.test.ts`：runtime centers facade 暴露查询与治理方法，以及缺失 draft 的 not found 行为。
 - `apps/backend/agent-server/test/runtime/centers/runtime-centers-workspace-drafts.test.ts`：agent-server draft store adapter 的状态映射、决策更新和 raw metadata 防泄漏。
-- `apps/frontend/agent-admin/test/api/admin-api-workspace.test.ts` 与 `test/features/workspace-center/workspace-center-panel.test.tsx`：Admin API facade、dashboard 卡片、approve / reject 控件与刷新入口。
+- `apps/frontend/agent-admin/test/api/admin-api-workspace.test.ts` 与 `test/pages/workspace-center/workspace-center-panel.test.tsx`：Admin API facade、dashboard 卡片、approve / reject 控件与刷新入口。
 - `apps/backend/agent-server/test/runtime/domain/skills/runtime-workspace-skill-draft-manifests.test.ts` 与 `test/runtime/skills/runtime-skill-sources.service.test.ts`：approved / trusted draft manifest 投影和 Skill Sources 合并。
 - `packages/skill/test/skill-artifact-fetcher.test.ts`、`apps/backend/agent-server/test/runtime/skills/workspace-draft-skill-artifact-fetcher.test.ts` 与 `apps/backend/agent-server/test/runtime/skills/runtime-skill-install.service.test.ts`：`workspace-draft:` artifact materialization 和安装闭环。
 - `apps/frontend/agent-chat/test/pages/chat-home/chat-home-workbench-sections.test.tsx`：chat workbench 中 learning / reuse readiness 的展示位置与主线程隔离。

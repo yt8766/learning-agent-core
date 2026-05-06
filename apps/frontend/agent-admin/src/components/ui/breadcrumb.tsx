@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { ChevronRight } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export function Breadcrumb({ className, ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="Breadcrumb" className={cn('text-sm text-muted-foreground', className)} {...props} />;

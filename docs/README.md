@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/`
-最后核对：2026-04-26
+最后核对：2026-05-03
 
 本目录用于沉淀仓库级规范、模块文档、接口契约、联调结论、AI 接手上下文、工作流记录与历史归档。
 
@@ -12,7 +12,6 @@
 当前文档：
 
 - [架构文档](./architecture/README.md)
-- [仓库地图](./maps/README.md)
 - [研发与工程规范](./conventions/README.md)
 - [应用文档](./apps/README.md)
 - [Packages 文档](./packages/README.md)
@@ -20,17 +19,19 @@
 - [代理技能文档](./skills/README.md)
 - [契约文档](./contracts/README.md)
 - [联调文档](./integration/README.md)
-- [QA 导航](./qa/README.md)
 - [Evals 导航](./evals/README.md)
 - [AI 对接上下文](./context/README.md)
 - [工作流记录](./workflows/README.md)
+- [功能演进计划与设计](./superpowers/README.md)
+- [调研文档](./research/README.md)
+- [设计参考资源](./design-references/README.md)
 - [历史归档](./archive/README.md)
 
 ## 阅读路径
 
 第一次接手仓库时，推荐按下面顺序读：
 
-1. [仓库目录概览](./maps/repo-directory-overview.md)
+1. [AGENTS.md](/AGENTS.md) 建立项目视角
 2. [架构总览](./architecture/ARCHITECTURE.md)
 3. [项目规范总览](./conventions/project-conventions.md)
 4. [AI 总交接文档](./context/ai-handoff.md)
@@ -47,6 +48,7 @@
 - 改接口、SSE、DTO 或 tool result：先看 [契约文档目录](./contracts/README.md)
 - 改跨模块联调链路：先看 [integration 文档目录](./integration/README.md)
 - 需要 AI 接手背景：先看 [context 交接目录](./context/README.md)
+- 查看功能演进计划或设计 spec：先看 [superpowers 目录](./superpowers/README.md)
 
 ## 一级目录职责
 
@@ -76,6 +78,12 @@
   - AI 对接、包交接和 Agent 交接文档。
 - `workflows/`
   - 当前仍可参考的工作流记录、执行流转说明和计划索引。
+- `superpowers/`
+  - 功能演进实施计划（`plans/`）与技术设计规格（`specs/`）。
+- `research/`
+  - 外部产品调研、竞品分析、UI 组件参考。
+- `design-references/`
+  - 截图与静态设计参考资源，由 `research/` 文档引用。
 - `archive/`
   - 历史文档、迁移台账与不再代表当前实现的资料。
 
@@ -114,6 +122,8 @@
 - `snapshot`
 - `history`
 - `archive`
+- `proposed`
+- `draft`
 
 推荐类型：
 
@@ -127,6 +137,7 @@
 - `evaluation`
 - `baseline`
 - `plan`
+- `spec`
 - `history`
 - `archive`
 - `template`
@@ -162,4 +173,4 @@
 pnpm check:docs
 ```
 
-该命令会检查元信息、目录索引和本地 Markdown 链接。
+该命令会检查元信息、目录索引、本地 Markdown 链接，以及一级目录是否全部登记于 `scripts/check-docs.js` 的 `REQUIRED_TOP_LEVEL_DIRS`。新增一级目录时必须先在该列表登记，否则 CI 会失败。

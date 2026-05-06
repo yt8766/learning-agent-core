@@ -33,7 +33,6 @@ packages/tools/
 │  ├─ sandbox/
 │  ├─ transports/
 │  ├─ scaffold/
-│  ├─ watchdog/
 │  ├─ utils/
 │  └─ index.ts
 ├─ test/
@@ -52,8 +51,7 @@ packages/tools/
   - tool definitions 的正式宿主，例如 filesystem、connectors、scheduling、runtime-governance
 - `transports/`
   - MCP / local / stdio / http transport 与 transport handler
-- `watchdog/`
-  - 执行观察、超时与监控相关宿主
+- watchdog 能力的真实宿主已收敛到 `@agent/runtime`；`@agent/tools` 根入口只保留 `ExecutionWatchdog` 的显式稳定转发，不再保留 `watchdog/` compat barrel
 
 ## 3. 当前收敛策略
 

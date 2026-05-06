@@ -1,0 +1,123 @@
+import type { PermissionProfile, PolicyDecision, SyscallProfile, ToolRequest } from '@agent/core';
+
+const blastRank: Record<PolicyDecision['normalizedRisk']['blastRadius'], number> = {
+  local: 0,
+  project: 1,
+  team: 2,
+  external: 3,
+  production: 4
+};
+
+const approvalActions = new Set<PolicyDecision['normalizedRisk']['action']>(['delete', 'publish', 'spend']);
+const approvalDataClasses = new Set<PolicyDecision['normalizedRisk']['dataClasses'][number]>(['secret', 'pii']);
+
+export interface DecideToolRequestPolicyInput {
+  profile: PermissionProfile;
+  syscall: SyscallProfile;
+  request: ToolRequest;
+}
+
+export function decideToolRequestPolicy(input: DecideToolRequestPolicyInput): PolicyDecision {
+  const hint = input.request.agentRiskHint;
+  const normalizedRisk: PolicyDecision['normalizedRisk'] = {
+    action: hint?.action ?? 'read',
+    assetScope: hint?.assetScope ?? [],
+    environment: hint?.environment ?? 'workspace',
+    dataClasses: hint?.dataClasses ?? ['internal'],
+    blastRadius: hint?.blastRadius ?? 'local',
+    level: 'low'
+  };
+
+  const deniedReason = findDeniedReason(input.profile, input.syscall, input.request, normalizedRisk);
+  if (deniedReason) {
+    return {
+      decision: 'deny',
+      reason: deniedReason,
+      decidedBy: 'permission_service',
+      normalizedRisk: { ...normalizedRisk, level: 'critical' }
+    };
+  }
+
+  if (requiresApproval(normalizedRisk)) {
+    return {
+      decision: 'needs_approval',
+      reason: 'Request crosses a high-risk action, data class, or blast radius.',
+      decidedBy: 'permission_service',
+      requiredApprovalPolicy: resolveApprovalPolicy(input.profile),
+      normalizedRisk: { ...normalizedRisk, level: 'high' }
+    };
+  }
+
+  return {
+    decision: 'allow',
+    reason: 'Request is allowed by profile and does not require approval.',
+    decidedBy: 'permission_service',
+    normalizedRisk
+  };
+}
+
+function requiresApproval(risk: PolicyDecision['normalizedRisk']): boolean {
+  return (
+    approvalActions.has(risk.action) ||
+    risk.dataClasses.some(dataClass => approvalDataClasses.has(dataClass)) ||
+    blastRank[risk.blastRadius] >= blastRank.external
+  );
+}
+
+function findDeniedReason(
+  profile: PermissionProfile,
+  syscall: SyscallProfile,
+  request: ToolRequest,
+  risk: PolicyDecision['normalizedRisk']
+): string | undefined {
+  if (!isToolAllowedBySyscallProfile(syscall, request)) {
+    return `Tool ${request.toolName} is not allowed by syscall profile for ${request.syscallType}.`;
+  }
+
+  if (!profile.allowedActions.includes(risk.action)) {
+    return `Action ${risk.action} is not allowed by profile.`;
+  }
+
+  if (risk.assetScope.some(scope => !profile.allowedAssetScopes.includes(scope))) {
+    return 'Request includes an asset scope that is not allowed by profile.';
+  }
+
+  if (!profile.allowedEnvironments.includes(risk.environment)) {
+    return `Environment ${risk.environment} is not allowed by profile.`;
+  }
+
+  if (risk.dataClasses.some(dataClass => !profile.allowedDataClasses.includes(dataClass))) {
+    return 'Request includes a data class that is not allowed by profile.';
+  }
+
+  if (blastRank[risk.blastRadius] > blastRank[profile.maxBlastRadius]) {
+    return `Blast radius ${risk.blastRadius} exceeds profile maximum ${profile.maxBlastRadius}.`;
+  }
+
+  return undefined;
+}
+
+function isToolAllowedBySyscallProfile(syscall: SyscallProfile, request: ToolRequest): boolean {
+  return getAllowedTools(syscall, request.syscallType).includes(request.toolName);
+}
+
+function getAllowedTools(syscall: SyscallProfile, syscallType: ToolRequest['syscallType']): string[] {
+  switch (syscallType) {
+    case 'resource':
+      return syscall.resource;
+    case 'mutation':
+      return syscall.mutation;
+    case 'execution':
+      return syscall.execution;
+    case 'external':
+      return syscall.external;
+    case 'control_plane':
+      return syscall.controlPlane;
+    case 'runtime':
+      return syscall.runtime;
+  }
+}
+
+function resolveApprovalPolicy(profile: PermissionProfile): PolicyDecision['requiredApprovalPolicy'] {
+  return profile.defaultApprovalPolicy === 'two_person' ? 'two_person' : 'human';
+}

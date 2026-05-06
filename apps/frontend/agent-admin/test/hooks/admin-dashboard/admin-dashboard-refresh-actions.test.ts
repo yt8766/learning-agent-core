@@ -210,6 +210,44 @@ describe('admin-dashboard-refresh-actions', () => {
     );
   });
 
+  it('includes approval filters in the center refresh request key', async () => {
+    let approvalFilters: {
+      executionMode: 'all' | 'plan' | 'execute' | 'imperial_direct';
+      interactionKind:
+        | 'all'
+        | 'approval'
+        | 'plan-question'
+        | 'supplemental-input'
+        | 'revise-required'
+        | 'micro-loop-exhausted'
+        | 'mode-transition';
+    } = {
+      executionMode: 'plan',
+      interactionKind: 'plan-question'
+    };
+    const { context } = createContext({
+      getApprovalFilters: () => approvalFilters
+    });
+    const actions = createAdminDashboardRefreshActions(context as any);
+
+    await actions.refreshPageCenter('approvals');
+    approvalFilters = {
+      executionMode: 'execute',
+      interactionKind: 'approval'
+    };
+    await actions.refreshPageCenter('approvals');
+
+    expect(apiMocks.getApprovalsCenter).toHaveBeenCalledTimes(2);
+    expect(apiMocks.getApprovalsCenter).toHaveBeenNthCalledWith(1, {
+      executionMode: 'plan',
+      interactionKind: 'plan-question'
+    });
+    expect(apiMocks.getApprovalsCenter).toHaveBeenNthCalledWith(2, {
+      executionMode: 'execute',
+      interactionKind: 'approval'
+    });
+  });
+
   it('loads archive page center by fetching runtime and evals in parallel', async () => {
     const { context, state } = createContext({
       getPage: () => 'archives'

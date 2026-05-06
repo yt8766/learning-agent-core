@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/contracts/api/`
-最后核对：2026-04-26
+最后核对：2026-05-05
 
 本目录是前后端 API 契约的唯一主入口。后端按这里实现接口，前端按这里接入接口；跨模块调用时序和联调背景放在 [integration](/docs/integration/README.md)。
 
@@ -11,10 +11,15 @@
 
 - 接口风格选择：[interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 - 聊天 API：[agent-chat.md](/docs/contracts/api/agent-chat.md)
+- Agent Chat Runtime V2 API：[agent-chat-runtime-v2.md](/docs/contracts/api/agent-chat-runtime-v2.md)；下一代会话化 Agent 执行协议，覆盖 ChatRun、view-stream、自动审查和自然语言确认。当前已有 schema、run 查询/取消、view-stream、自然语言工具审批 bridge 与前端 composer 引导落地；继续扩展前必须先按本文确认字段。
+- Chat 数据模型：[chat-data-model.md](/docs/contracts/api/chat-data-model.md)
 - Admin API：[agent-admin.md](/docs/contracts/api/agent-admin.md)
+- Auth Service API：[auth.md](/docs/contracts/api/auth.md)
 - Admin Auth API：[admin-auth.md](/docs/contracts/api/admin-auth.md)
 - Runtime API：[runtime.md](/docs/contracts/api/runtime.md)
+- Knowledge API：[knowledge.md](/docs/contracts/api/knowledge.md)
 - Knowledge Ingestion API：[knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
+- Knowledge Admin Governance API：[knowledge-admin-governance.md](/docs/contracts/api/knowledge-admin-governance.md)
 - Approvals API：[approvals.md](/docs/contracts/api/approvals.md)
 - Run Observatory API：[run-observatory.md](/docs/contracts/api/run-observatory.md)
 - Agent Tool Execution API：[tool-execution.md](/docs/contracts/api/tool-execution.md)
@@ -28,18 +33,23 @@
 
 1. [interface-style-guidelines.md](/docs/contracts/api/interface-style-guidelines.md)
 2. [agent-chat.md](/docs/contracts/api/agent-chat.md)
-3. [agent-admin.md](/docs/contracts/api/agent-admin.md)
-4. [admin-auth.md](/docs/contracts/api/admin-auth.md)
-5. [runtime.md](/docs/contracts/api/runtime.md)
-6. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
-7. [approvals.md](/docs/contracts/api/approvals.md)
-8. [run-observatory.md](/docs/contracts/api/run-observatory.md)
-9. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
-10. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
-11. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
-12. [tool-execution.md](/docs/contracts/api/tool-execution.md)
-13. [sandbox.md](/docs/contracts/api/sandbox.md)
-14. [auto-review.md](/docs/contracts/api/auto-review.md)
+3. [agent-chat-runtime-v2.md](/docs/contracts/api/agent-chat-runtime-v2.md)
+4. [chat-data-model.md](/docs/contracts/api/chat-data-model.md)
+5. [agent-admin.md](/docs/contracts/api/agent-admin.md)
+6. [auth.md](/docs/contracts/api/auth.md)
+7. [admin-auth.md](/docs/contracts/api/admin-auth.md)
+8. [runtime.md](/docs/contracts/api/runtime.md)
+9. [knowledge.md](/docs/contracts/api/knowledge.md)
+10. [knowledge-ingestion.md](/docs/contracts/api/knowledge-ingestion.md)
+11. [knowledge-admin-governance.md](/docs/contracts/api/knowledge-admin-governance.md)
+12. [approvals.md](/docs/contracts/api/approvals.md)
+13. [run-observatory.md](/docs/contracts/api/run-observatory.md)
+14. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
+15. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
+16. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
+17. [tool-execution.md](/docs/contracts/api/tool-execution.md)
+18. [sandbox.md](/docs/contracts/api/sandbox.md)
+19. [auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 工具执行治理 API 关系
 
@@ -67,7 +77,7 @@
 
 ## 维护规则
 
-- 新增或修改 API、SSE event、DTO、审批事件、checkpoint payload 或跨端字段前，先更新本目录对应文档。
+- 新增或修改 API、SSE event、DTO、审批事件、checkpoint payload 或跨端字段前，先更新本目录对应文档并确认；前端和后端都必须按同一份 API 文档开发，禁止先实现再倒推协议。
 - 稳定 JSON 契约必须与 `packages/core` 或真实宿主的 `schemas/`、`contracts/` 保持一致。
 - `docs/contracts/api/*` 只写接口契约：入口、参数、响应或事件、错误语义、兼容规则、前后端职责。
 - `docs/integration/*` 只写链路说明：调用顺序、跨模块协作、联调排障和历史背景。
@@ -75,11 +85,16 @@
 
 ## 文档归属
 
-- `agent-chat.md`：`apps/frontend/agent-chat` 消费的聊天、会话、SSE 与 direct reply 接口。
+- `agent-chat.md`：`apps/frontend/agent-chat` 当前消费的聊天、会话、SSE 与 direct reply 接口。
+- `agent-chat-runtime-v2.md`：下一代会话化 Agent 执行协议，规定 `ChatRunRecord`、`ChatMessageFragment`、`ChatViewStreamEvent`、自动审查与自然语言确认；当前已有核心 schema 与最小前后端链路落地，后续扩展必须先以本文为准。
+- `chat-data-model.md`：`agent-chat` 前后端交互的完整数据模型契约，含前后端不一致清单与类型来源速查。
 - `agent-admin.md`：`apps/frontend/agent-admin` 的控制台聚合入口和刷新语义。
-- `admin-auth.md`：`apps/frontend/agent-admin` 的账号密码登录、JWT 双 Token、自动刷新、退出登录与当前用户恢复契约。
+- `auth.md`：独立 `auth-server` 的统一登录、用户管理、JWT 双 Token 与权限边界契约。
+- `admin-auth.md`：`agent-server` 历史 admin auth 兼容契约；新增统一登录优先读 `auth.md`。
 - `runtime.md`：Runtime Center 查询、导出与筛选契约。
+- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、迁移期 `apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约。
 - `knowledge-ingestion.md`：规范化 source payload 写入统一 source/chunk/receipt snapshot 与 vector 边界的 ingestion 契约。
+- `knowledge-admin-governance.md`：`apps/frontend/agent-admin` 消费的知识治理 projection 契约；入口为 `/api/platform/knowledge/governance`，只返回脱敏后的 `KnowledgeGovernanceProjection`。
 - `approvals.md`：Approvals Center、聊天审批动作、恢复与 interrupt 兼容契约。
 - `run-observatory.md`：workflow catalog、run list/detail 与 observability 投影契约。
 - `tool-execution.md`：Agent Tool 执行请求、策略判定、SSE、审批恢复与错误语义。

@@ -7,6 +7,7 @@ import { defineConfig } from 'vitest/config';
 const resolvePath = value => fileURLToPath(new URL(value, import.meta.url));
 const agentAdminSrcRoot = resolvePath('./apps/frontend/agent-admin/src/');
 const agentChatSrcRoot = resolvePath('./apps/frontend/agent-chat/src/');
+const knowledgeSrcRoot = resolvePath('./apps/frontend/knowledge/src/');
 const llmGatewaySrcRoot = resolvePath('./apps/llm-gateway/src/');
 
 function resolveFrontendAlias(source, importer) {
@@ -20,6 +21,10 @@ function resolveFrontendAlias(source, importer) {
 
   if (importer?.includes('/apps/frontend/agent-admin/')) {
     return resolveFrontendAliasPath(agentAdminSrcRoot, source.slice(2));
+  }
+
+  if (importer?.includes('/apps/frontend/knowledge/')) {
+    return resolveFrontendAliasPath(knowledgeSrcRoot, source.slice(2));
   }
 
   if (importer?.includes('/apps/llm-gateway/')) {
@@ -57,53 +62,37 @@ export default defineConfig({
     }
   ],
   resolve: {
-    alias: {
-      '@agent/runtime/base-agent': resolvePath('./packages/runtime/src/agents/base-agent.ts'),
-      '@agent/runtime/agent-runtime-context': resolvePath('./packages/runtime/src/runtime/agent-runtime-context.ts'),
-      '@agent/runtime/streaming-execution': resolvePath('./packages/runtime/src/runtime/streaming-execution.ts'),
-      '@agent/runtime/governance/approval': resolvePath('./packages/runtime/src/governance/approval/index.ts'),
-      '@agent/runtime/governance/runtime-governance': resolvePath(
-        './packages/runtime/src/governance/runtime-governance/index.ts'
-      ),
-      '@agent/runtime/sandbox': resolvePath('./packages/runtime/src/sandbox/index.ts'),
-      '@agent/runtime/sandbox-utils': resolvePath('./packages/runtime/src/sandbox/sandbox-executor-utils.ts'),
-      '@agent/runtime/watchdog': resolvePath('./packages/runtime/src/watchdog/index.ts'),
-      '@agent/core': resolvePath('./packages/core/src'),
-      '@agent/knowledge': resolvePath('./packages/knowledge/src'),
-      '@agent/config': resolvePath('./packages/config/src'),
-      '@agent/runtime': resolvePath('./packages/runtime/src'),
-      '@agent/platform-runtime': resolvePath('./packages/platform-runtime/src'),
-      '@agent/adapters': resolvePath('./packages/adapters/src'),
-      '@agent/tools/command': resolvePath('./packages/tools/src/command/index.ts'),
-      '@agent/tools/executors/connectors': resolvePath(
-        './packages/tools/src/executors/connectors/connectors-executor.ts'
-      ),
-      '@agent/tools/executors/filesystem': resolvePath(
-        './packages/tools/src/executors/filesystem/filesystem-executor.ts'
-      ),
-      '@agent/tools/executors/runtime-governance': resolvePath(
-        './packages/tools/src/executors/runtime-governance/runtime-governance-executor.ts'
-      ),
-      '@agent/tools/executors/scaffold': resolvePath('./packages/tools/src/executors/scaffold/scaffold-executor.ts'),
-      '@agent/tools/executors/scheduling': resolvePath(
-        './packages/tools/src/executors/scheduling/scheduling-executor.ts'
-      ),
-      '@agent/tools': resolvePath('./packages/tools/src'),
-      '@agent/memory': resolvePath('./packages/memory/src'),
-      '@agent/report-kit': resolvePath('./packages/report-kit/src'),
-      '@agent/skill': resolvePath('./packages/skill/src'),
-      '@agent/templates': resolvePath('./packages/templates/src'),
-      '@agent/evals': resolvePath('./packages/evals/src'),
-      '@agent/agents-supervisor': resolvePath('./agents/supervisor/src'),
-      '@agent/agents-audio': resolvePath('./agents/audio/src'),
-      '@agent/agents-company-live': resolvePath('./agents/company-live/src'),
-      '@agent/agents-data-report': resolvePath('./agents/data-report/src'),
-      '@agent/agents-image': resolvePath('./agents/image/src'),
-      '@agent/agents-intel-engine': resolvePath('./agents/intel-engine/src'),
-      '@agent/agents-video': resolvePath('./agents/video/src'),
-      '@agent/agents-coder': resolvePath('./agents/coder/src'),
-      '@agent/agents-reviewer': resolvePath('./agents/reviewer/src')
-    }
+    alias: [
+      {
+        find: '@agent/knowledge/browser-entry',
+        replacement: resolvePath('./packages/knowledge/src/browser/index.ts')
+      },
+      {
+        find: '@agent/knowledge/node',
+        replacement: resolvePath('./packages/knowledge/src/node/index.ts')
+      },
+      { find: '@agent/knowledge', replacement: resolvePath('./packages/knowledge/src') },
+      { find: '@agent/core', replacement: resolvePath('./packages/core/src') },
+      { find: '@agent/config', replacement: resolvePath('./packages/config/src') },
+      { find: '@agent/runtime', replacement: resolvePath('./packages/runtime/src') },
+      { find: '@agent/platform-runtime', replacement: resolvePath('./packages/platform-runtime/src') },
+      { find: '@agent/adapters', replacement: resolvePath('./packages/adapters/src') },
+      { find: '@agent/tools', replacement: resolvePath('./packages/tools/src') },
+      { find: '@agent/memory', replacement: resolvePath('./packages/memory/src') },
+      { find: '@agent/report-kit', replacement: resolvePath('./packages/report-kit/src') },
+      { find: '@agent/skill', replacement: resolvePath('./packages/skill/src') },
+      { find: '@agent/templates', replacement: resolvePath('./packages/templates/src') },
+      { find: '@agent/evals', replacement: resolvePath('./packages/evals/src') },
+      { find: '@agent/agents-supervisor', replacement: resolvePath('./agents/supervisor/src') },
+      { find: '@agent/agents-audio', replacement: resolvePath('./agents/audio/src') },
+      { find: '@agent/agents-company-live', replacement: resolvePath('./agents/company-live/src') },
+      { find: '@agent/agents-data-report', replacement: resolvePath('./agents/data-report/src') },
+      { find: '@agent/agents-image', replacement: resolvePath('./agents/image/src') },
+      { find: '@agent/agents-intel-engine', replacement: resolvePath('./agents/intel-engine/src') },
+      { find: '@agent/agents-video', replacement: resolvePath('./agents/video/src') },
+      { find: '@agent/agents-coder', replacement: resolvePath('./agents/coder/src') },
+      { find: '@agent/agents-reviewer', replacement: resolvePath('./agents/reviewer/src') }
+    ]
   },
   test: {
     globals: true,
@@ -166,7 +155,8 @@ export default defineConfig({
         'agents/**/src/**/*.{ts,tsx}',
         'apps/backend/agent-server/src/**/*.{ts,tsx}',
         'apps/frontend/agent-chat/src/**/*.{ts,tsx}',
-        'apps/frontend/agent-admin/src/**/*.{ts,tsx}'
+        'apps/frontend/agent-admin/src/**/*.{ts,tsx}',
+        'apps/frontend/knowledge/src/**/*.{ts,tsx}'
       ],
       exclude: [
         '**/*.d.ts',
@@ -215,6 +205,12 @@ export default defineConfig({
           branches: 85
         },
         'apps/frontend/agent-admin/src/**': {
+          lines: 85,
+          statements: 85,
+          functions: 85,
+          branches: 85
+        },
+        'apps/frontend/knowledge/src/**': {
           lines: 85,
           statements: 85,
           functions: 85,

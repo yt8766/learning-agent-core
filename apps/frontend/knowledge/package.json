@@ -1,0 +1,40 @@
+{
+  "name": "knowledge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -p tsconfig.app.json && vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/knowledge/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
+    "turbo:typecheck": "pnpm typecheck",
+    "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/knowledge/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'"
+  },
+  "dependencies": {
+    "@agent/core": "workspace:*",
+    "@agent/knowledge": "workspace:*",
+    "@ant-design/icons": "~6.1.0",
+    "@ant-design/x": "^2.4.0",
+    "@ant-design/x-markdown": "^2.4.0",
+    "@ant-design/x-sdk": "^2.4.0",
+    "@tanstack/react-query": "^5.99.1",
+    "@xyflow/react": "^12.10.2",
+    "antd": "^6.3.3",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.14.2",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.4",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.1"
+  }
+}

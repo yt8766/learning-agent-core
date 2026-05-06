@@ -1,4 +1,4 @@
-import type { KnowledgeSource, RetrievalHit, RetrievalRequest, RetrievalResult } from '@agent/knowledge';
+import type { KnowledgeSource, RetrievalHit, RetrievalRequest, RetrievalResult } from '../index';
 
 import type {
   KnowledgeChunkRepository,
@@ -7,6 +7,7 @@ import type {
 } from '../contracts/knowledge-facade';
 import { scoreKnowledgeChunk } from '../shared/knowledge-text-scoring';
 import {
+  getKnowledgeBaseIdFromMetadata,
   matchesKnowledgeChunkFilters,
   matchesKnowledgeSourceFilters,
   resolveKnowledgeRetrievalFilters,
@@ -63,6 +64,7 @@ export class DefaultKnowledgeSearchService implements KnowledgeSearchService {
       chunkId: chunk.id,
       documentId: chunk.documentId,
       sourceId: source.id,
+      knowledgeBaseId: getKnowledgeBaseIdFromMetadata(chunk.metadata),
       title: source.title,
       uri: source.uri,
       sourceType: source.sourceType,

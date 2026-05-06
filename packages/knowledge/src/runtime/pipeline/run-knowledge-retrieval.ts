@@ -1,4 +1,4 @@
-import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
+import type { RetrievalHit, RetrievalRequest } from '../../index';
 
 import type { KnowledgeSearchService } from '../../contracts/knowledge-facade';
 import type { RetrievalPipelineConfig } from '../../contracts/knowledge-retrieval-runtime';

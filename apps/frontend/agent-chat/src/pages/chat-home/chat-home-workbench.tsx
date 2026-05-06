@@ -7,23 +7,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { getWorkspaceCenterReadiness, type WorkspaceCenterReadinessSummary } from '@/api/workspace-center-api';
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { ConversationAnchorRail } from './chat-home-anchor-rail';
-import { buildConversationAnchors } from './chat-home-anchor-rail-helpers';
+import { buildConversationAnchors, dedupeMessagesById } from './chat-home-anchor-rail-helpers';
 import { CHAT_ROLE_CONFIG, buildProjectContextSnapshot } from './chat-home-helpers';
 import { SessionMissionControl } from './chat-home-mission-control';
 import { stripLeadingWorkflowCommand } from './chat-home-submit';
 import {
   buildQuickActionMenuItems,
-  type ChatMode,
   resetComposerState,
   resolveComposerChange,
-  resolveComposerSubmitForMode,
+  resolveComposerSubmit,
   resolveQuickActionSelection
 } from './chat-home-workbench-composer-helpers';
 import {
-  buildQuickActionChips,
-  buildWorkspaceVaultSignals,
-  buildWorkspaceFollowUpActions,
-  buildWorkspaceShareText,
+  buildQuickActionChipsFromFields,
+  buildWorkspaceVaultSignalsFromFields,
+  buildWorkspaceFollowUpActionsFromFields,
+  buildWorkspaceShareTextFromFields,
   shouldShowMissionControl,
   type QuickActionChip
 } from './chat-home-workbench-support';
@@ -35,8 +34,6 @@ import {
 
 interface ChatHomeWorkbenchProps {
   chat: ReturnType<typeof useChatSession>;
-  chatMode: ChatMode;
-  onChatModeChange: (chatMode: ChatMode) => void;
   showWorkbench: boolean;
   bubbleItems: BubbleItemType[];
   streamEvents: StreamEventRecord[];
@@ -51,21 +48,106 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
     props.streamEvents
   );
   const [workspaceCenterReadiness, setWorkspaceCenterReadiness] = useState<WorkspaceCenterReadinessSummary>();
+  const activeSessionStatus = props.chat.activeSession?.status;
+  const activeSessionTitle = props.chat.activeSession?.title;
+  const checkpoint = props.chat.checkpoint;
   const showMissionControl = shouldShowMissionControl(props.chat);
-  const quickActionChips = useMemo(() => buildQuickActionChips(props.chat), [props.chat]);
-  const workspaceSnapshot = useMemo(() => buildProjectContextSnapshot(props.chat), [props.chat]);
-  const workspaceVaultSignals = useMemo(
-    () => buildWorkspaceVaultSignals(props.chat, workspaceCenterReadiness),
-    [props.chat, workspaceCenterReadiness]
+  const quickActionChips = useMemo(
+    () =>
+      buildQuickActionChipsFromFields({
+        activeSession: activeSessionStatus ? { status: activeSessionStatus } : undefined,
+        checkpoint: checkpoint?.graphState ? { graphState: checkpoint.graphState } : undefined,
+        messages: props.chat.messages
+      }),
+    [activeSessionStatus, checkpoint?.graphState, props.chat.messages]
   );
-  const workspaceFollowUps = useMemo(() => buildWorkspaceFollowUpActions(props.chat), [props.chat]);
+  const workspaceSnapshot = useMemo(
+    () =>
+      buildProjectContextSnapshot({
+        activeSession: activeSessionTitle ? { title: activeSessionTitle, status: activeSessionStatus } : undefined,
+        checkpoint: checkpoint
+          ? {
+              externalSources: checkpoint.externalSources,
+              connectorRefs: checkpoint.connectorRefs,
+              usedInstalledSkills: checkpoint.usedInstalledSkills,
+              currentWorker: checkpoint.currentWorker,
+              currentMinistry: checkpoint.currentMinistry,
+              thinkState: checkpoint.thinkState
+            }
+          : undefined,
+        messages: props.chat.messages,
+        pendingApprovals: props.chat.pendingApprovals
+      }),
+    [
+      activeSessionStatus,
+      activeSessionTitle,
+      checkpoint?.connectorRefs,
+      checkpoint?.currentMinistry,
+      checkpoint?.currentWorker,
+      checkpoint?.externalSources,
+      checkpoint?.thinkState,
+      checkpoint?.usedInstalledSkills,
+      props.chat.messages,
+      props.chat.pendingApprovals
+    ]
+  );
+  const workspaceVaultSignals = useMemo(
+    () =>
+      buildWorkspaceVaultSignalsFromFields(
+        {
+          activeSession: activeSessionStatus ? { status: activeSessionStatus } : undefined,
+          checkpoint: checkpoint
+            ? {
+                externalSources: checkpoint.externalSources,
+                reusedMemories: checkpoint.reusedMemories,
+                reusedRules: checkpoint.reusedRules,
+                reusedSkills: checkpoint.reusedSkills,
+                usedInstalledSkills: checkpoint.usedInstalledSkills,
+                usedCompanyWorkers: checkpoint.usedCompanyWorkers,
+                connectorRefs: checkpoint.connectorRefs,
+                learningEvaluation: checkpoint.learningEvaluation,
+                skillSearch: checkpoint.skillSearch,
+                currentWorker: checkpoint.currentWorker,
+                currentMinistry: checkpoint.currentMinistry
+              }
+            : undefined
+        },
+        workspaceCenterReadiness
+      ),
+    [
+      activeSessionStatus,
+      checkpoint?.connectorRefs,
+      checkpoint?.currentMinistry,
+      checkpoint?.currentWorker,
+      checkpoint?.externalSources,
+      checkpoint?.learningEvaluation,
+      checkpoint?.reusedMemories,
+      checkpoint?.reusedRules,
+      checkpoint?.reusedSkills,
+      checkpoint?.skillSearch,
+      checkpoint?.usedCompanyWorkers,
+      checkpoint?.usedInstalledSkills,
+      workspaceCenterReadiness
+    ]
+  );
+  const workspaceFollowUps = useMemo(
+    () =>
+      buildWorkspaceFollowUpActionsFromFields({
+        activeSession: activeSessionStatus ? { status: activeSessionStatus } : undefined,
+        checkpoint: checkpoint?.graphState ? { graphState: checkpoint.graphState } : undefined,
+        messages: props.chat.messages
+      }),
+    [activeSessionStatus, checkpoint?.graphState, props.chat.messages]
+  );
+  const visibleMessages = useMemo(() => dedupeMessagesById(props.chat.messages), [props.chat.messages]);
+  const visibleBubbleItems = useMemo(() => dedupeBubbleItemsByKey(props.bubbleItems), [props.bubbleItems]);
   const conversationAnchors = useMemo(
-    () => filterVisibleConversationAnchors(buildConversationAnchors(props.chat.messages), props.bubbleItems),
-    [props.chat.messages, props.bubbleItems]
+    () => filterVisibleConversationAnchors(buildConversationAnchors(visibleMessages), visibleBubbleItems),
+    [visibleMessages, visibleBubbleItems]
   );
   const anchoredBubbleItems = useMemo(
-    () => attachConversationAnchorTargets(props.bubbleItems, conversationAnchors),
-    [props.bubbleItems, conversationAnchors]
+    () => attachConversationAnchorTargets(visibleBubbleItems, conversationAnchors),
+    [visibleBubbleItems, conversationAnchors]
   );
 
   useEffect(() => {
@@ -103,12 +185,7 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
         </div>
 
         <div className={`chatx-composer-shell ${props.chat.hasMessages ? 'is-thread-active' : 'is-empty-thread'}`}>
-          <ChatComposer
-            chat={props.chat}
-            chatMode={props.chatMode}
-            onChatModeChange={props.onChatModeChange}
-            quickActionChips={quickActionChips}
-          />
+          <ChatComposer chat={props.chat} quickActionChips={quickActionChips} />
         </div>
       </section>
 
@@ -172,7 +249,27 @@ export function ChatHomeWorkbench(props: ChatHomeWorkbenchProps) {
                 <Button
                   size="small"
                   type="default"
-                  onClick={() => void navigator.clipboard.writeText(buildWorkspaceShareText(props.chat))}
+                  onClick={() =>
+                    void navigator.clipboard.writeText(
+                      buildWorkspaceShareTextFromFields({
+                        activeSession: activeSessionTitle
+                          ? { title: activeSessionTitle, status: activeSessionStatus }
+                          : undefined,
+                        checkpoint: checkpoint
+                          ? {
+                              externalSources: checkpoint.externalSources,
+                              connectorRefs: checkpoint.connectorRefs,
+                              usedInstalledSkills: checkpoint.usedInstalledSkills,
+                              currentWorker: checkpoint.currentWorker,
+                              currentMinistry: checkpoint.currentMinistry,
+                              thinkState: checkpoint.thinkState
+                            }
+                          : undefined,
+                        messages: props.chat.messages,
+                        pendingApprovals: props.chat.pendingApprovals
+                      })
+                    )
+                  }
                 >
                   复制工作区摘要
                 </Button>
@@ -238,6 +335,19 @@ function attachConversationAnchorTargets(
   });
 }
 
+function dedupeBubbleItemsByKey(items: BubbleItemType[]) {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    const key = String(item.key);
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
 function filterVisibleConversationAnchors(
   anchors: ReturnType<typeof buildConversationAnchors>,
   items: BubbleItemType[]
@@ -260,7 +370,7 @@ function EmptyFrontlineEntry() {
         <span className="chatx-brand-mark" />
       </div>
       <div className="chatx-empty-entry__copy">
-        <Typography.Title level={1}>使用快速模式开始对话</Typography.Title>
+        <Typography.Title level={1}>开始新对话</Typography.Title>
       </div>
     </div>
   );
@@ -268,13 +378,9 @@ function EmptyFrontlineEntry() {
 
 function ChatComposer({
   chat,
-  chatMode,
-  onChatModeChange,
   quickActionChips
 }: {
   chat: ReturnType<typeof useChatSession>;
-  chatMode: ChatMode;
-  onChatModeChange: (chatMode: ChatMode) => void;
   quickActionChips: QuickActionChip[];
 }) {
   const [draft, setDraft] = useState('');
@@ -293,13 +399,13 @@ function ChatComposer({
         className="chatx-sender"
         value={draft}
         onChange={value => {
-          const nextState = resolveComposerChange(value, chatMode === 'expert');
+          const nextState = resolveComposerChange(value, false);
           setDraft(nextState.draft);
           setSuggestedPayload(nextState.suggestedPayload);
         }}
         onSubmit={value => {
           setDraft('');
-          const outbound = resolveComposerSubmitForMode(value, suggestedPayload, chatMode);
+          const outbound = resolveComposerSubmit(value, suggestedPayload, false);
           setSuggestedPayload(null);
           void chat.sendMessage(outbound);
         }}
@@ -322,7 +428,6 @@ function ChatComposer({
                       }
                       setDraft(nextState.draft);
                       setSuggestedPayload(nextState.suggestedPayload);
-                      onChatModeChange('quick');
                     }
                   }}
                   placement="topLeft"
@@ -348,10 +453,16 @@ function ChatComposer({
 }
 export {
   buildQuickActionChips,
+  buildQuickActionChipsFromFields,
   buildThoughtItems,
+  buildThoughtItemsFromFields,
   buildWorkspaceFollowUpActions,
+  buildWorkspaceFollowUpActionsFromFields,
   buildWorkspaceVaultSignals,
+  buildWorkspaceVaultSignalsFromFields,
   buildWorkspaceShareText,
+  buildWorkspaceShareTextFromFields,
   resolveSuggestedDraftSubmission,
+  shouldIncludeEventInThoughtLog,
   shouldShowMissionControl
 } from './chat-home-workbench-support';

@@ -1,5 +1,5 @@
 // packages/knowledge/src/retrieval/hybrid-knowledge-search-service.ts
-import type { RetrievalRequest } from '@agent/knowledge';
+import type { RetrievalRequest } from '../index';
 
 import type { KnowledgeSearchService } from '../contracts/knowledge-facade';
 import { RrfFusionStrategy } from './fusion-strategy';

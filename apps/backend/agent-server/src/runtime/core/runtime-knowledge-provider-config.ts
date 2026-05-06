@@ -1,16 +1,13 @@
+import { createRuntimeEmbeddingProvider } from '@agent/adapters';
 import {
   ChromaVectorSearchProvider,
   createOpenSearchKeywordSearchProvider,
-  createRuntimeEmbeddingProvider
-} from '@agent/adapters';
-import type {
-  OpenSearchKeywordHealthCheckParams,
-  OpenSearchKeywordSearchParams,
-  QueryEmbeddingProvider
-} from '@agent/adapters';
-import type { VectorSearchProvider } from '@agent/knowledge';
-import type { KnowledgeSearchService } from '@agent/knowledge';
-
+  type KnowledgeSearchService,
+  type OpenSearchKeywordHealthCheckParams,
+  type OpenSearchKeywordSearchParams,
+  type QueryEmbeddingProvider,
+  type VectorSearchProvider
+} from '@agent/knowledge';
 import type {
   RuntimeKnowledgeProviderFactoryConfig,
   RuntimeKnowledgeRetrievalMode

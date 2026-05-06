@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import type { MouseEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
+import { stripWorkflowCommandPrefix } from '@/pages/chat/chat-message-adapter-helpers';
 import type { useChatSession } from '@/hooks/use-chat-session';
 
 import { buildSessionGroups, getSessionStatusTone } from './chat-home-sidebar-helpers';
@@ -19,7 +19,7 @@ const accountMenuSelector = '.chatx-account-menu';
 
 export type ChatHomeSidebarChat = Pick<
   ReturnType<typeof useChatSession>,
-  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'renameSessionById' | 'deleteSessionById'
+  'sessions' | 'activeSessionId' | 'createNewSession' | 'setActiveSessionId' | 'deleteSessionById' | 'renameSessionById'
 >;
 
 interface ChatHomeSidebarProps {
@@ -168,8 +168,8 @@ export function ChatHomeSidebar({ chat, collapsed, onToggleCollapsed, onLogout }
                               onClick={event => {
                                 stopMenuClick(event);
                                 setOpenSessionMenuId('');
-                                const nextTitle = window.prompt('重命名会话', session.title);
-                                if (nextTitle === null) {
+                                const nextTitle = window.prompt('重命名会话', sessionDisplayTitle)?.trim();
+                                if (!nextTitle || nextTitle === session.title) {
                                   return;
                                 }
                                 void chat.renameSessionById(session.id, nextTitle);

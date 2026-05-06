@@ -5,7 +5,7 @@ import type {
   WorkspaceSkillDraftLifecycleSummary,
   WorkspaceSkillDraftProvenanceSummary,
   WorkspaceSkillDraftDecisionResponse
-} from '@/features/workspace-center/workspace-center-types';
+} from '@/pages/workspace-center/workspace-center-types';
 
 import { request } from './admin-api-core';
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MemorySearchService } from '@agent/memory';
 
 import { resolveLifecycleKnowledgeReuse } from '../src/graphs/main/runtime/lifecycle/governance/main-graph-lifecycle-governance';
-import { buildSessionConversationContext } from '../src/session/session-coordinator-thinking-context';
+import { buildSessionConversationContext } from '../src/session/coordinator/session-coordinator-thinking-context';
 
 describe('runtime memory integration', () => {
   it('injects structured memories and reflections into session conversation context', async () => {

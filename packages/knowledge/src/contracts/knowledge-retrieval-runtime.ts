@@ -1,4 +1,4 @@
-import type { RetrievalRequest } from '@agent/knowledge';
+import type { RetrievalRequest } from '../index';
 
 import type { ContextAssembler } from '../runtime/stages/context-assembler';
 import type { ContextExpander, ContextExpansionPolicy } from '../runtime/stages/context-expander';

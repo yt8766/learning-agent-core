@@ -185,8 +185,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: false
           } as any
         }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
         showWorkbench={false}
         bubbleItems={[]}
         streamEvents={[]}
@@ -194,8 +192,10 @@ describe('chat-home-workbench component', () => {
     );
 
     expect(html).toContain('mission-control');
-    expect(html).toContain('使用快速模式开始对话');
-    expect(html).toContain('快速模式');
+    expect(html).toContain('开始新对话');
+    expect(html).not.toContain('使用快速模式开始对话');
+    expect(html).not.toContain('快速模式');
+    expect(html).not.toContain('专家模式');
     expect(html).toContain('给 Agent Chat 发送消息');
     expect(html).toContain('更多建议');
     expect(html).not.toContain('Frontline Workspace');
@@ -262,8 +262,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: true
           } as any
         }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
         showWorkbench
         bubbleItems={[{ key: 'bubble-1', content: 'assistant bubble' } as any]}
         streamEvents={[{ id: 'evt-1', summary: 'event-summary' } as any]}
@@ -340,8 +338,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: true
           } as any
         }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
         showWorkbench={false}
         bubbleItems={[
           { key: 'user-1', content: 'user bubble' } as any,
@@ -365,6 +361,55 @@ describe('chat-home-workbench component', () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
 
     vi.unstubAllGlobals();
+  });
+
+  it('deduplicates workbench bubble items before anchor targets are attached', () => {
+    const html = renderToStaticMarkup(
+      <ChatHomeWorkbench
+        chat={
+          {
+            activeSession: {
+              id: 'session-1',
+              status: 'completed'
+            },
+            activeSessionId: 'session-1',
+            messages: [
+              {
+                id: 'user-1',
+                role: 'user',
+                content: '请帮我整理当前任务'
+              },
+              {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: '已经给出结论'
+              },
+              {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: '重复助手回复'
+              }
+            ],
+            pendingApprovals: [],
+            checkpoint: undefined,
+            sendMessage: vi.fn(),
+            cancelActiveSession: vi.fn(),
+            hasMessages: true
+          } as any
+        }
+        showWorkbench={false}
+        bubbleItems={[
+          { key: 'user-1', content: 'user bubble' } as any,
+          { key: 'assistant-1', content: 'assistant bubble' } as any,
+          { key: 'assistant-1', content: 'duplicate assistant bubble' } as any
+        ]}
+        streamEvents={[]}
+      />
+    );
+
+    expect(html).toContain('bubbles:2');
+    expect(html).toContain('assistant bubble');
+    expect(html).not.toContain('duplicate assistant bubble');
   });
 
   it('routes workspace follow-up actions and summary copy through the expected chat handlers', async () => {
@@ -402,8 +447,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: true
           } as any
         }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
         showWorkbench
         bubbleItems={[{ key: 'bubble-1', content: 'assistant bubble' } as any]}
         streamEvents={[{ id: 'evt-1', summary: 'event-summary' } as any]}
@@ -431,7 +474,7 @@ describe('chat-home-workbench component', () => {
     Object.defineProperty(navigator, 'clipboard', { value: previousClipboard, configurable: true });
   });
 
-  it('submits sender payloads for direct mode, plan mode and cancel actions', async () => {
+  it('submits sender payloads from the single chat entry and cancel action', async () => {
     const sendMessage = vi.fn(async () => undefined);
     const cancelActiveSession = vi.fn(async () => undefined);
 
@@ -452,8 +495,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: false
           } as any
         }
-        chatMode="quick"
-        onChatModeChange={vi.fn()}
         showWorkbench={false}
         bubbleItems={[]}
         streamEvents={[]}
@@ -473,60 +514,9 @@ describe('chat-home-workbench component', () => {
       payload: '直接回答这个问题'
     });
     expect(cancelActiveSession).toHaveBeenCalled();
-
-    renderedButtons.length = 0;
-    renderedDropdownMenus.length = 0;
-    renderedSenders.length = 0;
-
-    useStateOverride = (actualUseState, initial) => {
-      if (initial === '') {
-        return ['给我一个实现方案', vi.fn()];
-      }
-      if (initial === null) {
-        return [null, vi.fn()];
-      }
-      return actualUseState(initial);
-    };
-
-    renderToStaticMarkup(
-      <ChatHomeWorkbench
-        chat={
-          {
-            activeSession: {
-              id: 'session-2',
-              status: 'idle'
-            },
-            activeSessionId: 'session-2',
-            messages: [],
-            pendingApprovals: [],
-            checkpoint: undefined,
-            sendMessage,
-            cancelActiveSession,
-            hasMessages: false
-          } as any
-        }
-        chatMode="expert"
-        onChatModeChange={vi.fn()}
-        showWorkbench={false}
-        bubbleItems={[]}
-        streamEvents={[]}
-      />
-    );
-
-    const planSender = renderedSenders[0] as {
-      onSubmit?: (value: string) => void;
-    };
-    planSender.onSubmit?.('给我一个实现方案');
-
-    expect(sendMessage).toHaveBeenLastCalledWith({
-      display: '给我一个实现方案',
-      payload: '/plan 给我一个实现方案'
-    });
   });
 
-  it('returns to quick mode when a quick action is selected from expert mode', () => {
-    const onChatModeChange = vi.fn();
-
+  it('keeps quick action selection local to the single chat entry', () => {
     renderToStaticMarkup(
       <ChatHomeWorkbench
         chat={
@@ -544,8 +534,6 @@ describe('chat-home-workbench component', () => {
             hasMessages: false
           } as any
         }
-        chatMode="expert"
-        onChatModeChange={onChatModeChange}
         showWorkbench={false}
         bubbleItems={[]}
         streamEvents={[]}
@@ -554,6 +542,6 @@ describe('chat-home-workbench component', () => {
 
     (renderedDropdownMenus[0]?.onClick as ((info: { key: string }) => void) | undefined)?.({ key: '审查风险' });
 
-    expect(onChatModeChange).toHaveBeenCalledWith('quick');
+    expect(renderedSenders.length).toBeGreaterThan(0);
   });
 });

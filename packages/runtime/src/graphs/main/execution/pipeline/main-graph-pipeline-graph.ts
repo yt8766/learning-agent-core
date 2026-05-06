@@ -7,7 +7,7 @@ import type {
   ReviewMinistryLike,
   RouterMinistryLike
 } from '@agent/core';
-import { BaseCheckpointSaver } from '@langchain/langgraph';
+import { BaseCheckpointSaver, BaseStore } from '@langchain/langgraph';
 
 import { PendingExecutionContext } from '../../../../flows/approval';
 import { runReviewStage } from '../../../../flows/review-stage/review-stage-nodes';
@@ -21,7 +21,7 @@ import {
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';
 import type { RuntimeAgentGraphState } from '../../../../types/chat-graph';
 import { createAgentGraph } from '../../../chat/chat.graph';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 
 interface TaskPipelineGraphCallbacks {
   ensureTaskNotCancelled: (task: RuntimeTaskRecord) => void;
@@ -186,6 +186,7 @@ interface TaskPipelineGraphParams {
   sourcePolicyMode: SourcePolicyMode | undefined;
   callbacks: TaskPipelineGraphCallbacks;
   checkpointer: BaseCheckpointSaver;
+  store: BaseStore;
 }
 
 export function buildTaskPipelineGraph(params: TaskPipelineGraphParams) {
@@ -203,7 +204,8 @@ export function buildTaskPipelineGraph(params: TaskPipelineGraphParams) {
     llmConfigured,
     sourcePolicyMode,
     callbacks,
-    checkpointer
+    checkpointer,
+    store
   } = params;
 
   return createAgentGraph({
@@ -349,5 +351,5 @@ export function buildTaskPipelineGraph(params: TaskPipelineGraphParams) {
         finalAnswer: task.result ?? state.finalAnswer
       };
     }
-  }).compile({ checkpointer });
+  }).compile({ checkpointer, store });
 }

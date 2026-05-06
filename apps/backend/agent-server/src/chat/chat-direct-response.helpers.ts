@@ -1,3 +1,4 @@
+import { buildManagerDirectReplySystemPrompt } from '@agent/core';
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import {
   DATA_REPORT_GENERATION_NODE_META,
@@ -102,7 +103,11 @@ export async function streamChat(
     throw new ServiceUnavailableException('LLM provider is not configured.');
   }
 
-  const messages = normalizeDirectMessages(dto);
+  const rawMessages = normalizeDirectMessages(dto);
+  const messages = [
+    { role: 'system' as const, content: buildManagerDirectReplySystemPrompt({ modelId: dto.modelId }) },
+    ...rawMessages
+  ];
   const result = await withLlmRetry(
     currentMessages =>
       runtimeHost.modelInvocationFacade.invoke({
@@ -115,6 +120,7 @@ export async function streamChat(
           systemPrompt: dto.systemPrompt,
           temperature: typeof dto.temperature === 'number' ? dto.temperature : 0.2,
           maxTokens: typeof dto.maxTokens === 'number' ? dto.maxTokens : undefined,
+          thinking: false,
           onToken: (token: string) => {
             onEvent({
               type: 'token',

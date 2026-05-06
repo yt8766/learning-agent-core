@@ -1,4 +1,4 @@
-import type { ChatCheckpointRecord, ChatEventRecord, ChatThoughtChainItem } from '@/types/chat';
+import type { ChatCheckpointRecord, ChatThoughtChainItem } from '@/types/chat';
 
 import {
   buildAdminRuntimeObservatoryUrl,
@@ -6,9 +6,28 @@ import {
   buildBrowserReplayUrl,
   buildRuntimeCenterExportUrl
 } from '@/api/chat-api';
-import { getRuntimeDrawerExportFilters } from '@/features/runtime-panel/chat-runtime-drawer';
-import { formatSessionTime } from '@/hooks/use-chat-session';
-import { buildEventSummary } from './chat-home-helpers';
+import {
+  buildCognitionDurationLabel,
+  formatCognitionDurationLabelFromMs
+} from '@/pages/chat/chat-message-adapter-helpers';
+
+function getCheckpointInteractionKind(checkpoint?: ChatCheckpointRecord) {
+  const payload = checkpoint?.activeInterrupt?.payload;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    typeof (payload as { interactionKind?: unknown }).interactionKind === 'string'
+  ) {
+    return (payload as { interactionKind: 'approval' | 'plan-question' | 'supplemental-input' }).interactionKind;
+  }
+  if (checkpoint?.activeInterrupt?.kind === 'user-input') {
+    return 'plan-question';
+  }
+  if (checkpoint?.activeInterrupt || checkpoint?.pendingApproval) {
+    return 'approval';
+  }
+  return undefined;
+}
 
 export function resolveCognitionTargetMessageId(
   checkpoint: ChatCheckpointRecord | undefined,
@@ -17,25 +36,39 @@ export function resolveCognitionTargetMessageId(
   return checkpoint?.thinkState?.messageId ?? thoughtChain?.find(item => item.messageId)?.messageId ?? '';
 }
 
-export function buildCognitionDurationLabel(
-  checkpoint: ChatCheckpointRecord | undefined,
-  thoughtChain: ChatThoughtChainItem[] | undefined,
-  thinkingNow: number
-) {
-  const durationMs =
-    checkpoint?.thinkState?.thinkingDurationMs ??
-    thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs;
-  if (typeof durationMs !== 'number') {
-    return '';
+export {
+  buildCognitionDurationLabel,
+  formatCognitionDurationLabelFromMs
+} from '@/pages/chat/chat-message-adapter-helpers';
+
+export function resolveNextCognitionExpansionPatch(params: {
+  wasThinkLoading: boolean;
+  isThinkLoading: boolean;
+  hasCognitionTarget: boolean;
+  isSessionRunning: boolean;
+  cognitionTargetMessageId?: string;
+}): Record<string, boolean> | undefined {
+  const id = params.cognitionTargetMessageId;
+  if (!id) {
+    return undefined;
   }
 
-  const extraMs = checkpoint?.thinkState?.loading
-    ? Math.max(0, thinkingNow - new Date(checkpoint.updatedAt).getTime())
-    : 0;
-  const seconds = Math.max(1, Math.round((durationMs + extraMs) / 1000));
-  return checkpoint?.thinkState?.loading ? `${seconds}s` : `约 ${seconds} 秒`;
+  if (params.isThinkLoading) {
+    return { [id]: true };
+  }
+
+  if (params.wasThinkLoading && params.hasCognitionTarget) {
+    return { [id]: false };
+  }
+
+  if (params.hasCognitionTarget && !params.wasThinkLoading && !params.isSessionRunning) {
+    return { [id]: false };
+  }
+
+  return undefined;
 }
 
+/** @deprecated 使用 resolveNextCognitionExpansionPatch 按 messageId 合并展开状态 */
 export function resolveNextCognitionExpansion(params: {
   wasThinkLoading: boolean;
   isThinkLoading: boolean;
@@ -55,19 +88,6 @@ export function resolveNextCognitionExpansion(params: {
   }
 
   return undefined;
-}
-
-export function buildStreamEventItems(events: ChatEventRecord[]) {
-  return events
-    .slice()
-    .reverse()
-    .map(eventItem => ({
-      id: eventItem.id,
-      type: eventItem.type,
-      summary: buildEventSummary(eventItem),
-      at: formatSessionTime(eventItem.at),
-      raw: JSON.stringify(eventItem.payload ?? {}, null, 2)
-    }));
 }
 
 export function shouldShowErrorAlert(error: string, dismissedError: string, hasErrorCopy: boolean) {
@@ -105,28 +125,38 @@ export function buildReplayDownloadFilename(sessionId: string) {
 
 export function buildRuntimeExportRequest(checkpoint: ChatCheckpointRecord | undefined) {
   return {
-    ...getRuntimeDrawerExportFilters(checkpoint),
+    executionMode: checkpoint?.executionMode,
+    interactionKind: getCheckpointInteractionKind(checkpoint),
     format: 'json' as const
   };
 }
 
 export function buildApprovalsExportRequest(checkpoint: ChatCheckpointRecord | undefined) {
   return {
-    ...getRuntimeDrawerExportFilters(checkpoint),
+    executionMode: checkpoint?.executionMode,
+    interactionKind: getCheckpointInteractionKind(checkpoint),
     format: 'json' as const
   };
 }
 
 export function buildChatHomeShareLinks(checkpoint: ChatCheckpointRecord | undefined, activeSessionId?: string) {
-  const filters = getRuntimeDrawerExportFilters(checkpoint);
+  const interactionKind = getCheckpointInteractionKind(checkpoint);
   return {
-    runtimeUrl: buildRuntimeCenterExportUrl({ ...filters, format: 'json' }),
-    approvalsUrl: buildApprovalsCenterExportUrl({ ...filters, format: 'json' }),
+    runtimeUrl: buildRuntimeCenterExportUrl({
+      executionMode: checkpoint?.executionMode,
+      interactionKind,
+      format: 'json'
+    }),
+    approvalsUrl: buildApprovalsCenterExportUrl({
+      executionMode: checkpoint?.executionMode,
+      interactionKind,
+      format: 'json'
+    }),
     observatoryUrl: checkpoint?.taskId
       ? buildAdminRuntimeObservatoryUrl({
           taskId: checkpoint.taskId,
-          executionMode: filters.executionMode,
-          interactionKind: filters.interactionKind
+          executionMode: checkpoint?.executionMode,
+          interactionKind
         })
       : '',
     replayUrl: activeSessionId ? buildBrowserReplayUrl(activeSessionId) : ''

@@ -81,7 +81,7 @@ git checkout -b feature/xxx
 - 提交前至少完成本地必要校验；不要因为每次修改代码就手动执行全量 `pnpm verify`，本地提交链路和 main CI 会承担聚合验证收口
 - 禁止使用 `git commit --no-verify` 或任何等价方式绕过 `pre-commit`；如果 hook 因既有红灯、环境、权限或外部依赖失败，必须先修复，或在不提交的情况下明确记录 blocker 并等待处理
 
-提交前优先依赖本地 hook 自动执行必要校验；只有在需要提前定位问题、验证跨模块风险或准备推送前，才手动执行受影响范围入口：
+提交前优先依赖本地 hook 自动执行必要校验；只有在需要提前定位问题、验证跨模块风险或准备提交前，才手动执行受影响范围入口：
 
 ```bash
 pnpm verify:affected
@@ -91,8 +91,10 @@ pnpm test:workspace:smoke
 本地 hook 分层：
 
 - `pre-commit` 继续执行 `pnpm check:staged`，负责 staged 文件格式化、ESLint、受影响 TypeScript 项目、相关 Vitest 与 prompt 回归，保持单次提交反馈足够快。
-- `pre-push` 执行 `pnpm verify:affected` 与 `pnpm test:workspace:smoke`，负责在推送前补齐集成测试与仓库级冒烟闭环。
-  - 当前 `pre-push` 会把 `VERIFY_INCLUDE_WORKTREE=0 VERIFY_INCLUDE_STAGED=0 VERIFY_INCLUDE_UNTRACKED=0` 传给 `verify:affected`，只校验即将推送的提交历史，不把本地未提交并行改动混进这次分支交付。
+- `commit-msg` 先执行 `commitlint`，再执行 `pnpm verify:affected` 与 `pnpm test:workspace:smoke`，负责在提交落盘前补齐集成测试与仓库级冒烟闭环。
+  - 当前 `commit-msg` 会把 `VERIFY_INCLUDE_WORKTREE=0 VERIFY_INCLUDE_STAGED=1 VERIFY_INCLUDE_UNTRACKED=0` 传给 `verify:affected`，只校验即将提交的 staged 改动与已提交历史范围，不把未暂存或未跟踪的并行改动混进这次分支交付。
+  - `commit-msg` 会为提交阶段检查设置默认 `NODE_OPTIONS=--max-old-space-size=8192`，避免全仓 ESLint / affected verify 在本地默认 Node heap 下因 OOM 中断；调用方已有 `NODE_OPTIONS` 时保留调用方设置。
+- `pre-push` 不再执行本地校验，推送阶段只负责把已经通过提交门槛的分支推到远程。
 
 ### 第三步：推送分支并创建 PR
 

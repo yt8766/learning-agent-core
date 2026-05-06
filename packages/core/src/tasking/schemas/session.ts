@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ApprovalScopePolicyRecordSchema } from './governance-fields';
 
 export const ChannelKindSchema = z.enum(['web', 'telegram', 'feishu', 'wechat']);
+export const ChatSessionTitleSourceSchema = z.enum(['placeholder', 'generated', 'manual']);
 
 export const ChannelIdentitySchema = z.object({
   channel: ChannelKindSchema,
@@ -41,6 +42,58 @@ export const ChatSessionCompressionRecordSchema = z.object({
   updatedAt: z.string()
 });
 
+export const ChatMessageFeedbackRatingSchema = z.enum(['helpful', 'unhelpful', 'none']);
+export const ChatMessageFeedbackReasonCodeSchema = z.enum([
+  'too_shallow',
+  'incorrect',
+  'missed_point',
+  'bad_format',
+  'other'
+]);
+
+function enforceChatMessageFeedbackReasonCode(
+  value: {
+    rating: z.infer<typeof ChatMessageFeedbackRatingSchema>;
+    reasonCode?: z.infer<typeof ChatMessageFeedbackReasonCodeSchema>;
+  },
+  ctx: z.RefinementCtx
+) {
+  if (value.rating === 'unhelpful' && !value.reasonCode) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['reasonCode'],
+      message: 'reasonCode is required for unhelpful feedback'
+    });
+  }
+  if (value.rating !== 'unhelpful' && value.reasonCode) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['reasonCode'],
+      message: 'reasonCode is only allowed for unhelpful feedback'
+    });
+  }
+}
+
+export const ChatMessageFeedbackRequestSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    rating: ChatMessageFeedbackRatingSchema,
+    reasonCode: ChatMessageFeedbackReasonCodeSchema.optional(),
+    comment: z.string().trim().max(1000).optional()
+  })
+  .superRefine(enforceChatMessageFeedbackReasonCode);
+
+export const ChatMessageFeedbackRecordSchema = z
+  .object({
+    messageId: z.string().min(1),
+    sessionId: z.string().min(1),
+    rating: ChatMessageFeedbackRatingSchema,
+    reasonCode: ChatMessageFeedbackReasonCodeSchema.optional(),
+    comment: z.string().max(1000).optional(),
+    updatedAt: z.string().min(1)
+  })
+  .superRefine(enforceChatMessageFeedbackReasonCode);
+
 export const ChatSessionApprovalPoliciesSchema = z.object({
   sessionAllowRules: z.array(ApprovalScopePolicyRecordSchema).optional()
 });
@@ -59,6 +112,7 @@ export const ChatSessionRecordSchema = z.object({
     'failed'
   ]),
   currentTaskId: z.string().optional(),
+  titleSource: ChatSessionTitleSourceSchema.optional(),
   channelIdentity: ChannelIdentitySchema.optional(),
   compression: ChatSessionCompressionRecordSchema.optional(),
   approvalPolicies: ChatSessionApprovalPoliciesSchema.optional(),

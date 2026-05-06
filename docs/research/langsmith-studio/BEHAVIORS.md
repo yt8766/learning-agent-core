@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/frontend/agent-admin/src/features/workflow-lab`
+适用范围：`apps/frontend/agent-admin/src/pages/workflow-lab`
 最后核对：2026-04-30
 
 ## 参考入口

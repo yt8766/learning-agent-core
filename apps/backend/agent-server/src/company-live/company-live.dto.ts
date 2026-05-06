@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import type { CompanyLiveContentBrief } from '@agent/core';
 import { CompanyLiveContentBriefSchema } from '@agent/core';
 import { z } from 'zod';
@@ -20,10 +21,45 @@ const CompanyLiveGenerateDtoSchema = z.object({
   requestedBy: z.string().optional()
 });
 
+const CompanyLiveExpertConsultDtoSchema = z.object({
+  question: z.string().trim().min(1),
+  brief: CompanyLiveGenerateDtoSchema
+});
+
 export type CompanyLiveGenerateDto = CompanyLiveContentBrief;
 
+export interface CompanyLiveExpertConsultDto {
+  brief: CompanyLiveContentBrief;
+  question: string;
+}
+
 export function parseCompanyLiveGenerateDto(body: unknown): CompanyLiveGenerateDto {
-  const partial = CompanyLiveGenerateDtoSchema.parse(body);
+  const partial = parseCompanyLiveDto(CompanyLiveGenerateDtoSchema, body);
+  return parseCompanyLiveBrief(partial);
+}
+
+export function parseCompanyLiveExpertConsultDto(body: unknown): CompanyLiveExpertConsultDto {
+  const partial = parseCompanyLiveDto(CompanyLiveExpertConsultDtoSchema, body);
+  return {
+    brief: parseCompanyLiveBrief(partial.brief),
+    question: partial.question
+  };
+}
+
+function parseCompanyLiveDto<T>(schema: z.ZodType<T>, body: unknown): T {
+  const result = schema.safeParse(body);
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new BadRequestException({
+    error: 'Bad Request',
+    message: 'Invalid company-live request payload',
+    details: result.error.issues
+  });
+}
+
+function parseCompanyLiveBrief(partial: z.infer<typeof CompanyLiveGenerateDtoSchema>): CompanyLiveContentBrief {
   return CompanyLiveContentBriefSchema.parse({
     briefId: partial.briefId,
     targetPlatform: partial.targetPlatform,

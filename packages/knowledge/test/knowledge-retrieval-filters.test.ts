@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   KnowledgeChunkSchema,
+  KnowledgeRetrievalFiltersSchema,
   RetrievalHitSchema,
   RetrievalRequestSchema,
   matchesKnowledgeChunkFilters,
@@ -444,6 +445,124 @@ describe('knowledge retrieval filters', () => {
           }
         },
         filters
+      )
+    ).toBe(false);
+  });
+});
+
+describe('knowledgeBaseIds retrieval filters', () => {
+  it('rejects blank scoped knowledge base ids at the contract boundary', () => {
+    expect(() =>
+      KnowledgeRetrievalFiltersSchema.parse({
+        knowledgeBaseIds: ['']
+      })
+    ).toThrow();
+  });
+
+  it('resolves knowledgeBaseIds and filters hits defensively', () => {
+    const filters = resolveKnowledgeRetrievalFilters({
+      query: 'pre retrieval',
+      filters: { knowledgeBaseIds: ['kb_rag'] }
+    });
+
+    const matchingHit = RetrievalHitSchema.parse({
+      chunkId: 'chunk_1',
+      documentId: 'doc_1',
+      sourceId: 'source_1',
+      knowledgeBaseId: 'kb_rag',
+      title: 'RAG',
+      uri: 'doc://rag',
+      sourceType: 'user-upload',
+      trustClass: 'internal',
+      content: 'pre retrieval planner',
+      score: 1,
+      citation: {
+        sourceId: 'source_1',
+        chunkId: 'chunk_1',
+        title: 'RAG',
+        uri: 'doc://rag',
+        sourceType: 'user-upload',
+        trustClass: 'internal'
+      }
+    });
+    const otherKnowledgeBaseHit = RetrievalHitSchema.parse({
+      chunkId: 'chunk_2',
+      documentId: 'doc_2',
+      sourceId: 'source_2',
+      knowledgeBaseId: 'kb_other',
+      title: 'Other',
+      uri: 'doc://other',
+      sourceType: 'user-upload',
+      trustClass: 'internal',
+      content: 'other content',
+      score: 1,
+      citation: {
+        sourceId: 'source_2',
+        chunkId: 'chunk_2',
+        title: 'Other',
+        uri: 'doc://other',
+        sourceType: 'user-upload',
+        trustClass: 'internal'
+      }
+    });
+    const missingKnowledgeBaseHit = RetrievalHitSchema.parse({
+      chunkId: 'chunk_3',
+      documentId: 'doc_3',
+      sourceId: 'source_3',
+      title: 'Legacy',
+      uri: 'doc://legacy',
+      sourceType: 'user-upload',
+      trustClass: 'internal',
+      content: 'legacy content',
+      score: 1,
+      citation: {
+        sourceId: 'source_3',
+        chunkId: 'chunk_3',
+        title: 'Legacy',
+        uri: 'doc://legacy',
+        sourceType: 'user-upload',
+        trustClass: 'internal'
+      }
+    });
+
+    expect(filters.knowledgeBaseIds).toEqual(['kb_rag']);
+    expect(matchesKnowledgeHitFilters(matchingHit, filters)).toBe(true);
+    expect(matchesKnowledgeHitFilters(otherKnowledgeBaseHit, filters)).toBe(false);
+    expect(matchesKnowledgeHitFilters(missingKnowledgeBaseHit, filters)).toBe(false);
+  });
+
+  it('does not let blank scoped values match missing knowledge base metadata', () => {
+    const filters = resolveKnowledgeRetrievalFilters({
+      query: 'pre retrieval',
+      filters: { knowledgeBaseIds: ['', '   '] }
+    });
+
+    expect(filters.knowledgeBaseIds).toBeUndefined();
+
+    const scopedFilters = {
+      ...filters,
+      knowledgeBaseIds: ['kb_rag']
+    };
+
+    expect(
+      matchesKnowledgeChunkFilters(
+        {
+          documentId: 'doc_1',
+          searchable: true,
+          metadata: { knowledgeBaseId: '' }
+        },
+        scopedFilters
+      )
+    ).toBe(false);
+    expect(
+      matchesKnowledgeHitFilters(
+        {
+          documentId: 'doc_1',
+          sourceId: 'source_1',
+          sourceType: 'user-upload',
+          trustClass: 'internal'
+        },
+        scopedFilters
       )
     ).toBe(false);
   });

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runRuntimeWebCuratedIngestionJob } from '../../../src/runtime/domain/knowledge/runtime-web-curated-ingestion-job';
 import { RuntimeKnowledgeService } from '../../../src/runtime/services/runtime-knowledge.service';
 
 describe('RuntimeKnowledgeService source ingestion adapters', () => {
@@ -90,60 +89,5 @@ describe('RuntimeKnowledgeService source ingestion adapters', () => {
         content: 'repository readme from connector sync'
       })
     );
-  });
-
-  it('通过 web curated job 拉取并清洗 URL 产物后进入现有 ingestion adapter', async () => {
-    const fetchUrl = vi.fn(async () => ({
-      title: 'Fetched Runtime Runbook',
-      content: '<main>Runtime runbook from curated URL</main>',
-      capturedAt: '2026-05-01T00:00:00.000Z'
-    }));
-    const ingestWebCuratedSources = vi.fn(async () => ({
-      sourceCount: 1,
-      chunkCount: 1,
-      embeddedChunkCount: 1
-    }));
-
-    const result = await runRuntimeWebCuratedIngestionJob(
-      {
-        sources: [
-          {
-            sourceId: 'web-runtime-runbook',
-            url: 'https://example.com/runtime-runbook',
-            curatedBy: 'research-team',
-            metadata: {
-              status: 'active'
-            }
-          }
-        ]
-      },
-      {
-        fetchUrl,
-        ingestWebCuratedSources,
-        trustPolicy: ({ url }) => (url.hostname === 'example.com' ? 'official' : 'curated')
-      }
-    );
-
-    expect(result).toMatchObject({
-      sourceCount: 1,
-      chunkCount: 1,
-      embeddedChunkCount: 1
-    });
-    expect(fetchUrl).toHaveBeenCalledWith(new URL('https://example.com/runtime-runbook'));
-    expect(ingestWebCuratedSources).toHaveBeenCalledWith([
-      expect.objectContaining({
-        sourceId: 'web-runtime-runbook',
-        trustClass: 'official',
-        url: 'https://example.com/runtime-runbook',
-        title: 'Fetched Runtime Runbook',
-        content: 'Runtime runbook from curated URL',
-        curatedBy: 'research-team',
-        metadata: expect.objectContaining({
-          status: 'active',
-          capturedAt: '2026-05-01T00:00:00.000Z',
-          sourceUrl: 'https://example.com/runtime-runbook'
-        })
-      })
-    ]);
   });
 });

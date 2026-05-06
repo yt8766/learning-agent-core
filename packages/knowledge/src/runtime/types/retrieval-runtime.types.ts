@@ -1,4 +1,4 @@
-import type { RetrievalHit, RetrievalRequest } from '@agent/knowledge';
+import type { RetrievalHit, RetrievalRequest } from '../../index';
 import { z } from 'zod';
 
 import { PostRetrievalDiagnosticsSchema } from '../../contracts/schemas/knowledge-retrieval.schema';
@@ -44,6 +44,50 @@ export interface RetrievalFilteringDiagnostics {
 }
 
 export type PostRetrievalDiagnostics = z.infer<typeof PostRetrievalDiagnosticsSchema>;
+
+export const RetrievalFilteringStageDiagnosticsSchema = z.object({
+  stage: z.enum(['pre-merge-defensive', 'context-expansion-defensive']),
+  beforeCount: z.number().int().nonnegative(),
+  afterCount: z.number().int().nonnegative(),
+  droppedCount: z.number().int().nonnegative()
+});
+
+export const RetrievalFilteringDiagnosticsSchema = z.object({
+  enabled: z.boolean(),
+  stages: z.array(RetrievalFilteringStageDiagnosticsSchema)
+});
+
+export const ContextExpansionDiagnosticsSchema = z
+  .object({
+    enabled: z.boolean(),
+    seedCount: z.number().int().nonnegative(),
+    candidateCount: z.number().int().nonnegative(),
+    addedCount: z.number().int().nonnegative(),
+    dedupedCount: z.number().int().nonnegative(),
+    missingCount: z.number().int().nonnegative().optional(),
+    droppedByFilterCount: z.number().int().nonnegative(),
+    maxExpandedHits: z.number().int().nonnegative().optional()
+  })
+  .strict();
+
+export const RetrievalDiagnosticsSchema = z.object({
+  runId: z.string(),
+  startedAt: z.string(),
+  durationMs: z.number().nonnegative(),
+  originalQuery: z.string(),
+  normalizedQuery: z.string(),
+  rewriteApplied: z.boolean(),
+  rewriteReason: z.string().optional(),
+  queryVariants: z.array(z.string()),
+  executedQueries: z.array(z.string()),
+  preHitCount: z.number().int().nonnegative(),
+  postHitCount: z.number().int().nonnegative(),
+  contextAssembled: z.boolean(),
+  contextExpansion: ContextExpansionDiagnosticsSchema.optional(),
+  postRetrieval: PostRetrievalDiagnosticsSchema.optional(),
+  filtering: RetrievalFilteringDiagnosticsSchema.optional(),
+  hybrid: HybridRetrievalDiagnosticsSchema.optional()
+});
 
 export interface RetrievalDiagnostics {
   runId: string;

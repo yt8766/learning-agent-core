@@ -29,29 +29,17 @@
     "baseUrl": ".",
     "typeRoots": ["./types", "./node_modules/@types"],
     "paths": {
+      "@langchain/langgraph-checkpoint-postgres/store": [
+        "packages/runtime/node_modules/@langchain/langgraph-checkpoint-postgres/dist/store/index.d.ts"
+      ],
       "@agent/core": ["packages/core/src/index.ts"],
       "@agent/knowledge": ["packages/knowledge/src/index.ts"],
+      "@agent/knowledge/node": ["packages/knowledge/src/node/index.ts"],
       "@agent/config": ["packages/config/src"],
       "@agent/runtime": ["packages/runtime/src/index.ts"],
-      "@agent/runtime/governance/approval": ["packages/runtime/src/governance/approval/index.ts"],
-      "@agent/runtime/governance/runtime-governance": ["packages/runtime/src/governance/runtime-governance/index.ts"],
-      "@agent/runtime/sandbox": ["packages/runtime/src/sandbox/index.ts"],
-      "@agent/runtime/sandbox-utils": ["packages/runtime/src/sandbox/sandbox-executor-utils.ts"],
-      "@agent/runtime/watchdog": ["packages/runtime/src/watchdog/index.ts"],
       "@agent/platform-runtime": ["packages/platform-runtime/src/index.ts"],
-      "@agent/runtime/base-agent": ["packages/runtime/src/agents/base-agent.ts"],
-      "@agent/runtime/agent-runtime-context": ["packages/runtime/src/runtime/agent-runtime-context.ts"],
-      "@agent/runtime/streaming-execution": ["packages/runtime/src/runtime/streaming-execution.ts"],
       "@agent/adapters": ["packages/adapters/src/index.ts"],
       "@agent/tools": ["packages/tools/src"],
-      "@agent/tools/command": ["packages/tools/src/command/index.ts"],
-      "@agent/tools/executors/connectors": ["packages/tools/src/executors/connectors/connectors-executor.ts"],
-      "@agent/tools/executors/filesystem": ["packages/tools/src/executors/filesystem/filesystem-executor.ts"],
-      "@agent/tools/executors/runtime-governance": [
-        "packages/tools/src/executors/runtime-governance/runtime-governance-executor.ts"
-      ],
-      "@agent/tools/executors/scaffold": ["packages/tools/src/executors/scaffold/scaffold-executor.ts"],
-      "@agent/tools/executors/scheduling": ["packages/tools/src/executors/scheduling/scheduling-executor.ts"],
       "@agent/memory": ["packages/memory/src"],
       "@agent/report-kit": ["packages/report-kit/src/index.ts"],
       "@agent/templates": ["packages/templates/src"],

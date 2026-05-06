@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+
+import { KNOWLEDGE_QUERY_STALE_TIME_MS, knowledgeQueryKeys } from '@/api/knowledge-query';
+
+describe('knowledgeQueryKeys', () => {
+  it('builds stable root and dashboard keys', () => {
+    expect(knowledgeQueryKeys.root()).toEqual(['knowledge']);
+    expect(knowledgeQueryKeys.dashboard()).toEqual(['knowledge', 'dashboard']);
+    expect(knowledgeQueryKeys.knowledgeBases()).toEqual(['knowledge', 'knowledge-bases']);
+  });
+
+  it('builds document list keys with normalized filters', () => {
+    expect(knowledgeQueryKeys.documents({ knowledgeBaseId: 'kb-1' })).toEqual([
+      'knowledge',
+      'documents',
+      { knowledgeBaseId: 'kb-1' }
+    ]);
+    expect(knowledgeQueryKeys.documents({})).toEqual(['knowledge', 'documents', {}]);
+    expect(knowledgeQueryKeys.documents()).toEqual(['knowledge', 'documents', {}]);
+  });
+
+  it('keeps document keys stable when caller params are mutated after key creation', () => {
+    const params = { knowledgeBaseId: 'kb-1' };
+    const key = knowledgeQueryKeys.documents(params);
+
+    params.knowledgeBaseId = 'kb-2';
+
+    expect(key).toEqual(['knowledge', 'documents', { knowledgeBaseId: 'kb-1' }]);
+  });
+
+  it('builds observability trace keys', () => {
+    expect(knowledgeQueryKeys.trace('trace-1')).toEqual(['knowledge', 'observability', 'trace', 'trace-1']);
+  });
+
+  it('builds stable eval run comparison keys', () => {
+    expect(
+      knowledgeQueryKeys.evalRunComparison({
+        baselineRunId: 'run-a',
+        candidateRunId: 'run-b'
+      })
+    ).toEqual([
+      'knowledge',
+      'evals',
+      'run-comparison',
+      {
+        baselineRunId: 'run-a',
+        candidateRunId: 'run-b'
+      }
+    ]);
+  });
+
+  it('keeps eval run comparison keys stable when caller params are mutated after key creation', () => {
+    const params = {
+      baselineRunId: 'run-a',
+      candidateRunId: 'run-b'
+    };
+    const key = knowledgeQueryKeys.evalRunComparison(params);
+
+    params.baselineRunId = 'run-c';
+    params.candidateRunId = 'run-d';
+
+    expect(key).toEqual([
+      'knowledge',
+      'evals',
+      'run-comparison',
+      {
+        baselineRunId: 'run-a',
+        candidateRunId: 'run-b'
+      }
+    ]);
+  });
+
+  it('uses the shared knowledge query stale time', () => {
+    expect(KNOWLEDGE_QUERY_STALE_TIME_MS).toBe(30_000);
+  });
+});

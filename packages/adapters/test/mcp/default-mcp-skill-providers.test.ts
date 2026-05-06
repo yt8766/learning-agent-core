@@ -16,7 +16,7 @@ describe('@agent/adapters default MCP skill providers', () => {
     expect(registry.get('zhipu')?.descriptor.builtIn).toBe(true);
   });
 
-  it('builds a MiniMax stdio install plan with governed media and token plan capabilities', () => {
+  it('builds a MiniMax stdio install plan with governed media plus CLI search capabilities', () => {
     const provider = createMiniMaxMcpSkillProvider();
     const plan = provider.buildInstallPlan({
       providerId: 'minimax',
@@ -38,10 +38,9 @@ describe('@agent/adapters default MCP skill providers', () => {
           })
         }),
         expect.objectContaining({
-          id: 'minimax-token-plan-mcp',
-          transport: 'stdio',
-          command: 'uvx',
-          args: ['minimax-coding-plan-mcp', '-y'],
+          id: 'minimax-cli',
+          transport: 'cli',
+          command: 'mmx',
           env: expect.objectContaining({
             MINIMAX_API_KEY: 'minimax-key',
             MINIMAX_API_HOST: 'https://api.minimax.io'
@@ -56,14 +55,14 @@ describe('@agent/adapters default MCP skill providers', () => {
         expect.objectContaining({
           id: 'minimax:web_search',
           toolName: 'web_search',
-          serverId: 'minimax-token-plan-mcp',
+          serverId: 'minimax-cli',
           riskLevel: 'low',
           requiresApproval: false
         }),
         expect.objectContaining({
           id: 'minimax:understand_image',
           toolName: 'understand_image',
-          serverId: 'minimax-token-plan-mcp',
+          serverId: 'minimax-cli',
           riskLevel: 'medium',
           requiresApproval: true
         })
@@ -71,7 +70,7 @@ describe('@agent/adapters default MCP skill providers', () => {
     );
   });
 
-  it('lets MiniMax Token Plan web search resolve by MCP tool name', () => {
+  it('lets MiniMax CLI web search resolve by MCP tool name', () => {
     const provider = createMiniMaxMcpSkillProvider();
     const plan = provider.buildInstallPlan({
       providerId: 'minimax',
@@ -84,7 +83,7 @@ describe('@agent/adapters default MCP skill providers', () => {
         expect.objectContaining({
           id: 'minimax:web_search',
           toolName: 'web_search',
-          serverId: 'minimax-token-plan-mcp'
+          serverId: 'minimax-cli'
         })
       ])
     );

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEventCard,
   buildVisibleEventMessage,
+  mergeOrAppendMessage,
   syncMessageFromEvent,
   syncProcessMessageFromEvent,
   syncSessionFromEvent
@@ -128,7 +129,23 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(content).toBe('gongbu-code · 工部执行 进行中：正在修复 plugin.ts（60%）');
+    expect(content).toBe('gongbu-code · 工部执行 · 进行中 · 正在修复 plugin.ts · 进度 60%');
+  });
+
+  it('buildVisibleEventMessage 会把遗留 node 形态的 node_status 投影成可读摘要', () => {
+    const content = buildVisibleEventMessage({
+      id: 'evt-legacy-node',
+      sessionId: 'session-1',
+      type: 'node_status',
+      at: '2026-03-28T00:00:00.000Z',
+      payload: {
+        node: 'direct_reply',
+        status: 'running',
+        route: 'direct-reply'
+      }
+    } as any);
+
+    expect(content).toBe('直接回复 · 状态：running · 路径：direct-reply');
   });
 
   it('buildEventCard 会把 plan-question interrupt 映射成计划问题卡片', () => {
@@ -326,7 +343,7 @@ describe('chat-session-events', () => {
     expect(messages.filter(message => message.card?.type === 'compression_summary')).toHaveLength(0);
   });
 
-  it('syncProcessMessageFromEvent 会复用同一条 node status 系统消息，而不是不断追加', () => {
+  it('syncProcessMessageFromEvent 不再把 node status 写成主线程系统消息', () => {
     let messages: ChatMessageRecord[] = [];
 
     messages = syncProcessMessageFromEvent(messages, {
@@ -353,16 +370,10 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toEqual(
-      expect.objectContaining({
-        id: 'event_stream_status_session-1',
-        content: '文书科压缩 进行中：正在整理关键决策'
-      })
-    );
+    expect(messages).toHaveLength(0);
   });
 
-  it('syncProcessMessageFromEvent 会把 execution step 投影成可见系统事件', () => {
+  it('syncProcessMessageFromEvent 不再把 execution step 投影成可见系统事件', () => {
     const messages = syncProcessMessageFromEvent([], {
       id: 'evt-exec-1',
       sessionId: 'session-1',
@@ -379,13 +390,7 @@ describe('chat-session-events', () => {
       }
     } as any);
 
-    expect(messages).toEqual([
-      expect.objectContaining({
-        id: 'event_evt-exec-1',
-        role: 'system',
-        content: '执行步骤开始：execute · pnpm test · test-runner。正在运行前端回归测试'
-      })
-    ]);
+    expect(messages).toEqual([]);
   });
 
   it('buildVisibleEventMessage 会把 trajectory step 投影成过程轨迹文案', () => {
@@ -831,5 +836,49 @@ describe('chat-session-events', () => {
         })
       })
     ]);
+  });
+
+  it('mergeOrAppendMessage 会用正式 user id 替换 X-SDK 的 local-user_* 临时行（同内容）', () => {
+    const localUser: ChatMessageRecord = {
+      id: 'local-user_1710000000000',
+      sessionId: 'session-1',
+      role: 'user',
+      content: '你好',
+      createdAt: '2026-05-05T00:00:00.000Z'
+    };
+    const serverUser: ChatMessageRecord = {
+      id: 'msg-real-1',
+      sessionId: 'session-1',
+      role: 'user',
+      content: '你好',
+      createdAt: '2026-05-05T00:00:01.000Z'
+    };
+
+    const merged = mergeOrAppendMessage([localUser], serverUser);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('msg-real-1');
+    expect(merged[0]?.content).toBe('你好');
+  });
+
+  it('mergeOrAppendMessage 在临时用户尚无 sessionId 时仍可按内容与正式 user 合并', () => {
+    const localUser: ChatMessageRecord = {
+      id: 'local-user_1710000000001',
+      sessionId: '',
+      role: 'user',
+      content: '测一条',
+      createdAt: '2026-05-05T00:00:00.000Z'
+    };
+    const serverUser: ChatMessageRecord = {
+      id: 'msg-real-2',
+      sessionId: 'session-2',
+      role: 'user',
+      content: '测一条',
+      createdAt: '2026-05-05T00:00:01.000Z'
+    };
+
+    const merged = mergeOrAppendMessage([localUser], serverUser);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('msg-real-2');
+    expect(merged[0]?.sessionId).toBe('session-2');
   });
 });

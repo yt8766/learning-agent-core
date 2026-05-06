@@ -1,4 +1,4 @@
-import type { RetrievalRequest } from '@agent/knowledge';
+import type { RetrievalRequest } from '../../index';
 
 import type { NormalizedRetrievalRequest } from '../types/retrieval-runtime.types';
 

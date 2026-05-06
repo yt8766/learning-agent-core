@@ -4,7 +4,7 @@
 状态说明：MVP completed；engine / diagnostics / retriever 接口 / Chroma adapter / OpenSearch-like adapter / backend host 主链注入已收敛，全来源 ingestion 与生产凭据接线仍需后续核对  
 文档类型：reference  
 适用范围：`packages/knowledge/src/retrieval/`  
-最后核对：2026-04-30
+最后核对：2026-05-02（补充 web curated 只保留已整理内容入口，不做网页抓取）
 
 ---
 
@@ -23,6 +23,8 @@ Hybrid Search 通过组合关键词检索（Keyword Search）和向量检索（V
 | Vector Search  | 语义相近：同义词、口语化表达、换一种说法   |
 
 > 2026-04-30 核对结论：本设计第一阶段 MVP 已落地为 `HybridKnowledgeSearchService` + `VectorKnowledgeSearchService` + `VectorSearchProvider` + `rrfFusion`。本轮已继续补齐 `HybridRetrievalEngine`、`KnowledgeRetriever` / `KeywordRetriever` / `VectorRetriever`、`RetrievalFusionStrategy` / `RrfFusionStrategy`、`diagnostics.hybrid`、`packages/adapters` 的 Chroma 向量检索桥接与 OpenSearch-like 全文检索桥接，以及 backend `RuntimeHost` 到 `AgentRuntime.knowledgeSearchService` 的显式 keyword/vector 主链接入；仍需核对全来源 ingestion 和生产级 SDK / 凭据 / 索引配置。
+>
+> 2026-05-02 补充：`web-curated` 只保留为人工策展或外部系统已整理内容的 retrieval source；当前知识库不建设真实网页抓取器、robots / 版权策略或抓取调度。
 
 ---
 
@@ -264,7 +266,7 @@ export { HybridKnowledgeSearchService } from './retrieval/hybrid-knowledge-searc
 | agent skills   | 不新增独立 `agent-skill` sourceType；`.agents/skills/*/SKILL.md` 进入 Hybrid Search 时复用 `workspace-docs` / `repo-docs` + `metadata.docType=agent-skill`，运行时 skill manifest 复用 `connector-manifest` 或 `catalog-sync` + `metadata.docType=runtime-skill` |
 | user-upload    | `user-upload` 已在 retrieval/runtime schema 和测试数据中出现；仍需核对上传文档 ingestion、权限 metadata、searchable 状态是否进入统一 pipeline                                                                                                                    |
 | connector 内容 | `connector-manifest`、`catalog-sync` 已在 schema 中声明；本地只覆盖部分 manifest，connector 同步内容是否进入 knowledge indexing 仍需逐源核对                                                                                                                     |
-| web curated    | `web-curated` 已在 retrieval/runtime schema 中声明；外部资料接入、trustClass 和过滤 metadata 仍需按来源补测试                                                                                                                                                    |
+| web curated    | `web-curated` 已在 retrieval/runtime schema 中声明；只承载人工策展或外部系统已整理内容，当前不建设真实网页抓取器、robots / 版权策略或抓取调度；trustClass 和过滤 metadata 仍需按来源补测试                                                                       |
 
 新增来源进入 Hybrid Search 的最低条件：先定义或复用 `sourceType`，写入 `KnowledgeSource` / `KnowledgeChunk`，补齐 `trustClass` 和 filter metadata，证明 keyword/vector/hybrid 三条路径不会绕过过滤。
 

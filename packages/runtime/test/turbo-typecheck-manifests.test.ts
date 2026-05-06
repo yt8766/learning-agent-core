@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,6 +55,45 @@ describe('turbo:typecheck manifest wiring', () => {
       }))
     );
   });
+
+  it('keeps runtime package type exports pointed at emitted declaration files', async () => {
+    const manifest = await readJson('packages/runtime/package.json');
+    const typePaths = collectTypePaths(manifest);
+
+    await Promise.all(
+      typePaths.map(async typePath => {
+        await expect(
+          access(path.join(repoRoot, 'packages/runtime', typePath.replace(/^\.\//, '')))
+        ).resolves.toBeUndefined();
+      })
+    );
+  });
+
+  it('keeps standalone backend servers on package type boundaries for core contracts', async () => {
+    const backendTsconfigs = await Promise.all(
+      ['apps/backend/auth-server/tsconfig.json', 'apps/backend/knowledge-server/tsconfig.json'].map(
+        async configPath => {
+          const config = await readJson(configPath);
+
+          return {
+            configPath,
+            corePath: config.compilerOptions?.paths?.['@agent/core']
+          };
+        }
+      )
+    );
+
+    expect(backendTsconfigs).toEqual([
+      {
+        configPath: 'apps/backend/auth-server/tsconfig.json',
+        corePath: undefined
+      },
+      {
+        configPath: 'apps/backend/knowledge-server/tsconfig.json',
+        corePath: undefined
+      }
+    ]);
+  });
 });
 
 async function readJson(relativePath: string) {
@@ -63,6 +102,40 @@ async function readJson(relativePath: string) {
 
   return JSON.parse(content) as {
     globalDependencies?: string[];
+    compilerOptions?: {
+      paths?: Record<string, string[]>;
+    };
+    exports?: Record<string, unknown>;
     scripts?: Record<string, string>;
+    types?: string;
   };
+}
+
+function collectTypePaths(manifest: { exports?: Record<string, unknown>; types?: string }) {
+  const typePaths = new Set<string>();
+
+  if (manifest.types) {
+    typePaths.add(manifest.types);
+  }
+
+  for (const exportEntry of Object.values(manifest.exports ?? {})) {
+    if (!exportEntry || typeof exportEntry !== 'object') {
+      continue;
+    }
+
+    for (const condition of ['import', 'require']) {
+      const conditionalEntry = (exportEntry as Record<string, unknown>)[condition];
+
+      if (!conditionalEntry || typeof conditionalEntry !== 'object') {
+        continue;
+      }
+
+      const typePath = (conditionalEntry as Record<string, unknown>).types;
+      if (typeof typePath === 'string') {
+        typePaths.add(typePath);
+      }
+    }
+  }
+
+  return [...typePaths].sort();
 }

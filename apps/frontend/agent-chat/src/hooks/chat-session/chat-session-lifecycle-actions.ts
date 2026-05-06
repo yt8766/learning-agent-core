@@ -1,4 +1,4 @@
-import { cancelSession, deleteSession, recoverSession, updateSession } from '@/api/chat-api';
+import { cancelSession, deleteSession, recoverSession } from '@/api/chat-api';
 import type { ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
 import type { CreateChatSessionActionsOptions } from './chat-session-actions.types';
 import {
@@ -99,37 +99,11 @@ export function createLifecycleActions({
     }
   };
 
-  const renameSessionById = async (sessionId: string, title: string) => {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
-    const updatedSession = await runLoading(() => updateSession(sessionId, trimmedTitle), '重命名会话失败');
-    if (updatedSession) {
-      options.setSessions(current =>
-        current.map(session =>
-          session.id === sessionId
-            ? {
-                ...updatedSession,
-                compression: updatedSession.compression
-                  ? {
-                      ...updatedSession.compression,
-                      trigger:
-                        updatedSession.compression.trigger === 'character_count' ? 'character_count' : 'message_count',
-                      source: updatedSession.compression.source === 'llm' ? 'llm' : 'heuristic'
-                    }
-                  : undefined
-              }
-            : session
-        )
-      );
-    }
-  };
-
   return {
     recoverActiveSession,
     cancelActiveSession,
     installSuggestedSkill,
     deleteSessionById,
-    deleteActiveSession,
-    renameSessionById
+    deleteActiveSession
   };
 }

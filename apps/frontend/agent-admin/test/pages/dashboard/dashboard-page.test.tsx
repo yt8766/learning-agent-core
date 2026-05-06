@@ -23,47 +23,47 @@ vi.mock('@/hooks/use-admin-dashboard', () => ({
   useAdminDashboard: () => mockUseAdminDashboard()
 }));
 
-vi.mock('../../../src/features/runtime-overview/runtime-overview-panel', () => ({
+vi.mock('../../../src/pages/runtime-overview/runtime-overview-panel', () => ({
   RuntimeOverviewPanel: () => <div>runtime panel body</div>
 }));
-vi.mock('../../../src/features/approvals-center/approvals-panel', () => ({
+vi.mock('../../../src/pages/approvals-center/approvals-panel', () => ({
   ApprovalsPanel: () => <div>approvals panel body</div>,
   filterApprovals: (items: unknown[]) => items
 }));
-vi.mock('../../../src/features/learning-center/learning-center-panel', () => ({
+vi.mock('../../../src/pages/learning-center/learning-center-panel', () => ({
   LearningCenterPanel: () => <div>learning panel body</div>
 }));
-vi.mock('../../../src/features/learning-center/memory-center-panel', () => ({
+vi.mock('../../../src/pages/learning-center/memory-center-panel', () => ({
   MemoryCenterPanel: () => <div>memory center panel body</div>
 }));
-vi.mock('../../../src/features/learning-center/profile-center-panel', () => ({
+vi.mock('../../../src/pages/learning-center/profile-center-panel', () => ({
   ProfileCenterPanel: () => <div>profile center panel body</div>
 }));
-vi.mock('../../../src/features/learning-center/memory-governance-panel', () => ({
+vi.mock('../../../src/pages/learning-center/memory-governance-panel', () => ({
   MemoryGovernancePanel: () => <div>memory governance panel body</div>
 }));
-vi.mock('../../../src/features/learning-center/memory-resolution-queue-card', () => ({
+vi.mock('../../../src/pages/learning-center/memory-resolution-queue-card', () => ({
   MemoryResolutionQueueCard: () => <div>memory resolution queue body</div>
 }));
-vi.mock('../../../src/features/evals-center/evals-center-panel', () => ({
+vi.mock('../../../src/pages/evals-center/evals-center-panel', () => ({
   EvalsCenterPanel: () => <div>evals panel body</div>
 }));
-vi.mock('../../../src/features/archive-center/archive-center-panel', () => ({
+vi.mock('../../../src/pages/archive-center/archive-center-panel', () => ({
   ArchiveCenterPanel: () => <div>archive panel body</div>
 }));
-vi.mock('../../../src/features/skill-lab/skill-lab-panel', () => ({
+vi.mock('../../../src/pages/skill-lab/skill-lab-panel', () => ({
   SkillLabPanel: () => <div>skill lab panel body</div>
 }));
-vi.mock('../../../src/features/evidence-center/evidence-center-panel', () => ({
+vi.mock('../../../src/pages/evidence-center/evidence-center-panel', () => ({
   EvidenceCenterPanel: () => <div>evidence panel body</div>
 }));
-vi.mock('../../../src/features/connectors-center/connectors-center-panel', () => ({
+vi.mock('../../../src/pages/connectors-center/connectors-center-panel', () => ({
   ConnectorsCenterPanel: () => <div>connectors panel body</div>
 }));
-vi.mock('../../../src/features/skill-sources-center/skill-sources-center-panel', () => ({
+vi.mock('../../../src/pages/skill-sources-center/skill-sources-center-panel', () => ({
   SkillSourcesCenterPanel: () => <div>skill sources panel body</div>
 }));
-vi.mock('../../../src/features/company-agents/company-agents-panel', () => ({
+vi.mock('../../../src/pages/company-agents/company-agents-panel', () => ({
   CompanyAgentsPanel: () => <div>company agents panel body</div>
 }));
 

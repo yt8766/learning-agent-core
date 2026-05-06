@@ -3,9 +3,9 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/core`、`packages/runtime`、`packages/adapters`、`packages/platform-runtime`、`agents/audio`、`agents/image`、`agents/video`、`agents/company-live`
-最后核对：2026-05-12
+最后核对：2026-05-02
 
-本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求与经营判断，不直接调用厂商 API。
+本文定义媒体生成能力与公司海外直播业务 Agent 的目标边界。当前结论是：MiniMax 是默认媒体模型 provider，不是 Agent；Audio / Image / Video 是平台级媒体 Domain；CompanyLive 只产出业务内容需求、专家会诊结论与经营判断，不直接调用厂商 API。
 
 ## 1. 目标
 
@@ -617,16 +617,16 @@ v1.0 已完成以下边界：
 
 ### 新增模块
 
-| 模块              | 路径                                                                                   | 说明                                                                          |
-| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Graph + 节点      | `agents/company-live/src/graphs/company-live.graph.ts`                                 | 顺序 pipeline：generateAudio → generateImage → generateVideo → assembleBundle |
-| Stub Registry     | `agents/company-live/src/runtime/company-live-domain-runtime.ts`                       | `createCompanyLiveStubRegistry()` 返回 mock asset，不发 HTTP                  |
-| 节点 trace schema | `packages/core/src/contracts/media/company-live-generate-result.schema.ts`             | `CompanyLiveNodeTraceSchema` + `CompanyLiveGenerateResultSchema`              |
-| 后端 endpoint     | `apps/backend/agent-server/src/company-live/`                                          | POST /company-live/generate → service → graph                                 |
-| 前端 API 客户端   | `apps/frontend/agent-admin/src/api/company-live.api.ts`                                | `generateCompanyLive(brief)`                                                  |
-| 前端生成表单      | `apps/frontend/agent-admin/src/features/company-agents/company-live-generate-form.tsx` | 输入 briefId/platform/script/duration/voiceId                                 |
-| 前端结果展示      | `apps/frontend/agent-admin/src/features/company-agents/company-live-bundle-result.tsx` | 展示 GeneratedMediaBundle.assets                                              |
-| 前端节点轨迹      | `apps/frontend/agent-admin/src/features/company-agents/company-live-node-trace.tsx`    | 时间线：nodeId、status、durationMs、input/output snapshot                     |
+| 模块              | 路径                                                                                | 说明                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Graph + 节点      | `agents/company-live/src/graphs/company-live.graph.ts`                              | 顺序 pipeline：generateAudio → generateImage → generateVideo → assembleBundle |
+| Stub Registry     | `agents/company-live/src/runtime/company-live-domain-runtime.ts`                    | `createCompanyLiveStubRegistry()` 返回 mock asset，不发 HTTP                  |
+| 节点 trace schema | `packages/core/src/contracts/media/company-live-generate-result.schema.ts`          | `CompanyLiveNodeTraceSchema` + `CompanyLiveGenerateResultSchema`              |
+| 后端 endpoint     | `apps/backend/agent-server/src/company-live/`                                       | POST /company-live/generate → service → graph                                 |
+| 前端 API 客户端   | `apps/frontend/agent-admin/src/api/company-live.api.ts`                             | `generateCompanyLive(brief)`                                                  |
+| 前端生成表单      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-generate-form.tsx` | 输入 briefId/platform/script/duration/voiceId                                 |
+| 前端结果展示      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-bundle-result.tsx` | 展示 GeneratedMediaBundle.assets                                              |
+| 前端节点轨迹      | `apps/frontend/agent-admin/src/pages/company-agents/company-live-node-trace.tsx`    | 时间线：nodeId、status、durationMs、input/output snapshot                     |
 
 ### 接口文档
 
@@ -645,3 +645,63 @@ v1.0 已完成以下边界：
 - stub registry 返回固定 mock asset，不发真实 HTTP
 - video stub 直接构造 MediaAsset，不经 task polling
 - GeneratedMediaBundle.assets 无 `sourceNodeId` 字段（schema 未定义此字段）
+
+## 18. Experts Consultation 边界
+
+状态：completed
+最后核对：2026-05-02
+
+CompanyLive 已新增专家会诊能力，入口是：
+
+```text
+POST /api/company-live/experts/consult
+```
+
+该入口接收 `{ question, brief }`，其中 `brief` 是 Admin 简化输入 `CompanyLiveGenerateBrief`；后端 DTO 会补全默认值并 parse 成 `CompanyLiveContentBrief`，再调用 `agents/company-live` 的专家会诊 graph。响应是 `CompanyExpertConsultation`，稳定 schema 位于 `packages/core/src/contracts/media/company-live-experts.schema.ts`。
+
+专家会诊不强制绑定媒体生成：
+
+```text
+CompanyLiveExpertConsultation
+-> Expert routing
+-> Expert findings / fallback findings
+-> Missing inputs
+-> Conflicts
+-> Next actions
+-> Business plan patch
+```
+
+只有当业务明确需要生成图片、口播、音乐或视频资产时，才进入媒体生成链路：
+
+```text
+CompanyLiveContentBrief
+-> CompanyLiveMediaRequest
+-> Audio / Image / Video Domain
+-> Media Provider Interface
+-> Provider Adapter
+```
+
+当前专家池共 10 个专家：
+
+| Expert id           | 阶段     | 职责摘要                       |
+| ------------------- | -------- | ------------------------------ |
+| `productAgent`      | core     | 商品定位、用户体验、卖点包装。 |
+| `operationsAgent`   | core     | 直播排期、主播协作、场控流程。 |
+| `contentAgent`      | core     | 直播脚本、话术、素材、本地化。 |
+| `growthAgent`       | core     | GMV、转化率、拉新、复购。      |
+| `riskAgent`         | core     | 违规话术、平台封禁、审批审计。 |
+| `financeAgent`      | core     | 毛利、折扣、预算、ROI、结算。  |
+| `marketingAgent`    | reserved | 投放、Campaign、达人合作。     |
+| `intelligenceAgent` | reserved | 竞品、平台政策、区域趋势。     |
+| `supportAgent`      | reserved | 用户问题、投诉、退货退款。     |
+| `supplyAgent`       | reserved | 库存、备货、发货、物流时效。   |
+
+v1 默认核心专家是 6 个：`productAgent`、`operationsAgent`、`contentAgent`、`growthAgent`、`riskAgent`、`financeAgent`。广义会诊问题默认覆盖这 6 个核心专家；第一版普通关键词路由只遍历这 6 个 core experts。`marketingAgent`、`intelligenceAgent`、`supportAgent`、`supplyAgent` 作为 reserved 专家定义和后续扩展点保留，当前不会被普通关键词路由选中。
+
+边界约束：
+
+- `CompanyExpertConsultation` 是专家会诊对外唯一稳定响应 contract。
+- Admin 页面只消费 `CompanyExpertConsultation`，不读取 `agents/company-live` 内部 graph state、node trace、prompt、fallback reason 或 LLM 原始响应。
+- 专家会诊可以产出 `businessPlanPatch`，但不直接写入业务计划、不发布素材、不触发审批恢复。
+- 媒体 provider 边界保持不变：Agent 侧只消费 `packages/runtime` provider interface，默认装配在 `packages/platform-runtime`，vendor 映射在 `packages/adapters`。
+- MiniMax 或其他媒体 vendor 字段不得穿透到专家会诊 response、Admin 页面或 `packages/core` 专家会诊 contract。

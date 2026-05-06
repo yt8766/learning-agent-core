@@ -315,6 +315,245 @@ describe('chat-session-stream-binding', () => {
     expect(setError).toHaveBeenCalledWith('聊天流已断开，当前改用运行态兜底同步。请确认后端 /api/chat/stream 可达。');
   });
 
+  it('batches assistant token message updates into one frame to avoid markdown re-render storms', async () => {
+    vi.useFakeTimers();
+
+    const stream = {
+      close: vi.fn(),
+      onopen: undefined as (() => void) | undefined,
+      onmessage: undefined as ((event: { data: string }) => void) | undefined,
+      onerror: undefined as (() => void) | undefined
+    };
+    const state = createState();
+    const setCheckpointSpy = vi.fn(state.setCheckpoint);
+    const setEventsSpy = vi.fn(state.setEvents);
+    const setMessagesSpy = vi.fn(state.setMessages);
+    const setSessionsSpy = vi.fn(state.setSessions);
+    const syncMessageFromEvent = vi.fn((messages: ChatMessageRecord[], event: ChatEventRecord) => [
+      ...messages,
+      {
+        id: event.id,
+        sessionId: event.sessionId,
+        role: 'assistant' as const,
+        content: String(event.payload?.content ?? ''),
+        createdAt: event.at
+      }
+    ]);
+
+    bindChatSessionStream({
+      stream: stream as unknown as EventSource,
+      sessionId: 'session-1',
+      isDisposed: () => false,
+      streamState: { intentionalClose: false, idleTimer: null, hasAssistantContent: false },
+      checkpointRef: { current: undefined },
+      clearPendingUser: vi.fn(),
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      refreshCheckpointOnly: vi.fn().mockResolvedValue(undefined),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      isAssistantContentEvent: vi.fn((type: string) => type === 'assistant_token'),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint?: ChatCheckpointRecord) => checkpoint),
+      mergeEvent: vi.fn((events: ChatEventRecord[], event: ChatEventRecord) => [...events, event]),
+      syncMessageFromEvent,
+      syncProcessMessageFromEvent: vi.fn((messages: ChatMessageRecord[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: ChatSessionRecord[]) => sessions),
+      checkpointRefreshEventTypes: new Set(),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      setCheckpoint: setCheckpointSpy,
+      setEvents: setEventsSpy,
+      setMessages: setMessagesSpy,
+      setSessions: setSessionsSpy,
+      setError: vi.fn(),
+      startSessionPolling: vi.fn(),
+      stopSessionPolling: vi.fn(),
+      scheduleCheckpointRefresh: vi.fn(),
+      streamIdleTimeoutMs: 100
+    });
+
+    stream.onmessage?.({
+      data: JSON.stringify({
+        id: 'evt-token-1',
+        sessionId: 'session-1',
+        type: 'assistant_token',
+        payload: { content: '你' },
+        at: '2026-05-04T00:00:00.000Z'
+      })
+    });
+    stream.onmessage?.({
+      data: JSON.stringify({
+        id: 'evt-token-2',
+        sessionId: 'session-1',
+        type: 'assistant_token',
+        payload: { content: '好' },
+        at: '2026-05-04T00:00:00.010Z'
+      })
+    });
+
+    expect(setCheckpointSpy).not.toHaveBeenCalled();
+    expect(setEventsSpy).not.toHaveBeenCalled();
+    expect(setMessagesSpy).not.toHaveBeenCalled();
+    expect(setSessionsSpy).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(40);
+
+    expect(setMessagesSpy).toHaveBeenCalledTimes(1);
+    expect(setCheckpointSpy).not.toHaveBeenCalled();
+    expect(setEventsSpy).not.toHaveBeenCalled();
+    expect(setSessionsSpy).not.toHaveBeenCalled();
+    expect(syncMessageFromEvent).toHaveBeenCalledTimes(2);
+    expect(state.messages.map(message => message.content)).toEqual(['你', '好']);
+  });
+
+  it('can route assistant stream content to the x-sdk provider without also writing legacy assistant messages', async () => {
+    vi.useFakeTimers();
+
+    const stream = {
+      close: vi.fn(),
+      onopen: undefined as (() => void) | undefined,
+      onmessage: undefined as ((event: { data: string }) => void) | undefined,
+      onerror: undefined as (() => void) | undefined
+    };
+    const state = createState();
+    const onStreamEvent = vi.fn();
+    const syncMessageFromEvent = vi.fn((messages: ChatMessageRecord[], event: ChatEventRecord) => [
+      ...messages,
+      {
+        id: event.id,
+        sessionId: event.sessionId,
+        role: 'assistant' as const,
+        content: String(event.payload?.content ?? ''),
+        createdAt: event.at
+      }
+    ]);
+
+    bindChatSessionStream({
+      stream: stream as unknown as EventSource,
+      sessionId: 'session-1',
+      isDisposed: () => false,
+      streamState: { intentionalClose: false, idleTimer: null, hasAssistantContent: false },
+      checkpointRef: { current: undefined },
+      clearPendingUser: vi.fn(),
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      refreshCheckpointOnly: vi.fn().mockResolvedValue(undefined),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      isAssistantContentEvent: vi.fn((type: string) => type === 'assistant_token'),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint?: ChatCheckpointRecord) => checkpoint),
+      mergeEvent: vi.fn((events: ChatEventRecord[], event: ChatEventRecord) => [...events, event]),
+      syncMessageFromEvent,
+      syncProcessMessageFromEvent: vi.fn((messages: ChatMessageRecord[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: ChatSessionRecord[]) => sessions),
+      checkpointRefreshEventTypes: new Set(),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      setCheckpoint: state.setCheckpoint,
+      setEvents: state.setEvents,
+      setMessages: state.setMessages,
+      setSessions: state.setSessions,
+      setError: vi.fn(),
+      startSessionPolling: vi.fn(),
+      stopSessionPolling: vi.fn(),
+      scheduleCheckpointRefresh: vi.fn(),
+      streamIdleTimeoutMs: 100,
+      syncAssistantMessages: false,
+      onStreamEvent
+    });
+
+    stream.onmessage?.({
+      data: JSON.stringify({
+        id: 'evt-token-1',
+        sessionId: 'session-1',
+        type: 'assistant_token',
+        payload: { content: '你' },
+        at: '2026-05-04T00:00:00.000Z'
+      })
+    });
+
+    await vi.advanceTimersByTimeAsync(40);
+
+    expect(onStreamEvent).toHaveBeenCalledTimes(1);
+    expect(syncMessageFromEvent).not.toHaveBeenCalled();
+    expect(state.messages).toEqual([]);
+  });
+
+  it('can let x-sdk own the local user message without also writing the streamed user echo', async () => {
+    const stream = {
+      close: vi.fn(),
+      onopen: undefined as (() => void) | undefined,
+      onmessage: undefined as ((event: { data: string }) => void) | undefined,
+      onerror: undefined as (() => void) | undefined
+    };
+    const state = createState();
+    const clearPendingUser = vi.fn();
+    const syncMessageFromEvent = vi.fn((messages: ChatMessageRecord[], event: ChatEventRecord) => [
+      ...messages,
+      {
+        id: String(event.payload?.messageId ?? event.id),
+        sessionId: event.sessionId,
+        role: 'user' as const,
+        content: String(event.payload?.content ?? ''),
+        createdAt: event.at
+      }
+    ]);
+
+    bindChatSessionStream({
+      stream: stream as unknown as EventSource,
+      sessionId: 'session-1',
+      isDisposed: () => false,
+      streamState: { intentionalClose: false, idleTimer: null, hasAssistantContent: false },
+      checkpointRef: { current: undefined },
+      clearPendingUser,
+      reconcileFinalSnapshot: vi.fn().mockResolvedValue(undefined),
+      refreshCheckpointOnly: vi.fn().mockResolvedValue(undefined),
+      deriveSessionStatusFromCheckpoint: vi.fn(),
+      shouldIgnoreStaleTerminalStreamEvent: vi.fn(() => false),
+      isAssistantContentEvent: vi.fn(() => false),
+      syncCheckpointFromStreamEvent: vi.fn((checkpoint?: ChatCheckpointRecord) => checkpoint),
+      mergeEvent: vi.fn((events: ChatEventRecord[], event: ChatEventRecord) => [...events, event]),
+      syncMessageFromEvent,
+      syncProcessMessageFromEvent: vi.fn((messages: ChatMessageRecord[]) => messages),
+      syncSessionFromEvent: vi.fn((sessions: ChatSessionRecord[]) => sessions),
+      checkpointRefreshEventTypes: new Set(),
+      shouldStopStreamingForEvent: vi.fn(() => false),
+      shouldStartDetailPollingAfterStreamError: vi.fn(() => false),
+      shouldShowStreamFallbackError: vi.fn(() => false),
+      shouldStartDetailPollingAfterIdleClose: vi.fn(() => false),
+      setCheckpoint: state.setCheckpoint,
+      setEvents: state.setEvents,
+      setMessages: state.setMessages,
+      setSessions: state.setSessions,
+      setError: vi.fn(),
+      startSessionPolling: vi.fn(),
+      stopSessionPolling: vi.fn(),
+      scheduleCheckpointRefresh: vi.fn(),
+      streamIdleTimeoutMs: 100,
+      syncUserMessages: false
+    });
+
+    stream.onmessage?.({
+      data: JSON.stringify({
+        id: 'evt-user-1',
+        sessionId: 'session-1',
+        type: 'user_message',
+        payload: {
+          messageId: 'server-user-1',
+          content: '201和304的区别是什么'
+        },
+        at: '2026-05-05T00:00:00.000Z'
+      })
+    });
+
+    expect(clearPendingUser).toHaveBeenCalledWith('session-1');
+    expect(syncMessageFromEvent).not.toHaveBeenCalled();
+    expect(state.messages).toEqual([]);
+    expect(state.events.map(event => event.id)).toEqual(['evt-user-1']);
+  });
+
   it('reconciles and stops on stream error without fallback polling when detail is terminal', async () => {
     const stream = {
       close: vi.fn(),

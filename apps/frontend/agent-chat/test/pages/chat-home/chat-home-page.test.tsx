@@ -9,6 +9,7 @@ const mockUseChatSession = vi.fn();
 const renderedAlerts: Array<Record<string, unknown>> = [];
 const renderedModals: Array<Record<string, unknown>> = [];
 const renderedSenders: Array<Record<string, unknown>> = [];
+const buildBubbleItemsMock = vi.fn((_: Record<string, unknown>) => [{ key: 'bubble-1', content: 'assistant bubble' }]);
 
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
@@ -129,8 +130,14 @@ vi.mock('@ant-design/x', () => ({
   }
 }));
 
-vi.mock('@/features/chat/chat-message-adapter', () => ({
-  buildBubbleItems: () => [{ key: 'bubble-1', content: 'assistant bubble' }]
+vi.mock('@ant-design/x-markdown', () => ({
+  XMarkdown: ({ content, className }: { content: string; className?: string }) => (
+    <div className={className}>{content}</div>
+  )
+}));
+
+vi.mock('@/pages/chat/chat-message-adapter', () => ({
+  buildBubbleItems: (options: Record<string, unknown>) => buildBubbleItemsMock(options)
 }));
 
 vi.mock('@/hooks/use-chat-session', () => ({
@@ -153,7 +160,8 @@ vi.mock('@/pages/chat-home/chat-home-sidebar', () => ({
 }));
 
 vi.mock('@/pages/chat-home/chat-home-workbench-thoughts', () => ({
-  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }]
+  buildThoughtItems: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }],
+  buildThoughtItemsFromFields: () => [{ key: 'thought-1', title: '文书科', description: '整理上下文' }]
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail', () => ({
@@ -163,6 +171,7 @@ vi.mock('@/pages/chat-home/chat-home-anchor-rail', () => ({
 }));
 
 vi.mock('@/pages/chat-home/chat-home-anchor-rail-helpers', () => ({
+  dedupeMessagesById: <T extends { id: string }>(messages: T[]) => messages,
   buildConversationAnchors: () => [
     { id: 'anchor-user', messageId: 'msg-user', label: '用户问题' },
     { id: 'anchor-assistant', messageId: 'bubble-1', label: '助手回答' }
@@ -205,6 +214,7 @@ describe('ChatHomePage shell', () => {
       showRightPanel: true,
       error: 'provider timeout',
       loading: false,
+      isRequesting: false,
       sendMessage: vi.fn(),
       cancelActiveSession: vi.fn(),
       deleteActiveSession: vi.fn(),
@@ -214,6 +224,8 @@ describe('ChatHomePage shell', () => {
       updateApproval: vi.fn(),
       updatePlanInterrupt: vi.fn(),
       installSuggestedSkill: vi.fn(),
+      regenerateMessage: vi.fn(),
+      submitMessageFeedback: vi.fn(),
       refreshSessionDetail: vi.fn(),
       ...overrides
     };
@@ -223,6 +235,7 @@ describe('ChatHomePage shell', () => {
     renderedAlerts.length = 0;
     renderedModals.length = 0;
     renderedSenders.length = 0;
+    buildBubbleItemsMock.mockClear();
     useStateOverride = null;
   });
 
@@ -231,7 +244,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-expanded"');
+    expect(html).toContain('chatx-agent-codex');
+    expect(html).toContain('is-sidebar-expanded');
     expect(html).toContain('Agent Chat');
     expect(html).toContain('aria-label="Codex 对话区"');
     expect(html).toContain('覆盖率冲刺');
@@ -243,6 +257,39 @@ describe('ChatHomePage shell', () => {
     expect(html).toContain('chat-home-sidebar');
     expect(html).toContain('assistant bubble');
     expect(html).toContain('给 Agent Chat 发送消息');
+  });
+
+  it('keeps the default composer placeholder while tool approvals are pending', () => {
+    mockUseChatSession.mockReturnValue(
+      createChatSessionOverrides({
+        checkpoint: {
+          pendingApprovals: [],
+          activeInterrupt: {
+            id: 'interrupt-1',
+            status: 'pending',
+            mode: 'blocking',
+            source: 'tool',
+            kind: 'tool-approval',
+            resumeStrategy: 'approval-recovery',
+            payload: {
+              requiredConfirmationPhrase: '确认执行'
+            },
+            createdAt: '2026-05-05T10:00:00.000Z'
+          },
+          approvalCursor: 0,
+          learningCursor: 0,
+          agentStates: [],
+          createdAt: '2026-05-05T10:00:00.000Z',
+          updatedAt: '2026-05-05T10:00:00.000Z'
+        }
+      })
+    );
+
+    const html = renderToStaticMarkup(<ChatHomePage />);
+
+    expect(html).toContain('给 Agent Chat 发送消息');
+    expect(html).not.toContain('回复「确认执行」继续，或输入取消 / 修改要求');
+    expect(renderedSenders[0]?.placeholder).toBe('给 Agent Chat 发送消息');
   });
 
   it('marks the shell as collapsed when the sidebar starts collapsed', () => {
@@ -259,10 +306,11 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('class="chatx-agent-codex is-sidebar-collapsed"');
+    expect(html).toContain('chatx-agent-codex');
+    expect(html).toContain('is-sidebar-collapsed');
   });
 
-  it('renders the empty conversation entry with own brand title and Agent Chat placeholder', () => {
+  it('renders the empty conversation entry without quick or expert mode controls', () => {
     mockUseChatSession.mockReturnValue(
       createChatSessionOverrides({
         activeSessionId: '',
@@ -278,14 +326,17 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('开始新对话');
+    expect(html).toContain('你今天想搞定什么？');
     expect(html).toContain('给 Agent Chat 发送消息');
+    expect(html).not.toContain('使用快速模式开始对话');
+    expect(html).not.toContain('使用专家模式开始对话');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
+    expect(html).not.toContain('聊天模式');
     expect(html).not.toContain('连接错误');
   });
 
-  it('keeps quick and expert mode switch hidden even when expert state is selected', () => {
+  it('does not expose expert mode when stale state selects it', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
@@ -310,9 +361,8 @@ describe('ChatHomePage shell', () => {
 
     const html = renderToStaticMarkup(<ChatHomePage />);
 
-    expect(html).toContain('开始新对话');
+    expect(html).toContain('你今天想搞定什么？');
     expect(html).not.toContain('使用专家模式开始对话');
-    expect(html).not.toContain('使用快速模式开始对话');
     expect(html).not.toContain('快速模式');
     expect(html).not.toContain('专家模式');
   });
@@ -334,8 +384,7 @@ describe('ChatHomePage shell', () => {
     const html = renderToStaticMarkup(<ChatHomePage />);
 
     expect(html).toContain('深度思考');
-    expect(html).toContain('智能搜索');
-    expect(html).toContain('aria-pressed="true"');
+    expect(html).not.toContain('智能搜索');
     expect(html).toContain('aria-pressed="false"');
     expect(html).toContain('aria-label="上传文件"');
     expect(html.match(/chatx-sender-footer__right/g)).toHaveLength(1);
@@ -343,7 +392,7 @@ describe('ChatHomePage shell', () => {
     expect(html).not.toContain('♧');
   });
 
-  it('submits deep-thinking composer input through the supported plan workflow payload', () => {
+  it('submits quick composer input as a direct reply payload', () => {
     const chat = createChatSessionOverrides({
       activeSessionId: '',
       activeSession: null,
@@ -363,7 +412,39 @@ describe('ChatHomePage shell', () => {
 
     expect(chat.sendMessage).toHaveBeenCalledWith({
       display: '给我一个实现方案',
-      payload: '/plan 给我一个实现方案'
+      payload: '给我一个实现方案'
+    });
+  });
+
+  it('ignores stale expert mode state and submits direct reply payloads', () => {
+    let stateCallIndex = 0;
+    useStateOverride = (actualUseState, initial) => {
+      stateCallIndex += 1;
+      if (stateCallIndex === 5) {
+        return ['expert', vi.fn()];
+      }
+      return actualUseState(initial);
+    };
+    const chat = createChatSessionOverrides({
+      activeSessionId: '',
+      activeSession: null,
+      hasMessages: false,
+      events: [],
+      checkpoint: undefined,
+      pendingApprovals: [],
+      showRightPanel: false,
+      error: ''
+    });
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const sender = renderedSenders[0] as { onSubmit?: (value: string) => void };
+    sender.onSubmit?.('给我一个实现方案');
+
+    expect(chat.sendMessage).toHaveBeenCalledWith({
+      display: '给我一个实现方案',
+      payload: '给我一个实现方案'
     });
   });
 
@@ -380,6 +461,36 @@ describe('ChatHomePage shell', () => {
     sender.onCancel?.();
 
     expect(chat.cancelActiveSession).toHaveBeenCalledWith('用户停止当前会话');
+  });
+
+  it('forwards assistant regenerate and feedback actions into buildBubbleItems', () => {
+    const chat = createChatSessionOverrides();
+    mockUseChatSession.mockReturnValue(chat);
+
+    renderToStaticMarkup(<ChatHomePage />);
+
+    const latestCall = buildBubbleItemsMock.mock.calls.at(-1);
+    expect(latestCall).toBeDefined();
+    const options = latestCall?.[0] as unknown as {
+      onRegenerate?: (message: unknown) => void;
+      onMessageFeedback?: (message: unknown, feedback: unknown) => void;
+    };
+    const message = {
+      id: 'assistant-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '镜像是模板，容器是实例。'
+    };
+    const feedback = { rating: 'helpful' };
+
+    expect(typeof options.onRegenerate).toBe('function');
+    expect(typeof options.onMessageFeedback).toBe('function');
+
+    options.onRegenerate?.(message);
+    options.onMessageFeedback?.(message, feedback);
+
+    expect(chat.regenerateMessage).toHaveBeenCalledWith(message);
+    expect(chat.submitMessageFeedback).toHaveBeenCalledWith(message, feedback);
   });
 
   it('filters workflow command prefixes from the active session title', () => {
@@ -404,7 +515,7 @@ describe('ChatHomePage shell', () => {
     let stateCallIndex = 0;
     useStateOverride = (actualUseState, initial) => {
       stateCallIndex += 1;
-      if (stateCallIndex === 6) {
+      if (stateCallIndex === 5) {
         return ['', dismissedErrorSetter];
       }
       return actualUseState(initial);

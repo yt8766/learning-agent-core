@@ -34,16 +34,6 @@ packages/adapters/
 │  │  ├─ errors/            # AdapterError
 │  │  └─ validation/        # validateVectorDimensions
 │  │
-│  ├─ langchain/            # LangChain 生态 adapter
-│  │  ├─ shared/            # LangChain 专属 mapper
-│  │  ├─ loaders/           # LangChainLoaderAdapter, createMarkdownDirectoryLoader
-│  │  ├─ chunkers/          # LangChainChunkerAdapter, text splitter factories
-│  │  └─ embedders/         # LangChainEmbedderAdapter
-│  │
-│  ├─ chroma/               # Chroma 生态 adapter
-│  │  ├─ shared/            # chroma-collection, chroma-metadata.mapper
-│  │  └─ stores/            # ChromaVectorStoreAdapter
-│  │
 │  ├─ contracts/            # LLM 稳定契约（llm-provider.types, model-capabilities）
 │  ├─ openai-compatible/   # OpenAI 兼容 provider（provider/, chat/, embeddings/）
 │  ├─ anthropic/           # Anthropic provider（provider/）
@@ -55,11 +45,6 @@ packages/adapters/
 │  ├─ resilience/          # LLM retry / fallback 策略
 │  ├─ prompts/             # 共享 prompt 工具
 │  ├─ structured-output/   # 结构化输出安全层
-│  ├─ providers/           # ⚠️ compat re-export，勿新增实现
-│  ├─ chat/                # ⚠️ compat re-export，勿新增实现
-│  ├─ retry/               # ⚠️ compat re-export，勿新增实现
-│  ├─ support/             # ⚠️ compat re-export，勿新增实现
-│  ├─ utils/               # ⚠️ compat re-export，勿新增实现
 │  └─ index.ts              # 根入口 barrel
 ├─ test/
 ├─ demo/
@@ -80,8 +65,8 @@ LLM 相关目录按 **provider-first** 命名：`openai-compatible/`、`anthropi
 
 MCP skills / provider adapter 统一写入 `mcp/<provider>/`。`minimax/`、`zhipu/` 顶层目录继续承载 LLM provider 与 chat factory；`mcp/minimax/`、`mcp/zhipu/` 承载 MCP server 安装计划、capability 风险分级与 secret requirements。后续 Figma 等 MCP skills 也按 `mcp/figma/` 新增，不写进 `@agent/tools`。
 
-历史路径（`chat/`、`providers/`、`retry/`、`support/`）已降为 compat re-export，不再是规范写入目标。
-新增实现必须写入对应 provider 顶层目录或 `resilience/`、`routing/`、`factories/`。
+历史路径（`chat/`、`providers/`、`retry/`、`support/`、`utils/`）已删除，不再保留 compat re-export。
+新增实现必须写入对应 provider 顶层目录或 `resilience/`、`routing/`、`factories/`、`shared/`。
 
 ## 4. 契约来源规范
 
@@ -98,6 +83,6 @@ MCP skills / provider adapter 统一写入 `mcp/<provider>/`。`minimax/`、`zhi
 - [adapters 文档目录](/docs/packages/adapters/README.md)
 - [Indexing Adapter 规范](/docs/packages/adapters/indexing-adapter-guidelines.md)
 - [LangChain Adapter 使用](/docs/packages/adapters/langchain-adapter.md)
-- [Chroma Adapter 使用](/docs/packages/adapters/chroma-adapter.md)
+- [Chroma Adapter 使用](/docs/packages/adapters/chroma-adapter.md)（历史入口；新代码使用 `@agent/knowledge/adapters/chroma`）
 - [Provider 扩展 SDK 指南](/docs/packages/adapters/provider-extension-sdk-guidelines.md)
 - [Knowledge Indexing 契约规范](/docs/packages/knowledge/indexing-contract-guidelines.md)

@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：运行态状态机
-最后核对：2026-04-15
+最后核对：2026-05-02
 
 本文档固定当前 runtime、worker 与 chat 的主状态机语义，避免 backend、worker、admin、agent-chat 对同一状态产生不同解释。
 
@@ -46,6 +46,8 @@
   - learning job 执行失败，等待人工重试或重新创建
 
 learning job 不再使用“创建即 completed”的同步语义。
+
+研究类 learning job 只能调用已注册的 MCP capability。`search_doc`、`webReader`、`webSearchPrime`、`collect_research_source` 这类候选能力必须先通过 `mcpClientManager.hasCapability()` 确认；未注册时跳过外部采集并在 source detail 中记录失败摘要，不能把本地 tool 名或未注册候选直接传给 `invokeCapability()`。
 
 ## Backend vs Worker
 

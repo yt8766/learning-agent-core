@@ -6,10 +6,18 @@ export interface ChatEventRecord {
   payload: Record<string, unknown>;
 }
 
+export interface ChatThoughtChainWebSearch {
+  query: string;
+  resultCount?: number;
+  topHosts?: string[];
+  hitIds?: string[];
+}
+
 export interface ChatThoughtChainItem {
   key: string;
   messageId?: string;
   thinkingDurationMs?: number;
+  kind?: 'reasoning' | 'web_search' | 'browser';
   title: string;
   description?: string;
   content?: string;
@@ -17,6 +25,7 @@ export interface ChatThoughtChainItem {
   status?: 'loading' | 'success' | 'error' | 'abort';
   collapsible?: boolean;
   blink?: boolean;
+  webSearch?: ChatThoughtChainWebSearch;
 }
 
 export interface ChatThinkState {

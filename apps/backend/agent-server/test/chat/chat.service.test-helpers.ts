@@ -171,6 +171,7 @@ export const createRuntimeHost = () => {
             temperature:
               typeof request.contextHints?.temperature === 'number' ? request.contextHints.temperature : undefined,
             maxTokens: typeof request.contextHints?.maxTokens === 'number' ? request.contextHints.maxTokens : undefined,
+            thinking: request.contextHints?.thinking === false ? false : undefined,
             budgetState: {
               costConsumedUsd: request.budgetSnapshot?.costConsumedUsd,
               costBudgetUsd: request.budgetSnapshot?.costBudgetUsd,

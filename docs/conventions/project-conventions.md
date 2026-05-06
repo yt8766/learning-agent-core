@@ -17,6 +17,8 @@
 - [GitHub Flow 规范](/docs/conventions/github-flow.md)
 - [后端规范](/docs/conventions/backend-conventions.md)
 - [前端规范](/docs/conventions/frontend-conventions.md)
+- [JS/TS 代码风格规范](/docs/conventions/javascript-typescript-style.md)
+- [样式规范](/docs/conventions/styling-conventions.md)
 - [提示词规范](/docs/conventions/prompt-conventions.md)
 - [依赖安装与声明策略](/docs/packages/config/package-installation-strategy.md)
 - [模板示例](/docs/conventions/project-template-guidelines.md)
@@ -59,10 +61,11 @@
 - 前后端协作默认采用“接口文档先行”：
   - API 契约统一维护在 [docs/api](/docs/contracts/api/README.md)；`docs/integration` 只保留链路、联调和跨模块协作说明
   - 新增或修改后端接口前，必须先按 [接口风格选择指南](/docs/contracts/api/interface-style-guidelines.md) 判断接口形态。默认使用 RESTful JSON API + schema-first contract + SSE streaming；GraphQL、tRPC 和 WebSocket 都不是默认选项，只有满足指南中的重新评估条件时才允许另行设计。
-  - 只要需求会新增或修改 API、SSE event、DTO、payload、tool result、graph state 切片、审批事件或其他跨模块接口，必须先产出并确认接口文档，再进入前后端实现
+  - 只要需求会新增或修改 API、SSE event、DTO、payload、tool result、graph state 切片、审批事件或其他跨模块接口，必须先产出并确认接口文档，再进入前后端实现；这是硬门禁，不允许以“先做后补文档”“前后端先各自试字段”“局部小改”为理由跳过
   - 接口文档至少应写清：目的、调用入口、请求参数、响应或事件 schema、错误语义、兼容策略、字段演进规则、前后端职责边界
   - 接口文档中的正式结构定义必须与 `packages/core` 或宿主 `schemas/`、`contracts/` 中的 schema-first contract 对齐；禁止文档一套、代码一套
-  - 接口变更时，顺序必须是“先更新接口文档与 schema/contract，再修改前后端实现、测试与联调说明”，不允许先改代码再补协议
+  - 接口变更时，顺序必须是“先更新接口文档与 schema/contract，再修改后端实现，再修改前端消费，再补测试、联调说明与文档回写”，不允许先改代码再补协议
+  - `agent-chat` 下一代会话化 Agent 执行协议以 [Agent Chat Runtime V2 API](/docs/contracts/api/agent-chat-runtime-v2.md) 为先行契约；涉及 ChatRun、view-stream、自动审查、自然语言确认、checkpoint 或事件投影的开发，前后端都必须先按该文档确认字段后再实现
 - provider 防腐层默认规则：
   - `packages/core/src/providers/*` 定义抽象 provider interface
   - `packages/adapters` 负责实现这些 interface
@@ -126,6 +129,10 @@
 - 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉
 - 规范以文档为主，少量根级配置为辅
+- 代码代理每次改动必须自动维护 docs：凡是本轮改动影响真实行为、接口契约、事件 payload、目录边界、运行链路、验证要求、配置方式、用户可见流程或后续 AI 执行规范，必须在同一轮主动更新对应 `docs/**`、模块 README、`AGENTS.md` 或专题规范；不能只改代码后等待用户要求“补文档”
+- 文档清理是默认 cleanup：发现旧文档、旧段落、旧入口说明、旧待办、旧图示、旧兼容说明与当前实现冲突或重复分叉时，必须直接删除；如果仍有历史参考价值，必须改写为当前事实或显式标注“过时 / 仅历史参考 / 正确入口是 ...”
+- 文档更新必须优先修改原文档，避免新增“补充说明”造成知识分叉；只有确实是新主题或新模块时才新增文档，并同步更新目录索引
+- 交付前必须围绕本轮关键词、模块名、接口路径、事件名、旧目录名或旧能力名用 `rg` 扫描 `docs/**`、模块 README 与 `AGENTS.md`，清理过时命中；纯文档改动至少执行 `pnpm check:docs`
 - 每次任务完成后，必须顺手检查本轮涉及的规范文档是否已经过期；如果真实实现、流程边界、验证要求或交付要求已经变化，必须在本轮同步更新规范，不能把失效规范留到后续任务
 - 文档新增与更新默认要经过 `pnpm check:docs`；如果新增文档，优先使用 `pnpm new:doc docs/<module>/<name>.md` 生成标准骨架，再补充内容
 - [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 是当前仓库所有非纯文档改动的验证分流入口；只要本轮改动触达代码、配置、模板、脚手架、构建脚本或测试文件，就必须先按该文档判断受影响范围、验证层级、治理门槛和执行命令

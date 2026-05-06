@@ -152,7 +152,7 @@
 - 根级 `scripts/run-package-demos.js` 当前会强制校验 `packages/*` 是否同时具备 `demo/` 与 `demo` 脚本；缺任一项都会直接让 `pnpm test:demo` 失败
 - `pnpm test:workspace:integration` 只执行根级 `test/integration/**` 下的 workspace-level integration 用例，不替代宿主内 `test:integration`
 - `pnpm test:workspace:integration:affected` 会基于 changed paths 映射到受影响的根级 integration 用例；PR CI 已将它作为阻塞项执行，确保跨包/跨宿主契约变更不会绕过仓库级协同验证
-- `pnpm test:workspace:smoke` 只执行根级 `test/smoke/**` 下的 workspace-level smoke 用例；当前 PR CI、main CI 与本地 `pre-push` 都已将它作为阻塞项执行
+- `pnpm test:workspace:smoke` 只执行根级 `test/smoke/**` 下的 workspace-level smoke 用例；当前 PR CI、main CI 与本地 `commit-msg` 都已将它作为阻塞项执行
 - backend HTTP app smoke 会真实创建 Nest app 并通过 `supertest` 验证 `/health` contract；该用例不依赖外部服务，但需要本地临时监听权限，受限沙箱可能因 `listen EPERM` 阻断，应在正常本地或 CI 环境执行
 - `pnpm test:unit` 明确排除 `*.int-spec.ts`、`*.int-spec.tsx`、`*.smoke.ts` 与 `*.acc-spec.ts`，避免 workspace integration / smoke / acceptance 被误归入 Unit 层
 - `packages/*` 的 demo 分层当前统一采用：
@@ -169,7 +169,7 @@
 - `pnpm lint:prettier:check` 与 `pnpm lint:eslint:check` 是根级非修复型治理门槛入口，供 `pnpm verify` 与 CI 直接复用
 - `pnpm lint:prettier:affected` 与 `pnpm lint:eslint:affected` 会基于 `VERIFY_BASE_REF` 与 changed paths 自动决定是只检查受影响文件，还是因共享 lint 配置变更而提升为全仓检查
   - 默认 changed paths 会合并 `VERIFY_BASE_REF...HEAD`、本地 working tree、staged 与 untracked 改动，便于本地提前发现未提交问题
-  - `.husky/pre-push` 会显式关闭 working tree / staged / untracked 扫描，只验证即将推送的提交历史，避免范围外并行改动污染分支交付
+  - `.husky/commit-msg` 会显式关闭 working tree / untracked 扫描，并保留 staged 扫描，只验证即将提交的 staged 改动与已提交历史范围，避免范围外并行改动污染分支交付
 - `pnpm eval:prompts:affected` 仍保留为独立入口，会在受影响范围内命中 prompt 敏感路径时执行 prompt regression；未命中时自动跳过
 - 当前第三阶段对 `Demo` 的收敛策略是“直接复用既有 `demo`，不额外新增 `turbo:test:demo`”，详见 [Turbo Demo 三阶段迁移方案](/docs/packages/evals/turbo-demo-stage-three-plan.md)
 - 当前 Turbo `demo` 任务默认服务于显式 `demo/**` 宿主；packages 新增或重构时，应优先把最小闭环接进这条链路

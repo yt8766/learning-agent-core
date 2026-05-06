@@ -1,4 +1,4 @@
-import type { EvaluationResult } from '@agent/knowledge';
+import type { EvaluationResult } from '@agent/core';
 import type { EvidenceRecord } from '@agent/memory';
 import type { DispatchInstruction, ReviewRecord } from '@agent/core';
 import type { RuntimeTaskRecord } from '../../../../runtime/runtime-task.types';

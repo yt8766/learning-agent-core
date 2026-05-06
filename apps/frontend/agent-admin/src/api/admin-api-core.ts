@@ -1,9 +1,10 @@
-import axios from 'axios';
-import type { AxiosRequestConfig, Method } from 'axios';
+import axios, { isCancel, isAxiosError, type AxiosRequestConfig, type Method } from 'axios';
 import type { AdminAuthErrorResponse, AdminTokenPair } from '@agent/core';
 
-import { adminAuthStore } from '@/features/auth/store/admin-auth-store';
-import { adminTokenManager } from '@/features/auth/runtime/admin-token-manager';
+import { http } from '@/utils/http-client';
+import { refreshAdminAuth } from '@/pages/auth/api/admin-auth.api';
+import { adminAuthStore } from '@/pages/auth/store/admin-auth-store';
+import { adminTokenManager } from '@/pages/auth/runtime/admin-token-manager';
 import type { PlatformConsoleRecord } from '@/types/admin';
 
 export type AdminRequestInit = {
@@ -19,14 +20,6 @@ export type AdminRequestInit = {
 
 export const ABORTED_REQUEST_ERROR = '__ADMIN_REQUEST_ABORTED__';
 const requestControllers = new Map<string, AbortController>();
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:3000/api';
-const http = axios.create({
-  baseURL: API_BASE,
-  timeout: 12000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
 let refreshPromise: Promise<AdminTokenPair> | undefined;
 
 export interface ChannelDeliveryRecord {
@@ -89,10 +82,10 @@ export async function request<T>(path: string, init?: AdminRequestInit): Promise
     const response = await http.request<T>(config);
     return response.data;
   } catch (error) {
-    if (axios.isCancel(error) || (error instanceof axios.CanceledError && error.code === 'ERR_CANCELED')) {
+    if (isCancel(error) || (error instanceof axios.CanceledError && error.code === 'ERR_CANCELED')) {
       throw new Error(ABORTED_REQUEST_ERROR);
     }
-    if (axios.isAxiosError(error) && error.response) {
+    if (isAxiosError(error) && error.response) {
       const errorCode = readAdminAuthErrorCode(error.response.data);
       if (
         error.response.status === 401 &&
@@ -133,17 +126,10 @@ function withAuthHeaders(init?: AdminRequestInit): Record<string, string> | unde
 async function refreshAdminTokenPair(): Promise<AdminTokenPair> {
   if (!refreshPromise) {
     adminAuthStore.setRefreshing();
-    refreshPromise = http
-      .request<{ tokens: AdminTokenPair }>({
-        url: '/admin/auth/refresh',
-        method: 'POST',
-        data: JSON.stringify({
-          refreshToken: adminTokenManager.getRefreshToken()
-        })
-      })
+    refreshPromise = refreshAdminAuth(adminTokenManager.getRefreshToken())
       .then(response => {
-        adminTokenManager.setTokenPair(response.data.tokens);
-        return response.data.tokens;
+        adminTokenManager.setTokenPair(response.tokens);
+        return response.tokens;
       })
       .catch(error => {
         adminTokenManager.clearTokens();

@@ -1,5 +1,5 @@
 import { buildStructuredPrompt } from '@agent/adapters';
-import { stripOperationalBoilerplate } from '../../../utils/prompts/runtime-output-sanitizer';
+import { stripOperationalBoilerplate, stripThinkBlocks } from '../../../utils/prompts/runtime-output-sanitizer';
 import { buildFreshnessAnswerInstruction, buildTemporalContextBlock } from '../../../utils/prompts/temporal-context';
 
 export const DELIVERY_SUMMARY_SYSTEM_PROMPT = buildStructuredPrompt({
@@ -95,9 +95,9 @@ export function buildDeliverySummaryUserPrompt(
 }
 
 export function sanitizeFinalUserReply(content: string): string {
-  const normalized = stripOperationalBoilerplate(content);
+  const normalized = stripThinkBlocks(stripOperationalBoilerplate(content));
 
-  return normalized || content.trim();
+  return normalized || stripThinkBlocks(content);
 }
 
 export function shapeFinalUserReply(content: string, citationSourceSummary?: string, goal?: string): string {

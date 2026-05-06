@@ -1,4 +1,4 @@
-import type { KnowledgeChunk, RetrievalHit } from '@agent/knowledge';
+import type { KnowledgeChunk, RetrievalHit } from '../index';
 
 import type { KnowledgeSourceRepository } from '../contracts/knowledge-facade';
 import type {

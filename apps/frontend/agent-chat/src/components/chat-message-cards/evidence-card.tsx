@@ -14,13 +14,22 @@ interface EvidenceCardProps {
 }
 
 export function EvidenceCard(props: EvidenceCardProps) {
-  const groupedSources = groupEvidenceSources(props.card.sources);
   return (
     <div className="chatx-structured-card">
       <div className="chatx-structured-card__header">
         <Tag color="blue">Sources</Tag>
         <Tag>{props.card.sources.length} 条来源</Tag>
       </div>
+      <EvidenceReferencesBlock sources={props.card.sources} />
+    </div>
+  );
+}
+
+/** Grouped source list body (shared by EvidenceCard and assistant-message references footer). */
+export function EvidenceReferencesBlock(props: { sources: EvidenceDigestSource[] }) {
+  const groupedSources = groupEvidenceSources(props.sources);
+  return (
+    <>
       <div className="chatx-sources-groups__title">来源引用</div>
       <div className="chatx-sources-groups">
         {groupedSources.map(group => (
@@ -47,7 +56,7 @@ export function EvidenceCard(props: EvidenceCardProps) {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }
 

@@ -41,7 +41,7 @@
   }
 }
 
-.chatx-conversation > .chatx-anchor-rail {
+.chatx-conversation .chatx-anchor-rail {
   top: 50%;
   right: 16px;
   bottom: 50%;
@@ -61,7 +61,7 @@
 }
 
 @media (max-width: 960px) {
-  .chatx-conversation > .chatx-anchor-rail {
+  .chatx-conversation .chatx-anchor-rail {
     display: none;
   }
 }

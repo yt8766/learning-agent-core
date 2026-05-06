@@ -1,11 +1,11 @@
 import type { AdapterMcpCapabilityDefinition } from '../mcp-skill-provider-adapter';
 
 const MINIMAX_SERVER_ID = 'minimax-mcp';
-const MINIMAX_TOKEN_PLAN_SERVER_ID = 'minimax-token-plan-mcp';
+const MINIMAX_CLI_SERVER_ID = 'minimax-cli';
 
 export function buildMiniMaxMcpCapabilities(
   serverId = MINIMAX_SERVER_ID,
-  tokenPlanServerId = MINIMAX_TOKEN_PLAN_SERVER_ID
+  cliServerId = MINIMAX_CLI_SERVER_ID
 ): AdapterMcpCapabilityDefinition[] {
   return [
     {
@@ -99,8 +99,8 @@ export function buildMiniMaxMcpCapabilities(
     {
       id: 'minimax:web_search',
       toolName: 'web_search',
-      serverId: tokenPlanServerId,
-      displayName: 'MiniMax Token Plan web search',
+      serverId: cliServerId,
+      displayName: 'MiniMax CLI web search',
       riskLevel: 'low',
       requiresApproval: false,
       category: 'knowledge',
@@ -110,8 +110,8 @@ export function buildMiniMaxMcpCapabilities(
     {
       id: 'minimax:understand_image',
       toolName: 'understand_image',
-      serverId: tokenPlanServerId,
-      displayName: 'MiniMax Token Plan image understanding',
+      serverId: cliServerId,
+      displayName: 'MiniMax CLI image understanding',
       riskLevel: 'medium',
       requiresApproval: true,
       category: 'knowledge',

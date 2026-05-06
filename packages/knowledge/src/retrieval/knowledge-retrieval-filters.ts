@@ -23,6 +23,7 @@ export function resolveKnowledgeRetrievalFilters(request: RetrievalRequest): Res
   return {
     ...filters,
     sourceTypes: filters.sourceTypes ?? request.allowedSourceTypes,
+    knowledgeBaseIds: normalizeStringFilter(filters.knowledgeBaseIds),
     minTrustClass: filters.minTrustClass ?? request.minTrustClass,
     searchableOnly: filters.searchableOnly ?? true
   };
@@ -59,6 +60,13 @@ export function matchesKnowledgeChunkFilters(
     return false;
   }
 
+  if (
+    isEnabledFilter(filters.knowledgeBaseIds) &&
+    !matchesRequiredFilterValue(getKnowledgeBaseIdFromMetadata(chunk.metadata), filters.knowledgeBaseIds)
+  ) {
+    return false;
+  }
+
   if (filters.searchableOnly && !chunk.searchable) {
     return false;
   }
@@ -82,11 +90,23 @@ export function matchesKnowledgeChunkFilters(
 }
 
 export function matchesKnowledgeHitFilters(
-  hit: Pick<RetrievalHit, 'documentId' | 'sourceId' | 'sourceType' | 'trustClass'> & {
+  hit: Pick<RetrievalHit, 'documentId' | 'sourceId' | 'knowledgeBaseId' | 'sourceType' | 'trustClass'> & {
     metadata?: KnowledgeChunk['metadata'];
   },
   filters: ResolvedKnowledgeRetrievalFilters
 ): boolean {
+  if (
+    isEnabledFilter(filters.knowledgeBaseIds) &&
+    !matchesRequiredFilterValue(hit.knowledgeBaseId, filters.knowledgeBaseIds)
+  ) {
+    return false;
+  }
+
+  const chunkFilters = {
+    ...filters,
+    knowledgeBaseIds: undefined
+  };
+
   return (
     matchesKnowledgeSourceFilters(
       {
@@ -102,9 +122,14 @@ export function matchesKnowledgeHitFilters(
         searchable: true,
         metadata: hit.metadata
       },
-      filters
+      chunkFilters
     )
   );
+}
+
+export function getKnowledgeBaseIdFromMetadata(metadata: KnowledgeChunk['metadata']): string | undefined {
+  const knowledgeBaseId = metadata?.knowledgeBaseId;
+  return typeof knowledgeBaseId === 'string' && knowledgeBaseId.trim().length > 0 ? knowledgeBaseId.trim() : undefined;
 }
 
 function isAtLeastTrustClass(actual: KnowledgeTrustClass, minimum: KnowledgeTrustClass): boolean {
@@ -113,6 +138,17 @@ function isAtLeastTrustClass(actual: KnowledgeTrustClass, minimum: KnowledgeTrus
 
 function isEnabledFilter<T>(values: T[] | undefined): values is T[] {
   return values !== undefined && values.length > 0;
+}
+
+function normalizeStringFilter(values: string[] | undefined): string[] | undefined {
+  if (!values) return undefined;
+
+  const normalizedValues = values.map(value => value.trim()).filter(value => value.length > 0);
+  return normalizedValues.length > 0 ? normalizedValues : undefined;
+}
+
+function matchesRequiredFilterValue(value: string | undefined, allowedValues: string[]): boolean {
+  return value !== undefined && allowedValues.includes(value);
 }
 
 function matchesOptionalMetadataValue(value: string | undefined, allowedValues: string[]): boolean {

@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import type { AgentSkillReuseRecord, ILLMProvider as LlmProvider } from '@agent/core';
 import { MemoryRepository, RuleRepository, MemorySearchService } from '@agent/memory';
 import { generateObjectWithRetry } from '@agent/adapters';
-import type { EvaluationResult, LearningEvaluationRecord } from '@agent/knowledge';
+import type { EvaluationResult, LearningEvaluationRecord } from '@agent/core';
 import { ReviewRecord, SkillCard } from '@agent/core';
 import { SkillRegistry } from '@agent/skill';
 import type { RuntimeLearningJob as LearningJob } from '../../runtime/runtime-learning.types';

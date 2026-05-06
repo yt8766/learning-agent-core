@@ -5,7 +5,7 @@ import type {
   KnowledgeSource,
   KnowledgeSourceType,
   KnowledgeTrustClass
-} from '@agent/knowledge';
+} from '../../index';
 import type { KnowledgeVectorDocumentRecord } from '@agent/memory';
 
 import {

@@ -5,20 +5,22 @@
 适用范围：`packages/runtime`、`agents/supervisor`、`agents/coder`、`agents/reviewer`、`agents/data-report`
 最后核对：2026-04-16
 
+> 历史快照说明：本文记录 `2026-04-16` 的循环依赖审计过程。文中出现的 `@agent/shared` 表示当时的迁移中间态；该包现已退场，当前新增或修正文档时必须以 `packages/core`、`packages/runtime`、`agents/*` 或应用本地 facade 为准。
+
 本主题配套文档：
 
 - [Turbo 循环依赖治理六阶段方案](/docs/packages/evals/turbo-cycle-reduction-stage-six-plan.md)
 - [验证体系规范](/docs/packages/evals/verification-system-guidelines.md)
 
-本文只回答一个问题：
+本文只回答一个历史审计问题：
 
-- `packages/runtime` 现在到底从 `agents/*` 消费了什么
+- `packages/runtime` 在快照时间点到底从 `agents/*` 消费了什么
 
 这样后续做 contract 拆分时，可以先从高价值、低风险的边开始动，而不是一边找引用一边猜。
 
 ## 1. 总结
 
-当前 `packages/runtime` 对 `agents/*` 的消费可以分成四类：
+快照时间点的 `packages/runtime` 对 `agents/*` 消费可以分成四类：
 
 ### 1.1 Specialist / Ministry 实现类
 
@@ -294,12 +296,12 @@
 
 推荐方向：
 
-- 后续可评估把 data-report contract 下沉到 `packages/core` 或 `packages/shared`
+- 后续如需继续稳定化 data-report contract，只能下沉到 `packages/core` 或 data-report 真实宿主；不能恢复 `packages/shared`
 - 这条边可能比 Ministry 实现类更容易收敛
 
 当时状态更新：
 
-- `buildDataReportContract` 与 `appendDataReportContext` 当时已下沉到 `@agent/shared`
+- `buildDataReportContract` 与 `appendDataReportContext` 曾下沉到 `@agent/shared`；该入口现已退场，当前新增或修正文档时应指向真实宿主或 stable core contract
 - `packages/runtime/src/graphs/main/task/task-workflow-resolution.ts` 已不再从 `@agent/agents-data-report` 直接导入
 - `agents/data-report/src/flows/data-report/contract.ts` 当前保留 compat re-export
 - 当前 runtime 对 `@agent/agents-data-report` 的直接 import 面已清零

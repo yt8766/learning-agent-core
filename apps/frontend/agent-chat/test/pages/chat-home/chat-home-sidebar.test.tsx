@@ -33,16 +33,16 @@ interface ChatFixture {
   chat: ChatHomeSidebarChat;
   createNewSession: ReturnType<typeof vi.fn<ChatHomeSidebarChat['createNewSession']>>;
   setActiveSessionId: ReturnType<typeof vi.fn<ChatHomeSidebarChat['setActiveSessionId']>>;
-  renameSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['renameSessionById']>>;
   deleteSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['deleteSessionById']>>;
+  renameSessionById: ReturnType<typeof vi.fn<ChatHomeSidebarChat['renameSessionById']>>;
   logout: ReturnType<typeof vi.fn<() => void>>;
 }
 
 function createChatFixture(): ChatFixture {
   const createNewSession = vi.fn<ChatHomeSidebarChat['createNewSession']>(async () => undefined);
   const setActiveSessionId = vi.fn<ChatHomeSidebarChat['setActiveSessionId']>();
-  const renameSessionById = vi.fn<ChatHomeSidebarChat['renameSessionById']>(async () => undefined);
   const deleteSessionById = vi.fn<ChatHomeSidebarChat['deleteSessionById']>(async () => undefined);
+  const renameSessionById = vi.fn<ChatHomeSidebarChat['renameSessionById']>(async () => undefined);
   const logout = vi.fn<() => void>();
 
   return {
@@ -51,13 +51,13 @@ function createChatFixture(): ChatFixture {
       activeSessionId: 'session-running',
       createNewSession,
       setActiveSessionId,
-      renameSessionById,
-      deleteSessionById
+      deleteSessionById,
+      renameSessionById
     },
     createNewSession,
     setActiveSessionId,
-    renameSessionById,
     deleteSessionById,
+    renameSessionById,
     logout
   };
 }

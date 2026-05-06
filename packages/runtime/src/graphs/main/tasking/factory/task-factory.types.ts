@@ -3,7 +3,7 @@ import { RequestedExecutionHints, SkillSearchStateRecord, CapabilityOwnerType, S
 import type { EvidenceRecord } from '@agent/memory';
 import type { SubgraphIdValue as SubgraphId } from '../task-architecture-helpers';
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 
 export type RuntimeSettings = ReturnType<typeof loadSettings>;
 

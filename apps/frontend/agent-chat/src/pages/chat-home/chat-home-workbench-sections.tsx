@@ -5,10 +5,10 @@ import type { useChatSession } from '@/hooks/use-chat-session';
 import {
   normalizeAgentToolEvent,
   projectAgentToolGovernanceProjectionToTimeline
-} from '@/lib/agent-tool-event-projections';
-import type { AgentToolGovernanceProjectionLike } from '@/lib/agent-tool-event-projections';
+} from '@/utils/agent-tool-event-projections';
+import type { AgentToolGovernanceProjectionLike } from '@/utils/agent-tool-event-projections';
 import { getCompressionHint, getRunningHint } from './chat-home-helpers';
-import { normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { normalizeExecutionMode } from '@/utils/runtime-semantics';
 import {
   renderApprovalHistorySection,
   renderCabinetSection,

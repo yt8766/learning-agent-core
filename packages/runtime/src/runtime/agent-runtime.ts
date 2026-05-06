@@ -23,7 +23,8 @@ import { ExecutionWatchdog } from '../watchdog';
 
 import { AgentOrchestrator } from '../orchestration/agent-orchestrator';
 import { LocalKnowledgeSearchService, type RuntimeKnowledgeSearchService } from './local-knowledge-search-service';
-import { SessionCoordinator } from '../session/session-coordinator';
+import { SessionCoordinator } from '../session/coordinator/session-coordinator';
+import { createDirectReplyWebSearchFromMcp } from '../session/coordinator/direct-reply-mcp-web-search-adapter';
 import {
   configureRuntimeAgentDependencies,
   type RuntimeAgentDependencies
@@ -126,7 +127,7 @@ export class AgentRuntime {
     });
     this.mcpServerRegistry = new McpServerRegistry();
     this.mcpCapabilityRegistry = new McpCapabilityRegistry();
-    registerBuiltinMcpServers({
+    const { miniMaxCliBindings } = registerBuiltinMcpServers({
       settings: this.settings,
       mcpServerRegistry: this.mcpServerRegistry,
       mcpCapabilityRegistry: this.mcpCapabilityRegistry
@@ -138,7 +139,8 @@ export class AgentRuntime {
       this.sandboxExecutor,
       {
         stdioMaxSessions: this.settings.mcp.stdioSessionMaxCount,
-        watchdog: new ExecutionWatchdog()
+        watchdog: new ExecutionWatchdog(),
+        cliBindings: miniMaxCliBindings
       }
     );
     this.orchestrator = new AgentOrchestrator({
@@ -161,7 +163,8 @@ export class AgentRuntime {
       this.runtimeStateRepository,
       this.llmProvider,
       this.settings.contextStrategy,
-      this.memorySearchService
+      this.memorySearchService,
+      createDirectReplyWebSearchFromMcp(this.mcpClientManager)
     );
   }
 

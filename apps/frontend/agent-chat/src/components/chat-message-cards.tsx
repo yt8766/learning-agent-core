@@ -1,5 +1,7 @@
-import { Tag } from 'antd';
+import { memo, useMemo } from 'react';
+import { Tag, theme } from 'antd';
 import { XMarkdown } from '@ant-design/x-markdown';
+import type { XMarkdownProps } from '@ant-design/x-markdown';
 
 import type { ChatMessageRecord } from '@/types/chat';
 import { ApprovalRequestCard } from './chat-message-cards/approval-request-card';
@@ -15,12 +17,56 @@ import { RuntimeIssueCard } from './chat-message-cards/runtime-issue-card';
 import { SkillSuggestionsCard } from './chat-message-cards/skill-suggestions-card';
 import { SkillReuseCard } from './chat-message-cards/skill-reuse-card';
 import { WorkerDispatchCard } from './chat-message-cards/worker-dispatch-card';
-import { stripThinkTags } from '@/features/chat/chat-message-adapter-helpers';
 
 type EvidenceDigestSource = Extract<
   NonNullable<ChatMessageRecord['card']>,
   { type: 'evidence_digest' }
 >['sources'][number];
+
+type MarkdownComponentMap = NonNullable<XMarkdownProps['components']>;
+
+/**
+ * Memoized assistant message markdown renderer.
+ * Only re-renders when content or streaming state actually changes.
+ * streaming config object is memoized to avoid breaking XMarkdown's internal memo.
+ */
+const AssistantMarkdownContent = memo(function AssistantMarkdownContent({
+  content,
+  streaming,
+  hasNextChunk,
+  components
+}: {
+  content: string;
+  streaming?: boolean;
+  hasNextChunk?: boolean;
+  components?: MarkdownComponentMap;
+}) {
+  const { theme: antdTheme } = theme.useToken();
+  const className = antdTheme.id === 0 ? 'chatx-markdown x-markdown-light' : 'chatx-markdown x-markdown-dark';
+  const markdownComponents = useMemo(() => components, [components]);
+  const streamingConfig = useMemo<XMarkdownProps['streaming']>(
+    () =>
+      streaming
+        ? {
+            hasNextChunk: hasNextChunk ?? true,
+            enableAnimation: true,
+            animationConfig: { fadeDuration: 400 }
+          }
+        : undefined,
+    [streaming, hasNextChunk]
+  );
+
+  return (
+    <XMarkdown
+      content={content}
+      streaming={streamingConfig}
+      openLinksInNewTab
+      escapeRawHtml
+      className={className}
+      components={markdownComponents}
+    />
+  );
+});
 
 export function CopyGlyph({ copied }: { copied: boolean }) {
   if (copied) {
@@ -65,6 +111,7 @@ export function renderStructuredMessageCard(
       suggestion: Extract<NonNullable<ChatMessageRecord['card']>, { type: 'skill_suggestions' }>['suggestions'][number]
     ) => void;
     inlineEvidenceSources?: EvidenceDigestSource[];
+    hasNextChunk?: boolean;
   }
 ) {
   if (message.card?.type === 'plan_question') {
@@ -260,12 +307,10 @@ export function renderStructuredMessageCard(
       : undefined;
     return (
       <div className={`chatx-markdown-shell ${message.role === 'system' ? 'is-system' : 'is-assistant'}`}>
-        <XMarkdown
-          content={stripThinkTags(message.content)}
-          streaming={streaming ? { hasNextChunk: true, tail: true } : undefined}
-          openLinksInNewTab
-          escapeRawHtml
-          className="chatx-markdown"
+        <AssistantMarkdownContent
+          content={message.content}
+          streaming={streaming}
+          hasNextChunk={options.hasNextChunk}
           components={markdownComponents}
         />
       </div>

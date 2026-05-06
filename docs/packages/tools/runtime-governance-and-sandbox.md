@@ -17,7 +17,7 @@
 - tool definition
 - sandbox executor
 - approval preflight
-- filesystem / scheduling / watchdog 基础能力
+- filesystem / scheduling 基础能力
 - MCP transport
 - runtime governance 相关基础设施
 
@@ -33,7 +33,7 @@
   - MCP transport
 - `src/runtime-governance`
   - 运行时治理基础能力
-- `src/filesystem`、`src/scheduling`、`src/watchdog`
+- `src/filesystem`、`src/scheduling`
   - 垂直执行基础能力
 
 对外导出约束：
@@ -41,6 +41,7 @@
 - `@agent/tools` 根入口继续作为唯一稳定消费入口
 - 根入口应显式列出稳定命名导出，避免用整包 `export *` 把内部目录递归暴露
 - `src/approval`、`src/mcp`、`src/registry` 等目录保留为包内组织层，不作为新增消费方的默认导入入口
+- `ExecutionWatchdog` 的真实宿主是 `@agent/runtime`；`@agent/tools` 根入口只保留显式稳定转发，不再保留 `src/watchdog` compat barrel
 
 ## 3. 不属于这里的内容
 

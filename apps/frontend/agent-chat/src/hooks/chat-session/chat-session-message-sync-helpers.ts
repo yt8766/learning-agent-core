@@ -162,21 +162,6 @@ export function syncProcessMessageFromEvent(
     return current.filter(message => message.card?.type !== 'compression_summary');
   }
 
-  if (event.type === 'node_status' || event.type === 'node_progress') {
-    const content = deps.buildVisibleEventMessage(event);
-    if (!content) {
-      return current;
-    }
-    const messageId = `event_stream_status_${event.sessionId}`;
-    return deps.mergeOrAppendMessage(current, {
-      id: messageId,
-      sessionId: event.sessionId,
-      role: 'system',
-      content,
-      createdAt: event.at
-    });
-  }
-
   if (event.type === 'run_cancelled' && event.payload?.interactionKind === 'plan-question') {
     current = deps.updatePlanQuestionCard(current, event);
   }

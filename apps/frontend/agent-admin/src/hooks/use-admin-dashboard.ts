@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminQueryKeys, fetchAdminHealth, fetchPlatformConsoleLogAnalysis } from '@/api/admin-query';
 import type { DashboardPageKey, PlatformConsoleRecord, TaskBundle } from '@/types/admin';
 import { createAdminDashboardActions } from '@/hooks/admin-dashboard/admin-dashboard-actions';
-import type { RunObservatoryFocusTarget } from '@/features/run-observatory/run-observatory-panel-support';
-import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/components/runtime-run-workbench-support';
+import type { RunObservatoryFocusTarget } from '@/pages/run-observatory/run-observatory-panel-support';
+import type { RuntimeReplayLaunchReceipt } from '@/pages/runtime-overview/components/runtime-run-workbench-support';
 import {
   PAGE_TITLES,
   buildDashboardShareUrl,
@@ -15,6 +15,7 @@ import {
 } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 import { useHashChangeListener, useHashWriter } from '@/hooks/admin-dashboard/admin-dashboard-hash-sync';
 import { useAdminDashboardFilters } from '@/hooks/admin-dashboard/admin-dashboard-filter-state';
+import { buildAdminDashboardRefreshIntent } from '@/hooks/admin-dashboard/admin-dashboard-refresh-intent';
 
 export { PAGE_TITLES };
 
@@ -201,37 +202,32 @@ export function useAdminDashboard() {
     approvalsInteractionKindFilter: filters.approvalsInteractionKindFilter
   });
 
+  const refreshIntent = useMemo(
+    () =>
+      buildAdminDashboardRefreshIntent({
+        page,
+        filters
+      }),
+    [
+      page,
+      filters.runtimeStatusFilter,
+      filters.runtimeModelFilter,
+      filters.runtimePricingSourceFilter,
+      filters.runtimeExecutionModeFilter,
+      filters.runtimeInteractionKindFilter,
+      filters.approvalsExecutionModeFilter,
+      filters.approvalsInteractionKindFilter,
+      filters.evalScenarioFilter,
+      filters.evalOutcomeFilter
+    ]
+  );
+  const refreshIntentKey = JSON.stringify(refreshIntent);
+
   useEffect(() => {
     if (consoleDataRef.current) {
-      void actions.refreshPageCenter(pageRef.current);
+      void actions.refreshPageCenter(refreshIntent.page);
     }
-  }, [actions, page]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'runtime') {
-      void actions.refreshPageCenter('runtime');
-    }
-  }, [
-    actions,
-    page,
-    filters.runtimeStatusFilter,
-    filters.runtimeModelFilter,
-    filters.runtimePricingSourceFilter,
-    filters.runtimeExecutionModeFilter,
-    filters.runtimeInteractionKindFilter
-  ]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'approvals') {
-      void actions.refreshPageCenter('approvals');
-    }
-  }, [actions, page, filters.approvalsExecutionModeFilter, filters.approvalsInteractionKindFilter]);
-
-  useEffect(() => {
-    if (consoleDataRef.current && page === 'evals') {
-      void actions.refreshPageCenter('evals');
-    }
-  }, [actions, page, filters.evalScenarioFilter, filters.evalOutcomeFilter]);
+  }, [actions, refreshIntent.page, refreshIntentKey]);
 
   useEffect(() => {
     if (!initialDashboardRefreshPromise) {
@@ -310,7 +306,6 @@ export function useAdminDashboard() {
     page,
     setPage: (nextPage: DashboardPageKey) => {
       setPage(nextPage);
-      void actions.refreshPageCenter(nextPage);
     },
     shareUrl,
     title: PAGE_TITLES[page],

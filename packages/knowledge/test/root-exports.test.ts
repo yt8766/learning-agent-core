@@ -11,17 +11,36 @@ import {
   DefaultPostRetrievalFilter,
   DefaultPostRetrievalRanker,
   HybridRetrievalEngine,
+  KnowledgeChatRoutingError,
   createKnowledgeSearchServiceRetriever,
   InMemoryKnowledgeChunkRepository,
   InMemoryKnowledgeSourceRepository,
   RrfFusionStrategy,
   SmallToBigContextExpander,
+  resolveKnowledgeChatRoute,
   ingestLocalKnowledge,
   LocalKnowledgeFacade,
   listKnowledgeArtifacts,
   readKnowledgeOverview,
   RetrievalRequestSchema,
   HybridKnowledgeSearchProductionConfigSchema,
+  KnowledgeBaseHealthSchema,
+  KnowledgeBaseHealthStatusSchema,
+  KnowledgeErrorResponseSchema,
+  KnowledgeEvalCaseSchema,
+  KnowledgeEvalRunResultSchema,
+  KnowledgeIngestionJobProjectionSchema,
+  KnowledgeIngestionJobStatusSchema,
+  KnowledgeIngestionStageSchema,
+  KnowledgeProviderHealthStatusSchema,
+  KnowledgeRagDiagnosticsSchema,
+  KnowledgeRagRouteReasonSchema,
+  KnowledgeRagRouteSchema,
+  KnowledgeRetrievalModeSchema,
+  KnowledgeTraceOperationSchema,
+  KnowledgeTraceSpanStatusSchema,
+  KnowledgeWorkbenchSpanNameSchema,
+  KnowledgeWorkbenchTraceStatusSchema,
   buildCatalogSyncKnowledgePayload,
   buildConnectorSyncKnowledgePayload,
   buildUserUploadKnowledgePayload,
@@ -29,6 +48,25 @@ import {
   createKnowledgeSourceIngestionLoader,
   ingestKnowledgeSourcePayloads,
   runKnowledgeIndexing
+} from '../src/index';
+import type {
+  KnowledgeBaseHealth,
+  KnowledgeBaseHealthStatus,
+  KnowledgeErrorResponse,
+  KnowledgeEvalCase,
+  KnowledgeEvalRunResult,
+  KnowledgeIngestionJobProjection,
+  KnowledgeIngestionJobStatus,
+  KnowledgeIngestionStage,
+  KnowledgeProviderHealthStatus,
+  KnowledgeRagDiagnostics,
+  KnowledgeRagRoute,
+  KnowledgeRagRouteReason,
+  KnowledgeRetrievalMode,
+  KnowledgeTraceOperation,
+  KnowledgeTraceSpanStatus,
+  KnowledgeWorkbenchSpanName,
+  KnowledgeWorkbenchTraceStatus
 } from '../src/index';
 import * as rootExports from '../src/index';
 import * as contractExports from '../src/contracts/knowledge-facade';
@@ -57,6 +95,129 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.HybridKnowledgeSearchProductionConfigSchema).toBe(HybridKnowledgeSearchProductionConfigSchema);
   });
 
+  it('re-exports trustworthy RAG workbench schemas and types from the root entrypoint', () => {
+    expect(rootExports.KnowledgeBaseHealthSchema).toBe(KnowledgeBaseHealthSchema);
+    expect(rootExports.KnowledgeBaseHealthStatusSchema).toBe(KnowledgeBaseHealthStatusSchema);
+    expect(rootExports.KnowledgeProviderHealthStatusSchema).toBe(KnowledgeProviderHealthStatusSchema);
+    expect(rootExports.KnowledgeIngestionJobProjectionSchema).toBe(KnowledgeIngestionJobProjectionSchema);
+    expect(rootExports.KnowledgeIngestionStageSchema).toBe(KnowledgeIngestionStageSchema);
+    expect(rootExports.KnowledgeIngestionJobStatusSchema).toBe(KnowledgeIngestionJobStatusSchema);
+    expect(rootExports.KnowledgeErrorResponseSchema).toBe(KnowledgeErrorResponseSchema);
+    expect(rootExports.KnowledgeEvalCaseSchema).toBe(KnowledgeEvalCaseSchema);
+    expect(rootExports.KnowledgeEvalRunResultSchema).toBe(KnowledgeEvalRunResultSchema);
+    expect(rootExports.KnowledgeRagRouteSchema).toBe(KnowledgeRagRouteSchema);
+    expect(rootExports.KnowledgeRagRouteReasonSchema).toBe(KnowledgeRagRouteReasonSchema);
+    expect(rootExports.KnowledgeRagDiagnosticsSchema).toBe(KnowledgeRagDiagnosticsSchema);
+    expect(rootExports.KnowledgeRetrievalModeSchema).toBe(KnowledgeRetrievalModeSchema);
+    expect(rootExports.KnowledgeTraceOperationSchema).toBe(KnowledgeTraceOperationSchema);
+    expect(rootExports.KnowledgeWorkbenchSpanNameSchema).toBe(KnowledgeWorkbenchSpanNameSchema);
+    expect(rootExports.KnowledgeWorkbenchTraceStatusSchema).toBe(KnowledgeWorkbenchTraceStatusSchema);
+    expect(rootExports.KnowledgeTraceSpanStatusSchema).toBe(KnowledgeTraceSpanStatusSchema);
+    expect(
+      KnowledgeBaseHealthSchema.safeParse({
+        knowledgeBaseId: 'kb-1',
+        status: 'ready',
+        documentCount: 1,
+        searchableDocumentCount: 1,
+        chunkCount: 3,
+        failedJobCount: 0,
+        providerHealth: {
+          embedding: 'ok',
+          vector: 'ok',
+          keyword: 'ok',
+          generation: 'ok'
+        }
+      }).success
+    ).toBe(true);
+
+    const typeSmoke: {
+      health: KnowledgeBaseHealth;
+      job: KnowledgeIngestionJobProjection;
+      error: KnowledgeErrorResponse;
+      evalCase: KnowledgeEvalCase;
+      evalResult: KnowledgeEvalRunResult;
+      route: KnowledgeRagRoute;
+      diagnostics: KnowledgeRagDiagnostics;
+      operation: KnowledgeTraceOperation;
+      spanName: KnowledgeWorkbenchSpanName;
+      healthStatus: KnowledgeBaseHealthStatus;
+      providerStatus: KnowledgeProviderHealthStatus;
+      ingestionStage: KnowledgeIngestionStage;
+      ingestionStatus: KnowledgeIngestionJobStatus;
+      routeReason: KnowledgeRagRouteReason;
+      retrievalMode: KnowledgeRetrievalMode;
+      workbenchTraceStatus: KnowledgeWorkbenchTraceStatus;
+      traceSpanStatus: KnowledgeTraceSpanStatus;
+    } = {
+      health: KnowledgeBaseHealthSchema.parse({
+        knowledgeBaseId: 'kb-type',
+        status: 'empty',
+        documentCount: 0,
+        searchableDocumentCount: 0,
+        chunkCount: 0,
+        failedJobCount: 0,
+        providerHealth: {
+          embedding: 'unconfigured',
+          vector: 'unconfigured',
+          keyword: 'unconfigured',
+          generation: 'unconfigured'
+        }
+      }),
+      job: KnowledgeIngestionJobProjectionSchema.parse({
+        id: 'job-type',
+        documentId: 'doc-type',
+        stage: 'uploaded',
+        status: 'queued',
+        progress: { percent: 0 },
+        attempts: 1,
+        createdAt: '2026-05-03T08:00:00.000Z',
+        updatedAt: '2026-05-03T08:00:00.000Z'
+      }),
+      error: KnowledgeErrorResponseSchema.parse({
+        code: 'KNOWLEDGE_PROVIDER_UNAVAILABLE',
+        message: 'Embedding provider is unavailable.',
+        retryable: true
+      }),
+      evalCase: KnowledgeEvalCaseSchema.parse({
+        id: 'case-type',
+        datasetId: 'dataset-type',
+        question: '如何验证根入口类型导出？'
+      }),
+      evalResult: KnowledgeEvalRunResultSchema.parse({
+        runId: 'run-type',
+        caseId: 'case-type',
+        answerId: 'answer-type',
+        metrics: { citationAccuracy: 1 },
+        traceId: 'trace-type'
+      }),
+      route: KnowledgeRagRouteSchema.parse({
+        selectedKnowledgeBaseIds: ['kb-type'],
+        reason: 'fallback-all'
+      }),
+      diagnostics: KnowledgeRagDiagnosticsSchema.parse({
+        normalizedQuery: '根入口导出',
+        retrievalMode: 'hybrid',
+        hitCount: 1,
+        contextChunkCount: 1
+      }),
+      operation: KnowledgeTraceOperationSchema.parse('rag.chat'),
+      spanName: KnowledgeWorkbenchSpanNameSchema.parse('retrieve'),
+      healthStatus: KnowledgeBaseHealthStatusSchema.parse('empty'),
+      providerStatus: KnowledgeProviderHealthStatusSchema.parse('unconfigured'),
+      ingestionStage: KnowledgeIngestionStageSchema.parse('uploaded'),
+      ingestionStatus: KnowledgeIngestionJobStatusSchema.parse('queued'),
+      routeReason: KnowledgeRagRouteReasonSchema.parse('fallback-all'),
+      retrievalMode: KnowledgeRetrievalModeSchema.parse('hybrid'),
+      workbenchTraceStatus: KnowledgeWorkbenchTraceStatusSchema.parse('ok'),
+      traceSpanStatus: KnowledgeTraceSpanStatusSchema.parse('ok')
+    };
+
+    expect(typeSmoke.operation).toBe('rag.chat');
+    expect(typeSmoke.spanName).toBe('retrieve');
+    expect(typeSmoke.ingestionStage).toBe('uploaded');
+    expect(typeSmoke.retrievalMode).toBe('hybrid');
+  });
+
   it('retains the contract facade file as a stable contract-first entrypoint', () => {
     expect(existsSync(resolve(__dirname, '../src/contracts/knowledge-facade.ts'))).toBe(true);
     expect(rootExports.DefaultKnowledgeSearchService).toBe(retrievalExports.DefaultKnowledgeSearchService);
@@ -77,6 +238,11 @@ describe('@agent/knowledge root exports', () => {
     expect(rootExports.HybridRetrievalEngine).toBe(HybridRetrievalEngine);
     expect(rootExports.RrfFusionStrategy).toBe(RrfFusionStrategy);
     expect(rootExports.createKnowledgeSearchServiceRetriever).toBe(createKnowledgeSearchServiceRetriever);
+  });
+
+  it('re-exports chat pre-retrieval routing APIs', () => {
+    expect(rootExports.resolveKnowledgeChatRoute).toBe(resolveKnowledgeChatRoute);
+    expect(rootExports.KnowledgeChatRoutingError).toBe(KnowledgeChatRoutingError);
   });
 
   it('re-exports the Small-to-Big context expander implementation', () => {

@@ -49,7 +49,18 @@ interface StreamBindingOptions {
   stopSessionPolling: (sessionId?: string) => void;
   scheduleCheckpointRefresh: () => void;
   streamIdleTimeoutMs: number;
+  syncAssistantMessages?: boolean;
+  syncUserMessages?: boolean;
+  onStreamComplete?: () => void;
+  onStreamEvent?: (event: ChatEventRecord) => void;
+  onStreamError?: (error: Error) => void;
 }
+
+const STREAM_MESSAGE_FLUSH_MS = 40;
+const HIGH_FREQUENCY_ASSISTANT_CONTENT_EVENT_TYPES = new Set<ChatEventRecord['type']>([
+  'assistant_token',
+  'final_response_delta'
+]);
 
 export function bindChatSessionStream(options: StreamBindingOptions) {
   const {
@@ -82,8 +93,13 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
     startSessionPolling,
     stopSessionPolling,
     scheduleCheckpointRefresh,
-    streamIdleTimeoutMs
+    streamIdleTimeoutMs,
+    syncAssistantMessages = true,
+    syncUserMessages = true,
+    onStreamComplete
   } = options;
+  const pendingMessageEvents: ChatEventRecord[] = [];
+  let messageFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   stream.onopen = () => {
     if (isDisposed()) {
@@ -108,15 +124,36 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
     if (shouldIgnoreStaleTerminalStreamEvent(checkpointRef.current, nextEvent)) {
       return;
     }
+    options.onStreamEvent?.(nextEvent);
     if (nextEvent.type === 'user_message') {
       clearPendingUser(nextEvent.sessionId);
     }
-    if (isAssistantContentEvent(nextEvent.type)) {
+    const isAssistantContent = isAssistantContentEvent(nextEvent.type);
+    if (isAssistantContent) {
       streamState.hasAssistantContent = true;
+    }
+    if (isHighFrequencyAssistantContentEvent(nextEvent.type)) {
+      if (syncAssistantMessages) {
+        pendingMessageEvents.push(nextEvent);
+        scheduleMessageFlush();
+      }
+      return;
     }
     setCheckpoint(current => syncCheckpointFromStreamEvent(current, nextEvent));
     setEvents(current => mergeEvent(current, nextEvent));
-    setMessages(current => syncProcessMessageFromEvent(syncMessageFromEvent(current, nextEvent), nextEvent));
+    if (isAssistantContent) {
+      if (syncAssistantMessages) {
+        pendingMessageEvents.push(nextEvent);
+        scheduleMessageFlush();
+      }
+    } else {
+      flushPendingMessageEvents();
+      if (nextEvent.type === 'user_message' && !syncUserMessages) {
+        setMessages(current => syncProcessMessageFromEvent(current, nextEvent));
+      } else {
+        setMessages(current => syncProcessMessageFromEvent(syncMessageFromEvent(current, nextEvent), nextEvent));
+      }
+    }
     setSessions(current => syncSessionFromEvent(current, nextEvent));
     if (checkpointRefreshEventTypes.has(nextEvent.type)) {
       scheduleCheckpointRefresh();
@@ -135,6 +172,7 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
       clearIdleCloseTimer();
       stream.close();
       stopSessionPolling(nextEvent.sessionId);
+      options.onStreamComplete?.();
     }
   };
 
@@ -146,6 +184,8 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
     if (isDisposed()) {
       return;
     }
+    options.onStreamError?.(new Error('chat session stream disconnected'));
+    flushPendingMessageEvents();
     clearIdleCloseTimer();
     stream.close();
     scheduleCheckpointRefresh();
@@ -212,6 +252,43 @@ export function bindChatSessionStream(options: StreamBindingOptions) {
       streamState.idleTimer = null;
     }
   }
+
+  function scheduleMessageFlush() {
+    if (messageFlushTimer) {
+      return;
+    }
+
+    messageFlushTimer = setTimeout(() => {
+      messageFlushTimer = null;
+      flushPendingMessageEvents();
+    }, STREAM_MESSAGE_FLUSH_MS);
+  }
+
+  function flushPendingMessageEvents() {
+    if (messageFlushTimer) {
+      clearTimeout(messageFlushTimer);
+      messageFlushTimer = null;
+    }
+    if (!pendingMessageEvents.length) {
+      return;
+    }
+    if (isDisposed()) {
+      pendingMessageEvents.length = 0;
+      return;
+    }
+
+    const eventsToFlush = pendingMessageEvents.splice(0, pendingMessageEvents.length);
+    setMessages(current =>
+      eventsToFlush.reduce(
+        (messages, event) => syncProcessMessageFromEvent(syncMessageFromEvent(messages, event), event),
+        current
+      )
+    );
+  }
+}
+
+function isHighFrequencyAssistantContentEvent(type: ChatEventRecord['type']) {
+  return HIGH_FREQUENCY_ASSISTANT_CONTENT_EVENT_TYPES.has(type);
 }
 
 function parseChatStreamEvent(data: string): ChatEventRecord | undefined {

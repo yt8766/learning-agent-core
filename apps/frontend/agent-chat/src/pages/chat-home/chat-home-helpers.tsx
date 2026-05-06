@@ -1,8 +1,8 @@
 ﻿import { Avatar } from 'antd';
 
 import { EVENT_LABELS, MINISTRY_LABELS, type SessionFilter, AGENT_LABELS } from './chat-home-constants';
-import { buildProjectedEventSummary } from '@/lib/chat-trajectory-projections';
-import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
+import { buildProjectedEventSummary } from '@/utils/chat-trajectory-projections';
+import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/utils/runtime-semantics';
 
 // Legacy mode aliases are normalized to executionPlan.mode before user-facing rendering.
 const INTERNAL_TERM_REPLACEMENTS = [
@@ -302,13 +302,10 @@ export function getErrorCopy(error: string) {
 
 export const CHAT_ROLE_CONFIG = {
   ai: {
-    avatar: <Avatar style={{ background: '#1677ff' }}>AI</Avatar>,
     placement: 'start' as const,
-    variant: 'shadow' as const,
-    shape: 'round' as const
+    variant: 'borderless' as const
   },
   user: {
-    avatar: <Avatar style={{ background: '#111827' }}>U</Avatar>,
     placement: 'end' as const,
     variant: 'shadow' as const,
     shape: 'round' as const

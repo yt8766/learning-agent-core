@@ -1,5 +1,5 @@
 import type { ChatMessageRecord } from '@/types/chat';
-import { stripWorkflowCommandPrefix } from '@/features/chat/chat-message-adapter-helpers';
+import { stripWorkflowCommandPrefix } from '@/pages/chat/chat-message-adapter-helpers';
 
 export type ConversationAnchorTone = 'user' | 'assistant' | 'approval' | 'evidence' | 'governance';
 
@@ -12,8 +12,20 @@ export interface ConversationAnchor {
 
 const MAX_ANCHOR_LABEL_LENGTH = 38;
 
+export function dedupeMessagesById(messages: ChatMessageRecord[]) {
+  const seen = new Set<string>();
+  return messages.filter(message => {
+    if (seen.has(message.id)) {
+      return false;
+    }
+
+    seen.add(message.id);
+    return true;
+  });
+}
+
 export function buildConversationAnchors(messages: ChatMessageRecord[]): ConversationAnchor[] {
-  const anchors = messages
+  const anchors = dedupeMessagesById(messages)
     .map(message => {
       const label = resolveAnchorLabel(message);
       if (!label) {

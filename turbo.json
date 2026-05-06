@@ -41,6 +41,10 @@
       "persistent": true,
       "cache": false
     },
+    "dev:backend": {
+      "persistent": true,
+      "cache": false
+    },
     "build:server": {
       "outputs": ["dist/**/*"]
     },
@@ -57,6 +61,7 @@
       "dependsOn": ["^typecheck"]
     },
     "turbo:typecheck": {
+      "dependsOn": ["^build:lib"],
       "outputs": []
     },
     "test": {

@@ -3,7 +3,7 @@ import type { CollapseProps } from 'antd';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
 import { getExecutionModeLabel, getMinistryLabel, getMinistryTone, getWorkflowSummary } from './chat-home-helpers';
-import { normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { normalizeExecutionMode } from '@/utils/runtime-semantics';
 import { normalizeSpecialistFinding } from './chat-home-specialist-findings';
 
 const { Text, Title } = Typography;

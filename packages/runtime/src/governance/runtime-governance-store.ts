@@ -69,7 +69,7 @@ interface GovernanceStoreTaskLike {
   }>;
 }
 
-function defaultConnectorSessionState(transport?: 'http' | 'stdio' | 'local-adapter') {
+function defaultConnectorSessionState(transport?: 'http' | 'stdio' | 'local-adapter' | 'cli') {
   if (transport === 'stdio') {
     return 'disconnected' as const;
   }
@@ -94,7 +94,7 @@ export function toConnectorDiscoveryHistoryRecord(
     discoveryMode: connector?.discoveryMode ?? 'registered',
     sessionState:
       connector?.sessionState ??
-      defaultConnectorSessionState(connector?.transport as 'http' | 'stdio' | 'local-adapter' | undefined),
+      defaultConnectorSessionState(connector?.transport as 'http' | 'stdio' | 'local-adapter' | 'cli' | undefined),
     discoveredCapabilities,
     error: error ?? connector?.lastDiscoveryError
   };

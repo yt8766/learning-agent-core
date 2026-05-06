@@ -7,6 +7,7 @@ import {
   buildWorkspaceShareText,
   buildWorkspaceVaultSignals,
   buildThoughtItems,
+  buildThoughtItemsFromFields,
   resolveSuggestedDraftSubmission,
   shouldShowMissionControl
 } from '@/pages/chat-home/chat-home-workbench';
@@ -290,6 +291,50 @@ describe('chat-home-workbench empty session chrome', () => {
 });
 
 describe('chat-home-workbench thought items', () => {
+  it('builds thought items from explicit fields without requiring the full chat facade', () => {
+    const items = buildThoughtItemsFromFields({
+      activeSessionId: 'session-1',
+      events: [
+        {
+          id: 'evt-1',
+          sessionId: 'session-1',
+          type: 'ministry_started',
+          at: '2026-05-06T00:00:00.000Z',
+          payload: { summary: '工部开始处理' }
+        }
+      ],
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-fields',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: { status: 'running' },
+        usedInstalledSkills: ['find-skills'],
+        connectorRefs: ['github-mcp'],
+        currentWorker: 'code-worker',
+        createdAt: '2026-05-06T00:00:00.000Z',
+        updatedAt: '2026-05-06T00:00:00.000Z'
+      }
+    });
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: '能力链路',
+          description: expect.stringContaining('已复用 find-skills')
+        }),
+        expect.objectContaining({
+          key: 'evt-1',
+          description: '工部开始处理'
+        })
+      ])
+    );
+  });
+
   it('adds capability usage summary into thought items instead of relying on skill cards', () => {
     const items = buildThoughtItems({
       events: [],
@@ -336,6 +381,85 @@ describe('chat-home-workbench thought items', () => {
     );
     expect(String(items[1]?.description)).toContain('已接入 github-mcp');
     expect(String(items[1]?.description)).toContain('当前由 code-worker 推进');
+  });
+
+  it('for direct-reply narrative thought chain, surfaces only mapped cognition steps without runtime stream noise', () => {
+    const items = buildThoughtItems({
+      events: [
+        {
+          id: 'evt-node',
+          sessionId: 'session-1',
+          type: 'node_status',
+          at: '2026-05-03T00:00:00.000Z',
+          payload: {
+            phase: 'end',
+            nodeId: 'direct_reply',
+            nodeLabel: '直接回复',
+            detail: '事件已记录'
+          }
+        }
+      ],
+      checkpoint: {
+        sessionId: 'session-1',
+        taskId: 'task-dr',
+        traceCursor: 0,
+        messageCursor: 0,
+        approvalCursor: 0,
+        learningCursor: 0,
+        pendingApprovals: [],
+        agentStates: [],
+        graphState: { status: 'completed', currentStep: 'direct_reply' },
+        chatRoute: {
+          graph: 'workflow',
+          flow: 'direct-reply',
+          reason: 'test',
+          adapter: 'general-prompt',
+          priority: 80
+        },
+        thinkState: {
+          messageId: 'msg-a',
+          title: '直接回复',
+          content: '推理摘要',
+          loading: false
+        },
+        thoughtChain: [
+          {
+            key: 'intent',
+            messageId: 'msg-a',
+            kind: 'reasoning',
+            title: '理解问题',
+            description: '先对齐问题边界。',
+            status: 'success'
+          },
+          {
+            key: 'search',
+            messageId: 'msg-a',
+            kind: 'web_search',
+            title: '搜索网页',
+            description: '搜索到 1 个网页',
+            status: 'success',
+            webSearch: {
+              query: 'brew',
+              hits: [{ url: 'https://brew.sh', title: 'Homebrew', host: 'brew.sh' }]
+            }
+          }
+        ],
+        streamStatus: {
+          nodeId: 'direct_reply',
+          nodeLabel: '直接回复',
+          detail: '流式生成中',
+          progressPercent: 50
+        },
+        createdAt: '2026-05-03T00:00:00.000Z',
+        updatedAt: '2026-05-03T00:00:00.000Z'
+      }
+    } as never);
+
+    expect(items.some(i => i.title === '能力链路')).toBe(false);
+    expect(items.some(i => i.title === '直接回复')).toBe(false);
+    expect(items.map(i => i.key)).toEqual(['intent', 'search']);
+    expect(items[1]?.hits?.length).toBe(1);
+    expect(items[1]?.hits?.[0]?.url).toBe('https://brew.sh');
   });
 
   it('shows only the new optimistic thought item when a fresh turn starts', () => {
@@ -385,7 +509,7 @@ describe('chat-home-workbench thought items', () => {
     );
   });
 
-  it('marks settled timeline events as success instead of leaving them in loading state', () => {
+  it('marks settled timeline events as success and excludes filtered types from thought log', () => {
     const items = buildThoughtItems({
       events: [
         {
@@ -427,13 +551,11 @@ describe('chat-home-workbench thought items', () => {
       }
     } as never);
 
-    expect(items.slice(0, 3)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ title: 'Agent 回复', status: 'success' }),
-        expect.objectContaining({ title: '用户消息', status: 'success' }),
-        expect.objectContaining({ title: '会话启动', status: 'success' })
-      ])
-    );
+    expect(items).toEqual([
+      expect.objectContaining({ key: 'evt-session-started', title: '会话启动', status: 'success' })
+    ]);
+    expect(items.some(item => item.key === 'evt-user-message')).toBe(false);
+    expect(items.some(item => item.key === 'evt-assistant-message')).toBe(false);
   });
 
   it('projects task trajectory and trajectory step events into readable thought items', () => {
@@ -626,6 +748,67 @@ describe('chat-home-workbench thought items', () => {
     expect(items.some(item => item.key === 'thought-2')).toBe(false);
   });
 
+  it('excludes assistant_token, assistant_message, final_response_*, session_finished and user_message events from thought log', () => {
+    const items = buildThoughtItems({
+      events: [
+        {
+          id: 'evt-1',
+          sessionId: 's',
+          type: 'assistant_token',
+          at: '2026-05-01T00:00:00.000Z',
+          payload: { content: '流式片段' }
+        },
+        {
+          id: 'evt-2',
+          sessionId: 's',
+          type: 'assistant_message',
+          at: '2026-05-01T00:00:01.000Z',
+          payload: { content: '完整回复' }
+        },
+        {
+          id: 'evt-3',
+          sessionId: 's',
+          type: 'final_response_completed',
+          at: '2026-05-01T00:00:02.000Z',
+          payload: { content: '最终回复' }
+        },
+        {
+          id: 'evt-4',
+          sessionId: 's',
+          type: 'final_response_delta',
+          at: '2026-05-01T00:00:03.000Z',
+          payload: { content: '增量' }
+        },
+        { id: 'evt-5', sessionId: 's', type: 'session_finished', at: '2026-05-01T00:00:04.000Z', payload: {} },
+        {
+          id: 'evt-6',
+          sessionId: 's',
+          type: 'user_message',
+          at: '2026-05-01T00:00:05.000Z',
+          payload: { content: '用户消息' }
+        },
+        {
+          id: 'evt-7',
+          sessionId: 's',
+          type: 'ministry_started',
+          at: '2026-05-01T00:00:06.000Z',
+          payload: { summary: '工部启动' }
+        }
+      ],
+      checkpoint: undefined
+    } as never);
+
+    expect(items.some(item => item.key === 'evt-1')).toBe(false);
+    expect(items.some(item => item.key === 'evt-2')).toBe(false);
+    expect(items.some(item => item.key === 'evt-3')).toBe(false);
+    expect(items.some(item => item.key === 'evt-4')).toBe(false);
+    expect(items.some(item => item.key === 'evt-5')).toBe(false);
+    expect(items.some(item => item.key === 'evt-6')).toBe(false);
+    expect(items.some(item => item.key === 'evt-7')).toBe(true);
+  });
+});
+
+describe('chat-home-workbench share & quick actions', () => {
   it('builds workspace share text from the current snapshot', () => {
     const content = buildWorkspaceShareText({
       messages: [

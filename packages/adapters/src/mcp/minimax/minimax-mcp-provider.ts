@@ -6,7 +6,7 @@ import type {
 import { buildMiniMaxMcpCapabilities } from './minimax-mcp-capabilities';
 
 const DEFAULT_MINIMAX_SERVER_ID = 'minimax-mcp';
-const DEFAULT_MINIMAX_TOKEN_PLAN_SERVER_ID = 'minimax-token-plan-mcp';
+const DEFAULT_MINIMAX_CLI_SERVER_ID = 'minimax-cli';
 
 function readOption(input: AdapterMcpSkillProviderInstallInput, key: string): string | undefined {
   const value = input.options?.[key];
@@ -27,12 +27,12 @@ export function createMiniMaxMcpSkillProvider(): AdapterMcpSkillProviderAdapter 
       id: 'minimax',
       displayName: 'MiniMax MCP',
       description:
-        'Built-in MiniMax MCP skills for audio, image, video, music, voice, web search, and image understanding workflows.',
+        'Built-in MiniMax MCP skills for audio, image, video, music, voice, plus MiniMax CLI for web search and image understanding.',
       builtIn: true,
       trustClass: 'official',
-      supportedTransports: ['stdio', 'sse'],
+      supportedTransports: ['stdio', 'sse', 'cli'],
       skillIds: buildMiniMaxMcpCapabilities().map(capability => capability.id),
-      documentationUrl: 'https://platform.minimaxi.com/docs/guides/token-plan-mcp-guide'
+      documentationUrl: 'https://platform.minimaxi.com/docs/token-plan/minimax-cli'
     },
     secretRequirements: [
       {
@@ -47,7 +47,9 @@ export function createMiniMaxMcpSkillProvider(): AdapterMcpSkillProviderAdapter 
     },
     buildInstallPlan(input) {
       const serverId = input.serverId ?? DEFAULT_MINIMAX_SERVER_ID;
-      const tokenPlanServerId = `${serverId === DEFAULT_MINIMAX_SERVER_ID ? 'minimax' : serverId}-token-plan-mcp`;
+      const resolvedCliServerId = input.serverId
+        ? `${serverId === DEFAULT_MINIMAX_SERVER_ID ? 'minimax' : serverId}-cli`
+        : DEFAULT_MINIMAX_CLI_SERVER_ID;
       const resourceMode = readOption(input, 'resourceMode') ?? 'url';
       const basePath = readOption(input, 'basePath') ?? '';
       const sharedEnv = {
@@ -71,10 +73,10 @@ export function createMiniMaxMcpSkillProvider(): AdapterMcpSkillProviderAdapter 
         args: ['minimax-mcp', '-y'],
         env: sharedEnv
       };
-      const tokenPlanServer: AdapterMcpServerDefinition = {
-        id: input.serverId ? tokenPlanServerId : DEFAULT_MINIMAX_TOKEN_PLAN_SERVER_ID,
-        displayName: 'MiniMax Token Plan MCP',
-        transport: 'stdio',
+      const cliServer: AdapterMcpServerDefinition = {
+        id: resolvedCliServerId,
+        displayName: 'MiniMax CLI',
+        transport: 'cli',
         enabled: input.enabled ?? true,
         source: 'minimax',
         trustClass: 'official',
@@ -82,15 +84,13 @@ export function createMiniMaxMcpSkillProvider(): AdapterMcpSkillProviderAdapter 
         writeScope: 'none',
         installationMode: 'configured',
         allowedProfiles: ['platform', 'company', 'personal', 'cli'],
-        command: 'uvx',
-        args: ['minimax-coding-plan-mcp', '-y'],
+        command: 'mmx',
         env: sharedEnv
       };
-      const resolvedTokenPlanServerId = tokenPlanServer.id;
 
       return {
-        servers: [server, tokenPlanServer],
-        capabilities: buildMiniMaxMcpCapabilities(serverId, resolvedTokenPlanServerId),
+        servers: [server, cliServer],
+        capabilities: buildMiniMaxMcpCapabilities(serverId, resolvedCliServerId),
         warnings:
           resourceMode === 'local' && !basePath
             ? ['MINIMAX_MCP_BASE_PATH is recommended when MINIMAX_API_RESOURCE_MODE=local']

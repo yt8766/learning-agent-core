@@ -21,7 +21,7 @@ import type {
   RuntimeLearningQueueItem as LearningQueueItem
 } from '../../../../runtime/runtime-learning.types';
 import type { RuntimeTaskRecord as TaskRecord } from '../../../../runtime/runtime-task.types';
-import type { ApprovalResumeInput } from '@agent/runtime';
+import type { ApprovalResumeInput } from '../../../../index';
 
 export type LocalSkillSuggestionResolver = (params: {
   goal: string;

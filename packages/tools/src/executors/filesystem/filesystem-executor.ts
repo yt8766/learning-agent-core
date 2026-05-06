@@ -5,13 +5,18 @@ import type { ToolExecutionRequest } from '@agent/runtime';
 
 import { collectFiles, toWorkspacePath } from '@agent/runtime';
 
+/** Relative path for user-facing summaries; avoids English “tool log” wording that reads like an error line. */
+function relWorkspace(absPath: string): string {
+  return relative(process.cwd(), absPath) || '.';
+}
+
 export async function executeFilesystemTool(request: ToolExecutionRequest) {
   switch (request.toolName) {
     case 'read_local_file': {
       const filePath = toWorkspacePath(request.input.path);
       const content = await readFile(filePath, 'utf8');
       return {
-        outputSummary: `Read ${relative(process.cwd(), filePath)} (${content.length} chars)`,
+        outputSummary: `已读取文件 ${relWorkspace(filePath)}（${content.length} 字符）`,
         rawOutput: { path: filePath, content }
       };
     }
@@ -23,7 +28,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
         type: entry.isDirectory() ? 'dir' : 'file'
       }));
       return {
-        outputSummary: `Listed ${items.length} entries in ${relative(process.cwd(), targetPath) || '.'}`,
+        outputSummary: `已列出目录 ${relWorkspace(targetPath)} 下的 ${items.length} 个项目`,
         rawOutput: { path: targetPath, items }
       };
     }
@@ -34,7 +39,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       await mkdir(dirname(filePath), { recursive: true });
       await writeFile(filePath, content);
       return {
-        outputSummary: `Wrote ${content.length} chars to ${relative(process.cwd(), filePath)}`,
+        outputSummary: `已写入文件 ${relWorkspace(filePath)}（${content.length} 字符）`,
         rawOutput: { path: filePath, bytes: content.length }
       };
     }
@@ -44,7 +49,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       const targetStat = await stat(filePath);
       await rm(filePath, { recursive, force: false });
       return {
-        outputSummary: `Deleted ${targetStat.isDirectory() ? 'directory' : 'file'} ${relative(process.cwd(), filePath)}`,
+        outputSummary: `已删除${targetStat.isDirectory() ? '目录' : '文件'} ${relWorkspace(filePath)}`,
         rawOutput: { path: filePath, kind: targetStat.isDirectory() ? 'directory' : 'file', recursive }
       };
     }
@@ -54,7 +59,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       await mkdir(dirname(toPath), { recursive: true });
       await rename(fromPath, toPath);
       return {
-        outputSummary: `Moved ${relative(process.cwd(), fromPath)} to ${relative(process.cwd(), toPath)}`,
+        outputSummary: `已移动 ${relWorkspace(fromPath)} → ${relWorkspace(toPath)}`,
         rawOutput: { fromPath, toPath }
       };
     }
@@ -64,7 +69,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       await mkdir(dirname(toPath), { recursive: true });
       await cp(fromPath, toPath, { force: true, recursive: false });
       return {
-        outputSummary: `Copied ${relative(process.cwd(), fromPath)} to ${relative(process.cwd(), toPath)}`,
+        outputSummary: `已复制 ${relWorkspace(fromPath)} → ${relWorkspace(toPath)}`,
         rawOutput: { fromPath, toPath }
       };
     }
@@ -84,7 +89,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       await writeFile(filePath, nextContent);
       const replacements = replaceAll ? content.split(search).length - 1 : 1;
       return {
-        outputSummary: `Patched ${relative(process.cwd(), filePath)} (${replacements} replacement${replacements > 1 ? 's' : ''})`,
+        outputSummary: `已修补文件 ${relWorkspace(filePath)}（${replacements} 处替换）`,
         rawOutput: { path: filePath, replacements }
       };
     }
@@ -94,7 +99,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       const limit = toLimit(request.input.limit, 100);
       const files = await collectFiles(basePath, filePath => matchesGlobish(relative(basePath, filePath), pattern));
       return {
-        outputSummary: `Matched ${Math.min(files.length, limit)} files for ${pattern}`,
+        outputSummary: `已匹配 ${Math.min(files.length, limit)} 个文件 · 模式 ${pattern}`,
         rawOutput: {
           basePath,
           pattern,
@@ -135,7 +140,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
         });
       }
       return {
-        outputSummary: `Found ${matches.length} matches for "${query}"`,
+        outputSummary: `全文搜索命中 ${matches.length} 条 · 关键词「${query}」`,
         rawOutput: { basePath, query, filePattern, matches }
       };
     }
@@ -144,7 +149,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       const raw = await readFile(filePath, 'utf8');
       const value = JSON.parse(raw) as unknown;
       return {
-        outputSummary: `Read JSON ${relative(process.cwd(), filePath)}`,
+        outputSummary: `已读取 JSON ${relWorkspace(filePath)}`,
         rawOutput: { path: filePath, value }
       };
     }
@@ -155,7 +160,7 @@ export async function executeFilesystemTool(request: ToolExecutionRequest) {
       await mkdir(dirname(filePath), { recursive: true });
       await writeFile(filePath, `${content}\n`);
       return {
-        outputSummary: `Wrote JSON ${relative(process.cwd(), filePath)}`,
+        outputSummary: `已写入 JSON ${relWorkspace(filePath)}（${content.length} 字符）`,
         rawOutput: { path: filePath, bytes: content.length }
       };
     }

@@ -25,7 +25,7 @@ The refresh is intentionally a style and shell-composition pass, not a product c
 - Main cards still show project health, approvals, tasks, runs, and console trend.
 - Center panels still come from `renderDashboardCenter` and existing feature modules.
 - `/login` is the only unauthenticated route that renders the branded Chinese admin login card. Protected admin entry points must not reuse the login surface as an error state.
-- `/401`, `/403`, `/404`, `/500`, and `/503` render the dedicated `src/features/errors/admin-error-page.tsx` surface inspired by upstream `src/features/errors/*`: a full-screen centered status code, short title, muted description, and the upstream-style action set (`Go Back` / `Back to Home`, or `Learn more` for maintenance).
+- `/401`, `/403`, `/404`, `/500`, and `/503` render the dedicated `src/pages/errors/admin-error-page.tsx` surface inspired by upstream `src/pages/errors/*`: a full-screen centered status code, short title, muted description, and the upstream-style action set (`Go Back` / `Back to Home`, or `Learn more` for maintenance).
 - `/401` is an explicit error-state route, not the normal unauthenticated entry state. Unauthenticated protected entry points redirect toward `/login`; unknown paths resolve to the 404 surface.
 - Dashboard center navigation uses path routes, not hash routes. `/learning`, `/runtime`, and `/approvals` are canonical; `/login#/learning` is invalid and is normalized to `/login` for anonymous sessions or `/learning` for authenticated sessions.
 

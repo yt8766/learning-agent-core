@@ -1,26 +1,105 @@
-import type { ThoughtChainItemType } from '@ant-design/x';
-
 import type { ChatEventRecord } from '@/types/chat';
+import type { WebSearchHit, WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
 import type { useChatSession } from '@/hooks/use-chat-session';
 import {
   projectAgentToolGovernanceProjectionToTimeline,
   type AgentToolGovernanceProjectionLike,
   type AgentToolProjectedEvent,
   type AgentToolProjectedEventStatus
-} from '@/lib/agent-tool-event-projections';
-import { resolveProjectedEventThoughtStatus } from '@/lib/chat-trajectory-projections';
+} from '@/utils/agent-tool-event-projections';
+import { resolveProjectedEventThoughtStatus } from '@/utils/chat-trajectory-projections';
+import { mapThoughtChainToProjectionItems } from '@/utils/map-thought-chain-to-projection';
+import { formatSessionTime } from '@/hooks/use-chat-session';
 import { EVENT_LABELS, buildEventSummary, humanizeOperationalCopy } from './chat-home-helpers';
+
+const COGNITION_EXCLUDED_EVENT_TYPES = new Set([
+  'assistant_token',
+  'final_response_delta',
+  'final_response_completed',
+  'assistant_message',
+  'session_finished',
+  'user_message'
+]);
+
+export function shouldIncludeEventInThoughtLog(type: string): boolean {
+  return !COGNITION_EXCLUDED_EVENT_TYPES.has(type);
+}
+
+function shouldUseNarrativeDirectReplyThoughtChain(
+  checkpoint: ReturnType<typeof useChatSession>['checkpoint']
+): boolean {
+  if (!checkpoint?.thoughtChain?.length) {
+    return false;
+  }
+  if (checkpoint.chatRoute?.flow !== 'direct-reply') {
+    return false;
+  }
+  return checkpoint.thoughtChain.some(
+    item => item.kind === 'reasoning' || item.kind === 'web_search' || item.kind === 'browser'
+  );
+}
 
 type ChatSessionWithGovernanceProjection = ReturnType<typeof useChatSession> & {
   agentToolGovernanceProjection?: AgentToolGovernanceProjectionLike | null;
 };
 
-export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
-  const capabilityThought = buildCapabilityThoughtItem(chat);
-  const streamStatusThought = buildStreamStatusThoughtItem(chat);
-  const recentCompletedNodeThoughts = buildRecentCompletedNodeThoughtItems(chat);
-  const toolGovernanceThoughts = buildToolGovernanceThoughtItems(chat);
-  const optimisticThought = buildOptimisticThoughtItem(chat);
+type ChatSessionCheckpoint = ReturnType<typeof useChatSession>['checkpoint'];
+
+export interface BuildThoughtItemsFromFieldsInput {
+  activeSessionId?: string;
+  agentToolGovernanceProjection?: AgentToolGovernanceProjectionLike | null;
+  checkpoint: ChatSessionCheckpoint;
+  events: ChatEventRecord[];
+}
+
+function resolveExternalWebSearchHits(checkpoint: ChatSessionCheckpoint): WebSearchHit[] | undefined {
+  const sources = checkpoint?.externalSources ?? [];
+  const webSources = sources.filter(s => s.sourceType === 'web' && s.sourceUrl);
+  if (!webSources.length) {
+    return undefined;
+  }
+  return webSources.slice(0, 6).map(s => {
+    let host = '';
+    try {
+      host = new URL(s.sourceUrl!).hostname;
+    } catch {
+      /* ignore */
+    }
+    return { url: s.sourceUrl!, title: s.summary, host };
+  });
+}
+
+function enrichWebSearchHits(
+  items: WorkbenchThoughtProjectionItem[],
+  externalHits: WebSearchHit[] | undefined
+): WorkbenchThoughtProjectionItem[] {
+  if (!externalHits?.length) {
+    return items;
+  }
+  return items.map(item => {
+    if (item.itemVariant === 'web_search' && !item.hits?.length) {
+      return { ...item, hits: externalHits };
+    }
+    return item;
+  });
+}
+
+export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): WorkbenchThoughtProjectionItem[] {
+  return buildThoughtItemsFromFields({
+    activeSessionId: chat.activeSessionId,
+    agentToolGovernanceProjection: (chat as ChatSessionWithGovernanceProjection).agentToolGovernanceProjection,
+    checkpoint: chat.checkpoint,
+    events: chat.events
+  });
+}
+
+export function buildThoughtItemsFromFields(input: BuildThoughtItemsFromFieldsInput): WorkbenchThoughtProjectionItem[] {
+  const capabilityThought = buildCapabilityThoughtItem(input.checkpoint);
+  const streamStatusThought = buildStreamStatusThoughtItem(input.checkpoint, input.activeSessionId);
+  const recentCompletedNodeThoughts = buildRecentCompletedNodeThoughtItems(input.events, input.checkpoint);
+  const toolGovernanceThoughts = buildToolGovernanceThoughtItemsFromProjection(input.agentToolGovernanceProjection);
+  const optimisticThought = buildOptimisticThoughtItem(input.checkpoint);
+  const externalWebHits = resolveExternalWebSearchHits(input.checkpoint);
 
   if (optimisticThought) {
     return [
@@ -29,45 +108,51 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
       capabilityThought,
       ...toolGovernanceThoughts,
       optimisticThought
-    ].filter(Boolean) as ThoughtChainItemType[];
+    ].filter(Boolean) as WorkbenchThoughtProjectionItem[];
   }
 
-  if (chat.checkpoint?.thoughtChain?.length) {
-    const activeMessageId = chat.checkpoint.thinkState?.messageId;
+  if (shouldUseNarrativeDirectReplyThoughtChain(input.checkpoint)) {
+    const activeMessageId = input.checkpoint!.thinkState?.messageId;
+    const chain = input.checkpoint!.thoughtChain ?? [];
     const scopedThoughtChain =
-      activeMessageId && chat.checkpoint.thoughtChain.some(item => item.messageId === activeMessageId)
-        ? chat.checkpoint.thoughtChain.filter(item => !item.messageId || item.messageId === activeMessageId)
-        : chat.checkpoint.thoughtChain;
-    const items = scopedThoughtChain.map(item => ({
-      key: item.key,
-      title: humanizeOperationalCopy(item.title),
-      description: humanizeOperationalCopy(item.description),
-      content: item.content ? (
-        <pre className="chatx-thought-raw">{humanizeOperationalCopy(item.content)}</pre>
-      ) : undefined,
-      footer: item.footer,
-      status: item.status,
-      collapsible: item.collapsible,
-      blink: item.blink
-    }));
+      activeMessageId && chain.some(item => item.messageId === activeMessageId)
+        ? chain.filter(item => !item.messageId || item.messageId === activeMessageId)
+        : chain;
+    const items = enrichWebSearchHits(mapThoughtChainToProjectionItems(scopedThoughtChain), externalWebHits);
+    return [...items, ...buildSyntheticWebSearchItems(input.checkpoint)].filter(
+      Boolean
+    ) as WorkbenchThoughtProjectionItem[];
+  }
+
+  if (input.checkpoint?.thoughtChain?.length) {
+    const activeMessageId = input.checkpoint.thinkState?.messageId;
+    const scopedThoughtChain =
+      activeMessageId && input.checkpoint.thoughtChain.some(item => item.messageId === activeMessageId)
+        ? input.checkpoint.thoughtChain.filter(item => !item.messageId || item.messageId === activeMessageId)
+        : input.checkpoint.thoughtChain;
+    const items = enrichWebSearchHits(mapThoughtChainToProjectionItems(scopedThoughtChain), externalWebHits);
 
     return [
       streamStatusThought,
       ...recentCompletedNodeThoughts,
       capabilityThought,
       ...toolGovernanceThoughts,
-      ...items
-    ].filter(Boolean) as ThoughtChainItemType[];
+      ...items,
+      ...buildSyntheticWebSearchItems(input.checkpoint)
+    ].filter(Boolean) as WorkbenchThoughtProjectionItem[];
   }
 
-  const items = chat.events
+  const items = input.events
     .slice()
     .reverse()
+    .filter(eventItem => shouldIncludeEventInThoughtLog(eventItem.type))
     .map(eventItem => {
       const payload = eventItem.payload ?? {};
+      const nodeRaw =
+        typeof payload.node === 'string' ? payload.node : typeof payload.nodeId === 'string' ? payload.nodeId : '';
       const meta = [
         typeof payload.from === 'string' ? `来源：${payload.from}` : '',
-        typeof payload.node === 'string' ? `节点：${payload.node}` : '',
+        nodeRaw ? `节点：${humanizeOperationalCopy(nodeRaw)}` : '',
         typeof payload.intent === 'string' ? `意图：${payload.intent}` : '',
         typeof payload.decision === 'string' ? `结果：${payload.decision}` : ''
       ]
@@ -78,7 +163,7 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
         key: eventItem.id,
         title: humanizeOperationalCopy(EVENT_LABELS[eventItem.type] ?? eventItem.type),
         description: buildEventSummary(eventItem),
-        footer: meta || eventItem.at,
+        footer: meta || formatSessionTime(eventItem.at),
         status: resolveThoughtItemStatus(eventItem),
         collapsible: Boolean(meta)
       };
@@ -90,11 +175,18 @@ export function buildThoughtItems(chat: ReturnType<typeof useChatSession>): Thou
     capabilityThought,
     ...toolGovernanceThoughts,
     ...items
-  ].filter(Boolean) as ThoughtChainItemType[];
+  ].filter(Boolean) as WorkbenchThoughtProjectionItem[];
 }
 
-function buildToolGovernanceThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
-  const projection = (chat as ChatSessionWithGovernanceProjection).agentToolGovernanceProjection;
+function buildToolGovernanceThoughtItems(chat: ReturnType<typeof useChatSession>): WorkbenchThoughtProjectionItem[] {
+  return buildToolGovernanceThoughtItemsFromProjection(
+    (chat as ChatSessionWithGovernanceProjection).agentToolGovernanceProjection
+  );
+}
+
+function buildToolGovernanceThoughtItemsFromProjection(
+  projection: AgentToolGovernanceProjectionLike | null | undefined
+): WorkbenchThoughtProjectionItem[] {
   if (!projection) {
     return [];
   }
@@ -167,8 +259,7 @@ function resolveThoughtItemStatus(eventItem: ChatEventRecord) {
   return 'loading' as const;
 }
 
-function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
-  const checkpoint = chat.checkpoint;
+function buildOptimisticThoughtItem(checkpoint: ChatSessionCheckpoint): WorkbenchThoughtProjectionItem | undefined {
   if (!checkpoint?.thinkState?.loading || !checkpoint.taskId?.startsWith('optimistic_')) {
     return undefined;
   }
@@ -184,8 +275,11 @@ function buildOptimisticThoughtItem(chat: ReturnType<typeof useChatSession>): Th
   };
 }
 
-function buildStreamStatusThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
-  const streamStatus = chat.checkpoint?.streamStatus;
+function buildStreamStatusThoughtItem(
+  checkpoint: ChatSessionCheckpoint,
+  activeSessionId?: string
+): WorkbenchThoughtProjectionItem | undefined {
+  const streamStatus = checkpoint?.streamStatus;
   if (!streamStatus) {
     return undefined;
   }
@@ -196,10 +290,10 @@ function buildStreamStatusThoughtItem(chat: ReturnType<typeof useChatSession>): 
   }
 
   return {
-    key: `stream-status-${chat.checkpoint?.taskId ?? chat.activeSessionId ?? 'current'}`,
+    key: `stream-status-${checkpoint?.taskId ?? activeSessionId ?? 'current'}`,
     title: streamStatus.nodeLabel ?? '当前节点',
     description: summary,
-    footer: streamStatus.updatedAt,
+    footer: streamStatus.updatedAt ? formatSessionTime(streamStatus.updatedAt) : undefined,
     status:
       typeof streamStatus.progressPercent === 'number' && streamStatus.progressPercent >= 100 ? 'success' : 'loading',
     collapsible: false,
@@ -207,9 +301,13 @@ function buildStreamStatusThoughtItem(chat: ReturnType<typeof useChatSession>): 
   };
 }
 
-function buildRecentCompletedNodeThoughtItems(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType[] {
-  const currentNodeId = chat.checkpoint?.streamStatus?.nodeId;
-  return chat.events
+function buildRecentCompletedNodeThoughtItems(
+  events: ChatEventRecord[],
+  checkpoint: ChatSessionCheckpoint
+): WorkbenchThoughtProjectionItem[] {
+  const currentNodeId = checkpoint?.streamStatus?.nodeId;
+  const seenNodeIds = new Set<string>();
+  return events
     .filter(eventItem => eventItem.type === 'node_status' && eventItem.payload?.phase === 'end')
     .slice()
     .reverse()
@@ -226,13 +324,22 @@ function buildRecentCompletedNodeThoughtItems(chat: ReturnType<typeof useChatSes
           key: `node-complete-${eventItem.id}`,
           title: nodeLabel,
           description: buildNodeStreamCognitionSummary({ nodeLabel, detail, progressPercent }) ?? (detail || '已完成'),
-          footer: eventItem.at,
+          footer: formatSessionTime(eventItem.at),
           status: 'success' as const,
           collapsible: false
         }
       };
     })
-    .filter(entry => !currentNodeId || entry.nodeId !== currentNodeId)
+    .filter(entry => {
+      if (!currentNodeId || entry.nodeId !== currentNodeId) {
+        if (seenNodeIds.has(entry.nodeId)) {
+          return false;
+        }
+        seenNodeIds.add(entry.nodeId);
+        return true;
+      }
+      return false;
+    })
     .slice(0, 3)
     .map(entry => entry.item);
 }
@@ -267,8 +374,7 @@ function buildNodeStreamCognitionSummary(streamStatus?: {
   return `${firstSentence.slice(0, 26).trimEnd()}...`;
 }
 
-function buildCapabilityThoughtItem(chat: ReturnType<typeof useChatSession>): ThoughtChainItemType | undefined {
-  const checkpoint = chat.checkpoint;
+function buildCapabilityThoughtItem(checkpoint: ChatSessionCheckpoint): WorkbenchThoughtProjectionItem | undefined {
   if (!checkpoint) {
     return undefined;
   }
@@ -317,7 +423,7 @@ function buildCapabilityThoughtItem(chat: ReturnType<typeof useChatSession>): Th
     title: '能力链路',
     description: summaryParts.join(' · '),
     content: details ? <pre className="chatx-thought-raw">{details}</pre> : undefined,
-    footer: checkpoint.updatedAt,
+    footer: checkpoint.updatedAt ? formatSessionTime(checkpoint.updatedAt) : undefined,
     status:
       pendingSkill || checkpoint.graphState?.status === 'running'
         ? 'loading'
@@ -326,6 +432,40 @@ function buildCapabilityThoughtItem(chat: ReturnType<typeof useChatSession>): Th
           : 'success',
     collapsible: Boolean(details)
   };
+}
+
+function buildSyntheticWebSearchItems(checkpoint: ChatSessionCheckpoint): WorkbenchThoughtProjectionItem[] {
+  const sources = checkpoint?.externalSources ?? [];
+  const webSources = sources.filter(s => s.sourceType === 'web' && s.sourceUrl);
+  if (!webSources.length) {
+    return [];
+  }
+
+  const alreadyHasSearchChain = checkpoint?.thoughtChain?.some(item => item.kind === 'web_search');
+  if (alreadyHasSearchChain) {
+    return [];
+  }
+
+  const hits = webSources.slice(0, 6).map(s => {
+    let host = '';
+    try {
+      host = new URL(s.sourceUrl!).hostname;
+    } catch {
+      /* ignore */
+    }
+    return { url: s.sourceUrl!, title: s.summary, host };
+  });
+
+  return [
+    {
+      key: `synthetic-web-search-${checkpoint?.taskId ?? 'unknown'}`,
+      title: '搜索网页',
+      description: `搜索到 ${webSources.length} 个网页`,
+      status: 'success' as const,
+      itemVariant: 'web_search' as const,
+      hits
+    }
+  ];
 }
 
 function formatConnectorLabel(templateId: 'github-mcp-template' | 'browser-mcp-template' | 'lark-mcp-template') {

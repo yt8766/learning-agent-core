@@ -505,7 +505,7 @@ apps/frontend/agent-admin/
 - 节点 / flow 测试：`test/flows/`
 - session / checkpoint / interrupt 测试：`test/session/`
 - runtime / service / facade 测试：`test/runtime/`
-- 前端消息流 / SSE / checkpoint 测试：各前端项目 `test/hooks/` 或 `test/features/`
+- 前端消息流 / SSE / checkpoint 测试：各前端项目 `test/hooks/` 或 `test/pages/`
 
 命名建议：
 

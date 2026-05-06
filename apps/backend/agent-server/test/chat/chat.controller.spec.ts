@@ -25,6 +25,15 @@ describe('ChatController', () => {
       sessionId: 'session-1',
       taskId: 'task-1'
     });
+    expect(controller.listRuns(request as never, response as never, 'session-1')).toEqual([
+      { id: 'run-1', sessionId: 'session-1', status: 'running' }
+    ]);
+    expect(controller.getRun('run-1')).toEqual({ id: 'run-1', sessionId: 'session-1', status: 'running' });
+    expect(controller.cancelRun(request as never, response as never, 'run-1', { sessionId: 'session-1' })).toEqual({
+      id: 'run-1',
+      sessionId: 'session-1',
+      status: 'cancelled'
+    });
   });
 
   it('prefers explicit sessionId in action endpoints and writes the cookie', () => {

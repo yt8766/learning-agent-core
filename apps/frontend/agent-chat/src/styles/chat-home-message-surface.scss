@@ -13,49 +13,10 @@
   }
 
   .ant-bubble-start .ant-bubble-content-shadow,
-  .ant-bubble-start .ant-bubble-content-outlined {
+  .ant-bubble-start .ant-bubble-content-outlined,
+  .ant-bubble-start .ant-bubble-content-borderless {
     border: 0;
     background: transparent;
     box-shadow: none;
   }
-}
-
-.chatx-governance-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chatx-governance-summary__toggle {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: #6b7280;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.chatx-governance-summary__icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #3867ff;
-}
-
-.chatx-inline-think__badge.chatx-governance-summary__icon.is-complete,
-.chatx-inline-think__badge.chatx-governance-summary__icon.is-thinking {
-  width: 18px;
-  height: 18px;
-  background: #3867ff;
-  box-shadow: none;
-}
-
-.chatx-inline-think__toggle.chatx-governance-summary__toggle.is-complete,
-.chatx-inline-think__toggle.chatx-governance-summary__toggle.is-thinking {
-  background: transparent;
 }

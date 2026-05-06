@@ -43,6 +43,7 @@ import {
   rejectSession,
   respondInterrupt,
   selectSession,
+  submitMessageFeedback,
   updateSession
 } from '@/api/chat-api';
 
@@ -215,6 +216,47 @@ describe('chat-api url builders', () => {
     );
   });
 
+  it('submits message feedback to the encoded message feedback endpoint', async () => {
+    requestMock.mockResolvedValueOnce({
+      data: {
+        id: 'assistant/1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '镜像是模板，容器是实例。',
+        feedback: {
+          rating: 'unhelpful',
+          reasonCode: 'too_shallow'
+        },
+        createdAt: '2026-05-03T00:00:01.000Z'
+      }
+    });
+
+    await expect(
+      submitMessageFeedback('session-1', 'assistant/1', {
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow'
+      })
+    ).resolves.toMatchObject({
+      id: 'assistant/1',
+      feedback: {
+        rating: 'unhelpful',
+        reasonCode: 'too_shallow'
+      }
+    });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/chat/messages/assistant%2F1/feedback',
+        method: 'POST',
+        data: {
+          sessionId: 'session-1',
+          rating: 'unhelpful',
+          reasonCode: 'too_shallow'
+        }
+      })
+    );
+  });
+
   it('covers the remaining session and export wrapper calls', async () => {
     requestMock
       .mockResolvedValueOnce({ data: { id: 'session-created' } })
@@ -340,7 +382,11 @@ describe('chat-api url builders', () => {
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       11,
-      expect.objectContaining({ url: '/chat/sessions/session%2F1', method: 'PATCH', data: { title: 'renamed' } })
+      expect.objectContaining({
+        url: '/chat/sessions/session%2F1',
+        method: 'PATCH',
+        data: { title: 'renamed' }
+      })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       12,

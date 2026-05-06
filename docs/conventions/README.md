@@ -11,6 +11,8 @@
 
 - [project-conventions.md](/docs/conventions/project-conventions.md)
 - [package-architecture-guidelines.md](/docs/conventions/package-architecture-guidelines.md)
+- [javascript-typescript-style.md](/docs/conventions/javascript-typescript-style.md)
+- [styling-conventions.md](/docs/conventions/styling-conventions.md)
 - [backend-conventions.md](/docs/conventions/backend-conventions.md)
 - [frontend-conventions.md](/docs/conventions/frontend-conventions.md)
 - [test-conventions.md](/docs/conventions/test-conventions.md)

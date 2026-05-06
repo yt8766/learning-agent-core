@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 
 import { RuntimeModule } from '../runtime/runtime.module';
+import { RuntimeKnowledgeGovernanceService } from '../runtime/services/runtime-knowledge-governance.service';
 import { ApprovalsCenterController } from './approvals-center.controller';
 import { CompanyAgentsCenterController } from './company-agents-center.controller';
 import { ConnectorsCenterController } from './connectors-center.controller';
 import { EvalsCenterController } from './evals-center.controller';
 import { EvidenceCenterController } from './evidence-center.controller';
 import { LearningCenterController } from './learning-center.controller';
+import { KnowledgeGovernanceController } from './knowledge-governance.controller';
 import { KnowledgeIngestionController } from './knowledge-ingestion.controller';
 import { PlatformBriefingsController } from './platform-briefings.controller';
 import { PlatformConsoleController } from './platform-console.controller';
@@ -22,6 +24,7 @@ import { WorkspaceCenterController } from './workspace-center.controller';
     RuntimeCenterController,
     ApprovalsCenterController,
     KnowledgeIngestionController,
+    KnowledgeGovernanceController,
     LearningCenterController,
     EvidenceCenterController,
     ConnectorsCenterController,
@@ -31,6 +34,7 @@ import { WorkspaceCenterController } from './workspace-center.controller';
     PlatformBriefingsController,
     PlatformDiagnosticsController,
     WorkspaceCenterController
-  ]
+  ],
+  providers: [RuntimeKnowledgeGovernanceService]
 })
 export class PlatformModule {}

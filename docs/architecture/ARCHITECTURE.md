@@ -108,6 +108,8 @@ apps/*                     = 启动适配器，只选择装配方案并暴露入
 - `runtime` 不依赖具体 agents
 - `apps` 不内联 runtime/agent 主链
 
+AgentOS Runtime Profile 是当前 Runtime Kernel 的第一阶段治理模型：Agent 不是 OS，而是运行在可裁剪 profile 中的受管执行单元。Profile、Context Manifest、ToolRequest / PolicyDecision 与 QualityGate 的落地边界见 [AgentOS Runtime Profile](/docs/packages/runtime/agentos-runtime-profile.md)。
+
 ### 顶层角色
 
 - Human / 用户：最高权限主体

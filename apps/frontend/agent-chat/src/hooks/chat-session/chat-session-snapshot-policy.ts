@@ -2,6 +2,7 @@ import type { ChatCheckpointRecord, ChatEventRecord, ChatMessageRecord, ChatSess
 import { mergeOrAppendMessage, PENDING_ASSISTANT_PREFIX, PENDING_USER_PREFIX } from './chat-session-helpers';
 
 export const TERMINAL_SESSION_STATUSES = new Set<ChatSessionRecord['status']>(['completed', 'failed', 'cancelled']);
+const DIRECT_REPLY_STREAM_MESSAGE_PREFIX = 'direct_reply_';
 
 export function shouldRetryFinalSnapshotReconcile(
   sessionId: string,
@@ -53,7 +54,7 @@ export function mergeSessionMessagesForDetailRefresh(
       continue;
     }
 
-    if (shouldPreserveLocalOnlyMessage(currentMessage, snapshotWatermark)) {
+    if (shouldPreserveLocalOnlyMessage(currentMessage, snapshotWatermark, mergedMessages)) {
       mergedMessages = mergeOrAppendMessage(mergedMessages, currentMessage);
     }
   }
@@ -148,17 +149,60 @@ function mergeMessageVersions(currentMessage: ChatMessageRecord, fetchedMessage:
     taskId: currentMessage.taskId ?? fetchedMessage.taskId,
     linkedAgent: currentMessage.linkedAgent ?? fetchedMessage.linkedAgent,
     card: currentMessage.card ?? fetchedMessage.card,
-    createdAt: currentMessage.createdAt || fetchedMessage.createdAt
+    createdAt: currentMessage.createdAt || fetchedMessage.createdAt,
+    cognitionSnapshot: fetchedMessage.cognitionSnapshot ?? currentMessage.cognitionSnapshot
   };
 }
 
-function shouldPreserveLocalOnlyMessage(currentMessage: ChatMessageRecord, snapshotWatermark: number) {
+function shouldPreserveLocalOnlyMessage(
+  currentMessage: ChatMessageRecord,
+  snapshotWatermark: number,
+  fetchedMessages: ChatMessageRecord[]
+) {
+  if (shouldPreserveLocalAssistantDraft(currentMessage, fetchedMessages)) {
+    return true;
+  }
+
   const currentMs = Date.parse(currentMessage.createdAt ?? '');
   if (!Number.isFinite(currentMs)) {
     return true;
   }
 
   return currentMs > snapshotWatermark;
+}
+
+function shouldPreserveLocalAssistantDraft(currentMessage: ChatMessageRecord, fetchedMessages: ChatMessageRecord[]) {
+  if (
+    currentMessage.role !== 'assistant' ||
+    !currentMessage.id.startsWith(DIRECT_REPLY_STREAM_MESSAGE_PREFIX) ||
+    !currentMessage.content.trim()
+  ) {
+    return false;
+  }
+
+  return !fetchedMessages.some(message => isCommittedAssistantEquivalent(currentMessage, message));
+}
+
+function isCommittedAssistantEquivalent(localDraft: ChatMessageRecord, fetchedMessage: ChatMessageRecord) {
+  if (fetchedMessage.role !== 'assistant' || fetchedMessage.id.startsWith(DIRECT_REPLY_STREAM_MESSAGE_PREFIX)) {
+    return false;
+  }
+
+  if (resolveAssistantTaskIdentity(localDraft) !== resolveAssistantTaskIdentity(fetchedMessage)) {
+    return false;
+  }
+
+  const localContent = localDraft.content.trim();
+  const fetchedContent = fetchedMessage.content.trim();
+  return (
+    localContent === fetchedContent ||
+    localContent.startsWith(fetchedContent) ||
+    fetchedContent.startsWith(localContent)
+  );
+}
+
+function resolveAssistantTaskIdentity(message: Pick<ChatMessageRecord, 'id' | 'taskId'>) {
+  return message.taskId ?? message.id.replace(DIRECT_REPLY_STREAM_MESSAGE_PREFIX, '');
 }
 
 function isPendingMessage(messageId: string) {

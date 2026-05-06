@@ -13,8 +13,8 @@
 - Dashboard 分发：`apps/frontend/agent-admin/src/pages/dashboard/dashboard-center-content.tsx`
 - 页面 header：`apps/frontend/agent-admin/src/pages/dashboard/dashboard-page.tsx`
 - 侧边栏入口：`apps/frontend/agent-admin/src/components/app-sidebar.tsx`
-- UI 面板：`apps/frontend/agent-admin/src/features/workspace-center/workspace-center-panel.tsx`
-- 本地类型：`apps/frontend/agent-admin/src/features/workspace-center/workspace-center-types.ts`
+- UI 面板：`apps/frontend/agent-admin/src/pages/workspace-center/workspace-center-panel.tsx`
+- 本地类型：`apps/frontend/agent-admin/src/pages/workspace-center/workspace-center-types.ts`
 
 ## Dashboard 行为
 
@@ -63,7 +63,7 @@
 
 - `apps/frontend/agent-admin/test/api/admin-api-workspace.test.ts`
 - `apps/frontend/agent-admin/test/pages/dashboard/dashboard-center-content.test.ts`
-- `apps/frontend/agent-admin/test/features/workspace-center/workspace-center-panel.test.tsx`
+- `apps/frontend/agent-admin/test/pages/workspace-center/workspace-center-panel.test.tsx`
 - 关联 chat readiness：`apps/frontend/agent-chat/test/pages/chat-home/chat-home-workbench-sections.test.tsx`
 
 文档-only 更新至少执行 `pnpm check:docs`。后续如改动组件、API facade 或 dashboard 分发，需要同步执行对应前端单测和 `agent-admin` TypeScript 检查。

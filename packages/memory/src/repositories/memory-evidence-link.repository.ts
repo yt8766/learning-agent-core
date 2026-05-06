@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import type { MemoryEvidenceLinkRecord } from '@agent/memory';
+import type { MemoryEvidenceLinkRecord } from '../index';
 
 export interface MemoryEvidenceLinkRepository {
   replaceForMemory(memoryId: string, links: MemoryEvidenceLinkRecord[]): Promise<void>;

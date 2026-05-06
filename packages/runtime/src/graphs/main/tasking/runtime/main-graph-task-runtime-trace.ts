@@ -9,7 +9,7 @@ import type {
 import type { ToolRegistry } from '@agent/tools';
 import type { MainGraphTaskAggregate as TaskRecord } from '../main-graph-task.types';
 import { AgentRole } from '../task-architecture-helpers';
-import type { ToolUsageSummaryRecord } from '@agent/runtime';
+import type { ToolUsageSummaryRecord } from '../../../../index';
 
 export function addRuntimeMessage(
   task: TaskRecord,

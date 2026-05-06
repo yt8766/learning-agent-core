@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
   type DataReportBundleGenerateResult,
   type DataReportSandpackFiles
@@ -10,11 +10,15 @@ import {
   RecoverToCheckpointDto,
   SessionApprovalDto,
   SessionCancelDto,
-  UpdateChatSessionDto
+  UpdateChatSessionDto,
+  type ChatMessageFeedbackRequest,
+  type ChatMessageRecord,
+  type ChatEventRecord
 } from '@agent/core';
 
 import { RuntimeHost } from '../runtime/core/runtime.host';
 import { RuntimeSessionService } from '../runtime/services/runtime-session.service';
+import { AgentToolsService } from '../agent-tools/agent-tools.service';
 import { ChatCapabilityIntentsService } from './chat-capability-intents.service';
 import { DirectChatRequestDto, DirectChatSseEvent } from './chat.direct.dto';
 import {
@@ -25,7 +29,17 @@ import {
   streamSandpackCode,
   streamSandpackPreview
 } from './chat-direct-response.helpers';
+import { submitChatMessageFeedback } from './chat-message-feedback.helpers';
 import { resolveReportSchemaArtifactCacheKey, streamReportSchema } from './chat-report-schema.helpers';
+import {
+  createResponseStepProjectionState,
+  projectRealtimeResponseStepEvent,
+  projectResponseStepEvents
+} from './chat-response-step-events.helpers';
+import { interpretApprovalReply } from './approval-reply-interpreter';
+import { PendingInteractionService } from './pending-interaction.service';
+import { ChatRunRepository } from './chat-run.repository';
+import { ChatRunService } from './chat-run.service';
 
 type SandpackFiles = Record<string, { code: string }>;
 type SandpackStringFiles = DataReportSandpackFiles;
@@ -41,7 +55,15 @@ export class ChatService {
   constructor(
     private readonly runtimeSessionService: RuntimeSessionService,
     private readonly chatCapabilityIntentsService: ChatCapabilityIntentsService,
-    private readonly runtimeHost: RuntimeHost
+    private readonly runtimeHost: RuntimeHost,
+    @Optional()
+    @Inject(ChatRunService)
+    private readonly chatRunService = new ChatRunService(new ChatRunRepository()),
+    @Optional()
+    @Inject(PendingInteractionService)
+    private readonly pendingInteractionService = new PendingInteractionService(),
+    @Optional()
+    private readonly agentToolsService?: AgentToolsService
   ) {}
 
   listSessions() {
@@ -68,8 +90,12 @@ export class ChatService {
     return this.runtimeSessionService.listSessionMessages(sessionId);
   }
 
+  async submitMessageFeedback(messageId: string, input: ChatMessageFeedbackRequest): Promise<ChatMessageRecord> {
+    return submitChatMessageFeedback(this.runtimeSessionService, messageId, input);
+  }
+
   listEvents(sessionId: string) {
-    return this.runtimeSessionService.listSessionEvents(sessionId);
+    return projectResponseStepEvents(this.runtimeSessionService.listSessionEvents(sessionId));
   }
 
   listAvailableModels(): ChatModelOption[] {
@@ -83,11 +109,53 @@ export class ChatService {
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
   }
 
+  listRuns(sessionId: string) {
+    this.runtimeSessionService.getSession(sessionId);
+    return this.chatRunService.listRuns(sessionId);
+  }
+
+  getRun(runId: string) {
+    return this.chatRunService.getRun(runId);
+  }
+
+  cancelRun(runId: string) {
+    return this.chatRunService.cancelRun(runId);
+  }
+
   getCheckpoint(sessionId: string) {
     return this.runtimeSessionService.getSessionCheckpoint(sessionId);
   }
 
   appendMessage(sessionId: string, dto: AppendChatMessageDto) {
+    const pendingInteraction = this.pendingInteractionService.getActive(sessionId);
+    if (pendingInteraction) {
+      const intent = interpretApprovalReply({
+        interactionId: pendingInteraction.id,
+        text: dto.message,
+        expectedActions: pendingInteraction.expectedActions,
+        requiredConfirmationPhrase: pendingInteraction.requiredConfirmationPhrase
+      });
+      const resolvedInteraction = this.pendingInteractionService.resolve(pendingInteraction.id, intent);
+      return Promise.resolve({
+        message: {
+          id: `interaction_reply_${Date.now()}`,
+          sessionId,
+          role: 'user' as const,
+          content: dto.message,
+          createdAt: new Date().toISOString()
+        },
+        handledAs: 'pending_interaction_reply' as const,
+        interactionResolution: {
+          interactionId: pendingInteraction.id,
+          intent,
+          resolvedInteraction
+        }
+      });
+    }
+    const agentToolApprovalReply = this.tryHandleAgentToolApprovalReply(sessionId, dto.message);
+    if (agentToolApprovalReply) {
+      return Promise.resolve(agentToolApprovalReply);
+    }
     return this.chatCapabilityIntentsService
       .tryHandle(sessionId, dto)
       .then(result => result ?? this.runtimeSessionService.appendSessionMessage(sessionId, dto));
@@ -118,7 +186,16 @@ export class ChatService {
   }
 
   subscribe(sessionId: string, listener: Parameters<RuntimeSessionService['subscribeSession']>[1]) {
-    return this.runtimeSessionService.subscribeSession(sessionId, listener);
+    const projectionState = createResponseStepProjectionState();
+    for (const event of this.runtimeSessionService.listSessionEvents(sessionId)) {
+      projectRealtimeResponseStepEvent(event, projectionState);
+    }
+    return this.runtimeSessionService.subscribeSession(sessionId, event => {
+      listener(event);
+      for (const projectedEvent of projectRealtimeResponseStepEvent(event, projectionState)) {
+        listener(projectedEvent);
+      }
+    });
   }
 
   resolveDirectResponseMode(dto: DirectChatRequestDto): DirectResponseMode {
@@ -180,4 +257,57 @@ export class ChatService {
   private resolveReportSchemaArtifactCacheKey(dto: DirectChatRequestDto) {
     return resolveReportSchemaArtifactCacheKey(this.runtimeHost, dto);
   }
+
+  private tryHandleAgentToolApprovalReply(sessionId: string, message: string) {
+    const request = this.agentToolsService
+      ?.getProjection({ sessionId })
+      .requests.slice()
+      .reverse()
+      .find(candidate => candidate.status === 'pending_approval' && candidate.sessionId === sessionId);
+    if (!request) {
+      return undefined;
+    }
+
+    const interactionId = `agent_tool:${request.requestId}`;
+    const intent = interpretApprovalReply({
+      interactionId,
+      text: message,
+      expectedActions: ['approve', 'reject', 'feedback'],
+      requiredConfirmationPhrase: getAgentToolRequiredConfirmationPhrase(request.riskClass)
+    });
+    const action = intent.action;
+    if (action === 'approve' || action === 'reject' || action === 'feedback') {
+      this.agentToolsService?.resumeApproval(request.requestId, {
+        sessionId,
+        actor: 'agent-chat-user',
+        reason: 'natural-language-chat-reply',
+        interrupt: {
+          action,
+          requestId: request.requestId,
+          approvalId: request.approvalId,
+          interruptId: `interrupt_${request.requestId}`,
+          feedback: intent.feedback
+        }
+      });
+    }
+
+    return {
+      message: {
+        id: `interaction_reply_${Date.now()}`,
+        sessionId,
+        role: 'user' as const,
+        content: message,
+        createdAt: new Date().toISOString()
+      },
+      handledAs: 'pending_interaction_reply' as const,
+      interactionResolution: {
+        interactionId,
+        intent
+      }
+    };
+  }
+}
+
+function getAgentToolRequiredConfirmationPhrase(riskClass?: string) {
+  return riskClass === 'medium' || riskClass === 'high' || riskClass === 'critical' ? '确认执行' : undefined;
 }

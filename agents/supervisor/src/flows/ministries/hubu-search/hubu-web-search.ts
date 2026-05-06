@@ -42,32 +42,50 @@ export function buildHubuWebSearchTask(
         },
         requestedBy: 'agent' as const
       };
-      const result: ToolExecutionResult = context.mcpClientManager
+      const result: ToolExecutionResult = context.mcpClientManager?.hasCapability('webSearchPrime')
         ? await context.mcpClientManager.invokeCapability('webSearchPrime', request)
         : await context.sandbox.execute(request);
       const results = Array.isArray((result.rawOutput as { results?: unknown[] } | undefined)?.results)
         ? (result.rawOutput as { results: Array<{ url?: string; title?: string; summary?: string }> }).results
         : [];
+      const validResults = results.filter(item => typeof item.url === 'string').slice(0, 5);
       knowledgeEvidence.push(
-        ...results
-          .filter(item => typeof item.url === 'string')
-          .slice(0, 3)
-          .map((item, index) => ({
-            id: `web:${context.taskId}:${index}`,
-            taskId: context.taskId,
-            sourceId: item.url!,
-            sourceType: 'web',
-            sourceUrl: item.url!,
-            trustClass: 'unverified' as const,
-            summary: item.title ?? '网页搜索结果',
-            detail: {
-              query: context.goal,
-              excerpt: item.summary
-            },
-            createdAt: new Date().toISOString()
-          }))
+        ...validResults.map((item, index) => ({
+          id: `web:${context.taskId}:${index}`,
+          taskId: context.taskId,
+          sourceId: item.url!,
+          sourceType: 'web',
+          sourceUrl: item.url!,
+          trustClass: 'unverified' as const,
+          summary: item.title ?? '网页搜索结果',
+          detail: {
+            query: context.goal,
+            excerpt: item.summary
+          },
+          createdAt: new Date().toISOString()
+        }))
       );
-      return result;
+      const topHosts = Array.from(
+        new Set(
+          validResults
+            .map(item => {
+              try {
+                return new URL(item.url!).hostname;
+              } catch {
+                return '';
+              }
+            })
+            .filter(Boolean)
+        )
+      ).slice(0, 6);
+      return {
+        ...result,
+        webSearchMeta: {
+          query: context.goal,
+          resultCount: validResults.length,
+          topHosts
+        }
+      };
     }
   };
 }

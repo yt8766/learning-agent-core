@@ -1,5 +1,5 @@
 ﻿import type { ApprovalCenterItem, DashboardPageKey, PlatformConsoleRecord, TaskRecord } from '@/types/admin';
-import { getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { getMinistryDisplayName, normalizeExecutionMode } from '@/utils/runtime-semantics';
 
 // Dashboard hash filters normalize legacy aliases into canonical executionPlan.mode values.
 export type ExecutionModeFilter = 'all' | 'plan' | 'execute' | 'imperial_direct';
@@ -45,6 +45,7 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'connectors',
   'skillSources',
   'companyAgents',
+  'knowledgeGovernance',
   'workflowLab'
 ];
 
@@ -59,7 +60,8 @@ const ADMIN_RUNTIME_PAGE_TITLES = {
   evidence: '证据中心',
   connectors: '连接器与策略',
   skillSources: '技能来源治理',
-  companyAgents: '公司专员编排'
+  companyAgents: '公司专员编排',
+  knowledgeGovernance: '知识治理'
 } as const;
 
 export const PAGE_TITLES = {

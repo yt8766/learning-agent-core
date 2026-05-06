@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-chat`
-最后核对：2026-04-26
+最后核对：2026-05-03
 
 `agent-chat` 是前线作战面，不是普通聊天壳子。
 
@@ -11,12 +11,12 @@
 
 - DeepSeek-style lightweight frontline shell
 - Collapsible multi-session sidebar with time grouping and status indicators
-- Quick / expert chat entry mode
+- Single chat entry with per-message ability chips
 - Current-conversation anchor rail for long-thread navigation
-- Inline folded governance summaries for Think / ThoughtChain / Evidence / Approval / Learning
+- Inline Agent OS assistant replies for execution tasks
 - Chat thread 与多轮会话切换
 - Approval cards、Cancel、Recover 等消息流内操作
-- Think / ThoughtChain / Event Timeline 运行态可视化
+- 主聊天以内联认知条 + Codex 风格自定义认知块呈现（`CognitionInferenceSection` / `CognitionThoughtLog`），已不再使用 `@ant-design/x` 的 `Think`/`ThoughtChain`；处理进度时间线不包含模型流式正文类事件（`assistant_token`、`assistant_message`、`final_response_*` 等）
 - Evidence / Sources / Learning suggestions 展示
 - Workspace Vault 轻量摘要、Skill reuse readiness 与 Skill Flywheel 候选摘要
 - Runtime panel、session list 等执行辅助视图
@@ -24,7 +24,10 @@
 当前约束：
 
 - 前线发送框不再暴露模型切换下拉框；聊天模型选择统一交给 Runtime 路由与治理策略决定
-- Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示轻量折叠摘要
+- 前线聊天不再暴露“快速模式 / 专家模式”入口；普通消息默认按直接发送处理，需要计划语义时由“深度思考”等能力 chip 显式触发
+- Inline Agent OS / 响应步骤里来自工具完成的 `outputPreview`（如文件已读、目录已列）是**成功摘要**，不是报错；英文 “Read … / Listed …” 类日志已收敛为中文说明，避免被误认为异常堆栈
+- 侧栏会话菜单提供手动重命名；手动重命名会把 `ChatSessionRecord.titleSource` 置为 `manual`，后续 runtime 不得再用大模型摘要标题覆盖。未手动命名的新会话标题由 runtime 基于首条用户消息调用大模型生成摘要标题，失败时才使用本地短标题兜底
+- Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示 AI 正文、来源卡和 inline Agent OS response steps。Chat Runtime v2 的工具审批主路径为聊天内自然语言确认，不再新增审批卡。
 - Workspace Center projection 只允许在 chat 侧作为只读 readiness 摘要消费；不要在 `agent-chat` 中新增 Skill Draft 审批、安装或治理动作
 - 运行时代码导入 `@agent/*` workspace 包时，必须在 `apps/frontend/agent-chat/package.json` 显式声明对应 `workspace:*` 依赖；`tsconfig.app.json` 的 `paths` 只服务 TypeScript，不足以保证 Vite dev server 的 import-analysis 解析
 - 本地 dev 默认通过同源 `/api` 调用后端，并由 Vite proxy 转发到 `http://localhost:3000`；如需指向其他后端，优先设置 `VITE_API_PROXY_TARGET`，只有明确跨源联调时才设置 `VITE_API_BASE_URL`
@@ -41,9 +44,9 @@
 - `src/features/chat`、`src/features/chat-thread`
   - 聊天发送、消息流、会话主链路
 - `src/features/approvals`
-  - 审批卡片、审批动作与恢复入口
+  - 历史审批卡片兼容、自然语言审批动作与恢复入口
 - `src/features/event-timeline`
-  - ThoughtChain / 事件时间线展示
+  - 认知块 / 事件时间线展示（自定义 `CognitionThoughtLog`）
 - `src/features/runtime-panel`
   - 运行态侧栏与任务执行信息
 - `src/features/learning`
@@ -73,9 +76,25 @@ pnpm --dir apps/frontend/agent-chat dev
 
 ## 轻量聊天壳与治理能力
 
-`pages/chat-home` 默认呈现轻量聊天壳。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用绿色胶囊和处理中图标突出阻塞态，审批完成后回落为普通会话项并保留右侧蓝点。中间主区域在无消息时展示快速/专家模式入口；快速模式走直接回答，专家模式复用计划/调度提交路径。
+`pages/chat-home` 默认呈现轻量聊天壳。左侧是多会话导航，按时间分组并用状态点表达运行中、失败与完成状态；等待审批 / 等待确认的会话使用绿色胶囊和处理中图标突出阻塞态，审批完成后回落为普通会话项并保留右侧蓝点。中间主区域在无消息时只展示单一输入入口；普通消息直接发送，计划语义由发送框里的“深度思考”等能力 chip 显式触发。
 
-右侧默认不占用完整工作台空间。长线程通过当前会话锚点浮条定位用户问题、助手回答、审批点、Evidence 段落与关键治理节点。Think、ThoughtChain、Evidence、Approval、Learning 与 Skill reuse 保留为消息内折叠摘要或高级面板详情，不回退成普通聊天机器人。
+右侧默认不占用完整工作台空间。长线程通过当前会话锚点浮条定位用户问题、助手回答、审批点、Evidence 段落与关键治理节点。认知推理与过程流以自定义 `CognitionInferenceSection` / `CognitionThoughtLog` 折叠渲染；Learning 与 Skill reuse 的详情保留在高级面板或对应结构化卡片。
+
+`agent-chat` 会把每轮 assistant 回复分成 `answer_only` 与 `agent_execution` 两种主线程展示模式。普通问答只显示 `思考中 / 已思考`，不会把 `final_response_completed` 这类低价值步骤渲染成“已处理 1 个步骤”。执行任务显示聊天内 `处理中 / 已处理` 入口；运行中默认展开，完成后默认折叠，展开后按“探索、执行、协作、验证、交付”等 Agent OS 过程分组展示。普通模型 thinking 不混入执行面板；用户理解和复盘本轮执行不依赖右侧 Runtime Drawer。投影折叠 helper 是 `src/lib/chat-response-step-projections.ts`；它从 `chat.events` 派生 `responseStepsByMessageId`，不写入 `ChatMessageRecord.card`。
+
+主聊天线程不再把 `node_status`、`node_progress`、`execution_step_*`、`trajectory_step` 或 `task_trajectory` 直接写成系统消息卡片。过程事件仍保留在 `chat.events`，由 response-step projection、timeline 或 workbench 消费，避免聊天面回退到事件时间线卡片效果。
+
+`direct_reply_*` 是当前轮 assistant 流式文本的本地中间态。该消息在主线程中必须保留正文：运行中用于展示正在生成的 AI 回复，取消后如果后端还没有持久化最终 assistant message，也要保留取消前已经流出的非空文本。只有 `progress_stream_*` 与 `summary_stream_*` 这类能力状态中间态会在主线程中清空正文并折叠为治理摘要。
+
+## `node_*` 事件与直连回复 checkpoint
+
+- Session fast-path（`direct-reply`）通过 runtime `emitNodeStatusEvent` 投递标准 `node_status` / `node_progress`，payload 包含 `nodeId`、`nodeLabel`、`phase`（`start` | `progress` | `end`）、`detail`、`progressPercent`（可选）；旧的 `{ node, status, route }` 写法已由前端投影兜底为生命周期摘要。
+- 直连回合结束时 runtime 写入本轮 `checkpoint.thinkState.thinkingDurationMs`（流式起止毫秒差），并将模型 reasoning 片段（与 runtime `sanitizeDirectReplyVisibleContent` / agent-chat `parseAssistantThinkingContent` 对齐的可剥离标签）聚合进 `thinkState.content`；用户可见正文仍经消毒去掉推理标签。
+- **联网检索**：`AgentRuntime` 将 MCP 能力 `webSearchPrime`（次之 `minimax:web_search`）适配为 direct-reply 的 `webSearchFn`；无能力时跳过检索，thoughtChain 仍保留意图与组织回答等叙述步骤。
+- **历史认知**：直连成功或失败后均会对本轮助手消息调用 `mergeAssistantCognitionSnapshot`，写入与 checkpoint 一致的 `cognitionSnapshot`（含 `thoughtChain`），以便非当前 cognition 目标的气泡仍可展开（参见 `buildBubbleItems` 对 `cognitionSnapshot` 的优先读取）。
+- **时长展示**：`buildCognitionDurationLabel` 在 `chatRoute.flow === 'direct-reply'` 时**只**采用 `thinkState.thinkingDurationMs`，不再用 `thoughtChain` 前几项上的 `thinkingDurationMs`，也不再用 `checkpoint.createdAt`/`updatedAt` 区间兜底，避免长会话 checkpoint 污染「本轮已思考」文案。
+- **避免双轨**：当助手消息已带叙述型 `cognitionSnapshot`，或当前投影的 `thoughtItems` 已包含联网检索/浏览变体时，主线程会隐藏正文**前**的 Agent OS 响应步骤摘要，仅保留内联认知折叠条。
+- Workbench 认知时间线的脚注时间使用 `formatSessionTime` 本地化展示；`buildCognitionDurationLabel` 对超长耗时做上限与「较长」兜底（非 direct-reply 路径仍可能使用 thoughtChain 或 checkpoint 时间区间）。
 
 ## Workspace Vault 摘要
 

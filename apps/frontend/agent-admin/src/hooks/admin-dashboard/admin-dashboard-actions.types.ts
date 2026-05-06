@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
 import type { DashboardPageKey, PlatformConsoleRecord, TaskBundle } from '@/types/admin';
-import type { RuntimeReplayLaunchReceipt } from '@/features/runtime-overview/components/runtime-run-workbench-support';
+import type { RuntimeReplayLaunchReceipt } from '@/pages/runtime-overview/components/runtime-run-workbench-support';
 
 export interface AdminDashboardActionContext {
   queryClient: QueryClient;

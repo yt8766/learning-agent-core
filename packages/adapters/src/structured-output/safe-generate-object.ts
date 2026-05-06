@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod/v4';
 
-import type { ChatMessage } from '../providers/llm/base/llm-provider.types';
+import type { ChatMessage } from '../contracts/llm/llm-provider.types';
 import { appendJsonSafetyToMessages } from '../prompts';
 import { withLlmRetry } from '../resilience/llm-retry';
 

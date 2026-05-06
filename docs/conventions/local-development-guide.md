@@ -16,11 +16,19 @@ pnpm build:lib
 再按以下顺序启动：
 
 ```bash
-pnpm --dir apps/backend/agent-server start:dev
+pnpm start:dev
 pnpm --dir apps/worker build && node apps/worker/dist/main.js
 pnpm --dir apps/frontend/agent-chat dev
 pnpm --dir apps/frontend/agent-admin dev
 ```
+
+`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 并行启动三个后端：
+
+- `auth-server`：`http://127.0.0.1:3010/api`
+- `knowledge-server`：`http://127.0.0.1:3020/api`
+- `agent-server`：`http://127.0.0.1:3000/api`
+
+如果只需要旧 chat/runtime/admin 后端，可使用 `pnpm start:dev:agent`。
 
 如果只想单机验证，不单独启动 worker，也可以让 backend 使用内建 background runner。
 
@@ -73,7 +81,7 @@ pnpm --dir apps/frontend/agent-admin dev
 
 - 未配置模型 key 时，direct-reply 与研究能力会退化
 - `ZHIPU_API_BASE_URL` 不再有代码默认值，本地联调必须通过 `.env` 或显式 overrides 提供
-- `MINIMAX_BASE_URL` 默认会回落到 `https://api.minimaxi.com/v1`
+- `MINIMAX_BASE_URL` 默认会回落到 `https://api.minimax.io/v1`；本地 `.env` 若仍写旧的 `https://api.minimaxi.com/v1`，MiniMax M2.x chat 可能返回 `invalid chat setting (2013)`
 - 若只配置 `MINIMAX_API_KEY`，系统会自动注册 `minimax` provider，并默认带上：
   - `MiniMax-M2.7`
   - `MiniMax-M2.7-highspeed`

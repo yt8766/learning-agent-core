@@ -1,11 +1,12 @@
 import type { ChatCheckpointRecord, ChatEventRecord } from '@agent/core';
 import { getMinistryDisplayName } from './session-architecture-helpers';
 
-import type { SessionCoordinatorStore } from './session-coordinator-store';
+import type { SessionCoordinatorStore } from './coordinator/session-coordinator-store';
 
 type NodePhase = 'start' | 'progress' | 'end';
 
 const NODE_LABELS: Record<string, string> = {
+  direct_reply: '直接回复',
   entry_router: '通政司接旨',
   mode_gate: '模式门裁剪',
   dispatch_planner: '群辅票拟',

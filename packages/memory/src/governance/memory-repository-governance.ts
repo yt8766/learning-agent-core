@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 
-import { MemoryEventRecord, MemoryEvidenceLinkRecord, MemoryRecord, UserProfileRecord } from '@agent/memory';
+import { MemoryEventRecord, MemoryEvidenceLinkRecord, MemoryRecord, UserProfileRecord } from '../index';
 
 import { normalizeMemoryRecord, nextVersion } from '../normalization/memory-record-helpers';
 import type { MemoryEventRepository } from '../repositories/memory-event-repository';
