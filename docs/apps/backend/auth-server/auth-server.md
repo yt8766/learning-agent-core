@@ -82,9 +82,9 @@ PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 
 
 ## Build Boundary
 
-`tsconfig.json` 在开发与测试阶段会把 `@agent/core` 映射到 `packages/core/src/index.ts`，便于类型检查直接消费源码。`tsconfig.build.json` 必须清空 `paths`，让生产构建按 workspace 包边界解析 `@agent/core`，否则 `tsc -p tsconfig.build.json` 会把 `packages/core/src` 拉进当前服务编译图，并触发 `TS6059: file is not under rootDir`。
+`tsconfig.json` 与 `tsconfig.build.json` 都保持空 `paths`，让 `auth-server` 通过 workspace package exports 消费 `@agent/core`，避免把 `packages/core/src` 拉进当前服务编译图并触发 `TS6059: file is not under rootDir`。干净 CI 环境没有本地残留的 `build/types`，根级 `turbo:typecheck` 会先执行上游 workspace 包的 `build:lib`，再执行服务自身 `typecheck`。
 
-该模式与 `apps/backend/agent-server` 保持一致；后续新增 backend Nest 服务如果同时设置 `rootDir: "./src"` 和源码期 workspace path mapping，也应在 build tsconfig 中显式覆盖 `baseUrl` 与 `paths`。
+该模式与 `apps/backend/agent-server`、`apps/backend/knowledge-server` 保持一致；后续新增 backend Nest 服务如果依赖 `@agent/*` workspace 包，不要在 app tsconfig 中把包名映射回源码路径。
 
 ## HTTP Behavior
 
@@ -100,7 +100,7 @@ PostgreSQL 边界由 `PostgresAuthRepository` 收敛，接收项目自定义的 
 
 ```bash
 pnpm exec vitest run --config vitest.config.js apps/backend/auth-server/test/auth
-pnpm exec tsc -p apps/backend/auth-server/tsconfig.json --noEmit
+pnpm --dir apps/backend/auth-server turbo:typecheck
 pnpm --dir apps/backend/auth-server build
 pnpm check:docs
 ```

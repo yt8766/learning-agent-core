@@ -128,15 +128,18 @@ async function renderRouterClientAt(pathname: string) {
   return container;
 }
 
-async function waitForText(expected: string) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+async function waitForText(expected: string, target: HTMLElement | undefined = container) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 5_000) {
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 10));
     });
-    if (container?.textContent.includes(expected)) {
+    if (target?.textContent.includes(expected)) {
       return;
     }
   }
+
+  expect(target?.textContent).toContain(expected);
 }
 
 async function authenticateAdmin() {

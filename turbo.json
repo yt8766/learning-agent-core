@@ -61,6 +61,7 @@
       "dependsOn": ["^typecheck"]
     },
     "turbo:typecheck": {
+      "dependsOn": ["^build:lib"],
       "outputs": []
     },
     "test": {
