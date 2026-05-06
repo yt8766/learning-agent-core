@@ -28,7 +28,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "turbo:typecheck": "pnpm typecheck",
     "test": "pnpm --dir ../.. exec vitest run --config vitest.config.js packages/runtime/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
-    "turbo:test:unit": "pnpm test",
+    "turbo:test:unit": "pnpm build:types && pnpm test",
     "test:integration": "node ../../scripts/run-package-integration-tests.js packages/runtime",
     "turbo:test:integration": "pnpm test:integration",
     "verify": "pnpm typecheck && pnpm test && pnpm test:integration && pnpm build:lib"
