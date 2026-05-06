@@ -152,7 +152,7 @@ Failed jobs are immutable for recovery purposes: retry/reprocess creates a new a
 
 ## Build Boundary
 
-`tsconfig.json` 在开发与测试阶段会把 `@agent/core` 映射到 `packages/core/src/index.ts`，便于本地类型检查直接消费 core 源码。`tsconfig.build.json` 必须清空 `paths`，让生产构建通过 workspace 包边界解析 `@agent/core`；如果继承开发期 paths 且保持 `rootDir: "./src"`，`tsc -p tsconfig.build.json` 会把 `packages/core/src` 纳入当前服务编译图，并触发 `TS6059: file is not under rootDir`。
+`tsconfig.json` 与 `tsconfig.build.json` 都保持空 `paths`，让 `knowledge-server` 通过 workspace package exports 消费 `@agent/core` 与 `@agent/knowledge`，避免把 `packages/knowledge/src` 的 LangChain adapter 条件类型拉进服务编译图。干净 CI 环境没有本地残留的 `build/types`，所以 `package.json` 的 `turbo:typecheck` 会先构建 `@agent/core` 与 `@agent/knowledge` 的 `build:lib`，再执行服务自身 `typecheck`；本地若直接运行 `pnpm exec tsc -p apps/backend/knowledge-server/tsconfig.json --noEmit`，需要先保证这两个依赖包已构建。
 
 `tsconfig.build.json` 还必须显式保持 `module: "Node16"` 与 `moduleResolution: "node16"` 配套。TypeScript 5 会校验这两个选项必须成对出现；Nest watch 读取 build config 时不能依赖开发配置继承链隐式补齐，否则可能触发 `TS5110: Option 'module' must be set to 'Node16' when option 'moduleResolution' is set to 'Node16'`。
 
@@ -245,7 +245,7 @@ Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动
 
 ```bash
 pnpm exec vitest run --config vitest.config.js apps/backend/knowledge-server/test/knowledge
-pnpm exec tsc -p apps/backend/knowledge-server/tsconfig.json --noEmit
+pnpm --dir apps/backend/knowledge-server turbo:typecheck
 pnpm --dir apps/backend/knowledge-server build
 pnpm check:docs
 ```
