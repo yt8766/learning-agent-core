@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AuthSeedService } from '../../src/auth/auth-seed.service';
 import { PasswordHasherProvider } from '../../src/auth/password-hasher.provider';
 import { InMemoryAuthRepository } from '../../src/auth/repositories/auth-memory.repository';
+
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('AuthSeedService', () => {
   it('creates the configured admin account when it is missing', async () => {

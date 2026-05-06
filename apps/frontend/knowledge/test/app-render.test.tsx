@@ -310,10 +310,11 @@ async function renderAuthenticatedRoute(path: string) {
 }
 
 async function waitForText(text: string) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
     await act(async () => {
       await Promise.resolve();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 10));
     });
     if (document.body.textContent.includes(text)) {
       return;

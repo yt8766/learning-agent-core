@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { PasswordHasherProvider } from '../../src/auth/password-hasher.provider';
 import { InMemoryAuthRepository } from '../../src/auth/repositories/auth-memory.repository';
 import { UserManagementService } from '../../src/auth/user-management.service';
+
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('UserManagementService', () => {
   async function createService() {

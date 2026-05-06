@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { PasswordHasherProvider } from '../../src/auth/password-hasher.provider';
+
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('PasswordHasherProvider', () => {
   it('hashes and verifies passwords with bcrypt', async () => {

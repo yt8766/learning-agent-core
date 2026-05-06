@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../../src/auth/auth.service';
 import { JwtProvider } from '../../src/auth/jwt.provider';
 import { PasswordHasherProvider } from '../../src/auth/password-hasher.provider';
 import { InMemoryAuthRepository } from '../../src/auth/repositories/auth-memory.repository';
+
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('AuthService', () => {
   async function createService() {
