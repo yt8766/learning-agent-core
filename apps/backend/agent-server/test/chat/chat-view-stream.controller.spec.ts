@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BadRequestException } from '@nestjs/common';
 
 import { ChatViewStreamController } from '../../src/chat/chat-view-stream.controller';
 
@@ -66,6 +67,25 @@ describe('ChatViewStreamController', () => {
     closeHandler?.();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
     expect(response.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects missing stream identifiers before opening the SSE response', () => {
+    const service = {
+      listEvents: vi.fn(),
+      subscribe: vi.fn()
+    };
+    const controller = new ChatViewStreamController(service as never);
+    const response = createSseResponse();
+    const request = { on: vi.fn() };
+
+    expect(() => controller.stream(request as never, response as never, 'session-1', undefined)).toThrow(
+      BadRequestException
+    );
+
+    expect(response.setHeader).not.toHaveBeenCalled();
+    expect(response.write).not.toHaveBeenCalled();
+    expect(service.listEvents).not.toHaveBeenCalled();
+    expect(service.subscribe).not.toHaveBeenCalled();
   });
 });
 
