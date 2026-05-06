@@ -26,7 +26,7 @@ services:
       PGRST_JWT_SECRET: local-dev-jwt-secret-key-for-postgrest-only-32chars
       PGRST_OPENAPI_MODE: ignore-privileges
     ports:
-      - '3000:3000'
+      - '3001:3000'
     depends_on:
       postgres:
         condition: service_healthy

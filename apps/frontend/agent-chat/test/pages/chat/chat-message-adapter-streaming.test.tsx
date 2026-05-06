@@ -3,12 +3,22 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildBubbleItems, buildMainThreadMessages } from '@/pages/chat/chat-message-adapter';
-import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
 import type { ChatMessageRecord } from '@/types/chat';
 
 vi.mock('@ant-design/x-markdown', () => ({
-  XMarkdown: ({ content, className }: { content: string; className?: string }) => (
-    <div className={className}>{content}</div>
+  XMarkdown: ({
+    content,
+    className,
+    streaming
+  }: {
+    content: string;
+    className?: string;
+    streaming?: Record<string, unknown>;
+  }) => (
+    <div className={className} data-streaming={JSON.stringify(streaming ?? null)}>
+      {content}
+    </div>
   )
 }));
 
@@ -91,13 +101,13 @@ describe('chat-message-adapter direct reply streaming', () => {
       messages,
       cognitionTargetMessageId: 'direct_reply_task-1',
       cognitionExpanded: false,
-      cognitionDurationLabel: '12s',
       thinkState: {
         messageId: 'direct_reply_task-1',
         title: '正在思考',
         content: '',
         loading: true,
-        blink: true
+        blink: true,
+        thinkingDurationMs: 12000
       },
       onToggleCognition: () => undefined,
       onCopy: () => undefined,
@@ -125,6 +135,30 @@ describe('chat-message-adapter direct reply streaming', () => {
 
     expect(mainThread).toHaveLength(1);
     expect(mainThread[0]?.content).toBe('已经完成到一半的可读回复。');
+  });
+
+  it('does not keep completed assistant markdown in streaming mode only because thinking state lags', () => {
+    const messages: ChatMessageRecord[] = [
+      {
+        id: 'direct_reply_task-1',
+        sessionId: 'session-1',
+        role: 'assistant',
+        content: '最终回复已经落地。',
+        createdAt: '2026-05-02T08:30:00.000Z'
+      }
+    ];
+
+    const items = buildBubbleItems({
+      messages,
+      activeStatus: 'completed',
+      agentThinking: true,
+      onCopy: () => undefined,
+      getAgentLabel: role => role ?? 'agent'
+    });
+    const html = renderToStaticMarkup(<>{items[0]?.content}</>);
+
+    expect(html).toContain('最终回复已经落地。');
+    expect(html).toContain('data-streaming="null"');
   });
 
   it('keeps direct reply text when a cancellation notice is appended to the thread', () => {

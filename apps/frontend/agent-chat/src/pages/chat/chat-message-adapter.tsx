@@ -5,7 +5,7 @@ import type { BubbleItemType } from '@ant-design/x';
 import type { WorkbenchThoughtProjectionItem } from '@/types/workbench-thought-projection';
 
 import { CopyGlyph } from '@/components/chat-message-cards';
-import type { ChatResponseStepsState } from '@/lib/chat-response-step-projections';
+import type { ChatResponseStepsState } from '@/utils/chat-response-step-projections';
 import type {
   ChatMessageFeedbackInput,
   ChatMessageFeedbackReasonCode,
@@ -13,7 +13,7 @@ import type {
   ChatSessionRecord,
   ChatThinkState
 } from '@/types/chat';
-import { mapThoughtChainToProjectionItems } from '@/lib/map-thought-chain-to-projection';
+import { mapThoughtChainToProjectionItems } from '@/utils/map-thought-chain-to-projection';
 import { formatCognitionDurationLabelFromMs } from '@/pages/chat-home/chat-home-page-helpers';
 import { buildMainThreadMessages, containsCitationSection } from './chat-message-adapter-helpers';
 import { renderMessageContent } from './chat-message-content';
@@ -57,6 +57,8 @@ export interface BuildBubbleItemsOptions {
   cognitionDurationLabel?: string;
   cognitionCountLabel?: string;
   responseStepsByMessageId?: ChatResponseStepsState['byMessageId'];
+  /** True when the SSE stream has completed (final_response_completed / session_finished / etc.) */
+  streamingCompleted?: boolean;
 }
 
 const DEFAULT_UNHELPFUL_REASON: ChatMessageFeedbackReasonCode = 'too_shallow';
@@ -156,7 +158,8 @@ export function buildBubbleItems({
   onToggleCognition,
   cognitionDurationLabel,
   cognitionCountLabel,
-  responseStepsByMessageId
+  responseStepsByMessageId,
+  streamingCompleted
 }: BuildBubbleItemsOptions): BubbleItemType[] {
   const mainThreadMessages = buildMainThreadMessages(messages, cognitionTargetMessageId);
   const lastAssistantMessageId = [...mainThreadMessages].reverse().find(message => message.role === 'assistant')?.id;
@@ -166,6 +169,11 @@ export function buildBubbleItems({
   const resolvedCognitionTargetMessageId = mainThreadMessages.some(message => message.id === cognitionTargetMessageId)
     ? cognitionTargetMessageId
     : (lastAssistantMessageId ?? cognitionTargetMessageId);
+
+  const isTerminalSessionStatus =
+    activeStatus === 'completed' || activeStatus === 'failed' || activeStatus === 'cancelled';
+  const allowStreamingAssistantShell =
+    !isTerminalSessionStatus && (activeStatus === 'running' || Boolean(agentThinking));
 
   const items: BubbleItemType[] = mainThreadMessages
     .filter(message => {
@@ -177,8 +185,7 @@ export function buildBubbleItems({
         return false;
       }
 
-      const isCurrentStreamingAssistant =
-        message.id === lastAssistantMessageId && (activeStatus === 'running' || Boolean(agentThinking));
+      const isCurrentStreamingAssistant = message.id === lastAssistantMessageId && allowStreamingAssistantShell;
       const shouldKeepEmptyAssistantShell =
         message.role === 'assistant' &&
         !message.content.trim() &&
@@ -191,8 +198,7 @@ export function buildBubbleItems({
       return true;
     })
     .map(message => {
-      const isStreamingAssistant =
-        message.id === lastAssistantMessageId && (activeStatus === 'running' || Boolean(agentThinking));
+      const isStreamingAssistant = message.id === lastAssistantMessageId && allowStreamingAssistantShell;
       const shouldAttachEvidence =
         message.id === lastAssistantMessageId && inlineEvidenceMessage && !containsCitationSection(message.content);
       const responseSteps = message.role === 'assistant' ? responseStepsByMessageId?.[message.id] : undefined;
@@ -237,6 +243,8 @@ export function buildBubbleItems({
             ? cognitionExpanded
             : false;
 
+      const hasNextChunk = !streamingCompleted && isStreamingAssistant;
+
       return {
         key: message.id,
         role: message.role === 'user' ? 'user' : message.role === 'assistant' ? 'ai' : 'system',
@@ -256,7 +264,8 @@ export function buildBubbleItems({
           cognitionDurationLabel: bubbleCognitionDurationLabel,
           cognitionCountLabel: bubbleCountLabel,
           inlineEvidenceMessage: shouldAttachEvidence ? inlineEvidenceMessage : undefined,
-          responseSteps
+          responseSteps,
+          hasNextChunk
         }),
         header:
           message.role === 'system' && message.linkedAgent ? (

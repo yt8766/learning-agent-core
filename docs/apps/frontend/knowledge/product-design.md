@@ -3,11 +3,11 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/knowledge`
-最后核对：2026-05-02
+最后核对：2026-05-04
 
 ## Positioning
 
-`apps/frontend/knowledge` 是独立 Knowledge 前端项目，面向知识库运营、RAG 体验验证、引用审查、观测排障与评测闭环。它不是 marketing landing page，不做营销式首页；也不是 `agent-chat` 或 `agent-admin` 的重复产品。
+`apps/frontend/knowledge` 是独立 Knowledge 前端项目，当前 UI 定位为 **RAG Ops 控制台**，面向知识库运营、RAG 体验验证、引用审查、观测排障与评测闭环。它不是 marketing landing page，不做营销式首页；也不是 `agent-chat` 或 `agent-admin` 的重复产品。
 
 产品设计属性：product（因 docs checker 当前不支持 product 作为顶层文档类型，顶层使用 reference）
 
@@ -86,8 +86,10 @@ Knowledge App 使用 JWT 双 token：
 - `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
 - `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责 `knowledge-server` 业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 或 `401 access_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
 - `apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`：当前横向 MVP 页面使用的本地 fixture / mock client；真实后端联调时应替换为 `KnowledgeApiClient`，不要让页面直接读取后端或 SDK runtime。
-- `apps/frontend/knowledge/src/pages/auth/*`：当前登录门使用本地 mock token 写入，退出登录只删除本地 token；真实后端联调时保持双 token 行为，替换 login 调用来源。
-- `apps/frontend/knowledge/src/pages/*`：当前已落地总览、知识库、文档、对话实验室、观测中心、评测中心和设置的 mock-first 页面，第一屏是可操作工作台，不是 landing page。
+- `apps/frontend/knowledge/src/pages/auth/*`：当前登录门通过 `AuthProvider -> AuthClient.login() -> /auth/login` 走真实双 token 登录链路；退出登录只删除本地 token 并切回未登录状态。
+- `apps/frontend/knowledge/src/pages/*`：当前已落地 RAG 总览、知识空间、摄取管线、Agent Flow、检索实验室、Trace 观测、评测回归、访问治理和系统策略页面，第一屏是可操作工作台，不是 landing page。
+- `apps/frontend/knowledge/src/pages/shared/ui.tsx`：提供 `RagOpsPage`、`MetricStrip`、`LifecycleRail`、`StatusPill` 和 `InsightList`，作为 RAG Ops 页面统一外壳。
+- `apps/frontend/knowledge/src/styles/knowledge-rag-ops.css`：承载 RAG Ops 重设计样式；旧的 `knowledge-pro.css` 保留壳层、异常页和历史组件样式，不再继续堆新增页面视觉。
 - `apps/frontend/knowledge/test/token-storage.test.ts` 与 `apps/frontend/knowledge/test/auth-client.test.ts`：固定双 token 存储、并发刷新复用和 logout 本地清理语义。
 - `apps/frontend/knowledge/test/knowledge-api-client.test.ts`：固定业务请求 access token 过期后的 refresh/retry、不相关 401 不刷新、以及最多重试一次的边界。
 - `apps/frontend/knowledge/test/app-render.test.tsx`：固定未登录时显示登录门、已登录时显示工作台导航。
@@ -116,14 +118,16 @@ Knowledge App 使用 JWT 双 token：
 
 - 加载态：登录按钮显示处理中并禁用重复提交。
 - 错误态：展示无效凭据、网络失败或服务不可用的简短错误。
-- 空态：表单默认空值，不展示营销文案或产品介绍大屏。
+- 空态：表单默认空值；页面展示 RAG 企业知识库品牌介绍和能力说明，但不得预填账号或密码。
+- 登录方式：当前账号密码是唯一已接功能的主登录方式；页面额外展示但暂不接功能的入口包括记住我、忘记密码、首次使用联系管理员、其他登录方式分隔标题、钉钉登录、飞书登录和企业微信登录。
+- 不展示项：不展示账号/短信登录方式切换、短信验证码、图形验证码、SSO 或中英文切换入口。
 - 登录边界：登录成功后写入双 token 和用户摘要；失败不得写入半截 token。
 
-### Overview
+### RAG Overview
 
 核心数据：
 
-- 知识库数量、文档数量、ready/failed 文档数量、今日问题数、平均延迟、P95/P99、错误率、负反馈率、最新评测分、活跃告警数。
+- 知识空间数量、ready 文档数、failed 文档数、检索质量、引用覆盖、负反馈率、P95/P99、最新评测分、活跃告警数。
 - 最近失败任务、近期低分 trace、近期评测运行、Top missing knowledge questions。
 
 主要操作：
@@ -139,7 +143,7 @@ Knowledge App 使用 JWT 双 token：
 - 错误态：指标区可局部失败，保留其他可用数据并允许重试。
 - 权限边界：`GET /dashboard/overview` 仅 owner/admin/maintainer 可访问。viewer 和 evaluator 访问 `/app/overview` 时显示受限态或引导跳转到 `/app/chat-lab`、`/app/evals/datasets` 等其有权限的页面，不请求 dashboard endpoint，也不展示 overview 操作入口。
 
-### Knowledge Bases
+### Knowledge Spaces
 
 核心数据：
 
@@ -198,11 +202,11 @@ Knowledge App 使用 JWT 双 token：
 - 错误态：处理失败展示可读错误、失败阶段和可重试动作。
 - 权限边界：viewer/evaluator 可以查看 allowed 文档基础信息和 chunk；`GET /documents/:id/jobs` 仅 owner/admin/maintainer 可访问，所以 viewer/evaluator 的 job timeline 显示受限态或隐藏，不发起 jobs 请求。reprocess、reembed 和 disable 也只对 owner/admin/maintainer 开放。
 
-### Chat Lab
+### Retrieval Lab
 
 核心数据：
 
-- 知识库选择器、聊天线程、问题、回答、引用、反馈、trace id、token 和延迟摘要。
+- 知识空间选择器、聊天线程、问题、回答、引用、反馈、trace id、token、延迟摘要和 assistant config 中的检索步骤标签。
 
 主要操作：
 

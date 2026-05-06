@@ -3,9 +3,11 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`
-最后核对：2026-05-03
+最后核对：2026-05-05
 
 本文是 `agent-chat` 的稳定接口契约。链路时序和断流补偿背景见 [前后端集成链路](/docs/integration/frontend-backend-integration.md)。
+
+会话化 Agent 执行协议 v2 见 [Agent Chat Runtime V2 API](/docs/contracts/api/agent-chat-runtime-v2.md)，覆盖 `ChatRunRecord`、`ChatMessageFragment`、`ChatViewStreamEvent`、自动审查和自然语言确认。当前本文继续描述 v1/session/direct 兼容接口；涉及 ChatRun、view-stream、自然语言审批或工具执行 bridge 的开发必须先更新并确认 `agent-chat-runtime-v2.md`。
 
 ## 通用约定
 
@@ -28,20 +30,36 @@
 
 ## 会话接口
 
-| 方法     | 地址                                     | 参数                                                                                                                                                                                                   | 返回值                              | 说明                                                                                                                                                                        |
-| -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/chat/sessions`                     | 无                                                                                                                                                                                                     | `ChatSessionRecord[]`               | 获取会话列表。                                                                                                                                                              |
-| `POST`   | `/api/chat/sessions`                     | body: `{ message?: string; title?: string; channelIdentity?: ChannelIdentity }`                                                                                                                        | `ChatSessionRecord`                 | 创建会话并写入 `agent_session_id` cookie。`message` 只作为创建上下文，不替代 `POST /api/chat/messages`。                                                                    |
-| `GET`    | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `ChatSessionRecord`                 | 获取会话详情，并写入同名 cookie。                                                                                                                                           |
-| `PATCH`  | `/api/chat/sessions/:id`                 | path: `id`; body: `{ title: string; titleSource?: "manual" }`                                                                                                                                          | `ChatSessionRecord`                 | 更新会话标题。前端手动重命名必须传 `titleSource: "manual"`，runtime 后续不会再用自动摘要覆盖该标题。                                                                        |
-| `DELETE` | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `void`                              | 删除会话。                                                                                                                                                                  |
-| `GET`    | `/api/chat/messages?sessionId=...`       | query: `sessionId`                                                                                                                                                                                     | `ChatMessageRecord[]`               | 获取消息历史；兼容层可从 cookie 读取 `sessionId`。                                                                                                                          |
-| `POST`   | `/api/chat/messages/:messageId/feedback` | path: `messageId`; body: `{ sessionId: string; rating: "helpful" \| "unhelpful" \| "none"; reasonCode?: "too_shallow" \| "incorrect" \| "missed_point" \| "bad_format" \| "other"; comment?: string }` | `ChatMessageRecord`                 | 提交或取消 assistant 消息反馈。`unhelpful` 必须带 `reasonCode`；`helpful` / `none` 不允许带 `reasonCode`。`none` 会清除当前消息反馈。                                       |
-| `GET`    | `/api/chat/events?sessionId=...`         | query: `sessionId`                                                                                                                                                                                     | `ChatEventRecord[]`                 | 获取事件历史；用于重连和终态补偿。                                                                                                                                          |
-| `GET`    | `/api/chat/checkpoint?sessionId=...`     | query: `sessionId`                                                                                                                                                                                     | `ChatCheckpointRecord \| undefined` | 获取最新运行态快照。                                                                                                                                                        |
-| `POST`   | `/api/chat/messages`                     | body: `{ sessionId: string; message: string; modelId?: string }`                                                                                                                                       | `ChatMessageRecord`                 | 提交首条或后续用户消息。普通问答会在 session 层走 `direct-reply` fast path；执行、检索、审批、connector、skill、报表、代码修改等意图才进入 runtime task / supervisor 主链。 |
+| 方法     | 地址                                     | 参数                                                                                                                                                                                                   | 返回值                                         | 说明                                                                                                                                                                                                                                                                                          |
+| -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/chat/sessions`                     | 无                                                                                                                                                                                                     | `ChatSessionRecord[]`                          | 获取会话列表。                                                                                                                                                                                                                                                                                |
+| `POST`   | `/api/chat/sessions`                     | body: `{ message?: string; title?: string; channelIdentity?: ChannelIdentity }`                                                                                                                        | `ChatSessionRecord`                            | 创建会话并写入 `agent_session_id` cookie。`message` 只作为创建上下文，不替代 `POST /api/chat/messages`。                                                                                                                                                                                      |
+| `GET`    | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `ChatSessionRecord`                            | 获取会话详情，并写入同名 cookie。                                                                                                                                                                                                                                                             |
+| `PATCH`  | `/api/chat/sessions/:id`                 | path: `id`; body: `{ title: string; titleSource?: "manual" }`                                                                                                                                          | `ChatSessionRecord`                            | 更新会话标题。前端手动重命名必须传 `titleSource: "manual"`，runtime 后续不会再用自动摘要覆盖该标题。                                                                                                                                                                                          |
+| `DELETE` | `/api/chat/sessions/:id`                 | path: `id`                                                                                                                                                                                             | `void`                                         | 删除会话。                                                                                                                                                                                                                                                                                    |
+| `GET`    | `/api/chat/messages?sessionId=...`       | query: `sessionId`                                                                                                                                                                                     | `ChatMessageRecord[]`                          | 获取消息历史；兼容层可从 cookie 读取 `sessionId`。                                                                                                                                                                                                                                            |
+| `POST`   | `/api/chat/messages/:messageId/feedback` | path: `messageId`; body: `{ sessionId: string; rating: "helpful" \| "unhelpful" \| "none"; reasonCode?: "too_shallow" \| "incorrect" \| "missed_point" \| "bad_format" \| "other"; comment?: string }` | `ChatMessageRecord`                            | 提交或取消 assistant 消息反馈。`unhelpful` 必须带 `reasonCode`；`helpful` / `none` 不允许带 `reasonCode`。`none` 会清除当前消息反馈。                                                                                                                                                         |
+| `GET`    | `/api/chat/events?sessionId=...`         | query: `sessionId`                                                                                                                                                                                     | `ChatEventRecord[]`                            | 获取事件历史；用于重连和终态补偿。                                                                                                                                                                                                                                                            |
+| `GET`    | `/api/chat/checkpoint?sessionId=...`     | query: `sessionId`                                                                                                                                                                                     | `ChatCheckpointRecord \| undefined`            | 获取最新运行态快照。                                                                                                                                                                                                                                                                          |
+| `POST`   | `/api/chat/messages`                     | body: `{ sessionId: string; message: string; modelId?: string }`                                                                                                                                       | `ChatMessageRecord \| PendingInteractionReply` | 提交首条或后续用户消息。普通问答会在 session 层走 `direct-reply` fast path；执行、检索、审批、connector、skill、报表、代码修改等意图才进入 runtime task / supervisor 主链。若当前 session 有 v2 pending interaction 或 agent-tools pending approval，则优先解释为自然语言确认/拒绝/反馈回复。 |
 
-`POST /api/chat/messages` 只提交输入，不直接把 assistant 内容放进 HTTP 响应。输出通过 `/api/chat/stream`、`GET /api/chat/messages` 与 checkpoint 终态补偿同步。
+`POST /api/chat/messages` 的普通消息路径只提交输入，不直接把 assistant 内容放进 HTTP 响应。输出通过 `/api/chat/stream`、`GET /api/chat/messages` 与 checkpoint 终态补偿同步。
+
+当请求被解释为 v2 pending interaction 回复时，响应结构为：
+
+```ts
+{
+  message: ChatMessageRecord;
+  handledAs: 'pending_interaction_reply';
+  interactionResolution: {
+    interactionId: string;
+    intent: ApprovalReplyIntent;
+    resolvedInteraction?: ChatPendingInteraction;
+  };
+}
+```
+
+同 session 存在 `agent-tools` `pending_approval` 时，该路径会把“确认执行 / 取消 / 反馈”转为 `AgentToolsService.resumeApproval()`，不创建新聊天任务。
 
 普通问答 fast path 语义：
 
@@ -188,6 +206,8 @@ Old clients can ignore these fields. New clients must tolerate their absence and
 ## Direct Reply
 
 `POST /api/chat`
+
+该入口是当前 direct reply / artifact 兼容入口，不是 v2 会话化 Agent 执行主链的新扩展点。新功能不得继续向该 DTO 追加 report、preview、Sandpack 或工具治理字段；相关能力应按 [Agent Chat Runtime V2 API](/docs/contracts/api/agent-chat-runtime-v2.md) 的边界迁往 `/api/direct-chat/*`、`/api/artifacts/*` 或 `/api/reports/*`。
 
 请求体：
 

@@ -2,8 +2,6 @@ import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-pro
 
 import { AgentOsRunPanel } from './agent-os-run-panel';
 
-import { AgentOsRunPanel } from './agent-os-run-panel';
-
 type QuickResponseStepsProps = {
   responseSteps: ChatResponseStepsForMessage;
 };

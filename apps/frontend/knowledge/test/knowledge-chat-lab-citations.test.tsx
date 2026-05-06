@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
+import { mockChatAssistantConfig } from '../src/api/mock-knowledge-governance-data';
 import { ChatLabPage, resolveChatLabKnowledgeBaseId } from '../src/pages/chat-lab/chat-lab-page';
 import {
   createChatLabConversation,
@@ -554,7 +555,10 @@ function createClient(): KnowledgeFrontendApi {
       total: 0,
       page: 1,
       pageSize: 20
-    })
+    }),
+    getChatAssistantConfig: vi
+      .fn<KnowledgeFrontendApi['getChatAssistantConfig']>()
+      .mockResolvedValue(mockChatAssistantConfig)
   } as unknown as KnowledgeFrontendApi;
 }
 
@@ -600,6 +604,25 @@ afterEach(async () => {
 });
 
 describe('ChatLabPage citations', () => {
+  it('renders retrieval lab welcome prompts without exposing raw thinking preview chrome', async () => {
+    const client = createClient();
+
+    await renderClient(
+      <KnowledgeApiProvider client={client}>
+        <ChatLabPage />
+      </KnowledgeApiProvider>
+    );
+    await flushEffects();
+    await flushEffects();
+
+    expect(container?.textContent).toContain('你好，我是 RAG 检索实验室');
+    expect(container?.textContent).toContain('总结 2026 年知识库检索质量');
+    expect(container?.textContent).not.toContain('思考过程');
+    expect(container?.textContent).toContain('分析问题意图');
+    expect(container?.textContent).toContain('选择知识库与检索模式');
+    expect(container?.textContent).toContain('整理引用与回答结构');
+  });
+
   it('renders citation cards with quote, score, uri, feedback actions, and trace link', async () => {
     testState.autoSubmitMessage = '@真实知识库 动态导入有什么限制？';
     const client = createClient();

@@ -59,7 +59,6 @@ describe('chat-message-adapter governance summary', () => {
       thoughtItems: [{ key: 'thought-1', title: '分析', description: '用现有上下文判断。' }],
       cognitionTargetMessageId: 'assistant-1',
       cognitionExpanded: false,
-      cognitionDurationLabel: '约 2 秒',
       cognitionCountLabel: '1 条推理'
     });
 

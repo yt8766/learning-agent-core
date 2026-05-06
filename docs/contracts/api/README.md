@@ -28,7 +28,6 @@
 - Execution Fabric API：[execution-fabric.md](/docs/contracts/api/execution-fabric.md)；`/api/execution/*` 是 planned governance / projection endpoint，当前真实工具执行入口仍是 `/api/agent-tools/*`。
 - Task Trajectory API：[task-trajectory.md](/docs/contracts/api/task-trajectory.md)
 - Agent Workspace API：[agent-workspace.md](/docs/contracts/api/agent-workspace.md)；`/api/platform/workspace-center` 是 Workspace Vault + Skill Flywheel MVP projection endpoint，覆盖 workspace summary 和 skill draft list / approve / reject。
-- Agent Gateway API：[agent-gateway.md](/docs/contracts/api/agent-gateway.md)；Agent Gateway Console 契约，已落 `@agent/core` schema、双 token auth、Provider/Auth File/Quota/Logs/Usage/Probe、token / preprocess / accounting 后端入口与独立中转前端骨架，真实 relay、OAuth 写链路与持久化配置仍按契约扩展。
 
 ## 阅读顺序
 
@@ -48,10 +47,9 @@
 14. [execution-fabric.md](/docs/contracts/api/execution-fabric.md)
 15. [task-trajectory.md](/docs/contracts/api/task-trajectory.md)
 16. [agent-workspace.md](/docs/contracts/api/agent-workspace.md)
-17. [agent-gateway.md](/docs/contracts/api/agent-gateway.md)
-18. [tool-execution.md](/docs/contracts/api/tool-execution.md)
-19. [sandbox.md](/docs/contracts/api/sandbox.md)
-20. [auto-review.md](/docs/contracts/api/auto-review.md)
+17. [tool-execution.md](/docs/contracts/api/tool-execution.md)
+18. [sandbox.md](/docs/contracts/api/sandbox.md)
+19. [auto-review.md](/docs/contracts/api/auto-review.md)
 
 ## 工具执行治理 API 关系
 
@@ -91,10 +89,10 @@
 - `agent-chat-runtime-v2.md`：下一代会话化 Agent 执行协议，规定 `ChatRunRecord`、`ChatMessageFragment`、`ChatViewStreamEvent`、自动审查与自然语言确认；当前已有核心 schema 与最小前后端链路落地，后续扩展必须先以本文为准。
 - `chat-data-model.md`：`agent-chat` 前后端交互的完整数据模型契约，含前后端不一致清单与类型来源速查。
 - `agent-admin.md`：`apps/frontend/agent-admin` 的控制台聚合入口和刷新语义。
-- `auth.md`：`agent-server` Identity domain 的统一登录、用户管理、JWT 双 Token 与权限边界契约；`/api/auth/*` 只作 legacy alias。
+- `auth.md`：独立 `auth-server` 的统一登录、用户管理、JWT 双 Token 与权限边界契约。
 - `admin-auth.md`：`agent-server` 历史 admin auth 兼容契约；新增统一登录优先读 `auth.md`。
 - `runtime.md`：Runtime Center 查询、导出与筛选契约。
-- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、legacy internal `apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约；`/api/knowledge/v1/*` 只作 legacy alias。
+- `knowledge.md`：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、迁移期 `apps/backend/agent-server/src/knowledge` 与 `packages/knowledge/client` 的 Knowledge App MVP API 契约。
 - `knowledge-ingestion.md`：规范化 source payload 写入统一 source/chunk/receipt snapshot 与 vector 边界的 ingestion 契约。
 - `knowledge-admin-governance.md`：`apps/frontend/agent-admin` 消费的知识治理 projection 契约；入口为 `/api/platform/knowledge/governance`，只返回脱敏后的 `KnowledgeGovernanceProjection`。
 - `approvals.md`：Approvals Center、聊天审批动作、恢复与 interrupt 兼容契约。
@@ -105,4 +103,3 @@
 - `execution-fabric.md`：执行节点、能力、策略判定、执行请求与结果投影契约；引用 `@agent/core` canonical schemas，不重复定义字段。
 - `task-trajectory.md`：任务轨迹、轨迹步骤、轨迹产物与 replay 状态投影契约；引用 `@agent/core` canonical schemas，不重复定义字段。
 - `agent-workspace.md`：Workspace current / summary、task learning summary projection 与 skill draft list / detail / approve / reject 契约；MVP 不包含 Heartbeat、Gateway、Memory CRUD、Rule CRUD 或 skill install。
-- `agent-gateway.md`：Agent Gateway Console API 契约；从 CLI Proxy 管理中心参考项目提炼 Provider、Auth File、Quota、Logs、OAuth、Config、API Probe 与 invocation pipeline 领域模型，当前第一阶段实现已落 schema-first contract 和中转入口。

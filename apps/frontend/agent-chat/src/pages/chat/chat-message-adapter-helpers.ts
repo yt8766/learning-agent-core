@@ -1,4 +1,4 @@
-import type { ChatMessageRecord } from '@/types/chat';
+import type { ChatCheckpointRecord, ChatMessageRecord, ChatThoughtChainItem } from '@/types/chat';
 import { PENDING_ASSISTANT_PREFIX } from '@/hooks/chat-session/chat-session-formatters';
 
 const PROGRESS_STREAM_MESSAGE_PREFIX = 'progress_stream_';
@@ -346,7 +346,16 @@ export interface ParsedAssistantThinkingContent {
 const THINK_BLOCK_PATTERN = /<think>([\s\S]*?)<\/think>/gi;
 const OPEN_THINK_PATTERN = /<think>/i;
 
+const thinkParseCache = new Map<string, ParsedAssistantThinkingContent>();
+const MAX_THINK_PARSE_CACHE_SIZE = 200;
+
 export function parseAssistantThinkingContent(content: string, streaming: boolean): ParsedAssistantThinkingContent {
+  const cacheKey = `${streaming ? 1 : 0}:${content}`;
+  const cached = thinkParseCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const thinkBlocks = Array.from(content.matchAll(THINK_BLOCK_PATTERN), match => match[1]?.trim() ?? '').filter(
     Boolean
   );
@@ -355,24 +364,38 @@ export function parseAssistantThinkingContent(content: string, streaming: boolea
   const hasMalformedThink = Boolean(openMatch);
 
   if (!openMatch) {
-    return {
+    const result: ParsedAssistantThinkingContent = {
       visibleContent: withoutClosedBlocks,
       thinkContent: thinkBlocks.join('\n\n'),
       thinkingState: thinkBlocks.length ? 'completed' : 'none',
       hasMalformedThink: false
     };
+    setThinkParseCache(cacheKey, result);
+    return result;
   }
 
   const visibleContent = withoutClosedBlocks.slice(0, openMatch.index).trimEnd();
   const unfinishedThink = withoutClosedBlocks.slice((openMatch.index ?? 0) + '<think>'.length).trim();
   const thinkContent = [...thinkBlocks, unfinishedThink].filter(Boolean).join('\n\n');
 
-  return {
+  const result: ParsedAssistantThinkingContent = {
     visibleContent,
     thinkContent,
     thinkingState: streaming ? 'streaming' : thinkContent ? 'completed' : 'none',
     hasMalformedThink
   };
+  setThinkParseCache(cacheKey, result);
+  return result;
+}
+
+function setThinkParseCache(key: string, value: ParsedAssistantThinkingContent) {
+  if (thinkParseCache.size >= MAX_THINK_PARSE_CACHE_SIZE) {
+    const firstKey = thinkParseCache.keys().next().value;
+    if (firstKey !== undefined) {
+      thinkParseCache.delete(firstKey);
+    }
+  }
+  thinkParseCache.set(key, value);
 }
 
 /** Strip <think>…</think> reasoning blocks from model output before display. */
@@ -383,4 +406,79 @@ export function stripThinkTags(content: string) {
 /** Extract the combined text of all <think>…</think> blocks in model output. */
 export function extractThinkBlocks(content: string): string {
   return parseAssistantThinkingContent(content, false).thinkContent;
+}
+
+function isDirectReplyCheckpoint(checkpoint: ChatCheckpointRecord | undefined): boolean {
+  return checkpoint?.chatRoute?.flow === 'direct-reply';
+}
+
+const MAX_COGNITION_MS = 30 * 60 * 1000;
+
+export function buildCognitionDurationLabel(
+  checkpoint: ChatCheckpointRecord | undefined,
+  thoughtChain: ChatThoughtChainItem[] | undefined,
+  thinkingNow: number
+) {
+  const directReply = isDirectReplyCheckpoint(checkpoint);
+
+  const durationMs = directReply
+    ? typeof checkpoint?.thinkState?.thinkingDurationMs === 'number'
+      ? checkpoint.thinkState.thinkingDurationMs
+      : undefined
+    : (checkpoint?.thinkState?.thinkingDurationMs ??
+      thoughtChain?.find(item => typeof item.thinkingDurationMs === 'number')?.thinkingDurationMs);
+
+  if (checkpoint?.thinkState?.loading) {
+    const extraMs = Math.max(0, thinkingNow - new Date(checkpoint.updatedAt).getTime());
+    const staleMs = typeof durationMs === 'number' && durationMs <= MAX_COGNITION_MS ? durationMs : 0;
+    const totalMs = Math.min(staleMs + extraMs, MAX_COGNITION_MS);
+    const seconds = Math.max(1, Math.round(totalMs / 1000));
+    return `${seconds}s`;
+  }
+
+  if (typeof durationMs === 'number') {
+    if (durationMs > MAX_COGNITION_MS) {
+      return '较长';
+    }
+    const seconds = Math.max(1, Math.round(durationMs / 1000));
+    if (seconds >= 120) {
+      const minutes = Math.floor(seconds / 60);
+      const rem = seconds % 60;
+      return `约 ${minutes} 分 ${rem} 秒`;
+    }
+    return `约 ${seconds} 秒`;
+  }
+
+  if (!directReply && checkpoint?.createdAt && checkpoint?.updatedAt) {
+    const fallbackMs = new Date(checkpoint.updatedAt).getTime() - new Date(checkpoint.createdAt).getTime();
+    if (fallbackMs > 0 && fallbackMs <= MAX_COGNITION_MS) {
+      const seconds = Math.max(1, Math.round(fallbackMs / 1000));
+      return seconds >= 120 ? `约 ${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒` : `约 ${seconds} 秒`;
+    }
+    if (fallbackMs > MAX_COGNITION_MS) {
+      return '较长';
+    }
+  }
+
+  return '';
+}
+
+/** 用于单条消息的持久化 cognition 快照耗时展示（checkpoint 不可用时的等价逻辑） */
+export function formatCognitionDurationLabelFromMs(durationMs?: number): string {
+  if (typeof durationMs !== 'number') {
+    return '';
+  }
+
+  if (durationMs > MAX_COGNITION_MS) {
+    return '较长';
+  }
+
+  const seconds = Math.max(1, Math.round(durationMs / 1000));
+  if (seconds >= 120) {
+    const minutes = Math.floor(seconds / 60);
+    const rem = seconds % 60;
+    return `约 ${minutes} 分 ${rem} 秒`;
+  }
+
+  return `约 ${seconds} 秒`;
 }

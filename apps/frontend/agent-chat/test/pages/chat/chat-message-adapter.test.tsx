@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import { buildBubbleItems, buildMainThreadMessages } from '@/pages/chat/chat-message-adapter';
-import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
 import type { ChatMessageRecord, ChatThinkState } from '@/types/chat';
 
 vi.mock('@ant-design/x-markdown', () => ({
@@ -555,12 +555,11 @@ describe('chat-message-adapter cognition rendering', () => {
       messages,
       activeStatus: 'completed',
       onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionDurationLabel: '2 秒'
+      getAgentLabel: role => role ?? 'agent'
     });
     const html = renderToStaticMarkup(<>{items[0]?.content}</>);
 
-    expect(html).toContain('已思考（用时 2 秒）');
+    expect(html).toContain('已思考');
     expect(html).toContain('需要解释镜像和容器的区别。');
     expect(html).toContain('镜像是模板，容器是运行实例。');
     expect(html).not.toContain('<think>');
@@ -581,18 +580,16 @@ describe('chat-message-adapter cognition rendering', () => {
       messages,
       activeStatus: 'completed',
       onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionDurationLabel: '约 2 秒'
+      getAgentLabel: role => role ?? 'agent'
     });
     const html = renderToStaticMarkup(<>{items[0]?.content}</>);
 
     expect(html).toContain('chatx-thinking-panel');
-    expect(html).toContain('已思考（用时约 2 秒）');
+    expect(html).toContain('已思考');
     expect(html).toContain('推理');
     expect(html).toContain('正文');
     expect(html).not.toContain('chatx-inline-think__toggle');
     expect(html).not.toContain('正在整理推理过程');
-    expect(html).not.toContain('用时 约 2 秒');
   });
 
   it('renders escaped assistant think content in the panel without leaking escaped tags', () => {
@@ -664,7 +661,6 @@ describe('chat-message-adapter cognition rendering', () => {
       getAgentLabel: role => role ?? 'agent',
       cognitionTargetMessageId: 'assistant_1',
       cognitionExpanded: true,
-      cognitionDurationLabel: '约 2 秒',
       cognitionCountLabel: '1 条推理',
       thinkState: {
         messageId: 'assistant_1',
@@ -702,7 +698,6 @@ describe('chat-message-adapter cognition rendering', () => {
       getAgentLabel: role => role ?? 'agent',
       cognitionTargetMessageId: 'assistant_1',
       cognitionExpanded: false,
-      cognitionDurationLabel: '约 2 秒',
       cognitionCountLabel: '1 条推理',
       thinkState: {
         messageId: 'assistant_1',
@@ -742,7 +737,6 @@ describe('chat-message-adapter cognition rendering', () => {
       getAgentLabel: role => role ?? 'agent',
       cognitionTargetMessageId: 'assistant_1',
       cognitionExpanded: false,
-      cognitionDurationLabel: '约 2 秒',
       cognitionCountLabel: '1 条推理',
       thinkState: {
         messageId: 'assistant_1',
@@ -830,8 +824,7 @@ describe('chat-message-adapter cognition rendering', () => {
       messages,
       activeStatus: 'completed',
       onCopy: () => undefined,
-      getAgentLabel: role => role ?? 'agent',
-      cognitionDurationLabel: '2 秒'
+      getAgentLabel: role => role ?? 'agent'
     });
     const container = miniDocument.createElement('div');
     miniDocument.body.appendChild(container);
@@ -905,7 +898,6 @@ describe('chat-message-adapter cognition rendering', () => {
       thoughtItems: [],
       cognitionTargetMessageId: thinkState.messageId,
       cognitionExpanded: true,
-      cognitionDurationLabel: '2s',
       cognitionCountLabel: '1 条推理'
     });
 

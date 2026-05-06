@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { ChatViewStreamEvent } from '@agent/core';
 
@@ -19,10 +19,6 @@ export class ChatViewStreamController {
     @Query('afterSeq') afterSeq?: string
   ): void {
     const parsedAfterSeq = parseAfterSeq(afterSeq);
-    if (!sessionId || !runId) {
-      throw new BadRequestException('sessionId and runId are required');
-    }
-    const historicalEvents = this.chatViewStreamService.listEvents(sessionId, runId, parsedAfterSeq);
     const sseResponse = response as SseResponse;
     sseResponse.setHeader('Content-Type', 'text/event-stream');
     sseResponse.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -31,6 +27,7 @@ export class ChatViewStreamController {
     sseResponse.flushHeaders?.();
     sseResponse.write(': view-stream-open\n\n');
 
+    const historicalEvents = this.chatViewStreamService.listEvents(sessionId, runId, parsedAfterSeq);
     for (const event of historicalEvents) {
       writeViewEvent(sseResponse, event);
     }

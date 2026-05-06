@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.setConfig({ testTimeout: 20_000 });
-
 type EffectSlot = {
   deps?: unknown[];
   callback: () => void | (() => void);

@@ -27,7 +27,7 @@
 - 前线聊天不再暴露“快速模式 / 专家模式”入口；普通消息默认按直接发送处理，需要计划语义时由“深度思考”等能力 chip 显式触发
 - Inline Agent OS / 响应步骤里来自工具完成的 `outputPreview`（如文件已读、目录已列）是**成功摘要**，不是报错；英文 “Read … / Listed …” 类日志已收敛为中文说明，避免被误认为异常堆栈
 - 侧栏会话菜单提供手动重命名；手动重命名会把 `ChatSessionRecord.titleSource` 置为 `manual`，后续 runtime 不得再用大模型摘要标题覆盖。未手动命名的新会话标题由 runtime 基于首条用户消息调用大模型生成摘要标题，失败时才使用本地短标题兜底
-- Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示 AI 正文、审批卡、来源卡和 inline Agent OS response steps
+- Workspace / learning / reuse / skill draft 详情应留在高级 workbench；主聊天消息流只展示 AI 正文、来源卡和 inline Agent OS response steps。Chat Runtime v2 的工具审批主路径为聊天内自然语言确认，不再新增审批卡。
 - Workspace Center projection 只允许在 chat 侧作为只读 readiness 摘要消费；不要在 `agent-chat` 中新增 Skill Draft 审批、安装或治理动作
 - 运行时代码导入 `@agent/*` workspace 包时，必须在 `apps/frontend/agent-chat/package.json` 显式声明对应 `workspace:*` 依赖；`tsconfig.app.json` 的 `paths` 只服务 TypeScript，不足以保证 Vite dev server 的 import-analysis 解析
 - 本地 dev 默认通过同源 `/api` 调用后端，并由 Vite proxy 转发到 `http://localhost:3000`；如需指向其他后端，优先设置 `VITE_API_PROXY_TARGET`，只有明确跨源联调时才设置 `VITE_API_BASE_URL`
@@ -44,7 +44,7 @@
 - `src/features/chat`、`src/features/chat-thread`
   - 聊天发送、消息流、会话主链路
 - `src/features/approvals`
-  - 审批卡片、审批动作与恢复入口
+  - 历史审批卡片兼容、自然语言审批动作与恢复入口
 - `src/features/event-timeline`
   - 认知块 / 事件时间线展示（自定义 `CognitionThoughtLog`）
 - `src/features/runtime-panel`

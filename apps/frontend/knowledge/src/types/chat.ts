@@ -92,6 +92,8 @@ export interface ChatRequest {
       id?: ID;
       label?: string;
     }>;
+    reasoningMode?: 'standard' | 'deep';
+    webSearchMode?: 'off' | 'allowed';
     debug?: boolean;
   };
   stream?: boolean;

@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
 import { buildBubbleItems } from '@/pages/chat/chat-message-adapter';
 import type { ChatMessageRecord } from '@/types/chat';
 

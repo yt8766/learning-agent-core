@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 
-import { PermissionGuard } from '../infrastructure/auth/guards/permission.guard';
 import { RuntimeModule } from '../runtime/runtime.module';
 import { RuntimeKnowledgeGovernanceService } from '../runtime/services/runtime-knowledge-governance.service';
 import { ApprovalsCenterController } from './approvals-center.controller';
@@ -37,12 +35,6 @@ import { WorkspaceCenterController } from './workspace-center.controller';
     PlatformDiagnosticsController,
     WorkspaceCenterController
   ],
-  providers: [
-    RuntimeKnowledgeGovernanceService,
-    {
-      provide: APP_GUARD,
-      useClass: PermissionGuard
-    }
-  ]
+  providers: [RuntimeKnowledgeGovernanceService]
 })
 export class PlatformModule {}
