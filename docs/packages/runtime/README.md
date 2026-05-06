@@ -34,6 +34,7 @@
   - 当前仍存在对 `agents/*` 的编排依赖，后续应继续向 contract / registry 方向收敛
 - 公开入口：
   - 根入口：`@agent/runtime`
+  - `package.json` 的 `types` / conditional export types 指向 `build/types/runtime/src/index.d.ts`，该声明文件由 `pnpm --dir packages/runtime build:types` 生成。`packages/runtime` 的 `turbo:test:unit` 会先执行 `build:types` 再跑 unit tests，因为 `turbo-typecheck-manifests.test.ts` 会在干净 CI 环境中校验这些 package type exports 是否指向真实声明产物。
 
 与 `apps/backend/agent-server/src/runtime` 的边界：
 
