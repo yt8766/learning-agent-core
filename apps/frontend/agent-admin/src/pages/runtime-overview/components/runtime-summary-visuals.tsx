@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DashboardEmptyState } from '@/components/dashboard-center-shell';
-import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/utils/runtime-semantics';
 
 import type { RuntimeSummarySectionProps } from './runtime-summary-types';
 import { RuntimeKnowledgeSummaryCard } from './runtime-knowledge-summary-card';

@@ -149,6 +149,8 @@
 ## 5. 交叉引用
 
 - 前端特有约定（Hooks、useEffect、组件规范、路径别名等）→ [前端规范](/docs/conventions/frontend-conventions.md)
+- React / Next.js 编写、审查与重构必须使用的性能规范 →
+  [vercel-react-best-practices](/.agents/skills/vercel-react-best-practices/SKILL.md)
 - 后端特有约定（controller/service 职责、HTTP 装配等）→ [后端规范](/docs/conventions/backend-conventions.md)
 - 样式约定（Tailwind / Sass 分层）→ [样式规范](/docs/conventions/styling-conventions.md)
 - 测试约定 → [测试规范](/docs/conventions/test-conventions.md)

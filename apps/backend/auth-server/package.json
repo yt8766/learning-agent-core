@@ -9,6 +9,7 @@
     "start": "nest start",
     "prestart:dev": "pnpm --dir ../../.. build:lib",
     "start:dev": "nest start --watch",
+    "dev:backend": "nest start --watch",
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "turbo:typecheck": "pnpm typecheck",

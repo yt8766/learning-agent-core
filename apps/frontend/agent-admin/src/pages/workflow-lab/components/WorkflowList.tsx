@@ -1,6 +1,6 @@
 import { Play } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 import type { WorkflowDefinition } from '../registry/workflow.registry';
 

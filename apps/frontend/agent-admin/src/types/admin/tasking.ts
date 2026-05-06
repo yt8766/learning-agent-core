@@ -13,6 +13,7 @@ export type DashboardPageKey =
   | 'connectors'
   | 'skillSources'
   | 'companyAgents'
+  | 'knowledgeGovernance'
   | 'memory'
   | 'profiles'
   | 'workflowLab';

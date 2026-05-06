@@ -37,6 +37,8 @@ describe('agent chat runtime bridge', () => {
     });
     expect(buildAgentChatConversationKey('session-42')).toBe('session:session-42');
     expect(parseAgentChatConversationKey('session:session-42')).toBe('session-42');
+    expect(parseAgentChatConversationKey('draft:session-42')).toBeUndefined();
+    expect(parseAgentChatConversationKey('session-42')).toBeUndefined();
     expect(parseAgentChatConversationKey('')).toBeUndefined();
   });
 
@@ -83,8 +85,11 @@ describe('agent chat runtime bridge', () => {
 
     const actions = createAgentChatActions({ api });
     const conversations = await actions.listConversations();
-    const selected = await actions.ensureSession(buildAgentChatConversationKey(existingSession.id), '忽略这句');
-    const created = await actions.ensureSession('', '生成部署计划');
+    const selected = await actions.ensureSession(
+      parseAgentChatConversationKey(buildAgentChatConversationKey(existingSession.id)),
+      '忽略这句'
+    );
+    const created = await actions.ensureSession(undefined, '生成部署计划');
     const listedMessages = await actions.listMessages(existingSession.id);
     const listedEvents = await actions.listEvents(existingSession.id);
     const loadedCheckpoint = await actions.getCheckpoint(existingSession.id);
@@ -115,6 +120,7 @@ describe('agent chat runtime bridge', () => {
   it('starts a follow-up stream, submits the user turn, and folds assistant text plus runtime meta into patch callbacks', async () => {
     const session = createSession({ id: 'session-stream', title: '部署计划', status: 'running' });
     const stream = {} as EventSource;
+    const callOrder: string[] = [];
     const events: ChatEventRecord[] = [
       {
         id: 'evt-1',
@@ -150,7 +156,10 @@ describe('agent chat runtime bridge', () => {
       content: '生成部署计划',
       createdAt: '2026-05-04T10:00:00.500Z'
     });
-    const createSessionStream = vi.fn().mockReturnValue(stream);
+    const createSessionStream = vi.fn().mockImplementation(() => {
+      callOrder.push('stream');
+      return stream;
+    });
     const bindStream = vi.fn(
       (_: EventSource, handlers: { onEvent: (event: ChatEventRecord) => void; onDone: () => void }) => {
         for (const event of events) {
@@ -177,7 +186,7 @@ describe('agent chat runtime bridge', () => {
     await provider.sendMessage(
       {
         conversationKey: buildAgentChatConversationKey(session.id),
-        messages: [{ role: 'user', content: '生成部署计划' }]
+        messages: [{ role: 'user', content: '生成部署计划', modelId: 'claude-opus-4' }]
       },
       {
         onAssistantPlaceholder: info => {
@@ -194,11 +203,15 @@ describe('agent chat runtime bridge', () => {
       }
     );
 
-    expect(ensureSession).toHaveBeenCalledWith('session:session-stream', '生成部署计划');
-    expect(appendMessage).toHaveBeenCalledWith('session-stream', '生成部署计划');
+    expect(ensureSession).toHaveBeenCalledWith('session-stream', '生成部署计划');
+    expect(appendMessage).toHaveBeenCalledWith('session-stream', '生成部署计划', {
+      modelId: 'claude-opus-4'
+    });
     expect(createSessionStream).toHaveBeenCalledWith('session-stream');
     expect(bindStream).toHaveBeenCalledTimes(1);
     expect(placeholderSessionId).toBe('session-stream');
+    expect(callOrder).toEqual(['stream']);
+    expect(appendMessage.mock.invocationCallOrder[0]).toBeLessThan(createSessionStream.mock.invocationCallOrder[0]);
     expect(chunks).toEqual([
       {
         content: '先整理部署目标。',
@@ -241,8 +254,33 @@ describe('agent chat runtime bridge', () => {
       }
     );
 
-    expect(ensureSession).toHaveBeenCalledWith('', '第一次发起会话');
+    expect(ensureSession).toHaveBeenCalledWith(undefined, '第一次发起会话');
     expect(appendMessage).not.toHaveBeenCalled();
     expect(createSessionStream).toHaveBeenCalledWith('session-created');
+  });
+
+  it('closes the active stream when the x-request aborts', async () => {
+    const session = createSession({ id: 'session-abort', title: '停止流', status: 'running' });
+    const close = vi.fn();
+    const stream = { close } as unknown as EventSource;
+    const createSessionStream = vi.fn().mockReturnValue(stream);
+    const provider = createAgentChatProvider({
+      appendMessage: vi.fn().mockResolvedValue(undefined),
+      ensureSession: vi.fn().mockResolvedValue(session),
+      createSessionStream,
+      bindStream: vi.fn()
+    });
+
+    (provider as unknown as { _request: { run: (input: unknown) => void; abort: () => void } })._request.run({
+      conversationKey: buildAgentChatConversationKey(session.id),
+      messages: [{ role: 'user', content: '停止当前流' }]
+    });
+    await vi.waitFor(() => {
+      expect(createSessionStream).toHaveBeenCalledWith('session-abort');
+    });
+
+    (provider as unknown as { _request: { abort: () => void } })._request.abort();
+
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

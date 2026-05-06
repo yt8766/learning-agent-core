@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Circle, Clock3, LoaderCircle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 import type { RunStatus, StreamNodeEvent } from '../hooks/useWorkflowStream';
 import type { WorkflowDefinition, WorkflowGraphNodeDef } from '../registry/workflow.registry';

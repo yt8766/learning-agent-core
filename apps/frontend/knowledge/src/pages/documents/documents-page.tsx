@@ -11,16 +11,17 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
   type TableProps
 } from 'antd';
-import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 
 import { useKnowledgeApi } from '../../api/knowledge-api-provider';
 import { useKnowledgeDashboard } from '../../hooks/use-knowledge-dashboard';
 import { useKnowledgeDocuments } from '../../hooks/use-knowledge-documents';
 import { useDocumentUpload } from '../../hooks/use-document-upload';
 import type { EmbeddingModelOption, KnowledgeBase, KnowledgeDocument } from '../../types/api';
-import { PageSection } from '../shared/ui';
+import { LifecycleRail, MetricStrip, RagOpsPage, type LifecycleStep, type RagOpsMetric } from '../shared/ui';
 
 function createColumns(
   onReprocess: (documentId: string) => void,
@@ -108,6 +109,63 @@ export function DocumentsPage() {
   });
   const uploadBusy = upload.status === 'uploading' || upload.status === 'creating' || upload.status === 'polling';
   const previewDocument = documents[0];
+  const documentMetrics = useMemo<RagOpsMetric[]>(
+    () => [
+      { key: 'total', label: '文档', status: 'muted', value: documents.length },
+      {
+        key: 'ready',
+        label: 'Ready',
+        status: 'healthy',
+        value: documents.filter(item => item.status === 'ready').length
+      },
+      {
+        key: 'running',
+        label: '处理中',
+        status: 'running',
+        value: documents.filter(item => item.status !== 'ready' && item.status !== 'failed').length
+      },
+      {
+        key: 'failed',
+        label: 'Failed',
+        status: documents.some(item => item.status === 'failed') ? 'critical' : 'muted',
+        value: documents.filter(item => item.status === 'failed').length
+      }
+    ],
+    [documents]
+  );
+  const pipelineSteps = useMemo<LifecycleStep[]>(
+    () => [
+      {
+        description: '接收 Markdown/TXT 上传并绑定目标知识空间。',
+        key: 'upload',
+        metric: selectedKnowledgeBaseId ? '目标空间已选择' : '等待选择知识空间',
+        status: selectedKnowledgeBaseId ? 'healthy' : 'warning',
+        title: '上传'
+      },
+      {
+        description: '解析正文、抽取元数据并落入可审查的清洗结果。',
+        key: 'parse',
+        metric: `${documents.filter(item => item.status !== 'failed').length} 篇可处理`,
+        status: 'running',
+        title: '解析'
+      },
+      {
+        description: '生成稳定 chunk 边界，避免低质量片段进入检索上下文。',
+        key: 'chunk',
+        metric: `${documents.reduce((total, item) => total + item.chunkCount, 0)} chunks`,
+        status: 'running',
+        title: '切片'
+      },
+      {
+        description: 'Embedding、关键词索引与向量索引完成后才进入可检索状态。',
+        key: 'index',
+        metric: `${documents.reduce((total, item) => total + item.embeddedChunkCount, 0)} 已向量化`,
+        status: documents.some(item => item.status === 'failed') ? 'warning' : 'healthy',
+        title: '索引'
+      }
+    ],
+    [documents, selectedKnowledgeBaseId]
+  );
   const knowledgeBaseOptions = useMemo(
     () => knowledgeBases.map(item => ({ label: item.name, value: item.id })),
     [knowledgeBases]
@@ -163,8 +221,7 @@ export function DocumentsPage() {
     };
   }, [api]);
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
+  function handleUploadFile(file: File) {
     if (!file) {
       return;
     }
@@ -177,11 +234,18 @@ export function DocumentsPage() {
         void reload();
       }
     });
+  }
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (file) {
+      handleUploadFile(file);
+    }
     event.currentTarget.value = '';
   }
 
   return (
-    <PageSection
+    <RagOpsPage
       extra={
         <>
           <input
@@ -202,9 +266,14 @@ export function DocumentsPage() {
           </Button>
         </>
       }
-      subTitle="文档入库、分块、向量化与检索片段预览"
-      title="文档"
+      eyebrow="Ingestion Pipeline"
+      subTitle="管理文档上传、解析、切片、embedding、索引与失败恢复。"
+      title="摄取管线"
     >
+      <MetricStrip metrics={documentMetrics} />
+      <Card className="rag-ops-panel" title="摄取生命周期">
+        <LifecycleRail steps={pipelineSteps} />
+      </Card>
       {error ? <Typography.Text type="danger">{error.message}</Typography.Text> : null}
       {knowledgeBasesError ? <Typography.Text type="danger">{knowledgeBasesError.message}</Typography.Text> : null}
       {embeddingModelsError ? <Typography.Text type="danger">{embeddingModelsError.message}</Typography.Text> : null}
@@ -213,7 +282,7 @@ export function DocumentsPage() {
       ) : null}
       {upload.error ? <Typography.Text type="danger">{upload.error.message}</Typography.Text> : null}
       <Modal footer={null} onCancel={() => setUploadModalOpen(false)} open={uploadModalOpen} title="上传文档">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           <Select
             aria-label="选择目标知识库"
             disabled={knowledgeBasesLoading}
@@ -234,6 +303,24 @@ export function DocumentsPage() {
             style={{ width: '100%' }}
             value={selectedEmbeddingModelId}
           />
+          <Upload.Dragger
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            beforeUpload={file => {
+              handleUploadFile(file);
+              return false;
+            }}
+            className="knowledge-document-upload-dragger"
+            disabled={!selectedKnowledgeBaseId || !selectedEmbeddingModelId || uploadBusy}
+            maxCount={1}
+            multiple={false}
+            showUploadList={false}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">拖拽 Markdown/TXT 到此处</p>
+            <p className="ant-upload-hint">文件会先上传到后端，再创建文档入库任务。</p>
+          </Upload.Dragger>
           <Button
             disabled={!selectedKnowledgeBaseId || !selectedEmbeddingModelId}
             icon={<UploadOutlined />}
@@ -256,7 +343,7 @@ export function DocumentsPage() {
         </Space>
       </Modal>
       {loading ? <Spin /> : null}
-      <Card>
+      <Card className="rag-ops-table-card" title="处理队列">
         <Table<KnowledgeDocument>
           columns={columns}
           dataSource={documents}
@@ -265,14 +352,14 @@ export function DocumentsPage() {
           rowKey="id"
         />
       </Card>
-      <Card title="命中片段预览">
+      <Card className="rag-ops-panel" title="命中片段预览">
         <Typography.Paragraph>
           {previewDocument
             ? `${previewDocument.title} · ${previewDocument.status} · ${previewDocument.chunkCount} chunks`
             : '暂无文档片段'}
         </Typography.Paragraph>
       </Card>
-    </PageSection>
+    </RagOpsPage>
   );
 }
 

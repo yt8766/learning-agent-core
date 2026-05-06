@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardCenterShell } from '@/components/dashboard-center-shell';
 
 import type { EvalsCenterRecord, RuntimeCenterRecord } from '@/types/admin';
-import { getExecutionModeDisplayName } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName } from '@/utils/runtime-semantics';
 
 interface ArchiveCenterPanelProps {
   runtime: RuntimeCenterRecord;

@@ -22,7 +22,7 @@ import {
   listAgentToolEvents,
   listAgentToolNodes,
   resumeAgentToolApproval
-} from '../../src/lib/agent-tool-execution-api';
+} from '../../src/utils/agent-tool-execution-api';
 
 describe('agent tool execution API helpers', () => {
   it('builds endpoint URLs with encoded path and query values', () => {

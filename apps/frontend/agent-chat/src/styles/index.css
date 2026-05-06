@@ -1,6 +1,17 @@
-﻿@import 'antd/dist/reset.css';
+﻿:root {
+  --color-chat-canvas: #f8fafc;
+  --color-chat-elevated: rgba(255, 255, 255, 0.86);
+  --color-chat-sidebar: #0f172a;
+  --color-chat-border: #e2e8f0;
+  --color-chat-ink: #0f172a;
+  --color-chat-ink-muted: #64748b;
+  --color-chat-accent: #6366f1;
+  --color-chat-accent-soft: #e0e7ff;
+  --radius-chat-sm: 0.5rem;
+  --radius-chat: 1rem;
+  --shadow-chat-composer: 0 -12px 40px rgba(15, 23, 42, 0.08);
 
-:root {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -10,11 +21,12 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
+  overflow: hidden;
 }
 
 a {
@@ -25,6 +37,5 @@ a {
 :root,
 .ant-table-body {
   scrollbar-width: thin;
-  scrollbar-color: #eaeaea transparent;
-  scrollbar-gutter: stable;
+  scrollbar-color: rgba(99, 102, 241, 0.28) transparent;
 }

@@ -1,4 +1,4 @@
-import { getMainChainNodeLabel } from '@/lib/runtime-semantics';
+import { getMainChainNodeLabel } from '@/utils/runtime-semantics';
 
 export function getChainNodeLabel(node?: string) {
   switch (node) {

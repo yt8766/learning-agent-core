@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Legend as RechartsLegend, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export type ChartConfig = Record<
   string,

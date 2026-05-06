@@ -16,7 +16,7 @@ import { useParams } from 'react-router-dom';
 
 import { useDocumentDetail } from '../../hooks/use-document-detail';
 import type { DocumentChunk } from '../../types/api';
-import { PageSection } from '../shared/ui';
+import { MetricStrip, RagOpsPage, type RagOpsMetric } from '../shared/ui';
 
 const chunkColumns: TableProps<DocumentChunk>['columns'] = [
   { dataIndex: 'chunkIndex', title: '#' },
@@ -44,9 +44,20 @@ export function DocumentDetailPage() {
   const detail = useDocumentDetail(documentId);
   const document = detail.document;
   const objectKey = readObjectKey(document?.metadata);
+  const metrics: RagOpsMetric[] = [
+    { key: 'chunks', label: 'Chunks', status: 'muted', value: document?.chunkCount ?? 0 },
+    { key: 'embedded', label: '已向量化', status: 'healthy', value: document?.embeddedChunkCount ?? 0 },
+    {
+      key: 'progress',
+      label: '处理进度',
+      status: document?.status === 'failed' ? 'critical' : document?.status === 'ready' ? 'healthy' : 'running',
+      suffix: '%',
+      value: detail.job?.progress?.percent ?? (document?.status === 'ready' ? 100 : 0)
+    }
+  ];
 
   return (
-    <PageSection
+    <RagOpsPage
       extra={
         <Button
           disabled={!detail.reprocessAvailable || detail.loading}
@@ -58,11 +69,13 @@ export function DocumentDetailPage() {
           重新处理
         </Button>
       }
-      subTitle="文档处理状态、分块与索引结果"
+      eyebrow="Document Pipeline Detail"
+      subTitle="查看单篇文档的解析、切片、embedding、索引结果和失败恢复路径。"
       title={document?.title ?? '文档详情'}
     >
+      <MetricStrip metrics={metrics} />
       {detail.error ? <Typography.Text type="danger">{detail.error.message}</Typography.Text> : null}
-      <Card loading={detail.loading} title="文档元数据">
+      <Card className="rag-ops-panel" loading={detail.loading} title="文档元数据">
         <Descriptions bordered column={2} size="small">
           <Descriptions.Item label="文档 ID">{document?.id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="文件名">{document?.filename ?? '-'}</Descriptions.Item>
@@ -75,7 +88,7 @@ export function DocumentDetailPage() {
           </Descriptions.Item>
         </Descriptions>
       </Card>
-      <Card title="最新处理 Job">
+      <Card className="rag-ops-panel" title="最新处理 Job">
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
           <Space>
             <Tag>{detail.job?.status ?? '-'}</Tag>
@@ -110,7 +123,7 @@ export function DocumentDetailPage() {
           />
         </Space>
       </Card>
-      <Card title={`Chunks (${detail.totalChunks})`}>
+      <Card className="rag-ops-table-card" title={`Chunks (${detail.totalChunks})`}>
         <Table<DocumentChunk>
           columns={chunkColumns}
           dataSource={detail.chunks}
@@ -119,7 +132,7 @@ export function DocumentDetailPage() {
           rowKey="id"
         />
       </Card>
-    </PageSection>
+    </RagOpsPage>
   );
 }
 

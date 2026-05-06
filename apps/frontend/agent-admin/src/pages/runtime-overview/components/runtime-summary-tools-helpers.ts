@@ -1,5 +1,5 @@
 import type { RuntimeCenterRecord } from '@/types/admin';
-import { getExecutionModeDisplayName, getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName, getMinistryDisplayName, normalizeExecutionMode } from '@/utils/runtime-semantics';
 
 // activeInterrupt is the persisted 司礼监 / InterruptController projection for runtime-admin views.
 export type InterruptInteractionKind =

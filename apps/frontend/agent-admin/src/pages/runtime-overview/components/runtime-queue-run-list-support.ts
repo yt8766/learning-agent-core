@@ -2,7 +2,7 @@ import type { RunBundleRecord } from '@agent/core';
 
 import type { RuntimeCenterRecord } from '@/types/admin';
 import type { TaskRecord } from '@/types/admin/tasking';
-import { normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { normalizeExecutionMode } from '@/utils/runtime-semantics';
 
 type QueueExecutionModeFilter = 'all' | 'plan' | 'execute' | 'imperial_direct';
 type QueueInteractionKindFilter =

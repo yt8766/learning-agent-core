@@ -1,0 +1,308 @@
+/**
+ * 「Studio」产品壳：深色会话轨 + 冷色主画布 + 紫青高光。
+ * 与业务逻辑无关，仅覆盖会话侧栏与主舞台视觉；须在 chat-home-sidebar-brand 之后 @use。
+ */
+
+/* ---- 会话侧栏列：深色星云底 ---- */
+.chatx-agent-codex__sidebar {
+  position: relative;
+  isolation: isolate;
+  color: #e2e8f0;
+  border-right: 1px solid rgba(99, 102, 241, 0.22);
+  background:
+    radial-gradient(ellipse 140% 90% at 0% 0%, rgba(99, 102, 241, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(34, 211, 238, 0.12) 0%, transparent 50%),
+    linear-gradient(168deg, #070b14 0%, #0f172a 42%, #1e1033 100%);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.chatx-agent-codex__sidebar .chatx-brand__copy h2 {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.chatx-agent-codex__sidebar .chatx-brand-mark {
+  background:
+    radial-gradient(circle at 50% 50%, #ffffff 0 14%, transparent 16%),
+    linear-gradient(135deg, #6366f1 0%, #22d3ee 55%, #a855f7 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.2),
+    0 0 24px rgba(99, 102, 241, 0.45),
+    0 12px 28px rgba(15, 23, 42, 0.5);
+}
+
+.chatx-agent-codex__sidebar .chatx-brand__badge {
+  border-radius: 14px;
+  background: transparent;
+}
+
+.chatx-agent-codex__sidebar .chatx-brand__badge .chatx-brand-mark {
+  width: 100%;
+  height: 100%;
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar__toggle,
+.chatx-agent-codex__sidebar .chatx-sidebar-rail__button {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  backdrop-filter: blur(10px);
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar__toggle:hover,
+.chatx-agent-codex__sidebar .chatx-sidebar-rail__button:hover {
+  border-color: rgba(165, 180, 252, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+  transform: translateY(-1px);
+}
+
+.chatx-agent-codex__sidebar .chatx-new-chat {
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f5f9;
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.15),
+    0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+.chatx-agent-codex__sidebar .chatx-new-chat:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.chatx-agent-codex__sidebar .chatx-new-chat__icon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.5) 0%, rgba(34, 211, 238, 0.35) 100%);
+  color: #f8fafc;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-group__label {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item:hover,
+.chatx-agent-codex__sidebar .chatx-session-item.is-active {
+  background: rgba(99, 102, 241, 0.16);
+  box-shadow:
+    inset 0 0 0 1px rgba(165, 180, 252, 0.2),
+    inset 3px 0 0 #a5b4fc;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__title {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item.is-active .chatx-session-item__title {
+  color: #c7d2fe !important;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__status {
+  color: rgba(203, 213, 245, 0.75);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-trigger {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-trigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-panel {
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-action {
+  color: #e5e7eb;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-action:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-action--danger {
+  color: #fca5a5;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__status--pill {
+  background: rgba(30, 27, 75, 0.85);
+  color: #c4b5fd;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__status--pill span:first-child {
+  color: #e9d5ff;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__status--pill {
+  border: 1px solid rgba(129, 140, 248, 0.35);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__status--dot {
+  outline: none;
+}
+
+.chatx-agent-codex__sidebar .chatx-session-item__menu-action--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.chatx-agent-codex__sidebar .chatx-session-list {
+  scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+  }
+}
+
+.chatx-agent-codex__sidebar .chatx-session-list__empty {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar-rail {
+  background: transparent;
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar-rail__actions {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar__account-text {
+  color: #cbd5f5;
+}
+
+.chatx-agent-codex__sidebar .chatx-sidebar__avatar {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 90%);
+}
+
+.chatx-agent-codex__sidebar .chatx-account-menu__trigger:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chatx-agent-codex__sidebar .chatx-account-menu__panel {
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.chatx-agent-codex__sidebar .chatx-account-menu__item {
+  color: #e5e7eb;
+}
+
+.chatx-agent-codex__sidebar .chatx-account-menu__item:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.chatx-agent-codex__sidebar .chatx-account-menu__more {
+  color: #94a3b8 !important;
+}
+
+/* ---- 主舞台：亮色弥散渐变 ---- */
+.chatx-agent-codex__main.chatx-main-stage {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(99, 102, 241, 0.11) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 95% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 52%),
+    radial-gradient(ellipse 40% 45% at 5% 60%, rgba(168, 85, 247, 0.05) 0%, transparent 48%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 55%, #f1f5f9 100%);
+}
+
+.chatx-main-stage .chatx-conversation,
+.chatx-main-stage .chatx-empty-conversation {
+  background: transparent;
+}
+
+.chatx-main-stage .chatx-conversation__header h2.ant-typography {
+  color: #0f172a;
+  font-family: Syne, Fraunces, ui-serif, Georgia, serif !important;
+  font-weight: 700;
+}
+
+.chatx-main-stage .chatx-conversation__mode {
+  color: #475569;
+}
+
+.chatx-main-stage .chatx-conversation__composer {
+  border-top: none;
+  background: transparent;
+  box-shadow: none;
+  padding-bottom: clamp(14px, 3vh, 28px);
+}
+
+.chatx-main-stage .chatx-sender {
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.95) inset,
+    0 10px 40px rgba(15, 23, 42, 0.09),
+    0 28px 80px rgba(99, 102, 241, 0.06);
+  backdrop-filter: saturate(140%) blur(16px);
+}
+
+.chatx-main-stage .chatx-sender-chip:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.chatx-main-stage .chatx-sender-chip.is-active {
+  border-color: rgba(129, 140, 248, 0.55);
+  background: linear-gradient(135deg, rgba(238, 242, 255, 1) 0%, rgba(224, 231, 255, 0.92) 100%);
+  color: #4338ca;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+.chatx-main-stage .chatx-conversation__scroll-fab {
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  color: #4f46e5;
+  box-shadow: 0 8px 28px rgba(79, 70, 229, 0.2);
+}
+
+.chatx-main-stage .chatx-empty-conversation__title h1.ant-typography {
+  font-family: Syne, Fraunces, ui-serif, Georgia, serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+  font-size: clamp(2rem, 4vw, 3rem);
+  background: linear-gradient(90deg, #0f172a 0%, #4338ca 45%, #0891b2 100%);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.chatx-main-stage .chatx-empty-conversation__hero {
+  gap: clamp(20px, 4vh, 40px);
+}
+
+.chatx-empty-conversation__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vh, 18px);
+  text-align: center;
+}
+
+.chatx-empty-conversation__tagline {
+  margin: 0;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 800;
+  color: #818cf8;
+}
+
+.chatx-main-stage .chatx-empty-conversation__hint {
+  max-width: 36rem;
+  margin: 0;
+  padding: 0 clamp(14px, 4vw, 28px);
+  font-size: 15px;
+  line-height: 1.65;
+  color: #475569;
+}
+
+.chatx-main-stage .chatx-ai-disclaimer {
+  color: #64748b;
+}

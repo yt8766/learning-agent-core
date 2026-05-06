@@ -8,6 +8,7 @@ import {
   FlaskConical,
   FolderKanban,
   IdCard,
+  Network,
   Radar,
   SquareTerminal,
   Users,
@@ -44,6 +45,12 @@ export const NAV_ITEMS: Array<{
     label: '公司专员',
     description: '公司专员、归属六部、连接器依赖与治理状态',
     icon: Users
+  },
+  {
+    key: 'knowledgeGovernance',
+    label: '知识治理',
+    description: '知识库健康、来源、检索诊断、证据链与专员使用',
+    icon: Network
   },
   {
     key: 'workflowLab',

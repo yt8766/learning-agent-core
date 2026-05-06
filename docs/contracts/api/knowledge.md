@@ -136,6 +136,305 @@ Auth errors:
 
 前端必须在 access token 过期前 60 秒主动刷新；业务接口返回 `401 auth_token_expired` 时，必须 refresh 并重试原请求一次。多个并发请求同时触发刷新时，必须共享同一个 refresh promise。
 
+## 3.1 Workspace Users And Settings
+
+这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 `apps/backend/knowledge-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
+
+稳定 schema 落在 `packages/core/src/contracts/knowledge-service/knowledge-service.schemas.ts`，类型只能由 `z.infer<typeof Schema>` 推导。后端可以先返回稳定 fixture 或聚合现有 service，但必须返回项目自定义 projection，不得透传第三方 SDK 对象、provider 原始错误、secret、token 或内部 runtime 状态。
+
+### Workspace Users
+
+Purpose：驱动 `/users` 用户管理页的成员列表、搜索、分页和顶部统计卡；邀请接口用于创建待激活成员与邀请链接。
+
+```ts
+export type KnowledgeWorkspaceUserRole = 'admin' | 'editor' | 'viewer';
+export type KnowledgeWorkspaceUserStatus = 'active' | 'inactive' | 'pending';
+
+export interface KnowledgeWorkspaceUser {
+  id: ID;
+  name: string;
+  email: string;
+  role: KnowledgeWorkspaceUserRole;
+  status: KnowledgeWorkspaceUserStatus;
+  department?: string;
+  avatarUrl?: string;
+  kbAccessCount: number;
+  queryCount: number;
+  lastActiveAt: ISODateTime | null;
+}
+
+export interface KnowledgeWorkspaceUsersResponse {
+  items: KnowledgeWorkspaceUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: {
+    totalUsers: number;
+    activeUsers: number;
+    adminUsers: number;
+    pendingUsers: number;
+  };
+}
+
+export interface KnowledgeWorkspaceInvitationCreateRequest {
+  emails: string[];
+  role: KnowledgeWorkspaceUserRole;
+  department?: string;
+}
+
+export interface KnowledgeWorkspaceInvitationCreateResponse {
+  invitationIds: ID[];
+  invitedUsers: KnowledgeWorkspaceUser[];
+  inviteLink: string;
+  expiresAt: ISODateTime;
+}
+```
+
+| Method | Path                           | Query / Body                                                    | Response                                     | 主要错误码                                                | 权限         |
+| ------ | ------------------------------ | --------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------- | ------------ |
+| GET    | `/workspace/users`             | query: `page?: number`, `pageSize?: number`, `keyword?: string` | `KnowledgeWorkspaceUsersResponse`            | `auth_unauthorized`, `auth_forbidden`, `validation_error` | admin, owner |
+| POST   | `/workspace/users/invitations` | body: `KnowledgeWorkspaceInvitationCreateRequest`               | `KnowledgeWorkspaceInvitationCreateResponse` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | admin, owner |
+
+兼容策略：
+
+- `role` 和 `status` 只能追加枚举值，不能重命名既有值；前端遇到未知枚举必须展示为只读未知状态。
+- `summary` 是列表级聚合，不受当前分页影响；分页字段默认 `page=1`、`pageSize=20`，最大 `100`。
+- 邀请返回的 `invitedUsers.status` 必须为 `pending`，后端不得在邀请接口里创建已激活用户。
+
+前后端边界：
+
+- 前端负责搜索输入、分页状态和展示排序；后端负责权限过滤、统计聚合和邀请记录创建。
+- 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 auth-server 内部 account 结构。
+
+### Model Providers
+
+Purpose：驱动 `/settings/models` 模型提供商卡片、连接状态、默认模型和可用模型能力展示。
+
+```ts
+export type KnowledgeModelProviderStatus = 'connected' | 'disconnected' | 'error';
+export type KnowledgeModelCapability = 'chat' | 'embedding' | 'rerank' | 'vision';
+
+export interface KnowledgeModelSummary {
+  id: ID;
+  label: string;
+  capabilities: KnowledgeModelCapability[];
+  contextWindow?: number;
+}
+
+export interface KnowledgeModelProvider {
+  id: ID;
+  name: string;
+  status: KnowledgeModelProviderStatus;
+  models: KnowledgeModelSummary[];
+  defaultModelId?: ID;
+  configuredAt?: ISODateTime;
+}
+
+export interface KnowledgeModelProvidersResponse {
+  items: KnowledgeModelProvider[];
+  updatedAt: ISODateTime;
+}
+```
+
+| Method | Path                        | Query / Body | Response                          | 主要错误码                            | 权限                     |
+| ------ | --------------------------- | ------------ | --------------------------------- | ------------------------------------- | ------------------------ |
+| GET    | `/settings/model-providers` | none         | `KnowledgeModelProvidersResponse` | `auth_unauthorized`, `auth_forbidden` | owner, admin, maintainer |
+
+兼容策略：
+
+- `provider.id` 是稳定业务 ID；展示名称可变，前端不得用 `name` 作为持久化 key。
+- `capabilities` 可追加枚举；未知能力前端忽略，不阻断 provider 展示。
+- 后端后续接入真实模型 provider 时，仍必须先转换为本节 projection，不得返回 vendor model 原始 JSON。
+
+### API Keys
+
+Purpose：驱动 `/settings/keys` API 密钥列表、新建密钥和权限范围展示。
+
+```ts
+export type KnowledgeApiKeyPermission = 'knowledge:read' | 'knowledge:write' | 'users:manage' | 'settings:manage';
+export type KnowledgeApiKeyStatus = 'active' | 'revoked';
+
+export interface KnowledgeApiKey {
+  id: ID;
+  name: string;
+  maskedKey: string;
+  status: KnowledgeApiKeyStatus;
+  permissions: KnowledgeApiKeyPermission[];
+  createdAt: ISODateTime;
+  lastUsedAt: ISODateTime | null;
+  expiresAt?: ISODateTime | null;
+}
+
+export interface KnowledgeApiKeysResponse {
+  items: KnowledgeApiKey[];
+}
+
+export interface KnowledgeApiKeyCreateRequest {
+  name: string;
+  permissions: KnowledgeApiKeyPermission[];
+  expiresAt?: ISODateTime;
+}
+
+export interface KnowledgeApiKeyCreateResponse {
+  apiKey: KnowledgeApiKey;
+}
+```
+
+| Method | Path                 | Query / Body                         | Response                        | 主要错误码                                                | 权限         |
+| ------ | -------------------- | ------------------------------------ | ------------------------------- | --------------------------------------------------------- | ------------ |
+| GET    | `/settings/api-keys` | none                                 | `KnowledgeApiKeysResponse`      | `auth_unauthorized`, `auth_forbidden`                     | admin, owner |
+| POST   | `/settings/api-keys` | body: `KnowledgeApiKeyCreateRequest` | `KnowledgeApiKeyCreateResponse` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | admin, owner |
+
+兼容策略：
+
+- API key 响应只允许返回 `maskedKey`，禁止返回明文 secret、哈希值、盐值或 provider credential。
+- `POST /settings/api-keys` 当前 contract 不返回 one-time secret；后续如需支持一次性明文展示，必须新增显式字段与单独安全评审，不能复用 `maskedKey` 或静默加字段。
+- `permissions` 可追加枚举；前端遇到未知权限以只读标签展示，不允许自动授予本地操作入口。
+
+前后端边界：
+
+- 前端负责新建表单和权限选择；后端负责生成、存储、mask 与权限校验。
+- 后端日志、错误响应和审计事件不得包含明文 key。
+
+### Storage
+
+Purpose：驱动 `/settings/storage` 存储用量卡片和知识库存储明细。
+
+```ts
+export interface KnowledgeStorageBucket {
+  id: ID;
+  label: string;
+  used: number;
+  total: number;
+  unit: 'MB' | 'GB' | 'TB';
+}
+
+export interface KnowledgeStorageKnowledgeBase {
+  id: ID;
+  name: string;
+  documentCount: number;
+  storageUsed: number;
+  storageUnit: 'MB' | 'GB' | 'TB';
+  vectorIndexSize: string;
+  lastBackupAt: ISODateTime | null;
+}
+
+export interface KnowledgeStorageSettingsResponse {
+  buckets: KnowledgeStorageBucket[];
+  knowledgeBases: KnowledgeStorageKnowledgeBase[];
+  updatedAt: ISODateTime;
+}
+```
+
+| Method | Path                | Query / Body | Response                           | 主要错误码                            | 权限                     |
+| ------ | ------------------- | ------------ | ---------------------------------- | ------------------------------------- | ------------------------ |
+| GET    | `/settings/storage` | none         | `KnowledgeStorageSettingsResponse` | `auth_unauthorized`, `auth_forbidden` | owner, admin, maintainer |
+
+兼容策略：
+
+- `used` 与 `total` 使用同一个 `unit`，后端负责单位换算；前端只做展示和百分比计算。
+- `knowledgeBases.vectorIndexSize` 是展示字符串，后续如需机器计算必须新增数值字段，不复用该字段。
+
+### Security
+
+Purpose：驱动 `/settings/security` 安全评分、身份认证、访问控制、审计日志和加密状态配置。
+
+```ts
+export type KnowledgePasswordPolicy = 'basic' | 'strong' | 'enterprise';
+
+export interface KnowledgeSecuritySettingsResponse {
+  ssoEnabled: boolean;
+  mfaRequired: boolean;
+  ipAllowlistEnabled: boolean;
+  ipAllowlist: string[];
+  auditLogEnabled: boolean;
+  passwordPolicy: KnowledgePasswordPolicy;
+  encryption: {
+    enabled: boolean;
+    transport: string;
+    atRest: string;
+  };
+  securityScore: number;
+  updatedAt: ISODateTime;
+}
+
+export interface KnowledgeSecuritySettingsPatchRequest {
+  ssoEnabled?: boolean;
+  mfaRequired?: boolean;
+  ipAllowlistEnabled?: boolean;
+  ipAllowlist?: string[];
+  auditLogEnabled?: boolean;
+  passwordPolicy?: KnowledgePasswordPolicy;
+}
+```
+
+| Method | Path                 | Query / Body                                  | Response                            | 主要错误码                                                | 权限         |
+| ------ | -------------------- | --------------------------------------------- | ----------------------------------- | --------------------------------------------------------- | ------------ |
+| GET    | `/settings/security` | none                                          | `KnowledgeSecuritySettingsResponse` | `auth_unauthorized`, `auth_forbidden`                     | admin, owner |
+| PATCH  | `/settings/security` | body: `KnowledgeSecuritySettingsPatchRequest` | `KnowledgeSecuritySettingsResponse` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | admin, owner |
+
+兼容策略：
+
+- `PATCH` 是 partial update；空 body 返回 `400 validation_error`。
+- `securityScore` 为 `0-100` 分，只用于展示，不作为前端权限判断依据。
+- `encryption` 当前只读；如需修改加密策略，必须新增专门 endpoint 与审批语义，不能通过本 PATCH 隐式写入。
+
+### Chat Lab Assistant Config
+
+Purpose：驱动 `/chat-lab` 右侧 AI 助手实验面板，包括深度思考、联网搜索、快捷问题、默认模型 profile 和思考步骤展示。
+
+```ts
+export type KnowledgeAssistantThinkingStepStatus = 'pending' | 'running' | 'done';
+
+export interface KnowledgeAssistantThinkingStep {
+  id: ID;
+  label: string;
+  status: KnowledgeAssistantThinkingStepStatus;
+}
+
+export interface KnowledgeAssistantConfigResponse {
+  deepThinkEnabled: boolean;
+  webSearchEnabled: boolean;
+  modelProfileId: ID;
+  defaultKnowledgeBaseIds: ID[];
+  quickPrompts: string[];
+  thinkingSteps: KnowledgeAssistantThinkingStep[];
+  updatedAt: ISODateTime;
+}
+
+export interface KnowledgeAssistantConfigPatchRequest {
+  deepThinkEnabled?: boolean;
+  webSearchEnabled?: boolean;
+  modelProfileId?: ID;
+  defaultKnowledgeBaseIds?: ID[];
+  quickPrompts?: string[];
+}
+```
+
+| Method | Path                     | Query / Body                                 | Response                           | 主要错误码                                                | 权限                     |
+| ------ | ------------------------ | -------------------------------------------- | ---------------------------------- | --------------------------------------------------------- | ------------------------ |
+| GET    | `/chat/assistant-config` | none                                         | `KnowledgeAssistantConfigResponse` | `auth_unauthorized`, `auth_forbidden`                     | owner, admin, maintainer |
+| PATCH  | `/chat/assistant-config` | body: `KnowledgeAssistantConfigPatchRequest` | `KnowledgeAssistantConfigResponse` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+
+兼容策略：
+
+- `thinkingSteps` 是配置页展示 projection，不代表一次真实 RAG run 的 ThoughtChain；真实聊天执行过程仍以 `/chat` SSE/RAG event contract 为准。
+- `PATCH` 是 partial update；空 body 返回 `400 validation_error`。
+- `quickPrompts` 由后端完整替换，前端不得假设 patch 会做数组合并。
+
+通用错误语义：
+
+- `401 auth_unauthorized`：未登录、token 缺失或 access token 无效。
+- `403 auth_forbidden`：已登录但缺少 workspace/settings 管理权限。
+- `400 validation_error`：query/body 未通过 schema；`details.fields` 可携带字段级错误。
+- `500 internal_error`：后端 projection 装配失败；响应必须 redacted，不得包含 secret 或 provider 原始 payload。
+
+统一前后端边界：
+
+- 前端只消费本节 DTO；不得继续在页面内维护长期 fixture 作为真实业务来源。
+- 后端当前可用稳定 fixture 完成最小闭环，但 fixture 必须通过 `packages/core` schema 测试保护，后续接入数据库或第三方 provider 时保持响应兼容。
+- 任何字段删除、重命名或枚举破坏式变更必须先更新本 contract、core schema、后端测试，再通知前端同步迁移。
+
 ## 4. Dashboard
 
 `GET /dashboard/overview`

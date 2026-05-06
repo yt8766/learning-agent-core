@@ -10,12 +10,22 @@ import type { AgentChatRuntimeEvent, AgentFrontendChatMessage } from './agent-ch
 const APPEND_CONTENT_EVENT_TYPES = new Set(['assistant_token', 'final_response_delta']);
 const ASSISTANT_CONTENT_EVENT_TYPES = new Set(['assistant_token', 'assistant_message', 'final_response_delta']);
 
+export interface AgentChatProviderUserMessage {
+  content: string;
+  modelId?: string;
+  role: 'user';
+}
+
+export interface AgentChatProviderRuntimeMessage {
+  content: string;
+  role: 'assistant' | 'system';
+}
+
+export type AgentChatProviderMessage = AgentChatProviderRuntimeMessage | AgentChatProviderUserMessage;
+
 export interface AgentChatProviderInput {
   conversationKey: string;
-  messages: Array<{
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-  }>;
+  messages: AgentChatProviderMessage[];
 }
 
 export interface AgentChatProviderChunk {
@@ -42,8 +52,14 @@ export interface AgentChatProviderDeps {
     }
   ) => void;
   createSessionStream: (sessionId: string) => EventSource;
-  ensureSession: (conversationKey: string, initialUserText?: string) => Promise<ChatSessionRecord>;
+  ensureSession: (sessionId: string | undefined, initialUserText?: string) => Promise<ChatSessionRecord>;
   projectRuntimeEvent?: (event: ChatEventRecord) => AgentChatRuntimeEvent | undefined;
+}
+
+interface AgentChatStreamController {
+  aborted: boolean;
+  reject: ((error: Error) => void) | null;
+  stream: EventSource | null;
 }
 
 class AgentChatRequest extends AbstractXRequestClass<
@@ -54,6 +70,8 @@ class AgentChatRequest extends AbstractXRequestClass<
   readonly deps: AgentChatProviderDeps;
 
   private handler: Promise<void> = Promise.resolve();
+
+  private controller: AgentChatStreamController | null = null;
 
   private requesting = false;
 
@@ -87,15 +105,23 @@ class AgentChatRequest extends AbstractXRequestClass<
       return;
     }
 
+    this.controller?.stream?.close();
+    const controller = createStreamController();
     const responseHeaders = new Headers();
     const chunks: AgentChatProviderChunk[] = [];
     this.requesting = true;
-    this.handler = streamAgentChatProvider(this.deps, params, {
-      onChunk: chunk => {
-        chunks.push(chunk);
-        this.options.callbacks?.onUpdate?.(chunk, responseHeaders);
-      }
-    })
+    this.controller = controller;
+    this.handler = streamAgentChatProvider(
+      this.deps,
+      params,
+      {
+        onChunk: chunk => {
+          chunks.push(chunk);
+          this.options.callbacks?.onUpdate?.(chunk, responseHeaders);
+        }
+      },
+      controller
+    )
       .then(finalChunk => {
         if (chunks.length === 0) {
           chunks.push(finalChunk);
@@ -103,16 +129,23 @@ class AgentChatRequest extends AbstractXRequestClass<
         this.options.callbacks?.onSuccess?.(chunks, responseHeaders);
       })
       .catch(error => {
+        if (isAbortError(error)) {
+          return;
+        }
         const nextError = error instanceof Error ? error : new Error(String(error));
         this.options.callbacks?.onError?.(nextError, undefined, responseHeaders);
       })
       .finally(() => {
         this.requesting = false;
+        if (this.controller === controller) {
+          this.controller = null;
+        }
       });
   }
 
   override abort() {
     this.requesting = false;
+    abortStreamController(this.controller);
   }
 }
 
@@ -144,7 +177,7 @@ class AgentChatProvider extends AbstractChatProvider<
   transformLocalMessage(requestParams: Partial<AgentChatProviderInput>) {
     return {
       role: 'user',
-      content: getLatestUserText(requestParams.messages),
+      content: getLatestUserMessage(requestParams.messages).content,
       kind: 'text'
     } satisfies AgentFrontendChatMessage;
   }
@@ -168,11 +201,14 @@ export function createAgentChatProvider(deps: AgentChatProviderDeps) {
 async function streamAgentChatProvider(
   deps: AgentChatProviderDeps,
   input: AgentChatProviderInput,
-  hooks: AgentChatProviderHooks
+  hooks: AgentChatProviderHooks,
+  controller?: AgentChatStreamController
 ) {
-  const initialUserText = getLatestUserText(input.messages);
+  const latestUserMessage = getLatestUserMessage(input.messages);
+  const initialUserText = latestUserMessage.content;
   const existingSessionId = parseAgentChatConversationKey(input.conversationKey);
-  const session = await deps.ensureSession(input.conversationKey, initialUserText);
+  const session = await deps.ensureSession(existingSessionId, initialUserText);
+  throwIfStreamAborted(controller);
   let currentMessage = createAssistantPlaceholderMessage();
   let latestChunk: AgentChatProviderChunk = {
     message: currentMessage,
@@ -185,14 +221,31 @@ async function streamAgentChatProvider(
   });
 
   if (existingSessionId && initialUserText) {
-    await deps.appendMessage(session.id, initialUserText);
+    await deps.appendMessage(session.id, initialUserText, {
+      modelId: latestUserMessage.modelId
+    });
+    throwIfStreamAborted(controller);
   }
 
   const stream = deps.createSessionStream(session.id);
+  if (controller) {
+    controller.stream = stream;
+  }
 
   return new Promise<AgentChatProviderChunk>((resolve, reject) => {
+    if (controller) {
+      controller.reject = reject;
+    }
+    if (controller?.aborted) {
+      stream.close();
+      reject(createAbortError());
+      return;
+    }
     deps.bindStream(stream, {
       onEvent(event) {
+        if (controller?.aborted) {
+          return;
+        }
         currentMessage = foldProviderEvent(currentMessage, event, deps.projectRuntimeEvent);
         latestChunk = {
           event,
@@ -202,10 +255,16 @@ async function streamAgentChatProvider(
         hooks.onChunk(latestChunk);
       },
       onDone() {
+        if (controller?.aborted) {
+          return;
+        }
         hooks.onDone?.(latestChunk);
         resolve(latestChunk);
       },
       onError(error) {
+        if (controller?.aborted) {
+          return;
+        }
         hooks.onError?.(error);
         reject(error);
       }
@@ -222,13 +281,49 @@ function createAssistantPlaceholderMessage(): AgentFrontendChatMessage {
   };
 }
 
-function getLatestUserText(messages?: AgentChatProviderInput['messages']) {
-  return (
-    [...(messages ?? [])]
-      .reverse()
-      .find(message => message.role === 'user')
-      ?.content?.trim() ?? ''
-  );
+function getLatestUserMessage(messages?: AgentChatProviderInput['messages']) {
+  const latestUserMessage = [...(messages ?? [])].reverse().find((message): message is AgentChatProviderUserMessage => {
+    return message.role === 'user';
+  });
+
+  return {
+    content: latestUserMessage?.content?.trim() ?? '',
+    modelId: latestUserMessage?.modelId
+  };
+}
+
+function createAbortError() {
+  const error = new Error('Agent chat request aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+function createStreamController(): AgentChatStreamController {
+  return {
+    aborted: false,
+    reject: null,
+    stream: null
+  };
+}
+
+function abortStreamController(controller: AgentChatStreamController | null) {
+  if (!controller || controller.aborted) {
+    return;
+  }
+
+  controller.aborted = true;
+  controller.stream?.close();
+  controller.reject?.(createAbortError());
+}
+
+function throwIfStreamAborted(controller?: AgentChatStreamController) {
+  if (controller?.aborted) {
+    throw createAbortError();
+  }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 function foldProviderEvent(

@@ -8,6 +8,7 @@
 @use './chat-home-workbench-composer';
 @use './chat-home-agent-surface';
 @use './chat-home-anchor-rail';
+@use './chat-home-studio';
 
 .chat-response-steps {
   color: var(--chat-muted-text, #6b7280);

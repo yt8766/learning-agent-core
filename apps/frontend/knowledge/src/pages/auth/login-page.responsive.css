@@ -1,0 +1,60 @@
+@media (max-width: 1100px) {
+  .knowledge-login-wrap {
+    gap: 32px;
+    grid-template-columns: 1fr;
+  }
+
+  .knowledge-login-card {
+    margin: auto;
+  }
+
+  .knowledge-login-feature-grid,
+  .knowledge-login-trust-strip {
+    max-width: 100%;
+  }
+
+  .knowledge-login-visual {
+    height: 260px;
+  }
+}
+
+@media (max-width: 760px) {
+  .knowledge-login-header {
+    padding: 0 20px;
+  }
+
+  .knowledge-login-brand {
+    font-size: 18px;
+  }
+
+  .knowledge-login-wrap {
+    padding: 28px 18px;
+  }
+
+  .knowledge-login-hero-title.ant-typography {
+    font-size: 34px;
+  }
+
+  .knowledge-login-hero-copy.ant-typography {
+    font-size: 15px;
+  }
+
+  .knowledge-login-feature-grid,
+  .knowledge-login-trust-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledge-login-trust-item {
+    border-bottom: 1px solid var(--knowledge-login-line);
+    border-right: 0;
+    padding: 10px 0;
+  }
+
+  .knowledge-login-trust-item:last-child {
+    border-bottom: 0;
+  }
+
+  .knowledge-login-card {
+    padding: 30px 22px;
+  }
+}

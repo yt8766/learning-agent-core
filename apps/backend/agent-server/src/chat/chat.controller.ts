@@ -136,6 +136,34 @@ export class ChatController {
     return this.chatService.listAvailableModels();
   }
 
+  @Get('runs')
+  listRuns(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Query('sessionId') sessionId?: string
+  ) {
+    const resolvedSessionId = this.resolveSessionId(request, sessionId);
+    this.setSessionCookie(response, resolvedSessionId);
+    return this.chatService.listRuns(resolvedSessionId);
+  }
+
+  @Get('runs/:runId')
+  getRun(@Param('runId') runId: string) {
+    return this.chatService.getRun(runId);
+  }
+
+  @Post('runs/:runId/cancel')
+  cancelRun(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Param('runId') runId: string,
+    @Body() dto: SessionBody = {}
+  ) {
+    const resolvedSessionId = this.resolveSessionId(request, dto.sessionId);
+    this.setSessionCookie(response, resolvedSessionId);
+    return this.chatService.cancelRun(runId);
+  }
+
   @Post('sessions')
   async createSession(@Body() dto: CreateChatSessionDto, @Res({ passthrough: true }) response: Response) {
     const session = await this.chatService.createSession(dto);

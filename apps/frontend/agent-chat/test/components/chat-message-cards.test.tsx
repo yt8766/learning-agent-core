@@ -9,16 +9,18 @@ vi.mock('@ant-design/x-markdown', () => ({
   XMarkdown: ({
     content,
     className,
+    streaming,
     components
   }: {
     content: string;
     className?: string;
+    streaming?: Record<string, unknown>;
     components?: Record<string, React.ComponentType<{ children?: React.ReactNode }>>;
   }) => {
     const Sup = components?.sup;
     const parts = content.split(/(<sup>\s*\d+\s*<\/sup>)/g).filter(Boolean);
     return (
-      <div className={className}>
+      <div className={className} data-streaming={JSON.stringify(streaming ?? null)}>
         {parts.map((part, index) => {
           const match = part.match(/^<sup>\s*(\d+)\s*<\/sup>$/i);
           if (match && Sup) {
@@ -165,6 +167,25 @@ describe('chat message cards render smoke', () => {
     expect(html).toContain('chatx-control-notice');
     expect(html).toContain('已恢复执行');
     expect(html).toContain('已恢复执行');
+  });
+
+  it('configures assistant Markdown with Ant Design X streaming animation while generating', () => {
+    const message: ChatMessageRecord = {
+      id: 'msg-streaming-1',
+      sessionId: 'session-1',
+      role: 'assistant',
+      content: '正在生成一段包含 [链接](https://example',
+      createdAt: '2026-05-04T00:00:00.000Z'
+    };
+
+    const html = renderToStaticMarkup(renderStructuredMessageCard(message, true, {}));
+
+    expect(html).toContain('x-markdown-light');
+    expect(html).toContain('&quot;hasNextChunk&quot;:true');
+    expect(html).toContain('&quot;enableAnimation&quot;:true');
+    expect(html).toContain('&quot;fadeDuration&quot;:400');
+    expect(html).not.toContain('&quot;tail&quot;');
+    expect(html).not.toContain('&quot;incompleteMarkdownComponentMap&quot;');
   });
 
   it('renders compression summary cards as compact divider hints', () => {

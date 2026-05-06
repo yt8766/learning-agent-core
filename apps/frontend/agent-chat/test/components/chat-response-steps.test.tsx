@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   foldChatResponseStepProjection,
   initialChatResponseStepsState
-} from '../../src/lib/chat-response-step-projections';
+} from '../../src/utils/chat-response-step-projections';
 import { QuickResponseSteps, ResponseStepSummary } from '../../src/components/chat-response-steps';
 import { responseStepsState as state } from './chat-response-steps.fixtures';
 

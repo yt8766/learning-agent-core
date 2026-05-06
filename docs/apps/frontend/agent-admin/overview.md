@@ -94,6 +94,8 @@
   - 技能实验室、来源治理与安装来源管理
 - `src/pages/evidence-center`
   - 证据与引用治理
+- `src/pages/knowledge-governance`
+  - 知识治理中心；只消费 `KnowledgeGovernanceProjection`，展示知识库健康、provider health、ingestion 来源、检索诊断、证据链与 agent 使用情况，不读取 raw repository records、vendor response 或未脱敏文档内容。
 - `src/pages/connectors-center`
   - Connector、策略和配置治理
 - `src/pages/task-traces`
@@ -133,3 +135,9 @@ pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit
 
 - `agent-admin` 的前端类型检查不能依赖本地已存在的 `packages/*/build` 产物兜底
 - `tsconfig.app.json` 必须保持对 `@agent/*` workspace 源码入口的路径映射，这样 GitHub Actions 的干净环境也能直接完成 typecheck
+
+## Knowledge Governance
+
+知识治理中心是 admin 侧治理入口，不是 `apps/frontend/knowledge` 的产品页复制。它聚合知识库健康、索引/ingestion 状态、retrieval diagnostics、evidence 和 agent usage，用于排查运行时是否能安全、可追溯地使用知识。
+
+前端通过 `getKnowledgeGovernanceProjection()` 读取 `/api/platform/knowledge/governance`，页面只接收 `@agent/core` 的 `KnowledgeGovernanceProjection`。治理链路图使用 `@xyflow/react` 作为展示 adapter；React Flow 的 node / edge 对象不能进入 API contract、dashboard state 或持久化结构。

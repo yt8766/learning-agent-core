@@ -1,6 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
 import type {
+  AgentFlowListResponse,
+  AgentFlowRunRequest,
+  AgentFlowRunResponse,
+  AgentFlowSaveRequest,
+  AgentFlowSaveResponse,
   ChatRequest,
   ChatResponse,
   ChatConversation,
@@ -27,9 +32,15 @@ import type {
   RagTrace,
   RagTraceDetail,
   ReprocessDocumentResponse,
+  ChatAssistantConfig,
+  SettingsApiKeysResponse,
+  SettingsModelProvidersResponse,
+  SettingsSecurityPolicy,
+  SettingsStorageOverview,
   UploadKnowledgeFileRequest,
   UploadDocumentRequest,
-  UploadDocumentResponse
+  UploadDocumentResponse,
+  WorkspaceUsersResponse
 } from '../types/api';
 
 export interface KnowledgeFrontendApi {
@@ -61,6 +72,16 @@ export interface KnowledgeFrontendApi {
   getObservabilityMetrics(): Promise<ObservabilityMetrics>;
   listTraces(): Promise<PageResult<RagTrace>>;
   getTrace(traceId: string): Promise<RagTraceDetail>;
+  listWorkspaceUsers(): Promise<WorkspaceUsersResponse>;
+  getSettingsModelProviders(): Promise<SettingsModelProvidersResponse>;
+  getSettingsApiKeys(): Promise<SettingsApiKeysResponse>;
+  getSettingsStorage(): Promise<SettingsStorageOverview>;
+  getSettingsSecurity(): Promise<SettingsSecurityPolicy>;
+  getChatAssistantConfig(): Promise<ChatAssistantConfig>;
+  listAgentFlows(): Promise<AgentFlowListResponse>;
+  saveAgentFlow(input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse>;
+  updateAgentFlow(flowId: string, input: AgentFlowSaveRequest): Promise<AgentFlowSaveResponse>;
+  runAgentFlow(flowId: string, input: AgentFlowRunRequest): Promise<AgentFlowRunResponse>;
 }
 
 const KnowledgeApiContext = createContext<KnowledgeFrontendApi | undefined>(undefined);

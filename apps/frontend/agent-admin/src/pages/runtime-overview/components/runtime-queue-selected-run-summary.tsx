@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { getExecutionModeDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName, normalizeExecutionMode } from '@/utils/runtime-semantics';
 import type { TaskBundle } from '@/types/admin';
 
 import {

@@ -1,4 +1,4 @@
-import type { ChatResponseStepsForMessage } from '@/lib/chat-response-step-projections';
+import type { ChatResponseStepsForMessage } from '@/utils/chat-response-step-projections';
 
 import { AgentOsRunPanel } from './agent-os-run-panel';
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Button,
   Card,
@@ -19,7 +19,11 @@ import { useNavigate } from 'react-router-dom';
 import { useKnowledgeApi } from '../../api/knowledge-api-provider';
 import { useKnowledgeDashboard } from '../../hooks/use-knowledge-dashboard';
 import type { KnowledgeBase, KnowledgeBaseVisibility } from '../../types/api';
-import { PageSection } from '../shared/ui';
+import { MetricStrip, RagOpsPage, type RagOpsMetric } from '../shared/ui';
+
+type KnowledgeBaseHealthFilter = 'all' | NonNullable<KnowledgeBase['health']>['status'];
+
+const healthFilters: KnowledgeBaseHealthFilter[] = ['all', 'ready', 'indexing', 'degraded', 'empty', 'error'];
 
 const columns: TableProps<KnowledgeBase>['columns'] = [
   {
@@ -81,7 +85,45 @@ export function KnowledgeBasesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | null>(null);
+  const [healthFilter, setHealthFilter] = useState<KnowledgeBaseHealthFilter>('all');
+  const [keyword, setKeyword] = useState('');
   const { error, knowledgeBases, loading, reload } = useKnowledgeDashboard();
+  const filteredKnowledgeBases = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+    return knowledgeBases.filter(record => {
+      const matchesKeyword =
+        !normalizedKeyword ||
+        [record.name, record.description, ...record.tags]
+          .filter((value): value is string => Boolean(value))
+          .some(value => value.toLowerCase().includes(normalizedKeyword));
+      const matchesHealth = healthFilter === 'all' || record.health?.status === healthFilter;
+      return matchesKeyword && matchesHealth;
+    });
+  }, [healthFilter, keyword, knowledgeBases]);
+  const metrics = useMemo<RagOpsMetric[]>(
+    () => [
+      { key: 'total', label: '知识空间', status: 'healthy', value: knowledgeBases.length },
+      {
+        key: 'ready',
+        label: 'Ready 空间',
+        status: 'healthy',
+        value: knowledgeBases.filter(record => record.health?.status === 'ready').length
+      },
+      {
+        key: 'docs',
+        label: '文档总量',
+        status: 'muted',
+        value: knowledgeBases.reduce((total, record) => total + record.documentCount, 0)
+      },
+      {
+        key: 'chunks',
+        label: 'Chunks',
+        status: 'muted',
+        value: knowledgeBases.reduce((total, record) => total + record.chunkCount, 0)
+      }
+    ],
+    [knowledgeBases]
+  );
 
   async function handleCreateKnowledgeBase() {
     try {
@@ -106,20 +148,41 @@ export function KnowledgeBasesPage() {
   }
 
   return (
-    <PageSection
+    <RagOpsPage
       extra={
-        <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} type="primary">
-          新建知识库
-        </Button>
+        <Space className="knowledge-base-toolbar" wrap>
+          <Input.Search
+            allowClear
+            onChange={event => setKeyword(event.target.value)}
+            placeholder="搜索知识库"
+            value={keyword}
+          />
+          <Space.Compact>
+            {healthFilters.map(filter => (
+              <Button
+                key={filter}
+                onClick={() => setHealthFilter(filter)}
+                type={healthFilter === filter ? 'primary' : 'default'}
+              >
+                {filter}
+              </Button>
+            ))}
+          </Space.Compact>
+          <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} type="primary">
+            新建知识库
+          </Button>
+        </Space>
       }
-      subTitle="按工作区治理知识库状态、质量分和检索规模"
-      title="知识库"
+      eyebrow="Knowledge Spaces"
+      subTitle="按空间治理文档覆盖、索引健康、评测分和检索风险。"
+      title="知识空间"
     >
+      <MetricStrip metrics={metrics} />
       {error ? <Typography.Text type="danger">{error.message}</Typography.Text> : null}
-      <Card>
+      <Card className="rag-ops-table-card" title="空间资产与健康状态">
         <Table<KnowledgeBase>
           columns={columns}
-          dataSource={knowledgeBases}
+          dataSource={filteredKnowledgeBases}
           loading={loading}
           onRow={record => ({
             onClick: () => navigate(`/knowledge-bases/${record.id}`)
@@ -157,6 +220,6 @@ export function KnowledgeBasesPage() {
         </Form>
         {createError ? <Typography.Text type="danger">{createError.message}</Typography.Text> : null}
       </Modal>
-    </PageSection>
+    </RagOpsPage>
   );
 }

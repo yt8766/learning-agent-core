@@ -1,8 +1,8 @@
 ﻿import { Avatar } from 'antd';
 
 import { EVENT_LABELS, MINISTRY_LABELS, type SessionFilter, AGENT_LABELS } from './chat-home-constants';
-import { buildProjectedEventSummary } from '@/lib/chat-trajectory-projections';
-import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/lib/runtime-semantics';
+import { buildProjectedEventSummary } from '@/utils/chat-trajectory-projections';
+import { getExecutionModeDisplayName, getMinistryDisplayName } from '@/utils/runtime-semantics';
 
 // Legacy mode aliases are normalized to executionPlan.mode before user-facing rendering.
 const INTERNAL_TERM_REPLACEMENTS = [

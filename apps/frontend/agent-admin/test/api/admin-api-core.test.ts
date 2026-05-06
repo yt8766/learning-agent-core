@@ -11,6 +11,7 @@ vi.mock('axios', () => {
   }
 
   return {
+    CanceledError,
     default: {
       create: createMock.mockImplementation(() => ({
         request: requestMock
@@ -18,7 +19,9 @@ vi.mock('axios', () => {
       isCancel: vi.fn((error: unknown) => error instanceof CanceledError),
       isAxiosError: vi.fn((error: unknown) => typeof error === 'object' && error !== null && 'response' in error),
       CanceledError
-    }
+    },
+    isCancel: vi.fn((error: unknown) => error instanceof CanceledError),
+    isAxiosError: vi.fn((error: unknown) => typeof error === 'object' && error !== null && 'response' in error)
   };
 });
 

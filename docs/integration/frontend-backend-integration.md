@@ -151,9 +151,8 @@ agent-server     http://127.0.0.1:3000/api
 
 ## 联调建议
 
-1. 启动 `auth-server`：`pnpm --dir apps/backend/auth-server start:dev`
-2. 启动 `knowledge-server`：`pnpm --dir apps/backend/knowledge-server start:dev`
-3. 需要 chat/runtime/admin 旧中心时，再启动 `agent-server`：`pnpm --dir apps/backend/agent-server start:dev`
-4. 启动目标前端。
-5. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
-6. 再按本文检查调用顺序、SSE 兜底和 center 粒度。
+1. 启动三个后端：`pnpm start:dev`
+2. 只需要 chat/runtime/admin 旧中心时，可改用 `pnpm start:dev:agent`。
+3. 启动目标前端。
+4. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
+5. 再按本文检查调用顺序、SSE 兜底和 center 粒度。

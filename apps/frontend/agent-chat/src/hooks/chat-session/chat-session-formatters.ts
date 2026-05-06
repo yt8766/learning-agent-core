@@ -4,6 +4,10 @@ export const STARTER_PROMPT = '';
 export const PENDING_ASSISTANT_PREFIX = 'pending_assistant_';
 export const PENDING_USER_PREFIX = 'pending_user_';
 
+/** X-SDK 本地用户消息 id 前缀，与 `createEphemeralMessageId(LOCAL_USER_EPHEMERAL_SLUG)` 一致 */
+export const LOCAL_USER_EPHEMERAL_SLUG = 'local-user';
+export const LOCAL_USER_EPHEMERAL_ID_PREFIX = `${LOCAL_USER_EPHEMERAL_SLUG}_`;
+
 export const CHECKPOINT_REFRESH_EVENT_TYPES = new Set<ChatEventRecord['type']>([
   'manager_planned',
   'skill_resolved',

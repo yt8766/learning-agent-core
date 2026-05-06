@@ -16,11 +16,19 @@ pnpm build:lib
 再按以下顺序启动：
 
 ```bash
-pnpm --dir apps/backend/agent-server start:dev
+pnpm start:dev
 pnpm --dir apps/worker build && node apps/worker/dist/main.js
 pnpm --dir apps/frontend/agent-chat dev
 pnpm --dir apps/frontend/agent-admin dev
 ```
+
+`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 并行启动三个后端：
+
+- `auth-server`：`http://127.0.0.1:3010/api`
+- `knowledge-server`：`http://127.0.0.1:3020/api`
+- `agent-server`：`http://127.0.0.1:3000/api`
+
+如果只需要旧 chat/runtime/admin 后端，可使用 `pnpm start:dev:agent`。
 
 如果只想单机验证，不单独启动 worker，也可以让 backend 使用内建 background runner。
 

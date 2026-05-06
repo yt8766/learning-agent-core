@@ -230,4 +230,84 @@ describe('knowledge real API paths', () => {
       })
     );
   });
+
+  it('lists agent flows through knowledge-server', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 20 }), { status: 200 }));
+    const client = createKnowledgeApiClient({
+      baseUrl: 'http://127.0.0.1:3020/api',
+      getAccessToken: () => 'access-token',
+      fetchImpl: fetcher
+    });
+
+    await client.listAgentFlows();
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/agent-flows');
+    expect(fetcher.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ method: 'GET' }));
+  });
+
+  it('loads knowledge governance pages through the knowledge API prefix', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    const client = createKnowledgeApiClient({
+      baseUrl: 'http://127.0.0.1:3020/api',
+      getAccessToken: () => 'access-token',
+      fetchImpl: fetcher
+    });
+
+    await client.getSettingsApiKeys();
+    await client.getSettingsModelProviders();
+    await client.getSettingsStorage();
+    await client.getSettingsSecurity();
+    await client.getChatAssistantConfig();
+
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      'http://127.0.0.1:3020/api/knowledge/settings/api-keys',
+      'http://127.0.0.1:3020/api/knowledge/settings/model-providers',
+      'http://127.0.0.1:3020/api/knowledge/settings/storage',
+      'http://127.0.0.1:3020/api/knowledge/settings/security',
+      'http://127.0.0.1:3020/api/knowledge/chat/assistant-config'
+    ]);
+  });
+
+  it('runs an agent flow through knowledge-server', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          runId: 'run_1',
+          flowId: 'flow_default_rag',
+          status: 'completed',
+          output: {},
+          createdAt: '2026-05-04T00:00:00.000Z',
+          updatedAt: '2026-05-04T00:00:00.000Z'
+        }),
+        { status: 200 }
+      )
+    );
+    const client = createKnowledgeApiClient({
+      baseUrl: 'http://127.0.0.1:3020/api',
+      getAccessToken: () => 'access-token',
+      fetchImpl: fetcher
+    });
+    const input = {
+      flowId: 'flow_default_rag',
+      input: {
+        message: 'How should I route this?',
+        knowledgeBaseIds: ['kb_1'],
+        variables: {}
+      }
+    };
+
+    await client.runAgentFlow('flow_default_rag', input);
+
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/agent-flows/flow_default_rag/run');
+    expect(fetcher.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(input)
+      })
+    );
+  });
 });

@@ -363,6 +363,55 @@ describe('chat-home-workbench component', () => {
     vi.unstubAllGlobals();
   });
 
+  it('deduplicates workbench bubble items before anchor targets are attached', () => {
+    const html = renderToStaticMarkup(
+      <ChatHomeWorkbench
+        chat={
+          {
+            activeSession: {
+              id: 'session-1',
+              status: 'completed'
+            },
+            activeSessionId: 'session-1',
+            messages: [
+              {
+                id: 'user-1',
+                role: 'user',
+                content: '请帮我整理当前任务'
+              },
+              {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: '已经给出结论'
+              },
+              {
+                id: 'assistant-1',
+                role: 'assistant',
+                content: '重复助手回复'
+              }
+            ],
+            pendingApprovals: [],
+            checkpoint: undefined,
+            sendMessage: vi.fn(),
+            cancelActiveSession: vi.fn(),
+            hasMessages: true
+          } as any
+        }
+        showWorkbench={false}
+        bubbleItems={[
+          { key: 'user-1', content: 'user bubble' } as any,
+          { key: 'assistant-1', content: 'assistant bubble' } as any,
+          { key: 'assistant-1', content: 'duplicate assistant bubble' } as any
+        ]}
+        streamEvents={[]}
+      />
+    );
+
+    expect(html).toContain('bubbles:2');
+    expect(html).toContain('assistant bubble');
+    expect(html).not.toContain('duplicate assistant bubble');
+  });
+
   it('routes workspace follow-up actions and summary copy through the expected chat handlers', async () => {
     const sendMessage = vi.fn(async () => undefined);
     const clipboardWriteText = vi.fn(async () => undefined);

@@ -27,6 +27,8 @@
   - 技能实验与来源治理
 - `src/pages/evidence-center`
   - 证据中心
+- `src/pages/knowledge-governance`
+  - 知识治理中心，展示知识库健康、provider health、ingestion 来源、检索诊断、证据与 agent 使用链路。该页面只消费 `KnowledgeGovernanceProjection`，不得读取 raw knowledge-server repository records、vendor response 或未脱敏文档内容。
 - `src/pages/connectors-center`
   - 连接器与策略
 - `src/pages/task-traces`
@@ -49,7 +51,7 @@
 约定：
 
 - `agent-admin` 的专项文档统一放在 `docs/apps/frontend/agent-admin/`
-- 运行中枢、审批中枢、学习中枢、技能工坊、证据中心、连接器与策略相关变化后，需同步更新本目录文档
+- 运行中枢、审批中枢、学习中枢、技能工坊、证据中心、知识治理中心、连接器与策略相关变化后，需同步更新本目录文档
 - 工具执行治理展示优先消费后端稳定 projection；Runtime Summary、Run Workbench 与 Run Observatory 都不应从 raw task dump 反推工具状态，也不渲染 raw input / vendor payload
 
 当前文档：

@@ -176,7 +176,7 @@
 
 ### 4.3 shared 历史退场分类
 
-在 `packages/shared` 退场过程中，剩余实现只允许落在下面四类之一：
+`packages/shared` 已退场。下面分类只用于阅读历史迁移记录，不能作为当前新增或保留实现的落点：
 
 - `overlay`
   - 依赖 runtime 扩展字段、默认泛型、shared-facing widening 的类型
@@ -185,19 +185,19 @@
 - `helper reclaim`
   - 迁移中的 workflow / prompt / bootstrap helper 过渡出口；终态必须回真实宿主
 - `compat`
-  - 已迁入 `core` 或真实宿主后的 alias / re-export
+  - 已迁入 `core` 或真实宿主后的历史 alias / re-export
 
-如果某段 shared 内容无法归入这四类，默认视为落位错误，应继续迁出。
+如果当前代码或文档仍出现新的 `packages/shared` / `@agent/shared` 入口，默认视为过时内容，应删除或改到 `packages/core`、真实宿主或应用本地 facade。
 
 补充硬规则：
 
 - `helper / workflow / prompt / bootstrap registry` 永不进入 `packages/core`
-- 这类实现也不应长期留在 `packages/shared`
+- 这类实现不得恢复到 `packages/shared`
 - 它们的唯一主宿主必须是对应真实业务包，例如：
   - `agents/supervisor` 持有 workflow routing / preset / specialist / research planning / execution steps
   - `packages/runtime` 持有 runtime prompt helper，例如 `temporal-context`
   - `packages/skill` 只持有技能加载、注册、执行逻辑，不持有预置 bootstrap 技能主定义
-- `packages/shared` 对这类能力最多只保留 compat re-export，不能再承载第二份实现
+- 如需兼容历史入口，只能在真实宿主或应用本地保留 thin compat re-export，不能恢复 `packages/shared`
 
 ## 5. 推荐目录结构
 

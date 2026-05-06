@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import Bubble from '@ant-design/x/es/bubble';
-import Sender from '@ant-design/x/es/sender';
-import Suggestion from '@ant-design/x/es/suggestion';
-import { useXChat, useXConversations, type ConversationData } from '@ant-design/x-sdk';
-import { Space, Tag, Typography } from 'antd';
+import { useXChat, useXConversations } from '@ant-design/x-sdk';
 
 import { useKnowledgeApi } from '../../api/knowledge-api-provider';
 import { createKnowledgeChatActions } from '../../chat-runtime/knowledge-chat-actions';
@@ -14,30 +10,18 @@ import {
 } from '../../chat-runtime/knowledge-chat-provider';
 import { useChatAssistantConfig } from '../../hooks/use-knowledge-governance';
 import type { ChatMessage, CreateFeedbackRequest, KnowledgeBase, KnowledgeChatStreamState } from '../../types/api';
-import { PageSection } from '../shared/ui';
-import { ChatLabAssistantPrompts, ChatLabThinkingPreview } from './chat-lab-assistant-panel';
 import { loadKnowledgeConversationMessages, summarizeStreamDiagnostics, toError } from './chat-lab-diagnostics';
 import {
   createChatLabConversation,
   deriveConversationTitle,
   parseKnowledgeMentions,
-  removeCurrentKnowledgeMentionToken,
   uniqueKnowledgeMentions,
   type KnowledgeBaseMention
 } from './chat-lab-helpers';
+import { ChatLabLayout, type ChatLabConversationData } from './chat-lab-layout';
 import { createChatRoles, type FeedbackValue } from './chat-lab-messages';
-import { ChatLabSidebar } from './chat-lab-sidebar';
-import { ChatLabStatusLine } from './chat-lab-status-line';
 
 export { resolveChatLabKnowledgeBaseId } from './chat-lab-helpers';
-
-interface ChatLabConversationData extends ConversationData {
-  activeModelProfileId?: string;
-  createdAt?: string;
-  label: string;
-  persisted?: boolean;
-  updatedAt?: string;
-}
 
 const initialStreamState: KnowledgeChatStreamState = {
   answerText: '',
@@ -330,121 +314,37 @@ export function ChatLabPage() {
   }
 
   return (
-    <PageSection title="对话实验室">
-      <div className="knowledge-chat-codex">
-        <ChatLabSidebar
-          activeConversationKey={String(activeConversationKey)}
-          chatConversations={conversations as ChatLabConversationData[]}
-          createConversation={createConversation}
-          knowledgeBases={knowledgeBases}
-          removeConversation={removeConversation}
-          renameConversation={renameConversation}
-          setActiveConversationKey={key => {
-            setActiveConversationKey(key);
-            setRequestError(null);
-            setChatLabError(null);
-            setStreamState(initialStreamState);
-          }}
-          setSelectedMentions={setSelectedMentions}
-        />
-        <section className="knowledge-chat-codex-main">
-          <div className="knowledge-chat-codex-topbar">
-            <Space size={8}>
-              <Typography.Text strong>{activeConversation?.label ?? '新对话'}</Typography.Text>
-              <Typography.Text type="secondary">knowledge</Typography.Text>
-            </Space>
-          </div>
-
-          <div className={messages.length === 0 ? 'knowledge-chat-empty' : 'knowledge-chat-thread'}>
-            {messages.length === 0 && !isRequesting ? (
-              <>
-                <Typography.Title className="knowledge-chat-empty-title" level={1}>
-                  你好，我是 Knowledge
-                </Typography.Title>
-                <Typography.Text className="knowledge-chat-empty-subtitle" type="secondary">
-                  {knowledgeBases.length > 0 ? knowledgeBases.map(base => base.name).join(' / ') : 'Knowledge Lab'}
-                </Typography.Text>
-                <ChatLabAssistantPrompts config={assistantConfig} onPromptSelect={setQuestion} />
-                <ChatLabThinkingPreview config={assistantConfig} />
-              </>
-            ) : null}
-            {bubbleMessages.length > 0 ? (
-              <div className="knowledge-chat-bubbles">
-                <Bubble.List items={bubbleMessages} role={chatRoles} />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="knowledge-chat-composer-zone">
-            <Suggestion
-              block
-              items={knowledgeBaseSuggestionItems}
-              onSelect={value => {
-                const selectedKnowledgeBase = knowledgeBases.find(item => item.id === value);
-                if (!selectedKnowledgeBase) {
-                  return;
-                }
-                setSelectedMentions(current =>
-                  uniqueKnowledgeMentions([
-                    ...current,
-                    {
-                      id: selectedKnowledgeBase.id,
-                      label: selectedKnowledgeBase.name,
-                      type: 'knowledge_base'
-                    }
-                  ])
-                );
-                setQuestion(current => removeCurrentKnowledgeMentionToken(current));
-              }}
-            >
-              {({ onKeyDown, onTrigger }) => (
-                <Sender
-                  className="knowledge-chat-sender"
-                  header={
-                    selectedMentions.length > 0 ? (
-                      <div className="knowledge-chat-mention-tags">
-                        {selectedMentions.map(mention => (
-                          <Tag
-                            className="knowledge-chat-mention-tag"
-                            closable
-                            key={mention.id ?? mention.label}
-                            onClose={() =>
-                              setSelectedMentions(current =>
-                                current.filter(item => (item.id ?? item.label) !== (mention.id ?? mention.label))
-                              )
-                            }
-                          >
-                            <span aria-hidden className="knowledge-chat-mention-tag-icon" />
-                            {mention.label}
-                          </Tag>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                  loading={isRequesting}
-                  onChange={value => {
-                    setQuestion(value);
-                    onTrigger(/(^|\s)@\S*$/.test(value) ? {} : false);
-                  }}
-                  onKeyDown={onKeyDown}
-                  onSubmit={submit}
-                  placeholder="要求后续变更"
-                  value={question}
-                />
-              )}
-            </Suggestion>
-            <ChatLabStatusLine
-              chatLabError={chatLabError}
-              error={requestError}
-              feedbackMessage={feedbackMessage}
-              knowledgeBasesError={knowledgeBasesError}
-              loading={isRequesting}
-              streamDiagnostics={streamDiagnostics}
-              streamState={streamState}
-            />
-          </div>
-        </section>
-      </div>
-    </PageSection>
+    <ChatLabLayout
+      activeConversation={activeConversation}
+      activeConversationKey={String(activeConversationKey)}
+      assistantConfig={assistantConfig}
+      bubbleMessages={bubbleMessages}
+      chatConversations={conversations as ChatLabConversationData[]}
+      chatLabError={chatLabError}
+      chatRoles={chatRoles}
+      createConversation={createConversation}
+      feedbackMessage={feedbackMessage}
+      isRequesting={isRequesting}
+      knowledgeBaseSuggestionItems={knowledgeBaseSuggestionItems}
+      knowledgeBases={knowledgeBases}
+      knowledgeBasesError={knowledgeBasesError}
+      messagesLength={messages.length}
+      question={question}
+      removeConversation={removeConversation}
+      renameConversation={renameConversation}
+      requestError={requestError}
+      resetConversationRuntime={key => {
+        setActiveConversationKey(key);
+        setRequestError(null);
+        setChatLabError(null);
+        setStreamState(initialStreamState);
+      }}
+      selectedMentions={selectedMentions}
+      setQuestion={setQuestion}
+      setSelectedMentions={setSelectedMentions}
+      streamDiagnostics={streamDiagnostics}
+      streamState={streamState}
+      submit={submit}
+    />
   );
 }

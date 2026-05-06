@@ -2,7 +2,7 @@ import { Collapse, Tag, Typography } from 'antd';
 import type { CollapseProps } from 'antd';
 
 import type { useChatSession } from '@/hooks/use-chat-session';
-import type { AgentToolProjectedEvent } from '@/lib/agent-tool-event-projections';
+import type { AgentToolProjectedEvent } from '@/utils/agent-tool-event-projections';
 import { extractEvidenceEntities } from './chat-home-workbench-evidence-helpers';
 
 export { renderCabinetSection, renderSpecialistSection } from './chat-home-workbench-cabinet-renders';

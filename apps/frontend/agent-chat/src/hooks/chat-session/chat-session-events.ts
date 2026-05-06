@@ -21,7 +21,11 @@ import {
   syncMessageFromEvent as syncMessageFromEventInternal,
   syncProcessMessageFromEvent as syncProcessMessageFromEventInternal
 } from './chat-session-message-sync-helpers';
-import { PENDING_ASSISTANT_PREFIX, PENDING_USER_PREFIX } from './chat-session-formatters';
+import {
+  LOCAL_USER_EPHEMERAL_ID_PREFIX,
+  PENDING_ASSISTANT_PREFIX,
+  PENDING_USER_PREFIX
+} from './chat-session-formatters';
 
 export { buildEventCard } from './chat-session-event-card-helpers';
 
@@ -50,10 +54,11 @@ export function mergeOrAppendMessage(
   if (!target) {
     const pendingPlaceholder = current.find(
       message =>
-        (message.id.startsWith(PENDING_ASSISTANT_PREFIX) || message.id.startsWith(PENDING_USER_PREFIX)) &&
-        message.sessionId === nextMessage.sessionId &&
         message.role === nextMessage.role &&
-        shouldReplacePendingPlaceholder(message, nextMessage)
+        ((message.sessionId === nextMessage.sessionId &&
+          (message.id.startsWith(PENDING_ASSISTANT_PREFIX) || message.id.startsWith(PENDING_USER_PREFIX)) &&
+          shouldReplacePendingPlaceholder(message, nextMessage)) ||
+          shouldReplaceLocalEphemeralUserMessage(message, nextMessage))
     );
 
     if (pendingPlaceholder) {
@@ -62,6 +67,7 @@ export function mergeOrAppendMessage(
           ? {
               ...message,
               id: nextMessage.id,
+              sessionId: nextMessage.sessionId || message.sessionId,
               content: nextMessage.content,
               taskId: nextMessage.taskId ?? message.taskId,
               linkedAgent: nextMessage.linkedAgent ?? message.linkedAgent,
@@ -129,6 +135,19 @@ function resolveAppendedContent(currentContent: string, incomingContent: string)
     return currentContent;
   }
 
+  // 防御性保护：如果 incoming 的完整内容已经存在于 current 中
+  //（且长度>10，避免误判短 token），说明可能是重复发送的完整内容，忽略
+  const incomingTrimmed = incomingContent.trim();
+  if (incomingTrimmed.length > 10 && currentContent.includes(incomingTrimmed)) {
+    return currentContent;
+  }
+
+  // 如果 current 的完整内容已经存在于 incoming 中，说明 incoming 是更完整的版本，替换
+  const currentTrimmed = currentContent.trim();
+  if (currentTrimmed.length > 10 && incomingContent.includes(currentTrimmed)) {
+    return incomingContent;
+  }
+
   return `${currentContent}${incomingContent}`;
 }
 
@@ -145,6 +164,29 @@ function shouldReplacePendingPlaceholder(pendingMessage: ChatMessageRecord, next
   }
 
   return nextMs >= pendingMs;
+}
+
+function shouldReplaceLocalEphemeralUserMessage(
+  ephemeralMessage: ChatMessageRecord,
+  inboundMessage: ChatMessageRecord
+): boolean {
+  if (inboundMessage.role !== 'user' || ephemeralMessage.role !== 'user') {
+    return false;
+  }
+  if (!ephemeralMessage.id.startsWith(LOCAL_USER_EPHEMERAL_ID_PREFIX)) {
+    return false;
+  }
+  if (!inboundMessage.sessionId) {
+    return false;
+  }
+  if (
+    ephemeralMessage.sessionId &&
+    inboundMessage.sessionId &&
+    ephemeralMessage.sessionId !== inboundMessage.sessionId
+  ) {
+    return false;
+  }
+  return ephemeralMessage.content.trim() === inboundMessage.content.trim();
 }
 
 export function buildVisibleEventMessage(event: ChatEventRecord) {

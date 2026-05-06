@@ -4,7 +4,7 @@ import { BarChart3, Link2, Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import type { DashboardPageKey } from '@/types/admin';
 
 interface SiteHeaderProps {

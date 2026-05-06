@@ -9,7 +9,7 @@ import {
 } from '@/components/dashboard-center-shell';
 
 import type { ApprovalCenterItem } from '@/types/admin';
-import { getMinistryDisplayName, normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { getMinistryDisplayName, normalizeExecutionMode } from '@/utils/runtime-semantics';
 import {
   getReasonCodeLabel,
   isRuntimeGovernanceApproval,

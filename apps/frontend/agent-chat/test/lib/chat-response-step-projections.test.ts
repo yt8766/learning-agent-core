@@ -6,8 +6,9 @@ import {
   foldChatResponseStepProjection,
   foldChatResponseStepProjectionsFromEvents,
   initialChatResponseStepsState,
+  isChatResponseStepProjectionPayloadCandidate,
   parseChatResponseStepProjection
-} from '../../src/lib/chat-response-step-projections';
+} from '../../src/utils/chat-response-step-projections';
 import type { ChatEventRecord } from '../../src/types/chat';
 
 const step = {
@@ -60,6 +61,13 @@ describe('chat response step projections', () => {
 
   it('ignores unrelated payloads while parsing projections', () => {
     expect(parseChatResponseStepProjection({ projection: 'task_trajectory' })).toBeNull();
+  });
+
+  it('guards high frequency token payloads before schema parsing', () => {
+    expect(isChatResponseStepProjectionPayloadCandidate({ content: 'hello' })).toBe(false);
+    expect(isChatResponseStepProjectionPayloadCandidate({ projection: 'task_trajectory' })).toBe(false);
+    expect(isChatResponseStepProjectionPayloadCandidate({ projection: 'chat_response_step' })).toBe(true);
+    expect(isChatResponseStepProjectionPayloadCandidate({ projection: 'chat_response_steps' })).toBe(true);
   });
 
   it('derives response steps from chat events without stream reducer state', () => {

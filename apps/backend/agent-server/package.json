@@ -15,6 +15,7 @@
     "start": "nest start",
     "prestart:dev": "pnpm --dir ../../.. build:lib",
     "start:dev": "nest start --watch",
+    "dev:backend": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",

@@ -1,5 +1,5 @@
 import type { ApprovalCenterItem } from '@/types/admin';
-import { getExecutionModeDisplayName } from '@/lib/runtime-semantics';
+import { getExecutionModeDisplayName } from '@/utils/runtime-semantics';
 
 export function getReasonCodeLabel(reasonCode?: string) {
   switch (reasonCode) {

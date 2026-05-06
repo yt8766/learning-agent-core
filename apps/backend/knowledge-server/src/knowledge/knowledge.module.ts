@@ -2,6 +2,8 @@ import { Logger, Module, OnModuleInit } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthTokenVerifier } from '../auth/auth-token-verifier';
+import { KnowledgeFrontendSettingsController } from './knowledge-frontend-settings.controller';
+import { KnowledgeFrontendSettingsService } from './knowledge-frontend-settings.service';
 import { KnowledgeFrontendMvpController } from './knowledge-frontend-mvp.controller';
 import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeDocumentService } from './knowledge-document.service';
@@ -26,7 +28,7 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
 import type { OssStorageProvider } from './storage/oss-storage.provider';
 
 @Module({
-  controllers: [KnowledgeController, KnowledgeFrontendMvpController],
+  controllers: [KnowledgeController, KnowledgeFrontendMvpController, KnowledgeFrontendSettingsController],
   providers: [
     createKnowledgeRepositoryProvider(),
     createKnowledgeSdkRuntimeProvider(),
@@ -96,6 +98,10 @@ import type { OssStorageProvider } from './storage/oss-storage.provider';
     {
       provide: KnowledgeProviderHealthService,
       useFactory: () => new KnowledgeProviderHealthService()
+    },
+    {
+      provide: KnowledgeFrontendSettingsService,
+      useFactory: () => new KnowledgeFrontendSettingsService()
     },
     {
       provide: KnowledgeRagService,

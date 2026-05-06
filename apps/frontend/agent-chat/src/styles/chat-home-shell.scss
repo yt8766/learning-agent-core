@@ -1,20 +1,23 @@
 .chatx-layout {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   position: relative;
   background: #ffffff;
 }
 
 .chatx-agent-codex {
-  --chatx-sidebar-width: 320px;
-  --chatx-sidebar-collapsed-width: 92px;
+  --chatx-sidebar-width: 300px;
+  --chatx-sidebar-collapsed-width: 72px;
   --chatx-main-gutter: 44px;
   --message-list-max-width: 980px;
 
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   display: grid;
   grid-template-columns: var(--chatx-sidebar-width) minmax(0, 1fr);
-  background: #ffffff;
-  color: #101828;
+  background: var(--color-chat-canvas, #f8fafc);
+  color: var(--color-chat-ink, #0f172a);
   overflow: hidden;
 }
 
@@ -30,26 +33,32 @@
 .chatx-agent-codex .ant-btn,
 .chatx-agent-codex .ant-input,
 .chatx-agent-codex .ant-alert {
-  font-family: Manrope, 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 .chatx-agent-codex__sidebar {
   min-width: 0;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border-right: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fbfcff;
 }
 
 .chatx-agent-codex__main {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   box-sizing: border-box;
   overflow: hidden;
-  // margin: 0 44px;
-  // padding: 0 205.5px 24px;
-  background: #ffffff;
+}
+
+/* 主列仅此一处在流式布局中的子项：占满剩余高度，否则内层 grid 行会被内容撑开、消息区无法出现滚动条 */
+.chatx-agent-codex__main > .chatx-conversation,
+.chatx-agent-codex__main > .chatx-empty-conversation {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chatx-agent-codex__error {
@@ -69,7 +78,7 @@
 .chatx-layout .ant-input,
 .chatx-layout .ant-segmented,
 .chatx-layout .ant-alert {
-  font-family: Manrope, 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 .chatx-header.ant-layout-header {
@@ -114,7 +123,8 @@
 }
 
 .chatx-content {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   background: #ffffff;
 }
@@ -129,7 +139,8 @@
 }
 
 .chatx-main-card {
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -261,8 +272,8 @@
   }
 
   .chatx-main-card {
-    height: 100vh;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 0;
     padding: 0;
     border-radius: 0;
   }

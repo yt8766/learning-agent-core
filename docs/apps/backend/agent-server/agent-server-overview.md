@@ -117,9 +117,10 @@ Chat response steps 通过 `chat-response-steps.adapter.ts` 投影为 `node_prog
 ## 启动
 
 ```bash
-pnpm build:lib
-pnpm --dir apps/backend/agent-server start:dev
+pnpm start:dev:agent
 ```
+
+本地同时联调 `auth-server`、`knowledge-server` 与 `agent-server` 时，优先使用根级 `pnpm start:dev`。
 
 生产构建：
 

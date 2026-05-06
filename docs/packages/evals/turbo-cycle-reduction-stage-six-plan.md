@@ -5,6 +5,8 @@
 适用范围：`packages/runtime`、`agents/*`、根级 Turbo 验证链路
 最后核对：2026-04-16
 
+> 历史快照说明：本文记录 `2026-04-16` 的 Turbo 循环依赖治理方案。文中出现的 `@agent/shared` 表示当时的迁移中间态；该包现已退场，当前新增或修正文档时必须以 `packages/core`、`packages/runtime`、`agents/*` 或应用本地 facade 为准。
+
 本主题配套文档：
 
 - [验证体系规范](/docs/packages/evals/verification-system-guidelines.md)
@@ -179,17 +181,19 @@
 把 runtime 真正需要的 supervisor-facing 内容，迁到稳定边界：
 
 - schema-first contract 优先放 `packages/core`
-- 展示组合或兼容 re-export 才考虑 `packages/shared`
+- 展示组合或兼容 facade 放在真实宿主或应用本地，不能恢复 `packages/shared`
 
 目标不是复制一份逻辑，而是让 runtime 不再直接握住 supervisor 的实现包。
 
-当前状态：
+历史阶段状态：
 
 - 当时已经按批次把 bootstrap、workflow preset、research planning、workflow route、specialist route、execution-step、router facade 与 supervisor ministry facade 这几组 runtime-facing contract 下沉到 `@agent/shared`
 - runtime 的 research / execute / review / pipeline graph 参数位当时也已切到 shared contract
 - `HubuSearchMinistry` / `LibuDocsMinistry` 具体类创建继续只保留在 orchestration 装配点
 - `supervisor` 当时保留 compat re-export
 - 后续仍需继续迁移实现级依赖
+
+当前正确入口：`packages/shared` / `@agent/shared` 已退场，新的稳定 contract 默认收敛到 `packages/core`，易变 facade / compat / aggregate 落到 `packages/runtime`、`agents/*` 或应用本地。
 
 ### 5.3 第三步：把 runtime 改成依赖 contract / registry，而不是依赖 agent 实现
 
@@ -205,7 +209,7 @@
 - `XingbuReviewMinistry` 的 runtime-facing 参数位已完成第一轮 contract 化
 - `GongbuCodeMinistry` / `BingbuOpsMinistry` 的 runtime-facing 参数位已完成第一轮 contract 化
 - `ExecutorAgent` 的 recovery-only 消费面已缩到 `ApprovedExecutionAgentLike`
-- `appendDataReportContext` / `buildDataReportContract` 当时已下沉到 `@agent/shared`
+- `appendDataReportContext` / `buildDataReportContract` 曾下沉到 `@agent/shared`；当前不得再新增该入口，data-report contract / facade 以 `agents/data-report`、`packages/report-kit`、`packages/runtime` 与稳定 core contract 边界为准
 - runtime 对 `@agent/agents-supervisor` 的剩余直接引用，已明显收缩到装配点、本地 compat barrel 和少量 graph wiring
 - runtime 对 `@agent/agents-reviewer` 的剩余直接引用，已收缩到装配点与本地 compat barrel
 - runtime 对 `@agent/agents-coder` 的剩余直接引用，已收缩到装配点与本地 compat barrel
@@ -249,9 +253,9 @@ pnpm exec turbo run build --filter=@agent/runtime --dry-run=json
 截至 `2026-04-16` 本轮进展：
 
 - 已完成：
-  - workflow / helper / route contract 下沉到 `@agent/shared`
+  - workflow / helper / route contract 当时下沉到 `@agent/shared`，该入口现已退场
   - router / ministry / execution facade 的第一轮 contract 化
-  - data-report runtime-facing contract helper 下沉到 `@agent/shared`
+  - data-report runtime-facing contract helper 当时下沉到 `@agent/shared`，该入口现已退场
   - runtime 对 supervisor 三个主要 Ministry 的参数位 contract 化
   - runtime 对 reviewer/coder 主要 Ministry 参数位的第一轮 contract 化
 - 仍未完成：

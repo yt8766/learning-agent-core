@@ -1,7 +1,7 @@
 import { CheckCircle, Circle, Clock, XCircle } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 import type { RunStatus, StreamNodeEvent } from '../hooks/useWorkflowStream';
 

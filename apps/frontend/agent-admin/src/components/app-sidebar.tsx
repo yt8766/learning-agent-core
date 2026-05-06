@@ -20,7 +20,7 @@ import {
   SidebarRail
 } from '@/components/ui/sidebar';
 import { adminAuthStore } from '@/pages/auth/store/admin-auth-store';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import type { DashboardPageKey, TaskRecord } from '@/types/admin';
 
 export interface AdminNavigationProps {

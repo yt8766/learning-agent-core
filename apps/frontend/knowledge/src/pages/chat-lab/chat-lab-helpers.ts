@@ -78,6 +78,10 @@ export function createChatLabConversation(seedMessage?: string): ChatLabConversa
   };
 }
 
+export function resolveChatLabKnowledgeBaseId(knowledgeBases: readonly Pick<KnowledgeBase, 'id'>[]) {
+  return knowledgeBases[0]?.id;
+}
+
 export function deriveConversationTitle(message?: string): string {
   const normalized = message?.replace(/\s+/g, ' ').trim();
   if (!normalized) {

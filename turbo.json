@@ -41,6 +41,10 @@
       "persistent": true,
       "cache": false
     },
+    "dev:backend": {
+      "persistent": true,
+      "cache": false
+    },
     "build:server": {
       "outputs": ["dist/**/*"]
     },

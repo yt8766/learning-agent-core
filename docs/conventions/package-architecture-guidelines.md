@@ -186,7 +186,7 @@ packages/<pkg>/
   - `tasking` 中像 `HealthCheckResult` 这类不依赖前端默认组合、只表达稳定接口语义的 contract，也应优先放进 `packages/core`；当前已按 `HealthCheckResultSchema + z.infer` 落地
   - `governance` 中的 `ConnectorHealthRecord`、`ApprovalPolicyRecord`、`ApprovalScopePolicyRecord`、`McpCapability` 主 contract 也已切到 `schema-first`
   - `knowledge` 中的 `ExecutionTrace`、`EvidenceRecord`、`MemoryRecord`、`RuleRecord`、以及后续可独立稳定的 evidence / trace helper，也应优先从 `shared` 回收到 `core`
-  - `primitives` 中像 `QueueStateRecord`、`LlmUsageModelRecord`、`LlmUsageRecord` 这类跨 runtime / backend / frontends 复用的稳定记录结构，也应优先放入 `packages/core`，`packages/shared` 只保留 compat re-export 或前端默认组合
+  - `primitives` 中像 `QueueStateRecord`、`LlmUsageModelRecord`、`LlmUsageRecord` 这类跨 runtime / backend / frontends 复用的稳定记录结构，也应优先放入 `packages/core`；展示默认组合或 compat facade 必须落在真实宿主或应用本地，不能恢复 `packages/shared`
   - `connectors` 中像 `ConnectorKnowledgeIngestionSummary`、`ConnectorCapabilityUsageRecord` 这类稳定摘要 contract，也应以 `packages/core` 为唯一主定义，并优先按 schema-first 维护
   - data-report 领域 schema/type/graph contract 已下沉到 `agents/data-report/src/types/`，不要再回填到 `core`；`buildDataReportBlueprint`、scaffold、write、template resolve 等确定性生成实现必须留在 `report-kit`
   - `packages/core/package.json` 当前只允许 `zod` 作为依赖；禁止重新加入 `@agent/report-kit`、`@agent/runtime`、`@agent/agents-*` 或任何业务实现包

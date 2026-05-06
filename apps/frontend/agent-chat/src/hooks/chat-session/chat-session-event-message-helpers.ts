@@ -3,7 +3,7 @@ import {
   buildNodeLifecycleEventCopy,
   buildTaskTrajectoryEventCopy,
   buildTrajectoryStepEventCopy
-} from '@/lib/chat-trajectory-projections';
+} from '@/utils/chat-trajectory-projections';
 
 function getIntentLabel(intent: string) {
   switch (intent) {

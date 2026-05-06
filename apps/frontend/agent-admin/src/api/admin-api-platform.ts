@@ -1,7 +1,7 @@
-import type { RunBundleRecord, WorkflowPresetDefinition } from '@agent/core';
+import type { KnowledgeGovernanceProjection, RunBundleRecord, WorkflowPresetDefinition } from '@agent/core';
 import type { PlatformConsoleLogAnalysisRecord, PlatformConsoleRecord, RuntimeArchitectureRecord } from '@/types/admin';
 import { request, type ChannelDeliveryRecord } from './admin-api-core';
-import { normalizeExecutionMode } from '@/lib/runtime-semantics';
+import { normalizeExecutionMode } from '@/utils/runtime-semantics';
 
 export * from './admin-api-agent-tools';
 export * from './admin-api-sandbox';
@@ -231,6 +231,13 @@ export async function getSkillSourcesCenter() {
 export async function getCompanyAgentsCenter() {
   return request<PlatformConsoleRecord['companyAgents']>('/platform/company-agents-center', {
     cancelKey: 'company-agents-center',
+    cancelPrevious: true
+  });
+}
+
+export async function getKnowledgeGovernanceProjection() {
+  return request<KnowledgeGovernanceProjection>('/platform/knowledge/governance', {
+    cancelKey: 'knowledge-governance',
     cancelPrevious: true
   });
 }

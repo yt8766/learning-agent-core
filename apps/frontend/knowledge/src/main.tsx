@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 
 import './styles/tailwind.css';
 import 'antd/dist/reset.css';
+import '@xyflow/react/dist/style.css';
 import './styles/knowledge-pro.css';
+import './styles/knowledge-rag-ops.css';
 
 import { AuthClient } from './api/auth-client';
 import { KnowledgeApiClient } from './api/knowledge-api-client';

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEventCard,
   buildVisibleEventMessage,
+  mergeOrAppendMessage,
   syncMessageFromEvent,
   syncProcessMessageFromEvent,
   syncSessionFromEvent
@@ -835,5 +836,49 @@ describe('chat-session-events', () => {
         })
       })
     ]);
+  });
+
+  it('mergeOrAppendMessage 会用正式 user id 替换 X-SDK 的 local-user_* 临时行（同内容）', () => {
+    const localUser: ChatMessageRecord = {
+      id: 'local-user_1710000000000',
+      sessionId: 'session-1',
+      role: 'user',
+      content: '你好',
+      createdAt: '2026-05-05T00:00:00.000Z'
+    };
+    const serverUser: ChatMessageRecord = {
+      id: 'msg-real-1',
+      sessionId: 'session-1',
+      role: 'user',
+      content: '你好',
+      createdAt: '2026-05-05T00:00:01.000Z'
+    };
+
+    const merged = mergeOrAppendMessage([localUser], serverUser);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('msg-real-1');
+    expect(merged[0]?.content).toBe('你好');
+  });
+
+  it('mergeOrAppendMessage 在临时用户尚无 sessionId 时仍可按内容与正式 user 合并', () => {
+    const localUser: ChatMessageRecord = {
+      id: 'local-user_1710000000001',
+      sessionId: '',
+      role: 'user',
+      content: '测一条',
+      createdAt: '2026-05-05T00:00:00.000Z'
+    };
+    const serverUser: ChatMessageRecord = {
+      id: 'msg-real-2',
+      sessionId: 'session-2',
+      role: 'user',
+      content: '测一条',
+      createdAt: '2026-05-05T00:00:01.000Z'
+    };
+
+    const merged = mergeOrAppendMessage([localUser], serverUser);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe('msg-real-2');
+    expect(merged[0]?.sessionId).toBe('session-2');
   });
 });
