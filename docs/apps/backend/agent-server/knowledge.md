@@ -14,8 +14,9 @@
 ```text
 apps/backend/agent-server/src/api/knowledge/knowledge.controller.ts
 apps/backend/agent-server/src/api/knowledge/legacy-knowledge.controller.ts
+apps/backend/agent-server/src/api/knowledge/knowledge-settings.controller.ts
 apps/backend/agent-server/src/domains/knowledge/knowledge-domain.module.ts
-apps/backend/agent-server/src/domains/knowledge/services/knowledge-base.service.ts
+apps/backend/agent-server/src/domains/knowledge/services/*
 ```
 
 新增 shell 暴露：
@@ -23,6 +24,16 @@ apps/backend/agent-server/src/domains/knowledge/services/knowledge-base.service.
 ```text
 GET /api/knowledge/bases
 GET /api/knowledge/v1/bases
+GET /api/knowledge/workspace/users
+POST /api/knowledge/workspace/users/invitations
+GET /api/knowledge/settings/model-providers
+GET /api/knowledge/settings/api-keys
+POST /api/knowledge/settings/api-keys
+GET /api/knowledge/settings/storage
+GET /api/knowledge/settings/security
+PATCH /api/knowledge/settings/security
+GET /api/knowledge/chat/assistant-config
+PATCH /api/knowledge/chat/assistant-config
 ```
 
 当前 `src/domains/knowledge` 已迁入这些内存闭环能力：
@@ -31,9 +42,13 @@ GET /api/knowledge/v1/bases
 - `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
 - `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
 - `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
+- `KnowledgeIngestionQueue` / `KnowledgeIngestionWorker`：由 `KnowledgeDomainModule.onModuleInit()` 启动，模块销毁时 stop；不要在 HTTP service 内手动 drain 队列。
+- `KnowledgeFrontendSettingsService`：workspace users、invitation、model providers、API keys、storage/security/assistant config 的前端治理面投影。
+- `KnowledgeProviderHealthService`：embedding/vector/keyword/generation 探针聚合；未配置返回 `unconfigured`，探针异常返回 `degraded`。
+- `KnowledgeEvalService`：dataset case 同步评测与 run comparison projection；当前统一域内默认 answerer 仍是占位，后续 RAG 迁入后再接真实回答链路。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 Postgres repository、RAG SDK/provider、frontend settings、provider health、eval 等能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 Postgres repository、RAG SDK/provider 等能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
@@ -41,9 +56,9 @@ GET /api/knowledge/v1/bases
 
 新统一后端 domain 的分层职责：
 
-- `src/api/knowledge/*`：canonical `/api/knowledge/*` 与 legacy `/api/knowledge/v1/*` HTTP shell。
+- `src/api/knowledge/*`：canonical `/api/knowledge/*`、frontend settings API 与 legacy `/api/knowledge/v1/*` HTTP shell；请求体验证优先使用 `@agent/core` schema。
 - `src/domains/knowledge/repositories/*`：Knowledge domain repository contract 和内存实现；后续 Postgres 实现必须在这里拆分后接入，不要复用旧 `src/knowledge` token。
-- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker 等领域服务。
+- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval 等领域服务。
 - `src/domains/knowledge/storage/*`：OSS provider contract 和内存实现；vendor SDK 只能停留在 provider 边界。
 - `src/domains/knowledge/domain/*`：document/upload/chat/RAG 相关本地域类型和 schema。
 
