@@ -2,20 +2,25 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
-最后核对：2026-05-03
+适用范围：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、`apps/backend/agent-server/src/domains/knowledge`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
+最后核对：2026-05-07
 
-> 当前 canonical 业务入口：`apps/backend/knowledge-server`。`apps/backend/agent-server` 中仍存在的 knowledge 入口仅作为迁移期间兼容路径，不再承接新增 knowledge 主业务。
+> 统一后端迁移说明：`agent-server` 已新增 `src/domains/knowledge` route shell，目标是把 standalone `knowledge-server` 合并进单一后端宿主。迁移完成前，standalone `knowledge-server` 和旧 `agent-server/src/knowledge` 仍保留兼容价值；新增后端能力默认向 `agent-server/src/domains/knowledge` 收敛。
 
 ## 1. Base URL
 
-第一阶段 canonical knowledge-server 接口以 `/api/knowledge` 为前缀。迁移期间旧 `agent-server` 兼容接口仍以 `/api/knowledge/v1` 为前缀。
+统一后端目标接口以 `/api/knowledge` 为前缀。迁移期间旧兼容接口仍以 `/api/knowledge/v1` 为前缀。
 
 ## Backend Ownership
 
-Knowledge API canonical endpoints are served by `apps/backend/knowledge-server`.
-The frontend calls `VITE_KNOWLEDGE_SERVICE_BASE_URL`，默认 `http://127.0.0.1:3020/api`。
-`apps/backend/agent-server/src/knowledge` 只保留迁移兼容路径。
+Knowledge API 正在迁入 `apps/backend/agent-server/src/domains/knowledge`。当前已存在的最小 route shell：
+
+```text
+GET /api/knowledge/bases
+GET /api/knowledge/v1/bases
+```
+
+`apps/backend/knowledge-server` 在迁移完成前仍服务历史客户端；旧 `apps/backend/agent-server/src/knowledge` 只保留迁移兼容路径。
 
 受保护接口必须带：
 

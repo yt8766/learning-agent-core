@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：`apps/backend/agent-server`、`apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-02
+最后核对：2026-05-07
 
 本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
 
@@ -110,23 +110,24 @@
 - Run 详情读 Run Observatory detail。
 - Console diagnostics 只做观测展示，不驱动业务状态。
 
-## Auth / Knowledge Service Split
+## Auth / Knowledge Unified Backend Migration
 
-`agent-admin` 和 `apps/frontend/knowledge` 第一阶段直接调用 `auth-server` 完成登录。`apps/frontend/knowledge` 的知识库业务请求直接调用 `knowledge-server`，并携带 `auth-server` 签发的 Access Token。
+统一后端迁移目标是让 `agent-server` 承接 Identity 与 Knowledge。历史客户端在迁移完成前仍可直接调用 `auth-server` / `knowledge-server`；新增后端能力默认向 `agent-server` 的 `src/domains/identity` 与 `src/domains/knowledge` 收敛。
 
 ```text
-agent-admin login -> auth-server /api/auth/login
-agent-admin users -> auth-server /api/auth/users
-knowledge login -> auth-server /api/auth/login
-knowledge bases -> knowledge-server /api/knowledge/bases
+agent-admin login -> agent-server /api/identity/login
+knowledge bases -> agent-server /api/knowledge/bases
+
+legacy agent-admin login -> auth-server /api/auth/login
+legacy knowledge bases -> knowledge-server /api/knowledge/bases
 ```
 
 边界约定：
 
-- `apps/backend/auth-server` 是统一登录、refresh、logout、当前用户和用户管理的 canonical 服务。
-- `apps/backend/knowledge-server` 是 `apps/frontend/knowledge` 的 canonical knowledge business API 服务。
-- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；前端不要新增到 `/api/knowledge/v1` 的业务调用。
-- 知识库权限由 `knowledge-server` 自己的 membership 治理，不从 auth 全局角色直接推导。
+- `apps/backend/agent-server/src/domains/identity` 是统一身份目标宿主，legacy `auth-server` 保留迁移期兼容价值。
+- `apps/backend/agent-server/src/domains/knowledge` 是统一 Knowledge 目标宿主；当前已提供 `/api/knowledge/bases` 与 `/api/knowledge/v1/bases` route shell，真实 service/repository 迁移仍在进行。
+- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；新增业务不要继续扩展旧目录。
+- 知识库权限后续由 unified Knowledge domain 的 membership / permission 边界治理，不从 auth 全局角色直接推导。
 
 默认本地端口：
 

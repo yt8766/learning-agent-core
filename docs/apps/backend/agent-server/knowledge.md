@@ -1,17 +1,33 @@
 状态：current
 文档类型：architecture
-适用范围：`apps/backend/agent-server/src/knowledge`
-最后核对：2026-05-02
+适用范围：`apps/backend/agent-server/src/knowledge`、`apps/backend/agent-server/src/domains/knowledge`
+最后核对：2026-05-07
 
 # Agent Server Knowledge 后端
 
-> Status: legacy internal path.
-> 新的 frontend-facing knowledge API 必须使用 `apps/backend/knowledge-server`。
-> 不要再把 `apps/backend/agent-server/src/knowledge` 作为 `apps/frontend/knowledge` 的业务 API 宿主扩展。
+> Status: unified backend migration in progress.
+> `apps/backend/agent-server/src/domains/knowledge` 是统一后端目标下的新 Knowledge domain shell。
+> `apps/backend/agent-server/src/knowledge` 仍是历史 runtime-internal / stub 路径；不要把新增主业务继续堆回旧目录。
 
-Knowledge 后端挂载在 `KnowledgeController`，HTTP 前缀为 `/api/knowledge/v1`。Controller 只负责 HTTP 参数、multipart 文件和鉴权上下文入口，业务编排下沉到 service / repository / provider。
+当前统一后端新增了 Knowledge domain route shell：
 
-当前 `apps/backend/agent-server/src/knowledge` 保留为历史生产化路径和 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。独立 `apps/backend/knowledge-server` 是新的 knowledge 前端 canonical 业务 API 宿主，第一阶段负责知识库 base / member / permission API，并消费 `auth-server` 签发的 Access Token。
+```text
+apps/backend/agent-server/src/api/knowledge/knowledge.controller.ts
+apps/backend/agent-server/src/api/knowledge/legacy-knowledge.controller.ts
+apps/backend/agent-server/src/domains/knowledge/knowledge-domain.module.ts
+apps/backend/agent-server/src/domains/knowledge/services/knowledge-base.service.ts
+```
+
+新增 shell 暴露：
+
+```text
+GET /api/knowledge/bases
+GET /api/knowledge/v1/bases
+```
+
+当前 `KnowledgeBaseService` 只是迁移壳，默认返回空列表；真实 `knowledge-server` service、repository、RAG、upload、settings、eval 等能力将在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+
+历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
 ## 分层职责
 
