@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/apps/backend/agent-server/`
-最后核对：2026-05-05
+最后核对：2026-05-07
 
 本目录用于沉淀 `apps/backend/agent-server` 的 HTTP/SSE、运行时装配、平台中心与后台服务说明。
 
@@ -11,6 +11,7 @@
 
 - [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 - [chat-api.md](/docs/apps/backend/agent-server/chat-api.md) ⬅️ **Chat API 完整文档（新增）**
+- [identity.md](/docs/apps/backend/agent-server/identity.md)
 - [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
 - [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
 - [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
@@ -23,11 +24,12 @@
 当前优先阅读：
 
 1. [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
-2. [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
-3. [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
-4. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
-5. [contracts/api/README.md](/docs/contracts/api/README.md)
-6. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
+2. [identity.md](/docs/apps/backend/agent-server/identity.md)
+3. [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
+4. [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
+5. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
+6. [contracts/api/README.md](/docs/contracts/api/README.md)
+7. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
 
 Chat Runtime v2 相关实现入口：
 

@@ -2,14 +2,16 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/backend/auth-server`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-02
+适用范围：`apps/backend/auth-server`、`apps/backend/agent-server/src/domains/identity`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
+最后核对：2026-05-07
 
 统一登录服务采用账号密码登录和 JWT Access Token + Refresh Token 轮换机制。第一版直接由前端调用，不实现 OIDC。
 
+> 统一后端迁移说明：`agent-server` 已新增 Identity 域作为合并后端的目标身份宿主，当前实现见 [agent-server Identity 域](/docs/apps/backend/agent-server/identity.md)。Standalone `auth-server` 仍是历史客户端迁移期的兼容入口；新增后端能力默认不要继续扩展独立 `auth-server`。
+
 ## 1. Canonical Entry
 
-`auth-server` 是 `agent-admin` 和 `apps/frontend/knowledge` 的 canonical 登录入口。
+迁移完成前，legacy 客户端仍可使用 `auth-server` 登录入口：
 
 ```text
 POST /api/auth/login
@@ -32,6 +34,15 @@ http://127.0.0.1:3010/api
 
 ```text
 VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3010/api
+```
+
+统一 `agent-server` 目标入口：
+
+```text
+POST /api/identity/login
+POST /api/identity/refresh
+POST /api/identity/logout
+GET  /api/identity/me
 ```
 
 ## 2. Permission Boundary
