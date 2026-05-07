@@ -25,11 +25,29 @@ GET /api/knowledge/bases
 GET /api/knowledge/v1/bases
 ```
 
-当前 `KnowledgeBaseService` 只是迁移壳，默认返回空列表；真实 `knowledge-server` service、repository、RAG、upload、settings、eval 等能力将在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+当前 `src/domains/knowledge` 已迁入这些内存闭环能力：
+
+- `KnowledgeMemoryRepository`：base/member/upload/document/job/chunk/chat conversation/message 的内存 repository contract。
+- `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
+- `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
+- `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
+- `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
+
+真实 `knowledge-server` 的 Postgres repository、RAG SDK/provider、frontend settings、provider health、eval 等能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
 ## 分层职责
+
+新统一后端 domain 的分层职责：
+
+- `src/api/knowledge/*`：canonical `/api/knowledge/*` 与 legacy `/api/knowledge/v1/*` HTTP shell。
+- `src/domains/knowledge/repositories/*`：Knowledge domain repository contract 和内存实现；后续 Postgres 实现必须在这里拆分后接入，不要复用旧 `src/knowledge` token。
+- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker 等领域服务。
+- `src/domains/knowledge/storage/*`：OSS provider contract 和内存实现；vendor SDK 只能停留在 provider 边界。
+- `src/domains/knowledge/domain/*`：document/upload/chat/RAG 相关本地域类型和 schema。
+
+历史 `src/knowledge` 的职责：
 
 - `knowledge.controller.ts`：transport 层，暴露 auth、knowledge bases、documents、chat、observability、evals API。
 - `knowledge.service.ts`：应用 facade，负责 public API 的服务端上下文覆盖、fixture fallback、service 分发和 DTO projection。
