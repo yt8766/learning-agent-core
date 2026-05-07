@@ -16,7 +16,8 @@ const allowedNestedModuleSubdirs = new Set([
   'interfaces',
   'repositories'
 ]);
-const legacyModuleDirs = new Set(['app', 'common', 'cors', 'logger', 'platform', 'runtime', 'templates']);
+const architectureBoundaryDirs = new Set(['api', 'app', 'domains', 'infrastructure', 'platform', 'shared']);
+const legacyModuleDirs = new Set([...architectureBoundaryDirs, 'common', 'cors', 'logger', 'runtime', 'templates']);
 const maxBackendLines = 400;
 const temporaryOversizeAllowlist = new Set([
   'apps/backend/agent-server/src/runtime/briefings/runtime-tech-briefing-localize.ts',
