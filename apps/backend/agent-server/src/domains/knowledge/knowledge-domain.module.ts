@@ -2,7 +2,7 @@ import { Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 
 import { KnowledgeApiController } from '../../api/knowledge/knowledge.controller';
 import { KnowledgeSettingsController } from '../../api/knowledge/knowledge-settings.controller';
-import { LegacyKnowledgeController } from '../../api/knowledge/legacy-knowledge.controller';
+import { IdentityModule } from '../identity/identity.module';
 import { KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge-domain.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-runtime.provider';
@@ -22,7 +22,8 @@ import { KnowledgeUploadService } from './services/knowledge-upload.service';
 import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-storage.provider';
 
 @Module({
-  controllers: [KnowledgeApiController, LegacyKnowledgeController, KnowledgeSettingsController],
+  imports: [IdentityModule],
+  controllers: [KnowledgeApiController, KnowledgeSettingsController],
   providers: [
     createKnowledgeRepositoryProvider(),
     createKnowledgeSdkRuntimeProvider(),

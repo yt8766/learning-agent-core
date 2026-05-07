@@ -3,10 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 
 import type {
+  KnowledgeChatConversationRecord,
+  KnowledgeChatMessageFeedback,
+  KnowledgeChatMessageRecord,
   CreateDocumentFromUploadRequest,
   CreateDocumentFromUploadResponse,
   DocumentChunksResponse,
   DocumentProcessingJobRecord,
+  KnowledgeEmbeddingModelsResponse,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
 import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
@@ -84,9 +88,12 @@ export class KnowledgeDocumentService {
   }
 
   async listDocuments(
-    actor: KnowledgeActor
+    actor: KnowledgeActor,
+    input: { knowledgeBaseId?: string } = {}
   ): Promise<{ items: KnowledgeDocumentRecord[]; page: number; pageSize: number; total: number }> {
-    const bases = await this.repository.listBasesForUser(actor.userId);
+    const bases = input.knowledgeBaseId
+      ? [await this.getVisibleBaseId(actor, input.knowledgeBaseId)]
+      : (await this.repository.listBasesForUser(actor.userId)).map(base => base.id);
     const items = (await Promise.all(bases.map(base => this.repository.listDocumentsForBase(base.id))))
       .flat()
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -138,6 +145,43 @@ export class KnowledgeDocumentService {
     return { ok: true };
   }
 
+  listEmbeddingModels(): KnowledgeEmbeddingModelsResponse {
+    const id = process.env.KNOWLEDGE_EMBEDDING_MODEL ?? 'text-embedding-3-small';
+    return {
+      items: [
+        {
+          id,
+          label: id,
+          provider: 'openai-compatible',
+          status: process.env.KNOWLEDGE_LLM_API_KEY ? 'available' : 'unconfigured'
+        }
+      ]
+    };
+  }
+
+  async listConversations(
+    actor: KnowledgeActor,
+    query: PageQuery = {}
+  ): Promise<PageResult<KnowledgeChatConversationRecord>> {
+    return paginate(await this.repository.listChatConversationsForUser(actor.userId), normalizePageQuery(query));
+  }
+
+  async listConversationMessages(
+    actor: KnowledgeActor,
+    conversationId: string,
+    query: PageQuery = {}
+  ): Promise<PageResult<KnowledgeChatMessageRecord>> {
+    return paginate(await this.repository.listChatMessages(conversationId, actor.userId), normalizePageQuery(query));
+  }
+
+  async recordFeedback(messageId: string, feedback: KnowledgeChatMessageFeedback): Promise<KnowledgeChatMessageRecord> {
+    const updated = await this.repository.updateMessageFeedback(messageId, feedback);
+    if (!updated) {
+      throw new KnowledgeServiceError('knowledge_chat_message_not_found', '消息不存在');
+    }
+    return updated;
+  }
+
   private async assertCanView(userId: string, baseId: string): Promise<void> {
     const base = await this.repository.findBase(baseId);
     if (!base) {
@@ -148,8 +192,52 @@ export class KnowledgeDocumentService {
       throw new KnowledgeServiceError('knowledge_permission_denied', '无权访问该知识库');
     }
   }
+
+  private async getVisibleBaseId(actor: KnowledgeActor, baseId: string): Promise<{ id: string }> {
+    await this.assertCanView(actor.userId, baseId);
+    return { id: baseId };
+  }
 }
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^.]+$/, '');
+}
+
+export interface PageQuery {
+  page?: string | number;
+  pageSize?: string | number;
+}
+
+interface PageInput {
+  page: number;
+  pageSize: number;
+}
+
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+function normalizePageQuery(query: PageQuery): PageInput {
+  return {
+    page: readPositiveInteger(query.page, 1),
+    pageSize: Math.min(readPositiveInteger(query.pageSize, 20), 100)
+  };
+}
+
+function paginate<T>(result: { items: T[]; total: number }, input: PageInput): PageResult<T> {
+  const start = (input.page - 1) * input.pageSize;
+  return {
+    items: result.items.slice(start, start + input.pageSize),
+    total: result.total,
+    page: input.page,
+    pageSize: input.pageSize
+  };
+}
+
+function readPositiveInteger(value: string | number | undefined, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
 }

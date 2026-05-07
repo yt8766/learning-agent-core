@@ -13,7 +13,6 @@
 
 ```text
 apps/backend/agent-server/src/api/knowledge/knowledge.controller.ts
-apps/backend/agent-server/src/api/knowledge/legacy-knowledge.controller.ts
 apps/backend/agent-server/src/api/knowledge/knowledge-settings.controller.ts
 apps/backend/agent-server/src/domains/knowledge/knowledge-domain.module.ts
 apps/backend/agent-server/src/domains/knowledge/services/*
@@ -23,7 +22,26 @@ apps/backend/agent-server/src/domains/knowledge/services/*
 
 ```text
 GET /api/knowledge/bases
+POST /api/knowledge/bases
+GET /api/knowledge/bases/:baseId/members
+POST /api/knowledge/bases/:baseId/members
+GET /api/knowledge/documents
+POST /api/knowledge/bases/:baseId/uploads
+POST /api/knowledge/bases/:baseId/documents
+GET /api/knowledge/documents/:documentId
+GET /api/knowledge/documents/:documentId/jobs/latest
+GET /api/knowledge/documents/:documentId/chunks
+POST /api/knowledge/documents/:documentId/reprocess
+DELETE /api/knowledge/documents/:documentId
+GET /api/knowledge/embedding-models
+POST /api/knowledge/chat
+GET /api/knowledge/rag/model-profiles
+GET /api/knowledge/conversations
+GET /api/knowledge/conversations/:id/messages
+POST /api/knowledge/messages/:messageId/feedback
 GET /api/knowledge/v1/bases
+POST /api/knowledge/v1/bases
+...same document/chat/member endpoints under /api/knowledge/v1
 GET /api/knowledge/workspace/users
 POST /api/knowledge/workspace/users/invitations
 GET /api/knowledge/settings/model-providers
@@ -57,8 +75,9 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeRagService`：统一后端稳定 RAG service 边界。默认未配置 SDK runtime 时保持 repository-backed 本地关键词答案；`createKnowledgeSdkRuntimeProvider()` 启用后会通过 `KnowledgeRagSdkFacade` 走 SDK planner / search / answer 编排，同时仍由 service 负责持久化 chat messages 与 trace。
 - `rag/*` 纯 provider：已迁入 HyDE query expansion、structured planner、rerank 和 hallucination detector provider。它们只消费项目自定义 LLM boundary / `@agent/knowledge` contract，不直接接触 vendor SDK。
 - `src/domains/knowledge/storage/knowledge-oss-storage.provider.ts`：统一 storage provider factory。默认绑定 `InMemoryOssStorageProvider`；`KNOWLEDGE_OSS_PROVIDER=aliyun` 且 `ALIYUN_OSS_BUCKET`、`ALIYUN_OSS_REGION`、`ALIYUN_OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_ID`、`ALIYUN_OSS_ACCESS_KEY_SECRET` / `OSS_ACCESS_KEY_SECRET` 完整时绑定 `AliyunOssStorageProvider`。upload/document/ingestion 只消费 `KNOWLEDGE_OSS_STORAGE` token，不再直接绑定内存 provider。
+- 统一 `KnowledgeApiController` 同时挂载 `/api/knowledge/*` 与 `/api/knowledge/v1/*`，公开 document/upload/chat/conversation/feedback endpoint 都经由同一 controller + domain service。不要再把 legacy v1 别名单独注册成第二套 controller，以免同一路径重复匹配。
 
-真实 `knowledge-server` 的公开 chat/document HTTP endpoint 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。统一后端当前已迁入非流式 Chat Lab RAG JSON 响应；SSE streaming 仍是后续收口项。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
@@ -66,7 +85,7 @@ PATCH /api/knowledge/chat/assistant-config
 
 新统一后端 domain 的分层职责：
 
-- `src/api/knowledge/*`：canonical `/api/knowledge/*`、frontend settings API 与 legacy `/api/knowledge/v1/*` HTTP shell；请求体验证优先使用 `@agent/core` schema。
+- `src/api/knowledge/*`：canonical `/api/knowledge/*`、frontend settings API 与 legacy `/api/knowledge/v1/*` HTTP shell；请求体验证优先使用 `@agent/core` schema，document/chat 本地域 schema 位于 `src/domains/knowledge/domain/*`。
 - `src/domains/knowledge/repositories/*`：Knowledge domain repository contract、memory/postgres 实现、postgres mapper 与 helper；不要复用旧 `src/knowledge` token。
 - `src/domains/knowledge/runtime/*`：Knowledge domain 的 runtime provider factory、Postgres client boundary 与 schema bootstrap。只允许这里读取 `KNOWLEDGE_REPOSITORY` / `DATABASE_URL` 并创建 `pg.Pool`；service、controller、RAG facade 不直接接触 `pg` 或环境变量。
 - `src/domains/knowledge/rag/*`：HyDE、planner、rerank、hallucination detector 等 RAG 组合 provider。这里可以消费 `@agent/knowledge` 的稳定 provider contract，但 vendor SDK client 创建必须继续留在 adapter / provider factory 边界。
@@ -138,9 +157,9 @@ Schema 默认启用 `vector` extension，`knowledge_chunks.embedding` 使用 `ve
 
 `knowledge_auth_sessions` 持久化 refresh token session 状态，包含 `user_id`、`refresh_token_hash`、`expires_at`、`revoked_at` 与 `rotated_to_session_id`，并以 `id` 作为 primary key。当前 session repository 接口没有 tenantId，因此本轮 schema 不要求 `tenant_id`。其中 `rotated_to_session_id` 用于记录 refresh token rotation 后的新 session id，必须与 session repository 的 rotation 语义保持一致；`refresh_token_hash` 带有独立索引，用于 refresh lookup。
 
-## 当前 API 接线
+## 历史 src/knowledge API 接线
 
-已接线的 production-facing endpoint：
+以下是历史 `apps/backend/agent-server/src/knowledge` 路径曾经接线的 production-facing endpoint。新 Knowledge Chat Lab / document 能力应优先使用上文统一 `src/domains/knowledge` 的 `/api/knowledge/*` endpoint。
 
 - Auth：`POST /auth/login`、`POST /auth/refresh`、`GET /auth/me`、`POST /auth/logout`
 - Knowledge bases：`GET/POST /knowledge-bases`、`GET /knowledge-bases/:id`

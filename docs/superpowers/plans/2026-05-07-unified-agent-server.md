@@ -1393,7 +1393,7 @@ Progress note, 2026-05-07:
 - `knowledge-rag-sdk.providers.ts` and `knowledge-server-search-service.adapter.ts` have been migrated under `src/domains/knowledge/rag`, with tests covering deterministic planning, answer provider failure capture, vector-first search and keyword fallback.
 - `KnowledgeRagSdkFacade` has been migrated under `src/domains/knowledge/rag` and `KnowledgeRagService` now uses it when `KNOWLEDGE_SDK_RUNTIME` is enabled, while preserving local repository-backed RAG when SDK env is absent.
 - `AliyunOssStorageProvider` and `createKnowledgeOssStorageProvider()` have been migrated under `src/domains/knowledge/storage`; upload/document/ingestion services now consume the `KNOWLEDGE_OSS_STORAGE` token, defaulting to memory and switching to Aliyun only when OSS env is complete.
-- Remaining Step 5 work is the public document/chat HTTP endpoints.
+- Public document/upload/chat/conversation/feedback HTTP endpoints now live in the unified `KnowledgeApiController`, mounted on both `/api/knowledge/*` and `/api/knowledge/v1/*` through one controller. The remaining Step 5 gap is streaming Chat Lab SSE parity with the standalone knowledge server.
 
 Move/adapt:
 
