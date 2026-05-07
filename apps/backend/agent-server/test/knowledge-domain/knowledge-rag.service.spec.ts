@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeMemoryRepository } from '../../src/domains/knowledge/repositories/knowledge-memory.repository';
+import type { KnowledgeSdkRuntimeProviderValue } from '../../src/domains/knowledge/runtime/knowledge-sdk-runtime.provider';
 import { KnowledgeBaseService } from '../../src/domains/knowledge/services/knowledge-base.service';
 import { KnowledgeDocumentService } from '../../src/domains/knowledge/services/knowledge-document.service';
 import { KnowledgeIngestionQueue } from '../../src/domains/knowledge/services/knowledge-ingestion.queue';
@@ -59,9 +60,62 @@ describe('KnowledgeRagService', () => {
       code: 'knowledge_base_not_found'
     });
   });
+
+  it('uses SDK RAG facade when runtime is enabled and persists the projected answer', async () => {
+    const generate = vi.fn(async input => {
+      if (isGenerateInput(input)) {
+        const content = input.messages.map(message => message.content).join('\n');
+        if (content.includes('可访问知识库')) {
+          return {
+            text: JSON.stringify({
+              selectedKnowledgeBaseIds: [baseId],
+              queryVariants: ['sdk planner'],
+              searchMode: 'hybrid',
+              selectionReason: 'SDK planner selected the migrated domain KB.',
+              confidence: 0.95
+            }),
+            model: 'fake-chat',
+            providerId: 'fake'
+          };
+        }
+      }
+
+      return {
+        text: 'SDK answer from unified knowledge domain.',
+        model: 'fake-chat',
+        providerId: 'fake'
+      };
+    });
+    const runtime = enabledSdkRuntime({ generate });
+    const { baseId, rag, repository } = await createRagServices('SDK planner can cite unified chunks.', runtime);
+
+    const response = await rag.answer(actor, {
+      knowledgeBaseId: baseId,
+      message: 'sdk planner'
+    });
+
+    expect(generate).toHaveBeenCalled();
+    expect(response).toMatchObject({
+      answer: 'SDK answer from unified knowledge domain.',
+      route: {
+        selectedKnowledgeBaseIds: [baseId],
+        reason: 'legacy-ids'
+      },
+      diagnostics: {
+        hitCount: 1,
+        contextChunkCount: 1
+      }
+    });
+    const messages = await repository.listChatMessages(response.conversationId, actor.userId);
+    expect(messages.items.map(message => message.role)).toEqual(['user', 'assistant']);
+    expect(messages.items[1]).toMatchObject({
+      content: 'SDK answer from unified knowledge domain.',
+      citations: [expect.objectContaining({ quote: 'SDK planner can cite unified chunks.' })]
+    });
+  });
 });
 
-async function createRagServices(content: string) {
+async function createRagServices(content: string, sdkRuntime?: KnowledgeSdkRuntimeProviderValue) {
   const repository = new KnowledgeMemoryRepository();
   const storage = new InMemoryOssStorageProvider();
   const baseService = new KnowledgeBaseService(repository);
@@ -70,7 +124,7 @@ async function createRagServices(content: string) {
   const queue = new KnowledgeIngestionQueue(worker);
   const documents = new KnowledgeDocumentService(repository, queue, storage);
   const traces = new KnowledgeTraceService();
-  const rag = new KnowledgeRagService(repository, traces);
+  const rag = new KnowledgeRagService(repository, traces, sdkRuntime);
   const base = await baseService.createBase(actor, { name: 'Engineering KB', description: '' });
   const uploaded = await upload.uploadFile(actor, base.id, {
     originalname: 'runbook.md',
@@ -89,4 +143,35 @@ async function createRagServices(content: string) {
   await queue.waitForIdle();
 
   return { baseId: base.id, rag, repository, traces };
+}
+
+function enabledSdkRuntime(input: {
+  generate: (input: { messages: Array<{ content: string }> }) => Promise<{
+    text: string;
+    model?: string;
+    providerId?: string;
+  }>;
+}): KnowledgeSdkRuntimeProviderValue {
+  return {
+    enabled: true,
+    runtime: {
+      chatProvider: {
+        providerId: 'fake',
+        defaultModel: 'fake-chat',
+        generate: input.generate as (input: unknown) => Promise<{ text: string; model?: string; providerId?: string }>
+      },
+      embeddingProvider: {
+        providerId: 'fake',
+        defaultModel: 'fake-embedding',
+        embedText: async () => ({ embedding: [0.1, 0.2] })
+      },
+      vectorStore: {
+        search: async () => ({ hits: [] })
+      }
+    }
+  };
+}
+
+function isGenerateInput(value: unknown): value is { messages: Array<{ content: string }> } {
+  return typeof value === 'object' && value !== null && 'messages' in value && Array.isArray(value.messages);
 }

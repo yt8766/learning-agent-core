@@ -5,6 +5,7 @@ import { KnowledgeSettingsController } from '../../api/knowledge/knowledge-setti
 import { LegacyKnowledgeController } from '../../api/knowledge/legacy-knowledge.controller';
 import { KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge-domain.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
+import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-runtime.provider';
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
 import { createKnowledgeSdkRuntimeProvider } from './runtime/knowledge-sdk-runtime.provider';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
@@ -52,9 +53,12 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     },
     {
       provide: KnowledgeRagService,
-      useFactory: (repository: KnowledgeRepository, traces: KnowledgeTraceService) =>
-        new KnowledgeRagService(repository, traces),
-      inject: [KNOWLEDGE_REPOSITORY, KnowledgeTraceService]
+      useFactory: (
+        repository: KnowledgeRepository,
+        traces: KnowledgeTraceService,
+        sdkRuntime: KnowledgeSdkRuntimeProviderValue
+      ) => new KnowledgeRagService(repository, traces, sdkRuntime),
+      inject: [KNOWLEDGE_REPOSITORY, KnowledgeTraceService, KNOWLEDGE_SDK_RUNTIME]
     },
     {
       provide: KnowledgeRagModelProfileService,

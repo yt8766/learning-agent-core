@@ -1391,7 +1391,8 @@ Progress note, 2026-05-07:
 - HyDE, planner, rerank and hallucination detector pure RAG providers have been migrated under `src/domains/knowledge/rag`.
 - `createKnowledgeSdkRuntimeProvider()` has been migrated under `src/domains/knowledge/runtime` and registered in `KnowledgeDomainModule`; it stays disabled unless SDK env is complete.
 - `knowledge-rag-sdk.providers.ts` and `knowledge-server-search-service.adapter.ts` have been migrated under `src/domains/knowledge/rag`, with tests covering deterministic planning, answer provider failure capture, vector-first search and keyword fallback.
-- Remaining Step 5 work is the SDK-backed RAG facade/service wiring and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
+- `KnowledgeRagSdkFacade` has been migrated under `src/domains/knowledge/rag` and `KnowledgeRagService` now uses it when `KNOWLEDGE_SDK_RUNTIME` is enabled, while preserving local repository-backed RAG when SDK env is absent.
+- Remaining Step 5 work is vendor storage providers and the public document/chat HTTP endpoints; the current unified domain still uses in-memory OSS.
 
 Move/adapt:
 
