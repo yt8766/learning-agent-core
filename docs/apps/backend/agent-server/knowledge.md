@@ -39,6 +39,7 @@ PATCH /api/knowledge/chat/assistant-config
 当前 `src/domains/knowledge` 已迁入这些内存闭环能力：
 
 - `KnowledgeMemoryRepository`：base/member/upload/document/job/chunk/chat conversation/message 的内存 repository contract。
+- `PostgresKnowledgeRepository`：`KnowledgeRepository` 的 PostgreSQL 实现，已按 `mapper + helper + repository` 拆分，避免把旧 `knowledge-server` 的 400+ 行仓库整文件搬回统一域；当前仍需后续 provider factory 接入 `KnowledgeDomainModule` 的 env-based 选择。
 - `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
 - `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
 - `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
@@ -51,7 +52,7 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeRagService`：统一后端当前 repository-backed RAG facade；先基于当前 actor 可访问知识库、文档 chunks 和关键词匹配生成本地答案、citation、diagnostics、chat message 与 trace。SDK runtime / planner / vector provider 仍需在后续替换进这个稳定 service 边界。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 Postgres repository、RAG SDK facade/provider、planner/rerank/hyde 等高级 RAG provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 Postgres provider factory、RAG SDK facade/provider、planner/rerank/hyde 等高级 RAG provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
