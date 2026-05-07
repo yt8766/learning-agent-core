@@ -3,7 +3,9 @@ import { Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { KnowledgeApiController } from '../../api/knowledge/knowledge.controller';
 import { KnowledgeSettingsController } from '../../api/knowledge/knowledge-settings.controller';
 import { LegacyKnowledgeController } from '../../api/knowledge/legacy-knowledge.controller';
-import { KnowledgeMemoryRepository } from './repositories/knowledge-memory.repository';
+import { KNOWLEDGE_REPOSITORY } from './knowledge-domain.tokens';
+import type { KnowledgeRepository } from './repositories/knowledge.repository';
+import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
 import { KnowledgeDocumentService } from './services/knowledge-document.service';
 import { KnowledgeEvalService } from './services/knowledge-eval.service';
@@ -20,7 +22,7 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
 @Module({
   controllers: [KnowledgeApiController, LegacyKnowledgeController, KnowledgeSettingsController],
   providers: [
-    KnowledgeMemoryRepository,
+    createKnowledgeRepositoryProvider(),
     InMemoryOssStorageProvider,
     KnowledgeBaseService,
     KnowledgeUploadService,
@@ -48,9 +50,9 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     },
     {
       provide: KnowledgeRagService,
-      useFactory: (repository: KnowledgeMemoryRepository, traces: KnowledgeTraceService) =>
+      useFactory: (repository: KnowledgeRepository, traces: KnowledgeTraceService) =>
         new KnowledgeRagService(repository, traces),
-      inject: [KnowledgeMemoryRepository, KnowledgeTraceService]
+      inject: [KNOWLEDGE_REPOSITORY, KnowledgeTraceService]
     },
     {
       provide: KnowledgeRagModelProfileService,
@@ -88,6 +90,7 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     }
   ],
   exports: [
+    KNOWLEDGE_REPOSITORY,
     KnowledgeBaseService,
     KnowledgeUploadService,
     KnowledgeDocumentService,

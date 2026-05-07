@@ -9,6 +9,7 @@ import type {
   KnowledgeBasesListResponse
 } from '@agent/core';
 
+import { KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 import { KnowledgeMemoryRepository } from '../repositories/knowledge-memory.repository';
 import { KnowledgeServiceError } from './knowledge-service.error';
@@ -21,7 +22,7 @@ export interface KnowledgeActor {
 export class KnowledgeBaseService {
   constructor(
     @Optional()
-    @Inject(KnowledgeMemoryRepository)
+    @Inject(KNOWLEDGE_REPOSITORY)
     private readonly repository: KnowledgeRepository = new KnowledgeMemoryRepository()
   ) {}
 

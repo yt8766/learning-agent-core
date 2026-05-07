@@ -38,8 +38,9 @@ PATCH /api/knowledge/chat/assistant-config
 
 当前 `src/domains/knowledge` 已迁入这些内存闭环能力：
 
-- `KnowledgeMemoryRepository`：base/member/upload/document/job/chunk/chat conversation/message 的内存 repository contract。
-- `PostgresKnowledgeRepository`：`KnowledgeRepository` 的 PostgreSQL 实现，已按 `mapper + helper + repository` 拆分，避免把旧 `knowledge-server` 的 400+ 行仓库整文件搬回统一域；当前仍需后续 provider factory 接入 `KnowledgeDomainModule` 的 env-based 选择。
+- `KnowledgeMemoryRepository`：base/member/upload/document/job/chunk/chat conversation/message 的内存 repository 实现。
+- `PostgresKnowledgeRepository`：`KnowledgeRepository` 的 PostgreSQL 实现，已按 `mapper + helper + repository` 拆分，避免把旧 `knowledge-server` 的 400+ 行仓库整文件搬回统一域。
+- `createKnowledgeRepositoryProvider()`：统一 domain 的 repository provider factory。默认和 `KNOWLEDGE_REPOSITORY=memory` 绑定 `KnowledgeMemoryRepository`；`KNOWLEDGE_REPOSITORY=postgres` 时要求 `DATABASE_URL`，先执行 `runtime/knowledge-schema.sql.ts`，再绑定 `PostgresKnowledgeRepository`。`KnowledgeBaseService`、`KnowledgeUploadService`、`KnowledgeDocumentService`、`KnowledgeIngestionWorker` 与 `KnowledgeRagService` 都只能消费 `KNOWLEDGE_REPOSITORY` token，不允许再直接注入 memory repository 具体类。
 - `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
 - `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
 - `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
@@ -52,7 +53,7 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeRagService`：统一后端当前 repository-backed RAG facade；先基于当前 actor 可访问知识库、文档 chunks 和关键词匹配生成本地答案、citation、diagnostics、chat message 与 trace。SDK runtime / planner / vector provider 仍需在后续替换进这个稳定 service 边界。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 Postgres provider factory、RAG SDK facade/provider、planner/rerank/hyde 等高级 RAG provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 RAG SDK facade/provider、planner/rerank/hyde 等高级 RAG provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
@@ -61,7 +62,8 @@ PATCH /api/knowledge/chat/assistant-config
 新统一后端 domain 的分层职责：
 
 - `src/api/knowledge/*`：canonical `/api/knowledge/*`、frontend settings API 与 legacy `/api/knowledge/v1/*` HTTP shell；请求体验证优先使用 `@agent/core` schema。
-- `src/domains/knowledge/repositories/*`：Knowledge domain repository contract 和内存实现；后续 Postgres 实现必须在这里拆分后接入，不要复用旧 `src/knowledge` token。
+- `src/domains/knowledge/repositories/*`：Knowledge domain repository contract、memory/postgres 实现、postgres mapper 与 helper；不要复用旧 `src/knowledge` token。
+- `src/domains/knowledge/runtime/*`：Knowledge domain 的 runtime provider factory、Postgres client boundary 与 schema bootstrap。只允许这里读取 `KNOWLEDGE_REPOSITORY` / `DATABASE_URL` 并创建 `pg.Pool`；service、controller、RAG facade 不直接接触 `pg` 或环境变量。
 - `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval、trace、RAG model profile、RAG facade 等领域服务。
 - `src/domains/knowledge/storage/*`：OSS provider contract 和内存实现；vendor SDK 只能停留在 provider 边界。
 - `src/domains/knowledge/domain/*`：document/upload/chat/RAG 相关本地域类型和 schema。
@@ -102,9 +104,11 @@ Legacy runtime-internal Knowledge backend still lives in `apps/backend/agent-ser
 | `SUPABASE_URL`              | Supabase project URL          | Required when `KNOWLEDGE_VECTOR_STORE=supabase-pgvector`. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key     | Required only on the backend for vector writes/search.    |
 
-历史 production-cutover Task 5 已完成 `agent-server` 内部 Nest provider wiring。没有 `DATABASE_URL` 且没有显式选择 provider 时，`KNOWLEDGE_REPOSITORY=memory` 会绑定 `InMemoryKnowledgeRepository` 与 `InMemoryKnowledgeSessionRepository`，不要求 `DATABASE_URL`，也不会创建 SQL client。新的前端业务集成不再依赖这一路径，必须优先接入 `apps/backend/knowledge-server`。
+统一 `src/domains/knowledge` 当前由 `createKnowledgeRepositoryProvider()` 负责 repository 选择。未设置 `KNOWLEDGE_REPOSITORY` 时默认使用 `memory`；显式设置为 `postgres` 时必须同时提供 `DATABASE_URL`。统一 domain 不因为单独存在 `DATABASE_URL` 自动切换到 postgres，避免本地环境误连数据库。
 
-`DATABASE_URL` 存在时，Knowledge 默认切到 postgres repository；也可以显式设置 `KNOWLEDGE_REPOSITORY=postgres`。postgres 模式会通过 provider module 边界创建单例 `pg.Pool`，并包装成项目内 `KnowledgeSqlClient` token（`KNOWLEDGE_SQL_CLIENT`）。业务 repository 只依赖该项目自定义 SQL client contract，不直接接触 `pg` 类型；`PostgresKnowledgeRepository` 与 `PostgresKnowledgeSessionRepository` 注入同一个 SQL client。SQL client provider 参与 Nest shutdown lifecycle，模块关闭时会调用可选 `close()` 释放 pool。测试可通过 Nest `overrideProvider(KNOWLEDGE_SQL_CLIENT)` 替换为 fake client，避免连接真实数据库。显式启用 postgres mode 时必须配置 `DATABASE_URL`，缺失时由 provider config parser 拒绝启动。
+历史 `src/knowledge` production-cutover Task 5 已完成内部 Nest provider wiring。没有 `DATABASE_URL` 且没有显式选择 provider 时，`KNOWLEDGE_REPOSITORY=memory` 会绑定 `InMemoryKnowledgeRepository` 与 `InMemoryKnowledgeSessionRepository`，不要求 `DATABASE_URL`，也不会创建 SQL client。新的前端业务集成不再依赖这一路径，必须优先接入 `src/domains/knowledge`。
+
+历史 `src/knowledge` 路径中，`DATABASE_URL` 存在时默认切到 postgres repository；也可以显式设置 `KNOWLEDGE_REPOSITORY=postgres`。该 postgres 模式会通过 provider module 边界创建单例 `pg.Pool`，并包装成项目内 `KnowledgeSqlClient` token（`KNOWLEDGE_SQL_CLIENT`）。业务 repository 只依赖该项目自定义 SQL client contract，不直接接触 `pg` 类型；`PostgresKnowledgeRepository` 与 `PostgresKnowledgeSessionRepository` 注入同一个 SQL client。SQL client provider 参与 Nest shutdown lifecycle，模块关闭时会调用可选 `close()` 释放 pool。测试可通过 Nest `overrideProvider(KNOWLEDGE_SQL_CLIENT)` 替换为 fake client，避免连接真实数据库。显式启用 postgres mode 时必须配置 `DATABASE_URL`，缺失时由 provider config parser 拒绝启动。
 
 postgres 模式下，Knowledge 登录不再使用任意账号 stub，而是通过 `PostgresKnowledgeAdminAuthenticator` 读取数据库超管凭据。当前兼容两类管理员表：agent-server 侧的 `admin_accounts` / `admin_password_credentials`，以及 llm-gateway 侧的 `admin_principals` / `admin_credentials`。只有启用状态的 `super_admin` / owner 账号可映射为 Knowledge `owner` 用户；登录成功后仍签发 Knowledge 自己的双 token，refresh session 存入 `knowledge_auth_sessions`。
 

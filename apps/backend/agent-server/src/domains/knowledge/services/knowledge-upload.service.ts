@@ -9,8 +9,8 @@ import type {
   UploadedKnowledgeFile
 } from '../domain/knowledge-upload.types';
 import { KnowledgeUploadContentTypeSchema } from '../domain/knowledge-upload.schemas';
+import { KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
-import { KnowledgeMemoryRepository } from '../repositories/knowledge-memory.repository';
 import { InMemoryOssStorageProvider } from '../storage/in-memory-oss-storage.provider';
 import type { OssStorageProvider } from '../storage/oss-storage.provider';
 import type { KnowledgeActor } from './knowledge-base.service';
@@ -23,7 +23,7 @@ export class KnowledgeUploadService {
 
   constructor(
     @Optional()
-    @Inject(KnowledgeMemoryRepository)
+    @Inject(KNOWLEDGE_REPOSITORY)
     private readonly repository: KnowledgeRepository,
     @Optional()
     @Inject(InMemoryOssStorageProvider)

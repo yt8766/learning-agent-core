@@ -1308,7 +1308,7 @@ Expected: commit succeeds after hooks pass.
 - Create/Modify: `apps/backend/agent-server/src/domains/knowledge/**`
 - Test: migrated knowledge-server tests under `apps/backend/agent-server/test/knowledge-domain/**`
 
-- [ ] **Step 1: Move repository contract tests first**
+- [x] **Step 1: Move repository contract tests first**
 
 Create `apps/backend/agent-server/test/knowledge-domain/knowledge-repository.contract.spec.ts` by adapting knowledge-server repository tests so they import from:
 
@@ -1336,7 +1336,7 @@ describe('KnowledgeRepository contract', () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing repository contract test**
+- [x] **Step 2: Run the failing repository contract test**
 
 Run:
 
@@ -1346,7 +1346,7 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/kn
 
 Expected: FAIL because the migrated repository does not exist.
 
-- [ ] **Step 3: Move knowledge repository files**
+- [x] **Step 3: Move knowledge repository files**
 
 Move or adapt:
 
@@ -1365,7 +1365,7 @@ apps/backend/agent-server/src/domains/knowledge/repositories/
 
 Preserve repository method names used by existing knowledge-server controllers. Add identity principal arguments only at controller/service boundaries so repository tests stay focused.
 
-- [ ] **Step 4: Move knowledge services in small groups**
+- [x] **Step 4: Move knowledge services in small groups**
 
 Move/adapt in this order:
 
@@ -1382,6 +1382,13 @@ knowledge-eval.service.ts -> services/knowledge-eval.service.ts
 After each move, run the relevant focused tests from `apps/backend/agent-server/test/knowledge-domain`.
 
 - [ ] **Step 5: Move RAG and storage adapters**
+
+Progress note, 2026-05-07:
+
+- `KnowledgeRepository` memory/postgres implementations have been migrated into `apps/backend/agent-server/src/domains/knowledge/repositories`.
+- `createKnowledgeRepositoryProvider()` now binds `KNOWLEDGE_REPOSITORY` to memory by default or postgres when explicitly configured with `DATABASE_URL`.
+- `KnowledgeBaseService`, `KnowledgeUploadService`, `KnowledgeDocumentService`, `KnowledgeIngestionWorker` and `KnowledgeRagService` now consume the repository token instead of the memory implementation class.
+- Remaining Step 5 work is the SDK-backed RAG runtime/provider set and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
 
 Move/adapt:
 

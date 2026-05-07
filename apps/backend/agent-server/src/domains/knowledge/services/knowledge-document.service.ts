@@ -9,7 +9,7 @@ import type {
   DocumentProcessingJobRecord,
   KnowledgeDocumentRecord
 } from '../domain/knowledge-document.types';
-import { KnowledgeMemoryRepository } from '../repositories/knowledge-memory.repository';
+import { KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 import { InMemoryOssStorageProvider } from '../storage/in-memory-oss-storage.provider';
 import type { OssStorageProvider } from '../storage/oss-storage.provider';
@@ -20,7 +20,7 @@ import { KnowledgeServiceError } from './knowledge-service.error';
 @Injectable()
 export class KnowledgeDocumentService {
   constructor(
-    @Inject(KnowledgeMemoryRepository) private readonly repository: KnowledgeRepository,
+    @Inject(KNOWLEDGE_REPOSITORY) private readonly repository: KnowledgeRepository,
     private readonly queue: KnowledgeIngestionQueue,
     @Inject(InMemoryOssStorageProvider) private readonly storage: OssStorageProvider
   ) {}
