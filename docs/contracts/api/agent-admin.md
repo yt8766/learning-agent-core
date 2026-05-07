@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-admin`
-最后核对：2026-04-30
+最后核对：2026-05-07
 
 本文是 `agent-admin` 控制台聚合入口契约。Runtime、Approvals 和 Run Observatory 的专题接口分别见 [runtime.md](/docs/contracts/api/runtime.md)、[approvals.md](/docs/contracts/api/approvals.md)、[run-observatory.md](/docs/contracts/api/run-observatory.md)。
 
@@ -133,6 +133,8 @@ Briefing 分类枚举 `BriefingCategory`：
 - `cloud-infra-tech`
 
 ## 治理动作接口
+
+所有 connector center 与 skill sources center 的 `POST` 写接口都要求已解析 principal 具备 `governance:write` 权限。缺少 principal 返回 `401`，principal 存在但权限不足返回 `403`。读取接口仍不声明该写权限。
 
 | 方法   | 地址                                                                                     | 参数                                                                                                                                                                                                                                                 | 返回值                                                      | 说明                                                                                |
 | ------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------- |

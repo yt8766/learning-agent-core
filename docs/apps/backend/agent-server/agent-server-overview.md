@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/backend/agent-server`
-最后核对：2026-05-01
+最后核对：2026-05-07
 
 本主题主文档：
 
@@ -98,6 +98,12 @@ Nest provider 约束：
 - 新增 provider 依赖另一个本地 provider 时，应优先显式注入稳定 token，例如 `@Inject(AgentToolsRepository)`、`@Inject(RuntimeHost)`。
 - 不要用构造函数默认参数伪装依赖注入；这会让单元测试看似可用，但真实 `AppModule` 启动时 Nest 无法解析 provider token。
 - `backend-http-app.smoke.ts` 使用 `abortOnError: false`，保证启动失败时暴露可诊断异常，而不是在 Vitest worker 中触发 `process.abort()`。
+
+Platform governance 权限：
+
+- `PlatformModule` 注册 `PermissionGuard` 作为平台控制器的权限门。
+- connector center 与 skill sources center 的 `POST` 写接口必须标注 `RequirePermission('governance:write')`。
+- 新增治理写接口时，先在 [agent-admin.md](/docs/contracts/api/agent-admin.md) 写明权限语义，再补 `platform-permission-guards.spec.ts` 防回退测试。
 
 ## Chat 模块拆分约束
 
