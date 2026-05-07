@@ -69,15 +69,15 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeEvalService`：dataset case 同步评测与 run comparison projection；当前统一域内默认 answerer 仍是占位，后续 RAG 迁入后再接真实回答链路。
 - `KnowledgeTraceService`：RAG / ingestion / eval 等链路的 JSON-safe trace/span 内存投影，span attributes 只保留 string/number/boolean/null。
 - `KnowledgeRagModelProfileService`：RAG model profile schema 校验、摘要投影和 enabled profile 解析；默认 profile 读取 `KNOWLEDGE_*_MODEL` 环境变量并回退到本地占位 model id。
-- `src/domains/knowledge/rag/knowledge-rag-sdk.facade.ts`：统一 domain 内的 SDK RAG facade，负责把 `@agent/knowledge` 的 `runKnowledgeRag()` 编排封装在领域边界内。facade 消费 repository、SDK runtime、planner provider、search adapter 与 answer provider，并输出统一 `KnowledgeChatResponse` projection。
+- `src/domains/knowledge/rag/knowledge-rag-sdk.facade.ts`：统一 domain 内的 SDK RAG facade，负责把 `@agent/knowledge` 的 `runKnowledgeRag()` / `streamKnowledgeRag()` 编排封装在领域边界内。facade 消费 repository、SDK runtime、planner provider、search adapter 与 answer provider，并输出统一 `KnowledgeChatResponse` projection 或 `KnowledgeRagStreamEvent`。
 - `src/domains/knowledge/rag/knowledge-rag-sdk.providers.ts`：统一 domain 内的 SDK answer provider 与 deterministic planner fallback。answer provider 只消费项目自己的 `KnowledgeSdkRuntimeProviderValue`，SDK generate/stream 异常会记录为 provider last error，再由 facade/service 映射为稳定 `KnowledgeServiceError`。
 - `src/domains/knowledge/rag/knowledge-server-search-service.adapter.ts`：统一 domain 内的 `@agent/knowledge` `KnowledgeSearchService` adapter。启用 SDK runtime 时优先 query embedding + vector search；vector 缺失、失败或命中无法映射 repository chunk 时回退 repository keyword / 中文 substring 检索，并返回统一 diagnostics。
-- `KnowledgeRagService`：统一后端稳定 RAG service 边界。默认未配置 SDK runtime 时保持 repository-backed 本地关键词答案；`createKnowledgeSdkRuntimeProvider()` 启用后会通过 `KnowledgeRagSdkFacade` 走 SDK planner / search / answer 编排，同时仍由 service 负责持久化 chat messages 与 trace。
+- `KnowledgeRagService`：统一后端稳定 RAG service 边界。默认未配置 SDK runtime 时保持 repository-backed 本地关键词答案，并支持同一套 RAG event contract 的 deterministic SSE fallback；`createKnowledgeSdkRuntimeProvider()` 启用后会通过 `KnowledgeRagSdkFacade` 走 SDK planner / search / answer JSON 或 streaming 编排，同时仍由 service 负责持久化 chat messages 与 trace。
 - `rag/*` 纯 provider：已迁入 HyDE query expansion、structured planner、rerank 和 hallucination detector provider。它们只消费项目自定义 LLM boundary / `@agent/knowledge` contract，不直接接触 vendor SDK。
 - `src/domains/knowledge/storage/knowledge-oss-storage.provider.ts`：统一 storage provider factory。默认绑定 `InMemoryOssStorageProvider`；`KNOWLEDGE_OSS_PROVIDER=aliyun` 且 `ALIYUN_OSS_BUCKET`、`ALIYUN_OSS_REGION`、`ALIYUN_OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_ID`、`ALIYUN_OSS_ACCESS_KEY_SECRET` / `OSS_ACCESS_KEY_SECRET` 完整时绑定 `AliyunOssStorageProvider`。upload/document/ingestion 只消费 `KNOWLEDGE_OSS_STORAGE` token，不再直接绑定内存 provider。
 - 统一 `KnowledgeApiController` 同时挂载 `/api/knowledge/*` 与 `/api/knowledge/v1/*`，公开 document/upload/chat/conversation/feedback endpoint 都经由同一 controller + domain service。不要再把 legacy v1 别名单独注册成第二套 controller，以免同一路径重复匹配。
 
-独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。统一后端当前已迁入非流式 Chat Lab RAG JSON 响应；SSE streaming 仍是后续收口项。
+独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。统一后端当前已迁入 Chat Lab RAG JSON 响应与 `stream:true` SSE streaming；HTTP controller 只做请求归一化、鉴权、错误映射和 SSE 封帧，RAG 事件语义由 `KnowledgeRagService` / `KnowledgeRagSdkFacade` 负责。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 

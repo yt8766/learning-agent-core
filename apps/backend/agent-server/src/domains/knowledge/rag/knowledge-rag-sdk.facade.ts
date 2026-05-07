@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto';
 import type { KnowledgeBase } from '@agent/core';
 import {
   runKnowledgeRag,
+  streamKnowledgeRag,
   type KnowledgeRagAnswer,
   type KnowledgeRagPolicy,
-  type KnowledgeRagResult
+  type KnowledgeRagResult,
+  type KnowledgeRagStreamEvent
 } from '@agent/knowledge';
 
 import type { KnowledgeChatResponse, RagModelProfile } from '../domain/knowledge-document.types';
@@ -61,6 +63,36 @@ export class KnowledgeRagSdkFacade {
       }
 
       return toChatResponse(input.request, result, input.traceId, input.routeReason);
+    } catch (error) {
+      throw new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
+    }
+  }
+
+  async *stream(input: KnowledgeRagSdkFacadeAnswerInput): AsyncIterable<KnowledgeRagStreamEvent> {
+    try {
+      const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime, input.modelProfile);
+      for await (const event of streamKnowledgeRag({
+        query: input.request.message,
+        accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
+        policy: createDefaultRagPolicy(),
+        plannerProvider: this.createPlannerProvider(input),
+        searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
+        answerProvider,
+        metadata: {
+          actorUserId: input.actor.userId,
+          conversationId: input.request.conversationId ?? null,
+          explicitKnowledgeBaseIds: input.preferredKnowledgeBaseIds,
+          requestedMentions: readRequestedMentions(input.request)
+        }
+      })) {
+        if (event.type === 'answer.completed' || event.type === 'rag.completed') {
+          const answerProviderError = readKnowledgeRagAnswerProviderError(answerProvider);
+          if (answerProviderError) {
+            throw answerProviderError;
+          }
+        }
+        yield event;
+      }
     } catch (error) {
       throw new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
     }

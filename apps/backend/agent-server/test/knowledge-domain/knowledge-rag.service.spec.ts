@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { KnowledgeRagStreamEventSchema } from '@agent/knowledge';
 
 import { KnowledgeMemoryRepository } from '../../src/domains/knowledge/repositories/knowledge-memory.repository';
 import type { KnowledgeSdkRuntimeProviderValue } from '../../src/domains/knowledge/runtime/knowledge-sdk-runtime.provider';
@@ -59,6 +60,49 @@ describe('KnowledgeRagService', () => {
     ).rejects.toMatchObject({
       code: 'knowledge_base_not_found'
     });
+  });
+
+  it('streams local RAG events and persists the assistant message with trace metadata', async () => {
+    const { baseId, rag, repository, traces } = await createRagServices('Release checklist\n\nRollback steps');
+
+    const events = [];
+    for await (const event of rag.stream(actor, {
+      knowledgeBaseId: baseId,
+      message: 'How do I rollback?'
+    })) {
+      KnowledgeRagStreamEventSchema.parse(event);
+      events.push(event);
+    }
+
+    expect(events.map(event => event.type)).toEqual([
+      'rag.started',
+      'planner.started',
+      'planner.completed',
+      'retrieval.started',
+      'retrieval.completed',
+      'answer.started',
+      'answer.delta',
+      'answer.completed',
+      'rag.completed'
+    ]);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'answer.delta', delta: expect.stringContaining('Rollback steps') })
+    );
+    const completed = events.find(event => event.type === 'rag.completed');
+    expect(completed).toMatchObject({
+      result: {
+        answer: { text: expect.stringContaining('Rollback steps') },
+        retrieval: { hits: expect.any(Array) }
+      }
+    });
+    const conversations = await repository.listChatConversationsForUser(actor.userId);
+    const messages = await repository.listChatMessages(conversations.items[0].id, actor.userId);
+    expect(messages.items.map(message => message.role)).toEqual(['user', 'assistant']);
+    expect(messages.items[1]).toMatchObject({
+      content: expect.stringContaining('Rollback steps'),
+      traceId: expect.stringMatching(/^trace_/)
+    });
+    expect(traces.getTrace(messages.items[1].traceId ?? '')).toMatchObject({ status: 'ok' });
   });
 
   it('uses SDK RAG facade when runtime is enabled and persists the projected answer', async () => {

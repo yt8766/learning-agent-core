@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type { KnowledgeRagStreamEvent } from '@agent/knowledge';
+
 import type {
   DocumentChunkRecord,
   KnowledgeChatCitation,
@@ -12,6 +14,12 @@ import { KnowledgeMemoryRepository } from '../repositories/knowledge-memory.repo
 import { KnowledgeRagSdkFacade } from '../rag/knowledge-rag-sdk.facade';
 import type { KnowledgeSdkRuntimeProviderValue } from '../runtime/knowledge-sdk-runtime.provider';
 import type { KnowledgeActor } from './knowledge-base.service';
+import {
+  buildFallbackAnswer,
+  runKnowledgeRagStream,
+  type KnowledgeRagStreamRouteContext,
+  type RankedKnowledgeChunk
+} from './knowledge-rag-stream.runtime';
 import { KnowledgeServiceError } from './knowledge-service.error';
 import { KnowledgeTraceService } from './knowledge-trace.service';
 
@@ -23,19 +31,11 @@ export interface NormalizedKnowledgeChatRequest {
   message: string;
 }
 
-interface RankedChunk {
+interface RankedChunk extends RankedKnowledgeChunk {
   chunk: DocumentChunkRecord;
-  documentId: string;
-  title: string;
-  score: number;
 }
 
-interface KnowledgeRagRouteContext {
-  requestedMentions: string[];
-  selectedKnowledgeBaseIds: string[];
-  accessibleBases: Awaited<ReturnType<KnowledgeRepository['listBasesForUser']>>;
-  reason: 'legacy-ids' | 'fallback-all';
-}
+type KnowledgeRagRouteContext = KnowledgeRagStreamRouteContext;
 
 export class KnowledgeRagService {
   constructor(
@@ -134,7 +134,7 @@ export class KnowledgeRagService {
         hitCount: rankedChunks.length,
         contextChunkCount: rankedChunks.length
       };
-      const answer = buildAnswer(message, rankedChunks);
+      const answer = buildFallbackAnswer(message, rankedChunks);
       const assistantMessage = await this.repository.appendChatMessage({
         conversationId: conversation.id,
         userId: actor.userId,
@@ -172,6 +172,59 @@ export class KnowledgeRagService {
         diagnostics,
         traceId
       };
+    } catch (error) {
+      this.traces.finishTrace(traceId, 'error');
+      throw error;
+    }
+  }
+
+  async *stream(
+    actor: KnowledgeActor,
+    request: NormalizedKnowledgeChatRequest,
+    modelProfile?: RagModelProfile
+  ): AsyncIterable<KnowledgeRagStreamEvent> {
+    const message = request.message.trim();
+    if (!message) {
+      throw new KnowledgeServiceError('knowledge_chat_message_required', '消息不能为空');
+    }
+
+    const conversation = await this.ensureConversation(actor, request, modelProfile);
+    await this.repository.appendChatMessage({
+      conversationId: conversation.id,
+      userId: actor.userId,
+      role: 'user',
+      content: message,
+      modelProfileId: modelProfile?.id
+    });
+    const route = await this.resolveRoute(actor, request);
+    const routeRecord = toRouteRecord(route);
+    const traceId = this.traces.startTrace({
+      operation: 'rag.chat',
+      knowledgeBaseId: route.selectedKnowledgeBaseIds[0]
+    });
+    this.traces.addSpan(traceId, {
+      name: 'route',
+      status: 'ok',
+      attributes: {
+        reason: route.reason,
+        selectedCount: route.selectedKnowledgeBaseIds.length
+      }
+    });
+
+    try {
+      yield* runKnowledgeRagStream({
+        actor,
+        request: { ...request, message },
+        conversationId: conversation.id,
+        modelProfile,
+        route,
+        routeRecord,
+        traceId,
+        repository: this.repository,
+        traces: this.traces,
+        sdkRuntime: this.sdkRuntime,
+        searchChunks: (knowledgeBaseIds, query) => this.searchChunks(knowledgeBaseIds, query)
+      });
     } catch (error) {
       this.traces.finishTrace(traceId, 'error');
       throw error;
@@ -257,13 +310,6 @@ function toCitation(item: RankedChunk): KnowledgeChatCitation {
     quote: item.chunk.content,
     score: item.score
   };
-}
-
-function buildAnswer(message: string, rankedChunks: RankedChunk[]): string {
-  if (rankedChunks.length === 0) {
-    return `没有在当前知识库中找到与“${message}”直接相关的内容。`;
-  }
-  return rankedChunks.map((item, index) => `${index + 1}. ${item.chunk.content}`).join('\n');
 }
 
 function deriveConversationTitle(message: string): string {

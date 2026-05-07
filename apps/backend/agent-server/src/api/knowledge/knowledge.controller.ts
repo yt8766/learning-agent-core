@@ -10,12 +10,14 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UnauthorizedException,
   UploadedFile,
   UseInterceptors
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { KnowledgeBaseCreateRequestSchema, KnowledgeBaseMemberCreateRequestSchema } from '@agent/core';
+import type { KnowledgeRagErrorCode, KnowledgeRagStreamEvent } from '@agent/knowledge';
 import { ZodError } from 'zod';
 
 import type { IdentityAuthService } from '../../domains/identity/services/identity-auth.service';
@@ -41,6 +43,13 @@ import { KnowledgeUploadService } from '../../domains/knowledge/services/knowled
 interface KnowledgeApiRequest {
   principal?: unknown;
   headers?: Record<string, string | string[] | undefined>;
+}
+
+interface KnowledgeSseResponse {
+  setHeader(name: string, value: string): void;
+  write(chunk: string): void;
+  end(): void;
+  flushHeaders?: () => void;
 }
 
 @Controller(['knowledge', 'knowledge/v1'])
@@ -164,14 +173,27 @@ export class KnowledgeApiController {
   }
 
   @Post('chat')
-  async chat(@Req() request: KnowledgeApiRequest, @Body() body: unknown) {
+  async chat(
+    @Req() request: KnowledgeApiRequest,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response?: KnowledgeSseResponse
+  ) {
     return this.handleKnowledgeErrors(async () => {
       const input = KnowledgeChatRequestSchema.parse(body) as KnowledgeChatRequest;
-      return this.rag.answer(
-        await this.resolveActor(request),
-        normalizeKnowledgeChatRequest(input),
-        this.resolveModelProfile(input.model)
-      );
+      const actor = await this.resolveActor(request);
+      const normalized = normalizeKnowledgeChatRequest(input);
+      const modelProfile = this.resolveModelProfile(input.model);
+      if (input.stream) {
+        if (!response) {
+          throw new BadRequestException({
+            code: 'knowledge_stream_response_required',
+            message: 'SSE response is required'
+          });
+        }
+        await this.streamChatResponse(response, actor, normalized, modelProfile);
+        return undefined;
+      }
+      return this.rag.answer(actor, normalized, modelProfile);
     });
   }
 
@@ -259,6 +281,28 @@ export class KnowledgeApiController {
       throw toKnowledgeHttpException(error);
     }
   }
+
+  private async streamChatResponse(
+    response: KnowledgeSseResponse,
+    actor: KnowledgeActor,
+    request: ReturnType<typeof normalizeKnowledgeChatRequest>,
+    modelProfile: ReturnType<KnowledgeApiController['resolveModelProfile']>
+  ): Promise<void> {
+    response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    response.setHeader('Cache-Control', 'no-cache, no-transform');
+    response.setHeader('Connection', 'keep-alive');
+    response.flushHeaders?.();
+
+    try {
+      for await (const event of this.rag.stream(actor, request, modelProfile)) {
+        response.write(toSseFrame(event));
+      }
+    } catch (error) {
+      response.write(toSseFrame(toSseErrorEvent(error)));
+    } finally {
+      response.end();
+    }
+  }
 }
 
 function readPrincipalUserId(principal: unknown): string | undefined {
@@ -303,4 +347,42 @@ function toKnowledgeHttpException(error: unknown): unknown {
     }
   }
   return error;
+}
+
+function toSseFrame(event: KnowledgeRagStreamEvent): string {
+  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+}
+
+function toSseErrorEvent(error: unknown): KnowledgeRagStreamEvent {
+  return {
+    type: 'rag.error',
+    runId: 'unknown',
+    error: {
+      code: toRagErrorCode(error),
+      message: getErrorMessage(error)
+    }
+  };
+}
+
+function toRagErrorCode(error: unknown): KnowledgeRagErrorCode {
+  if (error instanceof KnowledgeServiceError && isRagErrorCode(error.code)) {
+    return error.code;
+  }
+  return 'unknown';
+}
+
+function isRagErrorCode(value: string): value is KnowledgeRagErrorCode {
+  return (
+    value === 'knowledge_chat_failed' ||
+    value === 'knowledge_permission_denied' ||
+    value === 'rag_model_profile_disabled' ||
+    value === 'rag_model_profile_not_found'
+  );
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Knowledge chat stream failed.';
 }

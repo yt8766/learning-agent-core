@@ -74,7 +74,16 @@ const rag = {
     traceId: `trace_${actor.userId}`,
     userMessage: { id: 'msg_user', conversationId: 'conv_1', role: 'user', content: request.message },
     assistantMessage: { id: 'msg_assistant', conversationId: 'conv_1', role: 'assistant', content: 'answer' }
-  })
+  }),
+  async *stream(actor: { userId: string }, request: { message: string }) {
+    yield { type: 'rag.started' as const, runId: `run_${actor.userId}` };
+    yield { type: 'answer.delta' as const, runId: `run_${actor.userId}`, delta: `answer:${request.message}` };
+    yield {
+      type: 'rag.error' as const,
+      runId: `run_${actor.userId}`,
+      error: { code: 'unknown' as const, message: 'done sentinel' }
+    };
+  }
 };
 
 const modelProfiles = {
@@ -164,4 +173,42 @@ describe('knowledge route aliases', () => {
       feedback: { rating: 'positive' }
     });
   });
+
+  it('streams knowledge chat events as server-sent events from the unified controller', async () => {
+    const controller = createController();
+    const response = createSseResponse();
+
+    await expect(
+      controller.chat(request, { message: 'How to deploy?', stream: true }, response)
+    ).resolves.toBeUndefined();
+
+    expect(response.headers).toMatchObject({
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive'
+    });
+    expect(response.frames).toEqual([
+      'event: rag.started\ndata: {"type":"rag.started","runId":"run_user_1"}\n\n',
+      'event: answer.delta\ndata: {"type":"answer.delta","runId":"run_user_1","delta":"answer:How to deploy?"}\n\n',
+      'event: rag.error\ndata: {"type":"rag.error","runId":"run_user_1","error":{"code":"unknown","message":"done sentinel"}}\n\n'
+    ]);
+    expect(response.ended).toBe(true);
+  });
 });
+
+function createSseResponse() {
+  return {
+    headers: {} as Record<string, string>,
+    frames: [] as string[],
+    ended: false,
+    setHeader(name: string, value: string) {
+      this.headers[name] = value;
+    },
+    write(frame: string) {
+      this.frames.push(frame);
+    },
+    end() {
+      this.ended = true;
+    }
+  };
+}
