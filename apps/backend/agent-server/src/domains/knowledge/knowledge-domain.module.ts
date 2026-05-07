@@ -11,6 +11,8 @@ import { KnowledgeFrontendSettingsService } from './services/knowledge-frontend-
 import { KnowledgeIngestionQueue } from './services/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from './services/knowledge-ingestion.worker';
 import { KnowledgeProviderHealthService } from './services/knowledge-provider-health.service';
+import { KnowledgeRagModelProfileService } from './services/knowledge-rag-model-profile.service';
+import { KnowledgeTraceService } from './services/knowledge-trace.service';
 import { KnowledgeUploadService } from './services/knowledge-upload.service';
 import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.provider';
 
@@ -38,6 +40,44 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
             citations: []
           })
         })
+    },
+    {
+      provide: KnowledgeTraceService,
+      useFactory: () => new KnowledgeTraceService()
+    },
+    {
+      provide: KnowledgeRagModelProfileService,
+      useFactory: () =>
+        new KnowledgeRagModelProfileService({
+          profiles: [
+            {
+              id: 'coding-pro',
+              label: '用于编程',
+              description: '更专业的回答与控制',
+              useCase: 'coding',
+              plannerModelId: readModelEnv(
+                'KNOWLEDGE_PLANNER_MODEL',
+                readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')
+              ),
+              answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+              embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+              enabled: true
+            },
+            {
+              id: 'daily-balanced',
+              label: '适合日常工作',
+              description: '同样强大，技术细节更少',
+              useCase: 'daily',
+              plannerModelId: readModelEnv(
+                'KNOWLEDGE_PLANNER_MODEL',
+                readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat')
+              ),
+              answerModelId: readModelEnv('KNOWLEDGE_CHAT_MODEL', 'knowledge-chat'),
+              embeddingModelId: readModelEnv('KNOWLEDGE_EMBEDDING_MODEL', 'knowledge-embedding'),
+              enabled: true
+            }
+          ]
+        })
     }
   ],
   exports: [
@@ -46,7 +86,9 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     KnowledgeDocumentService,
     KnowledgeProviderHealthService,
     KnowledgeFrontendSettingsService,
-    KnowledgeEvalService
+    KnowledgeEvalService,
+    KnowledgeTraceService,
+    KnowledgeRagModelProfileService
   ]
 })
 export class KnowledgeDomainModule implements OnModuleInit, OnModuleDestroy {
@@ -59,4 +101,9 @@ export class KnowledgeDomainModule implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     this.queue.stop();
   }
+}
+
+function readModelEnv(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value ? value : fallback;
 }
