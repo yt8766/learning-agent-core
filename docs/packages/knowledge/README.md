@@ -92,7 +92,7 @@
   - 真实 Chroma / OpenSearch / Supabase pgvector / LangChain indexing adapter 已迁入 `packages/knowledge/src/adapters/*`；生产凭据、SDK client 与 host 注入仍由 backend / 装配层负责
 
 - `packages/knowledge/src/retrieval/knowledge-chat-routing.ts`
-  - 是 Chat Lab / knowledge-server 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
+  - 是 Chat Lab / 统一 `agent-server` Knowledge domain 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
   - 输入是当前用户可访问的 knowledge base 元信息、兼容 ids、`metadata.mentions` 和用户问题
   - 路由顺序为兼容 ids、metadata ids、`@mentions`、问题与知识库元信息匹配、fallback all
   - 显式 mention 不能绑定时抛出 `KnowledgeChatRoutingError(code="knowledge_mention_not_found")`，由宿主转换为自己的 HTTP / service error

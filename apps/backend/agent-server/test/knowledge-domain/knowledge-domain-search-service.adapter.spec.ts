@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeMemoryRepository } from '../../src/domains/knowledge/repositories/knowledge-memory.repository';
-import { KnowledgeServerSearchServiceAdapter } from '../../src/domains/knowledge/rag/knowledge-server-search-service.adapter';
+import { KnowledgeDomainSearchServiceAdapter } from '../../src/domains/knowledge/rag/knowledge-domain-search-service.adapter';
 import type { KnowledgeSdkRuntimeProviderValue } from '../../src/domains/knowledge/runtime/knowledge-sdk-runtime.provider';
 
-describe('KnowledgeServerSearchServiceAdapter', () => {
+describe('KnowledgeDomainSearchServiceAdapter', () => {
   it('uses SDK embeddings and vector search before keyword fallback', async () => {
     const repository = new KnowledgeMemoryRepository();
     const runtime = enabledRuntime({
@@ -18,7 +18,7 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
       content: '完全不同的中文内容，不包含英文 planner route token。'
     });
 
-    const result = await new KnowledgeServerSearchServiceAdapter(repository, runtime).search({
+    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
       query: 'planner route token',
       filters: { knowledgeBaseIds: ['kb_vector'] },
       limit: 5
@@ -44,6 +44,7 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
     ]);
     expect(result.diagnostics).toMatchObject({
       retrievalMode: 'vector-only',
+      fallbackApplied: false,
       enabledRetrievers: ['vector'],
       failedRetrievers: [],
       candidateCount: 1,
@@ -64,7 +65,7 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
       content: '高风险动作必须进入审批门，并记录完整审计证据。'
     });
 
-    const result = await new KnowledgeServerSearchServiceAdapter(repository, runtime).search({
+    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
       query: '风险动作审批',
       filters: { knowledgeBaseIds: ['kb_cn'] },
       limit: 5
@@ -78,6 +79,7 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
     ]);
     expect(result.diagnostics).toMatchObject({
       retrievalMode: 'keyword-only',
+      fallbackApplied: true,
       enabledRetrievers: ['keyword'],
       retrievers: ['vector', 'keyword'],
       failedRetrievers: [],
@@ -101,7 +103,7 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
       content: 'rotation policy comes from repository chunks'
     });
 
-    const result = await new KnowledgeServerSearchServiceAdapter(repository, runtime).search({
+    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
       query: 'rotation policy',
       filters: { knowledgeBaseIds: ['kb_embedding_fallback'] },
       limit: 5
@@ -110,9 +112,39 @@ describe('KnowledgeServerSearchServiceAdapter', () => {
     expect(result.hits).toEqual([expect.objectContaining({ chunkId: 'chunk_embedding_fallback' })]);
     expect(result.diagnostics).toMatchObject({
       retrievalMode: 'keyword-only',
+      fallbackApplied: true,
       enabledRetrievers: ['keyword'],
       retrievers: ['vector', 'keyword'],
       failedRetrievers: ['vector'],
+      finalHitCount: 1
+    });
+  });
+
+  it('marks fallback when vector hits cannot be mapped to repository chunks', async () => {
+    const repository = new KnowledgeMemoryRepository();
+    const runtime = enabledRuntime({
+      search: vi.fn(async () => ({ hits: [{ id: 'missing_vector_chunk', score: 0.91 }] }))
+    });
+    await seedDocument(repository, {
+      baseId: 'kb_unmapped',
+      documentId: 'doc_unmapped',
+      chunkId: 'chunk_unmapped',
+      content: 'fallback policy comes from repository chunks'
+    });
+
+    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
+      query: 'fallback policy',
+      filters: { knowledgeBaseIds: ['kb_unmapped'] },
+      limit: 5
+    });
+
+    expect(result.hits).toEqual([expect.objectContaining({ chunkId: 'chunk_unmapped' })]);
+    expect(result.diagnostics).toMatchObject({
+      retrievalMode: 'keyword-only',
+      fallbackApplied: true,
+      retrievers: ['vector', 'keyword'],
+      failedRetrievers: [],
+      preHitCount: 1,
       finalHitCount: 1
     });
   });

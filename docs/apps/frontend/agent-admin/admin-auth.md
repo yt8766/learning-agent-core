@@ -8,12 +8,12 @@
 
 ## 1. 目标
 
-`agent-admin` 前端认证层负责中文登录页、登录态保存、业务请求鉴权、Access Token 自动刷新、路由守卫、基础角色入口控制和 auth-server 用户管理入口。
+`agent-admin` 前端认证层负责中文登录页、登录态保存、业务请求鉴权、Access Token 自动刷新、路由守卫、基础角色入口控制和 agent-server Identity 用户管理入口。
 
-当前 canonical 登录入口是 `apps/backend/auth-server`：
+当前 canonical 登录入口是 `apps/backend/agent-server`：
 
 ```text
-VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3010/api
+VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 ```
 
 ## 2. 模块边界
@@ -31,7 +31,7 @@ apps/frontend/agent-admin/src/pages/auth/
 - `store/`：通过 Zustand 保存当前 account、token pair 和认证状态。
 - `pages/`：中文登录页。
 - `components/`：账号密码登录表单。
-- `features/identity/`：封装 auth-server 用户列表和用户管理页面。
+- `features/identity/`：封装 agent-server Identity 用户列表和用户管理页面。
 
 ## 3. 登录态模型
 
@@ -75,7 +75,7 @@ Authorization: Bearer <accessToken>
 
 当后端返回 `401 + access_token_expired` 时：
 
-1. 前端调用 `auth-server /api/auth/refresh`，并通过 JSON 请求体传递当前 Refresh Token。
+1. 前端调用 `agent-server /api/identity/refresh`，并通过 JSON 请求体传递当前 Refresh Token。
 2. 刷新成功后更新 token pair。
 3. 如果当前登录态开启了本地持久化，同步更新 `localStorage["agent-admin:auth"]`。
 4. 自动重放原请求。
@@ -159,6 +159,6 @@ developer -> 开发者
 
 后续增强：
 
-- auth-server 接入数据库账号与会话管理后继续保持双 Token 语义，后端只保存 Refresh Token Hash。
+- agent-server Identity 域接入数据库账号与会话管理后继续保持双 Token 语义，后端只保存 Refresh Token Hash。
 - 增加按钮级权限。
 - 增加账号管理与密码修改。

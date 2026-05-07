@@ -239,7 +239,7 @@ Postgres 持久化同样保存 `stage/progress/error/attempts`；旧环境启动
 
 ## PostgreSQL Tables
 
-当前表结构以 [knowledge-schema.sql.ts](/apps/backend/knowledge-server/src/knowledge/runtime/knowledge-schema.sql.ts) 为唯一源码。不要在文档中手写第二份长期 SQL 定义，避免字段名如 `metadata` / `metadata_json`、`stages` / `stages_json` 与 repository mapper 漂移。
+当前表结构曾以旧 `apps/backend/knowledge-server/src/knowledge/runtime/knowledge-schema.sql.ts` 为唯一源码。该源码已随独立 backend app 删除；当前生效的 unified schema 入口见 `apps/backend/agent-server/src/infrastructure/database/schemas/knowledge-schema.sql.ts` 与 `apps/backend/agent-server/src/domains/knowledge/runtime/knowledge-schema.sql.ts`。不要在归档文档中继续维护第二份长期 SQL 定义，避免字段名如 `metadata` / `metadata_json`、`stages` / `stages_json` 与 repository mapper 漂移。
 
 ## Verification
 

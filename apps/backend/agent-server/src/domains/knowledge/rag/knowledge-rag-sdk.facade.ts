@@ -22,7 +22,7 @@ import {
   createKnowledgeRagAnswerProvider,
   readKnowledgeRagAnswerProviderError
 } from './knowledge-rag-sdk.providers';
-import { KnowledgeServerSearchServiceAdapter } from './knowledge-server-search-service.adapter';
+import { KnowledgeDomainSearchServiceAdapter } from './knowledge-domain-search-service.adapter';
 
 export interface KnowledgeRagSdkFacadeAnswerInput {
   actor: KnowledgeActor;
@@ -48,7 +48,7 @@ export class KnowledgeRagSdkFacade {
         accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
         policy: createDefaultRagPolicy(),
         plannerProvider: this.createPlannerProvider(input),
-        searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
+        searchService: new KnowledgeDomainSearchServiceAdapter(this.repository, this.sdkRuntime),
         answerProvider,
         metadata: {
           actorUserId: input.actor.userId,
@@ -76,7 +76,7 @@ export class KnowledgeRagSdkFacade {
         accessibleKnowledgeBases: await this.toRoutingCandidates(input.accessibleBases),
         policy: createDefaultRagPolicy(),
         plannerProvider: this.createPlannerProvider(input),
-        searchService: new KnowledgeServerSearchServiceAdapter(this.repository, this.sdkRuntime),
+        searchService: new KnowledgeDomainSearchServiceAdapter(this.repository, this.sdkRuntime),
         answerProvider,
         metadata: {
           actorUserId: input.actor.userId,

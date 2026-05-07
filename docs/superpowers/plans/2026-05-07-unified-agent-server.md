@@ -1880,7 +1880,7 @@ Expected: commit succeeds after hooks pass.
 - Modify: docs indexes that still require old backend app directories
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Confirm no production imports rely on old backend apps**
+- [x] **Step 1: Confirm no production imports rely on old backend apps**
 
 Run:
 
@@ -1890,7 +1890,7 @@ rg "@agent/auth-server|@agent/knowledge-server|apps/backend/auth-server|apps/bac
 
 Expected: no production references. Test references must either be removed or migrated.
 
-- [ ] **Step 2: Remove old apps from workspace manifests**
+- [x] **Step 2: Remove old apps from workspace manifests**
 
 Edit:
 
@@ -1902,7 +1902,7 @@ package.json
 
 Remove scripts that start or build `auth-server` and `knowledge-server`. Keep only `agent-server` backend scripts.
 
-- [ ] **Step 3: Delete old app directories**
+- [x] **Step 3: Delete old app directories**
 
 Run:
 
@@ -1912,7 +1912,7 @@ git rm -r apps/backend/auth-server apps/backend/knowledge-server
 
 Expected: files are staged for deletion.
 
-- [ ] **Step 4: Update docs indexes**
+- [x] **Step 4: Update docs indexes**
 
 Update `scripts/check-docs.js` by removing these entries from `REQUIRED_INDEX_DIRS` after the matching docs are moved to archive:
 
@@ -1923,7 +1923,7 @@ docs/apps/backend/knowledge-server/README.md
 
 Move historical material to `docs/archive/backend-service-split/` and add `docs/archive/backend-service-split/README.md` before removing the old required index entries.
 
-- [ ] **Step 5: Refresh lockfile**
+- [x] **Step 5: Refresh lockfile**
 
 Run:
 
@@ -1933,7 +1933,7 @@ pnpm install
 
 Expected: `pnpm-lock.yaml` removes importers for `apps/backend/auth-server` and `apps/backend/knowledge-server`.
 
-- [ ] **Step 6: Run final backend and docs verification**
+- [x] **Step 6: Run final backend and docs verification**
 
 Run:
 
@@ -1947,7 +1947,7 @@ pnpm check:docs
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit Task 12**
+- [x] **Step 7: Commit Task 12**
 
 Run:
 
@@ -1960,13 +1960,13 @@ Expected: commit succeeds after hooks pass.
 
 ## Final Review Checklist
 
-- [ ] `apps/backend/agent-server` is the only backend app.
-- [ ] `/api/identity/*` works and `/api/auth/*` is a thin alias.
-- [ ] `/api/knowledge/*` works and `/api/knowledge/v1/*` is a thin alias.
-- [ ] Platform write routes require permissions.
-- [ ] `BACKEND_PERSISTENCE=memory` is default for local/test.
-- [ ] Postgres requires explicit config and `synchronize` is disabled.
-- [ ] Remote skill install is disabled by default and uses controlled `execFile` execution.
-- [ ] Runtime graph/flow/prompt ownership remains in `packages/runtime` and `agents/*`.
-- [ ] Docs no longer describe `auth-server` or `knowledge-server` as canonical current services.
-- [ ] `pnpm-lock.yaml` no longer has importers for removed backend apps after Task 12.
+- [x] `apps/backend/agent-server` is the only backend app.
+- [x] `/api/identity/*` works and `/api/auth/*` is a thin alias.
+- [x] `/api/knowledge/*` works and `/api/knowledge/v1/*` is a thin alias.
+- [x] Platform write routes require permissions.
+- [x] `BACKEND_PERSISTENCE=memory` is default for local/test.
+- [x] Postgres requires explicit config and `synchronize` is disabled.
+- [x] Remote skill install is disabled by default and uses controlled `execFile` execution.
+- [x] Runtime graph/flow/prompt ownership remains in `packages/runtime` and `agents/*`.
+- [x] Docs no longer describe `auth-server` or `knowledge-server` as canonical current services.
+- [x] `pnpm-lock.yaml` no longer has importers for removed backend apps after Task 12.

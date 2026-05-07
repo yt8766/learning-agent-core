@@ -8,7 +8,7 @@ import { AdminErrorPage } from '@/pages/errors/admin-error-page';
 import { PAGE_KEYS } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
 
-const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3010/api';
+const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3000/api';
 
 const authServiceClient = createAuthServiceClient({
   baseUrl: AUTH_SERVICE_BASE_URL,

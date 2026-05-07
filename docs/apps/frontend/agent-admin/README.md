@@ -28,7 +28,7 @@
 - `src/pages/evidence-center`
   - 证据中心
 - `src/pages/knowledge-governance`
-  - 知识治理中心，展示知识库健康、provider health、ingestion 来源、检索诊断、证据与 agent 使用链路。该页面只消费 `KnowledgeGovernanceProjection`，不得读取 raw knowledge-server repository records、vendor response 或未脱敏文档内容。
+  - 知识治理中心，展示知识库健康、provider health、ingestion 来源、检索诊断、证据与 agent 使用链路。该页面只消费 `KnowledgeGovernanceProjection`，不得读取 raw Knowledge domain repository records、vendor response 或未脱敏文档内容。
 - `src/pages/connectors-center`
   - 连接器与策略
 - `src/pages/task-traces`

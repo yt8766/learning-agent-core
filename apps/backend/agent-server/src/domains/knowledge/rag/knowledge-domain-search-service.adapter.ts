@@ -7,6 +7,7 @@ import type { HyDeProvider } from './knowledge-hyde.provider';
 
 interface RetrievalDiagnostics {
   retrievalMode: 'hybrid' | 'keyword-only' | 'vector-only' | 'none';
+  fallbackApplied: boolean;
   enabledRetrievers: Array<'keyword' | 'vector'>;
   failedRetrievers: Array<'keyword' | 'vector'>;
   fusionStrategy: 'rrf';
@@ -17,7 +18,7 @@ interface RetrievalDiagnostics {
   finalHitCount?: number;
 }
 
-interface KnowledgeServerSearchResult extends RetrievalResult {
+interface KnowledgeDomainSearchResult extends RetrievalResult {
   diagnostics: RetrievalDiagnostics;
 }
 
@@ -26,14 +27,19 @@ interface IndexedChunk {
   chunk: DocumentChunkRecord;
 }
 
-export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchService {
+interface VectorSearchResult {
+  hits: RetrievalHit[];
+  rawHitCount: number;
+}
+
+export class KnowledgeDomainSearchServiceAdapter implements KnowledgeSearchService {
   constructor(
     private readonly repository: KnowledgeRepository,
     private readonly sdkRuntime?: KnowledgeSdkRuntimeProviderValue,
     private readonly hydeProvider?: HyDeProvider
   ) {}
 
-  async search(request: RetrievalRequest): Promise<KnowledgeServerSearchResult> {
+  async search(request: RetrievalRequest): Promise<KnowledgeDomainSearchResult> {
     const limit = request.limit ?? 5;
     const knowledgeBaseIds = request.filters?.knowledgeBaseIds ?? [];
     const documents = (
@@ -43,13 +49,14 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
     const enabledRetrievers: Array<'keyword' | 'vector'> = [];
     const failedRetrievers: Array<'keyword' | 'vector'> = [];
 
-    const vectorHits = await this.searchVector({
+    const vectorResult = await this.searchVector({
       query: request.query,
       limit,
       knowledgeBaseIds,
       indexedChunks,
       failedRetrievers
     });
+    const vectorHits = vectorResult.hits;
     if (this.sdkRuntime?.enabled) {
       enabledRetrievers.push('vector');
     }
@@ -62,8 +69,10 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
         diagnostics: createDiagnostics({
           enabledRetrievers,
           failedRetrievers,
+          attemptedRetrievers: enabledRetrievers,
+          fallbackApplied: false,
           candidateCount: vectorHits.length,
-          preHitCount: vectorHits.length,
+          preHitCount: vectorResult.rawHitCount,
           finalHitCount: hits.length
         })
       };
@@ -84,8 +93,15 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
         enabledRetrievers: successfulRetrievers,
         attemptedRetrievers: enabledRetrievers,
         failedRetrievers,
-        candidateCount: vectorHits.length + keywordHits.length,
-        preHitCount: vectorHits.length,
+        fallbackApplied: shouldMarkFallbackApplied({
+          attemptedRetrievers: enabledRetrievers,
+          failedRetrievers,
+          finalRetrievers: successfulRetrievers,
+          vectorRawHitCount: vectorResult.rawHitCount,
+          vectorMappedHitCount: vectorHits.length
+        }),
+        candidateCount: vectorResult.rawHitCount + keywordHits.length,
+        preHitCount: vectorResult.rawHitCount,
         finalHitCount: hits.length
       })
     };
@@ -108,9 +124,9 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
     knowledgeBaseIds: string[];
     indexedChunks: IndexedChunk[];
     failedRetrievers: Array<'keyword' | 'vector'>;
-  }): Promise<RetrievalHit[]> {
+  }): Promise<VectorSearchResult> {
     if (!this.sdkRuntime?.enabled || input.knowledgeBaseIds.length === 0) {
-      return [];
+      return { hits: [], rawHitCount: 0 };
     }
 
     try {
@@ -136,19 +152,22 @@ export class KnowledgeServerSearchServiceAdapter implements KnowledgeSearchServi
       ).flatMap(result => result.hits);
       const chunkById = new Map(input.indexedChunks.map(item => [item.chunk.id, item]));
 
-      return hits
-        .map(hit => {
-          const indexedChunk = chunkById.get(hit.id);
-          if (!indexedChunk) {
-            return undefined;
-          }
-          return toRetrievalHit(indexedChunk.document, indexedChunk.chunk, input.query, hit.score);
-        })
-        .filter(isDefined)
-        .sort((left, right) => right.score - left.score);
+      return {
+        hits: hits
+          .map(hit => {
+            const indexedChunk = chunkById.get(hit.id);
+            if (!indexedChunk) {
+              return undefined;
+            }
+            return toRetrievalHit(indexedChunk.document, indexedChunk.chunk, input.query, hit.score);
+          })
+          .filter(isDefined)
+          .sort((left, right) => right.score - left.score),
+        rawHitCount: hits.length
+      };
     } catch {
       input.failedRetrievers.push('vector');
-      return [];
+      return { hits: [], rawHitCount: 0 };
     }
   }
 }
@@ -248,12 +267,14 @@ function createDiagnostics(input: {
   enabledRetrievers: Array<'keyword' | 'vector'>;
   attemptedRetrievers?: Array<'keyword' | 'vector'>;
   failedRetrievers: Array<'keyword' | 'vector'>;
+  fallbackApplied: boolean;
   candidateCount: number;
   preHitCount: number;
   finalHitCount: number;
 }): RetrievalDiagnostics {
   return {
     retrievalMode: resolveRetrievalMode(input.enabledRetrievers, input.failedRetrievers, input.finalHitCount),
+    fallbackApplied: input.fallbackApplied,
     enabledRetrievers: input.enabledRetrievers,
     retrievers: input.attemptedRetrievers ?? input.enabledRetrievers,
     failedRetrievers: input.failedRetrievers,
@@ -263,6 +284,25 @@ function createDiagnostics(input: {
     preHitCount: input.preHitCount,
     finalHitCount: input.finalHitCount
   };
+}
+
+function shouldMarkFallbackApplied(input: {
+  attemptedRetrievers: Array<'keyword' | 'vector'>;
+  failedRetrievers: Array<'keyword' | 'vector'>;
+  finalRetrievers: Array<'keyword' | 'vector'>;
+  vectorRawHitCount: number;
+  vectorMappedHitCount: number;
+}): boolean {
+  if (!input.attemptedRetrievers.includes('vector')) {
+    return false;
+  }
+  if (input.failedRetrievers.includes('vector')) {
+    return true;
+  }
+  if (input.vectorRawHitCount > input.vectorMappedHitCount) {
+    return true;
+  }
+  return input.finalRetrievers.includes('keyword') && !input.finalRetrievers.includes('vector');
 }
 
 function resolveRetrievalMode(

@@ -2,16 +2,16 @@
 
 状态：current
 文档类型：integration
-适用范围：`packages/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/backend/knowledge-server`、`apps/frontend/knowledge`
+适用范围：`packages/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/frontend/knowledge`
 最后核对：2026-05-07
 
 本主题主文档：`docs/integration/knowledge-sdk-rag-rollout.md`
 
-本文只覆盖：Knowledge SDK 默认 RAG runtime、统一 agent-server Knowledge domain 接入、standalone knowledge-server 迁移状态、Supabase pgvector 向量落点、knowledge 前端 Chat Lab 接入状态，以及下一步仍缺的前后端/package 边界。
+本文只覆盖：Knowledge SDK 默认 RAG runtime、统一 agent-server Knowledge domain 接入、Supabase pgvector 向量落点、knowledge 前端 Chat Lab 接入状态，以及下一步仍缺的前后端/package 边界。
 
 ## 当前结论
 
-知识库向量的生产落点是 Supabase/PostgreSQL + pgvector。统一 `agent-server` Knowledge domain 启用 SDK runtime 后，文档上传入库会生成 chunk embedding，并写入数据库表 `knowledge_document_chunks.embedding vector(1536)`；`metadata jsonb` 只保存租户、知识库、文档、标题、文件名、ordinal、tags 等过滤和展示字段。standalone `knowledge-server` 在迁移完成前仍保留同类历史实现。
+知识库向量的生产落点是 Supabase/PostgreSQL + pgvector。统一 `agent-server` Knowledge domain 启用 SDK runtime 后，文档上传入库会生成 chunk embedding，并写入数据库表 `knowledge_document_chunks.embedding vector(1536)`；`metadata jsonb` 只保存租户、知识库、文档、标题、文件名、ordinal、tags 等过滤和展示字段。历史独立 Knowledge 服务已归档，不再作为当前运行入口。
 
 前端 Chat Lab 的知识问答目标入口是 `/api/knowledge/chat`，发送 OpenAI Chat Completions 风格 payload：`model`、`messages`、`metadata.conversationId`、`metadata.mentions`，并可用 `stream:false` 获取 JSON 或 `stream:true` 获取 SSE。`/api/chat` 属于 agent-chat 主链，不承载 Knowledge Chat Lab。UI 已从 Ant Design X demo card 布局改为 Codex 风格双栏工作台：左侧会话/知识库，右侧顶部运行栏、消息线程、底部 composer、引用卡片、trace link 和 feedback。
 
@@ -21,7 +21,7 @@
 
 ## 后端接入 SDK 默认实现
 
-统一后端接入入口是 `apps/backend/agent-server/src/domains/knowledge/runtime/knowledge-sdk-runtime.provider.ts`，由 `KnowledgeDomainModule` 注册 `KNOWLEDGE_SDK_RUNTIME` token。standalone `apps/backend/knowledge-server/src/knowledge/runtime/knowledge-sdk-runtime.provider.ts` 仅作为迁移期间历史入口。
+统一后端接入入口是 `apps/backend/agent-server/src/domains/knowledge/runtime/knowledge-sdk-runtime.provider.ts`，由 `KnowledgeDomainModule` 注册 `KNOWLEDGE_SDK_RUNTIME` token。历史独立 Knowledge 服务资料仅保留在 `docs/archive/backend-service-split/`。
 
 最小环境变量：
 
