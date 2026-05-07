@@ -1786,7 +1786,7 @@ Expected: commit succeeds after hooks pass.
 - Modify: `docs/contracts/api/agent-admin.md`
 - Modify: `docs/contracts/api/tool-execution.md`
 
-- [ ] **Step 1: Scan stale backend service split language**
+- [x] **Step 1: Scan stale backend service split language**
 
 Run:
 
@@ -1796,7 +1796,7 @@ rg "auth-server|knowledge-server|canonical 服务|canonical knowledge|Auth / Kno
 
 Expected: output includes the current split docs that must be updated during this task.
 
-- [ ] **Step 2: Update frontend-backend integration doc**
+- [x] **Step 2: Update frontend-backend integration doc**
 
 In `docs/integration/frontend-backend-integration.md`, replace the `Auth / Knowledge Service Split` section with:
 
@@ -1814,7 +1814,7 @@ Compatibility aliases remain during migration:
 New frontend code must target the canonical unified paths. Alias removal requires the agent-admin, agent-chat and knowledge frontends to stop calling legacy paths.
 ```
 
-- [ ] **Step 3: Update agent-server overview**
+- [x] **Step 3: Update agent-server overview**
 
 In `docs/apps/backend/agent-server/agent-server-overview.md`, add this responsibility list near the top:
 
@@ -1828,7 +1828,7 @@ In `docs/apps/backend/agent-server/agent-server-overview.md`, add this responsib
 - Workflow BFF routes.
 ```
 
-- [ ] **Step 4: Update API contract docs**
+- [x] **Step 4: Update API contract docs**
 
 Update contract docs so they state:
 
@@ -1847,7 +1847,7 @@ docs/contracts/api/agent-admin.md
 docs/contracts/api/tool-execution.md
 ```
 
-- [ ] **Step 5: Run docs check**
+- [x] **Step 5: Run docs check**
 
 Run:
 
@@ -1857,7 +1857,7 @@ pnpm check:docs
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 11**
+- [x] **Step 6: Commit Task 11**
 
 Run:
 

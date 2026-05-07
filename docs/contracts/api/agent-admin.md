@@ -5,6 +5,8 @@
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-admin`
 最后核对：2026-05-07
 
+> Canonical backend host: `apps/backend/agent-server`. Legacy route aliases are migration compatibility only.
+
 本文是 `agent-admin` 控制台聚合入口契约。Runtime、Approvals 和 Run Observatory 的专题接口分别见 [runtime.md](/docs/contracts/api/runtime.md)、[approvals.md](/docs/contracts/api/approvals.md)、[run-observatory.md](/docs/contracts/api/run-observatory.md)。
 
 ## 总约定

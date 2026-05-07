@@ -5,6 +5,8 @@
 适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`packages/runtime`、`packages/tools`
 最后核对：2026-04-26
 
+> Canonical backend host: `apps/backend/agent-server`. Legacy route aliases are migration compatibility only.
+
 本文记录 Agent Tool 执行请求、策略判定、审批恢复、SSE 事件与前后端职责。执行节点与通用执行投影背景见 [Execution Fabric API](/docs/contracts/api/execution-fabric.md)，sandbox 限制见 [Sandbox API](/docs/contracts/api/sandbox.md)，自动审查见 [Auto Review API](/docs/contracts/api/auto-review.md)。
 
 > 边界说明：`/api/agent-tools/*` 是当前真实落地的工具执行入口。Execution Fabric 文档中的 `/api/execution/*` 是 planned governance / projection endpoint，用于后续统一执行节点治理和投影读取；它不替代本文入口，也不表示仓库内存在第二套当前工具执行实现。

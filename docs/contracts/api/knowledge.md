@@ -2,10 +2,12 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、`apps/backend/agent-server/src/domains/knowledge`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
+适用范围：`apps/frontend/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
 最后核对：2026-05-07
 
-> 统一后端迁移说明：`agent-server` 已新增 `src/domains/knowledge` route shell，目标是把 standalone `knowledge-server` 合并进单一后端宿主。统一后端已接入 base/member、document/upload、Chat Lab RAG JSON 与 SSE streaming、conversation 与 feedback endpoint；迁移完成前，standalone `knowledge-server` 和旧 `agent-server/src/knowledge` 仍保留兼容价值。新增后端能力默认向 `agent-server/src/domains/knowledge` 收敛。
+> Canonical backend host: `apps/backend/agent-server`. Legacy route aliases are migration compatibility only.
+>
+> 统一后端说明：`agent-server/src/domains/knowledge` 是单一后端宿主内的 Knowledge domain。统一后端已接入 base/member、document/upload、Chat Lab RAG JSON 与 SSE streaming、conversation 与 feedback endpoint；旧 `agent-server/src/knowledge` 仍保留 internal runtime 兼容价值。新增后端能力默认向 `agent-server/src/domains/knowledge` 收敛。
 
 ## 1. Base URL
 
@@ -35,7 +37,7 @@ POST /api/knowledge/messages/:messageId/feedback
 GET /api/knowledge/v1/bases
 ```
 
-`/api/knowledge/v1/*` 由同一个 unified `KnowledgeApiController` 挂载，不再是第二套 legacy controller。`apps/backend/knowledge-server` 在迁移完成前仍服务历史客户端；旧 `apps/backend/agent-server/src/knowledge` 只保留迁移兼容路径。
+`/api/knowledge/v1/*` 由同一个 unified `KnowledgeApiController` 挂载，不再是第二套 legacy controller。旧 `apps/backend/agent-server/src/knowledge` 只保留迁移兼容路径。
 
 受保护接口必须带：
 
@@ -158,7 +160,7 @@ Auth errors:
 
 ## 3.1 Workspace Users And Settings
 
-这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 `apps/backend/knowledge-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
+这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 `apps/backend/agent-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
 
 稳定 schema 落在 `packages/core/src/contracts/knowledge-service/knowledge-service.schemas.ts`，类型只能由 `z.infer<typeof Schema>` 推导。后端可以先返回稳定 fixture 或聚合现有 service，但必须返回项目自定义 projection，不得透传第三方 SDK 对象、provider 原始错误、secret、token 或内部 runtime 状态。
 
@@ -224,7 +226,7 @@ export interface KnowledgeWorkspaceInvitationCreateResponse {
 前后端边界：
 
 - 前端负责搜索输入、分页状态和展示排序；后端负责权限过滤、统计聚合和邀请记录创建。
-- 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 auth-server 内部 account 结构。
+- 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 Identity domain 内部 account 结构。
 
 ### Model Providers
 
@@ -742,7 +744,7 @@ export interface DocumentChunksResponse {
 
 ### 6.1 Two-step Markdown/TXT upload
 
-当前生产闭环只支持 Markdown/TXT 文件上传，不做网页抓取，也不支持 PDF/DOCX 等复杂文件解析。前端不得直连 OSS；前端只把文件提交给 `knowledge-server`，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`。
+当前生产闭环只支持 Markdown/TXT 文件上传，不做网页抓取，也不支持 PDF/DOCX 等复杂文件解析。前端不得直连 OSS；前端只把文件提交给 `agent-server` Knowledge API，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`。
 
 Step 1：上传原始文件到 OSS。
 
@@ -790,7 +792,7 @@ Failed jobs include `error.code`, `error.message`, `error.retryable`, and `error
 
 `POST /chat` 的 Chat Lab 响应在 legacy `answer/citations/traceId` 外还返回 `route` 与 `diagnostics`。`route.reason` 使用稳定枚举 `legacy-ids | mentions | metadata-match | fallback-all`；`diagnostics.retrievalMode` 使用 `hybrid | none` 作为当前 MVP 展示投影。`citations` 只能来自后端 retrieval/vector hit 投影，模型生成阶段返回的自带 citation 不得穿透到响应。
 
-Eval run 的最小后端语义是“部分失败可交付”：单个 case 失败时，`status` 返回 `partial`，`results` 保留成功 case 的 `KnowledgeEvalRunResult`，`failedCases[]` 记录 `{ caseId, code, message }`，其中 code 固定为 `knowledge_eval_run_failed`。全部成功为 `completed`，全部失败为 `failed`。
+Eval run 的最小后端语义是“部分失败可交付”：单个 case 失败时，`status` 返回 `partial`，case results 保留成功 case，`failedCases[]` 记录 `{ caseId, code, message }`，其中 code 固定为 `knowledge_eval_run_failed`。全部成功为 `succeeded`，全部失败为 `failed`。
 
 Endpoint contract:
 
@@ -1003,7 +1005,7 @@ export interface CreateFeedbackRequest {
 
 `ChatRequest.metadata.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
 
-当前 unified `agent-server` Knowledge domain 的 `POST /api/knowledge/chat` 已从 route shell 接入 `KnowledgeRagService`：兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 绑定范围；没有指定范围时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`model` 传入 `RagModelProfileSummary.id`；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，先持久化 user message；成功后持久化 assistant message，包含 answer、citations、route、diagnostics、traceId 和 modelProfileId。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` / `chatProvider.stream()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时保留 repository-backed deterministic fallback，用于本地测试和 demo；fallback streaming 会输出同一套 RAG event contract，并在 `rag.completed` 前完成 assistant message 持久化。空 user message 返回稳定 `400 knowledge_chat_message_required`；缺失 base 返回 `knowledge_base_not_found`；未授权 base 返回 `knowledge_permission_denied`；禁用或不存在的 model profile 返回 `rag_model_profile_disabled` / `rag_model_profile_not_found`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
+当前 unified `agent-server` Knowledge domain 的 `POST /api/knowledge/chat` 已从 route shell 接入 `KnowledgeRagService`：兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 绑定范围；没有指定范围时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`model` 传入 `RagModelProfileSummary.id`；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，先持久化 user message；成功后持久化 assistant message，包含 answer、citations、route、diagnostics、traceId 和 modelProfileId。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` / `chatProvider.stream()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时保留 repository-backed deterministic fallback，用于本地测试和 demo；fallback streaming 会输出同一套 RAG event contract，并在 `rag.completed` 前完成 assistant message 持久化。空 user message 返回稳定 `400 knowledge_chat_message_required`；缺失 base 返回 `knowledge_base_not_found`；未授权 base 返回 `knowledge_permission_denied`；禁用或不存在的 model profile 返回 `rag_model_profile_disabled` / `rag_model_profile_not_found`。当前 traceId 会接入 `KnowledgeObservabilityService` projection，RAG JSON 与 SSE 路径至少记录 route、retrieve、generate spans，并可通过 `/observability/traces/:id` 与 `/observability/traces/:id/artifacts` 读取安全展示 DTO。
 
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 
@@ -1221,30 +1223,32 @@ export interface RagTraceDetail extends RagTrace {
   citations: Citation[];
   retrievalSnapshot?: RetrievalSnapshot;
   usage?: TokenUsage;
+  artifacts?: RagTraceArtifact[];
 }
 ```
 
-Trace display 字段必须是 redacted display projection：`RagTrace.question` 和 `RagTrace.answer` 最长 `2000` 字符；`RetrievalHitPreview.contentPreview`、`Citation.quote`、`TraceSpanPayloadSummary.summary` 最长 `500` 字符。当前 repository-backed MVP 的 trace metadata 只保存 `questionPreview`、`answerPreview`、`createdBy` 与 `citationSummaries`，不保存完整原始 question / answer / citations。所有展示字段都必须先脱敏、截断和去除 secret，不得包含 token、service role key、provider API key、密码、完整 prompt、完整 context、vendor raw request / response、raw headers、provider SDK 对象或第三方错误原始对象。
+Trace display 字段必须是 redacted display projection：`RagTrace.question` 和 `RagTrace.answer` 最长 `2000` 字符；`RetrievalHitPreview.contentPreview`、`Citation.quote`、`TraceSpanPayloadSummary.summary` 最长 `500` 字符。当前统一 domain 的 observability projection 只输出稳定 trace/span/artifact DTO；sampled artifact 必须先走脱敏、截断和 hash，再按 `redactionStatus` 暴露 `preview` 或少量 `content`。所有展示字段都必须先脱敏、截断和去除 secret，不得包含 token、service role key、provider API key、密码、完整 prompt、完整 context、vendor raw request / response、raw headers、provider SDK 对象或第三方错误原始对象。
 
 `RagTraceSpan.input` 与 `RagTraceSpan.output` 只能保存稳定 redacted projection，不得透传 vendor raw request / response、raw headers、prompt 原文、完整检索上下文、provider SDK 对象或第三方错误原始对象。
 
-当前后端横向 MVP 的 observability 已从静态 fixture 切到 repository trace projection：`GET /observability/metrics`、`GET /observability/traces`、`GET /observability/traces/:id` 优先读取 `operation: "rag.chat"` trace；未装配 repository / observability service 的旧路径仍允许 fixture fallback。API 返回 DTO，不透传 repository raw record。projection 只使用 trace 稳定字段和 metadata 中的 `questionPreview`、`answerPreview`、`citationSummaries`、`createdBy`。`spans` 只投影 `id`、`stage` / `name`、`status`、`latencyMs`、`startedAt`、`endedAt` 等稳定显示字段；`retrievalSnapshot.selectedChunks` 与 `citations` 从 `citationSummaries` 生成。
+当前后端横向 MVP 的 observability 已从静态 fixture 切到 `KnowledgeObservabilityService` + trace repository projection：`GET /observability/metrics`、`GET /observability/traces`、`GET /observability/traces/:id`、`GET /observability/traces/:id/artifacts` 读取 `operation: "rag.chat"` trace。API 返回 DTO，不透传 repository raw record。projection 只使用 trace 稳定字段、白名单 span 属性和 sampled artifact metadata；`spans` 只投影 `id`、`stage` / `name`、`status`、`latencyMs`、`startedAt`、`endedAt`、`input`、`output`、`error` 等稳定显示字段；`retrievalSnapshot` 只展示 vector / keyword / merged / reranked / selected chunk preview。
 
-Metrics 计算规则：无 trace 时 `traceCount`、`questionCount`、延迟、rate 指标全部为 `0` 且 `stageLatency` 为空数组；`p95LatencyMs` / `p99LatencyMs` 使用 nearest-rank，对升序样本取 `ceil(percentile * n) - 1`；`stageLatency` 按 span `stage` 聚合，缺少 `stage` 时按 span `name` 聚合。`citationClickRate` 当前 MVP 固定为 `0`，后续由真实点击事件补齐。
+Metrics 计算规则：无 trace 时 `traceCount`、`questionCount`、`qps`、延迟、rate 指标全部为 `0` 且 `stageLatency` 为空数组；`p95LatencyMs` / `p99LatencyMs` 使用 nearest-rank，对升序样本取 `ceil(percentile * n) - 1`；`stageLatency` 按 span `stage` 聚合，缺少 `stage` 时按 span `name` 聚合。`feedbackDistribution` 固定使用 `positive`、`negative`、`wrong_citation`、`unhelpful` 四类 key；`citationClickRate` 当前由 trace metrics window / projection 提供，未记录点击事件时为 `0`。
 
 Endpoint contract:
 
-| Method | Path                        | Query / Body                                                                                              | Response               | 主要错误码                                                | 权限                     |
-| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------- | ------------------------ |
-| GET    | `/observability/metrics`    | query: `{ knowledgeBaseId?: ID; from?: ISODateTime; to?: ISODateTime }`                                   | `ObservabilityMetrics` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
-| GET    | `/observability/traces`     | query: `PageQuery & { knowledgeBaseId?: ID; status?: TraceStatus; from?: ISODateTime; to?: ISODateTime }` | `PageResult<RagTrace>` | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
-| GET    | `/observability/traces/:id` | path: `id`                                                                                                | `RagTraceDetail`       | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
+| Method | Path                                  | Query / Body                                                                                                                                                                                                         | Response                       | 主要错误码                                                | 权限                     |
+| ------ | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- | ------------------------ |
+| GET    | `/observability/metrics`              | query: `{ knowledgeBaseId?: ID; conversationId?: ID; modelProfileId?: ID; errorCode?: string; noAnswer?: boolean; feedback?: FeedbackKind; from?: ISODateTime; to?: ISODateTime }`                                   | `ObservabilityMetrics`         | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces`               | query: `PageQuery & { knowledgeBaseId?: ID; status?: TraceStatus; conversationId?: ID; modelProfileId?: ID; errorCode?: string; noAnswer?: boolean; feedback?: FeedbackKind; from?: ISODateTime; to?: ISODateTime }` | `PageResult<RagTrace>`         | `auth_unauthorized`, `auth_forbidden`, `validation_error` | owner, admin, maintainer |
+| GET    | `/observability/traces/:id`           | path: `id`                                                                                                                                                                                                           | `RagTraceDetail`               | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
+| GET    | `/observability/traces/:id/artifacts` | path: `id`                                                                                                                                                                                                           | `PageResult<RagTraceArtifact>` | `auth_unauthorized`, `auth_forbidden`, `trace_not_found`  | owner, admin, maintainer |
 
 ## 9. Eval
 
 ```ts
 export type EvalDifficulty = 'easy' | 'medium' | 'hard';
-export type EvalRunStatus = 'queued' | 'running' | 'completed' | 'partial' | 'failed' | 'canceled';
+export type EvalRunStatus = 'queued' | 'running' | 'succeeded' | 'partial' | 'failed' | 'canceled';
 
 export interface EvalDataset {
   id: ID;
@@ -1279,9 +1283,6 @@ export interface CreateEvalDatasetRequest {
   name: string;
   description?: string;
   tags?: string[];
-  cases?: CreateEvalCaseRequest[];
-  tenantId?: ID; // ignored by public backend API; server context wins
-  createdBy?: ID; // ignored by public backend API; server context wins
 }
 
 export interface CreateEvalCaseRequest {
@@ -1327,13 +1328,9 @@ export interface EvalRun {
 
 export interface CreateEvalRunRequest {
   datasetId: ID;
-  knowledgeBaseIds?: ID[];
-  knowledgeBaseId?: ID;
+  knowledgeBaseIds: ID[];
   retrievalConfigId?: ID;
-  promptTemplateId?: ID;
   modelConfigId?: ID;
-  tenantId?: ID; // ignored by public backend API; server context wins
-  createdBy?: ID; // ignored by public backend API; server context wins
 }
 
 export interface RetrievalMetrics {
@@ -1401,25 +1398,25 @@ export interface CompareEvalRunsResponse {
 
 当前 repository-backed MVP 说明：
 
-- `POST /eval/datasets` 支持在创建 dataset 时内联 `cases`；`POST /eval/datasets/:id/cases` 仍是纵向接口规划，当前后端 MVP 尚未单独接线。
-- 公开 API 会忽略 body 中的 `tenantId` / `createdBy`，服务端 MVP 固定使用 `ws_1` / `user_demo`。内部 service 仍支持显式 tenant，用于任务编排和测试。
-- `POST /eval/runs` 当前同步执行 dataset cases，逐 case 调用可替换 `KnowledgeEvalRunner.answerCase()` 与 `KnowledgeEvalJudge.judge()`，最终返回 `succeeded` 或 `failed` run；后续可替换为异步队列。
-- retrieval metrics 为 `recallAtK`、`precisionAtK`、`mrr`、`ndcg`；generation metrics 为 deterministic judge 返回的 `faithfulness`、`answerRelevance`、`citationAccuracy`。空 expected / retrieved 场景必须返回有限数值，不能返回 `NaN`。
+- `POST /eval/datasets` 创建 dataset；`POST /eval/datasets/:datasetId/cases` 追加 case；`GET /eval/datasets/:datasetId/cases` 列出 case。
+- 公开 API 使用当前 actor `userId` 作为 `workspaceId` 与 `createdBy`，body 中不接受 `tenantId` / `createdBy` 覆盖。
+- `POST /eval/runs` 当前同步执行 dataset cases，逐 case 调用 `KnowledgeRagService.answer()` 的 eval runner 适配器与 `@agent/knowledge/evals` deterministic judge，最终返回 `succeeded`、`partial` 或 `failed` run；后续可替换为异步队列。
+- retrieval metrics 为 `recallAtK`、`precisionAtK`、`mrr`、`ndcg`、`hitAtK`；generation metrics 为 deterministic judge 返回的 `faithfulness`、`answerRelevance`、`citationAccuracy`。空 expected / retrieved 场景不得返回 `NaN`。
 - `summary.*Score` 在当前 MVP 使用 `0-1` 小数语义；如产品层需要百分制，应在展示层转换。
-- `/evals/*` 是 `/eval/*` 的兼容 alias，新增调用方优先使用既有 `/eval/*`，避免前端路径分叉。
+- 当前 canonical 路径是 `/eval/*`，并由 controller 挂在 `/knowledge` 与 `/knowledge/v1` 两个前缀下。
 
 Endpoint contract:
 
-| Method | Path                       | Query / Body                                                    | Response                     | 主要错误码                                                                                                      | 权限                                |
-| ------ | -------------------------- | --------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| GET    | `/eval/datasets`           | query: `PageQuery`                                              | `PageResult<EvalDataset>`    | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                       | owner, admin, maintainer, evaluator |
-| POST   | `/eval/datasets`           | body: `CreateEvalDatasetRequest`                                | `EvalDataset`                | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `eval_dataset_name_conflict`                         | owner, admin, maintainer, evaluator |
-| POST   | `/eval/datasets/:id/cases` | path: `id`; body: `CreateEvalCaseRequest`                       | `EvalCase`                   | `auth_unauthorized`, `auth_forbidden`, `eval_dataset_not_found`, `validation_error`                             | owner, admin, maintainer, evaluator |
-| POST   | `/eval/runs`               | body: `CreateEvalRunRequest`                                    | `EvalRun`                    | `auth_unauthorized`, `auth_forbidden`, `eval_dataset_not_found`, `knowledge_base_not_found`, `validation_error` | owner, admin, maintainer, evaluator |
-| GET    | `/eval/runs`               | query: `PageQuery & { datasetId?: ID; status?: EvalRunStatus }` | `PageResult<EvalRun>`        | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                       | owner, admin, maintainer, evaluator |
-| POST   | `/eval/runs/compare`       | body: `CompareEvalRunsRequest`                                  | `CompareEvalRunsResponse`    | `auth_unauthorized`, `auth_forbidden`, `eval_run_not_found`, `validation_error`                                 | owner, admin, maintainer, evaluator |
-| GET    | `/eval/runs/:id`           | path: `id`                                                      | `EvalRun`                    | `auth_unauthorized`, `auth_forbidden`, `eval_run_not_found`                                                     | owner, admin, maintainer, evaluator |
-| GET    | `/eval/runs/:id/results`   | path: `id`; query: `PageQuery`                                  | `PageResult<EvalCaseResult>` | `auth_unauthorized`, `auth_forbidden`, `eval_run_not_found`, `validation_error`                                 | owner, admin, maintainer, evaluator |
+| Method | Path                              | Query / Body                                                    | Response                     | 主要错误码                                                                                                                                                        | 权限                                |
+| ------ | --------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| GET    | `/eval/datasets`                  | query: `PageQuery`                                              | `PageResult<EvalDataset>`    | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                         | owner, admin, maintainer, evaluator |
+| POST   | `/eval/datasets`                  | body: `CreateEvalDatasetRequest`                                | `EvalDataset`                | `auth_unauthorized`, `auth_forbidden`, `validation_error`, `eval_dataset_name_conflict`                                                                           | owner, admin, maintainer, evaluator |
+| POST   | `/eval/datasets/:datasetId/cases` | path: `datasetId`; body: `CreateEvalCaseRequest`                | `EvalCase`                   | `auth_unauthorized`, `auth_forbidden`, `knowledge_eval_dataset_not_found`, `validation_error`                                                                     | owner, admin, maintainer, evaluator |
+| GET    | `/eval/datasets/:datasetId/cases` | path: `datasetId`                                               | `PageResult<EvalCase>`       | `auth_unauthorized`, `auth_forbidden`, `knowledge_eval_dataset_not_found`, `validation_error`                                                                     | owner, admin, maintainer, evaluator |
+| POST   | `/eval/runs`                      | body: `CreateEvalRunRequest`                                    | `EvalRun`                    | `auth_unauthorized`, `auth_forbidden`, `knowledge_eval_dataset_not_found`, `knowledge_eval_permission_denied`, `knowledge_eval_empty_dataset`, `validation_error` | owner, admin, maintainer, evaluator |
+| GET    | `/eval/runs`                      | query: `PageQuery & { datasetId?: ID; status?: EvalRunStatus }` | `PageResult<EvalRun>`        | `auth_unauthorized`, `auth_forbidden`, `validation_error`                                                                                                         | owner, admin, maintainer, evaluator |
+| POST   | `/eval/runs/compare`              | body: `CompareEvalRunsRequest`                                  | `CompareEvalRunsResponse`    | `auth_unauthorized`, `auth_forbidden`, `knowledge_eval_run_not_found`, `validation_error`                                                                         | owner, admin, maintainer, evaluator |
+| GET    | `/eval/runs/:runId/results`       | path: `runId`; query: `PageQuery`                               | `PageResult<EvalCaseResult>` | `auth_unauthorized`, `auth_forbidden`, `knowledge_eval_run_not_found`, `validation_error`                                                                         | owner, admin, maintainer, evaluator |
 
 ## 10. Permission Semantics
 

@@ -5,7 +5,7 @@
 适用范围：`apps/backend/agent-server/src/domains/identity`
 最后核对：2026-05-07
 
-`agent-server` 已承接统一后端目标下的 Identity 域主入口。新增或迁移身份逻辑时，优先落在 `src/domains/identity`，HTTP 入口只保留在 `src/api/identity`，不要重新从应用层直连 `@agent/auth-server`。
+`agent-server` 已承接统一后端目标下的 Identity 域主入口。新增或迁移身份逻辑时，优先落在 `src/domains/identity`，HTTP 入口只保留在 `src/api/identity`，不要重新引入独立 auth backend 或让应用层直连历史 auth package。
 
 ## 1. 路由入口
 
@@ -44,7 +44,7 @@ JWT 由 `IdentityJwtProvider` 封装，业务层不要直接拼第三方 JWT pay
 
 ## 4. 密码兼容边界
 
-当前 `agent-server` Identity 域使用 `IdentityPasswordService` 内置的 `identity-scrypt$1$...` 哈希格式，不直接复用 standalone `auth-server` 的 bcrypt 运行时依赖。
+当前 `agent-server` Identity 域使用 `IdentityPasswordService` 内置的 `identity-scrypt$1$...` 哈希格式，不直接复用历史 standalone auth backend 的 bcrypt 运行时依赖。
 
 不要把 legacy bcrypt 用户行直接指向当前默认 provider。需要迁移历史账号时，必须先补齐明确的兼容 password provider 或一次性迁移脚本，并同步更新 schema、测试和本文档。
 

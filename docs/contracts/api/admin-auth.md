@@ -6,6 +6,8 @@
 认证方式：JWT Access Token + Refresh Token
 最后核对：2026-04-30
 
+> Canonical backend host: `apps/backend/agent-server`. Legacy route aliases are migration compatibility only.
+
 agent-admin 后台认证采用账号密码登录和 JWT 双 Token 机制：Access Token 用于短期业务鉴权，Refresh Token 用于会话刷新；前端在 Access Token 过期时自动刷新并重放原请求，刷新失败后返回登录页。
 
 状态码语义必须保持清晰：`401` 表示认证错误，`403` 表示权限不足，`404` 表示资源或页面不存在，`500` / `503` 表示服务端错误或服务不可用。前端 `/401` 是显式错误展示页，不代表正常未登录入口；未登录进入受保护后台入口时应导向 `/login`。
