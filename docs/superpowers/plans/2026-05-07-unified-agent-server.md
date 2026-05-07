@@ -1445,6 +1445,12 @@ Expected: commit succeeds after hooks pass.
 - Test: `apps/backend/agent-server/test/runtime/skills/runtime-skill-cli.test.ts`
 - Test: `apps/backend/agent-server/test/runtime/skills/runtime-skill-install.service.test.ts`
 
+Progress note, 2026-05-07:
+
+- `runtime-skill-cli.ts` now exposes `buildSkills*CommandPlan()` builders and keeps the legacy string builders for receipt/UI compatibility.
+- Default remote skill install/check/update now execute through `execSkillsCommand()` and `src/infrastructure/external-process/*`, which uses `execFile(command, args)` with a minimal env allowlist instead of `shell.exec(commandString)`.
+- Focused tests cover command-plan construction and default install service delegation to the controlled runner.
+
 - [ ] **Step 1: Add failing tests for execFile-style command execution**
 
 Extend `runtime-skill-cli.test.ts` with:

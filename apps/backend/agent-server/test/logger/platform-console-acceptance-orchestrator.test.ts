@@ -1,20 +1,26 @@
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import fs from 'fs-extra';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { runPlatformConsoleAcceptanceWorkflow } from '../../src/logger/platform-console-acceptance-orchestrator';
 
-const TMP_ROOT = '/tmp/platform-console-acceptance-orchestrator-test';
-
 describe('platform-console-acceptance-orchestrator', () => {
+  let tmpRoot: string;
+
+  beforeEach(async () => {
+    tmpRoot = await mkdtemp(join(tmpdir(), 'platform-console-acceptance-orchestrator-'));
+  });
+
   afterEach(async () => {
-    await fs.remove(TMP_ROOT);
+    await fs.remove(tmpRoot);
   });
 
   it('writes the current report, comparison, log analysis, and markdown acceptance draft', async () => {
-    const outputDir = join(TMP_ROOT, 'artifacts');
-    const baselineJsonPath = join(TMP_ROOT, 'baseline.json');
+    const outputDir = join(tmpRoot, 'artifacts');
+    const baselineJsonPath = join(tmpRoot, 'baseline.json');
     await fs.outputJson(
       baselineJsonPath,
       {

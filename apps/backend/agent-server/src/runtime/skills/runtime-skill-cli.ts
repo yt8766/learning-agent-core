@@ -1,6 +1,10 @@
-import shell from 'shelljs';
+import {
+  runSkillsCliCommand,
+  type SkillsCliCommandPlan
+} from '../../infrastructure/external-process/skills-cli-runner';
 
 type SkillsAddParams = { repo: string; skillName?: string };
+export type SkillsCommandPlan = SkillsCliCommandPlan;
 
 export function normalizeRepoForInstall(repo: string) {
   if (repo.startsWith('http://') || repo.startsWith('https://')) {
@@ -26,12 +30,33 @@ export function buildSkillsAddCommand(params: SkillsAddParams) {
   return parts.map(quoteShellArg).join(' ');
 }
 
+export function buildSkillsAddCommandPlan(params: SkillsAddParams): SkillsCommandPlan {
+  return {
+    command: 'npx',
+    args: buildSkillsAddArgs(params)
+  };
+}
+
 export function buildSkillsCheckCommand() {
   return ['npx', 'skills', 'check'].join(' ');
 }
 
+export function buildSkillsCheckCommandPlan(): SkillsCommandPlan {
+  return {
+    command: 'npx',
+    args: ['skills', 'check']
+  };
+}
+
 export function buildSkillsUpdateCommand() {
   return ['npx', 'skills', 'update'].join(' ');
+}
+
+export function buildSkillsUpdateCommandPlan(): SkillsCommandPlan {
+  return {
+    command: 'npx',
+    args: ['skills', 'update']
+  };
 }
 
 export function assertSafeSkillsShellCommand(command: string) {
@@ -60,27 +85,38 @@ export function assertSafeSkillsShellCommand(command: string) {
   }
 }
 
+export function assertSafeSkillsArgs(args: string[]) {
+  if (args.length < 2 || args[0] !== 'skills') {
+    throw new Error(`unsafe skills args: ${args.join(' ')}`);
+  }
+
+  const subcommand = args[1];
+  if (!['add', 'check', 'update'].includes(subcommand)) {
+    throw new Error(`unsafe skills args: ${args.join(' ')}`);
+  }
+
+  const dangerousFragments = ['&&', '||', ';', '|', '>', '<', '$(', '`', '\n', '\r'];
+  if (args.some(arg => dangerousFragments.some(fragment => arg.includes(fragment)))) {
+    throw new Error(`unsafe skills args: ${args.join(' ')}`);
+  }
+
+  if (args.some(arg => /\brm\s+-rf\b/i.test(arg) || /\bdel\s+\/[sq]\b/i.test(arg))) {
+    throw new Error(`unsafe skills args: ${args.join(' ')}`);
+  }
+}
+
+export function execSkillsCommand(plan: SkillsCommandPlan) {
+  if (plan.command !== 'npx') {
+    throw new Error(`unsafe skills command: ${plan.command}`);
+  }
+  assertSafeSkillsArgs(plan.args);
+  return runSkillsCliCommand(plan);
+}
+
 export function execShellCommand(command: string) {
   assertSafeSkillsShellCommand(command);
-  return new Promise<{ stdout: string; stderr: string }>((resolvePromise, rejectPromise) => {
-    shell.exec(
-      command,
-      {
-        async: true,
-        silent: true,
-        env: process.env,
-        timeout: 60_000,
-        maxBuffer: 1024 * 1024
-      } as never,
-      (code, stdout, stderr) => {
-        if (code === 0) {
-          resolvePromise({ stdout, stderr });
-          return;
-        }
-        rejectPromise(new Error(stderr || stdout || `skills command failed with exit code ${code}`));
-      }
-    );
-  });
+  const tokens = command.trim().split(/\s+/);
+  return execSkillsCommand({ command: 'npx', args: tokens.slice(1) });
 }
 
 function quoteShellArg(value: string) {

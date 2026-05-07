@@ -315,9 +315,6 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
-      shelljs:
-        specifier: ^0.8.5
-        version: 0.8.5
       typeorm:
         specifier: ^0.3.20
         version: 0.3.28(better-sqlite3@12.9.0)(pg@8.20.0)(redis@5.12.1(@opentelemetry/api@1.9.1))(ts-node@10.9.2(@swc/core@1.15.26)(@types/node@22.19.15)(typescript@5.9.3))
@@ -352,9 +349,6 @@ importers:
       '@types/node':
         specifier: ^22.10.7
         version: 22.19.15
-      '@types/shelljs':
-        specifier: ^0.8.17
-        version: 0.8.17
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
@@ -5880,9 +5874,6 @@ packages:
   '@types/serve-static@2.2.0':
     resolution: {integrity: sha512-8mam4H1NHLtu7nmtalF7eyBH14QyOASmcxHhSfEoRyr0nP/YdoesEtU+uSRvMe96TW/HPTtkoKqQLl53N7UXMQ==}
 
-  '@types/shelljs@0.8.17':
-    resolution: {integrity: sha512-IDksKYmQA2W9MkQjiyptbMmcQx+8+Ol6b7h6dPU5S05JyiQDSb/nZKnrMrZqGwgV6VkVdl6/SPCKPDlMRvqECg==}
-
   '@types/statuses@2.0.6':
     resolution: {integrity: sha512-xMAgYwceFhRA2zY+XbEA7mxYbA093wdiW8Vu6gZPGWy9cmOyU9XesH1tNcEWsKFd5Vzrqx5T3D38PWx1FIIXkA==}
 
@@ -10548,11 +10539,6 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
-
-  shelljs@0.8.5:
-    resolution: {integrity: sha512-TiwcRcrkhHvbrZbnRcFYMLl30Dfov3HKqzp5tO5b4pt6G/SezKcYhmDg15zXVBswHmctSAQKznqNW2LO5tTDow==}
-    engines: {node: '>=4'}
-    hasBin: true
 
   side-channel-list@1.0.0:
     resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
@@ -17554,11 +17540,6 @@ snapshots:
       '@types/http-errors': 2.0.5
       '@types/node': 22.19.15
 
-  '@types/shelljs@0.8.17':
-    dependencies:
-      '@types/node': 22.19.15
-      glob: 11.1.0
-
   '@types/statuses@2.0.6': {}
 
   '@types/superagent@8.1.9':
@@ -23000,12 +22981,6 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
-
-  shelljs@0.8.5:
-    dependencies:
-      glob: 7.2.3
-      interpret: 1.4.0
-      rechoir: 0.6.2
 
   side-channel-list@1.0.0:
     dependencies:

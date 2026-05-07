@@ -1,17 +1,13 @@
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import fs from 'fs-extra';
 
 const FIXED_NOW = Date.UTC(2026, 3, 19, 0, 0, 0);
-const TEST_TMP_ROOT = path.join(process.cwd(), 'tmp');
 
 async function createTempRoot(name: string): Promise<string> {
-  const tempRoot = path.join(TEST_TMP_ROOT, name);
-
-  await fs.remove(tempRoot);
-  await fs.ensureDir(tempRoot);
-
-  return tempRoot;
+  return mkdtemp(path.join(tmpdir(), `${name}-`));
 }
 
 describe('cleanup-agent-server-artifacts', () => {

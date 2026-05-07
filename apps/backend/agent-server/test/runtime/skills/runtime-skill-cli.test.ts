@@ -4,6 +4,7 @@ import {
   assertSafeSkillsShellCommand,
   buildSkillsAddArgs,
   buildSkillsAddCommand,
+  buildSkillsAddCommandPlan,
   buildSkillsCheckCommand,
   buildSkillsUpdateCommand,
   normalizeRepoForInstall
@@ -31,6 +32,13 @@ describe('runtime-skill-cli', () => {
       '--skill',
       'repo-review'
     ]);
+  });
+
+  it('builds an executable command plan without shell operators', () => {
+    expect(buildSkillsAddCommandPlan({ repo: 'vercel-labs/skills', skillName: 'find-skills' })).toEqual({
+      command: 'npx',
+      args: ['skills', 'add', 'vercel-labs/skills@find-skills', '-g', '-y']
+    });
   });
 
   it('quotes shell arguments that contain spaces and keeps simple commands unquoted', () => {
