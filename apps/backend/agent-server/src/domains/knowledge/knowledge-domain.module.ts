@@ -12,6 +12,7 @@ import { KnowledgeIngestionQueue } from './services/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from './services/knowledge-ingestion.worker';
 import { KnowledgeProviderHealthService } from './services/knowledge-provider-health.service';
 import { KnowledgeRagModelProfileService } from './services/knowledge-rag-model-profile.service';
+import { KnowledgeRagService } from './services/knowledge-rag.service';
 import { KnowledgeTraceService } from './services/knowledge-trace.service';
 import { KnowledgeUploadService } from './services/knowledge-upload.service';
 import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.provider';
@@ -44,6 +45,12 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     {
       provide: KnowledgeTraceService,
       useFactory: () => new KnowledgeTraceService()
+    },
+    {
+      provide: KnowledgeRagService,
+      useFactory: (repository: KnowledgeMemoryRepository, traces: KnowledgeTraceService) =>
+        new KnowledgeRagService(repository, traces),
+      inject: [KnowledgeMemoryRepository, KnowledgeTraceService]
     },
     {
       provide: KnowledgeRagModelProfileService,
@@ -88,7 +95,8 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
     KnowledgeFrontendSettingsService,
     KnowledgeEvalService,
     KnowledgeTraceService,
-    KnowledgeRagModelProfileService
+    KnowledgeRagModelProfileService,
+    KnowledgeRagService
   ]
 })
 export class KnowledgeDomainModule implements OnModuleInit, OnModuleDestroy {

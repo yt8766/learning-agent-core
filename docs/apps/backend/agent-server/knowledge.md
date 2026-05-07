@@ -48,9 +48,10 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeEvalService`：dataset case 同步评测与 run comparison projection；当前统一域内默认 answerer 仍是占位，后续 RAG 迁入后再接真实回答链路。
 - `KnowledgeTraceService`：RAG / ingestion / eval 等链路的 JSON-safe trace/span 内存投影，span attributes 只保留 string/number/boolean/null。
 - `KnowledgeRagModelProfileService`：RAG model profile schema 校验、摘要投影和 enabled profile 解析；默认 profile 读取 `KNOWLEDGE_*_MODEL` 环境变量并回退到本地占位 model id。
+- `KnowledgeRagService`：统一后端当前 repository-backed RAG facade；先基于当前 actor 可访问知识库、文档 chunks 和关键词匹配生成本地答案、citation、diagnostics、chat message 与 trace。SDK runtime / planner / vector provider 仍需在后续替换进这个稳定 service 边界。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 Postgres repository、RAG SDK facade/provider 等能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 Postgres repository、RAG SDK facade/provider、planner/rerank/hyde 等高级 RAG provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
@@ -60,7 +61,7 @@ PATCH /api/knowledge/chat/assistant-config
 
 - `src/api/knowledge/*`：canonical `/api/knowledge/*`、frontend settings API 与 legacy `/api/knowledge/v1/*` HTTP shell；请求体验证优先使用 `@agent/core` schema。
 - `src/domains/knowledge/repositories/*`：Knowledge domain repository contract 和内存实现；后续 Postgres 实现必须在这里拆分后接入，不要复用旧 `src/knowledge` token。
-- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval、trace、RAG model profile 等领域服务。
+- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval、trace、RAG model profile、RAG facade 等领域服务。
 - `src/domains/knowledge/storage/*`：OSS provider contract 和内存实现；vendor SDK 只能停留在 provider 边界。
 - `src/domains/knowledge/domain/*`：document/upload/chat/RAG 相关本地域类型和 schema。
 
