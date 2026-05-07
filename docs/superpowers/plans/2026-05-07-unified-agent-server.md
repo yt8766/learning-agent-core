@@ -1390,7 +1390,8 @@ Progress note, 2026-05-07:
 - `KnowledgeBaseService`, `KnowledgeUploadService`, `KnowledgeDocumentService`, `KnowledgeIngestionWorker` and `KnowledgeRagService` now consume the repository token instead of the memory implementation class.
 - HyDE, planner, rerank and hallucination detector pure RAG providers have been migrated under `src/domains/knowledge/rag`.
 - `createKnowledgeSdkRuntimeProvider()` has been migrated under `src/domains/knowledge/runtime` and registered in `KnowledgeDomainModule`; it stays disabled unless SDK env is complete.
-- Remaining Step 5 work is the SDK-backed RAG facade/search adapter/answer provider set and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
+- `knowledge-rag-sdk.providers.ts` and `knowledge-server-search-service.adapter.ts` have been migrated under `src/domains/knowledge/rag`, with tests covering deterministic planning, answer provider failure capture, vector-first search and keyword fallback.
+- Remaining Step 5 work is the SDK-backed RAG facade/service wiring and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
 
 Move/adapt:
 

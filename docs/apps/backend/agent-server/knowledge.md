@@ -51,11 +51,13 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeEvalService`：dataset case 同步评测与 run comparison projection；当前统一域内默认 answerer 仍是占位，后续 RAG 迁入后再接真实回答链路。
 - `KnowledgeTraceService`：RAG / ingestion / eval 等链路的 JSON-safe trace/span 内存投影，span attributes 只保留 string/number/boolean/null。
 - `KnowledgeRagModelProfileService`：RAG model profile schema 校验、摘要投影和 enabled profile 解析；默认 profile 读取 `KNOWLEDGE_*_MODEL` 环境变量并回退到本地占位 model id。
-- `KnowledgeRagService`：统一后端当前 repository-backed RAG facade；先基于当前 actor 可访问知识库、文档 chunks 和关键词匹配生成本地答案、citation、diagnostics、chat message 与 trace。SDK runtime / planner / vector provider 仍需在后续替换进这个稳定 service 边界。
+- `src/domains/knowledge/rag/knowledge-rag-sdk.providers.ts`：统一 domain 内的 SDK answer provider 与 deterministic planner fallback。answer provider 只消费项目自己的 `KnowledgeSdkRuntimeProviderValue`，SDK generate/stream 异常会记录为 provider last error，再由 facade/service 映射为稳定 `KnowledgeServiceError`。
+- `src/domains/knowledge/rag/knowledge-server-search-service.adapter.ts`：统一 domain 内的 `@agent/knowledge` `KnowledgeSearchService` adapter。启用 SDK runtime 时优先 query embedding + vector search；vector 缺失、失败或命中无法映射 repository chunk 时回退 repository keyword / 中文 substring 检索，并返回统一 diagnostics。
+- `KnowledgeRagService`：统一后端当前 repository-backed RAG facade；先基于当前 actor 可访问知识库、文档 chunks 和关键词匹配生成本地答案、citation、diagnostics、chat message 与 trace。SDK runtime provider、answer/planner provider 与 search adapter 已迁入 domain，后续还需要把 SDK facade 编排接进这个稳定 service 边界。
 - `rag/*` 纯 provider：已迁入 HyDE query expansion、structured planner、rerank 和 hallucination detector provider。它们只消费项目自定义 LLM boundary / `@agent/knowledge` contract，不直接接触 vendor SDK。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 RAG SDK facade、answer provider、search service adapter 与 vendor storage provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 RAG SDK facade 与 vendor storage provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
