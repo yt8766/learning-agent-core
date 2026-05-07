@@ -43,7 +43,7 @@ PATCH /api/knowledge/chat/assistant-config
 - `createKnowledgeRepositoryProvider()`：统一 domain 的 repository provider factory。默认和 `KNOWLEDGE_REPOSITORY=memory` 绑定 `KnowledgeMemoryRepository`；`KNOWLEDGE_REPOSITORY=postgres` 时要求 `DATABASE_URL`，先执行 `runtime/knowledge-schema.sql.ts`，再绑定 `PostgresKnowledgeRepository`。`KnowledgeBaseService`、`KnowledgeUploadService`、`KnowledgeDocumentService`、`KnowledgeIngestionWorker` 与 `KnowledgeRagService` 都只能消费 `KNOWLEDGE_REPOSITORY` token，不允许再直接注入 memory repository 具体类。
 - `createKnowledgeSdkRuntimeProvider()`：统一 domain 的 SDK runtime provider。只有 `DATABASE_URL`、`KNOWLEDGE_CHAT_MODEL`、`KNOWLEDGE_EMBEDDING_MODEL`、`KNOWLEDGE_LLM_API_KEY` 等 SDK 环境完整时才启用；未配置或部分配置时返回 `{ enabled:false, runtime:null }`，不会创建 LLM runtime 或 SQL client，也不能阻断统一后端启动。启用后会执行同一份 `runtime/knowledge-schema.sql.ts`，并把 SDK vector RPC 映射到 Postgres function SQL。
 - `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
-- `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
+- `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、对象存储写入和 upload record 保存。
 - `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
 - `KnowledgeIngestionQueue` / `KnowledgeIngestionWorker`：由 `KnowledgeDomainModule.onModuleInit()` 启动，模块销毁时 stop；不要在 HTTP service 内手动 drain 队列。
 - `KnowledgeFrontendSettingsService`：workspace users、invitation、model providers、API keys、storage/security/assistant config 的前端治理面投影。
@@ -56,9 +56,9 @@ PATCH /api/knowledge/chat/assistant-config
 - `src/domains/knowledge/rag/knowledge-server-search-service.adapter.ts`：统一 domain 内的 `@agent/knowledge` `KnowledgeSearchService` adapter。启用 SDK runtime 时优先 query embedding + vector search；vector 缺失、失败或命中无法映射 repository chunk 时回退 repository keyword / 中文 substring 检索，并返回统一 diagnostics。
 - `KnowledgeRagService`：统一后端稳定 RAG service 边界。默认未配置 SDK runtime 时保持 repository-backed 本地关键词答案；`createKnowledgeSdkRuntimeProvider()` 启用后会通过 `KnowledgeRagSdkFacade` 走 SDK planner / search / answer 编排，同时仍由 service 负责持久化 chat messages 与 trace。
 - `rag/*` 纯 provider：已迁入 HyDE query expansion、structured planner、rerank 和 hallucination detector provider。它们只消费项目自定义 LLM boundary / `@agent/knowledge` contract，不直接接触 vendor SDK。
-- `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
+- `src/domains/knowledge/storage/knowledge-oss-storage.provider.ts`：统一 storage provider factory。默认绑定 `InMemoryOssStorageProvider`；`KNOWLEDGE_OSS_PROVIDER=aliyun` 且 `ALIYUN_OSS_BUCKET`、`ALIYUN_OSS_REGION`、`ALIYUN_OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_ID`、`ALIYUN_OSS_ACCESS_KEY_SECRET` / `OSS_ACCESS_KEY_SECRET` 完整时绑定 `AliyunOssStorageProvider`。upload/document/ingestion 只消费 `KNOWLEDGE_OSS_STORAGE` token，不再直接绑定内存 provider。
 
-真实 `knowledge-server` 的 vendor storage provider 与公开 chat/document HTTP endpoint 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的公开 chat/document HTTP endpoint 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
@@ -70,8 +70,8 @@ PATCH /api/knowledge/chat/assistant-config
 - `src/domains/knowledge/repositories/*`：Knowledge domain repository contract、memory/postgres 实现、postgres mapper 与 helper；不要复用旧 `src/knowledge` token。
 - `src/domains/knowledge/runtime/*`：Knowledge domain 的 runtime provider factory、Postgres client boundary 与 schema bootstrap。只允许这里读取 `KNOWLEDGE_REPOSITORY` / `DATABASE_URL` 并创建 `pg.Pool`；service、controller、RAG facade 不直接接触 `pg` 或环境变量。
 - `src/domains/knowledge/rag/*`：HyDE、planner、rerank、hallucination detector 等 RAG 组合 provider。这里可以消费 `@agent/knowledge` 的稳定 provider contract，但 vendor SDK client 创建必须继续留在 adapter / provider factory 边界。
-- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval、trace、RAG model profile、RAG facade 等领域服务。
-- `src/domains/knowledge/storage/*`：OSS provider contract 和内存实现；vendor SDK 只能停留在 provider 边界。
+- `src/domains/knowledge/services/*`：base、upload、document、ingestion queue/worker、frontend settings、provider health、eval、trace、RAG model profile、RAG facade 等领域服务；service 只注入 repository / storage / runtime token，不绑定具体 provider 类。
+- `src/domains/knowledge/storage/*`：OSS provider contract、memory provider、Aliyun OSS provider 与 storage provider factory；vendor SDK 只能停留在 provider 边界。
 - `src/domains/knowledge/domain/*`：document/upload/chat/RAG 相关本地域类型和 schema。
 
 历史 `src/knowledge` 的职责：

@@ -19,14 +19,14 @@ import { KnowledgeRagModelProfileService } from './services/knowledge-rag-model-
 import { KnowledgeRagService } from './services/knowledge-rag.service';
 import { KnowledgeTraceService } from './services/knowledge-trace.service';
 import { KnowledgeUploadService } from './services/knowledge-upload.service';
-import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.provider';
+import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-storage.provider';
 
 @Module({
   controllers: [KnowledgeApiController, LegacyKnowledgeController, KnowledgeSettingsController],
   providers: [
     createKnowledgeRepositoryProvider(),
     createKnowledgeSdkRuntimeProvider(),
-    InMemoryOssStorageProvider,
+    createKnowledgeOssStorageProvider(),
     KnowledgeBaseService,
     KnowledgeUploadService,
     KnowledgeDocumentService,

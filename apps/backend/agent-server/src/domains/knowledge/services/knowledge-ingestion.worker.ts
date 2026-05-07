@@ -3,9 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 
 import type { DocumentChunkRecord, DocumentProcessingJobRecord } from '../domain/knowledge-document.types';
-import { KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
+import { KNOWLEDGE_OSS_STORAGE, KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
-import { InMemoryOssStorageProvider } from '../storage/in-memory-oss-storage.provider';
 import type { OssStorageProvider } from '../storage/oss-storage.provider';
 import { KnowledgeServiceError } from './knowledge-service.error';
 
@@ -13,7 +12,7 @@ import { KnowledgeServiceError } from './knowledge-service.error';
 export class KnowledgeIngestionWorker {
   constructor(
     @Inject(KNOWLEDGE_REPOSITORY) private readonly repository: KnowledgeRepository,
-    @Inject(InMemoryOssStorageProvider) private readonly storage: OssStorageProvider
+    @Inject(KNOWLEDGE_OSS_STORAGE) private readonly storage: OssStorageProvider
   ) {}
 
   async process(job: DocumentProcessingJobRecord): Promise<DocumentProcessingJobRecord> {

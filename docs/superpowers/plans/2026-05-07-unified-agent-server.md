@@ -1392,7 +1392,8 @@ Progress note, 2026-05-07:
 - `createKnowledgeSdkRuntimeProvider()` has been migrated under `src/domains/knowledge/runtime` and registered in `KnowledgeDomainModule`; it stays disabled unless SDK env is complete.
 - `knowledge-rag-sdk.providers.ts` and `knowledge-server-search-service.adapter.ts` have been migrated under `src/domains/knowledge/rag`, with tests covering deterministic planning, answer provider failure capture, vector-first search and keyword fallback.
 - `KnowledgeRagSdkFacade` has been migrated under `src/domains/knowledge/rag` and `KnowledgeRagService` now uses it when `KNOWLEDGE_SDK_RUNTIME` is enabled, while preserving local repository-backed RAG when SDK env is absent.
-- Remaining Step 5 work is vendor storage providers and the public document/chat HTTP endpoints; the current unified domain still uses in-memory OSS.
+- `AliyunOssStorageProvider` and `createKnowledgeOssStorageProvider()` have been migrated under `src/domains/knowledge/storage`; upload/document/ingestion services now consume the `KNOWLEDGE_OSS_STORAGE` token, defaulting to memory and switching to Aliyun only when OSS env is complete.
+- Remaining Step 5 work is the public document/chat HTTP endpoints.
 
 Move/adapt:
 

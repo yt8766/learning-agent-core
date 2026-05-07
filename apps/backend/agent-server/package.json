@@ -52,6 +52,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^10.0.2",
+    "ali-oss": "^6.23.0",
     "bree": "^9.2.9",
     "chalk": "4",
     "dayjs": "^1.11.13",
