@@ -238,6 +238,13 @@ Runtime state persistence：
 - Postgres runtime state 表使用可查询主列承载 task/session/event/checkpoint/audit 的核心字段，同时在同领域表的 `metadata`、`payload` 或 `state` jsonb 字段保留完整 runtime 记录，避免迁移期间丢失 cancel、recover、observe 所需的宽松状态。
 - 新增 runtime state 领域持久化时，不要回退到 root `data/runtime/*.json`，也不要新增单一 catch-all JSON 表；应继续扩展领域表、mapper 和 `scripts/check-no-root-data-runtime.mjs` 的守卫。
 
+Unified database schema：
+
+- `apps/backend/agent-server/src/infrastructure/database/schemas/` 是统一后端数据库 DDL 的基础设施入口，当前拆分为 `identity-schema.sql.ts`、`knowledge-schema.sql.ts` 与 `runtime-schema.sql.ts`。
+- `apps/backend/agent-server/src/infrastructure/database/migrations/0001_identity.sql`、`0002_knowledge.sql`、`0003_runtime_workflows.sql` 是对应的纯 SQL migration artifact，不 import TypeScript。
+- Knowledge DDL 复用当前 agent-server Knowledge Domain 的真实表集：bases、members、uploads、documents、chunks、chat、eval tables 与 vector helper functions；不要再以只有 `knowledge_bases` / `knowledge_documents` 的简化 schema 作为终态。
+- Runtime workflow DDL 对齐 `workflow_runs` TypeORM entity 的实际列名：`workflowId`、`startedAt`、`completedAt`、`inputData`、`traceData`。修改 workflow entity 时必须同步更新 `runtime-schema.sql.ts` 与 `0003_runtime_workflows.sql`。
+
 Skill persistence：
 
 - `@agent/skill` 现在暴露 `SkillInstallRepository` / `SkillSourceRepository` contract，以及对应 memory implementation。

@@ -1626,7 +1626,7 @@ Expected: commit succeeds after hooks pass.
 - Create: `apps/backend/agent-server/src/infrastructure/database/migrations/0003_runtime_workflows.sql`
 - Test: `apps/backend/agent-server/test/infrastructure/database/unified-schema.spec.ts`
 
-- [ ] **Step 1: Write schema presence tests**
+- [x] **Step 1: Write schema presence tests**
 
 Create `apps/backend/agent-server/test/infrastructure/database/unified-schema.spec.ts`:
 
@@ -1654,7 +1654,7 @@ describe('unified backend database schemas', () => {
 });
 ```
 
-- [ ] **Step 2: Run failing schema tests**
+- [x] **Step 2: Run failing schema tests**
 
 Run:
 
@@ -1664,7 +1664,7 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/in
 
 Expected: FAIL because schema files do not exist.
 
-- [ ] **Step 3: Add identity schema SQL**
+- [x] **Step 3: Add identity schema SQL**
 
 Create `identity-schema.sql.ts`:
 
@@ -1696,7 +1696,7 @@ CREATE TABLE IF NOT EXISTS identity_refresh_sessions (
 `;
 ```
 
-- [ ] **Step 4: Add knowledge schema SQL**
+- [x] **Step 4: Add knowledge schema SQL**
 
 Create `knowledge-schema.sql.ts` by adapting `apps/backend/knowledge-server/src/knowledge/runtime/knowledge-schema.sql.ts`. Ensure it exports:
 
@@ -1722,28 +1722,27 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
 `;
 ```
 
-When migrating the full repository, extend this schema with chunks, uploads, settings, traces and eval tables from the current knowledge-server schema.
+Implemented with the current unified agent-server Knowledge Domain DDL, including uploads, chunks, chat, eval tables and vector helper functions, rather than leaving the two-table starter schema as the final artifact.
 
-- [ ] **Step 5: Add runtime schema SQL**
+- [x] **Step 5: Add runtime schema SQL**
 
 Create `runtime-schema.sql.ts`:
 
 ```ts
 export const RUNTIME_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS workflow_runs (
-  id uuid PRIMARY KEY,
-  workflow_type text NOT NULL,
-  status text NOT NULL,
-  input jsonb NOT NULL,
-  output jsonb,
-  error_message text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id varchar(64) PRIMARY KEY,
+  "workflowId" varchar(128) NOT NULL,
+  status varchar(32) NOT NULL,
+  "startedAt" bigint NOT NULL,
+  "completedAt" bigint,
+  "inputData" jsonb,
+  "traceData" jsonb
 );
 `;
 ```
 
-- [ ] **Step 6: Add migration files**
+- [x] **Step 6: Add migration files**
 
 Each migration file imports no TypeScript. Copy SQL text into:
 
@@ -1753,7 +1752,7 @@ Each migration file imports no TypeScript. Copy SQL text into:
 0003_runtime_workflows.sql
 ```
 
-- [ ] **Step 7: Run schema tests**
+- [x] **Step 7: Run schema tests**
 
 Run:
 
@@ -1763,7 +1762,7 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/in
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit Task 10**
+- [x] **Step 8: Commit Task 10**
 
 Run:
 
