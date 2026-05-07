@@ -1389,7 +1389,8 @@ Progress note, 2026-05-07:
 - `createKnowledgeRepositoryProvider()` now binds `KNOWLEDGE_REPOSITORY` to memory by default or postgres when explicitly configured with `DATABASE_URL`.
 - `KnowledgeBaseService`, `KnowledgeUploadService`, `KnowledgeDocumentService`, `KnowledgeIngestionWorker` and `KnowledgeRagService` now consume the repository token instead of the memory implementation class.
 - HyDE, planner, rerank and hallucination detector pure RAG providers have been migrated under `src/domains/knowledge/rag`.
-- Remaining Step 5 work is the SDK-backed RAG facade/runtime/search adapter set and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
+- `createKnowledgeSdkRuntimeProvider()` has been migrated under `src/domains/knowledge/runtime` and registered in `KnowledgeDomainModule`; it stays disabled unless SDK env is complete.
+- Remaining Step 5 work is the SDK-backed RAG facade/search adapter/answer provider set and vendor storage providers; the current unified domain still uses local repository-backed RAG and in-memory OSS.
 
 Move/adapt:
 

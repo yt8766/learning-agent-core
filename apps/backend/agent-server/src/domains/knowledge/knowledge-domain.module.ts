@@ -3,9 +3,10 @@ import { Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { KnowledgeApiController } from '../../api/knowledge/knowledge.controller';
 import { KnowledgeSettingsController } from '../../api/knowledge/knowledge-settings.controller';
 import { LegacyKnowledgeController } from '../../api/knowledge/legacy-knowledge.controller';
-import { KNOWLEDGE_REPOSITORY } from './knowledge-domain.tokens';
+import { KNOWLEDGE_REPOSITORY, KNOWLEDGE_SDK_RUNTIME } from './knowledge-domain.tokens';
 import type { KnowledgeRepository } from './repositories/knowledge.repository';
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
+import { createKnowledgeSdkRuntimeProvider } from './runtime/knowledge-sdk-runtime.provider';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
 import { KnowledgeDocumentService } from './services/knowledge-document.service';
 import { KnowledgeEvalService } from './services/knowledge-eval.service';
@@ -23,6 +24,7 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
   controllers: [KnowledgeApiController, LegacyKnowledgeController, KnowledgeSettingsController],
   providers: [
     createKnowledgeRepositoryProvider(),
+    createKnowledgeSdkRuntimeProvider(),
     InMemoryOssStorageProvider,
     KnowledgeBaseService,
     KnowledgeUploadService,
@@ -91,6 +93,7 @@ import { InMemoryOssStorageProvider } from './storage/in-memory-oss-storage.prov
   ],
   exports: [
     KNOWLEDGE_REPOSITORY,
+    KNOWLEDGE_SDK_RUNTIME,
     KnowledgeBaseService,
     KnowledgeUploadService,
     KnowledgeDocumentService,

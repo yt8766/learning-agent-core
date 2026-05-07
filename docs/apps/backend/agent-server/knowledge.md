@@ -41,6 +41,7 @@ PATCH /api/knowledge/chat/assistant-config
 - `KnowledgeMemoryRepository`：base/member/upload/document/job/chunk/chat conversation/message 的内存 repository 实现。
 - `PostgresKnowledgeRepository`：`KnowledgeRepository` 的 PostgreSQL 实现，已按 `mapper + helper + repository` 拆分，避免把旧 `knowledge-server` 的 400+ 行仓库整文件搬回统一域。
 - `createKnowledgeRepositoryProvider()`：统一 domain 的 repository provider factory。默认和 `KNOWLEDGE_REPOSITORY=memory` 绑定 `KnowledgeMemoryRepository`；`KNOWLEDGE_REPOSITORY=postgres` 时要求 `DATABASE_URL`，先执行 `runtime/knowledge-schema.sql.ts`，再绑定 `PostgresKnowledgeRepository`。`KnowledgeBaseService`、`KnowledgeUploadService`、`KnowledgeDocumentService`、`KnowledgeIngestionWorker` 与 `KnowledgeRagService` 都只能消费 `KNOWLEDGE_REPOSITORY` token，不允许再直接注入 memory repository 具体类。
+- `createKnowledgeSdkRuntimeProvider()`：统一 domain 的 SDK runtime provider。只有 `DATABASE_URL`、`KNOWLEDGE_CHAT_MODEL`、`KNOWLEDGE_EMBEDDING_MODEL`、`KNOWLEDGE_LLM_API_KEY` 等 SDK 环境完整时才启用；未配置或部分配置时返回 `{ enabled:false, runtime:null }`，不会创建 LLM runtime 或 SQL client，也不能阻断统一后端启动。启用后会执行同一份 `runtime/knowledge-schema.sql.ts`，并把 SDK vector RPC 映射到 Postgres function SQL。
 - `KnowledgeBaseService`：base 创建、列表、member 管理和 owner/viewer 权限校验。
 - `KnowledgeUploadService`：Markdown/TXT 上传校验、UTF-8 文件名修复、内存 OSS 写入和 upload record 保存。
 - `KnowledgeDocumentService`：从 upload 创建 document/job、内存 ingestion queue/worker、chunk 生成、document/job/chunk 查询、reprocess 与 delete。
@@ -54,7 +55,7 @@ PATCH /api/knowledge/chat/assistant-config
 - `rag/*` 纯 provider：已迁入 HyDE query expansion、structured planner、rerank 和 hallucination detector provider。它们只消费项目自定义 LLM boundary / `@agent/knowledge` contract，不直接接触 vendor SDK。
 - `InMemoryOssStorageProvider`：统一后端迁移期的本地 storage provider。
 
-真实 `knowledge-server` 的 RAG SDK facade/provider、SDK runtime、search service adapter 与 vendor storage provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
+真实 `knowledge-server` 的 RAG SDK facade、answer provider、search service adapter 与 vendor storage provider 能力仍在后续任务迁入 `src/domains/knowledge`。独立 `apps/backend/knowledge-server` 在迁移完成前仍保留历史客户端兼容价值，但新增后端能力应优先向统一 `agent-server` Knowledge domain 收敛。
 
 历史 `apps/backend/agent-server/src/knowledge` 保留为 runtime-internal 参考实现，覆盖 RAG、ingestion、observability、evals、vector store provider 等纵向能力。迁移时应把可复用服务收敛到 `src/domains/knowledge` 的 service / repository / provider 边界，而不是继续扩展旧目录。
 
