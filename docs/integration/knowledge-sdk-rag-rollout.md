@@ -79,6 +79,5 @@ KNOWLEDGE_EMBEDDING_BATCH_SIZE=64
 ## 优先阅读
 
 - [Knowledge SDK 接入指南](/docs/packages/knowledge/sdk.md)
-- [Knowledge Server](/docs/apps/backend/knowledge-server/knowledge-server.md)
 - [Knowledge API Contract](/docs/contracts/api/knowledge.md)
 - [Knowledge Frontend](/docs/apps/frontend/knowledge/knowledge-frontend.md)
