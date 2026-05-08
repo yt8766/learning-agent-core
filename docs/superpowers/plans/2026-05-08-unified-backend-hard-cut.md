@@ -117,12 +117,9 @@ pnpm exec vitest run --config vitest.config.js test/smoke/workspace/dev-backends
 
 Expected: FAIL because `package.json` still starts three backends and the old backend tsconfigs still exist.
 
-- [ ] **Step 4: Commit the red tests**
+- [ ] **Step 4: Keep the red tests uncommitted and continue to Task 2**
 
-```bash
-git add test/smoke/workspace/dev-backends-launcher.smoke.ts packages/runtime/test/turbo-typecheck-manifests.test.ts
-git commit -m "test: lock unified backend workspace wiring"
-```
+Do not commit this red state. The repository commit hook runs affected tests, so intentionally failing tests must be made green in Task 2 before committing.
 
 ### Task 2: Root Scripts and Workspace Graph
 
