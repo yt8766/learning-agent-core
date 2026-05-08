@@ -71,6 +71,7 @@ pnpm-debug.log*
 /data/knowledge
 /data/skills
 /data/skill-runtime
+/profile-storage
 .db
 /db
 data/**/*.tmp

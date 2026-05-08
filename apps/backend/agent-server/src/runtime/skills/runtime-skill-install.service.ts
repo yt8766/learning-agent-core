@@ -1,5 +1,5 @@
-import { dirname, join, resolve } from 'node:path';
-import { ensureDir, readFile, remove, writeFile } from 'fs-extra';
+import { dirname, join } from 'node:path';
+import { ensureDir, writeFile } from 'fs-extra';
 
 import { NotFoundException } from '@nestjs/common';
 
@@ -41,6 +41,8 @@ export interface RuntimeSkillInstallContext {
       receiptId: string
     ) => Promise<{ artifactPath?: string; stagingDir: string; integrityVerified: boolean }>;
     promoteFromStaging: (stagingDir: string, installLocation: string) => Promise<void>;
+    removeStaging?: (stagingDir: string) => Promise<void>;
+    removeStagingByReceiptId?: (receiptId: string) => Promise<void>;
   };
   listSkillSources: () => Promise<SkillSourceRecord[]>;
   registerInstalledSkillWorker: (skill: SkillCard) => void;
@@ -102,46 +104,25 @@ export async function getSkillInstallReceipt(context: RuntimeSkillInstallContext
 }
 
 export async function readSkillInstallReceipts(context: RuntimeSkillInstallContext): Promise<SkillInstallReceipt[]> {
-  if (context.skillInstallRepository) {
-    return context.skillInstallRepository.listReceipts();
-  }
-  return readJsonArray<SkillInstallReceipt>(join(context.settings.skillReceiptsRoot, 'receipts.json'));
+  return requireSkillInstallRepository(context).listReceipts();
 }
 
 export async function writeSkillInstallReceipt(
   context: RuntimeSkillInstallContext,
   receipt: SkillInstallReceipt
 ): Promise<void> {
-  if (context.skillInstallRepository) {
-    await context.skillInstallRepository.saveReceipt(receipt);
-    return;
-  }
-  const receipts = await readSkillInstallReceipts(context);
-  const deduped = receipts.filter(item => item.id !== receipt.id);
-  deduped.push(receipt);
-  await writeJsonFile(join(context.settings.skillReceiptsRoot, 'receipts.json'), deduped);
-  await writeJsonFile(join(context.settings.skillReceiptsRoot, `${receipt.id}.json`), receipt);
+  await requireSkillInstallRepository(context).saveReceipt(receipt);
 }
 
 export async function readInstalledSkillRecords(context: RuntimeSkillInstallContext): Promise<InstalledSkillRecord[]> {
-  if (context.skillInstallRepository) {
-    return context.skillInstallRepository.listInstalledRecords();
-  }
-  return readJsonArray<InstalledSkillRecord>(join(context.settings.skillPackagesRoot, 'installed.json'));
+  return requireSkillInstallRepository(context).listInstalledRecords();
 }
 
 export async function writeInstalledSkillRecord(
   context: RuntimeSkillInstallContext,
   record: InstalledSkillRecord
 ): Promise<void> {
-  if (context.skillInstallRepository) {
-    await context.skillInstallRepository.saveInstalledRecord(record);
-    return;
-  }
-  const installed = await readInstalledSkillRecords(context);
-  const deduped = installed.filter(item => !(item.skillId === record.skillId && item.version === record.version));
-  deduped.push(record);
-  await writeJsonFile(join(context.settings.skillPackagesRoot, 'installed.json'), deduped);
+  await requireSkillInstallRepository(context).saveInstalledRecord(record);
 }
 
 export async function finalizeSkillInstall(
@@ -150,6 +131,7 @@ export async function finalizeSkillInstall(
   source: SkillSourceRecord,
   receipt: SkillInstallReceipt
 ): Promise<InstalledSkillRecord> {
+  let stagedArtifact: { stagingDir: string } | undefined;
   try {
     const installedAt = new Date().toISOString();
     const installBaseLocation = join(
@@ -206,6 +188,7 @@ export async function finalizeSkillInstall(
     receipt.result = 'downloading_artifact';
     await writeSkillInstallReceipt(context, receipt);
     const artifact = await context.skillArtifactFetcher.fetchToStaging(manifest, source, receipt.id);
+    stagedArtifact = artifact;
 
     receipt.phase = 'verifying';
     receipt.downloadRef = artifact.artifactPath;
@@ -239,7 +222,11 @@ export async function finalizeSkillInstall(
     receipt.failureDetail = error instanceof Error ? error.stack : String(error);
     receipt.result = 'install_failed';
     await writeSkillInstallReceipt(context, receipt);
-    await remove(resolve(context.settings.workspaceRoot, 'data', 'skills', 'staging', receipt.id));
+    if (stagedArtifact) {
+      await context.skillArtifactFetcher.removeStaging?.(stagedArtifact.stagingDir);
+    } else {
+      await context.skillArtifactFetcher.removeStagingByReceiptId?.(receipt.id);
+    }
     throw error;
   }
 }
@@ -345,18 +332,16 @@ export async function updateInstalledSkills(context: RuntimeSkillInstallContext)
   return runner();
 }
 
-async function readJsonArray<T>(filePath: string): Promise<T[]> {
-  try {
-    const raw = await readFile(filePath, 'utf8');
-    return JSON.parse(raw) as T[];
-  } catch {
-    return [];
-  }
-}
-
 async function writeJsonFile(filePath: string, payload: unknown): Promise<void> {
   await ensureDir(dirname(filePath));
   await writeFile(filePath, JSON.stringify(payload, null, 2));
+}
+
+function requireSkillInstallRepository(context: RuntimeSkillInstallContext): SkillInstallRepository {
+  if (!context.skillInstallRepository) {
+    throw new Error('skill_install_repository_required');
+  }
+  return context.skillInstallRepository;
 }
 
 async function defaultRemoteSkillInstall(params: { repo: string; skillName?: string }) {

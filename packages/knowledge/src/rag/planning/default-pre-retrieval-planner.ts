@@ -118,7 +118,11 @@ export class DefaultPreRetrievalPlanner {
       confidence: result.confidence,
       fallbackPolicy: resolvePlanFallbackPolicy(input.policy),
       routingDecisions,
-      strategyHints: result.strategyHints,
+      strategyHints: {
+        ...(result.strategyHints ?? {}),
+        topK: result.strategyHints?.topK ?? input.policy.retrievalTopK,
+        contextBudgetTokens: result.strategyHints?.contextBudgetTokens ?? input.policy.contextBudgetTokens
+      },
       diagnostics: {
         planner: 'llm',
         consideredKnowledgeBaseCount: input.accessibleKnowledgeBases.length,
@@ -163,6 +167,10 @@ export class DefaultPreRetrievalPlanner {
       confidence: input.policy.minPlannerConfidence,
       fallbackPolicy: resolvePlanFallbackPolicy(input.policy),
       routingDecisions,
+      strategyHints: {
+        topK: input.policy.retrievalTopK,
+        contextBudgetTokens: input.policy.contextBudgetTokens
+      },
       diagnostics: {
         planner: 'fallback',
         consideredKnowledgeBaseCount: input.accessibleKnowledgeBases.length,

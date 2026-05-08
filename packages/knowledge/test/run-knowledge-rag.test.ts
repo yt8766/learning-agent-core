@@ -330,4 +330,55 @@ describe('runKnowledgeRag', () => {
     });
     expect(result.retrieval.contextBundle).toContain('Every answer must be grounded');
   });
+
+  it('wires policy context budget through planner and retrieval before answer generation', async () => {
+    const seenBudgets: number[] = [];
+    const answerProvider = makeAnswerProvider(async input => ({
+      text: input.contextBundle,
+      citations: input.citations
+    }));
+
+    const result = await runKnowledgeRag({
+      query: 'How should policy budgets constrain context?',
+      accessibleKnowledgeBases,
+      policy: {
+        ...policy,
+        contextBudgetTokens: 876,
+        retrievalTopK: 1
+      },
+      plannerProvider: makePlannerProvider({
+        queryVariants: ['policy budget context'],
+        selectedKnowledgeBaseIds: ['kb_runtime'],
+        searchMode: 'hybrid',
+        selectionReason: 'Runtime docs are relevant.',
+        confidence: 0.9
+      }),
+      searchService: makeSearchService([makeHit({ content: 'Budget-aware context assembly.' })]),
+      answerProvider,
+      pipeline: {
+        contextAssembler: {
+          async assemble(hits, _request, options) {
+            seenBudgets.push(options?.budget?.maxContextTokens ?? 0);
+            return {
+              contextBundle: hits.map(hit => hit.content).join('\n'),
+              diagnostics: {
+                strategy: 'budget-probe',
+                budgetTokens: options?.budget?.maxContextTokens,
+                estimatedTokens: 5,
+                selectedHitIds: hits.map(hit => hit.chunkId),
+                droppedHitIds: [],
+                truncatedHitIds: [],
+                orderingStrategy: 'ranked'
+              }
+            };
+          }
+        }
+      },
+      idFactory: () => 'budget-run'
+    });
+
+    expect(result.plan.strategyHints).toMatchObject({ topK: 1, contextBudgetTokens: 876 });
+    expect(seenBudgets).toEqual([876]);
+    expect(answerProvider.inputs[0]?.contextBundle).toBe('Budget-aware context assembly.');
+  });
 });

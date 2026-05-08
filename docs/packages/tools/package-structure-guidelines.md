@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/tools`
-最后核对：2026-04-18
+最后核对：2026-05-08
 
 本文档说明 `packages/tools` 如何继续按“工具平台能力层”收敛结构。
 
@@ -77,9 +77,9 @@ packages/tools/
 - 包根 `tool-registry.ts`、`tool-risk-classifier.ts`
   - 已删除
   - registry 语义统一收口到 `registry/*` 真实宿主与 `contracts/*` 稳定 facade
-- `scaffold/scaffold-executor.ts`、`scheduling/scheduling-executor.ts`、`runtime-governance/runtime-governance-executor.ts`
-  - 已删除
-  - executor 语义统一收口到 `executors/*`
+- `executors/scaffold/scaffold-executor.ts`、`executors/scheduling/scheduling-executor.ts`、`executors/runtime-governance/runtime-governance-executor.ts`
+  - 作为对应 executor 的真实宿主
+  - scheduling / runtime-governance executor 不直接写 workspace 根目录 `data/runtime/*`，需要持久化时通过 repository 注入
 
 补充：
 
@@ -97,6 +97,13 @@ packages/tools/
   - 已作为 filesystem、connectors、runtime-governance、scheduling tool definition 的真实宿主
 - `src/filesystem/index.ts`、`src/connectors/index.ts`、`src/runtime-governance/index.ts`、`src/scheduling/index.ts`
   - 当前只保留目录聚合职责，不再保留同目录 definition wrapper
+- `src/scheduling/schedule-repository.ts`
+  - 作为 schedule repository contract 与默认内存实现的真实宿主
+- `src/runtime-governance/runtime-governance-repository.ts`
+  - 作为 runtime governance artifact repository contract 与默认内存实现的真实宿主
+- `executors/connectors/connectors-executor.ts`
+  - 通过显式 `ConnectorDraftStorage` 读写 connector draft，未注入 storage 时使用包内内存实现
+  - 不直接写 workspace 根目录 `data/runtime/connectors`
 - `src/transports/*`
   - 已作为 HTTP / stdio / local-adapter transport 与 transport handler 的真实宿主
 - `src/mcp/index.ts`

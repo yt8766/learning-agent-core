@@ -9,7 +9,7 @@ import { translateBriefingItems } from './briefing-translate';
 import { computePreferenceScore, enrichActionMetadata } from './briefing-item-enrichment';
 import { MCP_DISCOVERY_QUERIES, resolveMcpSearchSourceMeta } from './briefing-mcp-search-policy';
 import type { BriefingSettings } from './briefing-schedule';
-import { appendBriefingRawEvidence } from './briefing-storage';
+import { appendBriefingRawEvidence, type BriefingStorageRepository } from './briefing-storage';
 import type { TechBriefingCategory, TechBriefingItem } from './briefing.types';
 
 type ActionIntentValue = (typeof ActionIntent)[keyof typeof ActionIntent];
@@ -51,6 +51,7 @@ export interface RuntimeTechBriefingCollectorContext {
       reasonTag?: string;
     }>
   >;
+  briefingStorage?: BriefingStorageRepository;
 }
 
 export async function collectBriefingCategoryItems(params: {
@@ -151,7 +152,7 @@ async function collectSearchMcpItems(
     });
     candidates.push(...toMcpSearchItems(category, now, result.rawOutput));
   }
-  await appendBriefingRawEvidence(context.workspaceRoot, category, now, rawEvidence);
+  await appendBriefingRawEvidence(context.workspaceRoot, category, now, rawEvidence, context.briefingStorage);
 
   return dedupeMcpSearchItems(candidates);
 }

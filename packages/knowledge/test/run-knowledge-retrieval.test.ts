@@ -380,6 +380,98 @@ describe('runKnowledgeRetrieval', () => {
     expect(result.contextBundle).toBe('custom context bundle');
   });
 
+  it('returns structured context assembly diagnostics from a custom assembler', async () => {
+    const result = await runKnowledgeRetrieval({
+      request: { query: 'budgeted context', limit: 2 },
+      searchService: makeSearchService([
+        makeHit({ chunkId: 'chunk_a', title: 'A', content: 'alpha context', score: 0.9 }),
+        makeHit({ chunkId: 'chunk_b', title: 'B', content: 'beta context', score: 0.8 })
+      ]),
+      assembleContext: true,
+      includeDiagnostics: true,
+      pipeline: {
+        contextAssembler: {
+          async assemble(hits) {
+            return {
+              contextBundle: hits.map(hit => hit.content).join('\n'),
+              diagnostics: {
+                strategy: 'custom-test',
+                budgetTokens: 42,
+                estimatedTokens: 12,
+                selectedHitIds: hits.map(hit => hit.chunkId),
+                droppedHitIds: [],
+                truncatedHitIds: [],
+                orderingStrategy: 'ranked'
+              }
+            };
+          }
+        }
+      }
+    });
+
+    expect(result.contextBundle).toBe('alpha context\nbeta context');
+    expect(result.diagnostics?.contextAssembly).toMatchObject({
+      strategy: 'custom-test',
+      budgetTokens: 42,
+      estimatedTokens: 12,
+      selectedHitIds: ['chunk_a', 'chunk_b'],
+      droppedHitIds: [],
+      truncatedHitIds: [],
+      orderingStrategy: 'ranked'
+    });
+  });
+
+  it('truncates default context assembly to the provided context budget', async () => {
+    const result = await runKnowledgeRetrieval({
+      request: { query: 'budget', limit: 3 },
+      searchService: makeSearchService([
+        makeHit({ chunkId: 'a', title: 'A', content: 'a '.repeat(160), score: 0.95 }),
+        makeHit({ chunkId: 'b', title: 'B', content: 'b '.repeat(160), score: 0.9 }),
+        makeHit({ chunkId: 'c', title: 'C', content: 'c '.repeat(160), score: 0.85 })
+      ]),
+      assembleContext: true,
+      includeDiagnostics: true,
+      pipeline: {
+        contextAssemblyOptions: {
+          budget: { maxContextTokens: 80, reservedOutputTokens: 20, queryTokens: 5, systemTokens: 5 }
+        }
+      }
+    });
+
+    expect(result.contextBundle?.length).toBeLessThan(420);
+    expect(result.diagnostics?.contextAssembly).toMatchObject({
+      strategy: 'default-budgeted-concat',
+      budgetTokens: 50,
+      orderingStrategy: 'ranked'
+    });
+    expect(result.diagnostics?.contextAssembly?.selectedHitIds.length).toBeGreaterThan(0);
+    expect(
+      [
+        ...(result.diagnostics?.contextAssembly?.droppedHitIds ?? []),
+        ...(result.diagnostics?.contextAssembly?.truncatedHitIds ?? [])
+      ].length
+    ).toBeGreaterThan(0);
+  });
+
+  it('does not rewrite the original query when context budget is small', async () => {
+    const result = await runKnowledgeRetrieval({
+      request: { query: '原始问题必须保留', limit: 1 },
+      searchService: makeSearchService([
+        makeHit({ chunkId: 'a', title: 'A', content: 'context '.repeat(200), score: 0.95 })
+      ]),
+      assembleContext: true,
+      includeDiagnostics: true,
+      pipeline: {
+        contextAssemblyOptions: {
+          budget: { maxContextTokens: 32, queryTokens: 16 }
+        }
+      }
+    });
+
+    expect(result.diagnostics?.originalQuery).toBe('原始问题必须保留');
+    expect(result.diagnostics?.normalizedQuery).toBe('原始问题必须保留');
+  });
+
   it('runs contextExpander after postProcessor and before contextAssembler', async () => {
     const seed = makeHit({ chunkId: 'seed', content: 'seed content', score: 0.9 });
     const discarded = makeHit({ chunkId: 'discarded', content: 'discarded content', score: 0.8 });

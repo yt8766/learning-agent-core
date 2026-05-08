@@ -84,7 +84,7 @@ describe('RuntimeScheduleService', () => {
 
     await service.initialize();
     const schedule = await readJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json')
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json')
     );
 
     expect(schedule.cron).toBe('0 */4 * * *');
@@ -93,7 +93,7 @@ describe('RuntimeScheduleService', () => {
     expect(schedule.jobKey).toBe('runtime-tech-briefing:frontend-security');
     expect(schedule.lastRegisteredAt).toBeTruthy();
     const aiSchedule = await readJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-ai-tech.json')
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-ai-tech.json')
     );
     expect(aiSchedule.schedule).toBe('daily 11:00');
     expect(aiSchedule.cron).toBe('0 11 * * *');
@@ -108,9 +108,9 @@ describe('RuntimeScheduleService', () => {
       join(workspaceRoot, 'apps', 'backend', 'agent-server', 'workers', 'runtime-schedule-worker.js'),
       "require('node:worker_threads').parentPort?.postMessage('done');\n"
     );
-    await ensureDir(join(workspaceRoot, 'data', 'runtime', 'schedules'));
+    await ensureDir(join(getBriefingStorageRoot(workspaceRoot), 'schedules'));
     await writeJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json'),
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json'),
       {
         id: 'daily-tech-briefing-frontend-security',
         name: 'Daily Tech Briefing',
@@ -154,14 +154,14 @@ describe('RuntimeScheduleService', () => {
 
     await service.initialize();
     const manualSchedule = await readJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json')
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json')
     );
     expect(manualSchedule.scheduleValid).toBe(true);
     expect(manualSchedule.jobKey).toBeUndefined();
     expect(manualSchedule.nextRunAt).toBeUndefined();
 
     await writeJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json'),
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json'),
       {
         ...manualSchedule,
         schedule: 'daily nope'
@@ -171,7 +171,7 @@ describe('RuntimeScheduleService', () => {
 
     await service.syncSchedules(new Date('2026-04-01T00:00:00.000Z'));
     const invalidSchedule = await readJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json')
+      join(getBriefingStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json')
     );
     expect(invalidSchedule.scheduleValid).toBe(false);
     expect(invalidSchedule.jobKey).toBeUndefined();
@@ -198,3 +198,7 @@ describe('RuntimeScheduleService', () => {
     expect(refreshMetricsSnapshots).toHaveBeenCalledWith(14);
   });
 });
+
+function getBriefingStorageRoot(root: string): string {
+  return join(root, 'data', 'intel-engine', 'briefing');
+}

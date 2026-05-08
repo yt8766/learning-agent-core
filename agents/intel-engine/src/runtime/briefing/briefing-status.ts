@@ -1,6 +1,7 @@
 import type { DailyTechBriefingStatusRecord } from './briefing.types';
 import { BRIEFING_CATEGORIES } from './briefing-paths';
 import {
+  type BriefingStorageRepository,
   readBriefingFeedback,
   readBriefingScheduleState,
   readDailyTechBriefingRuns,
@@ -16,14 +17,15 @@ import {
 
 export async function readDailyTechBriefingStatus(
   workspaceRoot: string,
-  defaults: Pick<DailyTechBriefingStatusRecord, 'enabled' | 'schedule'>
+  defaults: Pick<DailyTechBriefingStatusRecord, 'enabled' | 'schedule'>,
+  repository?: BriefingStorageRepository
 ): Promise<DailyTechBriefingStatusRecord> {
   const [schedules, runs, scheduleStates] = await Promise.all([
-    readDailyTechBriefingSchedules(workspaceRoot),
-    readDailyTechBriefingRuns(workspaceRoot),
-    readBriefingScheduleState(workspaceRoot)
+    readDailyTechBriefingSchedules(workspaceRoot, repository),
+    readDailyTechBriefingRuns(workspaceRoot, repository),
+    readBriefingScheduleState(workspaceRoot, repository)
   ]);
-  const feedback = await readBriefingFeedback(workspaceRoot);
+  const feedback = await readBriefingFeedback(workspaceRoot, repository);
   const feedbackMap = new Map<string, { helpful: number; notHelpful: number }>();
   for (const record of feedback) {
     const current = feedbackMap.get(record.messageKey) ?? { helpful: 0, notHelpful: 0 };

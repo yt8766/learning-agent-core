@@ -62,7 +62,7 @@ export function buildGongbuToolInput(
       return { path: '.', goal: context.goal, researchSummary, actionPrompt };
     case 'write_local_file':
       return {
-        path: 'data/generated/executor-output.txt',
+        path: 'artifacts/coder/executor-output.txt',
         content: `目标：${context.goal}\n研究摘要：${researchSummary}\n动作：${actionPrompt}`
       };
     case 'plan_data_report_structure':
@@ -100,7 +100,7 @@ export function buildGongbuToolInput(
     case 'write_data_report_bundle':
       return {
         bundle: overrides?.bundle,
-        targetRoot: 'data/generated/data-report-output'
+        targetRoot: 'artifacts/report-kit/data-report-output'
       };
     case 'list_scaffold_templates':
     case 'preview_scaffold':
@@ -108,7 +108,7 @@ export function buildGongbuToolInput(
       return buildScaffoldWorkflowToolInput(context.goal);
     case 'delete_local_file':
       return {
-        path: 'data/generated/executor-output.txt',
+        path: 'artifacts/coder/executor-output.txt',
         recursive: false,
         goal: context.goal,
         researchSummary,

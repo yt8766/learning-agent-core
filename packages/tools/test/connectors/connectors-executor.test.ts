@@ -1,4 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,51 +16,72 @@ describe('executeConnectorTool', () => {
     await cleanupTempWorkspaces(tempWorkspaces.splice(0));
   });
 
-  it('creates, updates, enables, and lists connector drafts', async () => {
+  it('uses injected storage for connector drafts without creating root data/runtime', async () => {
     const root = await createTempWorkspace('connector-tools');
     tempWorkspaces.push(root);
     await mkdir(root, { recursive: true });
     process.chdir(root);
+    const storage = createConnectorStorage();
 
-    await executeConnectorTool({
-      taskId: 'task-draft',
-      toolName: 'create_connector_draft',
-      intent: ActionIntent.WRITE_FILE,
-      requestedBy: 'agent',
-      input: {
-        templateId: 'lark-mcp-template',
-        displayName: 'Lark MCP'
+    await executeConnectorTool(
+      {
+        taskId: 'task-draft',
+        toolName: 'create_connector_draft',
+        intent: ActionIntent.WRITE_FILE,
+        requestedBy: 'agent',
+        input: {
+          templateId: 'lark-mcp-template',
+          displayName: 'Lark MCP'
+        }
+      },
+      {
+        storage
       }
-    });
+    );
 
-    await executeConnectorTool({
-      taskId: 'task-secret',
-      toolName: 'update_connector_secret',
-      intent: ActionIntent.WRITE_FILE,
-      requestedBy: 'agent',
-      input: {
-        connectorId: 'lark-mcp',
-        secretRef: 'env:LARK_MCP_TOKEN'
+    await executeConnectorTool(
+      {
+        taskId: 'task-secret',
+        toolName: 'update_connector_secret',
+        intent: ActionIntent.WRITE_FILE,
+        requestedBy: 'agent',
+        input: {
+          connectorId: 'lark-mcp',
+          secretRef: 'env:LARK_MCP_TOKEN'
+        }
+      },
+      {
+        storage
       }
-    });
+    );
 
-    const enableResult = await executeConnectorTool({
-      taskId: 'task-enable',
-      toolName: 'enable_connector',
-      intent: ActionIntent.WRITE_FILE,
-      requestedBy: 'agent',
-      input: {
-        connectorId: 'lark-mcp'
+    const enableResult = await executeConnectorTool(
+      {
+        taskId: 'task-enable',
+        toolName: 'enable_connector',
+        intent: ActionIntent.WRITE_FILE,
+        requestedBy: 'agent',
+        input: {
+          connectorId: 'lark-mcp'
+        }
+      },
+      {
+        storage
       }
-    });
+    );
 
-    const listed = await executeConnectorTool({
-      taskId: 'task-list',
-      toolName: 'list_connectors',
-      intent: ActionIntent.READ_FILE,
-      requestedBy: 'agent',
-      input: {}
-    });
+    const listed = await executeConnectorTool(
+      {
+        taskId: 'task-list',
+        toolName: 'list_connectors',
+        intent: ActionIntent.READ_FILE,
+        requestedBy: 'agent',
+        input: {}
+      },
+      {
+        storage
+      }
+    );
 
     expect(enableResult?.rawOutput).toEqual(expect.objectContaining({ enabled: true, status: 'enabled' }));
     expect(listed?.rawOutput).toEqual(
@@ -68,9 +89,25 @@ describe('executeConnectorTool', () => {
         items: [expect.objectContaining({ connectorId: 'lark-mcp', apiKeyRef: 'env:LARK_MCP_TOKEN' })]
       })
     );
-    const persisted = JSON.parse(await readFile(join(root, 'data/runtime/connectors/lark-mcp.json'), 'utf8')) as {
-      enabled: boolean;
-    };
-    expect(persisted.enabled).toBe(true);
+    await expect(stat(join(root, 'data', 'runtime'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });
+
+function createConnectorStorage() {
+  const drafts = new Map<string, Record<string, unknown>>();
+  return {
+    async listConnectorDrafts() {
+      return [...drafts.values()];
+    },
+    async readConnectorDraft(connectorId: string) {
+      const draft = drafts.get(connectorId);
+      if (!draft) {
+        throw new Error(`Missing connector draft ${connectorId}`);
+      }
+      return draft;
+    },
+    async writeConnectorDraft(draft: Record<string, unknown>) {
+      drafts.set(String(draft.connectorId), draft);
+    }
+  };
+}

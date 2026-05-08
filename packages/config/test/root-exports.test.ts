@@ -26,6 +26,21 @@ import {
 import { parseDotEnvFile as hostParseDotEnvFile } from '../src/utils/settings-helpers';
 
 describe('config root exports', () => {
+  it('keeps built-in profile storage defaults out of guarded root data directories', () => {
+    const guardedRootDataPrefix = /^data\/(?:runtime|memory|knowledge|skills|browser-replays|generated)\b/;
+    const defaultPathValues = Object.values(DEFAULT_DATA_PATHS);
+    const profilePathValues = (['company', 'personal'] as const).flatMap(profile =>
+      Object.entries(buildProfileOverrides(profile))
+        .filter(([key]) => key !== 'policy')
+        .map(([, value]) => value)
+    );
+
+    for (const value of [...defaultPathValues, ...profilePathValues]) {
+      expect(value).toEqual(expect.any(String));
+      expect(value).not.toMatch(guardedRootDataPrefix);
+    }
+  });
+
   it('points root exports to canonical hosts', () => {
     expect(loadSettings).toBe(directLoadSettings);
     expect(DEFAULT_DATA_PATHS).toBe(hostDefaultDataPaths);

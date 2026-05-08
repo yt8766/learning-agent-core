@@ -53,7 +53,8 @@ export async function executeBrowsePage(request: ToolExecutionRequest, options: 
   const now = options.now ?? (() => new Date());
   const createdAt = now().toISOString();
   const sessionId = options.sessionIdFactory?.() ?? `browser_${Date.now()}`;
-  const replayDir = toWorkspacePath(`data/browser-replays/${sessionId}`);
+  const replayArtifactDir = `artifacts/runtime/browser-replays/${sessionId}`;
+  const replayDir = toWorkspacePath(replayArtifactDir);
   const artifactPath = resolve(replayDir, 'replay.json');
   const snapshotPath = resolve(replayDir, 'snapshot.html');
   const screenshotPath = resolve(replayDir, 'screenshot.txt');
@@ -65,7 +66,9 @@ export async function executeBrowsePage(request: ToolExecutionRequest, options: 
     legacyPaths: {
       replayDir,
       snapshotPath,
-      screenshotPath
+      screenshotPath,
+      snapshotRef: `${replayArtifactDir}/snapshot.html`,
+      screenshotRef: `${replayArtifactDir}/screenshot.txt`
     },
     snapshotContent,
     screenshotContent
@@ -118,7 +121,8 @@ export async function executeBrowsePage(request: ToolExecutionRequest, options: 
     artifactWriter: options.artifactWriter,
     sessionId,
     legacyPaths: {
-      artifactPath
+      artifactPath,
+      artifactRef: `${replayArtifactDir}/replay.json`
     },
     replayContent: JSON.stringify(replayArtifact, null, 2)
   });
@@ -162,6 +166,8 @@ async function writeBrowserReplayAssets(input: {
     replayDir: string;
     snapshotPath: string;
     screenshotPath: string;
+    snapshotRef: string;
+    screenshotRef: string;
   };
   snapshotContent: string;
   screenshotContent: string;
@@ -190,14 +196,13 @@ async function writeBrowserReplayAssets(input: {
     };
   }
 
-  // Transitional fallback for callers that have not injected an artifact repository yet.
   await mkdir(input.legacyPaths.replayDir, { recursive: true });
   await writeFile(input.legacyPaths.snapshotPath, input.snapshotContent);
   await writeFile(input.legacyPaths.screenshotPath, input.screenshotContent);
 
   return {
-    snapshotRef: input.legacyPaths.snapshotPath,
-    screenshotRef: input.legacyPaths.screenshotPath
+    snapshotRef: input.legacyPaths.snapshotRef,
+    screenshotRef: input.legacyPaths.screenshotRef
   };
 }
 
@@ -206,6 +211,7 @@ async function writeBrowserReplayArtifact(input: {
   sessionId: string;
   legacyPaths: {
     artifactPath: string;
+    artifactRef: string;
   };
   replayContent: string;
 }): Promise<Pick<BrowserReplayReferences, 'artifactId' | 'artifactUrl' | 'artifactRef'>> {
@@ -225,10 +231,9 @@ async function writeBrowserReplayArtifact(input: {
     };
   }
 
-  // Transitional fallback for callers that have not injected an artifact repository yet.
   await writeFile(input.legacyPaths.artifactPath, input.replayContent);
 
   return {
-    artifactRef: input.legacyPaths.artifactPath
+    artifactRef: input.legacyPaths.artifactRef
   };
 }

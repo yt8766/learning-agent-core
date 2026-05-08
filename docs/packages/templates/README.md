@@ -24,6 +24,7 @@
   - 当前模板资产仍以平铺目录为主，长期目标是按 `page-templates / scaffold-templates / starter-templates` 收敛
   - template registry 已先物理收敛到 `src/registries/*`
   - `@agent/templates` 根入口已直接导出 `src/registries/*` 的 canonical host；legacy 根文件 `src/template-registry.ts` 与 `src/scaffold-template-registry.ts` 已删除
+  - `react-ts` 模板默认生成到 `artifacts/report-kit/data-report`，用于表达 report artifact storage；业务源码路径必须由调用方显式传入，不能把 root `data/generated` 当作默认目标
   - `packages/templates` 的声明产物只允许输出到 `build/types/*`；`src/*.d.ts`、`src/*.d.ts.map` 一律视为误生成文件，不应提交
   - 根入口优先维护显式命名导出，不继续用整段 `export *` 把模板注册表与类型整包透传
   - 模板说明文档统一沉淀到 `docs/packages/templates/`

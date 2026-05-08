@@ -56,6 +56,7 @@ const MULTIPLE_SCOPE_PATTERN = /(多个|多张|多页|multi|批量|一组|多个
 const SHELL_SCOPE_PATTERN = /(骨架|shell|先搭|容器)/i;
 const BIG_DATA_INTERFACE_PATTERN = /(大数据接口|big\s*data\s*api)[：:]\s*([a-z0-9_]+)/gi;
 const SINGLE_REPORT_VISUAL_PATTERN = /(趋势|图表|折线图|柱状图|饼图|指标|指标卡|metric|metrics|chart|charts)/i;
+const DEFAULT_DATA_REPORT_ARTIFACT_BASE_DIR = 'artifacts/report-kit/data-report';
 
 function normalize(text: string) {
   return text.trim().toLowerCase();
@@ -212,12 +213,15 @@ function buildBonusCenterModules(templateDir: string, routeName: string): DataRe
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function buildGenericModules(scope: DataReportScope): DataReportModuleBlueprint[] {
+function buildGenericModules(
+  scope: DataReportScope,
+  baseDir = DEFAULT_DATA_REPORT_ARTIFACT_BASE_DIR
+): DataReportModuleBlueprint[] {
   const ids = scope === 'multiple' ? ['Overview', 'Trend', 'Conversion'] : ['Overview'];
   return ids.map(id => ({
     id,
-    componentDir: `data/generated/data-report/modules/${id}`,
-    entryFile: `data/generated/data-report/modules/${id}.tsx`,
+    componentDir: `${baseDir}/modules/${id}`,
+    entryFile: `${baseDir}/modules/${id}.tsx`,
     sourceDir: undefined
   }));
 }
@@ -257,7 +261,7 @@ export function buildDataReportBlueprint(params: {
     structuredIntent?.reportName ??
     structuredIntent?.pageTitle ??
     (templateId === 'bonus-center-data' ? 'Bonus Center 数据报表' : 'Data Report Preview');
-  const baseDir = params.baseDir ?? template?.defaultBaseDir ?? 'data/generated/data-report';
+  const baseDir = params.baseDir ?? template?.defaultBaseDir ?? DEFAULT_DATA_REPORT_ARTIFACT_BASE_DIR;
 
   if (!template || !templateDir) {
     return {
@@ -272,8 +276,8 @@ export function buildDataReportBlueprint(params: {
       servicesDir: `${baseDir}/services`,
       typesDir: `${baseDir}/types`,
       routesFile: `${baseDir}/routes.ts`,
-      modules: buildGenericModules(scope),
-      moduleIds: buildGenericModules(scope).map(item => item.id),
+      modules: buildGenericModules(scope, baseDir),
+      moduleIds: buildGenericModules(scope, baseDir).map(item => item.id),
       sharedFiles: [],
       moduleFilePatterns: [],
       assemblyOrder: ['shared'],
@@ -333,7 +337,7 @@ export function buildDataReportBlueprint(params: {
 
   const outputRoot = template.outputRoot ?? 'template';
   const pathPrefix = outputRoot ? `${baseDir}/${outputRoot}` : baseDir;
-  const modules = buildGenericModules(scope);
+  const modules = buildGenericModules(scope, baseDir);
   const plannedFiles = template.entryFiles.map(file => `${pathPrefix}/${file}`);
   return {
     scope,

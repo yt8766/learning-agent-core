@@ -51,7 +51,7 @@ const FRONTEND_TEMPLATES: FrontendTemplateDefinition[] = [
     directoryName: 'starters/react-ts',
     entryFiles: ['App.tsx', 'index.tsx', 'package.json', 'styles.css'],
     outputRoot: 'template',
-    defaultBaseDir: 'data/generated/data-report'
+    defaultBaseDir: 'artifacts/report-kit/data-report'
   },
   {
     id: 'bonus-center-data',

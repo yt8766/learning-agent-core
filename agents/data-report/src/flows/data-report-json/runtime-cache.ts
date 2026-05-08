@@ -1,9 +1,14 @@
 import { ensureDir, pathExists, readJson, writeJson } from 'fs-extra';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import type { DataReportJsonGenerateResult, DataReportJsonGraphState } from '../../types/data-report-json';
 
-const DATA_REPORT_JSON_ARTIFACT_CACHE_PATH = join(process.cwd(), 'data', 'runtime', 'data-report-json-artifacts.json');
+export const DATA_REPORT_JSON_ARTIFACT_CACHE_PATH = join(
+  process.cwd(),
+  'artifacts',
+  'runtime',
+  'data-report-json-artifacts.json'
+);
 const DATA_REPORT_JSON_ARTIFACT_CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 export const DATA_REPORT_JSON_ARTIFACT_CACHE_ENABLED = !process.env.VITEST;
 export const DATA_REPORT_JSON_ARTIFACT_CACHE_TTL = DATA_REPORT_JSON_ARTIFACT_CACHE_TTL_MS;
@@ -50,7 +55,7 @@ export async function writeArtifactCache() {
     return;
   }
 
-  await ensureDir(join(process.cwd(), 'data', 'runtime'));
+  await ensureDir(dirname(DATA_REPORT_JSON_ARTIFACT_CACHE_PATH));
   await writeJson(DATA_REPORT_JSON_ARTIFACT_CACHE_PATH, Object.fromEntries(artifactCacheMemory.entries()), {
     spaces: 2
   });

@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/skill`
-最后核对：2026-04-20
+最后核对：2026-05-08
 
 本文档说明 `packages/skill` 如何按“稳定边界先行”的方式维护当前目录结构，并继续收敛。
 
@@ -93,7 +93,16 @@ packages/skill/
 
 - `src/drafts/repository.ts` 与 `src/drafts/service.ts`
   - 已作为 Skill Flywheel MVP 的 in-memory draft store 与决策语义宿主
-  - 下一阶段 persistent draft store 应在该 repository / service 边界后替换或扩展，不让 backend / frontend 依赖具体存储
+  - persistent draft store 已通过 repository 边界接入；backend file-backed 路径装配在 `apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts`，不让 controller / frontend 依赖具体存储
+- `src/repositories/skill-install.repository.ts`
+  - 已提供 install receipt / installed record 的稳定 repository contract 与 in-memory 实现
+  - backend runtime 写入 receipts / installed index 时必须通过该 contract，不再在 install service 内直接 fallback 到 root JSON
+- `src/repositories/skill-source.repository.ts`
+  - 已提供 source catalog 与 remote source cache repository contract
+  - backend runtime 写入 remote source cache 时必须通过 `SkillSourceRemoteCacheRepository`
+- `src/install/skill-artifact-fetcher.ts`
+  - 已改为依赖 `SkillArtifactStorageRepository` 与 `SkillDraftRepository`
+  - 不直接拼接 staging / drafts root 路径；backend 负责提供 file-backed storage facade
 - `src/catalog/skill-catalog.ts`
   - 已作为 skill catalog 读写与查询宿主
 - `src/install/plugin-draft-publisher.ts`
@@ -113,10 +122,10 @@ packages/skill/
 
 后续源码收敛优先顺序：
 
-1. 为 `drafts/` 补 persistent repository / adapter，并保持 approve / reject 幂等、冲突、高风险 evidence gate 和 reuse stats 语义不变
-2. 继续补 `schemas/`
-3. 将剩余平铺 helper 收敛到 `shared/`、`utils/`
-4. 继续保持包根入口直接对 canonical host 导出，不重新引入 legacy 根文件
+1. 继续补 `schemas/`
+2. 将剩余平铺 helper 收敛到 `shared/`、`utils/`
+3. 继续保持包根入口直接对 canonical host 导出，不重新引入 legacy 根文件
+4. 若迁移到数据库 / 对象存储，优先新增 backend repository 实现，不改动 service 调用方契约
 
 ## 6. 继续阅读
 

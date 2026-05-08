@@ -6,88 +6,58 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const SCAN_ROOTS = ['apps', 'packages', 'agents'];
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs']);
+const FORBIDDEN_ROOT_DATA_SEGMENTS = 'runtime|memory|knowledge|skills|browser-replays|generated';
 
 const PATTERNS = [
   {
     id: 'root-data-string-literal',
-    regex: /['"`]data\/(?:runtime|memory|knowledge|skills|browser-replays|generated|agent-personal|agent-work)\b/g
+    regex: new RegExp(`['"\`]data\\/(?:${FORBIDDEN_ROOT_DATA_SEGMENTS})\\b`, 'g')
   },
   {
     id: 'root-data-path-join',
-    regex:
-      /\b(?:join|resolve)\([^;\n]*(?:['"`]data\/(?:runtime|memory|knowledge|skills|browser-replays|generated)|['"`]data['"`]\s*,\s*['"`](?:runtime|memory|knowledge|skills|browser-replays|generated))/g
+    regex: new RegExp(
+      `\\b(?:join|resolve)\\([^;\\n]*(?:['"\`]data\\/(?:${FORBIDDEN_ROOT_DATA_SEGMENTS})|['"\`]data['"\`]\\s*,\\s*['"\`](?:${FORBIDDEN_ROOT_DATA_SEGMENTS}))`,
+      'g'
+    )
   },
   {
     id: 'root-data-workspace-path',
-    regex: /\btoWorkspacePath\([^;\n]*['"`]data\/(?:runtime|memory|knowledge|skills|browser-replays|generated)/g
+    regex: new RegExp(`\\btoWorkspacePath\\([^;\\n]*['"\`]data\\/(?:${FORBIDDEN_ROOT_DATA_SEGMENTS})`, 'g')
   }
 ];
 
 const ALLOWLIST = [
   [
+    'apps/backend/agent-server/src/runtime/centers/runtime-centers-observability.query-service.ts',
+    'Runtime observability may read legacy browser replay files until browser replay artifacts fully move behind storage.'
+  ],
+  [
+    'apps/backend/agent-server/src/runtime/centers/runtime-centers-workspace-drafts.ts',
+    'Workspace draft storage remains a transitional root skill-data fallback until skill persistence cutover completes.'
+  ],
+  [
+    'apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts',
+    'Runtime skill storage is the temporary repository boundary for legacy skill cache, staging, and draft data.'
+  ],
+  [
     'apps/backend/agent-server/scripts/cleanup-agent-server-artifacts.mjs',
     'App-local cleanup may inspect legacy root data during migration.'
   ],
   [
-    'apps/backend/agent-server/src/runtime/centers/runtime-centers-observability.query-service.ts',
-    'Pending Phase 6 browser replay artifact repository cutover.'
-  ],
-  [
-    'apps/backend/agent-server/src/runtime/centers/runtime-centers-workspace-drafts.ts',
-    'Pending Phase 3 workspace draft persistence cutover.'
-  ],
-  ['apps/backend/agent-server/src/runtime/core/runtime-intel-runner.ts', 'Pending Phase 5 intel persistence cutover.'],
-  [
-    'apps/backend/agent-server/src/runtime/skills/runtime-skill-install.service.ts',
-    'Pending Phase 3 skill install staging storage cutover.'
-  ],
-  [
-    'apps/backend/agent-server/src/runtime/skills/skill-source-sync.service.ts',
-    'Pending Phase 3 skill source sync storage cutover.'
-  ],
-  ['packages/config/src/shared/settings-defaults.ts', 'Pending Phase 7 config default cutover from root data paths.'],
-  [
-    'packages/config/src/profiles/runtime-profile-overrides.ts',
-    'Pending Phase 7 profile config default cutover from root data paths.'
-  ],
-  [
-    'packages/skill/src/install/skill-artifact-fetcher.ts',
-    'Pending Phase 3 skill artifact staging/draft storage cutover.'
+    'packages/knowledge/src/runtime/local-knowledge-store.ts',
+    'Local knowledge store keeps explicit legacy root-data fallbacks until knowledge persistence cutover completes.'
   ],
   [
     'packages/runtime/src/sandbox/sandbox-executor-skill-search.ts',
-    'Pending Phase 3 sandbox skill search metadata cutover.'
+    'Sandbox skill search reads legacy installed and remote skill metadata until skill persistence cutover completes.'
   ],
-  [
-    'packages/runtime/src/sandbox/sandbox-executor-browser.ts',
-    'Pending Phase 6 browser replay artifact repository cutover.'
-  ],
-  ['packages/runtime/src/sandbox/sandbox-executor.ts', 'Pending Phase 6 generated artifact repository cutover.'],
-  ['packages/knowledge/src/runtime/local-knowledge-store.ts', 'Pending Phase 5 knowledge snapshot repository cutover.'],
-  ['packages/report-kit/src/blueprints/data-report-blueprint.ts', 'Pending Phase 6 report generated artifact cutover.'],
   [
     'packages/templates/src/registries/frontend-template-registry.ts',
-    'Pending Phase 6 frontend template output cutover.'
+    'Template registry may describe generated app paths.'
   ],
-  ['packages/tools/src/executors/connectors/connectors-executor.ts', 'Pending Phase 5 connector persistence cutover.'],
   [
     'packages/tools/src/executors/runtime-governance/runtime-governance-executor.ts',
-    'Pending Phase 5 runtime governance persistence cutover.'
-  ],
-  ['packages/tools/src/executors/scheduling/scheduling-executor.ts', 'Pending Phase 5 scheduling persistence cutover.'],
-  ['agents/coder/src/flows/chat/nodes/executor-node-tooling.ts', 'Pending Phase 6 generated artifact cutover.'],
-  [
-    'agents/coder/src/flows/ministries/gongbu-code/gongbu-code-tool-resolution.ts',
-    'Pending Phase 6 Gongbu generated artifact defaults cutover.'
-  ],
-  [
-    'agents/data-report/src/flows/data-report-json/runtime-cache.ts',
-    'Pending Phase 6 data-report JSON artifact cache cutover.'
-  ],
-  ['agents/intel-engine/src/runtime/briefing/briefing-paths.ts', 'Pending Phase 5 intel briefing persistence cutover.'],
-  [
-    'agents/intel-engine/src/runtime/briefing/briefing-storage.ts',
-    'Pending Phase 5 intel briefing persistence cutover.'
+    'Runtime governance still reads legacy browser replay artifacts until artifact repository injection is complete.'
   ]
 ];
 
@@ -96,6 +66,18 @@ const allowlist = new Map(ALLOWLIST);
 function isSourceFile(path) {
   const extension = path.slice(path.lastIndexOf('.'));
   return SOURCE_EXTENSIONS.has(extension) && !path.includes('/test/') && !path.includes('/tests/');
+}
+
+function isTemplateInternalDataPath(matchText) {
+  return /['"`]src['"`]\s*,\s*['"`]services['"`]\s*,\s*['"`]data['"`]/.test(matchText);
+}
+
+function filterMatches(patternId, matches) {
+  if (patternId !== 'root-data-path-join') {
+    return matches;
+  }
+
+  return matches.filter(match => !isTemplateInternalDataPath(match[0]));
 }
 
 async function listFiles(dir) {
@@ -128,7 +110,7 @@ const transitional = [];
 for (const file of files) {
   const text = await readFile(join(ROOT, file), 'utf8');
   for (const pattern of PATTERNS) {
-    const matches = [...text.matchAll(pattern.regex)];
+    const matches = filterMatches(pattern.id, [...text.matchAll(pattern.regex)]);
     if (matches.length === 0) {
       continue;
     }

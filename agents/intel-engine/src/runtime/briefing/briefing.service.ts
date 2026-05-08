@@ -15,6 +15,8 @@ import {
   scheduleForCategory
 } from './briefing-schedule';
 import {
+  type BriefingStorageRepository,
+  createDefaultBriefingStorageRepository,
   ensureDailyTechBriefingSchedules,
   readBriefingFeedback,
   readBriefingHistory,
@@ -73,6 +75,7 @@ export interface RuntimeTechBriefingContext {
     summary: string;
     sourceName: string;
   }) => Promise<{ title: string; summary: string }>;
+  briefingStorage?: BriefingStorageRepository;
 }
 
 const ORDERED_BRIEFING_CATEGORIES: TechBriefingCategory[] = [
@@ -92,6 +95,7 @@ export class RuntimeTechBriefingService {
 
   async initializeSchedule() {
     const ctx = this.ctx();
+    const storage = this.storage();
     if (!ctx.settings.dailyTechBriefing.enabled) {
       return [];
     }
@@ -108,7 +112,8 @@ export class RuntimeTechBriefingService {
             )
           }
         ])
-      ) as Partial<Record<TechBriefingCategory, { schedule: string }>>
+      ) as Partial<Record<TechBriefingCategory, { schedule: string }>>,
+      storage
     );
   }
 
@@ -134,9 +139,10 @@ export class RuntimeTechBriefingService {
     categories = ORDERED_BRIEFING_CATEGORIES,
     options: { reason?: 'scheduled' | 'forced' | 'manual' } = {}
   ): Promise<TechBriefingRunRecord> {
-    const history = await readBriefingHistory(this.ctx().settings.workspaceRoot);
+    const storage = this.storage();
+    const history = await readBriefingHistory(this.ctx().settings.workspaceRoot, storage);
     const historyMap = new Map(history.map(record => [record.messageKey, record] as const));
-    const existingStates = await readBriefingScheduleState(this.ctx().settings.workspaceRoot);
+    const existingStates = await readBriefingScheduleState(this.ctx().settings.workspaceRoot, storage);
     const categoryResults: TechBriefingCategoryResult[] = [];
     const nextStates = { ...existingStates } as Partial<
       Record<TechBriefingCategory, TechBriefingCategoryScheduleState>
@@ -164,9 +170,10 @@ export class RuntimeTechBriefingService {
       detailMode: this.ctx().settings.dailyTechBriefing.larkDetailMode ?? 'detailed'
     });
 
-    await saveBriefingScheduleState(this.ctx().settings.workspaceRoot, nextStates);
+    await saveBriefingScheduleState(this.ctx().settings.workspaceRoot, nextStates, storage);
     const { run } = await deliverBriefingDigest({
       workspaceRoot: this.ctx().settings.workspaceRoot,
+      briefingStorage: storage,
       categories,
       categoryResults,
       digest,
@@ -182,10 +189,14 @@ export class RuntimeTechBriefingService {
 
   async getStatus(): Promise<DailyTechBriefingStatusRecord> {
     const ctx = this.ctx();
-    return readDailyTechBriefingStatus(ctx.settings.workspaceRoot, {
-      enabled: ctx.settings.dailyTechBriefing.enabled,
-      schedule: ctx.settings.dailyTechBriefing.schedule
-    });
+    return readDailyTechBriefingStatus(
+      ctx.settings.workspaceRoot,
+      {
+        enabled: ctx.settings.dailyTechBriefing.enabled,
+        schedule: ctx.settings.dailyTechBriefing.schedule
+      },
+      this.storage()
+    );
   }
 
   private async collectItems(category: TechBriefingCategory, now: Date): Promise<TechBriefingItem[]> {
@@ -201,7 +212,8 @@ export class RuntimeTechBriefingService {
         fetchImpl: this.ctx().fetchImpl,
         mcpClientManager: this.ctx().mcpClientManager,
         translateText: this.ctx().translateText,
-        readBriefingFeedback
+        readBriefingFeedback: (workspaceRoot: string) => readBriefingFeedback(workspaceRoot, this.storage()),
+        briefingStorage: this.storage()
       }
     });
   }
@@ -211,38 +223,47 @@ export class RuntimeTechBriefingService {
     state: TechBriefingCategoryScheduleState,
     now: Date
   ) {
-    const schedule = await ensureDailyTechBriefingSchedules(this.ctx().settings.workspaceRoot, {
-      [category]: {
-        schedule: scheduleForCategory(
-          category,
-          { ...this.categoryConfig(category), baseIntervalHours: state.currentIntervalHours },
-          this.ctx().settings.dailyTechBriefing.schedule
-        )
-      }
-    });
+    const storage = this.storage();
+    const schedule = await ensureDailyTechBriefingSchedules(
+      this.ctx().settings.workspaceRoot,
+      {
+        [category]: {
+          schedule: scheduleForCategory(
+            category,
+            { ...this.categoryConfig(category), baseIntervalHours: state.currentIntervalHours },
+            this.ctx().settings.dailyTechBriefing.schedule
+          )
+        }
+      },
+      storage
+    );
     const record = schedule.find(item => item.category === category);
     if (!record) {
       return;
     }
-    await saveDailyTechBriefingSchedule(this.ctx().settings.workspaceRoot, {
-      ...record,
-      schedule: scheduleForCategory(
-        category,
-        { ...this.categoryConfig(category), baseIntervalHours: state.currentIntervalHours },
-        this.ctx().settings.dailyTechBriefing.schedule
-      ),
-      cron: computeCronForCategory(
-        category,
-        state.currentIntervalHours,
-        this.ctx().settings.dailyTechBriefing.schedule
-      ),
-      scheduleValid: true,
-      jobKey: `runtime-tech-briefing:${category}`,
-      lastRegisteredAt: now.toISOString(),
-      lastRunAt: state.lastRunAt,
-      nextRunAt: state.nextRunAt,
-      updatedAt: now.toISOString()
-    });
+    await saveDailyTechBriefingSchedule(
+      this.ctx().settings.workspaceRoot,
+      {
+        ...record,
+        schedule: scheduleForCategory(
+          category,
+          { ...this.categoryConfig(category), baseIntervalHours: state.currentIntervalHours },
+          this.ctx().settings.dailyTechBriefing.schedule
+        ),
+        cron: computeCronForCategory(
+          category,
+          state.currentIntervalHours,
+          this.ctx().settings.dailyTechBriefing.schedule
+        ),
+        scheduleValid: true,
+        jobKey: `runtime-tech-briefing:${category}`,
+        lastRegisteredAt: now.toISOString(),
+        lastRunAt: state.lastRunAt,
+        nextRunAt: state.nextRunAt,
+        updatedAt: now.toISOString()
+      },
+      storage
+    );
   }
 
   private nextScheduleState(
@@ -268,6 +289,11 @@ export class RuntimeTechBriefingService {
 
   private lookbackDaysFor(category: TechBriefingCategory) {
     return resolveBriefingLookbackDays(this.ctx().settings.dailyTechBriefing, category);
+  }
+
+  private storage() {
+    const ctx = this.ctx();
+    return ctx.briefingStorage ?? createDefaultBriefingStorageRepository(ctx.settings.workspaceRoot);
   }
 
   private ctx() {

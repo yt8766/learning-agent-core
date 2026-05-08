@@ -34,8 +34,14 @@ new LocalSandboxExecutor({
 
 注入 writer 的路径不得写入仓库根目录 `data/browser-replays/*`。这条行为由 `packages/runtime/test/sandbox-executor-browser-artifacts.test.ts` 覆盖。
 
-## 过渡 fallback
+## 默认 artifact storage
 
-未注入 `browserArtifactWriter` 时，`executeBrowsePage(...)` 会继续写入 `data/browser-replays/<sessionId>/`。这是兼容旧调用方的过渡态 fallback，不是新增调用方应该依赖的 artifact repository。
+未注入 `browserArtifactWriter` 时，`executeBrowsePage(...)` 会写入显式 artifact storage：
 
-后续接入真实 artifact repository 时，应优先在 runtime/backend 装配层提供 `BrowserReplayArtifactWriter`，不要让业务调用方直接读取 root `data/browser-replays`。
+- `artifacts/runtime/browser-replays/<sessionId>/snapshot.html`
+- `artifacts/runtime/browser-replays/<sessionId>/screenshot.txt`
+- `artifacts/runtime/browser-replays/<sessionId>/replay.json`
+
+返回给调用方的 `snapshotRef`、`screenshotRef` 与 `artifactRef` 保持为上述 artifact 相对引用，不暴露本机绝对路径。新增调用方若需要持久化、下载、审计或跨机器访问，仍应在 runtime/backend 装配层注入真实 `BrowserReplayArtifactWriter`，不要读取 root `data/browser-replays`。
+
+`LocalSandboxExecutor.write_data_report_bundle` 的默认写入根目录同样使用显式 artifact storage：`artifacts/report-kit/data-report-output`。调用方如果要写入真实业务项目源码，必须显式传入 `targetRoot`，不能依赖默认 root `data/generated` 路径。

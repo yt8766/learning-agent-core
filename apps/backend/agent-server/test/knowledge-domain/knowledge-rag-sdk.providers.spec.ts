@@ -67,6 +67,67 @@ describe('knowledge RAG SDK providers', () => {
     expect(readKnowledgeRagAnswerProviderError(provider)).toMatchObject({ message: 'llm unavailable' });
   });
 
+  it('uses assembled contextBundle when generating SDK RAG answers', async () => {
+    const capturedMessages: Array<{ role: string; content: string; name?: string }> = [];
+    const runtime = enabledRuntime({
+      generate: vi.fn(async input => {
+        const messages = (input as { messages: typeof capturedMessages }).messages;
+        capturedMessages.push(...messages);
+        return { text: 'answer from assembled context', providerId: 'test', model: 'test-model' };
+      })
+    });
+    const provider = createKnowledgeRagAnswerProvider(runtime);
+
+    await provider.generate({
+      originalQuery: 'question',
+      rewrittenQuery: 'question',
+      contextBundle: '[1] Assembled\nThis text only exists in contextBundle.',
+      citations: [
+        {
+          sourceId: 'source',
+          chunkId: 'chunk',
+          title: 'Citation title',
+          quote: 'citation quote should not replace bundle'
+        }
+      ],
+      metadata: {}
+    });
+
+    const developerMessage = capturedMessages.find(message => message.name === 'developer');
+    expect(developerMessage?.content).toContain('This text only exists in contextBundle.');
+    expect(developerMessage?.content).not.toContain('Context citations:');
+  });
+
+  it('falls back to citations when assembled contextBundle is blank', async () => {
+    const capturedMessages: Array<{ role: string; content: string; name?: string }> = [];
+    const runtime = enabledRuntime({
+      generate: vi.fn(async input => {
+        const messages = (input as { messages: typeof capturedMessages }).messages;
+        capturedMessages.push(...messages);
+        return { text: 'answer from citations', providerId: 'test', model: 'test-model' };
+      })
+    });
+    const provider = createKnowledgeRagAnswerProvider(runtime);
+
+    await provider.generate({
+      originalQuery: 'question',
+      rewrittenQuery: 'question',
+      contextBundle: '   ',
+      citations: [
+        {
+          sourceId: 'source',
+          chunkId: 'chunk',
+          title: 'Citation title',
+          quote: 'citation quote is fallback context'
+        }
+      ],
+      metadata: {}
+    });
+
+    const developerMessage = capturedMessages.find(message => message.name === 'developer');
+    expect(developerMessage?.content).toContain('citation quote is fallback context');
+  });
+
   it('falls back to grounded citation text when SDK runtime is disabled', async () => {
     const provider = createKnowledgeRagAnswerProvider({
       enabled: false,

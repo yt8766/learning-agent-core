@@ -15,6 +15,8 @@ export const BackendEnvSchema = z.object({
   BACKEND_ENABLE_LEGACY_ROUTES: z.enum(['true', 'false']).optional(),
   BACKEND_REMOTE_SKILL_INSTALL_ENABLED: z.enum(['true', 'false']).optional(),
   BACKEND_BACKGROUND_ENABLED: z.enum(['true', 'false']).optional(),
+  LEGACY_DATA_IMPORT: z.enum(['once']).optional(),
+  LEGACY_DATA_ROOT: z.string().min(1).optional(),
   AGENT_SERVER_ENABLE_DATABASE_IN_TEST: z.enum(['true', 'false']).optional()
 });
 

@@ -2,6 +2,7 @@ import type { Citation, RetrievalRequest } from '../../contracts';
 import type { KnowledgeSearchService } from '../../contracts/knowledge-facade';
 import type { RetrievalPipelineConfig } from '../../contracts/knowledge-retrieval-runtime';
 import { runKnowledgeRetrieval } from '../../runtime/pipeline/run-knowledge-retrieval';
+import type { ContextAssembler, ContextAssemblyOptions } from '../../runtime/stages/context-assembler';
 import type { NormalizedRetrievalRequest } from '../../runtime/types/retrieval-runtime.types';
 import type { KnowledgePreRetrievalPlan, KnowledgeRagRetrievalResult } from '../schemas';
 import type {
@@ -26,6 +27,10 @@ export interface RagRetrievalRunOptions {
   assembleContext?: boolean;
 }
 
+type BudgetAwareRetrievalPipelineConfig = RetrievalPipelineConfig & {
+  contextAssemblyOptions?: ContextAssemblyOptions;
+};
+
 export class RagRetrievalRuntime {
   private readonly searchService: KnowledgeSearchService;
   private readonly pipeline?: RetrievalPipelineConfig;
@@ -46,6 +51,11 @@ export class RagRetrievalRuntime {
     const primaryQuery = getPrimaryQuery(plan);
     const queryVariants = getQueryVariants(plan, primaryQuery);
     const request = buildRetrievalRequest(plan, primaryQuery);
+    const pipeline = buildBudgetAwarePipeline({
+      basePipeline: this.pipeline,
+      runPipeline: options.pipeline,
+      plan
+    });
 
     const result = await runKnowledgeRetrieval({
       request,
@@ -53,8 +63,7 @@ export class RagRetrievalRuntime {
       assembleContext: options.assembleContext ?? this.assembleContext,
       includeDiagnostics: options.includeDiagnostics ?? this.includeDiagnostics,
       pipeline: {
-        ...(this.pipeline ?? {}),
-        ...(options.pipeline ?? {}),
+        ...pipeline,
         queryNormalizer: {
           normalize: async (): Promise<NormalizedRetrievalRequest> => ({
             ...request,
@@ -82,6 +91,80 @@ export class RagRetrievalRuntime {
         : undefined
     };
   }
+}
+
+function buildBudgetAwarePipeline(input: {
+  basePipeline?: RetrievalPipelineConfig;
+  runPipeline?: RetrievalPipelineConfig;
+  plan: KnowledgePreRetrievalPlan;
+}): BudgetAwareRetrievalPipelineConfig {
+  const basePipeline = input.basePipeline as BudgetAwareRetrievalPipelineConfig | undefined;
+  const runPipeline = input.runPipeline as BudgetAwareRetrievalPipelineConfig | undefined;
+  const contextAssemblyOptions = mergeContextAssemblyOptions({
+    baseOptions: basePipeline?.contextAssemblyOptions,
+    runOptions: runPipeline?.contextAssemblyOptions,
+    plan: input.plan
+  });
+  const contextAssembler = wrapContextAssemblerWithOptions(
+    runPipeline?.contextAssembler ?? basePipeline?.contextAssembler,
+    contextAssemblyOptions
+  );
+
+  return {
+    ...(basePipeline ?? {}),
+    ...(runPipeline ?? {}),
+    ...(contextAssembler ? { contextAssembler } : {}),
+    contextAssemblyOptions
+  };
+}
+
+function mergeContextAssemblyOptions(input: {
+  baseOptions?: ContextAssemblyOptions;
+  runOptions?: ContextAssemblyOptions;
+  plan: KnowledgePreRetrievalPlan;
+}): ContextAssemblyOptions {
+  const planContextBudgetTokens = input.plan.strategyHints?.contextBudgetTokens;
+
+  return {
+    ...(input.baseOptions ?? {}),
+    ...(input.runOptions ?? {}),
+    ...(planContextBudgetTokens
+      ? {
+          budget: {
+            ...(input.baseOptions?.budget ?? {}),
+            ...(input.runOptions?.budget ?? {}),
+            maxContextTokens: planContextBudgetTokens
+          }
+        }
+      : {})
+  };
+}
+
+function wrapContextAssemblerWithOptions(
+  contextAssembler: ContextAssembler | undefined,
+  contextAssemblyOptions: ContextAssemblyOptions
+): ContextAssembler | undefined {
+  if (!contextAssembler) {
+    return undefined;
+  }
+
+  return {
+    assemble: (hits, request, options) => {
+      const budget = options?.budget ?? contextAssemblyOptions.budget;
+      return contextAssembler.assemble(hits, request, {
+        ...contextAssemblyOptions,
+        ...(options ?? {}),
+        ...(budget
+          ? {
+              budget: {
+                ...(contextAssemblyOptions.budget ?? {}),
+                ...budget
+              }
+            }
+          : {})
+      });
+    }
+  };
 }
 
 function getPrimaryQuery(plan: KnowledgePreRetrievalPlan): string {

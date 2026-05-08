@@ -48,7 +48,13 @@ Reference spec: `docs/superpowers/specs/2026-05-07-root-data-deprecation-design.
   - Runtime sandbox/browser tools should return stable artifact ids or URLs.
 
 - [ ] Phase 7: legacy import and root data removal.
-  - Implement `LEGACY_DATA_IMPORT=once` import receipts/errors for old JSON/JSONL files.
+  - Current slice:
+    - Added backend-owned `LEGACY_DATA_IMPORT=once` runner skeleton in `apps/backend/agent-server/src/runtime/legacy-data-import`.
+    - Runner reads old `data/runtime`, `data/memory`, `data/rules`, `data/knowledge`, and `data/skills` `.json` / `.jsonl` files, writes stable receipts/errors, skips already receipted payloads on repeat runs, and does not delete or mutate source files.
+    - Added `LegacyDataImportRepository` plus in-memory and Postgres-ready SQL implementations. The SQL implementation stages payloads into `legacy_data_import_records`, `legacy_data_import_receipts`, and `legacy_data_import_errors`.
+  - Remaining:
+    - Wire the import repository to real memory/rules/knowledge/skills/runtime Postgres domain repositories through explicit mappers.
+    - Add the final backend bootstrap call site after production ownership decides when `LEGACY_DATA_IMPORT=once` should run during process startup.
   - Remove root `data/*` defaults from `packages/config`.
   - Delete tracked root `data/rules/rules.jsonl` only after import and all production write paths are gone.
   - Rewrite docs that still describe root `data/*` as current storage.
@@ -77,5 +83,6 @@ The plan is complete only when:
 - Postgres mode covers durable state previously stored under root `data/*`;
 - memory mode is documented and verified as ephemeral;
 - legacy import can migrate old local files with receipts/errors;
+- legacy import payloads are mapped into owning domain repositories, not only staged in backend-owned import tables;
 - `pnpm check:no-root-data-runtime` passes without broad transitional allowlist entries;
 - docs no longer present root `data/*` as current default persistence.

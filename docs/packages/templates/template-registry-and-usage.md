@@ -53,6 +53,7 @@
 
 - 模板源码继续放在 `packages/templates/src/*`
 - 模板说明与使用约定统一放在 `docs/packages/templates/`
+- `react-ts` frontend template 的默认报表生成根目录是 `artifacts/report-kit/data-report`；调用方要写入真实业务源码时必须显式传入 `baseDir`，不能再依赖 root `data/generated` 作为默认生成目录
 - 通用 scaffold 模板与 frontend/data-report 模板分开维护，不复用同一个 registry 类型
 - scaffold template registry 当前固定只暴露两套模板：
   - `package-lib`

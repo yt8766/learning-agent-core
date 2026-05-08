@@ -392,4 +392,47 @@ describe('streamKnowledgeRag', () => {
       debug: true
     });
   });
+
+  it('wires policy context budget through planner and retrieval before streaming answer generation', async () => {
+    const seenBudgets: number[] = [];
+    const answerProvider = makeRecordingAnswerProvider();
+
+    await collectEvents(
+      streamKnowledgeRag({
+        query: 'How does stream RAG apply budget policy?',
+        accessibleKnowledgeBases,
+        policy: {
+          ...policy,
+          contextBudgetTokens: 654,
+          retrievalTopK: 1
+        },
+        plannerProvider: makePlannerProvider(),
+        searchService: makeSearchService([makeHit({ content: 'Streaming budget-aware context.' })]),
+        answerProvider,
+        pipeline: {
+          contextAssembler: {
+            async assemble(hits, _request, options) {
+              seenBudgets.push(options?.budget?.maxContextTokens ?? 0);
+              return {
+                contextBundle: hits.map(hit => hit.content).join('\n'),
+                diagnostics: {
+                  strategy: 'budget-probe',
+                  budgetTokens: options?.budget?.maxContextTokens,
+                  estimatedTokens: 5,
+                  selectedHitIds: hits.map(hit => hit.chunkId),
+                  droppedHitIds: [],
+                  truncatedHitIds: [],
+                  orderingStrategy: 'ranked'
+                }
+              };
+            }
+          }
+        },
+        idFactory: () => 'stream-budget-run'
+      })
+    );
+
+    expect(seenBudgets).toEqual([654]);
+    expect(answerProvider.inputs[0]?.contextBundle).toBe('Streaming budget-aware context.');
+  });
 });

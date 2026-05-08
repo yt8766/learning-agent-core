@@ -2,6 +2,9 @@ export { RuntimeTechBriefingService } from './briefing.service';
 export type { RuntimeTechBriefingContext } from './briefing.service';
 export {
   appendBriefingRawEvidence,
+  createDefaultBriefingStorageRepository,
+  createFileBriefingStorageRepository,
+  createMemoryBriefingStorageRepository,
   ensureDailyTechBriefingSchedules,
   appendBriefingFeedback,
   appendDailyTechBriefingRun,
@@ -16,6 +19,7 @@ export {
   saveBriefingScheduleState,
   saveDailyTechBriefingSchedule
 } from './briefing-storage';
+export type { BriefingStorageRepository, PostgresReadyBriefingStorageRepository } from './briefing-storage';
 export { readDailyTechBriefingStatus } from './briefing-status';
 export type {
   BriefingFeedbackRecord,

@@ -131,22 +131,26 @@ pnpm --dir apps/frontend/agent-admin dev
 
 ## 5. 数据目录治理
 
-仓库下 `data/*` 目录默认按以下边界理解：
+运行时配置默认不再写仓库根级 `data/*`。`packages/config` 的内置默认值按 profile 显式落到
+`profile-storage/<profile>/...`：
 
-- `data/memory`
-  - 记忆、规则和运行时可复用沉淀
-- `data/runtime`
-  - runtime state、任务状态、briefings、schedules 等运行态数据
-- `data/knowledge`
-  - 受控知识源、catalog、chunks、ingestion、vectors 产物
-- `data/skills`
-  - 运行时技能安装区、稳定区、实验区和安装回执
+- `profile-storage/platform`
+  - platform / cli 默认 profile 的 memory、runtime state、semantic cache、skills 与 knowledge
+- `profile-storage/company`
+  - company profile 的隔离存储
+- `profile-storage/personal`
+  - personal profile 的隔离存储
+
+根级 `data/runtime`、`data/memory`、`data/knowledge`、`data/skills`、`data/browser-replays` 与
+`data/generated` 只允许作为历史迁移输入或显式本地覆盖使用，不再作为生产/runtime 代码的新增默认写入目标。
+如确需继续读取旧数据，应通过配置项、repository contract 或 provider 明确注入，不要把 root data 路径重新写回默认值。
 
 建议：
 
-- 不要把临时调试输出混写进 `data/runtime`
-- 清理 `data/knowledge` 与 `data/skills` 前，先确认 runtime / learning / skill lab 是否仍在引用
-- 当切换 runner 模式时，backend 与 worker 应共享同一份 `data/runtime/tasks-state.json`
+- 不要把临时调试输出混写进 root `data/runtime`
+- 清理 root `data/knowledge` 与 root `data/skills` 前，先确认是否仍有 legacy import / 本地覆盖在引用
+- 当切换 runner 模式时，backend 与 worker 应共享同一份显式配置的 runtime state 路径，默认路径为 `profile-storage/<profile>/runtime/tasks-state.json`
+- 修改运行时持久化路径后，执行 `pnpm check:no-root-data-runtime` 查看是否仍有生产/runtime root data 写入命中
 
 ## 6. 常见排查
 
@@ -165,7 +169,7 @@ pnpm --dir apps/frontend/agent-admin dev
 - backend 是否关闭了 `RUNTIME_BACKGROUND_ENABLED`
 - worker 是否已启动
 - `runnerIdPrefix` 是否符合预期
-- `data/runtime/tasks-state.json` 是否被 backend 和 worker 共用
+- 显式配置的 runtime state 路径是否被 backend 和 worker 共用
 
 ### learning job 一直 queued
 

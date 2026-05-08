@@ -1,10 +1,11 @@
-import { mkdtemp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SkillArtifactFetcher } from '../src/install/skill-artifact-fetcher';
+import { FileSkillDraftRepository, type SkillDraftRepository } from '../src/drafts';
+import { SkillArtifactFetcher, type SkillArtifactStorageRepository } from '../src/install/skill-artifact-fetcher';
 
 describe('SkillArtifactFetcher', () => {
   let workspaceRoot: string;
@@ -19,7 +20,7 @@ describe('SkillArtifactFetcher', () => {
   });
 
   it('writes manifest-only fallback when no artifact target is provided', async () => {
-    const fetcher = new SkillArtifactFetcher(workspaceRoot);
+    const fetcher = createFetcher(workspaceRoot);
 
     const result = await fetcher.fetchToStaging(
       {
@@ -47,7 +48,7 @@ describe('SkillArtifactFetcher', () => {
   });
 
   it('downloads remote artifacts and reports http failures', async () => {
-    const fetcher = new SkillArtifactFetcher(workspaceRoot);
+    const fetcher = createFetcher(workspaceRoot);
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -121,7 +122,7 @@ describe('SkillArtifactFetcher', () => {
     await writeFile(jsonPath, '{\n  "hello": true\n}\n');
     await writeFile(join(dirPath, 'index.js'), 'export const ok = true;\n');
 
-    const fetcher = new SkillArtifactFetcher(workspaceRoot);
+    const fetcher = createFetcher(workspaceRoot);
 
     const jsonResult = await fetcher.fetchToStaging(
       {
@@ -187,39 +188,32 @@ describe('SkillArtifactFetcher', () => {
   });
 
   it('materializes active workspace draft entries into skill markdown artifacts', async () => {
-    await mkdir(join(workspaceRoot, 'data', 'skills', 'drafts'), { recursive: true });
-    await writeFile(
-      join(workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json'),
-      JSON.stringify(
-        [
-          {
-            id: 'draft-browser-evidence',
-            workspaceId: 'workspace-platform',
-            title: 'Reuse browser evidence',
-            description: 'Capture repeated browser evidence collection.',
-            triggerHints: ['browser evidence'],
-            bodyMarkdown: '# Reuse browser evidence\n\nOpen the evidence source and cite it.',
-            requiredTools: ['browser.open'],
-            requiredConnectors: ['browser-mcp'],
-            sourceTaskId: 'task-1',
-            source: 'workspace-vault',
-            riskLevel: 'medium',
-            confidence: 0.82,
-            sourceEvidenceIds: ['evidence-1'],
-            status: 'active',
-            reuseStats: { count: 0 },
-            approvedBy: 'reviewer-1',
-            approvedAt: '2026-04-26T01:02:03.000Z',
-            createdAt: '2026-04-26T01:00:00.000Z',
-            updatedAt: '2026-04-26T01:02:03.000Z'
-          }
-        ],
-        null,
-        2
-      )
-    );
+    const skillDraftRepository = new FileSkillDraftRepository({
+      filePath: join(workspaceRoot, 'repositories', 'workspace-drafts.json')
+    });
+    await skillDraftRepository.create({
+      id: 'draft-browser-evidence',
+      workspaceId: 'workspace-platform',
+      title: 'Reuse browser evidence',
+      description: 'Capture repeated browser evidence collection.',
+      triggerHints: ['browser evidence'],
+      bodyMarkdown: '# Reuse browser evidence\n\nOpen the evidence source and cite it.',
+      requiredTools: ['browser.open'],
+      requiredConnectors: ['browser-mcp'],
+      sourceTaskId: 'task-1',
+      source: 'workspace-vault',
+      riskLevel: 'medium',
+      confidence: 0.82,
+      sourceEvidenceIds: ['evidence-1'],
+      status: 'active',
+      reuseStats: { count: 0 },
+      approvedBy: 'reviewer-1',
+      approvedAt: '2026-04-26T01:02:03.000Z',
+      createdAt: '2026-04-26T01:00:00.000Z',
+      updatedAt: '2026-04-26T01:02:03.000Z'
+    });
 
-    const fetcher = new SkillArtifactFetcher(workspaceRoot);
+    const fetcher = createFetcher(workspaceRoot, { skillDraftRepository });
     const result = await fetcher.fetchToStaging(
       {
         id: 'workspace-draft-draft-browser-evidence',
@@ -257,3 +251,62 @@ describe('SkillArtifactFetcher', () => {
     );
   });
 });
+
+function createFetcher(
+  workspaceRoot: string,
+  options: { skillDraftRepository?: SkillDraftRepository } = {}
+): SkillArtifactFetcher {
+  return new SkillArtifactFetcher({
+    workspaceRoot,
+    storageRepository: new TestSkillArtifactStorageRepository(workspaceRoot),
+    skillDraftRepository: options.skillDraftRepository
+  });
+}
+
+class TestSkillArtifactStorageRepository implements SkillArtifactStorageRepository {
+  constructor(private readonly workspaceRoot: string) {}
+
+  async prepareStaging(receiptId: string): Promise<string> {
+    const stagingDir = resolve(this.workspaceRoot, 'data', 'skills', 'staging', receiptId);
+    await rm(stagingDir, { recursive: true, force: true });
+    await mkdir(stagingDir, { recursive: true });
+    return stagingDir;
+  }
+
+  async writeText(stagingDir: string, relativePath: string, content: string): Promise<string> {
+    const targetPath = join(stagingDir, relativePath);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, content, 'utf8');
+    return targetPath;
+  }
+
+  async writeBytes(stagingDir: string, relativePath: string, bytes: Uint8Array): Promise<string> {
+    const targetPath = join(stagingDir, relativePath);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, bytes);
+    return targetPath;
+  }
+
+  async copyPathToStaging(stagingDir: string, sourcePath: string, relativePath: string): Promise<string> {
+    const targetPath = join(stagingDir, relativePath);
+    await rm(targetPath, { recursive: true, force: true });
+    await mkdir(dirname(targetPath), { recursive: true });
+    await cp(sourcePath, targetPath, { recursive: true });
+    return targetPath;
+  }
+
+  async promoteFromStaging(stagingDir: string, installDir: string): Promise<void> {
+    await mkdir(dirname(installDir), { recursive: true });
+    await rm(installDir, { recursive: true, force: true });
+    await cp(stagingDir, installDir, { recursive: true });
+    await rm(stagingDir, { recursive: true, force: true });
+  }
+
+  async removeStaging(stagingDir: string): Promise<void> {
+    await rm(stagingDir, { recursive: true, force: true });
+  }
+
+  async removeStagingByReceiptId(receiptId: string): Promise<void> {
+    await rm(resolve(this.workspaceRoot, 'data', 'skills', 'staging', receiptId), { recursive: true, force: true });
+  }
+}
