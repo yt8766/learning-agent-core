@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type {
   GatewayAuthErrorCode,
   GatewayLoginRequest,
@@ -16,6 +16,17 @@ interface TokenPayload {
   iat: number;
   exp: number;
 }
+export interface AgentGatewayAuthUserConfig {
+  username: string;
+  password: string;
+  displayName: string;
+  role: GatewayUser['role'];
+}
+export interface AgentGatewayAuthServiceOptions {
+  secret?: string;
+  users?: AgentGatewayAuthUserConfig[];
+}
+export const AGENT_GATEWAY_AUTH_OPTIONS = Symbol('AGENT_GATEWAY_AUTH_OPTIONS');
 export class AgentGatewayAuthError extends Error {
   constructor(
     readonly code: GatewayAuthErrorCode,
@@ -28,17 +39,29 @@ const accessTtl = 15 * 60;
 const refreshTtl = 7 * 24 * 60 * 60;
 @Injectable()
 export class AgentGatewayAuthService {
-  private readonly secret = process.env.AGENT_GATEWAY_AUTH_SECRET ?? 'local-agent-gateway-secret';
-  private readonly users = new Map<string, { password: string; profile: GatewayUser }>([
-    [
-      'admin',
-      {
-        password: 'admin123',
-        profile: { id: 'gateway-admin', username: 'admin', displayName: '网关管理员', role: 'admin' }
-      }
-    ]
-  ]);
+  private readonly secret: string | undefined;
+  private readonly users: Map<string, { password: string; profile: GatewayUser }>;
+
+  constructor(@Optional() @Inject(AGENT_GATEWAY_AUTH_OPTIONS) options: AgentGatewayAuthServiceOptions = {}) {
+    this.secret = options.secret ?? process.env.AGENT_GATEWAY_AUTH_SECRET;
+    this.users = new Map(
+      (options.users ?? this.readUsersFromEnv()).map(user => [
+        user.username,
+        {
+          password: user.password,
+          profile: {
+            id: `gateway-${user.username}`,
+            username: user.username,
+            displayName: user.displayName,
+            role: user.role
+          }
+        }
+      ])
+    );
+  }
+
   login(request: GatewayLoginRequest): GatewayLoginResponse {
+    this.assertConfigured();
     const account = this.users.get(request.username);
     if (!account || account.password !== request.password)
       throw new AgentGatewayAuthError('INVALID_CREDENTIALS', '用户名或密码错误');
@@ -63,6 +86,7 @@ export class AgentGatewayAuthService {
     };
   }
   refresh(refreshToken: string): GatewayRefreshResponse {
+    this.assertConfigured();
     const payload = this.verify(refreshToken, 'refresh');
     const account = this.users.get(payload.username);
     if (!account) throw new AgentGatewayAuthError('FORBIDDEN', '刷新令牌所属用户不存在');
@@ -79,6 +103,7 @@ export class AgentGatewayAuthService {
     };
   }
   verifyAccessToken(accessToken: string): GatewaySession {
+    this.assertConfigured();
     const payload = this.verify(accessToken, 'access');
     const account = this.users.get(payload.username);
     if (!account) throw new AgentGatewayAuthError('FORBIDDEN', '访问令牌所属用户不存在');
@@ -105,6 +130,7 @@ export class AgentGatewayAuthService {
     return prefix + '.' + body + '.' + this.sign(prefix + '.' + body);
   }
   private sign(value: string): string {
+    if (!this.secret) throw new AgentGatewayAuthError('FORBIDDEN', '网关认证密钥未配置');
     return createHmac('sha256', this.secret).update(value).digest('base64url');
   }
   private safe(left: string, right: string): boolean {
@@ -120,5 +146,23 @@ export class AgentGatewayAuthService {
   }
   private iso(seconds: number): string {
     return new Date(seconds * 1000).toISOString();
+  }
+  private assertConfigured(): void {
+    if (!this.secret || this.users.size === 0) {
+      throw new AgentGatewayAuthError('FORBIDDEN', 'Agent Gateway 认证未配置');
+    }
+  }
+  private readUsersFromEnv(): AgentGatewayAuthUserConfig[] {
+    const username = process.env.AGENT_GATEWAY_ADMIN_USERNAME;
+    const password = process.env.AGENT_GATEWAY_ADMIN_PASSWORD;
+    if (!username || !password) return [];
+    return [
+      {
+        username,
+        password,
+        displayName: process.env.AGENT_GATEWAY_ADMIN_DISPLAY_NAME ?? username,
+        role: 'admin'
+      }
+    ];
   }
 }

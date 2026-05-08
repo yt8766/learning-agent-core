@@ -6,8 +6,11 @@ import {
 
 describe('AgentGatewayAuthService', () => {
   it('issues dual tokens and verifies access tokens', () => {
-    const service = new AgentGatewayAuthService();
-    const response = service.login({ username: 'admin', password: 'admin123' });
+    const service = new AgentGatewayAuthService({
+      secret: 'test-secret',
+      users: [{ username: 'admin', password: 'test-password', displayName: '网关管理员', role: 'admin' }]
+    });
+    const response = service.login({ username: 'admin', password: 'test-password' });
 
     expect(response.accessToken).toContain('gateway-access.');
     expect(response.refreshToken).toContain('gateway-refresh.');
@@ -16,15 +19,27 @@ describe('AgentGatewayAuthService', () => {
   });
 
   it('rejects invalid credentials with a stable error type', () => {
-    const service = new AgentGatewayAuthService();
+    const service = new AgentGatewayAuthService({
+      secret: 'test-secret',
+      users: [{ username: 'admin', password: 'test-password', displayName: '网关管理员', role: 'admin' }]
+    });
 
     expect(() => service.login({ username: 'admin', password: 'wrong' })).toThrow(AgentGatewayAuthError);
   });
 
   it('refreshes a short access token from a long refresh token', () => {
-    const service = new AgentGatewayAuthService();
-    const login = service.login({ username: 'admin', password: 'admin123' });
+    const service = new AgentGatewayAuthService({
+      secret: 'test-secret',
+      users: [{ username: 'admin', password: 'test-password', displayName: '网关管理员', role: 'admin' }]
+    });
+    const login = service.login({ username: 'admin', password: 'test-password' });
 
     expect(service.refresh(login.refreshToken).session.user.role).toBe('admin');
+  });
+
+  it('does not enable default credentials without explicit configuration', () => {
+    const service = new AgentGatewayAuthService({ secret: 'test-secret', users: [] });
+
+    expect(() => service.login({ username: 'admin', password: 'admin123' })).toThrow(AgentGatewayAuthError);
   });
 });

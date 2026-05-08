@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 export function LoginPage({ onLogin }: { onLogin: (username: string, password: string) => Promise<void> }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

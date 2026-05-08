@@ -17,6 +17,12 @@
 - `AgentGatewayAuthController`：挂载 `POST /api/agent-gateway/auth/login` 与 `POST /api/agent-gateway/auth/refresh`。
 - `AgentGatewayController`：挂载 `GET /api/agent-gateway/snapshot`、`GET /api/agent-gateway/providers`、`GET /api/agent-gateway/credential-files`、`GET /api/agent-gateway/quotas`、`GET /api/agent-gateway/logs`、`GET /api/agent-gateway/usage`、`POST /api/agent-gateway/probe`、`POST /api/agent-gateway/token-count`、`POST /api/agent-gateway/preprocess`、`POST /api/agent-gateway/accounting`。
 
+认证配置：
+
+- 后端不内置默认账号或默认密码；未配置时登录会返回稳定认证错误。
+- 启用本地登录必须显式配置 `AGENT_GATEWAY_AUTH_SECRET`、`AGENT_GATEWAY_ADMIN_USERNAME` 与 `AGENT_GATEWAY_ADMIN_PASSWORD`。
+- 可选配置 `AGENT_GATEWAY_ADMIN_DISPLAY_NAME`；未配置时展示名使用用户名。
+
 边界约束：
 
 - Controller 只接收/返回稳定 contract，不直接处理 CLI Proxy raw payload。

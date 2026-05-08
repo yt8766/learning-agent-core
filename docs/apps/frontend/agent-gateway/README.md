@@ -21,6 +21,7 @@
 - access token 只保存在 React session state 中。
 - refresh token 通过 `auth-storage.ts` 写入 `localStorage`。
 - API client 遇到 `401` 且错误码为 `ACCESS_TOKEN_EXPIRED` 时只刷新一次 access token，并重试原请求。
+- 登录表单不预填本地账号或密码；后端账号必须通过 `agent-server` 环境变量显式配置。
 
 开发入口：
 
