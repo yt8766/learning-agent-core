@@ -32,6 +32,7 @@
     "check:package-boundaries": "node ./scripts/check-package-boundaries.js",
     "check:source-artifacts": "node ./scripts/check-source-artifacts.js",
     "check:docs": "node ./scripts/check-docs.js",
+    "check:no-root-data-runtime": "node ./scripts/check-no-root-data-runtime.mjs",
     "check:docs:turbo": "node ./scripts/run-turbo-tasks.js check:docs",
     "new:doc": "node ./scripts/new-doc.js",
     "check:architecture": "pnpm check:backend-structure && pnpm check:barrel-layout && pnpm check:package-boundaries && pnpm check:source-artifacts",

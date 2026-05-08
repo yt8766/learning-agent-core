@@ -29,7 +29,7 @@ RetrievalRequest
   ─→ KnowledgeRetrievalResult
 ```
 
-**不含 generation 阶段**。生成回答由 `packages/runtime` 主链 + `agents/*` 负责。
+`runKnowledgeRetrieval()` 本身**不含 generation 阶段**。当前 `packages/knowledge/src/rag/*` 已提供 knowledge RAG 专用的 planner / retrieval / answer runtime，用于 Knowledge Chat Lab 和统一 `agent-server` knowledge domain；但 retrieval runtime 的 `contextAssembler` 仍只负责产出 prompt-ready context，不应在该阶段调用大模型生成最终回答。上下文组装与生成的职责边界、当前缺口和后续收敛建议见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
 
 ## 核心文件结构
 
@@ -462,8 +462,8 @@ Hybrid Search 当前真实边界：
 
 | 来源               | Retrieval contract | Runtime artifact schema | 当前接线状态 / 风险                                                                                                                                                                                                                            |
 | ------------------ | ------------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| repo docs          | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 `docs/**/*.md`；仍需按实际部署确认 embedding 凭据与 searchable 状态                                                                                                                                       |
-| workspace docs     | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 README 与项目规范；不等于所有 workspace 文档都完整接入                                                                                                                                                    |
+| repo docs          | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 `docs/**/*.md`；snapshot 可通过 repository 注入，未注入时才走 root `data/knowledge` legacy fallback；仍需按实际部署确认 embedding 凭据与 searchable 状态                                                  |
+| workspace docs     | 已有               | 已有                    | 本地 `ingestLocalKnowledge()` 已枚举 README 与项目规范；snapshot 可通过 repository 注入，未注入时才走 root `data/knowledge` legacy fallback；不等于所有 workspace 文档都完整接入                                                               |
 | connector manifest | 已有               | 已有                    | 本地最小枚举部分 `package.json` manifest；backend 已有 connector sync entries adapter 并复用 `connector-manifest` + `metadata.docType=connector-sync`，真实 connector API 同步 job 仍待接线                                                    |
 | catalog sync       | 已有               | 已有                    | backend 已有上游 entries adapter，可写入 receipt 与 chunk；外部 catalog 拉取 / 鉴权 job 仍待接线                                                                                                                                               |
 | user upload        | 已有               | 已有                    | backend 已有 workspace 内已落盘文件 adapter，可写入权限 metadata、receipt 与 chunk；multipart / 对象存储 / 鉴权上游 job 仍待接线                                                                                                               |
@@ -497,6 +497,12 @@ Hybrid Search 当前真实边界：
 | 接入 query decomposition | 在 `QueryNormalizer` 中生成结构化 `queryVariants`                                        |
 | 自定义 context 格式      | 实现 `ContextAssembler` 注入 `pipeline.contextAssembler`                                 |
 
+## 上下文组装与生成边界
+
+当前默认 `DefaultContextAssembler` 只按 `[N] title\ncontent` 拼接命中，尚未执行 `KnowledgeRagPolicy.contextBudgetTokens`、模型上下文窗口、输出预留、历史会话占用或长 chunk 裁剪。`RagAnswerRuntime` 会把 `retrieval.contextBundle` 传给 answer provider；但统一 backend knowledge domain 的 `buildSdkChatMessages()` 当前仍主要按 citations 重新拼接上下文，没有稳定消费自定义 `contextBundle`。
+
+因此，现阶段如果调用方注入自定义 `ContextAssembler`，它会影响 `retrieval.contextBundle`，但不一定影响 backend 最终发给模型的 messages。后续修改 generation 链路时必须优先让 answer provider 消费 `contextBundle`，并把 citations 只作为 grounding / UI 展示引用使用。详细审计见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
+
 ## 测试
 
 - `packages/knowledge/test/default-query-normalizer.test.ts` — 默认 rewrite / query variants 单元测试
@@ -515,9 +521,10 @@ Hybrid Search 当前真实边界：
 
 ## 不属于此包的能力
 
-| 能力            | 正确位置                             |
-| --------------- | ------------------------------------ |
-| 生成 answer     | `packages/runtime` 主链 + `agents/*` |
-| 向量检索实现    | `packages/adapters`                  |
-| 离线索引构建    | `packages/knowledge/src/indexing/`   |
-| 知识 store 管理 | `apps/backend`                       |
+| 能力                       | 正确位置                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 通用多 Agent 最终回答生成  | `packages/runtime` 主链 + `agents/*`                                                                   |
+| Knowledge RAG 专用回答生成 | `packages/knowledge/src/rag/answer/*` 与宿主注入的 answer provider；不得放进 `runKnowledgeRetrieval()` |
+| 向量检索实现               | `packages/adapters`                                                                                    |
+| 离线索引构建               | `packages/knowledge/src/indexing/`                                                                     |
+| 知识 store 管理            | `apps/backend`                                                                                         |

@@ -3,21 +3,37 @@ import { dirname, resolve } from 'node:path';
 
 import { loadSettings } from '@agent/config';
 
-export interface SemanticCacheRecord {
-  id: string;
-  key: string;
-  role: string;
-  modelId: string;
-  responseText: string;
-  promptFingerprint: string;
-  createdAt: string;
-  updatedAt: string;
-  hitCount: number;
-}
+import { SemanticCacheRecordSchema, type SemanticCacheRecord, type SemanticCacheRepository } from '../contracts';
 
-export interface SemanticCacheRepository {
-  get(key: string): Promise<SemanticCacheRecord | undefined>;
-  set(record: SemanticCacheRecord): Promise<void>;
+const cloneSemanticCacheRecord = (record: SemanticCacheRecord): SemanticCacheRecord => ({ ...record });
+
+export class InMemorySemanticCacheRepository implements SemanticCacheRepository {
+  private readonly records = new Map<string, SemanticCacheRecord>();
+
+  async get(key: string): Promise<SemanticCacheRecord | undefined> {
+    const target = this.records.get(key);
+    if (!target) {
+      return undefined;
+    }
+
+    const updated = {
+      ...target,
+      hitCount: target.hitCount + 1,
+      updatedAt: new Date().toISOString()
+    };
+    this.records.set(key, updated);
+    return cloneSemanticCacheRecord(updated);
+  }
+
+  async set(record: SemanticCacheRecord): Promise<void> {
+    const parsed = SemanticCacheRecordSchema.parse(record);
+    const existing = this.records.get(parsed.key);
+    this.records.set(parsed.key, {
+      ...existing,
+      ...parsed,
+      updatedAt: existing ? new Date().toISOString() : parsed.updatedAt
+    });
+  }
 }
 
 export class FileSemanticCacheRepository implements SemanticCacheRepository {
@@ -41,16 +57,17 @@ export class FileSemanticCacheRepository implements SemanticCacheRepository {
   }
 
   async set(record: SemanticCacheRecord): Promise<void> {
+    const parsed = SemanticCacheRecordSchema.parse(record);
     const records = await this.readAll();
-    const existingIndex = records.findIndex(item => item.key === record.key);
+    const existingIndex = records.findIndex(item => item.key === parsed.key);
     if (existingIndex >= 0) {
       records[existingIndex] = {
         ...records[existingIndex],
-        ...record,
+        ...parsed,
         updatedAt: new Date().toISOString()
       };
     } else {
-      records.push(record);
+      records.push(parsed);
     }
     await this.writeAll(records);
   }
@@ -58,8 +75,14 @@ export class FileSemanticCacheRepository implements SemanticCacheRepository {
   private async readAll(): Promise<SemanticCacheRecord[]> {
     try {
       const raw = await readFile(this.filePath, 'utf8');
-      const parsed = JSON.parse(raw) as SemanticCacheRecord[];
-      return Array.isArray(parsed) ? parsed : [];
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.flatMap(item => {
+        const result = SemanticCacheRecordSchema.safeParse(item);
+        return result.success ? [result.data] : [];
+      });
     } catch {
       return [];
     }

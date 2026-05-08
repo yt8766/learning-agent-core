@@ -7,5 +7,7 @@ export * from './schemas/memory-evidence-link.schema';
 export * from './schemas/memory-event-record.schema';
 export * from './schemas/memory-search.schema';
 export * from './schemas/active-memory-tool.schema';
+export * from './schemas/semantic-cache.schema';
 export type { MemoryRepository } from './memory-repository';
 export type { MemorySearchService } from './memory-search-service';
+export type { SemanticCacheRepository } from './semantic-cache-repository';

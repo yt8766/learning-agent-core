@@ -15,11 +15,17 @@ import {
   executeScaffoldTool,
   executeSchedulingTool
 } from '@agent/tools';
-import { executeBrowsePage } from './sandbox-executor-browser';
+import { executeBrowsePage, type BrowserReplayArtifactWriter } from './sandbox-executor-browser';
 import { executeFindSkills } from './sandbox-executor-skill-search';
 
 export interface SandboxExecutor {
   execute(request: ToolExecutionRequest): Promise<ToolExecutionResult>;
+}
+
+export interface LocalSandboxExecutorOptions {
+  browserArtifactWriter?: BrowserReplayArtifactWriter;
+  now?: () => Date;
+  browserSessionIdFactory?: () => string;
 }
 
 class UnsupportedSandboxToolError extends Error {
@@ -38,6 +44,8 @@ class UnsupportedSandboxToolError extends Error {
 }
 
 export class LocalSandboxExecutor implements SandboxExecutor {
+  constructor(private readonly options: LocalSandboxExecutorOptions = {}) {}
+
   async execute(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
     const startedAt = Date.now();
 
@@ -266,7 +274,11 @@ export class LocalSandboxExecutor implements SandboxExecutor {
         };
       }
       case 'browse_page':
-        return executeBrowsePage(request);
+        return executeBrowsePage(request, {
+          artifactWriter: this.options.browserArtifactWriter,
+          now: this.options.now,
+          sessionIdFactory: this.options.browserSessionIdFactory
+        });
       case 'run_terminal': {
         const command = typeof request.input.command === 'string' ? request.input.command : 'pnpm test -- --help';
         return {

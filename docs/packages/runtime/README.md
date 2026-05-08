@@ -68,6 +68,7 @@
   - `BudgetEstimatePreprocessor` 会按最终组装后的消息优先调用 provider token estimate；provider 未提供估算器时才回退到轻量字符估算。超预算时优先切到 `fallbackModelId`，无 fallback 时直接返回 deny 结果，不继续调用 provider
   - `UsageBillingPostprocessor` 会产出稳定的 invocation usage ledger 与 `taskUsageDelta`；当上游 usage 只回传 `costUsd` 时，会在 pipeline 内补算 `costCny`，避免 task `budgetState.costConsumedCny` 长期缺口。主链 `recordTaskUsageFromInvocation(...)` 负责做去重落盘并回写 task `llmUsage / budgetState`
   - `LearningFlow.persistReviewArtifacts(...)` 在已安装 skill 被 `SkillRegistry.recordExecutionResult(...)` 接受后，会通过 runtime 装配层 callback 写入 `RuntimeStateSnapshot.workspaceSkillReuseRecords`。runtime 只负责记录“实际复用 skill”的稳定信号；Workspace Center HTTP 输出仍由 `apps/backend/agent-server` 读取 runtime state 并经 `packages/platform-runtime` 白名单 projection 生成。
+  - `LocalSandboxExecutor` 的 `browse_page` 路径支持注入 `browserArtifactWriter`，用于把 replay/snapshot/screenshot 写入稳定 artifact repository；未注入时仍保留 `data/browser-replays/<sessionId>/` 过渡 fallback，新增调用方不应依赖 root data 路径。
 
 当前文档：
 
@@ -80,4 +81,5 @@
 - [runtime-concurrency.md](/docs/packages/runtime/runtime-concurrency.md) — agent 运行期批量异步任务并发控制 helper
 - [runtime-interrupts.md](/docs/packages/runtime/runtime-interrupts.md) — 中断控制流规范
 - [runtime-layering-adr.md](/docs/packages/runtime/runtime-layering-adr.md) — Runtime 分层 ADR
+- [sandbox-browser-artifacts.md](/docs/packages/runtime/sandbox-browser-artifacts.md) — `browse_page` replay/generated artifact writer seam 与 root data 过渡 fallback
 - [runtime-state-machine.md](/docs/packages/runtime/runtime-state-machine.md) — 状态机参考

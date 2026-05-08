@@ -28,7 +28,7 @@
 - Execution Fabric API：[execution-fabric.md](/docs/contracts/api/execution-fabric.md)；`/api/execution/*` 是 planned governance / projection endpoint，当前真实工具执行入口仍是 `/api/agent-tools/*`。
 - Task Trajectory API：[task-trajectory.md](/docs/contracts/api/task-trajectory.md)
 - Agent Workspace API：[agent-workspace.md](/docs/contracts/api/agent-workspace.md)；`/api/platform/workspace-center` 是 Workspace Vault + Skill Flywheel MVP projection endpoint，覆盖 workspace summary 和 skill draft list / approve / reject。
-- Agent Gateway API：[agent-gateway.md](/docs/contracts/api/agent-gateway.md)；Agent Gateway Console 契约，已落 `@agent/core` schema、token / preprocess / accounting 后端入口与独立中转前端骨架，Provider、Auth File、Quota、Logs、OAuth 与 API Probe 仍按契约扩展。
+- Agent Gateway API：[agent-gateway.md](/docs/contracts/api/agent-gateway.md)；Agent Gateway Console 契约，已落 `@agent/core` schema、双 token auth、Provider/Auth File/Quota/Logs/Usage/Probe、token / preprocess / accounting 后端入口与独立中转前端骨架，真实 relay、OAuth 写链路与持久化配置仍按契约扩展。
 
 ## 阅读顺序
 

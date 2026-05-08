@@ -23,9 +23,27 @@ import {
   writeKnowledgeSnapshot
 } from './local-knowledge-store.helpers';
 
-export { KNOWLEDGE_RELATIVE_PATHS } from './local-knowledge-store.helpers';
+export { KNOWLEDGE_RELATIVE_PATHS, type PersistedKnowledgeSnapshot } from './local-knowledge-store.helpers';
 
 type RuntimeSettings = ReturnType<typeof loadSettings>;
+
+type LocalKnowledgeCandidate = Awaited<ReturnType<typeof listKnowledgeCandidates>>[number];
+
+export interface LocalKnowledgeRuntimePaths {
+  wenyuanRoot: string;
+  cangjingRoot: string;
+}
+
+export interface LocalKnowledgeSnapshotRepository {
+  read(): Promise<PersistedKnowledgeSnapshot>;
+  write(snapshot: PersistedKnowledgeSnapshot): Promise<void>;
+}
+
+export interface LocalKnowledgeStoreOptions {
+  repository?: LocalKnowledgeSnapshotRepository;
+  runtimePaths?: LocalKnowledgeRuntimePaths;
+  sourceProvider?: (settings: RuntimeSettings) => Promise<LocalKnowledgeCandidate[]>;
+}
 
 export interface KnowledgeOverviewRecord {
   stores: KnowledgeStoreRecord[];
@@ -37,14 +55,17 @@ export interface KnowledgeOverviewRecord {
   latestReceipts: KnowledgeIngestionReceiptRecord[];
 }
 
-function buildDefaultStores(settings: RuntimeSettings): KnowledgeStoreRecord[] {
+function buildDefaultStores(
+  settings: RuntimeSettings,
+  paths = buildLegacyRuntimePaths(settings)
+): KnowledgeStoreRecord[] {
   return [
     {
       id: 'wenyuan-store',
       store: 'wenyuan',
       displayName: '文渊阁',
       summary: '运行态记忆、会话历史、trace、checkpoint、治理记录。',
-      rootPath: join(settings.workspaceRoot, 'data', 'runtime'),
+      rootPath: paths.wenyuanRoot,
       status: 'active',
       updatedAt: new Date().toISOString()
     },
@@ -53,17 +74,22 @@ function buildDefaultStores(settings: RuntimeSettings): KnowledgeStoreRecord[] {
       store: 'cangjing',
       displayName: '藏经阁',
       summary: '本地文档、切片、向量、索引与 ingestion receipts。',
-      rootPath: settings.knowledgeRoot,
+      rootPath: paths.cangjingRoot,
       status: 'active',
       updatedAt: new Date().toISOString()
     }
   ];
 }
 
-export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<KnowledgeOverviewRecord> {
-  await ensureKnowledgeDirectories(settings);
-  const existing = await readKnowledgeSnapshot(settings);
-  const candidateFiles = await listKnowledgeCandidates(settings.workspaceRoot);
+export async function ingestLocalKnowledge(
+  settings: RuntimeSettings,
+  options: LocalKnowledgeStoreOptions = {}
+): Promise<KnowledgeOverviewRecord> {
+  const repository = createKnowledgeSnapshotRepository(settings, options);
+  const existing = await repository.read();
+  const candidateFiles = await (options.sourceProvider
+    ? options.sourceProvider(settings)
+    : listKnowledgeCandidates(settings.workspaceRoot));
   const sources: KnowledgeSourceRecord[] = [];
   const chunks: KnowledgeChunkRecord[] = [];
   const embeddings: KnowledgeEmbeddingRecord[] = [];
@@ -144,7 +170,7 @@ export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<K
     });
   }
 
-  const stores = buildDefaultStores(settings);
+  const stores = buildDefaultStores(settings, options.runtimePaths);
   const snapshot: PersistedKnowledgeSnapshot = {
     stores,
     sources: mergeById(existing.sources, sources),
@@ -152,7 +178,7 @@ export async function ingestLocalKnowledge(settings: RuntimeSettings): Promise<K
     embeddings: mergeById(existing.embeddings, embeddings),
     receipts: mergeById(existing.receipts, receipts)
   };
-  await writeKnowledgeSnapshot(settings, snapshot);
+  await repository.write(snapshot);
 
   const searchableDocumentCount = snapshot.chunks.filter(chunk => chunk.searchable).length
     ? new Set(snapshot.chunks.filter(chunk => chunk.searchable).map(chunk => chunk.documentId)).size
@@ -189,11 +215,13 @@ function isMissingFileError(error: unknown) {
   );
 }
 
-export async function readKnowledgeOverview(settings: RuntimeSettings): Promise<KnowledgeOverviewRecord> {
-  await ensureKnowledgeDirectories(settings);
-  const snapshot = await readKnowledgeSnapshot(settings);
+export async function readKnowledgeOverview(
+  settings: RuntimeSettings,
+  options: LocalKnowledgeStoreOptions = {}
+): Promise<KnowledgeOverviewRecord> {
+  const snapshot = await createKnowledgeSnapshotRepository(settings, options).read();
   return {
-    stores: snapshot.stores.length > 0 ? snapshot.stores : buildDefaultStores(settings),
+    stores: snapshot.stores.length > 0 ? snapshot.stores : buildDefaultStores(settings, options.runtimePaths),
     searchableDocumentCount: new Set(snapshot.chunks.filter(item => item.searchable).map(item => item.documentId)).size,
     blockedDocumentCount: new Set(
       snapshot.embeddings.filter(item => item.status === 'failed').map(item => item.documentId)
@@ -208,20 +236,55 @@ export async function readKnowledgeOverview(settings: RuntimeSettings): Promise<
   };
 }
 
-export async function listKnowledgeArtifacts(settings: RuntimeSettings) {
-  await ensureKnowledgeDirectories(settings);
-  return readKnowledgeSnapshot(settings);
+export async function listKnowledgeArtifacts(settings: RuntimeSettings, options: LocalKnowledgeStoreOptions = {}) {
+  return createKnowledgeSnapshotRepository(settings, options).read();
 }
 
-export function buildKnowledgeDescriptor(settings: RuntimeSettings) {
+export function buildKnowledgeDescriptor(
+  settings: RuntimeSettings,
+  options: Pick<LocalKnowledgeStoreOptions, 'runtimePaths'> = {}
+) {
+  const paths = options.runtimePaths ?? buildLegacyRuntimePaths(settings);
   return {
-    wenyuanRoot: join(settings.workspaceRoot, 'data', 'runtime'),
-    cangjingRoot: settings.knowledgeRoot,
+    wenyuanRoot: paths.wenyuanRoot,
+    cangjingRoot: paths.cangjingRoot,
     sourceDescriptors: [
       'wenyuan runtime snapshot',
       'cangjing local ingestion catalog',
       'cangjing local vectors/indexes'
     ]
+  };
+}
+
+function buildLegacyRuntimePaths(settings: RuntimeSettings): LocalKnowledgeRuntimePaths {
+  return {
+    wenyuanRoot: join(settings.workspaceRoot, 'data', 'runtime'),
+    cangjingRoot: settings.knowledgeRoot
+  };
+}
+
+function createKnowledgeSnapshotRepository(
+  settings: RuntimeSettings,
+  options: Pick<LocalKnowledgeStoreOptions, 'repository'>
+): LocalKnowledgeSnapshotRepository {
+  if (options.repository) return options.repository;
+  return createLegacyFilesystemKnowledgeSnapshotRepository(settings);
+}
+
+function createLegacyFilesystemKnowledgeSnapshotRepository(
+  settings: RuntimeSettings
+): LocalKnowledgeSnapshotRepository {
+  return {
+    async read() {
+      // Transitional legacy fallback for existing Runtime Center callers still backed by root data/knowledge.
+      await ensureKnowledgeDirectories(settings);
+      return readKnowledgeSnapshot(settings);
+    },
+    async write(snapshot) {
+      // Transitional legacy fallback for existing Runtime Center callers still backed by root data/knowledge.
+      await ensureKnowledgeDirectories(settings);
+      await writeKnowledgeSnapshot(settings, snapshot);
+    }
   };
 }
 

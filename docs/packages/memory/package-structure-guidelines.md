@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/memory`
-最后核对：2026-04-18
+最后核对：2026-05-08
 
 本文档说明 `packages/memory` 如何继续围绕 repository / search / vector 三个核心能力收敛。
 
@@ -62,6 +62,11 @@ packages/memory/
   - 作为 repository / search 的真实宿主
 - `contracts/memory-repository.ts`、`contracts/memory-search-service.ts`
   - 仅保留稳定 facade re-export，便于 contract-first 导入
+- `contracts/semantic-cache-repository.ts`、`contracts/schemas/semantic-cache.schema.ts`
+  - 承载 semantic cache 的显式 repository contract 与 schema-first record contract
+- `repositories/semantic-cache-repository.ts`
+  - 同时保留 legacy file implementation 与 ephemeral `InMemorySemanticCacheRepository`
+  - 新增调用方应优先注入 `SemanticCacheRepository`，不要直接制造 root `data/*` 写路径
 - 旧的包根 `memory-record-helpers.ts`、`memory-repository-governance.ts`
   - 已删除
 - `shared/memory-record-helpers.ts`、`repositories/memory-repository-governance.ts`
