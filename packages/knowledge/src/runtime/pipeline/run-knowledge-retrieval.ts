@@ -214,9 +214,15 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
     contextExpansionDiagnostics = expanded.diagnostics;
   }
 
-  const contextBundle = contextAssembler
-    ? await contextAssembler.assemble(contextHits, effectiveNormalized)
+  const contextAssemblyOutput = contextAssembler
+    ? pipeline.contextAssemblyOptions
+      ? await contextAssembler.assemble(contextHits, effectiveNormalized, pipeline.contextAssemblyOptions)
+      : await contextAssembler.assemble(contextHits, effectiveNormalized)
     : undefined;
+  const contextBundle =
+    typeof contextAssemblyOutput === 'string' ? contextAssemblyOutput : contextAssemblyOutput?.contextBundle;
+  const contextAssemblyDiagnostics =
+    typeof contextAssemblyOutput === 'string' ? undefined : contextAssemblyOutput?.diagnostics;
 
   const diagnostics: RetrievalDiagnostics | undefined = includeDiagnostics
     ? {
@@ -232,6 +238,7 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
         preHitCount,
         postHitCount,
         contextAssembled: Boolean(contextBundle),
+        contextAssembly: contextAssemblyDiagnostics,
         contextExpansion: contextExpansionDiagnostics,
         postRetrieval: {
           filtering: filterResult.diagnostics,

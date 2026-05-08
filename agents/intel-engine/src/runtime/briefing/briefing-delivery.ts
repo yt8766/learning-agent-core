@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { sendLarkDigestMessage } from './briefing-lark';
-import { appendDailyTechBriefingRun, saveBriefingHistory } from './briefing-storage';
+import { appendDailyTechBriefingRun, saveBriefingHistory, type BriefingStorageRepository } from './briefing-storage';
 import { finalizeCategoryStatus, updateHistoryRecords } from './briefing-category-processor';
 import type {
   BriefingHistoryRecord,
@@ -22,6 +22,7 @@ export async function deliverBriefingDigest(params: {
   larkDigestMode: 'markdown-summary' | 'interactive-card' | 'dual';
   webhookUrl?: string;
   fetchImpl?: typeof fetch;
+  briefingStorage?: BriefingStorageRepository;
 }): Promise<{ sent: boolean; finalizedCategories: TechBriefingCategoryResult[]; run: TechBriefingRunRecord }> {
   const sent = await sendBriefingDigest({
     digest: params.digest,
@@ -35,7 +36,8 @@ export async function deliverBriefingDigest(params: {
       params.workspaceRoot,
       updateHistoryRecords(params.history, params.categoryResults, params.now),
       params.now,
-      params.duplicateWindowDays
+      params.duplicateWindowDays,
+      params.briefingStorage
     );
   }
 
@@ -46,7 +48,7 @@ export async function deliverBriefingDigest(params: {
     finalizedCategories,
     digest: params.digest
   });
-  await appendDailyTechBriefingRun(params.workspaceRoot, run);
+  await appendDailyTechBriefingRun(params.workspaceRoot, run, params.briefingStorage);
   return { sent, finalizedCategories, run };
 }
 

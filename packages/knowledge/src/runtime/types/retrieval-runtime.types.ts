@@ -2,6 +2,7 @@ import type { RetrievalHit, RetrievalRequest } from '../../index';
 import { z } from 'zod';
 
 import { PostRetrievalDiagnosticsSchema } from '../../contracts/schemas/knowledge-retrieval.schema';
+import type { ContextAssemblyDiagnostics } from '../stages/context-assembler';
 import type { ContextExpansionDiagnostics } from '../stages/context-expander';
 
 export const HybridRetrievalModeSchema = z.enum(['hybrid', 'keyword-only', 'vector-only', 'none']);
@@ -70,6 +71,18 @@ export const ContextExpansionDiagnosticsSchema = z
   })
   .strict();
 
+export const ContextAssemblyDiagnosticsSchema = z
+  .object({
+    strategy: z.string(),
+    budgetTokens: z.number().int().nonnegative().optional(),
+    estimatedTokens: z.number().int().nonnegative(),
+    selectedHitIds: z.array(z.string()),
+    droppedHitIds: z.array(z.string()),
+    truncatedHitIds: z.array(z.string()),
+    orderingStrategy: z.string()
+  })
+  .strict();
+
 export const RetrievalDiagnosticsSchema = z.object({
   runId: z.string(),
   startedAt: z.string(),
@@ -83,6 +96,7 @@ export const RetrievalDiagnosticsSchema = z.object({
   preHitCount: z.number().int().nonnegative(),
   postHitCount: z.number().int().nonnegative(),
   contextAssembled: z.boolean(),
+  contextAssembly: ContextAssemblyDiagnosticsSchema.optional(),
   contextExpansion: ContextExpansionDiagnosticsSchema.optional(),
   postRetrieval: PostRetrievalDiagnosticsSchema.optional(),
   filtering: RetrievalFilteringDiagnosticsSchema.optional(),
@@ -102,6 +116,7 @@ export interface RetrievalDiagnostics {
   preHitCount: number;
   postHitCount: number;
   contextAssembled: boolean;
+  contextAssembly?: ContextAssemblyDiagnostics;
   contextExpansion?: ContextExpansionDiagnostics;
   postRetrieval?: PostRetrievalDiagnostics;
   filtering?: RetrievalFilteringDiagnostics;

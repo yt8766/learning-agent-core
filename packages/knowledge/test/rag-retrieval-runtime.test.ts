@@ -158,6 +158,45 @@ describe('RagRetrievalRuntime', () => {
     });
   });
 
+  it('passes context budget into context assembly options', async () => {
+    const seenBudgets: number[] = [];
+    const runtime = new RagRetrievalRuntime({
+      searchService: makeSearchService({
+        'retrieval runtime wrapper behavior': [
+          makeHit({ chunkId: 'budgeted', title: 'Budgeted', content: 'content '.repeat(200), score: 0.95 })
+        ]
+      }),
+      pipeline: {
+        contextAssembler: {
+          async assemble(_hits, _request, options) {
+            seenBudgets.push(options?.budget?.maxContextTokens ?? 0);
+            return {
+              contextBundle: 'assembled',
+              diagnostics: {
+                strategy: 'budget-probe',
+                budgetTokens: options?.budget?.maxContextTokens,
+                estimatedTokens: 1,
+                selectedHitIds: ['budgeted'],
+                droppedHitIds: [],
+                truncatedHitIds: [],
+                orderingStrategy: 'ranked'
+              }
+            };
+          }
+        }
+      }
+    });
+
+    await runtime.retrieve(
+      makePlan({
+        queryVariants: ['retrieval runtime wrapper behavior'],
+        strategyHints: { topK: 1, contextBudgetTokens: 1234 }
+      })
+    );
+
+    expect(seenBudgets).toEqual([1234]);
+  });
+
   it('does not add an empty knowledgeBaseIds scoped filter when no knowledge bases are selected', async () => {
     const searchService = makeSearchService({
       'how does retrieval planning work': [makeHit({ chunkId: 'chunk-1' })]

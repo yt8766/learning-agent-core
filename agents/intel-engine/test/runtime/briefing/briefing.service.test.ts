@@ -7,6 +7,7 @@ import { readJson } from 'fs-extra';
 
 import { RuntimeTechBriefingService } from '../../../src/runtime/briefing/briefing.service';
 import { appendBriefingFeedback } from '../../../src/runtime/briefing/briefing-storage';
+import { getStorageRoot } from '../../../src/runtime/briefing/briefing-paths';
 
 describe('RuntimeTechBriefingService', () => {
   let workspaceRoot = '';
@@ -70,7 +71,7 @@ describe('RuntimeTechBriefingService', () => {
       throw new Error('expected scheduled briefing run');
     }
     const persistedSchedule = await readJson(
-      join(workspaceRoot, 'data', 'runtime', 'schedules', 'daily-tech-briefing-frontend-security.json')
+      join(getStorageRoot(workspaceRoot), 'schedules', 'daily-tech-briefing-frontend-security.json')
     );
 
     expect(schedule).toHaveLength(7);

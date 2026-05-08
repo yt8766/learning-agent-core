@@ -1,6 +1,6 @@
 import type { RetrievalRequest } from '../index';
 
-import type { ContextAssembler } from '../runtime/stages/context-assembler';
+import type { ContextAssembler, ContextAssemblyOptions } from '../runtime/stages/context-assembler';
 import type { ContextExpander, ContextExpansionPolicy } from '../runtime/stages/context-expander';
 import type { PostRetrievalDiversifier } from '../runtime/stages/post-retrieval-diversifier';
 import type { PostRetrievalFilter, RetrievalSafetyScanner } from '../runtime/stages/post-retrieval-filter';
@@ -29,6 +29,7 @@ export interface RetrievalPipelineConfig {
   contextExpander?: ContextExpander;
   contextExpansionPolicy?: ContextExpansionPolicy;
   contextAssembler?: ContextAssembler;
+  contextAssemblyOptions?: ContextAssemblyOptions;
 }
 
 export interface KnowledgeRetrievalRuntime extends KnowledgeFacade {

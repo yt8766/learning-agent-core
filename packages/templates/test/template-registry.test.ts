@@ -50,6 +50,8 @@ describe('@agent/templates frontend template registry', () => {
         entryFiles: expect.arrayContaining(['App.tsx', 'index.tsx', 'package.json', 'styles.css'])
       })
     );
+    expect(template?.defaultBaseDir).toBe('artifacts/report-kit/data-report');
+    expect(JSON.stringify(template)).not.toContain('data/generated');
   });
 
   it('resolves the actual react-ts template directory from the package', () => {

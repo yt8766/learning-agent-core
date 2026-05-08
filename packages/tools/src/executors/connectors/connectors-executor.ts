@@ -1,9 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
-
 import type { ToolExecutionRequest } from '@agent/runtime';
-
-import { toWorkspacePath } from '@agent/runtime';
 
 type ConnectorDraft = {
   connectorId: string;
@@ -19,7 +14,18 @@ type ConnectorDraft = {
   createdAt: string;
 };
 
-export async function executeConnectorTool(request: ToolExecutionRequest) {
+export type ConnectorDraftStorage = {
+  listConnectorDrafts(): Promise<ConnectorDraft[]>;
+  readConnectorDraft(connectorId: string): Promise<ConnectorDraft>;
+  writeConnectorDraft(draft: ConnectorDraft): Promise<void>;
+};
+
+export type ConnectorExecutorOptions = {
+  storage?: ConnectorDraftStorage;
+};
+
+export async function executeConnectorTool(request: ToolExecutionRequest, options: ConnectorExecutorOptions = {}) {
+  const storage = options.storage ?? getDefaultConnectorDraftStorage();
   switch (request.toolName) {
     case 'create_connector_draft': {
       const templateId = String(request.input.templateId ?? '').trim();
@@ -37,7 +43,7 @@ export async function executeConnectorTool(request: ToolExecutionRequest) {
         createdAt: now,
         updatedAt: now
       };
-      await writeConnectorDraft(draft);
+      await storage.writeConnectorDraft(draft);
       return {
         outputSummary: `Created connector draft ${connectorId}`,
         rawOutput: draft
@@ -49,14 +55,14 @@ export async function executeConnectorTool(request: ToolExecutionRequest) {
       if (!connectorId || !secretRef) {
         throw new Error('update_connector_secret requires connectorId and secretRef.');
       }
-      const draft = await readConnectorDraft(connectorId);
+      const draft = await storage.readConnectorDraft(connectorId);
       const updated = {
         ...draft,
         apiKeyRef: secretRef,
         status: draft.enabled ? 'enabled' : 'configured',
         updatedAt: new Date().toISOString()
       } satisfies ConnectorDraft;
-      await writeConnectorDraft(updated);
+      await storage.writeConnectorDraft(updated);
       return {
         outputSummary: `Updated connector secret reference for ${connectorId}`,
         rawOutput: updated
@@ -68,7 +74,7 @@ export async function executeConnectorTool(request: ToolExecutionRequest) {
       if (!connectorId) {
         throw new Error(`${request.toolName} requires connectorId.`);
       }
-      const draft = await readConnectorDraft(connectorId);
+      const draft = await storage.readConnectorDraft(connectorId);
       const enabled = request.toolName === 'enable_connector';
       const updated = {
         ...draft,
@@ -76,14 +82,14 @@ export async function executeConnectorTool(request: ToolExecutionRequest) {
         status: enabled ? 'enabled' : 'disabled',
         updatedAt: new Date().toISOString()
       } satisfies ConnectorDraft;
-      await writeConnectorDraft(updated);
+      await storage.writeConnectorDraft(updated);
       return {
         outputSummary: `${enabled ? 'Enabled' : 'Disabled'} connector ${connectorId}`,
         rawOutput: updated
       };
     }
     case 'list_connectors': {
-      const drafts = await listConnectorDrafts();
+      const drafts = await storage.listConnectorDrafts();
       return {
         outputSummary: `Listed ${drafts.length} connector draft${drafts.length === 1 ? '' : 's'}`,
         rawOutput: { items: drafts }
@@ -94,30 +100,29 @@ export async function executeConnectorTool(request: ToolExecutionRequest) {
   }
 }
 
-async function listConnectorDrafts() {
-  const dir = toWorkspacePath('data/runtime/connectors');
-  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
-  const drafts: ConnectorDraft[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.json')) {
-      continue;
+function createInMemoryConnectorDraftStorage(): ConnectorDraftStorage {
+  const drafts = new Map<string, ConnectorDraft>();
+  return {
+    async listConnectorDrafts() {
+      return [...drafts.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    },
+    async readConnectorDraft(connectorId) {
+      const draft = drafts.get(connectorId);
+      if (!draft) {
+        throw new Error(`Connector draft ${connectorId} was not found.`);
+      }
+      return draft;
+    },
+    async writeConnectorDraft(draft) {
+      drafts.set(draft.connectorId, draft);
     }
-    const filePath = toWorkspacePath(`data/runtime/connectors/${entry.name}`);
-    drafts.push(JSON.parse(await readFile(filePath, 'utf8')) as ConnectorDraft);
-  }
-  return drafts.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  };
 }
 
-async function readConnectorDraft(connectorId: string) {
-  const path = toWorkspacePath(`data/runtime/connectors/${connectorId}.json`);
-  const raw = await readFile(path, 'utf8');
-  return JSON.parse(raw) as ConnectorDraft;
-}
+const defaultConnectorDraftStorage = createInMemoryConnectorDraftStorage();
 
-async function writeConnectorDraft(draft: ConnectorDraft) {
-  const path = toWorkspacePath(`data/runtime/connectors/${draft.connectorId}.json`);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(draft, null, 2)}\n`);
+function getDefaultConnectorDraftStorage(): ConnectorDraftStorage {
+  return defaultConnectorDraftStorage;
 }
 
 function toConnectorId(templateId: string) {

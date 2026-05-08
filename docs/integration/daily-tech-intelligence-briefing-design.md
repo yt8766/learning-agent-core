@@ -3,7 +3,7 @@
 状态：current
 文档类型：integration
 适用范围：daily tech intelligence briefing integration
-最后核对：2026-04-29
+最后核对：2026-05-08
 
 本主题主文档：
 
@@ -45,7 +45,9 @@
 - `agents/intel-engine/src/runtime/briefing/briefing-schedule.ts`
   - category schedule、adaptive interval、lookback days 和 cron 计算。
 - `agents/intel-engine/src/runtime/briefing/briefing-storage.ts`
-  - schedules、runs、history、feedback、schedule state 的本地 JSON 存储。
+  - schedules、runs、history、feedback、schedule state 的兼容 facade，内部委托 briefing-owned repository。
+- `agents/intel-engine/src/runtime/briefing/briefing-storage-repository.ts`
+  - `BriefingStorageRepository` 接口、默认 file repository、memory repository 与 PostgreSQL-ready adapter 边界。
 - `agents/intel-engine/src/runtime/briefing/briefing.types.ts`
   - 定义 `TechBriefingCategory`、`TechBriefingItem`、run record、schedule record 等本地类型。
 - `agents/intel-engine/src/runtime/briefing/briefing-mcp-search-policy.ts`
@@ -64,15 +66,15 @@
 - `backend-tech`
 - `cloud-infra-tech`
 
-当前已经接入的本地存储文件包括：
+当前默认 file repository 存储文件包括：
 
 ```text
-data/runtime/briefings/daily-tech-briefing-runs.json
-data/runtime/briefings/daily-tech-briefing-history.json
-data/runtime/briefings/daily-tech-briefing-schedule-state.json
-data/runtime/briefings/daily-tech-briefing-feedback.json
-data/runtime/briefings/raw/<yyyy-mm-dd>-<category>.json
-data/runtime/schedules/daily-tech-briefing-<category>.json
+data/intel-engine/briefing/daily-tech-briefing-runs.json
+data/intel-engine/briefing/daily-tech-briefing-history.json
+data/intel-engine/briefing/daily-tech-briefing-schedule-state.json
+data/intel-engine/briefing/daily-tech-briefing-feedback.json
+data/intel-engine/briefing/raw/<yyyy-mm-dd>-<category>.json
+data/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
 `raw/` 当前用于保存 MCP supplemental search 原始结果，供后续误报追溯与分类策略回放。展示给 admin/chat 的数据仍必须使用 `TechBriefingItem` 归一化结果，不能直接依赖 raw payload；如果下游需要在 digest / alert 中显示证据链，也应输出项目内归一化的 evidence summary / source refs，而不是把 raw payload 直接透传到交付层。
@@ -172,14 +174,19 @@ MCP 返回结果进入主链前必须经过：
 
 ### 3.4 本地存储
 
-短期继续使用本地 JSON，路径固定在仓库根级 `data/runtime/briefings`。建议补充原始证据目录：
+短期默认继续使用本地 JSON，但路径固定在 intel-owned storage root
+`data/intel-engine/briefing`，禁止 briefing runtime 新增写入 root `data/runtime/briefings`
+或 `data/runtime/schedules`。生产调用应经 `BriefingStorageRepository` 注入宿主 storage；默认
+file repository 只作为本地运行兜底。原始证据目录：
 
 ```text
-data/runtime/briefings/
+data/intel-engine/briefing/
 ├─ daily-tech-briefing-runs.json
 ├─ daily-tech-briefing-history.json
 ├─ daily-tech-briefing-schedule-state.json
 ├─ daily-tech-briefing-feedback.json
+├─ schedules/
+│  └─ daily-tech-briefing-<category>.json
 └─ raw/
    ├─ 2026-04-23-frontend-security.json
    ├─ 2026-04-23-ai-tech.json
@@ -373,7 +380,8 @@ AI 模型类优先级：
 - 新增能力不得恢复或扩展 backend `runtime/briefings`。
 - 补充 axios、Apifox、Claude Code、Cursor、MCP、OpenAI、Anthropic、Google AI、DeepSeek/Qwen 等源。
 - MCP 搜索优先走现有 `webSearchPrime` 能力边界；MiniMax Token Plan `minimax:web_search` 已作为同类搜索供应商接入，业务主链不直接依赖供应商返回结构。
-- 保存 run/history/feedback 到 `data/runtime/briefings`。
+- 保存 run/history/feedback/schedule/raw evidence 到 `BriefingStorageRepository`；默认 file repository
+  落在 `data/intel-engine/briefing`。
 
 第二阶段：证据与安全可信度。
 
@@ -427,7 +435,8 @@ pnpm check:docs
 - 官方 advisory 优先。
 - 搜索结果只作为补充发现。
 - 安全类不确定事件必须标注 `watch`。
-- 本地存储默认位于仓库根级 `data/runtime/briefings`。
+- 本地存储默认位于 intel-owned `data/intel-engine/briefing`，生产路径优先注入宿主
+  `BriefingStorageRepository`。
 - admin 治理面负责配置和反馈，agent-chat 只负责必要时展示。
 
 ## 5. 继续阅读

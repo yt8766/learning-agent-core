@@ -1,12 +1,16 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { isAbsolute, resolve } from 'node:path';
 
 import { RuntimeProfile } from '@agent/config';
 import { type SkillManifestRecord, type SkillSourceRecord } from '@agent/core';
+import type { SkillSourceRemoteCacheRepository } from '@agent/skill';
+
+import { RuntimeSkillSourceRemoteCacheRepository } from './runtime-skill-storage.repository';
 
 interface SyncContext {
   workspaceRoot: string;
   profile: RuntimeProfile;
+  remoteCacheRepository?: SkillSourceRemoteCacheRepository;
 }
 
 interface RemoteManifestIndexPayload {
@@ -23,10 +27,6 @@ export interface SkillSourceSyncResult {
   error?: string;
 }
 
-function resolveCacheFilePath(workspaceRoot: string, sourceId: string): string {
-  return resolve(workspaceRoot, 'data', 'skills', 'remote-sources', sourceId, 'index.json');
-}
-
 function toLocalPath(candidate: string, workspaceRoot: string): string {
   if (isAbsolute(candidate)) {
     return candidate;
@@ -35,7 +35,12 @@ function toLocalPath(candidate: string, workspaceRoot: string): string {
 }
 
 export class SkillSourceSyncService {
-  constructor(private readonly context: SyncContext) {}
+  private readonly remoteCacheRepository: SkillSourceRemoteCacheRepository;
+
+  constructor(private readonly context: SyncContext) {
+    this.remoteCacheRepository =
+      context.remoteCacheRepository ?? new RuntimeSkillSourceRemoteCacheRepository(context.workspaceRoot);
+  }
 
   async syncSource(source: SkillSourceRecord): Promise<SkillSourceSyncResult> {
     if (source.discoveryMode === 'local-dir') {
@@ -46,7 +51,6 @@ export class SkillSourceSyncService {
       };
     }
 
-    const cacheFilePath = resolveCacheFilePath(this.context.workspaceRoot, source.id);
     const syncedAt = new Date().toISOString();
 
     try {
@@ -55,13 +59,12 @@ export class SkillSourceSyncService {
         ...manifest,
         sourceId: manifest.sourceId || source.id
       }));
-      await mkdir(dirname(cacheFilePath), { recursive: true });
-      await writeFile(cacheFilePath, JSON.stringify({ syncedAt, manifests: normalized }, null, 2));
+      const cacheWriteResult = await this.remoteCacheRepository.write(source.id, { syncedAt, manifests: normalized });
       return {
         sourceId: source.id,
         status: 'synced',
         syncedAt,
-        cacheFilePath,
+        cacheFilePath: cacheWriteResult.cacheFilePath,
         manifestCount: normalized.length
       };
     } catch (error) {
@@ -69,7 +72,6 @@ export class SkillSourceSyncService {
         sourceId: source.id,
         status: 'failed',
         syncedAt,
-        cacheFilePath,
         manifestCount: 0,
         error: error instanceof Error ? error.message : 'skill_source_sync_failed'
       };
@@ -77,23 +79,18 @@ export class SkillSourceSyncService {
   }
 
   async readCachedManifests(source: SkillSourceRecord): Promise<SkillManifestRecord[]> {
-    const cacheFilePath = resolveCacheFilePath(this.context.workspaceRoot, source.id);
-    try {
-      const raw = await readFile(cacheFilePath, 'utf8');
-      const payload = JSON.parse(raw) as { manifests?: SkillManifestRecord[] };
-      return Array.isArray(payload.manifests) ? payload.manifests : [];
-    } catch {
-      return [];
-    }
+    const payload = await this.remoteCacheRepository.read(source.id);
+    return Array.isArray(payload?.manifests) ? payload.manifests : [];
   }
 
   async readCachedSyncState(
     source: SkillSourceRecord
   ): Promise<Pick<SkillSourceRecord, 'lastSyncedAt' | 'healthState' | 'healthReason'>> {
-    const cacheFilePath = resolveCacheFilePath(this.context.workspaceRoot, source.id);
     try {
-      const raw = await readFile(cacheFilePath, 'utf8');
-      const payload = JSON.parse(raw) as { syncedAt?: string; manifests?: SkillManifestRecord[] };
+      const payload = await this.remoteCacheRepository.read(source.id);
+      if (!payload) {
+        throw new Error('skill_source_cache_missing');
+      }
       return {
         lastSyncedAt: payload.syncedAt,
         healthState: 'healthy',

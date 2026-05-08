@@ -152,8 +152,8 @@ describe('LocalSandboxExecutor find-skills', () => {
     });
 
     expect(result.ok).toBe(true);
-    const output = result.rawOutput as { path: string };
-    const created = JSON.parse(await readFile(output.path, 'utf8')) as { name: string; schedule: string };
+    const output = result.rawOutput as { schedule: { name: string; schedule: string } };
+    const created = output.schedule;
     expect(created.name).toBe('Daily Lark Digest');
     expect(created.schedule).toBe('weekday 09:00');
   });

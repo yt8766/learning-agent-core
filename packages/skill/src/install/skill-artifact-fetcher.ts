@@ -1,7 +1,8 @@
-import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { basename, extname, isAbsolute, join, resolve } from 'node:path';
 
 import type { SkillManifestRecord, SkillSourceRecord } from '@agent/core';
+import type { SkillDraftRecord, SkillDraftRepository } from '../drafts';
 
 export interface SkillArtifactFetchResult {
   stagingDir: string;
@@ -11,6 +12,22 @@ export interface SkillArtifactFetchResult {
   metadata: Record<string, unknown>;
 }
 
+export interface SkillArtifactStorageRepository {
+  prepareStaging(receiptId: string): Promise<string>;
+  writeText(stagingDir: string, relativePath: string, content: string): Promise<string>;
+  writeBytes(stagingDir: string, relativePath: string, bytes: Uint8Array): Promise<string>;
+  copyPathToStaging(stagingDir: string, sourcePath: string, relativePath: string): Promise<string>;
+  promoteFromStaging(stagingDir: string, installDir: string): Promise<void>;
+  removeStaging(stagingDir: string): Promise<void>;
+  removeStagingByReceiptId(receiptId: string): Promise<void>;
+}
+
+export interface SkillArtifactFetcherOptions {
+  workspaceRoot: string;
+  storageRepository: SkillArtifactStorageRepository;
+  skillDraftRepository?: SkillDraftRepository;
+}
+
 const WORKSPACE_DRAFT_ENTRY_PREFIX = 'workspace-draft:';
 
 function resolvePath(candidate: string, workspaceRoot: string): string {
@@ -18,21 +35,43 @@ function resolvePath(candidate: string, workspaceRoot: string): string {
 }
 
 export class SkillArtifactFetcher {
-  constructor(private readonly workspaceRoot: string) {}
+  private readonly workspaceRoot: string;
+  private readonly storageRepository?: SkillArtifactStorageRepository;
+  private readonly skillDraftRepository?: SkillDraftRepository;
+
+  constructor(workspaceRoot: string, options?: Partial<Omit<SkillArtifactFetcherOptions, 'workspaceRoot'>>);
+  constructor(options: SkillArtifactFetcherOptions);
+  constructor(
+    input: string | SkillArtifactFetcherOptions,
+    options: Partial<Omit<SkillArtifactFetcherOptions, 'workspaceRoot'>> = {}
+  ) {
+    if (typeof input === 'string') {
+      this.workspaceRoot = input;
+      this.storageRepository = options.storageRepository;
+      this.skillDraftRepository = options.skillDraftRepository;
+      return;
+    }
+
+    this.workspaceRoot = input.workspaceRoot;
+    this.storageRepository = input.storageRepository;
+    this.skillDraftRepository = input.skillDraftRepository;
+  }
 
   async fetchToStaging(
     manifest: SkillManifestRecord,
     source: SkillSourceRecord,
     receiptId: string
   ): Promise<SkillArtifactFetchResult> {
-    const stagingDir = resolve(this.workspaceRoot, 'data', 'skills', 'staging', receiptId);
-    await rm(stagingDir, { recursive: true, force: true });
-    await mkdir(stagingDir, { recursive: true });
+    const storageRepository = this.requireStorageRepository();
+    const stagingDir = await storageRepository.prepareStaging(receiptId);
 
     const target = manifest.artifactUrl ?? manifest.entry;
     if (!target) {
-      const fallbackPath = join(stagingDir, 'manifest.json');
-      await writeFile(fallbackPath, JSON.stringify({ manifest, source }, null, 2));
+      const fallbackPath = await storageRepository.writeText(
+        stagingDir,
+        'manifest.json',
+        JSON.stringify({ manifest, source }, null, 2)
+      );
       return {
         stagingDir,
         artifactPath: fallbackPath,
@@ -53,8 +92,7 @@ export class SkillArtifactFetcher {
       }
       const bytes = new Uint8Array(await response.arrayBuffer());
       const filename = basename(new URL(target).pathname || `${manifest.id}.artifact`);
-      const artifactPath = join(stagingDir, filename);
-      await writeFile(artifactPath, bytes);
+      const artifactPath = await storageRepository.writeBytes(stagingDir, filename, bytes);
       return {
         stagingDir,
         artifactPath,
@@ -67,8 +105,7 @@ export class SkillArtifactFetcher {
     const sourcePath = resolvePath(target, this.workspaceRoot);
     const fileStat = await stat(sourcePath);
     if (fileStat.isDirectory()) {
-      const destDir = join(stagingDir, basename(sourcePath));
-      await cp(sourcePath, destDir, { recursive: true });
+      const destDir = await storageRepository.copyPathToStaging(stagingDir, sourcePath, basename(sourcePath));
       return {
         stagingDir,
         artifactPath: destDir,
@@ -78,12 +115,12 @@ export class SkillArtifactFetcher {
     }
 
     const filename = basename(sourcePath);
-    const destPath = join(stagingDir, filename);
+    let destPath: string;
     if (extname(filename).toLowerCase() === '.json') {
       const raw = await readFile(sourcePath, 'utf8');
-      await writeFile(destPath, raw);
+      destPath = await storageRepository.writeText(stagingDir, filename, raw);
     } else {
-      await cp(sourcePath, destPath);
+      destPath = await storageRepository.copyPathToStaging(stagingDir, sourcePath, filename);
     }
     return {
       stagingDir,
@@ -95,10 +132,15 @@ export class SkillArtifactFetcher {
   }
 
   async promoteFromStaging(stagingDir: string, installDir: string): Promise<void> {
-    await mkdir(dirname(installDir), { recursive: true });
-    await rm(installDir, { recursive: true, force: true });
-    await cp(stagingDir, installDir, { recursive: true });
-    await rm(stagingDir, { recursive: true, force: true });
+    await this.requireStorageRepository().promoteFromStaging(stagingDir, installDir);
+  }
+
+  async removeStaging(stagingDir: string): Promise<void> {
+    await this.requireStorageRepository().removeStaging(stagingDir);
+  }
+
+  async removeStagingByReceiptId(receiptId: string): Promise<void> {
+    await this.requireStorageRepository().removeStagingByReceiptId(receiptId);
   }
 
   private async materializeWorkspaceDraft(
@@ -107,26 +149,8 @@ export class SkillArtifactFetcher {
     stagingDir: string,
     draftId: string
   ): Promise<SkillArtifactFetchResult> {
-    const draftsPath = resolve(this.workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json');
-    const raw = await readFile(draftsPath, 'utf8');
-    const drafts = JSON.parse(raw) as Array<{
-      id?: string;
-      workspaceId?: string;
-      title?: string;
-      description?: string;
-      bodyMarkdown?: string;
-      requiredTools?: string[];
-      requiredConnectors?: string[];
-      sourceTaskId?: string;
-      sourceEvidenceIds?: string[];
-      riskLevel?: string;
-      confidence?: number;
-      status?: string;
-      approvedBy?: string;
-      approvedAt?: string;
-      updatedAt?: string;
-    }>;
-    const draft = drafts.find(candidate => candidate.id === draftId);
+    const storageRepository = this.requireStorageRepository();
+    const draft = await this.requireSkillDraftRepository().get(draftId);
     if (!draft) {
       throw new Error(`workspace_draft_not_found:${draftId}`);
     }
@@ -137,12 +161,11 @@ export class SkillArtifactFetcher {
       throw new Error(`workspace_draft_body_missing:${draftId}`);
     }
 
-    const skillPath = join(stagingDir, 'SKILL.md');
-    await writeFile(skillPath, draft.bodyMarkdown, 'utf8');
-    await writeFile(
-      join(stagingDir, 'manifest.json'),
-      `${JSON.stringify({ manifest, source, draft: toWorkspaceDraftArtifactProjection(draft) }, null, 2)}\n`,
-      'utf8'
+    const skillPath = await storageRepository.writeText(stagingDir, 'SKILL.md', draft.bodyMarkdown);
+    await storageRepository.writeText(
+      stagingDir,
+      'manifest.json',
+      `${JSON.stringify({ manifest, source, draft: toWorkspaceDraftArtifactProjection(draft) }, null, 2)}\n`
     );
 
     return {
@@ -156,6 +179,20 @@ export class SkillArtifactFetcher {
       }
     };
   }
+
+  private requireStorageRepository(): SkillArtifactStorageRepository {
+    if (!this.storageRepository) {
+      throw new Error('skill_artifact_storage_repository_required');
+    }
+    return this.storageRepository;
+  }
+
+  private requireSkillDraftRepository(): SkillDraftRepository {
+    if (!this.skillDraftRepository) {
+      throw new Error('skill_draft_repository_required');
+    }
+    return this.skillDraftRepository;
+  }
 }
 
 function parseWorkspaceDraftEntry(target: string): string | undefined {
@@ -167,22 +204,7 @@ function parseWorkspaceDraftEntry(target: string): string | undefined {
   return draftId || undefined;
 }
 
-function toWorkspaceDraftArtifactProjection(draft: {
-  id?: string;
-  workspaceId?: string;
-  title?: string;
-  description?: string;
-  requiredTools?: string[];
-  requiredConnectors?: string[];
-  sourceTaskId?: string;
-  sourceEvidenceIds?: string[];
-  riskLevel?: string;
-  confidence?: number;
-  status?: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  updatedAt?: string;
-}) {
+function toWorkspaceDraftArtifactProjection(draft: SkillDraftRecord) {
   return {
     id: draft.id,
     workspaceId: draft.workspaceId,

@@ -164,10 +164,7 @@ export function readKnowledgeRagAnswerProviderError(provider: KnowledgeAnswerPro
 }
 
 function buildSdkChatMessages(input: KnowledgeAnswerProviderInput) {
-  const context =
-    input.citations.length > 0
-      ? input.citations.map((citation, index) => `[${index + 1}] ${formatCitation(citation)}`).join('\n\n')
-      : '未检索到可引用片段。';
+  const context = input.contextBundle?.trim() || buildCitationContext(input.citations);
 
   return [
     {
@@ -177,13 +174,19 @@ function buildSdkChatMessages(input: KnowledgeAnswerProviderInput) {
     {
       role: 'system' as const,
       name: 'developer',
-      content: `Context citations:\n${context}`
+      content: `Context:\n${context}`
     },
     {
       role: 'user' as const,
       content: input.rewrittenQuery || input.originalQuery
     }
   ];
+}
+
+function buildCitationContext(citations: Citation[]): string {
+  return citations.length > 0
+    ? citations.map((citation, index) => `[${index + 1}] ${formatCitation(citation)}`).join('\n\n')
+    : '未检索到可引用片段。';
 }
 
 function formatCitation(citation: Citation): string {

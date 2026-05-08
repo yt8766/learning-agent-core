@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises';
+import { access, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -16,6 +16,49 @@ async function pathExists(path: string): Promise<boolean> {
 }
 
 describe('sandbox browser artifact writing', () => {
+  it('uses explicit artifact storage when no browser artifact writer is injected', async () => {
+    const artifactStorageDir = resolve(process.cwd(), 'artifacts/runtime/browser-replays/browser_default_artifacts');
+    await rm(resolve(process.cwd(), 'data/browser-replays/browser_default_artifacts'), {
+      recursive: true,
+      force: true
+    });
+    await rm(artifactStorageDir, {
+      recursive: true,
+      force: true
+    });
+
+    try {
+      const result = await executeBrowsePage(
+        {
+          toolName: 'browse_page',
+          intent: 'call_external_api',
+          input: {
+            url: 'http://localhost:4173/dashboard',
+            goal: 'capture dashboard state'
+          }
+        },
+        {
+          now: () => new Date('2026-05-08T00:00:00.000Z'),
+          sessionIdFactory: () => 'browser_default_artifacts'
+        }
+      );
+
+      expect(result.rawOutput).toMatchObject({
+        sessionId: 'browser_default_artifacts',
+        artifactRef: 'artifacts/runtime/browser-replays/browser_default_artifacts/replay.json',
+        snapshotRef: 'artifacts/runtime/browser-replays/browser_default_artifacts/snapshot.html',
+        screenshotRef: 'artifacts/runtime/browser-replays/browser_default_artifacts/screenshot.txt'
+      });
+      expect(JSON.stringify(result.rawOutput)).not.toContain('data/browser-replays');
+      expect(await pathExists(resolve(process.cwd(), 'data/browser-replays/browser_default_artifacts'))).toBe(false);
+    } finally {
+      await rm(artifactStorageDir, {
+        recursive: true,
+        force: true
+      });
+    }
+  });
+
   it('uses an injected artifact writer and returns stable artifact references without writing root browser-replays', async () => {
     const writes: Array<{ kind: string; fileName: string; content: string }> = [];
     const writer: BrowserReplayArtifactWriter = {

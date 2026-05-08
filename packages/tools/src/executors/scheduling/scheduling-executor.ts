@@ -1,19 +1,20 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { relative } from 'node:path';
-
 import type { ToolExecutionRequest } from '@agent/runtime';
 
-import { toWorkspacePath } from '@agent/runtime';
+import type { ScheduleRepository } from '../../scheduling/schedule-repository';
+import { getDefaultScheduleRepository } from '../../scheduling/schedule-repository';
 
-export async function executeSchedulingTool(request: ToolExecutionRequest) {
+export type SchedulingExecutorOptions = {
+  repository?: ScheduleRepository;
+};
+
+export async function executeSchedulingTool(request: ToolExecutionRequest, options: SchedulingExecutorOptions = {}) {
+  const repository = options.repository ?? getDefaultScheduleRepository();
   if (request.toolName === 'schedule_task') {
     const scheduleName =
       typeof request.input.name === 'string' && request.input.name.trim().length > 0
         ? request.input.name.trim()
         : 'scheduled-task';
     const normalizedId = toScheduleId(scheduleName);
-    const scheduleDir = toWorkspacePath('data/runtime/schedules');
-    const schedulePath = toWorkspacePath(`data/runtime/schedules/${normalizedId}.json`);
     const payload = {
       id: normalizedId,
       name: scheduleName,
@@ -23,27 +24,16 @@ export async function executeSchedulingTool(request: ToolExecutionRequest) {
       cwd: typeof request.input.cwd === 'string' ? request.input.cwd : '.',
       createdAt: new Date().toISOString(),
       source: 'sandbox-tool'
-    };
-    await mkdir(scheduleDir, { recursive: true });
-    await writeFile(schedulePath, JSON.stringify(payload, null, 2));
+    } as const;
+    await repository.createSchedule(payload);
     return {
       outputSummary: `Scheduled runtime task "${scheduleName}" as ${normalizedId}`,
-      rawOutput: { path: schedulePath, schedule: payload }
+      rawOutput: { schedule: payload }
     };
   }
 
   if (request.toolName === 'list_scheduled_tasks') {
-    const scheduleDir = toWorkspacePath('data/runtime/schedules');
-    const entries = await readdir(scheduleDir, { withFileTypes: true }).catch(() => []);
-    const items = [];
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.json')) {
-        continue;
-      }
-      const filePath = toWorkspacePath(`data/runtime/schedules/${entry.name}`);
-      const schedule = JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>;
-      items.push(schedule);
-    }
+    const items = await repository.listSchedules();
     return {
       outputSummary: `Loaded ${items.length} scheduled task${items.length === 1 ? '' : 's'}`,
       rawOutput: { items }
@@ -55,17 +45,16 @@ export async function executeSchedulingTool(request: ToolExecutionRequest) {
     if (!id) {
       throw new Error('cancel_scheduled_task requires an id.');
     }
-    const schedulePath = toWorkspacePath(`data/runtime/schedules/${id}.json`);
-    const schedule = JSON.parse(await readFile(schedulePath, 'utf8')) as Record<string, unknown>;
+    const schedule = await repository.readSchedule(id);
     const updated = {
       ...schedule,
       status: 'DISABLED',
       cancelledAt: new Date().toISOString()
     };
-    await writeFile(schedulePath, JSON.stringify(updated, null, 2));
+    await repository.updateSchedule(updated);
     return {
       outputSummary: `Cancelled scheduled task ${id}`,
-      rawOutput: { path: relative(process.cwd(), schedulePath), schedule: updated }
+      rawOutput: { schedule: updated }
     };
   }
 

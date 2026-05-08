@@ -238,6 +238,13 @@ Runtime state persistence：
 - Postgres runtime state 表使用可查询主列承载 task/session/event/checkpoint/audit 的核心字段，同时在同领域表的 `metadata`、`payload` 或 `state` jsonb 字段保留完整 runtime 记录，避免迁移期间丢失 cancel、recover、observe 所需的宽松状态。
 - 新增 runtime state 领域持久化时，不要回退到 root `data/runtime/*.json`，也不要新增单一 catch-all JSON 表；应继续扩展领域表、mapper 和 `scripts/check-no-root-data-runtime.mjs` 的守卫。
 
+Legacy data import：
+
+- `LEGACY_DATA_IMPORT=once` 的 backend-owned 骨架位于 `src/runtime/legacy-data-import/`，当前只读取旧 `data/runtime`、`data/memory`、`data/rules`、`data/knowledge`、`data/skills` 下的 `.json` / `.jsonl` 文件。
+- Runner 会为每条 payload 写稳定 receipt，为 parse/read/write 失败写稳定 error，并通过 repository 的 `hasReceipt()` / `hasError()` 保证重复运行不会重复导入或重复记录同一错误。
+- Runner 不删除、不修改源文件；删除 root `data/*` 必须等 root-data deprecation plan 的所有阶段完成。
+- `SqlLegacyDataImportRepository` 只提供 Postgres-ready import staging tables：`legacy_data_import_records`、`legacy_data_import_receipts`、`legacy_data_import_errors`。这些表不是终态领域表，后续接真实 memory/rules/knowledge/skills/runtime repositories 时，应在 repository/mapper 层完成领域写入，不能让 runner 直接耦合领域 service。
+
 Unified database schema：
 
 - `apps/backend/agent-server/src/infrastructure/database/schemas/` 是统一后端数据库 DDL 的基础设施入口，当前拆分为 `identity-schema.sql.ts`、`knowledge-schema.sql.ts` 与 `runtime-schema.sql.ts`。

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemorySkillInstallRepository, SkillArtifactFetcher, type SkillInstallRepository } from '@agent/skill';
+import { MemorySkillInstallRepository, type SkillInstallRepository } from '@agent/skill';
 
 const {
   buildSkillsAddCommandMock,
@@ -40,6 +40,7 @@ import {
   writeSkillInstallReceipt,
   type RuntimeSkillInstallContext
 } from '../../../src/runtime/skills/runtime-skill-install.service';
+import { SkillArtifactFetcher } from '../../../src/runtime/skills/skill-artifact-fetcher';
 
 function createContext(
   root: string,
@@ -53,6 +54,7 @@ function createContext(
     integrityVerified: true
   }));
   const promoteFromStaging = vi.fn(async () => undefined);
+  const removeStagingByReceiptId = vi.fn(async () => undefined);
   const install = vi.fn(async () => ({ stdout: 'installed', stderr: '' }));
   const check = vi.fn(async () => ({ stdout: 'checked', stderr: '' }));
   const update = vi.fn(async () => ({ stdout: 'updated', stderr: '' }));
@@ -64,14 +66,15 @@ function createContext(
       skillPackagesRoot: join(root, 'packages')
     },
     skillRegistry: { publishToLab },
-    skillArtifactFetcher: { fetchToStaging, promoteFromStaging },
+    skillArtifactFetcher: { fetchToStaging, promoteFromStaging, removeStagingByReceiptId },
     listSkillSources: vi.fn(async () => []),
     registerInstalledSkillWorker,
     remoteSkillCli: { install, check, update },
-    skillInstallRepository: overrides.skillInstallRepository,
+    skillInstallRepository: overrides.skillInstallRepository ?? new MemorySkillInstallRepository(),
     publishToLab,
     fetchToStaging,
     promoteFromStaging,
+    removeStagingByReceiptId,
     install
   };
 }
@@ -260,13 +263,17 @@ describe('runtime-skill-install.service', () => {
           workspaceId: 'workspace-platform',
           title: 'Reuse browser evidence',
           description: 'Capture repeated browser evidence collection.',
+          triggerHints: ['browser evidence'],
           bodyMarkdown: '# Reuse browser evidence\n\nOpen the evidence source and cite it.',
           requiredTools: ['browser.open'],
           requiredConnectors: ['browser-mcp'],
+          sourceTaskId: 'task-1',
           source: 'workspace-vault',
           riskLevel: 'medium',
           confidence: 0.82,
+          sourceEvidenceIds: ['evidence-1'],
           status: 'active',
+          reuseStats: { count: 0 },
           approvedBy: 'reviewer-1',
           approvedAt: '2026-04-26T01:02:03.000Z',
           createdAt: '2026-04-26T01:00:00.000Z',
@@ -333,6 +340,7 @@ describe('runtime-skill-install.service', () => {
         result: 'install_failed'
       })
     );
+    expect(context.removeStagingByReceiptId).toHaveBeenCalledWith('receipt-failed');
   });
 
   it('finalizes remote installs, validates missing repo, and delegates check/update', async () => {

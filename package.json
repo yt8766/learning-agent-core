@@ -29,6 +29,7 @@
     "check:staged": "node ./scripts/check-staged.js",
     "check:backend-structure": "node ./scripts/check-backend-structure.js",
     "check:barrel-layout": "node ./scripts/check-barrel-layout.js",
+    "check:no-root-data-runtime": "node ./scripts/check-no-root-data-runtime.mjs",
     "check:package-boundaries": "node ./scripts/check-package-boundaries.js",
     "check:source-artifacts": "node ./scripts/check-source-artifacts.js",
     "check:docs": "node ./scripts/check-docs.js",

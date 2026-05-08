@@ -171,7 +171,9 @@ export class LocalSandboxExecutor implements SandboxExecutor {
       case 'write_data_report_bundle': {
         const bundle = request.input.bundle as any;
         const targetRoot =
-          typeof request.input.targetRoot === 'string' ? request.input.targetRoot : 'data/generated/data-report-output';
+          typeof request.input.targetRoot === 'string'
+            ? request.input.targetRoot
+            : 'artifacts/report-kit/data-report-output';
         const result = await writeDataReportBundle({
           bundle,
           targetRoot

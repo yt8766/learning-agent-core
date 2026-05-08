@@ -156,13 +156,13 @@ export function buildToolInput(
       return { path: '.', goal: context.goal, researchSummary, actionPrompt, skill: skillEnvelope };
     case 'write_local_file':
       return {
-        path: 'data/generated/executor-output.txt',
+        path: 'artifacts/coder/executor-output.txt',
         content: `目标：${context.goal}\n研究摘要：${researchSummary}\n动作：${actionPrompt}`,
         skill: skillEnvelope
       };
     case 'delete_local_file':
       return {
-        path: 'data/generated/executor-output.txt',
+        path: 'artifacts/coder/executor-output.txt',
         recursive: false,
         goal: context.goal,
         researchSummary,

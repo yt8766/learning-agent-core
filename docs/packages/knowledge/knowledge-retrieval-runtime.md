@@ -29,7 +29,7 @@ RetrievalRequest
   ─→ KnowledgeRetrievalResult
 ```
 
-`runKnowledgeRetrieval()` 本身**不含 generation 阶段**。当前 `packages/knowledge/src/rag/*` 已提供 knowledge RAG 专用的 planner / retrieval / answer runtime，用于 Knowledge Chat Lab 和统一 `agent-server` knowledge domain；但 retrieval runtime 的 `contextAssembler` 仍只负责产出 prompt-ready context，不应在该阶段调用大模型生成最终回答。上下文组装与生成的职责边界、当前缺口和后续收敛建议见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
+`runKnowledgeRetrieval()` 本身**不含 generation 阶段**。当前 `packages/knowledge/src/rag/*` 已提供 knowledge RAG 专用的 planner / retrieval / answer runtime，用于 Knowledge Chat Lab 和统一 `agent-server` knowledge domain；retrieval runtime 的 `contextAssembler` 只负责产出 prompt-ready context，不在该阶段调用大模型生成最终回答。`ContextAssembler` 支持 `contextAssemblyOptions.budget`，默认 assembler 会按近似 token 预算截断或丢弃 context，并通过 `RetrievalDiagnostics.contextAssembly` 暴露 selected / dropped / truncated / estimated tokens / ordering strategy。上下文组装与生成的职责边界、当前剩余风险和后续收敛建议见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
 
 ## 核心文件结构
 
@@ -47,7 +47,7 @@ packages/knowledge/src/
       post-retrieval-diversifier.ts   ← PostRetrievalDiversifier 接口 + diagnostics
       post-processor.ts               ← RetrievalPostProcessor 接口
       context-expander.ts             ← ContextExpander 接口 + ContextExpansionPolicy / diagnostics
-      context-assembler.ts            ← ContextAssembler 接口
+      context-assembler.ts            ← ContextAssembler 接口；支持 budget options 与结构化 diagnostics，兼容旧 string 返回
     defaults/
       default-query-normalizer.ts     ← deterministic rewrite + query variant generation
       default-query-normalizer.helpers.ts
@@ -55,7 +55,7 @@ packages/knowledge/src/
       default-post-retrieval-ranker.ts      ← retrieval / authority / recency / context-fit signals 排序，可注入 reranker provider
       default-post-retrieval-diversifier.ts ← source / parent coverage 多样化
       default-post-processor.ts       ← score > 0 过滤 + topK trim
-      default-context-assembler.ts    ← 拼接 [N] title\ncontent
+      default-context-assembler.ts    ← 拼接 [N] title\ncontent，并按近似 token budget 截断 / 丢弃
       retrieval-runtime-defaults.ts   ← DEFAULT_RETRIEVAL_LIMIT = 5 等常量
       llm-query-normalizer.ts         ← LlmQueryNormalizer：LLM 改写 + 失败降级
     types/
@@ -499,9 +499,9 @@ Hybrid Search 当前真实边界：
 
 ## 上下文组装与生成边界
 
-当前默认 `DefaultContextAssembler` 只按 `[N] title\ncontent` 拼接命中，尚未执行 `KnowledgeRagPolicy.contextBudgetTokens`、模型上下文窗口、输出预留、历史会话占用或长 chunk 裁剪。`RagAnswerRuntime` 会把 `retrieval.contextBundle` 传给 answer provider；但统一 backend knowledge domain 的 `buildSdkChatMessages()` 当前仍主要按 citations 重新拼接上下文，没有稳定消费自定义 `contextBundle`。
+当前默认 `DefaultContextAssembler` 会按 `[N] title\ncontent` 拼接命中，并在 `contextAssemblyOptions.budget` 存在时按近似 token 预算截断或丢弃 context。`RagRetrievalRuntime` 会把 planner `strategyHints.contextBudgetTokens` 传入 context assembly；`RetrievalDiagnostics.contextAssembly` 会记录 selected / dropped / truncated hit ids、估算 token 和 ordering strategy。
 
-因此，现阶段如果调用方注入自定义 `ContextAssembler`，它会影响 `retrieval.contextBundle`，但不一定影响 backend 最终发给模型的 messages。后续修改 generation 链路时必须优先让 answer provider 消费 `contextBundle`，并把 citations 只作为 grounding / UI 展示引用使用。详细审计见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
+`RagAnswerRuntime` 会把 `retrieval.contextBundle` 传给 answer provider；统一 backend knowledge domain 的 `buildSdkChatMessages()` 会优先消费 `input.contextBundle`，仅在 bundle 为空时 fallback 到 citations。citations 仍只作为 grounding、引用校验和 UI 展示 contract。详细审计见 [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)。
 
 ## 测试
 

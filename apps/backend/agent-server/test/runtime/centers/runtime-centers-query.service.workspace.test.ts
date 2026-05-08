@@ -8,6 +8,7 @@ import {
   getRuntimeWorkspaceDraftStore,
   resetRuntimeWorkspaceDraftStore
 } from '../../../src/runtime/centers/runtime-centers-workspace-drafts';
+import { RuntimeSkillInstallRepository } from '../../../src/runtime/skills/runtime-skill-storage.repository';
 
 describe('RuntimeCentersQueryService workspace center', () => {
   afterEach(() => {
@@ -169,6 +170,7 @@ describe('RuntimeCentersQueryService workspace center', () => {
 
   it('attaches workspace draft install receipt summaries to matching skill drafts', async () => {
     const receiptsRoot = await mkdtemp(join(tmpdir(), 'workspace-receipts-'));
+    const installedRoot = await mkdtemp(join(tmpdir(), 'workspace-installed-'));
     const service = new RuntimeCentersQueryService(
       () =>
         ({
@@ -176,7 +178,8 @@ describe('RuntimeCentersQueryService workspace center', () => {
           getSkillInstallContext: () => ({
             settings: {
               skillReceiptsRoot: receiptsRoot
-            }
+            },
+            skillInstallRepository: new RuntimeSkillInstallRepository({ receiptsRoot, installedRoot })
           })
         }) as any
     );
@@ -231,6 +234,7 @@ describe('RuntimeCentersQueryService workspace center', () => {
 
   it('wires workspace draft provenance evidence summaries from tasks, drafts and receipts', async () => {
     const receiptsRoot = await mkdtemp(join(tmpdir(), 'workspace-provenance-receipts-'));
+    const installedRoot = await mkdtemp(join(tmpdir(), 'workspace-provenance-installed-'));
     const service = new RuntimeCentersQueryService(
       () =>
         ({
@@ -238,7 +242,8 @@ describe('RuntimeCentersQueryService workspace center', () => {
           getSkillInstallContext: () => ({
             settings: {
               skillReceiptsRoot: receiptsRoot
-            }
+            },
+            skillInstallRepository: new RuntimeSkillInstallRepository({ receiptsRoot, installedRoot })
           }),
           orchestrator: {
             listTasks: () => [

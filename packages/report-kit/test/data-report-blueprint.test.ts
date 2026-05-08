@@ -29,22 +29,42 @@ describe('@agent/report-kit data report blueprint', () => {
     });
   });
 
-  it('builds a generic react-ts blueprint with planned scaffold files', () => {
+  it('builds a generic react-ts blueprint with planned artifact scaffold files outside root data', () => {
     const blueprint = buildDataReportBlueprint({
       goal: '生成一个通用数据报表页面',
       templateId: 'react-ts'
     });
 
     expect(blueprint.templateId).toBe('react-ts');
-    expect(blueprint.pageDir).toContain('data/generated/data-report/template');
+    expect(blueprint.baseDir).toBe('artifacts/report-kit/data-report');
+    expect(blueprint.pageDir).toBe('artifacts/report-kit/data-report/template');
     expect(blueprint.plannedFiles).toEqual(
       expect.arrayContaining([
-        'data/generated/data-report/template/App.tsx',
-        'data/generated/data-report/template/index.tsx',
-        'data/generated/data-report/template/package.json',
-        'data/generated/data-report/template/styles.css'
+        'artifacts/report-kit/data-report/template/App.tsx',
+        'artifacts/report-kit/data-report/template/index.tsx',
+        'artifacts/report-kit/data-report/template/package.json',
+        'artifacts/report-kit/data-report/template/styles.css'
       ])
     );
+    expect(JSON.stringify(blueprint)).not.toContain('data/generated');
+  });
+
+  it('uses artifact storage paths for generic modules when no template is available', () => {
+    const blueprint = buildDataReportBlueprint({
+      goal: '生成多个通用数据报表页面',
+      templateId: 'missing-template'
+    });
+
+    expect(blueprint.baseDir).toBe('artifacts/report-kit/data-report');
+    expect(blueprint.modules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          componentDir: 'artifacts/report-kit/data-report/modules/Overview',
+          entryFile: 'artifacts/report-kit/data-report/modules/Overview.tsx'
+        })
+      ])
+    );
+    expect(JSON.stringify(blueprint)).not.toContain('data/generated');
   });
 
   it('resolves bonus-center-data blueprint assets from report-kit', () => {

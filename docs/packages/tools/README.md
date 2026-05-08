@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/tools/`
-最后核对：2026-04-26
+最后核对：2026-05-08
 
 本目录用于沉淀 `packages/tools` 相关文档。
 
@@ -25,8 +25,8 @@
   - ministry/graph 主逻辑
   - 长期混入垂直领域生成引擎
 - 依赖方向：
-  - 只依赖 `@agent/core`、`@agent/config`、模板资产与必要第三方库
-  - 不得反向依赖 `@agent/runtime` 或任意 `agents/*`
+  - 只依赖 `@agent/core`、`@agent/runtime`、模板资产与必要第三方库
+  - 不得依赖任意 `agents/*`
 - 公开入口：
   - 根入口：`@agent/tools`
 - 约定：
@@ -38,8 +38,11 @@
   - `runtime-governance/tools-center.ts` 是 tools center 纯投影逻辑的真实宿主；backend 只保留 app-facing compat 入口
   - `runtime-governance/connector-governance-state.ts` 是 connector governance snapshot mutation 与 template-id 映射规则的真实宿主；backend 只保留 compat 入口
   - `connectors/connector-draft-config.ts` 是 connector draft 默认模板映射、secret update payload 组装与 configured connector 查找规则的真实宿主；backend 只保留 compat 入口
-  - `filesystem/filesystem-executor.ts` 与 `connectors/connectors-executor.ts` 已删除
-  - `scaffold/scaffold-executor.ts`、`scheduling/scheduling-executor.ts`、`runtime-governance/runtime-governance-executor.ts` 已删除
+  - `scheduling/schedule-repository.ts` 是 schedule record repository contract 与默认内存 repository 的真实宿主
+  - `runtime-governance/runtime-governance-repository.ts` 是 archive / recovery / cancellation repository contract 与默认内存 repository 的真实宿主
+  - `executors/connectors/connectors-executor.ts` 只通过显式 `ConnectorDraftStorage` 读写 connector draft；未注入 storage 时使用包内内存默认实现
+  - `executors/scheduling/scheduling-executor.ts` 与 `executors/runtime-governance/runtime-governance-executor.ts` 只通过 repository 读写 runtime 记录；未注入 repository 时使用包内内存默认实现
+  - 这些 executor 不得直接创建或写入 workspace 根目录下的 `data/runtime/*`
   - `watchdog/index.ts` 已删除；`ExecutionWatchdog` 的真实宿主是 `@agent/runtime`，`@agent/tools` 根入口只保留显式稳定转发
   - 根入口优先使用显式命名导出维护稳定 API；不要回到整包 `export *` 把内部实现一次性透传出去
   - `packages/report-kit` 现在是 data-report 的真实实现承载层，`@agent/tools` 负责统一聚合导出

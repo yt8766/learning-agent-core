@@ -124,6 +124,8 @@
   - `review-stage/`：刑部终审、治理评分、交付前状态收口
   - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
 - 仓库根级 `data/*` 正在退出默认运行时持久层角色；新增运行时持久化不得再新增 root `data/*` 写路径
+- `packages/config` 的内置默认存储路径必须表达显式 profile storage 语义，当前默认落到 `profile-storage/<profile>/...`；不得重新默认指向 root `data/runtime`、`data/memory`、`data/knowledge`、`data/skills`、`data/browser-replays` 或 `data/generated`
+- 根级检查入口 `pnpm check:no-root-data-runtime` 用于拦截生产/runtime 代码中的 root data 写入路径；过渡白名单不得继续豁免生产/runtime 代码写入上述 root data 目录。模板内部业务路径如 `src/services/data` 不应被该检查误判为 root data 路径
 - 迁移期仍需读取既有 root `data/*` 时，只能作为 legacy import / 过渡兼容输入，并应优先通过显式 repository contract 或 provider 注入
 - 仓库级可重建产物优先放仓库根级 `artifacts/`
 - 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径

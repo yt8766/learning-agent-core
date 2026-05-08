@@ -68,10 +68,11 @@
   - `BudgetEstimatePreprocessor` 会按最终组装后的消息优先调用 provider token estimate；provider 未提供估算器时才回退到轻量字符估算。超预算时优先切到 `fallbackModelId`，无 fallback 时直接返回 deny 结果，不继续调用 provider
   - `UsageBillingPostprocessor` 会产出稳定的 invocation usage ledger 与 `taskUsageDelta`；当上游 usage 只回传 `costUsd` 时，会在 pipeline 内补算 `costCny`，避免 task `budgetState.costConsumedCny` 长期缺口。主链 `recordTaskUsageFromInvocation(...)` 负责做去重落盘并回写 task `llmUsage / budgetState`
   - `LearningFlow.persistReviewArtifacts(...)` 在已安装 skill 被 `SkillRegistry.recordExecutionResult(...)` 接受后，会通过 runtime 装配层 callback 写入 `RuntimeStateSnapshot.workspaceSkillReuseRecords`。runtime 只负责记录“实际复用 skill”的稳定信号；Workspace Center HTTP 输出仍由 `apps/backend/agent-server` 读取 runtime state 并经 `packages/platform-runtime` 白名单 projection 生成。
-  - `LocalSandboxExecutor` 的 `browse_page` 路径支持注入 `browserArtifactWriter`，用于把 replay/snapshot/screenshot 写入稳定 artifact repository；未注入时仍保留 `data/browser-replays/<sessionId>/` 过渡 fallback，新增调用方不应依赖 root data 路径。
+  - `LocalSandboxExecutor` 的 `browse_page` 路径支持注入 `browserArtifactWriter`，用于把 replay/snapshot/screenshot 写入稳定 artifact repository；未注入时写入 `artifacts/runtime/browser-replays/<sessionId>/` 显式 artifact storage，不再使用 root `data/browser-replays`。
 
 当前文档：
 
+- [artifact-storage.md](/docs/packages/runtime/artifact-storage.md) — runtime / report generated artifacts 的显式 `artifacts/*` 默认路径与 root `data/*` 清理边界
 - [agentos-runtime-profile.md](/docs/packages/runtime/agentos-runtime-profile.md) — Agent Runtime Profile、Context Manifest、ToolRequest / PolicyDecision 与 QualityGate 的第一阶段治理模型
 - [contract-import-boundaries.md](/docs/packages/runtime/contract-import-boundaries.md) — P3-1 后 runtime/backend/agents 的迁出 contract 导入边界
 - [execution-trajectory-factories.md](/docs/packages/runtime/execution-trajectory-factories.md) — Execution Fabric 与 Task Trajectory runtime factories
@@ -81,5 +82,5 @@
 - [runtime-concurrency.md](/docs/packages/runtime/runtime-concurrency.md) — agent 运行期批量异步任务并发控制 helper
 - [runtime-interrupts.md](/docs/packages/runtime/runtime-interrupts.md) — 中断控制流规范
 - [runtime-layering-adr.md](/docs/packages/runtime/runtime-layering-adr.md) — Runtime 分层 ADR
-- [sandbox-browser-artifacts.md](/docs/packages/runtime/sandbox-browser-artifacts.md) — `browse_page` replay/generated artifact writer seam 与 root data 过渡 fallback
+- [sandbox-browser-artifacts.md](/docs/packages/runtime/sandbox-browser-artifacts.md) — `browse_page` replay/generated artifact writer seam 与显式 artifact storage 默认路径
 - [runtime-state-machine.md](/docs/packages/runtime/runtime-state-machine.md) — 状态机参考

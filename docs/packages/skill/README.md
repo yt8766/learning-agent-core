@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/skill/`
-最后核对：2026-04-26
+最后核对：2026-05-08
 
 本目录用于沉淀 `packages/skill` 相关文档。
 
@@ -60,13 +60,15 @@
 
 ## Agent Workspace / Skill Flywheel 下一阶段
 
-`packages/skill` 当前已承载 Skill Flywheel 的 in-memory / file-backed draft repository 与 `SkillDraftService` MVP 语义。下一阶段生产化应继续在本包内强化 persistent draft store 边界，而不是让 backend controller 或 frontend 依赖具体存储：
+`packages/skill` 当前已承载 Skill Flywheel 的 in-memory / file-backed draft repository、install/source repository contract 与 `SkillDraftService` MVP 语义。生产读写必须继续停在 repository / storage facade 边界后面，而不是让 backend controller 或 frontend 依赖具体 JSON 文件路径：
 
 - Draft repository 可替换为数据库或外部持久实现，但必须保留 create、list、approve、reject、promote、retire、reuse stats、高风险 evidence gate 和相反终态冲突语义。
 - File-backed repository 已保存 draft body、sourceTaskId、evidence refs、risk level 和 reuse stats；后续生产化还需要补 decision history、sessionId、install candidate / receipt 关联和 lifecycle 状态。
 - Approve draft 只代表进入 Skill Lab / Skill Source Center 治理链路；正式安装、manifest 校验、trust policy、compatibility、receipt、rollback 和 marketplace/source 同步仍由 install lifecycle 承接。
 - Approved draft 进入 Skill Lab / install intake 前必须先走 `buildSkillDraftInstallCandidate(draft)` 投影；该纯函数只接受 `active` / `trusted` draft，并只输出 `title`、`description`、`bodyMarkdown`、`requiredTools`、`requiredConnectors`、`sourceTaskId`、`sourceEvidenceIds`、`riskLevel`、`confidence`、`reuseStats` 白名单字段。
-- `SkillArtifactFetcher` 已支持 `entry: "workspace-draft:<draftId>"`。它会从 `data/skills/drafts/workspace-drafts.json` 读取 `active` / `trusted` draft，在 staging 目录生成 `SKILL.md` 与 `manifest.json`，再交给既有 install lifecycle promote 到安装目录。
+- `SkillArtifactFetcher` 已支持 `entry: "workspace-draft:<draftId>"`，但不再直接读取 `data/skills/drafts/workspace-drafts.json`，也不再自己拼 `data/skills/staging`。调用方必须显式注入 `SkillDraftRepository` 与 `SkillArtifactStorageRepository`；backend runtime 的 file-backed 装配位于 `apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts`。
+- Install receipt / installed record 读写必须通过 `SkillInstallRepository`。`runtime-skill-install.service` 缺少 repository 时会抛出 `skill_install_repository_required`，不再回落到 root `receipts.json` 或 `installed.json`。
+- Remote source cache 读写必须通过 `SkillSourceRemoteCacheRepository`。backend runtime 默认使用 file-backed facade 写入 `data/skills/remote-sources/<sourceId>/index.json`，测试和短生命周期流程可注入 in-memory repository。
 - Install candidate 不携带 repository 内部字段、审批人、workspaceId、authorId、时间戳、source vendor payload 或 raw metadata；后续 backend / frontend 只能消费投影结果，不应直接复用 `SkillDraftRecord` 作为 install/intake payload。
 - Workspace projection 只能读取 draft / install 摘要，不应读取 repository 内部索引、raw metadata、source credential 或 marketplace response。
 
@@ -84,3 +86,14 @@
 `FileSkillDraftRepository` 在首次读取时会初始化空数组文件；写入时先在同目录写临时文件，再通过 `rename` 替换目标文件，避免直接半写目标 JSON。持久化前会按 `SkillDraftRecord` 稳定字段白名单克隆记录，不把运行时临时字段、原始模型 metadata 或 provider payload 追加进 draft JSON。
 
 当前受限于本轮改动范围未新增包依赖，文件仓库使用 Node `fs/promises` 完成安全写入；如果后续允许调整 `packages/skill/package.json`，可再按仓库默认偏好切换为显式声明的 `fs-extra`。
+
+## Runtime Persistence Facade
+
+`packages/skill` 只定义稳定 repository / storage contract 与纯领域行为：
+
+- `SkillInstallRepository`：receipt 与 installed record 的 list/save 边界。
+- `SkillSourceRemoteCacheRepository`：remote source manifest cache 的 read/write 边界。
+- `SkillArtifactStorageRepository`：staging 准备、文件写入、artifact copy、promote 与 cleanup 边界。
+- `SkillDraftRepository`：workspace draft 的 create/list/get/update 边界。
+
+backend runtime 的 file-backed 实现集中在 `apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts`。后续迁移到数据库或对象存储时，应替换这些 repository 实现，保持 `packages/skill` 与 service 层调用契约不变。

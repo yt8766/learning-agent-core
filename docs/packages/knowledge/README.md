@@ -50,6 +50,7 @@
 - [indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
 - [indexing-contract-guidelines.md](/docs/packages/knowledge/indexing-contract-guidelines.md)
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
+- [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)
 - [chat-pre-retrieval-routing.md](/docs/packages/knowledge/chat-pre-retrieval-routing.md)
 - [source-ingestion-status.md](/docs/packages/knowledge/source-ingestion-status.md)
 
@@ -102,6 +103,11 @@
   - 是检索 runtime 的 context expansion stage contract
   - `runKnowledgeRetrieval()` 在 post-process 后、context assembly 前调用该 stage
   - expanded hits 只进入 `contextAssembler`，不改变 `KnowledgeRetrievalResult.hits`
+
+- `packages/knowledge/src/runtime/stages/context-assembler.ts`
+  - 是检索 runtime 的 context assembly stage contract
+  - 当前接口为 `assemble(hits, request, options?)`，可兼容旧 string 返回，也可返回 `{ contextBundle, diagnostics }`
+  - `contextAssemblyOptions.budget` 可传入上下文预算；默认 ordering 明确记录为 `ranked`，长上下文头尾重排仍是后续增强
 
 - `packages/knowledge/src/retrieval/small-to-big-context-expander.ts`
   - 当前 Small-to-Big 第一阶段实现

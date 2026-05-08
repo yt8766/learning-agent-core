@@ -46,26 +46,42 @@ describe('loadSettings', () => {
     expect(directLoadSettings).toBe(settingsExports.loadSettings);
   });
 
-  it('从后端目录启动时仍然把数据路径解析到仓库根级 data 目录，并尊重根 .env 覆盖', () => {
+  it('从后端目录启动时仍然把默认数据路径解析到仓库 profile storage，并尊重根 .env 覆盖', () => {
     process.chdir(BACKEND_AGENT_SERVER_CWD);
 
     const settings = loadSettings({ PORT: '3000' } as NodeJS.ProcessEnv);
 
     expect(toPosixPath(settings.workspaceRoot)).toBe(toPosixPath(REPO_ROOT));
     expect(toPosixPath(settings.tasksStateFilePath)).toBe(
-      toPosixPath(join(REPO_ROOT, 'data', 'runtime', 'tasks-state.json'))
+      toPosixPath(join(REPO_ROOT, 'profile-storage', 'platform', 'runtime', 'tasks-state.json'))
     );
-    expect(toPosixPath(settings.memoryFilePath)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'memory', 'records.jsonl')));
+    const expectedMemoryFilePath = join(
+      REPO_ROOT,
+      ROOT_DOTENV.MEMORY_FILE_PATH ?? 'profile-storage/platform/memory/records.jsonl'
+    );
+    expect(toPosixPath(settings.memoryFilePath)).toBe(toPosixPath(expectedMemoryFilePath));
     expect(toPosixPath(settings.vectorIndexFilePath)).toBe(
-      toPosixPath(join(REPO_ROOT, 'data', 'memory', 'vector-index.json'))
+      toPosixPath(join(REPO_ROOT, 'profile-storage', 'platform', 'memory', 'vector-index.json'))
     );
     const expectedSkillsRoot = join(
       REPO_ROOT,
-      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'data/skills'
+      ROOT_DOTENV.SKILL_RUNTIME_ROOT ?? ROOT_DOTENV.SKILLS_ROOT ?? 'profile-storage/platform/skills'
+    );
+    const expectedSkillPackagesRoot = join(
+      REPO_ROOT,
+      ROOT_DOTENV.SKILL_RUNTIME_PACKAGES_ROOT ??
+        ROOT_DOTENV.SKILL_PACKAGES_ROOT ??
+        'profile-storage/platform/skills/installed'
+    );
+    const expectedSkillReceiptsRoot = join(
+      REPO_ROOT,
+      ROOT_DOTENV.SKILL_RUNTIME_RECEIPTS_ROOT ??
+        ROOT_DOTENV.SKILL_RECEIPTS_ROOT ??
+        'profile-storage/platform/skills/receipts'
     );
     expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(expectedSkillsRoot));
-    expect(toPosixPath(settings.skillPackagesRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'installed')));
-    expect(toPosixPath(settings.skillReceiptsRoot)).toBe(toPosixPath(join(expectedSkillsRoot, 'receipts')));
+    expect(toPosixPath(settings.skillPackagesRoot)).toBe(toPosixPath(expectedSkillPackagesRoot));
+    expect(toPosixPath(settings.skillReceiptsRoot)).toBe(toPosixPath(expectedSkillReceiptsRoot));
   });
 
   it('保留显式传入的绝对路径配置', () => {
@@ -284,9 +300,11 @@ describe('loadSettings', () => {
         expect(toPosixPath(settings.workspaceRoot)).toBe(toPosixPath(workspaceRoot));
         expect(settings.zhipuApiKey).toBe('test-zhipu-key');
         expect(toPosixPath(settings.tasksStateFilePath)).toBe(
-          toPosixPath(join(workspaceRoot, 'data', 'runtime', 'tasks-state.json'))
+          toPosixPath(join(workspaceRoot, 'profile-storage', 'platform', 'runtime', 'tasks-state.json'))
         );
-        expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(workspaceRoot, 'data', 'skills')));
+        expect(toPosixPath(settings.skillsRoot)).toBe(
+          toPosixPath(join(workspaceRoot, 'profile-storage', 'platform', 'skills'))
+        );
       } finally {
         await rm(workspaceRoot, { recursive: true, force: true });
       }
@@ -305,7 +323,7 @@ describe('loadSettings', () => {
 
     expect(settings.profile).toBe('personal');
     expect(toPosixPath(settings.memoryFilePath)).toBe(
-      toPosixPath(join(REPO_ROOT, 'data', 'agent-personal', 'memory', 'records.jsonl'))
+      toPosixPath(join(REPO_ROOT, 'profile-storage', 'personal', 'memory', 'records.jsonl'))
     );
     expect(settings.policy.approvalMode).toBe('auto');
     expect(settings.policy.sourcePolicyMode).toBe('open-web-allowed');
@@ -322,7 +340,9 @@ describe('loadSettings', () => {
     expect(settings.policy.budget.fallbackModelId).toBe('glm-5.1');
     expect(settings.contextStrategy.ragTopK).toBe(4);
     expect(settings.contextStrategy.recentTurns).toBe(10);
-    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-personal', 'skills')));
+    expect(toPosixPath(settings.skillsRoot)).toBe(
+      toPosixPath(join(REPO_ROOT, 'profile-storage', 'personal', 'skills'))
+    );
   });
 
   it('company profile keeps learning and approval defaults conservative', () => {
@@ -340,7 +360,7 @@ describe('loadSettings', () => {
     expect(settings.policy.approvalPolicy.destructiveActionRequireApproval).toBe(true);
     expect(settings.policy.suggestionPolicy.expertAdviceDefault).toBe(true);
     expect(settings.policy.suggestionPolicy.autoSearchSkillsOnGap).toBe(true);
-    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'data', 'agent-work', 'skills')));
+    expect(toPosixPath(settings.skillsRoot)).toBe(toPosixPath(join(REPO_ROOT, 'profile-storage', 'company', 'skills')));
   });
 
   it('context strategy applies conversation compression defaults and supports env overrides', () => {
