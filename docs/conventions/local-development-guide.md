@@ -22,11 +22,13 @@ pnpm --dir apps/frontend/agent-chat dev
 pnpm --dir apps/frontend/agent-admin dev
 ```
 
-`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 启动统一后端：
+`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 并行启动三个后端：
 
+- `auth-server`：`http://127.0.0.1:3010/api`
+- `knowledge-server`：`http://127.0.0.1:3020/api`
 - `agent-server`：`http://127.0.0.1:3000/api`
 
-如果只需要直接启动后端，也可使用 `pnpm start:dev:agent`。
+如果只需要旧 chat/runtime/admin 后端，可使用 `pnpm start:dev:agent`。
 
 如果只想单机验证，不单独启动 worker，也可以让 backend 使用内建 background runner。
 

@@ -69,17 +69,30 @@ describe('turbo:typecheck manifest wiring', () => {
     );
   });
 
-  it('keeps the unified backend server on package type boundaries for core contracts', async () => {
-    const configPath = 'apps/backend/agent-server/tsconfig.build.json';
-    const config = await readJson(configPath);
+  it('keeps standalone backend servers on package type boundaries for core contracts', async () => {
+    const backendTsconfigs = await Promise.all(
+      ['apps/backend/auth-server/tsconfig.json', 'apps/backend/knowledge-server/tsconfig.json'].map(
+        async configPath => {
+          const config = await readJson(configPath);
 
-    expect({
-      configPath,
-      corePath: config.compilerOptions?.paths?.['@agent/core']
-    }).toEqual({
-      configPath,
-      corePath: undefined
-    });
+          return {
+            configPath,
+            corePath: config.compilerOptions?.paths?.['@agent/core']
+          };
+        }
+      )
+    );
+
+    expect(backendTsconfigs).toEqual([
+      {
+        configPath: 'apps/backend/auth-server/tsconfig.json',
+        corePath: undefined
+      },
+      {
+        configPath: 'apps/backend/knowledge-server/tsconfig.json',
+        corePath: undefined
+      }
+    ]);
   });
 });
 

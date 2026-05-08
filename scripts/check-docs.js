@@ -30,6 +30,8 @@ const REQUIRED_INDEX_DIRS = [
   'docs/apps',
   'docs/apps/backend',
   'docs/apps/backend/agent-server',
+  'docs/apps/backend/auth-server',
+  'docs/apps/backend/knowledge-server',
   'docs/apps/backend/worker',
   'docs/apps/frontend',
   'docs/apps/frontend/agent-admin',

@@ -3,19 +3,16 @@
 状态：current
 文档类型：index
 适用范围：`docs/apps/backend/agent-server/`
-最后核对：2026-05-07
+最后核对：2026-05-05
 
-本目录用于沉淀 `apps/backend/agent-server` 的 HTTP/SSE、运行时装配、平台中心与后台服务说明。`agent-server` 是当前唯一后端 API Host；Identity、Knowledge、Chat、Runtime、Platform、Tool execution、Sandbox、Auto Review 与 Workflow BFF 都从这里暴露。
+本目录用于沉淀 `apps/backend/agent-server` 的 HTTP/SSE、运行时装配、平台中心与后台服务说明。
 
 当前文档：
 
 - [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 - [chat-api.md](/docs/apps/backend/agent-server/chat-api.md) ⬅️ **Chat API 完整文档（新增）**
-- [identity.md](/docs/apps/backend/agent-server/identity.md)
-- [knowledge.md](/docs/apps/backend/agent-server/knowledge.md)
 - [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
 - [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
-- [agent-gateway.md](/docs/apps/backend/agent-server/agent-gateway.md)
 - [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
 - [run-observatory.md](/docs/apps/backend/agent-server/run-observatory.md)
 - [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
@@ -26,14 +23,11 @@
 当前优先阅读：
 
 1. [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
-2. [identity.md](/docs/apps/backend/agent-server/identity.md)
-3. [knowledge.md](/docs/apps/backend/agent-server/knowledge.md)
-4. [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
-5. [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
-6. [agent-gateway.md](/docs/apps/backend/agent-server/agent-gateway.md)
-7. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
-8. [contracts/api/README.md](/docs/contracts/api/README.md)
-9. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
+2. [knowledge-auth.md](/docs/apps/backend/agent-server/knowledge-auth.md)
+3. [knowledge-api-stubs.md](/docs/apps/backend/agent-server/knowledge-api-stubs.md)
+4. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
+5. [contracts/api/README.md](/docs/contracts/api/README.md)
+6. [agent-workspace-center.md](/docs/apps/backend/agent-server/agent-workspace-center.md)
 
 Chat Runtime v2 相关实现入口：
 

@@ -99,11 +99,11 @@ interface SupabaseRpcClientLike {
 }
 ```
 
-SDK 不要求后端一定使用 `@supabase/supabase-js`。统一 `agent-server` Knowledge domain 当前就是用项目自有 Postgres client 包装出这个最小 RPC 形状，再把 RPC 调用映射到数据库函数；这样 `pg.Pool`、数据库错误和 vendor response 都不会穿透到 SDK consumer 或 API DTO。
+SDK 不要求后端一定使用 `@supabase/supabase-js`。`knowledge-server` 当前就是用项目自有 Postgres client 包装出这个最小 RPC 形状，再把 RPC 调用映射到数据库函数；这样 `pg.Pool`、数据库错误和 vendor response 都不会穿透到 SDK consumer 或 API DTO。
 
 ### 后端默认接入方式
 
-`apps/backend/agent-server/src/domains/knowledge` 已经把默认 runtime 收敛到 `runtime/knowledge-sdk-runtime.provider.ts`，并通过 Nest token 注入：
+`apps/backend/knowledge-server` 已经把默认 runtime 收敛到 `src/knowledge/runtime/knowledge-sdk-runtime.provider.ts`，并通过 Nest token 注入：
 
 ```ts
 export const KNOWLEDGE_SDK_RUNTIME = Symbol('KNOWLEDGE_SDK_RUNTIME');
@@ -117,7 +117,7 @@ export const KNOWLEDGE_SDK_RUNTIME = Symbol('KNOWLEDGE_SDK_RUNTIME');
 4. `KnowledgeIngestionWorker` 使用 `runtime.embeddingProvider.embedBatch()` 和 `runtime.vectorStore.upsert()` 把文档 chunks 写入向量库。
 5. `KnowledgeDocumentService.chat()` 使用 `runtime.embeddingProvider.embedText()`、`runtime.vectorStore.search()` 和 `runtime.chatProvider.generate()` 完成非流式 RAG 对话。
 6. `KnowledgeDocumentService.streamChat()` 复用同一 policy、planner、search adapter 和 answer provider 调用 `streamKnowledgeRag()`；当 answer provider 暴露 `stream()` 且 retrieval 满足 no-answer policy 的 citation/evidence 要求时，SDK 会在 `answer.started` 之后发送 `answer.delta`，最终仍发送 `answer.completed` 和 `rag.completed`。stream 分支不会再回落二次调用 `generate()`；最终 `answer.completed` 优先使用 provider stream 的 done result，缺少 done result 时使用累计 delta 文本，并继续只允许引用 retrieval 已返回的 grounded citations。provider 不支持 stream 或依据不足时不发送 delta，保持稳定 lifecycle event 序列。
-7. 统一 `agent-server` Knowledge domain 的 RAG answer provider 会把已启用 SDK runtime 的 `chatProvider.stream()` 桥接到 `KnowledgeAnswerProvider.stream()`：底层 `{ type: 'delta', text }` 会转成 `{ textDelta }`，底层 `{ type: 'done', result }` 会转成最终 answer result 的 metadata/文本来源；citations 仍由 RAG retrieval 结果统一约束，避免 vendor stream 事件直接穿透 API contract。
+7. `knowledge-server` 的 RAG answer provider 会把已启用 SDK runtime 的 `chatProvider.stream()` 桥接到 `KnowledgeAnswerProvider.stream()`：底层 `{ type: 'delta', text }` 会转成 `{ textDelta }`，底层 `{ type: 'done', result }` 会转成最终 answer result 的 metadata/文本来源；citations 仍由 RAG retrieval 结果统一约束，避免 vendor stream 事件直接穿透 API contract。
 
 如果没有配置 SDK 专用 env，provider 返回 disabled runtime，保留本地 deterministic fallback；如果出现任一 SDK env 但缺少关键项，服务启动失败，避免半配置时误以为已经使用大模型或向量库。
 
@@ -180,7 +180,7 @@ const vectorStore = new SupabasePgVectorStoreAdapter({
 
 Knowledge SDK 的生产默认推荐使用 Supabase PostgreSQL + pgvector。这个选择让认证元数据、文档元数据、评测记录、trace 与向量检索可以落在同一套 PostgreSQL 运维体系内，减少早期生产化时的数据库数量、备份策略和权限边界复杂度。
 
-当前统一 `agent-server` Knowledge domain 的向量不会存进前端、本地内存、普通 JSON 字段或 `packages/knowledge` 包内部文件；生产路径写入 PostgreSQL/Supabase 中的 `knowledge_document_chunks.embedding vector(1536)`。`knowledge_document_chunks.metadata jsonb` 只保存 display / filter metadata，例如 `tenantId`、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`、`tags`，真正的 embedding 数组由 pgvector 列保存和索引。
+当前 knowledge-server 的向量不会存进前端、本地内存、普通 JSON 字段或 `packages/knowledge` 包内部文件；生产路径写入 PostgreSQL/Supabase 中的 `knowledge_document_chunks.embedding vector(1536)`。`knowledge_document_chunks.metadata jsonb` 只保存 display / filter metadata，例如 `tenantId`、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`、`tags`，真正的 embedding 数组由 pgvector 列保存和索引。
 
 默认 adapter 位于 `@agent/knowledge/adapters/supabase`：
 

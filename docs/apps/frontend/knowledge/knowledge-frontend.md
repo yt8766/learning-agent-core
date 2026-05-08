@@ -12,7 +12,7 @@
 UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和 hooks 不直接 new 真实 client，也不直接 import mock 数据。默认装配在 `src/main.tsx`：
 
 - `VITE_KNOWLEDGE_API_MODE=mock`：使用 `MockKnowledgeApiClient`，仅用于本地 demo。
-- 其他情况：使用 `KnowledgeApiClient`，默认 base URL 为统一 `agent-server` 的 `http://127.0.0.1:3000/api`。
+- 其他情况：使用 `KnowledgeApiClient`，默认 base URL 为 `http://127.0.0.1:3020/api`。
 
 `KnowledgeApiClient` 统一走 fetch 路径。请求前通过 `AuthClient.ensureValidAccessToken()` 取 access token；业务接口返回 `401 + code=auth_token_expired` 时，调用 `AuthClient.refreshTokensOnce()` 并重试原请求一次。
 
@@ -23,8 +23,8 @@ UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和
 The Knowledge frontend defaults to the real backend path:
 
 ```bash
-VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3000/api
-VITE_KNOWLEDGE_SERVICE_BASE_URL=http://127.0.0.1:3000/api
+VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3010/api
+VITE_KNOWLEDGE_SERVICE_BASE_URL=http://127.0.0.1:3020/api
 ```
 
 Mock mode is explicit:
@@ -50,7 +50,7 @@ Chat Lab displays route reason, retrieval diagnostics, grounded citations, feedb
 - 登录页展示账号和密码，初始值必须为空，不再预填 `dev@example.com` / `secret`。
 - 当后端存在 `DATABASE_URL` 或显式 `KNOWLEDGE_REPOSITORY=postgres` 时，Knowledge 登录会校验数据库里的超管账号；当前请求字段仍沿用 `email`，但前端 UI 和后端语义按账号名处理。
 - `AuthClient` 和 `KnowledgeApiClient` 默认使用绑定到 `globalThis` 的 fetch，避免浏览器原生 fetch 被类字段调用时出现 `Illegal invocation`。
-- `AuthClient` 调用统一 `agent-server` 的 `/api/auth/login` 和 `/api/auth/refresh`；`KnowledgeApiClient` 调用统一 `agent-server` 的 `/api/knowledge/bases` 等业务接口。
+- `AuthClient` 调用 `auth-server /api/auth/login` 和 `/api/auth/refresh`；`KnowledgeApiClient` 调用 `knowledge-server /api/knowledge/bases` 等业务接口。
 - `/login` 是唯一规范登录入口。未登录访问任何受保护业务路径时，`ProtectedRoute` 必须 `Navigate` 到 `/login`，不能在原业务 URL 下直接渲染登录页。
 - 已登录用户访问 `/login` 时必须重定向回工作台；如果登录页带有 `location.state.from`，登录成功后优先回到原受保护路径，否则回到 `/`。
 - token 存在本地浏览器 storage；主键为 `knowledge_auth_tokens` 的 versioned JSON。`token-storage.ts` 会兼容读取并迁移历史 `knowledge_access_token`、`knowledge_refresh_token`、`knowledge_access_token_expires_at`、`knowledge_refresh_token_expires_at` 四 key，遇到损坏 versioned JSON 时清理认证存储。

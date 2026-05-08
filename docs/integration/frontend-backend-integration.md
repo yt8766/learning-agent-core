@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：integration
-适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-07
+适用范围：`apps/backend/agent-server`、`apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
+最后核对：2026-05-02
 
 本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
 
@@ -34,8 +34,8 @@
 
 ## API 入口
 
-- Identity API：[auth.md](/docs/contracts/api/auth.md)
-- Knowledge API：[knowledge.md](/docs/contracts/api/knowledge.md)
+- Auth Service：[auth.md](/docs/contracts/api/auth.md)
+- Knowledge Service：[knowledge.md](/docs/contracts/api/knowledge.md)
 - 聊天、会话与 SSE：[agent-chat.md](/docs/contracts/api/agent-chat.md)
 - Admin 控制台聚合：[agent-admin.md](/docs/contracts/api/agent-admin.md)
 - Runtime Center：[runtime.md](/docs/contracts/api/runtime.md)
@@ -110,41 +110,37 @@
 - Run 详情读 Run Observatory detail。
 - Console diagnostics 只做观测展示，不驱动业务状态。
 
-## Unified Backend Service
+## Auth / Knowledge Service Split
 
-`apps/backend/agent-server` is the single backend API host. Identity, Knowledge, Chat, Platform Centers, Tool execution, Sandbox, Auto Review and Workflow BFF routes are served under the same `/api` prefix.
-
-Compatibility aliases remain during migration:
-
-- `/api/auth/*` delegates to `/api/identity/*`.
-- `/api/admin/auth/*` delegates to Identity admin compatibility handlers.
-- `/api/knowledge/v1/*` delegates to `/api/knowledge/*`.
-
-New frontend code must target the canonical unified paths. Alias removal requires the agent-admin, agent-chat and knowledge frontends to stop calling legacy paths.
+`agent-admin` 和 `apps/frontend/knowledge` 第一阶段直接调用 `auth-server` 完成登录。`apps/frontend/knowledge` 的知识库业务请求直接调用 `knowledge-server`，并携带 `auth-server` 签发的 Access Token。
 
 ```text
-agent-admin login -> agent-server /api/identity/login
-knowledge bases -> agent-server /api/knowledge/bases
+agent-admin login -> auth-server /api/auth/login
+agent-admin users -> auth-server /api/auth/users
+knowledge login -> auth-server /api/auth/login
+knowledge bases -> knowledge-server /api/knowledge/bases
 ```
 
 边界约定：
 
-- `apps/backend/agent-server/src/domains/identity` 是统一身份宿主，legacy `/api/auth/*` 只保留迁移期兼容价值。
-- `apps/backend/agent-server/src/domains/knowledge` 是统一 Knowledge 宿主；当前 canonical path 是 `/api/knowledge/*`，`/api/knowledge/v1/*` 只作兼容 alias。
-- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；新增业务不要继续扩展旧目录。
-- 知识库权限后续由 unified Knowledge domain 的 membership / permission 边界治理，不从 auth 全局角色直接推导。
+- `apps/backend/auth-server` 是统一登录、refresh、logout、当前用户和用户管理的 canonical 服务。
+- `apps/backend/knowledge-server` 是 `apps/frontend/knowledge` 的 canonical knowledge business API 服务。
+- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；前端不要新增到 `/api/knowledge/v1` 的业务调用。
+- 知识库权限由 `knowledge-server` 自己的 membership 治理，不从 auth 全局角色直接推导。
 
 默认本地端口：
 
 ```text
-agent-server http://127.0.0.1:3000/api
+auth-server      http://127.0.0.1:3010/api
+knowledge-server http://127.0.0.1:3020/api
+agent-server     http://127.0.0.1:3000/api
 ```
 
 后端服务 `.env` 加载：
 
-- `apps/backend/agent-server` 通过 `@nestjs/config` 加载服务目录下的 `.env`。
-- 本地和 test 默认 `BACKEND_PERSISTENCE=memory`；Postgres 必须显式配置 `BACKEND_PERSISTENCE=postgres` 与 `DATABASE_URL`。
-- Identity、Knowledge、Runtime 与平台中心共享同一个 backend host 配置边界。
+- `apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/backend/agent-server` 都通过 `@nestjs/config` 加载各自服务目录下的 `.env`。
+- `auth-server` 的登录校验使用 `passport-local`，Access Token 校验使用 `passport-jwt`，密码哈希使用 `bcrypt`。
+- `auth-server` 与 `knowledge-server` 的 `AUTH_SERVER_JWT_SECRET` 和 `AUTH_SERVER_JWT_ISSUER` 必须一致。
 
 ## 命名与兼容
 
@@ -155,7 +151,8 @@ agent-server http://127.0.0.1:3000/api
 
 ## 联调建议
 
-1. 启动统一后端：`pnpm start:dev:agent`。
-2. 启动目标前端。
-3. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
-4. 再按本文检查调用顺序、SSE 兜底和 center 粒度。
+1. 启动三个后端：`pnpm start:dev`
+2. 只需要 chat/runtime/admin 旧中心时，可改用 `pnpm start:dev:agent`。
+3. 启动目标前端。
+4. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
+5. 再按本文检查调用顺序、SSE 兜底和 center 粒度。
