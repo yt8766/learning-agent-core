@@ -8,6 +8,9 @@ import { ApprovalsModule } from './approvals/approvals.module';
 import { AutoReviewModule } from './auto-review/auto-review.module';
 import { ChatModule } from './chat/chat.module';
 import { CompanyLiveModule } from './company-live/company-live.module';
+import { IdentityModule } from './domains/identity/identity.module';
+import { KnowledgeDomainModule } from './domains/knowledge/knowledge-domain.module';
+import { AgentGatewayModule } from './domains/agent-gateway/agent-gateway.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { LearningModule } from './learning/learning.module';
 import { LoggerModule } from './logger/logger.module';
@@ -28,6 +31,9 @@ import { TemplatesModule } from './templates/templates.module';
       isGlobal: true
     }),
     LoggerModule,
+    IdentityModule,
+    KnowledgeDomainModule,
+    AgentGatewayModule,
     AdminAuthModule,
     RuntimeModule,
     AgentToolsModule,

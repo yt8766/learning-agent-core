@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -6,8 +6,11 @@ import { loadSettings } from '@agent/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  buildKnowledgeDescriptor,
   ingestLocalKnowledge,
+  type LocalKnowledgeSnapshotRepository,
   listKnowledgeArtifacts,
+  type PersistedKnowledgeSnapshot,
   readKnowledgeOverview
 } from '../src/runtime/local-knowledge-store';
 import { embedChunk } from '../src/runtime/local-knowledge-store.helpers';
@@ -55,6 +58,58 @@ describe('Local knowledge store', () => {
     expect(stored.embeddings.some(item => item.status === 'failed')).toBe(true);
     expect(stored.receipts.length).toBeGreaterThan(0);
     expect(reloaded.blockedDocumentCount).toBeGreaterThan(0);
+  });
+
+  it('can ingest through an injected snapshot repository without touching root data directories', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'knowledge-store-memory-'));
+    tempRoots.push(root);
+    const emptySnapshot: PersistedKnowledgeSnapshot = {
+      stores: [],
+      sources: [],
+      chunks: [],
+      embeddings: [],
+      receipts: []
+    };
+    const accessLog: string[] = [];
+    let snapshot = emptySnapshot;
+    const repository: LocalKnowledgeSnapshotRepository = {
+      async read() {
+        accessLog.push('read');
+        return snapshot;
+      },
+      async write(nextSnapshot) {
+        accessLog.push('write');
+        snapshot = nextSnapshot;
+      }
+    };
+    const settings = loadSettings({
+      workspaceRoot: root,
+      overrides: {
+        zhipuApiKey: '',
+        knowledgeRoot: 'data/knowledge'
+      }
+    });
+    const options = {
+      repository,
+      runtimePaths: {
+        wenyuanRoot: 'memory://wenyuan',
+        cangjingRoot: 'memory://cangjing'
+      },
+      sourceProvider: async () => []
+    };
+
+    const overview = await ingestLocalKnowledge(settings, options);
+    const stored = await listKnowledgeArtifacts(settings, options);
+    const reloaded = await readKnowledgeOverview(settings, options);
+    const descriptor = buildKnowledgeDescriptor(settings, options);
+
+    await expect(stat(join(root, 'data'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(accessLog).toEqual(['read', 'write', 'read', 'read']);
+    expect(overview.stores.map(item => item.rootPath)).toEqual(['memory://wenyuan', 'memory://cangjing']);
+    expect(stored.stores.map(item => item.rootPath)).toEqual(['memory://wenyuan', 'memory://cangjing']);
+    expect(reloaded.stores.map(item => item.rootPath)).toEqual(['memory://wenyuan', 'memory://cangjing']);
+    expect(descriptor.wenyuanRoot).toBe('memory://wenyuan');
+    expect(descriptor.cangjingRoot).toBe('memory://cangjing');
   });
 
   it('skips adapter loading when embedding credentials are unavailable', async () => {

@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { createKnowledgeApiClient } from '../src/api/knowledge-api-client';
 
 describe('knowledge real API paths', () => {
-  it('calls the knowledge-server base URL for knowledge bases', async () => {
+  it('calls the agent-server Knowledge API base URL for knowledge bases', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ bases: [] }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -16,7 +16,7 @@ describe('knowledge real API paths', () => {
     await client.listKnowledgeBases();
 
     expect(fetcher).toHaveBeenCalledWith(
-      'http://127.0.0.1:3020/api/knowledge/bases',
+      'http://127.0.0.1:3000/api/knowledge/bases',
       expect.objectContaining({
         headers: expect.any(Headers)
       })
@@ -30,17 +30,17 @@ describe('knowledge real API paths', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ bases: [] }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api/',
+      baseUrl: 'http://127.0.0.1:3000/api/',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.listKnowledgeBases();
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/bases');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/bases');
   });
 
-  it('uploads a knowledge file through knowledge-server', async () => {
+  it('uploads a knowledge file through the agent-server Knowledge API', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -57,7 +57,7 @@ describe('knowledge real API paths', () => {
       )
     );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -65,7 +65,7 @@ describe('knowledge real API paths', () => {
     const file = new File(['hello'], 'runbook.md', { type: 'text/markdown' });
     await client.uploadKnowledgeFile({ knowledgeBaseId: 'kb_1', file });
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/bases/kb_1/uploads');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/bases/kb_1/uploads');
     const [, init] = fetcher.mock.calls[0] ?? [];
     expect(init?.method).toBe('POST');
     expect(init?.body).toBeInstanceOf(FormData);
@@ -79,7 +79,7 @@ describe('knowledge real API paths', () => {
         new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_1' } }), { status: 200 })
       );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -90,7 +90,7 @@ describe('knowledge real API paths', () => {
       filename: 'runbook.md'
     });
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/bases/kb_1/documents');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/bases/kb_1/documents');
     expect(fetcher.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'POST',
@@ -108,17 +108,17 @@ describe('knowledge real API paths', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 20 }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.listDocuments({ knowledgeBaseId: 'kb_1' });
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/documents?knowledgeBaseId=kb_1');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/documents?knowledgeBaseId=kb_1');
   });
 
-  it('keeps legacy uploadDocument callers on the knowledge-server two-step upload contract', async () => {
+  it('keeps legacy uploadDocument callers on the two-step upload contract', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -140,7 +140,7 @@ describe('knowledge real API paths', () => {
         new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_1' } }), { status: 200 })
       );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -149,8 +149,8 @@ describe('knowledge real API paths', () => {
     await client.uploadDocument({ embeddingModelId: 'embed_openai_small', knowledgeBaseId: 'kb_1', file });
 
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      'http://127.0.0.1:3020/api/knowledge/bases/kb_1/uploads',
-      'http://127.0.0.1:3020/api/knowledge/bases/kb_1/documents'
+      'http://127.0.0.1:3000/api/knowledge/bases/kb_1/uploads',
+      'http://127.0.0.1:3000/api/knowledge/bases/kb_1/documents'
     ]);
     expect(fetcher.mock.calls[1]?.[1]).toEqual(
       expect.objectContaining({
@@ -165,7 +165,7 @@ describe('knowledge real API paths', () => {
     );
   });
 
-  it('lists embedding model options through knowledge-server', async () => {
+  it('lists embedding model options through the agent-server Knowledge API', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -178,31 +178,31 @@ describe('knowledge real API paths', () => {
       )
     );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.listEmbeddingModels();
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/embedding-models');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/embedding-models');
   });
 
-  it('reprocesses a document through knowledge-server core operations path', async () => {
+  it('reprocesses a document through the Knowledge core operations path', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(
         new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_2' } }), { status: 200 })
       );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.reprocessDocument('doc_1');
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/documents/doc_1/reprocess');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/documents/doc_1/reprocess');
     expect(fetcher.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'POST',
@@ -211,19 +211,19 @@ describe('knowledge real API paths', () => {
     );
   });
 
-  it('deletes a document through knowledge-server core operations path', async () => {
+  it('deletes a document through the Knowledge core operations path', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.deleteDocument('doc_1');
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/documents/doc_1');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/documents/doc_1');
     expect(fetcher.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'DELETE'
@@ -231,19 +231,19 @@ describe('knowledge real API paths', () => {
     );
   });
 
-  it('lists agent flows through knowledge-server', async () => {
+  it('lists agent flows through the agent-server Knowledge API', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0, page: 1, pageSize: 20 }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
 
     await client.listAgentFlows();
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/agent-flows');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/agent-flows');
     expect(fetcher.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ method: 'GET' }));
   });
 
@@ -252,7 +252,7 @@ describe('knowledge real API paths', () => {
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -264,15 +264,15 @@ describe('knowledge real API paths', () => {
     await client.getChatAssistantConfig();
 
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      'http://127.0.0.1:3020/api/knowledge/settings/api-keys',
-      'http://127.0.0.1:3020/api/knowledge/settings/model-providers',
-      'http://127.0.0.1:3020/api/knowledge/settings/storage',
-      'http://127.0.0.1:3020/api/knowledge/settings/security',
-      'http://127.0.0.1:3020/api/knowledge/chat/assistant-config'
+      'http://127.0.0.1:3000/api/knowledge/settings/api-keys',
+      'http://127.0.0.1:3000/api/knowledge/settings/model-providers',
+      'http://127.0.0.1:3000/api/knowledge/settings/storage',
+      'http://127.0.0.1:3000/api/knowledge/settings/security',
+      'http://127.0.0.1:3000/api/knowledge/chat/assistant-config'
     ]);
   });
 
-  it('runs an agent flow through knowledge-server', async () => {
+  it('runs an agent flow through the agent-server Knowledge API', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -287,7 +287,7 @@ describe('knowledge real API paths', () => {
       )
     );
     const client = createKnowledgeApiClient({
-      baseUrl: 'http://127.0.0.1:3020/api',
+      baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
       fetchImpl: fetcher
     });
@@ -302,7 +302,7 @@ describe('knowledge real API paths', () => {
 
     await client.runAgentFlow('flow_default_rag', input);
 
-    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3020/api/knowledge/agent-flows/flow_default_rag/run');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/knowledge/agent-flows/flow_default_rag/run');
     expect(fetcher.mock.calls[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'POST',

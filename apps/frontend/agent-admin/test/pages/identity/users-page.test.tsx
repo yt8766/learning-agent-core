@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { UsersPage } from '../../../src/pages/identity/pages/users-page';
 
 describe('UsersPage', () => {
-  it('renders auth-server users', () => {
+  it('renders unified identity users', () => {
     const html = renderToStaticMarkup(
       <UsersPage
         initialUsers={[

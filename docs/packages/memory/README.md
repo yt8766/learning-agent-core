@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/memory/`
-最后核对：2026-04-28
+最后核对：2026-05-08
 
 本目录用于沉淀 `packages/memory` 相关文档。
 
@@ -43,6 +43,7 @@
   - 包根 `memory-record-helpers.ts`、`memory-repository-governance.ts` 已删除
   - 内部过渡薄层 `shared/memory-record-helpers.ts` 与 `repositories/memory-repository-governance.ts` 也已删除
   - `contracts/*` 当前仅保留稳定 facade 入口，便于调用方使用显式 contract import
+  - semantic cache 已提供 `SemanticCacheRecordSchema`、`SemanticCacheRepository` 与 `InMemorySemanticCacheRepository`；新增调用方优先消费显式 contract，不要新增 root `data/*` 写路径
   - 消费侧默认继续从 `@agent/memory` 根入口导入，不依赖包内物理路径
 
 约定：

@@ -17,7 +17,7 @@ export function UsersPage({ client, initialUsers = [] }: { client: UsersPageClie
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">用户管理</h1>
-          <p className="mt-1 text-sm text-muted-foreground">统一登录账号由 auth-server 管理。</p>
+          <p className="mt-1 text-sm text-muted-foreground">统一登录账号由 agent-server Identity 域管理。</p>
         </div>
       </div>
       <div className="overflow-hidden rounded-lg border bg-background">

@@ -13,14 +13,16 @@ import type {
 import {
   buildRemoteSkillInstallLocation,
   deriveRemoteSkillDisplayName,
-  normalizeOptionalSkillName
+  normalizeOptionalSkillName,
+  type SkillInstallRepository
 } from '@agent/skill';
 
 import {
   buildSkillsAddCommand,
-  buildSkillsCheckCommand,
-  buildSkillsUpdateCommand,
-  execShellCommand
+  buildSkillsAddCommandPlan,
+  buildSkillsCheckCommandPlan,
+  buildSkillsUpdateCommandPlan,
+  execSkillsCommand
 } from './runtime-skill-cli';
 
 export interface RuntimeSkillInstallContext {
@@ -47,6 +49,7 @@ export interface RuntimeSkillInstallContext {
     check: () => Promise<{ stdout: string; stderr: string }>;
     update: () => Promise<{ stdout: string; stderr: string }>;
   };
+  skillInstallRepository?: SkillInstallRepository;
 }
 
 export async function autoInstallLocalManifest(context: RuntimeSkillInstallContext, manifest: SkillManifestRecord) {
@@ -99,6 +102,9 @@ export async function getSkillInstallReceipt(context: RuntimeSkillInstallContext
 }
 
 export async function readSkillInstallReceipts(context: RuntimeSkillInstallContext): Promise<SkillInstallReceipt[]> {
+  if (context.skillInstallRepository) {
+    return context.skillInstallRepository.listReceipts();
+  }
   return readJsonArray<SkillInstallReceipt>(join(context.settings.skillReceiptsRoot, 'receipts.json'));
 }
 
@@ -106,6 +112,10 @@ export async function writeSkillInstallReceipt(
   context: RuntimeSkillInstallContext,
   receipt: SkillInstallReceipt
 ): Promise<void> {
+  if (context.skillInstallRepository) {
+    await context.skillInstallRepository.saveReceipt(receipt);
+    return;
+  }
   const receipts = await readSkillInstallReceipts(context);
   const deduped = receipts.filter(item => item.id !== receipt.id);
   deduped.push(receipt);
@@ -114,6 +124,9 @@ export async function writeSkillInstallReceipt(
 }
 
 export async function readInstalledSkillRecords(context: RuntimeSkillInstallContext): Promise<InstalledSkillRecord[]> {
+  if (context.skillInstallRepository) {
+    return context.skillInstallRepository.listInstalledRecords();
+  }
   return readJsonArray<InstalledSkillRecord>(join(context.settings.skillPackagesRoot, 'installed.json'));
 }
 
@@ -121,6 +134,10 @@ export async function writeInstalledSkillRecord(
   context: RuntimeSkillInstallContext,
   record: InstalledSkillRecord
 ): Promise<void> {
+  if (context.skillInstallRepository) {
+    await context.skillInstallRepository.saveInstalledRecord(record);
+    return;
+  }
   const installed = await readInstalledSkillRecords(context);
   const deduped = installed.filter(item => !(item.skillId === record.skillId && item.version === record.version));
   deduped.push(record);
@@ -343,16 +360,13 @@ async function writeJsonFile(filePath: string, payload: unknown): Promise<void> 
 }
 
 async function defaultRemoteSkillInstall(params: { repo: string; skillName?: string }) {
-  const command = buildSkillsAddCommand(params);
-  return execShellCommand(command);
+  return execSkillsCommand(buildSkillsAddCommandPlan(params));
 }
 
 async function defaultRemoteSkillCheck() {
-  const command = buildSkillsCheckCommand();
-  return execShellCommand(command);
+  return execSkillsCommand(buildSkillsCheckCommandPlan());
 }
 
 async function defaultRemoteSkillUpdate() {
-  const command = buildSkillsUpdateCommand();
-  return execShellCommand(command);
+  return execSkillsCommand(buildSkillsUpdateCommandPlan());
 }

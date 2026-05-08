@@ -123,8 +123,8 @@
   - `runtime-stage/`：runtime 研究/执行阶段节点与 helper
   - `review-stage/`：刑部终审、治理评分、交付前状态收口
   - `ministries/`：只保留 ministry bridge 聚合与跨阶段治理 helper，不再混放 runtime-stage / review-stage 主实现
-- 本地运行数据统一放仓库根级 `data/`
-- 运行时技能相关本地数据默认优先使用 `data/skills/`
+- 仓库根级 `data/*` 正在退出默认运行时持久层角色；新增运行时持久化不得再新增 root `data/*` 写路径
+- 迁移期仍需读取既有 root `data/*` 时，只能作为 legacy import / 过渡兼容输入，并应优先通过显式 repository contract 或 provider 注入
 - 仓库级可重建产物优先放仓库根级 `artifacts/`
 - 应用专属日志允许保留在应用目录；一次性测试或运行时临时目录允许继续使用系统临时路径
 - 根目录不再保留 `TODO.md`；模块待办、路线图、联调结论和清理说明统一写入对应 `docs/<module>/`，并直接更新原文档避免知识分叉

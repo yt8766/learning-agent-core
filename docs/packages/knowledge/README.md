@@ -21,7 +21,7 @@
   - 本地 docs/package manifest ingestion、chunk/embedding receipt 持久化
 - 禁止：
   - chat / workflow 主链编排
-  - 最终回答生成
+  - 通用多 Agent 最终回答生成与 workflow 编排；Knowledge RAG 专用 answer runtime / provider contract 允许留在 `packages/knowledge/src/rag/*`
   - app view model
   - provider SDK 具体实现
 - 依赖方向：
@@ -50,6 +50,7 @@
 - [indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
 - [indexing-contract-guidelines.md](/docs/packages/knowledge/indexing-contract-guidelines.md)
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
+- [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)
 - [chat-pre-retrieval-routing.md](/docs/packages/knowledge/chat-pre-retrieval-routing.md)
 - [source-ingestion-status.md](/docs/packages/knowledge/source-ingestion-status.md)
 
@@ -92,7 +93,7 @@
   - 真实 Chroma / OpenSearch / Supabase pgvector / LangChain indexing adapter 已迁入 `packages/knowledge/src/adapters/*`；生产凭据、SDK client 与 host 注入仍由 backend / 装配层负责
 
 - `packages/knowledge/src/retrieval/knowledge-chat-routing.ts`
-  - 是 Chat Lab / knowledge-server 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
+  - 是 Chat Lab / 统一 `agent-server` Knowledge domain 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
   - 输入是当前用户可访问的 knowledge base 元信息、兼容 ids、`metadata.mentions` 和用户问题
   - 路由顺序为兼容 ids、metadata ids、`@mentions`、问题与知识库元信息匹配、fallback all
   - 显式 mention 不能绑定时抛出 `KnowledgeChatRoutingError(code="knowledge_mention_not_found")`，由宿主转换为自己的 HTTP / service error
@@ -116,10 +117,12 @@
 - `packages/knowledge/src/runtime/local-knowledge-store.ts`
   - 是当前本地知识摄取与概览读取的真实宿主
   - 负责 `ingestLocalKnowledge`、`readKnowledgeOverview`、`listKnowledgeArtifacts`、`buildKnowledgeDescriptor`
+  - 支持通过 `LocalKnowledgeStoreOptions.repository` 注入 snapshot repository，通过 `sourceProvider` 注入候选来源，通过 `runtimePaths` 注入 `wenyuan` / `cangjing` 展示根路径；新接线应优先使用注入路径，避免把 runtime search / snapshot 继续绑定到仓库根 `data/knowledge` 或 `data/runtime`
   - `ingestLocalKnowledge()` 刷新本地 README / docs / manifest 时会合并已有 source/chunk/embedding/receipt snapshot，避免 Runtime Center 读取时清空通过生产来源 ingestion HTTP facade 写入的 `user-upload`、`catalog-sync`、`web-curated` 等记录
+  - 未传入 repository 时仍会走 root `data/knowledge` filesystem snapshot，这是 root data deprecation Phase 5 的过渡兼容 fallback；新增 host/runtime wiring 不应依赖该 fallback
   - backend 的 `apps/backend/agent-server/src/runtime/knowledge/runtime-knowledge-store.ts` 仅保留 thin compat re-export
 - `packages/knowledge/src/runtime/local-knowledge-store.helpers.ts`
-  - 承载本地 docs/package manifest 枚举、chunk 切分、embedding 写盘与 snapshot 读写
+  - 承载本地 docs/package manifest 枚举、chunk 切分、embedding 与 legacy filesystem snapshot 读写
   - 如果继续增长，应优先拆到 `packages/knowledge/src/runtime/` 下的更细 helper，而不是把逻辑再放回 backend
 
 - `packages/knowledge/src/runtime/local-knowledge-source-ingestion.ts`

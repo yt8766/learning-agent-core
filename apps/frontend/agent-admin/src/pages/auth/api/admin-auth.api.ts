@@ -13,7 +13,7 @@ import type {
   AdminRefreshResponse
 } from '@agent/core';
 
-const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3010/api';
+const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3000/api';
 
 export function loginAdminAuth(input: AdminLoginRequest): Promise<AdminLoginResponse> {
   return requestAuthService<AuthLoginResponse>('/auth/login', {

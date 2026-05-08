@@ -337,6 +337,35 @@ describe('RuntimeService learning centers', () => {
       updatedAt: '2026-03-28T00:00:00.000Z'
     });
 
+    const centersService = (service as any).centersService;
+    vi.spyOn(centersService, 'getRuntimeCenter').mockResolvedValue({
+      recentRuns: [],
+      usageAnalytics: {
+        daily: [],
+        persistedDailyHistory: []
+      }
+    });
+    vi.spyOn(centersService, 'getEvalsCenter').mockResolvedValue({
+      dailyTrend: [],
+      persistedDailyHistory: [],
+      recentRuns: [],
+      promptRegression: {
+        suites: []
+      }
+    });
+    vi.spyOn(centersService, 'getSkillSourcesCenter').mockResolvedValue({
+      sources: [],
+      manifests: [],
+      installed: [],
+      receipts: []
+    });
+    vi.spyOn(centersService, 'getConnectorsCenter').mockResolvedValue([]);
+    vi.spyOn(centersService, 'getCompanyAgentsCenter').mockResolvedValue([]);
+    vi.spyOn(centersService, 'getEvidenceCenter').mockResolvedValue({
+      totalEvidenceCount: 0,
+      recentEvidence: []
+    });
+
     const consoleRecord = await service.getPlatformConsole();
     expect(consoleRecord.approvals).toEqual(
       expect.arrayContaining([

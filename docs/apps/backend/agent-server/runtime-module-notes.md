@@ -165,6 +165,7 @@
 - `runtime/domain/skills/` 的 skill search 纯领域决策也已退化为 compat re-export；真实宿主现已迁到 `@agent/skill` 的 `sources/skill-search-resolution.ts`。`runtime-skill-sources.service.ts` 应继续往“装配 sources/manifests/search result，再委托 domain helper 判定”收敛，而不是把 capability gap 对应的 status、safety note 与 MCP recommendation 规则继续堆回 service
 - `runtime/domain/skills/` 现在还开始承接 auto-install eligibility 规则；`runtime-skill-auto-install.ts` 已收走“哪些 suggestion 才算可安装 manifest”以及“什么 safety/trust 条件下允许 low-risk auto install”的纯判断，`runtime-skill-safety.ts` 保留 manifest safety 评估与兼容出口，不要再把这类 eligibility 分支继续塞回 safety/service 文件
 - `runtime/domain/skills/` 也应继续承接 skill install 的纯路径/命名规则；`runtime-skill-install-paths.ts` 已收走 remote skill display name、optional skill name normalize、install path sanitize/build 等纯 helper，`runtime-skill-install.service.ts` 应更多保留 receipt 持久化、artifact promote、CLI 调用和失败回写，不要再把这类 deterministic helper 长期堆在 service 文件底部
+- remote skill install / check / update 的默认 CLI 路径已从 `shell.exec(commandString)` 收敛为 `runtime-skill-cli.ts` command plan + `src/infrastructure/external-process/*` 的 `execFile(command, args)` runner。`runtime-skill-install.service.ts` 仍可把 `buildSkillsAddCommand(...)` 写入 receipt 作为展示/审计摘要，但真实执行只走 `{ command: 'npx', args: [...] }`、`assertSafeSkillsArgs(...)` 与最小 env allowlist。
 - `runtime/domain/skills/` 现在还开始承接 skill card 列表清洗规则；`runtime-skill-card-listing.ts` 已收走 accidental prompt-like card 过滤、重复 skill 去重与 stable/lab 优先级排序，`RuntimeSkillCatalogService` 应更多保留 catalog facade、NotFound 映射与 draft 发布入口，而不是继续在 service 文件底部堆这类 listing 规则
 - `runtime/domain/skills/` 当前也开始承接 skill install governance 的 app-local wiring；`runtime-skill-governance-context.ts` 已统一收走 `installSkill/installRemoteSkill/approveSkillInstall/rejectSkillInstall` 共用的 receipt 持久化、manifest/source 列举、finalize closure 与 install receipt 读取装配。`RuntimeCentersGovernanceService` 应更多保留治理入口分发，而不是继续手写这组 closure 链
 - `runtime/domain/skills/` 现在还开始承接 skill sources center 的 catalog wiring；`runtime-skill-sources-center-loader.ts` 已统一收走 source/manifest/install receipt/skill card/tasks 的读取拼装，`RuntimeCentersCatalogQueryService` 应更多保留 center 入口与 evals/query 组合，而不是继续堆这类多源读取逻辑
@@ -228,6 +229,29 @@
   - learning candidate / installed skill tag 已拆到 `runtime/domain/learning/runtime-learning-derived-records.ts`
   - checkpoint ref 已拆到 `runtime/domain/session/runtime-checkpoint-ref.ts`
   - connector discovery / governance audit grouping 已拆到 `runtime/domain/connectors/runtime-connector-governance-records.ts`
+
+Runtime state persistence：
+
+- `RuntimeHost` 现在按 `BACKEND_PERSISTENCE` 显式选择 runtime state repository：
+  - `memory`：注入 `MemoryRuntimeStateRepository`，用于本地/测试的非持久运行。
+  - `postgres`：注入 `PostgresRuntimeStateRepository`，通过 `runtime_tasks`、`runtime_pending_executions`、`runtime_learning_jobs`、`runtime_learning_queue`、`runtime_channel_deliveries`、`runtime_cross_check_evidence`、`runtime_workspace_skill_reuse`、`runtime_governance_state`、`runtime_usage_history`、`runtime_eval_history`、`runtime_usage_audit`、`runtime_chat_sessions`、`runtime_chat_messages`、`runtime_chat_events`、`runtime_chat_checkpoints`、`runtime_governance_audit` 这些显式表保存可恢复运行态。
+- Postgres runtime state 表使用可查询主列承载 task/session/event/checkpoint/audit 的核心字段，同时在同领域表的 `metadata`、`payload` 或 `state` jsonb 字段保留完整 runtime 记录，避免迁移期间丢失 cancel、recover、observe 所需的宽松状态。
+- 新增 runtime state 领域持久化时，不要回退到 root `data/runtime/*.json`，也不要新增单一 catch-all JSON 表；应继续扩展领域表、mapper 和 `scripts/check-no-root-data-runtime.mjs` 的守卫。
+
+Unified database schema：
+
+- `apps/backend/agent-server/src/infrastructure/database/schemas/` 是统一后端数据库 DDL 的基础设施入口，当前拆分为 `identity-schema.sql.ts`、`knowledge-schema.sql.ts` 与 `runtime-schema.sql.ts`。
+- `apps/backend/agent-server/src/infrastructure/database/migrations/0001_identity.sql`、`0002_knowledge.sql`、`0003_runtime_workflows.sql` 是对应的纯 SQL migration artifact，不 import TypeScript。
+- Knowledge DDL 复用当前 agent-server Knowledge Domain 的真实表集：bases、members、uploads、documents、chunks、chat、eval tables 与 vector helper functions；不要再以只有 `knowledge_bases` / `knowledge_documents` 的简化 schema 作为终态。
+- Runtime workflow DDL 对齐 `workflow_runs` TypeORM entity 的实际列名：`workflowId`、`startedAt`、`completedAt`、`inputData`、`traceData`。修改 workflow entity 时必须同步更新 `runtime-schema.sql.ts` 与 `0003_runtime_workflows.sql`。
+
+Skill persistence：
+
+- `@agent/skill` 现在暴露 `SkillInstallRepository` / `SkillSourceRepository` contract，以及对应 memory implementation。
+- `RuntimeHost` 拥有 skill install/source repositories；`createProviderFactorySkillInstallContext`、`createProviderFactorySkillSourcesContext` 与 `RuntimeServiceContextFactory` 都必须把这些 repository 注入到 runtime skill services，避免真实运行路径继续默认读取 root `data/skills/*`。
+- runtime sandbox `find-skills` 必须通过执行请求里的 `skillSearchMetadata` / `skillSearchSnapshot` 接收 repository 或 facade 生成的 installed skill 与 source manifest 快照；它只额外扫描 source-controlled `.agents/skills/**/SKILL.md`，不再读取 root `data/skills/installed` 或 `data/skills/remote-sources`。
+- `SkillSourceSyncService` 已支持注入 `SkillSourceRemoteCacheRepository`。同步远程 source 时应优先使用注入的 remote source cache repository；未注入时才走 legacy `data/skills/remote-sources/<sourceId>/index.json` 过渡 fallback。
+- 当前 skill 持久化仍处于 Phase 3 迁移中：memory repository 已接线，legacy `data/skills/staging`、`data/skills/drafts`、`data/skills/remote-sources` 仅作为过渡 fallback，后续必须补齐 backend Postgres repositories 与 artifact/draft storage 后才能删除 root `data/skills`。
 
 Daily Tech Briefing 边界：
 

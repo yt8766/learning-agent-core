@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/backend/agent-server`
-最后核对：2026-05-01
+最后核对：2026-05-07
 
 本主题主文档：
 
@@ -20,6 +20,14 @@
 - runtime 边界：[runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
 - API 契约：[docs/contracts/api/README.md](/docs/contracts/api/README.md)
 - 前后端集成链路：[docs/integration/frontend-backend-integration.md](/docs/integration/frontend-backend-integration.md)
+
+`agent-server` 是当前唯一后端 API Host。它 owns:
+
+- Identity and role/permission evaluation.
+- Frontend-facing Knowledge API.
+- Chat, Runtime and Platform Center BFF routes.
+- Tool execution, Sandbox and Auto Review facades.
+- Workflow BFF routes.
 
 `agent-server` 是平台主 API 服务，负责：
 
@@ -99,6 +107,12 @@ Nest provider 约束：
 - 不要用构造函数默认参数伪装依赖注入；这会让单元测试看似可用，但真实 `AppModule` 启动时 Nest 无法解析 provider token。
 - `backend-http-app.smoke.ts` 使用 `abortOnError: false`，保证启动失败时暴露可诊断异常，而不是在 Vitest worker 中触发 `process.abort()`。
 
+Platform governance 权限：
+
+- `PlatformModule` 注册 `PermissionGuard` 作为平台控制器的权限门。
+- connector center 与 skill sources center 的 `POST` 写接口必须标注 `RequirePermission('governance:write')`。
+- 新增治理写接口时，先在 [agent-admin.md](/docs/contracts/api/agent-admin.md) 写明权限语义，再补 `platform-permission-guards.spec.ts` 防回退测试。
+
 ## Chat 模块拆分约束
 
 `apps/backend/agent-server/src/chat/chat.service.ts` 现在只保留会话委托、直连模式判断和 facade 级入口。
@@ -120,7 +134,7 @@ Chat response steps 通过 `chat-response-steps.adapter.ts` 投影为 `node_prog
 pnpm start:dev:agent
 ```
 
-本地同时联调 `auth-server`、`knowledge-server` 与 `agent-server` 时，优先使用根级 `pnpm start:dev`。
+本地联调后端时默认只启动统一 `agent-server`。
 
 生产构建：
 
@@ -133,8 +147,8 @@ pnpm --dir apps/backend/agent-server start:prod
 构建约束：
 
 - `apps/backend/agent-server/tsconfig.build.json` 必须覆盖开发态 `paths` 为 `{}`，让生产构建走 workspace 包解析，而不是继续命中 `packages/*/src`、`agents/*/src`
-- `apps/backend/auth-server` 与 `apps/backend/knowledge-server` 这类 standalone backend 也必须保持 `paths: {}`，通过 `@agent/core` 的 workspace 包 manifest 消费 `build/types`；不要在 app tsconfig 中把 `@agent/core` 指回 `packages/core/src`，否则 `rootDir: ./src` 的构建链路会把 core 源码拉进当前项目并触发 TS6059
-- standalone backend 的 `start` / `start:dev` 必须和 agent-server 一样先执行根级 `build:lib`，确保被 workspace 包 manifest 引用的 `build/types`、`build/cjs` 与 `build/esm` 已存在
+- 新增 Nest backend 不应恢复 standalone auth/knowledge host；如确需新增独立服务，必须先定义 workspace package 边界、API contract 与构建入口，不要从 app tsconfig 把 `@agent/*` 指回源码路径。
+- `agent-server` 的 `start` / `start:dev` 必须先执行根级 `build:lib`，确保被 workspace 包 manifest 引用的 `build/types`、`build/cjs` 与 `build/esm` 已存在
 - `apps/backend/agent-server/tsconfig.build.json` 的生产构建应关闭 `incremental`，避免 `tsconfig.build.tsbuildinfo` 仍在但 `dist/` 已被清理时出现“`tsc` 成功、却没有任何发射产物”的假成功
 - 上游 workspace 包与专项 agent 的声明产物必须固定到各自 `build/types`，运行时代码产物固定到 `build/cjs` 与 `build/esm`；`package.json` 中 `types` / `exports.types` 也必须同步指向这些真实存在的构建产物，不要把 `.d.ts/.js/.js.map` 回写到 `packages/*/src`、`agents/*/src`
 - 生产构建输出应只落在 `apps/backend/agent-server/dist`
