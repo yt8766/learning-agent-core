@@ -276,61 +276,61 @@ Add these entries to `packages/knowledge/package.json` under `exports`:
 ```json
 "./adapters": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/index.d.ts",
+    "types": "./build/types/src/adapters/index.d.ts",
     "default": "./build/esm/adapters/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/index.d.ts",
+    "types": "./build/types/src/adapters/index.d.ts",
     "default": "./build/cjs/adapters/index.js"
   }
 },
 "./adapters/langchain": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+    "types": "./build/types/src/adapters/langchain/index.d.ts",
     "default": "./build/esm/adapters/langchain/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+    "types": "./build/types/src/adapters/langchain/index.d.ts",
     "default": "./build/cjs/adapters/langchain/index.js"
   }
 },
 "./adapters/minimax": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+    "types": "./build/types/src/adapters/minimax/index.d.ts",
     "default": "./build/esm/adapters/minimax/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+    "types": "./build/types/src/adapters/minimax/index.d.ts",
     "default": "./build/cjs/adapters/minimax/index.js"
   }
 },
 "./adapters/glm": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+    "types": "./build/types/src/adapters/glm/index.d.ts",
     "default": "./build/esm/adapters/glm/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+    "types": "./build/types/src/adapters/glm/index.d.ts",
     "default": "./build/cjs/adapters/glm/index.js"
   }
 },
 "./adapters/deepseek": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+    "types": "./build/types/src/adapters/deepseek/index.d.ts",
     "default": "./build/esm/adapters/deepseek/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+    "types": "./build/types/src/adapters/deepseek/index.d.ts",
     "default": "./build/cjs/adapters/deepseek/index.js"
   }
 },
 "./adapters/openai-compatible": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+    "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
     "default": "./build/esm/adapters/openai-compatible/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+    "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
     "default": "./build/cjs/adapters/openai-compatible/index.js"
   }
 }

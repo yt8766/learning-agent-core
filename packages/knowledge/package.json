@@ -3,61 +3,61 @@
   "version": "0.1.0",
   "main": "build/cjs/index.js",
   "module": "build/esm/index.mjs",
-  "types": "build/types/knowledge/src/index.d.ts",
+  "types": "build/types/src/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
       "import": {
-        "types": "./build/types/knowledge/src/index.d.ts",
+        "types": "./build/types/src/index.d.ts",
         "default": "./build/esm/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/index.d.ts",
+        "types": "./build/types/src/index.d.ts",
         "default": "./build/cjs/index.js"
       }
     },
     "./node": {
       "import": {
-        "types": "./build/types/knowledge/src/node/index.d.ts",
+        "types": "./build/types/src/node/index.d.ts",
         "default": "./build/esm/node/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/node/index.d.ts",
+        "types": "./build/types/src/node/index.d.ts",
         "default": "./build/cjs/node/index.js"
       }
     },
     "./core": {
       "import": {
-        "types": "./build/types/knowledge/src/core/index.d.ts",
+        "types": "./build/types/src/core/index.d.ts",
         "default": "./build/esm/core/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/core/index.d.ts",
+        "types": "./build/types/src/core/index.d.ts",
         "default": "./build/cjs/core/index.js"
       }
     },
     "./client": {
       "import": {
-        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "types": "./build/types/src/client/index.d.ts",
         "default": "./build/esm/client/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/client/index.d.ts",
+        "types": "./build/types/src/client/index.d.ts",
         "default": "./build/cjs/client/index.js"
       }
     },
     "./browser": {
       "import": {
-        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "types": "./build/types/src/browser/index.d.ts",
         "default": "./build/esm/browser/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/browser/index.d.ts",
+        "types": "./build/types/src/browser/index.d.ts",
         "default": "./build/cjs/browser/index.js"
       }
     },
     "./browser-entry": {
-      "types": "./build/types/knowledge/src/browser/index.d.ts",
+      "types": "./build/types/src/browser/index.d.ts",
       "module": "./build/esm/browser/index.mjs",
       "browser": "./build/esm/browser/index.mjs",
       "development": "./build/esm/browser/index.mjs",
@@ -67,111 +67,111 @@
     },
     "./contracts": {
       "import": {
-        "types": "./build/types/knowledge/src/contracts/index.d.ts",
+        "types": "./build/types/src/contracts/index.d.ts",
         "default": "./build/esm/contracts/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/contracts/index.d.ts",
+        "types": "./build/types/src/contracts/index.d.ts",
         "default": "./build/cjs/contracts/index.js"
       }
     },
     "./indexing": {
       "import": {
-        "types": "./build/types/knowledge/src/indexing/index.d.ts",
+        "types": "./build/types/src/indexing/index.d.ts",
         "default": "./build/esm/indexing/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/indexing/index.d.ts",
+        "types": "./build/types/src/indexing/index.d.ts",
         "default": "./build/cjs/indexing/index.js"
       }
     },
     "./adapters": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/index.d.ts",
+        "types": "./build/types/src/adapters/index.d.ts",
         "default": "./build/esm/adapters/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/index.d.ts",
+        "types": "./build/types/src/adapters/index.d.ts",
         "default": "./build/cjs/adapters/index.js"
       }
     },
     "./adapters/chroma": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "types": "./build/types/src/adapters/chroma/index.d.ts",
         "default": "./build/esm/adapters/chroma/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/chroma/index.d.ts",
+        "types": "./build/types/src/adapters/chroma/index.d.ts",
         "default": "./build/cjs/adapters/chroma/index.js"
       }
     },
     "./adapters/deepseek": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+        "types": "./build/types/src/adapters/deepseek/index.d.ts",
         "default": "./build/esm/adapters/deepseek/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+        "types": "./build/types/src/adapters/deepseek/index.d.ts",
         "default": "./build/cjs/adapters/deepseek/index.js"
       }
     },
     "./adapters/glm": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+        "types": "./build/types/src/adapters/glm/index.d.ts",
         "default": "./build/esm/adapters/glm/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+        "types": "./build/types/src/adapters/glm/index.d.ts",
         "default": "./build/cjs/adapters/glm/index.js"
       }
     },
     "./adapters/langchain": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+        "types": "./build/types/src/adapters/langchain/index.d.ts",
         "default": "./build/esm/adapters/langchain/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+        "types": "./build/types/src/adapters/langchain/index.d.ts",
         "default": "./build/cjs/adapters/langchain/index.js"
       }
     },
     "./adapters/minimax": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+        "types": "./build/types/src/adapters/minimax/index.d.ts",
         "default": "./build/esm/adapters/minimax/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+        "types": "./build/types/src/adapters/minimax/index.d.ts",
         "default": "./build/cjs/adapters/minimax/index.js"
       }
     },
     "./adapters/openai-compatible": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+        "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
         "default": "./build/esm/adapters/openai-compatible/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+        "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
         "default": "./build/cjs/adapters/openai-compatible/index.js"
       }
     },
     "./adapters/opensearch": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "types": "./build/types/src/adapters/opensearch/index.d.ts",
         "default": "./build/esm/adapters/opensearch/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/opensearch/index.d.ts",
+        "types": "./build/types/src/adapters/opensearch/index.d.ts",
         "default": "./build/cjs/adapters/opensearch/index.js"
       }
     },
     "./adapters/supabase": {
       "import": {
-        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "types": "./build/types/src/adapters/supabase/index.d.ts",
         "default": "./build/esm/adapters/supabase/index.mjs"
       },
       "require": {
-        "types": "./build/types/knowledge/src/adapters/supabase/index.d.ts",
+        "types": "./build/types/src/adapters/supabase/index.d.ts",
         "default": "./build/cjs/adapters/supabase/index.js"
       }
     }

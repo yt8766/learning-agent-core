@@ -3,7 +3,7 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/knowledge`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
 ## Goal
 
@@ -63,6 +63,7 @@ Entrypoint status:
 - Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Chroma, DeepSeek, GLM, LangChain, MiniMax, OpenAI-compatible, OpenSearch, and Supabase pgvector.
 - Target planned: dedicated `@agent/knowledge/runtime`, `@agent/knowledge/retrieval`, `@agent/knowledge/eval`, and `@agent/knowledge/observability` subpaths remain publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
+- Declaration exports must point at the current `tsc -p packages/knowledge/tsconfig.types.json` layout under `build/types/src/...`; do not reintroduce the historical `build/types/knowledge/src/...` path.
 
 Current implemented public package entrypoint:
 
@@ -127,7 +128,7 @@ Current `src/core` package export:
 
 - Source: `packages/knowledge/src/core/index.ts`
 - Public subpath: `@agent/knowledge/core`
-- Build entries: `build/cjs/core/index.js`, `build/esm/core/index.mjs`, `build/types/knowledge/src/core/index.d.ts`
+- Build entries: `build/cjs/core/index.js`, `build/esm/core/index.mjs`, `build/types/src/core/index.d.ts`
 - Root package compatibility: `@agent/knowledge` explicitly re-exports non-conflicting core schemas, constants, `EmbeddingProvider`, and core errors. Vector-store related SDK types are exported from the root with `KnowledgeSdk*` aliases to avoid colliding with the existing retrieval/indexing `VectorStore` and `VectorSearchHit` contracts. New SDK consumers should prefer `@agent/knowledge/core` for the unaliased core names.
 
 ## Current Contracts and Core Migration

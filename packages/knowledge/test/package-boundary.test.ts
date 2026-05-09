@@ -19,6 +19,17 @@ function importsWorkspaceAgentPackage(source: string): boolean {
 }
 
 describe('@agent/knowledge package boundary', () => {
+  it('publishes declaration entrypoints from the current build/types/src layout', async () => {
+    const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')) as {
+      exports?: Record<string, unknown>;
+      types?: string;
+    };
+    const manifestText = JSON.stringify({ exports: manifest.exports, types: manifest.types });
+
+    expect(manifest.types).toBe('build/types/src/index.d.ts');
+    expect(manifestText).not.toContain('build/types/knowledge/src');
+  });
+
   it('does not depend on workspace @agent packages so it can be published as a standalone SDK', async () => {
     const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>;
