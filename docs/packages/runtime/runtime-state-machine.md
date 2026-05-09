@@ -5,7 +5,7 @@
 适用范围：运行态状态机
 最后核对：2026-05-02
 
-本文档固定当前 runtime、worker 与 chat 的主状态机语义，避免 backend、worker、admin、agent-chat 对同一状态产生不同解释。
+本文档固定当前 runtime、agent-server background runner 与 chat 的主状态机语义，避免 backend、admin、agent-chat 对同一状态产生不同解释。
 
 ## Task State
 
@@ -37,7 +37,7 @@
 `LearningJob.status` 使用以下 canonical 状态：
 
 - `queued`
-  - learning job 已创建，等待 backend 内建 runner 或独立 worker 消费
+  - learning job 已创建，等待 agent-server 内建 background runner 消费
 - `running`
   - learning job 正在处理文档学习、研究学习或聚合写入
 - `completed`
@@ -49,19 +49,16 @@ learning job 不再使用“创建即 completed”的同步语义。
 
 研究类 learning job 只能调用已注册的 MCP capability。`search_doc`、`webReader`、`webSearchPrime`、`collect_research_source` 这类候选能力必须先通过 `mcpClientManager.hasCapability()` 确认；未注册时跳过外部采集并在 source detail 中记录失败摘要，不能把本地 tool 名或未注册候选直接传给 `invokeCapability()`。
 
-## Backend vs Worker
+## Backend Background Runner
 
-- backend 内建 background runner
-  - 作为开发环境、单机运行和兜底模式
-  - 负责在未启用独立 worker 时消费 queued task / learning job
-- 独立 `apps/worker`
-  - 作为正式后台消费入口
-  - 负责 background task、learning job、recover/retry/checkpoint replay 等异步链路
+`apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup。
+
+旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录。
 
 推荐语义：
 
-- 本地开发：可启用 backend 内建 runner
-- 稳定运行：以独立 worker 为主，backend 仅负责 API 与状态投影
+- 本地开发：启用 agent-server 内建 background runner
+- 稳定运行：仍以 agent-server runtime bootstrap 启动同一套 background runner，backend 同时负责 API 与状态投影
 
 ## Chat Recovery Semantics
 
@@ -121,7 +118,7 @@ learning job 不再使用“创建即 completed”的同步语义。
 
 当前项目采用的是：
 
-- `worker` 异步执行 + background runner
+- agent-server 内建 background runner 异步执行
 - 通才兜底
 - 六部治理语义
 

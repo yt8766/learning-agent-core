@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
@@ -10,6 +10,31 @@ import {
 } from '../src/contracts';
 
 describe('@agent/tools contracts boundary', () => {
+  it('does not depend on @agent/runtime from package source or manifest', () => {
+    const toolsRoot = resolve(__dirname, '..');
+    const manifest = JSON.parse(readFileSync(resolve(toolsRoot, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
+    };
+    const declaredRuntimeDependency =
+      manifest.dependencies?.['@agent/runtime'] ??
+      manifest.devDependencies?.['@agent/runtime'] ??
+      manifest.peerDependencies?.['@agent/runtime'];
+
+    const sourceDir = resolve(toolsRoot, 'src');
+    const runtimeImports = readdirSync(sourceDir, { recursive: true })
+      .map(entry => String(entry))
+      .filter(entry => entry.endsWith('.ts'))
+      .filter(entry => {
+        const content = readFileSync(resolve(sourceDir, entry), 'utf8');
+        return content.includes('@agent/runtime');
+      });
+
+    expect(declaredRuntimeDependency).toBeUndefined();
+    expect(runtimeImports).toEqual([]);
+  });
+
   it('hosts tool surface and runtime contracts locally', () => {
     expect(ToolRiskLevelSchema.parse('medium')).toBe('medium');
     expect(

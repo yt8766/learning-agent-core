@@ -62,7 +62,7 @@ Create and modify these files across the roadmap:
 - `apps/frontend/knowledge/src/pages/*.tsx`: Production UI workflows backed by real API hooks.
 - `apps/frontend/knowledge/test/*.test.tsx`: Frontend provider and page behavior tests.
 - `docs/contracts/api/knowledge.md`: API contract updated from MVP stubs to production semantics.
-- `docs/packages/knowledge/sdk.md`: SDK public API, default implementations, and extension policy.
+- `docs/sdk/knowledge.md`: SDK public API, default implementations, and extension policy.
 - `docs/apps/frontend/knowledge/knowledge-frontend.md`: Frontend architecture and workflow documentation.
 - `docs/apps/backend/agent-server/knowledge.md`: Backend knowledge service architecture and runtime notes.
 
@@ -670,7 +670,7 @@ git commit -m "feat: add knowledge ingestion pipeline"
 - Create: `packages/adapters/src/supabase/supabase-pgvector-store.adapter.ts`
 - Modify: `packages/adapters/src/index.ts`
 - Test: `packages/adapters/test/supabase-pgvector-store.adapter.test.ts`
-- Docs: `docs/packages/knowledge/sdk.md`
+- Docs: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Write the failing adapter mapping test**
 
@@ -733,7 +733,7 @@ It must convert snake_case database rows into SDK camelCase contracts before ret
 
 - [ ] **Step 4: Document the recommended vector database choice**
 
-Update `docs/packages/knowledge/sdk.md` with this recommendation:
+Update `docs/sdk/knowledge.md` with this recommendation:
 
 - Default production recommendation: Supabase PostgreSQL + pgvector.
 - Reason: one operational database for auth metadata, document metadata, eval records, traces, and vector search.
@@ -748,7 +748,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/adapters/src/supabase packages/adapters/src/index.ts packages/adapters/test/supabase-pgvector-store.adapter.test.ts docs/packages/knowledge/sdk.md
+git add packages/adapters/src/supabase packages/adapters/src/index.ts packages/adapters/test/supabase-pgvector-store.adapter.test.ts docs/sdk/knowledge.md
 git commit -m "feat: add supabase pgvector knowledge adapter"
 ```
 
@@ -1151,7 +1151,7 @@ git commit -m "feat: wire knowledge frontend production workflows"
 - Modify: `packages/knowledge/src/index.ts`
 - Modify: `packages/knowledge/package.json`
 - Test: `packages/knowledge/test/sdk-entrypoints.test.ts`
-- Docs: `docs/packages/knowledge/sdk.md`
+- Docs: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Write the failing SDK entrypoint test**
 
@@ -1193,7 +1193,7 @@ The SDK must export interfaces and factory functions, not hard-wire Supabase, a 
 
 - [ ] **Step 5: Document extension policy**
 
-Update `docs/packages/knowledge/sdk.md` with:
+Update `docs/sdk/knowledge.md` with:
 
 - Core interfaces that users can implement.
 - Default implementations provided by this repo.
@@ -1210,7 +1210,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/knowledge/src packages/knowledge/package.json packages/knowledge/test/sdk-entrypoints.test.ts docs/packages/knowledge/sdk.md
+git add packages/knowledge/src packages/knowledge/package.json packages/knowledge/test/sdk-entrypoints.test.ts docs/sdk/knowledge.md
 git commit -m "feat: prepare knowledge package sdk entrypoints"
 ```
 
@@ -1221,7 +1221,7 @@ git commit -m "feat: prepare knowledge package sdk entrypoints"
 - Modify: `docs/contracts/api/knowledge.md`
 - Modify: `docs/apps/frontend/knowledge/knowledge-frontend.md`
 - Modify: `docs/apps/backend/agent-server/knowledge.md`
-- Modify: `docs/packages/knowledge/sdk.md`
+- Modify: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Update API contract sections**
 
@@ -1263,7 +1263,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/contracts/api/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/apps/backend/agent-server/knowledge.md docs/packages/knowledge/sdk.md
+git add docs/contracts/api/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/apps/backend/agent-server/knowledge.md docs/sdk/knowledge.md
 git commit -m "docs: update knowledge production architecture"
 ```
 
@@ -1276,7 +1276,7 @@ git commit -m "docs: update knowledge production architecture"
 - Review: `apps/backend/agent-server/src/knowledge/**`
 - Review: `apps/frontend/knowledge/src/**`
 - Review: `docs/contracts/api/knowledge.md`
-- Review: `docs/packages/knowledge/sdk.md`
+- Review: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Run targeted package verification**
 

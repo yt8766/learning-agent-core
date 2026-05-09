@@ -4,7 +4,7 @@ import type {
   KnowledgeIngestionReceiptRecord,
   KnowledgeSourceRecord
 } from '../contracts/types/knowledge-runtime.types';
-import type { KnowledgeVectorIndexWriter } from '@agent/memory';
+import type { KnowledgeVectorIndexWriter } from '../contracts/indexing';
 
 import { createKnowledgeSourceIngestionLoader, type KnowledgeSourceIngestionPayload } from '../indexing';
 import { runKnowledgeIndexing } from '../indexing/pipeline/run-knowledge-indexing';

@@ -62,10 +62,12 @@ yarn-error.log*
 pnpm-debug.log*
 
 # -----------------------------------------------------------------------------
-# 项目本地数据（运行时生成、大文件等）
+# 项目本地数据（legacy import 输入、profile storage、运行时生成、大文件等）
 # -----------------------------------------------------------------------------
 /artifacts/tmp
 /tmp
+# Root data is legacy import input only. Current runtime storage uses
+# profile-storage/* and artifacts/* instead.
 /data/runtime
 /data/memory
 /data/knowledge

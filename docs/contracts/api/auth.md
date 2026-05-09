@@ -3,13 +3,11 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/src/domains/identity`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-07
+最后核对：2026-05-09
 
 统一登录服务采用账号密码登录和 JWT Access Token + Refresh Token 轮换机制。第一版直接由前端调用，不实现 OIDC。
 
-> Canonical backend host: `apps/backend/agent-server`. Legacy route aliases are migration compatibility only.
->
-> 统一后端说明：`agent-server` Identity 域是合并后端的身份宿主，当前实现见 [agent-server Identity 域](/docs/apps/backend/agent-server/identity.md)。新增后端能力默认不要继续扩展独立身份服务。
+当前 canonical 身份入口：`apps/backend/agent-server` 的 `/api/identity/*`。standalone `apps/backend/auth-server` 已删除；不要新增 `/api/auth/*` 调用方。
 
 ## 1. Canonical Entry
 
@@ -22,17 +20,13 @@ POST /api/identity/logout
 GET  /api/identity/me
 ```
 
-Legacy alias：
+用户管理入口：
 
 ```text
-POST /api/auth/login
-POST /api/auth/refresh
-POST /api/auth/logout
-GET  /api/auth/me
-GET  /api/auth/users
-POST /api/auth/users
-POST /api/auth/users/:userId/disable
-POST /api/auth/users/:userId/enable
+GET   /api/identity/users
+POST  /api/identity/users
+PATCH /api/identity/users/:userId/disable
+PATCH /api/identity/users/:userId/enable
 ```
 
 默认本地端口：
@@ -86,4 +80,4 @@ Token 响应使用 `packages/core/src/contracts/auth-service` 的 schema：
 
 ## 4. Compatibility
 
-旧 `agent-server` admin auth、`/api/auth/*` 和 knowledge auth 路径只作为迁移期间兼容入口。新登录与用户管理功能默认接 `/api/identity/*`，不要再把 knowledge 权限塞回登录服务。
+旧 standalone `auth-server`、`/api/auth/*` 和 knowledge auth 路径已 hard cut 删除。新登录与用户管理功能只能接 `/api/identity/*`，不要再把 knowledge 权限塞回登录服务。

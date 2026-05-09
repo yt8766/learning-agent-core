@@ -30,7 +30,26 @@ describe('@agent/knowledge migrated adapter exports', () => {
 
   it('scopes package.json exports to the supported publish surfaces', () => {
     expect(new Set(Object.keys(packageJson.exports))).toEqual(
-      new Set(['.', './node', './browser-entry', './package.json'])
+      new Set([
+        '.',
+        './node',
+        './core',
+        './client',
+        './browser',
+        './browser-entry',
+        './contracts',
+        './indexing',
+        './adapters',
+        './adapters/chroma',
+        './adapters/deepseek',
+        './adapters/glm',
+        './adapters/langchain',
+        './adapters/minimax',
+        './adapters/openai-compatible',
+        './adapters/opensearch',
+        './adapters/supabase',
+        './package.json'
+      ])
     );
   });
 });

@@ -15,35 +15,74 @@ import type {
 
 const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3000/api';
 
+export interface AdminAuthApiOptions {
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+}
+
+export interface AdminAuthApi {
+  login(input: AdminLoginRequest): Promise<AdminLoginResponse>;
+  refresh(refreshToken?: string): Promise<AdminRefreshResponse>;
+  logout(input: AdminLogoutRequest): Promise<AdminLogoutResponse>;
+  me(): Promise<AdminMeResponse>;
+}
+
+const defaultAdminAuthApi = createAdminAuthApi();
+
 export function loginAdminAuth(input: AdminLoginRequest): Promise<AdminLoginResponse> {
-  return requestAuthService<AuthLoginResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ ...input, remember: input.remember ?? false } satisfies AuthLoginRequest)
-  }).then(mapLoginResponse);
+  return defaultAdminAuthApi.login(input);
 }
 
 export function refreshAdminAuth(refreshToken?: string): Promise<AdminRefreshResponse> {
-  return requestAuthService<AuthRefreshResponse>('/auth/refresh', {
-    method: 'POST',
-    body: JSON.stringify(refreshToken ? { refreshToken } : {})
-  });
+  return defaultAdminAuthApi.refresh(refreshToken);
 }
 
 export function logoutAdminAuth(input: AdminLogoutRequest): Promise<AdminLogoutResponse> {
-  return requestAuthService<AdminLogoutResponse>('/auth/logout', {
-    method: 'POST',
-    body: JSON.stringify(input)
-  });
+  return defaultAdminAuthApi.logout(input);
 }
 
 export function getAdminMe(): Promise<AdminMeResponse> {
-  return requestAuthService<AuthMeResponse>('/auth/me', {
-    headers: authHeader()
-  }).then(response => ({ account: mapAccount(response.account) }));
+  return defaultAdminAuthApi.me();
 }
 
-async function requestAuthService<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${AUTH_SERVICE_BASE_URL.replace(/\/$/, '')}${path}`, {
+export function createAdminAuthApi(options: AdminAuthApiOptions = {}): AdminAuthApi {
+  const baseUrl = (options.baseUrl ?? AUTH_SERVICE_BASE_URL).replace(/\/$/, '');
+  const fetchImpl = options.fetchImpl ?? fetch;
+
+  return {
+    login(input) {
+      return requestAuthService<AuthLoginResponse>(fetchImpl, baseUrl, '/identity/login', {
+        method: 'POST',
+        body: JSON.stringify({ ...input, remember: input.remember ?? false } satisfies AuthLoginRequest)
+      }).then(mapLoginResponse);
+    },
+    refresh(refreshToken) {
+      return requestAuthService<AuthRefreshResponse>(fetchImpl, baseUrl, '/identity/refresh', {
+        method: 'POST',
+        body: JSON.stringify(refreshToken ? { refreshToken } : {})
+      });
+    },
+    logout(input) {
+      return requestAuthService<AdminLogoutResponse>(fetchImpl, baseUrl, '/identity/logout', {
+        method: 'POST',
+        body: JSON.stringify(input)
+      });
+    },
+    me() {
+      return requestAuthService<AuthMeResponse>(fetchImpl, baseUrl, '/identity/me', {
+        headers: authHeader()
+      }).then(response => ({ account: mapAccount(response.account) }));
+    }
+  };
+}
+
+async function requestAuthService<T>(
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const response = await fetchImpl(`${baseUrl}${path}`, {
     ...init,
     headers: mergeHeaders(init.headers, { 'Content-Type': 'application/json' })
   });

@@ -5,7 +5,6 @@ import { ActionIntent } from '@agent/core';
 import type { ToolDefinition } from '@agent/runtime';
 
 import { ApprovalService } from '@agent/runtime';
-import * as approvalExports from '../src/approval';
 
 describe('ApprovalService', () => {
   const service = new ApprovalService();
@@ -37,8 +36,9 @@ describe('ApprovalService', () => {
     };
   }
 
-  it('keeps the tools approval entrypoint as a runtime compat bridge', () => {
-    expect(ApprovalService).toBe(approvalExports.ApprovalService);
+  it('keeps ApprovalService owned by @agent/runtime instead of the tools package', async () => {
+    const approvalExports = await import('../src/approval');
+    expect(approvalExports).not.toHaveProperty('ApprovalService');
   });
 
   it('对高风险动作返回需要审批', () => {

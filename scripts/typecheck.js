@@ -9,7 +9,6 @@ const tsc = path.join(rootDir, 'node_modules/typescript/lib/tsc.js');
 
 const appProjects = [
   'apps/backend/agent-server/tsconfig.json',
-  'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.node.json',
   'apps/frontend/agent-chat/tsconfig.app.json',

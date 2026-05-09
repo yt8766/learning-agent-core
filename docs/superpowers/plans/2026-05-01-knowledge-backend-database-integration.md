@@ -1,5 +1,7 @@
 # Knowledge Backend Database Integration Implementation Plan
 
+> 历史说明：本文记录 standalone `auth-server` / `knowledge-server` 方案形成时的设计背景。当前实现已 hard cut 到 unified `apps/backend/agent-server`；正确入口见 `docs/superpowers/specs/2026-05-08-unified-backend-hard-cut-design.md`。
+
 状态：snapshot
 文档类型：plan
 适用范围：`apps/backend/agent-server/src/knowledge`、`apps/frontend/knowledge`、`packages/adapters`、`packages/knowledge`
@@ -73,7 +75,7 @@ This plan intentionally keeps the backend inside `agent-server/src/knowledge`; i
   - Backend database/provider setup notes.
 - `docs/contracts/api/knowledge.md`
   - Notes that API paths stay stable while persistence changes.
-- `docs/packages/knowledge/sdk.md`
+- `docs/sdk/knowledge.md`
   - Provider configuration and Supabase pgvector notes.
 
 ## Task 1: SQL Client Boundary and Schema
@@ -995,7 +997,7 @@ git commit -m "feat: configure knowledge backend providers"
 
 - Create: `apps/backend/agent-server/src/knowledge/knowledge-vector-store.factory.ts`
 - Test: `apps/backend/agent-server/test/knowledge/knowledge-vector-store.factory.spec.ts`
-- Docs: `docs/packages/knowledge/sdk.md`
+- Docs: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Write the failing vector store factory test**
 
@@ -1147,7 +1149,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Document vector store mode**
 
-Append this exact section to `docs/packages/knowledge/sdk.md`:
+Append this exact section to `docs/sdk/knowledge.md`:
 
 ```md
 ## Agent Server Vector Store Wiring
@@ -1163,7 +1165,7 @@ Append this exact section to `docs/packages/knowledge/sdk.md`:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/backend/agent-server/src/knowledge/knowledge-vector-store.factory.ts apps/backend/agent-server/test/knowledge/knowledge-vector-store.factory.spec.ts docs/packages/knowledge/sdk.md
+git add apps/backend/agent-server/src/knowledge/knowledge-vector-store.factory.ts apps/backend/agent-server/test/knowledge/knowledge-vector-store.factory.spec.ts docs/sdk/knowledge.md
 git commit -m "feat: wire knowledge supabase vector store"
 ```
 
@@ -1410,7 +1412,7 @@ Expected: both commands exit `0`.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/backend/agent-server/src/knowledge apps/backend/agent-server/test/knowledge apps/frontend/knowledge/test docs/apps/backend/agent-server/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/packages/knowledge/sdk.md docs/contracts/api/knowledge.md
+git add apps/backend/agent-server/src/knowledge apps/backend/agent-server/test/knowledge apps/frontend/knowledge/test docs/apps/backend/agent-server/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/sdk/knowledge.md docs/contracts/api/knowledge.md
 git commit -m "chore: verify knowledge database integration"
 ```
 

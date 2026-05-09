@@ -8,18 +8,21 @@ This package owns external knowledge RAG workflows:
 - handing knowledge chunks to the vector boundary
 - retrieval-facing repositories and search services
 
-`@agent/memory` owns the current runtime vector boundary used by indexing:
+`@agent/knowledge` owns the knowledge indexing vector writer contract used by indexing:
 
 - `KnowledgeVectorDocumentRecord`
 - `KnowledgeVectorIndexWriter`
-- `LocalVectorIndexRepository.upsertKnowledge()`
 
-`runKnowledgeIndexing()` does not call an embedder or vector store directly. It converts each indexed chunk into a `KnowledgeVectorDocumentRecord` and calls `KnowledgeVectorIndexWriter.upsertKnowledge()`. The memory vector implementation performs embedding and vector index persistence behind that boundary.
+The authoritative contract file is `packages/knowledge/src/contracts/indexing/knowledge-vector-writer.ts`. The contract is exported from the `@agent/knowledge` root entrypoint and the contracts indexing barrel.
+
+`runKnowledgeIndexing()` does not call an embedder or vector store directly. It converts each indexed chunk into a `KnowledgeVectorDocumentRecord` and calls the injected `KnowledgeVectorIndexWriter.upsertKnowledge()`.
+
+Host packages decide how to embed, persist, or index those records. Repository-internal `@agent/memory` implementations may implement this writer, but `@agent/knowledge` does not depend on `@agent/memory`.
 
 Current package responsibilities:
 
-- `@agent/knowledge`: external knowledge ingestion, chunk metadata, retrieval contracts, indexing schemas, and citation/evidence helpers.
-- `@agent/memory`: runtime working-memory stores plus the shared vector index boundary for memory, rule, and knowledge records.
+- `@agent/knowledge`: external knowledge ingestion, chunk metadata, retrieval contracts, indexing schemas, the knowledge vector writer contract, and citation/evidence helpers.
+- `@agent/memory`: runtime working-memory stores and optional repository-internal implementations of the knowledge vector writer boundary.
 - `@agent/tools`: tool-surface contracts and tool runtime event schemas that are specific to tool execution.
 - `@agent/runtime/src/contracts/governance`: governance, approval-scope, tool-definition, MCP-capability, and tool-execution request/result contracts consumed by runtime and tools.
 
@@ -31,4 +34,4 @@ P3-1 migration status:
 - Governance schemas/helpers previously mirrored from `packages/core/src/governance/**` now have a package-local host under `packages/runtime/src/contracts/governance/**`.
 - `packages/core/src/knowledge/**` and `packages/core/src/memory/**` have been removed. Do not restore compat barrels there; callers should import knowledge contracts from `@agent/knowledge` and memory contracts from `@agent/memory`.
 
-When this boundary changes, update the TypeScript contract in `@agent/memory` first, then update knowledge indexing and this document in the same change.
+When this boundary changes, update the package-local TypeScript contract in `@agent/knowledge`, then update knowledge indexing, host implementations, and this document in the same change.

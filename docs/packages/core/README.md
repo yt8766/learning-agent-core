@@ -116,7 +116,7 @@
 
 - `core` 是稳定主 contract 的唯一宿主
 - `shared` 只保留 compat / facade / 展示组合职责
-- `core` 当前应按 `contracts / providers + domain folders` 理解：`tasking / skills / review / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主；data-report 已迁到 `@agent/agents-data-report`，knowledge / memory 已迁到 `@agent/knowledge` / `@agent/memory`，governance / tools 已迁到 `@agent/runtime` / `@agent/tools`
+- `core` 当前应按 `contracts / providers + domain folders` 理解：`tasking / skills / review / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主；data-report 已迁到 `@agent/agents-data-report`，knowledge / memory 已迁到 `@agent/knowledge` / `@agent/memory`，runtime-owned governance 已迁到 `@agent/runtime`，tool registry / executor 已迁到 `@agent/tools`；稳定 tool definition / execution request / execution result / family contract 仍归 `core`
 - 后续继续收敛时，优先把剩余仍在平铺 compat 入口后的子域继续迁入 domain folder，而不是继续扩大根级平铺文件数量
 
 建议优先阅读：

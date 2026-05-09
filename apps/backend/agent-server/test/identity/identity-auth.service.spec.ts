@@ -4,6 +4,7 @@ import { IdentityAuthService } from '../../src/domains/identity/services/identit
 import { IdentityJwtProvider } from '../../src/domains/identity/services/identity-jwt.provider';
 import { IdentityPasswordService } from '../../src/domains/identity/services/identity-password.service';
 import { IdentityMemoryRepository } from '../../src/domains/identity/repositories/identity-memory.repository';
+import { IdentityServiceError } from '../../src/domains/identity/services/identity-service.error';
 
 describe('IdentityAuthService', () => {
   async function createService() {
@@ -33,6 +34,7 @@ describe('IdentityAuthService', () => {
     expect(response.tokens.tokenType).toBe('Bearer');
     expect(response.tokens.accessToken).toContain('.');
     expect(response.tokens.refreshToken).toHaveLength(64);
+    expect(service.verifyAccessToken(response.tokens.accessToken).aud).toContain('agent-gateway');
   });
 
   it('rotates refresh tokens and revokes the session on refresh token reuse', async () => {
@@ -58,6 +60,18 @@ describe('IdentityAuthService', () => {
     ).rejects.toMatchObject({
       code: 'account_disabled'
     });
+  });
+
+  it('maps invalid credentials to a client auth error instead of an internal error', async () => {
+    const { service } = await createService();
+
+    await expect(service.login({ username: 'admin', password: 'wrong-password' })).rejects.toMatchObject({
+      code: 'invalid_credentials',
+      httpStatus: 401
+    });
+    await expect(service.login({ username: 'admin', password: 'wrong-password' })).rejects.toBeInstanceOf(
+      IdentityServiceError
+    );
   });
 
   it('stores password hashes through the identity password provider boundary', async () => {

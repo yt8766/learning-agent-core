@@ -1,4 +1,4 @@
-import type { Chunk, Chunker, Document } from '../../index';
+import type { Chunk, Chunker, Document } from '../../contracts/indexing';
 
 export class FixedWindowChunker implements Chunker {
   constructor(

@@ -7,6 +7,15 @@ import { UsersPage } from '@/pages/identity/pages/users-page';
 import { AdminErrorPage } from '@/pages/errors/admin-error-page';
 import { PAGE_KEYS } from '@/hooks/admin-dashboard/admin-dashboard-constants';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
+import {
+  AgentGatewayAiProvidersPage,
+  AgentGatewayAuthFilesPage,
+  AgentGatewayConfigPage,
+  AgentGatewayDashboardPage,
+  AgentGatewayOAuthPage,
+  AgentGatewayQuotaPage,
+  AgentGatewaySystemPage
+} from '@/pages/agent-gateway/agent-gateway-pages';
 
 const AUTH_SERVICE_BASE_URL = import.meta.env.VITE_AUTH_SERVICE_BASE_URL ?? 'http://127.0.0.1:3000/api';
 
@@ -26,7 +35,13 @@ export const adminRoutes: RouteObject[] = [
       {
         element: <ProtectedAdminRoute />,
         children: [
-          { index: true, element: <DashboardPage /> },
+          { index: true, element: <AgentGatewayDashboardPage /> },
+          { path: 'config', element: <AgentGatewayConfigPage /> },
+          { path: 'ai-providers', element: <AgentGatewayAiProvidersPage /> },
+          { path: 'auth-files', element: <AgentGatewayAuthFilesPage /> },
+          { path: 'oauth', element: <AgentGatewayOAuthPage /> },
+          { path: 'quota', element: <AgentGatewayQuotaPage /> },
+          { path: 'system', element: <AgentGatewaySystemPage /> },
           { path: 'identity/users', element: <UsersPage client={authServiceClient} /> },
           ...PAGE_KEYS.map(page => ({
             path: page,

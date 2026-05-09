@@ -6,7 +6,7 @@ import {
   DockerSandboxProvider,
   SandboxPolicy,
   SandboxProviderRegistry
-} from '../../src/sandbox';
+} from '@agent/runtime';
 
 describe('DockerSandboxProvider', () => {
   it('builds readonly docker argv with a replaceable image and read-only workspace mount', () => {

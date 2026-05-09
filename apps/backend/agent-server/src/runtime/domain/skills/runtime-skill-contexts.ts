@@ -1,6 +1,7 @@
 import type { SkillCard, SkillManifestRecord, SkillSourceRecord } from '@agent/core';
 
 import { autoInstallLocalManifest, type RuntimeSkillInstallContext } from '../../skills/runtime-skill-install.service';
+import { RuntimeSkillInstallRepository } from '../../skills/runtime-skill-storage.repository';
 import { type RuntimeSkillSourcesContext } from '../../skills/runtime-skill-sources.service';
 import type { RuntimeHost } from '../../core/runtime.host';
 
@@ -27,6 +28,10 @@ export function createSkillInstallContext(input: {
       check: () => input.remoteSkillDiscoveryService.checkInstalledSkills(),
       update: () => input.remoteSkillDiscoveryService.updateInstalledSkills()
     },
+    skillInstallRepository: new RuntimeSkillInstallRepository({
+      receiptsRoot: input.settings.skillReceiptsRoot,
+      installedRoot: input.settings.skillPackagesRoot
+    }),
     registerInstalledSkillWorker: input.registerSkillWorker
   };
 }

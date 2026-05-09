@@ -16,7 +16,7 @@ export async function* streamKnowledgeChat({
   fetcher = globalThis.fetch.bind(globalThis),
   input
 }: KnowledgeChatStreamRequest): AsyncIterable<KnowledgeRagStreamEvent> {
-  const response = await fetcher(`${baseUrl.replace(/\/$/, '')}/chat`, {
+  const response = await fetcher(`${baseUrl.replace(/\/$/, '')}/knowledge/chat`, {
     body: JSON.stringify({ ...input, stream: true }),
     headers: mergeStreamHeaders(accessToken),
     method: 'POST'

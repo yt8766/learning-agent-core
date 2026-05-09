@@ -64,7 +64,7 @@ This plan intentionally splits work into independently verifiable tasks. Each ta
   - Frontend production workflow notes.
 - `docs/contracts/api/knowledge.md`
   - API contract updates.
-- `docs/packages/knowledge/sdk.md`
+- `docs/sdk/knowledge.md`
   - SDK provider configuration notes.
 
 ## Task 1: Durable Knowledge Repository Boundary
@@ -304,7 +304,7 @@ git commit -m "feat: add durable knowledge repository boundary"
 - Create: `apps/backend/agent-server/src/knowledge/knowledge-provider.config.ts`
 - Modify: `apps/backend/agent-server/src/knowledge/knowledge.module.ts`
 - Test: `apps/backend/agent-server/test/knowledge/knowledge-provider-config.spec.ts`
-- Docs: `docs/packages/knowledge/sdk.md`
+- Docs: `docs/sdk/knowledge.md`
 
 - [ ] **Step 1: Write the failing provider config test**
 
@@ -395,7 +395,7 @@ Expected: PASS.
 
 - [ ] **Step 5: Document env configuration**
 
-Add this to `docs/packages/knowledge/sdk.md`:
+Add this to `docs/sdk/knowledge.md`:
 
 ```md
 ## Backend Provider Environment
@@ -410,7 +410,7 @@ The service role key must stay inside backend provider construction and must nev
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/backend/agent-server/src/knowledge/knowledge-provider.config.ts apps/backend/agent-server/test/knowledge/knowledge-provider-config.spec.ts docs/packages/knowledge/sdk.md
+git add apps/backend/agent-server/src/knowledge/knowledge-provider.config.ts apps/backend/agent-server/test/knowledge/knowledge-provider-config.spec.ts docs/sdk/knowledge.md
 git commit -m "feat: configure knowledge providers"
 ```
 

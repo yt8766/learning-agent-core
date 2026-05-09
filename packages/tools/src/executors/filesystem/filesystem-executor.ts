@@ -1,9 +1,9 @@
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, relative } from 'node:path';
 
-import type { ToolExecutionRequest } from '@agent/runtime';
+import type { ToolExecutionRequest } from '@agent/core';
 
-import { collectFiles, toWorkspacePath } from '@agent/runtime';
+import { collectFiles, toWorkspacePath } from '../../filesystem/workspace-path-utils';
 
 /** Relative path for user-facing summaries; avoids English “tool log” wording that reads like an error line. */
 function relWorkspace(absPath: string): string {

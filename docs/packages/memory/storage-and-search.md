@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`packages/memory`、`data/memory`、`data/knowledge`
+适用范围：`packages/memory`、`profile-storage/<profile>/memory`、`profile-storage/<profile>/knowledge`
 最后核对：2026-05-02
 
 ## 1. 这篇文档说明什么
@@ -94,11 +94,11 @@
 - 主动内存管理中的 `core_memory_append`、`core_memory_replace`、`archival_memory_search` 由 runtime / tool facade 暴露
 - `packages/memory` 只提供底层存储、检索、排序、治理能力，不直接承载 agent 决策
 
-## 4. `data/memory` 与 `data/knowledge`
+## 4. Profile Storage 中的 memory 与 knowledge
 
-- `data/memory`
+- `profile-storage/<profile>/memory`
   - 面向可复用沉淀，例如 memory / rule / 相关本地存储
-- `data/knowledge`
+- `profile-storage/<profile>/knowledge`
   - 面向知识检索副产物，例如 catalog、sources、chunks、vectors、ingestion
 
 简单理解：

@@ -34,7 +34,7 @@ describe('KnowledgeApiClient', () => {
       if (String(url).endsWith('/dashboard/overview') && authorization === 'Bearer old') {
         return new Response(JSON.stringify({ code: 'auth_token_expired', message: 'expired' }), { status: 401 });
       }
-      if (String(url).endsWith('/auth/refresh')) {
+      if (String(url).endsWith('/identity/refresh')) {
         return new Response(
           JSON.stringify({
             tokens: {
@@ -64,13 +64,13 @@ describe('KnowledgeApiClient', () => {
         { status: 200 }
       );
     };
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
 
     const result = await apiClient.getDashboardOverview();
 
     expect(result.knowledgeBaseCount).toBe(0);
-    expect(calls.some(call => call.url.endsWith('/auth/refresh'))).toBe(true);
+    expect(calls.some(call => call.url.endsWith('/identity/refresh'))).toBe(true);
     expect(calls.at(-1)?.authorization).toBe('Bearer new');
   });
 
@@ -100,14 +100,14 @@ describe('KnowledgeApiClient', () => {
       )
     );
     vi.stubGlobal('fetch', fetcher);
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1' });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api' });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient });
 
     const result = await apiClient.getDashboardOverview();
 
     expect(result.knowledgeBaseCount).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
-      '/api/knowledge/v1/dashboard/overview',
+      'http://127.0.0.1:3000/api/dashboard/overview',
       expect.objectContaining({
         headers: expect.any(Headers)
       })
@@ -145,14 +145,14 @@ describe('KnowledgeApiClient', () => {
       );
     }) as typeof fetch;
     vi.stubGlobal('fetch', fetcher);
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1' });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api' });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient });
 
     const result = await apiClient.getDashboardOverview();
 
     expect(result.knowledgeBaseCount).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
-      '/api/knowledge/v1/dashboard/overview',
+      'http://127.0.0.1:3000/api/dashboard/overview',
       expect.objectContaining({ headers: expect.any(Headers) })
     );
   });
@@ -167,13 +167,13 @@ describe('KnowledgeApiClient', () => {
     });
     let refreshCalls = 0;
     const fetcher: typeof fetch = async url => {
-      if (String(url).endsWith('/auth/refresh')) {
+      if (String(url).endsWith('/identity/refresh')) {
         refreshCalls += 1;
       }
       return new Response(JSON.stringify({ code: 'auth_forbidden', message: 'forbidden' }), { status: 401 });
     };
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
 
     await expect(apiClient.getDashboardOverview()).rejects.toThrow('forbidden');
 
@@ -191,7 +191,7 @@ describe('KnowledgeApiClient', () => {
     let dashboardCalls = 0;
     let refreshCalls = 0;
     const fetcher: typeof fetch = async url => {
-      if (String(url).endsWith('/auth/refresh')) {
+      if (String(url).endsWith('/identity/refresh')) {
         refreshCalls += 1;
         return new Response(
           JSON.stringify({
@@ -209,8 +209,8 @@ describe('KnowledgeApiClient', () => {
       dashboardCalls += 1;
       return new Response(JSON.stringify({ code: 'auth_token_expired', message: 'still expired' }), { status: 401 });
     };
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
 
     await expect(apiClient.getDashboardOverview()).rejects.toThrow('still expired');
 
@@ -244,8 +244,8 @@ describe('KnowledgeApiClient', () => {
           { status: 200 }
         )
       );
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
 
     const events = [];
     for await (const event of apiClient.streamChat({
@@ -256,7 +256,7 @@ describe('KnowledgeApiClient', () => {
     }
 
     expect(fetcher).toHaveBeenCalledWith(
-      '/api/knowledge/v1/chat',
+      'http://127.0.0.1:3000/api/knowledge/chat',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -343,8 +343,8 @@ describe('KnowledgeApiClient', () => {
       }
       return new Response('{}', { status: 404 });
     });
-    const authClient = new AuthClient({ baseUrl: '/api/knowledge/v1', fetcher });
-    const apiClient = new KnowledgeApiClient({ baseUrl: '/api/knowledge/v1', authClient, fetcher });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
 
     await expect(apiClient.listRagModelProfiles()).resolves.toMatchObject({
       items: [expect.objectContaining({ id: 'coding-pro', label: '用于编程' })]
@@ -355,9 +355,12 @@ describe('KnowledgeApiClient', () => {
     await expect(apiClient.listConversationMessages('conv_backend')).resolves.toMatchObject({
       items: [expect.objectContaining({ id: 'msg_user_backend', content: '检索前技术名词' })]
     });
-    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/rag/model-profiles', expect.any(Object));
-    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/conversations', expect.any(Object));
-    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/conversations/conv_backend/messages', expect.any(Object));
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:3000/api/knowledge/rag/model-profiles', expect.any(Object));
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:3000/api/knowledge/conversations', expect.any(Object));
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:3000/api/knowledge/conversations/conv_backend/messages',
+      expect.any(Object)
+    );
   });
 
   it('rejects malformed knowledge chat SSE frames before hooks consume them', () => {

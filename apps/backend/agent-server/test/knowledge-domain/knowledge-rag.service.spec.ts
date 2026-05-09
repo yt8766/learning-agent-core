@@ -32,13 +32,13 @@ describe('KnowledgeRagService', () => {
       },
       diagnostics: {
         retrievalMode: 'keyword-only',
-        hitCount: 2,
-        contextChunkCount: 2
+        hitCount: 1,
+        contextChunkCount: 1
       },
       traceId: expect.stringMatching(/^trace_/)
     });
     expect(response.citations).toContainEqual(
-      expect.objectContaining({ quote: 'Rollback steps', score: expect.any(Number) })
+      expect.objectContaining({ quote: expect.stringContaining('Rollback steps'), score: expect.any(Number) })
     );
     const messages = await repository.listChatMessages(response.conversationId, actor.userId);
     expect(messages.items.map(message => message.role)).toEqual(['user', 'assistant']);
@@ -207,10 +207,13 @@ function enabledSdkRuntime(input: {
       embeddingProvider: {
         providerId: 'fake',
         defaultModel: 'fake-embedding',
-        embedText: async () => ({ embedding: [0.1, 0.2] })
+        embedText: async () => ({ embedding: [0.1, 0.2] }),
+        embedBatch: async input => ({ embeddings: input.texts.map(() => [0.1, 0.2]), model: 'fake-embedding' })
       },
       vectorStore: {
-        search: async () => ({ hits: [] })
+        search: async () => ({ hits: [] }),
+        upsert: async input => ({ upsertedCount: input.records.length }),
+        delete: async input => ({ deletedCount: input.ids?.length ?? 0 })
       }
     }
   };

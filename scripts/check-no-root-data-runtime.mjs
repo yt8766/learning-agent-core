@@ -26,40 +26,7 @@ const PATTERNS = [
   }
 ];
 
-const ALLOWLIST = [
-  [
-    'apps/backend/agent-server/src/runtime/centers/runtime-centers-observability.query-service.ts',
-    'Runtime observability may read legacy browser replay files until browser replay artifacts fully move behind storage.'
-  ],
-  [
-    'apps/backend/agent-server/src/runtime/centers/runtime-centers-workspace-drafts.ts',
-    'Workspace draft storage remains a transitional root skill-data fallback until skill persistence cutover completes.'
-  ],
-  [
-    'apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts',
-    'Runtime skill storage is the temporary repository boundary for legacy skill cache, staging, and draft data.'
-  ],
-  [
-    'apps/backend/agent-server/scripts/cleanup-agent-server-artifacts.mjs',
-    'App-local cleanup may inspect legacy root data during migration.'
-  ],
-  [
-    'packages/knowledge/src/runtime/local-knowledge-store.ts',
-    'Local knowledge store keeps explicit legacy root-data fallbacks until knowledge persistence cutover completes.'
-  ],
-  [
-    'packages/runtime/src/sandbox/sandbox-executor-skill-search.ts',
-    'Sandbox skill search reads legacy installed and remote skill metadata until skill persistence cutover completes.'
-  ],
-  [
-    'packages/templates/src/registries/frontend-template-registry.ts',
-    'Template registry may describe generated app paths.'
-  ],
-  [
-    'packages/tools/src/executors/runtime-governance/runtime-governance-executor.ts',
-    'Runtime governance still reads legacy browser replay artifacts until artifact repository injection is complete.'
-  ]
-];
+const ALLOWLIST = [];
 
 const allowlist = new Map(ALLOWLIST);
 

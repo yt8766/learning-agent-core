@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import type { KnowledgeVectorDocumentRecord } from '@agent/memory';
+import type { KnowledgeVectorDocumentRecord } from '@agent/knowledge';
 
 import { ingestKnowledgeSourcePayloads, KNOWLEDGE_RELATIVE_PATHS } from '../src';
 

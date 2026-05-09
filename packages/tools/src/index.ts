@@ -64,7 +64,6 @@ export { executeScaffoldTool } from './executors/scaffold/scaffold-executor';
 export * from './sandbox';
 export { SCHEDULING_TOOL_DEFINITIONS } from './definitions/scheduling-tool-definitions';
 export { executeSchedulingTool } from './executors/scheduling/scheduling-executor';
-export { ExecutionWatchdog, type ExecutionWatchdogObservation } from '@agent/runtime';
 export {
   AgentToolAliasResolver,
   AgentToolSurfaceResolver,

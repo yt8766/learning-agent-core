@@ -14,9 +14,11 @@ import type { BudgetState } from '@agent/core';
 import type { EvidenceRecord } from '@agent/memory';
 import { MemoryRepository, RuleRepository, RuntimeStateRepository, MemorySearchService } from '@agent/memory';
 import { SkillRegistry } from '@agent/skill';
-import { ApprovalService, McpClientManager, ToolRegistry, SandboxExecutor } from '@agent/tools';
+import { McpClientManager, ToolRegistry } from '@agent/tools';
 
 import type { LlmUsageMetadata } from '@agent/adapters';
+import type { ApprovalService } from '../governance/approval';
+import type { SandboxExecutor } from '../sandbox';
 
 export interface AgentRuntimeContext {
   taskId: string;

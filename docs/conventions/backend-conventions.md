@@ -8,7 +8,6 @@
 适用范围：
 
 - `apps/backend/agent-server`
-- `apps/worker`
 - 与后端运行时直接相关的 `packages/*`
 
 ## 1. 技术边界
@@ -18,7 +17,7 @@
 - 应用层只通过 `@agent/*` 使用共享包
 - 禁止应用层直连 `packages/*/src`、`agents/*/src`，也禁止依赖 `@agent/<pkg>/<subpath>`
 - 禁止应用层依赖其他应用的 `dist` 或 package 的 `build` 路径
-- 当前仓库已通过 `apps/worker/test/app-dependency-boundary.test.ts` 对 `apps/backend/agent-server`、`apps/frontend/*` 与 `apps/worker` 统一执行应用层依赖边界校验
+- 当前仓库通过包边界检查对 `apps/backend/agent-server` 与 `apps/frontend/*` 统一执行应用层依赖边界校验
 
 ## 2. 目录与模块规范
 
@@ -102,15 +101,6 @@
   - 可放：query/body DTO、通用 parse pipe、装饰器、filter、interceptor、少量 HTTP 侧通用类型
   - 不可放：runtime 编排、业务 service、面向单一模块的 helper、临时兜底逻辑
 
-### `apps/worker/src`
-
-- `bootstrap/`：worker 启动装配
-- `jobs/`：任务与学习任务入口
-- `consumers/`：事件或队列消费
-- `runtime/`：调用 `@agent/platform-runtime` 创建官方 runtime facade，并通过 `@agent/runtime` 使用 kernel 能力
-- `recovery/`：checkpoint 恢复
-- `health/`：健康与运行状态
-
 ## 3. 分层规范
 
 - `controller`：收发请求、参数转换、调用 service
@@ -176,12 +166,13 @@
 - `platform console` 这类跨中心聚合 payload，默认需要显式 schema/normalizer，不能再让 `any` / `unknown` 直接穿透到 controller、export helper 或前端边界
 - `runtime/` 可以保留 Nest facade、SSE/HTTP DTO 适配、请求上下文、日志与错误映射
 - `runtime/` 不应继续承接官方 Agent 默认注册、workflow registry、graph compile/invoke 默认装配；这些属于 `packages/platform-runtime`
-- worker 与 backend 需要共享的 runtime 装配，只能上提到 `packages/platform-runtime`，不要让 worker 反向依赖 backend，也不要在两个 app 里复制装配
+- `apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup。
+- 旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录。
 
 ## 3.1 文件长度规范
 
-- `apps/backend/agent-server/src` 与 `apps/worker/src` 下的手写源码文件，单文件默认不得超过 **400 行**
-- `apps/backend/agent-server/test` 与 `apps/worker/test` 下的测试文件，也默认不得超过 **400 行**
+- `apps/backend/agent-server/src` 下的手写源码文件，单文件默认不得超过 **400 行**
+- `apps/backend/agent-server/test` 下的测试文件，也默认不得超过 **400 行**
 - 超过 400 行必须拆分，优先拆到：
   - `dto/`
   - `entities/`
@@ -238,21 +229,19 @@
 
 ## 7. 本地数据目录规范
 
-- 本地运行数据统一放在仓库根级 `data/`
-- `data/` 与 `apps/`、`packages/` 同级
-- 禁止把 memory、rules、skills、runtime state 等运行数据放进具体 app 目录
-- 禁止新增 `apps/backend/agent-server/data` 这类应用内数据目录作为长期方案
-- 后端读取和写入本地数据时，默认以仓库根级 `data/` 为准
-- `apps/backend/agent-server/logs` 与历史遗留 `apps/backend/agent-server/data` 只允许承载可清理产物；需要定期清理时，优先使用 `pnpm --dir apps/backend/agent-server cleanup:artifacts`
-- 清理策略默认只删除过期日志和 app-local 遗留数据；不要对根级 `data/memory`、`data/runtime`、`data/knowledge`、`data/skills` 做无差别删除
-- 如果 app-local 目录与根级 `data/*` 同时存在同名运行时文件，根级 `data/*` 始终是唯一 canonical 数据源；app-local 副本应在本轮迁移内删除
+- 本地运行数据必须通过显式 repository、profile storage 或 artifact storage。
+- `packages/config` 的内置默认路径落到 `profile-storage/<profile>/...`；生成产物和浏览器 replay 默认落到 `artifacts/...`。
+- 仓库根级 `data/*` 只允许作为 `LEGACY_DATA_IMPORT=once` 的历史输入或人工显式覆盖路径，不再是 canonical runtime 数据源。
+- 禁止新增 `apps/backend/agent-server/data` 这类应用内数据目录作为长期方案。
+- `apps/backend/agent-server/logs` 与历史遗留 `apps/backend/agent-server/data` 只允许承载可清理产物；需要定期清理时，优先使用 `pnpm --dir apps/backend/agent-server cleanup:artifacts`。
+- 清理 root `data/*` 前，先确认 legacy import receipts/errors 已记录且生产/runtime 代码不再写 root data。
 
 推荐结构示例：
 
-- `data/memory/`
-- `data/runtime/`
-- `data/skills/`
-- `data/knowledge/`
+- `profile-storage/platform/runtime/`
+- `profile-storage/platform/skills/`
+- `profile-storage/platform/knowledge/`
+- `artifacts/runtime/`
 
 ### Runtime Profile 补充
 
@@ -380,7 +369,7 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
 
 ### Platform Runtime 补充
 
-`packages/platform-runtime` 已成为 backend 与 worker 的官方装配入口：
+`packages/platform-runtime` 已成为 backend runtime facade 的官方装配入口：
 
 - backend：
   - 加载 Nest provider
@@ -388,20 +377,18 @@ LearningFlow 在正式评分前，应优先先做一次基于当前 goal 的 reu
   - 构造 request auth/context
   - 通过 `createDefaultPlatformRuntime(...)` 选择官方装配方案
   - 调用 runtime facade 并映射响应、事件、错误
-- worker：
-  - 加载 settings/profile
-  - 消费后台 job
-  - 通过 `createDefaultPlatformRuntime(...)` 选择官方装配方案
-  - 调用 runtime facade
-  - 写回状态、事件、checkpoint
+- agent-server 内建 background runner：
+  - 由 runtime bootstrap 启动
+  - 消费 queued task 与 learning job
+  - 负责 lease reclaim、heartbeat 与 failure cleanup
+  - 通过已装配 runtime facade 写回状态、事件、checkpoint
 
 禁止：
 
-- backend 或 worker 各自内联官方 Agent registry
-- backend 或 worker 自己拼 `supervisor/coder/reviewer/data-report` graph
-- backend 或 worker 直接依赖 `@agent/agents-*`
-- worker 暴露平台 controller
-- backend 复制 worker loop 或长流程后台驱动
+- backend 自行内联官方 Agent registry
+- backend 自己拼 `supervisor/coder/reviewer/data-report` graph
+- backend 直接依赖 `@agent/agents-*`
+- 恢复已退役的后台消费应用或第二套长流程后台驱动
 
 ## 8. 包引用规范
 

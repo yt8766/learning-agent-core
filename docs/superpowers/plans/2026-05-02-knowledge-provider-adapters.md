@@ -93,7 +93,7 @@ This plan must run in the current checkout. Do not use `git worktree`.
   - Preset factory construction tests using a mock `@langchain/openai`.
 - Test: `packages/knowledge/test/sdk-entrypoints.test.ts`
   - Adapter subpath export regression tests.
-- Modify docs: `docs/packages/knowledge/sdk.md`
+- Modify docs: `docs/sdk/knowledge.md`
   - Document adapter subpaths, MiniMax default, and LangChain boundary.
 - Modify docs: `docs/packages/knowledge/README.md`
   - Add adapter layer as a current package boundary.
@@ -1563,7 +1563,7 @@ git commit -m "feat: add knowledge provider presets"
 **Files:**
 
 - Modify: `packages/knowledge/src/index.ts`
-- Modify: `docs/packages/knowledge/sdk.md`
+- Modify: `docs/sdk/knowledge.md`
 - Modify: `docs/packages/knowledge/README.md`
 - Test: `packages/knowledge/test/sdk-entrypoints.test.ts`
 
@@ -1604,7 +1604,7 @@ export * from './adapters';
 
 - [ ] **Step 4: Update SDK documentation**
 
-Add this section to `docs/packages/knowledge/sdk.md` after “默认实现”:
+Add this section to `docs/sdk/knowledge.md` after “默认实现”:
 
 ````md
 ## 官方 Adapter 层
@@ -1678,7 +1678,7 @@ Expected: PASS and build outputs include adapter entrypoints under `build/cjs/ad
 Run:
 
 ```bash
-git add packages/knowledge/src/index.ts packages/knowledge/test/sdk-entrypoints.test.ts docs/packages/knowledge/sdk.md docs/packages/knowledge/README.md
+git add packages/knowledge/src/index.ts packages/knowledge/test/sdk-entrypoints.test.ts docs/sdk/knowledge.md docs/packages/knowledge/README.md
 git commit -m "docs: document knowledge provider adapters"
 ```
 

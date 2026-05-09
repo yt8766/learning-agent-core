@@ -21,7 +21,7 @@
 ## 已确认决策
 
 - 成熟度目标：生产级 RAG 主链。
-- 模型配置权威来源：`knowledge-server` 自己维护 RAG model profiles，不依赖 `apps/llm-gateway` 作为第一阶段阻塞项。
+- 模型配置权威来源：`knowledge-server` 自己维护 RAG model profiles，不依赖已下线的私用 LLM 中转应用作为阻塞项。
 - 语义召回默认主路径：Postgres + pgvector，复用当前 SDK runtime 与 `match_knowledge_chunks` RPC 方向。
 - keyword / 中文子串召回定位：fallback 与诊断对照，不再作为主召回路径。
 - Chat Lab 会话持久化：后端持久化会话与消息，支持刷新、切页和跨设备恢复。
@@ -38,7 +38,7 @@
 
 ## 非目标
 
-- 第一阶段不把模型配置迁入 `apps/llm-gateway`。后续可以通过 adapter 同步，但不阻塞 knowledge 产品可用。
+- 第一阶段不把模型配置迁入独立 LLM 中转站；后续如需统一模型治理，应通过当前 `agent-gateway` 或宿主 adapter 收敛，不阻塞 knowledge 产品可用。
 - 第一阶段不做复杂 agentic multi-hop RAG、自反思补查循环或自动规划多轮工具调用。
 - 第一阶段不把 OpenSearch 作为默认检索后端。OpenSearch 可作为后续 hybrid provider 插件接入。
 - 前端不暴露 provider secret、base URL、裸 SDK response 或第三方错误对象。

@@ -102,7 +102,7 @@ export async function listSkillSources(context: RuntimeSkillSourcesContext): Pro
       id: WORKSPACE_SKILL_DRAFT_SOURCE_ID,
       name: 'Workspace Skill Drafts',
       kind: 'internal',
-      baseUrl: `${context.settings.workspaceRoot}/data/skills/drafts`,
+      baseUrl: `${context.settings.skillsRoot}/drafts`,
       discoveryMode: 'local-dir',
       syncStrategy: 'manual',
       allowedProfiles: ['platform', 'company', 'personal', 'cli'],

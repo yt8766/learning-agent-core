@@ -25,7 +25,7 @@ export class AuthClient {
   }
 
   async login(input: LoginRequest): Promise<LoginResponse> {
-    const response = await this.fetcher(`${this.baseUrl}/auth/login`, {
+    const response = await this.fetcher(this.identityPath('login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -39,8 +39,19 @@ export class AuthClient {
     return session;
   }
 
-  logout() {
-    this.clearAuthTokens();
+  async logout(): Promise<void> {
+    const refreshToken = this.getRefreshToken();
+    try {
+      if (refreshToken) {
+        await this.fetcher(this.identityPath('logout'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        });
+      }
+    } finally {
+      this.clearAuthTokens();
+    }
   }
 
   setAuthLostHandler(handler: (() => void) | undefined) {
@@ -48,7 +59,7 @@ export class AuthClient {
   }
 
   async getCurrentUser(): Promise<CurrentUser> {
-    const result = await this.requestWithAccessToken('/auth/me', parseMeResponse);
+    const result = await this.requestWithAccessToken('identity/me', parseMeResponse);
     return result.user;
   }
 
@@ -62,7 +73,7 @@ export class AuthClient {
     if (!accessToken) {
       throw new Error('Missing access token');
     }
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+    const response = await this.fetcher(joinUrl(this.baseUrl, path), {
       ...init,
       headers: mergeHeaders(init.headers, { Authorization: `Bearer ${accessToken}` })
     });
@@ -124,7 +135,7 @@ export class AuthClient {
       throw new Error('Refresh token expired');
     }
     try {
-      const response = await this.fetcher(`${this.baseUrl}/auth/refresh`, {
+      const response = await this.fetcher(this.identityPath('refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
@@ -159,6 +170,10 @@ export class AuthClient {
 
   private isRefreshTokenExpired(now = Date.now()) {
     return !this.cachedTokens || now >= this.cachedTokens.refreshTokenExpiresAt;
+  }
+
+  private identityPath(path: string) {
+    return joinUrl(this.baseUrl, `identity/${path}`);
   }
 }
 
@@ -203,6 +218,10 @@ function mergeHeaders(input: HeadersInit | undefined, extra: Record<string, stri
     headers.set(key, value);
   }
   return headers;
+}
+
+function joinUrl(baseUrl: string, path: string) {
+  return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
 }
 
 function parseLoginResponse(body: unknown): LoginResponse | undefined {

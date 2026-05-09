@@ -34,7 +34,12 @@ describe('AgentGatewayAuthService', () => {
     });
     const login = service.login({ username: 'admin', password: 'test-password' });
 
-    expect(service.refresh(login.refreshToken).session.user.role).toBe('admin');
+    const refresh = service.refresh(login.refreshToken);
+
+    expect(refresh.session.user.role).toBe('admin');
+    expect(refresh.refreshToken).toContain('gateway-refresh.');
+    expect(refresh.refreshTokenExpiresAt).toEqual(expect.any(String));
+    expect(refresh.refreshTokenStorage).toBe('localStorage');
   });
 
   it('does not enable default credentials without explicit configuration', () => {

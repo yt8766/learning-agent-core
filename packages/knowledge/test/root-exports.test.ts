@@ -39,6 +39,7 @@ import {
   KnowledgeRetrievalModeSchema,
   KnowledgeTraceOperationSchema,
   KnowledgeTraceSpanStatusSchema,
+  KnowledgeVectorDocumentRecordSchema,
   KnowledgeWorkbenchSpanNameSchema,
   KnowledgeWorkbenchTraceStatusSchema,
   buildCatalogSyncKnowledgePayload,
@@ -65,6 +66,8 @@ import type {
   KnowledgeRetrievalMode,
   KnowledgeTraceOperation,
   KnowledgeTraceSpanStatus,
+  KnowledgeVectorDocumentRecord,
+  KnowledgeVectorIndexWriter,
   KnowledgeWorkbenchSpanName,
   KnowledgeWorkbenchTraceStatus
 } from '../src/index';
@@ -216,6 +219,35 @@ describe('@agent/knowledge root exports', () => {
     expect(typeSmoke.spanName).toBe('retrieve');
     expect(typeSmoke.ingestionStage).toBe('uploaded');
     expect(typeSmoke.retrievalMode).toBe('hybrid');
+  });
+
+  it('exports the knowledge vector writer contract from the SDK boundary', async () => {
+    expect(rootExports.KnowledgeVectorDocumentRecordSchema).toBe(KnowledgeVectorDocumentRecordSchema);
+
+    const record: KnowledgeVectorDocumentRecord = {
+      id: 'chunk-1',
+      namespace: 'knowledge',
+      sourceId: 'source-1',
+      documentId: 'doc-1',
+      chunkId: 'chunk-1',
+      uri: '/docs/a.md',
+      title: 'A',
+      sourceType: 'repo-docs',
+      content: 'hello',
+      searchable: true
+    };
+    const written: KnowledgeVectorDocumentRecord[] = [];
+    const writer: KnowledgeVectorIndexWriter = {
+      async upsertKnowledge(nextRecord) {
+        written.push(nextRecord);
+      }
+    };
+
+    expect(KnowledgeVectorDocumentRecordSchema.parse(record)).toEqual(record);
+
+    await writer.upsertKnowledge(record);
+
+    expect(written).toEqual([record]);
   });
 
   it('retains the contract facade file as a stable contract-first entrypoint', () => {

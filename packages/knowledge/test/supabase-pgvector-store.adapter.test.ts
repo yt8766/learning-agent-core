@@ -298,6 +298,52 @@ describe('SupabasePgVectorStoreAdapter', () => {
     expect(result).toEqual({ upsertedCount: 1 });
   });
 
+  it('maps SDK upsert record ordinal and token count metadata to RPC records', async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const adapter = new SupabasePgVectorStoreAdapter({
+      client: {
+        rpc: async (name, args) => {
+          calls.push({ name, args });
+          return { data: { upserted_count: 1 }, error: null };
+        }
+      }
+    });
+
+    await adapter.upsert({
+      records: [
+        {
+          id: 'chunk-2',
+          content: 'SDK vector chunk',
+          embedding: [0.2, 0.3],
+          metadata: {
+            tenantId: 'tenant-1',
+            knowledgeBaseId: 'kb-1',
+            documentId: 'doc-1',
+            ordinal: 2,
+            tokenCount: 5
+          }
+        }
+      ]
+    });
+
+    expect(calls[0]?.args.records).toEqual([
+      {
+        chunk_id: 'chunk-2',
+        text: 'SDK vector chunk',
+        embedding: [0.2, 0.3],
+        ordinal: 2,
+        token_count: 5,
+        metadata: {
+          tenantId: 'tenant-1',
+          knowledgeBaseId: 'kb-1',
+          documentId: 'doc-1',
+          ordinal: 2,
+          tokenCount: 5
+        }
+      }
+    ]);
+  });
+
   it('uses null optional chunk fields when mapping upsert records', async () => {
     const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
     const adapter = new SupabasePgVectorStoreAdapter({

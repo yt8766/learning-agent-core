@@ -10,13 +10,22 @@ export async function executeFindSkills(request: ToolExecutionRequest) {
   const limit = typeof request.input.limit === 'number' ? request.input.limit : 8;
   const workspaceRoot = process.cwd();
   const localAgentSkillsRoot = resolve(workspaceRoot, '.agents', 'skills');
-  const installedMetadataFiles = await collectFiles(resolve(workspaceRoot, 'data', 'skills', 'installed'), filePath =>
-    filePath.endsWith('.json')
+  const profileSkillRoots = ['platform', 'company', 'personal'].map(profile =>
+    resolve(workspaceRoot, 'profile-storage', profile, 'skills')
   );
+  const installedMetadataFiles = (
+    await Promise.all(
+      profileSkillRoots.map(root => collectFiles(resolve(root, 'installed'), filePath => filePath.endsWith('.json')))
+    )
+  ).flat();
   const localSkillFiles = await collectFiles(localAgentSkillsRoot, filePath => filePath.endsWith('SKILL.md'));
-  const remoteIndexFiles = await collectFiles(resolve(workspaceRoot, 'data', 'skills', 'remote-sources'), filePath =>
-    filePath.endsWith('index.json')
-  );
+  const remoteIndexFiles = (
+    await Promise.all(
+      profileSkillRoots.map(root =>
+        collectFiles(resolve(root, 'remote-sources'), filePath => filePath.endsWith('index.json'))
+      )
+    )
+  ).flat();
 
   const installed = [];
   for (const filePath of installedMetadataFiles) {

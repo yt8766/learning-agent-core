@@ -232,8 +232,9 @@ packages/<pkg>/
 
 ### `packages/tools`
 
-- 允许：tool registry、tool definition、sandbox executor、filesystem executor、approval preflight、MCP transport
+- 允许：tool registry、tool definition、tool executor、filesystem executor、approval preflight、MCP transport
 - 禁止：agent orchestration、chat/review/research prompt、graph/ministry 主逻辑
+- 禁止：依赖或导入 `@agent/runtime`；sandbox executor/provider、ExecutionWatchdog 与 runtime governance projection 属于 `packages/runtime`
 
 ### `packages/skill`
 
@@ -295,7 +296,7 @@ packages/<pkg>/
   - 基于 capability / domain 的注入 agent descriptor 查询
   - `createPlatformRuntime({ runtime, agentRegistry, agentDependencies, metadata? })`
   - `createDefaultPlatformRuntime(options)`（要求 app 层注入 `agentDependencies`）
-  - backend 与 worker 可复用的 runtime facade 装配
+  - agent-server runtime host 可复用的 runtime facade 装配
 - 禁止：
   - HTTP controller
   - worker 消费循环
@@ -365,7 +366,7 @@ packages/<pkg>/
 - 禁止：
   - graph、agent orchestration
   - tool registry
-  - sandbox executor
+  - sandbox executor（属于 `packages/runtime`，不属于 `packages/tools`）
   - backend service 内联编排
   - 通用 prompt 主流程
 - 推荐结构：
@@ -412,7 +413,7 @@ packages/<pkg>/
   - 阻止 `@agent/<pkg>/src/*` 这类深层包导入
   - 对 `runtime / agents / backend / tools / skills` 的核心源码与测试，阻止继续从 `@agent/core/*`、`@agent/config/*`、`@agent/memory/*`、`@agent/adapters/*`、`@agent/tools/*` 等子路径导入
   - 阻止 `packages/core/package.json` 重新依赖 `@agent/*` 业务实现包
-  - 阻止 `apps/backend` 与 `apps/worker` 源码或 package manifest 直接依赖 `@agent/agents-*`
+  - 阻止 `apps/backend` 源码或 package manifest 在组合根外直接依赖 `@agent/agents-*`
   - 阻止 `apps/*` 直接从 `@agent/platform-runtime` import 主链装配 helper，要求应用层通过 facade / host adapter 消费官方默认装配
 - `pnpm check:barrel-layout`
   - 扫描 `packages/*`、`agents/*`、`apps/*` 下命名目录的 `index.ts`

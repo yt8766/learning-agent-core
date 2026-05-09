@@ -2,20 +2,20 @@
 
 状态：current
 文档类型：reference
-适用范围：`apps/frontend/knowledge`、`apps/backend/knowledge-server`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge/client`
-最后核对：2026-05-03
+适用范围：`apps/frontend/knowledge`、`apps/backend/agent-server/src/api/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`packages/knowledge/client`
+最后核对：2026-05-09
 
-> 当前 canonical 业务入口：`apps/backend/knowledge-server`。`apps/backend/agent-server` 中仍存在的 knowledge 入口仅作为迁移期间兼容路径，不再承接新增 knowledge 主业务。
+当前 canonical Knowledge API 入口：`apps/backend/agent-server` 的 `/api/knowledge/*`。standalone `apps/backend/knowledge-server` 与旧 `apps/backend/agent-server/src/knowledge` 已删除；不要新增 `/api/knowledge/v1` 调用方。
 
 ## 1. Base URL
 
-第一阶段 canonical knowledge-server 接口以 `/api/knowledge` 为前缀。迁移期间旧 `agent-server` 兼容接口仍以 `/api/knowledge/v1` 为前缀。
+Knowledge App 接口以 unified `agent-server` 的 `/api/knowledge` 为前缀。身份接口统一走 `/api/identity`。
 
 ## Backend Ownership
 
-Knowledge API canonical endpoints are served by `apps/backend/knowledge-server`.
-The frontend calls `VITE_KNOWLEDGE_SERVICE_BASE_URL`，默认 `http://127.0.0.1:3020/api`。
-`apps/backend/agent-server/src/knowledge` 只保留迁移兼容路径。
+Knowledge API canonical endpoints are served by `apps/backend/agent-server`.
+The frontend calls `VITE_KNOWLEDGE_SERVICE_BASE_URL`，默认 `http://127.0.0.1:3000/api`。
+`apps/backend/agent-server/src/api/knowledge` 只做 HTTP shell，领域实现收敛在 `apps/backend/agent-server/src/domains/knowledge`。
 
 受保护接口必须带：
 
@@ -114,16 +114,16 @@ export interface MeResponse {
 }
 ```
 
-`POST /auth/logout` 是 MVP no-op / optional endpoint：后端可以返回空成功响应，但不承诺撤销服务端 refresh token。前端退出登录以删除本地 `accessToken`、`refreshToken` 和过期时间为准。
+`POST /identity/logout` 会根据 refresh token 幂等撤销会话。前端退出登录仍必须删除本地 `accessToken`、`refreshToken` 和过期时间。
 
 Endpoint contract:
 
-| Method | Path            | Query / Body                               | Response               | 主要错误码                                                                     | 权限               |
-| ------ | --------------- | ------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------ | ------------------ |
-| POST   | `/auth/login`   | body: `LoginRequest`                       | `LoginResponse`        | `auth_invalid_credentials`, `validation_error`                                 | public             |
-| POST   | `/auth/refresh` | body: `RefreshTokenRequest`                | `RefreshTokenResponse` | `auth_refresh_token_expired`, `auth_refresh_token_invalid`, `validation_error` | public             |
-| GET    | `/auth/me`      | none                                       | `MeResponse`           | `auth_unauthorized`, `auth_token_expired`                                      | authenticated user |
-| POST   | `/auth/logout`  | optional body: `{ refreshToken?: string }` | `{ ok: true }`         | `auth_unauthorized`                                                            | authenticated user |
+| Method | Path                | Query / Body                               | Response               | 主要错误码                                                                     | 权限               |
+| ------ | ------------------- | ------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------ | ------------------ |
+| POST   | `/identity/login`   | body: `LoginRequest`                       | `LoginResponse`        | `auth_invalid_credentials`, `validation_error`                                 | public             |
+| POST   | `/identity/refresh` | body: `RefreshTokenRequest`                | `RefreshTokenResponse` | `auth_refresh_token_expired`, `auth_refresh_token_invalid`, `validation_error` | public             |
+| GET    | `/identity/me`      | none                                       | `MeResponse`           | `auth_unauthorized`, `auth_token_expired`                                      | authenticated user |
+| POST   | `/identity/logout`  | optional body: `{ refreshToken?: string }` | `{ ok: true }`         | `auth_unauthorized`                                                            | authenticated user |
 
 Auth errors:
 
@@ -138,7 +138,7 @@ Auth errors:
 
 ## 3.1 Workspace Users And Settings
 
-这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 `apps/backend/knowledge-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
+这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 unified `apps/backend/agent-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
 
 稳定 schema 落在 `packages/core/src/contracts/knowledge-service/knowledge-service.schemas.ts`，类型只能由 `z.infer<typeof Schema>` 推导。后端可以先返回稳定 fixture 或聚合现有 service，但必须返回项目自定义 projection，不得透传第三方 SDK 对象、provider 原始错误、secret、token 或内部 runtime 状态。
 
@@ -204,7 +204,7 @@ export interface KnowledgeWorkspaceInvitationCreateResponse {
 前后端边界：
 
 - 前端负责搜索输入、分页状态和展示排序；后端负责权限过滤、统计聚合和邀请记录创建。
-- 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 auth-server 内部 account 结构。
+- 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 identity 内部 account 结构。
 
 ### Model Providers
 
@@ -722,7 +722,7 @@ export interface DocumentChunksResponse {
 
 ### 6.1 Two-step Markdown/TXT upload
 
-当前生产闭环只支持 Markdown/TXT 文件上传，不做网页抓取，也不支持 PDF/DOCX 等复杂文件解析。前端不得直连 OSS；前端只把文件提交给 `knowledge-server`，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`。
+当前生产闭环只支持 Markdown/TXT 文件上传，不做网页抓取，也不支持 PDF/DOCX 等复杂文件解析。前端不得直连 OSS；前端只把文件提交给 unified `agent-server` Knowledge domain，由后端代理上传到 OSS 并返回 `KnowledgeUploadResult`。
 
 Step 1：上传原始文件到 OSS。
 
@@ -754,9 +754,9 @@ Response: `CreateDocumentFromUploadResponse`
 
 `uploadId` 与 `objectKey` 必须指向同一个 knowledge base 下由 Step 1 产生的上传结果。后端负责校验上传归属、当前用户权限、文件类型、幂等/冲突语义，并创建 `KnowledgeDocument` 与初始 `DocumentProcessingJob`。
 
-前端上传页必须通过上传弹窗显式展示目标 knowledge base 与 embedding model 选择，不能把这些选择器常驻在文档列表顶部。当前横向 MVP 允许把 `embeddingModelId` 放入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，由后端保存为 document metadata；后续接入真实异步 embedding provider 时应继续使用同一 display contract，不让 provider secret、SDK response 或向量细节穿透到前端。
+前端上传页必须通过上传弹窗显式展示目标 knowledge base 与 embedding model 选择，不能把这些选择器常驻在文档列表顶部。当前横向 MVP 允许把 `embeddingModelId` 放入 `CreateDocumentFromUploadRequest.metadata.embeddingModelId`，由后端保存为 document metadata；后端真实 embedding/vector 写入由 `KnowledgeIngestionWorker` 通过 SDK runtime 执行，但仍必须使用同一 display contract，不让 provider secret、SDK response 或向量细节穿透到前端。
 
-`DocumentProcessingJob.progress.percent` 是前端进度条的稳定投影，取值范围 `0-100`。文档列表 Table 必须以行内进度列展示每个 document 的线上处理进度；上传弹窗内的进度只表示当前文件选择/上传动作。同步 MVP 会按 `parsing/chunking/embedding/indexing/succeeded` 写入 `15/35/60/85/100`，异步实现必须按稳定 `stage` 保持单调推进。`processedChunks` 与 `totalChunks` 只用于展示，不作为前端判断任务终态的依据；终态仍以 `status` 为准。`currentStage` 和 `stages[].stage` 是 legacy 投影，保留给旧 UI；新 UI 默认读取 `stage/progress/error/attempts`。
+`DocumentProcessingJob.progress.percent` 是前端进度条的稳定投影，取值范围 `0-100`。文档列表 Table 必须以行内进度列展示每个 document 的线上处理进度；上传弹窗内的进度只表示当前文件选择/上传动作。当前 worker 在单次处理闭环完成后写入 `succeeded/100`；异步 queue recovery、retry drain 和更细粒度阶段推进会在后续收敛，但仍必须按稳定 `stage` 保持单调推进。`processedChunks` 与 `totalChunks` 只用于展示，不作为前端判断任务终态的依据；终态仍以 `status` 为准。`currentStage` 和 `stages[].stage` 是 legacy 投影，保留给旧 UI；新 UI 默认读取 `stage/progress/error/attempts`。
 
 失败 job 的 `error` 必须包含稳定 `code/message/stage`，可重试失败还必须包含 `retryable: true`。当前 embedding / indexing 失败分别返回 `knowledge_ingestion_embedding_failed` 与 `knowledge_ingestion_index_failed`；`POST /documents/:documentId/reprocess` 必须创建新的 job id，并把 `attempts` 设置为上一条 job attempts + 1。
 
@@ -983,7 +983,7 @@ export interface CreateFeedbackRequest {
 
 `ChatRequest.metadata.debug` 在 MVP 后端可以忽略；如启用，仅对 `owner`、`admin`、`maintainer` 生效，且不得改变 trace、citation、error、span payload 的 redaction 边界。
 
-当前 `knowledge-server` 横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 SDK RAG：检索前通过 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 解析路由，兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 按知识库 id / name 绑定范围；没有 mention 时，用问题 tokens 与可访问知识库 `name` / `description` / metadata 做 deterministic metadata routing；仍无命中时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`model` 传入 `RagModelProfileSummary.id`；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，先持久化 user message；非流式成功或 SSE `rag.completed` 后持久化 assistant message，包含 answer、citations、route、diagnostics、traceId 和 modelProfileId。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时仅保留 repository-backed deterministic fallback，用于本地测试和 demo。空 user message 返回稳定 `400 knowledge_chat_message_required`；显式 mention 找不到可访问知识库返回 `400 knowledge_mention_not_found`；缺失 base 返回 `404 knowledge_base_not_found`；未授权 base 返回 `403 knowledge_permission_denied`；禁用或不存在的 model profile 返回 `rag_model_profile_disabled` / `rag_model_profile_not_found`；SDK embedding/vector/generation 失败返回 `503 knowledge_chat_failed`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
+当前 unified `agent-server` Knowledge domain 横向 MVP 的 `POST /chat` 已从纯 fixture 回声改为 SDK RAG：检索前通过 `@agent/knowledge` 的 `resolveKnowledgeChatRoute()` 解析路由，兼容 `knowledgeBaseIds` 优先；其次用 `metadata.mentions` 按知识库 id / name 绑定范围；没有 mention 时，用问题 tokens 与可访问知识库 `name` / `description` / metadata 做 deterministic metadata routing；仍无命中时回退检索当前用户全部可访问知识库。随后 service 校验目标知识库 membership。`model` 传入 `RagModelProfileSummary.id`；`knowledge-rag` / `knowledge-default` 仅作为默认兼容 alias。`KnowledgeRagService` 会在 RAG 执行前创建或复用当前用户 conversation，先持久化 user message；非流式成功或 SSE `rag.completed` 后持久化 assistant message，包含 answer、citations、route、diagnostics、traceId 和 modelProfileId。`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，后端调用 SDK 默认 runtime：`embeddingProvider.embedText()` 生成 query embedding，`vectorStore.search()` 访问 Supabase/PostgreSQL pgvector，`chatProvider.generate()` 调用 OpenAI-compatible 大模型生成回答。`KNOWLEDGE_SDK_RUNTIME.enabled=false` 时仅保留 repository-backed deterministic fallback，用于本地测试和 demo。空 user message 返回稳定 `400 knowledge_chat_message_required`；显式 mention 找不到可访问知识库返回 `400 knowledge_mention_not_found`；缺失 base 返回 `404 knowledge_base_not_found`；未授权 base 返回 `403 knowledge_permission_denied`；禁用或不存在的 model profile 返回 `rag_model_profile_disabled` / `rag_model_profile_not_found`；SDK embedding/vector/generation 失败返回 `503 knowledge_chat_failed`。当前 MVP 的 traceId 是稳定显示线索，observability 仍可先保持空投影，后续再接真实 trace repository。
 
 Chat citation 必须是稳定 display projection，不得透传完整 chunk 文本或原始 metadata。当前 MVP 保留 `chunkId`、`documentId`、`text`、`quote`、`title`、`score`、`rank` 等前端字段，其中 `text` / `quote` / `contentPreview` 分别最多 240 / 160 / 120 字符；`metadata` 仅允许 `title`、`sourceUri`、`tags`，不得包含 `raw`、`vendor`、`embedding`、`secret`、`token`、`password` 等敏感或大字段。
 

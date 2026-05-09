@@ -1,4 +1,4 @@
-import type { ToolExecutionRequest } from '@agent/runtime';
+import type { ToolExecutionRequest } from '@agent/core';
 
 import type { ScheduleRepository } from '../../scheduling/schedule-repository';
 import { getDefaultScheduleRepository } from '../../scheduling/schedule-repository';

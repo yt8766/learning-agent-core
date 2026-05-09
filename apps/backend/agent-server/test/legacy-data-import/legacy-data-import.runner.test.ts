@@ -1,17 +1,22 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { ensureDir, pathExists } from 'fs-extra';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { parseBackendEnv } from '../../src/infrastructure/config/backend-env.schema';
 import {
   createLegacyDataImportRunnerFromEnv,
+  CompositeLegacyDataImportRepository,
   InMemoryLegacyDataImportRepository,
   LegacyDataImportRunner,
+  type LegacyDataImportDomainWriters,
   SqlLegacyDataImportRepository
 } from '../../src/runtime/legacy-data-import';
+
+const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 
 describe('LegacyDataImportRunner', () => {
   it('imports legacy JSON and JSONL data once and records receipts without deleting source files', async () => {
@@ -87,6 +92,28 @@ describe('LegacyDataImportRunner', () => {
     await expect(pathExists(rulesFile)).resolves.toBe(true);
   });
 
+  it('imports the preserved legacy rules fixture after root data deletion', async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), 'legacy-data-import-rules-fixture-'));
+    await ensureDir(join(dataRoot, 'rules'));
+    const rulesFile = join(dataRoot, 'rules', 'rules.jsonl');
+    await copyFile(join(TEST_DIR, 'fixtures', 'rules.jsonl'), rulesFile);
+
+    const repository = new InMemoryLegacyDataImportRepository();
+    const runner = new LegacyDataImportRunner({ dataRoot, repository });
+
+    await expect(runner.runOnce()).resolves.toEqual(
+      expect.objectContaining({
+        imported: 2,
+        skipped: 0,
+        errors: 0
+      })
+    );
+    expect(repository.records.map(record => (record.payload as { id: string }).id)).toEqual([
+      'rule_1777210584484',
+      'rule_1777718173196'
+    ]);
+  });
+
   it('creates a Postgres-ready runner when LEGACY_DATA_IMPORT=once has DATABASE_URL', async () => {
     const queries: string[] = [];
     const client = {
@@ -108,6 +135,38 @@ describe('LegacyDataImportRunner', () => {
     expect(result.runner).toBeInstanceOf(LegacyDataImportRunner);
     expect(result.repository).toBeInstanceOf(SqlLegacyDataImportRepository);
     expect(queries[0]).toContain('create table if not exists legacy_data_import_receipts');
+  });
+
+  it('fails fast when legacy import requests postgres staging without DATABASE_URL', async () => {
+    await expect(
+      createLegacyDataImportRunnerFromEnv({
+        env: {
+          LEGACY_DATA_IMPORT: 'once',
+          BACKEND_PERSISTENCE: 'postgres',
+          DB_HOST: 'db.local'
+        }
+      })
+    ).rejects.toThrow(/LEGACY_DATA_IMPORT=once requires DATABASE_URL/);
+  });
+
+  it('wraps the staging repository with domain writers without invoking writers during bootstrap', async () => {
+    const domainWriters: LegacyDataImportDomainWriters = {
+      rules: {
+        importLegacyRecord: vi.fn(async () => undefined)
+      }
+    };
+
+    const result = await createLegacyDataImportRunnerFromEnv({
+      env: {
+        LEGACY_DATA_IMPORT: 'once'
+      },
+      domainWriters
+    });
+
+    expect(result.enabled).toBe(true);
+    expect(result.runner).toBeInstanceOf(LegacyDataImportRunner);
+    expect(result.repository).toBeInstanceOf(CompositeLegacyDataImportRepository);
+    expect(domainWriters.rules?.importLegacyRecord).not.toHaveBeenCalled();
   });
 
   it('accepts legacy import env flags in backend env parsing', () => {

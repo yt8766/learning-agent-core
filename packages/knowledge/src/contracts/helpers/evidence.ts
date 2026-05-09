@@ -1,6 +1,8 @@
-import type { EvidenceRecord } from '@agent/memory';
+import type { KnowledgeEvidenceRecord } from './evidence-utils';
 
-export function isCitationEvidenceSource(source: Pick<EvidenceRecord, 'sourceType' | 'sourceUrl' | 'trustClass'>) {
+export function isCitationEvidenceSource(
+  source: Pick<KnowledgeEvidenceRecord, 'sourceType' | 'sourceUrl' | 'trustClass'>
+) {
   if (
     source.sourceType === 'freshness_meta' ||
     source.sourceType === 'web_search_result' ||

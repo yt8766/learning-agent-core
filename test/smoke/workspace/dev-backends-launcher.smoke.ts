@@ -6,14 +6,16 @@ import agentServerPackageJson from '../../../apps/backend/agent-server/package.j
 
 describe('dev backend launcher', () => {
   it('starts only the unified agent-server backend from the root scripts', () => {
-    expect(packageJson.scripts['start:dev']).toBe('pnpm build:lib && turbo run dev:backend --filter=server');
-    expect(packageJson.scripts['start:dev:backends']).toBe(packageJson.scripts['start:dev']);
+    expect(packageJson.scripts['start:dev']).toBe('pnpm build:lib && turbo run start:dev --filter=server');
+    expect(packageJson.scripts['start:dev:backends']).toBeUndefined();
 
-    expect(turboJson.tasks['dev:backend']).toEqual({
+    expect(turboJson.tasks['start:dev']).toEqual({
       persistent: true,
-      cache: false
+      cache: false,
+      dependsOn: ['^start:dev'],
+      outputs: ['dist/**/*']
     });
 
-    expect(agentServerPackageJson.scripts['dev:backend']).toBe('nest start --watch');
+    expect(agentServerPackageJson.scripts['start:dev']).toBe('nest start --watch');
   });
 });

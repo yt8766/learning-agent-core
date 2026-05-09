@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Document, KnowledgeChunk, KnowledgeSource, Loader } from '@agent/knowledge';
-import type { KnowledgeVectorDocumentRecord, KnowledgeVectorIndexWriter } from '@agent/memory';
+import type {
+  Document,
+  KnowledgeChunk,
+  KnowledgeSource,
+  KnowledgeVectorDocumentRecord,
+  KnowledgeVectorIndexWriter,
+  Loader
+} from '@agent/knowledge';
 
 import { runKnowledgeIndexing } from '../src';
 
 describe('runKnowledgeIndexing', () => {
-  it('hands chunked knowledge documents to the @agent/memory vector boundary', async () => {
+  it('hands chunked knowledge documents to the knowledge vector boundary', async () => {
     const capturedRecords: KnowledgeVectorDocumentRecord[] = [];
 
     const loader: Loader = {

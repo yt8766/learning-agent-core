@@ -15,6 +15,7 @@ import {
   isCitationEvidenceSource,
   mergeEvidence
 } from '../src/contracts';
+import type { KnowledgeEvidenceRecord } from '../src/contracts';
 
 describe('@agent/knowledge contracts boundary', () => {
   it('hosts retrieval, indexing, and evidence contracts locally', () => {
@@ -53,6 +54,38 @@ describe('@agent/knowledge contracts boundary', () => {
 
     expect(isCitationEvidenceSource(evidence)).toBe(true);
     expect(mergeEvidence([evidence], [evidence])).toHaveLength(1);
+  });
+
+  it('keeps evidence helpers structural without depending on memory records', () => {
+    type ExtendedEvidence = KnowledgeEvidenceRecord & {
+      id: string;
+      taskId: string;
+      createdAt: string;
+    };
+
+    const official: ExtendedEvidence = {
+      id: 'evidence-1',
+      taskId: 'task-1',
+      sourceType: 'web',
+      sourceUrl: 'https://github.com/example/repo',
+      summary: 'Canonical repository evidence',
+      trustClass: 'curated',
+      createdAt: '2026-05-09T00:00:00.000Z'
+    };
+    const duplicate: ExtendedEvidence = {
+      ...official,
+      id: 'evidence-2',
+      summary: 'Duplicate repository evidence',
+      createdAt: '2026-05-09T00:01:00.000Z'
+    };
+
+    const merged = mergeEvidence([official], [duplicate]);
+    const first: ExtendedEvidence | undefined = merged[0];
+
+    expect(isCitationEvidenceSource(official)).toBe(true);
+    expect(inferTrustClass('https://github.com/example/repo')).toBe('curated');
+    expect(merged).toEqual([official]);
+    expect(first?.taskId).toBe('task-1');
   });
 
   it('does not rely on the removed core knowledge host', () => {

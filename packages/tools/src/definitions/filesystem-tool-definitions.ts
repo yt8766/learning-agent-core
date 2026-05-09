@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/runtime';
+import type { ToolDefinition } from '@agent/core';
 
 const filesystemSchemaPath = { type: 'string' };
 

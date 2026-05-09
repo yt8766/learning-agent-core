@@ -90,6 +90,7 @@ import {
   ChatRoleValues,
   BlackboardStateRecordSchema,
   BlackboardRefsSchema,
+  BudgetStateSchema,
   CapabilityAugmentationRecordSchema,
   BudgetGateStateRecordSchema,
   CapabilityAttachmentRecordSchema,
@@ -130,6 +131,7 @@ import {
   KnowledgeIndexStateRecordSchema,
   KnowledgeIngestionStateRecordSchema,
   LearningSourceTypeValues,
+  LearningEvaluationRecordSchema,
   LlmUsageRecordSchema,
   ManagerPlanSchema,
   MemoryEventRecordSchema,
@@ -1151,7 +1153,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('remote-skill');
 
     expect(
-      KnowledgeContracts.BudgetStateSchema.parse({
+      BudgetStateSchema.parse({
         stepBudget: 8,
         stepsConsumed: 3,
         retryBudget: 1,
@@ -1166,7 +1168,7 @@ describe('@agent/core type contracts', () => {
     ).toBe('soft-threshold-triggered');
 
     expect(
-      KnowledgeContracts.LearningEvaluationRecordSchema.parse({
+      LearningEvaluationRecordSchema.parse({
         score: 92,
         confidence: 'high',
         notes: ['evidence stable'],

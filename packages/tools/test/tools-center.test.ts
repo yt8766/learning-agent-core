@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildToolsCenter, createDefaultToolRegistry } from '../src';
+import { buildToolsCenter } from '@agent/runtime';
+import { createDefaultToolRegistry } from '../src';
 
 describe('buildToolsCenter', () => {
   it('groups the tool catalog by family and surfaces blocked governance state', () => {

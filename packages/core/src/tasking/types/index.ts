@@ -13,3 +13,4 @@ export * from './execution-auto-review';
 export * from './chat';
 export * from './session';
 export * from './knowledge-fields';
+export * from './governance-fields';

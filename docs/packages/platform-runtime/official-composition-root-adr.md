@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：note
-适用范围：`packages/platform-runtime`、`packages/runtime`、`apps/backend/*`、`apps/worker`
+适用范围：`packages/platform-runtime`、`packages/runtime`、`apps/backend/*`
 最后核对：2026-04-28
 
 ## 背景
@@ -10,14 +10,14 @@
 仓库已经把 `packages/runtime` 收敛成 Runtime Kernel，但一段时间内官方默认装配仍分散在：
 
 - `apps/backend/*` 的 runtime host / controller 适配层
-- `apps/worker/*` 的后台消费启动线
+- `apps/backend/agent-server` 的内建 background runner 启动线
 - `apps/backend/agent-server/src/runtime/agents/*` 的官方 registry / helper
 
 这会带来几个问题：
 
 - app 层容易继续直接 import 官方主链 helper，形成“半装配”
 - supervisor capability dispatch 难以稳定地依赖 descriptor / capability contract，而会回退到固定 `official.*` id
-- backend 与 worker 容易逐步演化成第二套 runtime host
+- 后台消费链路容易逐步演化成第二套 runtime host
 
 ## 决策
 
@@ -37,7 +37,9 @@
   - 不承载 controller、worker loop、view-model 或 graph 主实现
 - `apps/*` 是启动适配器
   - backend 是官方 agent 组合根，负责把 `@agent/agents-*` 注册为 runtime dependencies
-  - worker / 其他 app 只消费 backend 或自身显式注入的 facade
+  - `apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup
+  - 其他 app 只消费 backend 或自身显式注入的 facade
+  - 旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录
 
 ## 当前执行约束
 
@@ -64,7 +66,7 @@
 正向影响：
 
 - supervisor capability 化可以依赖稳定 descriptor / capability contract 继续推进
-- backend / worker 更容易保持“适配器”而不是“第二宿主”
+- backend 更容易保持“适配器”而不是“第二宿主”
 - runtime kernel 与官方组合根职责更清楚
 - backend runtime 可以继续把纯规则下沉到 `runtime/domain/*`，而宿主层通过 facade / host / domain helper 组合能力，不必继续在 app/service 里回填官方装配细节
 
@@ -75,7 +77,7 @@
 
 ## 后续执行
 
-- 继续把 backend / worker 中残留的官方 helper 读取面迁回 facade 或 backend agents 组合根
+- 继续把 backend 中残留的官方 helper 读取面迁回 facade 或 backend agents 组合根
 - 继续把更多只读 query / governance 读取面沉到 facade 或 host adapter，减少 app 侧直接 import 包根 helper 的需求
 - 继续把 backend runtime 中的纯投影/纯状态规则沉到 `runtime/domain/*`，让 backend service/query 保持 thin orchestrator
 - 继续把 `supervisor -> official specialist` 收敛为 capability / descriptor 驱动

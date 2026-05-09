@@ -10,15 +10,18 @@ import {
 } from './runtime-skill-storage.repository';
 
 export interface RuntimeSkillArtifactFetcherOptions {
+  skillsRoot?: string;
+  stagingRoot?: string;
   skillDraftRepository?: SkillDraftRepository;
 }
 
 export class SkillArtifactFetcher extends SkillArtifactFetcherBase {
   constructor(workspaceRoot: string, options: RuntimeSkillArtifactFetcherOptions = {}) {
+    const skillsRoot = options.skillsRoot ?? `${workspaceRoot}/profile-storage/platform/skills`;
     super({
       workspaceRoot,
-      storageRepository: new RuntimeSkillArtifactStorageRepository(workspaceRoot),
-      skillDraftRepository: options.skillDraftRepository ?? createRuntimeSkillDraftRepository(workspaceRoot)
+      storageRepository: new RuntimeSkillArtifactStorageRepository(options.stagingRoot ?? `${skillsRoot}/staging`),
+      skillDraftRepository: options.skillDraftRepository ?? createRuntimeSkillDraftRepository(skillsRoot)
     });
   }
 }

@@ -17,34 +17,29 @@ pnpm build:lib
 
 ```bash
 pnpm start:dev
-pnpm --dir apps/worker build && node apps/worker/dist/main.js
+RUNTIME_BACKGROUND_ENABLED=true pnpm --dir apps/backend/agent-server start:dev
 pnpm --dir apps/frontend/agent-chat dev
 pnpm --dir apps/frontend/agent-admin dev
 ```
 
-`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 并行启动三个后端：
+`pnpm start:dev` 会先执行一次根级 `build:lib`，再通过 Turbo filter 启动 unified backend：
 
-- `auth-server`：`http://127.0.0.1:3010/api`
-- `knowledge-server`：`http://127.0.0.1:3020/api`
 - `agent-server`：`http://127.0.0.1:3000/api`
 
-如果只需要旧 chat/runtime/admin 后端，可使用 `pnpm start:dev:agent`。
+`auth-server` 与 `knowledge-server` standalone 后端已经删除；本地联调不要再配置 `3010` 或 `3020`。
 
-如果只想单机验证，不单独启动 worker，也可以让 backend 使用内建 background runner。
+`apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup。
+
+旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录。
 
 ## 2. Background Runner 模式
 
 ### 开发/单机模式
 
 - backend：`RUNTIME_BACKGROUND_ENABLED=true`
-- worker：可不启动
+- 后台消费：由 agent-server 内建 background runner 承担
 
-### 独立 worker 模式
-
-- backend：`RUNTIME_BACKGROUND_ENABLED=false`
-- worker：正常启动
-
-推荐独立 worker 模式用于验证：
+推荐使用内建 background runner 验证：
 
 - queued background tasks
 - learning jobs
@@ -125,7 +120,7 @@ pnpm --dir apps/frontend/agent-admin dev
 当前约定：
 
 - 创建 document/research learning job 时先进入 `queued`
-- background runner 或独立 worker 消费后推进到 `running`
+- agent-server 内建 background runner 消费后推进到 `running`
 - 成功时写为 `completed`
 - 失败时写为 `failed`
 
@@ -149,7 +144,7 @@ pnpm --dir apps/frontend/agent-admin dev
 
 - 不要把临时调试输出混写进 root `data/runtime`
 - 清理 root `data/knowledge` 与 root `data/skills` 前，先确认是否仍有 legacy import / 本地覆盖在引用
-- 当切换 runner 模式时，backend 与 worker 应共享同一份显式配置的 runtime state 路径，默认路径为 `profile-storage/<profile>/runtime/tasks-state.json`
+- agent-server 内建 background runner 与 HTTP/API 侧共享同一份显式配置的 runtime state 路径，默认路径为 `profile-storage/<profile>/runtime/tasks-state.json`
 - 修改运行时持久化路径后，执行 `pnpm check:no-root-data-runtime` 查看是否仍有生产/runtime root data 写入命中
 
 ## 6. 常见排查
@@ -166,16 +161,16 @@ pnpm --dir apps/frontend/agent-admin dev
 
 优先检查：
 
-- backend 是否关闭了 `RUNTIME_BACKGROUND_ENABLED`
-- worker 是否已启动
+- backend 是否启用了 `RUNTIME_BACKGROUND_ENABLED`
+- agent-server runtime bootstrap 是否已启动内建 background runner
 - `runnerIdPrefix` 是否符合预期
-- 显式配置的 runtime state 路径是否被 backend 和 worker 共用
+- 显式配置的 runtime state 路径是否被 agent-server API 与内建 background runner 共用
 
 ### learning job 一直 queued
 
 优先检查：
 
-- background runner / worker 是否正在执行 `processQueuedLearningJobs`
+- agent-server 内建 background runner 是否正在执行 `processQueuedLearningJobs`
 - MCP/provider 是否可用
 - runtime state 持久化是否成功
 
@@ -188,7 +183,7 @@ pnpm test:integration
 pnpm exec tsc -p packages/config/tsconfig.json --noEmit
 pnpm exec tsc -p packages/runtime/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
-pnpm exec tsc -p apps/worker/tsconfig.json --noEmit
+pnpm exec vitest run apps/backend/agent-server/test/runtime/helpers/runtime-background-runner.test.ts apps/backend/agent-server/test/runtime/services/runtime-bootstrap.service.spec.ts
 pnpm exec tsc -p apps/frontend/agent-chat/tsconfig.app.json --noEmit
 pnpm exec tsc -p apps/frontend/agent-admin/tsconfig.app.json --noEmit
 ```

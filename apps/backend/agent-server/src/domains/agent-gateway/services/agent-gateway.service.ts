@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
   GatewayAccountingRequest,
   GatewayAccountingResponse,
+  GatewayConfig,
   GatewayCredentialFile,
-  GatewayLogEntry,
+  GatewayDeleteCredentialFileRequest,
+  GatewayDeleteProviderRequest,
   GatewayLogListResponse,
   GatewayPreprocessRequest,
   GatewayPreprocessResponse,
@@ -13,113 +15,103 @@ import type {
   GatewayQuota,
   GatewaySnapshot,
   GatewayTokenCountResponse,
-  GatewayUsageListResponse,
-  GatewayUsageRecord
+  GatewayUpdateConfigRequest,
+  GatewayUpdateQuotaRequest,
+  GatewayUpsertCredentialFileRequest,
+  GatewayUpsertProviderRequest,
+  GatewayUsageListResponse
 } from '@agent/core';
-const observedAt = '2026-05-07T00:00:00.000Z';
+import type { AgentGatewayRepository } from '../repositories/agent-gateway.repository';
+import { AGENT_GATEWAY_REPOSITORY } from '../repositories/agent-gateway.repository';
+import type { AgentGatewaySecretVault } from '../secrets/agent-gateway-secret-vault';
+import { AGENT_GATEWAY_SECRET_VAULT } from '../secrets/agent-gateway-secret-vault';
+
 @Injectable()
 export class AgentGatewayService {
-  private readonly providers: GatewayProviderCredentialSet[] = [
-    {
-      id: 'openai-primary',
-      provider: 'OpenAI 主通道',
-      modelFamilies: ['gpt-5.4'],
-      status: 'healthy',
-      priority: 1,
-      baseUrl: 'https://api.openai.com/v1',
-      timeoutMs: 60000
-    },
-    {
-      id: 'anthropic-backup',
-      provider: 'Anthropic 备用通道',
-      modelFamilies: ['claude-4'],
-      status: 'degraded',
-      priority: 2,
-      baseUrl: 'https://api.anthropic.com/v1',
-      timeoutMs: 60000
-    }
-  ];
-  private readonly credentialFiles: GatewayCredentialFile[] = [
-    {
-      id: 'openai-env',
-      provider: 'OpenAI 主通道',
-      path: 'apps/backend/agent-server/.env',
-      status: 'valid',
-      lastCheckedAt: observedAt
-    }
-  ];
-  private readonly quotas: GatewayQuota[] = [
-    {
-      id: 'openai-daily',
-      provider: 'OpenAI 主通道',
-      scope: 'daily',
-      usedTokens: 124000,
-      limitTokens: 500000,
-      resetAt: '2026-05-08T00:00:00.000Z',
-      status: 'normal'
-    }
-  ];
-  snapshot(): GatewaySnapshot {
+  constructor(
+    @Inject(AGENT_GATEWAY_REPOSITORY) private readonly repository: AgentGatewayRepository,
+    @Inject(AGENT_GATEWAY_SECRET_VAULT) private readonly secretVault: AgentGatewaySecretVault
+  ) {}
+
+  async snapshot(): Promise<GatewaySnapshot> {
+    const [config, providerCredentialSets, credentialFiles, quotas] = await Promise.all([
+      this.repository.getConfig(),
+      this.repository.listProviders(),
+      this.repository.listCredentialFiles(),
+      this.repository.listQuotas()
+    ]);
+    const activeProviderCount = providerCredentialSets.filter(provider => provider.status === 'healthy').length;
+    const degradedProviderCount = providerCredentialSets.filter(provider => provider.status === 'degraded').length;
+
     return {
       observedAt: new Date().toISOString(),
       runtime: {
         mode: 'proxy',
         status: 'healthy',
-        activeProviderCount: 1,
-        degradedProviderCount: 1,
+        activeProviderCount,
+        degradedProviderCount,
         requestPerMinute: 42,
         p95LatencyMs: 810
       },
-      config: {
-        inputTokenStrategy: 'preprocess',
-        outputTokenStrategy: 'postprocess',
-        retryLimit: 2,
-        circuitBreakerEnabled: true,
-        auditEnabled: true
-      },
-      providerCredentialSets: this.providers,
-      credentialFiles: this.credentialFiles,
-      quotas: this.quotas
+      config,
+      providerCredentialSets,
+      credentialFiles,
+      quotas
     };
   }
-  listProviders(): GatewayProviderCredentialSet[] {
-    return this.providers;
+
+  updateConfig(request: GatewayUpdateConfigRequest): Promise<GatewayConfig> {
+    return this.repository.updateConfig(request);
   }
-  listCredentialFiles(): GatewayCredentialFile[] {
-    return this.credentialFiles;
+
+  listProviders(): Promise<GatewayProviderCredentialSet[]> {
+    return this.repository.listProviders();
   }
-  listQuotas(): GatewayQuota[] {
-    return this.quotas;
+
+  async upsertProvider(request: GatewayUpsertProviderRequest): Promise<GatewayProviderCredentialSet> {
+    const { secretRef: rawSecretRef, ...provider } = request;
+    if (rawSecretRef) await this.secretVault.writeProviderSecretRef(provider.id, rawSecretRef);
+    return this.repository.upsertProvider(provider);
   }
-  listLogs(limit = 50): GatewayLogListResponse {
-    const items: GatewayLogEntry[] = [
-      {
-        id: 'log-1',
-        occurredAt: observedAt,
-        level: 'info',
-        stage: 'preprocess',
-        provider: 'OpenAI 主通道',
-        message: '完成输入 token 估算与提示词标准化',
-        inputTokens: 1200,
-        outputTokens: 0
-      }
-    ];
-    return { items: items.slice(0, this.limit(limit)) };
+
+  async deleteProvider(request: GatewayDeleteProviderRequest): Promise<void> {
+    await this.repository.deleteProvider(request.providerId);
+    await this.secretVault.deleteProviderSecretRef(request.providerId);
   }
-  listUsage(limit = 50): GatewayUsageListResponse {
-    const items: GatewayUsageRecord[] = [
-      {
-        id: 'usage-1',
-        provider: 'OpenAI 主通道',
-        date: '2026-05-07',
-        requestCount: 128,
-        inputTokens: 82000,
-        outputTokens: 42000,
-        estimatedCostUsd: 18.4
-      }
-    ];
-    return { items: items.slice(0, this.limit(limit)) };
+
+  listCredentialFiles(): Promise<GatewayCredentialFile[]> {
+    return this.repository.listCredentialFiles();
   }
+
+  async upsertCredentialFile(request: GatewayUpsertCredentialFileRequest): Promise<GatewayCredentialFile> {
+    const { content: rawContent, ...file } = request;
+    if (rawContent) await this.secretVault.writeCredentialFileContent(file.id, rawContent);
+    return this.repository.upsertCredentialFile(file);
+  }
+
+  async deleteCredentialFile(request: GatewayDeleteCredentialFileRequest): Promise<void> {
+    await this.repository.deleteCredentialFile(request.credentialFileId);
+    await this.secretVault.deleteCredentialFileContent(request.credentialFileId);
+  }
+
+  listQuotas(): Promise<GatewayQuota[]> {
+    return this.repository.listQuotas();
+  }
+
+  async updateQuota(request: GatewayUpdateQuotaRequest): Promise<GatewayQuota> {
+    const current = (await this.repository.listQuotas()).find(quota => quota.id === request.id);
+    if (!current) throw new Error(`Gateway quota not found: ${request.id}`);
+    return this.repository.updateQuota({ ...current, ...request });
+  }
+
+  async listLogs(limit = 50): Promise<GatewayLogListResponse> {
+    return { items: await this.repository.listLogs(this.limit(limit)) };
+  }
+
+  async listUsage(limit = 50): Promise<GatewayUsageListResponse> {
+    return { items: await this.repository.listUsage(this.limit(limit)) };
+  }
+
   probe(request: GatewayProbeRequest): GatewayProbeResponse {
     return {
       providerId: request.providerId,

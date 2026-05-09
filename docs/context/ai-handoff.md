@@ -48,7 +48,7 @@
   - 优先落到 `packages/core`
 - runtime kernel / graph orchestration / session / interrupt / approval：
   - 优先落到 `packages/runtime`
-- 官方默认组合、registry、平台侧 metadata、backend/worker 共用 runtime host：
+- 官方默认组合、registry、平台侧 metadata、agent-server runtime host：
   - 优先落到 `packages/platform-runtime`
 - provider / model / embedding / structured output / retry：
   - 优先落到 `packages/adapters`

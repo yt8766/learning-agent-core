@@ -57,6 +57,7 @@ export interface RuntimeWorkspaceDraftStoreContext {
   workspaceDraftStore?: RuntimeWorkspaceDraftStore;
   settings?: {
     workspaceRoot?: string;
+    skillsRoot?: string;
   };
 }
 
@@ -232,10 +233,14 @@ function decodeCursorOffset(cursor: string | undefined): number {
 }
 
 function resolveRuntimeWorkspaceDraftFilePath(ctx: RuntimeWorkspaceDraftStoreContext): string | undefined {
-  const workspaceRoot = ctx.settings?.workspaceRoot;
-  if (!workspaceRoot) {
+  const skillsRoot =
+    ctx.settings?.skillsRoot ??
+    (ctx.settings?.workspaceRoot
+      ? join(ctx.settings.workspaceRoot, 'profile-storage', 'platform', 'skills')
+      : undefined);
+  if (!skillsRoot) {
     return undefined;
   }
 
-  return join(workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json');
+  return join(skillsRoot, 'drafts', 'workspace-drafts.json');
 }

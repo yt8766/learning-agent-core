@@ -1,5 +1,7 @@
 # Auth and Knowledge Service Completion Implementation Plan
 
+> 历史说明：本文记录 standalone `auth-server` / `knowledge-server` 方案形成时的设计背景。当前实现已 hard cut 到 unified `apps/backend/agent-server`；正确入口见 `docs/superpowers/specs/2026-05-08-unified-backend-hard-cut-design.md`。
+
 状态：snapshot
 文档类型：plan
 适用范围：`apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/backend/agent-server`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`、`docs/integration`

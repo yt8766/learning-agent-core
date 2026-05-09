@@ -31,7 +31,6 @@ const frontendTypedFiles = [
 const backendTypedFiles = [
   'apps/backend/agent-server/src/**/*.ts',
   'apps/backend/agent-server/test/**/*.ts',
-  'apps/worker/src/**/*.ts',
   'packages/**/src/**/*.{ts,tsx}'
 ];
 
@@ -49,7 +48,6 @@ const configFiles = [
   'apps/backend/agent-server/*.js',
   'apps/frontend/agent-admin/*.ts',
   'apps/frontend/agent-chat/*.ts',
-  'apps/worker/*.ts',
   'packages/*/*.ts',
   'packages/*/*.js',
   'packages/*/*/*.ts',

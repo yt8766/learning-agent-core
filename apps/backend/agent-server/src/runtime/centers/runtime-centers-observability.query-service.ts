@@ -66,7 +66,14 @@ export class RuntimeCentersObservabilityQueryService {
   }
 
   async getBrowserReplay(sessionId: string) {
-    const replayPath = join(this.ctx().settings.workspaceRoot, 'data', 'browser-replays', sessionId, 'replay.json');
+    const replayPath = join(
+      this.ctx().settings.workspaceRoot,
+      'artifacts',
+      'runtime',
+      'browser-replays',
+      sessionId,
+      'replay.json'
+    );
     try {
       const raw = await readFile(replayPath, 'utf8');
       return JSON.parse(raw) as Record<string, unknown>;

@@ -25,8 +25,7 @@ const workspaceManifests = [
   'agents/supervisor/package.json',
   'apps/backend/agent-server/package.json',
   'apps/frontend/agent-admin/package.json',
-  'apps/frontend/agent-chat/package.json',
-  'apps/worker/package.json'
+  'apps/frontend/agent-chat/package.json'
 ];
 
 describe('turbo:typecheck manifest wiring', () => {

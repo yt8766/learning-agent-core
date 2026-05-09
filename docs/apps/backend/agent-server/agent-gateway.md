@@ -3,36 +3,79 @@
 状态：current
 文档类型：architecture
 适用范围：`apps/backend/agent-server/src/domains/agent-gateway`、`apps/backend/agent-server/src/api/agent-gateway`
-最后核对：2026-05-08
+最后核对：2026-05-09
 
-`agent-server` 已提供 Agent Gateway 第一阶段中转入口，契约以 [Agent Gateway API](/docs/contracts/api/agent-gateway.md) 和 `@agent/core` 的 `contracts/agent-gateway` schema 为准。
+`agent-server` 已提供 Agent Gateway 中转入口，契约以 [Agent Gateway API](/docs/contracts/api/agent-gateway.md) 和 `@agent/core` 的 `contracts/agent-gateway` schema 为准。当前实现包含 schema-first 读写接口、repository 边界、secret vault、provider router、deterministic relay runtime、日志/用量记录、deterministic OAuth/Auth File 生命周期第一版，以及 CLI Proxy management parity 的 deterministic connection/config/API key/quota/log/system surface。
 
 本主题主文档是 [Agent Gateway API](/docs/contracts/api/agent-gateway.md)。本文只覆盖 `agent-server` 内已落地的后端模块、边界和验证入口。
 
 当前入口：
 
 - `AgentGatewayModule`：`apps/backend/agent-server/src/domains/agent-gateway/agent-gateway.module.ts`
-- `AgentGatewayAuthService`：负责本地双 token 登录、access token 校验与 refresh token 换发。
-- `AgentGatewayService`：负责 runtime/config/provider/auth-file/quota projection、logs、usage、probe、token count、preprocess 与 usage accounting 的领域编排。
-- `AgentGatewayAuthController`：挂载 `POST /api/agent-gateway/auth/login` 与 `POST /api/agent-gateway/auth/refresh`。
-- `AgentGatewayController`：挂载 `GET /api/agent-gateway/snapshot`、`GET /api/agent-gateway/providers`、`GET /api/agent-gateway/credential-files`、`GET /api/agent-gateway/quotas`、`GET /api/agent-gateway/logs`、`GET /api/agent-gateway/usage`、`POST /api/agent-gateway/probe`、`POST /api/agent-gateway/token-count`、`POST /api/agent-gateway/preprocess`、`POST /api/agent-gateway/accounting`。
+- `AgentGatewayAuthGuard`：负责将统一 Identity access token 校验为 Gateway API 访问会话，并把 Identity roles 投影为 Gateway `admin` / `operator` / `viewer`。
+- `AgentGatewayAuthService`：迁移兼容服务，仅保留旧 `/agent-gateway/auth/*` 本地双 token 入口；新前端不再调用。
+- `AgentGatewayService`：负责 runtime/config/provider/auth-file/quota projection、写命令、logs、usage、probe、token count、preprocess 与 usage accounting 的领域编排。
+- `AgentGatewayManagementClient`：项目自定义 management client 边界；默认实现 `MemoryAgentGatewayManagementClient`。显式配置 real mode 后使用 `CliProxyManagementClient` 访问真实 CLI Proxy `/v0/management`，并在进入 controller 前归一化为 `@agent/core` schema。
+- `AgentGatewayConnectionService`：保存 remote management profile 并检查连接状态，只返回 masked management key。
+- `AgentGatewayConfigFileService`：读取、diff、保存 raw `config.yaml` 和 reload projection。
+- `AgentGatewayApiKeyService`：管理 proxy API keys，查询只返回 `GatewayApiKeyListResponseSchema` 的 masked prefix 与 usage projection。
+- `AgentGatewayLogService`：提供 request log tail/search、request error files 和 clear logs projection。
+- `AgentGatewayQuotaDetailService`：提供 provider-specific quota detail 的稳定 projection。
+- `AgentGatewaySystemService`：提供 system version/latest/build links 与 grouped model discovery projection。
+- `AgentGatewayRelayService`：负责 relay 请求的 provider 选择、mock provider 调用、日志和用量记录。
+- `AgentGatewayOAuthService`：负责 deterministic OAuth start/complete 与 credential file 状态更新。
+- `AgentGatewayAuthController`：挂载迁移兼容的 `POST /api/agent-gateway/auth/login` 与 `POST /api/agent-gateway/auth/refresh`。规范登录入口是 Identity 的 `/api/identity/login`、`/api/identity/refresh`、`/api/identity/me` 和 `/api/identity/logout`。
+- `AgentGatewayController`：挂载基础 runtime/provider/auth-file/quota/log/usage/probe/token/preprocess/accounting/relay/OAuth 入口，并挂载 connection、raw config、API keys、quota details、logs 和 system 基础入口。
+- `AgentGatewayManagementController`：挂载 CLI Proxy parity 管理入口，包括 dashboard、provider-specific config、Auth Files、OAuth model aliases/callback/status/Vertex import、`api-call` quota refresh、request log download、latest-version、request-log setting 和 frontend-local login storage cleanup projection。
+
+## Real CLI Proxy Mode
+
+默认管理面使用 deterministic memory client，便于本地和测试闭环。需要连接真实 CLI Proxy management API 时，显式设置：
+
+```bash
+AGENT_GATEWAY_MANAGEMENT_MODE=cli-proxy
+AGENT_GATEWAY_MANAGEMENT_API_BASE=<base-url>
+AGENT_GATEWAY_MANAGEMENT_KEY=<key>
+```
+
+`CliProxyManagementClient` 会把 `<base-url>` 归一化到 `/v0/management`，以 Bearer management key 调用参考项目接口，并把 provider config、Auth Files、OAuth、quota、logs、system 等 vendor payload 转换为项目自有 schema 后再返回给 controller。
+
+## 当前实现边界
+
+- Provider、Credential File、Quota、logs、usage 当前通过 `AgentGatewayRepository` 边界读写，默认实现是内存 repository。
+- `preprocess` 和 `accounting` 当前仍是确定性 helper；`relay` 已提供 deterministic mock provider 闭环，尚不是生产 vendor SDK 转发。
+- Controller 必须继续只做 schema parse、HTTP 错误映射和 service 调用；不得内联 provider SDK 调用、OAuth vendor payload 或 secret 处理。
+- 查询 projection 不返回明文 secret、raw request body、raw provider response 或未过滤 headers。
+
+## 领域边界
+
+- `repositories/`：runtime config、providers、credential files、quotas、logs、usage、OAuth state 的 repository contract 与内存实现。
+- `management/`：remote management profile、raw config、API keys、provider-specific config、Auth Files、OAuth policy、quota detail、request logs、system info/model discovery 的项目自定义 client 边界；不得让 CLI Proxy raw response 直接穿透 controller 或 UI。`cli-proxy-management-client.ts` 负责 `/v0/management` base URL normalize、Bearer management key、schema normalization 和上游错误映射。
+- `config/`、`api-keys/`、`logs/`、`quotas/`、`system/`：围绕 management client 的领域 service facade，controller 只调用这些 facade。
+- `providers/`：项目自定义 provider adapter 接口和 deterministic mock provider，不泄漏 vendor SDK 类型。
+- `runtime/agent-gateway-router.ts`：按 routing strategy、provider status、priority 和 requested model 选择 provider。
+- `runtime/agent-gateway-relay.service.ts`：执行 `preprocess -> route -> provider adapter -> accounting -> log`。
+- `secrets/`：明文 secret 只出现在写命令入口，落库或 projection 只保留 masked value / `secretRef`。
+- `oauth/agent-gateway-oauth.service.ts`：提供 deterministic start/complete 第一实现，vendor-specific OAuth 细节留在 adapter 层。
+- `test/agent-gateway/agent-gateway.module.spec.ts`：覆盖 `AgentGatewayModule` 的 Nest DI smoke；新增 provider、service 或可选测试时钟等构造参数时，必须通过显式 token 或非构造注入方式避免让 `Function` / `String` 这类裸类型进入 Nest provider 解析。
 
 认证配置：
 
-- 后端不内置默认账号或默认密码；未配置时登录会返回稳定认证错误。
-- 启用本地登录必须显式配置 `AGENT_GATEWAY_AUTH_SECRET`、`AGENT_GATEWAY_ADMIN_USERNAME` 与 `AGENT_GATEWAY_ADMIN_PASSWORD`。
-- 可选配置 `AGENT_GATEWAY_ADMIN_DISPLAY_NAME`；未配置时展示名使用用户名。
+- Agent Gateway Console 当前接入统一 Identity，不再直接初始化独立数据库用户，也不再使用 `AGENT_GATEWAY_ADMIN_USERNAME` / `AGENT_GATEWAY_ADMIN_PASSWORD` 作为规范登录来源。
+- 本地开发账号由 Identity 域负责；需要种子管理员时配置 `IDENTITY_ADMIN_USERNAME` / `IDENTITY_ADMIN_PASSWORD` / `IDENTITY_ADMIN_DISPLAY_NAME`，或通过 Identity 用户管理 API 创建。
+- `AGENT_GATEWAY_AUTH_SECRET`、`AGENT_GATEWAY_ADMIN_USERNAME`、`AGENT_GATEWAY_ADMIN_PASSWORD` 只服务旧 `/api/agent-gateway/auth/*` 兼容入口；不要在新代码或新文档中把它们作为 Gateway Console 登录方式。
 
 边界约束：
 
 - Controller 只接收/返回稳定 contract，不直接处理 CLI Proxy raw payload。
 - token 计算当前是 deterministic fallback，不引入第三方 tokenizer；接入真实 tokenizer 时必须先通过 provider/adapter 边界转换为 `TokenCountResult`。
 - preprocess 阶段负责输入标准化与 input token 估算；postprocess/accounting 只返回 usage summary，不保存 raw provider response、secret、headers 或完整请求体。
-- Provider、Auth File 与 Quota 当前是只读 projection；写操作、OAuth 与真实 relay 转发仍是后续扩展，实现前必须先补 core schema 和后端回归测试。
+- Provider、Credential File、Quota 写操作、deterministic OAuth 与 deterministic relay 已接线；后续接真实 vendor SDK、持久化数据库或 provider-specific OAuth 时，必须先补 core schema、adapter 测试和文档。
 
 验证入口：
 
 ```bash
 pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway apps/backend/agent-server/test/agent-gateway apps/frontend/agent-gateway/test
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
+pnpm check:docs
 ```

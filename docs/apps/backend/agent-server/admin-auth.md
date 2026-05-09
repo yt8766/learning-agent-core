@@ -105,14 +105,17 @@ apps/backend/agent-server/src/admin-auth/
 
 - Memory Repository。
 - Refresh Token 通过请求体传递。
-- 开发和测试环境预置 `admin` / `developer` 账号。
+- 开发环境通过 Identity seed 选项显式创建初始管理员账号。
 
-当前开发和测试环境预置账号：
+当前代码不内置默认账号或默认密码。需要本地种子管理员时，在启动 `agent-server` 前配置：
 
 ```text
-admin / rust123@
-developer / developer-password-123
+IDENTITY_ADMIN_USERNAME=<username>
+IDENTITY_ADMIN_PASSWORD=<password>
+IDENTITY_ADMIN_DISPLAY_NAME=<display-name>
 ```
+
+`AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` / `AUTH_ADMIN_DISPLAY_NAME` 仍作为迁移期别名读取；新增配置优先使用 `IDENTITY_*`。
 
 后续增强：
 

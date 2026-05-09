@@ -9,16 +9,16 @@ import { ZodError } from 'zod';
 
 import { KnowledgeFrontendSettingsService } from '../../domains/knowledge/services/knowledge-frontend-settings.service';
 
-@Controller('knowledge')
-export class KnowledgeSettingsController {
+@Controller('knowledge/workspace')
+export class KnowledgeWorkspaceController {
   constructor(private readonly settings: KnowledgeFrontendSettingsService) {}
 
-  @Get('workspace/users')
+  @Get('users')
   listWorkspaceUsers(@Query() query: Record<string, string | undefined> = {}) {
     return this.settings.listWorkspaceUsers(query);
   }
 
-  @Post('workspace/users/invitations')
+  @Post('users/invitations')
   createWorkspaceInvitation(@Body() body: unknown) {
     try {
       return this.settings.createWorkspaceInvitation(KnowledgeWorkspaceInvitationCreateRequestSchema.parse(body));
@@ -26,18 +26,23 @@ export class KnowledgeSettingsController {
       throw toValidationException(error);
     }
   }
+}
 
-  @Get('settings/model-providers')
+@Controller('knowledge/settings')
+export class KnowledgeSettingsController {
+  constructor(private readonly settings: KnowledgeFrontendSettingsService) {}
+
+  @Get('model-providers')
   listModelProviders() {
     return this.settings.listModelProviders();
   }
 
-  @Get('settings/api-keys')
+  @Get('api-keys')
   listApiKeys() {
     return this.settings.listApiKeys();
   }
 
-  @Post('settings/api-keys')
+  @Post('api-keys')
   createApiKey(@Body() body: unknown) {
     try {
       return this.settings.createApiKey(KnowledgeApiKeyCreateRequestSchema.parse(body));
@@ -46,17 +51,17 @@ export class KnowledgeSettingsController {
     }
   }
 
-  @Get('settings/storage')
+  @Get('storage')
   listStorageSettings() {
     return this.settings.listStorageSettings();
   }
 
-  @Get('settings/security')
+  @Get('security')
   getSecuritySettings() {
     return this.settings.getSecuritySettings();
   }
 
-  @Patch('settings/security')
+  @Patch('security')
   patchSecuritySettings(@Body() body: unknown) {
     try {
       return this.settings.patchSecuritySettings(KnowledgeSecuritySettingsPatchRequestSchema.parse(body));
@@ -64,13 +69,18 @@ export class KnowledgeSettingsController {
       throw toValidationException(error);
     }
   }
+}
 
-  @Get('chat/assistant-config')
+@Controller('knowledge/chat')
+export class KnowledgeChatSettingsController {
+  constructor(private readonly settings: KnowledgeFrontendSettingsService) {}
+
+  @Get('assistant-config')
   getAssistantConfig() {
     return this.settings.getAssistantConfig();
   }
 
-  @Patch('chat/assistant-config')
+  @Patch('assistant-config')
   patchAssistantConfig(@Body() body: unknown) {
     try {
       return this.settings.patchAssistantConfig(KnowledgeAssistantConfigPatchRequestSchema.parse(body));

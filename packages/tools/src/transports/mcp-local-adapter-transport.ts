@@ -1,14 +1,14 @@
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/runtime';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
 
 import type { McpCapabilityDefinition } from '../mcp/mcp-capability-registry';
 import type { McpServerDefinition } from '../mcp/mcp-server-registry';
 import type { McpTransportDiscovery, McpTransportHandler, McpTransportHealth } from '../mcp/mcp-transport-types';
-import type { SandboxExecutor } from '@agent/runtime';
+import type { ToolFallbackExecutor } from '../contracts';
 
 export class LocalAdapterTransportHandler implements McpTransportHandler {
   readonly transport = 'local-adapter' as const;
 
-  constructor(private readonly fallbackExecutor: SandboxExecutor) {}
+  constructor(private readonly fallbackExecutor: ToolFallbackExecutor) {}
 
   invoke(
     server: McpServerDefinition,

@@ -1,7 +1,6 @@
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/runtime';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
 
-import type { SandboxExecutor } from '@agent/runtime';
-import type { ExecutionWatchdog } from '@agent/runtime';
+import type { ToolExecutionWatchdog, ToolFallbackExecutor } from '../contracts';
 import { McpCapabilityRegistry } from './mcp-capability-registry';
 import { McpServerRegistry } from './mcp-server-registry';
 import {
@@ -46,10 +45,10 @@ export class McpClientManager {
   constructor(
     private readonly serverRegistry: McpServerRegistry,
     private readonly capabilityRegistry: McpCapabilityRegistry,
-    private readonly fallbackExecutor: SandboxExecutor,
+    private readonly fallbackExecutor: ToolFallbackExecutor,
     options?: {
       stdioMaxSessions?: number;
-      watchdog?: ExecutionWatchdog;
+      watchdog?: ToolExecutionWatchdog;
       cliBindings?: Map<string, CliCapabilityBinding>;
     }
   ) {
@@ -61,7 +60,7 @@ export class McpClientManager {
     }
     this.watchdog = options?.watchdog;
   }
-  private readonly watchdog?: ExecutionWatchdog;
+  private readonly watchdog?: ToolExecutionWatchdog;
 
   registerHandler(handler: McpTransportHandler): void {
     this.handlers.set(handler.transport, handler);

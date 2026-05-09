@@ -99,6 +99,14 @@ export class AgentGatewayAuthService {
         exp: now + accessTtl
       }),
       accessTokenExpiresAt: this.iso(now + accessTtl),
+      refreshToken: this.signToken({
+        kind: 'refresh',
+        username: account.profile.username,
+        iat: now,
+        exp: now + refreshTtl
+      }),
+      refreshTokenExpiresAt: this.iso(now + refreshTtl),
+      refreshTokenStorage: 'localStorage',
       session: this.session(account.profile, now)
     };
   }

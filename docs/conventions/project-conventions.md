@@ -34,7 +34,7 @@
 - 仓库级代理技能统一放在 `.agents/skills/*/SKILL.md`
 - `packages/skill` 承载运行时 skill 领域，不承载 Codex/Claude 技能说明
 - `artifacts/*` 默认承载仓库级覆盖率、共享调试输出和部分可重建临时产物，默认不提交 Git
-- 后端单 API + 独立 worker
+- 后端单 API + agent-server 内建 background runner
 - `packages/runtime` 与 `agents/*` 共同承载当前运行时能力，并延续旧主链拆分后的结构演进目标：
   - `packages/runtime` 负责 `graphs / flows / governance / session / runtime / utils / capabilities`
   - `agents/*` 负责专项 graph、专项 flows、prompt、schema 与领域实现
@@ -70,7 +70,7 @@
   - `packages/core/src/providers/*` 定义抽象 provider interface
   - `packages/adapters` 负责实现这些 interface
   - `packages/runtime` 与 `agents/*` 只能依赖 `packages/core` 暴露的抽象与 contract，不默认直接依赖 vendor SDK 或具体 adapter 类
-  - 具体 adapter 实例默认在 `apps/backend/*/src/app`、`apps/worker/src/bootstrap` 等应用启动层装配
+  - 具体 adapter 实例默认在 `apps/backend/*/src/app` 等应用启动层装配
 - 第三方依赖边界默认遵守“允许使用，不允许穿透”：
   - 项目允许使用第三方库，但业务代码不得直接依赖第三方实现细节
   - 第三方能力进入主链流程、跨包 contract、前后端协议、graph state、tool result、审批事件、模型输出或持久化记录时，必须先经过项目自定义的稳定 `contract / adapter / facade / provider` 边界
@@ -234,8 +234,8 @@
 - 长流程修改必须优先精准编辑，不要无必要整文件重写；并在每个主要里程碑后重新验证核心链路
 - 新增、重构或替换实现后，必须同步删除本轮改动后已无调用方的节点、未接线 graph 分支、废弃导出、无引用 helper 与其他死代码，禁止把“暂时没用到”的实现继续保留在主仓
 - 每次任务收尾时，必须检查本轮涉及的旧文件、旧规范、旧脚手架、旧 README、旧中转 re-export 是否仍有保留价值；如果没有，默认本轮直接删除，而不是留给后续继续误导
-- 后端 `apps/backend/agent-server/src` 与 `apps/worker/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分 DTO、entities、interfaces 或独立 service 文件
-- 后端 `apps/backend/agent-server/test` 与 `apps/worker/test` 下测试文件也不得超过 400 行，超过必须按场景或 helper 拆分
+- 后端 `apps/backend/agent-server/src` 下手写源码文件单文件不得超过 400 行，超过必须拆分 DTO、entities、interfaces 或独立 service 文件
+- 后端 `apps/backend/agent-server/test` 下测试文件也不得超过 400 行，超过必须按场景或 helper 拆分
 - `packages/runtime/src`、`packages/report-kit/src`、`agents/*/src` 与其他 `packages/*/src` 下手写源码文件单文件也不得超过 400 行；只要本轮改动触达某个文件且它已超过 400 行，就必须在本轮顺手继续拆分，优先拆到 `nodes/`、`prompts/`、`schemas/`、`runtime/`、`shared/`、`utils/` 或同域 helper 文件
 - 后端禁止空 `catch`：须记录、重抛、或经注释说明的安全降级，详见[后端规范](/docs/conventions/backend-conventions.md)
 - 涉及文件系统读写、目录创建、复制、移动、删除等能力时，默认统一使用 `fs-extra`
@@ -269,8 +269,9 @@
   - 只允许放 knowledge source/chunk repository、indexing、retrieval、citation/context assembly
   - 禁止放回答生成、chat/workflow 主链编排、provider SDK 具体实现
   - `packages/tools`
-    - 只允许放 tool registry、tool definition、sandbox executor、approval preflight、MCP transport
+    - 只允许放 tool registry、tool definition、tool executor、approval preflight、MCP transport
     - 禁止放 agent orchestration、chat/review/research prompt、graph/ministry 主逻辑
+    - 禁止依赖或导入 `@agent/runtime`；sandbox executor/provider、ExecutionWatchdog 与 runtime governance projection 属于 `packages/runtime`
   - `packages/report-kit`
     - 只允许放 data-report blueprint、scaffold、routes、assembly、write 等垂直生成能力
     - 禁止放 tool registry、sandbox executor、MCP transport、agent orchestration
@@ -293,7 +294,7 @@
     - 模型/provider/embedding 装配：放 `adapters`
     - RAG 知识接入、检索与 citation：放 `knowledge`
     - memory/rule/vector/cache 存取与搜索：放 `memory`
-    - executor/registry/sandbox/MCP：放 `tools`
+    - tool executor/registry/MCP：放 `tools`
     - data-report 生成资产与拼装：放 `report-kit`
     - skill registry/manifest/source：放 `skill`
     - graph/flow/session/governance/agent runtime：放 `runtime` 或对应 `agents/*`

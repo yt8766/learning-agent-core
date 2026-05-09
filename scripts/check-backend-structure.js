@@ -38,12 +38,7 @@ const temporaryOversizeAllowlist = new Set([
   'apps/backend/agent-server/test/runtime/skills/runtime-skill-install.service.test.ts',
   'apps/backend/agent-server/test/sandbox/sandbox.service.spec.ts'
 ]);
-const backendScopedPrefixes = [
-  'apps/backend/agent-server/src/',
-  'apps/backend/agent-server/test/',
-  'apps/worker/src/',
-  'apps/worker/test/'
-];
+const backendScopedPrefixes = ['apps/backend/agent-server/src/', 'apps/backend/agent-server/test/'];
 
 function fail(message) {
   console.error(`[backend:check] ${message}`);

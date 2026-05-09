@@ -6,4 +6,4 @@ export {
   setConfiguredConnectorRecord,
   setConnectorEnabledState,
   setConnectorPolicyOverride
-} from '@agent/tools';
+} from '@agent/runtime';

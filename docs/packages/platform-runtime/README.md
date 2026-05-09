@@ -45,14 +45,14 @@
 允许：
 
 - 可注入 Agent 注册与默认 facade
-- backend / worker 共享 runtime 启动线
+- agent-server runtime host 共享 runtime 启动线
 - platform runtime facade 与 adapter
 - 为测试、私有部署、未来第三方 Agent 保留可注入 registry
 
 禁止：
 
 - HTTP controller
-- worker 消费循环
+- 后台消费循环
 - 前端 view model
 - Agent prompt、graph node、flow 主实现
 - report blueprint/scaffold/write 主流程
@@ -64,7 +64,7 @@
 - 通用 `AgentDescriptor` / `AgentProvider` / `AgentRegistry` contract 已并入 `packages/runtime`；`platform-runtime` 只保留通用 registry 实现、默认 facade、platform centers 与 adapter。
 - `apps/backend/agent-server/src/runtime/agents/*` 现在承载 `createOfficialAgentRegistry()` 与 `createOfficialRuntimeAgentDependencies()`。
 - `createDefaultPlatformRuntime()` 只接受 app 层注入的 `agentRegistry`、`agentDependencies` 与 `metadata`，避免平台基础包硬编码官方 agent。
-- `createDefaultPlatformRuntimeOptions()` 现在承载 platform profile、`process.cwd()` workspace root 与默认 runtime llm provider 的标准装配语义；backend / worker 如果只需要官方默认 runtime，再叠加各自 override，应优先复用这条入口，而不是在 app 层重复拼 `createDefaultRuntimeLlmProvider(...)`
+- `createDefaultPlatformRuntimeOptions()` 现在承载 platform profile、`process.cwd()` workspace root 与默认 runtime llm provider 的标准装配语义；agent-server 如果只需要官方默认 runtime，再叠加自身 override，应优先复用这条入口，而不是在 app 层重复拼 `createDefaultRuntimeLlmProvider(...)`
 - `PlatformRuntimeFacade` 当前显式暴露 `runtime + agentRegistry + agentDependencies + metadata`，其中 `metadata` 统一承接 workflow preset、subgraph descriptor、workflow version 等官方只读组合根信息；app 层如果需要读取这些能力，应优先从 facade / host 取值，而不是继续直接 import 主链 helper。
 - backend 的 `createOfficialRuntimeAgentDependencies()` 现在会在 `resolveSpecialistRoute()` 结果上追加 registry enrich，使 runtime 主链拿到的是“领域判断 + 官方候选 agent 线索”，而不是只有抽象 specialist domain。
 - specialist enrich 现在会优先使用 `requiredCapabilities -> registry.findAgentsByCapability()` 命中官方 agent，再回退到 `findAgentsByDomain()`，开始把 supervisor specialist route 往 capability-driven dispatch 推进。

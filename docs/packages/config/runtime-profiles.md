@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`packages/config`、`apps/backend/agent-server`、`apps/worker`
+适用范围：`packages/config`、`apps/backend/agent-server`
 最后核对：2026-04-15
 
 ## 1. 这篇文档说明什么
@@ -34,7 +34,7 @@ profile 不只是数据目录标签，还会影响：
 - source policy
 - skill source preset
 - connector preset
-- worker routing
+- background runner routing
 - company specialist selection
 - 默认审批强度
 
@@ -57,7 +57,7 @@ profile 不只是数据目录标签，还会影响：
 
 ## 5. 运行时约束
 
-- backend 与 worker 在同一 profile 下应共享同一套 runtime state 解释
+- agent-server API 与内建 background runner 在同一 profile 下应共享同一套 runtime state 解释
 - 新增 profile 时，必须同步评估 approval、source、connector、skill source 的默认值
 - 不能在 app 层各自发明 profile 别名或局部策略名
 

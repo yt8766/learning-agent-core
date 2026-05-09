@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/runtime';
+import type { ToolDefinition } from '@agent/core';
 
 export const RUNTIME_GOVERNANCE_TOOL_DEFINITIONS: ToolDefinition[] = [
   {

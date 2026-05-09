@@ -1,22 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export interface KnowledgeVectorDocumentRecord {
-  id: string;
-  namespace: 'knowledge';
-  sourceId: string;
-  documentId: string;
-  chunkId: string;
-  uri: string;
-  title: string;
-  sourceType: string;
-  content: string;
-  searchable: boolean;
-}
+import {
+  KnowledgeVectorDocumentRecordSchema,
+  type KnowledgeVectorDocumentRecord,
+  type KnowledgeVectorIndexWriter
+} from '@agent/knowledge';
 
-export interface KnowledgeVectorIndexWriter {
-  upsertKnowledge(record: KnowledgeVectorDocumentRecord): Promise<void>;
-}
+export type { KnowledgeVectorDocumentRecord, KnowledgeVectorIndexWriter };
 
 interface KnowledgeChunkSnapshot {
   id: string;
@@ -42,21 +33,38 @@ export async function loadKnowledgeVectorDocuments(knowledgeRoot: string): Promi
 
   return chunks
     .filter(item => item.searchable !== false)
-    .map(chunk => {
-      const source = sourceById.get(chunk.sourceId);
-      return {
-        id: chunk.id,
-        namespace: 'knowledge' as const,
-        sourceId: chunk.sourceId,
-        documentId: chunk.documentId,
-        chunkId: chunk.id,
-        uri: source?.uri ?? chunk.documentId,
-        title: source?.title ?? source?.uri ?? chunk.documentId,
-        sourceType: source?.sourceType ?? 'repo-docs',
-        content: chunk.content,
-        searchable: chunk.searchable !== false
-      };
-    });
+    .map(chunk => toKnowledgeVectorDocumentRecord(chunk, sourceById.get(chunk.sourceId)));
+}
+
+function toKnowledgeVectorDocumentRecord(
+  chunk: KnowledgeChunkSnapshot,
+  source?: KnowledgeSourceSnapshot
+): KnowledgeVectorDocumentRecord {
+  const candidate = {
+    id: chunk.id,
+    namespace: 'knowledge' as const,
+    sourceId: chunk.sourceId,
+    documentId: chunk.documentId,
+    chunkId: chunk.id,
+    uri: source?.uri ?? chunk.documentId,
+    title: source?.title ?? source?.uri ?? chunk.documentId,
+    sourceType: source?.sourceType ?? 'repo-docs',
+    content: chunk.content,
+    searchable: chunk.searchable !== false
+  };
+  const parsed = KnowledgeVectorDocumentRecordSchema.safeParse(candidate);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  const fallbackCandidate = {
+    ...candidate,
+    sourceType: 'repo-docs'
+  };
+  return KnowledgeVectorDocumentRecordSchema.parse(fallbackCandidate);
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 async function readJsonArray<T>(path: string): Promise<T[]> {
@@ -64,7 +72,10 @@ async function readJsonArray<T>(path: string): Promise<T[]> {
     const raw = await readFile(path, 'utf8');
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      return [];
+    }
+    throw error;
   }
 }

@@ -1,1 +1,1 @@
-export { buildToolsCenter } from '@agent/tools';
+export { buildToolsCenter } from '@agent/runtime';

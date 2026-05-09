@@ -14,7 +14,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ authClient, children }: { authClient?: AuthClient; children: ReactNode }) {
-  const client = useMemo(() => authClient ?? new AuthClient({ baseUrl: '/api/knowledge/v1' }), [authClient]);
+  const client = useMemo(
+    () => authClient ?? new AuthClient({ baseUrl: import.meta.env.VITE_AUTH_API_BASE_URL ?? '/api' }),
+    [authClient]
+  );
   const [isAuthenticated, setAuthenticated] = useState(() => Boolean(readTokens()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -49,7 +52,7 @@ export function AuthProvider({ authClient, children }: { authClient?: AuthClient
         }
       },
       logout: () => {
-        client.logout();
+        void client.logout();
         clearTokens();
         setAuthenticated(false);
       }

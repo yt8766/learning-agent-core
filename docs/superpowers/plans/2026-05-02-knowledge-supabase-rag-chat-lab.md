@@ -1,5 +1,7 @@
 # Knowledge Supabase RAG Chat Lab Implementation Plan
 
+> 历史说明：本文记录 standalone `auth-server` / `knowledge-server` 方案形成时的设计背景。当前实现已 hard cut 到 unified `apps/backend/agent-server`；正确入口见 `docs/superpowers/specs/2026-05-08-unified-backend-hard-cut-design.md`。
+
 状态：snapshot
 文档类型：plan
 适用范围：`packages/knowledge`、`apps/backend/knowledge-server`、`apps/frontend/knowledge`
@@ -37,7 +39,7 @@ This is a single vertical product slice even though it touches SDK, backend, fro
 - `apps/frontend/knowledge/src/pages/chat-lab/chat-lab-helpers.ts`: mention parsing, conversation state helpers, step formatting.
 - `apps/frontend/knowledge/src/styles/knowledge-pro.css`: Codex-style layout and density rules.
 - `apps/frontend/knowledge/test/knowledge-chat-lab-citations.test.tsx`: Chat Lab request/response rendering tests.
-- `docs/packages/knowledge/sdk.md`: SDK usage guide.
+- `docs/sdk/knowledge.md`: SDK usage guide.
 - `docs/apps/backend/knowledge-server/knowledge-server.md`: backend integration guide.
 - `docs/apps/frontend/knowledge/knowledge-frontend.md`: frontend Chat Lab behavior.
 - `docs/contracts/api/knowledge.md`: stable `/chat`, citation, step, and error contracts.
@@ -846,14 +848,14 @@ git commit -m "feat: redesign knowledge chat lab"
 
 **Files:**
 
-- Modify: `docs/packages/knowledge/sdk.md`
+- Modify: `docs/sdk/knowledge.md`
 - Modify: `docs/apps/backend/knowledge-server/knowledge-server.md`
 - Modify: `docs/apps/frontend/knowledge/knowledge-frontend.md`
 - Modify: `docs/contracts/api/knowledge.md`
 
 - [ ] **Step 1: Update SDK usage docs**
 
-Add a section to `docs/packages/knowledge/sdk.md` with this canonical backend example:
+Add a section to `docs/sdk/knowledge.md` with this canonical backend example:
 
 ```ts
 import { createDefaultKnowledgeSdkRuntime } from '@agent/knowledge/node';
@@ -918,7 +920,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add docs/packages/knowledge/sdk.md docs/apps/backend/knowledge-server/knowledge-server.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/contracts/api/knowledge.md
+git add docs/sdk/knowledge.md docs/apps/backend/knowledge-server/knowledge-server.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/contracts/api/knowledge.md
 git commit -m "docs: document knowledge sdk rag integration"
 ```
 

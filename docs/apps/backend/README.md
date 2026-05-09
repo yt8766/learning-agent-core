@@ -5,13 +5,12 @@
 适用范围：`docs/apps/backend/`
 最后核对：2026-04-19
 
-本目录镜像 `apps/backend/*`，用于沉淀 `agent-server` 与 `worker` 相关应用文档。
+本目录镜像 `apps/backend/*`，用于沉淀 `agent-server` 相关应用文档。
 
 首次接手建议按这个顺序阅读：
 
 1. [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 2. [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
-3. [worker-overview.md](/docs/apps/backend/worker/worker-overview.md)
 
 改接口、SSE、审批恢复前，优先同时阅读：
 
@@ -23,7 +22,7 @@
 
 - `agent-server` 总体入口：[agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 - runtime 模块边界：[runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
-- worker 链路入口：[worker-overview.md](/docs/apps/backend/worker/worker-overview.md)
+- background runner 链路入口：[agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
 
 当前主要对应目录：
 
@@ -37,8 +36,8 @@
   - 证据、学习、记忆、规则与技能治理相关模块
 - `apps/backend/agent-server/src/templates`
   - 模板查询与模板接口
-- `apps/worker/src`
-  - 后台任务消费、恢复、learning queue、health 与 bootstrap
+- `apps/backend/agent-server/src/runtime`
+  - 后台任务消费、恢复、learning queue、health 与 runtime bootstrap
 
 约定：
 
@@ -48,7 +47,6 @@
 当前文档：
 
 - [agent-server-overview.md](/docs/apps/backend/agent-server/agent-server-overview.md)
-- [worker-overview.md](/docs/apps/backend/worker/worker-overview.md)
 - [runtime-module-notes.md](/docs/apps/backend/agent-server/runtime-module-notes.md)
 - [platform-console-performance-baseline.md](/docs/apps/backend/agent-server/platform-console-performance-baseline.md)
 - [platform-console-staging-acceptance-template.md](/docs/apps/backend/agent-server/platform-console-staging-acceptance-template.md)
@@ -62,6 +60,6 @@
 - `apps/backend/agent-server/logs` 与遗留 `apps/backend/agent-server/data` 的过期内容建议定期执行：
   - `pnpm --dir apps/backend/agent-server cleanup:artifacts`
   - `pnpm --dir apps/backend/agent-server cleanup:artifacts:dry-run`
-- 根级 `data/*` 是 backend / worker 共享的真实运行数据主路径；`apps/backend/agent-server/data/*` 不再承载 canonical runtime 数据
+- 根级 `data/*` 是历史迁移输入或显式本地覆盖路径；`apps/backend/agent-server/data/*` 不再承载 canonical runtime 数据
 - `apps/backend/agent-server/logs/app-YYYY-MM-DD.log` 属于旧日志策略遗留文件；当前实现默认只持续写 `error / warn / audit / performance` 四类通道
 - `cleanup-agent-server-artifacts` 相关测试临时目录统一落在仓库根级 `tmp/` 下，不再在根目录生成随机 `tmp-agent-server-cleanup-*` 目录

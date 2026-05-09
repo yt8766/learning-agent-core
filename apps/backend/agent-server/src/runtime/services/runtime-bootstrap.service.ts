@@ -30,6 +30,7 @@ export interface RuntimeBootstrapContext {
   getSkillSourcesContext: () => RuntimeSkillSourcesContext;
   syncInstalledSkillWorkers: () => Promise<void>;
   applyStoredGovernanceOverrides: () => Promise<void>;
+  runLegacyDataImportOnce?: () => Promise<void>;
   initializeMetricsSnapshots: () => Promise<void>;
   initializeDailyTechBriefing: () => Promise<void>;
   initializeScheduleRunner: () => Promise<void>;
@@ -48,6 +49,7 @@ export class RuntimeBootstrapService {
     }
 
     const ctx = this.getContext();
+    await ctx.runLegacyDataImportOnce?.();
     await ctx.sessionCoordinator.initialize();
     await syncEnabledRemoteSkillSources(ctx.getSkillSourcesContext());
     await ctx.syncInstalledSkillWorkers();

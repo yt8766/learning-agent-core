@@ -23,3 +23,4 @@ export * from './thought-graph';
 export * from './run-observability';
 export * from './memory-fields';
 export * from './knowledge-fields';
+export * from './governance-fields';

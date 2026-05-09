@@ -36,7 +36,7 @@ export type KnowledgeJobStage =
   | 'index_vector'
   | 'index_keyword'
   | 'commit';
-export type KnowledgeChunkStageStatus = 'pending' | 'succeeded' | 'failed';
+export type KnowledgeChunkStageStatus = 'pending' | 'succeeded' | 'failed' | 'skipped';
 
 export interface KnowledgeDocumentRecord {
   id: string;

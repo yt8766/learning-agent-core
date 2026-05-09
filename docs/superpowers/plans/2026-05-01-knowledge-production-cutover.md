@@ -1,5 +1,7 @@
 # Knowledge Production Cutover Implementation Plan
 
+> 历史说明：本文记录 standalone `auth-server` / `knowledge-server` 方案形成时的设计背景。当前实现已 hard cut 到 unified `apps/backend/agent-server`；正确入口见 `docs/superpowers/specs/2026-05-08-unified-backend-hard-cut-design.md`。
+
 状态：snapshot
 文档类型：plan
 适用范围：`apps/backend/agent-server/src/knowledge`、`apps/frontend/knowledge`、`packages/knowledge`、`packages/adapters`、`docs/contracts/api`
@@ -79,7 +81,7 @@ This plan supersedes `docs/superpowers/plans/2026-05-01-knowledge-production-har
   - Frontend real/mock API mode documentation.
 - `docs/contracts/api/knowledge.md`
   - Stable API path and response contract notes.
-- `docs/packages/knowledge/sdk.md`
+- `docs/sdk/knowledge.md`
   - SDK extension and default implementation notes.
 
 ## Task 1: Lock Production Provider Configuration
@@ -1251,7 +1253,7 @@ Expected: commit succeeds after local hooks pass.
 **Files:**
 
 - Modify: `docs/contracts/api/knowledge.md`
-- Modify: `docs/packages/knowledge/sdk.md`
+- Modify: `docs/sdk/knowledge.md`
 - Modify: `docs/apps/backend/agent-server/knowledge.md`
 - Modify: `docs/apps/frontend/knowledge/knowledge-frontend.md`
 - Modify: `docs/superpowers/plans/2026-05-01-knowledge-production-hardening.md`
@@ -1270,7 +1272,7 @@ There is no separate `knowledge-platform` backend and no separate `apps/backend/
 
 - [ ] **Step 2: Update SDK extension policy**
 
-Add this note to `docs/packages/knowledge/sdk.md`:
+Add this note to `docs/sdk/knowledge.md`:
 
 ```md
 ## Default Implementations And User Implementations
@@ -1313,7 +1315,7 @@ Expected: all commands PASS. If a pre-existing unrelated failure blocks a comman
 Run:
 
 ```bash
-git add docs/contracts/api/knowledge.md docs/packages/knowledge/sdk.md docs/apps/backend/agent-server/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/superpowers/plans/2026-05-01-knowledge-production-hardening.md
+git add docs/contracts/api/knowledge.md docs/sdk/knowledge.md docs/apps/backend/agent-server/knowledge.md docs/apps/frontend/knowledge/knowledge-frontend.md docs/superpowers/plans/2026-05-01-knowledge-production-hardening.md
 git commit -m "docs(knowledge): document production cutover"
 ```
 

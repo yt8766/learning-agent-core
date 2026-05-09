@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LocalProcessSandboxProvider } from '../../src/sandbox';
+import { LocalProcessSandboxProvider } from '@agent/runtime';
 
 describe('LocalProcessSandboxProvider', () => {
   it('executes readonly commands as argv without shell expansion', async () => {

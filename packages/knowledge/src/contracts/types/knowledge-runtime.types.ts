@@ -8,20 +8,6 @@ import {
   KnowledgeStoreRecordSchema
 } from '../schemas/knowledge-runtime.schema';
 
-export type {
-  BudgetInterruptState,
-  BudgetState,
-  EvaluationResult,
-  LearningConflictRecord,
-  LearningConflictScanResult,
-  LearningConflictScanSuggestion,
-  LearningEvaluationBudgetEfficiency,
-  LearningEvaluationRecord,
-  LearningEvaluationSourceSummary,
-  LearningEvaluationTimeoutStats,
-  SkillGovernanceRecommendation
-} from '@agent/core';
-
 export type KnowledgeStoreRecord = z.infer<typeof KnowledgeStoreRecordSchema>;
 export type KnowledgeSourceRecord = z.infer<typeof KnowledgeSourceRecordSchema>;
 export type KnowledgeChunkRecord = z.infer<typeof KnowledgeChunkRecordSchema>;

@@ -5,7 +5,7 @@
 适用范围：`apps/*` 部署单元与职责
 最后核对：2026-05-04
 
-`apps/` 下的工程对应可运行服务或前端产品面，例如 `agent-server`、`agent-chat`、`agent-admin`、`knowledge`、`llm-gateway` 等。
+`apps/` 下的工程对应可运行服务或前端产品面，例如 `agent-server`、`agent-chat`、`agent-admin`、`knowledge`、`agent-gateway` 等。
 
 优先阅读：
 

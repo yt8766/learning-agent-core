@@ -3,7 +3,14 @@
 状态：draft
 文档类型：spec
 适用范围：`packages/config`、`packages/memory`、`packages/skill`、`packages/knowledge`、`packages/runtime`、`packages/tools`、`apps/backend/agent-server`、`docs/**`
-最后核对：2026-05-07
+最后核对：2026-05-09
+
+> Historical note, 2026-05-09: this spec records the initial root `data/*`
+> deprecation design from 2026-05-07. It is no longer the current execution
+> guide. Current runtime persistence must use explicit repositories/storage
+> facades, `profile-storage/<profile>/...` local fallback, or `artifacts/...`
+> outputs. Root `data/*` is legacy migration input only, and new runtime code
+> must not read or write it as default persistence.
 
 ## 1. Goal
 
@@ -19,9 +26,13 @@ The target state is:
 
 This is not a simple file cleanup. Current code still treats `data/*` as the default storage root through `packages/config`, `packages/memory`, `packages/skill`, `packages/knowledge`, runtime wiring, and tool executors.
 
-## 2. Current Evidence
+## 2. Historical Evidence
 
-Root `data/` still has active code paths:
+Historical note: the bullets below describe evidence collected on 2026-05-07
+before the later cutover work. Do not treat this list as current implementation
+guidance or as permission to keep root `data/*` runtime persistence.
+
+At the time, root `data/` still had active code paths:
 
 - `packages/config/src/shared/settings-defaults.ts` defines default paths for `data/memory`, `data/rules`, `data/runtime`, `data/skills`, and `data/knowledge`.
 - `packages/memory/src/repositories/runtime-state-repository.ts` loads and saves `data/runtime/tasks-state.json`, which includes tasks, learning queues, chat projections, checkpoints, governance, usage, and eval audit data.
@@ -127,7 +138,11 @@ Minimum table groups:
 
 Every table with user, workspace, organization, session, task, or run scope needs explicit scope columns instead of relying on implicit JSON fields.
 
-## 6. Migration Sequence
+## 6. Historical Migration Sequence
+
+Historical note: this was the original migration sequence. The current
+completion work is tracked in
+`docs/superpowers/plans/2026-05-09-root-data-removal-completion.md`.
 
 ### Phase 1: Persistence Gate
 
@@ -218,7 +233,11 @@ After all production write paths are removed:
 
 `LEGACY_DATA_IMPORT=once` reads old local files and imports them into Postgres.
 
-Supported sources:
+Legacy import supported sources:
+
+Historical note: these paths are legacy import inputs only. They are not
+current runtime storage roots and must not be reintroduced as default read/write
+locations.
 
 - `data/runtime/tasks-state.json`
 - `data/runtime/schedules/*.json`

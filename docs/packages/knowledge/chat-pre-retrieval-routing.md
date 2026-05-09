@@ -38,6 +38,6 @@ If an explicit mention cannot be bound to the accessible base list, the helper t
 
 ## Host Boundary
 
-`apps/backend/knowledge-server` adapts this package error into its own `KnowledgeServiceError`, then maps it to HTTP `400`.
+`apps/backend/agent-server Knowledge domain` adapts this package error into its own `KnowledgeServiceError`, then maps it to HTTP `400`.
 
 The package helper deliberately does not check membership itself. The host must pass only current-user-accessible bases and must still verify membership before reading documents or chunks.

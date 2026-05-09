@@ -41,7 +41,7 @@ packages/tools/
 
 补充：
 
-- `registry/`、`approval/`、`sandbox/`、`mcp/`、`scaffold/` 当前已经是主要宿主
+- `registry/`、`approval/`、`mcp/`、`scaffold/` 当前已经是 tools 侧主要宿主；sandbox executor/provider 已收敛到 `@agent/runtime`
 - 后续重点是把 executor 语义进一步统一到 `executors/`，并维持旧路径兼容
 - `contracts/` 当前优先作为稳定 facade 入口，对外暴露 contract-friendly import；真实实现仍优先放在对应领域宿主目录
 
@@ -51,7 +51,8 @@ packages/tools/
   - tool definitions 的正式宿主，例如 filesystem、connectors、scheduling、runtime-governance
 - `transports/`
   - MCP / local / stdio / http transport 与 transport handler
-- watchdog 能力的真实宿主已收敛到 `@agent/runtime`；`@agent/tools` 根入口只保留 `ExecutionWatchdog` 的显式稳定转发，不再保留 `watchdog/` compat barrel
+- watchdog 能力的真实宿主已收敛到 `@agent/runtime`；`@agent/tools` 根入口不再转发 `ExecutionWatchdog`，也不再保留 `watchdog/` compat barrel
+- `@agent/tools` 禁止依赖或导入 `@agent/runtime`；需要跨包复用的 tool definition / execution request / execution result / family contract 必须先收敛到 `@agent/core`
 
 ## 3. 当前收敛策略
 

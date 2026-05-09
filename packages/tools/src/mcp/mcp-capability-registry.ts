@@ -1,6 +1,6 @@
 import type { RiskLevel } from '@agent/core';
 
-import type { ToolDefinition } from '@agent/runtime';
+import type { ToolDefinition } from '@agent/core';
 
 export interface McpCapabilityDefinition {
   id: string;

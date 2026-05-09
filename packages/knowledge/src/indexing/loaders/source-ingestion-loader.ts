@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Document, Loader } from '../../index';
+import type { Document, Loader } from '../../contracts/indexing';
 
 import { JsonObjectSchema } from '../../contracts/indexing/schemas/metadata.schema';
 import {

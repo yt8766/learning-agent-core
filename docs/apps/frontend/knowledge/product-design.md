@@ -13,7 +13,7 @@
 
 - 不重复 `agent-chat`：Knowledge App 的 Chat Lab 用于验证指定知识库的检索、回答、引用、反馈和 trace，不承载 OpenClaw 作战面、审批恢复、ThoughtChain 或多 Agent 执行体验。
 - 不重复 `agent-admin`：Knowledge App 的观测和评测只围绕知识库问答质量、检索表现、文档处理和 RAG 链路，不承载全局 Runtime Center、Approvals Center、Skill Lab 或治理后台。
-- 默认 API-first：前端消费 `auth-server` 与 `knowledge-server` 稳定接口和 mock client，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
+- 默认 API-first：前端消费 unified `agent-server` 稳定接口和 mock client，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
 - MVP 优先打通横向闭环：登录、知识库、文档、对话、引用、反馈、trace、评测数据集、评测运行和结果指标先能连起来，再扩展高级治理。
 
 ## Routes
@@ -74,7 +74,7 @@ Knowledge App 使用 JWT 双 token：
 
 - `accessToken`：用于普通 API 请求，短期有效。
 - `refreshToken`：用于刷新 access token，长期有效但仍有过期时间。
-- 本地存储：当前认证存储只保存 access token、refresh token 和各自过期时间；当前用户摘要通过 `/auth/me` 或后续 app shell 状态维护，不和 token 写进同一份本地记录。键名必须带 knowledge 前缀，避免与其他前端应用冲突。
+- 本地存储：当前认证存储只保存 access token、refresh token 和各自过期时间；当前用户摘要通过 `/identity/me` 或后续 app shell 状态维护，不和 token 写进同一份本地记录。键名必须带 knowledge 前缀，避免与其他前端应用冲突。
 - 自动刷新：请求前如果 access token 接近过期，先刷新再发业务请求。
 - 401 恢复：业务请求返回 `401 auth_token_expired` 时触发一次刷新，并对原请求最多重试一次。
 - 并发控制：多个请求同时触发刷新时共享同一个 refresh promise，避免并发刷新造成 token 版本抖动。
@@ -83,10 +83,10 @@ Knowledge App 使用 JWT 双 token：
 当前前端实现入口：
 
 - `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
-- `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/auth/login`、`/auth/refresh`、`/auth/me` 请求封装；登录成功后写入 token；登出只删除本地 token；主动刷新使用单个共享 refresh promise。
-- `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责 `knowledge-server` 业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 或 `401 access_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
+- `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/identity/login`、`/identity/refresh`、`/identity/me`、`/identity/logout` 请求封装；登录成功后写入 token；登出会调用统一后端 logout 并清理本地 token；主动刷新使用单个共享 refresh promise。
+- `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责 `agent-server Knowledge domain` 业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 或 `401 access_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
 - `apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`：当前横向 MVP 页面使用的本地 fixture / mock client；真实后端联调时应替换为 `KnowledgeApiClient`，不要让页面直接读取后端或 SDK runtime。
-- `apps/frontend/knowledge/src/pages/auth/*`：当前登录门通过 `AuthProvider -> AuthClient.login() -> /auth/login` 走真实双 token 登录链路；退出登录只删除本地 token 并切回未登录状态。
+- `apps/frontend/knowledge/src/pages/auth/*`：当前登录门通过 `AuthProvider -> AuthClient.login() -> /identity/login` 走真实双 token 登录链路；退出登录调用 `/identity/logout` 后清理本地 token 并切回未登录状态。
 - `apps/frontend/knowledge/src/pages/*`：当前已落地 RAG 总览、知识空间、摄取管线、Agent Flow、检索实验室、Trace 观测、评测回归、访问治理和系统策略页面，第一屏是可操作工作台，不是 landing page。
 - `apps/frontend/knowledge/src/pages/shared/ui.tsx`：提供 `RagOpsPage`、`MetricStrip`、`LifecycleRail`、`StatusPill` 和 `InsightList`，作为 RAG Ops 页面统一外壳。
 - `apps/frontend/knowledge/src/styles/knowledge-rag-ops.css`：承载 RAG Ops 重设计样式；旧的 `knowledge-pro.css` 保留壳层、异常页和历史组件样式，不再继续堆新增页面视觉。
