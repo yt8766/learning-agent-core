@@ -187,7 +187,7 @@ function GatewayWorkspaceLayout({
   rawConfig = null,
   quotaDetails = { items: [] },
   snapshot,
-  systemInfo = null,
+  systemInfo = null
 }: GatewayWorkspaceLayoutProps) {
   const observedText = snapshot ? `观测时间 ${formatGatewayDate(snapshot.observedAt)}` : '正在加载网关快照';
   const runtimeStatus = snapshot?.runtime.status ?? 'loading';
