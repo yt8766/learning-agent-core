@@ -13,3 +13,4 @@
 - [knowledge-chat-lab.md](/docs/apps/frontend/knowledge/knowledge-chat-lab.md) — Chat Lab 功能
 - [antd-pro-ui.md](/docs/apps/frontend/knowledge/antd-pro-ui.md) — Ant Design Pro UI 迁移
 - [product-design.md](/docs/apps/frontend/knowledge/product-design.md) — 产品设计
+- [RAG Observability Frontend Integration](/docs/integration/rag-observability-frontend-integration.md) — Chat Lab / Observability 与 RAG diagnostics 接线方案

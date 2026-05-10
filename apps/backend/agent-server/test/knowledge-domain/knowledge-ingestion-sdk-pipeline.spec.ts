@@ -1,8 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeIngestionWorker } from '../../src/domains/knowledge/services/knowledge-ingestion.worker';
 
 describe('KnowledgeIngestionWorker SDK indexing pipeline', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('processes uploaded content through the @agent/knowledge SDK indexing pipeline when runtime is enabled', async () => {
     const now = '2026-05-09T00:00:00.000Z';
     const document = {
@@ -110,6 +114,9 @@ describe('KnowledgeIngestionWorker SDK indexing pipeline', () => {
     expect(repository.saveChunks.mock.invocationCallOrder[0]).toBeLessThan(
       runtime.runtime.vectorStore.upsert.mock.invocationCallOrder[0]
     );
+    expect(repository.updateDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'ready', chunkCount: 1, embeddedChunkCount: 1 })
+    );
   });
 
   it('still stores searchable chunks when SDK runtime is disabled', async () => {
@@ -131,6 +138,147 @@ describe('KnowledgeIngestionWorker SDK indexing pipeline', () => {
           keywordIndexStatus: 'succeeded'
         })
       ])
+    );
+  });
+
+  it('stores structured markdown chunk metadata in document chunks and vector records', async () => {
+    vi.stubEnv('KNOWLEDGE_INGESTION_CHUNKER', 'auto');
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture(
+      [
+        '# Runtime Guide',
+        '',
+        'Intro paragraph.',
+        '',
+        '## Deploy Steps',
+        '',
+        '- Build the server',
+        '- Run the smoke check',
+        '',
+        '```ts',
+        'export const status = "ready";',
+        '```'
+      ].join('\n')
+    );
+    const runtime = {
+      enabled: true,
+      runtime: {
+        embeddingProvider: {
+          embedBatch: vi.fn(async input => ({
+            embeddings: input.texts.map(() => [0.1, 0.2, 0.3]),
+            model: 'test-embedding'
+          }))
+        },
+        vectorStore: {
+          upsert: vi.fn(async input => ({ upsertedCount: input.records.length }))
+        }
+      }
+    };
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result.status).toBe('succeeded');
+    const savedChunks = repository.saveChunks.mock.calls.at(-1)?.[1] ?? [];
+    expect(savedChunks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: expect.stringContaining('- Build the server'),
+          metadata: expect.objectContaining({
+            heading: 'Deploy Steps',
+            sectionPath: ['Runtime Guide', 'Deploy Steps'],
+            contentType: 'list',
+            parentId: 'doc_sdk_ingestion#section-deploy-steps',
+            chunkHash: expect.any(String)
+          })
+        }),
+        expect.objectContaining({
+          content: expect.stringContaining('export const status'),
+          metadata: expect.objectContaining({
+            heading: 'Deploy Steps',
+            sectionPath: ['Runtime Guide', 'Deploy Steps'],
+            contentType: 'code',
+            parentId: 'doc_sdk_ingestion#section-deploy-steps',
+            chunkHash: expect.any(String)
+          })
+        })
+      ])
+    );
+    expect(runtime.runtime.vectorStore.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        records: expect.arrayContaining([
+          expect.objectContaining({
+            content: expect.stringContaining('- Build the server'),
+            metadata: expect.objectContaining({
+              heading: 'Deploy Steps',
+              sectionPath: ['Runtime Guide', 'Deploy Steps'],
+              contentType: 'list',
+              parentId: 'doc_sdk_ingestion#section-deploy-steps',
+              chunkHash: expect.any(String)
+            })
+          }),
+          expect.objectContaining({
+            content: expect.stringContaining('export const status'),
+            metadata: expect.objectContaining({
+              heading: 'Deploy Steps',
+              sectionPath: ['Runtime Guide', 'Deploy Steps'],
+              contentType: 'code',
+              parentId: 'doc_sdk_ingestion#section-deploy-steps',
+              chunkHash: expect.any(String)
+            })
+          })
+        ])
+      })
+    );
+  });
+
+  it('can force fixed-window chunking through ingestion config', async () => {
+    vi.stubEnv('KNOWLEDGE_INGESTION_CHUNKER', 'fixed');
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture(
+      ['# Runtime Guide', '', '## Deploy Steps', '', '- Build the server'].join('\n')
+    );
+    const runtime = {
+      enabled: true,
+      runtime: {
+        embeddingProvider: {
+          embedBatch: vi.fn(async input => ({
+            embeddings: input.texts.map(() => [0.1, 0.2, 0.3]),
+            model: 'test-embedding'
+          }))
+        },
+        vectorStore: {
+          upsert: vi.fn(async input => ({ upsertedCount: input.records.length }))
+        }
+      }
+    };
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result.status).toBe('succeeded');
+    const savedChunks = repository.saveChunks.mock.calls.at(-1)?.[1] ?? [];
+    expect(savedChunks).toHaveLength(1);
+    expect(savedChunks[0]).toEqual(
+      expect.objectContaining({
+        content: expect.stringContaining('# Runtime Guide'),
+        metadata: expect.not.objectContaining({
+          heading: 'Deploy Steps',
+          contentType: 'list'
+        })
+      })
+    );
+    expect(runtime.runtime.vectorStore.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        records: [
+          expect.objectContaining({
+            metadata: expect.not.objectContaining({
+              heading: 'Deploy Steps',
+              contentType: 'list'
+            })
+          })
+        ]
+      })
     );
   });
 
@@ -177,6 +325,116 @@ describe('KnowledgeIngestionWorker SDK indexing pipeline', () => {
           keywordIndexStatus: 'succeeded'
         })
       ])
+    );
+  });
+
+  it('fails ingestion when embedBatch returns fewer embeddings than chunks', async () => {
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture('Embedding count mismatch content.');
+    const runtime = createEnabledKnowledgeRuntimeFixture({ embeddings: [] });
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      currentStage: 'embed',
+      errorCode: 'knowledge_ingestion_embedding_invalid',
+      error: expect.objectContaining({
+        code: 'knowledge_ingestion_embedding_invalid',
+        stage: 'embedding'
+      })
+    });
+    expect(result.errorMessage).toContain('embedBatch returned 0 embeddings for 1 chunks');
+    expect(runtime.runtime.vectorStore.upsert).not.toHaveBeenCalled();
+    expect(repository.updateDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', embeddedChunkCount: 0 })
+    );
+    expect(repository.saveChunks).toHaveBeenLastCalledWith(
+      'doc_sdk_ingestion',
+      expect.arrayContaining([
+        expect.objectContaining({
+          embeddingStatus: 'failed',
+          vectorIndexStatus: 'failed'
+        })
+      ])
+    );
+  });
+
+  it('fails ingestion when embedBatch returns an empty embedding vector', async () => {
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture('Empty embedding content.');
+    const runtime = createEnabledKnowledgeRuntimeFixture({ embeddings: [[]] });
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      currentStage: 'embed',
+      errorCode: 'knowledge_ingestion_embedding_invalid'
+    });
+    expect(result.errorMessage).toContain('Embedding 0 is empty');
+    expect(runtime.runtime.vectorStore.upsert).not.toHaveBeenCalled();
+  });
+
+  it('fails ingestion when embedding dimensions do not match the provider result', async () => {
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture('Embedding dimension mismatch content.');
+    const runtime = createEnabledKnowledgeRuntimeFixture({ dimensions: 4, embeddings: [[0.1, 0.2, 0.3]] });
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      currentStage: 'embed',
+      errorCode: 'knowledge_ingestion_embedding_invalid'
+    });
+    expect(result.errorMessage).toContain('Embedding 0 has 3 dimensions, expected 4');
+    expect(runtime.runtime.vectorStore.upsert).not.toHaveBeenCalled();
+  });
+
+  it('fails ingestion when embedding contains non-finite values', async () => {
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture('Malformed embedding content.');
+    const runtime = createEnabledKnowledgeRuntimeFixture({ embeddings: [[0.1, 'bad', 0.3]] });
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      currentStage: 'embed',
+      errorCode: 'knowledge_ingestion_embedding_invalid'
+    });
+    expect(result.errorMessage).toContain('Embedding contains a non-finite value at dimension 1');
+    expect(runtime.runtime.vectorStore.upsert).not.toHaveBeenCalled();
+  });
+
+  it('fails ingestion when vector upsert count cannot be confirmed', async () => {
+    const repository = createKnowledgeIngestionRepositoryFixture();
+    const storage = createKnowledgeIngestionStorageFixture('Unknown upsert count content.');
+    const runtime = createEnabledKnowledgeRuntimeFixture({
+      embeddings: [[0.1, 0.2, 0.3]],
+      upsertResult: {}
+    });
+    const worker = new KnowledgeIngestionWorker(repository as never, storage as never, runtime as never);
+
+    const result = await worker.process(createKnowledgeIngestionJobFixture());
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      currentStage: 'index_vector',
+      errorCode: 'knowledge_ingestion_vector_upsert_unconfirmed',
+      error: expect.objectContaining({
+        code: 'knowledge_ingestion_vector_upsert_unconfirmed',
+        stage: 'indexing'
+      })
+    });
+    expect(result.errorMessage).toContain('Vector upsert count is unknown');
+    expect(repository.updateDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', embeddedChunkCount: 0 })
     );
   });
 });
@@ -234,5 +492,27 @@ function createKnowledgeIngestionStorageFixture(content: string) {
       contentType: 'text/markdown',
       metadata: {}
     }))
+  };
+}
+
+function createEnabledKnowledgeRuntimeFixture(input: {
+  embeddings: unknown[];
+  dimensions?: number;
+  upsertResult?: unknown;
+}) {
+  return {
+    enabled: true,
+    runtime: {
+      embeddingProvider: {
+        embedBatch: vi.fn(async () => ({
+          embeddings: input.embeddings,
+          model: 'test-embedding',
+          dimensions: input.dimensions
+        }))
+      },
+      vectorStore: {
+        upsert: vi.fn(async () => input.upsertResult ?? { upsertedCount: input.embeddings.length })
+      }
+    }
   };
 }

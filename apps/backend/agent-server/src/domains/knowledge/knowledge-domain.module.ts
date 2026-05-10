@@ -1,6 +1,7 @@
 import { Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 
 import { KnowledgeApiController } from '../../api/knowledge/knowledge.controller';
+import { KnowledgeProjectionsController } from '../../api/knowledge/knowledge-projections.controller';
 import {
   KnowledgeChatSettingsController,
   KnowledgeSettingsController,
@@ -13,11 +14,14 @@ import type { KnowledgeSdkRuntimeProviderValue } from './runtime/knowledge-sdk-r
 import { createKnowledgeRepositoryProvider } from './runtime/knowledge-repository.provider';
 import { createKnowledgeSdkRuntimeProvider } from './runtime/knowledge-sdk-runtime.provider';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
+import { KnowledgeDashboardService } from './services/knowledge-dashboard.service';
 import { KnowledgeDocumentService } from './services/knowledge-document.service';
 import { KnowledgeEvalService } from './services/knowledge-eval.service';
+import { KnowledgeAgentFlowService } from './services/knowledge-agent-flow.service';
 import { KnowledgeFrontendSettingsService } from './services/knowledge-frontend-settings.service';
 import { KnowledgeIngestionQueue } from './services/knowledge-ingestion.queue';
 import { KnowledgeIngestionWorker } from './services/knowledge-ingestion.worker';
+import { KnowledgeObservabilityService } from './services/knowledge-observability.service';
 import { KnowledgeProviderHealthService } from './services/knowledge-provider-health.service';
 import { KnowledgeRagModelProfileService } from './services/knowledge-rag-model-profile.service';
 import { KnowledgeRagService } from './services/knowledge-rag.service';
@@ -29,6 +33,7 @@ import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-stora
   imports: [IdentityModule],
   controllers: [
     KnowledgeApiController,
+    KnowledgeProjectionsController,
     KnowledgeWorkspaceController,
     KnowledgeSettingsController,
     KnowledgeChatSettingsController
@@ -38,10 +43,12 @@ import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-stora
     createKnowledgeSdkRuntimeProvider(),
     createKnowledgeOssStorageProvider(),
     KnowledgeBaseService,
+    KnowledgeDashboardService,
     KnowledgeUploadService,
     KnowledgeDocumentService,
     KnowledgeIngestionWorker,
     KnowledgeIngestionQueue,
+    KnowledgeObservabilityService,
     {
       provide: KnowledgeProviderHealthService,
       useFactory: () => new KnowledgeProviderHealthService()
@@ -56,6 +63,10 @@ import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-stora
             citations: []
           })
         })
+    },
+    {
+      provide: KnowledgeAgentFlowService,
+      useFactory: () => new KnowledgeAgentFlowService()
     },
     {
       provide: KnowledgeTraceService,
@@ -109,11 +120,14 @@ import { createKnowledgeOssStorageProvider } from './storage/knowledge-oss-stora
     KNOWLEDGE_REPOSITORY,
     KNOWLEDGE_SDK_RUNTIME,
     KnowledgeBaseService,
+    KnowledgeDashboardService,
     KnowledgeUploadService,
     KnowledgeDocumentService,
     KnowledgeProviderHealthService,
     KnowledgeFrontendSettingsService,
     KnowledgeEvalService,
+    KnowledgeAgentFlowService,
+    KnowledgeObservabilityService,
     KnowledgeTraceService,
     KnowledgeRagModelProfileService,
     KnowledgeRagService

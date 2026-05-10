@@ -8,6 +8,62 @@ import type {
   GatewayApiKeyUsageSchema,
   GatewayAuthErrorCodeSchema,
   GatewayAuthErrorSchema,
+  GatewayCompleteOAuthRequestSchema,
+  GatewayCompleteOAuthResponseSchema,
+  GatewayCredentialFileSchema,
+  GatewayDeleteApiKeyRequestSchema,
+  GatewayDeleteCredentialFileRequestSchema,
+  GatewayDeleteProviderRequestSchema,
+  GatewayConfigDiffResponseSchema,
+  GatewayConfigSchema,
+  GatewayConfigValueSchema,
+  GatewayConnectionProfileSchema,
+  GatewayConnectionStatusResponseSchema,
+  GatewayConnectionStatusSchema,
+  GatewayCreateApiKeyRequestSchema,
+  GatewayLogEntrySchema,
+  GatewayLogListResponseSchema,
+  GatewayLoginRequestSchema,
+  GatewayLoginResponseSchema,
+  GatewayPreprocessRequestSchema,
+  GatewayPreprocessResponseSchema,
+  GatewayProbeRequestSchema,
+  GatewayProbeResponseSchema,
+  GatewayProviderConfigListResponseSchema,
+  GatewayProviderConfigSchema,
+  GatewayProviderCredentialSetSchema,
+  GatewayProviderKindSchema,
+  GatewayQuotaSchema,
+  GatewayRawConfigResponseSchema,
+  GatewayRefreshRequestSchema,
+  GatewayRefreshResponseSchema,
+  GatewayReplaceApiKeysRequestSchema,
+  GatewayReloadConfigResponseSchema,
+  GatewayRelayMessageSchema,
+  GatewayRelayRequestSchema,
+  GatewayRelayResponseSchema,
+  GatewayRelayUsageSchema,
+  GatewaySaveConnectionProfileRequestSchema,
+  GatewaySaveRawConfigRequestSchema,
+  GatewayRuntimeStatusSchema,
+  GatewaySessionSchema,
+  GatewaySnapshotSchema,
+  GatewayStartOAuthRequestSchema,
+  GatewayStartOAuthResponseSchema,
+  GatewayTokenCountRequestSchema,
+  GatewayTokenCountResponseSchema,
+  GatewayUpdateApiKeyRequestSchema,
+  GatewayUpdateConfigRequestSchema,
+  GatewayUpdateQuotaRequestSchema,
+  GatewayUpsertCredentialFileRequestSchema,
+  GatewayUpsertProviderConfigRequestSchema,
+  GatewayUpsertProviderRequestSchema,
+  GatewayUsageListResponseSchema,
+  GatewayUsageRecordSchema,
+  GatewayUserSchema
+} from './agent-gateway.schemas';
+import type {
+  GatewayAvailableModelSchema,
   GatewayAuthFileAcceptedUploadSchema,
   GatewayAuthFileBatchUploadRequestSchema,
   GatewayAuthFileBatchUploadResponseSchema,
@@ -19,75 +75,46 @@ import type {
   GatewayAuthFileStatusSchema,
   GatewayAuthFileUploadItemSchema,
   GatewayClearLogsResponseSchema,
-  GatewayCompleteOAuthRequestSchema,
-  GatewayCompleteOAuthResponseSchema,
-  GatewayCredentialFileSchema,
-  GatewayDeleteApiKeyRequestSchema,
-  GatewayDeleteCredentialFileRequestSchema,
-  GatewayDeleteProviderRequestSchema,
-  GatewayAvailableModelSchema,
-  GatewayConfigDiffResponseSchema,
-  GatewayConfigSchema,
-  GatewayConfigValueSchema,
-  GatewayConnectionProfileSchema,
-  GatewayConnectionStatusResponseSchema,
-  GatewayConnectionStatusSchema,
-  GatewayCreateApiKeyRequestSchema,
   GatewayLogFileListResponseSchema,
   GatewayLogFileSchema,
-  GatewayLogEntrySchema,
-  GatewayLogListResponseSchema,
-  GatewayLoginRequestSchema,
-  GatewayLoginResponseSchema,
+  GatewayLogSearchRequestSchema,
   GatewayOAuthModelAliasesResponseSchema,
   GatewayOAuthPolicySchema,
-  GatewayPreprocessRequestSchema,
-  GatewayPreprocessResponseSchema,
-  GatewayProbeRequestSchema,
-  GatewayProbeResponseSchema,
-  GatewayProviderConfigListResponseSchema,
-  GatewayProviderConfigSchema,
-  GatewayProviderCredentialSetSchema,
-  GatewayProviderKindSchema,
   GatewayQuotaDetailListResponseSchema,
   GatewayQuotaDetailSchema,
-  GatewayQuotaSchema,
-  GatewayRawConfigResponseSchema,
-  GatewayRefreshRequestSchema,
-  GatewayRefreshResponseSchema,
-  GatewayReplaceApiKeysRequestSchema,
-  GatewayReloadConfigResponseSchema,
-  GatewayRelayMessageSchema,
-  GatewayRelayRequestSchema,
-  GatewayRelayResponseSchema,
-  GatewayRelayUsageSchema,
   GatewayRequestLogEntrySchema,
   GatewayRequestLogListResponseSchema,
-  GatewaySaveConnectionProfileRequestSchema,
-  GatewaySaveRawConfigRequestSchema,
-  GatewayLogSearchRequestSchema,
-  GatewayRuntimeStatusSchema,
-  GatewaySessionSchema,
-  GatewaySnapshotSchema,
-  GatewayStartOAuthRequestSchema,
-  GatewayStartOAuthResponseSchema,
   GatewaySystemModelGroupSchema,
   GatewaySystemModelsResponseSchema,
   GatewaySystemVersionResponseSchema,
-  GatewayTokenCountRequestSchema,
-  GatewayTokenCountResponseSchema,
-  GatewayUpdateApiKeyRequestSchema,
-  GatewayUpdateConfigRequestSchema,
   GatewayUpdateOAuthModelAliasesRequestSchema,
-  GatewayUpdateOAuthPolicyRequestSchema,
-  GatewayUpdateQuotaRequestSchema,
-  GatewayUpsertCredentialFileRequestSchema,
-  GatewayUpsertProviderConfigRequestSchema,
-  GatewayUpsertProviderRequestSchema,
-  GatewayUsageListResponseSchema,
-  GatewayUsageRecordSchema,
-  GatewayUserSchema
-} from './agent-gateway.schemas';
+  GatewayUpdateOAuthPolicyRequestSchema
+} from './agent-gateway-management-projections.schemas';
+import type {
+  GatewayClientApiKeyListResponseSchema,
+  GatewayClientApiKeySchema,
+  GatewayClientApiKeyScopeSchema,
+  GatewayClientApiKeyStatusSchema,
+  GatewayClientListResponseSchema,
+  GatewayClientQuotaSchema,
+  GatewayClientRequestLogListResponseSchema,
+  GatewayClientRequestLogSchema,
+  GatewayClientSchema,
+  GatewayClientStatusSchema,
+  GatewayClientUsageSummarySchema,
+  GatewayCreateClientApiKeyRequestSchema,
+  GatewayCreateClientApiKeyResponseSchema,
+  GatewayCreateClientRequestSchema,
+  GatewayOpenAIChatCompletionRequestSchema,
+  GatewayOpenAIChatCompletionResponseSchema,
+  GatewayOpenAIChatMessageSchema,
+  GatewayOpenAICompatibleErrorResponseSchema,
+  GatewayOpenAIModelSchema,
+  GatewayOpenAIModelsResponseSchema,
+  GatewayUpdateClientApiKeyRequestSchema,
+  GatewayUpdateClientQuotaRequestSchema,
+  GatewayUpdateClientRequestSchema
+} from './agent-gateway-internal-cli-proxy.schemas';
 import type {
   GatewayAmpcodeConfigResponseSchema,
   GatewayAmpcodeModelMappingSchema,
@@ -109,6 +136,9 @@ import type {
   GatewayOAuthModelAliasListResponseSchema,
   GatewayOAuthModelAliasRuleSchema,
   GatewayOAuthStatusResponseSchema,
+  GatewayProviderOAuthStartProviderSchema,
+  GatewayProviderOAuthStartRequestSchema,
+  GatewayProviderOAuthStartResponseSchema,
   GatewayProviderCredentialSchema,
   GatewayProviderSpecificConfigListResponseSchema,
   GatewayProviderSpecificConfigRecordSchema,
@@ -210,6 +240,29 @@ export type GatewayRequestLogListResponse = z.infer<typeof GatewayRequestLogList
 export type GatewaySystemVersionResponse = z.infer<typeof GatewaySystemVersionResponseSchema>;
 export type GatewaySystemModelGroup = z.infer<typeof GatewaySystemModelGroupSchema>;
 export type GatewaySystemModelsResponse = z.infer<typeof GatewaySystemModelsResponseSchema>;
+export type GatewayClientStatus = z.infer<typeof GatewayClientStatusSchema>;
+export type GatewayClient = z.infer<typeof GatewayClientSchema>;
+export type GatewayClientListResponse = z.infer<typeof GatewayClientListResponseSchema>;
+export type GatewayCreateClientRequest = z.infer<typeof GatewayCreateClientRequestSchema>;
+export type GatewayUpdateClientRequest = z.infer<typeof GatewayUpdateClientRequestSchema>;
+export type GatewayClientApiKeyStatus = z.infer<typeof GatewayClientApiKeyStatusSchema>;
+export type GatewayClientApiKeyScope = z.infer<typeof GatewayClientApiKeyScopeSchema>;
+export type GatewayClientApiKey = z.infer<typeof GatewayClientApiKeySchema>;
+export type GatewayClientApiKeyListResponse = z.infer<typeof GatewayClientApiKeyListResponseSchema>;
+export type GatewayCreateClientApiKeyRequest = z.infer<typeof GatewayCreateClientApiKeyRequestSchema>;
+export type GatewayUpdateClientApiKeyRequest = z.infer<typeof GatewayUpdateClientApiKeyRequestSchema>;
+export type GatewayCreateClientApiKeyResponse = z.infer<typeof GatewayCreateClientApiKeyResponseSchema>;
+export type GatewayClientQuota = z.infer<typeof GatewayClientQuotaSchema>;
+export type GatewayUpdateClientQuotaRequest = z.infer<typeof GatewayUpdateClientQuotaRequestSchema>;
+export type GatewayClientUsageSummary = z.infer<typeof GatewayClientUsageSummarySchema>;
+export type GatewayClientRequestLog = z.infer<typeof GatewayClientRequestLogSchema>;
+export type GatewayClientRequestLogListResponse = z.infer<typeof GatewayClientRequestLogListResponseSchema>;
+export type GatewayOpenAIChatMessage = z.infer<typeof GatewayOpenAIChatMessageSchema>;
+export type GatewayOpenAIChatCompletionRequest = z.infer<typeof GatewayOpenAIChatCompletionRequestSchema>;
+export type GatewayOpenAIChatCompletionResponse = z.infer<typeof GatewayOpenAIChatCompletionResponseSchema>;
+export type GatewayOpenAIModel = z.infer<typeof GatewayOpenAIModelSchema>;
+export type GatewayOpenAIModelsResponse = z.infer<typeof GatewayOpenAIModelsResponseSchema>;
+export type GatewayOpenAICompatibleErrorResponse = z.infer<typeof GatewayOpenAICompatibleErrorResponseSchema>;
 export type GatewayDashboardProviderSummary = z.infer<typeof GatewayDashboardProviderSummarySchema>;
 export type GatewayDashboardRoutingSummary = z.infer<typeof GatewayDashboardRoutingSummarySchema>;
 export type GatewayDashboardSummaryResponse = z.infer<typeof GatewayDashboardSummaryResponseSchema>;
@@ -229,6 +282,9 @@ export type GatewayAuthFileDeleteResponse = z.infer<typeof GatewayAuthFileDelete
 export type GatewayOAuthStatusResponse = z.infer<typeof GatewayOAuthStatusResponseSchema>;
 export type GatewayOAuthCallbackRequest = z.infer<typeof GatewayOAuthCallbackRequestSchema>;
 export type GatewayOAuthCallbackResponse = z.infer<typeof GatewayOAuthCallbackResponseSchema>;
+export type GatewayProviderOAuthStartProvider = z.infer<typeof GatewayProviderOAuthStartProviderSchema>;
+export type GatewayProviderOAuthStartRequest = z.infer<typeof GatewayProviderOAuthStartRequestSchema>;
+export type GatewayProviderOAuthStartResponse = z.infer<typeof GatewayProviderOAuthStartResponseSchema>;
 export type GatewayGeminiCliOAuthStartRequest = z.infer<typeof GatewayGeminiCliOAuthStartRequestSchema>;
 export type GatewayRequestLogSettingResponse = z.infer<typeof GatewayRequestLogSettingResponseSchema>;
 export type GatewayClearLoginStorageResponse = z.infer<typeof GatewayClearLoginStorageResponseSchema>;

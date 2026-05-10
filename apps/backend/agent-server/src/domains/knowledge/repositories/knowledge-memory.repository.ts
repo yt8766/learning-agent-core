@@ -258,7 +258,7 @@ function cloneJob(job: DocumentProcessingJobRecord): DocumentProcessingJobRecord
 }
 
 function cloneChunk(chunk: DocumentChunkRecord): DocumentChunkRecord {
-  return { ...chunk };
+  return { ...chunk, metadata: chunk.metadata ? { ...chunk.metadata } : undefined };
 }
 
 function cloneChatConversation(conversation: KnowledgeChatConversationRecord): KnowledgeChatConversationRecord {

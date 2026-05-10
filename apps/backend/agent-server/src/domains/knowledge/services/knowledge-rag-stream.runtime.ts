@@ -80,25 +80,11 @@ async function* streamWithSdk(input: {
     preferredKnowledgeBaseIds: input.route.selectedKnowledgeBaseIds,
     modelProfile: input.modelProfile,
     traceId: input.traceId,
-    routeReason: input.route.reason
+    routeReason: input.route.reason,
+    onTraceComplete: sdkTrace => {
+      input.traces.projectSdkTrace(input.traceId, sdkTrace);
+    }
   })) {
-    if (event.type === 'retrieval.completed') {
-      input.traces.addSpan(input.traceId, {
-        name: 'retrieve',
-        status: 'ok',
-        attributes: {
-          retrievalMode: event.retrieval.diagnostics?.effectiveSearchMode ?? 'none',
-          hitCount: event.retrieval.hits.length
-        }
-      });
-    }
-    if (event.type === 'answer.completed') {
-      input.traces.addSpan(input.traceId, {
-        name: 'generate',
-        status: 'ok',
-        attributes: { contextChunkCount: event.answer.citations.length }
-      });
-    }
     if (event.type === 'rag.completed') {
       await persistStreamedAssistantMessage({ ...input, result: event.result });
       input.traces.finishTrace(input.traceId, 'ok');

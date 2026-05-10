@@ -44,7 +44,12 @@ async function bootstrap(): Promise<void> {
 
     const logger = app.get(AppLoggerService);
     app.useLogger(logger);
-    app.setGlobalPrefix(globalPrefix);
+    app.setGlobalPrefix(globalPrefix, {
+      exclude: [
+        { path: 'v1/models', method: RequestMethod.GET },
+        { path: 'v1/chat/completions', method: RequestMethod.POST }
+      ]
+    });
     app.enableCors(createCorsOptions());
 
     const modules = app.get(ModulesContainer);

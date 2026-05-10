@@ -5,6 +5,8 @@
 适用范围：`apps/frontend/knowledge`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge`、`packages/adapters`
 最后核对：2026-05-01
 
+> Historical note: this document predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the current knowledge horizontal MVP into a production-ready knowledge frontend, backend API, SDK, RAG runtime, evaluation system, and observability system.

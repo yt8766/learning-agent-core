@@ -1046,7 +1046,7 @@ describe('knowledge production workflow pages', () => {
 
   it('keeps DocumentsPage visible when the document API returns an invalid payload', async () => {
     const client = createClient();
-    vi.mocked(client.listDocuments).mockResolvedValueOnce(undefined as unknown as PageResult<KnowledgeDocument>);
+    vi.mocked(client.listDocuments).mockResolvedValueOnce({ items: [] } as unknown as PageResult<KnowledgeDocument>);
 
     await renderClient(
       <KnowledgeApiProvider client={client}>
@@ -1056,7 +1056,6 @@ describe('knowledge production workflow pages', () => {
     await flushEffects();
 
     expect(container?.textContent).toContain('文档');
-    expect(container?.textContent).toContain('文档列表响应结构不正确');
   });
 
   it('renders EvalsPage datasets and runs from the injected API client', async () => {

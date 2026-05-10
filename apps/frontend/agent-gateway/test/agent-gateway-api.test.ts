@@ -47,6 +47,28 @@ describe('AgentGatewayApiClient', () => {
     expect(axiosRequestMock).toHaveBeenCalledTimes(2);
   });
 
+  it('refreshes once when the gateway marks the access token unauthenticated', async () => {
+    const refreshAccessToken = vi.fn(async () => 'fresh');
+    axiosRequestMock
+      .mockResolvedValueOnce({ status: 401, data: { code: 'UNAUTHENTICATED', message: 'Access Token 无效' } })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          state: 'codex-state',
+          verificationUri: 'https://auth.openai.com/oauth/authorize?state=codex-state',
+          expiresAt: '2026-05-08T00:15:00.000Z'
+        }
+      });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken
+    });
+
+    await expect(client.startProviderOAuth('codex')).resolves.toMatchObject({ state: 'codex-state' });
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1);
+    expect(axiosRequestMock).toHaveBeenCalledTimes(2);
+  });
+
   it('calls gateway management and relay endpoints through stable client methods', async () => {
     axiosRequestMock
       .mockResolvedValueOnce({ status: 200, data: snapshot.providerCredentialSets })
@@ -158,6 +180,78 @@ describe('AgentGatewayApiClient', () => {
     ]);
   });
 
+  it('calls gateway client management endpoints through stable client methods', async () => {
+    const clientRecord = {
+      id: 'client-acme',
+      name: 'Acme App',
+      status: 'active' as const,
+      tags: [],
+      createdAt: '2026-05-10T00:00:00.000Z',
+      updatedAt: '2026-05-10T00:00:00.000Z'
+    };
+    const apiKey = {
+      id: 'key-client-acme-runtime',
+      clientId: 'client-acme',
+      name: 'runtime',
+      prefix: 'agp_live',
+      status: 'active' as const,
+      scopes: ['models.read', 'chat.completions'] as const,
+      createdAt: '2026-05-10T00:00:00.000Z',
+      expiresAt: null,
+      lastUsedAt: null
+    };
+    const quota = {
+      clientId: 'client-acme',
+      period: 'monthly' as const,
+      tokenLimit: 100,
+      requestLimit: 10,
+      usedTokens: 0,
+      usedRequests: 0,
+      resetAt: '2026-06-01T00:00:00.000Z',
+      status: 'normal' as const
+    };
+    axiosRequestMock
+      .mockResolvedValueOnce({ status: 200, data: { items: [clientRecord] } })
+      .mockResolvedValueOnce({ status: 200, data: clientRecord })
+      .mockResolvedValueOnce({ status: 200, data: { apiKey, secret: 'agp_live_secret' } })
+      .mockResolvedValueOnce({ status: 200, data: quota })
+      .mockResolvedValueOnce({ status: 200, data: { items: [apiKey] } })
+      .mockResolvedValueOnce({ status: 200, data: { items: [] } });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(client.clients()).resolves.toEqual({ items: [clientRecord] });
+    await expect(client.createClient({ name: 'Acme App' })).resolves.toEqual(clientRecord);
+    await expect(
+      client.createClientApiKey('client-acme', { name: 'runtime', scopes: ['models.read', 'chat.completions'] })
+    ).resolves.toMatchObject({ secret: 'agp_live_secret' });
+    await expect(
+      client.updateClientQuota('client-acme', {
+        tokenLimit: 100,
+        requestLimit: 10,
+        resetAt: '2026-06-01T00:00:00.000Z'
+      })
+    ).resolves.toEqual(quota);
+    await expect(client.clientApiKeys('client-acme')).resolves.toEqual({ items: [apiKey] });
+    await expect(client.clientLogs('client-acme')).resolves.toEqual({ items: [] });
+
+    expect(
+      axiosRequestMock.mock.calls.map(call => {
+        const config = call[0];
+        return [config.url, config.method ?? 'GET'];
+      })
+    ).toEqual([
+      ['/api/agent-gateway/clients', 'GET'],
+      ['/api/agent-gateway/clients', 'POST'],
+      ['/api/agent-gateway/clients/client-acme/api-keys', 'POST'],
+      ['/api/agent-gateway/clients/client-acme/quota', 'PUT'],
+      ['/api/agent-gateway/clients/client-acme/api-keys', 'GET'],
+      ['/api/agent-gateway/clients/client-acme/logs?limit=20', 'GET']
+    ]);
+  });
+
   it('calls gateway OAuth lifecycle endpoints', async () => {
     const oauthStart = {
       flowId: 'oauth-openai-env',
@@ -200,6 +294,32 @@ describe('AgentGatewayApiClient', () => {
       '/api/agent-gateway/oauth/start',
       '/api/agent-gateway/oauth/complete'
     ]);
+  });
+
+  it('starts provider OAuth through the CLI Proxy parity auth-url endpoint', async () => {
+    axiosRequestMock.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        state: 'codex-state',
+        verificationUri: 'https://auth.openai.com/oauth/authorize?state=codex-state',
+        expiresAt: '2026-05-08T00:15:00.000Z'
+      }
+    });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(client.startProviderOAuth('codex')).resolves.toMatchObject({
+      state: 'codex-state',
+      verificationUri: 'https://auth.openai.com/oauth/authorize?state=codex-state'
+    });
+
+    expect(axiosRequestMock.mock.calls[0]?.[0]).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-gateway/oauth/codex/start',
+      data: { isWebui: true }
+    });
   });
 
   it('calls CLI Proxy parity management endpoints through frontend-owned client methods', async () => {
@@ -336,5 +456,171 @@ describe('AgentGatewayApiClient', () => {
       ['/api/agent-gateway/system/info', 'GET'],
       ['/api/agent-gateway/system/models', 'GET']
     ]);
+  });
+
+  it('calls agent-server management parity endpoints needed by restored pages', async () => {
+    const providerConfig = {
+      providerType: 'gemini' as const,
+      id: 'gemini-primary',
+      displayName: 'Gemini Primary',
+      enabled: true,
+      baseUrl: null,
+      models: [{ name: 'gemini-2.5-pro', alias: 'gemini-pro' }],
+      excludedModels: [],
+      credentials: [
+        {
+          credentialId: 'gemini-key-1',
+          apiKeyMasked: 'AIza***demo',
+          status: 'valid' as const
+        }
+      ]
+    };
+    const authFile = {
+      id: 'gemini-oauth-prod',
+      providerId: 'gemini',
+      providerKind: 'gemini',
+      fileName: 'gemini-oauth-prod.json',
+      path: '/auth/gemini-oauth-prod.json',
+      status: 'valid' as const,
+      accountEmail: 'agent@example.com',
+      projectId: 'agent-project',
+      modelCount: 12,
+      updatedAt: '2026-05-08T00:00:00.000Z'
+    };
+    axiosRequestMock
+      .mockResolvedValueOnce({ status: 200, data: { items: [providerConfig] } })
+      .mockResolvedValueOnce({ status: 200, data: providerConfig })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          groups: [
+            {
+              providerId: 'gemini-primary',
+              providerKind: 'gemini',
+              models: [
+                {
+                  id: 'gemini-2.5-pro',
+                  displayName: 'gemini-2.5-pro',
+                  providerKind: 'gemini',
+                  available: true
+                }
+              ]
+            }
+          ]
+        }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          providerId: 'gemini-primary',
+          ok: true,
+          latencyMs: 25,
+          inputTokens: 1,
+          outputTokens: 1,
+          checkedAt: '2026-05-08T00:00:01.000Z',
+          message: 'ok'
+        }
+      })
+      .mockResolvedValueOnce({ status: 200, data: { items: [authFile], nextCursor: null } })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          accepted: [
+            {
+              authFileId: 'gemini-oauth-prod',
+              fileName: 'gemini-oauth-prod.json',
+              providerKind: 'gemini',
+              status: 'valid'
+            }
+          ],
+          rejected: []
+        }
+      })
+      .mockResolvedValueOnce({ status: 200, data: { deleted: ['gemini-oauth-prod.json'], skipped: [] } })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          state: 'flow-1',
+          verificationUri: 'https://example.com/verify',
+          expiresAt: '2026-05-08T00:15:00.000Z'
+        }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: { state: 'flow-1', status: 'pending', checkedAt: '2026-05-08T00:01:00.000Z' }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: { accepted: true, provider: 'codex', completedAt: '2026-05-08T00:02:00.000Z' }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          version: '1.2.3',
+          buildDate: '2026-05-01',
+          latestVersion: '1.2.4',
+          updateAvailable: true,
+          links: { help: 'https://help.router-for.me/' }
+        }
+      })
+      .mockResolvedValueOnce({ status: 200, data: { requestLog: true, updatedAt: '2026-05-08T00:03:00.000Z' } })
+      .mockResolvedValueOnce({ status: 200, data: { cleared: true, clearedAt: '2026-05-08T00:04:00.000Z' } });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(client.providerConfigs()).resolves.toMatchObject({ items: [{ id: 'gemini-primary' }] });
+    await expect(client.saveProviderConfig(providerConfig)).resolves.toMatchObject({ displayName: 'Gemini Primary' });
+    await expect(client.providerConfigModels('gemini-primary')).resolves.toMatchObject({
+      groups: [{ providerId: 'gemini-primary' }]
+    });
+    await expect(client.testProviderModel('gemini-primary', 'gemini-2.5-pro')).resolves.toMatchObject({
+      ok: true
+    });
+    await expect(client.authFiles({ query: 'gemini', providerKind: 'gemini', limit: 24 })).resolves.toMatchObject({
+      items: [{ fileName: 'gemini-oauth-prod.json' }]
+    });
+    await expect(
+      client.batchUploadAuthFiles({
+        files: [{ fileName: 'gemini-oauth-prod.json', contentBase64: 'e30=', providerKind: 'gemini' }]
+      })
+    ).resolves.toMatchObject({ accepted: [{ authFileId: 'gemini-oauth-prod' }] });
+    await expect(client.deleteAuthFiles({ names: ['gemini-oauth-prod.json'] })).resolves.toMatchObject({
+      deleted: ['gemini-oauth-prod.json']
+    });
+    await expect(client.startGeminiCliOAuth({ projectId: 'agent-project' })).resolves.toMatchObject({
+      state: 'flow-1',
+      verificationUri: 'https://example.com/verify'
+    });
+    await expect(client.oauthStatus('flow-1')).resolves.toMatchObject({ status: 'pending' });
+    await expect(
+      client.submitOAuthCallback({ provider: 'codex', redirectUrl: 'https://example.com/callback?code=1' })
+    ).resolves.toMatchObject({ accepted: true });
+    await expect(client.latestVersion()).resolves.toMatchObject({ latestVersion: '1.2.4' });
+    await expect(client.setRequestLogEnabled(true)).resolves.toMatchObject({ requestLog: true });
+    await expect(client.clearLoginStorage()).resolves.toMatchObject({ cleared: true });
+
+    expect(
+      axiosRequestMock.mock.calls.map(call => {
+        const config = call[0];
+        return [config.url, config.method ?? 'GET'];
+      })
+    ).toEqual([
+      ['/api/agent-gateway/provider-configs', 'GET'],
+      ['/api/agent-gateway/provider-configs/gemini-primary', 'PUT'],
+      ['/api/agent-gateway/provider-configs/gemini-primary/models', 'GET'],
+      ['/api/agent-gateway/provider-configs/gemini-primary/test-model', 'POST'],
+      ['/api/agent-gateway/auth-files?query=gemini&providerKind=gemini&limit=24', 'GET'],
+      ['/api/agent-gateway/auth-files', 'POST'],
+      ['/api/agent-gateway/auth-files', 'DELETE'],
+      ['/api/agent-gateway/oauth/gemini-cli/start', 'POST'],
+      ['/api/agent-gateway/oauth/status/flow-1', 'GET'],
+      ['/api/agent-gateway/oauth/callback', 'POST'],
+      ['/api/agent-gateway/system/latest-version', 'GET'],
+      ['/api/agent-gateway/system/request-log', 'PUT'],
+      ['/api/agent-gateway/system/clear-login-storage', 'POST']
+    ]);
+    expect(axiosRequestMock.mock.calls[6][0].data).toEqual({ names: ['gemini-oauth-prod.json'] });
   });
 });

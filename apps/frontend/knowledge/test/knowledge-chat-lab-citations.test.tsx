@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
-import { mockChatAssistantConfig } from '../src/api/mock-knowledge-governance-data';
 import { ChatLabPage, resolveChatLabKnowledgeBaseId } from '../src/pages/chat-lab/chat-lab-page';
 import {
   createChatLabConversation,
@@ -15,6 +14,7 @@ import {
   uniqueKnowledgeMentions
 } from '../src/pages/chat-lab/chat-lab-helpers';
 import type {
+  ChatAssistantConfig,
   ChatMessage,
   ChatResponse,
   CreateFeedbackRequest,
@@ -22,6 +22,25 @@ import type {
   KnowledgeRagStreamEvent,
   PageResult
 } from '../src/types/api';
+
+const mockChatAssistantConfig: ChatAssistantConfig = {
+  deepThinkEnabled: true,
+  defaultKnowledgeBaseIds: ['kb_frontend'],
+  modelProfileId: 'knowledge-rag',
+  webSearchEnabled: false,
+  quickPrompts: [
+    '总结 2026 年知识库检索质量',
+    '查找低置信回答的主要原因',
+    '设计 RAG 检索架构方案',
+    '生成本周知识治理待办'
+  ],
+  thinkingSteps: [
+    { id: 'intent', label: '分析问题意图', status: 'done' },
+    { id: 'retrieval', label: '选择知识库与检索模式', status: 'running' },
+    { id: 'answer', label: '整理引用与回答结构', status: 'pending' }
+  ],
+  updatedAt: '2026-05-04T08:00:00.000Z'
+};
 
 const testState = vi.hoisted(() => ({
   autoSubmitMessage: undefined as string | undefined,

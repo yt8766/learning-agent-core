@@ -3,7 +3,6 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { MockKnowledgeApiClient } from '../src/api/mock-knowledge-api-client';
 import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
 import { AgentFlowPage } from '../src/pages/agent-flow/agent-flow-page';
 import type { AgentFlowRecord } from '../src/types/api';
@@ -157,20 +156,53 @@ describe('Knowledge agent flow page', () => {
 });
 
 function createApi(overrides: Partial<KnowledgeFrontendApi> = {}): KnowledgeFrontendApi {
-  const api: KnowledgeFrontendApi = new MockKnowledgeApiClient();
-  api.listAgentFlows = vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
-    items: [defaultFlow],
-    page: 1,
-    pageSize: 20,
-    total: 1
-  });
-  api.runAgentFlow = vi.fn<KnowledgeFrontendApi['runAgentFlow']>();
-  api.saveAgentFlow = vi
-    .fn<KnowledgeFrontendApi['saveAgentFlow']>()
-    .mockImplementation(input => Promise.resolve({ flow: input.flow }));
-  api.updateAgentFlow = vi
-    .fn<KnowledgeFrontendApi['updateAgentFlow']>()
-    .mockImplementation((flowId, input) => Promise.resolve({ flow: { ...input.flow, id: flowId } }));
+  const stub = vi.fn().mockResolvedValue({});
+  const api: KnowledgeFrontendApi = {
+    getDashboardOverview: stub,
+    listKnowledgeBases: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEmbeddingModels: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listDocuments: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    uploadKnowledgeFile: stub,
+    createDocumentFromUpload: stub,
+    getDocument: stub,
+    getLatestDocumentJob: stub,
+    listDocumentChunks: stub,
+    uploadDocument: stub,
+    reprocessDocument: stub,
+    deleteDocument: stub,
+    listRagModelProfiles: vi.fn().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listConversationMessages: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    chat: stub,
+    streamChat: stub,
+    createFeedback: stub,
+    listEvalDatasets: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEvalRuns: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEvalRunResults: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    compareEvalRuns: stub,
+    getObservabilityMetrics: stub,
+    listTraces: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    getTrace: stub,
+    listWorkspaceUsers: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    getSettingsModelProviders: stub,
+    getSettingsApiKeys: stub,
+    getSettingsStorage: stub,
+    getSettingsSecurity: stub,
+    getChatAssistantConfig: stub,
+    listAgentFlows: vi.fn<KnowledgeFrontendApi['listAgentFlows']>().mockResolvedValue({
+      items: [defaultFlow],
+      page: 1,
+      pageSize: 20,
+      total: 1
+    }),
+    runAgentFlow: vi.fn<KnowledgeFrontendApi['runAgentFlow']>(),
+    saveAgentFlow: vi
+      .fn<KnowledgeFrontendApi['saveAgentFlow']>()
+      .mockImplementation(input => Promise.resolve({ flow: input.flow })),
+    updateAgentFlow: vi
+      .fn<KnowledgeFrontendApi['updateAgentFlow']>()
+      .mockImplementation((flowId, input) => Promise.resolve({ flow: { ...input.flow, id: flowId } }))
+  } as unknown as KnowledgeFrontendApi;
   return Object.assign(api, overrides);
 }
 

@@ -69,15 +69,20 @@
 当前默认 file repository 存储文件包括：
 
 ```text
-data/intel-engine/briefing/daily-tech-briefing-runs.json
-data/intel-engine/briefing/daily-tech-briefing-history.json
-data/intel-engine/briefing/daily-tech-briefing-schedule-state.json
-data/intel-engine/briefing/daily-tech-briefing-feedback.json
-data/intel-engine/briefing/raw/<yyyy-mm-dd>-<category>.json
-data/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-runs.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-history.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-schedule-state.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-feedback.json
+profile-storage/platform/intel-engine/briefing/raw/<yyyy-mm-dd>-<category>.json
+profile-storage/platform/intel-engine/briefing/locks/scheduled-runs/<slot>-<categories>.lock
+profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
 `raw/` 当前用于保存 MCP supplemental search 原始结果，供后续误报追溯与分类策略回放。展示给 admin/chat 的数据仍必须使用 `TechBriefingItem` 归一化结果，不能直接依赖 raw payload；如果下游需要在 digest / alert 中显示证据链，也应输出项目内归一化的 evidence summary / source refs，而不是把 raw payload 直接透传到交付层。
+
+`locks/scheduled-runs/` 是 scheduled run 的跨进程幂等护栏。多个后端或 Bree worker 同时触发同一
+`分类集合 + 分钟 slot` 时，只有第一个 worker 能创建 lock 并继续执行；其余 worker 直接跳过，不发送 Lark，
+避免本地开发或多实例部署时同一分钟重复推送。
 
 历史 backend 落点里的 MCP 补充搜索已经通过 `mcpClientManager` 的稳定能力边界调用；迁移到 `agents/intel-engine` 后仍应保持这层项目内能力边界：
 
@@ -175,12 +180,12 @@ MCP 返回结果进入主链前必须经过：
 ### 3.4 本地存储
 
 短期默认继续使用本地 JSON，但路径固定在 intel-owned storage root
-`data/intel-engine/briefing`，禁止 briefing runtime 新增写入 root `data/runtime/briefings`
-或 `data/runtime/schedules`。生产调用应经 `BriefingStorageRepository` 注入宿主 storage；默认
-file repository 只作为本地运行兜底。原始证据目录：
+`profile-storage/platform/intel-engine/briefing`，禁止 briefing runtime 新增写入 root `data/*`、
+`data/runtime/briefings` 或 `data/runtime/schedules`。生产调用应经 `BriefingStorageRepository`
+注入宿主 storage；默认 file repository 只作为本地运行兜底。原始证据目录：
 
 ```text
-data/intel-engine/briefing/
+profile-storage/platform/intel-engine/briefing/
 ├─ daily-tech-briefing-runs.json
 ├─ daily-tech-briefing-history.json
 ├─ daily-tech-briefing-schedule-state.json
@@ -381,7 +386,7 @@ AI 模型类优先级：
 - 补充 axios、Apifox、Claude Code、Cursor、MCP、OpenAI、Anthropic、Google AI、DeepSeek/Qwen 等源。
 - MCP 搜索优先走现有 `webSearchPrime` 能力边界；MiniMax Token Plan `minimax:web_search` 已作为同类搜索供应商接入，业务主链不直接依赖供应商返回结构。
 - 保存 run/history/feedback/schedule/raw evidence 到 `BriefingStorageRepository`；默认 file repository
-  落在 `data/intel-engine/briefing`。
+  落在 `profile-storage/platform/intel-engine/briefing`。
 
 第二阶段：证据与安全可信度。
 
@@ -435,7 +440,7 @@ pnpm check:docs
 - 官方 advisory 优先。
 - 搜索结果只作为补充发现。
 - 安全类不确定事件必须标注 `watch`。
-- 本地存储默认位于 intel-owned `data/intel-engine/briefing`，生产路径优先注入宿主
+- 本地存储默认位于 intel-owned `profile-storage/platform/intel-engine/briefing`，生产路径优先注入宿主
   `BriefingStorageRepository`。
 - admin 治理面负责配置和反馈，agent-chat 只负责必要时展示。
 

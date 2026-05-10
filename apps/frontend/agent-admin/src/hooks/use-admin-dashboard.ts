@@ -8,6 +8,7 @@ import type { RunObservatoryFocusTarget } from '@/pages/run-observatory/run-obse
 import type { RuntimeReplayLaunchReceipt } from '@/pages/runtime-overview/components/runtime-run-workbench-support';
 import {
   PAGE_TITLES,
+  buildDashboardRoute,
   buildDashboardShareUrl,
   readDashboardStateFromRoute,
   shouldPollTask,
@@ -306,6 +307,29 @@ export function useAdminDashboard() {
     page,
     setPage: (nextPage: DashboardPageKey) => {
       setPage(nextPage);
+      const nextRoute = buildDashboardRoute({
+        page: nextPage,
+        runtimeTaskId: activeTaskIdRef.current,
+        runtimeFocusKind: observatoryFocusTarget?.kind,
+        runtimeFocusId: observatoryFocusTarget?.id,
+        runtimeCompareTaskId,
+        runtimeGraphNodeId,
+        runtimeStatusFilter: filtersRef.current.runtimeStatusFilter,
+        runtimeModelFilter: filtersRef.current.runtimeModelFilter,
+        runtimePricingSourceFilter: filtersRef.current.runtimePricingSourceFilter,
+        runtimeExecutionModeFilter: filtersRef.current.runtimeExecutionModeFilter,
+        runtimeInteractionKindFilter: filtersRef.current.runtimeInteractionKindFilter,
+        approvalsExecutionModeFilter: filtersRef.current.approvalsExecutionModeFilter,
+        approvalsInteractionKindFilter: filtersRef.current.approvalsInteractionKindFilter
+      });
+      const currentRoute = `${window.location.pathname}${window.location.search}`;
+      if (currentRoute !== nextRoute || window.location.hash) {
+        const writeRoute = window.history.pushState ?? window.history.replaceState;
+        writeRoute.call(window.history, null, '', nextRoute);
+        if (typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('popstate'));
+        }
+      }
     },
     shareUrl,
     title: PAGE_TITLES[page],

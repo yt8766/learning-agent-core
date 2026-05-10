@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -6,6 +6,16 @@ import { describe, expect, it, vi } from 'vitest';
 vi.setConfig({ testTimeout: 60_000 });
 
 describe('@agent/knowledge SDK entrypoints', () => {
+  it('does not emit test declarations in build type output', () => {
+    const packageRoot = resolve(__dirname, '..');
+    const typesRoot = resolve(packageRoot, 'build/types');
+    const emittedTestTypePath = resolve(typesRoot, 'test');
+    const leakedTestDeclarationDirs = listTestDeclarationDirs(typesRoot);
+
+    expect(existsSync(emittedTestTypePath)).toBe(false);
+    expect(leakedTestDeclarationDirs).toEqual([]);
+  });
+
   it('declares package exports for documented SDK subpaths', () => {
     const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8')) as {
       exports: Record<string, unknown>;
@@ -70,6 +80,26 @@ describe('@agent/knowledge SDK entrypoints', () => {
     expect(rootEntry).not.toContain("from './node';");
   });
 });
+
+function listTestDeclarationDirs(rootDir: string): string[] {
+  if (!existsSync(rootDir)) {
+    return [];
+  }
+
+  const entries = readdirSync(rootDir);
+  const testDirs = entries
+    .map(entry => resolve(rootDir, entry))
+    .filter(entryPath => statSync(entryPath).isDirectory())
+    .flatMap(entryPath => {
+      if (entryPath.endsWith('/test')) {
+        return [entryPath];
+      }
+
+      return listTestDeclarationDirs(entryPath);
+    });
+
+  return testDirs.sort();
+}
 
 describe('knowledge adapter entrypoints', () => {
   it('exports the adapter root entrypoint', async () => {

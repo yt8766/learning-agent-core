@@ -100,6 +100,82 @@ describe('PostgresKnowledgeRepository', () => {
     expect(client.calls[0]?.sql).toContain('knowledge_chat_conversations');
     expect(client.calls[1]?.values?.slice(1, 5)).toEqual(['conv_1', 'user_1', 'assistant', 'answer']);
   });
+
+  it('persists and maps chunk metadata through the repository contract', async () => {
+    const client = new ScriptedPostgresClient([
+      { rows: [] },
+      {
+        rows: [
+          {
+            id: 'chunk_1',
+            document_id: 'doc_1',
+            ordinal: 0,
+            content: 'approval policy',
+            token_count: 2,
+            embedding_status: 'succeeded',
+            vector_index_status: 'succeeded',
+            keyword_index_status: 'succeeded',
+            metadata: JSON.stringify({ status: 'active', sectionId: 'sec_1' }),
+            created_at: now,
+            updated_at: now
+          }
+        ]
+      },
+      {
+        rows: [
+          {
+            id: 'chunk_1',
+            document_id: 'doc_1',
+            ordinal: 0,
+            content: 'approval policy',
+            token_count: 2,
+            embedding_status: 'succeeded',
+            vector_index_status: 'succeeded',
+            keyword_index_status: 'succeeded',
+            metadata: JSON.stringify({ status: 'active', sectionId: 'sec_1' }),
+            created_at: now,
+            updated_at: now
+          }
+        ]
+      }
+    ]);
+    const repository = new PostgresKnowledgeRepository(client);
+
+    await expect(
+      repository.saveChunks('doc_1', [
+        {
+          id: 'chunk_1',
+          documentId: 'doc_1',
+          ordinal: 0,
+          content: 'approval policy',
+          tokenCount: 2,
+          embeddingStatus: 'succeeded',
+          vectorIndexStatus: 'succeeded',
+          keywordIndexStatus: 'succeeded',
+          metadata: { status: 'active', sectionId: 'sec_1' },
+          createdAt: now,
+          updatedAt: now
+        }
+      ])
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'chunk_1',
+        metadata: { status: 'active', sectionId: 'sec_1' }
+      })
+    ]);
+
+    expect(client.calls[0]?.sql).toContain('not (id = any($2::text[]))');
+    expect(client.calls[1]?.sql).toContain('metadata');
+    expect(client.calls[1]?.sql).toContain('on conflict (id) do update');
+    expect(client.calls[1]?.values?.[8]).toBe(JSON.stringify({ status: 'active', sectionId: 'sec_1' }));
+    await expect(repository.listChunks('doc_1')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'chunk_1',
+        metadata: { status: 'active', sectionId: 'sec_1' }
+      })
+    ]);
+    expect(client.calls[2]?.sql).toContain('metadata');
+  });
 });
 
 const now = '2026-05-07T00:00:00.000Z';

@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { AgentGatewayController } from '../../src/api/agent-gateway/agent-gateway.controller';
+import { AgentGatewayOAuthCallbackController } from '../../src/api/agent-gateway/agent-gateway-oauth-callback.controller';
 import { AgentGatewayApiKeyService } from '../../src/domains/agent-gateway/api-keys/agent-gateway-api-key.service';
 import { AgentGatewayConfigFileService } from '../../src/domains/agent-gateway/config/agent-gateway-config-file.service';
 import { AgentGatewayConnectionService } from '../../src/domains/agent-gateway/management/agent-gateway-connection.service';
@@ -37,6 +38,25 @@ describe('AgentGatewayController', () => {
     const controller = createController();
 
     expect((await controller.snapshot()).providerCredentialSets.length).toBeGreaterThan(0);
+  });
+
+  it('accepts browser OAuth callback redirects without requiring a gateway access token', async () => {
+    const service = {
+      submitCallback: async (request: { provider: string; redirectUrl: string }) => ({
+        accepted: true,
+        provider: request.provider,
+        completedAt: '2026-05-10T00:00:00.000Z'
+      })
+    } as never;
+    const controller = new AgentGatewayOAuthCallbackController(service);
+
+    await expect(
+      controller.handleCallback({ provider: 'codex', code: 'abc', state: 'codex-state' }, {
+        protocol: 'http',
+        get: () => 'localhost:3000',
+        originalUrl: '/api/agent-gateway/oauth/callback?provider=codex&code=abc&state=codex-state'
+      } as never)
+    ).resolves.toContain('OAuth 登录已提交');
   });
 
   it('normalizes logs list limits', async () => {

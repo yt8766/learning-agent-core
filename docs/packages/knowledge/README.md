@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/knowledge/`
-最后核对：2026-05-09（Knowledge SDK eval 与 agent/task learning 边界核对）
+最后核对：2026-05-10（Knowledge Observability / Eval contract 边界核对）
 
 本目录用于沉淀 `packages/knowledge` 包内部职责、源码边界、运行时契约与迁移状态。面向使用方的 SDK 接入手册已统一迁到 [SDK 文档目录](/docs/sdk/README.md)。
 
@@ -15,6 +15,7 @@
 - 允许：
   - knowledge source / chunk repository
   - retrieval contract
+  - observability / eval contract
   - chat 检索前路由的纯函数 contract
   - citation contract
   - indexing / retrieval runtime
@@ -52,6 +53,7 @@
 - [indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
 - [indexing-contract-guidelines.md](/docs/packages/knowledge/indexing-contract-guidelines.md)
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
+- [observability-eval-contracts.md](/docs/packages/knowledge/observability-eval-contracts.md)
 - [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)
 - [chat-pre-retrieval-routing.md](/docs/packages/knowledge/chat-pre-retrieval-routing.md)
 - [source-ingestion-status.md](/docs/packages/knowledge/source-ingestion-status.md)
@@ -119,7 +121,15 @@
 - `packages/knowledge/src/contracts/schemas/knowledge-retrieval.schema.ts`
   - `KnowledgeChunkMetadataSchema` 已显式包含 `parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle`
   - `HybridKnowledgeSearchProductionConfigSchema` 定义 keyword-only / vector-only / hybrid 模式，以及 OpenSearch index/client、Chroma collection/client、diagnostics、health 的生产装配配置语义
-  - indexing / local store 第一阶段尚不自动生成这些 neighbor metadata；调用方或测试需直接提供 JSON-safe metadata
+  - 默认 `FixedWindowChunker` 仍不自动生成这些 neighbor metadata；需要结构感知 metadata 时，调用方应显式注入 `StructuredTextChunker`
+
+- `packages/knowledge/src/contracts/schemas/knowledge-observability-eval.schema.ts`
+  - 是当前 Knowledge RAG observability / eval 的 schema-first 最小稳定边界
+  - 定义 `KnowledgeRagEventSchema`、`KnowledgeRagTraceSchema`、`KnowledgeEvalSampleSchema` 与 `KnowledgeEvalMetricSummarySchema`
+  - 覆盖 indexing / retrieval / generation event、query snapshot、retrieval hits/citations、diagnostics 摘要、feedback label、Recall@K / MRR / grounding 等后续指标字段
+  - 最小 golden eval 闭环入口为 `runKnowledgeGoldenEval(dataset, observeCase, options?)`，只把手写 golden case 与确定性 observed answer 投影成 `KnowledgeEvalSample[]` 并复用现有指标计算器
+  - 当前离线最小 fixture 入口为 `createKnowledgeGoldenEvalFixture()` / `DEFAULT_KNOWLEDGE_GOLDEN_EVAL_DATASET`，包含 9 条样本，覆盖精确编号、政策/FAQ、无答案、中文同义问法与多文档综合；它只用于本地 regression，不是产品默认知识库或 ingestion seed
+  - 当前只提供 SDK contract 和 parse 回归，不接 UI、backend service、CLI runner、第三方 exporter 或完整 eval 平台；正确入口见 [observability-eval-contracts.md](/docs/packages/knowledge/observability-eval-contracts.md)
 
 - `packages/knowledge/src/runtime/local-knowledge-store.ts`
   - 是当前本地知识摄取与概览读取的真实宿主

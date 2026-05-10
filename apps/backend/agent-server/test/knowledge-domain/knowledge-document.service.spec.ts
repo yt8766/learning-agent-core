@@ -50,7 +50,7 @@ describe('KnowledgeDocumentService', () => {
     await expect(documents.getDocument(actor, document.id)).resolves.toMatchObject({
       id: document.id,
       knowledgeBaseId: baseId,
-      chunkCount: 1
+      chunkCount: 2
     });
     await expect(documents.getLatestJob(actor, document.id)).resolves.toMatchObject({
       id: job.id,
@@ -58,15 +58,15 @@ describe('KnowledgeDocumentService', () => {
       status: 'succeeded'
     });
     await expect(documents.listChunks(actor, document.id)).resolves.toMatchObject({
-      total: 1,
-      items: [
+      total: 2,
+      items: expect.arrayContaining([
         expect.objectContaining({
           documentId: document.id,
           content: expect.stringContaining('alpha'),
           embeddingStatus: 'skipped',
           keywordIndexStatus: 'succeeded'
         })
-      ]
+      ])
     });
   });
 

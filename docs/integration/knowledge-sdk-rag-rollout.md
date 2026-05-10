@@ -3,7 +3,7 @@
 状态：history
 文档类型：integration
 适用范围：`packages/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/backend/agent-server/src/api/knowledge`、`apps/frontend/knowledge`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
 本主题主文档：`docs/integration/knowledge-sdk-rag-rollout.md`
 
@@ -20,11 +20,13 @@
 
 ## 当前结论
 
-知识库向量的生产落点仍是 Supabase/PostgreSQL + pgvector。当前由 unified `agent-server` 的 knowledge domain 接入 SDK runtime：文档上传入库先由 `KnowledgeIngestionWorker` 调用 `@agent/knowledge` 的 `runKnowledgeIndexing()` 生成 SDK chunk，再通过 `embeddingProvider.embedBatch()` 与 `vectorStore.upsert()` 写入数据库表 `knowledge_document_chunks.embedding vector(1536)`；`metadata jsonb` 保存租户、知识库、文档、标题、文件名、ordinal、tags 等过滤和展示字段。
+知识库向量的生产落点仍是 Supabase/PostgreSQL + pgvector。当前由 unified `agent-server` 的 knowledge domain 接入 SDK runtime：文档上传入库先由 `KnowledgeIngestionWorker` 调用 `@agent/knowledge` 的 `runKnowledgeIndexing()` 生成 SDK chunk，再通过 `embeddingProvider.embedBatch()` 与 `vectorStore.upsert()` 写入数据库表 `knowledge_document_chunks.embedding vector(1024)`；`metadata jsonb` 保存租户、知识库、文档、标题、文件名、ordinal、tags 等过滤和展示字段。写入前必须通过 ingestion 质量门：embedding 数量必须等于 chunk 数量、向量必须非空且维度一致，vector upsert 必须返回与写入记录数一致的 `upsertedCount`，否则 job 失败且 `embeddedChunkCount` 保持为实际可检索成功数。
+
+ingestion chunker 当前由 unified backend worker 按配置选择，默认 `KNOWLEDGE_INGESTION_CHUNKER=auto`：markdown 与通用 text 文档使用 `StructuredTextChunker`，其他类型继续使用 `FixedWindowChunker`；`KNOWLEDGE_INGESTION_CHUNKER=structured` / `fixed` 可强制切换。结构化 chunk 产生的 `parentId`、`sectionId`、`sectionTitle`、`heading`、`sectionPath`、`contentType`、`ordinal`、`chunkHash`、`prevChunkId`、`nextChunkId` 会同时保存到后端 `DocumentChunkRecord.metadata` 和 vector upsert record metadata；fixed-window 历史数据继续可检索但这些字段可为空。
 
 前端 Chat Lab 已接真实 `/api/chat`，发送 OpenAI Chat Completions 风格 payload：`model`、`messages`、`metadata.conversationId`、`metadata.mentions`、`stream:false`。UI 已从 Ant Design X demo card 布局改为 Codex 风格双栏工作台：左侧会话/知识库，右侧顶部运行栏、消息线程、底部 composer、引用卡片、trace link 和 feedback。
 
-后端 Chat API 由 `apps/backend/agent-server/src/api/knowledge` 暴露，并委托 `apps/backend/agent-server/src/domains/knowledge` 内的 service。`KnowledgeDocumentService.chat()` 先做用户可访问知识库路由与 membership 校验；`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时调用 SDK embedding、Supabase pgvector search 和 chat provider；disabled 时只保留 repository deterministic fallback。
+后端 Chat API 由 `apps/backend/agent-server/src/api/knowledge` 暴露，并委托 `apps/backend/agent-server/src/domains/knowledge` 内的 service。`KnowledgeDocumentService.chat()` 先做用户可访问知识库路由与 membership 校验；`KNOWLEDGE_SDK_RUNTIME.enabled=true` 时，domain search adapter 会同时执行 repository keyword retriever 与 SDK vector retriever，并通过 `@agent/knowledge` 的 `HybridRetrievalEngine` 做 RRF fusion，再调用 chat provider；disabled 时只保留 repository deterministic keyword fallback。
 
 `packages/knowledge` 已提供 Node 默认 runtime：`@agent/knowledge/node` 的 `createDefaultKnowledgeSdkRuntime()` 默认组合 OpenAI-compatible chat provider、OpenAI-compatible embedding provider 与 Supabase pgvector vector store。根入口不导出该 node-only factory。
 
@@ -46,18 +48,18 @@ KNOWLEDGE_LLM_API_KEY=<provider-api-key>
 ```text
 KNOWLEDGE_LLM_BASE_URL=<openai-compatible-base-url>
 KNOWLEDGE_CHAT_MAX_TOKENS=2048
-KNOWLEDGE_EMBEDDING_DIMENSIONS=1536
+KNOWLEDGE_EMBEDDING_DIMENSIONS=1024
 KNOWLEDGE_EMBEDDING_BATCH_SIZE=64
 ```
 
 接入流程：
 
 1. `DATABASE_URL` 触发 Postgres repository 与 `KNOWLEDGE_SCHEMA_SQL` 初始化。
-2. Schema 初始化创建 pgvector extension、`knowledge_document_chunks.embedding vector(1536)` 和三组 RPC：`upsert_knowledge_chunks`、`match_knowledge_chunks`、`delete_knowledge_document_chunks`。
+2. Schema 初始化创建 pgvector extension、`knowledge_document_chunks.embedding vector(1024)` 和三组 RPC：`upsert_knowledge_chunks`、`match_knowledge_chunks`、`delete_knowledge_document_chunks`。
 3. Runtime provider 创建 Postgres-backed `SupabaseRpcClientLike`，把 SDK adapter 的 RPC 调用映射到 Postgres function。
 4. Runtime provider 调用 `createDefaultKnowledgeSdkRuntime()`。
-5. Ingestion worker 调用 SDK indexing pipeline 生成 chunk；runtime enabled 时继续调用 `embedBatch()` + `upsert()`，runtime disabled 时保存 keyword-searchable chunk 且把 embedding/vector 状态记为 `skipped`。
-6. Chat service 调用 `embedText()` + `search()` + `generate()`。
+5. Ingestion worker 调用 SDK indexing pipeline 生成 chunk；默认对 markdown/text 走 `StructuredTextChunker`，其他类型或 `KNOWLEDGE_INGESTION_CHUNKER=fixed` 走 `FixedWindowChunker`；runtime enabled 时继续调用 `embedBatch()` + `upsert()`，并在保存成功状态前校验 embedding 数量、非空、维度和 `upsertedCount`；runtime disabled 时保存 keyword-searchable chunk 且把 embedding/vector 状态记为 `skipped`。
+6. Chat service 调用 domain search adapter；runtime enabled 时 adapter 组合 keyword retriever、`embedText()`、vector `search()` 和 RRF fusion，runtime disabled 时走 keyword-only fallback；之后再调用 `generate()`。
 
 半配置规则：没有 SDK env 时可以 disabled fallback；只要出现任一 SDK env 但缺少关键项，服务启动失败。
 
@@ -83,7 +85,7 @@ KNOWLEDGE_EMBEDDING_BATCH_SIZE=64
 
 已补充的开发者验证入口：
 
-- `apps/knowledge-cli` 已提供本地目录 indexing、snapshot retrieval、抽取式 ask 和 JSONL trace，用于证明 SDK 可以脱离 Knowledge App 前端和生产 backend 跑最小闭环。前端仍应通过后端 API，不直连 SDK provider 或向量库。
+- `apps/cli/knowledge-cli` 已提供本地目录 indexing、snapshot retrieval、抽取式 ask 和 JSONL trace，用于证明 SDK 可以脱离 Knowledge App 前端和生产 backend 跑最小闭环。前端仍应通过后端 API，不直连 SDK provider 或向量库。
 
 ## 优先阅读
 

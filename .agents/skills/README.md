@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`.agents/skills/`
-最后核对：2026-04-27
+最后核对：2026-05-10
 
 本目录承载给 Codex / Claude Code 等代码代理读取的仓库级代理技能，不承载运行时 skill registry、skill card 或后端技能持久化模型。
 
@@ -13,24 +13,29 @@
 
 - `auto-commit-push`
 - `brainstorming`
-- `code-review`
+- `clone-website`
 - `dispatching-parallel-agents`
 - `executing-plans`
 - `finishing-a-development-branch`
-- `learning-flow-audit`
-- `openclaw-workspace-audit`
+- `frontend-design`
 - `receiving-code-review`
-- `release-check`
 - `requesting-code-review`
 - `subagent-driven-development`
 - `systematic-debugging`
-- `task-delivery-loop`
 - `test-driven-development`
+- `ui-ux-pro-max`
+- `use-x-chat`
 - `using-git-worktrees`（已禁用：本仓库规范禁止使用 `git worktree`）
 - `using-superpowers`
+- `vercel-react-best-practices`
 - `verification-before-completion`
 - `writing-plans`
 - `writing-skills`
+- `x-card`
+- `x-chat-provider`
+- `x-components`
+- `x-markdown`
+- `x-request`
 
 ## 目录约束
 

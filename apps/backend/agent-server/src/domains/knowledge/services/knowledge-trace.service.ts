@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { KnowledgeTrace, KnowledgeTraceOperation, KnowledgeWorkbenchSpanName } from '@agent/knowledge';
+import type {
+  KnowledgeRagEvent,
+  KnowledgeRagEventName,
+  KnowledgeRagTrace,
+  KnowledgeTrace,
+  KnowledgeTraceOperation,
+  KnowledgeWorkbenchSpanName
+} from '@agent/knowledge';
 
 export type KnowledgeTraceAttributes = Record<string, string | number | boolean | null>;
 const MAX_TRACES = 200;
@@ -12,7 +19,10 @@ export interface StartKnowledgeTraceInput {
 }
 
 export interface AddKnowledgeTraceSpanInput {
+  spanId?: string;
   name: KnowledgeWorkbenchSpanName;
+  startedAt?: string;
+  endedAt?: string;
   status?: KnowledgeTrace['spans'][number]['status'];
   attributes?: KnowledgeTraceAttributes;
   error?: {
@@ -48,14 +58,37 @@ export class KnowledgeTraceService {
     }
     const now = currentIsoTime();
     trace.spans.push({
-      spanId: `span_${randomUUID()}`,
+      spanId: input.spanId ?? `span_${randomUUID()}`,
       name: input.name,
-      startedAt: now,
-      endedAt: now,
+      startedAt: input.startedAt ?? now,
+      endedAt: input.endedAt ?? input.startedAt ?? now,
       status: input.status,
       attributes: sanitizeTraceAttributes(input.attributes),
       error: input.error ? { ...input.error } : undefined
     });
+  }
+
+  projectSdkTrace(traceId: string, sdkTrace: KnowledgeRagTrace): void {
+    for (const event of sdkTrace.events) {
+      const spanName = toWorkbenchSpanName(event.name);
+      if (!spanName) {
+        continue;
+      }
+      this.addSpan(traceId, {
+        spanId: `span_${event.eventId}`,
+        name: spanName,
+        startedAt: event.occurredAt,
+        endedAt: event.occurredAt,
+        status: event.error ? 'error' : toWorkbenchSpanStatus(sdkTrace.status),
+        attributes: buildProjectedSdkTraceAttributes(sdkTrace, event),
+        error: event.error
+          ? {
+              code: event.error.code,
+              message: sanitizeTraceErrorMessage(event.error.message)
+            }
+          : undefined
+      });
+    }
   }
 
   finishTrace(traceId: string, status: KnowledgeTrace['status']): void {
@@ -103,11 +136,141 @@ function sanitizeTraceAttributes(
   }
   const sanitized: KnowledgeTraceAttributes = {};
   for (const [key, value] of Object.entries(attributes)) {
+    if (isSensitiveAttributeKey(key)) {
+      continue;
+    }
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
       sanitized[key] = value;
     }
   }
   return sanitized;
+}
+
+function buildProjectedSdkTraceAttributes(
+  sdkTrace: KnowledgeRagTrace,
+  event: KnowledgeRagEvent
+): KnowledgeTraceAttributes {
+  return {
+    sdkTraceId: sdkTrace.traceId,
+    ...(sdkTrace.runId ? { sdkRunId: sdkTrace.runId } : {}),
+    sdkEventName: event.name,
+    sdkStage: event.stage,
+    ...pickSafeScalarAttributes(event.attributes),
+    ...buildRetrievalAttributes(event),
+    ...buildGenerationAttributes(event),
+    ...buildContextAssemblyAttributes(event)
+  };
+}
+
+function buildRetrievalAttributes(event: KnowledgeRagEvent): KnowledgeTraceAttributes {
+  if (!event.retrieval) {
+    return {};
+  }
+  const diagnostics = event.retrieval.diagnostics;
+
+  return {
+    hitCount: event.retrieval.hits.length,
+    citationCount: event.retrieval.citations.length,
+    ...(event.retrieval.requestedTopK !== undefined ? { requestedTopK: event.retrieval.requestedTopK } : {}),
+    ...(diagnostics?.retrievalMode ? { retrievalMode: diagnostics.retrievalMode } : {}),
+    ...(diagnostics?.candidateCount !== undefined ? { candidateCount: diagnostics.candidateCount } : {}),
+    ...(diagnostics?.selectedCount !== undefined ? { selectedCount: diagnostics.selectedCount } : {}),
+    ...(diagnostics?.latencyMs !== undefined ? { latencyMs: diagnostics.latencyMs } : {}),
+    ...(diagnostics?.fusionStrategy ? { fusionStrategy: diagnostics.fusionStrategy } : {})
+  };
+}
+
+function buildGenerationAttributes(event: KnowledgeRagEvent): KnowledgeTraceAttributes {
+  if (!event.generation) {
+    return {};
+  }
+
+  return {
+    citedChunkCount: event.generation.citedChunkIds?.length ?? 0,
+    ...(event.generation.groundedCitationRate !== undefined
+      ? { groundedCitationRate: event.generation.groundedCitationRate }
+      : {})
+  };
+}
+
+function buildContextAssemblyAttributes(event: KnowledgeRagEvent): KnowledgeTraceAttributes {
+  if (event.name !== 'runtime.context_assembly.complete') {
+    return {};
+  }
+
+  return {
+    contextAssembled:
+      typeof event.attributes?.['contextAssembled'] === 'boolean' ? event.attributes.contextAssembled : null,
+    contextLength: typeof event.attributes?.['contextLength'] === 'number' ? event.attributes.contextLength : null
+  };
+}
+
+function pickSafeScalarAttributes(attributes: KnowledgeRagEvent['attributes']): KnowledgeTraceAttributes {
+  const projected: KnowledgeTraceAttributes = {};
+  if (!attributes) {
+    return projected;
+  }
+  for (const [key, value] of Object.entries(attributes)) {
+    if (isSensitiveAttributeKey(key)) {
+      continue;
+    }
+    if (isTraceAttributeValue(value)) {
+      projected[key] = value;
+    }
+  }
+  return projected;
+}
+
+function isTraceAttributeValue(value: unknown): value is KnowledgeTraceAttributes[string] {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null;
+}
+
+function toWorkbenchSpanName(name: KnowledgeRagEventName): KnowledgeWorkbenchSpanName | undefined {
+  switch (name) {
+    case 'runtime.query.receive':
+    case 'runtime.query.preprocess':
+      return 'route';
+    case 'runtime.retrieval.start':
+    case 'runtime.retrieval.complete':
+      return 'retrieve';
+    case 'runtime.post_retrieval.select':
+      return 'rerank';
+    case 'runtime.context_assembly.complete':
+      return 'assemble-context';
+    case 'runtime.generation.complete':
+      return 'generate';
+    case 'runtime.run.fail':
+      return 'generate';
+    default:
+      return undefined;
+  }
+}
+
+function toWorkbenchSpanStatus(status: KnowledgeRagTrace['status']): KnowledgeTrace['spans'][number]['status'] {
+  switch (status) {
+    case 'failed':
+      return 'error';
+    case 'canceled':
+      return 'cancelled';
+    default:
+      return 'ok';
+  }
+}
+
+function isSensitiveAttributeKey(key: string): boolean {
+  return /secret|token|password|authorization|api[-_]?key/i.test(key);
+}
+
+function sanitizeTraceErrorMessage(message: string): string {
+  if (containsSensitiveTraceText(message)) {
+    return 'Knowledge RAG SDK event failed.';
+  }
+
+  return message.slice(0, 240);
+}
+
+function containsSensitiveTraceText(message: string): boolean {
+  return /secret|token|password|authorization|api[-_]?key|bearer\s+[^\s]+|sk-[a-z0-9_-]+|raw\s+vendor/i.test(message);
 }
 
 function cloneTrace(trace: KnowledgeTrace | undefined): KnowledgeTrace | undefined {

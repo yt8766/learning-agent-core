@@ -17,18 +17,19 @@ Daily Tech Intelligence Briefing 的当前真实宿主是 `agents/intel-engine/s
 
 briefing 存储已经从 root `data/runtime` 迁到 intel-owned storage repository。生产调用必须通过
 `RuntimeTechBriefingContext.briefingStorage` 注入宿主 storage；未显式注入时，默认 file repository
-落到当前 workspace 的 `data/intel-engine/briefing`，不再写 `data/runtime/briefings` 或
-`data/runtime/schedules`。
+落到当前 workspace 的 `profile-storage/platform/intel-engine/briefing`，不再写 root `data/*`、
+`data/runtime/briefings` 或 `data/runtime/schedules`。
 
 默认 file repository 路径：
 
 ```text
-data/intel-engine/briefing/daily-tech-briefing-runs.json
-data/intel-engine/briefing/daily-tech-briefing-history.json
-data/intel-engine/briefing/daily-tech-briefing-schedule-state.json
-data/intel-engine/briefing/daily-tech-briefing-feedback.json
-data/intel-engine/briefing/raw/
-data/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-runs.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-history.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-schedule-state.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-feedback.json
+profile-storage/platform/intel-engine/briefing/raw/
+profile-storage/platform/intel-engine/briefing/locks/scheduled-runs/
+profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
 代码边界：
@@ -37,6 +38,8 @@ data/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
   `PostgresReadyBriefingStorageRepository` 类型别名，后续 PostgreSQL adapter 只需实现同一接口。
 - `briefing-storage.ts` 是兼容 facade，旧函数签名仍可使用，但内部统一委托 repository；新增生产路径应优先传入
   `BriefingStorageRepository`，不要直接拼接持久化路径。
+- `briefing.service.ts` 的 scheduled 入口会按 `分类集合 + 分钟 slot` 写入
+  `locks/scheduled-runs/*.lock`，用于阻止多个 backend/Bree 实例在同一分钟重复执行同一分类并重复发送 Lark。
 - `briefing-paths.ts` 只描述 intel-owned storage 的文件布局，不再提供 root `data/runtime` 路径。
 
 ## 测试

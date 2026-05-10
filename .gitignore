@@ -29,6 +29,7 @@ out
 # 测试与覆盖率
 # -----------------------------------------------------------------------------
 /coverage
+/artifacts/
 /artifacts/coverage
 *.lcov
 .nyc_output
@@ -54,7 +55,6 @@ out
 # 日志与调试输出
 # -----------------------------------------------------------------------------
 /logs
-/artifacts/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -64,7 +64,6 @@ pnpm-debug.log*
 # -----------------------------------------------------------------------------
 # 项目本地数据（legacy import 输入、profile storage、运行时生成、大文件等）
 # -----------------------------------------------------------------------------
-/artifacts/tmp
 /tmp
 # Root data is legacy import input only. Current runtime storage uses
 # profile-storage/* and artifacts/* instead.
@@ -73,7 +72,7 @@ pnpm-debug.log*
 /data/knowledge
 /data/skills
 /data/skill-runtime
-/profile-storage
+/profile-storage/**
 .db
 /db
 data/**/*.tmp

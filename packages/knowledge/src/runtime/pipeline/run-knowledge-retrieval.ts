@@ -1,4 +1,4 @@
-import type { RetrievalHit, RetrievalRequest } from '../../index';
+import type { KnowledgeRagMetric, RetrievalHit, RetrievalRequest } from '../../index';
 
 import type { KnowledgeSearchService } from '../../contracts/knowledge-facade';
 import type { RetrievalPipelineConfig } from '../../contracts/knowledge-retrieval-runtime';
@@ -20,6 +20,18 @@ import { DefaultPostRetrievalFilter } from '../defaults/default-post-retrieval-f
 import { DefaultPostRetrievalRanker } from '../defaults/default-post-retrieval-ranker';
 import { DefaultQueryNormalizer } from '../defaults/default-query-normalizer';
 import { DefaultRetrievalPostProcessor } from '../defaults/default-post-processor';
+import {
+  buildKnowledgeRagEventId,
+  buildKnowledgeRagTraceRetrievalDiagnostics,
+  collectKnowledgeRagTraceCitations,
+  mergeKnowledgeHybridDiagnostics,
+  toKnowledgeRagTraceError,
+  toKnowledgeRagTraceHits,
+  tryFinishKnowledgeRagTrace,
+  tryRecordKnowledgeRagEvent,
+  tryStartKnowledgeRagTrace,
+  type KnowledgeRagObserver
+} from '../../observability';
 
 export interface KnowledgeRetrievalRunOptions {
   request: RetrievalRequest;
@@ -27,6 +39,9 @@ export interface KnowledgeRetrievalRunOptions {
   pipeline?: RetrievalPipelineConfig;
   assembleContext?: boolean;
   includeDiagnostics?: boolean;
+  observer?: KnowledgeRagObserver;
+  traceId?: string;
+  startTrace?: boolean;
 }
 
 function resolveNormalizerChain(config: QueryNormalizer | QueryNormalizer[] | undefined): QueryNormalizer {
@@ -89,57 +104,17 @@ function mergeHitsByChunkId(hitGroups: SearchHits[]): RetrievalHit[] {
   return Array.from(hitsByChunkId.values()).sort((left, right) => right.score - left.score);
 }
 
-function mergeHybridDiagnostics(diagnostics: HybridRetrievalDiagnostics[]): HybridRetrievalDiagnostics | undefined {
-  if (diagnostics.length === 0) {
-    return undefined;
-  }
-
-  const enabledRetrievers = new Set<HybridRetrievalDiagnostics['enabledRetrievers'][number]>();
-  const failedRetrievers = new Set<HybridRetrievalDiagnostics['failedRetrievers'][number]>();
-  let candidateCount = 0;
-  let hasKeywordSuccess = false;
-  let hasVectorSuccess = false;
-
-  for (const item of diagnostics) {
-    const itemFailedRetrievers = item.failedRetrievers ?? [];
-    const itemEnabledRetrievers =
-      item.enabledRetrievers ??
-      (item.retrievalMode === 'hybrid'
-        ? ['keyword', 'vector']
-        : item.retrievalMode === 'keyword-only'
-          ? ['keyword']
-          : item.retrievalMode === 'vector-only'
-            ? ['vector']
-            : []);
-
-    itemEnabledRetrievers.forEach(retriever => enabledRetrievers.add(retriever));
-    itemFailedRetrievers.forEach(retriever => failedRetrievers.add(retriever));
-    candidateCount += item.candidateCount ?? 0;
-    hasKeywordSuccess ||= itemEnabledRetrievers.includes('keyword') && !itemFailedRetrievers.includes('keyword');
-    hasVectorSuccess ||= itemEnabledRetrievers.includes('vector') && !itemFailedRetrievers.includes('vector');
-  }
-
-  const retrievalMode =
-    hasKeywordSuccess && hasVectorSuccess
-      ? 'hybrid'
-      : hasKeywordSuccess
-        ? 'keyword-only'
-        : hasVectorSuccess
-          ? 'vector-only'
-          : 'none';
-
-  return {
-    retrievalMode,
-    enabledRetrievers: Array.from(enabledRetrievers),
-    failedRetrievers: Array.from(failedRetrievers),
-    fusionStrategy: diagnostics.find(item => item.fusionStrategy)?.fusionStrategy ?? 'rrf',
-    prefilterApplied: diagnostics.some(item => item.prefilterApplied ?? false),
-    candidateCount
-  };
-}
-
 export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOptions): Promise<KnowledgeRetrievalResult> {
-  const { request, searchService, pipeline = {}, assembleContext = false, includeDiagnostics = false } = options;
+  const {
+    request,
+    searchService,
+    pipeline = {},
+    assembleContext = false,
+    includeDiagnostics = false,
+    observer,
+    traceId = `knowledge-retrieval-${Date.now()}`,
+    startTrace = true
+  } = options;
 
   const queryNormalizer = resolveNormalizerChain(pipeline.queryNormalizer);
   const postRetrievalFilter =
@@ -153,110 +128,301 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
   const startedAt = new Date().toISOString();
   const startMs = Date.now();
 
-  const normalized = await queryNormalizer.normalize(request);
-  const resolvedFilters = resolveKnowledgeRetrievalFilters(request);
-  const queryVariants = dedupeQueries(
-    normalized.queryVariants?.length ? normalized.queryVariants : [normalized.normalizedQuery]
-  );
-  const effectiveNormalized = {
-    ...normalized,
-    originalQuery: normalized.originalQuery ?? request.query,
-    normalizedQuery: normalized.normalizedQuery,
-    topK: normalized.topK,
-    rewriteApplied: normalized.rewriteApplied ?? false,
-    rewriteReason: normalized.rewriteReason,
-    queryVariants
-  };
-  const executedQueries: string[] = [];
-  const searchResults: SearchHits[] = [];
-  const filteringStages: RetrievalFilteringStageDiagnostics[] = [];
-  const hybridDiagnostics: HybridRetrievalDiagnostics[] = [];
-
-  for (const query of queryVariants) {
-    executedQueries.push(query);
-    const result = await searchService.search({
-      ...request,
-      query,
-      limit: normalized.topK
+  if (startTrace) {
+    tryStartKnowledgeRagTrace(observer, {
+      traceId,
+      operation: 'retrieval.run',
+      startedAt,
+      query: { text: request.query }
     });
-    const searchDiagnostics = (result as SearchResultDiagnostics).diagnostics;
-    if (searchDiagnostics) {
-      hybridDiagnostics.push(searchDiagnostics);
-    }
-    const beforeCount = result.hits.length;
-    const filteredHits = result.hits.filter(hit => matchesKnowledgeHitFilters(hit, resolvedFilters));
-    const afterCount = filteredHits.length;
-    filteringStages.push({
-      stage: 'pre-merge-defensive',
-      beforeCount,
-      afterCount,
-      droppedCount: beforeCount - afterCount
-    });
-    searchResults.push(filteredHits);
   }
 
-  const mergedHits = mergeHitsByChunkId(searchResults);
-  const preHitCount = mergedHits.length;
-  const filterResult = await postRetrievalFilter.filter(mergedHits, effectiveNormalized);
-  const rankResult = await postRetrievalRanker.rank(filterResult.hits, effectiveNormalized);
-  const diversifyResult = await postRetrievalDiversifier.diversify(rankResult.hits, effectiveNormalized);
-  const processedHits = await postProcessor.process(diversifyResult.hits, effectiveNormalized);
-  const postHitCount = processedHits.length;
-  let contextHits = processedHits;
-  let contextExpansionDiagnostics: ContextExpansionDiagnostics | undefined;
-
-  if (contextAssembler && pipeline.contextExpander) {
-    const expanded = await pipeline.contextExpander.expand(processedHits, effectiveNormalized, {
-      filters: resolvedFilters,
-      policy: pipeline.contextExpansionPolicy
+  try {
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.query.receive'),
+      traceId,
+      name: 'runtime.query.receive',
+      stage: 'pre-retrieval',
+      occurredAt: new Date().toISOString(),
+      query: { text: request.query }
     });
-    contextHits = expanded.hits;
-    contextExpansionDiagnostics = expanded.diagnostics;
-  }
 
-  const contextAssemblyOutput = contextAssembler
-    ? pipeline.contextAssemblyOptions
-      ? await contextAssembler.assemble(contextHits, effectiveNormalized, pipeline.contextAssemblyOptions)
-      : await contextAssembler.assemble(contextHits, effectiveNormalized)
-    : undefined;
-  const contextBundle =
-    typeof contextAssemblyOutput === 'string' ? contextAssemblyOutput : contextAssemblyOutput?.contextBundle;
-  const contextAssemblyDiagnostics =
-    typeof contextAssemblyOutput === 'string' ? undefined : contextAssemblyOutput?.diagnostics;
-
-  const diagnostics: RetrievalDiagnostics | undefined = includeDiagnostics
-    ? {
-        runId: `knowledge-retrieval-${Date.now()}`,
-        startedAt,
-        durationMs: Date.now() - startMs,
-        originalQuery: effectiveNormalized.originalQuery,
-        normalizedQuery: effectiveNormalized.normalizedQuery,
-        rewriteApplied: effectiveNormalized.rewriteApplied,
-        rewriteReason: effectiveNormalized.rewriteReason,
-        queryVariants,
-        executedQueries,
-        preHitCount,
-        postHitCount,
-        contextAssembled: Boolean(contextBundle),
-        contextAssembly: contextAssemblyDiagnostics,
-        contextExpansion: contextExpansionDiagnostics,
-        postRetrieval: {
-          filtering: filterResult.diagnostics,
-          ranking: rankResult.diagnostics,
-          diversification: diversifyResult.diagnostics
-        },
-        filtering: {
-          enabled: Boolean(request.filters || request.allowedSourceTypes || request.minTrustClass),
-          stages: filteringStages
-        },
-        hybrid: mergeHybridDiagnostics(hybridDiagnostics)
+    const normalized = await queryNormalizer.normalize(request);
+    const resolvedFilters = resolveKnowledgeRetrievalFilters(request);
+    const queryVariants = dedupeQueries(
+      normalized.queryVariants?.length ? normalized.queryVariants : [normalized.normalizedQuery]
+    );
+    const effectiveNormalized = {
+      ...normalized,
+      originalQuery: normalized.originalQuery ?? request.query,
+      normalizedQuery: normalized.normalizedQuery,
+      topK: normalized.topK,
+      rewriteApplied: normalized.rewriteApplied ?? false,
+      rewriteReason: normalized.rewriteReason,
+      queryVariants
+    };
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.query.preprocess'),
+      traceId,
+      name: 'runtime.query.preprocess',
+      stage: 'pre-retrieval',
+      occurredAt: new Date().toISOString(),
+      query: {
+        text: effectiveNormalized.originalQuery,
+        normalizedText: effectiveNormalized.normalizedQuery,
+        variants: queryVariants
       }
-    : undefined;
+    });
+    const executedQueries: string[] = [];
+    const searchResults: SearchHits[] = [];
+    const filteringStages: RetrievalFilteringStageDiagnostics[] = [];
+    const hybridDiagnostics: HybridRetrievalDiagnostics[] = [];
+    const retrievalStartedAt = Date.now();
 
-  return {
-    hits: processedHits,
-    total: postHitCount,
-    contextBundle,
-    diagnostics
-  };
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.retrieval.start'),
+      traceId,
+      name: 'runtime.retrieval.start',
+      stage: 'retrieval',
+      occurredAt: new Date().toISOString(),
+      attributes: {
+        requestedTopK: effectiveNormalized.topK
+      }
+    });
+
+    for (const query of queryVariants) {
+      executedQueries.push(query);
+      const result = await searchService.search({
+        ...request,
+        query,
+        limit: normalized.topK
+      });
+      const searchDiagnostics = (result as SearchResultDiagnostics).diagnostics;
+      if (searchDiagnostics) {
+        hybridDiagnostics.push(searchDiagnostics);
+      }
+      const beforeCount = result.hits.length;
+      const filteredHits = result.hits.filter(hit => matchesKnowledgeHitFilters(hit, resolvedFilters));
+      const afterCount = filteredHits.length;
+      filteringStages.push({
+        stage: 'pre-merge-defensive',
+        beforeCount,
+        afterCount,
+        droppedCount: beforeCount - afterCount
+      });
+      searchResults.push(filteredHits);
+    }
+
+    const mergedHits = mergeHitsByChunkId(searchResults);
+    const preHitCount = mergedHits.length;
+    const retrievalDiagnostics = buildKnowledgeRagTraceRetrievalDiagnostics({
+      hybrid: mergeKnowledgeHybridDiagnostics(hybridDiagnostics),
+      candidateCount: preHitCount,
+      selectedCount: preHitCount,
+      latencyMs: Date.now() - retrievalStartedAt
+    });
+
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.retrieval.complete'),
+      traceId,
+      name: 'runtime.retrieval.complete',
+      stage: 'retrieval',
+      occurredAt: new Date().toISOString(),
+      retrieval: {
+        requestedTopK: effectiveNormalized.topK,
+        hits: toKnowledgeRagTraceHits(mergedHits),
+        citations: collectKnowledgeRagTraceCitations(mergedHits),
+        diagnostics: retrievalDiagnostics
+      }
+    });
+
+    const filterResult = await postRetrievalFilter.filter(mergedHits, effectiveNormalized);
+    const rankResult = await postRetrievalRanker.rank(filterResult.hits, effectiveNormalized);
+    const diversifyResult = await postRetrievalDiversifier.diversify(rankResult.hits, effectiveNormalized);
+    const processedHits = await postProcessor.process(diversifyResult.hits, effectiveNormalized);
+    const postHitCount = processedHits.length;
+    const postRetrievalDiagnostics = {
+      ...retrievalDiagnostics,
+      selectedCount: postHitCount
+    };
+
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.post_retrieval.select'),
+      traceId,
+      name: 'runtime.post_retrieval.select',
+      stage: 'post-retrieval',
+      occurredAt: new Date().toISOString(),
+      diagnostics: postRetrievalDiagnostics,
+      attributes: {
+        selectedCount: postHitCount
+      }
+    });
+    let contextHits = processedHits;
+    let contextExpansionDiagnostics: ContextExpansionDiagnostics | undefined;
+
+    if (contextAssembler && pipeline.contextExpander) {
+      const expanded = await pipeline.contextExpander.expand(processedHits, effectiveNormalized, {
+        filters: resolvedFilters,
+        policy: pipeline.contextExpansionPolicy
+      });
+      contextHits = expanded.hits;
+      contextExpansionDiagnostics = expanded.diagnostics;
+    }
+
+    const contextAssemblyOutput = contextAssembler
+      ? pipeline.contextAssemblyOptions
+        ? await contextAssembler.assemble(contextHits, effectiveNormalized, pipeline.contextAssemblyOptions)
+        : await contextAssembler.assemble(contextHits, effectiveNormalized)
+      : undefined;
+    const contextBundle =
+      typeof contextAssemblyOutput === 'string' ? contextAssemblyOutput : contextAssemblyOutput?.contextBundle;
+    const contextAssemblyDiagnostics =
+      typeof contextAssemblyOutput === 'string' ? undefined : contextAssemblyOutput?.diagnostics;
+    if (contextAssembler) {
+      recordRetrievalEvent(observer, {
+        eventId: makeTraceEventId(traceId, 'runtime.context_assembly.complete'),
+        traceId,
+        name: 'runtime.context_assembly.complete',
+        stage: 'context-assembly',
+        occurredAt: new Date().toISOString(),
+        attributes: {
+          contextAssembled: Boolean(contextBundle),
+          contextLength: contextBundle?.length ?? 0
+        }
+      });
+    }
+
+    const hybrid = mergeKnowledgeHybridDiagnostics(hybridDiagnostics);
+    const diagnostics: RetrievalDiagnostics | undefined = includeDiagnostics
+      ? {
+          runId: `knowledge-retrieval-${Date.now()}`,
+          startedAt,
+          durationMs: Date.now() - startMs,
+          originalQuery: effectiveNormalized.originalQuery,
+          normalizedQuery: effectiveNormalized.normalizedQuery,
+          rewriteApplied: effectiveNormalized.rewriteApplied,
+          rewriteReason: effectiveNormalized.rewriteReason,
+          queryVariants,
+          executedQueries,
+          preHitCount,
+          postHitCount,
+          contextAssembled: Boolean(contextBundle),
+          contextAssembly: contextAssemblyDiagnostics,
+          contextExpansion: contextExpansionDiagnostics,
+          postRetrieval: {
+            filtering: filterResult.diagnostics,
+            ranking: rankResult.diagnostics,
+            diversification: diversifyResult.diagnostics
+          },
+          filtering: {
+            enabled: Boolean(request.filters || request.allowedSourceTypes || request.minTrustClass),
+            stages: filteringStages
+          },
+          hybrid
+        }
+      : undefined;
+
+    const result = {
+      hits: processedHits,
+      total: postHitCount,
+      contextBundle,
+      diagnostics
+    };
+
+    if (startTrace) {
+      tryFinishKnowledgeRagTrace(observer, traceId, {
+        status: 'succeeded',
+        endedAt: new Date().toISOString(),
+        query: {
+          text: effectiveNormalized.originalQuery,
+          normalizedText: effectiveNormalized.normalizedQuery,
+          variants: queryVariants
+        },
+        retrieval: {
+          requestedTopK: effectiveNormalized.topK,
+          hits: toKnowledgeRagTraceHits(processedHits),
+          citations: collectKnowledgeRagTraceCitations(processedHits),
+          diagnostics: postRetrievalDiagnostics
+        },
+        diagnostics: postRetrievalDiagnostics,
+        metrics: buildRetrievalRuntimeMetrics({
+          traceId,
+          durationMs: Date.now() - startMs,
+          retrievalDurationMs: retrievalDiagnostics.latencyMs,
+          hitCount: preHitCount,
+          selectedCount: postHitCount,
+          contextLengthBytes: contextBundle?.length ?? 0
+        })
+      });
+    }
+
+    return result;
+  } catch (error) {
+    recordRetrievalEvent(observer, {
+      eventId: makeTraceEventId(traceId, 'runtime.run.fail'),
+      traceId,
+      name: 'runtime.run.fail',
+      stage: 'retrieval',
+      occurredAt: new Date().toISOString(),
+      error: toKnowledgeRagTraceError(error, 'retrieval')
+    });
+
+    if (startTrace) {
+      tryFinishKnowledgeRagTrace(observer, traceId, {
+        status: 'failed',
+        endedAt: new Date().toISOString()
+      });
+    }
+
+    throw error;
+  }
+}
+
+function recordRetrievalEvent(observer: KnowledgeRagObserver | undefined, input: unknown): void {
+  tryRecordKnowledgeRagEvent(observer, input);
+}
+
+function buildRetrievalRuntimeMetrics(input: {
+  traceId: string;
+  durationMs: number;
+  retrievalDurationMs: number;
+  hitCount: number;
+  selectedCount: number;
+  contextLengthBytes: number;
+}): KnowledgeRagMetric[] {
+  return [
+    { traceId: input.traceId, name: 'runtime.duration_ms', value: input.durationMs, unit: 'ms', stage: 'retrieval' },
+    {
+      traceId: input.traceId,
+      name: 'retrieval.duration_ms',
+      value: input.retrievalDurationMs,
+      unit: 'ms',
+      stage: 'retrieval'
+    },
+    {
+      traceId: input.traceId,
+      name: 'retrieval.hit_count',
+      value: input.hitCount,
+      unit: 'count',
+      stage: 'retrieval'
+    },
+    {
+      traceId: input.traceId,
+      name: 'retrieval.selected_count',
+      value: input.selectedCount,
+      unit: 'count',
+      stage: 'post-retrieval'
+    },
+    {
+      traceId: input.traceId,
+      name: 'context.length_bytes',
+      value: input.contextLengthBytes,
+      unit: 'bytes',
+      stage: 'context-assembly'
+    }
+  ];
+}
+
+function makeTraceEventId(traceId: string, name: string): string {
+  return buildKnowledgeRagEventId(traceId, name);
 }

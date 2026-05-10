@@ -351,6 +351,8 @@ Knowledge App 使用 JWT 双 token：
 
 ## Mock-first Development
 
+> Historical note: this section predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+
 前端支持 `VITE_USE_MOCK_API=true`。Mock-first 不是临时演示代码，而是 MVP 横向闭环的开发方式：
 
 - mock client 必须实现与真实 API client 同形的方法，不让页面知道当前是 mock 还是真实后端。

@@ -1,9 +1,21 @@
-import type { KnowledgeSearchService, RetrievalHit, RetrievalRequest, RetrievalResult } from '@agent/knowledge';
+import {
+  HybridRetrievalEngine,
+  matchesKnowledgeHitFilters,
+  resolveKnowledgeRetrievalFilters,
+  type KnowledgeSearchService,
+  type KnowledgeRetriever,
+  type RetrievalRequest,
+  type RetrievalResult
+} from '@agent/knowledge';
 
-import type { DocumentChunkRecord, KnowledgeDocumentRecord } from '../domain/knowledge-document.types';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 import type { KnowledgeSdkRuntimeProviderValue } from '../runtime/knowledge-sdk-runtime.provider';
 import type { HyDeProvider } from './knowledge-hyde.provider';
+import {
+  KnowledgeDomainKeywordRetriever,
+  KnowledgeDomainVectorRetriever,
+  type KnowledgeDomainVectorRetrieverStats
+} from './knowledge-domain-search-service.retrievers';
 
 interface RetrievalDiagnostics {
   retrievalMode: 'hybrid' | 'keyword-only' | 'vector-only' | 'none';
@@ -22,15 +34,7 @@ interface KnowledgeDomainSearchResult extends RetrievalResult {
   diagnostics: RetrievalDiagnostics;
 }
 
-interface IndexedChunk {
-  document: KnowledgeDocumentRecord;
-  chunk: DocumentChunkRecord;
-}
-
-interface VectorSearchResult {
-  hits: RetrievalHit[];
-  rawHitCount: number;
-}
+type RetrieverHitCounts = Record<'keyword' | 'vector', number>;
 
 export class KnowledgeDomainSearchServiceAdapter implements KnowledgeSearchService {
   constructor(
@@ -40,293 +44,117 @@ export class KnowledgeDomainSearchServiceAdapter implements KnowledgeSearchServi
   ) {}
 
   async search(request: RetrievalRequest): Promise<KnowledgeDomainSearchResult> {
-    const limit = request.limit ?? 5;
-    const knowledgeBaseIds = request.filters?.knowledgeBaseIds ?? [];
-    const documents = (
-      await Promise.all(knowledgeBaseIds.map(baseId => this.repository.listDocumentsForBase(baseId)))
-    ).flat();
-    const indexedChunks = await this.loadSearchableChunks(documents);
-    const enabledRetrievers: Array<'keyword' | 'vector'> = [];
-    const failedRetrievers: Array<'keyword' | 'vector'> = [];
+    const keywordRetriever = new KnowledgeDomainKeywordRetriever(this.repository);
 
-    const vectorResult = await this.searchVector({
-      query: request.query,
-      limit,
-      knowledgeBaseIds,
-      indexedChunks,
-      failedRetrievers
-    });
-    const vectorHits = vectorResult.hits;
-    if (this.sdkRuntime?.enabled) {
-      enabledRetrievers.push('vector');
-    }
-
-    if (vectorHits.length > 0) {
-      const hits = vectorHits.slice(0, limit);
+    if (!this.sdkRuntime?.enabled) {
+      const keywordResult = await keywordRetriever.retrieve(request);
       return {
-        hits,
-        total: hits.length,
-        diagnostics: createDiagnostics({
-          enabledRetrievers,
-          failedRetrievers,
-          attemptedRetrievers: enabledRetrievers,
+        ...keywordResult,
+        diagnostics: {
+          retrievalMode: keywordResult.hits.length > 0 ? 'keyword-only' : 'none',
           fallbackApplied: false,
-          candidateCount: vectorHits.length,
-          preHitCount: vectorResult.rawHitCount,
-          finalHitCount: hits.length
-        })
+          enabledRetrievers: ['keyword'],
+          retrievers: ['keyword'],
+          failedRetrievers: [],
+          fusionStrategy: 'rrf',
+          prefilterApplied: hasPrefilter(request),
+          candidateCount: keywordResult.hits.length,
+          preHitCount: 0,
+          finalHitCount: keywordResult.hits.length
+        }
       };
     }
 
-    enabledRetrievers.push('keyword');
-    const keywordHits = indexedChunks
-      .map(({ document, chunk }) => toRetrievalHit(document, chunk, request.query))
-      .filter(hit => hit.score > 0)
-      .sort((left, right) => right.score - left.score);
-    const hits = keywordHits.slice(0, limit);
-    const successfulRetrievers: Array<'keyword' | 'vector'> = keywordHits.length > 0 ? ['keyword'] : [];
+    const vectorRetriever = new KnowledgeDomainVectorRetriever(this.repository, this.sdkRuntime, this.hydeProvider);
+    const retrieverHitCounts: RetrieverHitCounts = { keyword: 0, vector: 0 };
+    const engine = new HybridRetrievalEngine([
+      createFilteredCountingRetriever(keywordRetriever, request, retrieverHitCounts),
+      createFilteredCountingRetriever(vectorRetriever, request, retrieverHitCounts)
+    ]);
+    const result = await engine.retrieve(request);
+    const vectorStats = vectorRetriever.getLastStats();
+    const retrievalMode = resolveDomainRetrievalMode(retrieverHitCounts);
 
     return {
-      hits,
-      total: hits.length,
-      diagnostics: createDiagnostics({
-        enabledRetrievers: successfulRetrievers,
-        attemptedRetrievers: enabledRetrievers,
-        failedRetrievers,
+      hits: result.hits,
+      total: result.total,
+      diagnostics: {
+        retrievalMode,
         fallbackApplied: shouldMarkFallbackApplied({
-          attemptedRetrievers: enabledRetrievers,
-          failedRetrievers,
-          finalRetrievers: successfulRetrievers,
-          vectorRawHitCount: vectorResult.rawHitCount,
-          vectorMappedHitCount: vectorHits.length
+          diagnostics: {
+            retrievalMode,
+            failedRetrievers: result.diagnostics.failedRetrievers
+          },
+          vectorStats
         }),
-        candidateCount: vectorResult.rawHitCount + keywordHits.length,
-        preHitCount: vectorResult.rawHitCount,
-        finalHitCount: hits.length
-      })
+        enabledRetrievers: result.diagnostics.enabledRetrievers,
+        retrievers: result.diagnostics.enabledRetrievers,
+        failedRetrievers: result.diagnostics.failedRetrievers,
+        fusionStrategy: result.diagnostics.fusionStrategy,
+        prefilterApplied: result.diagnostics.prefilterApplied,
+        candidateCount: result.diagnostics.candidateCount,
+        preHitCount: vectorStats.rawHitCount,
+        finalHitCount: result.hits.length
+      }
     };
   }
+}
 
-  private async loadSearchableChunks(documents: KnowledgeDocumentRecord[]): Promise<IndexedChunk[]> {
-    return (
-      await Promise.all(
-        documents.filter(isSearchableDocument).map(async document => {
-          const chunks = await this.repository.listChunks(document.id);
-          return chunks.filter(isSearchableChunk).map(chunk => ({ document, chunk }));
-        })
-      )
-    ).flat();
-  }
+function createFilteredCountingRetriever(
+  retriever: KnowledgeRetriever,
+  request: RetrievalRequest,
+  hitCounts: RetrieverHitCounts
+): KnowledgeRetriever {
+  const filters = resolveKnowledgeRetrievalFilters(request);
 
-  private async searchVector(input: {
-    query: string;
-    limit: number;
-    knowledgeBaseIds: string[];
-    indexedChunks: IndexedChunk[];
-    failedRetrievers: Array<'keyword' | 'vector'>;
-  }): Promise<VectorSearchResult> {
-    if (!this.sdkRuntime?.enabled || input.knowledgeBaseIds.length === 0) {
-      return { hits: [], rawHitCount: 0 };
-    }
-
-    try {
-      const runtime = this.sdkRuntime.runtime;
-      const queryForEmbedding = this.hydeProvider
-        ? await this.hydeProvider.generateHypotheticalAnswer(input.query)
-        : input.query;
-      const embedding = await runtime.embeddingProvider.embedText({ text: queryForEmbedding });
-      const hits = (
-        await Promise.all(
-          input.knowledgeBaseIds.map(async knowledgeBaseId =>
-            runtime.vectorStore.search({
-              embedding: embedding.embedding,
-              topK: input.limit,
-              filters: {
-                knowledgeBaseId,
-                tenantId: resolveTenantId(input.indexedChunks, knowledgeBaseId),
-                query: input.query
-              }
-            })
-          )
-        )
-      ).flatMap(result => result.hits);
-      const chunkById = new Map(input.indexedChunks.map(item => [item.chunk.id, item]));
+  return {
+    id: retriever.id,
+    async retrieve(retrievalRequest) {
+      const result = await retriever.retrieve(retrievalRequest);
+      const hits = result.hits.filter(hit => matchesKnowledgeHitFilters(hit, filters));
+      hitCounts[retriever.id] = hits.length;
 
       return {
-        hits: hits
-          .map(hit => {
-            const indexedChunk = chunkById.get(hit.id);
-            if (!indexedChunk) {
-              return undefined;
-            }
-            return toRetrievalHit(indexedChunk.document, indexedChunk.chunk, input.query, hit.score);
-          })
-          .filter(isDefined)
-          .sort((left, right) => right.score - left.score),
-        rawHitCount: hits.length
+        ...result,
+        hits,
+        total: hits.length
       };
-    } catch {
-      input.failedRetrievers.push('vector');
-      return { hits: [], rawHitCount: 0 };
-    }
-  }
-}
-
-function toRetrievalHit(
-  document: KnowledgeDocumentRecord,
-  chunk: DocumentChunkRecord,
-  query: string,
-  score = scoreChunk(chunk.content, query)
-): RetrievalHit {
-  const quote = chunk.content.trim();
-  return {
-    chunkId: chunk.id,
-    documentId: document.id,
-    sourceId: document.id,
-    knowledgeBaseId: document.knowledgeBaseId,
-    title: document.title,
-    uri: document.objectKey,
-    sourceType: document.sourceType,
-    trustClass: 'internal',
-    content: quote,
-    score,
-    metadata: {
-      knowledgeBaseId: document.knowledgeBaseId,
-      workspaceId: document.workspaceId,
-      filename: document.filename,
-      ordinal: chunk.ordinal
-    },
-    citation: {
-      sourceId: document.id,
-      chunkId: chunk.id,
-      title: document.title,
-      uri: document.objectKey,
-      quote,
-      sourceType: document.sourceType,
-      trustClass: 'internal'
     }
   };
 }
 
-function scoreChunk(content: string, query: string): number {
-  const queryTerms = tokenize(query);
-  if (queryTerms.length === 0) {
-    return 0;
+function resolveDomainRetrievalMode(hitCounts: RetrieverHitCounts): RetrievalDiagnostics['retrievalMode'] {
+  const hasKeywordHits = hitCounts.keyword > 0;
+  const hasVectorHits = hitCounts.vector > 0;
+
+  if (hasKeywordHits && hasVectorHits) {
+    return 'hybrid';
   }
-  const contentTerms = new Set(tokenize(content));
-  const matches = queryTerms.filter(term => contentTerms.has(term)).length;
-  const tokenScore = matches / queryTerms.length;
-  return Math.max(tokenScore, scoreChineseSubstring(content, query));
-}
-
-function scoreChineseSubstring(content: string, query: string): number {
-  const terms = toChineseSearchTerms(query);
-  if (terms.length === 0) {
-    return 0;
+  if (hasKeywordHits) {
+    return 'keyword-only';
   }
-  const normalizedContent = content.toLowerCase();
-  const matches = terms.filter(term => normalizedContent.includes(term)).length;
-  const score = matches / terms.length;
-  return matches >= 2 && score >= 0.4 ? score : 0;
-}
-
-function isSearchableDocument(document: KnowledgeDocumentRecord): boolean {
-  return document.status === 'ready';
-}
-
-function isSearchableChunk(chunk: DocumentChunkRecord): boolean {
-  return (
-    chunk.content.trim().length > 0 &&
-    (chunk.keywordIndexStatus === 'succeeded' || chunk.vectorIndexStatus === 'succeeded')
-  );
-}
-
-function tokenize(value: string): string[] {
-  return value
-    .toLowerCase()
-    .split(/[^a-z0-9\u4e00-\u9fa5]+/u)
-    .map(term => term.trim())
-    .filter(term => term.length > 1);
-}
-
-function toChineseSearchTerms(value: string): string[] {
-  const compact = value
-    .toLowerCase()
-    .replace(/[^\u4e00-\u9fa5]+/gu, '')
-    .trim();
-  if (compact.length < 2) {
-    return [];
+  if (hasVectorHits) {
+    return 'vector-only';
   }
-  if (compact.length === 2) {
-    return [compact];
-  }
-  return Array.from({ length: compact.length - 1 }, (_, index) => compact.slice(index, index + 2));
-}
-
-function createDiagnostics(input: {
-  enabledRetrievers: Array<'keyword' | 'vector'>;
-  attemptedRetrievers?: Array<'keyword' | 'vector'>;
-  failedRetrievers: Array<'keyword' | 'vector'>;
-  fallbackApplied: boolean;
-  candidateCount: number;
-  preHitCount: number;
-  finalHitCount: number;
-}): RetrievalDiagnostics {
-  return {
-    retrievalMode: resolveRetrievalMode(input.enabledRetrievers, input.failedRetrievers, input.finalHitCount),
-    fallbackApplied: input.fallbackApplied,
-    enabledRetrievers: input.enabledRetrievers,
-    retrievers: input.attemptedRetrievers ?? input.enabledRetrievers,
-    failedRetrievers: input.failedRetrievers,
-    fusionStrategy: 'rrf',
-    prefilterApplied: false,
-    candidateCount: input.candidateCount,
-    preHitCount: input.preHitCount,
-    finalHitCount: input.finalHitCount
-  };
+  return 'none';
 }
 
 function shouldMarkFallbackApplied(input: {
-  attemptedRetrievers: Array<'keyword' | 'vector'>;
-  failedRetrievers: Array<'keyword' | 'vector'>;
-  finalRetrievers: Array<'keyword' | 'vector'>;
-  vectorRawHitCount: number;
-  vectorMappedHitCount: number;
+  diagnostics: {
+    retrievalMode: RetrievalDiagnostics['retrievalMode'];
+    failedRetrievers: Array<'keyword' | 'vector'>;
+  };
+  vectorStats: KnowledgeDomainVectorRetrieverStats;
 }): boolean {
-  if (!input.attemptedRetrievers.includes('vector')) {
-    return false;
-  }
-  if (input.failedRetrievers.includes('vector')) {
+  if (input.diagnostics.failedRetrievers.includes('vector')) {
     return true;
   }
-  if (input.vectorRawHitCount > input.vectorMappedHitCount) {
+  if (input.vectorStats.rawHitCount > input.vectorStats.mappedHitCount) {
     return true;
   }
-  return input.finalRetrievers.includes('keyword') && !input.finalRetrievers.includes('vector');
+  return input.diagnostics.retrievalMode === 'keyword-only';
 }
 
-function resolveRetrievalMode(
-  enabledRetrievers: Array<'keyword' | 'vector'>,
-  failedRetrievers: Array<'keyword' | 'vector'>,
-  finalHitCount: number
-): RetrievalDiagnostics['retrievalMode'] {
-  const successfulRetrievers = enabledRetrievers.filter(retriever => !failedRetrievers.includes(retriever));
-  if (finalHitCount === 0) {
-    return 'none';
-  }
-  if (successfulRetrievers.includes('vector') && !successfulRetrievers.includes('keyword')) {
-    return 'vector-only';
-  }
-  if (successfulRetrievers.includes('vector') && successfulRetrievers.includes('keyword')) {
-    return 'hybrid';
-  }
-  return 'keyword-only';
-}
-
-function resolveTenantId(indexedChunks: IndexedChunk[], knowledgeBaseId: string): string | undefined {
-  return indexedChunks.find(item => item.document.knowledgeBaseId === knowledgeBaseId)?.document.workspaceId;
-}
-
-function isDefined<T>(value: T | undefined): value is T {
-  return value !== undefined;
+function hasPrefilter(request: RetrievalRequest): boolean {
+  return Boolean(request.filters || request.allowedSourceTypes?.length || request.minTrustClass);
 }

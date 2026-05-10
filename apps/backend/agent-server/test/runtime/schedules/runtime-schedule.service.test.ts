@@ -200,5 +200,5 @@ describe('RuntimeScheduleService', () => {
 });
 
 function getBriefingStorageRoot(root: string): string {
-  return join(root, 'data', 'intel-engine', 'briefing');
+  return join(root, 'profile-storage', 'platform', 'intel-engine', 'briefing');
 }

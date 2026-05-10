@@ -33,11 +33,11 @@ export function useKnowledgeBaseDetail(knowledgeBaseId: string | undefined): Use
   });
   const documentsQuery = useQuery({
     queryKey: knowledgeQueryKeys.documents(knowledgeBaseId ? { knowledgeBaseId } : {}),
-    queryFn: async () => {
+    queryFn: () => {
       if (!knowledgeBaseId) {
         throw new Error('缺少知识库 ID');
       }
-      return readDocumentItems(await api.listDocuments({ knowledgeBaseId }));
+      return api.listDocuments({ knowledgeBaseId });
     },
     enabled,
     staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
@@ -69,7 +69,7 @@ export function useKnowledgeBaseDetail(knowledgeBaseId: string | undefined): Use
     !loading && !queryError && knowledgeBasesQuery.isSuccess && !knowledgeBase ? new Error('未找到知识库') : null;
 
   return {
-    documents: documentsQuery.data ?? [],
+    documents: documentsQuery.data?.items ?? [],
     error: queryError ?? missingKnowledgeBaseError,
     knowledgeBase,
     loading,
@@ -83,11 +83,4 @@ function toError(error: unknown): Error {
 
 function toErrorOrNull(error: unknown): Error | null {
   return error ? toError(error) : null;
-}
-
-function readDocumentItems(response: unknown): KnowledgeDocument[] {
-  if (typeof response === 'object' && response !== null && 'items' in response && Array.isArray(response.items)) {
-    return response.items as KnowledgeDocument[];
-  }
-  throw new Error('文档列表响应结构不正确');
 }

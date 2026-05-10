@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/knowledge/src/contracts/indexing/`
-最后核对：2026-04-30（writer fanout 闭环核对）
+最后核对：2026-05-10（pipeline diagnostics / quality gates 闭环核对）
 
 ## 1. 定位
 
@@ -93,7 +93,7 @@ type KnowledgeChunkMetadata = {
 
 `documentId` 与 `chunkIndex` 必须保持稳定。调用方不能依赖一次临时切分中的偶然顺序来表达长期关系；如果 chunk 重切，必须同步更新 neighbor metadata，避免 `prevChunkId` / `nextChunkId` 指向旧 chunk。metadata 必须保持 JSON-safe，不允许把 LangChain document、Chroma record、权限 SDK 对象、vendor response/error/event 等第三方对象直接写入 indexing contract。
 
-当前 indexing / local store 还不会自动生成 `parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle`。Small-to-Big 第一阶段由调用方或测试夹具直接提供这些 metadata；后续如果要在 chunker、local ingestion 或 adapter 中自动生成 neighbor metadata，必须先更新本文档与 indexing contract，再同步补 schema、实现和回归测试。
+当前 indexing 默认 pipeline 仍使用 `FixedWindowChunker`，不会隐式改变历史分块行为。需要结构感知 metadata 时，调用方可以显式注入 `StructuredTextChunker`；该 chunker 会按 Markdown heading、段落、列表和 code fence 分块，并为 chunk 自动补齐 `parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle`、`sectionPath`、`heading`、`contentType`、`ordinal` 与 `chunkHash`。`sectionId` 必须对中文等非 ASCII heading 稳定可复现，且同名 heading 需要按父级 `sectionPath` 区分，不能退化为重复的 `untitled` section。Small-to-Big 第一阶段仍只把 parent / neighbor 字段作为候选关系，不改变基础 retrieval hit 排序。
 
 ## 3. 接口契约
 
@@ -138,6 +138,11 @@ interface KnowledgeIndexingRunOptions {
   sourceIndex?: KnowledgeSourceIndexWriter;
   fulltextIndex?: KnowledgeFulltextIndexWriter;
 }
+
+interface KnowledgeIndexingDiagnostics {
+  stages: KnowledgeIndexingStageDiagnostic[];
+  qualityGates: KnowledgeIndexingQualityGateDiagnostic[];
+}
 ```
 
 语义约束：
@@ -147,6 +152,8 @@ interface KnowledgeIndexingRunOptions {
 - `fulltextIndex` 可选，负责接收 `KnowledgeChunk`；通常由 `KnowledgeChunkRepository` 或同等 fulltext/chunk index writer 实现。
 - 同一个 indexed chunk 必须使用同一份 source/document/chunk metadata fanout 到 vector 与 fulltext 两侧，避免检索结果和文本回补引用不同 chunk。
 - skipped document 不会写入任何 writer，包括 source writer。
+- `runKnowledgeIndexing()` 返回的 `KnowledgeIndexingResult.diagnostics` 是 SDK indexing pipeline 的稳定阶段摘要。`stages` 至少覆盖 `load`、`filter`、`chunk`、`embed`、`store-vector`、`store-fulltext`、`store-source`；`embed` 表示 SDK 已构造可交给 vector boundary 的 `KnowledgeVectorDocumentRecord`，不表示 SDK contract 直接暴露或调用 provider embedder。
+- `qualityGates` 当前覆盖 count 级质量门：`vector-records-match-chunks`、`vector-writes-match-records`、`fulltext-writes-match-chunks`。质量门只记录 JSON-safe 的 `name/stage/status/expectedCount/actualCount/message`，不得写入第三方 SDK response、原始 error object 或未脱敏正文。
 
 ## 4. Schema 验证
 
@@ -190,4 +197,4 @@ apps/* / agents/* (使用)
 
 Runtime metadata filtering 第一阶段依赖 chunk metadata 中的 `docType`、`status`、`allowedRoles`。新增这些字段时必须保持 JSON-safe，不允许把第三方对象、权限 SDK 类型或 vendor response 直接写进 metadata。后续扩展 `departments`、`productLines`、`knowledgeBases`、`tags`、`timeRange` 前，必须先确认 indexing pipeline 能稳定产出对应字段。
 
-Small-to-Big 第一阶段依赖 chunk metadata 中的 `parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle`。其中 parent / neighbor 字段只是 context expansion 的候选关系，不改变基础 retrieval hit 排序，也不允许绕过 runtime resolved filters。
+Small-to-Big 第一阶段依赖 chunk metadata 中的 `parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle`。其中 parent / neighbor 字段只是 context expansion 的候选关系，不改变基础 retrieval hit 排序，也不允许绕过 runtime resolved filters。`StructuredTextChunker` 生成的 `sectionPath`、`heading`、`contentType`、`ordinal` 与 `chunkHash` 用于后续 citation 展示、去重与 eval 归因；这些字段同样必须保持 JSON-safe。

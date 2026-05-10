@@ -19,7 +19,6 @@ import {
   SidebarMenuSubItem,
   SidebarRail
 } from '@/components/ui/sidebar';
-import { adminAuthStore } from '@/pages/auth/store/admin-auth-store';
 import { cn } from '@/utils/utils';
 import type { DashboardPageKey, TaskRecord } from '@/types/admin';
 
@@ -51,7 +50,6 @@ export interface AdminNavigationProps {
 
 const PLATFORM_NESTED_PAGE_KEYS: DashboardPageKey[] = ['evals', 'archives', 'skills'];
 const PLATFORM_NESTED_NAV_ID = 'admin-platform-nested-nav';
-const DEVELOPER_ALLOWED_PAGES: DashboardPageKey[] = ['runtime', 'learning', 'skills', 'evidence'];
 
 type SidebarNavLink = AppSidebarNavItem & {
   badge?: string;
@@ -67,17 +65,7 @@ function isPlatformNestedPage(page: DashboardPageKey) {
   return PLATFORM_NESTED_PAGE_KEYS.includes(page);
 }
 
-function buildSidebarData(pendingApprovals: number, roles: AdminRole[]): SidebarNavGroup[] {
-  const canSeePage = (item: AppSidebarNavItem) =>
-    roles.includes('super_admin') || DEVELOPER_ALLOWED_PAGES.includes(item.key);
-  const filterItem = (item: SidebarNavLink): SidebarNavLink | null => {
-    const items = item.items?.filter(canSeePage);
-    if (items && items.length > 0) {
-      return { ...item, items };
-    }
-    return canSeePage(item) ? item : null;
-  };
-
+function buildSidebarData(pendingApprovals: number): SidebarNavGroup[] {
   return [
     {
       title: 'General',
@@ -92,14 +80,10 @@ function buildSidebarData(pendingApprovals: number, roles: AdminRole[]): Sidebar
           items: NAV_ITEMS.slice(6, 9)
         }
       ]
-        .map(filterItem)
-        .filter((item): item is SidebarNavLink => Boolean(item))
     },
     {
       title: 'Governance',
-      items: [NAV_ITEMS[9], NAV_ITEMS[10], NAV_ITEMS[11], NAV_ITEMS[12], NAV_ITEMS[13]]
-        .map(filterItem)
-        .filter((item): item is SidebarNavLink => Boolean(item))
+      items: [NAV_ITEMS[9], NAV_ITEMS[10], NAV_ITEMS[11], NAV_ITEMS[12], NAV_ITEMS[13], NAV_ITEMS[14]]
     }
   ];
 }
@@ -118,8 +102,7 @@ export function AppSidebar(
     tasks,
     onNavigate,
     variant = 'inset',
-    defaultPlatformNestedExpanded,
-    roles = adminAuthStore.getSnapshot().account?.roles ?? ['super_admin']
+    defaultPlatformNestedExpanded
   } = props;
   const [platformNestedExpanded, setPlatformNestedExpanded] = React.useState(
     () => defaultPlatformNestedExpanded ?? isPlatformNestedPage(page)
@@ -138,7 +121,7 @@ export function AppSidebar(
       </SidebarHeader>
       <SidebarContent>
         <nav aria-label="Agent Admin navigation">
-          {buildSidebarData(pendingApprovals, roles).map(group =>
+          {buildSidebarData(pendingApprovals).map(group =>
             React.createElement(NavGroup, {
               key: group.title,
               group,

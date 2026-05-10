@@ -193,6 +193,63 @@ describe('RuntimeTechBriefingService', () => {
     );
   });
 
+  it('同一分钟重复触发同一分类时只执行一次，避免多实例 scheduler 重复发送', async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), 'runtime-tech-briefing-duplicate-schedule-'));
+    process.env.LARK_BOT_WEBHOOK_URL = 'https://lark.example.com/webhook';
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => mockFetchResponse(String(input)));
+    const service = new RuntimeTechBriefingService(() => ({
+      settings: {
+        workspaceRoot,
+        zhipuApiKey: 'test-key',
+        zhipuApiBaseUrl: 'https://zhipu.test/api/paas/v4',
+        zhipuModels: {
+          manager: 'glm-5',
+          research: 'glm-4.7-flashx',
+          executor: 'glm-4.6',
+          reviewer: 'glm-4.7'
+        },
+        providers: [],
+        dailyTechBriefing: {
+          enabled: true,
+          schedule: 'daily every 1 minute',
+          sendEmptyDigest: true,
+          maxItemsPerCategory: 2,
+          duplicateWindowDays: 7,
+          maxNonCriticalItemsPerCategory: 10,
+          maxCriticalItemsPerCategory: 20,
+          maxTotalItemsPerCategory: 30,
+          sendOnlyDelta: true,
+          resendOnlyOnMaterialChange: true,
+          larkDigestMode: 'dual',
+          sourcePolicy: 'tiered-authority',
+          webhookEnvVar: 'LARK_BOT_WEBHOOK_URL',
+          webhookUrl: 'https://lark.example.com/webhook',
+          translationEnabled: true,
+          translationModel: 'glm-4.7-flashx',
+          aiLookbackDays: 7,
+          frontendLookbackDays: 7,
+          securityLookbackDays: 7
+        }
+      },
+      fetchImpl: fetchImpl as typeof fetch,
+      translateText: vi.fn(async input => ({
+        title: `中文：${input.title}`,
+        summary: `中文化整理：${input.summary}`
+      }))
+    }));
+
+    const now = new Date('2026-04-01T11:00:01.000Z');
+    const firstRun = await service.runScheduled(now, ['backend-tech']);
+    const callsAfterFirstRun = fetchImpl.mock.calls.length;
+    const secondRun = await service.runScheduled(new Date('2026-04-01T11:00:30.000Z'), ['backend-tech']);
+
+    expect(firstRun).toEqual(
+      expect.objectContaining({ categories: [expect.objectContaining({ category: 'backend-tech' })] })
+    );
+    expect(secondRun).toBeNull();
+    expect(fetchImpl.mock.calls.length).toBe(callsAfterFirstRun);
+  });
+
   it('单个安全来源失败时不会让前端安全情报整类失败', async () => {
     workspaceRoot = await mkdtemp(join(tmpdir(), 'runtime-tech-briefing-security-source-failure-'));
     process.env.LARK_BOT_WEBHOOK_URL = 'https://lark.example.com/webhook';

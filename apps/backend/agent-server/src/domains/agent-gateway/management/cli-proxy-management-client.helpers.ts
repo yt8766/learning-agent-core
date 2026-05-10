@@ -62,9 +62,9 @@ export function createProviderConfigList(): GatewayProviderSpecificConfigListRes
 
 export function mapApiKeys(body: RecordBody): GatewayApiKeyListResponse {
   return {
-    items: arrayBody(body, 'items', 'keys', 'apiKeys').map((item, index) => {
+    items: arrayBody(body, 'items', 'keys', 'apiKeys', 'api-keys').map((item, index) => {
       const record = asRecord(item);
-      const rawKey = stringField(record, 'key', 'value', 'apiKey');
+      const rawKey = typeof item === 'string' ? item : (stringField(record, 'key', 'value', 'apiKey', 'api_key') ?? '');
       const lastUsedAt = stringField(recordOf(record.usage), 'lastRequestAt', 'last_request_at');
       return {
         id: stringField(record, 'id') ?? `proxy-key-${index}`,
@@ -147,10 +147,24 @@ export function mapBatchUploadAuthFiles(
   body: RecordBody,
   request: GatewayAuthFileBatchUploadRequest
 ): GatewayAuthFileBatchUploadResponse {
+  if (body.status === 'ok' && typeof body.uploaded === 'number') {
+    return {
+      accepted: request.files.map(file => ({
+        authFileId: file.fileName,
+        fileName: file.fileName,
+        providerKind: normalizeProviderKind(file.providerKind ?? file.fileName),
+        status: 'valid'
+      })),
+      rejected: []
+    };
+  }
   return {
-    accepted: arrayBody(body, 'accepted').map((item, index) => {
+    accepted: arrayBody(body, 'accepted', 'files').map((item, index) => {
       const record = asRecord(item);
-      const fileName = stringField(record, 'fileName', 'name') ?? request.files[index]?.fileName ?? 'auth.json';
+      const fileName =
+        typeof item === 'string'
+          ? item
+          : (stringField(record, 'fileName', 'name') ?? request.files[index]?.fileName ?? 'auth.json');
       return {
         authFileId: stringField(record, 'id') ?? fileName,
         fileName,
@@ -209,7 +223,10 @@ export function normalizeProviderKind(value: string | null): GatewayProviderKind
 
 export function normalizeOAuthStatus(record: RecordBody): GatewayOAuthStatusResponse['status'] {
   const status = stringField(record, 'status', 'state');
-  return status === 'completed' || status === 'expired' || status === 'error' ? status : 'pending';
+  if (status === 'completed' || status === 'ok') return 'completed';
+  if (status === 'wait' || status === 'pending') return 'pending';
+  if (status === 'expired' || status === 'error') return status;
+  return 'pending';
 }
 
 export function queryString(params: object): string {

@@ -36,7 +36,7 @@ export interface IntelScheduledJobRunResult {
 
 function createRepositories(workspaceRoot: string) {
   return createIntelRepositories({
-    databaseFile: join(workspaceRoot, 'data', 'intel', 'intel.db')
+    databaseFile: join(workspaceRoot, 'profile-storage', 'platform', 'intel', 'intel.db')
   });
 }
 

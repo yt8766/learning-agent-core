@@ -126,8 +126,7 @@ vi.mock('@xyflow/react', () => ({
 }));
 
 import { App, KnowledgeRoutes, resolvePostLoginPath, resolveViewFromPath } from '../src/app/App';
-import { KnowledgeApiProvider } from '../src/api/knowledge-api-provider';
-import { MockKnowledgeApiClient } from '../src/api/mock-knowledge-api-client';
+import { KnowledgeApiProvider, type KnowledgeFrontendApi } from '../src/api/knowledge-api-provider';
 import { AuthProvider } from '../src/pages/auth/auth-provider';
 import { installTinyDom } from './tiny-dom';
 import { installLocalStorageMock } from './local-storage-mock';
@@ -275,6 +274,81 @@ describe('Knowledge App shell', () => {
   });
 });
 
+function createFakeApi(): KnowledgeFrontendApi {
+  const stub = vi.fn().mockResolvedValue({});
+  return {
+    getDashboardOverview: vi.fn().mockResolvedValue({ widgets: [], generatedAt: '' }),
+    listKnowledgeBases: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEmbeddingModels: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listDocuments: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    uploadKnowledgeFile: stub,
+    createDocumentFromUpload: stub,
+    getDocument: stub,
+    getLatestDocumentJob: stub,
+    listDocumentChunks: stub,
+    uploadDocument: stub,
+    reprocessDocument: stub,
+    deleteDocument: stub,
+    listRagModelProfiles: vi.fn().mockResolvedValue({ items: [] }),
+    listConversations: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listConversationMessages: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    chat: stub,
+    streamChat: stub,
+    createFeedback: stub,
+    listEvalDatasets: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEvalRuns: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    listEvalRunResults: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    compareEvalRuns: stub,
+    getObservabilityMetrics: stub,
+    listTraces: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    getTrace: stub,
+    listWorkspaceUsers: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+    getSettingsModelProviders: stub,
+    getSettingsApiKeys: stub,
+    getSettingsStorage: stub,
+    getSettingsSecurity: stub,
+    getChatAssistantConfig: vi.fn().mockResolvedValue({
+      deepThinkEnabled: true,
+      defaultKnowledgeBaseIds: [],
+      modelProfileId: 'knowledge-rag',
+      webSearchEnabled: false,
+      quickPrompts: [],
+      thinkingSteps: [],
+      updatedAt: ''
+    }),
+    listAgentFlows: vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: 'flow_default_rag',
+          name: '默认 RAG 智能代理',
+          description: '验证知识库智能代理流程',
+          version: 1,
+          status: 'active',
+          nodes: [
+            { id: 'input', type: 'input', label: 'Input', position: { x: 0, y: 80 }, config: {} },
+            {
+              id: 'knowledge_retrieve',
+              type: 'knowledge_retrieve',
+              label: 'Retrieve Knowledge',
+              position: { x: 260, y: 80 },
+              config: { topK: 5 }
+            }
+          ],
+          edges: [{ id: 'edge_input_retrieve', source: 'input', target: 'knowledge_retrieve' }],
+          createdAt: '2026-05-04T00:00:00.000Z',
+          updatedAt: '2026-05-04T00:00:00.000Z'
+        }
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20
+    }),
+    saveAgentFlow: stub,
+    updateAgentFlow: stub,
+    runAgentFlow: stub
+  } as unknown as KnowledgeFrontendApi;
+}
+
 async function renderAuthenticatedRoute(path: string) {
   installTinyBrowserDom();
   installLocalStorageMock();
@@ -295,7 +369,7 @@ async function renderAuthenticatedRoute(path: string) {
   await act(async () => {
     root?.render(
       <QueryClientProvider client={queryClient}>
-        <KnowledgeApiProvider client={new MockKnowledgeApiClient()}>
+        <KnowledgeApiProvider client={createFakeApi()}>
           <AuthProvider>
             <MemoryRouter initialEntries={[path]}>
               <KnowledgeRoutes />

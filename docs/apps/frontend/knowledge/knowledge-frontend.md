@@ -1,7 +1,7 @@
 状态：current
 文档类型：architecture
 适用范围：`apps/frontend/knowledge`
-最后核对：2026-05-03
+最后核对：2026-05-10
 
 # Knowledge 前端架构
 
@@ -9,10 +9,7 @@
 
 ## API 边界
 
-UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和 hooks 不直接 new 真实 client，也不直接 import mock 数据。默认装配在 `src/main.tsx`：
-
-- `VITE_KNOWLEDGE_API_MODE=mock`：使用 `MockKnowledgeApiClient`，仅用于本地 demo。
-- 其他情况：使用 `KnowledgeApiClient`，默认 base URL 为 `http://127.0.0.1:3000/api`。
+UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和 hooks 不直接 new 真实 client，也不直接 import mock 数据。运行时装配在 `src/main.tsx`，始终使用 `KnowledgeApiClient`（默认 base URL `http://127.0.0.1:3000/api`）。前端运行时 mock mode 已移除；测试使用本地 fake provider，后端可使用 schema-safe service fallback。
 
 `KnowledgeApiClient` 统一走 fetch 路径。请求前通过 `AuthClient.ensureValidAccessToken()` 取 access token；业务接口返回 `401 + code=auth_token_expired` 时，调用 `AuthClient.refreshTokensOnce()` 并重试原请求一次。
 
@@ -27,13 +24,7 @@ VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 VITE_KNOWLEDGE_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 ```
 
-Mock mode is explicit:
-
-```bash
-VITE_KNOWLEDGE_API_MODE=mock
-```
-
-Do not make mock data the default production path.
+Runtime frontend always uses `KnowledgeApiClient`. Tests use local fake providers; backend may use schema-safe service fallback.
 
 ## Trustworthy Workbench UI
 

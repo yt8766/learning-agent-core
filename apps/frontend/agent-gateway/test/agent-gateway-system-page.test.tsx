@@ -17,9 +17,17 @@ describe('SystemPage', () => {
       />
     );
 
-    expect(html).toContain('System');
-    expect(html).toContain('Check latest version');
-    expect(html).toContain('Enable request log');
-    expect(html).toContain('Clear local login storage');
+    expect(html).toContain('管理中心信息');
+    expect(html).toContain('system-info-clone');
+    expect(html).toContain('system-about-card');
+    expect(html).toContain('system-info-grid');
+    expect(html).toContain('Agent Gateway Management Center');
+    expect(html).toContain('检查最新版本');
+    expect(html).toContain('启用请求日志');
+    expect(html).toContain('清理本地登录态');
+    expect(html).toContain('learning-agent-core');
+    expect(html).toContain('帮助文档');
+    expect(html).toContain('前端源码');
+    expect(html).toContain('https://github.com/yt8766/learning-agent-core');
   });
 });

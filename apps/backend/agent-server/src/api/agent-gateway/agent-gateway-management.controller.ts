@@ -18,6 +18,7 @@ import {
   GatewayGeminiCliOAuthStartRequestSchema,
   GatewayManagementApiCallRequestSchema,
   GatewayOAuthCallbackRequestSchema,
+  GatewayProviderOAuthStartRequestSchema,
   GatewayProviderKindSchema,
   GatewayProviderSpecificConfigRecordSchema,
   GatewayUpdateOAuthModelAliasRulesRequestSchema,
@@ -32,6 +33,7 @@ import {
   type GatewayManagementApiCallResponse,
   type GatewayOAuthCallbackResponse,
   type GatewayOAuthModelAliasListResponse,
+  type GatewayProviderOAuthStartResponse,
   type GatewayOAuthStatusResponse,
   type GatewayProbeResponse,
   type GatewayProviderSpecificConfigListResponse,
@@ -152,6 +154,15 @@ export class AgentGatewayManagementController {
 
   @Post('oauth/gemini-cli/start') startGeminiCli(@Body() body: unknown) {
     return this.oauthPolicyService.startGeminiCli(parseBody(GatewayGeminiCliOAuthStartRequestSchema, body));
+  }
+
+  @Post('oauth/:providerId/start') startProviderOAuth(
+    @Param('providerId') providerId: string,
+    @Body() body: unknown
+  ): Promise<GatewayProviderOAuthStartResponse> {
+    return this.oauthPolicyService.startProviderAuth(
+      parseBody(GatewayProviderOAuthStartRequestSchema, { ...(body as object), provider: providerId })
+    );
   }
 
   @Post('oauth/vertex/import') importVertexCredential(

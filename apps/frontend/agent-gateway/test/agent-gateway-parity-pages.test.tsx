@@ -82,7 +82,7 @@ describe('Agent Gateway CLI Proxy parity pages', () => {
       />
     );
 
-    expect(html).toContain('System');
+    expect(html).toContain('管理中心信息');
     expect(html).toContain('1.2.3');
     expect(html).toContain('检查最新版本');
     expect(html).toContain('gpt-5.4');

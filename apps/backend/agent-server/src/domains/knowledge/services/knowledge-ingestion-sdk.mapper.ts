@@ -20,6 +20,7 @@ export function mapSdkChunkToDocumentChunk(input: MapSdkChunkToDocumentChunkInpu
     embeddingStatus: 'pending',
     vectorIndexStatus: 'pending',
     keywordIndexStatus: 'succeeded',
+    metadata: input.chunk.metadata ? { ...input.chunk.metadata } : {},
     createdAt: input.now,
     updatedAt: input.now
   };

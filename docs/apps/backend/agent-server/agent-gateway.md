@@ -3,9 +3,9 @@
 状态：current
 文档类型：architecture
 适用范围：`apps/backend/agent-server/src/domains/agent-gateway`、`apps/backend/agent-server/src/api/agent-gateway`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
-`agent-server` 已提供 Agent Gateway 中转入口，契约以 [Agent Gateway API](/docs/contracts/api/agent-gateway.md) 和 `@agent/core` 的 `contracts/agent-gateway` schema 为准。当前实现包含 schema-first 读写接口、repository 边界、secret vault、provider router、deterministic relay runtime、日志/用量记录、deterministic OAuth/Auth File 生命周期第一版，以及 CLI Proxy management parity 的 deterministic connection/config/API key/quota/log/system surface。
+`agent-server` 已提供 Agent Gateway 中转入口，契约以 [Agent Gateway API](/docs/contracts/api/agent-gateway.md) 和 `@agent/core` 的 `contracts/agent-gateway` schema 为准。当前实现包含 schema-first 读写接口、Gateway 调用方与调用方 API key、调用方月度额度、OpenAI-compatible `/v1/models` 与 `/v1/chat/completions` runtime、repository 边界、secret vault、provider router、deterministic relay runtime、日志/用量记录、deterministic OAuth/Auth File 生命周期第一版，以及 CLI Proxy management parity 的 deterministic connection/config/API key/quota/log/system surface。
 
 本主题主文档是 [Agent Gateway API](/docs/contracts/api/agent-gateway.md)。本文只覆盖 `agent-server` 内已落地的后端模块、边界和验证入口。
 
@@ -19,6 +19,9 @@
 - `AgentGatewayConnectionService`：保存 remote management profile 并检查连接状态，只返回 masked management key。
 - `AgentGatewayConfigFileService`：读取、diff、保存 raw `config.yaml` 和 reload projection。
 - `AgentGatewayApiKeyService`：管理 proxy API keys，查询只返回 `GatewayApiKeyListResponseSchema` 的 masked prefix 与 usage projection。
+- `AgentGatewayClientService` / `AgentGatewayClientApiKeyService` / `AgentGatewayClientQuotaService`：管理作为中转调用方的 Gateway clients、一次性展示的 client API key、终态 revoke、月度 token/request quota、usage 和 `/v1/*` request logs。Identity 用户只用于控制台登录，不等同于 runtime 调用方。
+- `AgentGatewayOpenAICompatibleController`：挂载不带 `/api` 前缀的 `GET /v1/models` 与 `POST /v1/chat/completions`。runtime 使用 `Authorization: Bearer <client-api-key>`，不接受 Identity access token 作为调用方凭据。
+- `AgentGatewayRuntimeAuthService` / `AgentGatewayRuntimeAccountingService`：负责 client key scope、过期、client 状态、默认额度、显式额度、usage、lastUsedAt 和 request log 记录；runtime 错误统一返回 OpenAI-compatible `{ error: { message, type, code } }` 外壳。
 - `AgentGatewayLogService`：提供 request log tail/search、request error files 和 clear logs projection。
 - `AgentGatewayQuotaDetailService`：提供 provider-specific quota detail 的稳定 projection。
 - `AgentGatewaySystemService`：提供 system version/latest/build links 与 grouped model discovery projection。
@@ -26,7 +29,8 @@
 - `AgentGatewayOAuthService`：负责 deterministic OAuth start/complete 与 credential file 状态更新。
 - `AgentGatewayAuthController`：挂载迁移兼容的 `POST /api/agent-gateway/auth/login` 与 `POST /api/agent-gateway/auth/refresh`。规范登录入口是 Identity 的 `/api/identity/login`、`/api/identity/refresh`、`/api/identity/me` 和 `/api/identity/logout`。
 - `AgentGatewayController`：挂载基础 runtime/provider/auth-file/quota/log/usage/probe/token/preprocess/accounting/relay/OAuth 入口，并挂载 connection、raw config、API keys、quota details、logs 和 system 基础入口。
-- `AgentGatewayManagementController`：挂载 CLI Proxy parity 管理入口，包括 dashboard、provider-specific config、Auth Files、OAuth model aliases/callback/status/Vertex import、`api-call` quota refresh、request log download、latest-version、request-log setting 和 frontend-local login storage cleanup projection。
+- `AgentGatewayManagementController`：挂载 CLI Proxy parity 管理入口，包括 dashboard、provider-specific config、Auth Files、OAuth provider auth-url start、OAuth model aliases/callback/status/Vertex import、`api-call` quota refresh、request log download、latest-version、request-log setting 和 frontend-local login storage cleanup projection。
+- `AgentGatewayOAuthCallbackController`：保留未鉴权的浏览器回跳入口 `GET /api/agent-gateway/oauth/callback`，仅作为手动 fallback 或部署自定义 callback base 时使用。默认 provider OAuth start 保留 CLI Proxy 返回的本地回调端口 URL，例如 Codex `localhost:1455`、Claude `localhost:54545`、Antigravity `localhost:51121`。
 
 ## Real CLI Proxy Mode
 
@@ -38,7 +42,7 @@ AGENT_GATEWAY_MANAGEMENT_API_BASE=<base-url>
 AGENT_GATEWAY_MANAGEMENT_KEY=<key>
 ```
 
-`CliProxyManagementClient` 会把 `<base-url>` 归一化到 `/v0/management`，以 Bearer management key 调用参考项目接口，并把 provider config、Auth Files、OAuth、quota、logs、system 等 vendor payload 转换为项目自有 schema 后再返回给 controller。
+`CliProxyManagementClient` 会把 `<base-url>` 归一化到 `/v0/management`，同时发送 `Authorization: Bearer <key>` 与 `X-Management-Key: <key>` 调用参考项目接口，并把 provider config、Auth Files、OAuth、quota、logs、system 等 vendor payload 转换为项目自有 schema 后再返回给 controller。
 
 ## 当前实现边界
 
@@ -50,11 +54,16 @@ AGENT_GATEWAY_MANAGEMENT_KEY=<key>
 ## 领域边界
 
 - `repositories/`：runtime config、providers、credential files、quotas、logs、usage、OAuth state 的 repository contract 与内存实现。
-- `management/`：remote management profile、raw config、API keys、provider-specific config、Auth Files、OAuth policy、quota detail、request logs、system info/model discovery 的项目自定义 client 边界；不得让 CLI Proxy raw response 直接穿透 controller 或 UI。`cli-proxy-management-client.ts` 负责 `/v0/management` base URL normalize、Bearer management key、schema normalization 和上游错误映射。
+- `management/`：remote management profile、raw config、API keys、provider-specific config、Auth Files、OAuth auth-url/status/callback/policy、quota detail、request logs、system info/model discovery 的项目自定义 client 边界；不得让 CLI Proxy raw response 直接穿透 controller 或 UI。`cli-proxy-management-client.ts` 负责 `/v0/management` base URL normalize、management key 双 header、schema normalization 和上游错误映射；OAuth provider start 会把 `POST /api/agent-gateway/oauth/:providerId/start` 归一化为 CLI Proxy 的 `/:provider-auth-url?is_webui=true` 调用。
+- OAuth provider start 不改写 CLI Proxy 返回的授权 URL。Codex、Claude、Antigravity 依赖 CLI Proxy WebUI flow 启动的本地 callback forwarder；Kimi 使用 device authorization URL 和 `user_code`。
+- API keys adapter 对齐 CLI Proxy 原生协议：`GET /api-keys` 读取 `{ "api-keys": [...] }`，`PUT /api-keys` 提交字符串数组，`PATCH /api-keys` 提交 `{ index, value }`，`DELETE /api-keys?index=<n>` 删除。
+- Auth Files adapter 对齐 CLI Proxy 原生协议：上传按文件逐个调用 `POST /auth-files?name=<file.json>` 并提交原始 JSON 内容；删除使用 `DELETE /auth-files?name=<file>`、`DELETE /auth-files?all=true` 或字符串数组 body。
+- System connection check 使用 CLI Proxy 真实存在的 `GET /config` 与 `X-CPA-VERSION` / `X-CPA-BUILD-DATE` 响应头；latest version 使用 `GET /latest-version`。
 - `config/`、`api-keys/`、`logs/`、`quotas/`、`system/`：围绕 management client 的领域 service facade，controller 只调用这些 facade。
 - `providers/`：项目自定义 provider adapter 接口和 deterministic mock provider，不泄漏 vendor SDK 类型。
 - `runtime/agent-gateway-router.ts`：按 routing strategy、provider status、priority 和 requested model 选择 provider。
 - `runtime/agent-gateway-relay.service.ts`：执行 `preprocess -> route -> provider adapter -> accounting -> log`。
+- `runtime/agent-gateway-runtime-auth.service.ts` 与 `runtime/agent-gateway-runtime-accounting.service.ts`：只服务 OpenAI-compatible `/v1/*` 调用方鉴权和额度记账；默认额度为 `1_000_000` token / `10_000` request，并以当前 usage 计算是否超额。
 - `secrets/`：明文 secret 只出现在写命令入口，落库或 projection 只保留 masked value / `secretRef`。
 - `oauth/agent-gateway-oauth.service.ts`：提供 deterministic start/complete 第一实现，vendor-specific OAuth 细节留在 adapter 层。
 - `test/agent-gateway/agent-gateway.module.spec.ts`：覆盖 `AgentGatewayModule` 的 Nest DI smoke；新增 provider、service 或可选测试时钟等构造参数时，必须通过显式 token 或非构造注入方式避免让 `Function` / `String` 这类裸类型进入 Nest provider 解析。

@@ -147,6 +147,7 @@ export {
   matchesKnowledgeSourceFilters,
   resolveKnowledgeRetrievalFilters
 } from './retrieval/knowledge-retrieval-filters';
+export * from './eval';
 export * from './retrieval/knowledge-search-service';
 export * from './retrieval/knowledge-chat-routing';
 export type { VectorSearchHit, VectorSearchOptions, VectorSearchProvider } from './retrieval/vector-search-provider';
@@ -276,6 +277,7 @@ export {
 } from './runtime/defaults/retrieval-runtime-defaults';
 export type { KnowledgeRetrievalRunOptions } from './runtime/pipeline/run-knowledge-retrieval';
 export { runKnowledgeRetrieval } from './runtime/pipeline/run-knowledge-retrieval';
+export * from './observability';
 export * from './rag';
 export * from './runtime/local-knowledge-facade';
 export * from './runtime/local-knowledge-store';

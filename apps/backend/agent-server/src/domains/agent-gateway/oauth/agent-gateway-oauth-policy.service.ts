@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   GatewayOAuthModelAliasListResponse,
+  GatewayProviderOAuthStartRequest,
+  GatewayProviderOAuthStartResponse,
   GatewayUpdateOAuthModelAliasRulesRequest,
   GatewayVertexCredentialImportRequest,
   GatewayVertexCredentialImportResponse
@@ -47,6 +49,7 @@ interface OAuthPolicyManagementClient {
   ): Promise<GatewayOAuthModelAliasListResponse>;
   getOAuthStatus?(state: string): Promise<GatewayOAuthStatusResponse>;
   submitOAuthCallback?(request: GatewayOAuthCallbackRequest): Promise<GatewayOAuthCallbackResponse>;
+  startProviderOAuth?(request: GatewayProviderOAuthStartRequest): Promise<GatewayStartOAuthProjection>;
   startGeminiCliOAuth?(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayStartOAuthProjection>;
   importVertexCredential?(
     request: GatewayVertexCredentialImportRequest
@@ -91,6 +94,25 @@ export class AgentGatewayOAuthPolicyService {
     const delegate = this.delegate();
     if (delegate.submitOAuthCallback) return delegate.submitOAuthCallback(request);
     return { accepted: true, provider: request.provider, completedAt: fixedNow };
+  }
+
+  async startProviderAuth(request: GatewayProviderOAuthStartRequest): Promise<GatewayProviderOAuthStartResponse> {
+    const delegate = this.delegate();
+    if (delegate.startProviderOAuth) {
+      const projection = await delegate.startProviderOAuth(request);
+      return {
+        state: projection.state,
+        verificationUri: projection.verificationUri,
+        userCode: projection.userCode,
+        expiresAt: projection.expiresAt ?? '2026-05-09T00:10:00.000Z'
+      };
+    }
+    return {
+      state: `${request.provider}-state`,
+      verificationUri: `https://gateway.local/${request.provider}-auth-url?is_webui=${String(request.isWebui === true)}`,
+      userCode: `CODE-${request.provider}`,
+      expiresAt: '2026-05-09T00:10:00.000Z'
+    };
   }
 
   async startGeminiCli(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayGeminiCliOAuthStartResponse> {

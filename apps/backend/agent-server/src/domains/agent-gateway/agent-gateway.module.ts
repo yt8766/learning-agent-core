@@ -1,12 +1,20 @@
 import { Module } from '@nestjs/common';
 import { AgentGatewayAuthController } from '../../api/agent-gateway/agent-gateway-auth.controller';
+import { AgentGatewayClientsController } from '../../api/agent-gateway/agent-gateway-clients.controller';
 import { AgentGatewayController } from '../../api/agent-gateway/agent-gateway.controller';
 import { AgentGatewayManagementController } from '../../api/agent-gateway/agent-gateway-management.controller';
+import { AgentGatewayOAuthCallbackController } from '../../api/agent-gateway/agent-gateway-oauth-callback.controller';
+import { AgentGatewayOpenAICompatibleController } from '../../api/agent-gateway/agent-gateway-openai-compatible.controller';
 import { IdentityModule } from '../identity/identity.module';
 import { AgentGatewayApiKeyService } from './api-keys/agent-gateway-api-key.service';
 import { AgentGatewayAuthFileManagementService } from './auth-files/agent-gateway-auth-file-management.service';
 import { AgentGatewayAuthGuard } from './auth/agent-gateway-auth.guard';
 import { AgentGatewayAuthService } from './auth/agent-gateway-auth.service';
+import { AgentGatewayClientApiKeyService } from './clients/agent-gateway-client-api-key.service';
+import { AgentGatewayClientQuotaService } from './clients/agent-gateway-client-quota.service';
+import { AGENT_GATEWAY_CLIENT_REPOSITORY } from './clients/agent-gateway-client.repository';
+import { AgentGatewayClientService } from './clients/agent-gateway-client.service';
+import { MemoryAgentGatewayClientRepository } from './clients/memory-agent-gateway-client.repository';
 import { AgentGatewayConfigFileService } from './config/agent-gateway-config-file.service';
 import { AgentGatewayDashboardService } from './dashboard/agent-gateway-dashboard.service';
 import { AgentGatewayConnectionService } from './management/agent-gateway-connection.service';
@@ -23,19 +31,33 @@ import { AgentGatewayQuotaDetailService } from './quotas/agent-gateway-quota-det
 import { AGENT_GATEWAY_REPOSITORY } from './repositories/agent-gateway.repository';
 import { MemoryAgentGatewayRepository } from './repositories/memory-agent-gateway.repository';
 import { AgentGatewayRelayService } from './runtime/agent-gateway-relay.service';
+import { AgentGatewayRuntimeAccountingService } from './runtime/agent-gateway-runtime-accounting.service';
+import { AgentGatewayRuntimeAuthService } from './runtime/agent-gateway-runtime-auth.service';
 import { AGENT_GATEWAY_SECRET_VAULT, MemoryAgentGatewaySecretVault } from './secrets/agent-gateway-secret-vault';
 import { AgentGatewayService } from './services/agent-gateway.service';
 import { AgentGatewayLogService } from './logs/agent-gateway-log.service';
 import { AgentGatewaySystemService } from './system/agent-gateway-system.service';
 @Module({
   imports: [IdentityModule],
-  controllers: [AgentGatewayAuthController, AgentGatewayController, AgentGatewayManagementController],
+  controllers: [
+    AgentGatewayAuthController,
+    AgentGatewayClientsController,
+    AgentGatewayController,
+    AgentGatewayManagementController,
+    AgentGatewayOAuthCallbackController,
+    AgentGatewayOpenAICompatibleController
+  ],
   providers: [
     AgentGatewayAuthGuard,
     AgentGatewayAuthService,
+    AgentGatewayClientService,
+    AgentGatewayClientApiKeyService,
+    AgentGatewayClientQuotaService,
     AgentGatewayService,
     AgentGatewayOAuthService,
     AgentGatewayRelayService,
+    AgentGatewayRuntimeAccountingService,
+    AgentGatewayRuntimeAuthService,
     AgentGatewayConnectionService,
     AgentGatewayConfigFileService,
     AgentGatewayApiKeyService,
@@ -65,6 +87,10 @@ import { AgentGatewaySystemService } from './system/agent-gateway-system.service
       useClass: MemoryAgentGatewayRepository
     },
     {
+      provide: AGENT_GATEWAY_CLIENT_REPOSITORY,
+      useClass: MemoryAgentGatewayClientRepository
+    },
+    {
       provide: AGENT_GATEWAY_SECRET_VAULT,
       useClass: MemoryAgentGatewaySecretVault
     },
@@ -76,6 +102,9 @@ import { AgentGatewaySystemService } from './system/agent-gateway-system.service
   ],
   exports: [
     AgentGatewayAuthService,
+    AgentGatewayClientService,
+    AgentGatewayClientApiKeyService,
+    AgentGatewayClientQuotaService,
     AgentGatewayService,
     AgentGatewayOAuthService,
     AgentGatewayConnectionService,
@@ -88,7 +117,9 @@ import { AgentGatewaySystemService } from './system/agent-gateway-system.service
     AgentGatewayApiCallService,
     AgentGatewayLogService,
     AgentGatewayQuotaDetailService,
-    AgentGatewaySystemService
+    AgentGatewaySystemService,
+    AgentGatewayRuntimeAccountingService,
+    AgentGatewayRuntimeAuthService
   ]
 })
 export class AgentGatewayModule {}

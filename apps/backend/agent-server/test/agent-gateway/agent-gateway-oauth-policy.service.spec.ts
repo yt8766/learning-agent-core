@@ -17,6 +17,10 @@ describe('AgentGatewayOAuthPolicyService', () => {
     await expect(
       service.submitCallback({ provider: 'gemini', redirectUrl: 'http://localhost/callback?code=abc' })
     ).resolves.toMatchObject({ accepted: true });
+    await expect(service.startProviderAuth({ provider: 'codex', isWebui: true })).resolves.toMatchObject({
+      state: 'codex-state',
+      verificationUri: expect.stringContaining('codex-auth-url')
+    });
     await expect(service.startGeminiCli({ projectId: 'ALL' })).resolves.toHaveProperty('verificationUri');
     await expect(
       service.importVertexCredential({

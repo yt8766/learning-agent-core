@@ -25,6 +25,7 @@ import type {
   GatewayOAuthCallbackResponse,
   GatewayOAuthModelAliasListResponse,
   GatewayOAuthStatusResponse,
+  GatewayProviderOAuthStartRequest,
   GatewayProbeResponse,
   GatewayProviderKind,
   GatewayProviderSpecificConfigListResponse,
@@ -290,6 +291,29 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
 
   async submitOAuthCallback(request: GatewayOAuthCallbackRequest): Promise<GatewayOAuthCallbackResponse> {
     return { accepted: true, provider: request.provider, completedAt: fixedNow };
+  }
+
+  async startProviderOAuth(request: GatewayProviderOAuthStartRequest): Promise<GatewayStartOAuthProjection> {
+    if (request.provider === 'kimi') {
+      return {
+        state: 'kimi-device',
+        verificationUri: 'https://www.kimi.com/code/authorize_device?user_code=MEMO-RYKI',
+        userCode: 'MEMO-RYKI',
+        expiresAt: '2026-05-08T00:15:00.000Z',
+        projectId: request.projectId
+      };
+    }
+    return {
+      state: `${request.provider}-state`,
+      verificationUri: [
+        `https://gateway.local/${request.provider}-auth-url`,
+        `?is_webui=${String(request.isWebui === true)}`,
+        '&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback'
+      ].join(''),
+      userCode: `MEMORY-${request.provider.toUpperCase()}`,
+      expiresAt: '2026-05-08T00:15:00.000Z',
+      projectId: request.projectId
+    };
   }
 
   async startGeminiCliOAuth(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayStartOAuthProjection> {

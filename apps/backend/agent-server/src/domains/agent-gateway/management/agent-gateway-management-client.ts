@@ -23,6 +23,7 @@ import type {
   GatewayOAuthCallbackResponse,
   GatewayOAuthModelAliasListResponse,
   GatewayOAuthStatusResponse,
+  GatewayProviderOAuthStartRequest,
   GatewayProbeResponse,
   GatewayProviderKind,
   GatewayProviderSpecificConfigListResponse,
@@ -70,6 +71,7 @@ export interface AgentGatewayManagementClient {
   saveOAuthModelAliases(request: GatewayUpdateOAuthModelAliasRulesRequest): Promise<GatewayOAuthModelAliasListResponse>;
   getOAuthStatus(state: string): Promise<GatewayOAuthStatusResponse>;
   submitOAuthCallback(request: GatewayOAuthCallbackRequest): Promise<GatewayOAuthCallbackResponse>;
+  startProviderOAuth(request: GatewayProviderOAuthStartRequest): Promise<GatewayStartOAuthProjection>;
   startGeminiCliOAuth(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayStartOAuthProjection>;
   importVertexCredential(request: GatewayVertexCredentialImportRequest): Promise<GatewayVertexCredentialImportResponse>;
   managementApiCall(request: GatewayManagementApiCallRequest): Promise<GatewayManagementApiCallResponse>;

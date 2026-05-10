@@ -61,6 +61,7 @@ Entrypoint status:
 - Current: `@agent/knowledge/contracts` exposes the current knowledge contract barrel for callers that need a narrower import than the root package.
 - Current: `@agent/knowledge/indexing` exposes indexing contracts, defaults, loaders, chunkers, and the indexing pipeline.
 - Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Chroma, DeepSeek, GLM, LangChain, MiniMax, OpenAI-compatible, OpenSearch, and Supabase pgvector.
+- Compatibility: the package root still re-exports current vendor adapter factories and classes for existing SDK consumers. New code should prefer the stable adapter subpaths, such as `@agent/knowledge/adapters/minimax` or `@agent/knowledge/adapters/openai-compatible`, so future root cleanup can stay non-breaking for migrated callers.
 - Target planned: dedicated `@agent/knowledge/runtime`, `@agent/knowledge/retrieval`, `@agent/knowledge/eval`, and `@agent/knowledge/observability` subpaths remain publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
 - Declaration exports must point at the current `tsc -p packages/knowledge/tsconfig.types.json` layout under `build/types/src/...`; do not reintroduce the historical `build/types/knowledge/src/...` path.
@@ -238,6 +239,9 @@ Current MVP knowledge adapters live in `packages/knowledge/src/adapters/*`. This
 - Keep real vendor SDK lifecycle, credentials, and host environment loading outside `@agent/knowledge/core`.
 - Do not duplicate an adapter implementation in `packages/knowledge` while the current implementation remains in `packages/adapters`.
 - Remove old adapter-package entrypoints once a migration slice has moved ownership, tests, docs, and call sites to `@agent/knowledge`.
+
+Root-level adapter exports remain a compatibility surface only. Existing imports from `@agent/knowledge` must keep working during the cleanup period, but new adapter usage should import from the adapter root or vendor subpath, for example `@agent/knowledge/adapters`, `@agent/knowledge/adapters/minimax`, or `@agent/knowledge/adapters/supabase`.
+
 - Convert vendor responses and errors at the adapter boundary before returning SDK-owned contracts.
 - Never allow optional adapter dependencies to contaminate `@agent/knowledge/core`.
 

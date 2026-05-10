@@ -565,6 +565,17 @@ describe('agent-admin app shell', () => {
     expect(html).not.toContain('Agent 管理台标识');
   });
 
+  it('renders the admin runtime center at the authenticated root instead of Agent Gateway pages', async () => {
+    await authenticateAdmin();
+    const html = await renderRouterAt('/');
+
+    expect(html).toContain('运行中枢');
+    expect(html).toContain('治理控制台');
+    expect(html).not.toContain('AGMC');
+    expect(html).not.toContain('配置面板');
+    expect(html).not.toContain('AI提供商');
+  });
+
   it('declares protected admin center paths through React Router route objects', async () => {
     await authenticateAdmin();
     const html = await renderRouterAt('/approvals');

@@ -13,6 +13,24 @@ export const DocumentProcessingStageSchema = z.enum([
 
 export const DocumentProcessingStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed', 'cancelled']);
 
+export const KnowledgeChunkStageStatusSchema = z.enum(['pending', 'succeeded', 'failed', 'skipped']);
+
+export const DocumentChunkRecordSchema = z
+  .object({
+    id: z.string().min(1),
+    documentId: z.string().min(1),
+    ordinal: z.number().int().nonnegative(),
+    content: z.string(),
+    tokenCount: z.number().int().nonnegative(),
+    embeddingStatus: KnowledgeChunkStageStatusSchema,
+    vectorIndexStatus: KnowledgeChunkStageStatusSchema,
+    keywordIndexStatus: KnowledgeChunkStageStatusSchema,
+    metadata: z.record(z.string(), z.unknown()).optional(),
+    createdAt: z.string().min(1),
+    updatedAt: z.string().min(1)
+  })
+  .strict();
+
 export const DocumentProcessingJobProgressSchema = z
   .object({
     percent: z.number().min(0).max(100),

@@ -3,7 +3,7 @@
 状态：current
 文档类型：convention
 适用范围：`packages/knowledge/src/indexing/*`
-最后核对：2026-04-30（writer fanout 闭环核对）
+最后核对：2026-05-10（pipeline diagnostics / quality gates 闭环核对）
 
 ## 1. 定位
 
@@ -12,12 +12,12 @@
 它负责把原始知识内容加工成运行时可检索的数据资产，核心流程固定为：
 
 ```text
-load -> filter(optional) -> chunk -> metadata build -> writer fanout -> result collect
+load -> filter(optional) -> chunk -> metadata build -> embed boundary -> writer fanout -> diagnostics collect
 ```
 
 这里的 `indexing` 是 pipeline orchestration 层，不是 provider SDK 封装层，也不是 runtime 检索层。
 
-当前 `runKnowledgeIndexing()` 不直接持有 embedder，也不直接绑定真实 vector store。`KnowledgeVectorDocumentRecord` 与 `KnowledgeVectorIndexWriter` contract 由 `@agent/knowledge` 定义；索引流水线把 chunk 转为 `KnowledgeVectorDocumentRecord` 后写入调用方注入的 `KnowledgeVectorIndexWriter.upsertKnowledge()`。Host package 决定 embedding 与向量索引持久化方式；仓库内部 `@agent/memory` 可以实现该 writer，但不是 knowledge SDK 的依赖，也不是该 contract 的主宿主。若调用方同时提供 `KnowledgeSourceIndexWriter` 和 `KnowledgeFulltextIndexWriter`，同一批文档会额外写入 `KnowledgeSource` 与 `KnowledgeChunk` 边界，用于关键词检索、Small-to-Big 上下文回补和 Runtime Center source 观测。本地 knowledge store 同样遵守注入边界：调用方负责加载 repo runtime config，并传入 SDK-local `LocalKnowledgeStoreSettings`、snapshot repository 或 embedding provider；`packages/knowledge` 内部不调用 `@agent/config` 的 `loadSettings()`。
+当前 `runKnowledgeIndexing()` 不直接持有 embedder，也不直接绑定真实 vector store。`KnowledgeVectorDocumentRecord` 与 `KnowledgeVectorIndexWriter` contract 由 `@agent/knowledge` 定义；索引流水线把 chunk 转为 `KnowledgeVectorDocumentRecord` 后写入调用方注入的 `KnowledgeVectorIndexWriter.upsertKnowledge()`。`KnowledgeIndexingResult.diagnostics` 会标准化记录 `load`、`filter`、`chunk`、`embed`、`store-vector`、`store-fulltext`、`store-source` 阶段状态和计数；这里的 `embed` 表示 SDK 已完成可交给 vector boundary 的 record 构造，不表示 SDK 内部直接调用 provider embedding。Host package 决定 embedding 与向量索引持久化方式；仓库内部 `@agent/memory` 可以实现该 writer，但不是 knowledge SDK 的依赖，也不是该 contract 的主宿主。若调用方同时提供 `KnowledgeSourceIndexWriter` 和 `KnowledgeFulltextIndexWriter`，同一批文档会额外写入 `KnowledgeSource` 与 `KnowledgeChunk` 边界，用于关键词检索、Small-to-Big 上下文回补和 Runtime Center source 观测。本地 knowledge store 同样遵守注入边界：调用方负责加载 repo runtime config，并传入 SDK-local `LocalKnowledgeStoreSettings`、snapshot repository 或 embedding provider；`packages/knowledge` 内部不调用 `@agent/config` 的 `loadSettings()`。
 
 Runtime metadata filtering 与 Small-to-Big Expansion 已依赖 chunk metadata 的稳定语义。新增或调整索引 metadata 时，必须同步核对 `docs/packages/knowledge/indexing-contract-guidelines.md`：`docType`、`status`、`allowedRoles`、`parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle` 都必须保持 JSON-safe，不能把第三方对象、权限 SDK 类型或 vendor response 直接写入 metadata。
 
@@ -118,7 +118,7 @@ packages/knowledge/src/indexing/
 - [packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts](/packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts)
 - 所有规范文档统一放在 `docs/packages/knowledge/*`，不要在 `packages/knowledge/*` 下继续新增 handoff README 或重复说明
 
-当前默认实现只有 `FixedWindowChunker`。loader、vector writer、fulltext writer 都必须由调用方显式注入。
+当前默认 pipeline 仍使用 `FixedWindowChunker`，用于保持既有 MVP 分块行为和测试夹具稳定。结构化 Markdown / 文本文档应显式注入 `StructuredTextChunker`；它优先按 heading、paragraph、list、code fence 分块，超长结构块再按固定窗口 fallback，并在 metadata 中写入 `parentId`、`sectionId`、`sectionTitle`、`sectionPath`、`heading`、`contentType`、`ordinal`、`chunkHash`、`prevChunkId`、`nextChunkId`，为 Small-to-Big、citation 展示和 eval 归因打基础。loader、vector writer、fulltext writer 都必须由调用方显式注入。
 
 当前提供的 loader：
 
@@ -133,3 +133,8 @@ Writer fanout 的当前边界：
 - `KnowledgeIndexingResult.embeddedChunkCount` 统计交给 vector boundary 的 chunk 数。
 - `KnowledgeIndexingResult.fulltextChunkCount` 统计成功交给 fulltext writer 的 chunk 数；未提供 fulltext writer 时为 `0`。
 - fulltext chunk 使用 `sourceId`、`documentId`、`title`、`uri` 等已构建 metadata，且保持 JSON-safe metadata，不允许写入 provider SDK 对象。
+- `KnowledgeIndexingResult.diagnostics.stages` 固定返回阶段级 `status/inputCount/outputCount/warningCount` 摘要，供 backend worker、CLI 或离线任务判断 SDK 是否只停在 chunker，还是已经完成 vector/fulltext/source 边界 fanout。
+- `KnowledgeIndexingResult.diagnostics.qualityGates` 固定返回 count 质量门：
+  - `vector-records-match-chunks`：SDK 构造出的 vector boundary records 必须与 indexed chunks 数量一致。
+  - `vector-writes-match-records`：成功写入 `KnowledgeVectorIndexWriter` 的记录数必须与 vector boundary records 数量一致。
+  - `fulltext-writes-match-chunks`：提供 `KnowledgeFulltextIndexWriter` 时，成功写入 fulltext/chunk boundary 的数量必须与 indexed chunks 一致；未提供 writer 时该 gate 为 `skipped`。

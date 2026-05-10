@@ -14,17 +14,18 @@
   "dependencies": {
     "@agent/core": "workspace:*",
     "@tanstack/react-query": "^5.99.1",
-    "@vitejs/plugin-react": "^6.0.1",
     "axios": "^1.13.6",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.2",
-    "vite": "^8.0.1"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.8.2"
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^5.8.2",
+    "vite": "^8.0.1"
   }
 }

@@ -5,6 +5,8 @@
 适用范围：`packages/knowledge`、`apps/backend/knowledge-server`、`apps/frontend/knowledge`
 最后核对：2026-05-03
 
+> Historical note: this document predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the current Knowledge upload + deterministic Chat Lab MVP into a trustworthy RAG workbench with health projections, ingestion state, grounded answers, traceability, and a minimal eval loop.

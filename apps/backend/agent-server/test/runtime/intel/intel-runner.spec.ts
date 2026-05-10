@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { pathExists } from 'fs-extra';
 
 import { runIntelScheduledJob } from '../../../src/runtime/domain/intel/intel-runner';
 
@@ -108,6 +109,10 @@ describe('runIntelScheduledJob', () => {
     expect(result.jobName).toBe('intel-patrol');
     expect(result.summary.generatedAlerts).toBe(1);
     expect(result.summary.queuedDeliveries).toBe(1);
+    await expect(pathExists(join(workspaceRoot, 'profile-storage', 'platform', 'intel', 'intel.db'))).resolves.toBe(
+      true
+    );
+    await expect(pathExists(join(workspaceRoot, 'data'))).resolves.toBe(false);
   });
 
   it('retries pending deliveries with configured Lark channels', async () => {
