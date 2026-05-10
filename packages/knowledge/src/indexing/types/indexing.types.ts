@@ -1,6 +1,12 @@
-import type { Chunker, Document, KnowledgeChunk, KnowledgeSource, Loader } from '../../index';
-import type { KnowledgeSourceType, KnowledgeTrustClass } from '../../index';
-import type { KnowledgeVectorIndexWriter } from '@agent/memory';
+import type { Chunker, Loader } from '../../contracts/indexing/contracts';
+import type { Document } from '../../contracts/indexing/schemas';
+import type { KnowledgeVectorIndexWriter } from '../../contracts/indexing/knowledge-vector-writer';
+import type {
+  KnowledgeChunk,
+  KnowledgeSource,
+  KnowledgeSourceType,
+  KnowledgeTrustClass
+} from '../../contracts/types/knowledge-retrieval.types';
 
 export interface KnowledgeSourceConfig {
   sourceId: string;

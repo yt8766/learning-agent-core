@@ -3,9 +3,9 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/knowledge/`
-最后核对：2026-05-02（adapter 迁移与 source ingestion 状态核对）
+最后核对：2026-05-09（Knowledge SDK eval 与 agent/task learning 边界核对）
 
-本目录用于沉淀 `packages/knowledge` 相关文档。
+本目录用于沉淀 `packages/knowledge` 包内部职责、源码边界、运行时契约与迁移状态。面向使用方的 SDK 接入手册已统一迁到 [SDK 文档目录](/docs/sdk/README.md)。
 
 包边界：
 
@@ -25,8 +25,8 @@
   - app view model
   - provider SDK 具体实现
 - 依赖方向：
-  - 当前 runtime / host-integration 过渡态允许依赖 `@agent/config`、`@agent/adapters`、`@agent/memory`，用于既有 LLM/embedding factory、本地存储与 adapter bridge
-  - publishable SDK 长期边界不应让 `@agent/knowledge/core` 直接依赖 `@agent/config`、`@agent/adapters`、`@agent/memory`；这些依赖应收敛到 host/server wiring、optional adapters、compat re-export 或迁移层
+  - `@agent/knowledge` 作为独立发布 SDK，不依赖 repo runtime 包 `@agent/config`、`@agent/core` 或 `@agent/memory`
+  - publishable SDK 边界不应直接依赖 workspace `@agent/*` 包；host/server wiring 负责加载仓库运行时配置，并把 settings、embedding provider、vector store、repository adapter 等结构化能力注入 knowledge
   - 被 `runtime`、`agents/*` 与 backend 消费
 - 公开入口：
   - 根入口：`@agent/knowledge`
@@ -39,6 +39,8 @@
 - `packages/knowledge` 是知识检索宿主，不是 memory 的别名
 - 稳定知识契约沉淀到 `packages/knowledge/src/contracts/*`，不要恢复 `packages/core/src/knowledge/*`
 - 当前 retrieval/indexing schema source of truth 仍是 `packages/knowledge/src/contracts/*`
+- agent/task learning、review evaluation、budget、conflict 与 skill governance contract 的真实宿主是 `@agent/core`，例如 `EvaluationResult`、`LearningEvaluationRecord`、`BudgetState`、`LearningConflict*`、`SkillGovernanceRecommendation`；`@agent/knowledge` 不再提供这些 schema 或 type 的兼容 re-export，调用方必须直接从 `@agent/core` 导入
+- Knowledge SDK / RAG eval、trace 与 workbench contract 仍由 `@agent/knowledge` 自己拥有，例如 `KnowledgeEvalCase`、`KnowledgeEvalRun`、`KnowledgeEvalRunResult`、`KnowledgeTrace*`、`KnowledgeWorkbench*` schema/type；不要把这些 knowledge-owned eval contract 误归类为 core 的 agent/task evaluation contract
 - 当前 SDK core facade 已落地到 `packages/knowledge/src/core/*`，用于 publishable SDK 的 provider interface、core error、provider health、knowledge base summary 等边界；不要把它误当成 retrieval runtime 现有 contract 的替代源
 - 迁移期间禁止重复同一稳定 schema：如果某个 retrieval/indexing schema 从 `contracts` 迁到 `core`，必须同步更新调用方、测试、文档与 compat 导出
 - Chroma、OpenSearch、Supabase pgvector 与 LangChain indexing 适配器当前真实宿主是 `packages/knowledge/src/adapters/*`；`packages/adapters/src/{chroma,langchain,opensearch,supabase}` 已删除，不再提供 `@agent/adapters` 兼容入口
@@ -46,7 +48,7 @@
 当前文档：
 
 - [sdk-architecture.md](/docs/packages/knowledge/sdk-architecture.md)
-- [sdk.md](/docs/packages/knowledge/sdk.md)
+- [Knowledge SDK 接入指南](/docs/sdk/knowledge.md)
 - [indexing-package-guidelines.md](/docs/packages/knowledge/indexing-package-guidelines.md)
 - [indexing-contract-guidelines.md](/docs/packages/knowledge/indexing-contract-guidelines.md)
 - [knowledge-retrieval-runtime.md](/docs/packages/knowledge/knowledge-retrieval-runtime.md)
@@ -93,7 +95,7 @@
   - 真实 Chroma / OpenSearch / Supabase pgvector / LangChain indexing adapter 已迁入 `packages/knowledge/src/adapters/*`；生产凭据、SDK client 与 host 注入仍由 backend / 装配层负责
 
 - `packages/knowledge/src/retrieval/knowledge-chat-routing.ts`
-  - 是 Chat Lab / knowledge-server 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
+  - 是 Chat Lab / agent-server Knowledge domain 在检索前选择知识库范围的稳定 helper，并由 `@agent/knowledge` 根入口导出
   - 输入是当前用户可访问的 knowledge base 元信息、兼容 ids、`metadata.mentions` 和用户问题
   - 路由顺序为兼容 ids、metadata ids、`@mentions`、问题与知识库元信息匹配、fallback all
   - 显式 mention 不能绑定时抛出 `KnowledgeChatRoutingError(code="knowledge_mention_not_found")`，由宿主转换为自己的 HTTP / service error
@@ -122,10 +124,14 @@
 - `packages/knowledge/src/runtime/local-knowledge-store.ts`
   - 是当前本地知识摄取与概览读取的真实宿主
   - 负责 `ingestLocalKnowledge`、`readKnowledgeOverview`、`listKnowledgeArtifacts`、`buildKnowledgeDescriptor`
+  - 接受 SDK-local `LocalKnowledgeStoreSettings`，只包含本地 store 真正需要的 `workspaceRoot`、`knowledgeRoot`、`tasksStateFilePath`、embedding settings、`mcp.bigmodelApiKey` 与 `zhipuApiKey`
+  - 不调用 `loadSettings()`，也不从 `@agent/config` 读取 repo runtime config；调用方必须先在 host 层完成 config 解析，再传入结构化 settings
+  - embedding 执行能力通过 `LocalKnowledgeStoreOptions.embeddingProvider` 注入；knowledge 本地 store 不在内部加载 repo adapter
   - `ingestLocalKnowledge()` 刷新本地 README / docs / manifest 时会合并已有 source/chunk/embedding/receipt snapshot，避免 Runtime Center 读取时清空通过生产来源 ingestion HTTP facade 写入的 `user-upload`、`catalog-sync`、`web-curated` 等记录
   - backend 的 `apps/backend/agent-server/src/runtime/knowledge/runtime-knowledge-store.ts` 仅保留 thin compat re-export
 - `packages/knowledge/src/runtime/local-knowledge-store.helpers.ts`
   - 承载本地 docs/package manifest 枚举、chunk 切分、embedding 写盘与 snapshot 读写
+  - 定义 `LocalKnowledgeStoreSettings` / `LocalKnowledgeEmbeddingSettings` / `LocalKnowledgeEmbeddingProvider`，这些类型是 SDK-local contract，不从 `@agent/config` 推导
   - 如果继续增长，应优先拆到 `packages/knowledge/src/runtime/` 下的更细 helper，而不是把逻辑再放回 backend
 
 - `packages/knowledge/src/runtime/local-knowledge-source-ingestion.ts`

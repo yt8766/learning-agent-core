@@ -178,15 +178,15 @@ begin
       end,
       case
         when record_item ? 'embedding' and jsonb_typeof(record_item -> 'embedding') <> 'null'
-          then 'embedded'
+          then 'succeeded'
         else 'pending'
       end,
       case
         when record_item ? 'embedding' and jsonb_typeof(record_item -> 'embedding') <> 'null'
-          then 'indexed'
+          then 'succeeded'
         else 'pending'
       end,
-      'indexed',
+      'succeeded',
       now(),
       now()
     where exists (

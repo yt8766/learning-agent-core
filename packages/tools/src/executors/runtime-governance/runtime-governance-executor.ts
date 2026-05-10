@@ -1,10 +1,10 @@
 import { readdir } from 'node:fs/promises';
 
-import type { ToolExecutionRequest } from '@agent/runtime';
+import type { ToolExecutionRequest } from '@agent/core';
 
-import { toWorkspacePath } from '@agent/runtime';
 import type { RuntimeGovernanceRepository } from '../../runtime-governance/runtime-governance-repository';
 import { getDefaultRuntimeGovernanceRepository } from '../../runtime-governance/runtime-governance-repository';
+import { toWorkspacePath } from '../../filesystem/workspace-path-utils';
 
 export type RuntimeGovernanceExecutorOptions = {
   repository?: RuntimeGovernanceRepository;
@@ -68,7 +68,9 @@ export async function executeRuntimeGovernanceTool(
       const kind = String(request.input.kind ?? 'all');
       const artifacts = await repository.listRuntimeArtifacts(kind);
       const browserReplays =
-        kind === 'all' || kind === 'browser-replays' ? await listBrowserReplayArtifacts('data/browser-replays') : [];
+        kind === 'all' || kind === 'browser-replays'
+          ? await listBrowserReplayArtifacts('artifacts/runtime/browser-replays')
+          : [];
       return {
         outputSummary: `Listed runtime artifacts for ${kind}`,
         rawOutput: {

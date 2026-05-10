@@ -152,7 +152,7 @@
 - `skills-search` 的主状态、外围 DTO、connector discovery / install/search DTO
 - `platform-console` 的稳定主 contract
 - `channels`、`delivery`、`workflow-route`、`architecture-records` 这类跨端稳定协议
-- checkpoint / task record / channel DTO 仍需复用的轻量 memory / knowledge / governance 字段，必须落在 `tasking/schemas/*-fields.ts` 这类本地字段文件；完整领域 contract 应落在 `@agent/memory`、`@agent/knowledge`、`@agent/runtime` 或 `@agent/tools`
+- checkpoint / task record / channel DTO 仍需复用的轻量 memory / knowledge / governance 字段，必须落在 `tasking/schemas/*-fields.ts` 这类本地字段文件；稳定 tool definition / execution request / execution result / family contract 也属于 `tasking/schemas/governance-fields.ts`；完整运行时编排能力应落在 `@agent/memory`、`@agent/knowledge`、`@agent/runtime` 或 `@agent/tools`
 
 ### 4.2 应保留在 shared 的内容
 

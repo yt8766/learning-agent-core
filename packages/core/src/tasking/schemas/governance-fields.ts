@@ -95,6 +95,18 @@ export const ToolCapabilityTypeSchema = z.enum(['local-tool', 'mcp-capability', 
 
 export const ToolPermissionScopeSchema = z.enum(['readonly', 'workspace-write', 'external-side-effect', 'governance']);
 
+export const ToolFamilyRecordSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  description: z.string(),
+  capabilityType: ToolCapabilityTypeSchema,
+  ownerType: z.enum(['shared', 'ministry-owned', 'specialist-owned', 'user-attached', 'runtime-derived']),
+  ownerId: z.string().optional(),
+  bootstrap: z.boolean().optional(),
+  preferredMinistries: z.array(z.string()).optional(),
+  preferredSpecialists: z.array(z.string()).optional()
+});
+
 export const ToolDefinitionSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -116,4 +128,12 @@ export const ToolDefinitionSchema = z.object({
   supportsStreamingDispatch: z.boolean(),
   permissionScope: ToolPermissionScopeSchema,
   inputSchema: z.record(z.string(), z.unknown())
+});
+
+export const ToolExecutionRequestSchema = z.object({
+  taskId: z.string(),
+  toolName: z.string(),
+  intent: z.string(),
+  input: z.record(z.string(), z.unknown()),
+  requestedBy: z.enum(['agent', 'user'])
 });

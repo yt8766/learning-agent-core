@@ -1,6 +1,11 @@
 import { createRequire } from 'node:module';
 
 import type { FactoryProvider } from '@nestjs/common';
+import type {
+  KnowledgeSdkVectorSearchInput,
+  KnowledgeSdkVectorStore,
+  KnowledgeSdkVectorUpsertInput
+} from '@agent/knowledge';
 
 import { KNOWLEDGE_SDK_RUNTIME } from '../knowledge-domain.tokens';
 import type { PostgresKnowledgeClient } from '../repositories/knowledge-postgres.repository';
@@ -56,11 +61,16 @@ export interface KnowledgeSdkRuntime {
   };
   embeddingProvider: {
     defaultModel: string;
-    embedText(input: { text: string }): Promise<{ embedding: number[] }>;
+    embedText(input: { text: string; metadata?: Record<string, unknown> }): Promise<{ embedding: number[] }>;
+    embedBatch(input: {
+      texts: string[];
+      metadata?: Record<string, unknown>;
+    }): Promise<{ embeddings: number[][]; model: string; dimensions?: number }>;
     providerId?: string;
   };
-  vectorStore: {
-    search(input: unknown): Promise<{ hits: Array<{ id: string; score: number }> }>;
+  vectorStore: Pick<KnowledgeSdkVectorStore, 'delete'> & {
+    search(input: KnowledgeSdkVectorSearchInput): ReturnType<KnowledgeSdkVectorStore['search']>;
+    upsert(input: KnowledgeSdkVectorUpsertInput): ReturnType<KnowledgeSdkVectorStore['upsert']>;
   };
 }
 

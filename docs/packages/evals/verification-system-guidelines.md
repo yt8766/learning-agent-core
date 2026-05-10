@@ -104,7 +104,6 @@
 
 - `packages/*/test`
 - `apps/backend/agent-server/test`
-- `apps/worker/test`
 - `apps/frontend/agent-chat/test`
 - `apps/frontend/agent-admin/test`
 
@@ -139,7 +138,7 @@
 - 结构化输出与 schema 校验默认优先 `zod`
 - 当前 Turbo 只安全接入了根级治理校验入口：`check:docs` 与 `check:architecture`
 - 根级 `typecheck`、`build` 与基于包图的 `test` 任务仍以根级脚本为主；虽然 agent foundation 已并入 `@agent/runtime` 并拆掉历史主循环，但 Turbo 主链收敛仍需继续按阶段方案推进
-- 根级 `start:dev` 不经由 `turbo start:dev` 走 package graph；当前根级入口先执行一次 `build:lib`，再通过 `turbo run dev:backend --filter=@agent/auth-server --filter=@agent/knowledge-server --filter=server` 启动 `auth-server`、`knowledge-server` 与 `agent-server`，避免开发启动被现有循环依赖阻断；仅需旧 chat/runtime/admin 后端时使用 `pnpm start:dev:agent`
+- 根级 `start:dev` 入口先执行一次 `build:lib`，再通过 `turbo run dev:backend --filter=server` 启动 unified `agent-server`。standalone `auth-server` 与 `knowledge-server` 已删除，不再作为验证或开发启动目标。
 - 当前已新增 Turbo-only 包级验证通道：
   - `turbo:typecheck`
   - `turbo:test:unit`
@@ -424,11 +423,12 @@ pnpm check
 - controller / service / DTO mapper 单测
 - 关键 API、runtime center、SSE、审批恢复链路集成测试
 
-### 6.11 `apps/worker`
+### 6.11 Backend Runtime Background Runner
 
-- 类型检查
-- 任务消费、重试、学习任务处理单测
-- background runner / queue 协同集成测试
+- 类型检查：
+  - `pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit`
+- background runner / queue 协同回归：
+  - `pnpm exec vitest run apps/backend/agent-server/test/runtime/helpers/runtime-background-runner.test.ts apps/backend/agent-server/test/runtime/services/runtime-bootstrap.service.spec.ts`
 
 ### 6.12 `apps/frontend/agent-chat`
 

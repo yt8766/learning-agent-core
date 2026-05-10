@@ -6,6 +6,33 @@ import { describe, expect, it, vi } from 'vitest';
 vi.setConfig({ testTimeout: 60_000 });
 
 describe('@agent/knowledge SDK entrypoints', () => {
+  it('declares package exports for documented SDK subpaths', () => {
+    const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8')) as {
+      exports: Record<string, unknown>;
+    };
+
+    expect(Object.keys(packageJson.exports)).toEqual(
+      expect.arrayContaining([
+        '.',
+        './core',
+        './client',
+        './browser',
+        './node',
+        './contracts',
+        './indexing',
+        './adapters',
+        './adapters/chroma',
+        './adapters/deepseek',
+        './adapters/glm',
+        './adapters/langchain',
+        './adapters/minimax',
+        './adapters/openai-compatible',
+        './adapters/opensearch',
+        './adapters/supabase'
+      ])
+    );
+  });
+
   it('exports stable browser and node entrypoints without vendor objects', async () => {
     const root = await import('../src');
     const browser = await import('../src/browser');

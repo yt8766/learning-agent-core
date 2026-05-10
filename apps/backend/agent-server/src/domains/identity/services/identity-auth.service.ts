@@ -181,7 +181,7 @@ export class IdentityAuthService {
         username: user.username,
         roles: user.roles,
         status: user.status,
-        aud: ['agent-admin', 'knowledge'],
+        aud: ['agent-admin', 'agent-gateway', 'knowledge'],
         exp: Math.floor(accessTokenExpiresAt.getTime() / 1000)
       }),
       accessTokenExpiresAt: accessTokenExpiresAt.toISOString(),

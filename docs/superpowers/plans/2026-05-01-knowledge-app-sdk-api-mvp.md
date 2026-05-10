@@ -2754,11 +2754,11 @@ Modify `packages/knowledge/package.json` `exports` to include:
 ```json
 "./core": {
   "import": {
-    "types": "./build/types/knowledge/src/core/index.d.ts",
+    "types": "./build/types/src/core/index.d.ts",
     "default": "./build/esm/core/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/core/index.d.ts",
+    "types": "./build/types/src/core/index.d.ts",
     "default": "./build/cjs/core/index.js"
   }
 }

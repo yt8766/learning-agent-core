@@ -17,6 +17,7 @@ import { searchLocalSkillSuggestions } from '../skills/runtime-skill-sources.ser
 import { RuntimeScheduleService } from '../schedules/runtime-schedule.service';
 import type { AppLoggerService } from '../../logger/app-logger.service';
 import { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade';
+import { createLegacyDataImportRunnerFromEnv } from '../legacy-data-import';
 import {
   applyProviderFactoryGovernanceOverrides,
   createProviderFactoryBackgroundRunnerContext,
@@ -119,6 +120,12 @@ export function createRuntimeBootstrapService(
     getSkillSourcesContext: () => createProviderFactorySkillSourcesContext(runtimeHost),
     syncInstalledSkillWorkers: async () => syncProviderFactoryInstalledSkillWorkers(runtimeHost),
     applyStoredGovernanceOverrides: async () => applyProviderFactoryGovernanceOverrides(runtimeHost),
+    runLegacyDataImportOnce: async () => {
+      const { runner } = await createLegacyDataImportRunnerFromEnv({
+        dataRoot: `${runtimeHost.settings.workspaceRoot}/data`
+      });
+      await runner?.runOnce();
+    },
     initializeMetricsSnapshots: async () => {
       await initializeProviderFactoryMetricsSnapshots(runtimeHost, operationalState, techBriefingService, 30);
     },

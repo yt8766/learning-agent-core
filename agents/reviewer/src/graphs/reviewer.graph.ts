@@ -1,7 +1,6 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 
-import type { ReviewRecord } from '@agent/core';
-import type { EvaluationResult } from '@agent/knowledge';
+import type { EvaluationResult, ReviewRecord } from '@agent/core';
 import type { ToolExecutionResult } from '@agent/runtime';
 
 export interface ReviewerGraphState {

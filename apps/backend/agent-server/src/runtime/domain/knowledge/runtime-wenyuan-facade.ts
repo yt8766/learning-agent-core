@@ -1,4 +1,5 @@
 import { loadSettings } from '@agent/config';
+import { dirname } from 'node:path';
 import { ChatCheckpointRecord, ChatSessionRecord, TaskRecord } from '@agent/core';
 import type {
   EvidenceRecord,
@@ -212,7 +213,7 @@ export class RuntimeWenyuanFacade {
 
     return {
       store: 'wenyuan' as const,
-      rootPath: `${this.ctx().settings.workspaceRoot}/data/runtime`,
+      rootPath: dirname(this.ctx().settings.tasksStateFilePath),
       memoryCount: memories.length,
       sessionCount: sessions.length,
       checkpointCount: checkpoints.length,

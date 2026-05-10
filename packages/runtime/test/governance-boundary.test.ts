@@ -5,23 +5,18 @@ import { ApprovalService as CanonicalApprovalService } from '../src/governance/a
 import { buildToolsCenter as canonicalBuildToolsCenter } from '../src/governance/runtime-governance';
 import { SandboxProviderRegistry as CanonicalSandboxProviderRegistry } from '../src/sandbox';
 import { ExecutionWatchdog as CanonicalExecutionWatchdog } from '../src/watchdog';
-import {
-  ApprovalService as ToolsApprovalService,
-  buildToolsCenter as toolsBuildToolsCenter,
-  ExecutionWatchdog as ToolsExecutionWatchdog,
-  SandboxProviderRegistry as ToolsSandboxProviderRegistry
-} from '@agent/tools';
+import * as toolsExports from '@agent/tools';
 
 describe('@agent/runtime governance boundary', () => {
-  it('owns governance, sandbox, and watchdog exports while tools remains a compat bridge', () => {
+  it('owns governance, sandbox, and watchdog exports without relying on tools compat bridges', () => {
     expect(ApprovalService).toBe(CanonicalApprovalService);
     expect(SandboxProviderRegistry).toBe(CanonicalSandboxProviderRegistry);
     expect(ExecutionWatchdog).toBe(CanonicalExecutionWatchdog);
     expect(buildToolsCenter).toBe(canonicalBuildToolsCenter);
 
-    expect(ToolsApprovalService).toBe(CanonicalApprovalService);
-    expect(ToolsSandboxProviderRegistry).toBe(CanonicalSandboxProviderRegistry);
-    expect(ToolsExecutionWatchdog).toBe(CanonicalExecutionWatchdog);
-    expect(toolsBuildToolsCenter).toBe(canonicalBuildToolsCenter);
+    expect(toolsExports).not.toHaveProperty('ApprovalService');
+    expect(toolsExports).not.toHaveProperty('SandboxProviderRegistry');
+    expect(toolsExports).not.toHaveProperty('ExecutionWatchdog');
+    expect(toolsExports).not.toHaveProperty('buildToolsCenter');
   });
 });

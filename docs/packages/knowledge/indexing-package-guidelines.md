@@ -17,7 +17,7 @@ load -> filter(optional) -> chunk -> metadata build -> writer fanout -> result c
 
 这里的 `indexing` 是 pipeline orchestration 层，不是 provider SDK 封装层，也不是 runtime 检索层。
 
-当前 `runKnowledgeIndexing()` 不直接持有 embedder，也不直接绑定真实 vector store。它把 chunk 转为 `KnowledgeVectorDocumentRecord` 后写入注入的 `KnowledgeVectorIndexWriter`；embedding 与向量索引持久化由 `@agent/memory` 的 vector boundary 负责。若调用方同时提供 `KnowledgeSourceIndexWriter` 和 `KnowledgeFulltextIndexWriter`，同一批文档会额外写入 `KnowledgeSource` 与 `KnowledgeChunk` 边界，用于关键词检索、Small-to-Big 上下文回补和 Runtime Center source 观测。
+当前 `runKnowledgeIndexing()` 不直接持有 embedder，也不直接绑定真实 vector store。`KnowledgeVectorDocumentRecord` 与 `KnowledgeVectorIndexWriter` contract 由 `@agent/knowledge` 定义；索引流水线把 chunk 转为 `KnowledgeVectorDocumentRecord` 后写入调用方注入的 `KnowledgeVectorIndexWriter.upsertKnowledge()`。Host package 决定 embedding 与向量索引持久化方式；仓库内部 `@agent/memory` 可以实现该 writer，但不是 knowledge SDK 的依赖，也不是该 contract 的主宿主。若调用方同时提供 `KnowledgeSourceIndexWriter` 和 `KnowledgeFulltextIndexWriter`，同一批文档会额外写入 `KnowledgeSource` 与 `KnowledgeChunk` 边界，用于关键词检索、Small-to-Big 上下文回补和 Runtime Center source 观测。本地 knowledge store 同样遵守注入边界：调用方负责加载 repo runtime config，并传入 SDK-local `LocalKnowledgeStoreSettings`、snapshot repository 或 embedding provider；`packages/knowledge` 内部不调用 `@agent/config` 的 `loadSettings()`。
 
 Runtime metadata filtering 与 Small-to-Big Expansion 已依赖 chunk metadata 的稳定语义。新增或调整索引 metadata 时，必须同步核对 `docs/packages/knowledge/indexing-contract-guidelines.md`：`docType`、`status`、`allowedRoles`、`parentId`、`prevChunkId`、`nextChunkId`、`sectionId`、`sectionTitle` 都必须保持 JSON-safe，不能把第三方对象、权限 SDK 类型或 vendor response 直接写入 metadata。
 
@@ -105,7 +105,7 @@ packages/knowledge/src/indexing/
 后续 AI 扩展时默认遵守：
 
 1. 新增真实文件系统 loader、飞书 loader 等来源 adapter 时，优先新增实现到 `packages/adapters`，这里只保留协议和 orchestration 接口。当前知识库暂不建设真实网页抓取 loader；`web-curated` 仅表示外部或人工已整理内容进入统一 ingestion 边界。
-2. 新增真实 embedding provider 时，优先新增 `@agent/memory` vector boundary 或 adapter 内部实现，不要让 embedding provider 类型穿透到 `runKnowledgeIndexing`。
+2. 新增真实 embedding provider 时，应通过 host adapter 或 writer implementation 接入，不要让 embedding provider 类型穿透到 `runKnowledgeIndexing()`，也不要把 `@agent/memory` 写成 contract 前置宿主。
 3. 新增 metadata builder、filter、retry、incremental strategy 时，优先新增独立实现点，不要持续堆叠 `if/else`。
 4. 如果 indexing 子域文件继续增长，优先补 `shared/` 或 `policies/`，不要把复杂逻辑堆回 `pipeline/run-knowledge-indexing.ts`。
 5. 如果未来出现稳定对外 DTO，再补 `schemas/`，并保持 schema-first。

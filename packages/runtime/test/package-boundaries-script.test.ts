@@ -94,13 +94,13 @@ describe('check-package-boundaries script', () => {
     );
     await writeWorkspaceFile(
       rootDir,
-      'apps/worker/src/example.ts',
+      'apps/backend/agent-server/test/example.test.ts',
       `import { listScaffoldTemplates } from '${templatesSubpathImport}';`
     );
 
     expect(findBoundaryViolations(rootDir)).toEqual([
       'packages/report-kit/test/example.test.ts imports subpath entry "@agent/templates/registries/scaffold-template-registry" where the package root entry should be used',
-      'apps/worker/src/example.ts imports package subpath "@agent/templates/registries/scaffold-template-registry" from app code'
+      'apps/backend/agent-server/test/example.test.ts imports package subpath "@agent/templates/registries/scaffold-template-registry" from app code'
     ]);
   });
 

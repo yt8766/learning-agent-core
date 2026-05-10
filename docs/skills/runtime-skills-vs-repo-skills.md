@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`packages/skill`、`.agents/skills/`
-最后核对：2026-04-26
+最后核对：2026-05-09
 
 ## 1. 这篇文档说明什么
 
@@ -83,7 +83,10 @@ packages/
 当前已经完成：
 
 - `packages/runtime` 与 backend 上层代码已切到 `@agent/skill`
-- 运行时数据默认目录已切到 `data/skills`
+- 运行时 skill 数据不再以 root `data/skills` 作为默认持久化目录；当前 runtime persistence
+  应通过显式 repository / storage facade 装配，local fallback 默认落到
+  `profile-storage/<profile>/...`，生成产物走 `artifacts/...`
+- root `data/skills` 仅可作为 legacy import 输入或人工显式覆盖路径，不得作为新 runtime code 的默认读写目标
 - 仓库级代理技能已迁入 `.agents/skills`，`workspace-skills` source 与 sandbox `find-skills` 均从该目录读取
 - 旧的兼容包与 alias 已删除，仓库只保留 `@agent/skill`
 

@@ -10,8 +10,7 @@
 
 ## 目录说明
 
-- `apps/backend/agent-server`：后端主服务，提供 `/api` 接口
-- `apps/worker`：异步执行、恢复与学习任务 worker
+- `apps/backend/agent-server`：后端主服务，提供 `/api` 接口；当前唯一官方后台消费入口，通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup
 - `apps/frontend/agent-chat`：OpenClaw 风格前线作战面，负责执行与操作
 - `apps/frontend/agent-admin`：六大中心后台指挥面，负责治理与运营
 - `.agents/skills/*`：仓库级代理技能目录，是 Codex 读取本仓库技能的正式入口
@@ -32,8 +31,8 @@
 - `packages/skill`：运行时技能注册与技能卡领域包；是 `@agent/skill` 的真实物理宿主
 - `packages/evals`：评估与复盘
 - `docs/archive/shared/*`：`packages/shared` 退场过程的历史台账与边界归档
-- `data/*`：仓库根级本地运行数据（与 `apps/`、`packages/` 同级）
-  - 运行时技能数据默认落在 `data/skill`
+- `profile-storage/*`：显式 profile 本地存储（与 `apps/`、`packages/` 同级），用于 memory、runtime state、skills、knowledge 等可替换 repository 的本地实现
+- `artifacts/*`：显式生成产物与运行时 artifact 存储；root `data/*` 仅保留为 legacy import 输入，不再作为默认 durable path
 - `test/*`：仓库级（workspace-level）专用测试宿主
   - `test/integration/`：跨包、跨宿主、跨链路的 integration 测试
   - `test/smoke/`：仓库级最小可运行闭环 smoke 测试
@@ -170,7 +169,7 @@
 - `Semantic Cache`
   - 当前先做精确 prompt 指纹缓存
   - 命中后直接复用文本结果
-  - 默认缓存文件落在仓库根级 `data/runtime/semantic-cache.json`
+  - 默认缓存文件落在 `profile-storage/<profile>/runtime/semantic-cache.json`
 
 约束：
 
@@ -302,7 +301,7 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 - 只改前端目录时：
   - 优先跑前端类型检查
   - 只跑前端构建
-- 改到后端、worker、packages 或根级工程配置时：
+- 改到后端、packages 或根级工程配置时：
   - 跑后端与共享包类型检查
   - 跑测试
   - 跑后端和共享库构建
@@ -408,7 +407,7 @@ main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，
 - `packages/*/src` 只保留 `.ts` 源码
 - 应用输出使用 `dist/`
 - 共享包输出使用 `build/cjs`、`build/esm`、`build/types`
-- 本地运行数据统一进入仓库根级 `data/`
+- 本地运行数据必须通过显式 repository / profile storage / artifact storage，不能把仓库根级 `data/*` 当默认运行存储
 - 规范以文档为主，配少量根级检查，不为每个子项目重复堆配置
 
 ## 最低检查

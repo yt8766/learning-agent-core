@@ -8,7 +8,7 @@ import {
   setConfiguredConnectorRecord,
   setConnectorEnabledState,
   setConnectorPolicyOverride
-} from '../src';
+} from '@agent/runtime';
 
 describe('connector governance state', () => {
   it('toggles disabled connector ids deterministically', () => {

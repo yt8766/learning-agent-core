@@ -25,8 +25,7 @@ const workspaceManifests = [
   'agents/supervisor/package.json',
   'apps/backend/agent-server/package.json',
   'apps/frontend/agent-admin/package.json',
-  'apps/frontend/agent-chat/package.json',
-  'apps/worker/package.json'
+  'apps/frontend/agent-chat/package.json'
 ];
 
 describe('turbo:typecheck manifest wiring', () => {
@@ -69,30 +68,13 @@ describe('turbo:typecheck manifest wiring', () => {
     );
   });
 
-  it('keeps standalone backend servers on package type boundaries for core contracts', async () => {
-    const backendTsconfigs = await Promise.all(
-      ['apps/backend/auth-server/tsconfig.json', 'apps/backend/knowledge-server/tsconfig.json'].map(
-        async configPath => {
-          const config = await readJson(configPath);
-
-          return {
-            configPath,
-            corePath: config.compilerOptions?.paths?.['@agent/core']
-          };
-        }
-      )
-    );
-
-    expect(backendTsconfigs).toEqual([
-      {
-        configPath: 'apps/backend/auth-server/tsconfig.json',
-        corePath: undefined
-      },
-      {
-        configPath: 'apps/backend/knowledge-server/tsconfig.json',
-        corePath: undefined
-      }
-    ]);
+  it('does not keep standalone backend server typecheck manifests after the unified hard cut', async () => {
+    await expect(access(path.join(repoRoot, 'apps/backend/auth-server/tsconfig.json'))).rejects.toMatchObject({
+      code: 'ENOENT'
+    });
+    await expect(access(path.join(repoRoot, 'apps/backend/knowledge-server/tsconfig.json'))).rejects.toMatchObject({
+      code: 'ENOENT'
+    });
   });
 });
 

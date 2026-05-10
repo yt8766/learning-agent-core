@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '@agent/runtime';
+import type { ToolDefinition } from '@agent/core';
 
 export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
   {

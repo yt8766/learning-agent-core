@@ -1,12 +1,11 @@
+import type { Chunk, Document } from '../../contracts/indexing/schemas';
+import type { KnowledgeVectorDocumentRecord } from '../../contracts/indexing/knowledge-vector-writer';
 import type {
-  Chunk,
-  Document,
   KnowledgeChunk,
   KnowledgeSource,
   KnowledgeSourceType,
   KnowledgeTrustClass
-} from '../../index';
-import type { KnowledgeVectorDocumentRecord } from '@agent/memory';
+} from '../../contracts/types/knowledge-retrieval.types';
 
 import {
   DEFAULT_KNOWLEDGE_INDEXING_BATCH_SIZE,
@@ -135,7 +134,7 @@ function toKnowledgeVectorDocumentRecord(chunk: Chunk): KnowledgeVectorDocumentR
     chunkId: chunk.id,
     uri: resolveField(chunk.metadata, 'uri') ?? documentId,
     title: resolveField(chunk.metadata, 'title') ?? documentId,
-    sourceType: resolveField(chunk.metadata, 'sourceType') ?? 'repo-docs',
+    sourceType: resolveSourceType(chunk.metadata, 'repo-docs'),
     content: chunk.content,
     searchable: true
   };

@@ -52,7 +52,7 @@ interface KnowledgeSseResponse {
   flushHeaders?: () => void;
 }
 
-@Controller(['knowledge', 'knowledge/v1'])
+@Controller('knowledge')
 export class KnowledgeApiController {
   constructor(
     private readonly knowledgeBaseService: KnowledgeBaseService,

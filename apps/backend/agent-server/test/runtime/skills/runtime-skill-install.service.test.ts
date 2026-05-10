@@ -252,8 +252,9 @@ describe('runtime-skill-install.service', () => {
 
   it('finalizes workspace draft manifests through the real artifact fetcher', async () => {
     const context = createContext(workspaceRoot);
-    context.skillArtifactFetcher = new SkillArtifactFetcher(workspaceRoot);
-    const draftsRoot = join(workspaceRoot, 'data', 'skills', 'drafts');
+    const skillsRoot = join(workspaceRoot, 'profile-storage', 'platform', 'skills');
+    context.skillArtifactFetcher = new SkillArtifactFetcher(workspaceRoot, { skillsRoot });
+    const draftsRoot = join(skillsRoot, 'drafts');
     await mkdir(draftsRoot, { recursive: true });
     await writeFile(
       join(draftsRoot, 'workspace-drafts.json'),

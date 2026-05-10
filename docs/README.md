@@ -15,6 +15,7 @@
 - [研发与工程规范](./conventions/README.md)
 - [应用文档](./apps/README.md)
 - [Packages 文档](./packages/README.md)
+- [SDK 文档](./sdk/README.md)
 - [智能体文档](./agents/README.md)
 - [代理技能文档](./skills/README.md)
 - [契约文档](./contracts/README.md)
@@ -62,6 +63,8 @@
   - 应用层文档，尽量镜像真实 `apps/` 目录。
 - `packages/`
   - 包级文档，必须镜像真实 `packages/` 目录。
+- `sdk/`
+  - 可被外部或跨宿主消费的 SDK 使用文档、接入手册和公共入口说明。
 - `agents/`
   - root 级 `agents/*` 文档。
 - `skills/`
@@ -92,11 +95,11 @@
 文档默认按真实宿主或用途归档：
 
 - `apps/backend/agent-server/*` -> `docs/apps/backend/agent-server/`
-- `apps/worker/*` -> `docs/apps/backend/worker/`
+- agent-server 内建 background runner -> `docs/apps/backend/agent-server/`
 - `apps/frontend/agent-chat/*` -> `docs/apps/frontend/agent-chat/`
 - `apps/frontend/agent-admin/*` -> `docs/apps/frontend/agent-admin/`
-- `apps/llm-gateway/*` -> `docs/apps/frontend/llm-gateway/`
 - `packages/<pkg>/*` -> `docs/packages/<pkg>/`
+- SDK 使用文档 / 接入手册 -> `docs/sdk/`
 - `agents/<agent>/*` -> `docs/agents/<agent>/`
 - `.agents/skills/*` -> `docs/skills/`
 - 跨模块契约 -> `docs/contracts/`

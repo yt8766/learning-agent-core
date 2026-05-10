@@ -1,10 +1,11 @@
 import { createDefaultPlatformRuntime, createDefaultPlatformRuntimeOptions } from '@agent/platform-runtime';
 import { ModelInvocationFacade } from '@agent/runtime';
-import { SkillArtifactFetcher } from '@agent/skill';
+import { join } from 'node:path';
 import type { LlmProviderOptions, ModelInvocationRequest, ProviderUsage } from '@agent/core';
 import type { KnowledgeSearchService, VectorSearchProvider } from '@agent/knowledge';
 
 import { RemoteSkillDiscoveryService } from '../skills/remote-skill-discovery.service';
+import { SkillArtifactFetcher } from '../skills/skill-artifact-fetcher';
 import { SkillSourceSyncService } from '../skills/skill-source-sync.service';
 import {
   createRuntimeKnowledgeProviderFactory,
@@ -170,10 +171,14 @@ export class RuntimeHost {
   readonly sessionCoordinator = this.runtime.sessionCoordinator;
   readonly skillSourceSyncService = new SkillSourceSyncService({
     workspaceRoot: this.settings.workspaceRoot,
-    profile: this.settings.profile
+    profile: this.settings.profile,
+    skillSourcesRoot: this.settings.skillSourcesRoot
   });
   readonly remoteSkillDiscoveryService = new RemoteSkillDiscoveryService();
-  readonly skillArtifactFetcher = new SkillArtifactFetcher(this.settings.workspaceRoot);
+  readonly skillArtifactFetcher = new SkillArtifactFetcher(this.settings.workspaceRoot, {
+    skillsRoot: this.settings.skillsRoot,
+    stagingRoot: join(this.settings.skillsRoot, 'staging')
+  });
 
   listWorkflowPresets() {
     return this.platformRuntime.metadata.listWorkflowPresets?.() ?? [];

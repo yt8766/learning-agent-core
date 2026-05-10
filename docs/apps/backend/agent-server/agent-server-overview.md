@@ -120,7 +120,7 @@ Chat response steps 通过 `chat-response-steps.adapter.ts` 投影为 `node_prog
 pnpm start:dev:agent
 ```
 
-本地同时联调 `auth-server`、`knowledge-server` 与 `agent-server` 时，优先使用根级 `pnpm start:dev`。
+本地联调统一后端时，优先使用根级 `pnpm start:dev`。standalone `auth-server` 与 `knowledge-server` 已删除，不再作为本地启动目标。
 
 生产构建：
 
@@ -133,7 +133,7 @@ pnpm --dir apps/backend/agent-server start:prod
 构建约束：
 
 - `apps/backend/agent-server/tsconfig.build.json` 必须覆盖开发态 `paths` 为 `{}`，让生产构建走 workspace 包解析，而不是继续命中 `packages/*/src`、`agents/*/src`
-- `apps/backend/auth-server` 与 `apps/backend/knowledge-server` 这类 standalone backend 也必须保持 `paths: {}`，通过 `@agent/core` 的 workspace 包 manifest 消费 `build/types`；不要在 app tsconfig 中把 `@agent/core` 指回 `packages/core/src`，否则 `rootDir: ./src` 的构建链路会把 core 源码拉进当前项目并触发 TS6059
+- 如后续新增 backend app，也必须保持 `paths: {}`，通过 `@agent/core` 的 workspace 包 manifest 消费 `build/types`；不要在 app tsconfig 中把 `@agent/core` 指回 `packages/core/src`，否则 `rootDir: ./src` 的构建链路会把 core 源码拉进当前项目并触发 TS6059
 - standalone backend 的 `start` / `start:dev` 必须和 agent-server 一样先执行根级 `build:lib`，确保被 workspace 包 manifest 引用的 `build/types`、`build/cjs` 与 `build/esm` 已存在
 - `apps/backend/agent-server/tsconfig.build.json` 的生产构建应关闭 `incremental`，避免 `tsconfig.build.tsbuildinfo` 仍在但 `dist/` 已被清理时出现“`tsc` 成功、却没有任何发射产物”的假成功
 - 上游 workspace 包与专项 agent 的声明产物必须固定到各自 `build/types`，运行时代码产物固定到 `build/cjs` 与 `build/esm`；`package.json` 中 `types` / `exports.types` 也必须同步指向这些真实存在的构建产物，不要把 `.d.ts/.js/.js.map` 回写到 `packages/*/src`、`agents/*/src`
@@ -183,10 +183,9 @@ pnpm --dir apps/backend/agent-server start:prod
 - `RUNTIME_BACKGROUND_POLL_MS`
 - `RUNTIME_BACKGROUND_RUNNER_ID_PREFIX`
 
-如果使用独立 worker 模式，建议：
+`apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup。
 
-- backend 设置 `RUNTIME_BACKGROUND_ENABLED=false`
-- `apps/worker` 保持默认启用
+旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录。
 
 ## 本地验证
 

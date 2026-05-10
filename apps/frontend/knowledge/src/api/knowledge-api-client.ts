@@ -99,7 +99,7 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
       params.set('knowledgeBaseId', input.knowledgeBaseId);
     }
     const query = params.toString();
-    return this.get<PageResult<KnowledgeDocument>>(`/documents${query ? `?${query}` : ''}`);
+    return this.get<PageResult<KnowledgeDocument>>(`/knowledge/documents${query ? `?${query}` : ''}`);
   }
 
   uploadKnowledgeFile(input: UploadKnowledgeFileRequest) {
@@ -149,15 +149,15 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   listRagModelProfiles() {
-    return this.get<{ items: RagModelProfileSummary[] }>('/rag/model-profiles');
+    return this.get<{ items: RagModelProfileSummary[] }>('/knowledge/rag/model-profiles');
   }
 
   listConversations(): Promise<PageResult<ChatConversation>> {
-    return this.get<PageResult<ChatConversation>>('/conversations');
+    return this.get<PageResult<ChatConversation>>('/knowledge/conversations');
   }
 
   listConversationMessages(conversationId: string): Promise<PageResult<ChatMessage>> {
-    return this.get<PageResult<ChatMessage>>(`/conversations/${encodeURIComponent(conversationId)}/messages`);
+    return this.get<PageResult<ChatMessage>>(`/knowledge/conversations/${encodeURIComponent(conversationId)}/messages`);
   }
 
   async createKnowledgeBase(input: CreateKnowledgeBaseRequest) {
@@ -169,7 +169,7 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   chat(input: ChatRequest) {
-    return this.post<ChatResponse>('/chat', input);
+    return this.post<ChatResponse>('/knowledge/chat', input);
   }
 
   async *streamChat(input: ChatRequest): AsyncIterable<KnowledgeRagStreamEvent> {
@@ -183,7 +183,7 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   createFeedback(messageId: string, input: CreateFeedbackRequest): Promise<ChatMessage> {
-    return this.post<ChatMessage>(`/messages/${messageId}/feedback`, input);
+    return this.post<ChatMessage>(`/knowledge/messages/${messageId}/feedback`, input);
   }
 
   listEvalDatasets() {

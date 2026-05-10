@@ -144,6 +144,8 @@ export function groupSdkRecords(
       id: record.id,
       text: record.content ?? '',
       embedding: record.embedding,
+      ordinal: getNonNegativeIntegerField(record.metadata, 'ordinal'),
+      tokenCount: getNonNegativeIntegerField(record.metadata, 'tokenCount'),
       metadata: record.metadata as JsonObject | undefined
     });
     groups.set(groupKey, group);
@@ -275,6 +277,15 @@ function getRecordField(source: unknown, field: string): JsonObject | undefined 
   const value = source[field];
 
   return isRecord(value) ? (value as JsonObject) : undefined;
+}
+
+function getNonNegativeIntegerField(source: unknown, field: string): number | undefined {
+  if (!isRecord(source)) {
+    return undefined;
+  }
+  const value = source[field];
+
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
 }
 
 function getDocumentIds(filters: unknown): string[] | undefined {

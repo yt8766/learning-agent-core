@@ -40,7 +40,6 @@ jobs:
               - 'apps/frontend/**'
             backend:
               - 'apps/backend/**'
-              - 'apps/worker/**'
             agents:
               - 'agents/**'
             packages:

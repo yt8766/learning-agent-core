@@ -13,9 +13,7 @@ const appRoots = [
   'apps/frontend/agent-admin/src',
   'apps/frontend/agent-admin/test',
   'apps/frontend/agent-chat/src',
-  'apps/frontend/agent-chat/test',
-  'apps/worker/src',
-  'apps/worker/test'
+  'apps/frontend/agent-chat/test'
 ];
 const publicEntryRoots = [
   'packages/core/test',
@@ -49,9 +47,7 @@ const publicEntryRoots = [
   'packages/skill/src',
   'packages/skill/test',
   'apps/backend/agent-server/src',
-  'apps/backend/agent-server/test',
-  'apps/worker/src',
-  'apps/worker/test'
+  'apps/backend/agent-server/test'
 ];
 
 const forbiddenSubpathPrefixes = [
@@ -76,7 +72,7 @@ const corePackageManifestPath = 'packages/core/package.json';
 const runtimePackageManifestPath = 'packages/runtime/package.json';
 const supervisorPackageManifestPath = 'agents/supervisor/package.json';
 const allowedCoreDependencies = new Set(['zod']);
-const appPackageManifestPaths = ['apps/worker/package.json'];
+const appPackageManifestPaths = [];
 const officialAgentPackageNames = new Set([
   '@agent/agents-supervisor',
   '@agent/agents-data-report',

@@ -366,7 +366,7 @@ describe('RuntimeCentersQueryService', () => {
     await expect(service.getBrowserReplay('session-1')).resolves.toEqual({
       events: [{ id: 'step-1' }]
     });
-    expect(readFile).toHaveBeenCalledWith('/workspace/data/browser-replays/session-1/replay.json', 'utf8');
+    expect(readFile).toHaveBeenCalledWith('/workspace/artifacts/runtime/browser-replays/session-1/replay.json', 'utf8');
 
     vi.mocked(readFile).mockRejectedValueOnce(new Error('missing'));
     await expect(service.getBrowserReplay('missing-session')).rejects.toBeInstanceOf(NotFoundException);

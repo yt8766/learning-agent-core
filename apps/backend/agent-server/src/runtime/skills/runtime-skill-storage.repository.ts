@@ -64,7 +64,7 @@ export class RuntimeSkillInstallRepository implements SkillInstallRepository {
 }
 
 export class RuntimeSkillSourceRemoteCacheRepository implements SkillSourceRemoteCacheRepository {
-  constructor(private readonly workspaceRoot: string) {}
+  constructor(private readonly remoteSourcesRoot: string) {}
 
   async write(sourceId: string, payload: SkillSourceRemoteCachePayload): Promise<SkillSourceRemoteCacheWriteResult> {
     const cacheFilePath = this.resolveCacheFilePath(sourceId);
@@ -82,12 +82,12 @@ export class RuntimeSkillSourceRemoteCacheRepository implements SkillSourceRemot
   }
 
   private resolveCacheFilePath(sourceId: string): string {
-    return resolve(this.workspaceRoot, 'data', 'skills', 'remote-sources', sourceId, 'index.json');
+    return resolve(this.remoteSourcesRoot, sourceId, 'index.json');
   }
 }
 
 export class RuntimeSkillArtifactStorageRepository implements SkillArtifactStorageRepository {
-  constructor(private readonly workspaceRoot: string) {}
+  constructor(private readonly stagingRoot: string) {}
 
   async prepareStaging(receiptId: string): Promise<string> {
     const stagingDir = this.resolveStagingDir(receiptId);
@@ -134,12 +134,12 @@ export class RuntimeSkillArtifactStorageRepository implements SkillArtifactStora
   }
 
   private resolveStagingDir(receiptId: string): string {
-    return resolve(this.workspaceRoot, 'data', 'skills', 'staging', receiptId);
+    return resolve(this.stagingRoot, receiptId);
   }
 }
 
-export function createRuntimeSkillDraftRepository(workspaceRoot: string): SkillDraftRepository {
+export function createRuntimeSkillDraftRepository(skillsRoot: string): SkillDraftRepository {
   return new FileSkillDraftRepository({
-    filePath: resolve(workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json')
+    filePath: resolve(skillsRoot, 'drafts', 'workspace-drafts.json')
   });
 }

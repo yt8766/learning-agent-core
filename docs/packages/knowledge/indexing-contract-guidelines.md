@@ -122,8 +122,7 @@ interface VectorStore {
 当前 `packages/knowledge/src/indexing/pipeline/run-knowledge-indexing.ts` 使用的 writer 边界更具体：
 
 ```ts
-import type { KnowledgeChunk, KnowledgeSource } from '@agent/knowledge';
-import type { KnowledgeVectorIndexWriter } from '@agent/memory';
+import type { KnowledgeChunk, KnowledgeSource, KnowledgeVectorIndexWriter } from '@agent/knowledge';
 
 interface KnowledgeSourceIndexWriter {
   upsertKnowledgeSource(source: KnowledgeSource): Promise<void>;
@@ -143,7 +142,7 @@ interface KnowledgeIndexingRunOptions {
 
 语义约束：
 
-- `vectorIndex` 必填，负责接收 `KnowledgeVectorDocumentRecord`；embedding 与 vector persistence 在 `@agent/memory` 边界内完成。
+- `vectorIndex` 必填，负责接收 `KnowledgeVectorDocumentRecord`；该 writer contract 由 `@agent/knowledge` 定义，并通过 `KnowledgeVectorDocumentRecordSchema` 做 schema-first 运行时校验。`sourceType` 对齐正式 `KnowledgeSourceTypeSchema`。embedding 与 vector persistence 由调用方注入的 host implementation 负责。仓库内部 `@agent/memory` 可以实现该 writer，但不是 contract 主宿主，也不是 knowledge SDK 依赖。
 - `sourceIndex` 可选，负责接收 `KnowledgeSource`；生产 user upload、catalog sync、web curated、connector content loader 接入时应优先提供它，避免 chunk 可检索但来源不可观测。
 - `fulltextIndex` 可选，负责接收 `KnowledgeChunk`；通常由 `KnowledgeChunkRepository` 或同等 fulltext/chunk index writer 实现。
 - 同一个 indexed chunk 必须使用同一份 source/document/chunk metadata fanout 到 vector 与 fulltext 两侧，避免检索结果和文本回补引用不同 chunk。
@@ -154,10 +153,11 @@ interface KnowledgeIndexingRunOptions {
 每个数据模型都有对应的 Zod schema，用于运行时验证：
 
 ```ts
-import { DocumentSchema, ChunkSchema, VectorSchema } from '@agent/knowledge';
+import { DocumentSchema, ChunkSchema, KnowledgeVectorDocumentRecordSchema, VectorSchema } from '@agent/knowledge';
 
 const doc = DocumentSchema.parse(rawData); // 验证 Document
 const chunk = ChunkSchema.parse(rawChunk); // 验证 Chunk
+const record = KnowledgeVectorDocumentRecordSchema.parse(rawRecord); // 验证 KnowledgeVectorDocumentRecord
 const vector = VectorSchema.parse(rawVector); // 验证 Vector
 ```
 

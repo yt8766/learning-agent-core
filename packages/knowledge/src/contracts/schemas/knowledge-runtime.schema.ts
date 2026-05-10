@@ -1,35 +1,6 @@
 import { z } from 'zod';
 
-import {
-  BudgetInterruptStateSchema,
-  BudgetStateSchema,
-  EvaluationResultSchema,
-  LearningConflictRecordSchema,
-  LearningConflictScanResultSchema,
-  LearningConflictScanSuggestionSchema,
-  LearningEvaluationBudgetEfficiencySchema,
-  LearningEvaluationRecordSchema,
-  LearningEvaluationSourceSummarySchema,
-  LearningEvaluationTimeoutStatsSchema,
-  SkillGovernanceRecommendationSchema
-} from '@agent/core';
-
 import { KnowledgeChunkMetadataSchema } from './knowledge-retrieval.schema';
-
-/** Re-export learning contracts from {@link @agent/core} for callers that historically imported `@agent/knowledge`. */
-export {
-  BudgetInterruptStateSchema,
-  BudgetStateSchema,
-  EvaluationResultSchema,
-  LearningConflictRecordSchema,
-  LearningConflictScanResultSchema,
-  LearningConflictScanSuggestionSchema,
-  LearningEvaluationBudgetEfficiencySchema,
-  LearningEvaluationRecordSchema,
-  LearningEvaluationSourceSummarySchema,
-  LearningEvaluationTimeoutStatsSchema,
-  SkillGovernanceRecommendationSchema
-};
 
 const KnowledgeStoreSchema = z.enum(['wenyuan', 'cangjing']);
 const KnowledgeSourceTypeSchema = z.enum([

@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 
-import { loadSettings } from '@agent/config';
 import type {
   KnowledgeChunkRecord,
   KnowledgeEmbeddingRecord,
@@ -11,8 +10,32 @@ import type {
   KnowledgeStoreRecord
 } from '../index';
 
-type RuntimeSettings = ReturnType<typeof loadSettings>;
-export type KnowledgeStorageSettings = Pick<RuntimeSettings, 'knowledgeRoot'>;
+export interface LocalKnowledgeEmbeddingSettings {
+  provider: string;
+  model: string;
+  apiKey?: string;
+}
+
+export interface LocalKnowledgeStoreSettings {
+  workspaceRoot: string;
+  knowledgeRoot: string;
+  tasksStateFilePath: string;
+  embeddings: LocalKnowledgeEmbeddingSettings;
+  mcp?: {
+    bigmodelApiKey?: string;
+  };
+  zhipuApiKey?: string;
+}
+
+export interface LocalKnowledgeEmbeddingProvider {
+  embedQuery(content: string): Promise<readonly number[]>;
+}
+
+export interface LocalKnowledgeEmbeddingOptions {
+  embeddingProvider?: LocalKnowledgeEmbeddingProvider;
+}
+
+export type KnowledgeStorageSettings = Pick<LocalKnowledgeStoreSettings, 'knowledgeRoot'>;
 
 export type PersistedKnowledgeSnapshot = {
   stores: KnowledgeStoreRecord[];
@@ -111,20 +134,22 @@ export function chunkDocumentContent(content: string) {
 }
 
 export async function embedChunk(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   chunk: KnowledgeChunkRecord,
   receiptId: string,
-  version: string
+  version: string,
+  options: LocalKnowledgeEmbeddingOptions = {}
 ): Promise<KnowledgeEmbeddingRecord> {
   const now = new Date().toISOString();
-  if (!resolveLocalEmbeddingApiKey(settings)) {
+  if (!options.embeddingProvider && !resolveLocalEmbeddingApiKey(settings)) {
     return failedEmbedding(settings, chunk, receiptId, version, now, 'missing_embedding_api_key');
   }
+  if (!options.embeddingProvider) {
+    return failedEmbedding(settings, chunk, receiptId, version, now, 'embedding_provider_not_configured');
+  }
 
-  // Keep adapter loading lazy so @agent/knowledge root exports do not create a package init cycle.
-  const { createRuntimeEmbeddingProvider } = await import('@agent/adapters');
   try {
-    const vector = await createRuntimeEmbeddingProvider(settings).embedQuery(chunk.content);
+    const vector = await options.embeddingProvider.embedQuery(chunk.content);
     if (!vector?.length) throw new Error('empty_embedding');
     return {
       id: `embedding_${hashText(chunk.id)}`,
@@ -152,7 +177,7 @@ export async function embedChunk(
   }
 }
 
-function resolveLocalEmbeddingApiKey(settings: RuntimeSettings) {
+function resolveLocalEmbeddingApiKey(settings: LocalKnowledgeStoreSettings) {
   return settings.embeddings.apiKey || settings.mcp?.bigmodelApiKey || settings.zhipuApiKey || undefined;
 }
 
@@ -180,7 +205,7 @@ async function listFiles(root: string, predicate: (path: string) => boolean): Pr
 }
 
 function failedEmbedding(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   chunk: KnowledgeChunkRecord,
   receiptId: string,
   version: string,

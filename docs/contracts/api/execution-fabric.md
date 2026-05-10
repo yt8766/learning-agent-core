@@ -17,7 +17,7 @@ Execution Fabric 用于把“可执行能力”从单一聊天流程中拆出，
 
 - 让 `agent-chat` 能展示一次执行请求的策略判定、排队、运行和终态。
 - 让 `agent-admin` 能治理执行节点、能力声明、策略判定与健康检查结果。
-- 让后端、runtime 与 worker 在同一组 canonical schema 上交换执行投影。
+- 让后端、runtime 与 agent-server 内建 background runner 在同一组 canonical schema 上交换执行投影。
 - 为后续真实执行节点管理、工具执行器迁移与 replay 留出兼容扩展点。
 
 本文档不重复定义字段，字段兼容性以 `packages/core` schema 和 parse tests 为准。
@@ -28,7 +28,6 @@ Execution Fabric 用于把“可执行能力”从单一聊天流程中拆出，
 - `apps/frontend/agent-admin`
 - `apps/backend/agent-server`
 - `packages/runtime`
-- `apps/worker`
 
 ## Canonical Schemas
 

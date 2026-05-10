@@ -1,10 +1,18 @@
-import type { EvidenceRecord } from '@agent/memory';
+export interface KnowledgeEvidenceRecord {
+  sourceType: string;
+  sourceUrl?: string;
+  trustClass: string;
+  summary: string;
+}
 
 /**
- * 合并两组 EvidenceRecord，按 sourceType:sourceUrl|summary 去重。
+ * 合并两组 knowledge evidence record，按 sourceType:sourceUrl|summary 去重。
  * 纯工具函数，不依赖任何运行时状态。
  */
-export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceRecord[]): EvidenceRecord[] {
+export function mergeEvidence<T extends KnowledgeEvidenceRecord>(
+  existing: ReadonlyArray<T>,
+  incoming: ReadonlyArray<T>
+): T[] {
   const merged = [...existing];
   for (const item of incoming) {
     const key = `${item.sourceType}:${item.sourceUrl ?? item.summary}`;
@@ -16,9 +24,9 @@ export function mergeEvidence(existing: EvidenceRecord[], incoming: EvidenceReco
 }
 
 /**
- * 根据 URL hostname 推断 EvidenceRecord 的可信级别。
+ * 根据 URL hostname 推断 evidence record 的可信级别。
  */
-export function inferTrustClass(sourceUrl: string): EvidenceRecord['trustClass'] {
+export function inferTrustClass(sourceUrl: string): KnowledgeEvidenceRecord['trustClass'] {
   try {
     const host = new URL(sourceUrl).hostname.toLowerCase();
     if (

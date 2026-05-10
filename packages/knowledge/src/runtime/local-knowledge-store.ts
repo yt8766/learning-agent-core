@@ -1,6 +1,5 @@
-import { join } from 'node:path';
+import { dirname } from 'node:path';
 
-import { loadSettings } from '@agent/config';
 import type {
   KnowledgeChunkRecord,
   KnowledgeEmbeddingRecord,
@@ -15,6 +14,10 @@ import {
   ensureKnowledgeDirectories,
   estimateTokenCount,
   hashText,
+  type LocalKnowledgeEmbeddingOptions,
+  type LocalKnowledgeEmbeddingProvider,
+  type LocalKnowledgeEmbeddingSettings,
+  type LocalKnowledgeStoreSettings,
   listKnowledgeCandidates,
   type PersistedKnowledgeSnapshot,
   readKnowledgeSnapshot,
@@ -23,9 +26,13 @@ import {
   writeKnowledgeSnapshot
 } from './local-knowledge-store.helpers';
 
-export { KNOWLEDGE_RELATIVE_PATHS, type PersistedKnowledgeSnapshot } from './local-knowledge-store.helpers';
-
-type RuntimeSettings = ReturnType<typeof loadSettings>;
+export {
+  KNOWLEDGE_RELATIVE_PATHS,
+  type LocalKnowledgeEmbeddingProvider,
+  type LocalKnowledgeEmbeddingSettings,
+  type LocalKnowledgeStoreSettings,
+  type PersistedKnowledgeSnapshot
+} from './local-knowledge-store.helpers';
 
 type LocalKnowledgeCandidate = Awaited<ReturnType<typeof listKnowledgeCandidates>>[number];
 
@@ -42,7 +49,8 @@ export interface LocalKnowledgeSnapshotRepository {
 export interface LocalKnowledgeStoreOptions {
   repository?: LocalKnowledgeSnapshotRepository;
   runtimePaths?: LocalKnowledgeRuntimePaths;
-  sourceProvider?: (settings: RuntimeSettings) => Promise<LocalKnowledgeCandidate[]>;
+  sourceProvider?: (settings: LocalKnowledgeStoreSettings) => Promise<LocalKnowledgeCandidate[]>;
+  embeddingProvider?: LocalKnowledgeEmbeddingOptions['embeddingProvider'];
 }
 
 export interface KnowledgeOverviewRecord {
@@ -56,8 +64,8 @@ export interface KnowledgeOverviewRecord {
 }
 
 function buildDefaultStores(
-  settings: RuntimeSettings,
-  paths = buildLegacyRuntimePaths(settings)
+  settings: LocalKnowledgeStoreSettings,
+  paths = buildDefaultRuntimePaths(settings)
 ): KnowledgeStoreRecord[] {
   return [
     {
@@ -82,7 +90,7 @@ function buildDefaultStores(
 }
 
 export async function ingestLocalKnowledge(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   options: LocalKnowledgeStoreOptions = {}
 ): Promise<KnowledgeOverviewRecord> {
   const repository = createKnowledgeSnapshotRepository(settings, options);
@@ -125,7 +133,9 @@ export async function ingestLocalKnowledge(
 
     let embeddedChunkCount = 0;
     for (const chunk of nextChunks) {
-      const embedding = await embedChunk(settings, chunk, receiptId, version);
+      const embedding = await embedChunk(settings, chunk, receiptId, version, {
+        embeddingProvider: options.embeddingProvider
+      });
       if (embedding.status === 'ready') {
         embeddedChunkCount += 1;
         embeddedSuccessByDocument.add(chunk.documentId);
@@ -216,7 +226,7 @@ function isMissingFileError(error: unknown) {
 }
 
 export async function readKnowledgeOverview(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   options: LocalKnowledgeStoreOptions = {}
 ): Promise<KnowledgeOverviewRecord> {
   const snapshot = await createKnowledgeSnapshotRepository(settings, options).read();
@@ -236,15 +246,18 @@ export async function readKnowledgeOverview(
   };
 }
 
-export async function listKnowledgeArtifacts(settings: RuntimeSettings, options: LocalKnowledgeStoreOptions = {}) {
+export async function listKnowledgeArtifacts(
+  settings: LocalKnowledgeStoreSettings,
+  options: LocalKnowledgeStoreOptions = {}
+) {
   return createKnowledgeSnapshotRepository(settings, options).read();
 }
 
 export function buildKnowledgeDescriptor(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   options: Pick<LocalKnowledgeStoreOptions, 'runtimePaths'> = {}
 ) {
-  const paths = options.runtimePaths ?? buildLegacyRuntimePaths(settings);
+  const paths = options.runtimePaths ?? buildDefaultRuntimePaths(settings);
   return {
     wenyuanRoot: paths.wenyuanRoot,
     cangjingRoot: paths.cangjingRoot,
@@ -256,15 +269,15 @@ export function buildKnowledgeDescriptor(
   };
 }
 
-function buildLegacyRuntimePaths(settings: RuntimeSettings): LocalKnowledgeRuntimePaths {
+function buildDefaultRuntimePaths(settings: LocalKnowledgeStoreSettings): LocalKnowledgeRuntimePaths {
   return {
-    wenyuanRoot: join(settings.workspaceRoot, 'data', 'runtime'),
+    wenyuanRoot: dirname(settings.tasksStateFilePath),
     cangjingRoot: settings.knowledgeRoot
   };
 }
 
 function createKnowledgeSnapshotRepository(
-  settings: RuntimeSettings,
+  settings: LocalKnowledgeStoreSettings,
   options: Pick<LocalKnowledgeStoreOptions, 'repository'>
 ): LocalKnowledgeSnapshotRepository {
   if (options.repository) return options.repository;
@@ -272,16 +285,14 @@ function createKnowledgeSnapshotRepository(
 }
 
 function createLegacyFilesystemKnowledgeSnapshotRepository(
-  settings: RuntimeSettings
+  settings: LocalKnowledgeStoreSettings
 ): LocalKnowledgeSnapshotRepository {
   return {
     async read() {
-      // Transitional legacy fallback for existing Runtime Center callers still backed by root data/knowledge.
       await ensureKnowledgeDirectories(settings);
       return readKnowledgeSnapshot(settings);
     },
     async write(snapshot) {
-      // Transitional legacy fallback for existing Runtime Center callers still backed by root data/knowledge.
       await ensureKnowledgeDirectories(settings);
       await writeKnowledgeSnapshot(settings, snapshot);
     }

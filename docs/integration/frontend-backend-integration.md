@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：integration
-适用范围：`apps/backend/agent-server`、`apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-02
+适用范围：`apps/backend/agent-server`、`apps/frontend/agent-chat`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`、`apps/frontend/agent-gateway`
+最后核对：2026-05-09
 
 本文只说明前后端如何协作调用。API 契约主入口是 [docs/contracts/api/README.md](/docs/contracts/api/README.md)。
 
@@ -47,10 +47,11 @@
 
 ## 前端请求层
 
-当前两个前端的常规 HTTP 请求层统一到 `axios + @tanstack/react-query`。
+当前常规前端 HTTP 请求层统一到 `axios + @tanstack/react-query`。
 
 - `agent-chat`：常规请求走 `src/api/*`；聊天流仍使用浏览器 `EventSource`。
 - `agent-admin`：控制台和各 center 读取默认经由 react-query 调度。
+- `agent-gateway`：Identity 与 Agent Gateway Management API 请求走 `axios`，工作区数据读取由 react-query 调度，页面切换由 `react-router-dom` 路由驱动。
 - SSE、浏览器原生事件源和其他长连接链路不由 react-query 替代。
 
 ## Chat 链路
@@ -110,37 +111,35 @@
 - Run 详情读 Run Observatory detail。
 - Console diagnostics 只做观测展示，不驱动业务状态。
 
-## Auth / Knowledge Service Split
+## Auth / Knowledge Unified Backend
 
-`agent-admin` 和 `apps/frontend/knowledge` 第一阶段直接调用 `auth-server` 完成登录。`apps/frontend/knowledge` 的知识库业务请求直接调用 `knowledge-server`，并携带 `auth-server` 签发的 Access Token。
+standalone `apps/backend/auth-server` 与 `apps/backend/knowledge-server` 已删除。`agent-admin` 与 `apps/frontend/knowledge` 当前都通过 unified `apps/backend/agent-server` 调用身份与知识库 API。
 
 ```text
-agent-admin login -> auth-server /api/auth/login
-agent-admin users -> auth-server /api/auth/users
-knowledge login -> auth-server /api/auth/login
-knowledge bases -> knowledge-server /api/knowledge/bases
+agent-admin identity -> agent-server /api/identity
+agent-gateway identity -> agent-server /api/identity
+knowledge identity -> agent-server /api/identity
+knowledge bases -> agent-server /api/knowledge/bases
 ```
 
 边界约定：
 
-- `apps/backend/auth-server` 是统一登录、refresh、logout、当前用户和用户管理的 canonical 服务。
-- `apps/backend/knowledge-server` 是 `apps/frontend/knowledge` 的 canonical knowledge business API 服务。
-- `apps/backend/agent-server/src/knowledge` 只保留 legacy/internal runtime path；前端不要新增到 `/api/knowledge/v1` 的业务调用。
-- 知识库权限由 `knowledge-server` 自己的 membership 治理，不从 auth 全局角色直接推导。
+- `apps/backend/agent-server` 是统一身份与 knowledge business API 的 canonical backend。
+- Identity API 默认入口是 `http://127.0.0.1:3000/api/identity`。
+- Knowledge API 默认入口是 `http://127.0.0.1:3000/api/knowledge`。
+- 知识库权限由 agent-server knowledge domain 的 membership 治理，不从全局角色直接推导。
 
 默认本地端口：
 
 ```text
-auth-server      http://127.0.0.1:3010/api
-knowledge-server http://127.0.0.1:3020/api
-agent-server     http://127.0.0.1:3000/api
+agent-server http://127.0.0.1:3000/api
 ```
 
 后端服务 `.env` 加载：
 
-- `apps/backend/auth-server`、`apps/backend/knowledge-server`、`apps/backend/agent-server` 都通过 `@nestjs/config` 加载各自服务目录下的 `.env`。
-- `auth-server` 的登录校验使用 `passport-local`，Access Token 校验使用 `passport-jwt`，密码哈希使用 `bcrypt`。
-- `auth-server` 与 `knowledge-server` 的 `AUTH_SERVER_JWT_SECRET` 和 `AUTH_SERVER_JWT_ISSUER` 必须一致。
+- `apps/backend/agent-server` 通过 `@nestjs/config` 加载服务目录下的 `.env`。
+- identity 与 knowledge API 都由 unified `agent-server` 暴露；不要再按 standalone `auth-server` / `knowledge-server` 配置联调。
+- Access Token 校验、用户身份和知识库 membership 都在 agent-server 内完成边界装配。
 
 ## 命名与兼容
 
@@ -151,8 +150,8 @@ agent-server     http://127.0.0.1:3000/api
 
 ## 联调建议
 
-1. 启动三个后端：`pnpm start:dev`
-2. 只需要 chat/runtime/admin 旧中心时，可改用 `pnpm start:dev:agent`。
+1. 启动 unified 后端：`pnpm start:dev`。
+2. 只需要 agent-server 时，也可改用 `pnpm start:dev:agent`。
 3. 启动目标前端。
 4. 先用 [docs/contracts/api](/docs/contracts/api/README.md) 核对路径、参数和响应。
 5. 再按本文检查调用顺序、SSE 兜底和 center 粒度。

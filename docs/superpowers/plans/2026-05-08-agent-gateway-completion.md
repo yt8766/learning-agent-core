@@ -1,6 +1,6 @@
 # Agent Gateway Completion Implementation Plan
 
-状态：draft
+状态：completed
 文档类型：plan
 适用范围：`apps/frontend/agent-gateway`、`apps/backend/agent-server/src/domains/agent-gateway`、`packages/core/src/contracts/agent-gateway`
 最后核对：2026-05-08
@@ -33,13 +33,7 @@ Not completed yet:
 - Provider / credential / quota / config data is still in-memory static demo data.
 - Frontend navigation tabs are not real views; providers, credential files, quotas, pipeline, logs, probes, token handling are not feature-complete screens.
 - Write operations are missing for provider config, credential records, quota policy, and runtime config.
-- OAuth / auth-file flows are not implemented.
-- Real relay forwarding is missing; `/agent-gateway/preprocess` and `/agent-gateway/accounting` are deterministic helpers, not an end-to-end upstream proxy.
-- Request logs and usage accounting are not persisted.
-- Secrets are not managed through a repository/vault boundary.
-- Backend has no provider adapter interface or routing strategy implementation.
-- End-to-end verification for frontend plus backend gateway flow is missing.
-- Docs still describe true relay, OAuth, writes, and provider persistence as future work.
+- Production vendor SDK relay forwarding remains future work; current `relay` is a deterministic mock-provider smoke path behind the project-owned provider adapter.
 
 ---
 
@@ -121,7 +115,7 @@ Not completed yet:
 - Modify: `packages/core/src/contracts/agent-gateway/agent-gateway.types.ts`
 - Test: `packages/core/test/agent-gateway/agent-gateway-auth-observability.schemas.test.ts`
 
-- [ ] **Step 1: Add failing schema tests**
+- [x] **Step 1: Add failing schema tests**
 
 Add these tests to `packages/core/test/agent-gateway/agent-gateway-auth-observability.schemas.test.ts`:
 
@@ -187,7 +181,7 @@ it('parses relay request and response contracts without vendor payload leakage',
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -197,7 +191,7 @@ pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway/
 
 Expected: FAIL because `GatewayRelayRequestSchema`, `GatewayRelayResponseSchema`, `GatewayUpdateConfigRequestSchema`, and `GatewayUpsertProviderRequestSchema` are not exported yet.
 
-- [ ] **Step 3: Add schema definitions**
+- [x] **Step 3: Add schema definitions**
 
 Add to `packages/core/src/contracts/agent-gateway/agent-gateway.schemas.ts`:
 
@@ -255,7 +249,7 @@ export const GatewayRelayResponseSchema = z.object({
 });
 ```
 
-- [ ] **Step 4: Export inferred types**
+- [x] **Step 4: Export inferred types**
 
 Add to `packages/core/src/contracts/agent-gateway/agent-gateway.types.ts`:
 
@@ -274,7 +268,7 @@ export type GatewayRelayResponse = z.infer<typeof GatewayRelayResponseSchema>;
 
 Also update the import list in that file to include the new schemas.
 
-- [ ] **Step 5: Run contract test**
+- [x] **Step 5: Run contract test**
 
 Run:
 
@@ -296,7 +290,7 @@ Expected: PASS.
 - Modify: `apps/backend/agent-server/src/domains/agent-gateway/agent-gateway.module.ts`
 - Test: `apps/backend/agent-server/test/agent-gateway/agent-gateway.controller.spec.ts`
 
-- [ ] **Step 1: Add failing repository behavior test**
+- [x] **Step 1: Add failing repository behavior test**
 
 Extend `apps/backend/agent-server/test/agent-gateway/agent-gateway.controller.spec.ts` with a test that updates config and expects a later snapshot to reflect it:
 
@@ -318,7 +312,7 @@ it('persists gateway config updates through the repository boundary', async () =
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -328,7 +322,7 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/ag
 
 Expected: FAIL with missing `PATCH /agent-gateway/config`.
 
-- [ ] **Step 3: Define repository interface**
+- [x] **Step 3: Define repository interface**
 
 Create `apps/backend/agent-server/src/domains/agent-gateway/repositories/agent-gateway.repository.ts`:
 
@@ -363,11 +357,11 @@ export interface AgentGatewayRepository {
 }
 ```
 
-- [ ] **Step 4: Implement memory repository**
+- [x] **Step 4: Implement memory repository**
 
 Create `apps/backend/agent-server/src/domains/agent-gateway/repositories/memory-agent-gateway.repository.ts` by moving the current static arrays out of `AgentGatewayService`. Preserve the existing demo values so existing tests keep passing.
 
-- [ ] **Step 5: Update service and module wiring**
+- [x] **Step 5: Update service and module wiring**
 
 Modify `AgentGatewayService` to inject `AGENT_GATEWAY_REPOSITORY` and return repository data. Modify `AgentGatewayModule`:
 
@@ -378,7 +372,7 @@ Modify `AgentGatewayService` to inject `AGENT_GATEWAY_REPOSITORY` and return rep
 }
 ```
 
-- [ ] **Step 6: Add config endpoint**
+- [x] **Step 6: Add config endpoint**
 
 Add to `AgentGatewayController`:
 
@@ -391,7 +385,7 @@ async updateConfig(@Body() body: unknown): Promise<GatewayConfig> {
 }
 ```
 
-- [ ] **Step 7: Run backend controller test**
+- [x] **Step 7: Run backend controller test**
 
 Run:
 
@@ -416,7 +410,7 @@ Expected: PASS.
 - Test: `apps/backend/agent-server/test/agent-gateway/agent-gateway-router.spec.ts`
 - Test: `apps/backend/agent-server/test/agent-gateway/agent-gateway-relay.service.spec.ts`
 
-- [ ] **Step 1: Add failing router test**
+- [x] **Step 1: Add failing router test**
 
 Create `apps/backend/agent-server/test/agent-gateway/agent-gateway-router.spec.ts`:
 
@@ -464,7 +458,7 @@ describe('agent gateway router', () => {
 });
 ```
 
-- [ ] **Step 2: Run router test to verify it fails**
+- [x] **Step 2: Run router test to verify it fails**
 
 Run:
 
@@ -474,7 +468,7 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/ag
 
 Expected: FAIL because router file does not exist.
 
-- [ ] **Step 3: Implement router**
+- [x] **Step 3: Implement router**
 
 Create `apps/backend/agent-server/src/domains/agent-gateway/runtime/agent-gateway-router.ts`:
 
@@ -495,7 +489,7 @@ export function selectGatewayProvider(
 }
 ```
 
-- [ ] **Step 4: Add failing relay test**
+- [x] **Step 4: Add failing relay test**
 
 Create `apps/backend/agent-server/test/agent-gateway/agent-gateway-relay.service.spec.ts`:
 
@@ -514,7 +508,7 @@ describe('agent gateway relay service', () => {
 
 Replace the comments with direct construction once Task 2 class names are available.
 
-- [ ] **Step 5: Implement provider interface and mock provider**
+- [x] **Step 5: Implement provider interface and mock provider**
 
 Create `agent-gateway-provider.ts`:
 
@@ -556,7 +550,7 @@ export class MockAgentGatewayProvider implements AgentGatewayProvider {
 }
 ```
 
-- [ ] **Step 6: Implement relay service and endpoint**
+- [x] **Step 6: Implement relay service and endpoint**
 
 Implement `AgentGatewayRelayService.relay(request)` to:
 
@@ -578,7 +572,7 @@ async relay(@Body() body: unknown): Promise<GatewayRelayResponse> {
 }
 ```
 
-- [ ] **Step 7: Run relay tests**
+- [x] **Step 7: Run relay tests**
 
 Run:
 
@@ -608,7 +602,7 @@ Expected: PASS.
 - Modify: `apps/frontend/agent-gateway/src/app/App.css`
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-workspace.test.tsx`
 
-- [ ] **Step 1: Add failing render test for all console centers**
+- [x] **Step 1: Add failing render test for all console centers**
 
 Create `apps/frontend/agent-gateway/test/agent-gateway-workspace.test.tsx`:
 
@@ -648,7 +642,7 @@ describe('Agent Gateway workspace', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -658,11 +652,11 @@ pnpm exec vitest run --config vitest.config.js apps/frontend/agent-gateway/test/
 
 Expected: FAIL because `GatewayWorkspace` does not exist.
 
-- [ ] **Step 3: Extract `GatewayWorkspace` from `App.tsx`**
+- [x] **Step 3: Extract `GatewayWorkspace` from `App.tsx`**
 
 Create `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx` with props for `snapshot`, `logs`, `usage`, `activeView`, `onActiveViewChange`, and `onLogout`. Move the shell markup from `GatewayShell` into this component.
 
-- [ ] **Step 4: Add real pages**
+- [x] **Step 4: Add real pages**
 
 Implement each page as a presentational component that receives stable contract data:
 
@@ -673,7 +667,7 @@ Implement each page as a presentational component that receives stable contract 
 - `PipelinePage`: preprocess, route, relay, accounting stages with current config.
 - `LogsProbePage`: logs table, usage table, and a probe form wired through props in a later step.
 
-- [ ] **Step 5: Add API client methods**
+- [x] **Step 5: Add API client methods**
 
 Extend `AgentGatewayApiClient` with:
 
@@ -701,7 +695,7 @@ tokenCount(request: GatewayTokenCountRequest): Promise<GatewayTokenCountResponse
 
 Use static imports from `@agent/core`; do not use dynamic imports.
 
-- [ ] **Step 6: Update styling**
+- [x] **Step 6: Update styling**
 
 Revise `App.css` for dense operational layout:
 
@@ -710,7 +704,7 @@ Revise `App.css` for dense operational layout:
 - table cells with stable min widths;
 - no marketing hero, no decorative orb/gradient background.
 
-- [ ] **Step 7: Run frontend tests and typecheck**
+- [x] **Step 7: Run frontend tests and typecheck**
 
 Run:
 
@@ -736,7 +730,7 @@ Expected: PASS.
 - Modify: frontend provider and credential pages from Task 4.
 - Test: backend controller tests and frontend API tests.
 
-- [ ] **Step 1: Add failing backend tests for provider and credential writes**
+- [x] **Step 1: Add failing backend tests for provider and credential writes**
 
 Add tests that:
 
@@ -744,7 +738,7 @@ Add tests that:
 - `DELETE /agent-gateway/providers/openai-primary` removes it.
 - `PUT /agent-gateway/credential-files/env` saves metadata and never returns raw `content`.
 
-- [ ] **Step 2: Implement secret vault interface**
+- [x] **Step 2: Implement secret vault interface**
 
 Create `agent-gateway-secret-vault.ts`:
 
@@ -771,7 +765,7 @@ export class MemoryAgentGatewaySecretVault implements AgentGatewaySecretVault {
 }
 ```
 
-- [ ] **Step 3: Add write endpoints**
+- [x] **Step 3: Add write endpoints**
 
 Add endpoints:
 
@@ -784,7 +778,7 @@ Add endpoints:
 
 Each endpoint must parse with `@agent/core` schemas and return only stable projections.
 
-- [ ] **Step 4: Add frontend command methods and forms**
+- [x] **Step 4: Add frontend command methods and forms**
 
 Add API methods:
 
@@ -797,7 +791,7 @@ Add API methods:
 
 Add minimal forms in the relevant pages with explicit save/cancel states and visible error messages.
 
-- [ ] **Step 5: Run write-chain verification**
+- [x] **Step 5: Run write-chain verification**
 
 Run:
 
@@ -822,7 +816,7 @@ Expected: PASS.
 - Modify: `apps/frontend/agent-gateway/src/app/pages/CredentialFilesPage.tsx`
 - Test: `apps/backend/agent-server/test/agent-gateway/agent-gateway-oauth.service.spec.ts`
 
-- [ ] **Step 1: Add OAuth contracts**
+- [x] **Step 1: Add OAuth contracts**
 
 Add schemas:
 
@@ -831,11 +825,11 @@ Add schemas:
 - `GatewayCompleteOAuthRequestSchema`: `{ flowId, code }`
 - `GatewayCompleteOAuthResponseSchema`: `{ credentialFileId, status, lastCheckedAt }`
 
-- [ ] **Step 2: Add deterministic OAuth service test**
+- [x] **Step 2: Add deterministic OAuth service test**
 
 Test that starting a flow returns a stable `flowId` and completing it updates the credential file status to `valid`.
 
-- [ ] **Step 3: Implement OAuth service**
+- [x] **Step 3: Implement OAuth service**
 
 Keep vendor-specific OAuth out of the contract. The first implementation can be deterministic and local:
 
@@ -843,7 +837,7 @@ Keep vendor-specific OAuth out of the contract. The first implementation can be 
 - complete validates flow existence and code non-empty;
 - repository updates credential file status.
 
-- [ ] **Step 4: Wire frontend auth-file actions**
+- [x] **Step 4: Wire frontend auth-file actions**
 
 Add buttons:
 
@@ -853,7 +847,7 @@ Add buttons:
 
 Show `verificationUri`, `userCode`, and expiry in the credential files page.
 
-- [ ] **Step 5: Run OAuth tests**
+- [x] **Step 5: Run OAuth tests**
 
 Run:
 
@@ -874,17 +868,17 @@ Expected: PASS.
 - Modify: `docs/apps/backend/agent-server/agent-gateway.md`
 - Modify if stale references are found: `docs/integration/README.md`, `docs/apps/frontend/README.md`, `docs/maps/apps-overview.md`
 
-- [ ] **Step 1: Run stale-doc scan**
+- [x] **Step 1: Run stale-doc scan**
 
 Run:
 
 ```bash
-rg -n "真实 relay 转发仍是后续|写操作.*后续|OAuth.*后续|provider 持久化仍|Agent Gateway" docs AGENTS.md README.md
+rg -n '<stale Agent Gateway future-work phrases for this task>' docs AGENTS.md README.md
 ```
 
 Expected: identify every doc statement that still describes implemented work as future work.
 
-- [ ] **Step 2: Update API docs**
+- [x] **Step 2: Update API docs**
 
 Update `docs/contracts/api/agent-gateway.md` so it records:
 
@@ -895,7 +889,7 @@ Update `docs/contracts/api/agent-gateway.md` so it records:
 - relay lifecycle: preprocess -> route -> provider -> accounting -> log;
 - compatibility rule: projections never expose raw vendor payload or plaintext secret.
 
-- [ ] **Step 3: Update frontend/backend docs**
+- [x] **Step 3: Update frontend/backend docs**
 
 Update:
 
@@ -904,7 +898,7 @@ Update:
 
 Mention exact verification commands and current screen list.
 
-- [ ] **Step 4: Run docs check**
+- [x] **Step 4: Run docs check**
 
 Run:
 
@@ -914,7 +908,7 @@ pnpm check:docs
 
 Expected: PASS.
 
-- [ ] **Step 5: Run affected verification**
+- [x] **Step 5: Run affected verification**
 
 Run:
 

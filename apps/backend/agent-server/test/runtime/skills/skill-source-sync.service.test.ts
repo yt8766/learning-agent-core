@@ -69,7 +69,7 @@ describe('SkillSourceSyncService', () => {
     ]);
 
     const cacheFile = await readFile(
-      join(root, 'data', 'skills', 'remote-sources', 'bundled-marketplace', 'index.json'),
+      join(root, 'profile-storage', 'platform', 'skills', 'remote-sources', 'bundled-marketplace', 'index.json'),
       'utf8'
     );
     expect(cacheFile).toContain('remote_review');

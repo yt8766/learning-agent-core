@@ -10,6 +10,7 @@ import { RuntimeSkillSourceRemoteCacheRepository } from './runtime-skill-storage
 interface SyncContext {
   workspaceRoot: string;
   profile: RuntimeProfile;
+  skillSourcesRoot?: string;
   remoteCacheRepository?: SkillSourceRemoteCacheRepository;
 }
 
@@ -39,7 +40,11 @@ export class SkillSourceSyncService {
 
   constructor(private readonly context: SyncContext) {
     this.remoteCacheRepository =
-      context.remoteCacheRepository ?? new RuntimeSkillSourceRemoteCacheRepository(context.workspaceRoot);
+      context.remoteCacheRepository ??
+      new RuntimeSkillSourceRemoteCacheRepository(
+        context.skillSourcesRoot ??
+          resolve(context.workspaceRoot, 'profile-storage', context.profile, 'skills', 'remote-sources')
+      );
   }
 
   async syncSource(source: SkillSourceRecord): Promise<SkillSourceSyncResult> {

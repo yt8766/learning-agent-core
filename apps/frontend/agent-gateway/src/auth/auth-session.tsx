@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { GatewaySession } from '@agent/core';
-import { createGatewayAuthApi, type GatewayAuthApi } from './auth-api';
+import type { GatewayRefreshResponse, GatewaySession } from '@agent/core';
+import { getDefaultGatewayAuthApi, type GatewayAuthApi } from './auth-api';
 import { clearGatewayRefreshToken, readGatewayRefreshToken, writeGatewayRefreshToken } from './auth-storage';
 export interface GatewayAuthState {
   accessToken: string | null;
@@ -11,9 +11,27 @@ export interface GatewayAuthState {
   refreshAccessToken(): Promise<string | null>;
 }
 const Context = createContext<GatewayAuthState | null>(null);
+const refreshRequests = new Map<string, Promise<GatewayRefreshResponse>>();
+
+export function refreshGatewayAuthSessionOnce(
+  authApi: GatewayAuthApi,
+  refreshToken: string
+): Promise<GatewayRefreshResponse> {
+  const existing = refreshRequests.get(refreshToken);
+  if (existing) {
+    return existing;
+  }
+
+  const request = authApi.refresh(refreshToken).finally(() => {
+    refreshRequests.delete(refreshToken);
+  });
+  refreshRequests.set(refreshToken, request);
+  return request;
+}
+
 export function GatewayAuthProvider({
   children,
-  authApi = createGatewayAuthApi()
+  authApi = getDefaultGatewayAuthApi()
 }: {
   children: ReactNode;
   authApi?: GatewayAuthApi;
@@ -40,8 +58,9 @@ export function GatewayAuthProvider({
     }
     const generation = generationRef.current;
     try {
-      const response = await authApi.refresh(token);
+      const response = await refreshGatewayAuthSessionOnce(authApi, token);
       if (generation !== generationRef.current || readGatewayRefreshToken() !== token) return null;
+      writeGatewayRefreshToken(response.refreshToken);
       setAccessToken(response.accessToken);
       setSession(response.session);
       setStatus('authenticated');

@@ -20,7 +20,7 @@ describe('AuthClient', () => {
 
   it('logs in and stores tokens', async () => {
     const client = new AuthClient({
-      baseUrl: '/api/knowledge/v1',
+      baseUrl: 'http://127.0.0.1:3000/api',
       fetcher: async () =>
         new Response(
           JSON.stringify({
@@ -65,11 +65,14 @@ describe('AuthClient', () => {
       );
     }) as typeof fetch;
     vi.stubGlobal('fetch', fetcher);
-    const client = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+    const client = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api' });
 
     await client.login({ email: 'dev@example.com', password: 'secret' });
 
-    expect(fetcher).toHaveBeenCalledWith('/api/knowledge/v1/auth/login', expect.objectContaining({ method: 'POST' }));
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:3000/api/identity/login',
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 
   it('shares concurrent refresh requests', async () => {
@@ -82,7 +85,7 @@ describe('AuthClient', () => {
     });
     let refreshCalls = 0;
     const client = new AuthClient({
-      baseUrl: '/api/knowledge/v1',
+      baseUrl: 'http://127.0.0.1:3000/api',
       fetcher: async () => {
         refreshCalls += 1;
         return new Response(
@@ -106,7 +109,7 @@ describe('AuthClient', () => {
     expect(readTokens()?.accessToken).toBe('new');
   });
 
-  it('clears tokens when logout is called', () => {
+  it('calls unified identity logout and clears tokens when logout is called', async () => {
     saveTokens({
       accessToken: 'access',
       refreshToken: 'refresh',
@@ -114,10 +117,14 @@ describe('AuthClient', () => {
       expiresIn: 7200,
       refreshExpiresIn: 1209600
     });
-    const client = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const client = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
 
-    client.logout();
+    await client.logout();
 
+    expect(fetcher.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3000/api/identity/logout');
     expect(readTokens()).toBeUndefined();
   });
 
@@ -129,7 +136,7 @@ describe('AuthClient', () => {
       expiresIn: 7200,
       refreshExpiresIn: 1209600
     });
-    const client = new AuthClient({ baseUrl: '/api/knowledge/v1' });
+    const client = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api' });
 
     localStorage.clear();
 
@@ -148,7 +155,7 @@ describe('AuthClient', () => {
       refreshExpiresIn: 1209600
     });
     const client = new AuthClient({
-      baseUrl: '/api/knowledge/v1',
+      baseUrl: 'http://127.0.0.1:3000/api',
       fetcher: async () => new Response(JSON.stringify({ message: 'refresh expired' }), { status: 401 }),
       onAuthLost
     });
@@ -169,14 +176,14 @@ describe('AuthClient', () => {
     });
     const calls: Array<{ url: string; authorization?: string }> = [];
     const client = new AuthClient({
-      baseUrl: '/api/knowledge/v1',
+      baseUrl: 'http://127.0.0.1:3000/api',
       fetcher: async (url, init) => {
         const authorization = new Headers(init?.headers).get('Authorization') ?? undefined;
         calls.push({ url: String(url), authorization });
-        if (String(url).endsWith('/auth/me') && authorization === 'Bearer old') {
+        if (String(url).endsWith('/identity/me') && authorization === 'Bearer old') {
           return new Response(JSON.stringify({ code: 'auth_token_expired', message: 'expired' }), { status: 401 });
         }
-        if (String(url).endsWith('/auth/refresh')) {
+        if (String(url).endsWith('/identity/refresh')) {
           return new Response(
             JSON.stringify({
               tokens: {
@@ -202,13 +209,13 @@ describe('AuthClient', () => {
     const user = await client.getCurrentUser();
 
     expect(user.email).toBe('dev@example.com');
-    expect(calls.some(call => call.url.endsWith('/auth/refresh'))).toBe(true);
+    expect(calls.some(call => call.url.endsWith('/identity/refresh'))).toBe(true);
     expect(calls.at(-1)?.authorization).toBe('Bearer new');
   });
 
   it('rejects malformed login responses with a stable error', async () => {
     const client = new AuthClient({
-      baseUrl: '/api/knowledge/v1',
+      baseUrl: 'http://127.0.0.1:3000/api',
       fetcher: async () => new Response(JSON.stringify({}), { status: 200 })
     });
 

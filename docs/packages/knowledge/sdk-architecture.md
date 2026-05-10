@@ -3,13 +3,13 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/knowledge`
-最后核对：2026-05-01
+最后核对：2026-05-10
 
 ## Goal
 
-`packages/knowledge` is evolving toward a publishable RAG SDK. This document describes the target architecture and migration rules; it is not a claim that every listed source directory, subpath export, client helper, eval primitive, observability primitive, or optional adapter exists today.
+`packages/knowledge` is now treated as a publishable RAG SDK boundary. This document describes the current public entrypoints, target architecture, and migration rules; it is not a claim that every target directory, eval primitive, observability primitive, runtime subpath, or optional adapter family exists today.
 
-Current horizontal MVP usage keeps frontend code behind backend Knowledge HTTP APIs plus app-local API client/DTO code. `src/core` is now the first publishable SDK facade slice; later facades such as `src/client`, `src/eval`, and `src/observability` must only be treated as current implementation after their source directories, package exports, tests, and docs land in the same migration slice.
+Current horizontal MVP usage keeps frontend product code behind backend Knowledge HTTP APIs plus app-local API client/DTO code. `src/core`, `src/client`, `src/browser`, `src/node`, `src/contracts`, `src/indexing`, and the migrated `src/adapters/*` slices have source ownership, package exports, build entries, tests, and docs. Later facades such as `src/eval`, `src/observability`, or a dedicated `src/runtime` public subpath must only be treated as current implementation after their source directories, package exports, tests, and docs land in the same migration slice.
 
 ## Principles
 
@@ -55,19 +55,34 @@ Entrypoint status:
 
 - Current: `@agent/knowledge` exists as the current package root and exposes current retrieval/indexing contracts according to existing package exports.
 - Current: `@agent/knowledge/core` exposes the SDK core contract facade: schema-first knowledge base/provider health records, provider interfaces, SDK error classes, constants, and the generic async pipeline type. It has no vendor SDK dependency.
-- Target-only: `@agent/knowledge/client` is a planned public facade. Frontend code must not import it until a later slice actually adds `src/client` plus matching package exports, tests, and docs.
+- Current: `@agent/knowledge/client` exposes the browser-safe Knowledge API client facade. Frontend product code may still prefer app-local API clients until the product migration explicitly adopts the SDK client, but the subpath is a real exported SDK surface.
+- Current: `@agent/knowledge/browser` and the legacy-compatible `@agent/knowledge/browser-entry` expose browser-safe entrypoints. They must not import node-only runtime wiring or service-key adapters.
 - Current: `@agent/knowledge/node` exposes node-only runtime factories, including `createDefaultKnowledgeSdkRuntime()` for OpenAI-compatible chat/embedding plus Supabase pgvector vector store, and `createKnowledgeRuntime()` for custom provider composition. It is intentionally not re-exported from the root package.
-- Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Supabase pgvector and OpenAI-compatible providers.
-- Target planned: `@agent/knowledge/browser-entry` and any finer-grained runtime/indexing/retrieval/eval/observability subpaths are publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
+- Current: `@agent/knowledge/contracts` exposes the current knowledge contract barrel for callers that need a narrower import than the root package.
+- Current: `@agent/knowledge/indexing` exposes indexing contracts, defaults, loaders, chunkers, and the indexing pipeline.
+- Current: `@agent/knowledge/adapters/*` exposes the migrated official adapter surfaces that already have source ownership and package exports, including Chroma, DeepSeek, GLM, LangChain, MiniMax, OpenAI-compatible, OpenSearch, and Supabase pgvector.
+- Target planned: dedicated `@agent/knowledge/runtime`, `@agent/knowledge/retrieval`, `@agent/knowledge/eval`, and `@agent/knowledge/observability` subpaths remain publishable SDK targets. They must not be treated as fully implemented until their package exports, tests, and docs land in the same migration slice.
 - Compat exports must stay thin and must not create a second source of truth for schemas, adapters, or runtime behavior.
+- Declaration exports must point at the current `tsc -p packages/knowledge/tsconfig.types.json` layout under `build/types/src/...`; do not reintroduce the historical `build/types/knowledge/src/...` path.
 
 Current implemented public package entrypoint:
 
 ```text
 @agent/knowledge
 @agent/knowledge/core
+@agent/knowledge/client
+@agent/knowledge/browser
+@agent/knowledge/browser-entry
 @agent/knowledge/node
+@agent/knowledge/contracts
+@agent/knowledge/indexing
 @agent/knowledge/adapters
+@agent/knowledge/adapters/chroma
+@agent/knowledge/adapters/deepseek
+@agent/knowledge/adapters/glm
+@agent/knowledge/adapters/langchain
+@agent/knowledge/adapters/minimax
+@agent/knowledge/adapters/opensearch
 @agent/knowledge/adapters/supabase
 @agent/knowledge/adapters/openai-compatible
 ```
@@ -75,13 +90,10 @@ Current implemented public package entrypoint:
 Target-only public subpaths. Each subpath below requires source ownership, package exports, tests, and docs in the same migration slice before callers may depend on it:
 
 ```text
-@agent/knowledge/client
 @agent/knowledge/runtime
-@agent/knowledge/indexing
 @agent/knowledge/retrieval
 @agent/knowledge/eval
 @agent/knowledge/observability
-@agent/knowledge/browser-entry
 @agent/knowledge/adapters/openai
 @agent/knowledge/adapters/qdrant
 @agent/knowledge/adapters/weaviate
@@ -116,7 +128,7 @@ Current `src/core` package export:
 
 - Source: `packages/knowledge/src/core/index.ts`
 - Public subpath: `@agent/knowledge/core`
-- Build entries: `build/cjs/core/index.js`, `build/esm/core/index.mjs`, `build/types/knowledge/src/core/index.d.ts`
+- Build entries: `build/cjs/core/index.js`, `build/esm/core/index.mjs`, `build/types/src/core/index.d.ts`
 - Root package compatibility: `@agent/knowledge` explicitly re-exports non-conflicting core schemas, constants, `EmbeddingProvider`, and core errors. Vector-store related SDK types are exported from the root with `KnowledgeSdk*` aliases to avoid colliding with the existing retrieval/indexing `VectorStore` and `VectorSearchHit` contracts. New SDK consumers should prefer `@agent/knowledge/core` for the unaliased core names.
 
 ## Current Contracts and Core Migration
@@ -206,7 +218,7 @@ export interface TraceSink {
 
 ## Target Adapter Direction
 
-The current concrete vendor adapters still live in `packages/adapters`; the knowledge package has not switched its default implementation to Supabase/OpenAI. The following are recommended target implementations for the knowledge app/API MVP and possible future publishable SDK adapter entrypoints:
+The current concrete knowledge vendor adapters live in `packages/knowledge/src/adapters/*`. The following adapter families are current or recommended SDK surfaces for the knowledge app/API MVP and future hardening:
 
 - `adapters/supabase`: document store, chunk store, vector store, keyword search provider, trace sink, eval store.
 - `adapters/openai`: embedding provider, generator, eval judge provider.
@@ -221,7 +233,7 @@ Adapter factories must accept host-provided configuration explicitly. They must 
 
 Current MVP knowledge adapters live in `packages/knowledge/src/adapters/*`. This includes Chroma vector search/store, OpenSearch-like keyword search, Supabase pgvector, LangChain indexing adapters, and provider presets. `packages/adapters` no longer exposes compatibility re-exports for migrated knowledge adapters.
 
-`@agent/knowledge/adapters/*` is a target publishable SDK adapter surface, not a statement that all such subpath exports already exist today. Migration to that target must be incremental:
+`@agent/knowledge/adapters/*` is the current publishable SDK adapter surface for the migrated adapter families listed above. New adapter families still require source ownership, package exports, build entries, tests, docs, and call-site migration in the same slice:
 
 - Keep real vendor SDK lifecycle, credentials, and host environment loading outside `@agent/knowledge/core`.
 - Do not duplicate an adapter implementation in `packages/knowledge` while the current implementation remains in `packages/adapters`.
@@ -257,9 +269,10 @@ Runtime traces and errors must use redacted JSON-safe projections. Trace span me
 Backend/server hosts may consume:
 
 - `@agent/knowledge` current root exports during migration.
-- `@agent/knowledge/core` target contracts once available.
-- `@agent/knowledge/client` only when the backend is acting as an HTTP client to another Knowledge API host.
-- `@agent/knowledge/runtime`, `@agent/knowledge/node`, repository interfaces, provider interfaces, or adapter subpaths only from server-side code after those entrypoints exist and their ownership is documented.
+- `@agent/knowledge/core` contracts.
+- `@agent/knowledge/client` when the backend is acting as an HTTP client to another Knowledge API host.
+- `@agent/knowledge/node`, repository interfaces, provider interfaces, and adapter subpaths from server-side code.
+- Dedicated `@agent/knowledge/runtime`, `@agent/knowledge/retrieval`, `@agent/knowledge/eval`, or `@agent/knowledge/observability` subpaths only after those entrypoints exist and their ownership is documented.
 
 Backend/server hosts are responsible for:
 
@@ -274,12 +287,13 @@ Backend/server hosts must not leak vendor raw responses, provider errors, SDK cl
 
 ## Frontend Usage Boundary
 
-Current horizontal MVP frontend usage must go through backend Knowledge HTTP APIs and app-local API client/DTO code.
+Current horizontal MVP frontend product usage should still go through backend Knowledge HTTP APIs and app-local API client/DTO code unless a product migration explicitly adopts the SDK client.
 
-Only after a later migration slice actually adds `src/core` / `src/client` plus matching package exports, tests, and docs may `apps/frontend/knowledge` import:
+Browser/frontend code may only import browser-safe SDK surfaces:
 
 - `@agent/knowledge/core`
 - `@agent/knowledge/client`
+- `@agent/knowledge/browser`
 
 It must not import:
 

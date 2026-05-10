@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/runtime/helpers/runtime-background-runner', () => ({
   startBackgroundRunnerLoop: vi.fn(() => ({ unref: vi.fn() })),
@@ -21,6 +21,10 @@ vi.mock('../../../src/runtime/skills/runtime-skill-sources.service', async impor
 });
 
 describe('RuntimeBootstrapService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('禁用 runtime background 时不会启动内建 runner', async () => {
     const service = new RuntimeBootstrapService(() => ({
       sessionCoordinator: { initialize: vi.fn(async () => undefined) },
@@ -72,6 +76,59 @@ describe('RuntimeBootstrapService', () => {
     await service.initialize();
 
     expect(startBackgroundRunnerLoop).not.toHaveBeenCalled();
+  });
+
+  it('启动 runtime background 时会启动 agent-server 内建 runner', async () => {
+    const backgroundContext = {
+      enabled: true,
+      orchestrator: {},
+      runnerId: 'runtime-test',
+      workerPoolSize: 2,
+      leaseTtlMs: 30000,
+      heartbeatMs: 10000,
+      pollMs: 3000,
+      backgroundWorkerSlots: new Map(),
+      isSweepInFlight: () => false,
+      setSweepInFlight: vi.fn()
+    };
+    const service = new RuntimeBootstrapService(() => ({
+      sessionCoordinator: { initialize: vi.fn(async () => undefined) },
+      orchestrator: { setLocalSkillSuggestionResolver: vi.fn() },
+      getSkillSourcesContext: () =>
+        ({
+          settings: {
+            workspaceRoot: '/tmp/workspace',
+            skillsRoot: '/tmp/skills-managed',
+            profile: 'platform',
+            skillSourcesRoot: '/tmp/skills',
+            policy: { sourcePolicyMode: 'controlled-first', skillInstallMode: 'manual' }
+          },
+          toolRegistry: { get: vi.fn(() => undefined) },
+          skillRegistry: { list: vi.fn(async () => []) },
+          skillSourceSyncService: {
+            readCachedSyncState: vi.fn(async () => undefined),
+            readCachedManifests: vi.fn(async () => []),
+            syncSource: vi.fn(async () => undefined)
+          },
+          remoteSkillDiscoveryService: {
+            discover: vi.fn(async () => ({
+              capabilityGapDetected: false,
+              suggestions: []
+            }))
+          },
+          getDisabledSkillSourceIds: vi.fn(async () => [])
+        }) as never,
+      syncInstalledSkillWorkers: vi.fn(async () => undefined),
+      applyStoredGovernanceOverrides: vi.fn(async () => undefined),
+      initializeMetricsSnapshots: vi.fn(async () => undefined),
+      initializeDailyTechBriefing: vi.fn(async () => undefined),
+      initializeScheduleRunner: vi.fn(async () => undefined),
+      getBackgroundRunnerContext: () => backgroundContext as never
+    }));
+
+    await service.initialize();
+
+    expect(startBackgroundRunnerLoop).toHaveBeenCalledWith(backgroundContext, expect.any(Function));
   });
 
   it('warms metrics snapshots after bootstrap without blocking initialization success', async () => {

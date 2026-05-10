@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { KnowledgeChunk, KnowledgeSource } from '@agent/knowledge';
-import type { KnowledgeVectorDocumentRecord } from '@agent/memory';
+import type { KnowledgeChunk, KnowledgeSource, KnowledgeVectorDocumentRecord } from '@agent/knowledge';
 
 import { createKnowledgeSourceIngestionLoader, runKnowledgeIndexing } from '../src';
 

@@ -16,7 +16,7 @@ export function createAuthServiceClient(options: AuthServiceClientOptions): Auth
 
   return {
     async listUsers() {
-      const response = await fetchImpl(`${baseUrl}/auth/users`, {
+      const response = await fetchImpl(`${baseUrl}/identity/users`, {
         headers: {
           authorization: `Bearer ${options.getAccessToken() ?? ''}`
         }

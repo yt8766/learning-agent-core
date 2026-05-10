@@ -29,6 +29,9 @@ export const GatewayLoginResponseSchema = z.object({
 export const GatewayRefreshResponseSchema = z.object({
   accessToken: z.string(),
   accessTokenExpiresAt: z.string(),
+  refreshToken: z.string(),
+  refreshTokenExpiresAt: z.string(),
+  refreshTokenStorage: z.literal('localStorage'),
   session: GatewaySessionSchema
 });
 export const GatewayProviderStatusSchema = z.enum(['healthy', 'degraded', 'disabled']);
@@ -135,4 +138,320 @@ export const GatewayAccountingResponseSchema = z.object({
   inputTokens: z.number().int().nonnegative(),
   outputTokens: z.number().int().nonnegative(),
   totalTokens: z.number().int().nonnegative()
+});
+export const GatewayUpdateConfigRequestSchema = GatewayConfigSchema.partial().refine(
+  value => Object.keys(value).length > 0,
+  { message: '至少需要一个配置字段' }
+);
+export const GatewayUpsertProviderRequestSchema = GatewayProviderCredentialSetSchema.extend({
+  secretRef: z.string().min(1).optional()
+});
+export const GatewayDeleteProviderRequestSchema = z.object({ providerId: z.string().min(1) });
+export const GatewayUpsertCredentialFileRequestSchema = GatewayCredentialFileSchema.extend({
+  content: z.string().min(1).optional()
+});
+export const GatewayDeleteCredentialFileRequestSchema = z.object({ credentialFileId: z.string().min(1) });
+export const GatewayUpdateQuotaRequestSchema = GatewayQuotaSchema.pick({
+  id: true,
+  limitTokens: true,
+  resetAt: true,
+  status: true
+});
+export const GatewayRelayMessageSchema = z.object({
+  role: z.enum(['system', 'user', 'assistant', 'tool']),
+  content: z.string()
+});
+export const GatewayRelayRequestSchema = z.object({
+  model: z.string().min(1),
+  providerId: z.string().min(1).optional(),
+  messages: z.array(GatewayRelayMessageSchema).min(1),
+  stream: z.boolean().default(false),
+  metadata: z.record(z.string(), z.string()).optional()
+});
+export const GatewayRelayUsageSchema = z.object({
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  totalTokens: z.number().int().nonnegative()
+});
+export const GatewayRelayResponseSchema = z.object({
+  id: z.string(),
+  providerId: z.string(),
+  model: z.string(),
+  content: z.string(),
+  usage: GatewayRelayUsageSchema,
+  logId: z.string()
+});
+export const GatewayStartOAuthRequestSchema = z.object({
+  providerId: z.string().min(1),
+  credentialFileId: z.string().min(1)
+});
+export const GatewayStartOAuthResponseSchema = z.object({
+  flowId: z.string(),
+  providerId: z.string(),
+  credentialFileId: z.string(),
+  verificationUri: z.string().url(),
+  userCode: z.string(),
+  expiresAt: z.string()
+});
+export const GatewayCompleteOAuthRequestSchema = z.object({
+  flowId: z.string().min(1),
+  userCode: z.string().min(1)
+});
+export const GatewayCompleteOAuthResponseSchema = z.object({
+  flowId: z.string(),
+  providerId: z.string(),
+  credentialFileId: z.string(),
+  status: z.literal('valid'),
+  completedAt: z.string(),
+  credentialFile: GatewayCredentialFileSchema
+});
+
+export const GatewayConnectionStatusSchema = z.enum(['connected', 'disconnected', 'checking', 'error']);
+export const GatewaySaveConnectionProfileRequestSchema = z.object({
+  apiBase: z.string().url(),
+  managementKey: z.string().min(1),
+  timeoutMs: z.number().int().positive().max(120000).default(15000)
+});
+export const GatewayConnectionProfileSchema = z.object({
+  apiBase: z.string().url(),
+  managementKeyMasked: z.string(),
+  timeoutMs: z.number().int().positive(),
+  updatedAt: z.string()
+});
+export const GatewayConnectionStatusResponseSchema = z.object({
+  status: GatewayConnectionStatusSchema,
+  checkedAt: z.string(),
+  serverVersion: z.string().nullable(),
+  serverBuildDate: z.string().nullable(),
+  error: z.string().optional()
+});
+
+export const GatewayRawConfigResponseSchema = z.object({
+  content: z.string(),
+  format: z.literal('yaml'),
+  version: z.string()
+});
+export const GatewaySaveRawConfigRequestSchema = z.object({
+  content: z.string(),
+  expectedVersion: z.string().optional()
+});
+export const GatewayConfigDiffResponseSchema = z.object({
+  changed: z.boolean(),
+  before: z.string(),
+  after: z.string()
+});
+export const GatewayReloadConfigResponseSchema = z.object({
+  reloaded: z.boolean(),
+  reloadedAt: z.string()
+});
+
+export const GatewayApiKeyStatusSchema = z.enum(['active', 'disabled', 'expired']);
+export const GatewayApiKeyUsageSchema = z.object({
+  requestCount: z.number().int().nonnegative(),
+  lastRequestAt: z.string().nullable()
+});
+export const GatewayApiKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  prefix: z.string(),
+  status: GatewayApiKeyStatusSchema,
+  scopes: z.array(z.string()),
+  createdAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  usage: GatewayApiKeyUsageSchema
+});
+export const GatewayCreateApiKeyRequestSchema = z.object({
+  name: z.string().min(1),
+  scopes: z.array(z.string()).default([]),
+  expiresAt: z.string().nullable().optional()
+});
+export const GatewayUpdateApiKeyRequestSchema = z.object({
+  keyId: z.string().min(1),
+  name: z.string().min(1).optional(),
+  status: GatewayApiKeyStatusSchema.optional(),
+  scopes: z.array(z.string()).optional(),
+  expiresAt: z.string().nullable().optional()
+});
+export const GatewayReplaceApiKeysRequestSchema = z.object({
+  keys: z.array(z.string().min(1))
+});
+export const GatewayDeleteApiKeyRequestSchema = z.object({
+  index: z.number().int().nonnegative()
+});
+export const GatewayApiKeyListResponseSchema = z.object({ items: z.array(GatewayApiKeySchema) });
+
+export const GatewayProviderKindSchema = z.enum([
+  'gemini',
+  'codex',
+  'claude',
+  'vertex',
+  'openai-compatible',
+  'ampcode',
+  'custom'
+]);
+export const GatewayConfigValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+export const GatewayProviderConfigSchema = z.object({
+  providerId: z.string(),
+  kind: GatewayProviderKindSchema,
+  displayName: z.string(),
+  enabled: z.boolean(),
+  baseUrl: z.string().url().nullable(),
+  models: z.array(z.string()),
+  timeoutMs: z.number().int().positive(),
+  maxRetries: z.number().int().nonnegative(),
+  settings: z.record(z.string(), GatewayConfigValueSchema),
+  updatedAt: z.string()
+});
+export const GatewayUpsertProviderConfigRequestSchema = GatewayProviderConfigSchema.omit({ updatedAt: true });
+export const GatewayProviderConfigListResponseSchema = z.object({ items: z.array(GatewayProviderConfigSchema) });
+
+export const GatewayAuthFileStatusSchema = z.enum(['valid', 'invalid', 'missing', 'expired']);
+export const GatewayAuthFileUploadItemSchema = z.object({
+  fileName: z.string().min(1),
+  contentBase64: z.string().min(1),
+  providerKind: GatewayProviderKindSchema.optional()
+});
+export const GatewayAuthFileBatchUploadRequestSchema = z.object({
+  files: z.array(GatewayAuthFileUploadItemSchema).min(1)
+});
+export const GatewayAuthFileAcceptedUploadSchema = z.object({
+  authFileId: z.string(),
+  fileName: z.string(),
+  providerKind: GatewayProviderKindSchema,
+  status: GatewayAuthFileStatusSchema
+});
+export const GatewayAuthFileRejectedUploadSchema = z.object({
+  fileName: z.string(),
+  reason: z.string()
+});
+export const GatewayAuthFileBatchUploadResponseSchema = z.object({
+  accepted: z.array(GatewayAuthFileAcceptedUploadSchema),
+  rejected: z.array(GatewayAuthFileRejectedUploadSchema)
+});
+export const GatewayAuthFileSchema = z.object({
+  id: z.string(),
+  providerId: z.string(),
+  providerKind: GatewayProviderKindSchema,
+  fileName: z.string(),
+  path: z.string(),
+  status: GatewayAuthFileStatusSchema,
+  accountEmail: z.string().nullable(),
+  projectId: z.string().nullable().optional(),
+  modelCount: z.number().int().nonnegative(),
+  updatedAt: z.string(),
+  metadata: z.record(z.string(), GatewayConfigValueSchema).optional()
+});
+export const GatewayAuthFileListResponseSchema = z.object({
+  items: z.array(GatewayAuthFileSchema),
+  nextCursor: z.string().nullable()
+});
+export const GatewayAuthFilePatchRequestSchema = z.object({
+  authFileId: z.string().min(1),
+  providerId: z.string().min(1).optional(),
+  accountEmail: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(),
+  status: GatewayAuthFileStatusSchema.optional(),
+  metadata: z.record(z.string(), GatewayConfigValueSchema).optional()
+});
+export const GatewayAvailableModelSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  providerKind: GatewayProviderKindSchema,
+  available: z.boolean(),
+  aliases: z.array(z.string()).optional()
+});
+export const GatewayAuthFileModelListResponseSchema = z.object({
+  authFileId: z.string(),
+  models: z.array(GatewayAvailableModelSchema)
+});
+
+export const GatewayOAuthPolicySchema = z.object({
+  providerId: z.string(),
+  enabled: z.boolean(),
+  callbackUrl: z.string().url().nullable(),
+  excludedModels: z.array(z.string()),
+  allowedDomains: z.array(z.string()),
+  updatedAt: z.string()
+});
+export const GatewayUpdateOAuthPolicyRequestSchema = GatewayOAuthPolicySchema.omit({ updatedAt: true }).partial({
+  callbackUrl: true,
+  excludedModels: true,
+  allowedDomains: true
+});
+export const GatewayOAuthModelAliasesResponseSchema = z.object({
+  providerId: z.string(),
+  aliases: z.record(z.string(), z.string()),
+  updatedAt: z.string()
+});
+export const GatewayUpdateOAuthModelAliasesRequestSchema = z.object({
+  providerId: z.string().min(1),
+  aliases: z.record(z.string(), z.string())
+});
+
+export const GatewayQuotaDetailSchema = z.object({
+  id: z.string(),
+  providerId: z.string(),
+  model: z.string(),
+  scope: z.string(),
+  window: z.string(),
+  limit: z.number().int().nonnegative(),
+  used: z.number().int().nonnegative(),
+  remaining: z.number().int().nonnegative(),
+  resetAt: z.string().nullable(),
+  refreshedAt: z.string(),
+  status: GatewayQuotaStatusSchema
+});
+export const GatewayQuotaDetailListResponseSchema = z.object({ items: z.array(GatewayQuotaDetailSchema) });
+
+export const GatewayLogFileSchema = z.object({
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  modifiedAt: z.string(),
+  downloadUrl: z.string().optional()
+});
+export const GatewayLogFileListResponseSchema = z.object({ items: z.array(GatewayLogFileSchema) });
+export const GatewayLogSearchRequestSchema = z.object({
+  query: z.string().optional(),
+  hideManagementTraffic: z.boolean().default(false),
+  limit: z.number().int().positive().max(500).default(100),
+  after: z.string().optional()
+});
+export const GatewayClearLogsResponseSchema = z.object({
+  cleared: z.boolean(),
+  clearedAt: z.string()
+});
+export const GatewayRequestLogEntrySchema = z.object({
+  id: z.string(),
+  occurredAt: z.string(),
+  method: z.string(),
+  path: z.string(),
+  statusCode: z.number().int().positive(),
+  durationMs: z.number().nonnegative(),
+  managementTraffic: z.boolean(),
+  providerId: z.string().nullable(),
+  apiKeyPrefix: z.string().nullable(),
+  message: z.string().optional()
+});
+export const GatewayRequestLogListResponseSchema = z.object({
+  items: z.array(GatewayRequestLogEntrySchema),
+  total: z.number().int().nonnegative(),
+  nextCursor: z.string().nullable()
+});
+
+export const GatewaySystemVersionResponseSchema = z.object({
+  version: z.string(),
+  latestVersion: z.string().nullable(),
+  buildDate: z.string().nullable(),
+  updateAvailable: z.boolean(),
+  links: z.record(z.string(), z.string().url())
+});
+export const GatewaySystemModelGroupSchema = z.object({
+  providerId: z.string(),
+  providerKind: GatewayProviderKindSchema,
+  models: z.array(GatewayAvailableModelSchema)
+});
+export const GatewaySystemModelsResponseSchema = z.object({
+  groups: z.array(GatewaySystemModelGroupSchema)
 });

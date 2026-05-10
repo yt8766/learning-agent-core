@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { ActionIntent } from '@agent/core';
-import type { ApprovalClassifier, ApprovalClassifierInput } from '@agent/tools';
+import type { ApprovalClassifier, ApprovalClassifierInput } from '@agent/runtime';
 import type { ILLMProvider as LlmProvider } from '@agent/core';
 import { generateObjectWithRetry } from '@agent/adapters';
 
 /**
  * 刑部治理分类器：通过 LLM 对工具调用意图进行 allow/ask/deny 三级风险分类。
- * 实现 ApprovalClassifier 合约（来自 @agent/tools）。
+ * 实现 ApprovalClassifier 合约（来自 @agent/runtime）。
  *
  * 仅在此处（packages/platform-runtime）实例化并注入给 AgentRuntime。
  * packages/runtime Kernel 通过 AgentRuntimeOptions.approvalClassifier 接口接收，

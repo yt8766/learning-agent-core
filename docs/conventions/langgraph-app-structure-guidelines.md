@@ -24,7 +24,6 @@
 - `agents/supervisor`
 - `agents/data-report`
 - `apps/backend/agent-server`
-- `apps/worker`
 
 前端不直接承载 LangGraph graph，但也应遵守同样的“源码目录 + 同级 test 目录”原则。
 
@@ -276,24 +275,6 @@ apps/backend/agent-server/
 - `test/` 统一承载 service/controller/integration 测试
 - `test/integration/` 用于 SSE、checkpoint、runtime center、approval recovery 这类跨模块协同测试
 
-### `apps/worker`
-
-```text
-apps/worker/
-├─ src/
-│  ├─ jobs/
-│  ├─ runtime/
-│  ├─ recovery/
-│  └─ main.ts
-├─ test/
-│  ├─ jobs/
-│  ├─ runtime/
-│  ├─ recovery/
-│  └─ fixtures/
-├─ package.json
-└─ README.md
-```
-
 ### `apps/frontend/agent-chat`
 
 ```text
@@ -485,7 +466,6 @@ apps/frontend/agent-admin/
 - `agents/supervisor/test`
 - `agents/data-report/test`
 - `apps/backend/agent-server/test`
-- `apps/worker/test`
 - `apps/frontend/agent-chat/test`
 - `apps/frontend/agent-admin/test`
 

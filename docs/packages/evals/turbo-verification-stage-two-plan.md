@@ -62,7 +62,7 @@
 - `apps/frontend/agent-chat`
 - `apps/frontend/agent-admin`
 - `apps/backend/agent-server`
-- `apps/worker`
+- agent-server 内建 background runner
 
 也已补齐对应 Turbo-only 入口。
 

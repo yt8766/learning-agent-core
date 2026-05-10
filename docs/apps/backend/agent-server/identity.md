@@ -17,12 +17,15 @@ POST /api/identity/refresh
 POST /api/identity/logout
 GET  /api/identity/me
 
-POST /api/auth/login
-POST /api/auth/refresh
-POST /api/auth/logout
+GET   /api/identity/users
+POST  /api/identity/users
+PATCH /api/identity/users/:userId/disable
+PATCH /api/identity/users/:userId/enable
 ```
 
-`/api/identity/*` 是统一后端目标入口；`/api/auth/*` 只作为历史客户端迁移期兼容层。新增前端或后端调用默认接 `/api/identity/*`。
+`/api/identity/*` 是统一后端唯一身份入口；`/api/auth/*` 已 hard cut 删除。新增前端或后端调用只能接 `/api/identity/*`。
+
+Identity 业务错误会以稳定 `AuthErrorCode` 返回，并映射为客户端可处理的 HTTP 状态码。例如错误账号或密码返回 `invalid_credentials` + `401`，禁用账号返回 `account_disabled` + `403`，token 缺失、无效、过期或 refresh token 复用返回 `401`；不要让这些业务错误穿透为 `500`。
 
 ## 2. 模块职责
 
@@ -36,7 +39,8 @@ POST /api/auth/logout
 `IdentityAuthService` 负责完整登录链路：
 
 - 登录成功后签发 HMAC JWT access token 与 refresh token。
-- refresh token 采用轮换机制；旧 refresh token 被再次使用时，会撤销对应 session 并返回 `refresh_token_reused`。
+- access token `aud` 覆盖 `agent-admin`、`agent-gateway` 与 `knowledge`，新增受保护应用应优先复用 Identity token，而不是新增独立登录口令。
+- refresh token 采用轮换机制；`/api/identity/refresh` 成功响应会返回新的 access token 和 refresh token，调用方必须保存新的 refresh token。旧 refresh token 被再次使用时，会撤销对应 session 并返回 `refresh_token_reused`。
 - logout 会撤销当前 session。
 - `/api/identity/me` 支持从 Bearer token 或已解析 principal 查询当前用户。
 

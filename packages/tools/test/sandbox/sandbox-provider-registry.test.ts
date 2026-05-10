@@ -5,7 +5,7 @@ import {
   SandboxPolicy,
   SandboxProviderRegistry,
   SimulatedSandboxProvider
-} from '../../src/sandbox';
+} from '@agent/runtime';
 
 describe('SandboxProviderRegistry', () => {
   it('selects the first provider accepted by the sandbox policy', () => {

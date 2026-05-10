@@ -11,11 +11,13 @@
 
 - [backend/README.md](/docs/apps/backend/README.md)
 - [frontend/README.md](/docs/apps/frontend/README.md)
+- [knowledge-cli/knowledge-cli.md](/docs/apps/knowledge-cli/knowledge-cli.md)
 
 当前优先阅读：
 
 - 后端接口、运行时装配、审批恢复：[backend/README.md](/docs/apps/backend/README.md)
-- `agent-chat`、`agent-admin`、`llm-gateway`：[frontend/README.md](/docs/apps/frontend/README.md)
+- `agent-chat`、`agent-admin`、`knowledge`、`agent-gateway`：[frontend/README.md](/docs/apps/frontend/README.md)
+- Knowledge SDK 本地 CLI 闭环：[knowledge-cli/knowledge-cli.md](/docs/apps/knowledge-cli/knowledge-cli.md)
 
 约定：
 

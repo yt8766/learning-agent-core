@@ -20,7 +20,7 @@ describe('WorkspaceDraftSkillArtifactFetcher', () => {
 
   it('materializes workspace-draft entries from the draft store into staging artifacts', async () => {
     const store = createRuntimeWorkspaceDraftStore({
-      filePath: join(workspaceRoot, 'data', 'skills', 'drafts', 'workspace-drafts.json'),
+      filePath: join(workspaceRoot, 'profile-storage', 'platform', 'skills', 'drafts', 'workspace-drafts.json'),
       createId: () => 'draft-browser-evidence',
       now: () => new Date('2026-04-26T01:02:03.000Z')
     });

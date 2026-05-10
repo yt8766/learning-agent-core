@@ -255,10 +255,10 @@ Unified database schema：
 Skill persistence：
 
 - `@agent/skill` 现在暴露 `SkillInstallRepository` / `SkillSourceRepository` contract，以及对应 memory implementation。
-- `RuntimeHost` 拥有 skill install/source repositories；`createProviderFactorySkillInstallContext`、`createProviderFactorySkillSourcesContext` 与 `RuntimeServiceContextFactory` 都必须把这些 repository 注入到 runtime skill services，避免真实运行路径继续默认读取 root `data/skills/*`。
-- runtime sandbox `find-skills` 必须通过执行请求里的 `skillSearchMetadata` / `skillSearchSnapshot` 接收 repository 或 facade 生成的 installed skill 与 source manifest 快照；它只额外扫描 source-controlled `.agents/skills/**/SKILL.md`，不再读取 root `data/skills/installed` 或 `data/skills/remote-sources`。
-- `SkillSourceSyncService` 已支持注入 `SkillSourceRemoteCacheRepository`。同步远程 source 时应优先使用注入的 remote source cache repository；未注入时才走 legacy `data/skills/remote-sources/<sourceId>/index.json` 过渡 fallback。
-- 当前 skill 持久化仍处于 Phase 3 迁移中：memory repository 已接线，legacy `data/skills/staging`、`data/skills/drafts`、`data/skills/remote-sources` 仅作为过渡 fallback，后续必须补齐 backend Postgres repositories 与 artifact/draft storage 后才能删除 root `data/skills`。
+- `RuntimeHost` 拥有 skill install/source repositories；`createProviderFactorySkillInstallContext`、`createProviderFactorySkillSourcesContext` 与 `RuntimeServiceContextFactory` 都必须把这些 repository 注入到 runtime skill services，避免真实运行路径读取 root `data/skills/*`。
+- runtime sandbox `find-skills` 扫描 source-controlled `.agents/skills/**/SKILL.md` 与 `profile-storage/<profile>/skills/{installed,remote-sources}` 生成的 metadata；不得读取 root `data/skills/installed` 或 `data/skills/remote-sources`。
+- `SkillSourceSyncService` 已支持注入 `SkillSourceRemoteCacheRepository`。同步远程 source 时优先使用注入的 remote source cache repository；未注入时默认写入 `profile-storage/<profile>/skills/remote-sources/<sourceId>/index.json`。
+- 当前 skill 持久化的本地 file-backed facade 已从 root `data/skills` 迁到 profile storage；Postgres production 接线仍应继续停在 repository / storage facade 边界后面。
 
 Daily Tech Briefing 边界：
 

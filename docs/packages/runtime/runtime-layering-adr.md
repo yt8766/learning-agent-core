@@ -18,7 +18,7 @@
 但在过去一段时间里，以下问题长期并存：
 
 - `runtime` 与官方 agent 装配边界不够清楚
-- `apps/backend`、`apps/worker` 容易残留“半装配”逻辑
+- backend 后台消费链路容易残留“半装配”逻辑
 - `platform-runtime` 一度像 helper 集合，而不是正式组合根
 - app/service/query 层容易零散直连 `@agent/platform-runtime`
 - 后续 AI 接手时，需要从多篇局部文档里拼出“到底谁是 kernel，谁是 composition root”
@@ -51,7 +51,7 @@ apps/*                     = 启动适配器
 
 - 默认官方 agent 装配
 - 对具体 `@agent/agents-*` 的直接依赖
-- backend / worker / controller / UI 适配逻辑
+- backend / controller / UI 适配逻辑
 
 实现约束：
 
@@ -65,7 +65,7 @@ apps/*                     = 启动适配器
 - 官方 agent registry
 - 官方 `RuntimeAgentDependencies`
 - 默认 `PlatformRuntimeFacade`
-- backend / worker 共享的默认 runtime 创建线
+- agent-server runtime host 的默认 runtime 创建线
 - 官方 workflow / subgraph / version metadata facade
 
 `packages/platform-runtime` 允许：
@@ -77,7 +77,7 @@ apps/*                     = 启动适配器
 `packages/platform-runtime` 不负责：
 
 - controller
-- worker loop
+- 后台消费循环
 - app view-model
 - 专项 agent graph 主实现
 - 业务 service/query 逻辑
@@ -87,7 +87,7 @@ apps/*                     = 启动适配器
 `apps/*` 负责：
 
 - 选择装配方案
-- 暴露 HTTP / SSE / worker / UI 入口
+- 暴露 HTTP / SSE / background runner / UI 入口
 - 做宿主特有的 facade、DTO 适配、错误映射、鉴权与生命周期控制
 
 `apps/*` 不负责：
@@ -96,10 +96,9 @@ apps/*                     = 启动适配器
 - 重新实现 runtime host
 - 直接内联官方 workflow / dispatch / ministry 装配
 
-当前 backend / worker 的落实方式：
+当前 backend 的落实方式：
 
 - backend 默认通过 `RuntimeHost` 持有 `PlatformRuntimeFacade`
-- worker 默认通过 `createWorkerRuntimeHost()` 持有 `PlatformRuntimeFacade`
 - backend app 源码允许直连 `@agent/platform-runtime` 的位置只保留：
   - `runtime/core/runtime.host.ts`
   - `runtime/core/runtime-data-report-facade.ts`
@@ -122,7 +121,7 @@ apps/*                     = 启动适配器
 
 - `runtime` 的 kernel 身份更稳定，不会继续回退成“认识官方 agent 的万能层”
 - `platform-runtime` 作为官方 composition root 的职责更明确
-- backend / worker 更容易保持“适配器”而不是“第二宿主”
+- backend 更容易保持“适配器”而不是“第二宿主”
 - supervisor capability 化、app 层瘦身、边界治理都能围绕同一套分层继续推进
 
 代价：

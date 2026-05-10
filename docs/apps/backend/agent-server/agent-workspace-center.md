@@ -58,7 +58,7 @@ Controller 只做 HTTP 适配和 facade 转发，不在 controller 内重建 run
 - `workspace-skill-drafts` 是 Skill Sources Center 的内部 source。`runtime-workspace-skill-draft-manifests.ts` 只把 `active` / `trusted` draft 投影为 `SkillManifestRecord`，再由 `runtime-skill-sources.service.ts` 合并进现有 manifest 查询；安装和 receipt 仍走既有 Skill Sources / install governance。
 - `workspace-draft:<draftId>` manifest entry 已由 `packages/skill` 的 `SkillArtifactFetcher` materialize：安装时会读取 file-backed draft store，生成 `SKILL.md` 与 `manifest.json`，再由 `finalizeSkillInstall()` 推到内部 skill package 目录并发布到 Skill Lab；本地安装 receipt 会写入 `sourceDraftId`，供 Workspace Center 后续回读。
 - `runtime-centers-workspace-drafts.ts` 是 agent-server 的 MVP adapter，负责把 `AgentSkillDraft` 映射成 workspace projection，并防止 raw metadata 穿透到 controller 或前端。
-- 默认 runtime context 带有 `settings.workspaceRoot` 时，draft store 会落到 `data/skills/drafts/workspace-drafts.json`；测试或短生命周期场景仍可注入 in-memory store。
+- 默认 runtime context 带有 `settings.skillsRoot` 时，draft store 会落到 `profile-storage/<profile>/skills/drafts/workspace-drafts.json`；测试或短生命周期场景仍可注入 in-memory store。
 
 ## 下一阶段落地说明
 

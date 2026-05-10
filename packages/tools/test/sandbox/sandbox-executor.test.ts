@@ -10,7 +10,7 @@ import {
 } from '@agent/report-kit';
 import { ActionIntent } from '@agent/core';
 
-import { LocalSandboxExecutor } from '../../src/sandbox';
+import { LocalSandboxExecutor } from '@agent/runtime';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('LocalSandboxExecutor find-skills', () => {
@@ -26,17 +26,31 @@ describe('LocalSandboxExecutor find-skills', () => {
     const root = await createTempWorkspace('sandbox-find-skills');
     tempWorkspaces.push(root);
     await mkdir(join(root, '.agents', 'skills', 'repo-audit'), { recursive: true });
-    await mkdir(join(root, 'data', 'skills', 'remote-sources', 'bundled-marketplace'), { recursive: true });
-    await mkdir(join(root, 'data', 'skills', 'installed', 'bundled-marketplace', 'repo_review_companion', '0.1.0'), {
+    await mkdir(join(root, 'profile-storage', 'platform', 'skills', 'remote-sources', 'bundled-marketplace'), {
       recursive: true
     });
+    await mkdir(
+      join(
+        root,
+        'profile-storage',
+        'platform',
+        'skills',
+        'installed',
+        'bundled-marketplace',
+        'repo_review_companion',
+        '0.1.0'
+      ),
+      {
+        recursive: true
+      }
+    );
 
     await writeFile(
       join(root, '.agents', 'skills', 'repo-audit', 'SKILL.md'),
       '# Repo Audit\n\nAudit repository structure and review risks.'
     );
     await writeFile(
-      join(root, 'data', 'skills', 'remote-sources', 'bundled-marketplace', 'index.json'),
+      join(root, 'profile-storage', 'platform', 'skills', 'remote-sources', 'bundled-marketplace', 'index.json'),
       JSON.stringify({
         manifests: [
           {
@@ -53,7 +67,8 @@ describe('LocalSandboxExecutor find-skills', () => {
     await writeFile(
       join(
         root,
-        'data',
+        'profile-storage',
+        'platform',
         'skills',
         'installed',
         'bundled-marketplace',
@@ -106,6 +121,7 @@ describe('LocalSandboxExecutor find-skills', () => {
         ])
       })
     );
+    await expect(stat(join(root, 'data', 'skills'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('deletes a workspace file with delete_local_file', async () => {

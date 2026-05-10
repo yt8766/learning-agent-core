@@ -19,7 +19,7 @@ describe('executeRuntimeGovernanceTool', () => {
   it('uses an injected repository for runtime governance artifacts without creating root data/runtime', async () => {
     const root = await createTempWorkspace('runtime-governance');
     tempWorkspaces.push(root);
-    await mkdir(join(root, 'data', 'browser-replays', 'session-1'), { recursive: true });
+    await mkdir(join(root, 'artifacts', 'runtime', 'browser-replays', 'session-1'), { recursive: true });
     process.chdir(root);
 
     await executeRuntimeGovernanceTool(
@@ -70,6 +70,7 @@ describe('executeRuntimeGovernanceTool', () => {
     );
 
     await expect(stat(join(root, 'data', 'runtime'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(stat(join(root, 'data', 'browser-replays'))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(listed?.rawOutput).toEqual(
       expect.objectContaining({
         archives: [expect.objectContaining({ sessionId: 'session-1' })],

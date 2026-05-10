@@ -7,7 +7,6 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -p tsconfig.app.json && vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/knowledge/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'",
     "turbo:typecheck": "pnpm typecheck",
     "turbo:test:unit": "pnpm --dir ../../.. exec vitest run --config vitest.config.js apps/frontend/knowledge/test --exclude '**/*.int-spec.ts' --exclude '**/*.int-spec.tsx'"
   },

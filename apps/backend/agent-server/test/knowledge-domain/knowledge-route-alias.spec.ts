@@ -110,8 +110,8 @@ describe('knowledge route aliases', () => {
     await expect(controller.listBases(request)).resolves.toEqual([{ id: 'base_1', name: 'Default' }]);
   });
 
-  it('mounts canonical and v1 knowledge routes through one controller', () => {
-    expect(Reflect.getMetadata(PATH_METADATA, KnowledgeApiController)).toEqual(['knowledge', 'knowledge/v1']);
+  it('mounts only the canonical knowledge route through one controller', () => {
+    expect(Reflect.getMetadata(PATH_METADATA, KnowledgeApiController)).toBe('knowledge');
   });
 
   it('exposes document upload, processing and retrieval endpoints from the unified controller', async () => {

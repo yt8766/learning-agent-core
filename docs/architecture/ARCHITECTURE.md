@@ -83,24 +83,22 @@ apps/*                     = 启动适配器，只选择装配方案并暴露入
 - `packages/core` 已移除对 `@agent/report-kit` 的 manifest 依赖，并由 `pnpm check:package-boundaries` 阻止回退。
 - `packages/platform-runtime` 已收敛为可注入 platform facade / registry contract 包，不再直接依赖官方 `@agent/agents-*`。
 - `apps/backend/agent-server/src/runtime/agents/*` 现在负责把官方 `@agent/agents-*` 装配成 `RuntimeAgentDependencies`，再注入 `AgentRuntime`。
-- `packages/platform-runtime` 的 `PlatformRuntimeFacade` 当前显式暴露 `runtime + agentRegistry + agentDependencies + metadata`；backend / worker 读取官方默认装配能力与只读 workflow/subgraph/version metadata 时，应优先通过这层 facade，而不是继续在 `apps/*` 零散 import 官方 helper。
+- `packages/platform-runtime` 的 `PlatformRuntimeFacade` 当前显式暴露 `runtime + agentRegistry + agentDependencies + metadata`；agent-server 读取官方默认装配能力与只读 workflow/subgraph/version metadata 时，应优先通过这层 facade，而不是继续在 `apps/*` 零散 import 官方 helper。
 - backend agents 组合根的 `createOfficialAgentRegistry()` 现已持有默认官方 agent descriptor，并支持 capability / specialist-domain 查询，作为后续 supervisor capability dispatch 的默认组合根入口。
 - backend agents 组合根的 `createOfficialRuntimeAgentDependencies()` 当前会优先按 capability contract 解析 supervisor / coder / reviewer / data-report 官方模块，再回退固定 agentId；后续 capability 化改造默认继续沿这条 contract 演进，而不是在 runtime 侧重新写死 `official.*` id。
 - 默认 `resolveSpecialistRoute()` 结果会在 backend 组合根装配时附带官方 agent 匹配线索，并优先按 `requiredCapabilities` 命中 registry，再回退到 specialist-domain，开始把 supervisor 的领域判断与 registry 中的实际官方 agent 连接起来。
 - planner strategy 现已收敛为稳定 contract：task / checkpoint 会显式记录当前是 `default`、`capability-gap` 还是 `rich-candidates` 规划态，供 runtime center / admin 直接观测，而不必再从散落的 specialist hints 反推。
-- `apps/backend` 与 `apps/worker` 的默认 runtime 创建线已切到 `@agent/platform-runtime`。
+- `apps/backend/agent-server` 的默认 runtime 创建线已切到 `@agent/platform-runtime`。
 - `PlatformRuntimeFacade` 现在还统一暴露官方 metadata（workflow preset、subgraph descriptor、workflow version）；应用宿主应通过 facade / host 读取这些只读装配信息，而不是继续单独 import metadata helper。
-- `apps/backend` 是官方 agent 组合根，可直接依赖 `@agent/agents-*`；其他 app/worker 默认通过显式注入后的 `@agent/platform-runtime` facade 消费。
+- `apps/backend/agent-server` 是官方 agent 组合根，可直接依赖 `@agent/agents-*`；其他 app 默认通过显式注入后的 `@agent/platform-runtime` facade 消费。
 - `packages/runtime` 已移除对官方 `@agent/agents-*` 的直接依赖，内部 `src/bridges/*` 只保留为 contract wrapper。
 - backend runtime 目前也开始按 `runtime/domain/* + centers/services thin orchestrator` 收敛：
   - `runtime/domain/skills/*` 承接 skill search/status、auto-install eligibility、install path/naming 等纯规则
   - `runtime/domain/connectors/*` 承接 connector projection reader 与 governance state mutation
   - `runtime/domain/metrics/*` 承接 persisted snapshot preference、recent runs projection 等纯读取/排序规则
   - `runtime/domain/observability/*` 承接 approvals center 与 run observatory list 的纯投影规则
-- `apps/worker` 当前也已继续收口成后台驱动适配器：
-  - `createWorkerRuntimeHost()` 持有 `PlatformRuntimeFacade`
-  - worker 通过 facade 消费 `runtime + background runner context`
-  - `startWorkerProcess()` 只负责启动/停止生命周期，不再兼做 runtime host 组合根
+- `apps/backend/agent-server` 是当前唯一官方后台消费入口；它通过 runtime bootstrap 启动内建 background runner，负责 queued task、learning job、lease reclaim、heartbeat 与 failure cleanup。
+- 旧后台 worker 应用已退役，不再作为 workspace package、部署进程、验证入口或文档入口存在。不要新增旧 worker 包名依赖，也不要恢复旧 worker 应用目录。
 
 三条红线：
 

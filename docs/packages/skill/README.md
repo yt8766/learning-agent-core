@@ -68,7 +68,7 @@
 - Approved draft 进入 Skill Lab / install intake 前必须先走 `buildSkillDraftInstallCandidate(draft)` 投影；该纯函数只接受 `active` / `trusted` draft，并只输出 `title`、`description`、`bodyMarkdown`、`requiredTools`、`requiredConnectors`、`sourceTaskId`、`sourceEvidenceIds`、`riskLevel`、`confidence`、`reuseStats` 白名单字段。
 - `SkillArtifactFetcher` 已支持 `entry: "workspace-draft:<draftId>"`，但不再直接读取 `data/skills/drafts/workspace-drafts.json`，也不再自己拼 `data/skills/staging`。调用方必须显式注入 `SkillDraftRepository` 与 `SkillArtifactStorageRepository`；backend runtime 的 file-backed 装配位于 `apps/backend/agent-server/src/runtime/skills/runtime-skill-storage.repository.ts`。
 - Install receipt / installed record 读写必须通过 `SkillInstallRepository`。`runtime-skill-install.service` 缺少 repository 时会抛出 `skill_install_repository_required`，不再回落到 root `receipts.json` 或 `installed.json`。
-- Remote source cache 读写必须通过 `SkillSourceRemoteCacheRepository`。backend runtime 默认使用 file-backed facade 写入 `data/skills/remote-sources/<sourceId>/index.json`，测试和短生命周期流程可注入 in-memory repository。
+- Remote source cache 读写必须通过 `SkillSourceRemoteCacheRepository`。backend runtime 默认使用 file-backed facade 写入 `profile-storage/<profile>/skills/remote-sources/<sourceId>/index.json`，测试和短生命周期流程可注入 in-memory repository。
 - Install candidate 不携带 repository 内部字段、审批人、workspaceId、authorId、时间戳、source vendor payload 或 raw metadata；后续 backend / frontend 只能消费投影结果，不应直接复用 `SkillDraftRecord` 作为 install/intake payload。
 - Workspace projection 只能读取 draft / install 摘要，不应读取 repository 内部索引、raw metadata、source credential 或 marketplace response。
 

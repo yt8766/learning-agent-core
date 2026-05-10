@@ -41,7 +41,6 @@ const TSC_PROJECT_RULES = [
   { test: file => file.startsWith('agents/coder/'), project: 'agents/coder/tsconfig.json' },
   { test: file => file.startsWith('agents/reviewer/'), project: 'agents/reviewer/tsconfig.json' },
   { test: file => file.startsWith('apps/backend/agent-server/'), project: 'apps/backend/agent-server/tsconfig.json' },
-  { test: file => file.startsWith('apps/worker/'), project: 'apps/worker/tsconfig.json' },
   {
     test: file => file.startsWith('apps/frontend/agent-admin/src/'),
     project: 'apps/frontend/agent-admin/tsconfig.app.json'
@@ -106,7 +105,6 @@ const ALL_TYPECHECK_PROJECTS = [
   'agents/coder/tsconfig.json',
   'agents/reviewer/tsconfig.json',
   'apps/backend/agent-server/tsconfig.json',
-  'apps/worker/tsconfig.json',
   'apps/frontend/agent-admin/tsconfig.app.json',
   'apps/frontend/agent-chat/tsconfig.app.json',
   'apps/frontend/agent-chat/tsconfig.node.json',
@@ -280,11 +278,7 @@ function main() {
 
   if (
     stagedFiles.some(
-      file =>
-        file.startsWith('apps/backend/agent-server/src/') ||
-        file.startsWith('apps/backend/agent-server/test/') ||
-        file.startsWith('apps/worker/src/') ||
-        file.startsWith('apps/worker/test/')
+      file => file.startsWith('apps/backend/agent-server/src/') || file.startsWith('apps/backend/agent-server/test/')
     )
   ) {
     console.log('[check:staged] backend structure check');

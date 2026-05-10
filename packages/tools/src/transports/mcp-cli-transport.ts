@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/runtime';
+import type { ToolExecutionRequest, ToolExecutionResult } from '@agent/core';
 
 import type { McpCapabilityDefinition } from '../mcp/mcp-capability-registry';
 import type { McpServerDefinition } from '../mcp/mcp-server-registry';

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ActionIntent } from '@agent/core';
 
-import { LocalSandboxExecutor } from '../../src/sandbox';
+import { LocalSandboxExecutor } from '@agent/runtime';
 import { cleanupTempWorkspaces, createTempWorkspace } from '../test-utils/temp-workspace';
 
 describe('LocalSandboxExecutor placeholder semantics', () => {

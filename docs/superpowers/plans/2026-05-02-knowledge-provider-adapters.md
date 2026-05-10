@@ -93,7 +93,7 @@ This plan must run in the current checkout. Do not use `git worktree`.
   - Preset factory construction tests using a mock `@langchain/openai`.
 - Test: `packages/knowledge/test/sdk-entrypoints.test.ts`
   - Adapter subpath export regression tests.
-- Modify docs: `docs/packages/knowledge/sdk.md`
+- Modify docs: `docs/sdk/knowledge.md`
   - Document adapter subpaths, MiniMax default, and LangChain boundary.
 - Modify docs: `docs/packages/knowledge/README.md`
   - Add adapter layer as a current package boundary.
@@ -276,61 +276,61 @@ Add these entries to `packages/knowledge/package.json` under `exports`:
 ```json
 "./adapters": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/index.d.ts",
+    "types": "./build/types/src/adapters/index.d.ts",
     "default": "./build/esm/adapters/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/index.d.ts",
+    "types": "./build/types/src/adapters/index.d.ts",
     "default": "./build/cjs/adapters/index.js"
   }
 },
 "./adapters/langchain": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+    "types": "./build/types/src/adapters/langchain/index.d.ts",
     "default": "./build/esm/adapters/langchain/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/langchain/index.d.ts",
+    "types": "./build/types/src/adapters/langchain/index.d.ts",
     "default": "./build/cjs/adapters/langchain/index.js"
   }
 },
 "./adapters/minimax": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+    "types": "./build/types/src/adapters/minimax/index.d.ts",
     "default": "./build/esm/adapters/minimax/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/minimax/index.d.ts",
+    "types": "./build/types/src/adapters/minimax/index.d.ts",
     "default": "./build/cjs/adapters/minimax/index.js"
   }
 },
 "./adapters/glm": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+    "types": "./build/types/src/adapters/glm/index.d.ts",
     "default": "./build/esm/adapters/glm/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/glm/index.d.ts",
+    "types": "./build/types/src/adapters/glm/index.d.ts",
     "default": "./build/cjs/adapters/glm/index.js"
   }
 },
 "./adapters/deepseek": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+    "types": "./build/types/src/adapters/deepseek/index.d.ts",
     "default": "./build/esm/adapters/deepseek/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/deepseek/index.d.ts",
+    "types": "./build/types/src/adapters/deepseek/index.d.ts",
     "default": "./build/cjs/adapters/deepseek/index.js"
   }
 },
 "./adapters/openai-compatible": {
   "import": {
-    "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+    "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
     "default": "./build/esm/adapters/openai-compatible/index.mjs"
   },
   "require": {
-    "types": "./build/types/knowledge/src/adapters/openai-compatible/index.d.ts",
+    "types": "./build/types/src/adapters/openai-compatible/index.d.ts",
     "default": "./build/cjs/adapters/openai-compatible/index.js"
   }
 }
@@ -1563,7 +1563,7 @@ git commit -m "feat: add knowledge provider presets"
 **Files:**
 
 - Modify: `packages/knowledge/src/index.ts`
-- Modify: `docs/packages/knowledge/sdk.md`
+- Modify: `docs/sdk/knowledge.md`
 - Modify: `docs/packages/knowledge/README.md`
 - Test: `packages/knowledge/test/sdk-entrypoints.test.ts`
 
@@ -1604,7 +1604,7 @@ export * from './adapters';
 
 - [ ] **Step 4: Update SDK documentation**
 
-Add this section to `docs/packages/knowledge/sdk.md` after “默认实现”:
+Add this section to `docs/sdk/knowledge.md` after “默认实现”:
 
 ````md
 ## 官方 Adapter 层
@@ -1678,7 +1678,7 @@ Expected: PASS and build outputs include adapter entrypoints under `build/cjs/ad
 Run:
 
 ```bash
-git add packages/knowledge/src/index.ts packages/knowledge/test/sdk-entrypoints.test.ts docs/packages/knowledge/sdk.md docs/packages/knowledge/README.md
+git add packages/knowledge/src/index.ts packages/knowledge/test/sdk-entrypoints.test.ts docs/sdk/knowledge.md docs/packages/knowledge/README.md
 git commit -m "docs: document knowledge provider adapters"
 ```
 

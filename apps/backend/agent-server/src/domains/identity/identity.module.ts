@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { IdentityController } from '../../api/identity/identity.controller';
-import { LegacyAuthController } from '../../api/identity/legacy-auth.controller';
+import { IdentityUsersController } from '../../api/identity/identity-users.controller';
 import { IDENTITY_REPOSITORY } from './repositories/identity.repository';
 import { IdentityMemoryRepository } from './repositories/identity-memory.repository';
 import { IdentityAuthService } from './services/identity-auth.service';
@@ -11,7 +11,7 @@ import { IDENTITY_SEED_OPTIONS, IdentitySeedService } from './services/identity-
 import { IdentityUserService } from './services/identity-user.service';
 
 @Module({
-  controllers: [IdentityController, LegacyAuthController],
+  controllers: [IdentityController, IdentityUsersController],
   providers: [
     { provide: IDENTITY_REPOSITORY, useClass: IdentityMemoryRepository },
     IdentityAuthService,

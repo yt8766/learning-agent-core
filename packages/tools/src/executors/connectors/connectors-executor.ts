@@ -1,4 +1,4 @@
-import type { ToolExecutionRequest } from '@agent/runtime';
+import type { ToolExecutionRequest } from '@agent/core';
 
 type ConnectorDraft = {
   connectorId: string;

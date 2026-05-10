@@ -7,7 +7,7 @@
 
 ## 包定位
 
-`packages/platform-runtime` 是官方平台装配层 / composition root，负责官方 agent registry、默认 runtime facade、backend/worker 共用启动线与只读 metadata。
+`packages/platform-runtime` 是官方平台装配层 / composition root，负责官方 agent registry、默认 runtime facade、agent-server runtime host 装配线与只读 metadata。
 
 ## 当前主要目录
 
@@ -36,4 +36,4 @@
 
 ## 交接提醒
 
-- 改 composition root 时，要小心 backend、worker 与默认 agent registry 的联动影响。
+- 改 composition root 时，要小心 agent-server runtime host、内建 background runner 与默认 agent registry 的联动影响。

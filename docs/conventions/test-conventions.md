@@ -27,7 +27,6 @@
 - 新增测试默认写入：
   - `packages/*/test`
   - `apps/backend/agent-server/test`
-  - `apps/worker/test`
   - `apps/frontend/agent-chat/test`
   - `apps/frontend/agent-admin/test`
 - 仓库级跨包 integration 与 workspace smoke 写入根级 `test/`（workspace test host）：
@@ -563,7 +562,7 @@ it('在 SSE 首个 assistant_token 到达时关闭 think loading 并保留正文
 ## 7. 本地数据与测试隔离
 
 - 测试不要写入正式运行数据
-- 正式运行数据统一放根级 `data/`
+- 正式运行数据必须通过显式 repository / profile storage / artifact storage
 - 测试落盘使用临时目录或独立测试路径
 
 推荐：
@@ -574,7 +573,7 @@ it('在 SSE 首个 assistant_token 到达时关闭 think loading 并保留正文
 禁止：
 
 - 写入 `apps/backend/agent-server/data`
-- 写入正式 `data/runtime/tasks-state.json`
+- 写入正式 `profile-storage/<profile>/runtime/tasks-state.json`
 
 ## 8. CI 规则
 
