@@ -25,20 +25,13 @@ function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-function readDocumentItems(response: unknown): KnowledgeDocument[] {
-  if (typeof response === 'object' && response !== null && 'items' in response && Array.isArray(response.items)) {
-    return response.items as KnowledgeDocument[];
-  }
-  throw new Error('文档列表响应结构不正确');
-}
-
 export function useKnowledgeDocuments(): KnowledgeDocumentsResult {
   const api = useKnowledgeApi();
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<Error | null>(null);
   const documentsQuery = useQuery({
     queryKey: DOCUMENTS_QUERY_KEY,
-    queryFn: async () => readDocumentItems(await api.listDocuments()),
+    queryFn: () => api.listDocuments(),
     staleTime: KNOWLEDGE_QUERY_STALE_TIME_MS
   });
   const { refetch } = documentsQuery;
@@ -114,7 +107,7 @@ export function useKnowledgeDocuments(): KnowledgeDocumentsResult {
     loading: documentsQuery.isFetching,
     error: toErrorOrNull(documentsQuery.error) ?? actionError,
     actionError,
-    documents: documentsQuery.data ?? [],
+    documents: documentsQuery.data?.items ?? [],
     reload,
     reprocessDocument,
     deleteDocument,

@@ -2,6 +2,8 @@
 
 > 历史说明：本文记录 standalone `auth-server` / `knowledge-server` 方案形成时的设计背景。当前实现已 hard cut 到 unified `apps/backend/agent-server`；正确入口见 `docs/superpowers/specs/2026-05-08-unified-backend-hard-cut-design.md`。
 
+> Historical note: this document predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+
 状态：snapshot
 文档类型：plan
 适用范围：`apps/backend/agent-server/src/knowledge`、`apps/frontend/knowledge`、`packages/knowledge`、`packages/adapters`、`docs/contracts/api`

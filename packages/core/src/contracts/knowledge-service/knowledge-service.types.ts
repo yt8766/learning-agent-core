@@ -29,15 +29,38 @@ import type {
   KnowledgeAssistantConfigResponseSchema,
   KnowledgeAssistantThinkingStepSchema,
   KnowledgeAssistantThinkingStepStatusSchema,
+  KnowledgeDashboardMissingKnowledgeQuestionSchema,
+  KnowledgeDashboardOverviewSchema,
+  KnowledgeDashboardRecentFailureSchema,
+  KnowledgeDocumentChunkSchema,
+  KnowledgeDocumentProcessingJobSchema,
+  KnowledgeDocumentSchema,
+  KnowledgeDocumentStatusSchema,
+  KnowledgeCreateDocumentFromUploadRequestSchema,
+  KnowledgeCreateDocumentFromUploadResponseSchema,
+  KnowledgeEmbeddingModelOptionSchema,
   KnowledgeEncryptionSettingsSchema,
+  KnowledgeEvalCaseResultSchema,
+  KnowledgeEvalCaseSchema,
+  KnowledgeEvalDatasetSchema,
+  KnowledgeEvalRunComparisonSchema,
+  KnowledgeEvalRunSchema,
+  KnowledgeEvalRunStatusSchema,
   KnowledgeMeResponseSchema,
   KnowledgeModelCapabilitySchema,
   KnowledgeModelProviderSchema,
   KnowledgeModelProvidersResponseSchema,
   KnowledgeModelProviderStatusSchema,
   KnowledgeModelSummarySchema,
+  KnowledgeObservabilityMetricsSchema,
+  KnowledgeObservabilityStageLatencySchema,
   KnowledgePasswordPolicySchema,
   KnowledgeProviderHealthStatusSchema,
+  KnowledgeRagTraceDetailSchema,
+  KnowledgeRagTraceSchema,
+  KnowledgeRagTraceSpanSchema,
+  KnowledgeRagTraceStatusSchema,
+  KnowledgeRetrievalSnapshotSchema,
   KnowledgeSecuritySettingsPatchRequestSchema,
   KnowledgeSecuritySettingsResponseSchema,
   KnowledgeServiceErrorCodeSchema,
@@ -46,6 +69,7 @@ import type {
   KnowledgeStorageBucketSchema,
   KnowledgeStorageKnowledgeBaseSchema,
   KnowledgeStorageSettingsResponseSchema,
+  KnowledgeUploadResultSchema,
   KnowledgeWorkspaceInvitationCreateRequestSchema,
   KnowledgeWorkspaceInvitationCreateResponseSchema,
   KnowledgeWorkspaceUserRoleSchema,
@@ -109,3 +133,60 @@ export type KnowledgeBaseResponse = z.infer<typeof KnowledgeBaseResponseSchema>;
 export type KnowledgeBaseMembersResponse = z.infer<typeof KnowledgeBaseMembersResponseSchema>;
 export type KnowledgeServiceErrorCode = z.infer<typeof KnowledgeServiceErrorCodeSchema>;
 export type KnowledgeServiceErrorResponse = z.infer<typeof KnowledgeServiceErrorResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Common helpers
+// ---------------------------------------------------------------------------
+
+export type KnowledgePageResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+export type KnowledgeDashboardRecentFailure = z.infer<typeof KnowledgeDashboardRecentFailureSchema>;
+export type KnowledgeDashboardMissingKnowledgeQuestion = z.infer<
+  typeof KnowledgeDashboardMissingKnowledgeQuestionSchema
+>;
+export type KnowledgeDashboardOverview = z.infer<typeof KnowledgeDashboardOverviewSchema>;
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+export type KnowledgeDocumentStatus = z.infer<typeof KnowledgeDocumentStatusSchema>;
+export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>;
+export type KnowledgeUploadResult = z.infer<typeof KnowledgeUploadResultSchema>;
+export type KnowledgeCreateDocumentFromUploadRequest = z.infer<typeof KnowledgeCreateDocumentFromUploadRequestSchema>;
+export type KnowledgeCreateDocumentFromUploadResponse = z.infer<typeof KnowledgeCreateDocumentFromUploadResponseSchema>;
+export type KnowledgeDocumentProcessingJob = z.infer<typeof KnowledgeDocumentProcessingJobSchema>;
+export type KnowledgeDocumentChunk = z.infer<typeof KnowledgeDocumentChunkSchema>;
+export type KnowledgeEmbeddingModelOption = z.infer<typeof KnowledgeEmbeddingModelOptionSchema>;
+
+// ---------------------------------------------------------------------------
+// Observability
+// ---------------------------------------------------------------------------
+
+export type KnowledgeObservabilityStageLatency = z.infer<typeof KnowledgeObservabilityStageLatencySchema>;
+export type KnowledgeObservabilityMetrics = z.infer<typeof KnowledgeObservabilityMetricsSchema>;
+export type KnowledgeRagTraceStatus = z.infer<typeof KnowledgeRagTraceStatusSchema>;
+export type KnowledgeRetrievalSnapshot = z.infer<typeof KnowledgeRetrievalSnapshotSchema>;
+export type KnowledgeRagTraceSpan = z.infer<typeof KnowledgeRagTraceSpanSchema>;
+export type KnowledgeRagTrace = z.infer<typeof KnowledgeRagTraceSchema>;
+export type KnowledgeRagTraceDetail = z.infer<typeof KnowledgeRagTraceDetailSchema>;
+
+// ---------------------------------------------------------------------------
+// Evals
+// ---------------------------------------------------------------------------
+
+export type KnowledgeEvalDataset = z.infer<typeof KnowledgeEvalDatasetSchema>;
+export type KnowledgeEvalCase = z.infer<typeof KnowledgeEvalCaseSchema>;
+export type KnowledgeEvalRunStatus = z.infer<typeof KnowledgeEvalRunStatusSchema>;
+export type KnowledgeEvalRun = z.infer<typeof KnowledgeEvalRunSchema>;
+export type KnowledgeEvalCaseResult = z.infer<typeof KnowledgeEvalCaseResultSchema>;
+export type KnowledgeEvalRunComparison = z.infer<typeof KnowledgeEvalRunComparisonSchema>;

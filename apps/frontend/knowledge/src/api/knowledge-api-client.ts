@@ -1,3 +1,15 @@
+import {
+  KnowledgeDashboardOverviewSchema,
+  KnowledgeObservabilityMetricsSchema,
+  KnowledgeRagTraceSchema,
+  KnowledgeRagTraceDetailSchema,
+  KnowledgePageResultSchema,
+  KnowledgeEvalDatasetSchema,
+  KnowledgeEvalRunSchema,
+  KnowledgeEvalCaseResultSchema,
+  KnowledgeEvalRunComparisonSchema
+} from '@agent/core';
+
 import type {
   AgentFlowListResponse,
   AgentFlowRunRequest,
@@ -54,6 +66,10 @@ import {
   type KnowledgeServiceBase
 } from './knowledge-api-client-normalizers';
 
+function parseResponse<T>(schema: { parse: (data: unknown) => T }, body: unknown): T {
+  return schema.parse(body);
+}
+
 export interface KnowledgeApiFactoryOptions {
   baseUrl: string;
   getAccessToken: () => string | undefined;
@@ -78,7 +94,9 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   getDashboardOverview() {
-    return this.get<DashboardOverview>('/dashboard/overview');
+    return this.get<unknown>('/knowledge/dashboard/overview').then(
+      body => parseResponse(KnowledgeDashboardOverviewSchema, body) as unknown as DashboardOverview
+    );
   }
 
   async listKnowledgeBases() {
@@ -187,31 +205,50 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   listEvalDatasets() {
-    return this.get<PageResult<EvalDataset>>('/eval/datasets');
+    return this.get<unknown>('/knowledge/eval/datasets').then(
+      body =>
+        parseResponse(KnowledgePageResultSchema(KnowledgeEvalDatasetSchema), body) as unknown as PageResult<EvalDataset>
+    );
   }
 
   listEvalRuns() {
-    return this.get<PageResult<EvalRun>>('/eval/runs');
+    return this.get<unknown>('/knowledge/eval/runs').then(
+      body => parseResponse(KnowledgePageResultSchema(KnowledgeEvalRunSchema), body) as unknown as PageResult<EvalRun>
+    );
   }
 
   listEvalRunResults(runId: string) {
-    return this.get<PageResult<EvalCaseResult>>(`/eval/runs/${runId}/results`);
+    return this.get<unknown>(`/knowledge/eval/runs/${runId}/results`).then(
+      body =>
+        parseResponse(
+          KnowledgePageResultSchema(KnowledgeEvalCaseResultSchema),
+          body
+        ) as unknown as PageResult<EvalCaseResult>
+    );
   }
 
   compareEvalRuns(input: { baselineRunId: string; candidateRunId: string }) {
-    return this.post<EvalRunComparison>('/eval/runs/compare', input);
+    return this.post<unknown>('/knowledge/eval/runs/compare', input).then(
+      body => parseResponse(KnowledgeEvalRunComparisonSchema, body) as unknown as EvalRunComparison
+    );
   }
 
   getObservabilityMetrics() {
-    return this.get<ObservabilityMetrics>('/observability/metrics');
+    return this.get<unknown>('/knowledge/observability/metrics').then(
+      body => parseResponse(KnowledgeObservabilityMetricsSchema, body) as unknown as ObservabilityMetrics
+    );
   }
 
   listTraces() {
-    return this.get<PageResult<RagTrace>>('/observability/traces');
+    return this.get<unknown>('/knowledge/observability/traces').then(
+      body => parseResponse(KnowledgePageResultSchema(KnowledgeRagTraceSchema), body) as unknown as PageResult<RagTrace>
+    );
   }
 
   getTrace(traceId: string) {
-    return this.get<RagTraceDetail>(`/observability/traces/${traceId}`);
+    return this.get<unknown>(`/knowledge/observability/traces/${traceId}`).then(
+      body => parseResponse(KnowledgeRagTraceDetailSchema, body) as unknown as RagTraceDetail
+    );
   }
 
   listWorkspaceUsers() {

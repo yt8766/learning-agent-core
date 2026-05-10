@@ -5,6 +5,8 @@
 适用范围：`apps/frontend/knowledge`、`apps/backend/agent-server/src/knowledge`、`packages/knowledge`、`packages/adapters`
 最后核对：2026-05-01
 
+> Historical note: this document predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+
 > Immediate execution note: for the next production cutover, execute `docs/superpowers/plans/2026-05-01-knowledge-production-cutover.md` first. This hardening plan remains a broader vertical backlog after database, vector store, and frontend-backend cutover are complete.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

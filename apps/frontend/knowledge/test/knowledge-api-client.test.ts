@@ -31,7 +31,7 @@ describe('KnowledgeApiClient', () => {
     const fetcher: typeof fetch = async (url, init) => {
       const authorization = new Headers(init?.headers).get('Authorization') ?? undefined;
       calls.push({ url: String(url), authorization });
-      if (String(url).endsWith('/dashboard/overview') && authorization === 'Bearer old') {
+      if (String(url).endsWith('/knowledge/dashboard/overview') && authorization === 'Bearer old') {
         return new Response(JSON.stringify({ code: 'auth_token_expired', message: 'expired' }), { status: 401 });
       }
       if (String(url).endsWith('/identity/refresh')) {
@@ -56,6 +56,13 @@ describe('KnowledgeApiClient', () => {
           failedDocumentCount: 0,
           todayQuestionCount: 0,
           activeAlertCount: 0,
+          averageLatencyMs: 0,
+          p95LatencyMs: 0,
+          p99LatencyMs: 0,
+          errorRate: 0,
+          noAnswerRate: 0,
+          negativeFeedbackRate: 0,
+          latestEvalScore: null,
           recentFailedJobs: [],
           recentLowScoreTraces: [],
           recentEvalRuns: [],
@@ -91,6 +98,13 @@ describe('KnowledgeApiClient', () => {
           failedDocumentCount: 0,
           todayQuestionCount: 0,
           activeAlertCount: 0,
+          averageLatencyMs: 0,
+          p95LatencyMs: 0,
+          p99LatencyMs: 0,
+          errorRate: 0,
+          noAnswerRate: 0,
+          negativeFeedbackRate: 0,
+          latestEvalScore: null,
           recentFailedJobs: [],
           recentLowScoreTraces: [],
           recentEvalRuns: [],
@@ -107,7 +121,7 @@ describe('KnowledgeApiClient', () => {
 
     expect(result.knowledgeBaseCount).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
-      'http://127.0.0.1:3000/api/dashboard/overview',
+      'http://127.0.0.1:3000/api/knowledge/dashboard/overview',
       expect.objectContaining({
         headers: expect.any(Headers)
       })
@@ -135,6 +149,13 @@ describe('KnowledgeApiClient', () => {
             failedDocumentCount: 0,
             todayQuestionCount: 0,
             activeAlertCount: 0,
+            averageLatencyMs: 0,
+            p95LatencyMs: 0,
+            p99LatencyMs: 0,
+            errorRate: 0,
+            noAnswerRate: 0,
+            negativeFeedbackRate: 0,
+            latestEvalScore: null,
             recentFailedJobs: [],
             recentLowScoreTraces: [],
             recentEvalRuns: [],
@@ -152,7 +173,7 @@ describe('KnowledgeApiClient', () => {
 
     expect(result.knowledgeBaseCount).toBe(1);
     expect(fetcher).toHaveBeenCalledWith(
-      'http://127.0.0.1:3000/api/dashboard/overview',
+      'http://127.0.0.1:3000/api/knowledge/dashboard/overview',
       expect.objectContaining({ headers: expect.any(Headers) })
     );
   });
@@ -361,6 +382,29 @@ describe('KnowledgeApiClient', () => {
       'http://127.0.0.1:3000/api/knowledge/conversations/conv_backend/messages',
       expect.any(Object)
     );
+  });
+
+  it('rejects dashboard overview response that fails schema validation', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          knowledgeBaseCount: 'not-a-number',
+          documentCount: 0
+        }),
+        { status: 200 }
+      )
+    );
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    await expect(apiClient.getDashboardOverview()).rejects.toThrow();
   });
 
   it('rejects malformed knowledge chat SSE frames before hooks consume them', () => {

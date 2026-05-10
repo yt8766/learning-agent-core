@@ -95,6 +95,8 @@
   - `review` 子域的 `specialist-finding` / `critique-result` 主 schema 与 normalize helper 已下沉到 reviewer 真实宿主；消费方应通过 `@agent/agents-reviewer` 的公开入口使用这些领域 contract。`packages/core/src/tasking/*` 仍保留跨主链稳定的 review record / specialist finding record。
 - `packages/core/src/skills/schemas/*` + `packages/core/src/skills/types/skills.types.ts`
   - 当前除 capability / attachment / governance profile 外，也已开始承接 `SkillTriggerReason`、`LocalSkillSuggestionRecord`、`SkillSearchStateRecord` 这组稳定 skill search 主契约；`tasking-checkpoint.ts` 与 `tasking-task-record.ts` 已开始直接复用
+- `packages/core/src/contracts/knowledge-service/*`
+  - 当前承接 Knowledge 前端 API 页面投影的 schema-first 主定义与类型出口，覆盖 dashboard overview、observability metrics/traces、eval datasets/runs/results、workspace users/settings、agent flow list/save 等稳定前端 DTO；所有长期存在的 Knowledge 前端 DTO 必须由 zod schema 推导，不得手写独立 interface。RAG stream 与 Agent Flow runtime contract 仍归 `@agent/knowledge`。
 - `packages/core/src/contracts/platform-console/index.ts`
   - 当前 contracts 出口已开始按 `chat / ministries / execution / architecture / platform-console / approval` 聚合；`data-report` 已迁到 `@agent/agents-data-report`。`SharedPlatformConsoleRecord` 这类 generic aggregation shell 仍属于 contracts 终态例外，除非后续确认它本身要进入稳定 JSON/API 边界，否则不应强行 schema-first 化
 - `packages/core/src/providers/*`
@@ -116,7 +118,7 @@
 
 - `core` 是稳定主 contract 的唯一宿主
 - `shared` 只保留 compat / facade / 展示组合职责
-- `core` 当前应按 `contracts / providers + domain folders` 理解：`tasking / skills / review / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主；data-report 已迁到 `@agent/agents-data-report`，knowledge / memory 已迁到 `@agent/knowledge` / `@agent/memory`，runtime-owned governance 已迁到 `@agent/runtime`，tool registry / executor 已迁到 `@agent/tools`；稳定 tool definition / execution request / execution result / family contract 仍归 `core`
+- `core` 当前应按 `contracts / providers + domain folders` 理解：`tasking / skills / review / channels / connectors / workflow-route / delivery / execution-trace / skills-search / platform-console / architecture / primitives` 已具备真实物理宿主；data-report 已迁到 `@agent/agents-data-report`，knowledge / memory 已迁到 `@agent/knowledge` / `@agent/memory`（Knowledge 前端页面投影 DTO 已收敛到 `contracts/knowledge-service`），runtime-owned governance 已迁到 `@agent/runtime`，tool registry / executor 已迁到 `@agent/tools`；稳定 tool definition / execution request / execution result / family contract 仍归 `core`
 - 后续继续收敛时，优先把剩余仍在平铺 compat 入口后的子域继续迁入 domain folder，而不是继续扩大根级平铺文件数量
 
 建议优先阅读：
