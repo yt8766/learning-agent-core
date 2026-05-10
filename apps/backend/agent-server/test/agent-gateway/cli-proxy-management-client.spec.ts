@@ -18,7 +18,7 @@ describe('CliProxyManagementClient', () => {
     });
 
     expect(fetcher).toHaveBeenCalledWith(
-      'https://remote.router-for.me/v0/management/system/info',
+      'https://remote.router-for.me/v0/management/config',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({ authorization: 'Bearer mgmt-secret' })

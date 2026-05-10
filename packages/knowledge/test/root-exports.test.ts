@@ -47,6 +47,7 @@ import {
   buildUserUploadKnowledgePayload,
   buildWebCuratedKnowledgePayload,
   createKnowledgeSourceIngestionLoader,
+  createInMemoryKnowledgeRagObserver,
   ingestKnowledgeSourcePayloads,
   runKnowledgeIndexing
 } from '../src/index';
@@ -74,6 +75,7 @@ import type {
 import * as rootExports from '../src/index';
 import * as contractExports from '../src/contracts/knowledge-facade';
 import * as indexingExports from '../src/indexing';
+import * as observabilityExports from '../src/observability';
 import * as chunkRepositoryExports from '../src/repositories/knowledge-chunk.repository';
 import * as sourceRepositoryExports from '../src/repositories/knowledge-source.repository';
 import * as retrievalExports from '../src/retrieval/knowledge-search-service';
@@ -289,5 +291,15 @@ describe('@agent/knowledge root exports', () => {
     expect(DefaultPostRetrievalFilter).toBeTypeOf('function');
     expect(DefaultPostRetrievalRanker).toBeTypeOf('function');
     expect(DefaultPostRetrievalDiversifier).toBeTypeOf('function');
+  });
+
+  it('re-exports observability APIs from the stable observability boundary', () => {
+    expect(rootExports.createInMemoryKnowledgeRagObserver).toBe(createInMemoryKnowledgeRagObserver);
+    expect(rootExports.createInMemoryKnowledgeRagObserver).toBe(
+      observabilityExports.createInMemoryKnowledgeRagObserver
+    );
+    expect(rootExports.tryStartKnowledgeRagTrace).toBe(observabilityExports.tryStartKnowledgeRagTrace);
+    expect(rootExports.tryRecordKnowledgeRagEvent).toBe(observabilityExports.tryRecordKnowledgeRagEvent);
+    expect(rootExports.tryFinishKnowledgeRagTrace).toBe(observabilityExports.tryFinishKnowledgeRagTrace);
   });
 });

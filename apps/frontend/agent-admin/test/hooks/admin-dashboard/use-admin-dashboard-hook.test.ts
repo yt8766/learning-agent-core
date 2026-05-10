@@ -136,7 +136,9 @@ describe('use-admin-dashboard hook coverage', () => {
   it('loads dashboard data, syncs the path route, and reacts to browser navigation', async () => {
     const harness = createReactHookHarness();
     const listeners = new Map<string, EventListener>();
+    const pushState = vi.fn();
     const replaceState = vi.fn();
+    const dispatchEvent = vi.fn();
     let capturedContext: CapturedDashboardContext | undefined;
     const queryClient = {
       fetchQuery: vi.fn()
@@ -187,8 +189,10 @@ describe('use-admin-dashboard hook coverage', () => {
         search: ''
       },
       history: {
+        pushState,
         replaceState
       },
+      dispatchEvent,
       addEventListener: vi.fn((type: string, listener: EventListener) => listeners.set(type, listener)),
       removeEventListener: vi.fn((type: string) => listeners.delete(type)),
       setInterval,
@@ -222,7 +226,10 @@ describe('use-admin-dashboard hook coverage', () => {
         approvals: '审批中枢'
       },
       buildDashboardRoute: vi.fn(
-        () =>
+        (state: { page: string }) =>
+          state.page === 'learning'
+            ? '/learning'
+            :
           '/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
       ),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/runtime'),
@@ -308,6 +315,8 @@ describe('use-admin-dashboard hook coverage', () => {
     result = harness.render(() => useAdminDashboard());
     await harness.runEffects();
     expect(result.page).toBe('learning');
+    expect(pushState).toHaveBeenCalledWith(null, '', '/learning');
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.any(Event));
     expect(actions.refreshPageCenter).not.toHaveBeenCalledWith('learning');
 
     harness.unmount();

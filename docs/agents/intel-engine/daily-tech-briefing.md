@@ -17,18 +17,18 @@ Daily Tech Intelligence Briefing 的当前真实宿主是 `agents/intel-engine/s
 
 briefing 存储已经从 root `data/runtime` 迁到 intel-owned storage repository。生产调用必须通过
 `RuntimeTechBriefingContext.briefingStorage` 注入宿主 storage；未显式注入时，默认 file repository
-落到当前 workspace 的 `data/intel-engine/briefing`，不再写 `data/runtime/briefings` 或
-`data/runtime/schedules`。
+落到当前 workspace 的 `profile-storage/platform/intel-engine/briefing`，不再写 root `data/*`、
+`data/runtime/briefings` 或 `data/runtime/schedules`。
 
 默认 file repository 路径：
 
 ```text
-data/intel-engine/briefing/daily-tech-briefing-runs.json
-data/intel-engine/briefing/daily-tech-briefing-history.json
-data/intel-engine/briefing/daily-tech-briefing-schedule-state.json
-data/intel-engine/briefing/daily-tech-briefing-feedback.json
-data/intel-engine/briefing/raw/
-data/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-runs.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-history.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-schedule-state.json
+profile-storage/platform/intel-engine/briefing/daily-tech-briefing-feedback.json
+profile-storage/platform/intel-engine/briefing/raw/
+profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
 代码边界：

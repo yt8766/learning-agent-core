@@ -10,7 +10,7 @@ describe('Agent Gateway workspace', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/gateway']}>
         <GatewayWorkspace
-          activeView="overview"
+          activeView="dashboard"
           onActiveViewChange={() => undefined}
           onLogout={() => undefined}
           snapshot={snapshot}
@@ -20,27 +20,23 @@ describe('Agent Gateway workspace', () => {
       </MemoryRouter>
     );
 
-    expect(html).toContain('总览');
-    expect(html).toContain('上游方');
+    expect(html).toContain('仪表盘');
+    expect(html).toContain('调用方管理');
+    expect(html).toContain('配置面板');
+    expect(html).toContain('AI提供商');
     expect(html).toContain('认证文件');
-    expect(html).toContain('配额');
-    expect(html).toContain('调用管线');
-    expect(html).toContain('日志与探测');
-    expect(html).toContain('连接');
-    expect(html).toContain('配置');
-    expect(html).toContain('API Keys');
-    expect(html).toContain('Provider Config');
-    expect(html).toContain('Auth Files');
-    expect(html).toContain('OAuth Policy');
-    expect(html).toContain('系统');
-    expect(html).toContain('OpenAI');
+    expect(html).toContain('OAuth登录');
+    expect(html).toContain('配额管理');
+    expect(html).toContain('中心信息');
+    expect(html).not.toContain('API Keys');
+    expect(html).not.toContain('日志与探测');
   });
 
   it('renders page navigation as router links', () => {
     const html = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/gateway/logs']}>
+      <MemoryRouter initialEntries={['/auth-files']}>
         <GatewayWorkspace
-          activeView="logs"
+          activeView="authFiles"
           onActiveViewChange={() => undefined}
           onLogout={() => undefined}
           snapshot={snapshot}
@@ -50,8 +46,8 @@ describe('Agent Gateway workspace', () => {
       </MemoryRouter>
     );
 
-    expect(html).toContain('href="/gateway/dashboard"');
-    expect(html).toContain('href="/gateway/logs"');
+    expect(html).toContain('href="/"');
+    expect(html).toContain('href="/auth-files"');
     expect(html).toContain('aria-current="page"');
     expect(html).not.toContain('<button aria-current="page"');
   });
@@ -60,7 +56,7 @@ describe('Agent Gateway workspace', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/gateway']}>
         <GatewayWorkspace
-          activeView="overview"
+          activeView="dashboard"
           onActiveViewChange={() => undefined}
           onLogout={() => undefined}
           snapshot={snapshot}
@@ -71,23 +67,19 @@ describe('Agent Gateway workspace', () => {
     );
 
     expect(html).toContain('gateway-shell-restored');
+    expect(html).toContain('pure-white-shell');
     expect(html).toContain('gateway-brand-mark');
     expect(html).toContain('view-nav-icon');
     expect(html).toContain('workspace-observer-strip');
   });
 
   it.each([
-    ['connection', 'Management API'],
     ['config', 'config.yaml'],
-    ['apiKeys', 'sk-***abc'],
-    ['providers', 'https://api.openai.com/v1'],
-    ['providerConfig', 'Ampcode'],
-    ['credentials', '.env'],
-    ['authFilesManager', 'Batch upload'],
-    ['oauthPolicy', 'Fork alias'],
-    ['quotas', '10 / 100 tokens'],
-    ['pipeline', 'Accounting'],
-    ['logs', 'Logs Manager'],
+    ['clients', 'Acme Runtime'],
+    ['aiProviders', 'Ampcode'],
+    ['authFiles', '批量上传'],
+    ['oauth', 'Fork 别名'],
+    ['quota', '10 / 100 tokens'],
     ['system', 'gpt-main']
   ] satisfies Array<[GatewayViewId, string]>)('renders %s center details', (activeView, expectedText) => {
     const html = renderToStaticMarkup(
@@ -138,6 +130,46 @@ describe('Agent Gateway workspace', () => {
             }
           ]
         }}
+        clients={[
+          {
+            id: 'client-acme',
+            name: 'Acme Runtime',
+            status: 'active',
+            tags: ['internal'],
+            createdAt: '2026-05-10T00:00:00.000Z',
+            updatedAt: '2026-05-10T00:00:00.000Z'
+          }
+        ]}
+        clientQuotas={{
+          'client-acme': {
+            clientId: 'client-acme',
+            period: 'monthly',
+            tokenLimit: 100,
+            requestLimit: 10,
+            usedTokens: 10,
+            usedRequests: 1,
+            resetAt: '2026-06-01T00:00:00.000Z',
+            status: 'normal'
+          }
+        }}
+        clientApiKeys={{
+          'client-acme': {
+            items: [
+              {
+                id: 'key-client-acme-runtime',
+                clientId: 'client-acme',
+                name: 'runtime',
+                prefix: 'agp_live',
+                status: 'active',
+                scopes: ['models.read', 'chat.completions'],
+                createdAt: '2026-05-10T00:00:00.000Z',
+                expiresAt: null,
+                lastUsedAt: null
+              }
+            ]
+          }
+        }}
+        clientLogs={{ 'client-acme': { items: [] } }}
         rawConfig={{ content: 'debug: true\n', format: 'yaml', version: 'config-1' }}
         systemInfo={{
           version: '1.2.3',
@@ -159,14 +191,29 @@ describe('Agent Gateway workspace', () => {
     expect(html).toContain(expectedText);
   });
 
-  it.each([
-    ['providers', '保存上游方'],
-    ['credentials', '保存认证文件'],
-    ['quotas', '保存配额']
-  ] satisfies Array<[GatewayViewId, string]>)('renders write controls for %s center', (activeView, expectedText) => {
+  it.each([['quota', '保存配额']] satisfies Array<[GatewayViewId, string]>)(
+    'renders write controls for %s center',
+    (activeView, expectedText) => {
+      const html = renderToStaticMarkup(
+        <GatewayWorkspace
+          activeView={activeView}
+          onActiveViewChange={() => undefined}
+          onLogout={() => undefined}
+          snapshot={snapshot}
+          logs={{ items: [] }}
+          usage={{ items: [] }}
+        />
+      );
+
+      expect(html).toContain(expectedText);
+      expect(html).toContain('删除');
+    }
+  );
+
+  it('renders auth file manager lifecycle actions in auth files center', () => {
     const html = renderToStaticMarkup(
       <GatewayWorkspace
-        activeView={activeView}
+        activeView="authFiles"
         onActiveViewChange={() => undefined}
         onLogout={() => undefined}
         snapshot={snapshot}
@@ -175,31 +222,74 @@ describe('Agent Gateway workspace', () => {
       />
     );
 
-    expect(html).toContain(expectedText);
-    expect(html).toContain('删除');
+    expect(html).toContain('批量上传');
+    expect(html).toContain('状态切换');
+    expect(html).toContain('模型列举');
   });
 
-  it('renders OAuth lifecycle actions in credential files center', () => {
-    const html = renderToStaticMarkup(
+  it('passes agent-server provider configs and auth files into restored management pages', () => {
+    const providerHtml = renderToStaticMarkup(
       <GatewayWorkspace
-        activeView="credentials"
+        activeView="aiProviders"
         onActiveViewChange={() => undefined}
         onLogout={() => undefined}
         snapshot={snapshot}
         logs={{ items: [] }}
         usage={{ items: [] }}
+        providerConfigs={{
+          items: [
+            {
+              providerType: 'codex',
+              id: 'codex-main',
+              displayName: 'Codex Main',
+              enabled: true,
+              baseUrl: null,
+              models: [{ name: 'codex-mini' }],
+              excludedModels: [],
+              credentials: [{ credentialId: 'codex-session', authIndex: 'codex-auth.json', status: 'valid' }]
+            }
+          ]
+        }}
+      />
+    );
+    const authHtml = renderToStaticMarkup(
+      <GatewayWorkspace
+        activeView="authFiles"
+        onActiveViewChange={() => undefined}
+        onLogout={() => undefined}
+        snapshot={snapshot}
+        logs={{ items: [] }}
+        usage={{ items: [] }}
+        authFiles={{
+          items: [
+            {
+              id: 'codex-auth',
+              providerId: 'codex',
+              providerKind: 'codex',
+              fileName: 'codex-auth.json',
+              path: '/auth/codex-auth.json',
+              status: 'valid',
+              accountEmail: 'codex@example.com',
+              projectId: null,
+              modelCount: 8,
+              updatedAt: '2026-05-08T00:00:00.000Z'
+            }
+          ],
+          nextCursor: null
+        }}
       />
     );
 
-    expect(html).toContain('开始授权');
-    expect(html).toContain('完成授权');
-    expect(html).toContain('刷新状态');
+    expect(providerHtml).toContain('Codex Main');
+    expect(providerHtml).toContain('codex-mini');
+    expect(authHtml).toContain('codex-auth.json');
+    expect(authHtml).toContain('codex@example.com');
   });
 
   it('renders workflow controls for destructive and async operations', () => {
     const html = renderToStaticMarkup(
       <GatewayWorkspace
-        activeView="overview"
+        activeView="dashboard"
         onActiveViewChange={() => undefined}
         onLogout={() => undefined}
         snapshot={snapshot}

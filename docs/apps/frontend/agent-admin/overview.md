@@ -3,13 +3,12 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-admin`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
 `agent-admin` 是后台指挥面，负责治理与运营，不和 `agent-chat` 做重复聊天产品。
 
 当前主要承载：
 
-- Agent Gateway 参考管理页
 - 运行中枢
 - 审批中枢
 - 学习中枢
@@ -20,9 +19,12 @@
 
 ## 导航约定
 
-- `/`、`/config`、`/ai-providers`、`/auth-files`、`/oauth`、`/quota`、`/system` 当前使用 `src/pages/agent-gateway` 的白色卡片式参考管理页，左侧栏固定为纯白 7 项导航，导航文案固定为“仪表盘、配置面板、AI提供商、认证文件、OAuth登录、配额管理、中心信息”，短品牌为 `AGMC`，图标使用本项目 lucide 组合，局部 UI 状态由 `zustand@^5.0.12` 管理。该入口用于还原 CLI Proxy 管理中心 `src/pages` 参考视觉，不复用参考项目 `CPAMC` 品牌或 logo。
+- `/` 默认进入 admin 自身的 Runtime Center；`/runtime`、`/approvals`、`/learning` 等 path route 继续承载后台治理中心。
+- Agent Gateway 的 `/config`、`/ai-providers`、`/auth-files`、`/oauth`、`/quota`、`/system` 等页面属于独立 `apps/frontend/agent-gateway` 应用，不在 `agent-admin` 内嵌或复用。
 - 左侧主导航默认使用中文治理语义，不再直接复用英文产品导航文案。
 - 侧栏主分组标题使用“治理中心与专项入口”，避免真实入口数超过六个后继续误导用户或后续代码代理。
+- 侧栏默认展示完整治理入口，不按 `developer` / `super_admin` 角色裁剪中心；权限差异应落在后端接口、危险动作审批和后续按钮级权限上。
+- 侧栏和顶部导航点击必须写入真实 path route 并派发路由变更事件，不能只更新 React 内部页面状态；这样页面切换、刷新请求、浏览器地址和分享链接才保持一致。
 - 主治理面仍以六大治理语义为主轴，对应：
   - 运行中枢
   - 审批中枢
@@ -44,10 +46,7 @@
 - `src/app`
   - 应用入口、React Router 路由表、全局 provider
   - `app.tsx` 只负责 `QueryClientProvider` 与 `RouterProvider` 装配
-  - `admin-routes.tsx` 声明 `/login`、Agent Gateway 参考管理页、Dashboard path route、错误页与受保护路由，不再在应用入口手写 pathname 分发表
-- `src/pages/agent-gateway`
-  - Agent Gateway 参考管理页，当前覆盖 `/` 仪表盘、`/config` 配置面板、`/ai-providers` AI 提供商配置、`/auth-files` 认证文件管理、`/oauth` OAuth登录、`/quota` 配额管理和 `/system` 中心信息
-  - 当前为静态展示与路由壳；未来接入真实 API 前必须先更新 Agent Gateway contract 或 admin facade 文档
+  - `admin-routes.tsx` 声明 `/login`、Dashboard path route、错误页与受保护路由，不再在应用入口手写 pathname 分发表
 - `src/api`
   - 面向 `agent-server` 的后台治理接口封装
   - `admin-api-sandbox.ts`

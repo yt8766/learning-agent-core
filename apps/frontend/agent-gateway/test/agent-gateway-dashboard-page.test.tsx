@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DashboardPage } from '../src/app/pages/DashboardPage';
 
 describe('DashboardPage', () => {
-  it('renders CLI Proxy dashboard summary counts', () => {
+  it('renders Agent Gateway dashboard summary counts', () => {
     const html = renderToStaticMarkup(
       <DashboardPage
         summary={{
@@ -32,9 +32,15 @@ describe('DashboardPage', () => {
       />
     );
 
-    expect(html).toContain('Dashboard');
-    expect(html).toContain('2 API Keys');
-    expect(html).toContain('9 Models');
+    expect(html).toContain('仪表盘');
+    expect(html).toContain('2 个管理密钥');
+    expect(html).toContain('9 个可用模型');
+    expect(html).toContain('Agent Gateway 运行总览');
     expect(html).toContain('https://router.example.com/v0/management');
+    expect(html).toContain('dashboard-background-orbs');
+    expect(html).toContain('dashboard-orb-one');
+    expect(html).toContain('dashboard-orb-two');
+    expect(html).toContain('dashboard-animated-card');
+    expect(html).toContain('dashboard-status-dot connected');
   });
 });

@@ -32,7 +32,7 @@ describe('runtime-tech-briefing-storage', () => {
     }
   });
 
-  it('默认 briefing storage 不再写入 root data/runtime 目录', async () => {
+  it('默认 briefing storage 写入 profile storage 而不是 root data 目录', async () => {
     workspaceRoot = await mkdtemp(join(tmpdir(), 'runtime-tech-briefing-owned-storage-'));
 
     await ensureDailyTechBriefingSchedule(workspaceRoot, 'frontend-security', 'daily 11:00');
@@ -89,7 +89,13 @@ describe('runtime-tech-briefing-storage', () => {
       }
     ]);
 
-    await expect(pathExists(join(workspaceRoot, 'data', 'runtime'))).resolves.toBe(false);
+    expect(getStorageRoot(workspaceRoot)).toBe(
+      join(workspaceRoot, 'profile-storage', 'platform', 'intel-engine', 'briefing')
+    );
+    await expect(
+      pathExists(join(workspaceRoot, 'profile-storage', 'platform', 'intel-engine', 'briefing'))
+    ).resolves.toBe(true);
+    await expect(pathExists(join(workspaceRoot, 'data'))).resolves.toBe(false);
   });
 
   it('支持注入 memory briefing repository 以绕过文件系统落盘', async () => {

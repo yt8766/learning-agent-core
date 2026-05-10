@@ -147,6 +147,27 @@ export const GatewayOAuthCallbackResponseSchema = z.object({
   completedAt: z.string()
 });
 
+export const GatewayProviderOAuthStartProviderSchema = z.enum([
+  'codex',
+  'anthropic',
+  'antigravity',
+  'gemini-cli',
+  'kimi'
+]);
+
+export const GatewayProviderOAuthStartRequestSchema = z.object({
+  provider: GatewayProviderOAuthStartProviderSchema,
+  isWebui: z.boolean().optional(),
+  projectId: z.string().min(1).optional()
+});
+
+export const GatewayProviderOAuthStartResponseSchema = z.object({
+  state: z.string().min(1),
+  verificationUri: z.string().min(1),
+  userCode: z.string().optional(),
+  expiresAt: z.string()
+});
+
 export const GatewayGeminiCliOAuthStartRequestSchema = z.object({
   projectId: z.string().min(1).optional()
 });

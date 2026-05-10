@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   Document,
+  KnowledgeRagTrace,
   KnowledgeChunk,
   KnowledgeSource,
   KnowledgeVectorDocumentRecord,
@@ -9,6 +10,7 @@ import type {
   Loader
 } from '@agent/knowledge';
 
+import { createInMemoryKnowledgeRagObserver, exportKnowledgeRagTrace } from '../src/observability';
 import { runKnowledgeIndexing } from '../src';
 
 describe('runKnowledgeIndexing', () => {
@@ -263,6 +265,152 @@ describe('runKnowledgeIndexing', () => {
         sourceType: 'user-upload',
         trustClass: 'internal'
       })
+    );
+  });
+
+  it('returns pipeline stage diagnostics and writer quality gates for SDK ingestion hosts', async () => {
+    const loader: Loader = {
+      async load(): Promise<Document[]> {
+        return [
+          {
+            id: 'doc-1',
+            content: 'quality gates should describe chunk embed and store stages',
+            metadata: { sourceId: 'source-1', title: 'Pipeline Diagnostics', uri: '/docs/pipeline.md' }
+          }
+        ];
+      }
+    };
+
+    const vectorRecords: KnowledgeVectorDocumentRecord[] = [];
+    const fulltextChunks: KnowledgeChunk[] = [];
+    const sources: KnowledgeSource[] = [];
+
+    const result = await runKnowledgeIndexing({
+      loader,
+      vectorIndex: {
+        async upsertKnowledge(record: KnowledgeVectorDocumentRecord): Promise<void> {
+          vectorRecords.push(record);
+        }
+      },
+      fulltextIndex: {
+        async upsertKnowledgeChunk(chunk: KnowledgeChunk): Promise<void> {
+          fulltextChunks.push(chunk);
+        }
+      },
+      sourceIndex: {
+        async upsertKnowledgeSource(source: KnowledgeSource): Promise<void> {
+          sources.push(source);
+        }
+      },
+      sourceConfig: { sourceId: 'fallback-source', sourceType: 'repo-docs', trustClass: 'internal' },
+      chunkSize: 18,
+      chunkOverlap: 4
+    });
+
+    expect(result.diagnostics?.stages).toEqual([
+      expect.objectContaining({ stage: 'load', status: 'succeeded', outputCount: 1 }),
+      expect.objectContaining({ stage: 'filter', status: 'succeeded', inputCount: 1, outputCount: 1 }),
+      expect.objectContaining({ stage: 'chunk', status: 'succeeded', inputCount: 1, outputCount: result.chunkCount }),
+      expect.objectContaining({
+        stage: 'embed',
+        status: 'succeeded',
+        inputCount: result.chunkCount,
+        outputCount: result.embeddedChunkCount
+      }),
+      expect.objectContaining({
+        stage: 'store-vector',
+        status: 'succeeded',
+        inputCount: result.embeddedChunkCount,
+        outputCount: vectorRecords.length
+      }),
+      expect.objectContaining({ stage: 'store-fulltext', status: 'succeeded', outputCount: fulltextChunks.length }),
+      expect.objectContaining({ stage: 'store-source', status: 'succeeded', outputCount: sources.length })
+    ]);
+    expect(result.diagnostics?.qualityGates).toEqual([
+      expect.objectContaining({
+        name: 'vector-records-match-chunks',
+        stage: 'embed',
+        status: 'passed',
+        expectedCount: result.chunkCount,
+        actualCount: result.embeddedChunkCount
+      }),
+      expect.objectContaining({
+        name: 'vector-writes-match-records',
+        stage: 'store-vector',
+        status: 'passed',
+        expectedCount: result.embeddedChunkCount,
+        actualCount: vectorRecords.length
+      }),
+      expect.objectContaining({
+        name: 'fulltext-writes-match-chunks',
+        stage: 'store-fulltext',
+        status: 'passed',
+        expectedCount: result.chunkCount,
+        actualCount: fulltextChunks.length
+      })
+    ]);
+  });
+
+  it('records indexing stage events and count metrics when an observer is provided', async () => {
+    const observer = createInMemoryKnowledgeRagObserver();
+    const vectorRecords: KnowledgeVectorDocumentRecord[] = [];
+
+    const result = await runKnowledgeIndexing({
+      loader: {
+        async load(): Promise<Document[]> {
+          return [
+            {
+              id: 'doc-1',
+              content: 'indexing observability records load chunk embed and store stages',
+              metadata: { sourceId: 'source-1', title: 'Observed Indexing', uri: '/docs/observed-indexing.md' }
+            }
+          ];
+        }
+      },
+      vectorIndex: {
+        async upsertKnowledge(record: KnowledgeVectorDocumentRecord): Promise<void> {
+          vectorRecords.push(record);
+        }
+      },
+      sourceConfig: { sourceId: 'source-1', sourceType: 'repo-docs', trustClass: 'internal' },
+      chunkSize: 18,
+      chunkOverlap: 4,
+      observer,
+      traceId: 'trace-indexing-runtime'
+    });
+
+    const trace = exportKnowledgeRagTrace(observer, 'trace-indexing-runtime');
+
+    expect(trace).toMatchObject<Partial<KnowledgeRagTrace>>({
+      traceId: 'trace-indexing-runtime',
+      operation: 'indexing.run',
+      status: 'succeeded',
+      indexing: {
+        sourceId: 'source-1',
+        loadedDocumentCount: 1,
+        chunkCount: result.chunkCount,
+        embeddedChunkCount: result.embeddedChunkCount,
+        storedChunkCount: vectorRecords.length
+      }
+    });
+    expect(trace.events.map(event => event.name)).toEqual([
+      'indexing.run.start',
+      'indexing.load.complete',
+      'indexing.chunk.complete',
+      'indexing.embed.complete',
+      'indexing.store.complete'
+    ]);
+    expect(trace.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'indexing.loaded_document_count', value: 1, unit: 'count' }),
+        expect.objectContaining({ name: 'indexing.chunk_count', value: result.chunkCount, unit: 'count' }),
+        expect.objectContaining({
+          name: 'indexing.embedded_chunk_count',
+          value: result.embeddedChunkCount,
+          unit: 'count'
+        }),
+        expect.objectContaining({ name: 'indexing.stored_chunk_count', value: vectorRecords.length, unit: 'count' })
+      ])
     );
   });
 });

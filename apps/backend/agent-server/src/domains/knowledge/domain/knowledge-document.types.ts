@@ -6,10 +6,12 @@ import type {
   DocumentProcessingJobProgressSchema,
   DocumentProcessingStageSchema,
   DocumentProcessingStatusSchema,
+  DocumentChunkRecordSchema,
   CreateKnowledgeChatMessageRecordInputSchema,
   KnowledgeChatConversationRecordSchema,
   KnowledgeChatMessageRecordSchema,
   KnowledgeChatMessageFeedbackSchema,
+  KnowledgeChunkStageStatusSchema,
   RagModelProfileSchema,
   RagModelProfileSummarySchema
 } from './knowledge-document.schemas';
@@ -36,7 +38,8 @@ export type KnowledgeJobStage =
   | 'index_vector'
   | 'index_keyword'
   | 'commit';
-export type KnowledgeChunkStageStatus = 'pending' | 'succeeded' | 'failed' | 'skipped';
+export type KnowledgeChunkStageStatus = z.infer<typeof KnowledgeChunkStageStatusSchema>;
+export type DocumentChunkRecord = z.infer<typeof DocumentChunkRecordSchema>;
 
 export interface KnowledgeDocumentRecord {
   id: string;
@@ -78,19 +81,6 @@ export interface DocumentProcessingJobRecord {
   errorCode?: string;
   errorMessage?: string;
   attempts: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DocumentChunkRecord {
-  id: string;
-  documentId: string;
-  ordinal: number;
-  content: string;
-  tokenCount: number;
-  embeddingStatus: KnowledgeChunkStageStatus;
-  vectorIndexStatus: KnowledgeChunkStageStatus;
-  keywordIndexStatus: KnowledgeChunkStageStatus;
   createdAt: string;
   updatedAt: string;
 }

@@ -2,7 +2,7 @@
 
 状态：current
 文档类型：reference
-适用范围：`agents/intel-engine`、`apps/backend/agent-server`、`config/intel`、`data/intel`
+适用范围：`agents/intel-engine`、`apps/backend/agent-server`、`config/intel`、`profile-storage/platform/intel`
 最后核对：2026-04-24
 
 ## 1. 背景
@@ -42,7 +42,7 @@
 
 - `agents/intel-engine` 已具备可编译的 graph 入口
 - `config/intel/*.yaml` 已接入 Zod 校验加载
-- `data/intel/intel.db` 已由 SQLite repository 承载
+- `profile-storage/platform/intel/intel.db` 已由 SQLite repository 承载
 - `intel-patrol` / `intel-ingest` 已可通过 MCP 搜索能力跑通原始入库、归一化、同批去重归并、打分、路由命中与 delivery 入队；运行时优先使用稳定 `webSearchPrime`，缺失时回退到 MiniMax Token Plan `minimax:web_search` capability，并以官方 `web_search` toolName 按 `{ query }` 调用。patrol 会把 raw search result 按最终 merged signal id 写入 `signal_sources`，并支持重复 patrol 复用既有 `dedupe_key`
 - `intel-digest` 已可收集同日 signals、分组排序、渲染 markdown 日报、落 `daily_digests` / `daily_digest_signals`，并按 digest 路由创建 digest deliveries；当前 digest markdown 会附带 highlight 级 evidence summary 与 source refs，便于从 `signal_sources` 追溯到最终日报内容
 - `intel-delivery-retry` 已可读取 pending/failed deliveries、通过 Lark webhook 实际发送，并稳定回写 `sent` / `failed` / `closed`
@@ -162,8 +162,7 @@
 - `config/intel/sources.yaml`
 - `config/intel/channels.yaml`
 - `config/intel/routes.yaml`
-- `data/intel/intel.db`
-- `data/intel/cache/*.json`
+- `profile-storage/platform/intel/intel.db`
 
 ## 6. 调度设计
 

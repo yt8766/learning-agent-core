@@ -8,6 +8,7 @@ import type { RetrievalRerankProvider } from '../src/runtime/stages/post-retriev
 import type { ContextExpander } from '../src/runtime/stages/context-expander';
 import type { QueryNormalizer } from '../src/runtime/stages/query-normalizer';
 import type { NormalizedRetrievalRequest } from '../src/runtime/types/retrieval-runtime.types';
+import { createInMemoryKnowledgeRagObserver, exportKnowledgeRagTrace } from '../src/observability';
 import { runKnowledgeRetrieval } from '../src/runtime/pipeline/run-knowledge-retrieval';
 import { InMemoryKnowledgeChunkRepository } from '../src/repositories/knowledge-chunk.repository';
 import { InMemoryKnowledgeSourceRepository } from '../src/repositories/knowledge-source.repository';
@@ -189,6 +190,123 @@ describe('runKnowledgeRetrieval', () => {
 
     expect(result.contextBundle).toContain('Guide');
     expect(result.contextBundle).toContain('relevant text');
+  });
+
+  it('records standard runtime trace events when an observer is provided', async () => {
+    const observer = createInMemoryKnowledgeRagObserver();
+    const hit = makeHit({ chunkId: 'trace-hit', score: 0.93 });
+
+    await runKnowledgeRetrieval({
+      request: { query: '  traced retrieval  ', limit: 2 },
+      searchService: makeSearchService([hit]),
+      assembleContext: true,
+      includeDiagnostics: true,
+      observer,
+      traceId: 'trace-retrieval-runtime',
+      pipeline: { queryNormalizer: makeSingleVariantNormalizer() }
+    });
+
+    const trace = exportKnowledgeRagTrace(observer, 'trace-retrieval-runtime');
+
+    expect(trace).toMatchObject({
+      traceId: 'trace-retrieval-runtime',
+      operation: 'retrieval.run',
+      status: 'succeeded',
+      query: {
+        text: '  traced retrieval  ',
+        normalizedText: 'traced retrieval',
+        variants: ['traced retrieval']
+      }
+    });
+    expect(trace.events.map(event => event.name)).toEqual([
+      'runtime.query.receive',
+      'runtime.query.preprocess',
+      'runtime.retrieval.start',
+      'runtime.retrieval.complete',
+      'runtime.post_retrieval.select',
+      'runtime.context_assembly.complete'
+    ]);
+    expect(trace.events.find(event => event.name === 'runtime.retrieval.complete')?.retrieval).toMatchObject({
+      requestedTopK: 2,
+      hits: [expect.objectContaining({ chunkId: 'trace-hit', rank: 1 })],
+      citations: [hit.citation],
+      diagnostics: {
+        selectedCount: 1
+      }
+    });
+    expect(trace.retrieval?.hits[0]?.chunkId).toBe('trace-hit');
+    expect(trace.diagnostics?.selectedCount).toBe(1);
+    expect(trace.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'runtime.duration_ms', unit: 'ms', stage: 'retrieval' }),
+        expect.objectContaining({ name: 'retrieval.duration_ms', unit: 'ms', stage: 'retrieval' }),
+        expect.objectContaining({ name: 'retrieval.hit_count', value: 1, unit: 'count', stage: 'retrieval' }),
+        expect.objectContaining({ name: 'retrieval.selected_count', value: 1, unit: 'count', stage: 'post-retrieval' }),
+        expect.objectContaining({ name: 'context.length_bytes', unit: 'bytes', stage: 'context-assembly' })
+      ])
+    );
+  });
+
+  it('keeps retrieval result intact when observer hooks fail', async () => {
+    const failingObserver = {
+      startTrace: vi.fn(() => {
+        throw new Error('observer start failed');
+      }),
+      recordEvent: vi.fn(() => {
+        throw new Error('observer event failed');
+      }),
+      finishTrace: vi.fn(() => {
+        throw new Error('observer finish failed');
+      }),
+      exportTrace: vi.fn(() => {
+        throw new Error('observer export failed');
+      }),
+      listTraces: vi.fn(() => [])
+    };
+
+    const result = await runKnowledgeRetrieval({
+      request: { query: 'observer isolated retrieval', limit: 2 },
+      searchService: makeSearchService([makeHit({ chunkId: 'observer-isolated-retrieval' })]),
+      assembleContext: true,
+      observer: failingObserver,
+      traceId: 'trace-retrieval-observer-isolation',
+      pipeline: { queryNormalizer: makeSingleVariantNormalizer() }
+    });
+
+    expect(result.hits[0]?.chunkId).toBe('observer-isolated-retrieval');
+    expect(result.total).toBe(1);
+  });
+
+  it('records run.fail in the runtime trace while preserving retrieval failures', async () => {
+    const observer = createInMemoryKnowledgeRagObserver();
+    const searchService: KnowledgeSearchService = {
+      search: vi.fn(async () => {
+        throw new Error('search provider unavailable');
+      })
+    };
+
+    await expect(
+      runKnowledgeRetrieval({
+        request: { query: 'failing retrieval' },
+        searchService,
+        observer,
+        traceId: 'trace-retrieval-fail',
+        pipeline: { queryNormalizer: makeSingleVariantNormalizer() }
+      })
+    ).rejects.toThrow('search provider unavailable');
+
+    const trace = exportKnowledgeRagTrace(observer, 'trace-retrieval-fail');
+
+    expect(trace.status).toBe('failed');
+    expect(trace.events.at(-1)).toMatchObject({
+      name: 'runtime.run.fail',
+      error: {
+        code: 'Error',
+        message: 'search provider unavailable',
+        retryable: false,
+        stage: 'retrieval'
+      }
+    });
   });
 
   it('omits contextBundle when assembleContext is false (default)', async () => {

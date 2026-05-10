@@ -278,14 +278,31 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
   }
 
   async saveChunks(documentId: string, chunks: DocumentChunkRecord[]): Promise<DocumentChunkRecord[]> {
-    await this.client.query('delete from knowledge_document_chunks where document_id = $1', [documentId]);
+    if (chunks.length === 0) {
+      await this.client.query('delete from knowledge_document_chunks where document_id = $1', [documentId]);
+      return [];
+    }
+
+    await this.client.query('delete from knowledge_document_chunks where document_id = $1 and not (id = any($2::text[]))', [
+      documentId,
+      chunks.map(chunk => chunk.id)
+    ]);
     const saved: DocumentChunkRecord[] = [];
     for (const chunk of chunks) {
       const result = await this.client.query(
         `insert into knowledge_document_chunks
-          (id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, created_at, updated_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         returning id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, created_at, updated_at`,
+          (id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, metadata, created_at, updated_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         on conflict (id) do update set
+           ordinal = excluded.ordinal,
+           content = excluded.content,
+           token_count = excluded.token_count,
+           embedding_status = excluded.embedding_status,
+           vector_index_status = excluded.vector_index_status,
+           keyword_index_status = excluded.keyword_index_status,
+           metadata = excluded.metadata,
+           updated_at = excluded.updated_at
+         returning id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, metadata, created_at, updated_at`,
         [
           chunk.id,
           chunk.documentId,
@@ -295,6 +312,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
           chunk.embeddingStatus,
           chunk.vectorIndexStatus,
           chunk.keywordIndexStatus,
+          JSON.stringify(chunk.metadata ?? {}),
           chunk.createdAt,
           chunk.updatedAt
         ]
@@ -306,7 +324,7 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
 
   async listChunks(documentId: string): Promise<DocumentChunkRecord[]> {
     const result = await this.client.query(
-      `select id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, created_at, updated_at
+      `select id, document_id, ordinal, content, token_count, embedding_status, vector_index_status, keyword_index_status, metadata, created_at, updated_at
        from knowledge_document_chunks
        where document_id = $1
        order by ordinal asc`,

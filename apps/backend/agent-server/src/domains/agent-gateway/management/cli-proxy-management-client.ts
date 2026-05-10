@@ -24,6 +24,7 @@ import type {
   GatewayOAuthCallbackResponse,
   GatewayOAuthModelAliasListResponse,
   GatewayOAuthStatusResponse,
+  GatewayProviderOAuthStartRequest,
   GatewayProbeResponse,
   GatewayProviderKind,
   GatewayProviderSpecificConfigListResponse,
@@ -114,12 +115,18 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async checkConnection(): Promise<GatewayConnectionStatusResponse> {
-    const { response, body } = await this.requestJson('/system/info');
+    const { response, body } = await this.requestJson('/config');
     return {
       status: 'connected',
       checkedAt: new Date().toISOString(),
-      serverVersion: response.headers.get('x-cli-proxy-version') ?? stringField(body, 'version'),
-      serverBuildDate: response.headers.get('x-cli-proxy-build-date') ?? stringField(body, 'buildDate', 'build_date')
+      serverVersion:
+        response.headers.get('x-cpa-version') ??
+        response.headers.get('x-cli-proxy-version') ??
+        stringField(body, 'version'),
+      serverBuildDate:
+        response.headers.get('x-cpa-build-date') ??
+        response.headers.get('x-cli-proxy-build-date') ??
+        stringField(body, 'buildDate', 'build_date')
     };
   }
 
@@ -156,17 +163,21 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async replaceApiKeys(request: GatewayReplaceApiKeysRequest): Promise<GatewayApiKeyListResponse> {
-    return mapApiKeys((await this.requestJson('/api-keys', 'PUT', request)).body);
+    await this.requestJson('/api-keys', 'PUT', request.keys);
+    return this.listApiKeys();
   }
 
   async updateApiKey(request: GatewayUpdateApiKeyRequest): Promise<GatewayApiKeyListResponse> {
-    return mapApiKeys(
-      (await this.requestJson(`/api-keys/${encodeURIComponent(request.keyId)}`, 'PATCH', request)).body
-    );
+    await this.requestJson('/api-keys', 'PATCH', {
+      index: Number(request.keyId),
+      value: request.name
+    });
+    return this.listApiKeys();
   }
 
   async deleteApiKey(request: GatewayDeleteApiKeyRequest): Promise<GatewayApiKeyListResponse> {
-    return mapApiKeys((await this.requestJson(`/api-keys/${request.index}`, 'DELETE')).body);
+    await this.requestJson(`/api-keys?index=${request.index}`, 'DELETE');
+    return this.listApiKeys();
   }
 
   async listProviderConfigs(): Promise<GatewayProviderSpecificConfigListResponse> {
@@ -210,13 +221,28 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async batchUploadAuthFiles(request: GatewayAuthFileBatchUploadRequest): Promise<GatewayAuthFileBatchUploadResponse> {
-    const { body } = await this.requestJson('/auth-files', 'POST', request);
-    return mapBatchUploadAuthFiles(body, request);
+    const accepted: GatewayAuthFileBatchUploadResponse['accepted'] = [];
+    const rejected: GatewayAuthFileBatchUploadResponse['rejected'] = [];
+    for (const file of request.files) {
+      try {
+        const content = Buffer.from(file.contentBase64, 'base64').toString('utf8');
+        const { body } = await this.requestJson(
+          `/auth-files?name=${encodeURIComponent(file.fileName)}`,
+          'POST',
+          content,
+          'application/json'
+        );
+        accepted.push(...mapBatchUploadAuthFiles(body, { files: [file] }).accepted);
+      } catch (error) {
+        rejected.push({ fileName: file.fileName, reason: error instanceof Error ? error.message : 'upload failed' });
+      }
+    }
+    return { accepted, rejected };
   }
 
   async patchAuthFileFields(request: GatewayAuthFilePatchRequest): Promise<GatewayAuthFile> {
     return mapAuthFile({
-      ...(await this.requestJson('/auth-files/fields', 'PATCH', request)).body,
+      ...(await this.requestJson('/auth-files/fields', 'PATCH', toCliProxyAuthFilePatchBody(request))).body,
       id: request.authFileId
     });
   }
@@ -234,8 +260,17 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async deleteAuthFiles(request: GatewayAuthFileDeleteRequest): Promise<GatewayAuthFileDeleteResponse> {
-    const { body } = await this.requestJson('/auth-files', 'DELETE', request);
-    return { deleted: arrayOfStrings(body.deleted) ?? request.names ?? [], skipped: [] };
+    const path = request.all ? '/auth-files?all=true' : `/auth-files${queryString({ name: request.names?.[0] })}`;
+    const bodyPayload = request.all || request.names?.length === 1 ? undefined : request.names;
+    const { body } = await this.requestJson(path, 'DELETE', bodyPayload);
+    const deletedCount = numberField(body, 'deleted');
+    return {
+      deleted: arrayOfStrings(body.files) ?? request.names ?? (deletedCount ? [`${deletedCount} files`] : []),
+      skipped: arrayBody(body, 'failed', 'skipped').map(item => {
+        const record = asRecord(item);
+        return { name: stringField(record, 'name') ?? 'unknown', reason: stringField(record, 'error', 'reason') ?? '' };
+      })
+    };
   }
 
   async listOAuthModelAliases(providerId: string): Promise<GatewayOAuthModelAliasListResponse> {
@@ -262,8 +297,28 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async submitOAuthCallback(request: GatewayOAuthCallbackRequest): Promise<GatewayOAuthCallbackResponse> {
-    const { body } = await this.requestJson('/oauth-callback', 'POST', request);
+    const { body } = await this.requestJson('/oauth-callback', 'POST', {
+      provider: request.provider,
+      redirect_url: request.redirectUrl
+    });
     return { accepted: booleanField(body, 'accepted', 'ok') ?? true, provider: request.provider, completedAt: now() };
+  }
+
+  async startProviderOAuth(request: GatewayProviderOAuthStartRequest): Promise<GatewayStartOAuthProjection> {
+    const params = new URLSearchParams();
+    if (request.isWebui) params.set('is_webui', 'true');
+    if (request.projectId) params.set('project_id', request.projectId);
+    const query = params.toString();
+    const path = `/${request.provider}-auth-url${query ? `?${query}` : ''}`;
+    const { body } = await this.requestJson(path);
+    return {
+      state: stringField(body, 'state') ?? `${request.provider}-oauth`,
+      verificationUri:
+        stringField(body, 'url', 'authUrl', 'verificationUri', 'verification_uri', 'deviceUrl', 'device_url') ?? '',
+      userCode: stringField(body, 'userCode', 'user_code'),
+      expiresAt: now(),
+      projectId: request.projectId
+    };
   }
 
   async startGeminiCliOAuth(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayStartOAuthProjection> {
@@ -346,7 +401,14 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   async latestVersion(): Promise<GatewaySystemVersionResponse> {
-    return this.systemInfo();
+    const { body } = await this.requestJson('/latest-version');
+    const latestVersion = stringField(body, 'latest-version', 'latestVersion') ?? 'unknown';
+    return {
+      version: 'unknown',
+      latestVersion,
+      updateAvailable: false,
+      links: {}
+    };
   }
 
   async setRequestLogEnabled(enabled: boolean): Promise<GatewayRequestLogSettingResponse> {
@@ -365,13 +427,14 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   private async requestJson(
     path: string,
     method = 'GET',
-    body?: unknown
+    body?: unknown,
+    contentType = 'application/json'
   ): Promise<{ response: Response; body: RecordBody }> {
     const response = await this.request(
       path,
       method,
-      body === undefined ? undefined : JSON.stringify(body),
-      body === undefined ? undefined : 'application/json'
+      body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+      body === undefined ? undefined : contentType
     );
     return { response, body: asRecord(await response.json()) };
   }
@@ -387,10 +450,22 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   }
 
   private async request(path: string, method: string, body?: string, contentType?: string): Promise<Response> {
-    const headers: Record<string, string> = { authorization: `Bearer ${this.managementKey}` };
+    const headers: Record<string, string> = {
+      authorization: `Bearer ${this.managementKey}`,
+      'x-management-key': this.managementKey
+    };
     if (contentType) headers['content-type'] = contentType;
     const response = await this.fetcher(`${this.apiBase}${path}`, { method, headers, body });
     if (!response.ok) await throwProxyError(response);
     return response;
   }
+}
+
+function toCliProxyAuthFilePatchBody(request: GatewayAuthFilePatchRequest): Record<string, unknown> {
+  return {
+    name: request.authFileId,
+    note: request.accountEmail ?? undefined,
+    disabled:
+      request.status === 'invalid' || request.status === 'missing' || request.status === 'expired' ? true : undefined
+  };
 }

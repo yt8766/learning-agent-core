@@ -2,11 +2,15 @@ import { randomUUID } from 'node:crypto';
 
 import type { KnowledgeBase } from '@agent/core';
 import {
+  createInMemoryKnowledgeRagObserver,
   runKnowledgeRag,
   streamKnowledgeRag,
+  type KnowledgeRagObserver,
   type KnowledgeRagAnswer,
+  type KnowledgeRagEffectiveSearchMode,
   type KnowledgeRagPolicy,
   type KnowledgeRagResult,
+  type KnowledgeRagTrace,
   type KnowledgeRagStreamEvent
 } from '@agent/knowledge';
 
@@ -32,6 +36,7 @@ export interface KnowledgeRagSdkFacadeAnswerInput {
   modelProfile?: RagModelProfile;
   traceId: string;
   routeReason: NonNullable<KnowledgeChatResponse['route']>['reason'];
+  onTraceComplete?: (trace: KnowledgeRagTrace) => void;
 }
 
 export class KnowledgeRagSdkFacade {
@@ -69,6 +74,9 @@ export class KnowledgeRagSdkFacade {
   }
 
   async *stream(input: KnowledgeRagSdkFacadeAnswerInput): AsyncIterable<KnowledgeRagStreamEvent> {
+    const observer = createInMemoryKnowledgeRagObserver();
+    let traceStarted = false;
+    let traceProjected = false;
     try {
       const answerProvider = createKnowledgeRagAnswerProvider(this.sdkRuntime, input.modelProfile);
       for await (const event of streamKnowledgeRag({
@@ -85,15 +93,24 @@ export class KnowledgeRagSdkFacade {
           requestedMentions: readRequestedMentions(input.request)
         }
       })) {
+        observeSdkStreamEvent(observer, input, event);
+        if (event.type === 'rag.started') {
+          traceStarted = true;
+        }
         if (event.type === 'answer.completed' || event.type === 'rag.completed') {
           const answerProviderError = readKnowledgeRagAnswerProviderError(answerProvider);
           if (answerProviderError) {
             throw answerProviderError;
           }
         }
+        if (event.type === 'rag.completed' || event.type === 'rag.error') {
+          input.onTraceComplete?.(observer.exportTrace(input.traceId));
+          traceProjected = true;
+        }
         yield event;
       }
     } catch (error) {
+      projectFailedSdkTrace(observer, input, error, traceStarted, traceProjected);
       throw new KnowledgeServiceError('knowledge_chat_failed', getErrorMessage(error));
     }
   }
@@ -133,6 +150,163 @@ export class KnowledgeRagSdkFacade {
       },
       preferredKnowledgeBaseIds: input.preferredKnowledgeBaseIds
     });
+  }
+}
+
+function observeSdkStreamEvent(
+  observer: KnowledgeRagObserver,
+  input: KnowledgeRagSdkFacadeAnswerInput,
+  event: KnowledgeRagStreamEvent
+): void {
+  const occurredAt = new Date().toISOString();
+  switch (event.type) {
+    case 'rag.started':
+      observer.startTrace({
+        traceId: input.traceId,
+        runId: event.runId,
+        operation: 'rag.run',
+        status: 'running',
+        startedAt: occurredAt,
+        query: { text: input.request.message },
+        attributes: {
+          routeReason: input.routeReason,
+          selectedKnowledgeBaseCount: input.preferredKnowledgeBaseIds.length
+        }
+      });
+      break;
+    case 'retrieval.completed':
+      observer.recordEvent({
+        eventId: makeSdkRagEventId(input.traceId, 'runtime.retrieval.complete'),
+        traceId: input.traceId,
+        name: 'runtime.retrieval.complete',
+        stage: 'retrieval',
+        occurredAt,
+        retrieval: buildTraceRetrievalSnapshot(event.retrieval)
+      });
+      break;
+    case 'answer.completed':
+      observer.recordEvent({
+        eventId: makeSdkRagEventId(input.traceId, 'runtime.generation.complete'),
+        traceId: input.traceId,
+        name: 'runtime.generation.complete',
+        stage: 'generation',
+        occurredAt,
+        generation: {
+          answerId: event.runId,
+          answerText: event.answer.text,
+          citedChunkIds: event.answer.citations.map(citation => citation.chunkId),
+          groundedCitationRate: event.answer.citations.length > 0 ? 1 : 0
+        }
+      });
+      break;
+    case 'rag.completed':
+      observer.finishTrace(input.traceId, {
+        status: 'succeeded',
+        endedAt: occurredAt
+      });
+      break;
+    case 'rag.error':
+      observer.recordEvent({
+        eventId: makeSdkRagEventId(input.traceId, 'runtime.run.fail'),
+        traceId: input.traceId,
+        name: 'runtime.run.fail',
+        stage: event.stage === 'retrieval' ? 'retrieval' : 'generation',
+        occurredAt,
+        error: {
+          code: event.error.code,
+          message: event.error.message,
+          retryable: event.error.retryable,
+          stage: event.stage === 'retrieval' ? 'retrieval' : 'generation'
+        }
+      });
+      observer.finishTrace(input.traceId, {
+        status: 'failed',
+        endedAt: occurredAt
+      });
+      break;
+    default:
+      break;
+  }
+}
+
+function projectFailedSdkTrace(
+  observer: KnowledgeRagObserver,
+  input: KnowledgeRagSdkFacadeAnswerInput,
+  error: unknown,
+  traceStarted: boolean,
+  traceProjected: boolean
+): void {
+  if (!traceStarted || traceProjected) {
+    return;
+  }
+
+  const occurredAt = new Date().toISOString();
+  const failure = toError(error);
+  observer.recordEvent({
+    eventId: makeSdkRagEventId(input.traceId, 'runtime.run.fail'),
+    traceId: input.traceId,
+    name: 'runtime.run.fail',
+    stage: 'generation',
+    occurredAt,
+    error: {
+      code: failure.name || 'Error',
+      message: failure.message,
+      retryable: false,
+      stage: 'generation'
+    }
+  });
+  observer.finishTrace(input.traceId, {
+    status: 'failed',
+    endedAt: occurredAt
+  });
+  input.onTraceComplete?.(observer.exportTrace(input.traceId));
+}
+
+function makeSdkRagEventId(traceId: string, name: string): string {
+  return `${traceId}:${name}`;
+}
+
+function buildTraceRetrievalSnapshot(retrieval: KnowledgeRagResult['retrieval']): KnowledgeRagTrace['retrieval'] {
+  return {
+    hits: toTraceHits(retrieval.hits),
+    citations: retrieval.citations,
+    diagnostics: {
+      retrievalMode: toTraceRetrievalMode(retrieval.diagnostics?.effectiveSearchMode),
+      candidateCount: retrieval.hits.length,
+      selectedCount: retrieval.hits.length
+    }
+  };
+}
+
+function toTraceHits(hits: KnowledgeRagResult['retrieval']['hits']) {
+  return hits.map((hit, index) => ({
+    chunkId: hit.chunkId,
+    documentId: hit.documentId,
+    sourceId: hit.sourceId,
+    knowledgeBaseId: hit.knowledgeBaseId,
+    rank: index + 1,
+    score: hit.score,
+    title: hit.title,
+    uri: hit.uri,
+    citation: hit.citation
+  }));
+}
+
+function toTraceRetrievalMode(
+  mode: KnowledgeRagEffectiveSearchMode | undefined
+): 'keyword-only' | 'vector-only' | 'hybrid' | 'none' | undefined {
+  switch (mode) {
+    case 'keyword':
+    case 'fallback-keyword':
+      return 'keyword-only';
+    case 'vector':
+      return 'vector-only';
+    case 'hybrid':
+      return 'hybrid';
+    case 'none':
+      return 'none';
+    default:
+      return undefined;
   }
 }
 
@@ -261,4 +435,11 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
   return 'Knowledge RAG SDK failed.';
+}
+
+function toError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error(typeof error === 'string' && error.length > 0 ? error : 'Knowledge RAG SDK failed.');
 }

@@ -99,14 +99,23 @@ describe('AppSidebar', () => {
     expect(html).toContain('aria-expanded="true"');
   });
 
-  it('limits developer navigation to the MVP-safe centers', () => {
+  it('keeps the full admin navigation visible for developer accounts', () => {
     const html = renderSidebar({ roles: ['developer'], defaultPlatformNestedExpanded: true });
 
     expect(html).toContain('运行中枢');
+    expect(html).toContain('审批中枢');
     expect(html).toContain('学习中枢');
+    expect(html).toContain('Agent Workspace');
+    expect(html).toContain('记忆中枢');
+    expect(html).toContain('画像中枢');
+    expect(html).toContain('评测基线');
+    expect(html).toContain('归档中心');
     expect(html).toContain('技能工坊');
     expect(html).toContain('证据中心');
-    expect(html).not.toContain('审批中枢');
-    expect(html).not.toContain('连接器与策略');
+    expect(html).toContain('连接器与策略');
+    expect(html).toContain('技能来源');
+    expect(html).toContain('公司专员');
+    expect(html).toContain('知识治理');
+    expect(html).toContain('工作流实验室');
   });
 });

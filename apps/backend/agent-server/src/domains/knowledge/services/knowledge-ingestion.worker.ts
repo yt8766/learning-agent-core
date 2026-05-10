@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { runKnowledgeIndexing, type KnowledgeChunk } from '@agent/knowledge';
+import {
+  FixedWindowChunker,
+  runKnowledgeIndexing,
+  StructuredTextChunker,
+  type Chunker,
+  type KnowledgeChunk
+} from '@agent/knowledge';
 
 import type {
   DocumentChunkRecord,
@@ -43,6 +49,11 @@ export class KnowledgeIngestionWorker {
     const sdkChunks: KnowledgeChunk[] = [];
 
     await runKnowledgeIndexing({
+      chunker: selectKnowledgeIngestionChunker({
+        contentType: object.contentType,
+        filename: document.filename,
+        mode: process.env.KNOWLEDGE_INGESTION_CHUNKER
+      }),
       loader: {
         load: async () => [
           {
@@ -73,13 +84,29 @@ export class KnowledgeIngestionWorker {
       }
     });
     const chunks = sdkChunks.map(chunk => mapSdkChunkToDocumentChunk({ document, chunk, now }));
-    let ingestionResult: { chunks: DocumentChunkRecord[]; vectorRecords?: IngestionVectorRecord[] };
+    let ingestionResult: {
+      chunks: DocumentChunkRecord[];
+      vectorRecords?: IngestionVectorRecord[];
+      embeddedChunkCount: number;
+    };
 
     try {
       ingestionResult = await this.preparePersistedChunks(document, chunks, now);
       await this.repository.saveChunks(document.id, ingestionResult.chunks);
       if (ingestionResult.vectorRecords) {
-        await this.sdkRuntime.runtime.vectorStore.upsert({ records: ingestionResult.vectorRecords });
+        const upsertResult = await this.sdkRuntime.runtime.vectorStore.upsert({
+          records: ingestionResult.vectorRecords
+        });
+        validateVectorUpsertResult(upsertResult, ingestionResult.vectorRecords.length);
+        ingestionResult = {
+          ...ingestionResult,
+          chunks: ingestionResult.chunks.map(chunk => ({
+            ...chunk,
+            vectorIndexStatus: 'succeeded',
+            updatedAt: now
+          }))
+        };
+        await this.repository.saveChunks(document.id, ingestionResult.chunks);
       }
     } catch (error) {
       return this.markIngestionFailed({ document, job, chunks, error });
@@ -90,7 +117,7 @@ export class KnowledgeIngestionWorker {
       ...document,
       status: 'ready',
       chunkCount: ingestionResult.chunks.length,
-      embeddedChunkCount: this.sdkRuntime.enabled ? ingestionResult.chunks.length : 0,
+      embeddedChunkCount: ingestionResult.embeddedChunkCount,
       updatedAt
     });
 
@@ -119,9 +146,10 @@ export class KnowledgeIngestionWorker {
     document: { id: string; workspaceId: string; knowledgeBaseId: string; title: string; filename: string },
     chunks: DocumentChunkRecord[],
     now: string
-  ): Promise<{ chunks: DocumentChunkRecord[]; vectorRecords?: IngestionVectorRecord[] }> {
+  ): Promise<{ chunks: DocumentChunkRecord[]; vectorRecords?: IngestionVectorRecord[]; embeddedChunkCount: number }> {
     if (!this.sdkRuntime.enabled) {
       return {
+        embeddedChunkCount: 0,
         chunks: chunks.map(chunk => ({
           ...chunk,
           embeddingStatus: 'skipped',
@@ -135,13 +163,14 @@ export class KnowledgeIngestionWorker {
       texts: chunks.map(chunk => chunk.content),
       metadata: { documentId: document.id, knowledgeBaseId: document.knowledgeBaseId }
     });
-    const embeddingVectors = embeddingResults.embeddings.map(normalizeEmbeddingVector);
+    const embeddingVectors = validateEmbeddingBatch(embeddingResults, chunks.length);
 
     return {
+      embeddedChunkCount: embeddingVectors.length,
       chunks: chunks.map(chunk => ({
         ...chunk,
         embeddingStatus: 'succeeded',
-        vectorIndexStatus: 'succeeded',
+        vectorIndexStatus: 'pending',
         updatedAt: now
       })),
       vectorRecords: chunks.map((chunk, index) => ({
@@ -151,6 +180,7 @@ export class KnowledgeIngestionWorker {
         content: chunk.content,
         embedding: embeddingVectors[index] ?? [],
         metadata: {
+          ...(chunk.metadata ?? {}),
           tenantId: document.workspaceId,
           knowledgeBaseId: document.knowledgeBaseId,
           documentId: document.id,
@@ -186,24 +216,30 @@ export class KnowledgeIngestionWorker {
       updatedAt
     });
 
-    const message = errorMessage(input.error);
+    const failure = toIngestionFailure(input.error);
     return this.repository.updateJob({
       ...input.job,
       status: 'failed',
       stage: 'failed',
-      currentStage: 'index_vector',
+      currentStage: failure.currentStage,
       progress: { percent: 100, processedChunks: failedChunks.length, totalChunks: failedChunks.length },
-      errorCode: 'knowledge_ingestion_index_failed',
-      errorMessage: message,
+      errorCode: failure.code,
+      errorMessage: failure.message,
       error: {
-        code: 'knowledge_ingestion_index_failed',
-        message,
+        code: failure.code,
+        message: failure.message,
         retryable: true,
-        stage: 'indexing'
+        stage: failure.stage
       },
       stages: [
         ...input.job.stages,
-        { stage: 'index_vector', status: 'failed', startedAt: updatedAt, completedAt: updatedAt, message }
+        {
+          stage: failure.currentStage,
+          status: 'failed',
+          startedAt: updatedAt,
+          completedAt: updatedAt,
+          message: failure.message
+        }
       ],
       updatedAt
     });
@@ -217,6 +253,7 @@ interface IngestionVectorRecord {
   content: string;
   embedding: number[];
   metadata: {
+    [key: string]: unknown;
     tenantId: string;
     knowledgeBaseId: string;
     documentId: string;
@@ -227,9 +264,36 @@ interface IngestionVectorRecord {
   };
 }
 
+function selectKnowledgeIngestionChunker(input: { contentType?: string; filename: string; mode?: string }): Chunker {
+  const mode = normalizeKnowledgeIngestionChunkerMode(input.mode);
+  if (mode === 'fixed') {
+    return new FixedWindowChunker();
+  }
+  if (mode === 'structured' || isStructuredTextDocument(input)) {
+    return new StructuredTextChunker();
+  }
+  return new FixedWindowChunker();
+}
+
+function normalizeKnowledgeIngestionChunkerMode(value: string | undefined): 'auto' | 'fixed' | 'structured' {
+  if (value === 'fixed' || value === 'structured') {
+    return value;
+  }
+  return 'auto';
+}
+
+function isStructuredTextDocument(input: { contentType?: string; filename: string }): boolean {
+  const contentType = input.contentType?.toLowerCase() ?? '';
+  if (contentType.includes('markdown') || contentType.startsWith('text/')) {
+    return true;
+  }
+
+  return /\.(?:md|mdx|markdown|txt|text)$/i.test(input.filename);
+}
+
 function normalizeEmbeddingVector(value: unknown): number[] {
   if (Array.isArray(value)) {
-    return value.filter(isFiniteNumber);
+    return value.map(readEmbeddingDimension);
   }
   if (
     typeof value === 'object' &&
@@ -237,15 +301,135 @@ function normalizeEmbeddingVector(value: unknown): number[] {
     'embedding' in value &&
     Array.isArray((value as { embedding: unknown }).embedding)
   ) {
-    return (value as { embedding: unknown[] }).embedding.filter(isFiniteNumber);
+    return (value as { embedding: unknown[] }).embedding.map(readEmbeddingDimension);
   }
   return [];
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
+function readEmbeddingDimension(value: unknown, index: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new KnowledgeIngestionQualityGateError(`Embedding contains a non-finite value at dimension ${index}.`, {
+      code: 'knowledge_ingestion_embedding_invalid',
+      currentStage: 'embed',
+      stage: 'embedding'
+    });
+  }
+  return value;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Knowledge ingestion failed.';
+function validateEmbeddingBatch(
+  embeddingResults: { embeddings?: unknown; dimensions?: unknown },
+  expectedCount: number
+): number[][] {
+  const rawEmbeddings = Array.isArray(embeddingResults.embeddings) ? embeddingResults.embeddings : [];
+  if (rawEmbeddings.length !== expectedCount) {
+    throw new KnowledgeIngestionQualityGateError(
+      `embedBatch returned ${rawEmbeddings.length} embeddings for ${expectedCount} chunks.`,
+      {
+        code: 'knowledge_ingestion_embedding_invalid',
+        currentStage: 'embed',
+        stage: 'embedding'
+      }
+    );
+  }
+
+  const vectors = rawEmbeddings.map(normalizeEmbeddingVector);
+  const expectedDimensions = readExpectedEmbeddingDimensions(embeddingResults.dimensions, vectors);
+
+  vectors.forEach((vector, index) => {
+    if (vector.length === 0) {
+      throw new KnowledgeIngestionQualityGateError(`Embedding ${index} is empty.`, {
+        code: 'knowledge_ingestion_embedding_invalid',
+        currentStage: 'embed',
+        stage: 'embedding'
+      });
+    }
+    if (vector.length !== expectedDimensions) {
+      throw new KnowledgeIngestionQualityGateError(
+        `Embedding ${index} has ${vector.length} dimensions, expected ${expectedDimensions}.`,
+        {
+          code: 'knowledge_ingestion_embedding_invalid',
+          currentStage: 'embed',
+          stage: 'embedding'
+        }
+      );
+    }
+  });
+
+  return vectors;
+}
+
+function readExpectedEmbeddingDimensions(dimensions: unknown, vectors: number[][]): number {
+  if (typeof dimensions === 'number' && Number.isInteger(dimensions) && dimensions > 0) {
+    return dimensions;
+  }
+  return vectors[0]?.length ?? 0;
+}
+
+function validateVectorUpsertResult(upsertResult: unknown, expectedCount: number): void {
+  const upsertedCount =
+    typeof upsertResult === 'object' &&
+    upsertResult !== null &&
+    'upsertedCount' in upsertResult &&
+    typeof (upsertResult as { upsertedCount: unknown }).upsertedCount === 'number' &&
+    Number.isInteger((upsertResult as { upsertedCount: number }).upsertedCount)
+      ? (upsertResult as { upsertedCount: number }).upsertedCount
+      : undefined;
+
+  if (upsertedCount === undefined) {
+    throw new KnowledgeIngestionQualityGateError(`Vector upsert count is unknown for ${expectedCount} records.`, {
+      code: 'knowledge_ingestion_vector_upsert_unconfirmed',
+      currentStage: 'index_vector',
+      stage: 'indexing'
+    });
+  }
+  if (upsertedCount !== expectedCount) {
+    throw new KnowledgeIngestionQualityGateError(
+      `Vector upsert wrote ${upsertedCount} records, expected ${expectedCount}.`,
+      {
+        code: 'knowledge_ingestion_vector_upsert_unconfirmed',
+        currentStage: 'index_vector',
+        stage: 'indexing'
+      }
+    );
+  }
+}
+
+function toIngestionFailure(error: unknown): {
+  code: string;
+  message: string;
+  currentStage: 'embed' | 'index_vector';
+  stage: 'embedding' | 'indexing';
+} {
+  if (error instanceof KnowledgeIngestionQualityGateError) {
+    return {
+      code: error.code,
+      message: error.message,
+      currentStage: error.currentStage,
+      stage: error.stage
+    };
+  }
+  return {
+    code: 'knowledge_ingestion_index_failed',
+    message: error instanceof Error ? error.message : 'Knowledge ingestion failed.',
+    currentStage: 'index_vector',
+    stage: 'indexing'
+  };
+}
+
+class KnowledgeIngestionQualityGateError extends Error {
+  readonly code: string;
+  readonly currentStage: 'embed' | 'index_vector';
+  readonly stage: 'embedding' | 'indexing';
+
+  constructor(
+    message: string,
+    input: { code: string; currentStage: 'embed' | 'index_vector'; stage: 'embedding' | 'indexing' }
+  ) {
+    super(message);
+    this.name = 'KnowledgeIngestionQualityGateError';
+    this.code = input.code;
+    this.currentStage = input.currentStage;
+    this.stage = input.stage;
+  }
 }

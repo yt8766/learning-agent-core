@@ -95,6 +95,7 @@ export function mapChunk(row: Record<string, unknown>): DocumentChunkRecord {
     embeddingStatus: row.embedding_status as DocumentChunkRecord['embeddingStatus'],
     vectorIndexStatus: row.vector_index_status as DocumentChunkRecord['vectorIndexStatus'],
     keywordIndexStatus: row.keyword_index_status as DocumentChunkRecord['keywordIndexStatus'],
+    metadata: parseJsonObject(row.metadata),
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at)
   };

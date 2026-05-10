@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/apps/frontend/agent-admin/`
-最后核对：2026-05-09
+最后核对：2026-05-10
 
 本目录用于沉淀 `apps/frontend/agent-admin` 相关文档。
 
@@ -11,8 +11,6 @@
 
 - `src/pages/runtime-overview`
   - 运行中枢总览
-- `src/pages/agent-gateway`
-  - Agent Gateway 参考管理页，按 CLI Proxy 管理中心 `src/pages` 参考视觉还原 `/`、`/config`、`/ai-providers`、`/auth-files`、`/oauth`、`/quota`、`/system`，左侧栏保持纯白 7 项导航，导航文案固定为“仪表盘、配置面板、AI提供商、认证文件、OAuth登录、配额管理、中心信息”，使用本项目 `AGMC` 品牌、lucide 图标与 `zustand@^5.0.12` 局部状态，不复制参考项目名称或 logo
 - `src/pages/runtime-overview/components/runtime-agent-tool-execution-projections.ts`
   - Agent Tool Execution 治理摘要投影，按 request、result、node、risk class 与 policy decision 聚合
 - `src/pages/runtime-overview/components/runtime-run-workbench-card.tsx`
@@ -61,8 +59,8 @@
 - [overview.md](/docs/apps/frontend/agent-admin/overview.md)
 - [run-observatory.md](/docs/apps/frontend/agent-admin/run-observatory.md)
 - [agent-workspace-center.md](/docs/apps/frontend/agent-admin/agent-workspace-center.md)
-- [agent-gateway-reference-pages.md](/docs/apps/frontend/agent-admin/agent-gateway-reference-pages.md)
 - [shadcn-admin-visual-refresh.md](/docs/apps/frontend/agent-admin/shadcn-admin-visual-refresh.md)
+- [RAG Observability Frontend Integration](/docs/integration/rag-observability-frontend-integration.md) — Runtime Center / Evidence / Knowledge Governance 消费 RAG diagnostics 的接线边界
 
 当前控制面实现补充：
 
@@ -73,4 +71,4 @@
 - dashboard 摘要区当前额外展示“控制台趋势”卡片，数据来自 `/platform/console/log-analysis`，用于快速查看最近日志样本里的 `fresh_aggregate / slow` 次数、P95，以及后端统一产出的健康/预警状态
 - Runtime Overview 的 “Wenyuan & Cangjing” 卡片当前会展示 Runtime Center payload 中的 `knowledgeSearchStatus`，包括 configured/effective retrieval mode、vector/provider 状态、provider health 和 warning 数；该字段是 host 装配与 provider 连通性观测，不代表单次检索 diagnostics。单次 query 最近快照通过 `knowledgeSearchLastDiagnostics` 可选字段透出，当前 UI 展示 hit/total、`diagnostics` 中的 hybrid drilldown（retrievalMode、enabledRetrievers、failedRetrievers、candidateCount、fusionStrategy、prefilterApplied），以及 `diagnostics.postRetrieval` 存在且字段完整时的 filter、rank、diversify 紧凑摘要；其中 filtering diagnostics 支持可选 `maskedCount`，存在时展示 masked 数，字段缺失时按 legacy payload 静默跳过。
 - Evidence Center 的 `cangjing` 证据卡片当前会读取 `detail.knowledgeRetrievalDiagnostics` 并展示最近检索的 query、hit/total、filter/rank/diversify 摘要。该字段只作为调试 drilldown，前端必须容忍缺失或字段不完整，不能把它当作 evidence 的必填事实。
-- `App` 当前只负责 `QueryClientProvider` 与 `RouterProvider` 装配；实际路由表在 `src/app/admin-routes.tsx`。未登录访问受保护入口会由 React Router `<Navigate>` 导向 `/login`，不复用 401 错误页；显式 `/401`、`/403`、`/404`、`/500`、`/503` 渲染对应错误页；未知路径渲染 404。Agent Gateway 参考管理页占用 `/`、`/config`、`/ai-providers`、`/auth-files`、`/oauth`、`/quota`、`/system`；原治理中心页继续使用 path route，例如 `/learning`、`/runtime`、`/approvals`；`/login#/learning` 会按登录态规范化为 `/login` 或 `/learning`，不能作为 dashboard 地址保留。
+- `App` 当前只负责 `QueryClientProvider` 与 `RouterProvider` 装配；实际路由表在 `src/app/admin-routes.tsx`。未登录访问受保护入口会由 React Router `<Navigate>` 导向 `/login`，不复用 401 错误页；显式 `/401`、`/403`、`/404`、`/500`、`/503` 渲染对应错误页；未知路径渲染 404。`/` 与 `/runtime` 都进入 admin 自身的 Runtime Center，其他治理中心继续使用 path route，例如 `/learning`、`/approvals`、`/evidence`；`/login#/learning` 会按登录态规范化为 `/login` 或 `/learning`，不能作为 dashboard 地址保留。

@@ -22,6 +22,8 @@ import {
   GatewayOAuthModelAliasRuleSchema,
   GatewayOAuthModelAliasesResponseSchema,
   GatewayOAuthPolicySchema,
+  GatewayProviderOAuthStartRequestSchema,
+  GatewayProviderOAuthStartResponseSchema,
   GatewayProviderConfigListResponseSchema,
   GatewayProviderConfigSchema,
   GatewayProviderSpecificConfigListResponseSchema,
@@ -448,6 +450,21 @@ describe('agent gateway CLI Proxy parity contracts', () => {
         ]
       }).modelAliases?.[0].fork
     ).toBe(false);
+
+    expect(
+      GatewayProviderOAuthStartRequestSchema.parse({
+        provider: 'codex',
+        isWebui: true
+      })
+    ).toMatchObject({ provider: 'codex', isWebui: true });
+
+    expect(
+      GatewayProviderOAuthStartResponseSchema.parse({
+        state: 'codex-state',
+        verificationUri: 'https://auth.openai.com/oauth/authorize?state=codex-state',
+        expiresAt: '2026-05-08T00:15:00.000Z'
+      })
+    ).toMatchObject({ state: 'codex-state' });
   });
 
   it('parses Vertex credential import contracts', () => {

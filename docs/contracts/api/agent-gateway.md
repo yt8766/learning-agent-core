@@ -3,15 +3,15 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/agent-gateway` 中转控制台、`agent-server` Agent Gateway API、Provider / 凭据 / 配额 / 日志治理接口
-最后核对：2026-05-09
+最后核对：2026-05-10
 
-本文记录从 `/Users/dev/Desktop/Cli-Proxy-API-Management-Center` 参考项目提炼出的 Agent Gateway API 领域模型。当前仓库已落 schema-first contract、统一 Identity 登录接入、runtime/config/provider/auth-file/quota projection、读写命令、logs / usage / probe、token count、preprocess、accounting、deterministic relay runtime、secret vault、deterministic OAuth/Auth File 生命周期，以及独立 `apps/frontend/agent-gateway` 中转前端。2026-05-09 起，远程 management connection、raw config、proxy API keys、request log projection、quota detail、system version/model discovery 已有 deterministic 管理面第一版。
+本文记录从 `/Users/dev/Desktop/Cli-Proxy-API-Management-Center` 参考项目提炼出的 Agent Gateway API 领域模型。当前仓库已落 schema-first contract、统一 Identity 登录接入、Gateway 调用方管理、client API key、client quota、OpenAI-compatible `/v1/models` 与 `/v1/chat/completions` runtime、runtime/config/provider/auth-file/quota projection、读写命令、logs / usage / probe、token count、preprocess、accounting、deterministic relay runtime、secret vault、deterministic OAuth/Auth File 生命周期，以及独立 `apps/frontend/agent-gateway` 中转前端。2026-05-09 起，远程 management connection、raw config、proxy API keys、request log projection、quota detail、system version/model discovery 已有 deterministic 管理面第一版。
 
 ## 实现状态
 
 - `current`：当前代码已提供的 HTTP 入口、schema projection 或前端消费能力。
 - `compat`：迁移兼容入口，当前代码仍保留，但新前端、新 API 和新文档不得继续依赖。
-- `planned`：参考项目中尚未纳入本仓库当前稳定 contract 的高级能力。CLI Proxy management parity 的 Dashboard、provider-specific config、Auth Files、OAuth policy、`api-call` quota、logs 和 system runtime 已进入 current；生产 LLM relay 转发、计费和数据库持久化仍属于后续生产化范围。
+- `planned`：参考项目中尚未纳入本仓库当前稳定 contract 的高级能力。CLI Proxy management parity 的 Dashboard、provider-specific config、Auth Files、OAuth policy、`api-call` quota、logs 和 system runtime 已进入 current；`/v1/models` 与非 streaming `/v1/chat/completions` 已进入 current。streaming、真实 vendor SDK 矩阵、计费和数据库持久化仍属于后续生产化范围。
 - 任何 projection 都不得暴露 raw vendor payload、明文 secret、未过滤 headers 或第三方错误对象。
 
 当前实现入口：
@@ -22,54 +22,85 @@
 - Backend API：`apps/backend/agent-server/src/api/agent-gateway/agent-gateway.controller.ts`
 - Frontend relay app：`apps/frontend/agent-gateway/`
 
-当前 HTTP 入口在 `agent-server` 全局 `/api` 前缀下生效；`agent-gateway` 前端同样以 `/api/*` 发起同源请求，Vite 开发代理只需要把 `/api/*` 转发到后端：
+管理面 HTTP 入口在 `agent-server` 全局 `/api` 前缀下生效；OpenAI-compatible runtime 入口显式排除全局前缀，保持 `GET /v1/models` 与 `POST /v1/chat/completions`。`agent-gateway` 前端以 `/api/*` 发起同源管理请求，Vite 开发代理只需要把 `/api/*` 转发到后端：
 
-| 能力                | 后端入口                                          | 前端同源访问                                      | 状态      |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------- | --------- |
-| 登录                | `POST /api/identity/login`                        | `POST /api/identity/login`                        | `current` |
-| 刷新短 token        | `POST /api/identity/refresh`                      | `POST /api/identity/refresh`                      | `current` |
-| Gateway legacy 登录 | `POST /api/agent-gateway/auth/login`              | 不再由前端调用                                    | `compat`  |
-| Gateway legacy 刷新 | `POST /api/agent-gateway/auth/refresh`            | 不再由前端调用                                    | `compat`  |
-| 总览快照            | `GET /api/agent-gateway/snapshot`                 | `GET /api/agent-gateway/snapshot`                 | `current` |
-| 上游方              | `GET /api/agent-gateway/providers`                | `GET /api/agent-gateway/providers`                | `current` |
-| 认证文件            | `GET /api/agent-gateway/credential-files`         | `GET /api/agent-gateway/credential-files`         | `current` |
-| 配额                | `GET /api/agent-gateway/quotas`                   | `GET /api/agent-gateway/quotas`                   | `current` |
-| 日志                | `GET /api/agent-gateway/logs?limit=50`            | `GET /api/agent-gateway/logs?limit=50`            | `current` |
-| 用量                | `GET /api/agent-gateway/usage?limit=50`           | `GET /api/agent-gateway/usage?limit=50`           | `current` |
-| 探测                | `POST /api/agent-gateway/probe`                   | `POST /api/agent-gateway/probe`                   | `current` |
-| token 估算          | `POST /api/agent-gateway/token-count`             | `POST /api/agent-gateway/token-count`             | `current` |
-| 前处理              | `POST /api/agent-gateway/preprocess`              | `POST /api/agent-gateway/preprocess`              | `current` |
-| 后处理记账          | `POST /api/agent-gateway/accounting`              | `POST /api/agent-gateway/accounting`              | `current` |
-| 配置更新            | `PATCH /api/agent-gateway/config`                 | `PATCH /api/agent-gateway/config`                 | `current` |
-| 上游方保存          | `PUT /api/agent-gateway/providers/:id`            | `PUT /api/agent-gateway/providers/:id`            | `current` |
-| 上游方删除          | `DELETE /api/agent-gateway/providers/:id`         | `DELETE /api/agent-gateway/providers/:id`         | `current` |
-| 认证文件保存        | `PUT /api/agent-gateway/credential-files/:id`     | `PUT /api/agent-gateway/credential-files/:id`     | `current` |
-| 认证文件删除        | `DELETE /api/agent-gateway/credential-files/:id`  | `DELETE /api/agent-gateway/credential-files/:id`  | `current` |
-| 配额更新            | `PATCH /api/agent-gateway/quotas/:id`             | `PATCH /api/agent-gateway/quotas/:id`             | `current` |
-| Relay smoke         | `POST /api/agent-gateway/relay`                   | `POST /api/agent-gateway/relay`                   | `current` |
-| OAuth 启动          | `POST /api/agent-gateway/oauth/start`             | `POST /api/agent-gateway/oauth/start`             | `current` |
-| OAuth 完成          | `POST /api/agent-gateway/oauth/complete`          | `POST /api/agent-gateway/oauth/complete`          | `current` |
-| 连接保存            | `PUT /api/agent-gateway/connection/profile`       | `PUT /api/agent-gateway/connection/profile`       | `current` |
-| 连接检查            | `POST /api/agent-gateway/connection/check`        | `POST /api/agent-gateway/connection/check`        | `current` |
-| Raw config          | `GET /api/agent-gateway/config/raw`               | `GET /api/agent-gateway/config/raw`               | `current` |
-| Raw config diff     | `POST /api/agent-gateway/config/raw/diff`         | `POST /api/agent-gateway/config/raw/diff`         | `current` |
-| Raw config 保存     | `PUT /api/agent-gateway/config/raw`               | `PUT /api/agent-gateway/config/raw`               | `current` |
-| Config reload       | `POST /api/agent-gateway/config/reload`           | `POST /api/agent-gateway/config/reload`           | `current` |
-| Proxy API keys      | `GET /api/agent-gateway/api-keys`                 | `GET /api/agent-gateway/api-keys`                 | `current` |
-| Proxy API keys 替换 | `PUT /api/agent-gateway/api-keys`                 | `PUT /api/agent-gateway/api-keys`                 | `current` |
-| Proxy API key 更新  | `PATCH /api/agent-gateway/api-keys/:index`        | `PATCH /api/agent-gateway/api-keys/:index`        | `current` |
-| Proxy API key 删除  | `DELETE /api/agent-gateway/api-keys/:index`       | `DELETE /api/agent-gateway/api-keys/:index`       | `current` |
-| Quota detail        | `GET /api/agent-gateway/quotas/details`           | `GET /api/agent-gateway/quotas/details`           | `current` |
-| Request logs tail   | `GET /api/agent-gateway/logs/tail`                | `GET /api/agent-gateway/logs/tail`                | `current` |
-| Request logs search | `POST /api/agent-gateway/logs/search`             | `POST /api/agent-gateway/logs/search`             | `current` |
-| Request error files | `GET /api/agent-gateway/logs/request-error-files` | `GET /api/agent-gateway/logs/request-error-files` | `current` |
-| Logs clear          | `DELETE /api/agent-gateway/logs`                  | `DELETE /api/agent-gateway/logs`                  | `current` |
-| System info         | `GET /api/agent-gateway/system/info`              | `GET /api/agent-gateway/system/info`              | `current` |
-| System models       | `GET /api/agent-gateway/system/models`            | `GET /api/agent-gateway/system/models`            | `current` |
+| 能力                     | 后端入口                                                  | 前端同源访问                                              | 状态      |
+| ------------------------ | --------------------------------------------------------- | --------------------------------------------------------- | --------- |
+| 登录                     | `POST /api/identity/login`                                | `POST /api/identity/login`                                | `current` |
+| 刷新短 token             | `POST /api/identity/refresh`                              | `POST /api/identity/refresh`                              | `current` |
+| Gateway legacy 登录      | `POST /api/agent-gateway/auth/login`                      | 不再由前端调用                                            | `compat`  |
+| Gateway legacy 刷新      | `POST /api/agent-gateway/auth/refresh`                    | 不再由前端调用                                            | `compat`  |
+| 总览快照                 | `GET /api/agent-gateway/snapshot`                         | `GET /api/agent-gateway/snapshot`                         | `current` |
+| 上游方                   | `GET /api/agent-gateway/providers`                        | `GET /api/agent-gateway/providers`                        | `current` |
+| 认证文件                 | `GET /api/agent-gateway/credential-files`                 | `GET /api/agent-gateway/credential-files`                 | `current` |
+| 配额                     | `GET /api/agent-gateway/quotas`                           | `GET /api/agent-gateway/quotas`                           | `current` |
+| 日志                     | `GET /api/agent-gateway/logs?limit=50`                    | `GET /api/agent-gateway/logs?limit=50`                    | `current` |
+| 用量                     | `GET /api/agent-gateway/usage?limit=50`                   | `GET /api/agent-gateway/usage?limit=50`                   | `current` |
+| Gateway clients          | `GET /api/agent-gateway/clients`                          | `GET /api/agent-gateway/clients`                          | `current` |
+| Gateway client 创建      | `POST /api/agent-gateway/clients`                         | `POST /api/agent-gateway/clients`                         | `current` |
+| Gateway client 更新      | `PATCH /api/agent-gateway/clients/:clientId`              | `PATCH /api/agent-gateway/clients/:clientId`              | `current` |
+| Gateway client 启停      | `PATCH /api/agent-gateway/clients/:clientId/enable` / `disable` | `PATCH /api/agent-gateway/clients/:clientId/enable` / `disable` | `current` |
+| Client API keys          | `GET /api/agent-gateway/clients/:clientId/api-keys`       | `GET /api/agent-gateway/clients/:clientId/api-keys`       | `current` |
+| Client API key 创建      | `POST /api/agent-gateway/clients/:clientId/api-keys`      | `POST /api/agent-gateway/clients/:clientId/api-keys`      | `current` |
+| Client quota             | `GET /api/agent-gateway/clients/:clientId/quota`          | `GET /api/agent-gateway/clients/:clientId/quota`          | `current` |
+| Client quota 更新        | `PUT /api/agent-gateway/clients/:clientId/quota`          | `PUT /api/agent-gateway/clients/:clientId/quota`          | `current` |
+| Client request logs      | `GET /api/agent-gateway/clients/:clientId/logs`           | `GET /api/agent-gateway/clients/:clientId/logs`           | `current` |
+| Runtime models           | `GET /v1/models`                                          | runtime client 直接调用                                   | `current` |
+| Runtime chat completions | `POST /v1/chat/completions`                               | runtime client 直接调用                                   | `current` |
+| 探测                     | `POST /api/agent-gateway/probe`                           | `POST /api/agent-gateway/probe`                           | `current` |
+| token 估算               | `POST /api/agent-gateway/token-count`                     | `POST /api/agent-gateway/token-count`                     | `current` |
+| 前处理                   | `POST /api/agent-gateway/preprocess`                      | `POST /api/agent-gateway/preprocess`                      | `current` |
+| 后处理记账               | `POST /api/agent-gateway/accounting`                      | `POST /api/agent-gateway/accounting`                      | `current` |
+| 配置更新                 | `PATCH /api/agent-gateway/config`                         | `PATCH /api/agent-gateway/config`                         | `current` |
+| 上游方保存               | `PUT /api/agent-gateway/providers/:id`                    | `PUT /api/agent-gateway/providers/:id`                    | `current` |
+| 上游方删除               | `DELETE /api/agent-gateway/providers/:id`                 | `DELETE /api/agent-gateway/providers/:id`                 | `current` |
+| 认证文件保存             | `PUT /api/agent-gateway/credential-files/:id`             | `PUT /api/agent-gateway/credential-files/:id`             | `current` |
+| 认证文件删除             | `DELETE /api/agent-gateway/credential-files/:id`          | `DELETE /api/agent-gateway/credential-files/:id`          | `current` |
+| 配额更新                 | `PATCH /api/agent-gateway/quotas/:id`                     | `PATCH /api/agent-gateway/quotas/:id`                     | `current` |
+| Relay smoke              | `POST /api/agent-gateway/relay`                           | `POST /api/agent-gateway/relay`                           | `current` |
+| OAuth deterministic 启动 | `POST /api/agent-gateway/oauth/start`                     | `POST /api/agent-gateway/oauth/start`                     | `current` |
+| OAuth 完成               | `POST /api/agent-gateway/oauth/complete`                  | `POST /api/agent-gateway/oauth/complete`                  | `current` |
+| 连接保存                 | `PUT /api/agent-gateway/connection/profile`               | `PUT /api/agent-gateway/connection/profile`               | `current` |
+| 连接检查                 | `POST /api/agent-gateway/connection/check`                | `POST /api/agent-gateway/connection/check`                | `current` |
+| Raw config               | `GET /api/agent-gateway/config/raw`                       | `GET /api/agent-gateway/config/raw`                       | `current` |
+| Raw config diff          | `POST /api/agent-gateway/config/raw/diff`                 | `POST /api/agent-gateway/config/raw/diff`                 | `current` |
+| Raw config 保存          | `PUT /api/agent-gateway/config/raw`                       | `PUT /api/agent-gateway/config/raw`                       | `current` |
+| Config reload            | `POST /api/agent-gateway/config/reload`                   | `POST /api/agent-gateway/config/reload`                   | `current` |
+| Proxy API keys           | `GET /api/agent-gateway/api-keys`                         | `GET /api/agent-gateway/api-keys`                         | `current` |
+| Proxy API keys 替换      | `PUT /api/agent-gateway/api-keys`                         | `PUT /api/agent-gateway/api-keys`                         | `current` |
+| Proxy API key 更新       | `PATCH /api/agent-gateway/api-keys/:index`                | `PATCH /api/agent-gateway/api-keys/:index`                | `current` |
+| Proxy API key 删除       | `DELETE /api/agent-gateway/api-keys/:index`               | `DELETE /api/agent-gateway/api-keys/:index`               | `current` |
+| Quota detail             | `GET /api/agent-gateway/quotas/details`                   | `GET /api/agent-gateway/quotas/details`                   | `current` |
+| Request logs tail        | `GET /api/agent-gateway/logs/tail`                        | `GET /api/agent-gateway/logs/tail`                        | `current` |
+| Request logs search      | `POST /api/agent-gateway/logs/search`                     | `POST /api/agent-gateway/logs/search`                     | `current` |
+| Request error files      | `GET /api/agent-gateway/logs/request-error-files`         | `GET /api/agent-gateway/logs/request-error-files`         | `current` |
+| Logs clear               | `DELETE /api/agent-gateway/logs`                          | `DELETE /api/agent-gateway/logs`                          | `current` |
+| System info              | `GET /api/agent-gateway/system/info`                      | `GET /api/agent-gateway/system/info`                      | `current` |
+| System models            | `GET /api/agent-gateway/system/models`                    | `GET /api/agent-gateway/system/models`                    | `current` |
+| Provider configs         | `GET /api/agent-gateway/provider-configs`                 | `GET /api/agent-gateway/provider-configs`                 | `current` |
+| Provider config 保存     | `PUT /api/agent-gateway/provider-configs/:id`             | `PUT /api/agent-gateway/provider-configs/:id`             | `current` |
+| Provider models          | `GET /api/agent-gateway/provider-configs/:id/models`      | `GET /api/agent-gateway/provider-configs/:id/models`      | `current` |
+| Provider model test      | `POST /api/agent-gateway/provider-configs/:id/test-model` | `POST /api/agent-gateway/provider-configs/:id/test-model` | `current` |
+| Auth files               | `GET /api/agent-gateway/auth-files`                       | `GET /api/agent-gateway/auth-files`                       | `current` |
+| Auth files 上传          | `POST /api/agent-gateway/auth-files`                      | `POST /api/agent-gateway/auth-files`                      | `current` |
+| Auth files 字段修补      | `PATCH /api/agent-gateway/auth-files/fields`              | `PATCH /api/agent-gateway/auth-files/fields`              | `current` |
+| Auth files 删除          | `DELETE /api/agent-gateway/auth-files`                    | `DELETE /api/agent-gateway/auth-files`                    | `current` |
+| OAuth Gemini CLI         | `POST /api/agent-gateway/oauth/gemini-cli/start`          | `POST /api/agent-gateway/oauth/gemini-cli/start`          | `current` |
+| OAuth provider auth-url  | `POST /api/agent-gateway/oauth/:providerId/start`         | `POST /api/agent-gateway/oauth/:providerId/start`         | `current` |
+| OAuth browser callback   | `GET /api/agent-gateway/oauth/callback`                   | `GET /api/agent-gateway/oauth/callback`                   | `current` |
+| OAuth callback           | `POST /api/agent-gateway/oauth/callback`                  | `POST /api/agent-gateway/oauth/callback`                  | `current` |
+| OAuth status             | `GET /api/agent-gateway/oauth/status/:state`              | `GET /api/agent-gateway/oauth/status/:state`              | `current` |
+| Vertex import            | `POST /api/agent-gateway/oauth/vertex/import`             | `POST /api/agent-gateway/oauth/vertex/import`             | `current` |
+| Latest version           | `GET /api/agent-gateway/system/latest-version`            | `GET /api/agent-gateway/system/latest-version`            | `current` |
+| Request log setting      | `PUT /api/agent-gateway/system/request-log`               | `PUT /api/agent-gateway/system/request-log`               | `current` |
+| Clear login storage      | `POST /api/agent-gateway/system/clear-login-storage`      | `POST /api/agent-gateway/system/clear-login-storage`      | `current` |
 
 ## 设计目标
 
 - 将参考项目的 `/config`、`/api-keys`、`/gemini-api-key`、`/auth-files`、`/oauth-*`、`/logs`、`/api-call` 等散接口收敛为稳定领域 API。
+- 在 `agent-server` 内实现简易 CLIProxyAPI runtime，而不是让后端只连接外部 CLIProxyAPI。运行时调用方通过独立 Gateway client 与 client API key 鉴权，Identity 用户只负责控制台登录与管理操作。
+- `/v1/models` 与 `/v1/chat/completions` 使用 OpenAI-compatible 响应；首期拒绝 streaming，`stream: true` 返回 `stream_not_supported`。
+- runtime 错误统一返回 `{ error: { message, type, code } }`，不得泄漏 Nest 默认错误外壳、raw provider error、secret、headers 或第三方 SDK 对象。
 - 前端必须是独立 workspace 项目，落点为 `apps/frontend/agent-gateway`；它只做中转站控制台，不进入 `agent-admin` 六大治理中心，也不复用 `agent-chat` 执行面。
 - 独立中转前端只消费 camelCase、schema 校验后的领域模型，不直接依赖参考项目的 hyphen-case raw payload。
 - 登录采用统一 Identity 的短 access token + 长 refresh token。access token 保存在 React session state；refresh token 当前按 contract 标注存放在 `localStorage`，键为 `agent-gateway.refresh-token`。Identity refresh 会轮换 refresh token，因此前端的 `GatewayRefreshResponse` 必须包含并保存新的 `refreshToken`、`refreshTokenExpiresAt` 和 `refreshTokenStorage`；继续提交旧 refresh token 会得到 `401 refresh_token_reused`。
@@ -707,6 +738,7 @@ type GatewayPipelineTraceEvent = {
 | `POST /api/agent-gateway/relay`                                      | `GatewayRelayRequestSchema`                      | `GatewayRelayResponseSchema`                      |
 | `POST /api/agent-gateway/oauth/start`                                | `GatewayStartOAuthRequestSchema`                 | `GatewayStartOAuthResponseSchema`                 |
 | `POST /api/agent-gateway/oauth/complete`                             | `GatewayCompleteOAuthRequestSchema`              | `GatewayCompleteOAuthResponseSchema`              |
+| `POST /api/agent-gateway/oauth/:providerId/start`                    | `GatewayProviderOAuthStartRequestSchema`         | `GatewayProviderOAuthStartResponseSchema`         |
 | `PUT /api/agent-gateway/connection/profile`                          | `GatewaySaveConnectionProfileRequestSchema`      | `GatewayConnectionProfileSchema`                  |
 | `POST /api/agent-gateway/connection/check`                           | none                                             | `GatewayConnectionStatusResponseSchema`           |
 | `GET /api/agent-gateway/config/raw`                                  | none                                             | `GatewayRawConfigResponseSchema`                  |
@@ -845,19 +877,31 @@ type BatchFileMutationResult = {
 
 ### OAuth
 
-| Method   | Path                                                 | Status  | Request / Response                                              |
-| -------- | ---------------------------------------------------- | ------- | --------------------------------------------------------------- |
-| `POST`   | `/api/agent-gateway/oauth/start`                     | current | `GatewayStartOAuthRequest` -> `GatewayStartOAuthResponse`       |
-| `POST`   | `/api/agent-gateway/oauth/complete`                  | current | `GatewayCompleteOAuthRequest` -> `GatewayCompleteOAuthResponse` |
-| `GET`    | `/api/agent-gateway/oauth/policies`                  | planned | `OAuthPolicy[]`                                                 |
-| `POST`   | `/api/agent-gateway/oauth/gemini-cli/start`          | current | `GatewayGeminiCliOAuthStartRequestSchema` -> url projection     |
-| `GET`    | `/api/agent-gateway/oauth/status/:state`             | current | `GatewayOAuthStatusResponseSchema`                              |
-| `POST`   | `/api/agent-gateway/oauth/callback`                  | current | `GatewayOAuthCallbackRequestSchema` -> response                 |
-| `PATCH`  | `/api/agent-gateway/oauth/:provider/excluded-models` | planned | `{ models: string[] }`                                          |
-| `DELETE` | `/api/agent-gateway/oauth/:provider/excluded-models` | planned | no body                                                         |
-| `GET`    | `/api/agent-gateway/oauth/model-aliases/:providerId` | current | `GatewayOAuthModelAliasListResponseSchema`                      |
-| `PATCH`  | `/api/agent-gateway/oauth/model-aliases/:providerId` | current | `GatewayUpdateOAuthModelAliasRulesRequestSchema`                |
-| `DELETE` | `/api/agent-gateway/oauth/:channel/model-aliases`    | planned | no body                                                         |
+| Method   | Path                                                 | Status  | Request / Response                                                                                               |
+| -------- | ---------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/agent-gateway/oauth/start`                     | current | deterministic credential lifecycle: `GatewayStartOAuthRequest` -> `GatewayStartOAuthResponse`                    |
+| `POST`   | `/api/agent-gateway/oauth/complete`                  | current | `GatewayCompleteOAuthRequest` -> `GatewayCompleteOAuthResponse`                                                  |
+| `GET`    | `/api/agent-gateway/oauth/policies`                  | planned | `OAuthPolicy[]`                                                                                                  |
+| `POST`   | `/api/agent-gateway/oauth/:providerId/start`         | current | CLI Proxy auth-url parity: `GatewayProviderOAuthStartRequestSchema` -> `GatewayProviderOAuthStartResponseSchema` |
+| `POST`   | `/api/agent-gateway/oauth/gemini-cli/start`          | current | `GatewayGeminiCliOAuthStartRequestSchema` -> url projection                                                      |
+| `GET`    | `/api/agent-gateway/oauth/status/:state`             | current | `GatewayOAuthStatusResponseSchema`                                                                               |
+| `GET`    | `/api/agent-gateway/oauth/callback`                  | current | browser redirect callback, no Gateway access token required                                                      |
+| `POST`   | `/api/agent-gateway/oauth/callback`                  | current | `GatewayOAuthCallbackRequestSchema` -> response                                                                  |
+| `PATCH`  | `/api/agent-gateway/oauth/:provider/excluded-models` | planned | `{ models: string[] }`                                                                                           |
+| `DELETE` | `/api/agent-gateway/oauth/:provider/excluded-models` | planned | no body                                                                                                          |
+| `GET`    | `/api/agent-gateway/oauth/model-aliases/:providerId` | current | `GatewayOAuthModelAliasListResponseSchema`                                                                       |
+| `PATCH`  | `/api/agent-gateway/oauth/model-aliases/:providerId` | current | `GatewayUpdateOAuthModelAliasRulesRequestSchema`                                                                 |
+| `DELETE` | `/api/agent-gateway/oauth/:channel/model-aliases`    | planned | no body                                                                                                          |
+
+Provider auth-url start 保留 CLI Proxy 返回的原始授权 URL，不改写 `redirect_uri`。Codex、Claude、Antigravity 依赖 CLI Proxy WebUI flow 启动的本地 callback forwarder，因此授权链接中的 callback 仍分别指向 CLI Proxy 预期的本地端口；Kimi 使用 device authorization URL 和 `user_code`。`GET /api/agent-gateway/oauth/callback` 仅作为部署自定义 callback 或手动 fallback 入口；manual fallback 仍使用受保护的 `POST /api/agent-gateway/oauth/callback`。
+
+真实 CLI Proxy adapter 继续保持项目稳定 camelCase contract，但上游调用必须使用 CLIProxyAPI 原生协议：
+
+- management key 同时发送 `Authorization: Bearer <key>` 和 `X-Management-Key: <key>`。
+- connection check 调用 `GET /v0/management/config`，版本来自 `X-CPA-VERSION`，构建时间来自 `X-CPA-BUILD-DATE`。
+- API keys：`GET /api-keys` 读取 `{ "api-keys": [...] }`；`PUT /api-keys` body 是字符串数组；`PATCH /api-keys` body 是 `{ index, value }`；`DELETE /api-keys?index=<n>` 删除。
+- Auth files：上传是 `POST /auth-files?name=<file.json>` + 原始 JSON 内容，删除支持 `DELETE /auth-files?name=<file>`、`DELETE /auth-files?all=true` 或字符串数组 body。
+- OAuth status：CLI Proxy 的 `status: "wait"` 映射为 `pending`，`status: "ok"` 映射为 `completed`；callback body 使用 `redirect_url`；provider auth-url 响应中的 `user_code` 会映射为前端 `userCode`。
 
 ### Quota
 

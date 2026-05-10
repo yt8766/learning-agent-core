@@ -25,7 +25,7 @@ export async function readJsonFileOrDefault<T>(filePath: string, fallback: T): P
 }
 
 export function getStorageRoot(workspaceRoot: string) {
-  return join(workspaceRoot, 'data', 'intel-engine', 'briefing');
+  return join(workspaceRoot, 'profile-storage', 'platform', 'intel-engine', 'briefing');
 }
 
 export function getSchedulePath(storageRoot: string, category: TechBriefingCategory) {

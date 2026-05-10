@@ -10,6 +10,7 @@ import {
   type KnowledgeRagPolicy,
   type KnowledgeStructuredPlannerProvider
 } from '../src/rag';
+import { createInMemoryKnowledgeRagObserver, exportKnowledgeRagTrace } from '../src/observability';
 
 const policy: KnowledgeRagPolicy = {
   maxSelectedKnowledgeBases: 2,
@@ -156,6 +157,164 @@ describe('runKnowledgeRag', () => {
     expect(result.diagnostics.plannerDurationMs).toBeGreaterThanOrEqual(0);
     expect(result.diagnostics.retrievalDurationMs).toBeGreaterThanOrEqual(0);
     expect(result.diagnostics.answerDurationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('records planner, retrieval, and generation in one runtime trace when an observer is provided', async () => {
+    const observer = createInMemoryKnowledgeRagObserver();
+    const hit = makeHit({ chunkId: 'rag-trace-hit', score: 0.95 });
+
+    await runKnowledgeRag({
+      query: 'How does traced RAG work?',
+      accessibleKnowledgeBases,
+      policy,
+      plannerProvider: makePlannerProvider({
+        rewrittenQuery: 'traced rag runtime',
+        queryVariants: ['traced rag runtime'],
+        selectedKnowledgeBaseIds: ['kb_runtime'],
+        searchMode: 'hybrid',
+        selectionReason: 'Runtime docs are relevant.',
+        confidence: 0.91
+      }),
+      searchService: makeSearchService([hit]),
+      answerProvider: makeAnswerProvider(async input => ({
+        text: 'Trace the RAG runtime.',
+        citations: input.citations
+      })),
+      observer,
+      traceId: 'trace-rag-runtime',
+      idFactory: () => 'rag-run-id'
+    });
+
+    const trace = exportKnowledgeRagTrace(observer, 'trace-rag-runtime');
+
+    expect(trace).toMatchObject({
+      traceId: 'trace-rag-runtime',
+      runId: 'rag-run-id',
+      operation: 'rag.run',
+      status: 'succeeded',
+      query: {
+        text: 'How does traced RAG work?',
+        normalizedText: 'traced rag runtime',
+        variants: ['traced rag runtime']
+      },
+      generation: {
+        answerId: 'rag-run-id',
+        answerText: 'Trace the RAG runtime.',
+        citedChunkIds: ['rag-trace-hit'],
+        groundedCitationRate: 1
+      }
+    });
+    expect(trace.events.map(event => event.name)).toEqual(
+      expect.arrayContaining([
+        'runtime.query.receive',
+        'runtime.query.preprocess',
+        'runtime.retrieval.start',
+        'runtime.retrieval.complete',
+        'runtime.post_retrieval.select',
+        'runtime.context_assembly.complete',
+        'runtime.generation.complete'
+      ])
+    );
+    expect(trace.retrieval?.hits[0]?.chunkId).toBe('rag-trace-hit');
+    expect(trace.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'runtime.duration_ms', unit: 'ms', stage: 'generation' }),
+        expect.objectContaining({ name: 'runtime.planner_duration_ms', unit: 'ms', stage: 'pre-retrieval' }),
+        expect.objectContaining({ name: 'retrieval.duration_ms', unit: 'ms', stage: 'retrieval' }),
+        expect.objectContaining({ name: 'generation.duration_ms', unit: 'ms', stage: 'generation' }),
+        expect.objectContaining({ name: 'retrieval.hit_count', value: 1, unit: 'count', stage: 'retrieval' }),
+        expect.objectContaining({ name: 'retrieval.selected_count', value: 1, unit: 'count', stage: 'post-retrieval' }),
+        expect.objectContaining({
+          name: 'generation.grounded_citation_rate',
+          value: 1,
+          unit: 'ratio',
+          stage: 'generation'
+        })
+      ])
+    );
+  });
+
+  it('keeps the RAG run result even when observer hooks fail', async () => {
+    const failingObserver = {
+      startTrace: vi.fn(() => {
+        throw new Error('observer start failed');
+      }),
+      recordEvent: vi.fn(() => {
+        throw new Error('observer event failed');
+      }),
+      finishTrace: vi.fn(() => {
+        throw new Error('observer finish failed');
+      }),
+      exportTrace: vi.fn(() => {
+        throw new Error('observer export failed');
+      }),
+      listTraces: vi.fn(() => [])
+    };
+
+    const result = await runKnowledgeRag({
+      query: 'How should observer failures behave?',
+      accessibleKnowledgeBases,
+      policy,
+      plannerProvider: makePlannerProvider({
+        rewrittenQuery: 'observer failure isolation',
+        queryVariants: ['observer failure isolation'],
+        selectedKnowledgeBaseIds: ['kb_runtime'],
+        searchMode: 'hybrid',
+        selectionReason: 'Runtime docs are relevant.',
+        confidence: 0.91
+      }),
+      searchService: makeSearchService([makeHit({ chunkId: 'observer-isolated-hit' })]),
+      answerProvider: makeAnswerProvider(async input => ({
+        text: 'Observer failures do not fail RAG.',
+        citations: input.citations
+      })),
+      observer: failingObserver,
+      traceId: 'trace-observer-isolation',
+      idFactory: () => 'observer-isolation-run'
+    });
+
+    expect(result.runId).toBe('observer-isolation-run');
+    expect(result.answer.noAnswer).toBe(false);
+  });
+
+  it('keeps observer metrics bounded when answer citations contain duplicates or extra citations', async () => {
+    const observer = createInMemoryKnowledgeRagObserver();
+    const hit = makeHit({ chunkId: 'bounded-rate-hit', sourceId: 'bounded-rate-source' });
+    const extraCitation = {
+      sourceId: 'extra-source',
+      chunkId: 'extra-chunk',
+      title: 'Extra',
+      uri: '/extra.md',
+      sourceType: 'repo-docs' as const,
+      trustClass: 'internal' as const
+    };
+
+    await runKnowledgeRag({
+      query: 'How should traced citation rates stay bounded?',
+      accessibleKnowledgeBases,
+      policy,
+      plannerProvider: makePlannerProvider({
+        rewrittenQuery: 'bounded citation rate',
+        queryVariants: ['bounded citation rate'],
+        selectedKnowledgeBaseIds: ['kb_runtime'],
+        searchMode: 'hybrid',
+        selectionReason: 'Runtime docs are relevant.',
+        confidence: 0.91
+      }),
+      searchService: makeSearchService([hit]),
+      answerProvider: makeAnswerProvider(async input => ({
+        text: 'Trace metrics stay bounded.',
+        citations: [input.citations[0]!, input.citations[0]!, extraCitation]
+      })),
+      observer,
+      traceId: 'trace-bounded-rate',
+      idFactory: () => 'bounded-rate-run'
+    });
+
+    const trace = exportKnowledgeRagTrace(observer, 'trace-bounded-rate');
+
+    expect(trace.generation?.groundedCitationRate).toBe(1);
+    expect(trace.generation?.citedChunkIds).toEqual(['bounded-rate-hit']);
   });
 
   it('passes conversation context through to the planner provider', async () => {

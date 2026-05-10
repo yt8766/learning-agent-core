@@ -2,14 +2,14 @@
 
 状态：current
 文档类型：plan
-适用范围：`packages/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/knowledge-cli`
+适用范围：`packages/knowledge`、`apps/backend/agent-server/src/domains/knowledge`、`apps/cli/knowledge-cli`
 最后核对：2026-05-09
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the current Knowledge SDK and Knowledge App into a stronger enterprise RAG platform by SDK-ifying backend ingestion, adding SDK-level observability, hardening ingestion jobs, and extending provider/debug capabilities.
 
-**Architecture:** Keep stable contracts in `packages/knowledge`, keep production orchestration in `apps/backend/agent-server/src/domains/knowledge`, and keep developer tooling in `apps/knowledge-cli`. Each track below is independently shippable; execute Track A first because it closes the biggest credibility gap in the ingestion chain.
+**Architecture:** Keep stable contracts in `packages/knowledge`, keep production orchestration in `apps/backend/agent-server/src/domains/knowledge`, and keep developer tooling in `apps/cli/knowledge-cli`. Each track below is independently shippable; execute Track A first because it closes the biggest credibility gap in the ingestion chain.
 
 **Tech Stack:** TypeScript, NestJS, Vitest, zod, `@agent/knowledge`, PostgreSQL/Supabase pgvector adapter, existing pnpm workspace scripts.
 
@@ -56,9 +56,9 @@ Create or modify these files as the plan progresses:
   Responsibility: add default provider presets for MiniMax, GLM, DeepSeek, and OpenAI-compatible.
 - Create `packages/knowledge/test/sdk-provider-presets.test.ts`
   Responsibility: parse/default-provider tests.
-- Modify `apps/knowledge-cli/src/*` and create `apps/knowledge-cli/src/config.ts`
+- Modify `apps/cli/knowledge-cli/src/*` and create `apps/cli/knowledge-cli/src/config.ts`
   Responsibility: optional real-provider config file support.
-- Create `apps/knowledge-cli/test/knowledge-cli-config.test.ts`
+- Create `apps/cli/knowledge-cli/test/knowledge-cli-config.test.ts`
   Responsibility: CLI config parse and real-provider wiring tests without network calls.
 - Modify `docs/sdk/knowledge.md`, `docs/apps/knowledge-cli/knowledge-cli.md`, and `docs/integration/knowledge-sdk-rag-rollout.md` after each shipped track.
 
@@ -799,9 +799,9 @@ Expected: PASS.
 
 **Files:**
 
-- Create: `apps/knowledge-cli/src/config.ts`
-- Create: `apps/knowledge-cli/test/knowledge-cli-config.test.ts`
-- Modify: `apps/knowledge-cli/README.md`
+- Create: `apps/cli/knowledge-cli/src/config.ts`
+- Create: `apps/cli/knowledge-cli/test/knowledge-cli-config.test.ts`
+- Modify: `apps/cli/knowledge-cli/README.md`
 
 - [ ] **Step 1: Write failing config test**
 
@@ -851,8 +851,8 @@ export function redactKnowledgeCliConfig(config: KnowledgeCliConfig): string {
 Run:
 
 ```bash
-pnpm --dir apps/knowledge-cli test
-pnpm --dir apps/knowledge-cli typecheck
+pnpm --dir apps/cli/knowledge-cli test
+pnpm --dir apps/cli/knowledge-cli typecheck
 ```
 
 Expected: PASS.
@@ -876,8 +876,8 @@ pnpm --dir apps/backend/agent-server test -- knowledge-ingestion-sdk-pipeline.sp
 pnpm --dir apps/backend/agent-server test -- knowledge-ingestion-queue-recovery.spec.ts
 pnpm --dir packages/knowledge test -- knowledge-observer.test.ts
 pnpm --dir packages/knowledge test -- sdk-provider-presets.test.ts
-pnpm --dir apps/knowledge-cli test
-pnpm --dir apps/knowledge-cli typecheck
+pnpm --dir apps/cli/knowledge-cli test
+pnpm --dir apps/cli/knowledge-cli typecheck
 pnpm exec tsc -p packages/knowledge/tsconfig.json --noEmit
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm check:docs

@@ -3,11 +3,15 @@
 状态：current
 文档类型：architecture
 适用范围：`packages/knowledge/src/runtime/`
-最后核对：2026-05-02（确认 web curated 暂不做真实网页抓取）
+最后核对：2026-05-10（确认 backend knowledge domain 已接入真实 hybrid retrieval）
 
 ## 背景与定位
 
 `packages/knowledge/src/runtime/` 是知识检索的**在线链路编排层**，负责把查询请求通过 pipeline 转化为可供 agent runtime 消费的检索结果与上下文材料。Hybrid Search 属于 `packages/knowledge` 的检索编排能力：当前已实现 `HybridKnowledgeSearchService` facade、`HybridRetrievalEngine`、通用 retriever 接口、RRF fusion strategy、hybrid diagnostics 和最小生产配置 contract；`packages/knowledge/src/adapters/*` 已提供 Chroma 向量检索桥接和 OpenSearch-like 全文检索桥接；backend `RuntimeHost` 已有显式 keyword/vector 注入入口、factory diagnostics 与 `knowledgeSearchStatus` 状态出口，并会通过 bridge 进入 `AgentRuntime.knowledgeSearchService` 主链入口。`knowledgeSearchStatus` 已进入 `/health` 与 Runtime Center projection，agent-admin 的知识总览卡片会展示 configured/effective mode、vector/provider 与 warning 数；runtime bridge 也会保留最近一次主链 query 的 diagnostics snapshot，供后续调试台读取。剩余工作集中在生产级 SDK client / 凭据注入、实时 provider health ping 和全来源 ingestion 边界核对。
+
+统一后端 `apps/backend/agent-server/src/domains/knowledge` 的 chat retrieval path 也已收敛到同一套 hybrid 语义：`KnowledgeDomainSearchServiceAdapter` 只负责装配 backend-domain keyword/vector retriever，真正的融合交给 `HybridRetrievalEngine` 与 RRF strategy。SDK runtime enabled 时，keyword 与 vector 都会进入 fusion；vector embed/search 失败、vector hit 无法映射回 repository chunk，或 request metadata filters 过滤掉 vector hit 时，keyword 结果仍可返回，`diagnostics.retrievalMode` 只表达过滤后的真实有效命中路径。SDK runtime disabled 时，adapter 退回 keyword-only retrieval，不冒充 hybrid。
+
+backend domain chunk metadata 是过滤契约的一部分。`DocumentChunkRecordSchema` 显式承载 `metadata?: Record<string, unknown>`，ingestion mapper、memory repository、Postgres `knowledge_document_chunks.metadata` save/list mapper 都必须保留该字段。`RetrievalHit.metadata` 会先展开 chunk metadata，再用 domain 权威字段覆盖 `knowledgeBaseId`、`workspaceId`、`filename`、`ordinal`，避免旧 metadata 或外部 SDK chunk 字段覆盖当前知识库边界。
 
 > **重要边界**：`packages/runtime` 是多 Agent Runtime Kernel，负责 graph、session、approval、orchestration。知识检索 runtime 属于 `packages/knowledge`，不属于 `packages/runtime`。
 

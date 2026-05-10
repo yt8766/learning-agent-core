@@ -42,18 +42,18 @@ export interface KnowledgeRuntimeProviders {
 - `@agent/knowledge/node`：Node-only 默认 runtime factory，当前导出 `createDefaultKnowledgeSdkRuntime()`、`createKnowledgeRuntime()` 与相关类型。
 - `@agent/knowledge/adapters/supabase`：生产推荐的 `SupabasePgVectorStoreAdapter`。
 - `apps/backend/agent-server`：JWT 双 token、摄取、RAG、评测、观测的服务端默认装配。
-- `apps/knowledge-cli`：本地目录 indexing、snapshot retrieval、抽取式 ask 与 JSONL trace 的开发者验证入口。
+- `apps/cli/knowledge-cli`：本地目录 indexing、snapshot retrieval、抽取式 ask 与 JSONL trace 的开发者验证入口。
 
 根入口不会导出 `createDefaultKnowledgeSdkRuntime()`。这是刻意边界：默认 runtime 会创建 OpenAI-compatible provider 与 Supabase pgvector adapter，只允许 Node/backend 层使用，前端和浏览器代码不得从根入口误拿到 node-only 能力。
 
 ## CLI 最小闭环
 
-开发者需要先验证 SDK 本地链路时，可以使用 `apps/knowledge-cli`：
+开发者需要先验证 SDK 本地链路时，可以使用 `apps/cli/knowledge-cli`：
 
 ```bash
-pnpm --dir apps/knowledge-cli dev -- index --dir ../../docs --indexFile /tmp/knowledge-index.json
-pnpm --dir apps/knowledge-cli dev -- retrieval --indexFile /tmp/knowledge-index.json --query "Knowledge SDK 接入指南"
-pnpm --dir apps/knowledge-cli dev -- ask --dir ../../docs --query "Knowledge SDK 接入指南" --debug
+pnpm --dir apps/cli/knowledge-cli dev -- index --dir ../../../docs --indexFile /tmp/knowledge-index.json
+pnpm --dir apps/cli/knowledge-cli dev -- retrieval --indexFile /tmp/knowledge-index.json --query "Knowledge SDK 接入指南"
+pnpm --dir apps/cli/knowledge-cli dev -- ask --dir ../../../docs --query "Knowledge SDK 接入指南" --debug
 ```
 
 CLI 的 `index` 命令调用 `@agent/knowledge` 的 `runKnowledgeIndexing()` 生成 snapshot；`retrieval` 命令通过本地 search adapter 调用 `runKnowledgeRetrieval()`；`ask` 命令输出抽取式 answer、引用和可选 JSONL trace。它是 SDK 开发者体验与 Demo 验证入口，不替代 unified `agent-server` 的生产 ingestion、pgvector 和 chat runtime。
@@ -194,7 +194,9 @@ const vectorStore = new SupabasePgVectorStoreAdapter({
 
 Knowledge SDK 的生产默认推荐使用 Supabase PostgreSQL + pgvector。这个选择让认证元数据、文档元数据、评测记录、trace 与向量检索可以落在同一套 PostgreSQL 运维体系内，减少早期生产化时的数据库数量、备份策略和权限边界复杂度。
 
-当前 agent-server knowledge domain 的向量不会存进前端、本地内存、普通 JSON 字段或 `packages/knowledge` 包内部文件；生产路径写入 PostgreSQL/Supabase 中的 `knowledge_document_chunks.embedding vector(1536)`。`knowledge_document_chunks.metadata jsonb` 只保存 display / filter metadata，例如 `tenantId`、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`、`tags`，真正的 embedding 数组由 pgvector 列保存和索引。
+当前 agent-server knowledge domain 的向量不会存进前端、本地内存、普通 JSON 字段或 `packages/knowledge` 包内部文件；生产路径写入 PostgreSQL/Supabase 中的 `knowledge_document_chunks.embedding vector(1024)`。`knowledge_document_chunks.metadata jsonb` 只保存 display / filter metadata，例如 `tenantId`、`knowledgeBaseId`、`documentId`、`ordinal`、`title`、`filename`、`tags`，真正的 embedding 数组由 pgvector 列保存和索引。
+
+统一后端读取 chunk 时必须把 `knowledge_document_chunks.metadata` 映射回 domain `DocumentChunkRecord.metadata`。该字段会参与 `statuses` 等 request filter 的防御性过滤，但最终返回的 `RetrievalHit.metadata` 以 backend domain 当前记录为准：chunk metadata 可补充 `status`、`tags`、section/parent 等过滤展示字段，不能覆盖 `knowledgeBaseId`、`workspaceId`、`filename`、`ordinal` 这些权威字段。
 
 默认 adapter 位于 `@agent/knowledge/adapters/supabase`：
 

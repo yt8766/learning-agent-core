@@ -25,6 +25,7 @@
 - Agent Workspace Vault + Skill Flywheel MVP：[agent-workspace-vault-and-skill-flywheel-design.md](/docs/integration/agent-workspace-vault-and-skill-flywheel-design.md)
 - Knowledge SDK RAG Rollout：[knowledge-sdk-rag-rollout.md](/docs/integration/knowledge-sdk-rag-rollout.md)
 - 上下文组装与生成链路：[context-assembly-and-generation.md](/docs/integration/context-assembly-and-generation.md)
+- RAG 可观测前端接线：[rag-observability-frontend-integration.md](/docs/integration/rag-observability-frontend-integration.md)
 
 约定：
 
@@ -45,6 +46,7 @@
 - [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
 - [Knowledge SDK RAG Rollout](/docs/integration/knowledge-sdk-rag-rollout.md)
 - [上下文组装与生成链路](/docs/integration/context-assembly-and-generation.md)
+- [RAG 可观测前端接线](/docs/integration/rag-observability-frontend-integration.md)
 
 说明：
 
