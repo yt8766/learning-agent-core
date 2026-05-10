@@ -608,8 +608,8 @@ Expected: FAIL where hooks still tolerate legacy shapes or rely on mock-only dat
 Remove local `readDocumentItems()` shape guessing where the API client already returns parsed `PageResult`. Keep hook code simple:
 
 ```ts
-queryFn: () => api.listDocuments()
-documents: documentsQuery.data?.items ?? []
+queryFn: () => api.listDocuments();
+documents: documentsQuery.data?.items ?? [];
 ```
 
 Apply the same rule to dashboard, evals, observability, users, settings, and agent flow hooks.

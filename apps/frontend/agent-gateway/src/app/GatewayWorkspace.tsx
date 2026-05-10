@@ -177,7 +177,6 @@ function GatewayWorkspaceLayout({
   authFiles = { items: [], nextCursor: null },
   confirmDialog = null,
   dashboard = null,
-  logs: _logs,
   modelGroups = [],
   navMode,
   notices = [],
@@ -189,7 +188,6 @@ function GatewayWorkspaceLayout({
   quotaDetails = { items: [] },
   snapshot,
   systemInfo = null,
-  usage: _usage
 }: GatewayWorkspaceLayoutProps) {
   const observedText = snapshot ? `观测时间 ${formatGatewayDate(snapshot.observedAt)}` : '正在加载网关快照';
   const runtimeStatus = snapshot?.runtime.status ?? 'loading';

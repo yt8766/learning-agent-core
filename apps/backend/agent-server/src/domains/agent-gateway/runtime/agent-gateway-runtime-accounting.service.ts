@@ -1,7 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable, Optional } from '@nestjs/common';
 import type { GatewayClientRequestLog, GatewayRelayUsage } from '@agent/core';
 import type { AgentGatewayClientRepository } from '../clients/agent-gateway-client.repository';
-import { AGENT_GATEWAY_CLIENT_CLOCK, AGENT_GATEWAY_CLIENT_REPOSITORY } from '../clients/agent-gateway-client.repository';
+import {
+  AGENT_GATEWAY_CLIENT_CLOCK,
+  AGENT_GATEWAY_CLIENT_REPOSITORY
+} from '../clients/agent-gateway-client.repository';
 import { openAIError } from './agent-gateway-openai-error';
 import type { GatewayRuntimePrincipal } from './agent-gateway-runtime-auth.service';
 

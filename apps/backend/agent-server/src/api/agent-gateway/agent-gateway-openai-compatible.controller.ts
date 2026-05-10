@@ -120,10 +120,10 @@ function isOpenAIErrorResponse(response: unknown): response is { error: unknown 
   const error = (response as { error?: unknown }).error;
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      typeof (error as { code?: unknown }).code === 'string' &&
-      typeof (error as { type?: unknown }).type === 'string' &&
-      typeof (error as { message?: unknown }).message === 'string'
+    typeof error === 'object' &&
+    typeof (error as { code?: unknown }).code === 'string' &&
+    typeof (error as { type?: unknown }).type === 'string' &&
+    typeof (error as { message?: unknown }).message === 'string'
   );
 }
 

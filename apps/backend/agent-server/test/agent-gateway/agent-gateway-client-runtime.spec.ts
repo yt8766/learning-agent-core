@@ -41,7 +41,11 @@ async function createRuntimeController(options: { configureQuota?: boolean } = {
   const quotaService = new AgentGatewayClientQuotaService(clientRepository, () => new Date('2026-05-10T00:00:00.000Z'));
   const client = await clientService.create({ name: 'Runtime App' });
   if (configureQuota) {
-    await quotaService.updateQuota(client.id, { tokenLimit: 100, requestLimit: 5, resetAt: '2026-06-01T00:00:00.000Z' });
+    await quotaService.updateQuota(client.id, {
+      tokenLimit: 100,
+      requestLimit: 5,
+      resetAt: '2026-06-01T00:00:00.000Z'
+    });
   }
   const key = await apiKeyService.create(client.id, { name: 'runtime', scopes: ['models.read', 'chat.completions'] });
   const gatewayRepository = new MemoryAgentGatewayRepository();
@@ -127,7 +131,10 @@ describe('AgentGatewayClientsController', () => {
     expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
     const rejected = results.find(result => result.status === 'rejected');
     expect(rejected).toMatchObject({ reason: { response: { code: 'API_KEY_SECRET_COLLISION' } } });
-    expect((await controller.listApiKeys(firstClient.id)).items.length + (await controller.listApiKeys(secondClient.id)).items.length).toBe(1);
+    expect(
+      (await controller.listApiKeys(firstClient.id)).items.length +
+        (await controller.listApiKeys(secondClient.id)).items.length
+    ).toBe(1);
   });
 
   it('updates client quota and exposes usage defaults', async () => {

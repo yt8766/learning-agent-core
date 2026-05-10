@@ -57,13 +57,14 @@
       }
     },
     "./browser-entry": {
-      "types": "./build/types/src/browser/index.d.ts",
-      "module": "./build/esm/browser/index.mjs",
-      "browser": "./build/esm/browser/index.mjs",
-      "development": "./build/esm/browser/index.mjs",
-      "import": "./build/esm/browser/index.mjs",
-      "require": "./build/cjs/browser/index.js",
-      "default": "./build/esm/browser/index.mjs"
+      "import": {
+        "types": "./build/types/src/browser/index.d.ts",
+        "default": "./build/esm/browser/index.mjs"
+      },
+      "require": {
+        "types": "./build/types/src/browser/index.d.ts",
+        "default": "./build/cjs/browser/index.js"
+      }
     },
     "./contracts": {
       "import": {

@@ -99,9 +99,7 @@ function computeReciprocalRank(sample: KnowledgeEvalSample, topK: number | undef
     return 0;
   }
 
-  const firstMatchIndex = getTopHits(sample, topK).findIndex(hit =>
-    expectedIds.has(getComparableHitId(sample, hit))
-  );
+  const firstMatchIndex = getTopHits(sample, topK).findIndex(hit => expectedIds.has(getComparableHitId(sample, hit)));
 
   return firstMatchIndex === -1 ? 0 : 1 / (firstMatchIndex + 1);
 }

@@ -76,7 +76,10 @@ export class AgentGatewayClientApiKeyService {
   async rotate(clientId: string, apiKeyId: string): Promise<GatewayCreateClientApiKeyResponse> {
     const current = await this.requireApiKey(clientId, apiKeyId);
     if (current.status !== 'active') {
-      throw new ConflictException({ code: 'API_KEY_NOT_ACTIVE', message: 'Only active Gateway client API keys can rotate' });
+      throw new ConflictException({
+        code: 'API_KEY_NOT_ACTIVE',
+        message: 'Only active Gateway client API keys can rotate'
+      });
     }
     const secret = await this.nextUniqueSecret();
     const updated = await this.updateApiKeySecret(clientId, apiKeyId, secret);

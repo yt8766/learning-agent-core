@@ -283,10 +283,10 @@ export class PostgresKnowledgeRepository implements KnowledgeRepository {
       return [];
     }
 
-    await this.client.query('delete from knowledge_document_chunks where document_id = $1 and not (id = any($2::text[]))', [
-      documentId,
-      chunks.map(chunk => chunk.id)
-    ]);
+    await this.client.query(
+      'delete from knowledge_document_chunks where document_id = $1 and not (id = any($2::text[]))',
+      [documentId, chunks.map(chunk => chunk.id)]
+    );
     const saved: DocumentChunkRecord[] = [];
     for (const chunk of chunks) {
       const result = await this.client.query(

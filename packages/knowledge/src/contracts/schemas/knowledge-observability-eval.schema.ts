@@ -9,19 +9,17 @@ const JsonValueSchema = z.custom<JsonValue>(value => isJsonValue(value), {
   message: 'Expected a JSON-safe observability value'
 });
 
-const JsonObjectSchema = z
-  .record(z.string().min(1), JsonValueSchema)
-  .superRefine((attributes, ctx) => {
-    for (const key of collectSensitiveAttributePaths(attributes)) {
-      if (isSensitiveAttributeKey(key)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: key.split('.'),
-          message: 'Trace attributes must not include raw secret-bearing keys'
-        });
-      }
+const JsonObjectSchema = z.record(z.string().min(1), JsonValueSchema).superRefine((attributes, ctx) => {
+  for (const key of collectSensitiveAttributePaths(attributes)) {
+    if (isSensitiveAttributeKey(key)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: key.split('.'),
+        message: 'Trace attributes must not include raw secret-bearing keys'
+      });
     }
-  });
+  }
+});
 
 export const KnowledgeRagEventNameSchema = z.enum([
   'runtime.query.receive',

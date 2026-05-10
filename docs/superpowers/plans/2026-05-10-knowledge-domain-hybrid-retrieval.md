@@ -54,54 +54,52 @@ It intentionally does not implement structured chunking, embedding quality gates
 Replace the first `it('uses SDK embeddings and vector search before keyword fallback', ...)` block with this test:
 
 ```ts
-  it('runs keyword and vector retrieval together before RRF fusion', async () => {
-    const repository = new KnowledgeMemoryRepository();
-    const runtime = enabledRuntime({
-      embedText: vi.fn(async () => ({ embedding: [0.1, 0.2] })),
-      search: vi.fn(async () => ({ hits: [{ id: 'chunk_vector', score: 0.91 }] }))
-    });
-    await seedDocument(repository, {
-      baseId: 'kb_hybrid',
-      documentId: 'doc_vector',
-      chunkId: 'chunk_vector',
-      content: '完全不同的中文内容，不包含英文 planner route token。'
-    });
-    await seedDocument(repository, {
-      baseId: 'kb_hybrid',
-      documentId: 'doc_keyword',
-      chunkId: 'chunk_keyword',
-      content: 'planner route token should still be recovered by keyword retrieval'
-    });
-
-    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
-      query: 'planner route token',
-      filters: { knowledgeBaseIds: ['kb_hybrid'] },
-      limit: 5
-    });
-
-    expect(runtime.runtime.embeddingProvider.embedText).toHaveBeenCalledWith({ text: 'planner route token' });
-    expect(runtime.runtime.vectorStore.search).toHaveBeenCalledWith({
-      embedding: [0.1, 0.2],
-      topK: 5,
-      filters: {
-        knowledgeBaseId: 'kb_hybrid',
-        tenantId: 'default',
-        query: 'planner route token'
-      }
-    });
-    expect(result.hits.map(hit => hit.chunkId)).toEqual(
-      expect.arrayContaining(['chunk_vector', 'chunk_keyword'])
-    );
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'hybrid',
-      fallbackApplied: false,
-      enabledRetrievers: ['keyword', 'vector'],
-      retrievers: ['keyword', 'vector'],
-      failedRetrievers: [],
-      candidateCount: 2,
-      finalHitCount: 2
-    });
+it('runs keyword and vector retrieval together before RRF fusion', async () => {
+  const repository = new KnowledgeMemoryRepository();
+  const runtime = enabledRuntime({
+    embedText: vi.fn(async () => ({ embedding: [0.1, 0.2] })),
+    search: vi.fn(async () => ({ hits: [{ id: 'chunk_vector', score: 0.91 }] }))
   });
+  await seedDocument(repository, {
+    baseId: 'kb_hybrid',
+    documentId: 'doc_vector',
+    chunkId: 'chunk_vector',
+    content: '完全不同的中文内容，不包含英文 planner route token。'
+  });
+  await seedDocument(repository, {
+    baseId: 'kb_hybrid',
+    documentId: 'doc_keyword',
+    chunkId: 'chunk_keyword',
+    content: 'planner route token should still be recovered by keyword retrieval'
+  });
+
+  const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
+    query: 'planner route token',
+    filters: { knowledgeBaseIds: ['kb_hybrid'] },
+    limit: 5
+  });
+
+  expect(runtime.runtime.embeddingProvider.embedText).toHaveBeenCalledWith({ text: 'planner route token' });
+  expect(runtime.runtime.vectorStore.search).toHaveBeenCalledWith({
+    embedding: [0.1, 0.2],
+    topK: 5,
+    filters: {
+      knowledgeBaseId: 'kb_hybrid',
+      tenantId: 'default',
+      query: 'planner route token'
+    }
+  });
+  expect(result.hits.map(hit => hit.chunkId)).toEqual(expect.arrayContaining(['chunk_vector', 'chunk_keyword']));
+  expect(result.diagnostics).toMatchObject({
+    retrievalMode: 'hybrid',
+    fallbackApplied: false,
+    enabledRetrievers: ['keyword', 'vector'],
+    retrievers: ['keyword', 'vector'],
+    failedRetrievers: [],
+    candidateCount: 2,
+    finalHitCount: 2
+  });
+});
 ```
 
 - [ ] **Step 2: Update the no-vector-hits test expectation**
@@ -109,15 +107,15 @@ Replace the first `it('uses SDK embeddings and vector search before keyword fall
 In `falls back to Chinese substring matching when vector search returns no hits`, keep the test name for now but change the diagnostics expectation to show that both retrievers were attempted and keyword produced the final hit:
 
 ```ts
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'keyword-only',
-      fallbackApplied: true,
-      enabledRetrievers: ['keyword', 'vector'],
-      retrievers: ['keyword', 'vector'],
-      failedRetrievers: [],
-      candidateCount: 1,
-      finalHitCount: 1
-    });
+expect(result.diagnostics).toMatchObject({
+  retrievalMode: 'keyword-only',
+  fallbackApplied: true,
+  enabledRetrievers: ['keyword', 'vector'],
+  retrievers: ['keyword', 'vector'],
+  failedRetrievers: [],
+  candidateCount: 1,
+  finalHitCount: 1
+});
 ```
 
 - [ ] **Step 3: Update the embedding-failure expectation**
@@ -125,14 +123,14 @@ In `falls back to Chinese substring matching when vector search returns no hits`
 In `falls back to keyword retrieval when query embedding fails`, change the diagnostics expectation to:
 
 ```ts
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'keyword-only',
-      fallbackApplied: true,
-      enabledRetrievers: ['keyword', 'vector'],
-      retrievers: ['keyword', 'vector'],
-      failedRetrievers: ['vector'],
-      finalHitCount: 1
-    });
+expect(result.diagnostics).toMatchObject({
+  retrievalMode: 'keyword-only',
+  fallbackApplied: true,
+  enabledRetrievers: ['keyword', 'vector'],
+  retrievers: ['keyword', 'vector'],
+  failedRetrievers: ['vector'],
+  finalHitCount: 1
+});
 ```
 
 - [ ] **Step 4: Update the unmapped-vector-hit expectation**
@@ -140,15 +138,15 @@ In `falls back to keyword retrieval when query embedding fails`, change the diag
 In `marks fallback when vector hits cannot be mapped to repository chunks`, change the diagnostics expectation to:
 
 ```ts
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'keyword-only',
-      fallbackApplied: true,
-      enabledRetrievers: ['keyword', 'vector'],
-      retrievers: ['keyword', 'vector'],
-      failedRetrievers: [],
-      preHitCount: 1,
-      finalHitCount: 1
-    });
+expect(result.diagnostics).toMatchObject({
+  retrievalMode: 'keyword-only',
+  fallbackApplied: true,
+  enabledRetrievers: ['keyword', 'vector'],
+  retrievers: ['keyword', 'vector'],
+  failedRetrievers: [],
+  preHitCount: 1,
+  finalHitCount: 1
+});
 ```
 
 - [ ] **Step 5: Add a keyword-only test for disabled SDK runtime**
@@ -156,31 +154,31 @@ In `marks fallback when vector hits cannot be mapped to repository chunks`, chan
 Append this test before the closing `});` of the describe block:
 
 ```ts
-  it('uses keyword-only retrieval when SDK runtime is disabled', async () => {
-    const repository = new KnowledgeMemoryRepository();
-    await seedDocument(repository, {
-      baseId: 'kb_keyword_only',
-      documentId: 'doc_keyword_only',
-      chunkId: 'chunk_keyword_only',
-      content: 'manual approval policy is searchable without vector runtime'
-    });
-
-    const result = await new KnowledgeDomainSearchServiceAdapter(repository).search({
-      query: 'manual approval',
-      filters: { knowledgeBaseIds: ['kb_keyword_only'] },
-      limit: 5
-    });
-
-    expect(result.hits).toEqual([expect.objectContaining({ chunkId: 'chunk_keyword_only' })]);
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'keyword-only',
-      fallbackApplied: false,
-      enabledRetrievers: ['keyword'],
-      retrievers: ['keyword'],
-      failedRetrievers: [],
-      finalHitCount: 1
-    });
+it('uses keyword-only retrieval when SDK runtime is disabled', async () => {
+  const repository = new KnowledgeMemoryRepository();
+  await seedDocument(repository, {
+    baseId: 'kb_keyword_only',
+    documentId: 'doc_keyword_only',
+    chunkId: 'chunk_keyword_only',
+    content: 'manual approval policy is searchable without vector runtime'
   });
+
+  const result = await new KnowledgeDomainSearchServiceAdapter(repository).search({
+    query: 'manual approval',
+    filters: { knowledgeBaseIds: ['kb_keyword_only'] },
+    limit: 5
+  });
+
+  expect(result.hits).toEqual([expect.objectContaining({ chunkId: 'chunk_keyword_only' })]);
+  expect(result.diagnostics).toMatchObject({
+    retrievalMode: 'keyword-only',
+    fallbackApplied: false,
+    enabledRetrievers: ['keyword'],
+    retrievers: ['keyword'],
+    failedRetrievers: [],
+    finalHitCount: 1
+  });
+});
 ```
 
 - [ ] **Step 6: Run test to verify it fails**
@@ -453,7 +451,12 @@ Expected: FAIL is acceptable at this step if the new file exposes type mismatche
 Replace `apps/backend/agent-server/src/domains/knowledge/rag/knowledge-domain-search-service.adapter.ts` with this full content:
 
 ```ts
-import { HybridRetrievalEngine, type KnowledgeSearchService, type RetrievalRequest, type RetrievalResult } from '@agent/knowledge';
+import {
+  HybridRetrievalEngine,
+  type KnowledgeSearchService,
+  type RetrievalRequest,
+  type RetrievalResult
+} from '@agent/knowledge';
 
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 import type { KnowledgeSdkRuntimeProviderValue } from '../runtime/knowledge-sdk-runtime.provider';
@@ -590,44 +593,44 @@ Expected: PASS.
 Append this test before the describe block closes:
 
 ```ts
-  it('boosts chunks returned by both keyword and vector retrievers through RRF', async () => {
-    const repository = new KnowledgeMemoryRepository();
-    const runtime = enabledRuntime({
-      search: vi.fn(async () => ({
-        hits: [
-          { id: 'chunk_shared', score: 0.6 },
-          { id: 'chunk_vector_only', score: 0.99 }
-        ]
-      }))
-    });
-    await seedDocument(repository, {
-      baseId: 'kb_rrf',
-      documentId: 'doc_shared',
-      chunkId: 'chunk_shared',
-      content: 'shared policy appears in keyword retrieval'
-    });
-    await seedDocument(repository, {
-      baseId: 'kb_rrf',
-      documentId: 'doc_vector_only',
-      chunkId: 'chunk_vector_only',
-      content: 'semantic-only content'
-    });
-
-    const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
-      query: 'shared policy',
-      filters: { knowledgeBaseIds: ['kb_rrf'] },
-      limit: 5
-    });
-
-    expect(result.hits[0]?.chunkId).toBe('chunk_shared');
-    expect(result.diagnostics).toMatchObject({
-      retrievalMode: 'hybrid',
-      enabledRetrievers: ['keyword', 'vector'],
-      failedRetrievers: [],
-      fusionStrategy: 'rrf',
-      finalHitCount: 2
-    });
+it('boosts chunks returned by both keyword and vector retrievers through RRF', async () => {
+  const repository = new KnowledgeMemoryRepository();
+  const runtime = enabledRuntime({
+    search: vi.fn(async () => ({
+      hits: [
+        { id: 'chunk_shared', score: 0.6 },
+        { id: 'chunk_vector_only', score: 0.99 }
+      ]
+    }))
   });
+  await seedDocument(repository, {
+    baseId: 'kb_rrf',
+    documentId: 'doc_shared',
+    chunkId: 'chunk_shared',
+    content: 'shared policy appears in keyword retrieval'
+  });
+  await seedDocument(repository, {
+    baseId: 'kb_rrf',
+    documentId: 'doc_vector_only',
+    chunkId: 'chunk_vector_only',
+    content: 'semantic-only content'
+  });
+
+  const result = await new KnowledgeDomainSearchServiceAdapter(repository, runtime).search({
+    query: 'shared policy',
+    filters: { knowledgeBaseIds: ['kb_rrf'] },
+    limit: 5
+  });
+
+  expect(result.hits[0]?.chunkId).toBe('chunk_shared');
+  expect(result.diagnostics).toMatchObject({
+    retrievalMode: 'hybrid',
+    enabledRetrievers: ['keyword', 'vector'],
+    failedRetrievers: [],
+    fusionStrategy: 'rrf',
+    finalHitCount: 2
+  });
+});
 ```
 
 - [ ] **Step 2: Run the targeted adapter test again**

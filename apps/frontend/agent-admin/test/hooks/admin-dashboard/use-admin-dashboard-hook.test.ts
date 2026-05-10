@@ -225,12 +225,10 @@ describe('use-admin-dashboard hook coverage', () => {
         runtime: '运行中枢',
         approvals: '审批中枢'
       },
-      buildDashboardRoute: vi.fn(
-        (state: { page: string }) =>
-          state.page === 'learning'
-            ? '/learning'
-            :
-          '/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
+      buildDashboardRoute: vi.fn((state: { page: string }) =>
+        state.page === 'learning'
+          ? '/learning'
+          : '/runtime?runtimeTaskId=task-selected-1&runtimeFocusKind=checkpoint&runtimeFocusId=cp-1&runtimeCompareTaskId=task-compare-1&runtimeGraphNodeId=worker-gongbu-code&runtimeStatus=running&runtimeModel=gpt-5.4&runtimePricingSource=provider&runtimeExecutionMode=plan'
       ),
       buildDashboardShareUrl: vi.fn(() => 'https://example.com/admin/runtime'),
       readDashboardStateFromRoute,

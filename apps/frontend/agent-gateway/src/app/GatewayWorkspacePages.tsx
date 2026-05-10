@@ -150,10 +150,15 @@ export function renderActivePage(activeView: GatewayViewId, snapshot: GatewaySna
         onStartOAuth={async providerId => {
           const result = await pageData.api?.startProviderOAuth(mapOAuthProviderStartId(providerId));
           pageData.onGatewayDataChanged?.();
-          return result ?? { state: `${providerId}-oauth`, verificationUri: 'https://example.invalid/oauth', expiresAt: '' };
+          return (
+            result ?? { state: `${providerId}-oauth`, verificationUri: 'https://example.invalid/oauth', expiresAt: '' }
+          );
         }}
         onSubmitCallback={async (providerId, redirectUrl) => {
-          const result = await pageData.api?.submitOAuthCallback({ provider: mapOAuthProviderId(providerId), redirectUrl });
+          const result = await pageData.api?.submitOAuthCallback({
+            provider: mapOAuthProviderId(providerId),
+            redirectUrl
+          });
           pageData.onGatewayDataChanged?.();
           return result ?? { accepted: false, provider: providerId, completedAt: '' };
         }}

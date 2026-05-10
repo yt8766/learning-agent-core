@@ -49,7 +49,9 @@ export function DashboardPage({ summary }: DashboardPageProps) {
         </div>
         <div className="dashboard-hero-meta">
           <div>
-            <strong>{new Date(summary.observedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</strong>
+            <strong>
+              {new Date(summary.observedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+            </strong>
             <span>{new Date(summary.observedAt).toLocaleDateString('zh-CN')}</span>
           </div>
           <span className={`connection-pill status-${summary.connection.status}`}>
@@ -63,25 +65,25 @@ export function DashboardPage({ summary }: DashboardPageProps) {
       <section className="dashboard-stats-section">
         <h3 className="section-kicker">Quick Stats</h3>
         <div className="dashboard-bento-grid">
-        {metrics.map(metric => {
-          const Icon = metric.icon;
-          return (
+          {metrics.map(metric => {
+            const Icon = metric.icon;
+            return (
               <article
                 className={`dashboard-bento-card dashboard-animated-card${metric.label === '管理密钥' ? ' bento-large' : ''}`}
                 key={metric.label}
               >
-              <span className="dashboard-bento-icon">
-                <Icon size={18} aria-hidden="true" />
-              </span>
+                <span className="dashboard-bento-icon">
+                  <Icon size={18} aria-hidden="true" />
+                </span>
                 <div>
                   <strong>{metric.value}</strong>
                   <span>{metric.label}</span>
                   <small>{metric.detail}</small>
                 </div>
-            </article>
-          );
-        })}
-      </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <section className="config-pill-section">

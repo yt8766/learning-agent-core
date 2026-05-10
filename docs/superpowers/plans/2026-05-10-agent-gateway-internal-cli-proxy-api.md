@@ -359,7 +359,13 @@ export const GatewayOpenAIModelsResponseSchema = z.object({
 export const GatewayOpenAICompatibleErrorResponseSchema = z.object({
   error: z.object({
     message: z.string(),
-    type: z.enum(['invalid_request_error', 'authentication_error', 'permission_error', 'rate_limit_error', 'api_error']),
+    type: z.enum([
+      'invalid_request_error',
+      'authentication_error',
+      'permission_error',
+      'rate_limit_error',
+      'api_error'
+    ]),
     code: z.string()
   })
 });
@@ -489,9 +495,9 @@ describe('AgentGatewayClientsController', () => {
     const key = await controller.createApiKey(client.id, { name: 'default' });
 
     await expect(controller.disableClient(client.id)).resolves.toMatchObject({ status: 'disabled' });
-    await expect(
-      controller.updateApiKey(client.id, key.apiKey.id, { status: 'disabled' })
-    ).resolves.toMatchObject({ status: 'disabled' });
+    await expect(controller.updateApiKey(client.id, key.apiKey.id, { status: 'disabled' })).resolves.toMatchObject({
+      status: 'disabled'
+    });
   });
 });
 ```
@@ -713,10 +719,7 @@ Create the three service files with these public methods:
 // apps/backend/agent-server/src/domains/agent-gateway/clients/agent-gateway-client.service.ts
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { GatewayClient, GatewayCreateClientRequest, GatewayUpdateClientRequest } from '@agent/core';
-import {
-  AGENT_GATEWAY_CLIENT_REPOSITORY,
-  type AgentGatewayClientRepository
-} from './agent-gateway-client.repository';
+import { AGENT_GATEWAY_CLIENT_REPOSITORY, type AgentGatewayClientRepository } from './agent-gateway-client.repository';
 
 @Injectable()
 export class AgentGatewayClientService {
@@ -758,7 +761,13 @@ export class AgentGatewayClientService {
 }
 
 function slug(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'client';
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'client'
+  );
 }
 ```
 
@@ -771,10 +780,7 @@ import type {
   GatewayCreateClientApiKeyResponse,
   GatewayUpdateClientApiKeyRequest
 } from '@agent/core';
-import {
-  AGENT_GATEWAY_CLIENT_REPOSITORY,
-  type AgentGatewayClientRepository
-} from './agent-gateway-client.repository';
+import { AGENT_GATEWAY_CLIENT_REPOSITORY, type AgentGatewayClientRepository } from './agent-gateway-client.repository';
 
 @Injectable()
 export class AgentGatewayClientApiKeyService {
@@ -788,7 +794,10 @@ export class AgentGatewayClientApiKeyService {
     return { items: items.map(({ secretHash, ...item }) => item) };
   }
 
-  async create(clientId: string, request: GatewayCreateClientApiKeyRequest): Promise<GatewayCreateClientApiKeyResponse> {
+  async create(
+    clientId: string,
+    request: GatewayCreateClientApiKeyRequest
+  ): Promise<GatewayCreateClientApiKeyResponse> {
     const secret = this.createSecret();
     const now = new Date().toISOString();
     const record = await this.repository.createApiKey({
@@ -809,7 +818,8 @@ export class AgentGatewayClientApiKeyService {
 
   async update(clientId: string, apiKeyId: string, request: GatewayUpdateClientApiKeyRequest) {
     const current = (await this.repository.listApiKeys(clientId)).find(key => key.id === apiKeyId);
-    if (!current) throw new NotFoundException({ code: 'gateway_api_key_not_found', message: 'Gateway API key not found' });
+    if (!current)
+      throw new NotFoundException({ code: 'gateway_api_key_not_found', message: 'Gateway API key not found' });
     const next = await this.repository.updateApiKey({
       ...current,
       ...request,
@@ -833,10 +843,7 @@ export function hashSecret(secret: string): string {
 // apps/backend/agent-server/src/domains/agent-gateway/clients/agent-gateway-client-quota.service.ts
 import { Inject, Injectable } from '@nestjs/common';
 import type { GatewayUpdateClientQuotaRequest } from '@agent/core';
-import {
-  AGENT_GATEWAY_CLIENT_REPOSITORY,
-  type AgentGatewayClientRepository
-} from './agent-gateway-client.repository';
+import { AGENT_GATEWAY_CLIENT_REPOSITORY, type AgentGatewayClientRepository } from './agent-gateway-client.repository';
 
 @Injectable()
 export class AgentGatewayClientQuotaService {
@@ -875,7 +882,19 @@ export class AgentGatewayClientQuotaService {
 Create `apps/backend/agent-server/src/api/agent-gateway/agent-gateway-clients.controller.ts`:
 
 ```ts
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UseGuards
+} from '@nestjs/common';
 import {
   GatewayCreateClientApiKeyRequestSchema,
   GatewayCreateClientRequestSchema,
@@ -898,9 +917,15 @@ export class AgentGatewayClientsController {
     private readonly quotas: AgentGatewayClientQuotaService
   ) {}
 
-  @Get() listClients() { return this.clients.list(); }
-  @Post() createClient(@Body() body: unknown) { return this.clients.create(parse(GatewayCreateClientRequestSchema, body)); }
-  @Get(':clientId') getClient(@Param('clientId') clientId: string) { return this.clients.get(clientId); }
+  @Get() listClients() {
+    return this.clients.list();
+  }
+  @Post() createClient(@Body() body: unknown) {
+    return this.clients.create(parse(GatewayCreateClientRequestSchema, body));
+  }
+  @Get(':clientId') getClient(@Param('clientId') clientId: string) {
+    return this.clients.get(clientId);
+  }
   @Patch(':clientId') updateClient(@Param('clientId') clientId: string, @Body() body: unknown) {
     return this.clients.update(clientId, parse(GatewayUpdateClientRequestSchema, body));
   }
@@ -910,7 +935,9 @@ export class AgentGatewayClientsController {
   @Patch(':clientId/disable') disableClient(@Param('clientId') clientId: string) {
     return this.clients.update(clientId, { status: 'disabled' });
   }
-  @Get(':clientId/api-keys') listApiKeys(@Param('clientId') clientId: string) { return this.apiKeys.list(clientId); }
+  @Get(':clientId/api-keys') listApiKeys(@Param('clientId') clientId: string) {
+    return this.apiKeys.list(clientId);
+  }
   @Post(':clientId/api-keys') createApiKey(@Param('clientId') clientId: string, @Body() body: unknown) {
     return this.apiKeys.create(clientId, parse(GatewayCreateClientApiKeyRequestSchema, body));
   }
@@ -924,23 +951,34 @@ export class AgentGatewayClientsController {
   @Post(':clientId/api-keys/:apiKeyId/rotate') rotateApiKey(@Param('clientId') clientId: string) {
     return this.apiKeys.create(clientId, { name: 'rotated key', scopes: ['models.read', 'chat.completions'] });
   }
-  @Delete(':clientId/api-keys/:apiKeyId') deleteApiKey(@Param('clientId') clientId: string, @Param('apiKeyId') apiKeyId: string) {
+  @Delete(':clientId/api-keys/:apiKeyId') deleteApiKey(
+    @Param('clientId') clientId: string,
+    @Param('apiKeyId') apiKeyId: string
+  ) {
     return this.apiKeys.revoke(clientId, apiKeyId);
   }
-  @Get(':clientId/quota') quota(@Param('clientId') clientId: string) { return this.quotas.get(clientId); }
+  @Get(':clientId/quota') quota(@Param('clientId') clientId: string) {
+    return this.quotas.get(clientId);
+  }
   @Put(':clientId/quota') updateQuota(@Param('clientId') clientId: string, @Body() body: unknown) {
     return this.quotas.update(clientId, parse(GatewayUpdateClientQuotaRequestSchema, body));
   }
-  @Get(':clientId/usage') usage(@Param('clientId') clientId: string) { return this.quotas.usage(clientId); }
+  @Get(':clientId/usage') usage(@Param('clientId') clientId: string) {
+    return this.quotas.usage(clientId);
+  }
   @Get(':clientId/logs') logs(@Param('clientId') clientId: string, @Query() query: unknown) {
     const parsed = GatewayListQuerySchema.safeParse(query);
     return this.quotas.logs(clientId, parsed.success ? parsed.data.limit : 50);
   }
 }
 
-function parse<T>(schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } }, body: unknown): T {
+function parse<T>(
+  schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } },
+  body: unknown
+): T {
   const parsed = schema.safeParse(body);
-  if (!parsed.success) throw new BadRequestException({ code: 'invalid_request', message: 'Invalid Agent Gateway client request' });
+  if (!parsed.success)
+    throw new BadRequestException({ code: 'invalid_request', message: 'Invalid Agent Gateway client request' });
   return parsed.data;
 }
 ```
@@ -1118,7 +1156,8 @@ export class AgentGatewayRuntimeAuthService {
 
   async authenticate(authorization: string | undefined): Promise<GatewayRuntimePrincipal> {
     const secret = authorization?.startsWith('Bearer ') ? authorization.slice('Bearer '.length).trim() : '';
-    if (!secret) throw new UnauthorizedException(openAIError('invalid_api_key', 'Missing proxy API key', 'authentication_error'));
+    if (!secret)
+      throw new UnauthorizedException(openAIError('invalid_api_key', 'Missing proxy API key', 'authentication_error'));
     const apiKey = await this.repository.findApiKeyByHash(hashSecret(secret));
     if (!apiKey || apiKey.status === 'revoked') {
       throw new UnauthorizedException(openAIError('invalid_api_key', 'Invalid proxy API key', 'authentication_error'));
@@ -1134,7 +1173,11 @@ export class AgentGatewayRuntimeAuthService {
   }
 }
 
-export function openAIError(code: string, message: string, type: 'invalid_request_error' | 'authentication_error' | 'permission_error' | 'rate_limit_error' | 'api_error') {
+export function openAIError(
+  code: string,
+  message: string,
+  type: 'invalid_request_error' | 'authentication_error' | 'permission_error' | 'rate_limit_error' | 'api_error'
+) {
   return { error: { message, type, code } };
 }
 ```
@@ -1167,7 +1210,11 @@ export class AgentGatewayRuntimeAccountingService {
     }
   }
 
-  async recordSuccess(principal: GatewayRuntimePrincipal, usage: GatewayRelayUsage, log: Omit<GatewayClientRequestLog, 'clientId' | 'apiKeyId'>): Promise<void> {
+  async recordSuccess(
+    principal: GatewayRuntimePrincipal,
+    usage: GatewayRelayUsage,
+    log: Omit<GatewayClientRequestLog, 'clientId' | 'apiKeyId'>
+  ): Promise<void> {
     await this.repository.addUsage(principal.client.id, {
       requestCount: 1,
       inputTokens: usage.inputTokens,
@@ -1195,7 +1242,10 @@ import {
 } from '@agent/core';
 import { AgentGatewayRelayService } from '../../domains/agent-gateway/runtime/agent-gateway-relay.service';
 import { AgentGatewayRuntimeAccountingService } from '../../domains/agent-gateway/runtime/agent-gateway-runtime-accounting.service';
-import { AgentGatewayRuntimeAuthService, openAIError } from '../../domains/agent-gateway/runtime/agent-gateway-runtime-auth.service';
+import {
+  AgentGatewayRuntimeAuthService,
+  openAIError
+} from '../../domains/agent-gateway/runtime/agent-gateway-runtime-auth.service';
 
 @Controller('v1')
 export class AgentGatewayOpenAICompatibleController {
@@ -1220,11 +1270,20 @@ export class AgentGatewayOpenAICompatibleController {
     @Body() body: unknown
   ): Promise<GatewayOpenAIChatCompletionResponse> {
     const parsed = GatewayOpenAIChatCompletionRequestSchema.safeParse(body);
-    if (!parsed.success) throw new BadRequestException(openAIError('invalid_request', 'Invalid chat completion request', 'invalid_request_error'));
-    if (parsed.data.stream) throw new BadRequestException(openAIError('stream_not_supported', 'stream is not supported in this gateway slice', 'invalid_request_error'));
+    if (!parsed.success)
+      throw new BadRequestException(
+        openAIError('invalid_request', 'Invalid chat completion request', 'invalid_request_error')
+      );
+    if (parsed.data.stream)
+      throw new BadRequestException(
+        openAIError('stream_not_supported', 'stream is not supported in this gateway slice', 'invalid_request_error')
+      );
 
     const principal = await this.auth.authenticate(authorization);
-    const estimatedInputTokens = parsed.data.messages.reduce((sum, message) => sum + Math.ceil(message.content.length / 4), 0);
+    const estimatedInputTokens = parsed.data.messages.reduce(
+      (sum, message) => sum + Math.ceil(message.content.length / 4),
+      0
+    );
     await this.accounting.assertQuota(principal, estimatedInputTokens);
     const startedAt = Date.now();
     const relayResponse = await this.relay.relay({
@@ -1312,21 +1371,86 @@ it('calls Gateway client management endpoints', async () => {
   axiosRequestMock
     .mockResolvedValueOnce({
       status: 200,
-      data: { items: [{ id: 'client-acme', name: 'Acme', status: 'active', tags: [], createdAt: '2026-05-10T00:00:00.000Z', updatedAt: '2026-05-10T00:00:00.000Z' }] }
+      data: {
+        items: [
+          {
+            id: 'client-acme',
+            name: 'Acme',
+            status: 'active',
+            tags: [],
+            createdAt: '2026-05-10T00:00:00.000Z',
+            updatedAt: '2026-05-10T00:00:00.000Z'
+          }
+        ]
+      }
     })
-    .mockResolvedValueOnce({ status: 200, data: { id: 'client-acme', name: 'Acme', status: 'active', tags: [], createdAt: '2026-05-10T00:00:00.000Z', updatedAt: '2026-05-10T00:00:00.000Z' } })
+    .mockResolvedValueOnce({
+      status: 200,
+      data: {
+        id: 'client-acme',
+        name: 'Acme',
+        status: 'active',
+        tags: [],
+        createdAt: '2026-05-10T00:00:00.000Z',
+        updatedAt: '2026-05-10T00:00:00.000Z'
+      }
+    })
     .mockResolvedValueOnce({ status: 200, data: { items: [] } })
-    .mockResolvedValueOnce({ status: 200, data: { apiKey: { id: 'key-1', clientId: 'client-acme', name: 'default', prefix: 'agp_live', status: 'active', scopes: ['models.read'], createdAt: '2026-05-10T00:00:00.000Z', expiresAt: null, lastUsedAt: null }, secret: 'agp_live_secret' } })
-    .mockResolvedValueOnce({ status: 200, data: { clientId: 'client-acme', period: 'monthly', tokenLimit: 100, requestLimit: 5, usedTokens: 0, usedRequests: 0, resetAt: '2026-06-01T00:00:00.000Z', status: 'normal' } })
-    .mockResolvedValueOnce({ status: 200, data: { clientId: 'client-acme', window: 'current-period', requestCount: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUsd: 0, lastRequestAt: null } })
+    .mockResolvedValueOnce({
+      status: 200,
+      data: {
+        apiKey: {
+          id: 'key-1',
+          clientId: 'client-acme',
+          name: 'default',
+          prefix: 'agp_live',
+          status: 'active',
+          scopes: ['models.read'],
+          createdAt: '2026-05-10T00:00:00.000Z',
+          expiresAt: null,
+          lastUsedAt: null
+        },
+        secret: 'agp_live_secret'
+      }
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      data: {
+        clientId: 'client-acme',
+        period: 'monthly',
+        tokenLimit: 100,
+        requestLimit: 5,
+        usedTokens: 0,
+        usedRequests: 0,
+        resetAt: '2026-06-01T00:00:00.000Z',
+        status: 'normal'
+      }
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      data: {
+        clientId: 'client-acme',
+        window: 'current-period',
+        requestCount: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        estimatedCostUsd: 0,
+        lastRequestAt: null
+      }
+    })
     .mockResolvedValueOnce({ status: 200, data: { items: [] } });
   const client = new AgentGatewayApiClient({ getAccessToken: () => 'access', refreshAccessToken: async () => 'fresh' });
 
   await expect(client.clients()).resolves.toMatchObject({ items: [{ id: 'client-acme' }] });
   await expect(client.createClient({ name: 'Acme' })).resolves.toMatchObject({ id: 'client-acme' });
   await expect(client.clientApiKeys('client-acme')).resolves.toEqual({ items: [] });
-  await expect(client.createClientApiKey('client-acme', { name: 'default' })).resolves.toMatchObject({ secret: 'agp_live_secret' });
-  await expect(client.updateClientQuota('client-acme', { tokenLimit: 100, requestLimit: 5, resetAt: '2026-06-01T00:00:00.000Z' })).resolves.toMatchObject({ tokenLimit: 100 });
+  await expect(client.createClientApiKey('client-acme', { name: 'default' })).resolves.toMatchObject({
+    secret: 'agp_live_secret'
+  });
+  await expect(
+    client.updateClientQuota('client-acme', { tokenLimit: 100, requestLimit: 5, resetAt: '2026-06-01T00:00:00.000Z' })
+  ).resolves.toMatchObject({ tokenLimit: 100 });
   await expect(client.clientUsage('client-acme')).resolves.toMatchObject({ requestCount: 0 });
   await expect(client.clientLogs('client-acme')).resolves.toEqual({ items: [] });
 
@@ -1355,11 +1479,70 @@ describe('ClientsPage', () => {
   it('renders clients, API keys, quota, usage, logs, and one-time secret notice', () => {
     render(
       <ClientsPage
-        clients={{ items: [{ id: 'client-acme', name: 'Acme App', status: 'active', tags: ['internal'], createdAt: '2026-05-10T00:00:00.000Z', updatedAt: '2026-05-10T00:00:00.000Z' }] }}
-        apiKeys={{ items: [{ id: 'key-1', clientId: 'client-acme', name: 'default', prefix: 'agp_live', status: 'active', scopes: ['models.read'], createdAt: '2026-05-10T00:00:00.000Z', expiresAt: null, lastUsedAt: null }] }}
-        quota={{ clientId: 'client-acme', period: 'monthly', tokenLimit: 1000, requestLimit: 100, usedTokens: 200, usedRequests: 10, resetAt: '2026-06-01T00:00:00.000Z', status: 'normal' }}
-        usage={{ clientId: 'client-acme', window: 'current-period', requestCount: 10, inputTokens: 100, outputTokens: 100, totalTokens: 200, estimatedCostUsd: 0, lastRequestAt: '2026-05-10T00:00:00.000Z' }}
-        logs={{ items: [{ id: 'req-1', clientId: 'client-acme', apiKeyId: 'key-1', occurredAt: '2026-05-10T00:00:00.000Z', endpoint: '/v1/chat/completions', model: 'gpt-5.4', providerId: 'openai-primary', statusCode: 200, inputTokens: 1, outputTokens: 1, latencyMs: 12 }] }}
+        clients={{
+          items: [
+            {
+              id: 'client-acme',
+              name: 'Acme App',
+              status: 'active',
+              tags: ['internal'],
+              createdAt: '2026-05-10T00:00:00.000Z',
+              updatedAt: '2026-05-10T00:00:00.000Z'
+            }
+          ]
+        }}
+        apiKeys={{
+          items: [
+            {
+              id: 'key-1',
+              clientId: 'client-acme',
+              name: 'default',
+              prefix: 'agp_live',
+              status: 'active',
+              scopes: ['models.read'],
+              createdAt: '2026-05-10T00:00:00.000Z',
+              expiresAt: null,
+              lastUsedAt: null
+            }
+          ]
+        }}
+        quota={{
+          clientId: 'client-acme',
+          period: 'monthly',
+          tokenLimit: 1000,
+          requestLimit: 100,
+          usedTokens: 200,
+          usedRequests: 10,
+          resetAt: '2026-06-01T00:00:00.000Z',
+          status: 'normal'
+        }}
+        usage={{
+          clientId: 'client-acme',
+          window: 'current-period',
+          requestCount: 10,
+          inputTokens: 100,
+          outputTokens: 100,
+          totalTokens: 200,
+          estimatedCostUsd: 0,
+          lastRequestAt: '2026-05-10T00:00:00.000Z'
+        }}
+        logs={{
+          items: [
+            {
+              id: 'req-1',
+              clientId: 'client-acme',
+              apiKeyId: 'key-1',
+              occurredAt: '2026-05-10T00:00:00.000Z',
+              endpoint: '/v1/chat/completions',
+              model: 'gpt-5.4',
+              providerId: 'openai-primary',
+              statusCode: 200,
+              inputTokens: 1,
+              outputTokens: 1,
+              latencyMs: 12
+            }
+          ]
+        }}
         oneTimeSecret="agp_live_secret"
         onCreateClient={vi.fn()}
         onCreateApiKey={vi.fn()}
@@ -1433,7 +1616,15 @@ clientLogs(clientId: string, limit = 50): Promise<GatewayClientRequestLogListRes
 Modify `apps/frontend/agent-gateway/src/app/gateway-view-model.ts`:
 
 ```ts
-export type GatewayViewId = 'dashboard' | 'clients' | 'config' | 'aiProviders' | 'authFiles' | 'oauth' | 'quota' | 'system';
+export type GatewayViewId =
+  | 'dashboard'
+  | 'clients'
+  | 'config'
+  | 'aiProviders'
+  | 'authFiles'
+  | 'oauth'
+  | 'quota'
+  | 'system';
 
 export const gatewayNavigationItems = [
   { id: 'dashboard', label: '总览', path: '/' },
@@ -1521,9 +1712,18 @@ export function ClientsPage({
           });
         }}
       >
-        <label>名称<input name="name" /></label>
-        <label>Owner Email<input name="ownerEmail" /></label>
-        <label>Tags<input name="tags" /></label>
+        <label>
+          名称
+          <input name="name" />
+        </label>
+        <label>
+          Owner Email
+          <input name="ownerEmail" />
+        </label>
+        <label>
+          Tags
+          <input name="tags" />
+        </label>
         <button type="submit">创建调用方</button>
       </form>
       <GatewayTable
@@ -1531,16 +1731,33 @@ export function ClientsPage({
         items={clients.items}
         columns={[
           { key: 'name', header: '名称', render: client => client.name },
-          { key: 'status', header: '状态', render: client => <span className={`status-pill ${client.status}`}>{client.status}</span> },
+          {
+            key: 'status',
+            header: '状态',
+            render: client => <span className={`status-pill ${client.status}`}>{client.status}</span>
+          },
           { key: 'tags', header: 'Tags', render: client => client.tags.join(', ') || '-' },
-          { key: 'actions', header: '操作', render: client => <button type="button" onClick={() => onDisableClient(client.id)}>禁用</button> }
+          {
+            key: 'actions',
+            header: '操作',
+            render: client => (
+              <button type="button" onClick={() => onDisableClient(client.id)}>
+                禁用
+              </button>
+            )
+          }
         ]}
       />
       {selected ? (
         <div className="client-detail-grid">
           <article className="command-panel">
             <h2>{selected.name} API Keys</h2>
-            <button type="button" onClick={() => onCreateApiKey({ name: 'default', scopes: ['models.read', 'chat.completions'] })}>生成 API Key</button>
+            <button
+              type="button"
+              onClick={() => onCreateApiKey({ name: 'default', scopes: ['models.read', 'chat.completions'] })}
+            >
+              生成 API Key
+            </button>
             <GatewayTable
               getRowKey={key => key.id}
               items={apiKeys.items}
@@ -1555,7 +1772,14 @@ export function ClientsPage({
             <h2>额度</h2>
             <p>{quota ? `${quota.usedTokens} / ${quota.tokenLimit} tokens` : '未设置'}</p>
             <p>{usage ? `${usage.requestCount} requests, ${usage.totalTokens} tokens` : '暂无用量'}</p>
-            <button type="button" onClick={() => onUpdateQuota({ tokenLimit: 100000, requestLimit: 1000, resetAt: '2026-06-01T00:00:00.000Z' })}>重置默认额度</button>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateQuota({ tokenLimit: 100000, requestLimit: 1000, resetAt: '2026-06-01T00:00:00.000Z' })
+              }
+            >
+              重置默认额度
+            </button>
           </article>
         </div>
       ) : null}
@@ -1661,7 +1885,7 @@ Expected: existing docs still emphasize remote management parity and do not yet 
 
 In `docs/contracts/api/agent-gateway.md`, add a “内建 CLIProxyAPI 主线” section near the current HTTP entry list:
 
-```markdown
+````markdown
 ## 内建 CLIProxyAPI 主线
 
 `agent-server` 默认提供内建简易 CLIProxyAPI。`apps/frontend/agent-gateway` 的主线不是连接外部 CLIProxyAPI，而是管理本服务内的 Gateway clients、client API keys、quota、usage 和 request logs。
@@ -1672,9 +1896,11 @@ Runtime 入口不挂在 `/api` 前缀下：
 GET  /v1/models
 POST /v1/chat/completions
 ```
+````
 
 Runtime 使用 `Authorization: Bearer <client-api-key>` 鉴权。Identity access token 只用于 `/api/agent-gateway/*` 管理面。查询 client API key 只返回 prefix；明文 secret 只在创建或轮换响应中出现一次。
-```
+
+````
 
 - [ ] **Step 3: Update backend and frontend docs**
 
@@ -1684,7 +1910,7 @@ In `docs/apps/backend/agent-server/agent-gateway.md`, add the backend ownership 
 ## 内建中转运行时
 
 `agent-server` 拥有 Gateway client、client API key、client quota、usage accounting 和 `/v1/*` runtime。Controller 只负责 HTTP wiring 与 schema parse；key hash、quota 判断、usage 写入和 request log 写入必须留在 `src/domains/agent-gateway`。
-```
+````
 
 In `docs/apps/frontend/agent-gateway/README.md`, add the frontend ownership rule:
 

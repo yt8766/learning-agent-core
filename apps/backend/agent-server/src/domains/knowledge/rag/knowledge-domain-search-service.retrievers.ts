@@ -22,7 +22,11 @@ export class KnowledgeDomainKeywordRetriever implements KnowledgeRetriever {
 
   async retrieve(request: RetrievalRequest): Promise<RetrievalResult> {
     const limit = request.limit ?? 5;
-    const indexedChunks = await loadSearchableChunks(this.repository, request.filters?.knowledgeBaseIds ?? [], 'keyword');
+    const indexedChunks = await loadSearchableChunks(
+      this.repository,
+      request.filters?.knowledgeBaseIds ?? [],
+      'keyword'
+    );
     const hits = indexedChunks
       .map(({ document, chunk }) => toRetrievalHit(document, chunk, request.query))
       .filter(hit => hit.score > 0)

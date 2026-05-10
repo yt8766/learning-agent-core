@@ -1,7 +1,10 @@
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { GatewayClient } from '@agent/core';
 import { hashSecret } from '../clients/agent-gateway-client-api-key.service';
-import type { AgentGatewayClientRepository, StoredGatewayClientApiKey } from '../clients/agent-gateway-client.repository';
+import type {
+  AgentGatewayClientRepository,
+  StoredGatewayClientApiKey
+} from '../clients/agent-gateway-client.repository';
 import { AGENT_GATEWAY_CLIENT_REPOSITORY } from '../clients/agent-gateway-client.repository';
 import { openAIError } from './agent-gateway-openai-error';
 
@@ -33,7 +36,9 @@ export class AgentGatewayRuntimeAuthService {
       throw new UnauthorizedException(openAIError('invalid_api_key', 'Proxy API key expired', 'authentication_error'));
     }
     if (!apiKey.scopes.includes(scope)) {
-      throw new ForbiddenException(openAIError('insufficient_scope', 'Proxy API key scope is insufficient', 'permission_error'));
+      throw new ForbiddenException(
+        openAIError('insufficient_scope', 'Proxy API key scope is insufficient', 'permission_error')
+      );
     }
 
     const client = await this.repository.findClient(apiKey.clientId);
