@@ -32,8 +32,8 @@ describe('KnowledgeRagService', () => {
       },
       diagnostics: {
         retrievalMode: 'keyword-only',
-        hitCount: 1,
-        contextChunkCount: 1
+        hitCount: 2,
+        contextChunkCount: 2
       },
       traceId: expect.stringMatching(/^trace_/)
     });
