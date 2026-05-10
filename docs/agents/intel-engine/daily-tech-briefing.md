@@ -28,6 +28,7 @@ profile-storage/platform/intel-engine/briefing/daily-tech-briefing-history.json
 profile-storage/platform/intel-engine/briefing/daily-tech-briefing-schedule-state.json
 profile-storage/platform/intel-engine/briefing/daily-tech-briefing-feedback.json
 profile-storage/platform/intel-engine/briefing/raw/
+profile-storage/platform/intel-engine/briefing/locks/scheduled-runs/
 profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
@@ -37,6 +38,8 @@ profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<ca
   `PostgresReadyBriefingStorageRepository` 类型别名，后续 PostgreSQL adapter 只需实现同一接口。
 - `briefing-storage.ts` 是兼容 facade，旧函数签名仍可使用，但内部统一委托 repository；新增生产路径应优先传入
   `BriefingStorageRepository`，不要直接拼接持久化路径。
+- `briefing.service.ts` 的 scheduled 入口会按 `分类集合 + 分钟 slot` 写入
+  `locks/scheduled-runs/*.lock`，用于阻止多个 backend/Bree 实例在同一分钟重复执行同一分类并重复发送 Lark。
 - `briefing-paths.ts` 只描述 intel-owned storage 的文件布局，不再提供 root `data/runtime` 路径。
 
 ## 测试

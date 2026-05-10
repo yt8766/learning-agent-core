@@ -74,10 +74,15 @@ profile-storage/platform/intel-engine/briefing/daily-tech-briefing-history.json
 profile-storage/platform/intel-engine/briefing/daily-tech-briefing-schedule-state.json
 profile-storage/platform/intel-engine/briefing/daily-tech-briefing-feedback.json
 profile-storage/platform/intel-engine/briefing/raw/<yyyy-mm-dd>-<category>.json
+profile-storage/platform/intel-engine/briefing/locks/scheduled-runs/<slot>-<categories>.lock
 profile-storage/platform/intel-engine/briefing/schedules/daily-tech-briefing-<category>.json
 ```
 
 `raw/` 当前用于保存 MCP supplemental search 原始结果，供后续误报追溯与分类策略回放。展示给 admin/chat 的数据仍必须使用 `TechBriefingItem` 归一化结果，不能直接依赖 raw payload；如果下游需要在 digest / alert 中显示证据链，也应输出项目内归一化的 evidence summary / source refs，而不是把 raw payload 直接透传到交付层。
+
+`locks/scheduled-runs/` 是 scheduled run 的跨进程幂等护栏。多个后端或 Bree worker 同时触发同一
+`分类集合 + 分钟 slot` 时，只有第一个 worker 能创建 lock 并继续执行；其余 worker 直接跳过，不发送 Lark，
+避免本地开发或多实例部署时同一分钟重复推送。
 
 历史 backend 落点里的 MCP 补充搜索已经通过 `mcpClientManager` 的稳定能力边界调用；迁移到 `agents/intel-engine` 后仍应保持这层项目内能力边界：
 

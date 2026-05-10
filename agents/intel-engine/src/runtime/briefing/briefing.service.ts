@@ -1,6 +1,11 @@
+import { open, readdir, rm, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+
 import { ActionIntent } from '@agent/core';
+import { ensureDir } from 'fs-extra';
 
 import { BRIEFING_CATEGORY_SOURCE_GROUPS } from './briefing-source-summary';
+import { getStorageRoot } from './briefing-paths';
 import { renderSummaryDigest } from './briefing-localize';
 import { collectBriefingCategoryItems } from './briefing-category-collector';
 import { processCategory } from './briefing-category-runner';
@@ -87,6 +92,7 @@ const ORDERED_BRIEFING_CATEGORIES: TechBriefingCategory[] = [
   'backend-tech',
   'cloud-infra-tech'
 ];
+const SCHEDULED_RUN_LOCK_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 export class RuntimeTechBriefingService {
   private inFlight = false;
@@ -120,6 +126,10 @@ export class RuntimeTechBriefingService {
   async runScheduled(now = new Date(), categories: TechBriefingCategory[] = ORDERED_BRIEFING_CATEGORIES) {
     const ctx = this.ctx();
     if (!ctx.settings.dailyTechBriefing.enabled || this.inFlight) {
+      return null;
+    }
+    const acquired = await tryAcquireScheduledRunLock(ctx.settings.workspaceRoot, categories, now);
+    if (!acquired) {
       return null;
     }
     this.inFlight = true;
@@ -307,4 +317,60 @@ function mergeSourceGroups(groups: Array<Record<TechBriefingSourceGroup, string[
     authority: Array.from(new Set(groups.flatMap(group => group.authority))),
     community: Array.from(new Set(groups.flatMap(group => group.community)))
   } satisfies Record<TechBriefingSourceGroup, string[]>;
+}
+
+async function tryAcquireScheduledRunLock(workspaceRoot: string, categories: TechBriefingCategory[], now: Date) {
+  const lockDir = join(getStorageRoot(workspaceRoot), 'locks', 'scheduled-runs');
+  await ensureDir(lockDir);
+  await pruneExpiredScheduledRunLocks(lockDir, now);
+
+  const slot = now.toISOString().slice(0, 16).replace(/:/g, '-');
+  const categoryKey = categories.length ? categories.join('+') : 'all';
+  const safeCategoryKey = categoryKey.replace(/[^a-z0-9_-]+/gi, '_');
+  const lockPath = join(lockDir, `${slot}-${safeCategoryKey}.lock`);
+
+  try {
+    const handle = await open(lockPath, 'wx');
+    try {
+      await handle.writeFile(
+        JSON.stringify(
+          {
+            slot,
+            categories,
+            createdAt: now.toISOString()
+          },
+          null,
+          2
+        )
+      );
+    } finally {
+      await handle.close();
+    }
+    return true;
+  } catch (error) {
+    if (isFileAlreadyExistsError(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function pruneExpiredScheduledRunLocks(lockDir: string, now: Date) {
+  const entries = await readdir(lockDir).catch(() => []);
+  await Promise.all(
+    entries
+      .filter(entry => entry.endsWith('.lock'))
+      .map(async entry => {
+        const lockPath = join(lockDir, entry);
+        const info = await stat(lockPath).catch(() => undefined);
+        if (!info || now.getTime() - info.mtimeMs <= SCHEDULED_RUN_LOCK_RETENTION_MS) {
+          return;
+        }
+        await rm(lockPath, { force: true }).catch(() => undefined);
+      })
+  );
+}
+
+function isFileAlreadyExistsError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST';
 }
