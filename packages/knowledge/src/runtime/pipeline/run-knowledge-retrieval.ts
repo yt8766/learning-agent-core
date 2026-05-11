@@ -20,6 +20,7 @@ import { DefaultPostRetrievalFilter } from '../defaults/default-post-retrieval-f
 import { DefaultPostRetrievalRanker } from '../defaults/default-post-retrieval-ranker';
 import { DefaultQueryNormalizer } from '../defaults/default-query-normalizer';
 import { DefaultRetrievalPostProcessor } from '../defaults/default-post-processor';
+import { buildPostRetrievalSelectionTrace } from '../defaults/post-retrieval-selection-trace';
 import {
   buildKnowledgeRagEventId,
   buildKnowledgeRagTraceRetrievalDiagnostics,
@@ -240,6 +241,31 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
     const rankResult = await postRetrievalRanker.rank(filterResult.hits, effectiveNormalized);
     const diversifyResult = await postRetrievalDiversifier.diversify(rankResult.hits, effectiveNormalized);
     const processedHits = await postProcessor.process(diversifyResult.hits, effectiveNormalized);
+    const selectionTrace = buildPostRetrievalSelectionTrace([
+      {
+        stage: 'filtering',
+        inputHits: mergedHits,
+        outputHits: filterResult.hits,
+        droppedReason: 'low-score'
+      },
+      {
+        stage: 'ranking',
+        inputHits: filterResult.hits,
+        outputHits: rankResult.hits
+      },
+      {
+        stage: 'diversification',
+        inputHits: rankResult.hits,
+        outputHits: diversifyResult.hits,
+        droppedReason: 'source-limit'
+      },
+      {
+        stage: 'post-processor',
+        inputHits: diversifyResult.hits,
+        outputHits: processedHits,
+        droppedReason: 'post-processor-min-score'
+      }
+    ]);
     const postHitCount = processedHits.length;
     const postRetrievalDiagnostics = {
       ...retrievalDiagnostics,
@@ -312,7 +338,8 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
           postRetrieval: {
             filtering: filterResult.diagnostics,
             ranking: rankResult.diagnostics,
-            diversification: diversifyResult.diagnostics
+            diversification: diversifyResult.diagnostics,
+            selectionTrace
           },
           filtering: {
             enabled: Boolean(request.filters || request.allowedSourceTypes || request.minTrustClass),
