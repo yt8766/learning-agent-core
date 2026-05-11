@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`packages/knowledge/src/contracts`
-最后核对：2026-05-10
+最后核对：2026-05-11
 
 本文记录 Knowledge RAG Phase 4/5 的最小 SDK 稳定边界。当前包含 schema-first contract、`packages/knowledge/src/observability` 稳定 observer/exporter 边界、`runKnowledgeRetrieval()` / `runKnowledgeRag()` 真实 runtime trace 接入、纯函数 eval 计算器、trace-to-sample builder 与最小 golden eval runner，不接入 UI、backend service、CLI runner、第三方 observability vendor 或完整评测平台。
 
@@ -104,7 +104,10 @@ runtime / indexing 主链均使用 `tryStartKnowledgeRagTrace`、`tryRecordKnowl
 
 - query：原始 query、normalized query、query variants
 - retrieval：requested topK、命中 chunk/document/source、rank、score、citation
-- diagnostics：`retrievalMode`、`enabledRetrievers`、`failedRetrievers`、`fusionStrategy`、`candidateCount`、`selectedCount`、`latencyMs`、warnings
+- diagnostics：`retrievalMode`、`enabledRetrievers`、`failedRetrievers`、`fusionStrategy`、`candidateCount`、`selectedCount`、`latencyMs`、warnings、`dropReasons`、`selectionTrace`
+
+Backend `KnowledgeTraceService` may project selection trace into aggregate counts such as `selectedCount`, `droppedCount` and `dropReasons`. Product-facing trace payloads should prefer these redacted aggregates unless the caller is an internal debugging tool with explicit permission to inspect chunk-level metadata.
+
 - indexing：knowledge base、source/document、load/chunk/embed/store 计数
 - generation：answer id、answer text、引用 chunk、grounded citation rate
 - feedback：用户、评测器或系统给出的 label 与 comment
