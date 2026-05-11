@@ -294,4 +294,55 @@ describe('@agent/knowledge contracts boundary', () => {
     expect(diagnostics.filtering.reasons).toEqual({ 'low-score': 1 });
     expect(diagnostics.ranking).not.toHaveProperty('providerError');
   });
+
+  it('parses post-retrieval selection trace entries', () => {
+    const parsed = PostRetrievalDiagnosticsSchema.parse({
+      filtering: {
+        enabled: true,
+        beforeCount: 2,
+        afterCount: 1,
+        droppedCount: 1,
+        maskedCount: 0,
+        reasons: {
+          'low-score': 1
+        }
+      },
+      ranking: {
+        enabled: true,
+        strategy: 'deterministic-signals',
+        scoredCount: 1,
+        signals: ['retrieval-score']
+      },
+      diversification: {
+        enabled: true,
+        strategy: 'source-parent-section-coverage',
+        beforeCount: 1,
+        afterCount: 1,
+        maxPerSource: 3,
+        maxPerParent: 2
+      },
+      selectionTrace: [
+        {
+          chunkId: 'chunk-low-score',
+          sourceId: 'source-a',
+          selected: false,
+          stage: 'filtering',
+          reason: 'low-score',
+          score: 0.01
+        },
+        {
+          chunkId: 'chunk-selected',
+          sourceId: 'source-b',
+          selected: true,
+          stage: 'post-processor',
+          reason: 'selected',
+          score: 0.92,
+          order: 0
+        }
+      ]
+    });
+
+    expect(parsed.selectionTrace).toHaveLength(2);
+    expect(parsed.selectionTrace?.[0]?.reason).toBe('low-score');
+  });
 });

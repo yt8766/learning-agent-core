@@ -1,7 +1,10 @@
 import type { RetrievalHit, RetrievalRequest } from '../../index';
 import { z } from 'zod';
 
-import { PostRetrievalDiagnosticsSchema } from '../../contracts/schemas/knowledge-retrieval.schema';
+import {
+  PostRetrievalDiagnosticsSchema,
+  PostRetrievalSelectionTraceEntrySchema
+} from '../../contracts/schemas/knowledge-retrieval.schema';
 import type { ContextAssemblyDiagnostics } from '../stages/context-assembler';
 import type { ContextExpansionDiagnostics } from '../stages/context-expander';
 
@@ -45,6 +48,7 @@ export interface RetrievalFilteringDiagnostics {
 }
 
 export type PostRetrievalDiagnostics = z.infer<typeof PostRetrievalDiagnosticsSchema>;
+export type PostRetrievalSelectionTraceEntry = z.infer<typeof PostRetrievalSelectionTraceEntrySchema>;
 
 export const RetrievalFilteringStageDiagnosticsSchema = z.object({
   stage: z.enum(['pre-merge-defensive', 'context-expansion-defensive']),

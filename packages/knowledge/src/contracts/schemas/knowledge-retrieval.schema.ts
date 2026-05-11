@@ -219,10 +219,40 @@ export const PostRetrievalDiversificationDiagnosticsSchema = z.object({
   maxPerParent: PostRetrievalCountSchema
 });
 
+export const PostRetrievalSelectionStageSchema = z.enum(['filtering', 'ranking', 'diversification', 'post-processor']);
+
+export const PostRetrievalSelectionReasonSchema = z.enum([
+  'selected',
+  'low-score',
+  'duplicate-chunk',
+  'duplicate-parent',
+  'low-context-value',
+  'unsafe-content',
+  'conflict-risk',
+  'source-limit',
+  'parent-limit',
+  'max-chunks',
+  'max-prompt-chars',
+  'post-processor-min-score'
+]);
+
+export const PostRetrievalSelectionTraceEntrySchema = z.object({
+  chunkId: z.string(),
+  sourceId: z.string(),
+  selected: z.boolean(),
+  stage: PostRetrievalSelectionStageSchema,
+  reason: PostRetrievalSelectionReasonSchema,
+  score: z.number().optional(),
+  order: z.number().int().nonnegative().optional(),
+  duplicateOf: z.string().optional(),
+  metadata: z.record(z.string(), JsonValueSchema).optional()
+});
+
 export const PostRetrievalDiagnosticsSchema = z.object({
   filtering: PostRetrievalFilterDiagnosticsSchema,
   ranking: PostRetrievalRankingDiagnosticsSchema,
-  diversification: PostRetrievalDiversificationDiagnosticsSchema
+  diversification: PostRetrievalDiversificationDiagnosticsSchema,
+  selectionTrace: z.array(PostRetrievalSelectionTraceEntrySchema).optional()
 });
 
 export const RetrievalRequestSchema = z.object({
