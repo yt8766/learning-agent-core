@@ -352,6 +352,40 @@ post-retrieval -> post-process -> context expansion -> context assembly
 | `droppedByFilterCount` | repository 返回后被 resolved filters 防御过滤丢弃的数量 |
 | `maxExpandedHits`      | 本次扩展策略允许加入 context assembly 输入的最大 hit 数 |
 
+## Post-Retrieval Selection Trace
+
+`runKnowledgeRetrieval({ includeDiagnostics: true })` exposes `diagnostics.postRetrieval.selectionTrace`.
+
+Each entry explains one candidate decision:
+
+```ts
+{
+  chunkId: string;
+  sourceId: string;
+  selected: boolean;
+  stage: 'filtering' | 'ranking' | 'diversification' | 'post-processor';
+  reason:
+    | 'selected'
+    | 'low-score'
+    | 'duplicate-chunk'
+    | 'duplicate-parent'
+    | 'low-context-value'
+    | 'unsafe-content'
+    | 'conflict-risk'
+    | 'source-limit'
+    | 'parent-limit'
+    | 'max-chunks'
+    | 'max-prompt-chars'
+    | 'post-processor-min-score';
+  score?: number;
+  order?: number;
+}
+```
+
+This trace is intended for debugging, admin UI explanations, eval sampling, and observability projection. Runtime events keep only aggregate counts by default to avoid large trace payloads.
+
+The trace is inspired by the course RAG project under `/Users/dev/Downloads/2026.5.9 企业知识库课程收官资料汇总/课堂代码/rag`, but the current implementation is owned by `@agent/knowledge` schemas and does not copy the course project's package layout or `@rag-sdk/*` public contracts.
+
 ## Schema 复用策略
 
 所有知识检索稳定 contract（`RetrievalRequest` / `RetrievalResult` / `RetrievalHit` / `Citation`）全部来自 `@agent/knowledge` 的本包 `contracts/`，不再从 `@agent/core` 消费。运行时专属类型（`KnowledgeRetrievalResult` / `RetrievalDiagnostics` / `NormalizedRetrievalRequest`）放在 `runtime/types/`，不放进 core。
