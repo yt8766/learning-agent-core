@@ -142,3 +142,9 @@ rg -n "src/knowledge|KnowledgeModule|KnowledgeProviderModule|knowledge/v1" apps/
 ```
 
 允许剩余命中只应是负向测试或明确说明旧路径已删除的历史文档。
+
+## Duyi Knowledge Bases Reference Boundary
+
+`/Users/dev/Downloads/2026.5.9 企业知识库课程收官资料汇总/课堂代码/duyi-knowledge-bases` 可作为企业知识库业务闭环参考，但不能作为源码搬运来源。当前后端只吸收四类语义：RAG pipeline 可解释性、ingestion 质量门、retrieval trace debug、文档生命周期阻断。
+
+后端 controller 仍只做 HTTP shell；资源权限、文档任务、trace projection 和 SDK runtime 装配必须留在 `apps/backend/agent-server/src/domains/knowledge`。稳定 contract 仍来自 `@agent/knowledge` 或 `packages/core/src/contracts/knowledge-service`，不得新增 `@duyi/specs` 或第二套 shared contract。
