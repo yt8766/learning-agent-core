@@ -9,7 +9,9 @@ import type {
   KnowledgeWorkbenchSpanName
 } from '@agent/knowledge';
 
-export type KnowledgeTraceAttributes = Record<string, string | number | boolean | null>;
+type KnowledgeTraceScalarAttribute = string | number | boolean | null;
+type KnowledgeTraceAggregateAttribute = Record<string, number>;
+export type KnowledgeTraceAttributes = Record<string, KnowledgeTraceScalarAttribute | KnowledgeTraceAggregateAttribute>;
 const MAX_TRACES = 200;
 
 export interface StartKnowledgeTraceInput {
@@ -139,7 +141,26 @@ function sanitizeTraceAttributes(
     if (isSensitiveAttributeKey(key)) {
       continue;
     }
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    if (isTraceAttributeValue(value)) {
+      sanitized[key] = value;
+    } else if (isPlainRecord(value)) {
+      sanitized[key] = sanitizePlainRecord(value);
+    }
+  }
+  return sanitized;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, number> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).every(v => typeof v === 'number' && Number.isFinite(v));
+}
+
+function sanitizePlainRecord(record: Record<string, number>): Record<string, number> {
+  const sanitized: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (!isSensitiveAttributeKey(key) && typeof value === 'number' && Number.isFinite(value)) {
       sanitized[key] = value;
     }
   }
@@ -167,6 +188,7 @@ function buildRetrievalAttributes(event: KnowledgeRagEvent): KnowledgeTraceAttri
     return {};
   }
   const diagnostics = event.retrieval.diagnostics;
+  const selectionSummary = summarizeSelectionTrace(diagnostics?.selectionTrace);
 
   return {
     hitCount: event.retrieval.hits.length,
@@ -176,7 +198,33 @@ function buildRetrievalAttributes(event: KnowledgeRagEvent): KnowledgeTraceAttri
     ...(diagnostics?.candidateCount !== undefined ? { candidateCount: diagnostics.candidateCount } : {}),
     ...(diagnostics?.selectedCount !== undefined ? { selectedCount: diagnostics.selectedCount } : {}),
     ...(diagnostics?.latencyMs !== undefined ? { latencyMs: diagnostics.latencyMs } : {}),
-    ...(diagnostics?.fusionStrategy ? { fusionStrategy: diagnostics.fusionStrategy } : {})
+    ...(diagnostics?.fusionStrategy ? { fusionStrategy: diagnostics.fusionStrategy } : {}),
+    ...selectionSummary
+  };
+}
+
+function summarizeSelectionTrace(
+  selectionTrace:
+    | Array<{
+        selected: boolean;
+        reason?: string;
+      }>
+    | undefined
+): { droppedCount: number; dropReasons: Record<string, number> } {
+  const dropReasons: Record<string, number> = {};
+
+  for (const entry of selectionTrace ?? []) {
+    if (entry.selected) {
+      continue;
+    }
+
+    const reason = entry.reason ?? 'unknown';
+    dropReasons[reason] = (dropReasons[reason] ?? 0) + 1;
+  }
+
+  return {
+    droppedCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
+    dropReasons
   };
 }
 
@@ -221,7 +269,7 @@ function pickSafeScalarAttributes(attributes: KnowledgeRagEvent['attributes']): 
   return projected;
 }
 
-function isTraceAttributeValue(value: unknown): value is KnowledgeTraceAttributes[string] {
+function isTraceAttributeValue(value: unknown): value is KnowledgeTraceScalarAttribute {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null;
 }
 

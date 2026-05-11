@@ -80,6 +80,18 @@ export const KnowledgeRagQuerySnapshotSchema = z
   })
   .strict();
 
+export const KnowledgeRagTraceSelectionTraceEntrySchema = z
+  .object({
+    chunkId: z.string().min(1),
+    sourceId: z.string().min(1),
+    selected: z.boolean(),
+    stage: z.string().min(1),
+    reason: z.string().min(1),
+    score: z.number().optional(),
+    order: z.number().int().nonnegative().optional()
+  })
+  .strict();
+
 export const KnowledgeRagTraceRetrievalDiagnosticsSchema = z
   .object({
     retrievalMode: KnowledgeRagTraceRetrievalModeSchema.optional(),
@@ -89,7 +101,9 @@ export const KnowledgeRagTraceRetrievalDiagnosticsSchema = z
     candidateCount: z.number().int().nonnegative().optional(),
     selectedCount: z.number().int().nonnegative().optional(),
     latencyMs: z.number().nonnegative().optional(),
-    warnings: z.array(z.string().min(1)).optional()
+    warnings: z.array(z.string().min(1)).optional(),
+    dropReasons: z.record(z.string(), z.number().int().nonnegative()).optional(),
+    selectionTrace: z.array(KnowledgeRagTraceSelectionTraceEntrySchema).optional()
   })
   .strict();
 

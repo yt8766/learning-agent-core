@@ -236,10 +236,7 @@ function projectFailedSdkTrace(
   traceStarted: boolean,
   traceProjected: boolean
 ): void {
-  if (!traceStarted || traceProjected) {
-    return;
-  }
-
+  if (!traceStarted || traceProjected) return;
   const occurredAt = new Date().toISOString();
   const failure = toError(error);
   observer.recordEvent({
@@ -267,13 +264,15 @@ function makeSdkRagEventId(traceId: string, name: string): string {
 }
 
 function buildTraceRetrievalSnapshot(retrieval: KnowledgeRagResult['retrieval']): KnowledgeRagTrace['retrieval'] {
+  const runtimeDiagnostics = retrieval.diagnostics as Record<string, unknown> | undefined;
   return {
     hits: toTraceHits(retrieval.hits),
     citations: retrieval.citations,
     diagnostics: {
       retrievalMode: toTraceRetrievalMode(retrieval.diagnostics?.effectiveSearchMode),
-      candidateCount: retrieval.hits.length,
-      selectedCount: retrieval.hits.length
+      candidateCount: (runtimeDiagnostics?.candidateCount as number) ?? retrieval.hits.length,
+      selectedCount: retrieval.hits.length,
+      dropReasons: runtimeDiagnostics?.dropReasons as Record<string, number> | undefined
     }
   };
 }
@@ -310,6 +309,13 @@ function toTraceRetrievalMode(
   }
 }
 
+function resolveRetrievalMode(
+  result: KnowledgeRagResult
+): NonNullable<KnowledgeRagAnswer['diagnostics']>['retrievalMode'] {
+  if (result.retrieval.hits.length === 0) return 'none';
+  return toTraceRetrievalMode(result.retrieval.diagnostics?.effectiveSearchMode) ?? 'hybrid';
+}
+
 function toChatResponse(
   request: NormalizedKnowledgeChatRequest,
   result: KnowledgeRagResult,
@@ -323,9 +329,7 @@ function toChatResponse(
       const hit = result.retrieval.hits.find(
         item => item.sourceId === citation.sourceId && item.chunkId === citation.chunkId
       );
-      if (!hit || !citation.quote) {
-        return undefined;
-      }
+      if (!hit || !citation.quote) return undefined;
       return {
         id: `cit_${hit.documentId}_${hit.chunkId}`,
         documentId: hit.documentId,
@@ -336,27 +340,19 @@ function toChatResponse(
       };
     })
     .filter(isDefined);
-  const userMessage = {
-    id: `msg_${randomUUID()}`,
-    conversationId,
-    role: 'user' as const,
-    content: request.message,
-    createdAt: now
-  };
-  const assistantMessage = {
-    id: `msg_${randomUUID()}`,
-    conversationId,
-    role: 'assistant' as const,
-    content: result.answer.text,
-    citations,
-    traceId,
-    createdAt: now
-  };
 
   return {
     conversationId,
-    userMessage,
-    assistantMessage,
+    userMessage: { id: `msg_${randomUUID()}`, conversationId, role: 'user', content: request.message, createdAt: now },
+    assistantMessage: {
+      id: `msg_${randomUUID()}`,
+      conversationId,
+      role: 'assistant',
+      content: result.answer.text,
+      citations,
+      traceId,
+      createdAt: now
+    },
     answer: result.answer.text,
     citations,
     traceId,
@@ -368,35 +364,14 @@ function toChatResponse(
     diagnostics: {
       normalizedQuery: result.retrieval.diagnostics?.normalizedQuery ?? request.message.trim(),
       queryVariants:
-        (result.retrieval.diagnostics?.queryVariants.length ?? 0) > 0
-          ? (result.retrieval.diagnostics?.queryVariants ?? [])
+        (result.retrieval.diagnostics?.queryVariants?.length ?? 0) > 0
+          ? result.retrieval.diagnostics!.queryVariants!
           : [request.message.trim()],
-      retrievalMode: resolveChatRetrievalMode(result),
+      retrievalMode: resolveRetrievalMode(result),
       hitCount: result.retrieval.hits.length,
       contextChunkCount: result.retrieval.hits.length
     }
   };
-}
-
-function resolveChatRetrievalMode(
-  result: KnowledgeRagResult
-): NonNullable<KnowledgeRagAnswer['diagnostics']>['retrievalMode'] {
-  if (result.retrieval.hits.length === 0) {
-    return 'none';
-  }
-  switch (result.retrieval.diagnostics?.effectiveSearchMode) {
-    case 'keyword':
-    case 'fallback-keyword':
-      return 'keyword-only';
-    case 'vector':
-      return 'vector-only';
-    case 'hybrid':
-      return 'hybrid';
-    case 'none':
-      return 'none';
-    default:
-      return 'hybrid';
-  }
 }
 
 function createDefaultRagPolicy(): KnowledgeRagPolicy {
@@ -431,15 +406,10 @@ function isDefined<T>(value: T | undefined): value is T {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Knowledge RAG SDK failed.';
+  return error instanceof Error && error.message ? error.message : 'Knowledge RAG SDK failed.';
 }
 
 function toError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
+  if (error instanceof Error) return error;
   return new Error(typeof error === 'string' && error.length > 0 ? error : 'Knowledge RAG SDK failed.');
 }
