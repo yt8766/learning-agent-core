@@ -15,6 +15,8 @@ import { buildWorkspaceSkillDraftManifests } from './domain/skills/runtime-works
 import { createTaskContext } from './domain/tasks/runtime-task-context';
 import { getRuntimeWorkspaceDraftStoreForContext } from './centers/runtime-centers-workspace-drafts';
 import type { RuntimeBackgroundRunnerContext } from './helpers/runtime-background-runner';
+import type { IntelligenceRepository } from './intelligence/intelligence.repository';
+import type { RuntimeIntelligenceRunService } from './intelligence/intelligence-run.service';
 import type { RuntimeSkillInstallContext } from './skills/runtime-skill-install.service';
 import type { RuntimeSkillSourcesContext } from './skills/runtime-skill-sources.service';
 import type { RuntimeHost } from './core/runtime.host';
@@ -35,6 +37,8 @@ interface RuntimeServiceContextFactoryParams {
   mcpServerRegistry: () => RuntimeHost['mcpServerRegistry'];
   mcpCapabilityRegistry: () => RuntimeHost['mcpCapabilityRegistry'];
   mcpClientManager: () => RuntimeHost['mcpClientManager'];
+  intelligenceRepository: () => IntelligenceRepository;
+  intelligenceRunService: () => RuntimeIntelligenceRunService;
   orchestrator: () => RuntimeHost['orchestrator'];
   sessionCoordinator: () => RuntimeHost['sessionCoordinator'];
   runtimeStateRepository: () => RuntimeHost['runtimeStateRepository'];
@@ -203,6 +207,8 @@ export class RuntimeServiceContextFactory {
       settings: this.params.settings,
       runtimeHost: this.params.runtimeHost,
       appLogger: this.params.appLogger,
+      intelligenceRepository: this.params.intelligenceRepository,
+      intelligenceRunService: this.params.intelligenceRunService,
       wenyuanFacade: this.params.wenyuanFacade,
       sessionCoordinator: this.params.sessionCoordinator,
       orchestrator: this.params.orchestrator,

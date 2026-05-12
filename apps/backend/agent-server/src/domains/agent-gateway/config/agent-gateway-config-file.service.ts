@@ -5,6 +5,11 @@ import type {
   GatewayReloadConfigResponse,
   GatewaySaveRawConfigRequest
 } from '@agent/core';
+import {
+  GatewayConfigDiffResponseSchema,
+  GatewayRawConfigResponseSchema,
+  GatewayReloadConfigResponseSchema
+} from '@agent/core';
 import type { AgentGatewayManagementClient } from '../management/agent-gateway-management-client';
 import { AGENT_GATEWAY_MANAGEMENT_CLIENT } from '../management/agent-gateway-management-client';
 
@@ -14,19 +19,19 @@ export class AgentGatewayConfigFileService {
     @Inject(AGENT_GATEWAY_MANAGEMENT_CLIENT) private readonly managementClient: AgentGatewayManagementClient
   ) {}
 
-  readRawConfig(): Promise<GatewayRawConfigResponse> {
-    return this.managementClient.readRawConfig();
+  async readRawConfig(): Promise<GatewayRawConfigResponse> {
+    return GatewayRawConfigResponseSchema.parse(await this.managementClient.readRawConfig());
   }
 
-  diffRawConfig(request: GatewaySaveRawConfigRequest): Promise<GatewayConfigDiffResponse> {
-    return this.managementClient.diffRawConfig(request);
+  async diffRawConfig(request: GatewaySaveRawConfigRequest): Promise<GatewayConfigDiffResponse> {
+    return GatewayConfigDiffResponseSchema.parse(await this.managementClient.diffRawConfig(request));
   }
 
-  saveRawConfig(request: GatewaySaveRawConfigRequest): Promise<GatewayRawConfigResponse> {
-    return this.managementClient.saveRawConfig(request);
+  async saveRawConfig(request: GatewaySaveRawConfigRequest): Promise<GatewayRawConfigResponse> {
+    return GatewayRawConfigResponseSchema.parse(await this.managementClient.saveRawConfig(request));
   }
 
-  reloadConfig(): Promise<GatewayReloadConfigResponse> {
-    return this.managementClient.reloadConfig();
+  async reloadConfig(): Promise<GatewayReloadConfigResponse> {
+    return GatewayReloadConfigResponseSchema.parse(await this.managementClient.reloadConfig());
   }
 }

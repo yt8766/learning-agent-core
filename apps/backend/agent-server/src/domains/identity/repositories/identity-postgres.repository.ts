@@ -17,9 +17,19 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async createUser(input: CreateIdentityUserInput): Promise<IdentityUserRecord> {
     const result = await this.client.query(
-      `insert into auth_users (id, username, display_name, global_roles, status, password_hash)
-       values ($1, $2, $3, $4, $5, $6)
-       returning id, username, display_name, global_roles, status, password_hash`,
+      `with inserted_user as (
+         insert into identity_users (id, username, display_name, global_roles, status)
+         values ($1, $2, $3, $4, $5)
+         returning id, username, display_name, global_roles, status
+       ),
+       inserted_credentials as (
+         insert into identity_password_credentials (user_id, password_hash)
+         select id, $6 from inserted_user
+         returning user_id, password_hash
+       )
+       select u.id, u.username, u.display_name, u.global_roles, u.status, c.password_hash
+       from inserted_user u
+       join inserted_credentials c on c.user_id = u.id`,
       [input.id, input.username, input.displayName, input.roles, input.status, input.passwordHash]
     );
     return mapUser(requiredRow(result.rows[0], 'identity user'));
@@ -27,9 +37,10 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async findUserByUsername(username: string): Promise<IdentityUserRecord | undefined> {
     const result = await this.client.query(
-      `select id, username, display_name, global_roles, status, password_hash
-       from auth_users
-       where username = $1
+      `select u.id, u.username, u.display_name, u.global_roles, u.status, c.password_hash
+       from identity_users u
+       join identity_password_credentials c on c.user_id = u.id
+       where u.username = $1
        limit 1`,
       [username]
     );
@@ -38,9 +49,10 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async findUserById(userId: string): Promise<IdentityUserRecord | undefined> {
     const result = await this.client.query(
-      `select id, username, display_name, global_roles, status, password_hash
-       from auth_users
-       where id = $1
+      `select u.id, u.username, u.display_name, u.global_roles, u.status, c.password_hash
+       from identity_users u
+       join identity_password_credentials c on c.user_id = u.id
+       where u.id = $1
        limit 1`,
       [userId]
     );
@@ -49,19 +61,25 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async listUsers(): Promise<IdentityUserRecord[]> {
     const result = await this.client.query(
-      `select id, username, display_name, global_roles, status, password_hash
-       from auth_users
-       order by username`
+      `select u.id, u.username, u.display_name, u.global_roles, u.status, c.password_hash
+       from identity_users u
+       join identity_password_credentials c on c.user_id = u.id
+       order by u.username`
     );
     return result.rows.map(mapUser);
   }
 
   async updateUserStatus(userId: string, status: AuthUserStatus): Promise<IdentityUserRecord> {
     const result = await this.client.query(
-      `update auth_users
-       set status = $2, updated_at = now()
-       where id = $1
-       returning id, username, display_name, global_roles, status, password_hash`,
+      `with updated_user as (
+         update identity_users
+         set status = $2, updated_at = now()
+         where id = $1
+         returning id, username, display_name, global_roles, status
+       )
+       select u.id, u.username, u.display_name, u.global_roles, u.status, c.password_hash
+       from updated_user u
+       join identity_password_credentials c on c.user_id = u.id`,
       [userId, status]
     );
     return mapUser(requiredRow(result.rows[0], 'identity user'));
@@ -69,16 +87,16 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
     await this.client.query(
-      `update auth_users
+      `update identity_password_credentials
        set password_hash = $2, updated_at = now()
-       where id = $1`,
+       where user_id = $1`,
       [userId, passwordHash]
     );
   }
 
   async createSession(input: IdentitySessionRecord): Promise<IdentitySessionRecord> {
     await this.client.query(
-      `insert into auth_sessions (id, user_id, status, expires_at)
+      `insert into identity_refresh_sessions (id, user_id, status, expires_at)
        values ($1, $2, $3, $4)`,
       [input.id, input.userId, input.status, input.expiresAt]
     );
@@ -88,7 +106,7 @@ export class IdentityPostgresRepository implements IdentityRepository {
   async findSession(sessionId: string): Promise<IdentitySessionRecord | undefined> {
     const result = await this.client.query(
       `select id, user_id, status, expires_at
-       from auth_sessions
+       from identity_refresh_sessions
        where id = $1
        limit 1`,
       [sessionId]
@@ -98,7 +116,7 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async revokeSession(sessionId: string, reason: string): Promise<void> {
     await this.client.query(
-      `update auth_sessions
+      `update identity_refresh_sessions
        set status = 'revoked', revoked_at = now(), revocation_reason = $2
        where id = $1`,
       [sessionId, reason]
@@ -107,7 +125,7 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async createRefreshToken(input: IdentityRefreshTokenRecord): Promise<IdentityRefreshTokenRecord> {
     await this.client.query(
-      `insert into auth_refresh_tokens (id, session_id, token_hash, status, expires_at)
+      `insert into identity_refresh_tokens (id, session_id, token_hash, status, expires_at)
        values ($1, $2, $3, $4, $5)`,
       [input.id, input.sessionId, input.tokenHash, input.status, input.expiresAt]
     );
@@ -117,7 +135,7 @@ export class IdentityPostgresRepository implements IdentityRepository {
   async findRefreshTokenByHash(tokenHash: string): Promise<IdentityRefreshTokenRecord | undefined> {
     const result = await this.client.query(
       `select id, session_id, token_hash, status, expires_at, replaced_by_token_id
-       from auth_refresh_tokens
+       from identity_refresh_tokens
        where token_hash = $1
        limit 1`,
       [tokenHash]
@@ -127,7 +145,7 @@ export class IdentityPostgresRepository implements IdentityRepository {
 
   async markRefreshTokenUsed(tokenId: string, replacedByTokenId: string): Promise<void> {
     await this.client.query(
-      `update auth_refresh_tokens
+      `update identity_refresh_tokens
        set status = 'used', used_at = now(), replaced_by_token_id = $2
        where id = $1`,
       [tokenId, replacedByTokenId]

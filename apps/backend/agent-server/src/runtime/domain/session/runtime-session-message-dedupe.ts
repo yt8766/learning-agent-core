@@ -2,6 +2,10 @@ import type { ChatMessageRecord } from '@agent/core';
 
 const STREAM_MESSAGE_PREFIXES = ['progress_stream_', 'direct_reply_', 'summary_stream_'] as const;
 
+/**
+ * Collapses assistant stream placeholders with their committed final messages.
+ * Equivalence is task-based first and content-prefix based second to avoid duplicate UI answers after stream recovery.
+ */
 export function dedupeSessionMessages(messages: ChatMessageRecord[]) {
   const deduped: ChatMessageRecord[] = [];
 

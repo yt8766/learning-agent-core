@@ -45,6 +45,10 @@ export interface KnowledgeRetrievalRunOptions {
   startTrace?: boolean;
 }
 
+/**
+ * Normalizers compose sequentially: each stage receives the previous stage result.
+ * This lets hosts add deterministic or LLM rewrites without changing the retrieval pipeline contract.
+ */
 function resolveNormalizerChain(config: QueryNormalizer | QueryNormalizer[] | undefined): QueryNormalizer {
   if (!config) return new DefaultQueryNormalizer();
   if (!Array.isArray(config)) return config;
@@ -90,6 +94,10 @@ interface SearchResultDiagnostics {
   diagnostics?: HybridRetrievalDiagnostics;
 }
 
+/**
+ * Merges multi-query retrieval candidates by chunk id.
+ * When the same chunk appears in multiple query variants, keep the highest-scoring hit and sort globally by score.
+ */
 function mergeHitsByChunkId(hitGroups: SearchHits[]): RetrievalHit[] {
   const hitsByChunkId = new Map<string, RetrievalHit>();
 

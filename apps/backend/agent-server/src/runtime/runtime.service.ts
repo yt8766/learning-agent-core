@@ -11,7 +11,8 @@ import { RuntimeSessionService } from './services/runtime-session.service';
 import { RuntimeSkillCatalogService } from './services/runtime-skill-catalog.service';
 import { RuntimeTaskService } from './services/runtime-task.service';
 import { RuntimeWenyuanFacade } from './domain/knowledge/runtime-wenyuan-facade';
-import { RuntimeIntelBriefingFacade } from './core/runtime-intel-briefing-facade';
+import { createIntelligenceMemoryRepository } from './intelligence/intelligence-memory.repository';
+import { RuntimeIntelligenceRunService } from './intelligence/intelligence-run.service';
 import { RuntimeScheduleService } from './schedules/runtime-schedule.service';
 import { RuntimeServiceContextFactory } from './runtime.service-contexts';
 import { registerRuntimeServiceSkillResolvers } from './domain/skills/runtime-skill-runtime-resolvers';
@@ -55,7 +56,8 @@ export class RuntimeService implements OnModuleInit {
   private readonly skillCatalogService: RuntimeSkillCatalogService;
   private readonly taskService: RuntimeTaskService;
   private readonly wenyuanFacade: RuntimeWenyuanFacade;
-  private readonly techBriefingService: RuntimeIntelBriefingFacade;
+  private readonly intelligenceRepository;
+  private readonly intelligenceRunService: RuntimeIntelligenceRunService;
   private readonly scheduleService: RuntimeScheduleService;
   private readonly contextFactory: RuntimeServiceContextFactory;
   private readonly appLogger?: AppLoggerService;
@@ -64,7 +66,6 @@ export class RuntimeService implements OnModuleInit {
     private readonly runtimeHost: RuntimeHost = new RuntimeHost(),
     operationalState?: RuntimeOperationalStateService,
     bootstrapService?: RuntimeBootstrapService,
-    techBriefingService?: RuntimeIntelBriefingFacade,
     scheduleService?: RuntimeScheduleService,
     centersService?: RuntimeCentersService,
     sessionService?: RuntimeSessionService,
@@ -92,18 +93,15 @@ export class RuntimeService implements OnModuleInit {
     this.backgroundPollMs = this.settings.runtimeBackground.pollMs;
     this.skillSourceSyncService = runtimeHost.skillSourceSyncService;
     this.appLogger = appLogger;
-    this.techBriefingService =
-      techBriefingService ??
-      new RuntimeIntelBriefingFacade(() => ({
-        settings: this.settings,
-        mcpClientManager: this.mcpClientManager,
-        llmProvider: this.llmProvider
-      }));
+    this.intelligenceRepository = createIntelligenceMemoryRepository();
+    this.intelligenceRunService = new RuntimeIntelligenceRunService(() => ({
+      workspaceRoot: this.settings.workspaceRoot,
+      repository: this.intelligenceRepository,
+      mcpClientManager: this.mcpClientManager
+    }));
     this.scheduleService =
       scheduleService ??
       new RuntimeScheduleService(() => ({
-        settings: this.settings,
-        techBriefingService: this.techBriefingService,
         refreshMetricsSnapshots: (days: number) => this.centersService.refreshMetricsSnapshots(days)
       }));
     this.wenyuanFacade = new RuntimeWenyuanFacade(() => ({
@@ -125,6 +123,8 @@ export class RuntimeService implements OnModuleInit {
       mcpServerRegistry: () => this.mcpServerRegistry,
       mcpCapabilityRegistry: () => this.mcpCapabilityRegistry,
       mcpClientManager: () => this.mcpClientManager,
+      intelligenceRepository: () => this.intelligenceRepository,
+      intelligenceRunService: () => this.intelligenceRunService,
       orchestrator: () => this.orchestrator,
       sessionCoordinator: () => this.sessionCoordinator,
       runtimeStateRepository: () => this.runtimeStateRepository,
@@ -151,7 +151,6 @@ export class RuntimeService implements OnModuleInit {
         syncInstalledSkillWorkers: () => this.contextFactory.syncInstalledSkillWorkers(),
         applyStoredGovernanceOverrides: () => this.contextFactory.applyStoredGovernanceOverrides(),
         initializeMetricsSnapshots: () => this.centersService.refreshMetricsSnapshots(30).then(() => undefined),
-        initializeDailyTechBriefing: () => this.techBriefingService.initializeSchedule().then(() => undefined),
         initializeScheduleRunner: () => this.scheduleService.initialize(),
         getBackgroundRunnerContext: () => this.contextFactory.getBackgroundRunnerContext()
       }));

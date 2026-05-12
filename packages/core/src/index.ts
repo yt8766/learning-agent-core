@@ -9,6 +9,7 @@ export * from './contracts/execution/index';
 export * from './contracts/media';
 export * from './contracts/trajectory';
 export * from './contracts/agent-gateway';
+export * from './contracts/intelligence';
 export type { SharedPlatformConsoleRecord } from './contracts/platform-console/index';
 export type { ArchitectureDescriptorRegistryEntry } from './contracts/architecture/index';
 export {

@@ -1,5 +1,5 @@
-import type { KnowledgeBase as CoreKnowledgeBase } from '@agent/knowledge';
-import type { KnowledgeBaseHealth } from '@agent/knowledge';
+import type { KnowledgeBase as CoreKnowledgeBase } from '@agent/knowledge/browser';
+import type { KnowledgeBaseHealth } from '@agent/knowledge/browser';
 import type { ID, ISODateTime } from './common';
 
 export type KnowledgeBaseStatus = 'active' | 'disabled' | 'archived';

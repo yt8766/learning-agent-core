@@ -68,42 +68,6 @@ describe('agent-admin runtime contract smoke', () => {
               sourcePolicyMode: 'controlled-first',
               budget: { stepBudget: 10, retryBudget: 2, sourceBudget: 5 }
             },
-            dailyTechBriefing: {
-              enabled: true,
-              schedule: 'daily 11:00',
-              cron: '0 11 * * *',
-              scheduleValid: true,
-              jobKey: 'runtime-schedule:daily-tech-briefing',
-              lastRegisteredAt: '2026-03-31T10:59:00.000Z',
-              scheduler: 'bree',
-              timezone: 'Asia/Shanghai',
-              lastRunAt: '2026-03-31T11:00:00.000Z',
-              categories: [
-                {
-                  category: 'frontend-security',
-                  title: '前端安全情报',
-                  status: 'sent',
-                  itemCount: 2,
-                  emptyDigest: false,
-                  sentAt: '2026-03-31T11:00:05.000Z'
-                },
-                {
-                  category: 'ai-tech',
-                  title: 'AI 新技术情报',
-                  status: 'empty',
-                  itemCount: 0,
-                  emptyDigest: true
-                },
-                {
-                  category: 'frontend-tech',
-                  title: '前端新技术情报',
-                  status: 'sent',
-                  itemCount: 1,
-                  emptyDigest: false,
-                  sentAt: '2026-03-31T11:00:08.000Z'
-                }
-              ]
-            },
             subgraphs: [],
             workflowVersions: []
           } as any
@@ -300,9 +264,7 @@ describe('agent-admin runtime contract smoke', () => {
     expect(runtimeHtml).toContain('当前节点战报');
     expect(runtimeHtml).toContain('文书科');
     expect(runtimeHtml).toContain('正在压缩历史上下文并整理给工部');
-    expect(runtimeHtml).toContain('Daily Tech Briefing');
-    expect(runtimeHtml).toContain('daily 11:00');
-    expect(runtimeHtml).toContain('前端安全情报');
+    expect(runtimeHtml).not.toContain('Daily Tech Briefing');
 
     expect(evidenceHtml).toContain('检查点回放');
     expect(evidenceHtml).toContain('cp-1');

@@ -5,6 +5,7 @@ import { KnowledgeApiController } from '../../src/api/knowledge/knowledge.contro
 
 const service = {
   listBases: async () => [{ id: 'base_1', name: 'Default' }],
+  listBasesResponse: async () => [{ id: 'base_1', name: 'Default' }],
   createBase: async (actor: { userId: string }, input: { name: string }) => ({
     id: 'base_created',
     name: input.name,

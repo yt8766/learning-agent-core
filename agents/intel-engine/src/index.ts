@@ -5,5 +5,5 @@ export { createIntelRepositories } from './runtime/storage/intel.repositories';
 export { executeDigestIntelRun } from './runtime/execution/digest-intel-run';
 export { executePatrolIntelRun } from './runtime/execution/patrol-intel-run';
 export { retryIntelDeliveries } from './runtime/execution/retry-intel-deliveries';
-export * from './runtime/briefing';
+export * from './runtime/intelligence';
 export * from './types';

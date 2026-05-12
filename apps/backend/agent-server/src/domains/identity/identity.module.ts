@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { IdentityController } from '../../api/identity/identity.controller';
 import { IdentityUsersController } from '../../api/identity/identity-users.controller';
-import { IDENTITY_REPOSITORY } from './repositories/identity.repository';
-import { IdentityMemoryRepository } from './repositories/identity-memory.repository';
+import { createIdentityRepositoryProvider } from './runtime/identity-repository.provider';
 import { IdentityAuthService } from './services/identity-auth.service';
 import { IDENTITY_JWT_OPTIONS, IdentityJwtProvider } from './services/identity-jwt.provider';
 import { IdentityPasswordService } from './services/identity-password.service';
@@ -13,7 +12,7 @@ import { IdentityUserService } from './services/identity-user.service';
 @Module({
   controllers: [IdentityController, IdentityUsersController],
   providers: [
-    { provide: IDENTITY_REPOSITORY, useClass: IdentityMemoryRepository },
+    createIdentityRepositoryProvider(),
     IdentityAuthService,
     IdentityUserService,
     IdentityPasswordService,

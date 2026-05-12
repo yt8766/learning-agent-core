@@ -5,24 +5,32 @@ type GatewayConfig = GatewaySnapshot['config'];
 
 export type GatewayViewId =
   | 'dashboard'
+  | 'runtime'
   | 'clients'
+  | 'usageStats'
   | 'config'
   | 'aiProviders'
   | 'authFiles'
   | 'oauth'
+  | 'migration'
   | 'quota'
+  | 'logs'
   | 'system';
 
 export const GATEWAY_ROUTE_BASE = '';
 
 export const GATEWAY_VIEWS: Array<{ id: GatewayViewId; label: string; path: string }> = [
   { id: 'dashboard', label: '仪表盘', path: '/' },
+  { id: 'runtime', label: 'Runtime', path: '/runtime' },
   { id: 'clients', label: '调用方管理', path: '/clients' },
+  { id: 'usageStats', label: '使用统计', path: '/usage' },
   { id: 'config', label: '配置面板', path: '/config' },
   { id: 'aiProviders', label: 'AI提供商', path: '/ai-providers' },
   { id: 'authFiles', label: '认证文件', path: '/auth-files' },
   { id: 'oauth', label: 'OAuth登录', path: '/oauth' },
+  { id: 'migration', label: '迁移导入', path: '/migration' },
   { id: 'quota', label: '配额管理', path: '/quota' },
+  { id: 'logs', label: '日志', path: '/logs' },
   { id: 'system', label: '中心信息', path: '/system' }
 ];
 

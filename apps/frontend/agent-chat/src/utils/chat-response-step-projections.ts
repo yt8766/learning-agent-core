@@ -71,6 +71,10 @@ export function parseChatResponseStepProjection(payload: unknown): ChatResponseS
   return null;
 }
 
+/**
+ * Folds both authoritative snapshots and incremental response-step events into UI state.
+ * Snapshots replace message state; event projections upsert one step and derive summary locally.
+ */
 export function foldChatResponseStepProjection(
   state: ChatResponseStepsState,
   projection: ChatResponseStepProjection

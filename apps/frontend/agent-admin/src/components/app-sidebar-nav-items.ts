@@ -8,6 +8,7 @@ import {
   FlaskConical,
   FolderKanban,
   IdCard,
+  Lightbulb,
   Network,
   Radar,
   SquareTerminal,
@@ -45,6 +46,12 @@ export const NAV_ITEMS: Array<{
     label: '公司专员',
     description: '公司专员、归属六部、连接器依赖与治理状态',
     icon: Users
+  },
+  {
+    key: 'intelligence',
+    label: 'Intelligence',
+    description: 'Tech & AI 信号、频道运行与知识候选',
+    icon: Lightbulb
   },
   {
     key: 'knowledgeGovernance',

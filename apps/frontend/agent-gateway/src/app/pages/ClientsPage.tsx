@@ -5,6 +5,7 @@ import type {
   GatewayClientRequestLogListResponse
 } from '@agent/core';
 import type { FormEvent } from 'react';
+import { useState } from 'react';
 import { KeyRound, Power, RefreshCw, UserPlus } from 'lucide-react';
 import { GatewayTable } from '../components/GatewayTable';
 import { formatGatewayDate } from '../gateway-view-model';
@@ -13,10 +14,13 @@ interface ClientsPageProps {
   apiKeysByClient?: Record<string, GatewayClientApiKeyListResponse>;
   clients: GatewayClient[];
   logsByClient?: Record<string, GatewayClientRequestLogListResponse>;
-  onCreateApiKey?: (clientId: string) => void;
-  onCreateClient?: (request: { name: string; ownerEmail?: string }) => void;
-  onToggleClient?: (client: GatewayClient) => void;
-  onUpdateQuota?: (clientId: string, request: { tokenLimit: number; requestLimit: number; resetAt: string }) => void;
+  onCreateApiKey?: (clientId: string) => Promise<unknown> | void;
+  onCreateClient?: (request: { name: string; ownerEmail?: string }) => Promise<unknown> | void;
+  onToggleClient?: (client: GatewayClient) => Promise<unknown> | void;
+  onUpdateQuota?: (
+    clientId: string,
+    request: { tokenLimit: number; requestLimit: number; resetAt: string }
+  ) => Promise<unknown> | void;
   quotasByClient?: Record<string, GatewayClientQuota>;
 }
 
@@ -32,6 +36,25 @@ export function ClientsPage({
 }: ClientsPageProps) {
   const firstClient = clients[0];
   const firstQuota = firstClient ? quotasByClient[firstClient.id] : null;
+  const [operationStatus, setOperationStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const runOperation = async (action: string, operation?: () => Promise<unknown> | unknown): Promise<void> => {
+    if (!operation) {
+      setOperationStatus({ kind: 'error', message: `${action}失败：当前页面尚未接入该操作` });
+      return;
+    }
+    setBusyAction(action);
+    setOperationStatus(null);
+    try {
+      await operation();
+      setOperationStatus({ kind: 'success', message: `${action}已提交。` });
+    } catch (error) {
+      setOperationStatus({ kind: 'error', message: `${action}失败：${getErrorMessage(error)}` });
+    } finally {
+      setBusyAction(null);
+    }
+  };
 
   const handleCreateClient = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -39,7 +62,10 @@ export function ClientsPage({
     const name = String(form.get('name') ?? '').trim();
     const ownerEmail = String(form.get('ownerEmail') ?? '').trim();
     if (!name) return;
-    onCreateClient?.({ name, ownerEmail: ownerEmail || undefined });
+    void runOperation(
+      '新建调用方',
+      onCreateClient ? () => onCreateClient({ name, ownerEmail: ownerEmail || undefined }) : undefined
+    );
   };
 
   const handleQuotaSubmit = (event: FormEvent<HTMLFormElement>): void => {
@@ -48,11 +74,17 @@ export function ClientsPage({
     const form = new FormData(event.currentTarget);
     const tokenLimit = Number(form.get('tokenLimit') ?? firstQuota.tokenLimit);
     const requestLimit = Number(form.get('requestLimit') ?? firstQuota.requestLimit);
-    onUpdateQuota?.(firstClient.id, {
-      tokenLimit: Number.isFinite(tokenLimit) ? tokenLimit : firstQuota.tokenLimit,
-      requestLimit: Number.isFinite(requestLimit) ? requestLimit : firstQuota.requestLimit,
-      resetAt: firstQuota.resetAt
-    });
+    void runOperation(
+      '保存调用方额度',
+      onUpdateQuota
+        ? () =>
+            onUpdateQuota(firstClient.id, {
+              tokenLimit: Number.isFinite(tokenLimit) ? tokenLimit : firstQuota.tokenLimit,
+              requestLimit: Number.isFinite(requestLimit) ? requestLimit : firstQuota.requestLimit,
+              resetAt: firstQuota.resetAt
+            })
+        : undefined
+    );
   };
 
   return (
@@ -65,12 +97,20 @@ export function ClientsPage({
         <form className="client-create-form" onSubmit={handleCreateClient}>
           <input aria-label="调用方名称" name="name" placeholder="调用方名称" />
           <input aria-label="Owner Email" name="ownerEmail" placeholder="owner@example.com" type="email" />
-          <button type="submit">
+          <button
+            data-missing-operation={onCreateClient ? undefined : '新建调用方'}
+            disabled={busyAction === '新建调用方'}
+            type="submit"
+          >
             <UserPlus size={15} aria-hidden="true" />
-            新建调用方
+            {busyAction === '新建调用方' ? '创建中' : '新建调用方'}
           </button>
         </form>
       </div>
+
+      {operationStatus ? (
+        <div className={`operation-feedback ${operationStatus.kind}`}>{operationStatus.message}</div>
+      ) : null}
 
       <div className="client-card-grid">
         {clients.map(client => {
@@ -85,7 +125,18 @@ export function ClientsPage({
                   <h2>{client.name}</h2>
                   <p>{client.ownerEmail ?? client.id}</p>
                 </div>
-                <button type="button" onClick={() => onToggleClient?.(client)}>
+                <button
+                  type="button"
+                  data-missing-operation={
+                    onToggleClient ? undefined : client.status === 'active' ? '停用调用方' : '启用调用方'
+                  }
+                  onClick={() =>
+                    void runOperation(
+                      client.status === 'active' ? '停用调用方' : '启用调用方',
+                      onToggleClient ? () => onToggleClient(client) : undefined
+                    )
+                  }
+                >
                   <Power size={15} aria-hidden="true" />
                   {client.status === 'active' ? '停用' : '启用'}
                 </button>
@@ -115,7 +166,13 @@ export function ClientsPage({
               <div className="quota-progress-track">
                 <span style={{ width: `${quotaPercent(quota)}%` }} />
               </div>
-              <button type="button" onClick={() => onCreateApiKey?.(client.id)}>
+              <button
+                type="button"
+                data-missing-operation={onCreateApiKey ? undefined : '生成 API Key'}
+                onClick={() =>
+                  void runOperation('生成 API Key', onCreateApiKey ? () => onCreateApiKey(client.id) : undefined)
+                }
+              >
                 <KeyRound size={15} aria-hidden="true" />
                 生成 API Key
               </button>
@@ -166,8 +223,21 @@ export function ClientsPage({
           <input name="requestLimit" defaultValue={firstQuota?.requestLimit ?? ''} type="number" />
         </label>
         <div className="command-actions">
-          <button type="submit">保存调用方额度</button>
-          <button type="button" onClick={() => firstClient && onCreateApiKey?.(firstClient.id)}>
+          <button
+            data-missing-operation={onUpdateQuota ? undefined : '保存调用方额度'}
+            disabled={busyAction === '保存调用方额度'}
+            type="submit"
+          >
+            {busyAction === '保存调用方额度' ? '保存中' : '保存调用方额度'}
+          </button>
+          <button
+            type="button"
+            data-missing-operation={onCreateApiKey ? undefined : '生成 API Key'}
+            onClick={() =>
+              firstClient &&
+              void runOperation('生成 API Key', onCreateApiKey ? () => onCreateApiKey(firstClient.id) : undefined)
+            }
+          >
             <RefreshCw size={15} aria-hidden="true" />
             生成密钥
           </button>
@@ -180,4 +250,10 @@ export function ClientsPage({
 function quotaPercent(quota: GatewayClientQuota | undefined): number {
   if (!quota) return 0;
   return Math.min(100, Math.round((quota.usedTokens / quota.tokenLimit) * 100));
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return '未知错误';
 }

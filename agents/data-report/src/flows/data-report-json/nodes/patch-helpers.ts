@@ -10,6 +10,10 @@ import { parsePatchIntents } from './patch-intent-parser';
 export { applySchemaModification } from './schema-patch-mutations';
 import { applySchemaModification } from './schema-patch-mutations';
 
+/**
+ * Narrows a patch request to one schema target only when the intent is unambiguous.
+ * Ambiguous requests return undefined so the broader patch flow can inspect the full schema.
+ */
 export function resolveNodeScopedPatchTarget(request?: string): DataReportJsonPatchTarget | undefined {
   const normalized = request?.trim() ?? '';
   if (!normalized) {
@@ -68,6 +72,10 @@ function resolveAffectedSectionIds(baseSchema: DataReportJsonSchema, request: st
   return baseSchema.sections.map(section => section.id);
 }
 
+/**
+ * Applies schema patching with a section-scoped cache.
+ * The cache key includes affected section ids and a section fingerprint so edits from an older schema are not reused.
+ */
 export function applySchemaModificationWithCache(
   baseSchema: DataReportJsonSchema,
   request?: string,

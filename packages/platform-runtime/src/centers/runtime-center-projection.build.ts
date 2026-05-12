@@ -70,7 +70,6 @@ export function buildRuntimeCenterProjection(input: BuildRuntimeCenterProjection
     usageAnalytics: input.usageAnalytics,
     recentGovernanceAudit: input.recentGovernanceAudit,
     approvalScopePolicies: input.approvalScopePolicies ?? [],
-    dailyTechBriefing: input.dailyTechBriefing,
     streamMonitor: input.filteredRecentRuns.slice(0, 8).map(task => {
       const checkpoint = task.sessionId ? input.getCheckpoint(task.sessionId) : undefined;
       const streamStatus = checkpoint?.streamStatus as

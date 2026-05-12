@@ -3,7 +3,7 @@
 状态：current
 文档类型：overview
 适用范围：`apps/backend/agent-server`
-最后核对：2026-05-01
+最后核对：2026-05-11
 
 本主题主文档：
 
@@ -62,9 +62,9 @@
 - `RuntimeWorkflowExecutionFacade` 当前是 backend workflow composition facade，负责注册 `company-live` 与 `data-report-json` 两个现有 workflow executor；`RuntimeCompanyLiveFacade` 只保留为 company-live graph 的单一调用点。
 - `RuntimeCompanyLiveFacade` 与 `RuntimeWorkflowExecutionFacade` 都是过渡 composition facade，不应承载业务规则、prompt、schema 或 node 编排；后续退出条件是官方 workflow registry 继续收敛为可复用的 platform runtime 装配能力。
 - `company-live.service.ts` 与 `workflow-runs/workflow-dispatcher.ts` 不应直接 import 或执行 `@agent/agents-company-live` graph；新增 workflow 能力默认先进入对应 `agents/*` 宿主或官方 workflow facade，再由 backend 暴露 HTTP/BFF 入口。
-- Daily Tech Intelligence Briefing 当前真实宿主是 `agents/intel-engine/src/runtime/briefing`；历史 backend 落点 `apps/backend/agent-server/src/runtime/briefings` 已删除。
-- backend 只保留 `PlatformBriefingsController`、Nest provider wiring、force-run / feedback / runs 查询 API、权限审计、错误映射和 `RuntimeIntelBriefingFacade` 这类 BFF adapter。
-- 新增 briefing 采集源、分类、排序、本地化、投递、存储、反馈策略时，默认修改 `agents/intel-engine`，不要在 `apps/backend/agent-server` 恢复 briefing 主逻辑或 compat 双轨。
+- Tech & AI Intelligence 已替代旧 Daily Tech Briefing；backend 不再保留 `RuntimeIntelBriefingFacade`、briefing schedule worker、briefing feedback / runs API 或 `dailyTechBriefing` Runtime Center 投影。
+- backend 只保留 `PlatformIntelligenceController`、`RuntimeIntelligenceRunService`、`IntelligenceRepository` 注入和 `/api/platform/intelligence/*` BFF 入口。
+- 新增情报频道、搜索模板、归一化或知识候选策略时，应修改 `agents/intel-engine/src/runtime/intelligence/*` 与 `packages/core` contract，不要恢复 backend briefing 主逻辑或 compat 双轨。
 
 当前工具执行 facade：
 

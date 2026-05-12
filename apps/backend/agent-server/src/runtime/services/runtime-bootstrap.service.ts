@@ -32,7 +32,6 @@ export interface RuntimeBootstrapContext {
   applyStoredGovernanceOverrides: () => Promise<void>;
   runLegacyDataImportOnce?: () => Promise<void>;
   initializeMetricsSnapshots: () => Promise<void>;
-  initializeDailyTechBriefing: () => Promise<void>;
   initializeScheduleRunner: () => Promise<void>;
   getBackgroundRunnerContext: () => RuntimeBackgroundRunnerContext;
 }
@@ -54,7 +53,6 @@ export class RuntimeBootstrapService {
     await syncEnabledRemoteSkillSources(ctx.getSkillSourcesContext());
     await ctx.syncInstalledSkillWorkers();
     await ctx.applyStoredGovernanceOverrides();
-    await ctx.initializeDailyTechBriefing();
     await ctx.initializeScheduleRunner();
     void ctx.initializeMetricsSnapshots().catch(() => undefined);
 

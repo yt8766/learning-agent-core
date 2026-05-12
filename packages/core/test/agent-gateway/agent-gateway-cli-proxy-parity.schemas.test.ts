@@ -45,7 +45,416 @@ import {
   GatewayVertexCredentialImportResponseSchema
 } from '../../src/contracts/agent-gateway';
 
+const SENSITIVE_HEADER_NAMES = [
+  'authorization',
+  'cookie',
+  'set-cookie',
+  'x-api-key',
+  'api-key',
+  'proxy-authorization'
+] as const;
+
 describe('agent gateway CLI Proxy parity contracts', () => {
+  it('parses the full management parity matrix without exposing raw secrets', () => {
+    expect(
+      GatewayRawConfigResponseSchema.parse({
+        content: 'providers: []\n',
+        format: 'yaml',
+        version: 'cfg_001',
+        updatedAt: '2026-05-11T00:00:00.000Z'
+      }).content
+    ).toContain('providers');
+
+    expect(
+      GatewayProviderSpecificConfigListResponseSchema.parse({
+        items: [
+          {
+            id: 'provider_openai',
+            providerKind: 'openaiCompatible',
+            displayName: 'OpenAI Compatible',
+            enabled: true,
+            maskedSecret: 'sk-...abcd',
+            modelCount: 2,
+            updatedAt: '2026-05-11T00:00:00.000Z'
+          }
+        ]
+      }).items[0]
+    ).not.toHaveProperty('apiKey');
+
+    expect(
+      GatewayRequestLogListResponseSchema.parse({
+        items: [],
+        total: 0,
+        nextCursor: null
+      })
+    ).toEqual({ items: [], total: 0, nextCursor: null });
+
+    expect(
+      GatewaySystemModelsResponseSchema.parse({
+        groups: [
+          {
+            providerId: 'openai-main',
+            providerKind: 'openai-compatible',
+            label: 'OpenAI Compatible',
+            models: [
+              {
+                id: 'gpt-4.1',
+                displayName: 'gpt-4.1',
+                providerKind: 'openai-compatible',
+                available: true
+              }
+            ]
+          }
+        ]
+      }).groups[0].models[0].id
+    ).toBe('gpt-4.1');
+  });
+
+  it('rejects raw secrets and provider payloads in management parity projections', () => {
+    expect(() =>
+      GatewayDashboardSummaryResponseSchema.parse({
+        observedAt: '2026-05-11T00:00:00.000Z',
+        connection: {
+          status: 'connected',
+          apiBase: 'https://remote.router-for.me/v0/management',
+          serverVersion: '1.2.3',
+          serverBuildDate: '2026-05-01'
+        },
+        counts: {
+          managementApiKeys: 1,
+          authFiles: 1,
+          providerCredentials: 1,
+          availableModels: 1
+        },
+        providers: [],
+        routing: {
+          strategy: 'round-robin',
+          forceModelPrefix: false,
+          requestRetry: 0,
+          wsAuth: false,
+          proxyUrl: null
+        },
+        rawResponse: { providers: [] }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderSpecificConfigListResponseSchema.parse({
+        items: [],
+        apiKey: 'sk-should-not-parse'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderSpecificConfigListResponseSchema.parse({
+        items: [
+          {
+            id: 'provider_openai',
+            providerKind: 'openaiCompatible',
+            displayName: 'OpenAI Compatible',
+            enabled: true,
+            maskedSecret: 'sk-...abcd',
+            modelCount: 2,
+            updatedAt: '2026-05-11T00:00:00.000Z',
+            rawResponse: { apiKey: 'sk-should-not-parse' }
+          }
+        ]
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderOAuthStartResponseSchema.parse({
+        state: 'codex-state',
+        verificationUri: 'https://auth.openai.com/oauth/authorize?state=codex-state',
+        expiresAt: '2026-05-11T00:15:00.000Z',
+        accessToken: 'not-allowed'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayVertexCredentialImportResponseSchema.parse({
+        status: 'ok',
+        imported: true,
+        authFileId: 'auth-vertex-1',
+        privateKey: 'not-allowed'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayManagementApiCallResponseSchema.parse({
+        statusCode: 200,
+        header: { 'content-type': ['application/json'] },
+        bodyText: '{}',
+        body: {},
+        headers: { authorization: ['Bearer secret'] }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayManagementApiCallResponseSchema.parse({
+        statusCode: 200,
+        header: { authorization: ['Bearer secret'] },
+        bodyText: '{}',
+        body: {}
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderSpecificConfigRecordSchema.parse({
+        providerType: 'openaiCompatible',
+        id: 'openai-main',
+        displayName: 'OpenAI Main',
+        enabled: true,
+        baseUrl: 'https://api.openai.com/v1',
+        headers: { authorization: 'Bearer secret' },
+        models: [],
+        excludedModels: [],
+        credentials: []
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderSpecificConfigRecordSchema.parse({
+        providerType: 'openaiCompatible',
+        id: 'openai-main',
+        displayName: 'OpenAI Main',
+        enabled: true,
+        baseUrl: 'https://api.openai.com/v1',
+        models: [],
+        excludedModels: [],
+        credentials: [
+          {
+            credentialId: 'key-1',
+            status: 'valid',
+            headers: { 'x-api-key': 'not-allowed' }
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
+  it('rejects raw fields in management projection contracts', () => {
+    expect(() =>
+      GatewayAuthFileListResponseSchema.parse({
+        items: [
+          {
+            id: 'auth-1',
+            providerId: 'gemini-main',
+            providerKind: 'gemini',
+            fileName: 'gemini.json',
+            path: '/secure/gemini.json',
+            status: 'valid',
+            accountEmail: 'agent@example.com',
+            modelCount: 2,
+            updatedAt: '2026-05-11T00:00:00.000Z',
+            content: '{"access_token":"secret"}',
+            accessToken: 'not-allowed'
+          }
+        ],
+        nextCursor: null,
+        rawPayload: { files: [] }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayRequestLogListResponseSchema.parse({
+        items: [
+          {
+            id: 'req-1',
+            occurredAt: '2026-05-11T00:00:00.000Z',
+            method: 'POST',
+            path: '/v1/chat/completions',
+            statusCode: 200,
+            durationMs: 50,
+            managementTraffic: false,
+            providerId: 'openai-main',
+            apiKeyPrefix: 'sk-test',
+            headers: { authorization: 'Bearer secret' }
+          }
+        ],
+        total: 1,
+        nextCursor: null,
+        headers: { cookie: 'not-allowed' }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewaySystemModelsResponseSchema.parse({
+        groups: [],
+        rawResponse: { models: [] }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayQuotaDetailListResponseSchema.parse({
+        items: [
+          {
+            id: 'quota-1',
+            providerId: 'openai-main',
+            model: 'gpt-4.1',
+            scope: 'daily',
+            window: '1d',
+            limit: 100,
+            used: 1,
+            remaining: 99,
+            resetAt: null,
+            refreshedAt: '2026-05-11T00:00:00.000Z',
+            status: 'normal',
+            headers: { authorization: 'Bearer secret' }
+          }
+        ]
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayLogFileListResponseSchema.parse({
+        items: [
+          {
+            fileName: 'access.log',
+            path: '/var/log/cli-proxy/access.log',
+            sizeBytes: 2048,
+            modifiedAt: '2026-05-11T00:00:00.000Z',
+            privateKey: 'not-allowed'
+          }
+        ]
+      })
+    ).toThrow();
+  });
+
+  it('enforces safe header metadata across provider and management projections', () => {
+    expect(
+      GatewayProviderSpecificConfigRecordSchema.parse({
+        providerType: 'openaiCompatible',
+        id: 'openai-main',
+        displayName: 'OpenAI Main',
+        enabled: true,
+        baseUrl: 'https://api.openai.com/v1',
+        headers: { 'x-team': 'platform' },
+        models: [],
+        excludedModels: [],
+        credentials: []
+      }).headers
+    ).toEqual({ 'x-team': 'platform' });
+
+    expect(
+      GatewayProviderSpecificConfigRecordSchema.parse({
+        providerType: 'openaiCompatible',
+        id: 'openai-main',
+        displayName: 'OpenAI Main',
+        enabled: true,
+        baseUrl: 'https://api.openai.com/v1',
+        models: [],
+        excludedModels: [],
+        credentials: [{ credentialId: 'key-1', status: 'valid', headers: { 'x-team': 'platform' } }]
+      }).credentials[0].headers
+    ).toEqual({ 'x-team': 'platform' });
+
+    expect(
+      GatewayManagementApiCallRequestSchema.parse({
+        method: 'GET',
+        path: '/v1/models',
+        header: { 'x-team': 'platform' },
+        headers: { 'x-team': 'platform' }
+      })
+    ).toMatchObject({
+      header: { 'x-team': 'platform' },
+      headers: { 'x-team': 'platform' }
+    });
+
+    for (const headerName of SENSITIVE_HEADER_NAMES) {
+      expect(() =>
+        GatewayProviderSpecificConfigRecordSchema.parse({
+          providerType: 'openaiCompatible',
+          id: `provider-${headerName}`,
+          displayName: 'OpenAI Main',
+          enabled: true,
+          baseUrl: 'https://api.openai.com/v1',
+          headers: { [headerName]: 'secret' },
+          models: [],
+          excludedModels: [],
+          credentials: []
+        })
+      ).toThrow();
+
+      expect(() =>
+        GatewayProviderSpecificConfigRecordSchema.parse({
+          providerType: 'openaiCompatible',
+          id: `credential-${headerName}`,
+          displayName: 'OpenAI Main',
+          enabled: true,
+          baseUrl: 'https://api.openai.com/v1',
+          models: [],
+          excludedModels: [],
+          credentials: [{ credentialId: 'key-1', status: 'valid', headers: { [headerName]: 'secret' } }]
+        })
+      ).toThrow();
+
+      expect(() =>
+        GatewayManagementApiCallRequestSchema.parse({
+          method: 'GET',
+          path: '/v1/models',
+          header: { [headerName]: 'secret' }
+        })
+      ).toThrow();
+
+      expect(() =>
+        GatewayManagementApiCallRequestSchema.parse({
+          method: 'GET',
+          path: '/v1/models',
+          headers: { [headerName]: 'secret' }
+        })
+      ).toThrow();
+
+      expect(() =>
+        GatewayManagementApiCallResponseSchema.parse({
+          statusCode: 200,
+          header: { [headerName]: ['secret'] },
+          bodyText: '{}',
+          body: {}
+        })
+      ).toThrow();
+    }
+  });
+
+  it('requires exactly one management api-call target', () => {
+    expect(() =>
+      GatewayManagementApiCallRequestSchema.parse({
+        method: 'GET'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayManagementApiCallRequestSchema.parse({
+        method: 'GET',
+        url: 'https://api.openai.com/v1/models',
+        path: '/v1/models'
+      })
+    ).toThrow();
+
+    expect(
+      GatewayManagementApiCallRequestSchema.parse({
+        method: 'GET',
+        path: '/v1/models'
+      }).path
+    ).toBe('/v1/models');
+
+    expect(
+      GatewayManagementApiCallRequestSchema.parse({
+        method: 'GET',
+        url: 'https://api.openai.com/v1/models'
+      }).url
+    ).toBe('https://api.openai.com/v1/models');
+
+    expect(() =>
+      GatewayManagementApiCallResponseSchema.parse({
+        statusCode: 200,
+        headers: { 'x-team': ['platform'] },
+        bodyText: '{}',
+        body: {}
+      })
+    ).toThrow();
+  });
+
   it('parses remote management connection contracts', () => {
     expect(
       GatewaySaveConnectionProfileRequestSchema.parse({
@@ -495,7 +904,7 @@ describe('agent gateway CLI Proxy parity contracts', () => {
         method: 'GET',
         url: 'https://api.openai.com/v1/models',
         header: {
-          Authorization: 'Bearer sk-***'
+          'x-team': 'platform'
         }
       })
     ).toMatchObject({ method: 'GET', authIndex: 'openai-main-0' });

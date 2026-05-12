@@ -1,4 +1,4 @@
-import { KnowledgeRagStreamEventSchema } from '@agent/knowledge/browser-entry';
+import { KnowledgeRagStreamEventSchema } from '@agent/knowledge/browser';
 
 import type { ChatRequest } from '../types/api';
 import type { KnowledgeRagStreamEvent } from '../types/chat';

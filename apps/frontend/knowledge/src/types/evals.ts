@@ -1,9 +1,26 @@
 import type { ApiErrorResponse, ID, ISODateTime } from './common';
 import type { Citation } from './chat';
+import type {
+  KnowledgeEvalCase,
+  KnowledgeEvalCaseResult,
+  KnowledgeEvalDataset,
+  KnowledgeEvalRun,
+  KnowledgeEvalRunComparison,
+  KnowledgeEvalRunStatus
+} from '@agent/core';
+
+export type CoreEvalDataset = KnowledgeEvalDataset;
+export type CoreEvalCase = KnowledgeEvalCase;
+export type CoreEvalRun = KnowledgeEvalRun;
+export type CoreEvalCaseResult = KnowledgeEvalCaseResult;
+export type CoreEvalRunComparison = KnowledgeEvalRunComparison;
+export type CoreEvalRunStatus = KnowledgeEvalRunStatus;
 
 export type EvalDifficulty = 'easy' | 'medium' | 'hard';
-export type EvalRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
+export type EvalRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' | 'partial' | 'completed';
 
+// UI view model for the current eval dataset table. API responses should parse
+// through CoreEvalDataset before being adapted to this shape.
 export interface EvalDataset {
   id: ID;
   workspaceId: ID;
@@ -16,6 +33,9 @@ export interface EvalDataset {
   updatedAt: ISODateTime;
 }
 
+export type EvalDatasetCompat = EvalDataset;
+
+// UI view model for the current eval case editor.
 export interface EvalCase {
   id: ID;
   datasetId: ID;
@@ -29,6 +49,8 @@ export interface EvalCase {
   metadata?: Record<string, unknown>;
   createdAt: ISODateTime;
 }
+
+export type EvalCaseCompat = EvalCase;
 
 export interface CreateEvalDatasetRequest {
   name: string;
@@ -55,6 +77,7 @@ export interface EvalReportSummary {
   regressionDelta?: number;
 }
 
+// UI view model for the current eval run table.
 export interface EvalRun {
   id: ID;
   workspaceId: ID;
@@ -74,6 +97,9 @@ export interface EvalRun {
   createdAt: ISODateTime;
 }
 
+export type EvalRunCompat = EvalRun;
+
+// UI view model for the current eval comparison chart.
 export interface EvalRunComparison {
   baselineRunId: ID;
   candidateRunId: ID;
@@ -82,6 +108,8 @@ export interface EvalRunComparison {
   generationScoreDelta: number;
   perMetricDelta: Record<string, number>;
 }
+
+export type EvalRunComparisonCompat = EvalRunComparison;
 
 export interface CreateEvalRunRequest {
   datasetId: ID;
@@ -121,6 +149,7 @@ export type EvalFailureCategory =
   | 'prompt_failure'
   | 'provider_error';
 
+// UI view model for the current eval result detail.
 export interface EvalCaseResult {
   id: ID;
   runId: ID;
@@ -135,3 +164,5 @@ export interface EvalCaseResult {
   failureCategory?: EvalFailureCategory;
   error?: ApiErrorResponse;
 }
+
+export type EvalCaseResultCompat = EvalCaseResult;

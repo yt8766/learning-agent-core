@@ -62,6 +62,7 @@
     "test:workspace:integration": "vitest run --config vitest.config.js test/integration",
     "test:workspace:smoke": "vitest run --config vitest.config.js test/smoke",
     "test:coverage": "vitest run --config vitest.config.js --coverage",
+    "coverage:gaps": "node ./scripts/summarize-coverage-gaps.js",
     "test:watch": "vitest --config vitest.config.js",
     "eval:prompts": "node ./scripts/run-prompt-regression.js",
     "eval:prompts:view": "pnpm exec promptfoo view",

@@ -6,7 +6,6 @@ const {
   fetchProviderUsageAuditMock,
   autoInstallLocalManifestMock,
   searchLocalSkillSuggestionsMock,
-  RuntimeIntelBriefingFacadeMock,
   RuntimeScheduleServiceMock,
   RuntimeWenyuanFacadeMock,
   RuntimeKnowledgeServiceMock,
@@ -26,13 +25,6 @@ const {
   const autoInstallLocalManifestMock = vi.fn(async () => ({ installed: true }));
   const searchLocalSkillSuggestionsMock = vi.fn(async () => [{ id: 'skill-1' }]);
 
-  const RuntimeIntelBriefingFacadeMock = vi.fn(function (this: unknown, factory: () => unknown) {
-    return {
-      kind: 'intel-briefing-facade',
-      factory,
-      initializeSchedule: vi.fn(async () => undefined)
-    };
-  });
   const RuntimeScheduleServiceMock = vi.fn(function (this: unknown, factory: () => unknown) {
     return {
       kind: 'schedule',
@@ -148,7 +140,6 @@ const {
     fetchProviderUsageAuditMock,
     autoInstallLocalManifestMock,
     searchLocalSkillSuggestionsMock,
-    RuntimeIntelBriefingFacadeMock,
     RuntimeScheduleServiceMock,
     RuntimeWenyuanFacadeMock,
     RuntimeKnowledgeServiceMock,
@@ -208,9 +199,6 @@ vi.mock('../../../src/runtime/centers/runtime-centers-governance.service', () =>
 vi.mock('../../../src/runtime/centers/runtime-centers.service', () => ({
   RuntimeCentersService: RuntimeCentersServiceMock
 }));
-vi.mock('../../../src/runtime/core/runtime-intel-briefing-facade', () => ({
-  RuntimeIntelBriefingFacade: RuntimeIntelBriefingFacadeMock
-}));
 vi.mock('../../../src/runtime/schedules/runtime-schedule.service', () => ({
   RuntimeScheduleService: RuntimeScheduleServiceMock
 }));
@@ -229,7 +217,6 @@ vi.mock('../../../src/runtime/skills/runtime-skill-sources.service', async () =>
 import {
   createRuntimeBootstrapService,
   createRuntimeCentersService,
-  createRuntimeIntelBriefingFacade,
   createRuntimeKnowledgeService,
   createRuntimeMessageGatewayFacadeService,
   createRuntimeScheduleService,
@@ -301,23 +288,16 @@ describe('runtime-provider-factories', () => {
       setBackgroundRunnerSweepInFlight: vi.fn()
     } as any;
 
-    const techBriefingService = createRuntimeIntelBriefingFacade(runtimeHost);
-    const scheduleService = createRuntimeScheduleService(runtimeHost, techBriefingService as any);
+    const scheduleService = createRuntimeScheduleService(runtimeHost);
     const knowledgeService = createRuntimeKnowledgeService(runtimeHost);
     const sessionService = createRuntimeSessionService(runtimeHost);
     const skillCatalogService = createRuntimeSkillCatalogService(runtimeHost);
     const taskService = createRuntimeTaskService(runtimeHost);
     const toolsService = createRuntimeToolsService(runtimeHost);
     const gatewayService = createRuntimeMessageGatewayFacadeService(sessionService as any, taskService as any);
-    const bootstrapService = createRuntimeBootstrapService(
-      runtimeHost,
-      operationalState,
-      techBriefingService as any,
-      scheduleService as any
-    );
+    const bootstrapService = createRuntimeBootstrapService(runtimeHost, operationalState, scheduleService as any);
     const centersService = createRuntimeCentersService(runtimeHost, operationalState);
 
-    expect(RuntimeIntelBriefingFacadeMock).toHaveBeenCalledTimes(1);
     expect(RuntimeScheduleServiceMock).toHaveBeenCalledTimes(1);
     expect(RuntimeKnowledgeServiceMock).toHaveBeenCalledTimes(1);
     expect(RuntimeSessionServiceMock).toHaveBeenCalledTimes(1);
@@ -363,12 +343,9 @@ describe('runtime-provider-factories', () => {
       limit: 3
     });
 
-    const bootstrapService = createRuntimeBootstrapService(
-      runtimeHost,
-      operationalState,
-      { initializeSchedule: vi.fn(async () => undefined) } as any,
-      { initialize: vi.fn(async () => undefined) } as any
-    ) as any;
+    const bootstrapService = createRuntimeBootstrapService(runtimeHost, operationalState, {
+      initialize: vi.fn(async () => undefined)
+    } as any) as any;
     const bootstrapContext = bootstrapService.factory();
 
     await bootstrapContext.syncInstalledSkillWorkers();

@@ -1,6 +1,5 @@
 import type { ApprovalScopePolicyRecord } from './governance';
 import type { RuntimeCenterUsageAnalyticsRecord } from './runtime-usage.types';
-import type { RuntimeCenterDailyTechBriefingRecord } from './runtime-briefing.types';
 import type {
   RuntimeCenterThoughtGraphRecord,
   RuntimeCenterImperialChainRecord,
@@ -14,7 +13,6 @@ import type {
 import type { TaskRecord } from './shared';
 
 export type * from './runtime-usage.types';
-export type * from './runtime-briefing.types';
 export type * from './runtime-observability.types';
 
 export interface RuntimeCenterKnowledgeOverviewRecord {
@@ -198,7 +196,6 @@ export interface RuntimeCenterRecord {
     reason?: string;
   }>;
   approvalScopePolicies?: ApprovalScopePolicyRecord[];
-  dailyTechBriefing?: RuntimeCenterDailyTechBriefingRecord;
   streamMonitor?: Array<{
     taskId: string;
     goal: string;

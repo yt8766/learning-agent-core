@@ -11,9 +11,9 @@
 
 UI 只能通过 `KnowledgeApiProvider` 获取 `KnowledgeFrontendApi`，页面和 hooks 不直接 new 真实 client，也不直接 import mock 数据。运行时装配在 `src/main.tsx`，始终使用 `KnowledgeApiClient`（默认 base URL `http://127.0.0.1:3000/api`）。前端运行时 mock mode 已移除；测试使用本地 fake provider，后端可使用 schema-safe service fallback。
 
-`KnowledgeApiClient` 统一走 fetch 路径。请求前通过 `AuthClient.ensureValidAccessToken()` 取 access token；业务接口返回 `401 + code=auth_token_expired` 时，调用 `AuthClient.refreshTokensOnce()` 并重试原请求一次。
+`KnowledgeApiClient` 统一走 fetch 路径。请求前通过 `AuthClient.ensureValidAccessToken()` 取 access token；本地没有 token 或 refresh token 已过期时，`AuthClient` 必须先清理登录态并抛错，业务 API client 不再发送缺少 `Authorization` 的受保护请求，避免页面启动时把过期会话放大成批量 `401`。业务接口返回可识别的 access token expired 错误时，调用 `AuthClient.refreshTokensOnce()` 并重试原请求一次。
 
-前端 DTO 以 `docs/contracts/api/knowledge.md` 为准；稳定共享模型优先从 `@agent/knowledge` 消费，例如 `KnowledgeBaseHealth`、RAG answer route/diagnostics 和 trace projection。新增字段时先更新 API contract / SDK schema，再更新前端类型和实现。
+前端 DTO 以 `docs/contracts/api/knowledge.md` 为准；稳定共享模型优先从 `@agent/core` / `@agent/knowledge` 消费，例如 dashboard、documents、observability、evals、settings、agent flow、RAG answer route/diagnostics 和 trace projection。`KnowledgeApiClient` 对已稳定的响应必须先走 schema parse，再交给 hooks / pages；当前已覆盖 dashboard、documents 的稳定字段、observability、evals、workspace users、settings、assistant config 和 agent flows。Chat conversations、非流式 chat、feedback、RAG model profiles、delete response 与 embedding model normalizer 仍是后续 contract 收敛项；补齐前不要硬造临时公共 schema，也不要把 UI view model 伪装成稳定 API contract。新增字段时先更新 API contract / SDK schema，再更新前端类型和实现。
 
 ## Backend Connection
 
@@ -24,7 +24,7 @@ VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 VITE_KNOWLEDGE_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 ```
 
-Runtime frontend always uses `KnowledgeApiClient`. Tests use local fake providers; backend may use schema-safe service fallback.
+Runtime frontend always uses `KnowledgeApiClient`. Tests use local fake providers; backend may use schema-safe service fallback. `/users` 访问治理页的 workspace users 必须来自 backend `KnowledgeWorkspaceUsersResponse`，该响应由 Identity 用户源和 Knowledge repository 统计投影；前端页面、hook 或 runtime client 不得恢复固定成员数组。
 
 ## Trustworthy Workbench UI
 
@@ -43,6 +43,7 @@ Chat Lab displays route reason, retrieval diagnostics, grounded citations, feedb
 - `AuthClient` 和 `KnowledgeApiClient` 默认使用绑定到 `globalThis` 的 fetch，避免浏览器原生 fetch 被类字段调用时出现 `Illegal invocation`。
 - `AuthClient` 调用 unified `agent-server` `/api/identity/login`、`/api/identity/refresh`、`/api/identity/me` 和 `/api/identity/logout`；`KnowledgeApiClient` 调用 unified `agent-server` `/api/knowledge/bases` 等业务接口。
 - `/login` 是唯一规范登录入口。未登录访问任何受保护业务路径时，`ProtectedRoute` 必须 `Navigate` 到 `/login`，不能在原业务 URL 下直接渲染登录页。
+- `AuthProvider` 初始化认证态时必须同时检查 refresh token 是否仍可用；只有本地存在未过期 refresh token 才能渲染受保护业务页面。已过期的 refresh token 必须立即清理并进入未登录态，不能先渲染 `ChatLabPage` 再让启动请求全部返回 `401`。
 - 已登录用户访问 `/login` 时必须重定向回工作台；如果登录页带有 `location.state.from`，登录成功后优先回到原受保护路径，否则回到 `/`。
 - token 存在本地浏览器 storage；主键为 `knowledge_auth_tokens` 的 versioned JSON。`token-storage.ts` 会兼容读取并迁移历史 `knowledge_access_token`、`knowledge_refresh_token`、`knowledge_access_token_expires_at`、`knowledge_refresh_token_expires_at` 四 key，遇到损坏 versioned JSON 时清理认证存储。
 - `AuthClient` 在实例初始化时读取一次 token cache；登录或刷新成功后同步 cache，退出登录和 auth lost 时同时清理 cache 与本地 token，避免高频请求反复同步读取 `localStorage`。
@@ -58,7 +59,7 @@ Chat Lab displays route reason, retrieval diagnostics, grounded citations, feedb
 - `OverviewPage`：ECharts 图表必须限制 tooltip 在图表容器内，并在 Ant Design `Space` / `Card` 嵌套下设置 `min-width: 0` 与 `width: 100%`，避免图表画布或 tooltip 撑出下方 card 范围。
 - `ChatLabPage`：通过 provider 调 `/chat`；进入页面后读取 `listKnowledgeBases()` 用于输入框 `@` 候选和解析文本中的 `@知识库名`，同时读取 `listRagModelProfiles()`、`listConversations()` 和当前会话的 `listConversationMessages()`。没有后端会话时保留本地新会话空态；有后端会话时默认激活第一条并使用其 `activeModelProfileId`。顶部模型选择器默认是 `knowledge-rag`，用户选择或恢复持久会话后把 profile id 写入后续 `model`。页面采用 Codex 风格双栏工作台：左侧是会话与知识库入口，右侧是顶部运行栏、居中空态标题、消息线程和底部 composer，不再使用嵌套 Card demo 布局。输入框使用 Ant Design X `Suggestion` 包裹普通受控 `Sender`，避免 `slotConfig` contenteditable 影响普通文字和空格输入；用户输入 `@` 时展示当前可访问知识库候选，选择候选后将当前 `@` token 从文本框移除，并在 `Sender.header` 内展示蓝色知识库标签。发送时必须从 header 标签状态和文本 `@知识库名` 解析 `metadata.mentions`，不直接发送 knowledgeBaseIds。发送请求时必须采用 OpenAI Chat Completions 风格 payload：`model`、`messages: [{ role: 'user', content }]`、`metadata.conversationId`、`metadata.mentions`、`stream: true`；没有 `@mentions` 时发送空 mentions，让后端在检索前根据问题和 knowledge base 元信息自动路由。新 Chat Lab 不能继续发送旧的顶层 `message` / `knowledgeBaseIds` payload，也不能主动发送 `metadata.knowledgeBaseIds`。`KnowledgeApiClient.streamChat()` 使用 POST SSE 读取 `KnowledgeRagStreamEvent`，`useKnowledgeChat` 消费 `answer.delta` 更新临时回答，并在 `answer.completed` / `rag.completed` 后投影为前端 `ChatResponse`。SDK citation 必须先转换为前端 citation DTO，再进入 Bubble footer。AI 回复必须通过 Ant Design X `Bubble.List.role.ai` 统一配置 `contentRender`、`footer` 和 `loadingRender`：正文用 Markdown 渲染，footer 使用 `Actions.Copy` 与 `Actions.Feedback`，并继续展示 route reason、retrieval diagnostics、trace link 和 citation cards；底部状态行从 SSE events 派生 planner/retrieval 摘要，展示 planner、选择理由、search mode、confidence、executed query 和 hit count，不能只显示“没检索到”。citation card 至少展示 title、quote、score 或 uri，不能退回只展示标题列表。feedback 调 `/messages/:id/feedback`。
 - `ObservabilityPage`：读取 metrics、trace list 和 trace detail；trace table 点击调用 `selectTrace()`；`/observability?traceId=<id>` 会自动打开对应 trace。页面同时兼容稳定 trace projection 的 `id/question/spans` 和历史 raw trace 的 `traceId/operation/spans.status=ok`，Table 主列优先展示 question，缺失时回退 operation。
-- `EvalsPage`：读取 datasets/runs，并在至少两次 run 存在时调用 `/eval/runs/compare` 展示回归差异。
+- `EvalsPage`：读取 datasets/runs，并在至少两次 run 存在时调用 `/api/knowledge/eval/runs/compare` 展示回归差异。
 
 ## 并发与状态
 

@@ -7,7 +7,9 @@ import { RUNTIME_SCHEMA_SQL } from '../../../src/infrastructure/database/schemas
 describe('unified backend database schemas', () => {
   it('defines identity tables', () => {
     expect(IDENTITY_SCHEMA_SQL).toContain('identity_users');
+    expect(IDENTITY_SCHEMA_SQL).toContain('global_roles');
     expect(IDENTITY_SCHEMA_SQL).toContain('identity_refresh_sessions');
+    expect(IDENTITY_SCHEMA_SQL).toContain('identity_refresh_tokens');
   });
 
   it('defines knowledge tables', () => {

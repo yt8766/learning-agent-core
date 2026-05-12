@@ -11,4 +11,18 @@ export type { KnowledgeApiClientOptions, KnowledgeRequestOptions, KnowledgeToken
 
 /** Browser-safe RAG stream SSE contract; avoids pulling Node-only code from the package root. */
 export { KnowledgeRagStreamEventSchema } from '../rag/schemas/knowledge-rag-stream.schema';
+export {
+  KnowledgeAgentFlowListResponseSchema,
+  KnowledgeAgentFlowRunResponseSchema,
+  KnowledgeAgentFlowSaveResponseSchema
+} from '../contracts/knowledge-agent-flow';
 export type { KnowledgeRagStreamEvent } from '../rag/schemas/knowledge-rag-stream.schema';
+export type { KnowledgeBase, KnowledgeBaseHealth, KnowledgeRagAnswer } from '../core/types';
+export type {
+  KnowledgeAgentFlow,
+  KnowledgeAgentFlowListResponse,
+  KnowledgeAgentFlowRunRequest,
+  KnowledgeAgentFlowRunResponse,
+  KnowledgeAgentFlowSaveRequest,
+  KnowledgeAgentFlowSaveResponse
+} from '../contracts/knowledge-agent-flow';

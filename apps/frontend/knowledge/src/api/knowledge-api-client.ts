@@ -1,5 +1,9 @@
 import {
   KnowledgeDashboardOverviewSchema,
+  KnowledgeDocumentChunkSchema,
+  KnowledgeDocumentProcessingJobSchema,
+  KnowledgeDocumentSchema,
+  KnowledgeUploadResultSchema,
   KnowledgeObservabilityMetricsSchema,
   KnowledgeRagTraceSchema,
   KnowledgeRagTraceDetailSchema,
@@ -7,15 +11,23 @@ import {
   KnowledgeEvalDatasetSchema,
   KnowledgeEvalRunSchema,
   KnowledgeEvalCaseResultSchema,
-  KnowledgeEvalRunComparisonSchema
+  KnowledgeEvalRunComparisonSchema,
+  KnowledgeApiKeysResponseSchema,
+  KnowledgeAssistantConfigResponseSchema,
+  KnowledgeModelProvidersResponseSchema,
+  KnowledgeSecuritySettingsResponseSchema,
+  KnowledgeStorageSettingsResponseSchema,
+  KnowledgeWorkspaceUsersResponseSchema
 } from '@agent/core';
+import {
+  KnowledgeAgentFlowListResponseSchema,
+  KnowledgeAgentFlowRunResponseSchema,
+  KnowledgeAgentFlowSaveResponseSchema
+} from '@agent/knowledge/browser';
 
 import type {
-  AgentFlowListResponse,
   AgentFlowRunRequest,
-  AgentFlowRunResponse,
   AgentFlowSaveRequest,
-  AgentFlowSaveResponse,
   ChatRequest,
   ChatResponse,
   ChatConversation,
@@ -43,15 +55,9 @@ import type {
   RagTrace,
   RagTraceDetail,
   ReprocessDocumentResponse,
-  ChatAssistantConfig,
-  SettingsApiKeysResponse,
-  SettingsModelProvidersResponse,
-  SettingsSecurityPolicy,
-  SettingsStorageOverview,
   UploadKnowledgeFileRequest,
   UploadDocumentRequest,
-  UploadDocumentResponse,
-  WorkspaceUsersResponse
+  UploadDocumentResponse
 } from '../types/api';
 import type { AuthClient } from './auth-client';
 import { streamKnowledgeChat } from './knowledge-chat-stream';
@@ -69,6 +75,34 @@ import {
 function parseResponse<T>(schema: { parse: (data: unknown) => T }, body: unknown): T {
   return schema.parse(body);
 }
+
+function parseAndReturn<T>(schema: { parse: (data: unknown) => unknown }, body: unknown): T {
+  schema.parse(body);
+  return body as T;
+}
+
+const KnowledgeDocumentClientResponseSchema = KnowledgeDocumentSchema.omit({
+  status: true
+}).passthrough();
+
+const KnowledgeDocumentPageResponseSchema = KnowledgePageResultSchema(KnowledgeDocumentClientResponseSchema);
+
+const KnowledgeDocumentJobClientResponseSchema = KnowledgeDocumentProcessingJobSchema.pick({
+  id: true,
+  documentId: true,
+  stage: true,
+  progress: true,
+  createdAt: true,
+  updatedAt: true
+}).passthrough();
+
+const KnowledgeDocumentChunkClientResponseSchema = KnowledgeDocumentChunkSchema.pick({
+  id: true,
+  documentId: true,
+  content: true,
+  tokenCount: true,
+  createdAt: true
+}).passthrough();
 
 export interface KnowledgeApiFactoryOptions {
   baseUrl: string;
@@ -117,32 +151,42 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
       params.set('knowledgeBaseId', input.knowledgeBaseId);
     }
     const query = params.toString();
-    return this.get<PageResult<KnowledgeDocument>>(`/knowledge/documents${query ? `?${query}` : ''}`);
+    return this.get<unknown>(`/knowledge/documents${query ? `?${query}` : ''}`).then(body =>
+      parseAndReturn<PageResult<KnowledgeDocument>>(KnowledgeDocumentPageResponseSchema, body)
+    );
   }
 
   uploadKnowledgeFile(input: UploadKnowledgeFileRequest) {
     const body = new FormData();
     body.set('file', input.file);
-    return this.request<KnowledgeUploadResult>(`/knowledge/bases/${input.knowledgeBaseId}/uploads`, {
+    return this.request<unknown>(`/knowledge/bases/${input.knowledgeBaseId}/uploads`, {
       body,
       method: 'POST'
-    });
+    }).then(responseBody => parseAndReturn<KnowledgeUploadResult>(KnowledgeUploadResultSchema, responseBody));
   }
 
   createDocumentFromUpload(knowledgeBaseId: string, input: CreateDocumentFromUploadRequest) {
-    return this.post<CreateDocumentFromUploadResponse>(`/knowledge/bases/${knowledgeBaseId}/documents`, input);
+    return this.post<unknown>(`/knowledge/bases/${knowledgeBaseId}/documents`, input).then(body =>
+      parseDocumentOperationResponse<CreateDocumentFromUploadResponse>(body)
+    );
   }
 
   getDocument(documentId: string) {
-    return this.get<KnowledgeDocument>(`/knowledge/documents/${documentId}`);
+    return this.get<unknown>(`/knowledge/documents/${documentId}`).then(body =>
+      parseAndReturn<KnowledgeDocument>(KnowledgeDocumentClientResponseSchema, body)
+    );
   }
 
   getLatestDocumentJob(documentId: string) {
-    return this.get<DocumentProcessingJob>(`/knowledge/documents/${documentId}/jobs/latest`);
+    return this.get<unknown>(`/knowledge/documents/${documentId}/jobs/latest`).then(body =>
+      parseAndReturn<DocumentProcessingJob>(KnowledgeDocumentJobClientResponseSchema, body)
+    );
   }
 
   listDocumentChunks(documentId: string) {
-    return this.get<DocumentChunksResponse>(`/knowledge/documents/${documentId}/chunks`);
+    return this.get<unknown>(`/knowledge/documents/${documentId}/chunks`).then(body =>
+      parseDocumentChunksResponse(body)
+    );
   }
 
   async uploadDocument(input: UploadDocumentRequest): Promise<UploadDocumentResponse> {
@@ -159,7 +203,9 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   reprocessDocument(documentId: string) {
-    return this.post<ReprocessDocumentResponse>(`/knowledge/documents/${documentId}/reprocess`, {});
+    return this.post<unknown>(`/knowledge/documents/${documentId}/reprocess`, {}).then(body =>
+      parseDocumentOperationResponse<ReprocessDocumentResponse>(body)
+    );
   }
 
   deleteDocument(documentId: string) {
@@ -252,43 +298,63 @@ export class KnowledgeApiClient implements KnowledgeFrontendApi {
   }
 
   listWorkspaceUsers() {
-    return this.get<WorkspaceUsersResponse>('/knowledge/workspace/users');
+    return this.get<unknown>('/knowledge/workspace/users').then(body =>
+      parseResponse(KnowledgeWorkspaceUsersResponseSchema, body)
+    );
   }
 
   getSettingsModelProviders() {
-    return this.get<SettingsModelProvidersResponse>('/knowledge/settings/model-providers');
+    return this.get<unknown>('/knowledge/settings/model-providers').then(body =>
+      parseResponse(KnowledgeModelProvidersResponseSchema, body)
+    );
   }
 
   getSettingsApiKeys() {
-    return this.get<SettingsApiKeysResponse>('/knowledge/settings/api-keys');
+    return this.get<unknown>('/knowledge/settings/api-keys').then(body =>
+      parseResponse(KnowledgeApiKeysResponseSchema, body)
+    );
   }
 
   getSettingsStorage() {
-    return this.get<SettingsStorageOverview>('/knowledge/settings/storage');
+    return this.get<unknown>('/knowledge/settings/storage').then(body =>
+      parseResponse(KnowledgeStorageSettingsResponseSchema, body)
+    );
   }
 
   getSettingsSecurity() {
-    return this.get<SettingsSecurityPolicy>('/knowledge/settings/security');
+    return this.get<unknown>('/knowledge/settings/security').then(body =>
+      parseResponse(KnowledgeSecuritySettingsResponseSchema, body)
+    );
   }
 
   getChatAssistantConfig() {
-    return this.get<ChatAssistantConfig>('/knowledge/chat/assistant-config');
+    return this.get<unknown>('/knowledge/chat/assistant-config').then(body =>
+      parseResponse(KnowledgeAssistantConfigResponseSchema, body)
+    );
   }
 
   listAgentFlows() {
-    return this.request<AgentFlowListResponse>('/knowledge/agent-flows', { method: 'GET' });
+    return this.request<unknown>('/knowledge/agent-flows', { method: 'GET' }).then(body =>
+      parseResponse(KnowledgeAgentFlowListResponseSchema, body)
+    );
   }
 
   saveAgentFlow(input: AgentFlowSaveRequest) {
-    return this.post<AgentFlowSaveResponse>('/knowledge/agent-flows', input);
+    return this.post<unknown>('/knowledge/agent-flows', input).then(body =>
+      parseResponse(KnowledgeAgentFlowSaveResponseSchema, body)
+    );
   }
 
   updateAgentFlow(flowId: string, input: AgentFlowSaveRequest) {
-    return this.put<AgentFlowSaveResponse>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}`, input);
+    return this.put<unknown>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}`, input).then(body =>
+      parseResponse(KnowledgeAgentFlowSaveResponseSchema, body)
+    );
   }
 
   runAgentFlow(flowId: string, input: AgentFlowRunRequest) {
-    return this.post<AgentFlowRunResponse>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}/run`, input);
+    return this.post<unknown>(`/knowledge/agent-flows/${encodeURIComponent(flowId)}/run`, input).then(body =>
+      parseResponse(KnowledgeAgentFlowRunResponseSchema, body)
+    );
   }
 
   get<T>(path: string) {
@@ -363,6 +429,29 @@ function getErrorMessage(body: unknown, status: number) {
     return body.message;
   }
   return `HTTP ${status}`;
+}
+
+function parseDocumentOperationResponse<T>(body: unknown): T {
+  if (!isRecord(body)) {
+    throw new Error('Invalid knowledge document operation response.');
+  }
+  parseResponse(KnowledgeDocumentClientResponseSchema, body.document);
+  parseResponse(KnowledgeDocumentJobClientResponseSchema, body.job);
+  return body as T;
+}
+
+function parseDocumentChunksResponse(body: unknown): DocumentChunksResponse {
+  if (!isRecord(body) || !Array.isArray(body.items) || !isNonNegativeInteger(body.total)) {
+    throw new Error('Invalid knowledge document chunks response.');
+  }
+  for (const item of body.items) {
+    parseResponse(KnowledgeDocumentChunkClientResponseSchema, item);
+  }
+  return body as unknown as DocumentChunksResponse;
+}
+
+function isNonNegativeInteger(input: unknown): input is number {
+  return typeof input === 'number' && Number.isInteger(input) && input >= 0;
 }
 
 function mergeHeaders(input: HeadersInit | undefined, extra: Record<string, string>) {

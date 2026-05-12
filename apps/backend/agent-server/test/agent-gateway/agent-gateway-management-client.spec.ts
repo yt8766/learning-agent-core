@@ -57,7 +57,7 @@ describe('MemoryAgentGatewayManagementClient', () => {
     await expect(client.discoverModels()).resolves.toMatchObject({ groups: [{ providerId: 'openai' }] });
   });
 
-  it('preserves CLIProxyAPI provider OAuth authorization URLs and device codes', async () => {
+  it('preserves upstream CLIProxyAPI provider OAuth authorization URLs and device codes', async () => {
     const fetcher = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -82,6 +82,19 @@ describe('MemoryAgentGatewayManagementClient', () => {
     const result = await client.startProviderOAuth({ provider: 'codex', isWebui: true });
 
     expect(result.verificationUri).toContain('redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback');
+    expect(result.verificationUri).not.toContain('api%2Fagent-gateway%2Foauth%2Fcallback');
+  });
+
+  it('uses provider-native authorization URLs for the built-in memory OAuth flow', async () => {
+    const client = new MemoryAgentGatewayManagementClient();
+
+    const result = await client.startProviderOAuth({ provider: 'codex', isWebui: true });
+
+    expect(result.verificationUri).toContain('https://auth.openai.com/oauth/authorize');
+    expect(result.verificationUri).toContain('client_id=app_EMoamEEZ73f0CkXaXp7hrann');
+    expect(result.verificationUri).toContain('redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback');
+    expect(result.verificationUri).toContain('codex_cli_simplified_flow=true');
+    expect(result.verificationUri).not.toContain('/api/agent-gateway/oauth/callback');
     expect(result.verificationUri).not.toContain('api%2Fagent-gateway%2Foauth%2Fcallback');
   });
 

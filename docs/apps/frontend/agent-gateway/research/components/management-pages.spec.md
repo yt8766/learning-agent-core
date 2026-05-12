@@ -8,7 +8,7 @@
 ## Overview
 
 - **Target files:** `src/app/pages/{DashboardPage,ConfigEditorPage,ProviderConfigPage,AuthFilesManagerPage,OAuthPolicyPage,QuotasPage,SystemPage}.tsx`
-- **Style file:** `src/app/styles/management.css`
+- **Style file:** `src/app/styles/management.scss`
 - **Interaction model:** server-backed management projections with callback-driven buttons. Pages remain presentational; `GatewayWorkspace` owns `AgentGatewayApiClient` calls and query invalidation.
 
 ## Dashboard Clone

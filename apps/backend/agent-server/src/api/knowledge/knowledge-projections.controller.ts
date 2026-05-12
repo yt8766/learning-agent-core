@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Post, Put, Body } from '@nestjs/common';
 import {
   KnowledgeDashboardOverviewSchema,
+  KnowledgeEvalCaseResultSchema,
   KnowledgeEvalCaseSchema,
   KnowledgeEvalDatasetSchema,
   KnowledgeEvalRunComparisonSchema,
@@ -55,7 +56,7 @@ export class KnowledgeProjectionsController {
   async listEvalDatasets() {
     const service = this.evalService as unknown as { listDatasets?: () => Promise<unknown> };
     if (service.listDatasets) {
-      return service.listDatasets();
+      return KnowledgePageResultSchema(KnowledgeEvalDatasetSchema).parse(await service.listDatasets());
     }
     return KnowledgePageResultSchema(KnowledgeEvalDatasetSchema).parse({
       items: [],
@@ -69,7 +70,7 @@ export class KnowledgeProjectionsController {
   async createEvalDataset(@Body() body: unknown) {
     const service = this.evalService as unknown as { createDataset?: (input: unknown) => Promise<unknown> };
     if (service.createDataset) {
-      return service.createDataset(body);
+      return KnowledgeEvalDatasetSchema.parse(await service.createDataset(body));
     }
     return KnowledgeEvalDatasetSchema.parse(body);
   }
@@ -78,7 +79,7 @@ export class KnowledgeProjectionsController {
   async listEvalCases(@Param('datasetId') datasetId: string) {
     const service = this.evalService as unknown as { listCases?: (datasetId: string) => Promise<unknown> };
     if (service.listCases) {
-      return service.listCases(datasetId);
+      return KnowledgePageResultSchema(KnowledgeEvalCaseSchema).parse(await service.listCases(datasetId));
     }
     return KnowledgePageResultSchema(KnowledgeEvalCaseSchema).parse({
       items: [],
@@ -94,7 +95,7 @@ export class KnowledgeProjectionsController {
       createCase?: (datasetId: string, input: unknown) => Promise<unknown>;
     };
     if (service.createCase) {
-      return service.createCase(datasetId, body);
+      return KnowledgeEvalCaseSchema.parse(await service.createCase(datasetId, body));
     }
     return KnowledgeEvalCaseSchema.parse(body);
   }
@@ -103,7 +104,7 @@ export class KnowledgeProjectionsController {
   async listEvalRuns() {
     const service = this.evalService as unknown as { listRuns?: () => Promise<unknown> };
     if (service.listRuns) {
-      return service.listRuns();
+      return KnowledgePageResultSchema(KnowledgeEvalRunSchema).parse(await service.listRuns());
     }
     return KnowledgePageResultSchema(KnowledgeEvalRunSchema).parse({
       items: [],
@@ -117,7 +118,7 @@ export class KnowledgeProjectionsController {
   async createEvalRun(@Body() body: unknown) {
     const service = this.evalService as unknown as { createRun?: (input: unknown) => Promise<unknown> };
     if (service.createRun) {
-      return service.createRun(body);
+      return KnowledgeEvalRunSchema.parse(await service.createRun(body));
     }
     return KnowledgeEvalRunSchema.parse(body);
   }
@@ -126,9 +127,9 @@ export class KnowledgeProjectionsController {
   async listEvalRunResults(@Param('runId') runId: string) {
     const service = this.evalService as unknown as { listRunResults?: (runId: string) => Promise<unknown> };
     if (service.listRunResults) {
-      return service.listRunResults(runId);
+      return KnowledgePageResultSchema(KnowledgeEvalCaseResultSchema).parse(await service.listRunResults(runId));
     }
-    return KnowledgePageResultSchema(KnowledgeEvalCaseSchema).parse({
+    return KnowledgePageResultSchema(KnowledgeEvalCaseResultSchema).parse({
       items: [],
       page: 1,
       pageSize: 20,

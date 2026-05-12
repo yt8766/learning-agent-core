@@ -149,6 +149,10 @@ export function cleanQueryText(query: string): string {
     .trim();
 }
 
+/**
+ * Applies deterministic rewrite rules before retrieval.
+ * Chinese colloquial normalization wins before English request-prefix removal so CJK intent words are preserved.
+ */
 export function rewriteQueryText(query: string): QueryRewriteResult {
   const cleanedQuery = cleanQueryText(query);
   let rewrittenQuery = cleanedQuery;
@@ -210,6 +214,10 @@ export function extractQueryKeywords(query: string): string[] {
   return keywords;
 }
 
+/**
+ * Builds the ordered fallback query list used by retrieval.
+ * Keep the normalized query first and original query second so recall can recover when rewriting is too aggressive.
+ */
 export function buildQueryVariants(originalQuery: string, normalizedQuery: string): string[] {
   const primaryVariant = cleanQueryText(normalizedQuery);
   const variants = primaryVariant ? [primaryVariant] : [];

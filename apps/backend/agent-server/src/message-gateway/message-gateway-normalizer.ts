@@ -22,6 +22,10 @@ export function parseActionIntent(intent: string): ActionIntentValue {
   return entry ?? ActionIntent.CALL_EXTERNAL_API;
 }
 
+/**
+ * Verifies Telegram webhook tokens only when the deployment configured one.
+ * The no-secret path is kept for local tests and must not be mistaken for production hardening.
+ */
 export function verifyTelegramWebhook(headers?: ChannelInboundHeaderMap): void {
   const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN?.trim();
   if (!expectedToken) {
@@ -33,6 +37,10 @@ export function verifyTelegramWebhook(headers?: ChannelInboundHeaderMap): void {
   }
 }
 
+/**
+ * Verifies Feishu token/signature only when matching environment secrets are configured.
+ * This helper normalizes vendor webhook auth but does not replace gateway-level network policy.
+ */
 export function verifyFeishuWebhook(payload: FeishuWebhookDto, headers?: ChannelInboundHeaderMap): void {
   const expectedToken = process.env.FEISHU_WEBHOOK_VERIFICATION_TOKEN?.trim();
   if (expectedToken) {

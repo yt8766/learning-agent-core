@@ -44,11 +44,24 @@ import type {
   GatewayVertexCredentialImportResponse,
   GatewayRequestLogSettingResponse
 } from '@agent/core';
+import { CodexQuotaInspector } from '../runtime-engine/accounting/codex-quota.inspector';
+import {
+  projectProviderQuotaSnapshots,
+  type ProviderQuotaInspector,
+  type ProviderQuotaSnapshot
+} from '../runtime-engine/accounting/provider-quota-inspector';
 import type {
   AgentGatewayManagementClient,
   GatewayAuthFileListQuery,
   GatewayStartOAuthProjection
 } from './agent-gateway-management-client';
+import {
+  deleteMemoryAuthFiles,
+  stringArray,
+  toQuotaAuthFileProjection,
+  uploadMemoryAuthFiles
+} from './memory-agent-gateway-auth-file.helpers';
+import { startMemoryGeminiCliOAuth, startMemoryProviderOAuth } from './memory-agent-gateway-oauth.helpers';
 import {
   createMemoryAuthFile,
   createMemoryAuthFiles,
@@ -58,7 +71,6 @@ import {
   createMemoryQuotaDetails,
   createMemorySystemModels,
   fixedNow,
-  inferAuthFileProviderKind,
   maskSecret,
   normalizeLimit,
   projectMemoryLogs,
@@ -74,8 +86,14 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
   private requestLogEnabled = true;
   private providerConfigs = createMemoryProviderConfigs();
   private authFiles = createMemoryAuthFiles();
+  private quotaSnapshots: ProviderQuotaSnapshot[] = [];
   private oauthAliases = new Map<string, GatewayOAuthModelAliasListResponse>();
   private logs = createMemoryLogs();
+  private quotaInspectors: ProviderQuotaInspector[];
+
+  constructor(options: { quotaInspectors?: ProviderQuotaInspector[] } = {}) {
+    this.quotaInspectors = options.quotaInspectors ?? [new CodexQuotaInspector()];
+  }
 
   async saveProfile(request: GatewaySaveConnectionProfileRequest): Promise<GatewayConnectionProfile> {
     const timeoutMs = request.timeoutMs ?? 15000;
@@ -202,30 +220,7 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
   }
 
   async batchUploadAuthFiles(request: GatewayAuthFileBatchUploadRequest): Promise<GatewayAuthFileBatchUploadResponse> {
-    const accepted = request.files.map(file => {
-      const providerKind = file.providerKind ?? inferAuthFileProviderKind(file.fileName);
-      const authFile: GatewayAuthFile = {
-        id: file.fileName,
-        providerId: providerKind,
-        providerKind,
-        fileName: file.fileName,
-        path: `/memory/${file.fileName}`,
-        status: 'valid',
-        accountEmail: null,
-        projectId: null,
-        modelCount: 1,
-        updatedAt: fixedNow,
-        metadata: { contentBytes: file.contentBase64.length }
-      };
-      this.authFiles.set(file.fileName, authFile);
-      return {
-        authFileId: authFile.id,
-        fileName: authFile.fileName,
-        providerKind: authFile.providerKind,
-        status: authFile.status
-      };
-    });
-    return { accepted, rejected: [] };
+    return uploadMemoryAuthFiles(request, this.authFiles);
   }
 
   async patchAuthFileFields(request: GatewayAuthFilePatchRequest): Promise<GatewayAuthFile> {
@@ -235,6 +230,13 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
       providerId: request.providerId ?? current.providerId,
       accountEmail: request.accountEmail === undefined ? current.accountEmail : request.accountEmail,
       projectId: request.projectId === undefined ? current.projectId : request.projectId,
+      authIndex: request.authIndex === undefined ? current.authIndex : request.authIndex,
+      disabled: request.disabled ?? current.disabled,
+      headers: request.headers ?? current.headers,
+      note: request.note === undefined ? current.note : request.note,
+      prefix: request.prefix === undefined ? current.prefix : request.prefix,
+      priority: request.priority ?? current.priority,
+      proxyUrl: request.proxyUrl === undefined ? current.proxyUrl : request.proxyUrl,
       status: request.status ?? current.status,
       updatedAt: fixedNow,
       metadata: { ...(current.metadata ?? {}), ...(request.metadata ?? {}) }
@@ -263,14 +265,7 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
   }
 
   async deleteAuthFiles(request: GatewayAuthFileDeleteRequest): Promise<GatewayAuthFileDeleteResponse> {
-    const names = request.all ? Array.from(this.authFiles.keys()) : (request.names ?? []);
-    const deleted: string[] = [];
-    const skipped: Array<{ name: string; reason: string }> = [];
-    for (const name of names) {
-      if (this.authFiles.delete(name)) deleted.push(name);
-      else skipped.push({ name, reason: 'not found' });
-    }
-    return { deleted, skipped };
+    return deleteMemoryAuthFiles(request, this.authFiles);
   }
 
   async listOAuthModelAliases(providerId: string): Promise<GatewayOAuthModelAliasListResponse> {
@@ -294,36 +289,11 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
   }
 
   async startProviderOAuth(request: GatewayProviderOAuthStartRequest): Promise<GatewayStartOAuthProjection> {
-    if (request.provider === 'kimi') {
-      return {
-        state: 'kimi-device',
-        verificationUri: 'https://www.kimi.com/code/authorize_device?user_code=MEMO-RYKI',
-        userCode: 'MEMO-RYKI',
-        expiresAt: '2026-05-08T00:15:00.000Z',
-        projectId: request.projectId
-      };
-    }
-    return {
-      state: `${request.provider}-state`,
-      verificationUri: [
-        `https://gateway.local/${request.provider}-auth-url`,
-        `?is_webui=${String(request.isWebui === true)}`,
-        '&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback'
-      ].join(''),
-      userCode: `MEMORY-${request.provider.toUpperCase()}`,
-      expiresAt: '2026-05-08T00:15:00.000Z',
-      projectId: request.projectId
-    };
+    return startMemoryProviderOAuth(request);
   }
 
   async startGeminiCliOAuth(request: GatewayGeminiCliOAuthStartRequest): Promise<GatewayStartOAuthProjection> {
-    return {
-      state: `gemini-cli-${request.projectId ?? 'default'}`,
-      verificationUri: 'https://accounts.google.com/o/oauth2/v2/auth',
-      userCode: 'MEMORY-GEMINI',
-      expiresAt: '2026-05-08T00:15:00.000Z',
-      projectId: request.projectId
-    };
+    return startMemoryGeminiCliOAuth(request);
   }
 
   async importVertexCredential(
@@ -345,11 +315,26 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
   }
 
   async refreshQuotaDetails(providerKind: GatewayProviderKind): Promise<GatewayQuotaDetailListResponse> {
-    const details = await this.listQuotaDetails();
-    return { items: details.items.map(item => ({ ...item, providerId: providerKind })) };
+    const inspector = this.quotaInspectors.find(item => item.providerKind === providerKind);
+    if (!inspector) {
+      const details = await this.listQuotaDetails();
+      return { items: details.items.filter(item => item.providerId === providerKind) };
+    }
+
+    const snapshots = await inspector.inspect({
+      authFiles: Array.from(this.authFiles.values()).map(authFile => toQuotaAuthFileProjection(authFile))
+    });
+    this.quotaSnapshots = [
+      ...this.quotaSnapshots.filter(snapshot => snapshot.providerKind !== providerKind),
+      ...snapshots
+    ];
+    return projectProviderQuotaSnapshots(snapshots);
   }
 
   async listQuotaDetails(): Promise<GatewayQuotaDetailListResponse> {
+    if (this.quotaSnapshots.length) {
+      return projectProviderQuotaSnapshots(this.quotaSnapshots);
+    }
     return createMemoryQuotaDetails();
   }
 

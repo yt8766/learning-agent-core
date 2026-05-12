@@ -7,7 +7,7 @@
 
 ## Overview
 
-- **Target files:** `src/app/GatewayWorkspace.tsx`, `src/app/styles/shell.css`, `src/app/styles/management.css`
+- **Target files:** `src/app/GatewayWorkspace.tsx`, `src/app/styles/shell.scss`, `src/app/styles/management.scss`
 - **Interaction model:** route-driven navigation with hover feedback
 
 ## Structure

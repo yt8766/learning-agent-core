@@ -4,7 +4,116 @@ import { AgentGatewayApiClient } from '../api/agent-gateway-api';
 import { GatewayAuthProvider, useGatewayAuth } from '../auth/auth-session';
 import { GatewayWorkspace } from './GatewayWorkspace';
 import { LoginPage } from './pages/LoginPage';
-import './App.css';
+import './App.scss';
+
+type GatewayWorkspaceQueryApi = Pick<
+  AgentGatewayApiClient,
+  | 'apiKeys'
+  | 'authFiles'
+  | 'clients'
+  | 'dashboard'
+  | 'discoverModels'
+  | 'logs'
+  | 'providerConfigs'
+  | 'quotaDetails'
+  | 'rawConfig'
+  | 'runtimeHealth'
+  | 'snapshot'
+  | 'systemInfo'
+  | 'usage'
+  | 'usageAnalytics'
+>;
+type GatewayQueryData<K extends keyof GatewayWorkspaceQueryApi> = Awaited<ReturnType<GatewayWorkspaceQueryApi[K]>>;
+
+export function createGatewayQuerySpecs(api: GatewayWorkspaceQueryApi, accessToken: string | null, enabled: boolean) {
+  return [
+    {
+      queryKey: ['agent-gateway', 'snapshot', accessToken],
+      queryFn: () => api.snapshot(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'logs', accessToken],
+      queryFn: () => api.logs(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'usage', accessToken],
+      queryFn: () => api.usage(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'usage-analytics', accessToken],
+      queryFn: () => api.usageAnalytics({ range: 'today', limit: 100 }),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'api-keys', accessToken],
+      queryFn: () => api.apiKeys(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'raw-config', accessToken],
+      queryFn: () => api.rawConfig(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'dashboard', accessToken],
+      queryFn: () => api.dashboard(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'clients', accessToken],
+      queryFn: () => api.clients(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'quota-details', accessToken],
+      queryFn: () => api.quotaDetails(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'runtime-health', accessToken],
+      queryFn: () => api.runtimeHealth(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'system-info', accessToken],
+      queryFn: () => api.systemInfo(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'system-models', accessToken],
+      queryFn: () => api.discoverModels(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'provider-configs', accessToken],
+      queryFn: () => api.providerConfigs(),
+      enabled,
+      retry: false
+    },
+    {
+      queryKey: ['agent-gateway', 'auth-files', accessToken],
+      queryFn: () => api.authFiles({ limit: 100 }),
+      enabled,
+      retry: false
+    }
+  ];
+}
+
 export function App() {
   return (
     <GatewayAuthProvider>
@@ -28,95 +137,38 @@ function GatewayShell() {
     snapshotQuery,
     logsQuery,
     usageQuery,
+    usageAnalyticsQuery,
     apiKeysQuery,
     rawConfigQuery,
     dashboardQuery,
     clientsQuery,
     quotaDetailsQuery,
+    runtimeHealthQuery,
     systemInfoQuery,
     modelGroupsQuery,
     providerConfigsQuery,
     authFilesQuery
   ] = useQueries({
-    queries: [
-      {
-        queryKey: ['agent-gateway', 'snapshot', auth.accessToken],
-        queryFn: () => api.snapshot(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'logs', auth.accessToken],
-        queryFn: () => api.logs(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'usage', auth.accessToken],
-        queryFn: () => api.usage(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'api-keys', auth.accessToken],
-        queryFn: () => api.apiKeys(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'raw-config', auth.accessToken],
-        queryFn: () => api.rawConfig(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'dashboard', auth.accessToken],
-        queryFn: () => api.dashboard(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'clients', auth.accessToken],
-        queryFn: () => api.clients(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'quota-details', auth.accessToken],
-        queryFn: () => api.quotaDetails(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'system-info', auth.accessToken],
-        queryFn: () => api.systemInfo(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'system-models', auth.accessToken],
-        queryFn: () => api.discoverModels(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'provider-configs', auth.accessToken],
-        queryFn: () => api.providerConfigs(),
-        enabled,
-        retry: false
-      },
-      {
-        queryKey: ['agent-gateway', 'auth-files', auth.accessToken],
-        queryFn: () => api.authFiles({ limit: 100 }),
-        enabled,
-        retry: false
-      }
-    ]
+    queries: createGatewayQuerySpecs(api, auth.accessToken, enabled)
   });
   const handleGatewayDataChanged = () => {
     void queryClient.invalidateQueries({ queryKey: ['agent-gateway'] });
   };
-  const clients = clientsQuery.data?.items ?? [];
+  const apiKeysData = apiKeysQuery.data as GatewayQueryData<'apiKeys'> | undefined;
+  const authFilesData = authFilesQuery.data as GatewayQueryData<'authFiles'> | undefined;
+  const clientsData = clientsQuery.data as GatewayQueryData<'clients'> | undefined;
+  const dashboardData = dashboardQuery.data as GatewayQueryData<'dashboard'> | undefined;
+  const logsData = logsQuery.data as GatewayQueryData<'logs'> | undefined;
+  const modelGroupsData = modelGroupsQuery.data as GatewayQueryData<'discoverModels'> | undefined;
+  const providerConfigsData = providerConfigsQuery.data as GatewayQueryData<'providerConfigs'> | undefined;
+  const quotaDetailsData = quotaDetailsQuery.data as GatewayQueryData<'quotaDetails'> | undefined;
+  const rawConfigData = rawConfigQuery.data as GatewayQueryData<'rawConfig'> | undefined;
+  const runtimeHealthData = runtimeHealthQuery.data as GatewayQueryData<'runtimeHealth'> | undefined;
+  const snapshotData = snapshotQuery.data as GatewayQueryData<'snapshot'> | undefined;
+  const systemInfoData = systemInfoQuery.data as GatewayQueryData<'systemInfo'> | undefined;
+  const usageData = usageQuery.data as GatewayQueryData<'usage'> | undefined;
+  const usageAnalyticsData = usageAnalyticsQuery.data as GatewayQueryData<'usageAnalytics'> | undefined;
+  const clients = clientsData?.items ?? [];
   const clientQuotaQueries = useQueries({
     queries: clients.map(client => ({
       queryKey: ['agent-gateway', 'clients', client.id, 'quota', auth.accessToken],
@@ -164,24 +216,26 @@ function GatewayShell() {
   if (!auth.accessToken) return <LoginPage onLogin={auth.login} />;
   return (
     <GatewayWorkspace
-      apiKeys={apiKeysQuery.data ?? { items: [] }}
+      apiKeys={apiKeysData ?? { items: [] }}
       api={api}
       clientApiKeys={clientApiKeys}
       clientLogs={clientLogs}
       clientQuotas={clientQuotas}
       clients={clients}
-      authFiles={authFilesQuery.data ?? { items: [], nextCursor: null }}
-      dashboard={dashboardQuery.data ?? null}
-      logs={logsQuery.data ?? { items: [] }}
-      modelGroups={modelGroupsQuery.data?.groups ?? []}
+      authFiles={authFilesData ?? { items: [], nextCursor: null }}
+      dashboard={dashboardData ?? null}
+      logs={logsData ?? { items: [] }}
+      modelGroups={modelGroupsData?.groups ?? []}
       onLogout={auth.logout}
       onGatewayDataChanged={handleGatewayDataChanged}
-      providerConfigs={providerConfigsQuery.data ?? { items: [] }}
-      rawConfig={rawConfigQuery.data ?? null}
-      quotaDetails={quotaDetailsQuery.data ?? { items: [] }}
-      snapshot={snapshotQuery.data ?? null}
-      systemInfo={systemInfoQuery.data ?? null}
-      usage={usageQuery.data ?? { items: [] }}
+      providerConfigs={providerConfigsData ?? { items: [] }}
+      rawConfig={rawConfigData ?? null}
+      quotaDetails={quotaDetailsData ?? { items: [] }}
+      runtimeHealth={runtimeHealthData ?? null}
+      snapshot={snapshotData ?? null}
+      systemInfo={systemInfoData ?? null}
+      usageAnalytics={usageAnalyticsData ?? null}
+      usage={usageData ?? { items: [] }}
     />
   );
 }

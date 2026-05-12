@@ -258,13 +258,6 @@ describe('RuntimeService centers', () => {
         embeddingCount: expect.any(Number)
       })
     );
-    expect(runtime.dailyTechBriefing).toEqual(
-      expect.objectContaining({
-        enabled: false,
-        schedule: expect.any(String),
-        categories: expect.any(Array)
-      })
-    );
   });
 
   it('supports explicitly refreshing persisted runtime and eval metrics snapshots', async () => {

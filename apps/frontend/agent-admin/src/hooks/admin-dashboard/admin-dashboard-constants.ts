@@ -45,6 +45,7 @@ export const PAGE_KEYS: DashboardPageKey[] = [
   'connectors',
   'skillSources',
   'companyAgents',
+  'intelligence',
   'knowledgeGovernance',
   'workflowLab'
 ];
@@ -61,6 +62,7 @@ const ADMIN_RUNTIME_PAGE_TITLES = {
   connectors: '连接器与策略',
   skillSources: '技能来源治理',
   companyAgents: '公司专员编排',
+  intelligence: 'Intelligence',
   knowledgeGovernance: '知识治理'
 } as const;
 

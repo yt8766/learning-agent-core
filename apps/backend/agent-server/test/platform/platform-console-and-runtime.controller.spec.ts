@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { PlatformConsoleController } from '../../src/platform/platform-console.controller';
-import { PlatformBriefingsController } from '../../src/platform/platform-briefings.controller';
+import { PlatformIntelligenceController } from '../../src/platform/platform-intelligence.controller';
 import { RuntimeCenterController } from '../../src/platform/runtime-center.controller';
 import { createPlatformControllerDeps } from './platform-controller.test-helpers';
 import { RuntimeHost } from '../../src/runtime/core/runtime.host';
@@ -14,7 +14,7 @@ describe('platform console and runtime controllers', () => {
     } as Pick<RuntimeHost, 'listWorkflowPresets'> as RuntimeHost;
     const consoleController = new PlatformConsoleController(runtimeCentersService as never);
     const runtimeController = new RuntimeCenterController(runtimeCentersService as never);
-    const briefingController = new PlatformBriefingsController(runtimeCentersService as never, runtimeHost);
+    const briefingController = new PlatformIntelligenceController(runtimeCentersService as never, runtimeHost);
 
     await expect(
       consoleController.getConsole(
@@ -106,25 +106,5 @@ describe('platform console and runtime controllers', () => {
     expect(briefingController.getWorkflowPresets()).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'general' })])
     );
-    expect(briefingController.getBriefingRuns(7, 'general-security')).toEqual(
-      expect.objectContaining({ scope: 'briefings' })
-    );
-    expect(briefingController.forceBriefingRun('backend-tech')).toEqual({ category: 'backend-tech', forced: true });
-    expect(
-      briefingController.recordBriefingFeedback({
-        messageKey: 'general-security:postgres',
-        category: 'general-security',
-        feedbackType: 'helpful',
-        reasonTag: 'useful-actionable'
-      })
-    ).toEqual({
-      saved: true,
-      body: {
-        messageKey: 'general-security:postgres',
-        category: 'general-security',
-        feedbackType: 'helpful',
-        reasonTag: 'useful-actionable'
-      }
-    });
   });
 });

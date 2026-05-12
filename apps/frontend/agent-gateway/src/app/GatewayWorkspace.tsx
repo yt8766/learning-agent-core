@@ -1,6 +1,8 @@
 import {
   Activity,
+  ArrowDownToLine,
   BarChart3,
+  ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
   CircleGauge,
@@ -8,6 +10,7 @@ import {
   Gauge,
   LogOut,
   MonitorCog,
+  ScrollText,
   ServerCog,
   Settings2,
   ShieldCheck,
@@ -26,7 +29,9 @@ import type {
   GatewayLogListResponse,
   GatewayProviderSpecificConfigListResponse,
   GatewayQuotaDetailListResponse,
+  GatewayRuntimeHealthResponse,
   GatewaySnapshot,
+  GatewayUsageAnalyticsResponse,
   GatewayUsageListResponse
 } from '@agent/core';
 import type {
@@ -68,8 +73,10 @@ interface GatewayWorkspaceProps {
   providerConfigs?: GatewayProviderSpecificConfigListResponse;
   rawConfig?: GatewayRawConfigResponse | null;
   quotaDetails?: GatewayQuotaDetailListResponse;
+  runtimeHealth?: GatewayRuntimeHealthResponse | null;
   snapshot: GatewaySnapshot | null;
   systemInfo?: GatewaySystemVersionResponse | null;
+  usageAnalytics?: GatewayUsageAnalyticsResponse | null;
   usage: GatewayUsageListResponse;
 }
 
@@ -93,8 +100,10 @@ export function GatewayWorkspace({
   providerConfigs = { items: [] },
   rawConfig = null,
   quotaDetails = { items: [] },
+  runtimeHealth = null,
   snapshot,
   systemInfo = null,
+  usageAnalytics = null,
   usage
 }: GatewayWorkspaceProps) {
   const hasRouter = useInRouterContext();
@@ -118,8 +127,10 @@ export function GatewayWorkspace({
         providerConfigs={providerConfigs}
         rawConfig={rawConfig}
         quotaDetails={quotaDetails}
+        runtimeHealth={runtimeHealth}
         snapshot={snapshot}
         systemInfo={systemInfo}
+        usageAnalytics={usageAnalytics}
         usage={usage}
       />
     );
@@ -147,8 +158,10 @@ export function GatewayWorkspace({
       providerConfigs={providerConfigs}
       rawConfig={rawConfig}
       quotaDetails={quotaDetails}
+      runtimeHealth={runtimeHealth}
       snapshot={snapshot}
       systemInfo={systemInfo}
+      usageAnalytics={usageAnalytics}
       usage={usage}
     />
   );
@@ -177,6 +190,7 @@ function GatewayWorkspaceLayout({
   authFiles = { items: [], nextCursor: null },
   confirmDialog = null,
   dashboard = null,
+  logs,
   modelGroups = [],
   navMode,
   notices = [],
@@ -186,8 +200,10 @@ function GatewayWorkspaceLayout({
   providerConfigs = { items: [] },
   rawConfig = null,
   quotaDetails = { items: [] },
+  runtimeHealth = null,
   snapshot,
-  systemInfo = null
+  systemInfo = null,
+  usageAnalytics = null
 }: GatewayWorkspaceLayoutProps) {
   const observedText = snapshot ? `观测时间 ${formatGatewayDate(snapshot.observedAt)}` : '正在加载网关快照';
   const runtimeStatus = snapshot?.runtime.status ?? 'loading';
@@ -264,13 +280,16 @@ function GatewayWorkspaceLayout({
                 api,
                 authFiles,
                 dashboard,
+                logs,
                 modelGroups,
                 onGatewayDataChanged,
                 onLogout,
                 providerConfigs,
                 quotaDetails,
                 rawConfig,
-                systemInfo
+                runtimeHealth,
+                systemInfo,
+                usageAnalytics
               })
             ) : (
               <div className="loading-panel">正在加载控制台数据...</div>
@@ -294,12 +313,16 @@ interface GatewayViewNavItemProps {
 
 const gatewayViewIcons: Record<GatewayViewId, LucideIcon> = {
   dashboard: BarChart3,
+  runtime: Activity,
   clients: UsersRound,
+  usageStats: ChartNoAxesCombined,
   config: Settings2,
   aiProviders: ServerCog,
   authFiles: FolderKey,
   oauth: ShieldCheck,
+  migration: ArrowDownToLine,
   quota: CircleGauge,
+  logs: ScrollText,
   system: MonitorCog
 };
 

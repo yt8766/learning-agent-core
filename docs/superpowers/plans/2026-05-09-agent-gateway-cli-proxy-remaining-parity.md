@@ -85,7 +85,7 @@ This plan only covers the missing production parity work. It does not implement 
   - Route the new dashboard/quota-detail flow.
 - Modify: `apps/frontend/agent-gateway/src/app/gateway-view-model.ts`
   - Add stable view ids.
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
   - Add dense styles for the new controls.
 - Test: `apps/frontend/agent-gateway/test/*.test.tsx`
 

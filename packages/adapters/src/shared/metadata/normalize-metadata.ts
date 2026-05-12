@@ -1,5 +1,9 @@
 import type { JsonObject, JsonValue } from './json.types';
 
+/**
+ * Converts arbitrary provider metadata into JSON-safe values.
+ * Unsupported runtime values are dropped, while bigint/date/url values are stringified to preserve auditability.
+ */
 export function normalizeMetadataValue(value: unknown): JsonValue | undefined {
   if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
     return undefined;

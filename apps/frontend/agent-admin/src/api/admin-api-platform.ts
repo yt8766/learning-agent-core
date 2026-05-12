@@ -1,4 +1,9 @@
-import type { KnowledgeGovernanceProjection, RunBundleRecord, WorkflowPresetDefinition } from '@agent/core';
+import type {
+  IntelligenceOverviewProjection,
+  KnowledgeGovernanceProjection,
+  RunBundleRecord,
+  WorkflowPresetDefinition
+} from '@agent/core';
 import type { PlatformConsoleLogAnalysisRecord, PlatformConsoleRecord, RuntimeArchitectureRecord } from '@/types/admin';
 import { request, type ChannelDeliveryRecord } from './admin-api-core';
 import { normalizeExecutionMode } from '@/utils/runtime-semantics';
@@ -169,58 +174,6 @@ export async function getRuntimeArchitecture() {
   });
 }
 
-export async function getBriefingRuns(params?: {
-  days?: number;
-  category?:
-    | 'frontend-security'
-    | 'general-security'
-    | 'devtool-security'
-    | 'ai-tech'
-    | 'frontend-tech'
-    | 'backend-tech'
-    | 'cloud-infra-tech';
-}) {
-  const search = new URLSearchParams();
-  if (params?.days) search.set('days', String(params.days));
-  if (params?.category) search.set('category', params.category);
-  const suffix = search.toString() ? `?${search.toString()}` : '';
-  return request<Array<Record<string, unknown>>>(`/platform/briefings/runs${suffix}`);
-}
-
-export async function forceBriefingRun(
-  category:
-    | 'frontend-security'
-    | 'general-security'
-    | 'devtool-security'
-    | 'ai-tech'
-    | 'frontend-tech'
-    | 'backend-tech'
-    | 'cloud-infra-tech'
-) {
-  return request(`/platform/briefings/${encodeURIComponent(category)}/force-run`, {
-    method: 'POST'
-  });
-}
-
-export async function submitBriefingFeedback(params: {
-  messageKey: string;
-  category:
-    | 'frontend-security'
-    | 'general-security'
-    | 'devtool-security'
-    | 'ai-tech'
-    | 'frontend-tech'
-    | 'backend-tech'
-    | 'cloud-infra-tech';
-  feedbackType: 'helpful' | 'notHelpful';
-  reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
-}) {
-  return request('/platform/briefings/feedback', {
-    method: 'POST',
-    body: JSON.stringify(params)
-  });
-}
-
 export async function getSkillSourcesCenter() {
   return request<PlatformConsoleRecord['skillSources']>('/platform/skill-sources-center', {
     cancelKey: 'skill-sources-center',
@@ -232,6 +185,19 @@ export async function getCompanyAgentsCenter() {
   return request<PlatformConsoleRecord['companyAgents']>('/platform/company-agents-center', {
     cancelKey: 'company-agents-center',
     cancelPrevious: true
+  });
+}
+
+export async function getIntelligenceOverview() {
+  return request<IntelligenceOverviewProjection>('/platform/intelligence/overview', {
+    cancelKey: 'intelligence-overview',
+    cancelPrevious: true
+  });
+}
+
+export async function forceIntelligenceRun(channel: string) {
+  return request(`/platform/intelligence/${encodeURIComponent(channel)}/force-run`, {
+    method: 'POST'
   });
 }
 

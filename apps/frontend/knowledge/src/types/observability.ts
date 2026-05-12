@@ -1,7 +1,24 @@
 import type { ApiErrorResponse, ForbiddenRawProjectionKeys, ID, ISODateTime } from './common';
 import type { Citation, TokenUsage } from './chat';
+import type {
+  KnowledgeObservabilityMetrics,
+  KnowledgeObservabilityStageLatency,
+  KnowledgeRagTrace,
+  KnowledgeRagTraceDetail,
+  KnowledgeRagTraceSpan,
+  KnowledgeRagTraceStatus,
+  KnowledgeRetrievalSnapshot
+} from '@agent/core';
 
-export type TraceStatus = 'running' | 'succeeded' | 'failed' | 'canceled';
+export type CoreObservabilityMetrics = KnowledgeObservabilityMetrics;
+export type CoreRagTrace = KnowledgeRagTrace;
+export type CoreRagTraceDetail = KnowledgeRagTraceDetail;
+export type CoreRagTraceSpan = KnowledgeRagTraceSpan;
+export type CoreRetrievalSnapshot = KnowledgeRetrievalSnapshot;
+export type CoreStageLatencyMetric = KnowledgeObservabilityStageLatency;
+export type CoreTraceStatus = KnowledgeRagTraceStatus;
+
+export type TraceStatus = KnowledgeRagTraceStatus | 'running' | 'canceled';
 
 export type TraceSpanStage =
   | 'query_rewrite'
@@ -25,7 +42,8 @@ export interface RetrievalHitPreview {
   rank: number;
 }
 
-export interface RetrievalSnapshot {
+// UI view model for the richer trace hit preview not present in the API contract.
+export interface RetrievalSnapshotViewModel {
   rewrittenQuery?: string;
   vectorHits: RetrievalHitPreview[];
   keywordHits: RetrievalHitPreview[];
@@ -45,12 +63,17 @@ export interface TraceSpanPayloadSummary {
   itemIds?: ID[];
 }
 
+// UI view model for the current stage latency chart.
 export interface StageLatencyMetric {
   stage: TraceSpanStage;
   averageLatencyMs: number;
   p95LatencyMs: number;
 }
 
+export type StageLatencyMetricCompat = StageLatencyMetric;
+
+// UI view model for the current observability metrics cards. API responses
+// should parse through CoreObservabilityMetrics before being adapted here.
 export interface ObservabilityMetrics {
   traceCount: number;
   questionCount: number;
@@ -62,9 +85,12 @@ export interface ObservabilityMetrics {
   noAnswerRate: number;
   negativeFeedbackRate: number;
   citationClickRate: number;
-  stageLatency: StageLatencyMetric[];
+  stageLatency: StageLatencyMetricCompat[];
 }
 
+export type ObservabilityMetricsCompat = ObservabilityMetrics;
+
+// UI view model for the current trace list.
 export interface RagTrace {
   id: ID;
   workspaceId: ID;
@@ -82,6 +108,9 @@ export interface RagTrace {
   createdAt: ISODateTime;
 }
 
+export type RagTraceCompat = RagTrace;
+
+// UI view model for the current trace span detail.
 export interface RagTraceSpan {
   id: ID;
   traceId: ID;
@@ -96,9 +125,14 @@ export interface RagTraceSpan {
   endedAt?: ISODateTime;
 }
 
+export type RagTraceSpanCompat = RagTraceSpan;
+
+// UI view model for the current trace detail.
 export interface RagTraceDetail extends RagTrace {
   spans: RagTraceSpan[];
   citations: Citation[];
-  retrievalSnapshot?: RetrievalSnapshot;
+  retrievalSnapshot?: RetrievalSnapshotViewModel;
   usage?: TokenUsage;
 }
+
+export type RagTraceDetailCompat = RagTraceDetail;

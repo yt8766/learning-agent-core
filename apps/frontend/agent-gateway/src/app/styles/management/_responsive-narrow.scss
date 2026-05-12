@@ -1,0 +1,39 @@
+@media (max-width: 800px) {
+  .management-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-create-form,
+  .client-quota-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-form-grid,
+  .auth-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-edit-panel,
+  .auth-modal-header,
+  .auth-modal-body,
+  .auth-modal-actions {
+    padding: 16px;
+  }
+
+  .auth-modal-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .auth-modal-card,
+  .auth-modal-card.wide {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 12px 12px;
+  }
+}

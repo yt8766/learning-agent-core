@@ -7,6 +7,10 @@ import type {
 import { hasIntent } from './schema-patch-intent-utils';
 import { normalizeTextValue } from './schema-patch-shared-utils';
 
+/**
+ * Matches the most specific filter field mentioned in a request.
+ * Longer labels are tested first so broad labels do not steal edits meant for nested or similarly named fields.
+ */
 function resolveFilterField(schema: DataReportJsonSchema, request: string) {
   const fields = schema.filterSchema.fields;
   const candidates = [...fields].sort(
@@ -18,6 +22,10 @@ function resolveFilterField(schema: DataReportJsonSchema, request: string) {
   });
 }
 
+/**
+ * Provides deterministic option regeneration for known demo fields.
+ * Unknown fields keep their existing options because LLM patching owns semantic option discovery.
+ */
 function buildRegeneratedOptions(field: DataReportJsonFilterField) {
   if (field.name === 'user_type') {
     return [

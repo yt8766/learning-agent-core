@@ -13,6 +13,10 @@ export interface PostRetrievalTraceStageSnapshot {
   droppedReasonByChunkId?: Record<string, Exclude<PostRetrievalTraceDropReason, 'selected'>>;
 }
 
+/**
+ * Builds explainability for post-retrieval selection.
+ * A dropped hit is attributed to the first stage that removed it; final output hits are marked selected in order.
+ */
 export function buildPostRetrievalSelectionTrace(
   stages: PostRetrievalTraceStageSnapshot[]
 ): PostRetrievalSelectionTraceEntry[] {

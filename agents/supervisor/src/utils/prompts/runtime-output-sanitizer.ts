@@ -25,6 +25,10 @@ const INLINE_OPERATIONAL_PREFIXES = [
   /(?:^|\n)\s*(?:户部已开始检索资料与上下文|兵部已接到任务，正在执行方案)。?/g
 ];
 
+/**
+ * Removes supervisor/runtime narration before content is reused as model context.
+ * This is prompt hygiene, not a Markdown or security sanitizer.
+ */
 export function stripOperationalBoilerplate(content: string): string {
   const normalized = OPERATIONAL_BOILERPLATE_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, ''),

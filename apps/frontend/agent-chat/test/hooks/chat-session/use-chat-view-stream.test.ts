@@ -206,4 +206,221 @@ describe('chat view-stream reducer', () => {
     expect(state.close?.reason).toBe('completed');
     expect(onClose).toHaveBeenCalledWith(state.close);
   });
+
+  it('handles error events', () => {
+    const state = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'error',
+      id: 'view-err',
+      seq: 6,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        code: 'STREAM_ERROR',
+        message: 'Something went wrong',
+        recoverable: true
+      }
+    });
+
+    expect(state.status).toBe('error');
+    expect(state.error?.code).toBe('STREAM_ERROR');
+    expect(state.error?.message).toBe('Something went wrong');
+    expect(state.error?.recoverable).toBe(true);
+  });
+
+  it('handles unknown event types by returning base state', () => {
+    const initial = createInitialChatViewStreamState();
+    const state = applyChatViewStreamEvent(initial, {
+      event: 'unknown_event' as any,
+      id: 'view-unk',
+      seq: 7,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {}
+    });
+
+    expect(state.sessionId).toBe('session-1');
+    expect(state.runId).toBe('run-1');
+    expect(state.lastSeq).toBe(7);
+  });
+
+  it('handles ready event without responseMessageId', () => {
+    const state = applyChatViewStreamEvent(
+      createInitialChatViewStreamState(),
+      {
+        event: 'ready',
+        id: 'view-rdy',
+        seq: 1,
+        sessionId: 'session-1',
+        runId: 'run-1',
+        at,
+        data: {
+          requestMessageId: 'msg-user',
+          modelId: 'default',
+          thinkingEnabled: false
+        }
+      },
+      { now: () => at }
+    );
+
+    expect(state.status).toBe('open');
+    expect(state.requestMessageId).toBe('msg-user');
+    expect(state.messages).toEqual([]);
+  });
+
+  it('handles fragment_delta from idle status', () => {
+    const state = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'fragment_delta',
+      id: 'view-fd',
+      seq: 1,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-1',
+        fragmentId: 'frag-1',
+        delta: 'Hello'
+      }
+    });
+
+    expect(state.status).toBe('open');
+    expect(state.fragments['frag-1'].content).toBe('Hello');
+  });
+
+  it('handles fragment_delta from connecting status', () => {
+    const state = applyChatViewStreamEvent(
+      { ...createInitialChatViewStreamState(), status: 'connecting' },
+      {
+        event: 'fragment_delta',
+        id: 'view-fd2',
+        seq: 1,
+        sessionId: 'session-1',
+        runId: 'run-1',
+        at,
+        data: {
+          messageId: 'msg-1',
+          fragmentId: 'frag-1',
+          delta: 'World'
+        }
+      }
+    );
+
+    expect(state.status).toBe('open');
+  });
+
+  it('preserves status on fragment_delta when already open', () => {
+    const state = applyChatViewStreamEvent(
+      { ...createInitialChatViewStreamState(), status: 'open' },
+      {
+        event: 'fragment_delta',
+        id: 'view-fd3',
+        seq: 1,
+        sessionId: 'session-1',
+        runId: 'run-1',
+        at,
+        data: {
+          messageId: 'msg-1',
+          fragmentId: 'frag-1',
+          delta: '!'
+        }
+      }
+    );
+
+    expect(state.status).toBe('open');
+  });
+
+  it('handles close with autoResume and retryable', () => {
+    const onClose = vi.fn();
+    const state = applyChatViewStreamEvent(
+      createInitialChatViewStreamState(),
+      {
+        event: 'close',
+        id: 'view-close2',
+        seq: 8,
+        sessionId: 'session-1',
+        runId: 'run-1',
+        at,
+        data: {
+          reason: 'completed',
+          retryable: true,
+          autoResume: true
+        }
+      },
+      { onClose }
+    );
+
+    expect(state.status).toBe('closed');
+    expect(state.close?.retryable).toBe(true);
+    expect(state.close?.autoResume).toBe(true);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('handles interaction_waiting event', () => {
+    const state = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'interaction_waiting',
+      id: 'view-iw',
+      seq: 9,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        interaction: {
+          id: 'int-1',
+          sessionId: 'session-1',
+          runId: 'run-1',
+          kind: 'tool_approval',
+          status: 'pending',
+          promptMessageId: 'msg-1',
+          expectedActions: ['approve', 'reject'],
+          createdAt: at
+        }
+      }
+    });
+
+    expect(state.status).toBe('waiting_interaction');
+    expect(state.pendingInteraction?.id).toBe('int-1');
+  });
+
+  it('appends to existing fragment content', () => {
+    const readyState = applyChatViewStreamEvent(
+      createInitialChatViewStreamState(),
+      {
+        event: 'ready',
+        id: 'view-1',
+        seq: 1,
+        sessionId: 'session-1',
+        runId: 'run-1',
+        at,
+        data: {
+          requestMessageId: 'msg-user',
+          responseMessageId: 'msg-assistant'
+        }
+      },
+      { now: () => at }
+    );
+
+    const state1 = applyChatViewStreamEvent(readyState, {
+      event: 'fragment_delta',
+      id: 'view-2',
+      seq: 2,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: { messageId: 'msg-assistant', fragmentId: 'frag-1', delta: 'Hello' }
+    });
+
+    const state2 = applyChatViewStreamEvent(state1, {
+      event: 'fragment_delta',
+      id: 'view-3',
+      seq: 3,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: { messageId: 'msg-assistant', fragmentId: 'frag-1', delta: ' World' }
+    });
+
+    expect(state2.fragments['frag-1'].content).toBe('Hello World');
+    expect(state2.messages[0].content).toBe('Hello World');
+  });
 });

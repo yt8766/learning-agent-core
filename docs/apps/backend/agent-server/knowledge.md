@@ -88,6 +88,18 @@ POST   /api/knowledge/agent-flows/:flowId/run
 
 Controller、service 和 frontend 都只能消费项目自定义 contract/provider/facade。第三方 SDK 对象、vendor response、raw headers、provider error、secret 或 token 不允许穿透到 API DTO、graph state、持久化 display projection 或前端类型。
 
+## Identity 鉴权入口
+
+`KnowledgeApiController` 从 `request.principal.userId/sub` 或 `Authorization: Bearer <accessToken>` 解析 actor。Bearer token 路径必须通过 `IdentityAuthService.me()` 校验 access token，并返回当前 identity account id 作为 `KnowledgeActor.userId`。
+
+`IdentityAuthService` 是 Nest 运行时注入 token，controller 文件必须使用普通运行时 `import { IdentityAuthService } ...`，不能使用 `import type`。否则 TypeScript 的 decorator metadata 会把构造参数降级成 `Object` / `Function`，而 `@Optional()` 会让后端静默启动但 `identityAuth` 为 `undefined`，最终所有 `/api/knowledge/*` Bearer 请求都会表现成 `401 auth_unauthorized: identity access token is required`。
+
+回归测试入口：`apps/backend/agent-server/test/knowledge/knowledge-canonical-routes.spec.ts` 的 `keeps identity auth injectable for bearer-token knowledge requests` 必须固定 `design:paramtypes` 最后一项为 `IdentityAuthService`。
+
+## Response Envelope
+
+`GET /api/knowledge/bases` 必须返回 `KnowledgeBasesListResponse`，即 `{ bases: KnowledgeBase[] }`。Controller 只能调用 `KnowledgeBaseService.listBasesResponse()`，不要直接返回 `listBases()` 的裸数组；否则前端兼容 normalizer 会把响应误判为 legacy envelope 并在 `input.bases.map` 处崩溃。
+
 ## Runtime Providers
 
 `KnowledgeDomainModule` 注册 `KnowledgeApiController`、`KnowledgeWorkspaceController`、`KnowledgeSettingsController` 和 `KnowledgeChatSettingsController`，并通过 provider token 装配 repository、OSS storage 与 SDK runtime。
@@ -95,6 +107,8 @@ Controller、service 和 frontend 都只能消费项目自定义 contract/provid
 - `KNOWLEDGE_REPOSITORY=memory | postgres`：选择业务数据持久化。未设置时默认 memory；postgres 必须提供 `DATABASE_URL`。
 - `KNOWLEDGE_OSS_PROVIDER=memory | aliyun`：选择上传对象存储。Aliyun 模式必须提供 bucket、region 和 access key/secret。
 - `KNOWLEDGE_SDK_RUNTIME.enabled=true`：仅在数据库、chat model、embedding model 和 LLM key 等配置完整时启用 SDK RAG runtime；未配置时返回 disabled，不阻断统一后端启动。
+
+`KnowledgeFrontendSettingsService.listWorkspaceUsers()` 不再维护内置成员样例。它通过 `IdentityUserService.listUsers()` 读取真实 Identity 账号，再通过 `KNOWLEDGE_REPOSITORY` 查询每个用户可访问知识库数量、会话数量和最后活跃时间，最后投影成 `KnowledgeWorkspaceUsersResponse`。因此访问治理页的成员来源应优先通过 `/api/identity/users` 创建/管理；如需数据库持久化，Identity 域必须显式启用 `IDENTITY_REPOSITORY=postgres`。
 
 `KnowledgeIngestionQueue` 由 `KnowledgeDomainModule.onModuleInit()` 启动，模块销毁时 stop；不要在 HTTP service 内手动 drain 队列。Postgres schema 入口为 `src/domains/knowledge/runtime/knowledge-schema.sql.ts`，不得在其他目录维护第二份 current SQL。
 

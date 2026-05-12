@@ -140,11 +140,18 @@ Auth errors:
 
 这些接口服务 `apps/frontend/knowledge` 的用户管理、模型配置、API 密钥、存储管理、安全策略和 Chat Lab AI 助手实验配置页面。canonical 路径均由 unified `apps/backend/agent-server` 提供，完整入口为 `/api/knowledge/<path>`；本节表格中的 Path 省略 `/api/knowledge` 前缀。
 
-稳定 schema 落在 `packages/core/src/contracts/knowledge-service/knowledge-service.schemas.ts`，类型只能由 `z.infer<typeof Schema>` 推导。后端可以先返回稳定 fixture 或聚合现有 service，但必须返回项目自定义 projection，不得透传第三方 SDK 对象、provider 原始错误、secret、token 或内部 runtime 状态。
+稳定 schema 落在 `packages/core/src/contracts/knowledge-service/knowledge-service.schemas.ts`，类型只能由 `z.infer<typeof Schema>` 推导。后端可以在尚未接入真实系统的 settings 子域返回稳定 fixture，但 Workspace Users 必须聚合 Identity 用户源与 Knowledge repository 统计，不得内置样例成员；所有接口都必须返回项目自定义 projection，不得透传第三方 SDK 对象、provider 原始错误、secret、token 或内部 runtime 状态。
 
 ### Workspace Users
 
-Purpose：驱动 `/users` 用户管理页的成员列表、搜索、分页和顶部统计卡；邀请接口用于创建待激活成员与邀请链接。
+Purpose：驱动 `/users` 用户管理页的成员列表、搜索、分页和顶部统计卡；邀请接口用于生成待激活成员 projection 与邀请链接。
+
+数据来源：
+
+- `GET /workspace/users` 从 agent-server Identity 域读取真实账号列表；启用 `IDENTITY_REPOSITORY=postgres` 时账号来自 `identity_users` / `identity_password_credentials` 等数据库表。
+- `kbAccessCount` 来自 Knowledge repository 的 `listBasesForUser(userId)`，`queryCount` 与 `lastActiveAt` 来自该用户的知识库会话记录。
+- Identity `enabled` / `disabled` 分别投影为 Workspace `active` / `inactive`；`super_admin` / `admin` 投影为 `admin`，`developer` 投影为 `editor`，其余投影为 `viewer`。
+- `email` 使用 Identity `username`；若 username 不是邮箱格式，后端投影为稳定的 `<username>@identity.local`，避免前端接收非法 email。
 
 ```ts
 export type KnowledgeWorkspaceUserRole = 'admin' | 'editor' | 'viewer';
@@ -199,11 +206,11 @@ export interface KnowledgeWorkspaceInvitationCreateResponse {
 
 - `role` 和 `status` 只能追加枚举值，不能重命名既有值；前端遇到未知枚举必须展示为只读未知状态。
 - `summary` 是列表级聚合，不受当前分页影响；分页字段默认 `page=1`、`pageSize=20`，最大 `100`。
-- 邀请返回的 `invitedUsers.status` 必须为 `pending`，后端不得在邀请接口里创建已激活用户。
+- 邀请返回的 `invitedUsers.status` 必须为 `pending`，后端不得在邀请接口里创建已激活用户；待激活用户真正进入列表前，必须通过 Identity 用户创建/激活链路形成真实账号记录。
 
 前后端边界：
 
-- 前端负责搜索输入、分页状态和展示排序；后端负责权限过滤、统计聚合和邀请记录创建。
+- 前端负责搜索输入、分页状态和展示排序；后端负责权限过滤、Identity 到 Workspace projection、统计聚合和邀请 projection 创建。
 - 后端只返回头像 URL projection，不返回对象存储签名参数、身份提供商原始 profile 或 identity 内部 account 结构。
 
 ### Model Providers
@@ -432,7 +439,7 @@ export interface KnowledgeAssistantConfigPatchRequest {
 统一前后端边界：
 
 - 前端只消费本节 DTO；不得继续在页面内维护长期 fixture 作为真实业务来源。
-- 后端当前可用稳定 fixture 完成最小闭环，但 fixture 必须通过 `packages/core` schema 测试保护，后续接入数据库或第三方 provider 时保持响应兼容。
+- 除 Workspace Users 外，后端当前可用稳定 fixture 完成 settings 最小闭环，但 fixture 必须通过 `packages/core` schema 测试保护，后续接入数据库或第三方 provider 时保持响应兼容。
 - 任何字段删除、重命名或枚举破坏式变更必须先更新本 contract、core schema、后端测试，再通知前端同步迁移。
 
 ## 4. Dashboard

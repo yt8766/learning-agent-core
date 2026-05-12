@@ -37,6 +37,8 @@
   - 评测中心
 - `src/pages/workflow-lab`
   - 工作流实验台，当前用于 `company-live` 与 `data-report-json` 的管理台侧运行测试
+- `src/pages/intelligence-center`
+  - Intelligence Center；消费 `/platform/intelligence/overview`，展示 Tech & AI 频道运行、最近信号与待审知识候选
 - `src/pages/errors`
   - 401 / 403 / 404 / 500 / 503 全屏错误展示；`/login` 才使用登录页视觉，错误状态不复用登录卡片；401 由 `/401` 显式错误路由承载，不代表正常未登录入口
 - `src/pages/rules-browser`
@@ -51,7 +53,7 @@
 约定：
 
 - `agent-admin` 的专项文档统一放在 `docs/apps/frontend/agent-admin/`
-- 运行中枢、审批中枢、学习中枢、技能工坊、证据中心、知识治理中心、连接器与策略相关变化后，需同步更新本目录文档
+- 运行中枢、审批中枢、学习中枢、技能工坊、证据中心、Intelligence、知识治理中心、连接器与策略相关变化后，需同步更新本目录文档
 - 工具执行治理展示优先消费后端稳定 projection；Runtime Summary、Run Workbench 与 Run Observatory 都不应从 raw task dump 反推工具状态，也不渲染 raw input / vendor payload
 
 当前文档：

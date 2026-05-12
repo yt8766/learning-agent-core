@@ -73,11 +73,11 @@ describe('knowledge real API paths', () => {
   });
 
   it('creates a document from an upload result', async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_1' } }), { status: 200 })
-      );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ document: createDocumentResponse('doc_1'), job: createJobResponse('job_1') }), {
+        status: 200
+      })
+    );
     const client = createKnowledgeApiClient({
       baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
@@ -137,7 +137,9 @@ describe('knowledge real API paths', () => {
         )
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_1' } }), { status: 200 })
+        new Response(JSON.stringify({ document: createDocumentResponse('doc_1'), job: createJobResponse('job_1') }), {
+          status: 200
+        })
       );
     const client = createKnowledgeApiClient({
       baseUrl: 'http://127.0.0.1:3000/api',
@@ -189,11 +191,11 @@ describe('knowledge real API paths', () => {
   });
 
   it('reprocesses a document through unified agent-server core operations path', async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ document: { id: 'doc_1' }, job: { id: 'job_2' } }), { status: 200 })
-      );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ document: createDocumentResponse('doc_1'), job: createJobResponse('job_2') }), {
+        status: 200
+      })
+    );
     const client = createKnowledgeApiClient({
       baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
@@ -248,9 +250,55 @@ describe('knowledge real API paths', () => {
   });
 
   it('loads knowledge governance pages through the knowledge API prefix', async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    const fetcher = vi.fn<typeof fetch>(async url => {
+      if (String(url).endsWith('/knowledge/settings/api-keys')) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+      if (String(url).endsWith('/knowledge/settings/model-providers')) {
+        return new Response(JSON.stringify({ items: [], updatedAt: '2026-05-04T00:00:00.000Z' }), { status: 200 });
+      }
+      if (String(url).endsWith('/knowledge/settings/storage')) {
+        return new Response(
+          JSON.stringify({ buckets: [], knowledgeBases: [], updatedAt: '2026-05-04T00:00:00.000Z' }),
+          { status: 200 }
+        );
+      }
+      if (String(url).endsWith('/knowledge/settings/security')) {
+        return new Response(
+          JSON.stringify({
+            ssoEnabled: false,
+            mfaRequired: true,
+            ipAllowlistEnabled: false,
+            ipAllowlist: [],
+            auditLogEnabled: true,
+            passwordPolicy: 'strong',
+            encryption: {
+              enabled: true,
+              transport: 'TLS 1.3',
+              atRest: 'AES-256'
+            },
+            securityScore: 92,
+            updatedAt: '2026-05-04T00:00:00.000Z'
+          }),
+          { status: 200 }
+        );
+      }
+      if (String(url).endsWith('/knowledge/chat/assistant-config')) {
+        return new Response(
+          JSON.stringify({
+            deepThinkEnabled: true,
+            webSearchEnabled: false,
+            modelProfileId: 'knowledge-rag',
+            defaultKnowledgeBaseIds: [],
+            quickPrompts: ['Summarize selected knowledge'],
+            thinkingSteps: [],
+            updatedAt: '2026-05-04T00:00:00.000Z'
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response('{}', { status: 404 });
+    });
     const client = createKnowledgeApiClient({
       baseUrl: 'http://127.0.0.1:3000/api',
       getAccessToken: () => 'access-token',
@@ -311,3 +359,39 @@ describe('knowledge real API paths', () => {
     );
   });
 });
+
+function createDocumentResponse(id: string) {
+  return {
+    id,
+    workspaceId: 'default',
+    knowledgeBaseId: 'kb_1',
+    uploadId: 'upload_1',
+    objectKey: 'knowledge/kb_1/upload_1/runbook.md',
+    filename: 'runbook.md',
+    title: 'runbook',
+    sourceType: 'user-upload',
+    status: 'queued',
+    version: 'v1',
+    chunkCount: 0,
+    embeddedChunkCount: 0,
+    createdBy: 'user_1',
+    metadata: {},
+    createdAt: '2026-05-02T00:00:00.000Z',
+    updatedAt: '2026-05-02T00:00:00.000Z'
+  };
+}
+
+function createJobResponse(id: string) {
+  return {
+    id,
+    documentId: 'doc_1',
+    stage: 'uploaded',
+    status: 'queued',
+    currentStage: 'queued',
+    stages: [{ stage: 'queued', status: 'queued', startedAt: '2026-05-02T00:00:00.000Z' }],
+    progress: { percent: 0 },
+    attempts: 1,
+    createdAt: '2026-05-02T00:00:00.000Z',
+    updatedAt: '2026-05-02T00:00:00.000Z'
+  };
+}

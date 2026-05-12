@@ -150,4 +150,186 @@ describe('runtime knowledge provider config', () => {
 
     expect(createOpenSearchKeywordSearchProviderMock.mock.calls[0]?.[0]?.client).not.toHaveProperty('endpoint');
   });
+
+  it('returns empty config when no env vars are set', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({});
+    expect(options.config).toBeUndefined();
+    expect(options.keywordSearchService).toBeUndefined();
+  });
+
+  it('ignores invalid retrieval mode', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_RETRIEVAL_MODE: 'invalid-mode'
+    });
+    expect(options.config).toBeUndefined();
+  });
+
+  it('parses keyword-only retrieval mode', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_RETRIEVAL_MODE: 'keyword-only'
+    });
+    expect(options.config?.retrievalMode).toBe('keyword-only');
+  });
+
+  it('parses vector-only retrieval mode', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_RETRIEVAL_MODE: 'vector-only'
+    });
+    expect(options.config?.retrievalMode).toBe('vector-only');
+  });
+
+  it('parses boolean env true values', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: 'true'
+    });
+    expect(options.config?.vector?.enabled).toBe(true);
+  });
+
+  it('parses boolean env false values', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: 'false'
+    });
+    // vector section not added when explicitly false and no vectorProviderId
+    expect(options.config?.vector).toBeUndefined();
+  });
+
+  it('parses boolean env 1/0 values', () => {
+    const options1 = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: '1'
+    });
+    expect(options1.config?.vector?.enabled).toBe(true);
+
+    const options2 = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: '0'
+    });
+    expect(options2.config?.vector).toBeUndefined();
+  });
+
+  it('parses boolean env yes/no values', () => {
+    const options1 = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: 'yes'
+    });
+    expect(options1.config?.vector?.enabled).toBe(true);
+
+    const options2 = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: 'no'
+    });
+    expect(options2.config?.vector).toBeUndefined();
+  });
+
+  it('ignores invalid boolean env', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_ENABLED: 'maybe'
+    });
+    expect(options.config?.vector).toBeUndefined();
+  });
+
+  it('ignores negative health ttl', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_PROVIDER_HEALTH_TTL_MS: '-100'
+    });
+    expect(options.config?.health).toBeUndefined();
+  });
+
+  it('ignores non-integer health values', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_PROVIDER_HEALTH_TTL_MS: 'abc'
+    });
+    expect(options.config?.health).toBeUndefined();
+  });
+
+  it('ignores zero for positive integer env', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_PROVIDER_HEALTH_TIMEOUT_MS: '0'
+    });
+    expect(options.config?.health).toBeUndefined();
+  });
+
+  it('handles health config with only degradedAfterConsecutiveFailures', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_PROVIDER_HEALTH_DEGRADED_AFTER_FAILURES: '3'
+    });
+    expect(options.config?.health).toEqual({ degradedAfterConsecutiveFailures: 3 });
+  });
+
+  it('creates OpenSearch keyword provider without API key', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_KEYWORD_PROVIDER: 'opensearch',
+      KNOWLEDGE_OPENSEARCH_ENDPOINT: 'https://opensearch.example.com',
+      KNOWLEDGE_OPENSEARCH_INDEX: 'knowledge-chunks'
+    });
+    expect(options.keywordSearchService).toBeDefined();
+  });
+
+  it('does not create OpenSearch when endpoint is missing', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_KEYWORD_PROVIDER: 'opensearch',
+      KNOWLEDGE_OPENSEARCH_INDEX: 'knowledge-chunks'
+    });
+    expect(options.keywordSearchService).toBeUndefined();
+  });
+
+  it('does not create OpenSearch when index is missing', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_KEYWORD_PROVIDER: 'opensearch',
+      KNOWLEDGE_OPENSEARCH_ENDPOINT: 'https://opensearch.example.com'
+    });
+    expect(options.keywordSearchService).toBeUndefined();
+  });
+
+  it('ignores unknown keyword provider', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_KEYWORD_PROVIDER: 'unknown'
+    });
+    expect(options.keywordSearchService).toBeUndefined();
+  });
+
+  it('handles non-chroma vector provider', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_PROVIDER: 'pinecone'
+    });
+    expect(options.config?.vector?.providerId).toBe('pinecone');
+    expect(options.knowledgeVectorSearchProvider).toBeUndefined();
+  });
+
+  it('trims whitespace from env values', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_RETRIEVAL_MODE: '  hybrid  '
+    });
+    expect(options.config?.retrievalMode).toBe('hybrid');
+  });
+
+  it('ignores empty string env values', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_RETRIEVAL_MODE: '   '
+    });
+    expect(options.config).toBeUndefined();
+  });
+
+  it('uses env-based default retrieval mode for chroma', () => {
+    const options = createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_PROVIDER: 'chroma',
+      KNOWLEDGE_CHROMA_COLLECTION: 'test',
+      KNOWLEDGE_EMBEDDINGS_ENDPOINT: 'https://embed.example.com',
+      KNOWLEDGE_EMBEDDINGS_MODEL: 'embed-model'
+    });
+    expect(options.config?.retrievalMode).toBe('hybrid');
+  });
+
+  it('creates chroma with embeddings dimensions', () => {
+    createRuntimeKnowledgeProviderOptionsFromEnv({
+      KNOWLEDGE_VECTOR_PROVIDER: 'chroma',
+      KNOWLEDGE_CHROMA_COLLECTION: 'test',
+      KNOWLEDGE_EMBEDDINGS_ENDPOINT: 'https://embed.example.com',
+      KNOWLEDGE_EMBEDDINGS_MODEL: 'embed-model',
+      KNOWLEDGE_EMBEDDINGS_DIMENSIONS: '768'
+    });
+    expect(createRuntimeEmbeddingProviderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embeddings: expect.objectContaining({
+          dimensions: 768
+        })
+      })
+    );
+  });
 });

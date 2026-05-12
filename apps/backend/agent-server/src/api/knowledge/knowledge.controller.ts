@@ -20,7 +20,7 @@ import { KnowledgeBaseCreateRequestSchema, KnowledgeBaseMemberCreateRequestSchem
 import type { KnowledgeRagErrorCode, KnowledgeRagStreamEvent } from '@agent/knowledge';
 import { ZodError } from 'zod';
 
-import type { IdentityAuthService } from '../../domains/identity/services/identity-auth.service';
+import { IdentityAuthService } from '../../domains/identity/services/identity-auth.service';
 import {
   CreateDocumentFromUploadRequestSchema,
   CreateKnowledgeMessageFeedbackRequestSchema,
@@ -66,7 +66,7 @@ export class KnowledgeApiController {
   @Get('bases')
   async listBases(@Req() request: KnowledgeApiRequest) {
     return this.handleKnowledgeErrors(async () =>
-      this.knowledgeBaseService.listBases(await this.resolveActor(request))
+      this.knowledgeBaseService.listBasesResponse(await this.resolveActor(request))
     );
   }
 

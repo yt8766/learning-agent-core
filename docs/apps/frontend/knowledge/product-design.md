@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/frontend/knowledge`
-最后核对：2026-05-04
+最后核对：2026-05-11
 
 ## Positioning
 
@@ -13,38 +13,45 @@
 
 - 不重复 `agent-chat`：Knowledge App 的 Chat Lab 用于验证指定知识库的检索、回答、引用、反馈和 trace，不承载 OpenClaw 作战面、审批恢复、ThoughtChain 或多 Agent 执行体验。
 - 不重复 `agent-admin`：Knowledge App 的观测和评测只围绕知识库问答质量、检索表现、文档处理和 RAG 链路，不承载全局 Runtime Center、Approvals Center、Skill Lab 或治理后台。
-- 默认 API-first：前端消费 unified `agent-server` 稳定接口和 mock client，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
+- 默认 API-first：前端消费 unified `agent-server` 稳定接口和 `KnowledgeApiClient`，不直接运行 RAG internals，不从应用层直连 `packages/knowledge/src`。
 - MVP 优先打通横向闭环：登录、知识库、文档、对话、引用、反馈、trace、评测数据集、评测运行和结果指标先能连起来，再扩展高级治理。
 
 ## Routes
 
 ```text
 /login
-/app/overview
-/app/knowledge-bases
-/app/knowledge-bases/:id
-/app/documents/:id
-/app/chat-lab
-/app/observability/traces
-/app/observability/traces/:id
-/app/evals/datasets
-/app/evals/runs
-/app/evals/runs/:id
-/app/settings
+/
+/knowledge-bases
+/knowledge-bases/:knowledgeBaseId
+/documents
+/documents/:documentId
+/agent-flow
+/chat-lab
+/observability
+/evals
+/settings
+/settings/models
+/settings/keys
+/settings/storage
+/settings/security
+/users
+/account/settings
 ```
 
-所有 `/app/*` 路由必须经过登录态保护。未登录访问时跳转 `/login`；已登录访问 `/login` 时跳转 `/app/overview`。鉴权刷新失败或 refresh token 过期时清理本地 token 并回到 `/login`。
+除 `/login` 外的业务路由必须经过登录态保护。未登录访问时跳转 `/login`；已登录访问 `/login` 时跳转回原受保护路径或 `/`。鉴权刷新失败或 refresh token 过期时清理本地 token 并回到 `/login`，不能继续渲染业务页并发送缺少 Bearer token 的接口请求。
 
 ## Navigation
 
 主导航面向 Knowledge App 的工作流，而不是营销信息架构：
 
-- 总览：`/app/overview`
-- 知识库：`/app/knowledge-bases`
-- 对话实验室：`/app/chat-lab`
-- 观测中心：`/app/observability/traces`
-- 评测中心：`/app/evals/datasets`、`/app/evals/runs`
-- 设置：`/app/settings`
+- 总览：`/`
+- 知识库：`/knowledge-bases`
+- 摄取管线：`/documents`
+- Agent Flow：`/agent-flow`
+- 对话实验室：`/chat-lab`
+- 观测中心：`/observability`
+- 评测中心：`/evals`
+- 设置：`/settings`
 
 文档详情、trace 详情和评测运行详情属于上下文详情页，不作为一级导航常驻入口。知识库详情页内可提供二级 tabs：概览、文档、对话、评测、观测、配置、权限；MVP 可以先渲染完整 tab 外壳，其中概览、文档、对话、评测和观测按权限展示真实数据面板，配置和权限先展示受限空态。
 
@@ -66,7 +73,7 @@ login
 -> inspect eval results
 ```
 
-MVP 的完成标准是这条路径能用 mock 数据和后端 stub API 证明端到端信息结构成立。evaluator 的 MVP 闭环从 Chat Lab 或 Eval Center 开始，不包含 dashboard/observability；viewer 的 MVP 闭环限于 allowed 知识库、文档、Chat Lab 和 feedback。纵向增强如批量权限、真实向量库适配、复杂过滤、告警订阅和高级评测分析，必须建立在这些路径已可运行的基础上。
+MVP 的完成标准是这条路径能通过真实 `agent-server` Knowledge API 证明端到端信息结构成立。evaluator 的 MVP 闭环从 Chat Lab 或 Eval Center 开始，不包含 dashboard/observability；viewer 的 MVP 闭环限于 allowed 知识库、文档、Chat Lab 和 feedback。纵向增强如批量权限、真实向量库适配、复杂过滤、告警订阅和高级评测分析，必须建立在这些路径已可运行的基础上。
 
 ## Auth Behavior
 
@@ -78,20 +85,22 @@ Knowledge App 使用 JWT 双 token：
 - 自动刷新：请求前如果 access token 接近过期，先刷新再发业务请求。
 - 401 恢复：业务请求返回 `401 auth_token_expired` 时触发一次刷新，并对原请求最多重试一次。
 - 并发控制：多个请求同时触发刷新时共享同一个 refresh promise，避免并发刷新造成 token 版本抖动。
-- 失败边界：refresh 失败、refresh token 缺失或过期时，底层 `AuthClient` 清理本地 token 并触发 `onAuthLost`；路由层后续负责跳转 `/login` 并保留用户原目标路径用于重新登录后恢复。
+- 失败边界：refresh 失败、refresh token 缺失或过期时，底层 `AuthClient` 清理本地 token 并触发 `onAuthLost`；路由层后续负责跳转 `/login` 并保留用户原目标路径用于重新登录后恢复。`AuthClient.ensureValidAccessToken()` 在这些状态下必须抛错，业务 API client 不得继续发无 token 请求。
 
 当前前端实现入口：
 
 - `apps/frontend/knowledge/src/api/token-storage.ts`：负责 `localStorage` 中的 knowledge 前缀 token key、绝对过期时间读写、退出登录清理、access token 提前刷新判断和 refresh token 过期判断。
 - `apps/frontend/knowledge/src/api/auth-client.ts`：负责 `/identity/login`、`/identity/refresh`、`/identity/me`、`/identity/logout` 请求封装；登录成功后写入 token；登出会调用统一后端 logout 并清理本地 token；主动刷新使用单个共享 refresh promise。
 - `apps/frontend/knowledge/src/api/knowledge-api-client.ts`：负责 `agent-server Knowledge domain` 业务 API 请求的 Bearer token 注入；业务接口返回 `401 auth_token_expired` 或 `401 access_token_expired` 时调用共享 refresh，并对原请求最多重试一次。
-- `apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`：当前横向 MVP 页面使用的本地 fixture / mock client；真实后端联调时应替换为 `KnowledgeApiClient`，不要让页面直接读取后端或 SDK runtime。
+- ~~`apps/frontend/knowledge/src/api/mock-data.ts` 与 `mock-knowledge-api-client.ts`~~（已删除）：前端运行时 mock mode 已移除；测试使用本地 fake provider，后端可使用 schema-safe service fallback。
 - `apps/frontend/knowledge/src/pages/auth/*`：当前登录门通过 `AuthProvider -> AuthClient.login() -> /identity/login` 走真实双 token 登录链路；退出登录调用 `/identity/logout` 后清理本地 token 并切回未登录状态。
+- `apps/frontend/knowledge/src/app/protected-route.tsx` 与 `AuthProvider`：只允许未过期 refresh token 支撑已登录初始态；过期 token 会被清理并进入登录页，避免 Chat Lab 等启动请求批量 `401`。
 - `apps/frontend/knowledge/src/pages/*`：当前已落地 RAG 总览、知识空间、摄取管线、Agent Flow、检索实验室、Trace 观测、评测回归、访问治理和系统策略页面，第一屏是可操作工作台，不是 landing page。
 - `apps/frontend/knowledge/src/pages/shared/ui.tsx`：提供 `RagOpsPage`、`MetricStrip`、`LifecycleRail`、`StatusPill` 和 `InsightList`，作为 RAG Ops 页面统一外壳。
 - `apps/frontend/knowledge/src/styles/knowledge-rag-ops.css`：承载 RAG Ops 重设计样式；旧的 `knowledge-pro.css` 保留壳层、异常页和历史组件样式，不再继续堆新增页面视觉。
 - `apps/frontend/knowledge/test/token-storage.test.ts` 与 `apps/frontend/knowledge/test/auth-client.test.ts`：固定双 token 存储、并发刷新复用和 logout 本地清理语义。
 - `apps/frontend/knowledge/test/knowledge-api-client.test.ts`：固定业务请求 access token 过期后的 refresh/retry、不相关 401 不刷新、以及最多重试一次的边界。
+- `apps/frontend/knowledge/test/pages/auth/auth-provider.test.tsx`：固定过期 refresh token 不会被当作已登录会话。
 - `apps/frontend/knowledge/test/app-render.test.tsx`：固定未登录时显示登录门、已登录时显示工作台导航。
 
 权限边界在 MVP 中先以用户 `roles` 与 `permissions` 驱动 UI 可用态，后端 API contract 始终是权限事实来源：
@@ -112,7 +121,7 @@ Knowledge App 使用 JWT 双 token：
 主要操作：
 
 - 登录。
-- 在已登录时自动进入 `/app/overview`。
+- 在已登录时自动进入 `/` 或登录前尝试访问的受保护路径。
 
 状态要求：
 
@@ -141,7 +150,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：指标卡和列表使用骨架屏。
 - 空态：没有知识库时引导创建知识库；没有 trace 或 eval 时展示轻量空态。
 - 错误态：指标区可局部失败，保留其他可用数据并允许重试。
-- 权限边界：`GET /dashboard/overview` 仅 owner/admin/maintainer 可访问。viewer 和 evaluator 访问 `/app/overview` 时显示受限态或引导跳转到 `/app/chat-lab`、`/app/evals/datasets` 等其有权限的页面，不请求 dashboard endpoint，也不展示 overview 操作入口。
+- 权限边界：`GET /api/knowledge/dashboard/overview` 仅 owner/admin/maintainer 可访问。viewer 和 evaluator 访问 `/` 时显示受限态或引导跳转到 `/chat-lab`、`/evals` 等其有权限的页面，不请求 dashboard endpoint，也不展示 overview 操作入口。
 
 ### Knowledge Spaces
 
@@ -161,7 +170,7 @@ Knowledge App 使用 JWT 双 token：
 - 空态：无知识库时展示创建入口；搜索无结果时展示清除筛选。
 - 错误态：列表加载失败时提供重试。
 - 权限边界：viewer/evaluator 只能查看；owner/admin/maintainer 可创建和编辑基础信息。
-- 查询边界：当前 `/knowledge-bases` 只接受 `PageQuery`。MVP 的搜索、状态过滤和标签过滤只在当前页或 mock data 上做 client-side filter；如需后端 status/tags/search query，必须作为 future contract extension 先更新 API contract。
+- 查询边界：当前 knowledge bases 列表接口只接受 `PageQuery`。MVP 的搜索、状态过滤和标签过滤只在当前页数据上做 client-side filter；如需后端 status/tags/search query，必须作为 future contract extension 先更新 API contract。
 
 ### Knowledge Base Detail
 
@@ -237,7 +246,7 @@ Knowledge App 使用 JWT 双 token：
 
 主要操作：
 
-- 按状态、知识库和时间范围过滤；feedback 和错误码过滤仅作为当前页/mock data 的 client-side 辅助视图。
+- 按状态、知识库和时间范围过滤；feedback 和错误码过滤仅作为当前页数据的 client-side 辅助视图。
 - 打开 trace 详情。
 - 从 trace 加入评测数据集；该入口只对同时具备 trace 读取和 eval 写入权限的 owner/admin/maintainer 展示，evaluator 可从 Chat Lab 添加评测样本。
 
@@ -246,8 +255,8 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：过滤栏先可见，列表骨架加载。
 - 空态：无 trace 时说明需要先在 Chat Lab 提问；筛选无结果时允许清除筛选。
 - 错误态：列表失败展示重试，过滤条件保留。
-- 权限边界：`GET /observability/metrics`、`GET /observability/traces` 和 `GET /observability/traces/:id` 仅 owner/admin/maintainer 可访问。viewer/evaluator 进入观测页时显示受限态或 403 copy，不能发起 trace detail 请求；最多只能在 Chat Lab 当前回答上下文中查看 chat response 已返回的有限 citation/answer 信息。
-- 查询边界：当前 `/observability/traces` query 只支持 `PageQuery`、`knowledgeBaseId`、`status`、`from`、`to`。MVP 不要求后端支持 feedback/errorCode filters；这两类过滤只允许在当前页/mock data client-side filter，后端能力必须作为 future contract extension 先更新 API contract。
+- 权限边界：`GET /api/knowledge/observability/metrics`、`GET /api/knowledge/observability/traces` 和 `GET /api/knowledge/observability/traces/:id` 仅 owner/admin/maintainer 可访问。viewer/evaluator 进入观测页时显示受限态或 403 copy，不能发起 trace detail 请求；最多只能在 Chat Lab 当前回答上下文中查看 chat response 已返回的有限 citation/answer 信息。
+- 查询边界：当前 `/api/knowledge/observability/traces` query 只支持 `PageQuery`、`knowledgeBaseId`、`status`、`from`、`to`。MVP 不要求后端支持 feedback/errorCode filters；这两类过滤只允许在当前页数据上 client-side filter，后端能力必须作为 future contract extension 先更新 API contract。
 
 ### Observability Trace Detail
 
@@ -267,7 +276,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：基础摘要优先，span 和 retrieval 面板可延迟加载。
 - 空态：缺少引用或反馈时展示明确的空标签。
 - 错误态：trace 不存在展示 not found；敏感字段不可展示 raw vendor payload。
-- 权限边界：trace detail 仅 owner/admin/maintainer 可访问。viewer/evaluator 不应请求 `/observability/traces/:id`，也不展示 trace 摘要或调试信息；他们只能看到 Chat Lab 响应中已经返回的有限 answer/citation 信息。
+- 权限边界：trace detail 仅 owner/admin/maintainer 可访问。viewer/evaluator 不应请求 `/api/knowledge/observability/traces/:id`，也不展示 trace 摘要或调试信息；他们只能看到 Chat Lab 响应中已经返回的有限 answer/citation 信息。
 
 ### Eval Datasets
 
@@ -289,7 +298,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：列表骨架。
 - 空态：无数据集时引导从负反馈或 trace 创建第一批样本。
 - 错误态：创建失败保留输入并提示原因。
-- 权限边界：`/eval/datasets` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可创建和编辑数据集。
+- 权限边界：`/api/knowledge/eval/datasets` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可创建和编辑数据集。
 
 ### Eval Runs
 
@@ -308,7 +317,7 @@ Knowledge App 使用 JWT 双 token：
 - 加载态：列表和运行按钮分别呈现状态。
 - 空态：无运行时引导选择数据集启动。
 - 错误态：启动失败显示可读错误；运行失败在列表显示失败原因摘要。
-- 权限边界：`/eval/runs` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测运行页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可启动运行。
+- 权限边界：`/api/knowledge/eval/runs` 只对 owner/admin/maintainer/evaluator 开放。viewer 进入评测运行页显示受限态或 403 copy，不请求 eval endpoints；evaluator 和 maintainer 可启动运行。
 
 ### Eval Run Detail
 
@@ -334,12 +343,12 @@ Knowledge App 使用 JWT 双 token：
 
 核心数据：
 
-- 当前用户、`roles`、权限、API base URL、mock API 状态、token 过期时间、默认知识库选择偏好。
+- 当前用户、`roles`、权限、API base URL、token 过期时间、默认知识库选择偏好。
 
 主要操作：
 
 - 退出登录。
-- 切换 mock/real API 的可见说明。
+- 查看当前真实 API 连接状态和认证状态。
 - 查看当前权限。
 
 状态要求：
@@ -349,17 +358,18 @@ Knowledge App 使用 JWT 双 token：
 - 错误态：用户信息加载失败时允许重新登录。
 - 登录边界：退出登录必须清理 Knowledge App 的 localStorage token，不触碰其他应用存储。
 
-## Mock-first Development
+## Historical Mock-first Development
 
-> Historical note: this section predates the real API domain-model cutover. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed.
+> Historical note: this section predates the real API domain-model cutover and is retained only as historical reference. Current Knowledge frontend runtime data must come from `/api/knowledge/*`; frontend runtime mock mode has been removed. Tests use local fake providers; backend may use schema-safe service fallback.
 
-前端支持 `VITE_USE_MOCK_API=true`。Mock-first 不是临时演示代码，而是 MVP 横向闭环的开发方式：
+> **Historical note:** 以下内容描述的是 mock-first 开发阶段的工作方式，不再作为当前实现指导。当前 Knowledge 前端运行时数据必须来自 `/api/knowledge/*`；前端运行时 mock mode 已移除。测试使用本地 fake provider，后端可使用 schema-safe service fallback。
 
-- mock client 必须实现与真实 API client 同形的方法，不让页面知道当前是 mock 还是真实后端。
-- mock data 必须覆盖 auth、dashboard、knowledge bases、documents、chunks、chat、traces、eval datasets、eval runs 和 settings。
-- mock 场景必须包含 ready、processing、failed、empty、unauthorized、permission denied、not found 和 network failure 等基础状态。
-- 页面先基于 mock 完成数据结构、状态和交互，再接入后端 stub API。
-- 后续真实 API 接入时，页面应只替换 client provider，不重写页面状态结构。
+历史阶段曾支持 `VITE_USE_MOCK_API=true`。当时 mock-first 用于先行验证 MVP 横向闭环的信息结构：
+
+- mock client 需要与真实 API client 同形，避免页面感知数据来源。
+- mock data 覆盖过 auth、dashboard、knowledge bases、documents、chunks、chat、traces、eval datasets、eval runs 和 settings。
+- mock 场景覆盖过 ready、processing、failed、empty、unauthorized、permission denied、not found 和 network failure 等基础状态。
+- 真实 API 接入完成后，运行时 mock mode 已删除；不要新增当前态 `VITE_USE_MOCK_API` 分支或页面内 mock 数据读取。
 
 ## Development Boundaries
 
@@ -367,4 +377,4 @@ Knowledge App 使用 JWT 双 token：
 - 类型优先来自稳定 API contract 或 `apps/frontend/knowledge/src/types/api.ts`，不要在页面内重复发明 DTO。
 - 观测中心不展示 raw vendor payload；错误、request metadata 和 span detail 必须先经过后端或 SDK 边界脱敏。
 - 评测结果必须保留当前 contract 中的 `EvalReportSummary`、case id、可访问的 trace id、`retrievalMetrics`、`generationMetrics` 和 `judgeResult.score` 映射；generic metric name/threshold 结构属于 future contract extension。
-- 所有列表页默认支持分页语义；即使 MVP mock 数据较少，也不要把列表实现成只能渲染固定数组的死结构。
+- 所有列表页默认支持分页语义；即使测试 fake provider 数据较少，也不要把列表实现成只能渲染固定数组的死结构。

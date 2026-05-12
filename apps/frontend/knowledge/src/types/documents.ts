@@ -1,4 +1,17 @@
 import type { ID, ISODateTime } from './common';
+import type {
+  KnowledgeCreateDocumentFromUploadRequest as AgentCoreCreateDocumentFromUploadRequest,
+  KnowledgeCreateDocumentFromUploadResponse as AgentCoreCreateDocumentFromUploadResponse,
+  KnowledgeDocument as AgentCoreKnowledgeDocument,
+  KnowledgeDocumentChunk as AgentCoreDocumentChunk,
+  KnowledgeDocumentProcessingJob as AgentCoreDocumentProcessingJob,
+  KnowledgeDocumentStatus as AgentCoreDocumentStatus,
+  KnowledgeEmbeddingModelOption as CoreEmbeddingModelOption,
+  KnowledgeUploadResult as AgentCoreKnowledgeUploadResult
+} from '@agent/core';
+
+export type CoreKnowledgeDocument = AgentCoreKnowledgeDocument;
+export type CoreDocumentStatus = AgentCoreDocumentStatus;
 
 export type DocumentSourceType =
   | 'user-upload'
@@ -8,6 +21,7 @@ export type DocumentSourceType =
   | 'workspace-docs'
   | 'repo-docs';
 
+// UI view model for the current document lifecycle labels.
 export type DocumentStatus =
   | 'uploaded'
   | 'queued'
@@ -20,6 +34,8 @@ export type DocumentStatus =
   | 'failed'
   | 'disabled'
   | 'deprecated';
+
+export type DocumentStatusCompat = DocumentStatus;
 
 export type DocumentProcessingStage =
   | 'uploaded'
@@ -49,6 +65,8 @@ export interface ProcessingErrorSummary {
   stage?: DocumentProcessingStage;
 }
 
+// UI view model for the current document table. API responses should parse
+// through CoreKnowledgeDocument before being adapted to this shape.
 export interface KnowledgeDocument {
   id: ID;
   workspaceId: ID;
@@ -58,7 +76,7 @@ export interface KnowledgeDocument {
   sourceType: DocumentSourceType;
   uri?: string;
   mimeType?: string;
-  status: DocumentStatus;
+  status: DocumentStatusCompat;
   version: string;
   chunkCount: number;
   embeddedChunkCount: number;
@@ -71,6 +89,9 @@ export interface KnowledgeDocument {
   updatedAt: ISODateTime;
 }
 
+export type KnowledgeDocumentCompat = KnowledgeDocument;
+
+// UI view model for the current processing stage timeline.
 export interface DocumentProcessingStageRecord {
   stage: DocumentProcessingStage;
   status: ProcessingJobStatus;
@@ -80,6 +101,9 @@ export interface DocumentProcessingStageRecord {
   completedAt?: ISODateTime;
 }
 
+export type DocumentProcessingStageRecordCompat = DocumentProcessingStageRecord;
+
+// UI view model for the current processing job detail.
 export interface DocumentProcessingJob {
   id: ID;
   documentId: ID;
@@ -99,6 +123,9 @@ export interface DocumentProcessingJob {
   createdAt: ISODateTime;
 }
 
+export type DocumentProcessingJobCompat = DocumentProcessingJob;
+
+// UI view model for the current upload result shape.
 export interface KnowledgeUploadResult {
   uploadId: ID;
   knowledgeBaseId: ID;
@@ -110,15 +137,12 @@ export interface KnowledgeUploadResult {
   uploadedAt: ISODateTime;
 }
 
-export interface UploadKnowledgeFileRequest {
-  knowledgeBaseId: ID;
-  file: File;
-}
+export type KnowledgeUploadResultCompat = KnowledgeUploadResult;
 
 export interface CreateDocumentFromUploadRequest {
-  uploadId: ID;
-  objectKey: string;
   filename: string;
+  objectKey: string;
+  uploadId: string;
   title?: string;
   metadata?: Record<string, unknown>;
 }
@@ -126,6 +150,11 @@ export interface CreateDocumentFromUploadRequest {
 export interface CreateDocumentFromUploadResponse {
   document: KnowledgeDocument;
   job: DocumentProcessingJob;
+}
+
+export interface UploadKnowledgeFileRequest {
+  knowledgeBaseId: ID;
+  file: File;
 }
 
 export interface UploadDocumentResponse {
@@ -149,8 +178,11 @@ export interface DeleteDocumentResponse {
   ok: true;
 }
 
+// UI view model for the current chunk state labels.
 export type ChunkStatus = 'ready' | 'failed' | 'disabled' | 'deprecated';
+export type ChunkStatusCompat = ChunkStatus;
 
+// UI view model for the current chunk table.
 export interface DocumentChunk {
   id: ID;
   documentId: ID;
@@ -158,13 +190,23 @@ export interface DocumentChunk {
   chunkIndex: number;
   content: string;
   tokenCount?: number;
-  status: ChunkStatus;
+  status: ChunkStatusCompat;
   embeddingModel?: string;
   embeddingStatus?: 'missing' | 'ready' | 'failed';
   metadata?: Record<string, unknown>;
   createdAt: ISODateTime;
   updatedAt: ISODateTime;
 }
+
+export type DocumentChunkCompat = DocumentChunk;
+
+// API contract aliases retained for callers that need the parsed core shape.
+export type CoreDocumentProcessingJob = AgentCoreDocumentProcessingJob;
+export type CoreKnowledgeUploadResult = AgentCoreKnowledgeUploadResult;
+export type CoreCreateDocumentFromUploadRequest = AgentCoreCreateDocumentFromUploadRequest;
+export type CoreCreateDocumentFromUploadResponse = AgentCoreCreateDocumentFromUploadResponse;
+export type CoreDocumentChunk = AgentCoreDocumentChunk;
+export type EmbeddingModelOption = CoreEmbeddingModelOption;
 
 export interface DocumentChunksResponse {
   items: DocumentChunk[];

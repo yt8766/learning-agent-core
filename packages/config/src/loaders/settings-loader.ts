@@ -1,4 +1,3 @@
-import { buildDailyTechBriefingConfig } from '../briefings/daily-tech-briefing';
 import {
   buildProviderAuditAdapters,
   findWorkspaceRoot,
@@ -206,7 +205,6 @@ export function loadSettings(input: NodeJS.ProcessEnv | LoadSettingsOptions = pr
           overrides.langGraphStore?.semanticSearch?.distanceMetric
       }
     },
-    dailyTechBriefing: buildDailyTechBriefingConfig(runtimeEnv, overrides, zhipuModels),
     embeddings: {
       provider: runtimeEnv.KNOWLEDGE_EMBEDDING_PROVIDER || 'glm',
       model: runtimeEnv.KNOWLEDGE_EMBEDDING_MODEL || 'Embedding-3',

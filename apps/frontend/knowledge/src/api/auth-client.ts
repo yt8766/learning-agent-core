@@ -105,18 +105,24 @@ export class AuthClient {
     this.clearAuthTokens();
   }
 
-  async ensureValidAccessToken(): Promise<string | null> {
+  async ensureValidAccessToken(): Promise<string> {
     if (!this.cachedTokens) {
-      return null;
+      this.handleAuthLost();
+      throw new Error('Missing access token');
     }
     if (this.isRefreshTokenExpired()) {
       this.handleAuthLost();
-      return null;
+      throw new Error('Refresh token expired');
     }
     if (this.shouldRefreshAccessToken()) {
       await this.refreshTokensOnce();
     }
-    return this.cachedTokens?.accessToken ?? null;
+    const accessToken = this.cachedTokens?.accessToken;
+    if (!accessToken) {
+      this.handleAuthLost();
+      throw new Error('Missing access token');
+    }
+    return accessToken;
   }
 
   refreshTokensOnce(): Promise<AuthTokens> {

@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/integration/`
-最后核对：2026-04-25
+最后核对：2026-05-11
 
 本目录用于沉淀跨模块链路、运行时协同与联调说明。API 契约统一放在 [docs/contracts/api](/docs/contracts/api/README.md)。
 
@@ -43,7 +43,7 @@
 - [API 文档目录](/docs/contracts/api/README.md)
 - [前后端集成链路](/docs/integration/frontend-backend-integration.md)
 - [Current System Flow](/docs/maps/system-flow-current-state.md)
-- [Daily Tech Intelligence Briefing Design](/docs/integration/daily-tech-intelligence-briefing-design.md)
+- [Tech & AI Intelligence Integration](/docs/integration/tech-ai-intelligence.md)
 - [Knowledge SDK RAG Rollout](/docs/integration/knowledge-sdk-rag-rollout.md)
 - [上下文组装与生成链路](/docs/integration/context-assembly-and-generation.md)
 - [RAG 可观测前端接线](/docs/integration/rag-observability-frontend-integration.md)

@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/src/domains/identity`
-最后核对：2026-05-07
+最后核对：2026-05-12
 
 `agent-server` 已承接统一后端目标下的 Identity 域主入口。新增或迁移身份逻辑时，优先落在 `src/domains/identity`，HTTP 入口只保留在 `src/api/identity`，不要重新引入独立 auth backend 或让应用层直连历史 auth package。
 
@@ -32,7 +32,8 @@ Identity 业务错误会以稳定 `AuthErrorCode` 返回，并映射为客户端
 - `src/api/identity/*`：Nest controller 与路由 alias，只负责 HTTP 参数、状态码和调用 identity service。
 - `src/domains/identity/schemas/*`：复用 `@agent/core` 的 auth request schema，保持请求 contract 与公共契约一致。
 - `src/domains/identity/services/*`：登录、JWT 签发、密码校验、refresh token 轮换、session revoke、种子用户与用户管理。
-- `src/domains/identity/repositories/*`：Identity 持久化端口和实现。当前默认实现是内存 repository；Postgres repository 已作为迁移候选实现保留，但还不是默认 provider。
+- `src/domains/identity/repositories/*`：Identity 持久化端口和实现。默认实现仍是内存 repository；显式设置 `IDENTITY_REPOSITORY=postgres` 时，`src/domains/identity/runtime/identity-repository.provider.ts` 会使用 Postgres repository。
+- `src/domains/identity/runtime/*`：Identity repository provider 与数据库 schema bootstrap。Postgres 模式必须提供 `IDENTITY_DATABASE_URL` 或 `DATABASE_URL`，启动时会执行 `IDENTITY_SCHEMA_SQL`，确保 `identity_users`、`identity_password_credentials`、`identity_refresh_sessions` 与 `identity_refresh_tokens` 存在。
 
 ## 3. Token 与 Session 语义
 
@@ -44,7 +45,7 @@ Identity 业务错误会以稳定 `AuthErrorCode` 返回，并映射为客户端
 - logout 会撤销当前 session。
 - `/api/identity/me` 支持从 Bearer token 或已解析 principal 查询当前用户。
 
-JWT 由 `IdentityJwtProvider` 封装，业务层不要直接拼第三方 JWT payload。Refresh token、session 与用户状态由 repository 端口承载，后续切换 Postgres 时必须通过该端口完成。
+JWT 由 `IdentityJwtProvider` 封装，业务层不要直接拼第三方 JWT payload。Refresh token、session 与用户状态由 repository 端口承载；切换 Postgres 只能通过 `IDENTITY_REPOSITORY=postgres` 的 provider 完成，不要让 service 直接依赖 `pg` 或表结构。
 
 ## 4. 密码兼容边界
 

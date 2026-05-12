@@ -102,10 +102,6 @@ export type ConnectorsCenterItem = Awaited<ReturnType<RuntimeService['getConnect
 export const createService = () => {
   const service = new RuntimeService();
   const c = collaborators(service);
-  (service as any).settings.dailyTechBriefing = {
-    ...(service as any).settings.dailyTechBriefing,
-    enabled: false
-  };
   (service as any).settings.zhipuApiKey = '';
   (service as any).settings.embeddings = {
     ...(service as any).settings.embeddings,

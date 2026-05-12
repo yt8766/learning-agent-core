@@ -393,6 +393,10 @@ describe('AgentGatewayApiClient', () => {
       })
       .mockResolvedValueOnce({
         status: 200,
+        data: { cleared: true, clearedAt: '2026-05-08T00:01:00.000Z' }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
         data: {
           version: '1.2.3',
           buildDate: '2026-05-01',
@@ -435,6 +439,7 @@ describe('AgentGatewayApiClient', () => {
       items: [{ prefix: 'sk-***abc' }]
     });
     await expect(client.logFiles()).resolves.toMatchObject({ items: [{ fileName: 'error.log' }] });
+    await expect(client.clearLogs()).resolves.toMatchObject({ cleared: true });
     await expect(client.systemInfo()).resolves.toMatchObject({ latestVersion: '1.2.4' });
     await expect(client.discoverModels()).resolves.toMatchObject({ groups: [{ providerId: 'openai' }] });
 
@@ -453,6 +458,7 @@ describe('AgentGatewayApiClient', () => {
       ['/api/agent-gateway/api-keys', 'GET'],
       ['/api/agent-gateway/api-keys', 'PUT'],
       ['/api/agent-gateway/logs/request-error-files', 'GET'],
+      ['/api/agent-gateway/logs', 'DELETE'],
       ['/api/agent-gateway/system/info', 'GET'],
       ['/api/agent-gateway/system/models', 'GET']
     ]);
@@ -622,5 +628,185 @@ describe('AgentGatewayApiClient', () => {
       ['/api/agent-gateway/system/clear-login-storage', 'POST']
     ]);
     expect(axiosRequestMock.mock.calls[6][0].data).toEqual({ names: ['gemini-oauth-prod.json'] });
+  });
+
+  it('calls migration preview and apply endpoints through stable client methods', async () => {
+    axiosRequestMock
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          source: {
+            apiBase: 'https://router.example.com',
+            serverVersion: 'cli-proxy-1.2.3',
+            checkedAt: '2026-05-11T00:00:00.000Z'
+          },
+          resources: [
+            {
+              kind: 'providerConfig',
+              sourceId: 'codex',
+              targetId: 'codex',
+              action: 'create',
+              safe: true,
+              summary: 'Codex Production'
+            }
+          ],
+          conflicts: [],
+          totals: { create: 1, update: 0, skip: 0, conflict: 0 }
+        }
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        data: {
+          migrationId: 'migration-1',
+          appliedAt: '2026-05-11T00:01:00.000Z',
+          imported: [{ kind: 'providerConfig', targetId: 'codex', sourceId: 'codex' }],
+          skipped: [],
+          failed: []
+        }
+      });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(
+      client.previewMigration({ apiBase: 'https://router.example.com', managementKey: 'mgmt-secret' })
+    ).resolves.toMatchObject({ totals: { create: 1 } });
+    await expect(
+      client.applyMigration({
+        apiBase: 'https://router.example.com',
+        managementKey: 'mgmt-secret',
+        selectedSourceIds: ['codex']
+      })
+    ).resolves.toMatchObject({ imported: [{ kind: 'providerConfig', targetId: 'codex', sourceId: 'codex' }] });
+
+    expect(
+      axiosRequestMock.mock.calls.slice(-2).map(call => {
+        const config = call[0];
+        return [config.url, config.method, config.data];
+      })
+    ).toEqual([
+      [
+        '/api/agent-gateway/migration/preview',
+        'POST',
+        { apiBase: 'https://router.example.com', managementKey: 'mgmt-secret' }
+      ],
+      [
+        '/api/agent-gateway/migration/apply',
+        'POST',
+        {
+          apiBase: 'https://router.example.com',
+          managementKey: 'mgmt-secret',
+          selectedSourceIds: ['codex']
+        }
+      ]
+    ]);
+  });
+
+  it('parses runtime health projection through the management client', async () => {
+    axiosRequestMock.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        status: 'ready',
+        checkedAt: '2026-05-10T00:00:00.000Z',
+        executors: [
+          {
+            providerKind: 'codex',
+            status: 'ready',
+            checkedAt: '2026-05-10T00:00:00.000Z',
+            activeRequests: 1,
+            supportsStreaming: true,
+            message: 'ok'
+          }
+        ],
+        activeRequests: 1,
+        activeStreams: 0,
+        usageQueue: { pending: 2, failed: 0 },
+        cooldowns: []
+      }
+    });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(client.runtimeHealth()).resolves.toMatchObject({
+      status: 'ready',
+      executors: [{ providerKind: 'codex', activeRequests: 1, supportsStreaming: true }]
+    });
+    expect(axiosRequestMock.mock.calls[0][0].url).toBe('/api/agent-gateway/runtime/health');
+  });
+
+  it('rejects invalid runtime health projections from the management API', async () => {
+    axiosRequestMock.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        status: 'ready',
+        checkedAt: '2026-05-10T00:00:00.000Z',
+        executors: [
+          {
+            providerKind: 'codex',
+            status: 'ready',
+            checkedAt: '2026-05-10T00:00:00.000Z',
+            activeRequests: -1,
+            supportsStreaming: true
+          }
+        ],
+        activeRequests: 0,
+        activeStreams: 0,
+        usageQueue: { pending: 0, failed: 0 },
+        cooldowns: []
+      }
+    });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(client.runtimeHealth()).rejects.toThrow('Runtime health 响应格式无效');
+  });
+
+  it('calls usage analytics endpoint with typed query params', async () => {
+    axiosRequestMock.mockResolvedValueOnce({
+      status: 200,
+      data: {
+        observedAt: '2026-05-11T18:50:00.000Z',
+        range: {
+          preset: 'today',
+          from: '2026-05-11T00:00:00.000Z',
+          to: '2026-05-11T18:50:00.000Z',
+          bucketMinutes: 60
+        },
+        activeTab: 'requestLogs',
+        summary: {
+          requestCount: 0,
+          estimatedCostUsd: 0,
+          totalTokens: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheCreateTokens: 0,
+          cacheHitTokens: 0
+        },
+        trend: [],
+        requestLogs: { items: [], total: 0, nextCursor: null },
+        providerStats: [],
+        modelStats: [],
+        filters: { providers: [], models: [], applications: [] }
+      }
+    });
+    const client = new AgentGatewayApiClient({
+      getAccessToken: () => 'access',
+      refreshAccessToken: async () => 'fresh'
+    });
+
+    await expect(
+      client.usageAnalytics({ range: 'today', providerId: 'codex_session', limit: 24 })
+    ).resolves.toMatchObject({
+      summary: { requestCount: 0 }
+    });
+
+    expect(axiosRequestMock.mock.calls[0][0].url).toBe(
+      '/api/agent-gateway/usage/analytics?range=today&providerId=codex_session&limit=24'
+    );
   });
 });

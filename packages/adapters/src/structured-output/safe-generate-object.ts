@@ -43,6 +43,10 @@ function classifyParseStatus(error: unknown): StructuredParseStatus {
   return 'provider_failed';
 }
 
+/**
+ * Shared structured-output boundary for LLM calls.
+ * Only schema/JSON-shaped failures are retried with corrective feedback; provider failures become fallback metadata.
+ */
 export async function safeGenerateObject<T>(
   params: {
     contractName: string;

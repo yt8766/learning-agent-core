@@ -234,12 +234,6 @@ describe('RuntimeService core', () => {
     expect(runtimeExport.content).toContain(
       'taskId,status,executionMode,currentMinistry,requestedBy,interruptSource,interactionKind,currentWorker,selectedAgents,selectionSources,streamNode,streamDetail,streamProgressPercent,compressionApplied,compressionSource,compressedMessageCount,updatedAt'
     );
-    expect(runtimeExport.content).toContain(
-      'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError'
-    );
-    expect(runtimeExport.content).toContain(
-      'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt'
-    );
     expect(approvalsExport.filename).toContain('approvals-center');
     expect(approvalsExport.mimeType).toBe('text/csv');
     expect(approvalsExport.content).toContain('filterExecutionMode,filterInteractionKind');

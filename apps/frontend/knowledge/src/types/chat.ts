@@ -1,5 +1,8 @@
 import type { ID, ISODateTime } from './common';
-import type { KnowledgeRagAnswer, KnowledgeRagStreamEvent as SdkKnowledgeRagStreamEvent } from '@agent/knowledge';
+import type {
+  KnowledgeRagAnswer,
+  KnowledgeRagStreamEvent as SdkKnowledgeRagStreamEvent
+} from '@agent/knowledge/browser';
 
 export interface Citation {
   id: ID;

@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/src/domains/identity`、`apps/frontend/agent-admin`、`apps/frontend/knowledge`
-最后核对：2026-05-09
+最后核对：2026-05-12
 
 统一登录服务采用账号密码登录和 JWT Access Token + Refresh Token 轮换机制。第一版直接由前端调用，不实现 OIDC。
 
@@ -40,6 +40,12 @@ http://127.0.0.1:3000/api
 ```text
 VITE_AUTH_SERVICE_BASE_URL=http://127.0.0.1:3000/api
 ```
+
+Identity 持久化：
+
+- 默认 `IDENTITY_REPOSITORY=memory`，适合本地短生命周期和测试。
+- 设置 `IDENTITY_REPOSITORY=postgres` 时必须提供 `IDENTITY_DATABASE_URL` 或 `DATABASE_URL`；agent-server 启动会先执行 Identity schema bootstrap，再通过 Postgres repository 读取和写入 `/api/identity/users`、session 与 refresh token。
+- Knowledge 访问治理页的 `/api/knowledge/workspace/users` 会聚合这里的真实 Identity 用户，不再返回内置成员样例。
 
 ## 2. Permission Boundary
 
