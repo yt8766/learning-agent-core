@@ -163,8 +163,10 @@
   - `pnpm test:workspace:smoke`：只执行根级 `test/smoke/**` 下的 workspace-level smoke
   - `pnpm test:workspace:integration:affected`：基于 changed paths 映射到受影响的根级 integration 用例，作为 PR CI 与 `verify:affected` 的阻塞项；全局验证配置或共享 helper 变化时自动提升为全量 workspace integration
 - workspace smoke 当前已并入 `pnpm verify`，并在 PR CI 与 main CI 中作为阻塞项执行；`pnpm verify:affected` 仍保持受影响范围主入口，不直接内联全量 smoke，本地提交时由 `.husky/commit-msg` 额外执行 `pnpm test:workspace:smoke`
+- `Spec` 收集器只负责 schema / contract / parser / normalizer 等结构校验回归；`*.smoke.spec.ts` 即使源码里调用 `Schema.parse`，也不进入 `pnpm test:spec:affected`，避免会启动 HTTP app 或依赖全局环境的 smoke 用例污染 Spec 层并发执行。
 - 受影响范围入口默认读取环境变量 `VERIFY_BASE_REF`；未显式配置时回落到 `origin/main`
 - 受影响范围 changed paths 默认会合并 `VERIFY_BASE_REF...HEAD`、working tree、staged 与 untracked 改动；提交阶段如需只验证已提交历史与本次 staged 改动，可通过 `VERIFY_INCLUDE_WORKTREE=0`、`VERIFY_INCLUDE_STAGED=1`、`VERIFY_INCLUDE_UNTRACKED=0` 关闭未暂存和未跟踪噪音源。当前 `.husky/commit-msg` 已采用这组参数
+- `build:lib` 当前通过 Turbo 的 `build:lib -> ^build:lib` 编排先构建 workspace 上游依赖，避免干净 CI 环境中下游包的 declaration build 在依赖包 `build/types` 产物生成前解析到 `build/cjs` 入口并触发缺失声明错误。
 - `Demo` 当前直接复用 workspace 既有 `demo` 脚本，并通过 Turbo 的 `demo -> build:lib -> ^build:lib` 编排获得受影响范围筛选与依赖构建能力；详细边界见 [Turbo Demo 三阶段迁移方案](/docs/packages/evals/turbo-demo-stage-three-plan.md)
 - `demo` 任务当前显式追踪 `demo/**`、`src/**`、`package.json`、`tsconfig.json` 与 `tsconfig.*.json`，以减少无关文件改动导致的缓存失效
 - 对存在额外模板或脚手架依赖的宿主，应使用宿主级例外补充 `inputs`；当前仓库里的 scaffold 回归已迁回 `packages/tools` 测试与 integration，不再保留独立 demo 例外
