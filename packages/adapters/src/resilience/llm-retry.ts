@@ -26,6 +26,10 @@ export function isRetryableLlmError(error: Error) {
   return DEFAULT_RETRY_PATTERN.test(error.message);
 }
 
+/**
+ * Retries an LLM call by appending one corrective user message to the original prompt.
+ * Each attempt restarts from the original messages so failed model output is not carried forward as context.
+ */
 export async function withLlmRetry<T>(
   invoke: (messages: ChatMessage[]) => Promise<T>,
   messages: ChatMessage[],

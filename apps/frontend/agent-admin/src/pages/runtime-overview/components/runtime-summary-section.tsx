@@ -2,7 +2,6 @@
 
 import { getAgentToolExecutionProjection, getChannelDeliveries, isAbortedAdminRequestError } from '@/api/admin-api';
 import { RuntimeSummaryAgentErrors } from './runtime-summary-agent-errors';
-import { RuntimeSummaryBriefingAudit } from './runtime-summary-briefing-audit';
 import { RuntimeSummaryBudget } from './runtime-summary-budget';
 import { RuntimeSummaryChannelDeliveries } from './runtime-summary-channel-deliveries';
 import { RuntimeSummaryGovernance } from './runtime-summary-governance';
@@ -132,7 +131,6 @@ export function RuntimeSummarySection({
         onRetryableFilterChange={setRetryableFilter}
       />
       <RuntimeSummaryVisuals runtime={runtime} onSelectTask={onSelectTask} />
-      <RuntimeSummaryBriefingAudit runtime={runtime} />
       <RuntimeSummaryChannelDeliveries channelDeliveries={channelDeliveries} />
     </>
   );

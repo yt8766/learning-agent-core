@@ -12,10 +12,6 @@ import {
 import * as contractSettingsFacade from '../src/contracts/settings-facade';
 import * as compatSettingsRoot from '../src/settings';
 import { loadSettings as directLoadSettings } from '../src/loaders/settings-loader';
-import {
-  buildDailyTechBriefingCategoryConfig as hostBuildDailyTechBriefingCategoryConfig,
-  buildDailyTechBriefingConfig as hostBuildDailyTechBriefingConfig
-} from '../src/briefings/daily-tech-briefing';
 import { DEFAULT_DATA_PATHS as hostDefaultDataPaths } from '../src/shared/settings-defaults';
 import { buildProfileOverrides as hostBuildProfileOverrides } from '../src/profiles/runtime-profile-overrides';
 import { mergeNormalizedPolicy as hostMergeNormalizedPolicy } from '../src/policies/runtime-policy-defaults';
@@ -65,8 +61,6 @@ describe('config root exports', () => {
     expect(compatSettingsRoot.parseDotEnvFile).toBe(hostParseDotEnvFile);
     expect(compatSettingsRoot.buildMergedOverrides).toBe(hostBuildMergedOverrides);
     expect(compatSettingsRoot.resolveSettingsPaths).toBe(hostResolveSettingsPaths);
-    expect(compatSettingsRoot.buildDailyTechBriefingConfig).toBe(hostBuildDailyTechBriefingConfig);
-    expect(compatSettingsRoot.buildDailyTechBriefingCategoryConfig).toBe(hostBuildDailyTechBriefingCategoryConfig);
   });
 
   it('retains settings aggregate entrypoints as human-readable long-term facades', () => {
@@ -75,7 +69,7 @@ describe('config root exports', () => {
     expect(existsSync(new URL('../src/contracts/settings-facade.ts', import.meta.url))).toBe(true);
   });
 
-  it('removes runtime compat wrapper files once loaders and briefings become canonical hosts', () => {
+  it('removes runtime compat wrapper files once loaders become canonical hosts', () => {
     expect(existsSync(new URL('../src/runtime/daily-tech-briefing.ts', import.meta.url))).toBe(false);
     expect(existsSync(new URL('../src/runtime/settings-loader.ts', import.meta.url))).toBe(false);
     expect(existsSync(new URL('../src/runtime/settings-paths.ts', import.meta.url))).toBe(false);

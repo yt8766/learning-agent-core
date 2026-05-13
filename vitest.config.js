@@ -171,10 +171,13 @@ export default defineConfig({
         '**/assets/**',
         'packages/templates/src/scaffold/**',
         'packages/templates/src/scaffolds/**',
+        'packages/templates/src/starters/**',
         '**/*.stories.*',
         '**/vite-env.d.ts',
-        '**/src/main.ts',
-        '**/src/main.tsx'
+        '**/src/**/types.ts',
+        '**/*.types.tsx',
+        'apps/frontend/*/src/main.tsx',
+        'apps/frontend/*/src/main.ts'
       ],
       thresholds: {
         lines: 85,

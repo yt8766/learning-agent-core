@@ -261,5 +261,4 @@ export interface BuildRuntimeCenterProjectionInput extends BuildRuntimeCenterSum
   };
   knowledgeSearchStatus?: RuntimeCenterKnowledgeSearchStatus;
   knowledgeSearchLastDiagnostics?: RuntimeKnowledgeSearchDiagnosticsSnapshot;
-  dailyTechBriefing?: unknown;
 }

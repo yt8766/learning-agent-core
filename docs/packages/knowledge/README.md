@@ -57,6 +57,8 @@
 - [context-assembly-and-generation.md](/docs/packages/knowledge/context-assembly-and-generation.md)
 - [chat-pre-retrieval-routing.md](/docs/packages/knowledge/chat-pre-retrieval-routing.md)
 - [source-ingestion-status.md](/docs/packages/knowledge/source-ingestion-status.md)
+- [rag-course-reference-gap-analysis.md](/docs/packages/knowledge/rag-course-reference-gap-analysis.md)
+- [duyi-knowledge-bases-reference-gap-analysis.md](/docs/packages/knowledge/duyi-knowledge-bases-reference-gap-analysis.md)
 
 说明：`sdk-architecture.md` 记录 SDK target architecture / migration guide，不代表其中所有目标目录、subpath exports 或 optional adapters 当前均已实现。
 

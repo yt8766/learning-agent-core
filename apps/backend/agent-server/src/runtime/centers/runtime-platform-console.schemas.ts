@@ -90,27 +90,6 @@ export const PlatformConsoleUsagePointSchema = z.object({
   overBudget: z.boolean().optional()
 });
 
-export const PlatformConsoleDailyTechBriefingCategorySchema = z.object({
-  category: z.string(),
-  status: z.string(),
-  itemCount: z.number(),
-  emptyDigest: z.union([z.string(), z.boolean()]).optional(),
-  sentAt: z.string().optional(),
-  error: z.string().optional()
-});
-
-export const PlatformConsoleDailyTechBriefingSchema = z
-  .object({
-    scheduler: z.string().optional(),
-    schedule: z.string().optional(),
-    cron: z.string().optional(),
-    scheduleValid: z.union([z.string(), z.boolean()]).optional(),
-    jobKey: z.string().optional(),
-    lastRegisteredAt: z.string().optional(),
-    categories: z.array(PlatformConsoleDailyTechBriefingCategorySchema).optional()
-  })
-  .partial();
-
 export const PlatformConsoleRuntimeRecordSchema = z
   .object({
     usageAnalytics: z
@@ -120,8 +99,7 @@ export const PlatformConsoleRuntimeRecordSchema = z
       })
       .partial()
       .default({}),
-    recentRuns: z.array(PlatformConsoleRuntimeTaskRecordSchema).default([]),
-    dailyTechBriefing: PlatformConsoleDailyTechBriefingSchema.optional()
+    recentRuns: z.array(PlatformConsoleRuntimeTaskRecordSchema).default([])
   })
   .catchall(z.unknown());
 

@@ -36,7 +36,7 @@
 - Modify: `apps/frontend/agent-gateway/src/app/gateway-view-model.ts`
 - Modify: `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx`
 - Create: `apps/frontend/agent-gateway/src/app/pages/ClientsPage.tsx`
-- Modify: `apps/frontend/agent-gateway/src/app/styles/management.css`
+- Modify: `apps/frontend/agent-gateway/src/app/styles/management.scss`
 - Modify: `apps/frontend/agent-gateway/test/agent-gateway-api.test.ts`
 - Create: `apps/frontend/agent-gateway/test/agent-gateway-clients-page.test.tsx`
 - Modify: `docs/contracts/api/agent-gateway.md`
@@ -1360,7 +1360,7 @@ git commit -m "feat: add agent gateway openai compatible runtime"
 - Modify: `apps/frontend/agent-gateway/src/app/gateway-view-model.ts`
 - Modify: `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx`
 - Create: `apps/frontend/agent-gateway/src/app/pages/ClientsPage.tsx`
-- Modify: `apps/frontend/agent-gateway/src/app/styles/management.css`
+- Modify: `apps/frontend/agent-gateway/src/app/styles/management.scss`
 
 - [ ] **Step 1: Add failing frontend API test**
 
@@ -1814,7 +1814,7 @@ Use the first client as the initial detail target for `clientApiKeys`, `clientUs
 
 - [ ] **Step 8: Add minimal CSS**
 
-Append to `apps/frontend/agent-gateway/src/app/styles/management.css`:
+Append to `apps/frontend/agent-gateway/src/app/styles/management.scss`:
 
 ```css
 .gateway-clients-page .one-time-secret {

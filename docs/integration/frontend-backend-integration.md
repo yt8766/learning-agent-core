@@ -47,10 +47,11 @@
 
 ## 前端请求层
 
-当前常规前端 HTTP 请求层统一到 `axios + @tanstack/react-query`。
+当前常规前端 HTTP 请求层按应用边界收敛到各自的 API client，并由 `@tanstack/react-query` 调度页面状态；不要让页面组件直接拼业务请求。
 
 - `agent-chat`：常规请求走 `src/api/*`；聊天流仍使用浏览器 `EventSource`。
 - `agent-admin`：控制台和各 center 读取默认经由 react-query 调度。
+- `knowledge`：业务请求走 `KnowledgeApiClient` 的 fetch 边界，先通过 `AuthClient.ensureValidAccessToken()` 注入 Bearer token；本地 refresh token 过期时必须清理登录态并跳回 `/login`，不能继续发无 token 请求。
 - `agent-gateway`：Identity 与 Agent Gateway Management API 请求走 `axios`，工作区数据读取由 react-query 调度，页面切换由 `react-router-dom` 路由驱动。
 - SSE、浏览器原生事件源和其他长连接链路不由 react-query 替代。
 

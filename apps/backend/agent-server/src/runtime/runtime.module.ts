@@ -9,7 +9,6 @@ import { RuntimeCentersService } from './centers/runtime-centers.service';
 import {
   createRuntimeBootstrapService,
   createRuntimeCentersService,
-  createRuntimeIntelBriefingFacade,
   createRuntimeMessageGatewayFacadeService,
   createRuntimeKnowledgeService,
   createRuntimeScheduleService,
@@ -18,7 +17,6 @@ import {
   createRuntimeTaskService,
   createRuntimeToolsService
 } from './core/runtime-provider-factories';
-import { RuntimeIntelBriefingFacade } from './core/runtime-intel-briefing-facade';
 import { RuntimeBootstrapService } from './services/runtime-bootstrap.service';
 import { RuntimeKnowledgeService } from './services/runtime-knowledge.service';
 import { RuntimeMessageGatewayFacadeService } from './services/runtime-message-gateway-facade.service';
@@ -39,25 +37,18 @@ import { RuntimeIntelSchedulerService } from './domain/intel/runtime-intel-sched
     RuntimeArchitectureService,
     RuntimeOperationalStateService,
     {
-      provide: RuntimeIntelBriefingFacade,
-      useFactory: (runtimeHost: RuntimeHost) => createRuntimeIntelBriefingFacade(runtimeHost),
-      inject: [RuntimeHost]
-    },
-    {
       provide: RuntimeScheduleService,
-      useFactory: (runtimeHost: RuntimeHost, techBriefingService: RuntimeIntelBriefingFacade) =>
-        createRuntimeScheduleService(runtimeHost, techBriefingService),
-      inject: [RuntimeHost, RuntimeIntelBriefingFacade]
+      useFactory: (runtimeHost: RuntimeHost) => createRuntimeScheduleService(runtimeHost),
+      inject: [RuntimeHost]
     },
     {
       provide: RuntimeCentersService,
       useFactory: (
         runtimeHost: RuntimeHost,
         operationalState: RuntimeOperationalStateService,
-        techBriefingService: RuntimeIntelBriefingFacade,
         appLogger: AppLoggerService
-      ) => createRuntimeCentersService(runtimeHost, operationalState, techBriefingService, appLogger),
-      inject: [RuntimeHost, RuntimeOperationalStateService, RuntimeIntelBriefingFacade, AppLoggerService]
+      ) => createRuntimeCentersService(runtimeHost, operationalState, appLogger),
+      inject: [RuntimeHost, RuntimeOperationalStateService, AppLoggerService]
     },
     {
       provide: RuntimeSessionService,
@@ -95,10 +86,9 @@ import { RuntimeIntelSchedulerService } from './domain/intel/runtime-intel-sched
       useFactory: (
         runtimeHost: RuntimeHost,
         operationalState: RuntimeOperationalStateService,
-        techBriefingService: RuntimeIntelBriefingFacade,
         runtimeScheduleService: RuntimeScheduleService
-      ) => createRuntimeBootstrapService(runtimeHost, operationalState, techBriefingService, runtimeScheduleService),
-      inject: [RuntimeHost, RuntimeOperationalStateService, RuntimeIntelBriefingFacade, RuntimeScheduleService]
+      ) => createRuntimeBootstrapService(runtimeHost, operationalState, runtimeScheduleService),
+      inject: [RuntimeHost, RuntimeOperationalStateService, RuntimeScheduleService]
     },
     RuntimeIntelSchedulerService,
     RuntimeService

@@ -3,9 +3,9 @@ import {
   matchesKnowledgeHitFilters,
   resolveKnowledgeRetrievalFilters,
   type KnowledgeSearchService,
+  type RetrievalHit,
   type KnowledgeRetriever,
-  type RetrievalRequest,
-  type RetrievalResult
+  type RetrievalRequest
 } from '@agent/knowledge';
 
 import type { KnowledgeRepository } from '../repositories/knowledge.repository';
@@ -30,7 +30,9 @@ interface RetrievalDiagnostics {
   finalHitCount?: number;
 }
 
-interface KnowledgeDomainSearchResult extends RetrievalResult {
+interface KnowledgeDomainSearchResult {
+  hits: RetrievalHit[];
+  total: number;
   diagnostics: RetrievalDiagnostics;
 }
 

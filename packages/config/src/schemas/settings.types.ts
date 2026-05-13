@@ -104,49 +104,6 @@ export interface LangGraphStoreConfig {
   };
 }
 
-export interface DailyTechBriefingConfig {
-  enabled: boolean;
-  schedule: string;
-  sendEmptyDigest: boolean;
-  maxItemsPerCategory: number;
-  duplicateWindowDays: number;
-  maxNonCriticalItemsPerCategory: number;
-  maxCriticalItemsPerCategory: number;
-  maxTotalItemsPerCategory: number;
-  sendOnlyDelta: boolean;
-  resendOnlyOnMaterialChange: boolean;
-  larkDigestMode: 'markdown-summary' | 'interactive-card' | 'dual';
-  larkDetailMode?: 'summary' | 'detailed';
-  sourcePolicy: 'tiered-authority' | 'official-only';
-  webhookEnvVar: string;
-  webhookUrl?: string;
-  translationEnabled: boolean;
-  translationModel: string;
-  aiLookbackDays: number;
-  frontendLookbackDays: number;
-  securityLookbackDays: number;
-  categories: {
-    frontendSecurity: DailyTechBriefingCategoryConfig;
-    generalSecurity: DailyTechBriefingCategoryConfig;
-    devtoolSecurity: DailyTechBriefingCategoryConfig;
-    aiTech: DailyTechBriefingCategoryConfig;
-    frontendTech: DailyTechBriefingCategoryConfig;
-    backendTech: DailyTechBriefingCategoryConfig;
-    cloudInfraTech: DailyTechBriefingCategoryConfig;
-  };
-}
-
-export interface DailyTechBriefingCategoryConfig {
-  enabled: boolean;
-  baseIntervalHours: number;
-  lookbackDays: number;
-  adaptivePolicy: {
-    hotThresholdRuns: number;
-    cooldownEmptyRuns: number;
-    allowedIntervalHours: number[];
-  };
-}
-
 export interface RuntimeSettingsOverrides {
   profile?: RuntimeProfile;
   workspaceRoot?: string;
@@ -181,7 +138,6 @@ export interface RuntimeSettingsOverrides {
     postgres?: Partial<NonNullable<LangGraphStoreConfig['postgres']>>;
     semanticSearch?: Partial<LangGraphStoreConfig['semanticSearch']>;
   };
-  dailyTechBriefing?: Partial<DailyTechBriefingConfig>;
 }
 
 export interface LoadSettingsOptions {
@@ -230,7 +186,6 @@ export interface RuntimeSettings {
   runtimeBackground: RuntimeBackgroundConfig;
   langGraphCheckpointer: LangGraphCheckpointerConfig;
   langGraphStore: LangGraphStoreConfig;
-  dailyTechBriefing: DailyTechBriefingConfig;
   embeddings: {
     provider: string;
     model: string;

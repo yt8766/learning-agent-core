@@ -30,7 +30,7 @@ export class KnowledgeEvalService {
     for (const evalCase of input.cases) {
       try {
         const answer = await this.answerer.answer({ question: evalCase.question });
-        const expectedChunkIds = new Set(evalCase.expectedChunkIds ?? []);
+        const expectedChunkIds = new Set<string>(evalCase.expectedChunkIds ?? []);
         const citedChunkIds = new Set(answer.citations.map(citation => citation.chunkId));
         const matched = [...expectedChunkIds].filter(chunkId => citedChunkIds.has(chunkId)).length;
         const recallAtK = expectedChunkIds.size > 0 ? matched / expectedChunkIds.size : undefined;

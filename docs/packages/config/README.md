@@ -3,7 +3,7 @@
 状态：current
 文档类型：index
 适用范围：`docs/packages/config/`
-最后核对：2026-04-18
+最后核对：2026-05-11
 
 本目录用于沉淀 `packages/config` 相关文档。
 
@@ -29,7 +29,6 @@
     - `src/schemas/settings.types.ts`
     - `src/profiles/runtime-profile-overrides.ts`
     - `src/policies/runtime-policy-defaults.ts`
-    - `src/briefings/daily-tech-briefing.ts`
     - `src/loaders/settings-loader.ts`
     - `src/loaders/settings-paths.ts`
     - `src/shared/settings-defaults.ts`
@@ -38,6 +37,7 @@
   - `src/settings.ts` 与 `src/settings/index.ts` 当前保留为人工可读聚合入口
   - `src/runtime/*` 仅保留过渡期 compat wrapper，不再视为真实宿主
   - `src/settings/settings.*` 这类纯 compat re-export 已删除
+  - 旧 `dailyTechBriefing` 配置已随 Daily Tech Briefing 下线删除；Tech & AI Intelligence 频道走 `@agent/core` intelligence contract 与 intel-engine runtime，不再通过 `packages/config` 暴露 briefing 开关
   - 长期仍继续向 `schemas / profiles / policies / loaders / shared / utils` 收敛
   - 根入口优先维护显式命名导出，不继续用整段 `export *` 透传整个 `settings/*`
 

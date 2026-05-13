@@ -12,7 +12,7 @@ import { EvidenceCenterController } from './evidence-center.controller';
 import { LearningCenterController } from './learning-center.controller';
 import { KnowledgeGovernanceController } from './knowledge-governance.controller';
 import { KnowledgeIngestionController } from './knowledge-ingestion.controller';
-import { PlatformBriefingsController } from './platform-briefings.controller';
+import { PlatformIntelligenceController } from './platform-intelligence.controller';
 import { PlatformConsoleController } from './platform-console.controller';
 import { PlatformDiagnosticsController } from './platform-diagnostics.controller';
 import { RuntimeCenterController } from './runtime-center.controller';
@@ -33,7 +33,7 @@ import { WorkspaceCenterController } from './workspace-center.controller';
     SkillSourcesCenterController,
     CompanyAgentsCenterController,
     EvalsCenterController,
-    PlatformBriefingsController,
+    PlatformIntelligenceController,
     PlatformDiagnosticsController,
     WorkspaceCenterController
   ],

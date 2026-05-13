@@ -35,6 +35,7 @@
       "cache": false
     },
     "build:lib": {
+      "dependsOn": ["^build:lib"],
       "outputs": ["build/**/*"]
     },
     "dev": {

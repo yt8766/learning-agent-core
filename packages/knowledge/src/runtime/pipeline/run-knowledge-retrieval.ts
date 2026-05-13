@@ -20,6 +20,7 @@ import { DefaultPostRetrievalFilter } from '../defaults/default-post-retrieval-f
 import { DefaultPostRetrievalRanker } from '../defaults/default-post-retrieval-ranker';
 import { DefaultQueryNormalizer } from '../defaults/default-query-normalizer';
 import { DefaultRetrievalPostProcessor } from '../defaults/default-post-processor';
+import { buildPostRetrievalSelectionTrace } from '../defaults/post-retrieval-selection-trace';
 import {
   buildKnowledgeRagEventId,
   buildKnowledgeRagTraceRetrievalDiagnostics,
@@ -44,6 +45,10 @@ export interface KnowledgeRetrievalRunOptions {
   startTrace?: boolean;
 }
 
+/**
+ * Normalizers compose sequentially: each stage receives the previous stage result.
+ * This lets hosts add deterministic or LLM rewrites without changing the retrieval pipeline contract.
+ */
 function resolveNormalizerChain(config: QueryNormalizer | QueryNormalizer[] | undefined): QueryNormalizer {
   if (!config) return new DefaultQueryNormalizer();
   if (!Array.isArray(config)) return config;
@@ -89,6 +94,10 @@ interface SearchResultDiagnostics {
   diagnostics?: HybridRetrievalDiagnostics;
 }
 
+/**
+ * Merges multi-query retrieval candidates by chunk id.
+ * When the same chunk appears in multiple query variants, keep the highest-scoring hit and sort globally by score.
+ */
 function mergeHitsByChunkId(hitGroups: SearchHits[]): RetrievalHit[] {
   const hitsByChunkId = new Map<string, RetrievalHit>();
 
@@ -240,6 +249,31 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
     const rankResult = await postRetrievalRanker.rank(filterResult.hits, effectiveNormalized);
     const diversifyResult = await postRetrievalDiversifier.diversify(rankResult.hits, effectiveNormalized);
     const processedHits = await postProcessor.process(diversifyResult.hits, effectiveNormalized);
+    const selectionTrace = buildPostRetrievalSelectionTrace([
+      {
+        stage: 'filtering',
+        inputHits: mergedHits,
+        outputHits: filterResult.hits,
+        droppedReason: 'low-score'
+      },
+      {
+        stage: 'ranking',
+        inputHits: filterResult.hits,
+        outputHits: rankResult.hits
+      },
+      {
+        stage: 'diversification',
+        inputHits: rankResult.hits,
+        outputHits: diversifyResult.hits,
+        droppedReason: 'source-limit'
+      },
+      {
+        stage: 'post-processor',
+        inputHits: diversifyResult.hits,
+        outputHits: processedHits,
+        droppedReason: 'post-processor-min-score'
+      }
+    ]);
     const postHitCount = processedHits.length;
     const postRetrievalDiagnostics = {
       ...retrievalDiagnostics,
@@ -312,7 +346,8 @@ export async function runKnowledgeRetrieval(options: KnowledgeRetrievalRunOption
           postRetrieval: {
             filtering: filterResult.diagnostics,
             ranking: rankResult.diagnostics,
-            diversification: diversifyResult.diagnostics
+            diversification: diversifyResult.diagnostics,
+            selectionTrace
           },
           filtering: {
             enabled: Boolean(request.filters || request.allowedSourceTypes || request.minTrustClass),

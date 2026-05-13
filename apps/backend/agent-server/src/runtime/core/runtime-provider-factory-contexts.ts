@@ -12,9 +12,10 @@ import { buildWorkspaceSkillDraftManifests } from '../domain/skills/runtime-work
 import { syncInstalledSkillWorkers } from '../domain/skills/runtime-skill-orchestration';
 import { getRuntimeWorkspaceDraftStoreForContext } from '../centers/runtime-centers-workspace-drafts';
 import { RuntimeCentersGovernanceService } from '../centers/runtime-centers-governance.service';
-import { refreshMetricsSnapshots as refreshMetricsSnapshotsWithGovernance } from '../centers/runtime-centers-governance-metrics';
 import { RuntimeCentersQueryService } from '../centers/runtime-centers-query.service';
 import { RuntimeCentersService } from '../centers/runtime-centers.service';
+import { createIntelligenceMemoryRepository } from '../intelligence/intelligence-memory.repository';
+import { RuntimeIntelligenceRunService } from '../intelligence/intelligence-run.service';
 import type {
   PlatformConsoleCompanyAgentsRecord,
   RuntimePlatformConsoleContext
@@ -23,7 +24,6 @@ import { RuntimeOperationalStateService } from '../services/runtime-operational-
 import { RuntimeWenyuanFacade } from '../domain/knowledge/runtime-wenyuan-facade';
 import type { AppLoggerService } from '../../logger/app-logger.service';
 import type { RuntimeHost } from './runtime.host';
-import { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade';
 
 export function createProviderFactoryUnsupportedPlatformConsoleContext(): RuntimePlatformConsoleContext {
   const unsupported = (name: string) => () => {
@@ -126,53 +126,6 @@ export function createProviderFactoryKnowledgeContext(runtimeHost: RuntimeHost) 
   });
 }
 
-function createBootstrapCentersContext(
-  runtimeHost: RuntimeHost,
-  operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeIntelBriefingFacade
-) {
-  return createCentersContext({
-    settings: () => runtimeHost.settings,
-    runtimeHost: () => runtimeHost,
-    wenyuanFacade: () => createProviderFactoryWenyuanFacade(runtimeHost),
-    sessionCoordinator: () => runtimeHost.sessionCoordinator,
-    orchestrator: () => runtimeHost.orchestrator,
-    runtimeStateRepository: () => runtimeHost.runtimeStateRepository,
-    memoryRepository: () => runtimeHost.memoryRepository,
-    ruleRepository: () => runtimeHost.ruleRepository,
-    skillRegistry: () => runtimeHost.skillRegistry,
-    toolRegistry: () => runtimeHost.toolRegistry,
-    mcpClientManager: () => runtimeHost.mcpClientManager,
-    mcpServerRegistry: () => runtimeHost.mcpServerRegistry,
-    mcpCapabilityRegistry: () => runtimeHost.mcpCapabilityRegistry,
-    describeConnectorProfilePolicy,
-    fetchProviderUsageAudit: (days: number) =>
-      fetchProviderUsageAudit(
-        runtimeHost.settings.providerAudit.adapters,
-        runtimeHost.settings.providerAudit.primaryProvider,
-        days
-      ),
-    getBackgroundWorkerSlots: () => operationalState.getBackgroundWorkerSlots(),
-    getConnectorRegistryContext: () => createProviderFactoryConnectorRegistryContext(runtimeHost),
-    getSkillInstallContext: () => createProviderFactorySkillInstallContext(runtimeHost),
-    getSkillSourcesContext: () => createProviderFactorySkillSourcesContext(runtimeHost),
-    getPlatformConsoleContext: () => createProviderFactoryUnsupportedPlatformConsoleContext(),
-    techBriefingService: () => techBriefingService
-  });
-}
-
-export async function initializeProviderFactoryMetricsSnapshots(
-  runtimeHost: RuntimeHost,
-  operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeIntelBriefingFacade,
-  days: number
-) {
-  await refreshMetricsSnapshotsWithGovernance(
-    createBootstrapCentersContext(runtimeHost, operationalState, techBriefingService),
-    days
-  );
-}
-
 export async function syncProviderFactoryInstalledSkillWorkers(runtimeHost: RuntimeHost) {
   await syncInstalledSkillWorkers({
     skillRegistry: runtimeHost.skillRegistry,
@@ -205,16 +158,22 @@ export function createProviderFactoryBackgroundRunnerContext(
 export function createProviderFactoryCentersService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeIntelBriefingFacade,
   appLogger?: AppLoggerService
 ) {
   const wenyuanFacade = createProviderFactoryWenyuanFacade(runtimeHost);
+  const intelligenceRepository = createIntelligenceMemoryRepository();
+  const intelligenceRunService = new RuntimeIntelligenceRunService(() => ({
+    workspaceRoot: runtimeHost.settings.workspaceRoot,
+    repository: intelligenceRepository,
+    mcpClientManager: runtimeHost.mcpClientManager
+  }));
   const centersServiceRef: { current?: RuntimeCentersService } = {};
   const context = createCentersContext({
     settings: () => runtimeHost.settings,
     runtimeHost: () => runtimeHost,
     appLogger: () => appLogger,
-    techBriefingService: () => techBriefingService,
+    intelligenceRepository: () => intelligenceRepository,
+    intelligenceRunService: () => intelligenceRunService,
     wenyuanFacade: () => wenyuanFacade,
     sessionCoordinator: () => runtimeHost.sessionCoordinator,
     orchestrator: () => runtimeHost.orchestrator,

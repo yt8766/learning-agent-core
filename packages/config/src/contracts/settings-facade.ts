@@ -19,8 +19,6 @@ export type {
   ApprovalPolicyConfig,
   BudgetPolicy,
   ContextStrategy,
-  DailyTechBriefingCategoryConfig,
-  DailyTechBriefingConfig,
   LangGraphCheckpointerConfig,
   LearningPolicy,
   LangGraphStoreConfig,

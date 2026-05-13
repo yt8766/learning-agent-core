@@ -37,8 +37,9 @@
   - 技能工坊
   - 证据与来源
   - 连接器设置
+  - Intelligence
 - “评测基线 / 归档中心 / 技能工坊” 当前作为侧栏内的折叠子分组呈现，默认在进入这些页面时自动展开，并支持点击父级右侧箭头展开或收起。
-- “技能来源治理”“公司专员编排”作为专项编排入口保留在独立分组，避免和六大中心混成重复产品导航。
+- “技能来源治理”“公司专员编排”“Intelligence”作为专项编排入口保留在独立分组，避免和六大中心混成重复产品导航。
 - 侧栏视觉应强调“治理控制台”而不是通用 SaaS 列表：允许使用分层卡片、状态徽标和摘要信息，但不要退回纯英文、纯列表式菜单。
 
 ## 当前目录职责
@@ -100,6 +101,9 @@
   - 证据与引用治理
 - `src/pages/knowledge-governance`
   - 知识治理中心；只消费 `KnowledgeGovernanceProjection`，展示知识库健康、provider health、ingestion 来源、检索诊断、证据链与 agent 使用情况，不读取 raw repository records、vendor response 或未脱敏文档内容。
+- `src/pages/intelligence-center`
+  - Intelligence Center；`dashboard-center-lazy-registry.tsx` 中的 `IntelligenceDashboardCenter` 调用 `getIntelligenceOverview()`，页面只消费 `IntelligenceOverviewProjection` props，展示 channels、recent signals、pending candidates 与空态。
+  - API facade 位于 `src/api/admin-api-platform.ts`，请求 `GET /platform/intelligence/overview`；稳定 contract 来自 `@agent/core` 的 Intelligence schemas，前端不直连 backend runtime repository。
 - `src/pages/connectors-center`
   - Connector、策略和配置治理
 - `src/pages/task-traces`

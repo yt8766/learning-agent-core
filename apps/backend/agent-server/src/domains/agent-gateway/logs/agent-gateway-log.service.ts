@@ -6,6 +6,11 @@ import type {
   GatewayRequestLogEntry,
   GatewayRequestLogListResponse
 } from '@agent/core';
+import {
+  GatewayClearLogsResponseSchema,
+  GatewayLogFileListResponseSchema,
+  GatewayRequestLogListResponseSchema
+} from '@agent/core';
 import { AGENT_GATEWAY_MANAGEMENT_CLIENT } from '../management/agent-gateway-management-client';
 
 interface LogDownloadManagementClient {
@@ -23,20 +28,24 @@ export class AgentGatewayLogService {
     @Inject(AGENT_GATEWAY_MANAGEMENT_CLIENT) private readonly managementClient: LogDownloadManagementClient
   ) {}
 
-  tail(request: GatewayLogSearchRequest): Promise<GatewayRequestLogListResponse> {
-    return this.managementClient.tailLogs(request);
+  async tail(request: GatewayLogSearchRequest): Promise<GatewayRequestLogListResponse> {
+    return GatewayRequestLogListResponseSchema.parse(await this.managementClient.tailLogs(request));
   }
 
-  search(request: GatewayLogSearchRequest): Promise<GatewayRequestLogListResponse> {
-    return this.managementClient.searchLogs(request);
+  async search(request: GatewayLogSearchRequest): Promise<GatewayRequestLogListResponse> {
+    return GatewayRequestLogListResponseSchema.parse(await this.managementClient.searchLogs(request));
   }
 
-  listRequestErrorFiles(): Promise<GatewayLogFileListResponse> {
-    return this.managementClient.listRequestErrorFiles();
+  async listRequestErrorFiles(): Promise<GatewayLogFileListResponse> {
+    return GatewayLogFileListResponseSchema.parse(await this.managementClient.listRequestErrorFiles());
   }
 
   clear(): Promise<GatewayClearLogsResponse> {
-    return this.managementClient.clearLogs();
+    return this.clearLogs();
+  }
+
+  async clearLogs(): Promise<GatewayClearLogsResponse> {
+    return GatewayClearLogsResponseSchema.parse(await this.managementClient.clearLogs());
   }
 
   async downloadRequestLog(id: string): Promise<string> {

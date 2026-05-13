@@ -3,6 +3,7 @@ import { PATH_METADATA } from '@nestjs/common/constants';
 
 import { KnowledgeApiController } from '../../src/api/knowledge/knowledge.controller';
 import { KnowledgeSettingsController } from '../../src/api/knowledge/knowledge-settings.controller';
+import { IdentityAuthService } from '../../src/domains/identity/services/identity-auth.service';
 
 describe('knowledge canonical routes', () => {
   it('mounts the main knowledge controller under knowledge', () => {
@@ -20,5 +21,11 @@ describe('knowledge canonical routes', () => {
     ];
 
     expect(routes).not.toContain('knowledge/v1');
+  });
+
+  it('keeps identity auth injectable for bearer-token knowledge requests', () => {
+    const dependencies = Reflect.getMetadata('design:paramtypes', KnowledgeApiController) as unknown[];
+
+    expect(dependencies.at(-1)).toBe(IdentityAuthService);
   });
 });

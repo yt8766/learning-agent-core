@@ -66,9 +66,6 @@ vi.mock('@/pages/runtime-overview/components/runtime-summary-agent-errors', () =
 vi.mock('@/pages/runtime-overview/components/runtime-summary-visuals', () => ({
   RuntimeSummaryVisuals: () => <div>visuals-block</div>
 }));
-vi.mock('@/pages/runtime-overview/components/runtime-summary-briefing-audit', () => ({
-  RuntimeSummaryBriefingAudit: () => <div>briefing-audit-block</div>
-}));
 vi.mock('@/pages/runtime-overview/components/runtime-summary-channel-deliveries', () => ({
   RuntimeSummaryChannelDeliveries: ({ channelDeliveries }: { channelDeliveries: Array<{ id: string }> }) => (
     <div data-channel-deliveries={channelDeliveries.map(item => item.id).join(',') || 'empty'}>
@@ -144,7 +141,6 @@ describe('RuntimeSummarySection', () => {
     expect(html).toContain('tools-block');
     expect(html).toContain('agent-errors-block');
     expect(html).toContain('visuals-block');
-    expect(html).toContain('briefing-audit-block');
     expect(html).toContain('data-error-codes="provider_timeout,empty_output"');
     expect(html).toContain('data-ministries="gongbu-code,xingbu-review"');
     expect(html).toContain('data-filtered-count="3"');

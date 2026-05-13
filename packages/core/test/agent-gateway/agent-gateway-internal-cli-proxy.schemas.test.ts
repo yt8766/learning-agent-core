@@ -1,18 +1,142 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GatewayClientApiKeySchema,
   GatewayClientApiKeyListResponseSchema,
   GatewayClientListResponseSchema,
   GatewayClientQuotaSchema,
+  GatewayClientRequestLogSchema,
   GatewayClientRequestLogListResponseSchema,
+  GatewayClientSchema,
   GatewayCreateClientApiKeyResponseSchema,
+  GatewayOAuthCredentialRecordSchema,
   GatewayOpenAIChatCompletionRequestSchema,
   GatewayOpenAIChatCompletionResponseSchema,
   GatewayOpenAICompatibleErrorResponseSchema,
   GatewayOpenAIModelsResponseSchema,
+  GatewayProviderQuotaSnapshotSchema,
+  GatewayRuntimeExecutorConfigSchema,
+  GatewayRuntimeInvocationSchema,
   GatewayUpdateClientQuotaRequestSchema
 } from '../../src/contracts/agent-gateway';
 
 describe('agent gateway internal CLI proxy contracts', () => {
+  it('rejects raw provider payloads at runtime boundaries', () => {
+    expect(() =>
+      GatewayRuntimeExecutorConfigSchema.parse({
+        providerKind: 'codex',
+        enabled: true,
+        adapterKind: 'process',
+        commandProfile: 'codex',
+        rawResponse: { token: 'secret' }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayRuntimeInvocationSchema.parse({
+        id: 'inv_1',
+        protocol: 'openai.chat.completions',
+        model: 'gpt-5',
+        stream: false,
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'ping' }] }],
+        requestedAt: '2026-05-11T00:00:00.000Z',
+        client: { clientId: 'client_1', apiKeyId: 'key_1', scopes: ['chat.completions'] },
+        metadata: {},
+        rawPayload: { vendor: true }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayOAuthCredentialRecordSchema.parse({
+        id: 'cred_1',
+        providerKind: 'codex',
+        authFileId: 'auth_1',
+        accountEmail: null,
+        projectId: null,
+        status: 'valid',
+        secretRef: 'secret:cred_1',
+        scopes: [],
+        expiresAt: null,
+        updatedAt: '2026-05-11T00:00:00.000Z',
+        lastCheckedAt: null,
+        accessToken: 'not-allowed'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayProviderQuotaSnapshotSchema.parse({
+        id: 'quota_1',
+        providerKind: 'codex',
+        authFileId: 'auth_1',
+        accountEmail: null,
+        model: 'gpt-5',
+        scope: 'model',
+        window: '5h',
+        limit: null,
+        used: 0,
+        remaining: null,
+        resetAt: null,
+        source: 'provider',
+        refreshedAt: '2026-05-11T00:00:00.000Z',
+        status: 'unknown',
+        headers: { authorization: 'Bearer secret' }
+      })
+    ).toThrow();
+  });
+
+  it('rejects raw secrets in stable runtime management objects', () => {
+    expect(() =>
+      GatewayClientSchema.parse({
+        id: 'client-acme',
+        name: 'Acme App',
+        status: 'active',
+        tags: [],
+        createdAt: '2026-05-11T00:00:00.000Z',
+        updatedAt: '2026-05-11T00:00:00.000Z',
+        rawPayload: { owner: 'secret' }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayClientApiKeySchema.parse({
+        id: 'key-1',
+        clientId: 'client-acme',
+        name: 'default',
+        prefix: 'agp_live_1234',
+        status: 'active',
+        scopes: ['models.read'],
+        createdAt: '2026-05-11T00:00:00.000Z',
+        expiresAt: null,
+        lastUsedAt: null,
+        apiKey: 'not-allowed'
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayClientRequestLogSchema.parse({
+        id: 'req-1',
+        clientId: 'client-acme',
+        apiKeyId: 'key-1',
+        occurredAt: '2026-05-11T00:00:01.000Z',
+        endpoint: '/v1/chat/completions',
+        model: 'gpt-5',
+        providerId: 'openai-main',
+        statusCode: 200,
+        inputTokens: 2,
+        outputTokens: 3,
+        latencyMs: 12,
+        headers: { authorization: 'Bearer secret' }
+      })
+    ).toThrow();
+
+    expect(() =>
+      GatewayOpenAIChatCompletionRequestSchema.parse({
+        model: 'gpt-5',
+        messages: [{ role: 'user', content: 'ping', rawResponse: { token: 'secret' } }],
+        secret: 'not-allowed'
+      })
+    ).toThrow();
+  });
+
   it('parses Gateway client, key, quota, usage log, and OpenAI-compatible runtime contracts', () => {
     expect(
       GatewayClientListResponseSchema.parse({

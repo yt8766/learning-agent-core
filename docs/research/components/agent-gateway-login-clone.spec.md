@@ -7,7 +7,7 @@
 
 ## Overview
 
-- **Target files**：`apps/frontend/agent-gateway/src/app/pages/LoginPage.tsx`、`apps/frontend/agent-gateway/src/app/styles/login.css`
+- **Target files**：`apps/frontend/agent-gateway/src/app/pages/LoginPage.tsx`、`apps/frontend/agent-gateway/src/app/styles/login.scss`
 - **Interaction model**：static split shell + username/password form controls.
 - **Source reference**：`http://localhost:8317/management.html#/login`
 

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   GatewayManagementApiCallResponseSchema,
+  GatewayQuotaDetailListResponseSchema,
   type GatewayManagementApiCallRequest,
   type GatewayManagementApiCallResponse,
   type GatewayProviderKind,
@@ -20,10 +21,10 @@ export class AgentGatewayApiCallService {
 
   async call(request: GatewayManagementApiCallRequest): Promise<GatewayManagementApiCallResponse> {
     if (this.managementClient.managementApiCall) {
-      return this.managementClient.managementApiCall(request);
+      return parseSanitizedApiCallResponse(await this.managementClient.managementApiCall(request));
     }
 
-    return GatewayManagementApiCallResponseSchema.parse({
+    return parseSanitizedApiCallResponse({
       statusCode: 200,
       header: {},
       bodyText: JSON.stringify({
@@ -41,19 +42,45 @@ export class AgentGatewayApiCallService {
   }
 
   async refreshQuotaDetails(providerKind: GatewayProviderKind): Promise<GatewayQuotaDetailListResponse> {
+    return this.refreshProviderQuota(providerKind);
+  }
+
+  async refreshProviderQuota(providerKind: GatewayProviderKind): Promise<GatewayQuotaDetailListResponse> {
     if (this.managementClient.refreshQuotaDetails) {
-      return this.managementClient.refreshQuotaDetails(providerKind);
+      return GatewayQuotaDetailListResponseSchema.parse(await this.managementClient.refreshQuotaDetails(providerKind));
     }
 
     const details = await this.managementClient.listQuotaDetails();
-    return {
+    return GatewayQuotaDetailListResponseSchema.parse({
       items: details.items.filter(item => item.providerId === providerKind)
-    };
+    });
   }
 }
 
-function inferProviderFromUrl(url: string): string {
+function inferProviderFromUrl(url: string | undefined): string {
+  if (!url) return 'custom';
   if (url.includes('anthropic.com')) return 'claude';
   if (url.includes('generativelanguage.googleapis.com')) return 'gemini';
   return 'custom';
+}
+
+function parseSanitizedApiCallResponse(response: GatewayManagementApiCallResponse): GatewayManagementApiCallResponse {
+  const body = sanitizeProjectionValue(response.body);
+  return GatewayManagementApiCallResponseSchema.parse({
+    ...response,
+    body,
+    bodyText: JSON.stringify(body)
+  });
+}
+
+const sensitiveProjectionKeyPattern = /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|authorization|cookie|secret)/i;
+
+function sanitizeProjectionValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => sanitizeProjectionValue(item));
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !sensitiveProjectionKeyPattern.test(key))
+      .map(([key, nested]) => [key, sanitizeProjectionValue(nested)])
+  );
 }

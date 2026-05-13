@@ -82,6 +82,71 @@ describe('Knowledge RAG SDK trace projection', () => {
     expect(JSON.stringify(trace)).not.toContain('rawResponse');
   });
 
+  it('projects selection trace as redacted retrieval selection counts', () => {
+    const service = new KnowledgeTraceService();
+    const traceId = service.startTrace({
+      operation: 'retrieval.run'
+    });
+
+    service.projectSdkTrace(traceId, {
+      traceId: 'sdk-trace-1',
+      status: 'succeeded',
+      startedAt: '2026-05-11T00:00:00.000Z',
+      events: [
+        {
+          eventId: 'event-1',
+          traceId: 'sdk-trace-1',
+          name: 'runtime.retrieval.complete',
+          stage: 'retrieval',
+          occurredAt: '2026-05-11T00:00:00.500Z',
+          retrieval: {
+            hits: [],
+            citations: [],
+            diagnostics: {
+              retrievalMode: 'hybrid',
+              candidateCount: 3,
+              selectedCount: 1,
+              latencyMs: 100,
+              selectionTrace: [
+                {
+                  chunkId: 'chunk-low',
+                  sourceId: 'source-a',
+                  selected: false,
+                  stage: 'filtering',
+                  reason: 'low-score',
+                  score: 0.01
+                },
+                {
+                  chunkId: 'chunk-selected',
+                  sourceId: 'source-b',
+                  selected: true,
+                  stage: 'post-processor',
+                  reason: 'selected',
+                  score: 0.9,
+                  order: 0
+                }
+              ]
+            }
+          }
+        }
+      ],
+      metrics: []
+    });
+
+    const projected = service.getTrace(traceId);
+    const retrievalSpan = projected?.spans.find(span => span.name === 'retrieve');
+
+    expect(retrievalSpan?.attributes).toMatchObject({
+      retrievalMode: 'hybrid',
+      candidateCount: 3,
+      selectedCount: 1,
+      droppedCount: 1,
+      dropReasons: {
+        'low-score': 1
+      }
+    });
+  });
+
   it('projects a sanitized SDK failure span when answer generation throws after retrieval', async () => {
     let generateCallCount = 0;
     const generate = vi.fn(async input => {

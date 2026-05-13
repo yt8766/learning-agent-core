@@ -2,8 +2,9 @@ import { describeConnectorProfilePolicy } from '@agent/runtime';
 import type { ProviderAuditSyncResult } from '../../core/runtime-centers-facade';
 
 import type { RuntimeHost } from '../../core/runtime.host';
-import type { RuntimeIntelBriefingFacade } from '../../core/runtime-intel-briefing-facade';
-import type { RuntimeCentersContext, RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';
+import type { IntelligenceRepository } from '../../intelligence/intelligence.repository';
+import type { RuntimeCentersContext } from '../../centers/runtime-centers.types';
+import type { RuntimeConnectorRegistryContext } from '../../centers/runtime-centers.types';
 import type { AppLoggerService } from '../../../logger/app-logger.service';
 import type { RuntimeWenyuanFacade } from '../knowledge/runtime-wenyuan-facade';
 import type { RuntimePlatformConsoleContext } from '../../centers/runtime-platform-console.records';
@@ -14,7 +15,8 @@ export interface RuntimeCentersContextInput {
   settings: () => RuntimeHost['settings'];
   runtimeHost: () => RuntimeHost;
   appLogger?: () => AppLoggerService | undefined;
-  techBriefingService?: () => RuntimeIntelBriefingFacade | undefined;
+  intelligenceRepository?: () => IntelligenceRepository | undefined;
+  intelligenceRunService?: () => RuntimeCentersContext['intelligenceRunService'];
   wenyuanFacade: () => RuntimeWenyuanFacade;
   sessionCoordinator: () => RuntimeHost['sessionCoordinator'];
   orchestrator: () => RuntimeHost['orchestrator'];
@@ -42,7 +44,8 @@ export function createCentersContext(input: RuntimeCentersContextInput): Runtime
     settings: input.settings(),
     runtimeHost: input.runtimeHost(),
     appLogger: input.appLogger?.(),
-    techBriefingService: input.techBriefingService?.(),
+    intelligenceRepository: input.intelligenceRepository?.(),
+    intelligenceRunService: input.intelligenceRunService?.(),
     wenyuanFacade: input.wenyuanFacade(),
     sessionCoordinator: input.sessionCoordinator(),
     orchestrator: input.orchestrator(),

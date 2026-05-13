@@ -31,7 +31,6 @@ export async function exportRuntimeCenter(
   const usageAnalytics = runtime.usageAnalytics ?? {};
   const persistedDailyHistory = usageAnalytics.persistedDailyHistory ?? usageAnalytics.daily ?? [];
   const recentRuns = runtime.recentRuns ?? [];
-  const dailyTechCategories = runtime.dailyTechBriefing?.categories ?? [];
   const format = options?.format === 'json' ? 'json' : 'csv';
   if (format === 'json') {
     return {
@@ -55,16 +54,7 @@ export async function exportRuntimeCenter(
     ...recentRuns.map(task => {
       const dispatchSelection = summarizeDispatchSelection(task);
       return `${csv(task.id)},${csv(task.status)},${csv(normalizeExecutionMode(task.executionMode) ?? task.executionMode ?? '')},${csv(getMinistryDisplayName(task.currentMinistry) ?? task.currentMinistry ?? '')},${csv(getMinistryDisplayName(task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy) ?? task.pendingApproval?.requestedBy ?? task.activeInterrupt?.requestedBy ?? '')},${csv(task.activeInterrupt?.source ?? '')},${csv(resolveTaskInteractionKind(task) ?? '')},${csv(task.currentWorker)},${csv(dispatchSelection.selectedAgents)},${csv(dispatchSelection.selectionSources)},${csv(task.streamStatus?.nodeLabel ?? task.streamStatus?.nodeId ?? '')},${csv(task.streamStatus?.detail ?? '')},${csv(task.streamStatus?.progressPercent ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionApplied ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressionSource ?? '')},${csv(task.contextFilterState?.filteredContextSlice?.compressedMessageCount ?? '')},${csv(task.updatedAt)}`;
-    }),
-    '',
-    'dailyTechScheduler,dailyTechSchedule,dailyTechCron,dailyTechScheduleValid,dailyTechJobKey,dailyTechLastRegisteredAt',
-    `dailyTechScheduler,${csv(runtime.dailyTechBriefing?.scheduler ?? '')},${csv(runtime.dailyTechBriefing?.schedule ?? '')},${csv(runtime.dailyTechBriefing?.cron ?? '')},${csv(runtime.dailyTechBriefing?.scheduleValid ?? '')},${csv(runtime.dailyTechBriefing?.jobKey ?? '')},${csv(runtime.dailyTechBriefing?.lastRegisteredAt ?? '')}`,
-    '',
-    'dailyTechCategory,dailyTechStatus,dailyTechItemCount,dailyTechEmptyDigest,dailyTechSentAt,dailyTechError',
-    ...(dailyTechCategories.map(
-      item =>
-        `${csv(item.category)},${csv(item.status)},${csv(item.itemCount)},${csv(item.emptyDigest)},${csv(item.sentAt ?? '')},${csv(item.error ?? '')}`
-    ) as string[])
+    })
   ];
 
   return {

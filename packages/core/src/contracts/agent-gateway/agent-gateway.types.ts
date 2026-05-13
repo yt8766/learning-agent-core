@@ -111,6 +111,29 @@ import type {
   GatewayOpenAICompatibleErrorResponseSchema,
   GatewayOpenAIModelSchema,
   GatewayOpenAIModelsResponseSchema,
+  GatewayRuntimeErrorSchema,
+  GatewayRuntimeExecutorAdapterKindSchema,
+  GatewayRuntimeExecutorHealthSchema,
+  GatewayRuntimeExecutorConfigSchema,
+  GatewayRuntimeHealthResponseSchema,
+  GatewayRuntimeInvocationSchema,
+  GatewayMigrationApplyFailureSchema,
+  GatewayMigrationApplyItemSchema,
+  GatewayMigrationApplyResponseSchema,
+  GatewayMigrationConflictSchema,
+  GatewayMigrationPreviewSchema,
+  GatewayMigrationResourceActionSchema,
+  GatewayMigrationResourceKindSchema,
+  GatewayMigrationResourcePreviewSchema,
+  GatewayOAuthCredentialRecordSchema,
+  GatewayRuntimeMessageContentPartSchema,
+  GatewayRuntimeMessageSchema,
+  GatewayProviderQuotaSnapshotSchema,
+  GatewayRuntimeProtocolSchema,
+  GatewayRuntimeProviderKindSchema,
+  GatewayRuntimeQuotaPolicySchema,
+  GatewayRuntimeRouteDecisionSchema,
+  GatewayRuntimeStreamEventSchema,
   GatewayUpdateClientApiKeyRequestSchema,
   GatewayUpdateClientQuotaRequestSchema,
   GatewayUpdateClientRequestSchema
@@ -140,10 +163,14 @@ import type {
   GatewayProviderOAuthStartRequestSchema,
   GatewayProviderOAuthStartResponseSchema,
   GatewayProviderCredentialSchema,
+  GatewayProviderSpecificConfigSummarySchema,
   GatewayProviderSpecificConfigListResponseSchema,
   GatewayProviderSpecificConfigRecordSchema,
   GatewayProviderTypeSchema,
   GatewayRequestLogSettingResponseSchema,
+  GatewaySafeHeaderArrayMetadataSchema,
+  GatewaySafeHeaderMetadataSchema,
+  GatewaySafeHeaderNameSchema,
   GatewayUpdateAmpcodeForceModelMappingsRequestSchema,
   GatewayUpdateAmpcodeModelMappingsRequestSchema,
   GatewayUpdateAmpcodeUpstreamApiKeyRequestSchema,
@@ -153,6 +180,19 @@ import type {
   GatewayVertexCredentialImportRequestSchema,
   GatewayVertexCredentialImportResponseSchema
 } from './agent-gateway-cli-proxy-parity.schemas';
+import type {
+  GatewayUsageAnalyticsFilterOptionSchema,
+  GatewayUsageAnalyticsModelStatSchema,
+  GatewayUsageAnalyticsProviderStatSchema,
+  GatewayUsageAnalyticsQuerySchema,
+  GatewayUsageAnalyticsRangePresetSchema,
+  GatewayUsageAnalyticsRangeSchema,
+  GatewayUsageAnalyticsRequestLogSchema,
+  GatewayUsageAnalyticsResponseSchema,
+  GatewayUsageAnalyticsSummarySchema,
+  GatewayUsageAnalyticsTabSchema,
+  GatewayUsageAnalyticsTrendPointSchema
+} from './agent-gateway-usage-analytics.schemas';
 export type GatewayUser = z.infer<typeof GatewayUserSchema>;
 export type GatewaySession = z.infer<typeof GatewaySessionSchema>;
 export type GatewayAuthErrorCode = z.infer<typeof GatewayAuthErrorCodeSchema>;
@@ -171,6 +211,17 @@ export type GatewayLogEntry = z.infer<typeof GatewayLogEntrySchema>;
 export type GatewayUsageRecord = z.infer<typeof GatewayUsageRecordSchema>;
 export type GatewayLogListResponse = z.infer<typeof GatewayLogListResponseSchema>;
 export type GatewayUsageListResponse = z.infer<typeof GatewayUsageListResponseSchema>;
+export type GatewayUsageAnalyticsRangePreset = z.infer<typeof GatewayUsageAnalyticsRangePresetSchema>;
+export type GatewayUsageAnalyticsTab = z.infer<typeof GatewayUsageAnalyticsTabSchema>;
+export type GatewayUsageAnalyticsQuery = z.infer<typeof GatewayUsageAnalyticsQuerySchema>;
+export type GatewayUsageAnalyticsRange = z.infer<typeof GatewayUsageAnalyticsRangeSchema>;
+export type GatewayUsageAnalyticsSummary = z.infer<typeof GatewayUsageAnalyticsSummarySchema>;
+export type GatewayUsageAnalyticsTrendPoint = z.infer<typeof GatewayUsageAnalyticsTrendPointSchema>;
+export type GatewayUsageAnalyticsRequestLog = z.infer<typeof GatewayUsageAnalyticsRequestLogSchema>;
+export type GatewayUsageAnalyticsProviderStat = z.infer<typeof GatewayUsageAnalyticsProviderStatSchema>;
+export type GatewayUsageAnalyticsModelStat = z.infer<typeof GatewayUsageAnalyticsModelStatSchema>;
+export type GatewayUsageAnalyticsFilterOption = z.infer<typeof GatewayUsageAnalyticsFilterOptionSchema>;
+export type GatewayUsageAnalyticsResponse = z.infer<typeof GatewayUsageAnalyticsResponseSchema>;
 export type GatewayProbeRequest = z.infer<typeof GatewayProbeRequestSchema>;
 export type GatewayProbeResponse = z.infer<typeof GatewayProbeResponseSchema>;
 export type GatewayTokenCountRequest = z.infer<typeof GatewayTokenCountRequestSchema>;
@@ -263,6 +314,29 @@ export type GatewayOpenAIChatCompletionResponse = z.infer<typeof GatewayOpenAICh
 export type GatewayOpenAIModel = z.infer<typeof GatewayOpenAIModelSchema>;
 export type GatewayOpenAIModelsResponse = z.infer<typeof GatewayOpenAIModelsResponseSchema>;
 export type GatewayOpenAICompatibleErrorResponse = z.infer<typeof GatewayOpenAICompatibleErrorResponseSchema>;
+export type GatewayRuntimeProtocol = z.infer<typeof GatewayRuntimeProtocolSchema>;
+export type GatewayRuntimeProviderKind = z.infer<typeof GatewayRuntimeProviderKindSchema>;
+export type GatewayRuntimeMessageContentPart = z.infer<typeof GatewayRuntimeMessageContentPartSchema>;
+export type GatewayRuntimeMessage = z.infer<typeof GatewayRuntimeMessageSchema>;
+export type GatewayRuntimeInvocation = z.infer<typeof GatewayRuntimeInvocationSchema>;
+export type GatewayRuntimeRouteDecision = z.infer<typeof GatewayRuntimeRouteDecisionSchema>;
+export type GatewayRuntimeStreamEvent = z.infer<typeof GatewayRuntimeStreamEventSchema>;
+export type GatewayRuntimeError = z.infer<typeof GatewayRuntimeErrorSchema>;
+export type GatewayRuntimeExecutorAdapterKind = z.infer<typeof GatewayRuntimeExecutorAdapterKindSchema>;
+export type GatewayRuntimeExecutorHealth = z.infer<typeof GatewayRuntimeExecutorHealthSchema>;
+export type GatewayRuntimeHealthResponse = z.infer<typeof GatewayRuntimeHealthResponseSchema>;
+export type GatewayRuntimeQuotaPolicy = z.infer<typeof GatewayRuntimeQuotaPolicySchema>;
+export type GatewayRuntimeExecutorConfig = z.infer<typeof GatewayRuntimeExecutorConfigSchema>;
+export type GatewayOAuthCredentialRecord = z.infer<typeof GatewayOAuthCredentialRecordSchema>;
+export type GatewayProviderQuotaSnapshot = z.infer<typeof GatewayProviderQuotaSnapshotSchema>;
+export type GatewayMigrationResourceKind = z.infer<typeof GatewayMigrationResourceKindSchema>;
+export type GatewayMigrationResourceAction = z.infer<typeof GatewayMigrationResourceActionSchema>;
+export type GatewayMigrationResourcePreview = z.infer<typeof GatewayMigrationResourcePreviewSchema>;
+export type GatewayMigrationConflict = z.infer<typeof GatewayMigrationConflictSchema>;
+export type GatewayMigrationPreview = z.infer<typeof GatewayMigrationPreviewSchema>;
+export type GatewayMigrationApplyItem = z.infer<typeof GatewayMigrationApplyItemSchema>;
+export type GatewayMigrationApplyFailure = z.infer<typeof GatewayMigrationApplyFailureSchema>;
+export type GatewayMigrationApplyResponse = z.infer<typeof GatewayMigrationApplyResponseSchema>;
 export type GatewayDashboardProviderSummary = z.infer<typeof GatewayDashboardProviderSummarySchema>;
 export type GatewayDashboardRoutingSummary = z.infer<typeof GatewayDashboardRoutingSummarySchema>;
 export type GatewayDashboardSummaryResponse = z.infer<typeof GatewayDashboardSummaryResponseSchema>;
@@ -271,7 +345,11 @@ export type GatewayModelAliasRule = z.infer<typeof GatewayModelAliasRuleSchema>;
 export type GatewayCloakPolicy = z.infer<typeof GatewayCloakPolicySchema>;
 export type GatewayProviderCredential = z.infer<typeof GatewayProviderCredentialSchema>;
 export type GatewayProviderSpecificConfigRecord = z.infer<typeof GatewayProviderSpecificConfigRecordSchema>;
+export type GatewayProviderSpecificConfigSummary = z.infer<typeof GatewayProviderSpecificConfigSummarySchema>;
 export type GatewayProviderSpecificConfigListResponse = z.infer<typeof GatewayProviderSpecificConfigListResponseSchema>;
+export type GatewaySafeHeaderName = z.infer<typeof GatewaySafeHeaderNameSchema>;
+export type GatewaySafeHeaderMetadata = z.infer<typeof GatewaySafeHeaderMetadataSchema>;
+export type GatewaySafeHeaderArrayMetadata = z.infer<typeof GatewaySafeHeaderArrayMetadataSchema>;
 export type GatewayOAuthModelAliasRule = z.infer<typeof GatewayOAuthModelAliasRuleSchema>;
 export type GatewayOAuthModelAliasListResponse = z.infer<typeof GatewayOAuthModelAliasListResponseSchema>;
 export type GatewayUpdateOAuthModelAliasRulesRequest = z.infer<typeof GatewayUpdateOAuthModelAliasRulesRequestSchema>;

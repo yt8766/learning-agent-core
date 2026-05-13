@@ -260,12 +260,12 @@ Skill persistence：
 - `SkillSourceSyncService` 已支持注入 `SkillSourceRemoteCacheRepository`。同步远程 source 时优先使用注入的 remote source cache repository；未注入时默认写入 `profile-storage/<profile>/skills/remote-sources/<sourceId>/index.json`。
 - 当前 skill 持久化的本地 file-backed facade 已从 root `data/skills` 迁到 profile storage；Postgres production 接线仍应继续停在 repository / storage facade 边界后面。
 
-Daily Tech Briefing 边界：
+Tech & AI Intelligence 边界：
 
-- Daily Tech Intelligence Briefing 当前真实宿主是 `agents/intel-engine/src/runtime/briefing`。
-- `apps/backend/agent-server/src/runtime/briefings` 已删除，不再保留 backend compat re-export 双轨。
-- backend 只允许保留调用 `@agent/agents-intel-engine` 的 `RuntimeIntelBriefingFacade`、schedule trigger、controller delegation、error mapping 和 API smoke。
-- 不要在 backend 新增 briefing 采集、去重、排序、本地化、投递、存储或反馈应用主逻辑；新增 briefing 领域能力应落在 `agents/intel-engine`。
+- 旧 Daily Tech Briefing 已下线；backend 不再保留 `RuntimeIntelBriefingFacade`、`apps/backend/agent-server/src/runtime/briefings`、briefing feedback / run history API 或 schedule worker。
+- 当前 backend 入口是 `apps/backend/agent-server/src/runtime/intelligence/intelligence-run.service.ts` 与 `apps/backend/agent-server/src/platform/platform-intelligence.controller.ts`。
+- 后端只负责 force-run runner、repository 注入、Admin BFF、错误映射与 runtime center 查询装配；频道定义、搜索模板、搜索结果归一化和知识候选门控必须落在 `agents/intel-engine/src/runtime/intelligence/*`。
+- 不要恢复 briefing category、briefing storage、briefing feedback 或 `/api/platform/briefings/*` 双轨；新增能力必须沿 `@agent/core` intelligence contract 和 `IntelligenceRepository` 扩展。
 
 依赖原则：
 

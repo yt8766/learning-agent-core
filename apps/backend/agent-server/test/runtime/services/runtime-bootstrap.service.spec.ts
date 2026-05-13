@@ -56,7 +56,6 @@ describe('RuntimeBootstrapService', () => {
       syncInstalledSkillWorkers: vi.fn(async () => undefined),
       applyStoredGovernanceOverrides: vi.fn(async () => undefined),
       initializeMetricsSnapshots: vi.fn(async () => undefined),
-      initializeDailyTechBriefing: vi.fn(async () => undefined),
       initializeScheduleRunner: vi.fn(async () => undefined),
       getBackgroundRunnerContext: () =>
         ({
@@ -121,7 +120,6 @@ describe('RuntimeBootstrapService', () => {
       syncInstalledSkillWorkers: vi.fn(async () => undefined),
       applyStoredGovernanceOverrides: vi.fn(async () => undefined),
       initializeMetricsSnapshots: vi.fn(async () => undefined),
-      initializeDailyTechBriefing: vi.fn(async () => undefined),
       initializeScheduleRunner: vi.fn(async () => undefined),
       getBackgroundRunnerContext: () => backgroundContext as never
     }));
@@ -163,7 +161,6 @@ describe('RuntimeBootstrapService', () => {
       syncInstalledSkillWorkers: vi.fn(async () => undefined),
       applyStoredGovernanceOverrides: vi.fn(async () => undefined),
       initializeMetricsSnapshots,
-      initializeDailyTechBriefing: vi.fn(async () => undefined),
       initializeScheduleRunner: vi.fn(async () => undefined),
       getBackgroundRunnerContext: () =>
         ({
@@ -217,7 +214,6 @@ describe('RuntimeBootstrapService', () => {
       syncInstalledSkillWorkers: vi.fn(async () => undefined),
       applyStoredGovernanceOverrides: vi.fn(async () => undefined),
       initializeMetricsSnapshots: vi.fn(async () => undefined),
-      initializeDailyTechBriefing: vi.fn(async () => undefined),
       initializeScheduleRunner: vi.fn(async () => undefined),
       getBackgroundRunnerContext: () =>
         ({

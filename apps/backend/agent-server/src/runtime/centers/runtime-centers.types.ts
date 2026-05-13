@@ -1,7 +1,7 @@
 import { describeConnectorProfilePolicy } from '@agent/runtime';
 import type { ProviderAuditSyncResult } from '../core/runtime-centers-facade';
 import type { AppLoggerService } from '../../logger/app-logger.service';
-import type { RuntimeIntelBriefingFacade } from '../core/runtime-intel-briefing-facade';
+import type { IntelligenceRepository } from '../intelligence/intelligence.repository';
 import type { RuntimeHost } from '../core/runtime.host';
 import type { RuntimePlatformConsoleContext } from './runtime-platform-console.records';
 import type { RuntimeSkillInstallContext } from '../skills/runtime-skill-install.service';
@@ -20,7 +20,10 @@ export interface RuntimeConnectorRegistryContext {
 export interface RuntimeCentersContext {
   settings: RuntimeHost['settings'];
   appLogger?: AppLoggerService;
-  techBriefingService?: RuntimeIntelBriefingFacade;
+  intelligenceRepository?: IntelligenceRepository;
+  intelligenceRunService?: {
+    forceRun: (channel: import('@agent/core').IntelligenceChannel) => Promise<unknown>;
+  };
   runtimeHost: RuntimeHost;
   workspaceDraftStore?: RuntimeWorkspaceDraftStore;
   wenyuanFacade: RuntimeWenyuanFacade;
@@ -67,9 +70,8 @@ export const RUNTIME_CENTER_QUERY_METHOD_NAMES = [
   'getPlatformConsoleLogAnalysis',
   'getPlatformConsoleShell',
   'getPlatformConsole',
-  'getBriefingRuns',
-  'forceBriefingRun',
-  'recordBriefingFeedback',
+  'getIntelligenceOverview',
+  'forceIntelligenceRun',
   'exportRuntimeCenter',
   'exportEvalsCenter'
 ] as const;

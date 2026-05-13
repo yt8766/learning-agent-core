@@ -18,7 +18,7 @@
 - 全局壳层样式：`apps/frontend/knowledge/src/styles/knowledge-pro.css`
 - RAG Ops 页面样式：`apps/frontend/knowledge/src/styles/knowledge-rag-ops.css`
 - 构建分包：`apps/frontend/knowledge/vite.config.ts`
-- mock 数据：`apps/frontend/knowledge/src/api/mock-data.ts`
+- ~~mock 数据：`apps/frontend/knowledge/src/api/mock-data.ts`~~（已删除；前端运行时 mock mode 已移除）
 - clone 研究资料：`docs/research/preview-pro-ant-design/`
 - clone 截图：`docs/design-references/preview-pro-ant-design/`
 
@@ -41,7 +41,7 @@
 - `系统策略`：拆为模型配置、API 密钥、存储管理和安全策略四个子页；这些页面用于 Knowledge App 自身 RAG 提供商、外部访问密钥、存储容量和审批/访问控制策略配置。
 - `个人设置`：用 `Form`、`Upload`、`Avatar` 与 `Input.Password` 提供头像、名称与密码修改入口；头像与名称通过 `zustand` 本地状态同步到顶部 `ProUser`。
 
-当前 `知识空间`、`摄取管线`、`检索实验室`、`Trace 观测` 与 `评测回归` 页面已通过 `KnowledgeApiProvider` 接入前端 API client；mock 模式仍通过同一 provider 注入，不再在页面内直接实例化 mock client 或直接读取 mock 数据。前端请求层默认使用 `axios@1.13.6`，页面请求状态通过 `@tanstack/react-query` 管理。
+当前 `知识空间`、`摄取管线`、`检索实验室`、`Trace 观测` 与 `评测回归` 页面已通过 `KnowledgeApiProvider` 接入前端 API client；运行时始终使用 `KnowledgeApiClient`，前端 runtime mock mode 已移除，测试使用 fake provider 注入数据。前端请求层默认使用绑定到 `globalThis` 的 `fetch`，页面请求状态通过 `@tanstack/react-query` 管理。
 
 - `异常页`：`apps/frontend/knowledge/src/pages/exceptions` 提供 `ForbiddenPage`、`NotFoundPage`、`ServerErrorPage` 与共用 `ExceptionPage`，按 Ant Design Pro 异常页结构展示左侧插画、右侧状态码/说明/主按钮，并已接入 `/exception/403`、`/exception/404`、`/exception/500`。异常页只在显式异常路由、未知路径或后续错误边界触发时显示，不出现在左侧栏菜单和顶部用户菜单中。
 
@@ -65,9 +65,8 @@
 - `react-router-dom`
 - `zustand`
 - `@tanstack/react-query`
-- `axios@1.13.6`
 
-这些依赖只用于 `knowledge` 前端 UI、路由、会话状态与请求边界。后端协议、知识库 contract、mock API client 和 `packages/knowledge` 运行时边界不因本 UI 改造发生变化。
+这些依赖只用于 `knowledge` 前端 UI、路由、会话状态与请求边界。后端协议、知识库 contract、测试 fake provider 和 `packages/knowledge` 运行时边界不因本 UI 改造发生变化。
 
 ## 后续约束
 
@@ -75,7 +74,7 @@
 - 壳层视觉以 Ant Design Pro Welcome 预览页为参考，但导航语义必须保持 knowledge 项目自身结构；修改顶部栏或侧栏时，必须保留项目品牌、`ProUser`、浅色菜单、右侧圆形折叠按钮、固定 Header/Sider 和右侧内容独立滚动。
 - 对话类能力优先使用 `@ant-design/x`，不要退回手写 textarea + button。
 - 大模型回答 Markdown 必须通过 `@ant-design/x-markdown` 渲染；会话列表、活跃会话和后续请求编排优先复用 `@ant-design/x-sdk`。
-- 页面请求优先通过 `@tanstack/react-query` 封装状态，通过 `axios` 进入 `KnowledgeApiClient`；测试或 mock 场景仍可向 client 注入兼容 fetcher。
+- 页面请求优先通过 `@tanstack/react-query` 封装状态，通过 `KnowledgeApiClient` 的 fetch 边界访问后端；测试 fake provider 可注入兼容 fetcher。
 - 文档列表等分页接口在进入 React state 前必须先校验 `items` 数组，避免 dev server fallback、代理错误或非 JSON 响应被当成成功数据后触发页面白屏。
 - 路由必须通过 `react-router-dom` 表达真实 URL，不要再用只有内存状态的页面切换代替路径变化。
 - 异常页属于错误状态展示，不属于业务导航；不要把 `403/404/500` 加入左侧栏、菜单 key 映射或隐藏可访问导航文本。

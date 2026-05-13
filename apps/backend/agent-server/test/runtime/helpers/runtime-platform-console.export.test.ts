@@ -54,24 +54,7 @@ describe('runtime-platform-console export helpers', () => {
             dispatches: [{ selectedAgentId: 'official.coder', selectionSource: 'strategy-counselor' }],
             updatedAt: '2026-04-01T09:00:00.000Z'
           }
-        ],
-        dailyTechBriefing: {
-          scheduler: 'bree',
-          schedule: 'daily 11:00',
-          cron: '0 11 * * *',
-          scheduleValid: true,
-          jobKey: 'daily-tech',
-          lastRegisteredAt: '2026-04-01T08:00:00.000Z',
-          categories: [
-            {
-              category: 'ai-tech',
-              status: 'sent',
-              itemCount: 2,
-              emptyDigest: false,
-              sentAt: '2026-04-01T11:00:00.000Z'
-            }
-          ]
-        }
+        ]
       }))
     };
 
@@ -93,7 +76,7 @@ describe('runtime-platform-console export helpers', () => {
     expect(csvExport.content).toContain('"plan"');
     expect(csvExport.content).toContain('official.coder');
     expect(csvExport.content).toContain('strategy-counselor');
-    expect(csvExport.content).toContain('dailyTechScheduler');
+    expect(csvExport.content).not.toContain('dailyTechScheduler');
     expect(csvExport.content).toContain('task-1');
   });
 
@@ -187,10 +170,7 @@ describe('runtime-platform-console export helpers', () => {
             activeInterrupt: undefined,
             updatedAt: '2026-04-02T09:00:00.000Z'
           }
-        ],
-        dailyTechBriefing: {
-          categories: []
-        }
+        ]
       }))
     };
     const approvalsContext = {

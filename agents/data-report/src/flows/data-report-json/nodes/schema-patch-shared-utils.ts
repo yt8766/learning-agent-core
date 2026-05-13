@@ -27,6 +27,10 @@ function toFieldName(dataIndex?: string) {
   return dataIndex.replace(/_label$/i, '');
 }
 
+/**
+ * Resolves user-facing labels back to schema field names.
+ * The lookup prefers explicit table/metric/chart bindings before falling back to normalized text.
+ */
 export function resolveFieldFromLabel(schema: DataReportJsonSchema, label: string) {
   const normalizedLabel = normalizeTextValue(label);
   if (!normalizedLabel) {

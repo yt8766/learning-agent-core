@@ -16,7 +16,6 @@ import { RuntimeToolsService } from '../services/runtime-tools.service';
 import { searchLocalSkillSuggestions } from '../skills/runtime-skill-sources.service';
 import { RuntimeScheduleService } from '../schedules/runtime-schedule.service';
 import type { AppLoggerService } from '../../logger/app-logger.service';
-import { RuntimeIntelBriefingFacade } from './runtime-intel-briefing-facade';
 import { createLegacyDataImportRunnerFromEnv } from '../legacy-data-import';
 import {
   applyProviderFactoryGovernanceOverrides,
@@ -25,25 +24,11 @@ import {
   createProviderFactoryConnectorRegistryContext,
   createProviderFactoryKnowledgeContext,
   createProviderFactorySkillSourcesContext,
-  initializeProviderFactoryMetricsSnapshots,
   syncProviderFactoryInstalledSkillWorkers
 } from './runtime-provider-factory-contexts';
 
-export function createRuntimeIntelBriefingFacade(runtimeHost: RuntimeHost) {
-  return new RuntimeIntelBriefingFacade(() => ({
-    settings: runtimeHost.settings,
-    mcpClientManager: runtimeHost.mcpClientManager,
-    llmProvider: runtimeHost.llmProvider
-  }));
-}
-
-export function createRuntimeScheduleService(
-  runtimeHost: RuntimeHost,
-  techBriefingService: RuntimeIntelBriefingFacade
-) {
+export function createRuntimeScheduleService(runtimeHost: RuntimeHost) {
   return new RuntimeScheduleService(() => ({
-    settings: runtimeHost.settings,
-    techBriefingService,
     refreshMetricsSnapshots: (days: number) =>
       refreshMetricsSnapshotsWithGovernance(
         {
@@ -111,7 +96,6 @@ export function createRuntimeMessageGatewayFacadeService(
 export function createRuntimeBootstrapService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeIntelBriefingFacade,
   runtimeScheduleService: RuntimeScheduleService
 ) {
   return new RuntimeBootstrapService(() => ({
@@ -127,10 +111,19 @@ export function createRuntimeBootstrapService(
       await runner?.runOnce();
     },
     initializeMetricsSnapshots: async () => {
-      await initializeProviderFactoryMetricsSnapshots(runtimeHost, operationalState, techBriefingService, 30);
-    },
-    initializeDailyTechBriefing: async () => {
-      await techBriefingService.initializeSchedule();
+      await refreshMetricsSnapshotsWithGovernance(
+        {
+          orchestrator: runtimeHost.orchestrator,
+          runtimeStateRepository: runtimeHost.runtimeStateRepository,
+          fetchProviderUsageAudit: (days: number) =>
+            fetchProviderUsageAudit(
+              runtimeHost.settings.providerAudit.adapters,
+              runtimeHost.settings.providerAudit.primaryProvider,
+              days
+            )
+        },
+        30
+      );
     },
     initializeScheduleRunner: async () => {
       await runtimeScheduleService.initialize();
@@ -142,8 +135,7 @@ export function createRuntimeBootstrapService(
 export function createRuntimeCentersService(
   runtimeHost: RuntimeHost,
   operationalState: RuntimeOperationalStateService,
-  techBriefingService: RuntimeIntelBriefingFacade,
   appLogger?: AppLoggerService
 ) {
-  return createProviderFactoryCentersService(runtimeHost, operationalState, techBriefingService, appLogger);
+  return createProviderFactoryCentersService(runtimeHost, operationalState, appLogger);
 }

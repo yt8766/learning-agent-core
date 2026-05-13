@@ -81,7 +81,6 @@ packages/config/
 - `src/schemas/settings.types.ts`
 - `src/profiles/runtime-profile-overrides.ts`
 - `src/policies/runtime-policy-defaults.ts`
-- `src/briefings/daily-tech-briefing.ts`
 - `src/loaders/settings-loader.ts`
 - `src/loaders/settings-paths.ts`
 - `src/shared/settings-defaults.ts`
@@ -98,6 +97,10 @@ packages/config/
 - `src/settings/index.ts`
 
 当前保留为人工可读聚合入口。
+
+旧 `src/briefings/daily-tech-briefing.ts` 已随 Daily Tech Briefing 下线删除；不要在 `packages/config` 恢复
+`dailyTechBriefing` settings 字段。Tech & AI Intelligence 频道、schema 与运行策略应落在 `@agent/core`
+intelligence contract、`agents/intel-engine` 与 backend `RuntimeIntelligenceRunService`。
 
 补充：
 

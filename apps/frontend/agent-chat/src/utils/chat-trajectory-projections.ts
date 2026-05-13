@@ -105,6 +105,10 @@ function humanizeNodeLabelToken(raw: string): string {
     .trim();
 }
 
+/**
+ * Converts wide backend trajectory payloads into tolerant UI copy.
+ * Unknown event shapes should degrade to undefined instead of throwing during stream rendering.
+ */
 export function buildProjectedEventSummary(eventItem: Pick<ChatEventRecord, 'type' | 'payload'>) {
   const payload = eventItem.payload ?? {};
   if (isExecutionStepEvent(eventItem.type)) {

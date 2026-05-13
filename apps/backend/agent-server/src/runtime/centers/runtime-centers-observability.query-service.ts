@@ -2,21 +2,19 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { NotFoundException } from '@nestjs/common';
-import type { PlatformApprovalRecord, TaskRecord } from '@agent/core';
+import type {
+  IntelligenceChannel,
+  IntelligenceOverviewProjection,
+  PlatformApprovalRecord,
+  TaskRecord
+} from '@agent/core';
 import { buildRunBundle } from '@agent/runtime';
 
 import { getPlatformConsoleLogAnalysis as loadPlatformConsoleLogAnalysis } from './runtime-centers-query-diagnostics';
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildPlatformConsole, buildPlatformConsoleShell } from '../helpers/runtime-platform-console';
-import {
-  appendBriefingFeedback,
-  readDailyTechBriefingRuns,
-  type BriefingFeedbackRecord,
-  type TechBriefingCategory
-} from '../core/runtime-intel-briefing-facade';
 import { buildApprovalsCenterRecords } from '../domain/observability/runtime-approvals-center';
-import { filterBriefingRunsByWindow } from '../domain/observability/runtime-briefing-runs';
 import {
   filterAndSortRunObservatoryRuns,
   filterAndSortRunObservatoryTasks,
@@ -159,31 +157,37 @@ export class RuntimeCentersObservabilityQueryService {
     return loadPlatformConsoleLogAnalysis(this.ctx(), { days });
   }
 
-  async getBriefingRuns(days = 7, category?: TechBriefingCategory) {
-    const runs = await readDailyTechBriefingRuns(this.ctx().settings.workspaceRoot);
-    return filterBriefingRunsByWindow(runs, { days, category });
-  }
+  async getIntelligenceOverview(): Promise<IntelligenceOverviewProjection> {
+    const repository = this.ctx().intelligenceRepository;
+    const generatedAt = new Date().toISOString();
+    if (!repository) {
+      return {
+        generatedAt,
+        channels: [],
+        recentSignals: [],
+        pendingCandidates: []
+      };
+    }
 
-  async forceBriefingRun(category: TechBriefingCategory) {
-    return this.ctx().techBriefingService?.forceRun(category);
-  }
+    const [recentSignals, pendingCandidates] = await Promise.all([
+      repository.listRecentSignals({ limit: 20 }),
+      repository.listPendingCandidates({ limit: 20 })
+    ]);
 
-  async recordBriefingFeedback(input: {
-    messageKey: string;
-    category: TechBriefingCategory;
-    feedbackType: 'helpful' | 'notHelpful';
-    reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
-  }) {
-    const payload: BriefingFeedbackRecord = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      messageKey: input.messageKey,
-      category: input.category,
-      feedbackType: input.feedbackType,
-      reasonTag: input.reasonTag,
-      createdAt: new Date().toISOString()
+    return {
+      generatedAt,
+      channels: [],
+      recentSignals,
+      pendingCandidates
     };
-    await appendBriefingFeedback(this.ctx().settings.workspaceRoot, payload);
-    return { ok: true, payload };
+  }
+
+  async forceIntelligenceRun(channel: IntelligenceChannel) {
+    const runService = this.ctx().intelligenceRunService;
+    if (!runService) {
+      throw new Error('Intelligence run service is not configured.');
+    }
+    return runService.forceRun(channel);
   }
 
   private ctx() {

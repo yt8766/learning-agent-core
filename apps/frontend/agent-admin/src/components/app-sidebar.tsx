@@ -83,7 +83,7 @@ function buildSidebarData(pendingApprovals: number): SidebarNavGroup[] {
     },
     {
       title: 'Governance',
-      items: [NAV_ITEMS[9], NAV_ITEMS[10], NAV_ITEMS[11], NAV_ITEMS[12], NAV_ITEMS[13], NAV_ITEMS[14]]
+      items: NAV_ITEMS.slice(9)
     }
   ];
 }

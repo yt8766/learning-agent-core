@@ -5,6 +5,12 @@ import type {
   GatewayProviderSpecificConfigRecord,
   GatewaySystemModelsResponse
 } from '@agent/core';
+import {
+  GatewayProbeResponseSchema,
+  GatewayProviderSpecificConfigListResponseSchema,
+  GatewayProviderSpecificConfigRecordSchema,
+  GatewaySystemModelsResponseSchema
+} from '@agent/core';
 import type { AgentGatewayManagementClient } from '../management/agent-gateway-management-client';
 import { AGENT_GATEWAY_MANAGEMENT_CLIENT } from '../management/agent-gateway-management-client';
 
@@ -25,27 +31,39 @@ export class AgentGatewayProviderConfigService {
 
   async list(): Promise<GatewayProviderSpecificConfigListResponse> {
     const delegate = this.delegate();
-    if (delegate.listProviderConfigs) return delegate.listProviderConfigs();
-    return { items: [...this.providerConfigs.values()].map(cloneProviderConfig) };
+    const response = delegate.listProviderConfigs
+      ? await delegate.listProviderConfigs()
+      : { items: [...this.providerConfigs.values()].map(cloneProviderConfig) };
+    return GatewayProviderSpecificConfigListResponseSchema.parse(response);
   }
 
   async save(request: GatewayProviderSpecificConfigRecord): Promise<GatewayProviderSpecificConfigRecord> {
-    const delegate = this.delegate();
-    if (delegate.saveProviderConfig) return delegate.saveProviderConfig(request);
-    this.providerConfigs.set(request.id, cloneProviderConfig(request));
-    return cloneProviderConfig(request);
+    return this.saveProviderConfig(request.id, request);
   }
 
-  discoverModels(providerId: string): Promise<GatewaySystemModelsResponse> {
+  async saveProviderConfig(
+    providerId: string,
+    request: GatewayProviderSpecificConfigRecord
+  ): Promise<GatewayProviderSpecificConfigRecord> {
+    const normalized = GatewayProviderSpecificConfigRecordSchema.parse({ ...request, id: providerId });
     const delegate = this.delegate();
-    if (delegate.discoverProviderModels) return delegate.discoverProviderModels(providerId);
-    return this.managementClient.discoverModels();
+    const response = delegate.saveProviderConfig ? await delegate.saveProviderConfig(normalized) : normalized;
+    this.providerConfigs.set(normalized.id, cloneProviderConfig(response));
+    return GatewayProviderSpecificConfigRecordSchema.parse(cloneProviderConfig(response));
+  }
+
+  async discoverModels(providerId: string): Promise<GatewaySystemModelsResponse> {
+    const delegate = this.delegate();
+    const response = delegate.discoverProviderModels
+      ? await delegate.discoverProviderModels(providerId)
+      : await this.managementClient.discoverModels();
+    return GatewaySystemModelsResponseSchema.parse(response);
   }
 
   async testModel(providerId: string, model: string): Promise<GatewayProbeResponse> {
     const delegate = this.delegate();
     if (delegate.testProviderModel) return delegate.testProviderModel(providerId, model);
-    return {
+    const response = {
       ok: true,
       latencyMs: 0,
       providerId,
@@ -53,6 +71,7 @@ export class AgentGatewayProviderConfigService {
       outputTokens: 0,
       message: 'Provider model probe is pending management client wiring'
     };
+    return GatewayProbeResponseSchema.parse(response);
   }
 
   private delegate(): ProviderConfigManagementClient {

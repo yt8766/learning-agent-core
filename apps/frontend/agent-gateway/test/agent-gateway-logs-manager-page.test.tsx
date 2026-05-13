@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import { LogsManagerPage } from '../src/app/pages/LogsManagerPage';
+import { describe, expect, it, vi } from 'vitest';
+import { LogsManagerPage, runLogsOperation } from '../src/app/pages/LogsManagerPage';
 
 describe('LogsManagerPage', () => {
   it('renders structured filters, download actions, and raw parsed view controls', () => {
@@ -15,5 +15,21 @@ describe('LogsManagerPage', () => {
     expect(html).toContain('Download error log file');
     expect(html).toContain('Raw view');
     expect(html).toContain('Parsed view');
+  });
+
+  it('shows operation failures without rejecting the click promise', async () => {
+    const setOperation = vi.fn();
+
+    await expect(
+      runLogsOperation({
+        callback: async () => {
+          throw new Error('clear failed');
+        },
+        label: '清空日志',
+        setOperation
+      })
+    ).resolves.toBeUndefined();
+
+    expect(setOperation).toHaveBeenCalledWith({ status: 'error', message: 'clear failed' });
   });
 });

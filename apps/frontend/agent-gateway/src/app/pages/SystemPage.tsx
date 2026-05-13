@@ -1,5 +1,10 @@
 import { BookOpen, Eraser, FileText, GitBranch, Github, RefreshCw } from 'lucide-react';
-import type { GatewaySystemModelGroup, GatewaySystemVersionResponse } from '../../api/agent-gateway-api';
+import { useState } from 'react';
+import type {
+  GatewayRuntimeHealthResponse,
+  GatewaySystemModelGroup,
+  GatewaySystemVersionResponse
+} from '../../api/agent-gateway-api';
 import { clearGatewayRefreshToken } from '../../auth/auth-storage';
 import claudeIcon from '../assets/provider-icons/claude.svg';
 import geminiIcon from '../assets/provider-icons/gemini.svg';
@@ -8,9 +13,11 @@ import openaiIcon from '../assets/provider-icons/openai-light.svg';
 interface SystemPageProps {
   info: GatewaySystemVersionResponse;
   modelGroups: GatewaySystemModelGroup[];
-  onCheckLatestVersion?: () => void;
-  onEnableRequestLog?: () => void;
-  onClearLocalLoginStorage?: () => void;
+  onCheckLatestVersion?: () => Promise<unknown> | void;
+  onRefreshModels?: () => Promise<unknown> | void;
+  onEnableRequestLog?: () => Promise<unknown> | void;
+  onClearLocalLoginStorage?: () => Promise<unknown> | void;
+  runtimeHealth?: GatewayRuntimeHealthResponse | null;
 }
 
 const resolveModelIcon = (providerId: string): string | null => {
@@ -25,19 +32,44 @@ export function SystemPage({
   modelGroups,
   onCheckLatestVersion,
   onClearLocalLoginStorage,
-  onEnableRequestLog
+  onEnableRequestLog,
+  onRefreshModels,
+  runtimeHealth
 }: SystemPageProps) {
-  const handleClearLocalLoginStorage = (): void => {
-    if (onClearLocalLoginStorage) {
-      onClearLocalLoginStorage();
-      return;
+  const [operationStatus, setOperationStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const runOperation = async (label: string, operation: () => Promise<unknown> | unknown): Promise<void> => {
+    setBusyAction(label);
+    setOperationStatus(null);
+    try {
+      const result = await operation();
+      if (result === undefined) {
+        throw new Error('当前页面尚未接入该操作');
+      }
+      setOperationStatus({ kind: 'success', message: `${label}已完成。` });
+    } catch (error) {
+      setOperationStatus({ kind: 'error', message: `${label}失败：${getErrorMessage(error)}` });
+    } finally {
+      setBusyAction(null);
     }
-    clearGatewayRefreshToken();
+  };
+
+  const handleClearLocalLoginStorage = (): void => {
+    void runOperation('清理本地登录态', async () => {
+      if (onClearLocalLoginStorage) return onClearLocalLoginStorage();
+      clearGatewayRefreshToken();
+      return { cleared: true };
+    });
   };
 
   return (
     <section className="system-info-clone gateway-management-page" aria-label="管理中心信息">
       <h1 className="management-page-title">管理中心信息</h1>
+
+      {operationStatus ? (
+        <div className={`operation-feedback ${operationStatus.kind}`}>{operationStatus.message}</div>
+      ) : null}
 
       <article className="system-about-card">
         <div className="system-about-header">
@@ -46,16 +78,20 @@ export function SystemPage({
         </div>
 
         <div className="system-info-grid">
-          <button className="system-info-tile tap-tile" type="button">
+          <article className="system-info-tile">
             <span>Web UI 版本</span>
             <strong>Agent Gateway Core</strong>
-          </button>
+          </article>
           <article className="system-info-tile">
             <div>
               <span>API 版本</span>
-              <button type="button" onClick={onCheckLatestVersion}>
+              <button
+                disabled={busyAction === '检查最新版本'}
+                type="button"
+                onClick={() => void runOperation('检查最新版本', async () => onCheckLatestVersion?.())}
+              >
                 <RefreshCw size={14} aria-hidden="true" />
-                检查最新版本
+                {busyAction === '检查最新版本' ? '检查中' : '检查最新版本'}
               </button>
             </div>
             <strong>{info.version}</strong>
@@ -70,6 +106,63 @@ export function SystemPage({
             <strong>{info.updateAvailable ? '有新版本' : '已是最新'}</strong>
             <small>{info.links.help}</small>
           </article>
+        </div>
+      </article>
+
+      <article className="system-section-card">
+        <header>
+          <h2>Production Runtime Boundary</h2>
+          <p>系统页只展示 agent-server runtime executor 投影，不承载迁移执行入口或后端边界逻辑。</p>
+        </header>
+        <div className="system-model-list">
+          {runtimeHealth ? (
+            <>
+              <div className="system-model-row">
+                <div>
+                  <span className="system-model-title">
+                    <strong>runtime</strong>
+                  </span>
+                  <small>
+                    {runtimeHealth.checkedAt} / queue {runtimeHealth.usageQueue.pending} / failed{' '}
+                    {runtimeHealth.usageQueue.failed}
+                  </small>
+                </div>
+                <span className={`status-pill status-${runtimeHealth.status}`}>{runtimeHealth.status}</span>
+              </div>
+              {runtimeHealth.cooldowns.length > 0 ? (
+                <div className="conflict-list">
+                  {runtimeHealth.cooldowns.map(cooldown => (
+                    <div className="conflict-row" key={`${cooldown.subjectType}:${cooldown.subjectId}`}>
+                      <span>
+                        {cooldown.subjectType}:{cooldown.subjectId} {cooldown.reason}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {runtimeHealth.executors.length === 0 ? (
+                <div className="hint">暂无 executor</div>
+              ) : (
+                runtimeHealth.executors.map(executor => (
+                  <div className="system-model-row" key={executor.providerKind}>
+                    <div>
+                      <span className="system-model-title">
+                        <strong>{executor.providerKind}</strong>
+                      </span>
+                      <small>{executor.message ?? executor.checkedAt}</small>
+                    </div>
+                    <div className="model-chip-row">
+                      <span className={`status-pill status-${executor.status}`}>{executor.status}</span>
+                      <span className="model-chip">{executor.supportsStreaming ? 'streaming' : 'non-streaming'}</span>
+                      <span className="model-chip">{executor.activeRequests} active</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          ) : (
+            <div className="hint">runtime executor 状态待加载</div>
+          )}
         </div>
       </article>
 
@@ -112,9 +205,13 @@ export function SystemPage({
       <article className="system-section-card">
         <header>
           <h2>模型列表</h2>
-          <button type="button">
+          <button
+            disabled={busyAction === '刷新模型'}
+            type="button"
+            onClick={() => void runOperation('刷新模型', async () => onRefreshModels?.())}
+          >
             <RefreshCw size={15} aria-hidden="true" />
-            刷新
+            {busyAction === '刷新模型' ? '刷新中' : '刷新'}
           </button>
         </header>
         <div className="system-model-list">
@@ -152,16 +249,26 @@ export function SystemPage({
           <p>只清理 Agent Gateway refresh token，不触碰浏览器 profile、Cookie 或站点缓存目录。</p>
         </header>
         <div className="system-danger-actions">
-          <button type="button" onClick={onEnableRequestLog}>
+          <button
+            disabled={busyAction === '启用请求日志'}
+            type="button"
+            onClick={() => void runOperation('启用请求日志', async () => onEnableRequestLog?.())}
+          >
             <FileText size={15} aria-hidden="true" />
-            启用请求日志
+            {busyAction === '启用请求日志' ? '启用中' : '启用请求日志'}
           </button>
-          <button type="button" onClick={handleClearLocalLoginStorage}>
+          <button disabled={busyAction === '清理本地登录态'} type="button" onClick={handleClearLocalLoginStorage}>
             <Eraser size={15} aria-hidden="true" />
-            清理本地登录态
+            {busyAction === '清理本地登录态' ? '清理中' : '清理本地登录态'}
           </button>
         </div>
       </article>
     </section>
   );
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return '未知错误';
 }

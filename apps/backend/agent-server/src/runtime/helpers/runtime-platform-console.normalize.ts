@@ -6,6 +6,10 @@ import {
   type PlatformConsoleEvalsRecord
 } from '../centers/runtime-platform-console.schemas';
 
+/**
+ * Recovers enough runtime projection shape for Admin Console reads when persisted records are old or partial.
+ * Use this only on read paths; write paths should still emit schema-valid records.
+ */
 export function normalizePlatformConsoleRuntimeRecord(value: unknown): PlatformConsoleRuntimeRecord {
   const parsed = PlatformConsoleRuntimeRecordSchema.safeParse(value);
   if (parsed.success) {

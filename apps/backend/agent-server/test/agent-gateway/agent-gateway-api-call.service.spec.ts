@@ -22,4 +22,30 @@ describe('AgentGatewayApiCallService', () => {
       items: [{ providerId: 'claude', status: 'warning' }]
     });
   });
+
+  it('redacts raw secret fields from management api-call responses', async () => {
+    const service = new AgentGatewayApiCallService({
+      async listQuotaDetails() {
+        return { items: [] };
+      },
+      async managementApiCall() {
+        return {
+          statusCode: 200,
+          header: {},
+          bodyText: '',
+          body: {
+            accessToken: 'raw-access',
+            nested: { apiKey: 'raw-key', visible: 'ok' }
+          },
+          durationMs: 1
+        };
+      }
+    });
+
+    const response = await service.call({ method: 'GET', path: '/secret-test' });
+
+    expect(response.body).toEqual({ nested: { visible: 'ok' } });
+    expect(response.bodyText).not.toContain('raw-access');
+    expect(response.bodyText).not.toContain('raw-key');
+  });
 });

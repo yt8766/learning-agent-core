@@ -14,6 +14,10 @@ export function toLangChainMessages(messages: readonly KnowledgeChatMessage[]): 
   }));
 }
 
+/**
+ * Reads text from LangChain-style results without leaking provider-specific shapes upward.
+ * Unknown payloads intentionally collapse to an empty string so adapters can decide fallback behavior.
+ */
 export function extractLangChainText(result: unknown): string {
   if (typeof result === 'string') {
     return result;

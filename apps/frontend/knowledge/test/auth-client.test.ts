@@ -166,6 +166,30 @@ describe('AuthClient', () => {
     expect(onAuthLost).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects before protected API calls when the stored refresh token is expired', async () => {
+    const onAuthLost = vi.fn();
+    const fetcher = vi.fn<typeof fetch>();
+    saveTokens({
+      accessToken: 'old',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600,
+      refreshTokenExpiresAt: '2026-04-30T00:00:00.000Z'
+    });
+    const client = new AuthClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      fetcher,
+      onAuthLost
+    });
+
+    await expect(client.ensureValidAccessToken()).rejects.toThrow('Refresh token expired');
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(readTokens()).toBeUndefined();
+    expect(onAuthLost).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes and retries current user once when the access token is expired server-side', async () => {
     saveTokens({
       accessToken: 'old',

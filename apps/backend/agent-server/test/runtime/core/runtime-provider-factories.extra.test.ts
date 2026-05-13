@@ -156,9 +156,6 @@ describe('runtime-provider-factories extra branches', () => {
       isBackgroundRunnerSweepInFlight: vi.fn(() => true),
       setBackgroundRunnerSweepInFlight: vi.fn()
     } as any;
-    const techBriefingService = {
-      initializeSchedule: vi.fn(async () => undefined)
-    };
     const runtimeScheduleService = {
       initialize: vi.fn(async () => undefined)
     };
@@ -166,7 +163,6 @@ describe('runtime-provider-factories extra branches', () => {
     const bootstrapService = createRuntimeBootstrapService(
       runtimeHost,
       operationalState,
-      techBriefingService as any,
       runtimeScheduleService as any
     ) as any;
     const context = bootstrapService.factory();
@@ -180,7 +176,6 @@ describe('runtime-provider-factories extra branches', () => {
     await context.syncInstalledSkillWorkers();
     await context.applyStoredGovernanceOverrides();
     await context.initializeMetricsSnapshots();
-    await context.initializeDailyTechBriefing();
     await context.initializeScheduleRunner();
 
     const background = context.getBackgroundRunnerContext();
@@ -189,7 +184,6 @@ describe('runtime-provider-factories extra branches', () => {
       governance: { disabledSkillSourceIds: ['source-x'] }
     });
     expect(runtimeHost.runtimeStateRepository.save).toHaveBeenCalled();
-    expect(techBriefingService.initializeSchedule).toHaveBeenCalled();
     expect(runtimeScheduleService.initialize).toHaveBeenCalled();
     expect(background.enabled).toBe(false);
     expect(background.isSweepInFlight()).toBe(true);
@@ -219,12 +213,9 @@ describe('runtime-provider-factories extra branches', () => {
       })
     );
 
-    const bootstrapService = createRuntimeBootstrapService(
-      runtimeHost,
-      operationalState,
-      { initializeSchedule: vi.fn(async () => undefined) } as any,
-      { initialize: vi.fn(async () => undefined) } as any
-    ) as any;
+    const bootstrapService = createRuntimeBootstrapService(runtimeHost, operationalState, {
+      initialize: vi.fn(async () => undefined)
+    } as any) as any;
     const bootstrapContext = bootstrapService.factory();
     const sources = await bootstrapContext.getSkillSourcesContext().listSkillSources();
     await bootstrapContext.getSkillSourcesContext().autoInstallLocalManifest({ id: 'manifest-1' });

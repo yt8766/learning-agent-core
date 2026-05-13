@@ -1,5 +1,5 @@
 import type { GatewayQuota } from '@agent/core';
-import type { FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { RefreshCw } from 'lucide-react';
 import antigravityIcon from '../assets/provider-icons/antigravity.svg';
 import claudeIcon from '../assets/provider-icons/claude.svg';
@@ -11,8 +11,8 @@ import { formatGatewayDate, quotaUsagePercent } from '../gateway-view-model';
 
 interface QuotasPageProps {
   quotas: GatewayQuota[];
-  onRefreshProviderQuota?: (providerKind: string) => void;
-  onUpdateQuota?: (quota: GatewayQuota) => void;
+  onRefreshProviderQuota?: (providerKind: string) => Promise<unknown> | void;
+  onUpdateQuota?: (quota: GatewayQuota) => Promise<unknown> | void;
 }
 
 const quotaSections = [
@@ -25,14 +25,63 @@ const quotaSections = [
 
 export function QuotasPage({ onRefreshProviderQuota, onUpdateQuota, quotas }: QuotasPageProps) {
   const firstQuota = quotas[0];
+  const formRef = useRef<HTMLFormElement>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [operationStatus, setOperationStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const runOperation = async (label: string, operation: () => Promise<unknown> | unknown): Promise<void> => {
+    setBusyAction(label);
+    setOperationStatus(null);
+    try {
+      const result = await operation();
+      if (result === undefined) {
+        throw new Error('当前页面尚未接入该操作');
+      }
+      setOperationStatus({ kind: 'success', message: `${label}已完成。` });
+    } catch (error) {
+      setOperationStatus({ kind: 'error', message: `${label}失败：${getErrorMessage(error)}` });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const refreshProviderQuota = (providerKind: string): void => {
+    void runOperation(`刷新 ${providerKind} 配额`, async () => onRefreshProviderQuota?.(providerKind));
+  };
+
+  const handleRefreshAll = (): void => {
+    void runOperation('刷新全部配额', async () =>
+      Promise.all(quotaSections.map(section => onRefreshProviderQuota?.(section.type)))
+    );
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (!firstQuota) return;
     const form = new FormData(event.currentTarget);
-    const limitTokens = Number(form.get('limitTokens') ?? firstQuota.limitTokens);
-    onUpdateQuota?.({
-      ...firstQuota,
-      limitTokens: Number.isFinite(limitTokens) ? limitTokens : firstQuota.limitTokens
+    const quotaId = String(form.get('quotaId') ?? '');
+    const quota = quotas.find(item => item.id === quotaId) ?? firstQuota;
+    if (!quota) return;
+    const limitTokens = Number(form.get('limitTokens') ?? quota.limitTokens);
+    void runOperation('保存配额', async () =>
+      onUpdateQuota?.({
+        ...quota,
+        limitTokens: Number.isFinite(limitTokens) ? limitTokens : quota.limitTokens
+      })
+    );
+  };
+
+  const resetForm = (): void => {
+    formRef.current?.reset();
+    setOperationStatus({ kind: 'success', message: '表单已重置。' });
+  };
+
+  const setSectionExpanded = (sectionId: string, expanded: boolean): void => {
+    setExpandedSections(current => {
+      const next = new Set(current);
+      if (expanded) next.add(sectionId);
+      else next.delete(sectionId);
+      return next;
     });
   };
 
@@ -45,67 +94,83 @@ export function QuotasPage({ onRefreshProviderQuota, onUpdateQuota, quotas }: Qu
         </div>
         <div className="quota-header-actions">
           <span>{quotas.length} 条策略</span>
-          <button
-            type="button"
-            onClick={() => quotaSections.forEach(section => onRefreshProviderQuota?.(section.type))}
-          >
+          <button disabled={busyAction === '刷新全部配额'} type="button" onClick={handleRefreshAll}>
             <RefreshCw size={16} aria-hidden="true" />
-            刷新全部
+            {busyAction === '刷新全部配额' ? '刷新中' : '刷新全部'}
           </button>
         </div>
       </div>
 
-      <div className="quota-section-stack">
-        {quotaSections.map(section => (
-          <article className={`quota-section-card ${section.accent}`} key={section.id}>
-            <header className="quota-section-header">
-              <div className="auth-panel-title">
-                <img className="quota-section-icon" src={section.icon} alt="" />
-                <span>{section.title}</span>
-                <strong>{section.id === firstQuota?.provider ? 1 : 0}</strong>
-              </div>
-              <div className="quota-section-actions">
-                <span className="quota-view-toggle">
-                  <button className="active" type="button">
-                    分页模式
-                  </button>
-                  <button type="button">全部显示</button>
-                </span>
-                <button type="button" onClick={() => onRefreshProviderQuota?.(section.type)}>
-                  <RefreshCw size={15} aria-hidden="true" />
-                  刷新全部
-                </button>
-              </div>
-            </header>
+      {operationStatus ? (
+        <div className={`operation-feedback ${operationStatus.kind}`}>{operationStatus.message}</div>
+      ) : null}
 
-            <div className="quota-card-grid">
-              <article className="quota-file-card">
-                <div className="auth-file-badges">
-                  <span>{section.type}</span>
-                  <strong className={section.id === firstQuota?.provider ? '' : 'muted'}>
-                    {section.id === firstQuota?.provider ? 'READY' : 'IDLE'}
-                  </strong>
+      <div className="quota-section-stack">
+        {quotaSections.map(section => {
+          const sectionQuotas = quotas.filter(quota => quotaMatchesSection(quota, section.id));
+          const expanded = expandedSections.has(section.id);
+          const visibleQuotas = expanded ? sectionQuotas : sectionQuotas.slice(0, 4);
+          return (
+            <article className={`quota-section-card ${section.accent}`} key={section.id}>
+              <header className="quota-section-header">
+                <div className="auth-panel-title">
+                  <img className="quota-section-icon" src={section.icon} alt="" />
+                  <span>{section.title}</span>
+                  <strong>{sectionQuotas.length}</strong>
                 </div>
-                <h3>{section.id === firstQuota?.provider ? firstQuota.id : `${section.id}-auth-file.json`}</h3>
-                <p>
-                  {section.id === firstQuota?.provider
-                    ? `${firstQuota.usedTokens} / ${firstQuota.limitTokens} tokens`
-                    : '点击刷新读取额度'}
-                </p>
-                <div className="quota-progress-track">
-                  <span
-                    style={{ width: `${section.id === firstQuota?.provider ? quotaUsagePercent(firstQuota) : 0}%` }}
-                  />
+                <div className="quota-section-actions">
+                  <span className="quota-view-toggle">
+                    <button
+                      className={expanded ? '' : 'active'}
+                      type="button"
+                      onClick={() => setSectionExpanded(section.id, false)}
+                    >
+                      分页模式
+                    </button>
+                    <button
+                      className={expanded ? 'active' : ''}
+                      type="button"
+                      onClick={() => setSectionExpanded(section.id, true)}
+                    >
+                      全部显示
+                    </button>
+                  </span>
+                  <button
+                    disabled={busyAction === `刷新 ${section.type} 配额`}
+                    type="button"
+                    onClick={() => refreshProviderQuota(section.type)}
+                  >
+                    <RefreshCw size={15} aria-hidden="true" />
+                    {busyAction === `刷新 ${section.type} 配额` ? '刷新中' : '刷新全部'}
+                  </button>
                 </div>
-                <small>
-                  {section.id === firstQuota?.provider
-                    ? `重置：${formatGatewayDate(firstQuota.resetAt)}`
-                    : '暂无缓存额度'}
-                </small>
-              </article>
-            </div>
-          </article>
-        ))}
+              </header>
+
+              <div className="quota-card-grid">
+                {sectionQuotas.length > 0 ? (
+                  visibleQuotas.map(quota => <QuotaFileCard key={quota.id} quota={quota} sectionType={section.type} />)
+                ) : (
+                  <button
+                    className="quota-file-card quota-empty-action"
+                    type="button"
+                    onClick={() => refreshProviderQuota(section.type)}
+                  >
+                    <div className="auth-file-badges">
+                      <span>{section.type}</span>
+                      <strong className="muted">IDLE</strong>
+                    </div>
+                    <h3>{section.id}-auth-file.json</h3>
+                    <p>点击刷新读取额度</p>
+                    <div className="quota-progress-track">
+                      <span style={{ width: '0%' }} />
+                    </div>
+                    <small>暂无缓存额度</small>
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       <GatewayTable
@@ -135,7 +200,7 @@ export function QuotasPage({ onRefreshProviderQuota, onUpdateQuota, quotas }: Qu
         ]}
       />
 
-      <form className="command-panel quota-edit-panel" onSubmit={handleSubmit}>
+      <form className="command-panel quota-edit-panel" onSubmit={handleSubmit} ref={formRef}>
         <label>
           策略 ID
           <input name="quotaId" defaultValue={firstQuota?.id ?? ''} />
@@ -145,13 +210,45 @@ export function QuotasPage({ onRefreshProviderQuota, onUpdateQuota, quotas }: Qu
           <input name="limitTokens" defaultValue={firstQuota?.limitTokens ?? ''} type="number" />
         </label>
         <div className="command-actions">
-          <button type="submit">保存配额</button>
-          <button type="button">取消</button>
-          <button type="button" className="danger-action">
-            删除
+          <button disabled={busyAction === '保存配额'} type="submit">
+            {busyAction === '保存配额' ? '保存中' : '保存配额'}
+          </button>
+          <button type="button" onClick={resetForm}>
+            重置表单
           </button>
         </div>
       </form>
     </section>
   );
+}
+
+function QuotaFileCard({ quota, sectionType }: { quota: GatewayQuota; sectionType: string }) {
+  return (
+    <article className="quota-file-card">
+      <div className="auth-file-badges">
+        <span>{sectionType}</span>
+        <strong>{quota.status.toUpperCase()}</strong>
+      </div>
+      <h3>{quota.id}</h3>
+      <p>
+        {quota.usedTokens} / {quota.limitTokens} tokens
+      </p>
+      <div className="quota-progress-track">
+        <span style={{ width: `${quotaUsagePercent(quota)}%` }} />
+      </div>
+      <small>重置：{formatGatewayDate(quota.resetAt)}</small>
+    </article>
+  );
+}
+
+function quotaMatchesSection(quota: GatewayQuota, sectionId: string): boolean {
+  const provider = quota.provider.toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
+  if (sectionId === 'gemini-cli') return provider === 'gemini-cli' || provider === 'gemini';
+  return provider === sectionId;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return '未知错误';
 }

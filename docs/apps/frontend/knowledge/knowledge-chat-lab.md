@@ -27,6 +27,7 @@
 - `KnowledgeFrontendApi.streamChat(input)` 是唯一的流式入口。
 - `KnowledgeFrontendApi.listRagModelProfiles()` 读取 `GET /rag/model-profiles`，用于恢复后端持久化会话的 `activeModelProfileId` 并作为后续发送的 `model`；Chat Lab 当前不再暴露顶部模型选择器，空会话默认仍使用 `knowledge-rag` 兼容 profile。
 - `KnowledgeFrontendApi.listConversations()` 和 `listConversationMessages(conversationId)` 读取后端持久化会话与消息。返回空会话时，页面保留本地新会话空态；返回非空时默认激活第一条会话，并加载其消息。
+- `ChatLabPage` 启动时并行读取知识库、RAG model profiles 和持久化会话。这三个请求都必须先经过 `AuthClient.ensureValidAccessToken()`；本地 refresh token 过期时前端应清理登录态并回到 `/login`，不得继续发送无 Bearer token 的启动请求。
 - `KnowledgeApiClient.streamChat()` 使用 fetch POST，header 为 `Accept: text/event-stream` 和 Bearer token；由于浏览器 `EventSource` 不支持自定义 POST body 与 Authorization header，这里不能改成 EventSource。
 - `knowledge-chat-stream.ts` 只解析 SSE frame，并校验最小事件形状：`type` 和 `runId`。
 - `useXChat()` 负责消息状态，Knowledge 自定义 provider 额外维护 `streamState`，根据事件切换 `planner / retrieval / answer / completed / error` 阶段。

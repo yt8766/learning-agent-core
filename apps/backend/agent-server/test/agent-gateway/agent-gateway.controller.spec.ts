@@ -56,7 +56,7 @@ describe('AgentGatewayController', () => {
         get: () => 'localhost:3000',
         originalUrl: '/api/agent-gateway/oauth/callback?provider=codex&code=abc&state=codex-state'
       } as never)
-    ).resolves.toContain('OAuth 登录已提交');
+    ).resolves.toContain('/oauth?oauthProvider=codex&amp;oauthState=codex-state&amp;oauthStatus=submitted');
   });
 
   it('normalizes logs list limits', async () => {
@@ -218,23 +218,23 @@ describe('AgentGatewayController', () => {
   it('starts and completes OAuth flows to validate credential files', async () => {
     const controller = createController();
 
-    await controller.upsertCredentialFile('openai-oauth', {
-      provider: 'OpenAI 主通道',
-      path: 'apps/backend/agent-server/.env.oauth',
+    await controller.upsertCredentialFile('codex-auth.json', {
+      provider: 'codex',
+      path: '/agent-gateway/auth-files/codex-auth.json',
       status: 'missing',
       lastCheckedAt: '2026-05-07T00:00:00.000Z'
     });
 
     const start = await controller.startOAuth({
-      providerId: 'openai-primary',
-      credentialFileId: 'openai-oauth'
+      providerId: 'codex',
+      credentialFileId: 'codex-auth.json'
     });
 
     expect(start).toMatchObject({
-      flowId: 'oauth-openai-primary-openai-oauth',
-      providerId: 'openai-primary',
-      credentialFileId: 'openai-oauth',
-      userCode: 'CODE-openai-primary-openai-oauth'
+      flowId: 'oauth-codex-codex-auth.json',
+      providerId: 'codex',
+      credentialFileId: 'codex-auth.json',
+      userCode: 'CODE-codex-codex-auth.json'
     });
 
     const complete = await controller.completeOAuth({
@@ -246,7 +246,7 @@ describe('AgentGatewayController', () => {
       flowId: start.flowId,
       status: 'valid',
       credentialFile: {
-        id: 'openai-oauth',
+        id: 'codex-auth.json',
         status: 'valid',
         lastCheckedAt: '2026-05-08T00:00:00.000Z'
       }
@@ -257,15 +257,15 @@ describe('AgentGatewayController', () => {
   it('rejects OAuth completion when the user code does not match the flow', async () => {
     const controller = createController();
 
-    await controller.upsertCredentialFile('openai-oauth', {
-      provider: 'OpenAI 主通道',
-      path: 'apps/backend/agent-server/.env.oauth',
+    await controller.upsertCredentialFile('codex-auth.json', {
+      provider: 'codex',
+      path: '/agent-gateway/auth-files/codex-auth.json',
       status: 'missing',
       lastCheckedAt: '2026-05-07T00:00:00.000Z'
     });
     const start = await controller.startOAuth({
-      providerId: 'openai-primary',
-      credentialFileId: 'openai-oauth'
+      providerId: 'codex',
+      credentialFileId: 'codex-auth.json'
     });
 
     await expect(controller.completeOAuth({ flowId: start.flowId, userCode: 'WRONG-CODE' })).rejects.toThrow(

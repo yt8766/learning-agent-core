@@ -159,7 +159,11 @@ function collectProjectSpecFiles(directory, output) {
 }
 
 function isVitestSourceFile(filename) {
-  return /\.(test|spec)\.tsx?$/.test(filename) && !/\.int-spec\.tsx?$/.test(filename);
+  return (
+    /\.(test|spec)\.tsx?$/.test(filename) &&
+    !/\.int-spec\.tsx?$/.test(filename) &&
+    !/\.smoke\.spec\.tsx?$/.test(filename)
+  );
 }
 
 function isSpecTestSource(absolutePath, filename) {

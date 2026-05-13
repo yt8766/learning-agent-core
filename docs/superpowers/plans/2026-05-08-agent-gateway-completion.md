@@ -90,7 +90,7 @@ Not completed yet:
 - Create: `apps/frontend/agent-gateway/src/app/pages/LogsProbePage.tsx`
 - Modify: `apps/frontend/agent-gateway/src/app/App.tsx`
   - Replace placeholder nav buttons with real tab state and page rendering.
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
   - Make the console dense, operational, responsive, and non-marketing.
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-api.test.ts`
 - Test: `apps/frontend/agent-gateway/test/app-render.test.tsx`
@@ -599,7 +599,7 @@ Expected: PASS.
 - Create: `apps/frontend/agent-gateway/src/app/pages/PipelinePage.tsx`
 - Create: `apps/frontend/agent-gateway/src/app/pages/LogsProbePage.tsx`
 - Modify: `apps/frontend/agent-gateway/src/app/App.tsx`
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-workspace.test.tsx`
 
 - [x] **Step 1: Add failing render test for all console centers**
@@ -697,7 +697,7 @@ Use static imports from `@agent/core`; do not use dynamic imports.
 
 - [x] **Step 6: Update styling**
 
-Revise `App.css` for dense operational layout:
+Revise `App.scss` for dense operational layout:
 
 - fixed left navigation width;
 - responsive single-column content below 820px;

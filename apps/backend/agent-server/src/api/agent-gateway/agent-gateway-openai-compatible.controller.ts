@@ -1,20 +1,45 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpException,
+  HttpStatus,
+  Optional,
+  Post,
+  Res
+} from '@nestjs/common';
 import {
   GatewayOpenAIChatCompletionRequestSchema,
   type GatewayOpenAIChatCompletionResponse,
-  type GatewayOpenAIModelsResponse
+  type GatewayOpenAIModelsResponse,
+  type GatewayRuntimeStreamEvent
 } from '@agent/core';
-import { AgentGatewayRelayService } from '../../domains/agent-gateway/runtime/agent-gateway-relay.service';
 import { AgentGatewayRuntimeAccountingService } from '../../domains/agent-gateway/runtime/agent-gateway-runtime-accounting.service';
 import { AgentGatewayRuntimeAuthService } from '../../domains/agent-gateway/runtime/agent-gateway-runtime-auth.service';
 import { openAIError } from '../../domains/agent-gateway/runtime/agent-gateway-openai-error';
+import { RuntimeEngineFacade } from '../../domains/agent-gateway/runtime-engine/runtime-engine.facade';
+import {
+  normalizeOpenAIChatCompletionRequest,
+  projectOpenAIChatCompletionResponse
+} from '../../domains/agent-gateway/runtime-engine/protocols/openai-chat.protocol';
+import { RuntimeStreamingService } from '../../domains/agent-gateway/runtime-engine/streaming/runtime-streaming.service';
+
+interface WritableSseResponse {
+  setHeader(name: string, value: string): void;
+  write(chunk: string): void;
+  end(): void;
+}
 
 @Controller('v1')
 export class AgentGatewayOpenAICompatibleController {
   constructor(
     private readonly auth: AgentGatewayRuntimeAuthService,
-    private readonly relay: AgentGatewayRelayService,
-    private readonly accounting: AgentGatewayRuntimeAccountingService
+    private readonly runtimeEngine: RuntimeEngineFacade,
+    private readonly accounting: AgentGatewayRuntimeAccountingService,
+    @Optional()
+    private readonly streaming: RuntimeStreamingService = new RuntimeStreamingService()
   ) {}
 
   @Get('models')
@@ -36,70 +61,108 @@ export class AgentGatewayOpenAICompatibleController {
         latencyMs: Date.now() - startedAt
       }
     );
-    return {
-      object: 'list',
-      data: [{ id: 'gpt-5.4', object: 'model', created: 1_778_367_600, owned_by: 'openai-primary' }]
-    };
+    return this.runtimeEngine.listModels();
   }
 
   @Post('chat/completions')
   async chatCompletions(
     @Headers('authorization') authorization: string | undefined,
-    @Body() body: unknown
-  ): Promise<GatewayOpenAIChatCompletionResponse> {
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response?: WritableSseResponse
+  ): Promise<GatewayOpenAIChatCompletionResponse | string | void> {
     const parsed = GatewayOpenAIChatCompletionRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(
         openAIError('invalid_request', 'Invalid chat completion request', 'invalid_request_error')
       );
     }
-    if (parsed.data.stream) {
-      throw new BadRequestException(
-        openAIError('stream_not_supported', 'stream is not supported in this gateway slice', 'invalid_request_error')
-      );
-    }
-
     const principal = await this.auth.authenticate(authorization, 'chat.completions');
     await this.accounting.assertQuota(principal, estimateInputTokens(parsed.data.messages));
 
     const startedAt = Date.now();
-    const relayResponse = await this.relay
-      .relay({
-        model: parsed.data.model,
-        messages: parsed.data.messages,
-        stream: false
-      })
-      .catch(error => {
+    const invocationId = `chatcmpl-${Date.now()}`;
+    const invocation = normalizeOpenAIChatCompletionRequest({
+      requestId: invocationId,
+      clientId: principal.client.id,
+      apiKeyId: principal.apiKey.id,
+      scopes: principal.apiKey.scopes,
+      body: parsed.data
+    });
+    if (parsed.data.stream) {
+      const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+      const events = captureStreamUsage(this.runtimeEngine.stream(invocation), usage);
+      if (response) {
+        await this.streaming.writeOpenAIChatSse(response, events, { model: invocation.model }).catch(error => {
+          throw normalizeOpenAIException(error);
+        });
+        await this.recordStreamSuccess(principal, invocation.model, usage, startedAt);
+        return undefined;
+      }
+
+      const sse = await this.streaming.toOpenAIChatSse(events, { model: invocation.model }).catch(error => {
         throw normalizeOpenAIException(error);
       });
-    await this.accounting.recordSuccess(principal, relayResponse.usage, {
+      await this.recordStreamSuccess(principal, invocation.model, usage, startedAt);
+      return sse;
+    }
+
+    const result = await this.runtimeEngine.invoke(invocation).catch(error => {
+      throw normalizeOpenAIException(error);
+    });
+    await this.accounting.recordSuccess(principal, result.usage, {
       id: `req-${Date.now()}`,
       endpoint: '/v1/chat/completions',
-      model: relayResponse.model,
-      providerId: relayResponse.providerId,
+      model: result.model,
+      providerId: result.route.providerKind,
       statusCode: 200,
-      inputTokens: relayResponse.usage.inputTokens,
-      outputTokens: relayResponse.usage.outputTokens,
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
       latencyMs: Date.now() - startedAt
     });
 
-    return {
-      id: relayResponse.id,
-      object: 'chat.completion',
-      created: Math.floor(Date.now() / 1000),
-      model: relayResponse.model,
-      choices: [{ index: 0, message: { role: 'assistant', content: relayResponse.content }, finish_reason: 'stop' }],
-      usage: {
-        prompt_tokens: relayResponse.usage.inputTokens,
-        completion_tokens: relayResponse.usage.outputTokens,
-        total_tokens: relayResponse.usage.totalTokens
-      }
-    };
+    return projectOpenAIChatCompletionResponse(result);
+  }
+
+  private async recordStreamSuccess(
+    principal: Awaited<ReturnType<AgentGatewayRuntimeAuthService['authenticate']>>,
+    model: string,
+    usage: { inputTokens: number; outputTokens: number; totalTokens: number },
+    startedAt: number
+  ): Promise<void> {
+    await this.accounting.recordSuccess(principal, usage, {
+      id: `req-${Date.now()}`,
+      endpoint: '/v1/chat/completions',
+      model,
+      providerId: null,
+      statusCode: 200,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      latencyMs: Date.now() - startedAt
+    });
   }
 }
 
-function estimateInputTokens(messages: Array<{ content: string }>): number {
-  return messages.reduce((sum, message) => sum + Math.ceil(message.content.length / 4), 0);
+async function* captureStreamUsage(
+  events: AsyncIterable<GatewayRuntimeStreamEvent>,
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number }
+): AsyncIterable<GatewayRuntimeStreamEvent> {
+  for await (const event of events) {
+    if (event.type === 'usage') {
+      usage.inputTokens = event.usage.inputTokens;
+      usage.outputTokens = event.usage.outputTokens;
+      usage.totalTokens = event.usage.totalTokens;
+    }
+    yield event;
+  }
+}
+
+function estimateInputTokens(messages: Array<{ content: string | Array<{ text?: string }> }>): number {
+  return messages.reduce((sum, message) => sum + Math.ceil(estimateContentLength(message.content) / 4), 0);
+}
+
+function estimateContentLength(content: string | Array<{ text?: string }>): number {
+  if (typeof content === 'string') return content.length;
+  return content.reduce((sum, part) => sum + (part.text?.length ?? 0), 0);
 }
 
 function normalizeOpenAIException(error: unknown): Error {

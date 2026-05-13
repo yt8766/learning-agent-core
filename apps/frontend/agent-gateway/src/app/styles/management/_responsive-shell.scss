@@ -1,0 +1,97 @@
+@media (max-width: 1040px) {
+  .dashboard-bento-grid,
+  .management-card-grid,
+  .management-card-grid.three,
+  .management-info-grid,
+  .auth-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-bento-card.bento-large {
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-hero,
+  .management-hero,
+  .provider-card-header,
+  .auth-files-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 18px;
+  }
+
+  .dashboard-hero-meta {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-bento-grid,
+  .management-card-grid,
+  .management-card-grid.three,
+  .management-info-grid,
+  .auth-filter-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-config-clone,
+  .auth-files-clone,
+  .provider-config-list {
+    gap: 28px;
+  }
+
+  .provider-config-card {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+
+  .provider-title-wrap {
+    font-size: 22px;
+  }
+
+  .provider-card-header button {
+    min-height: 46px;
+    padding: 0 16px;
+    font-size: 16px;
+  }
+
+  .provider-empty-state {
+    min-height: 142px;
+    padding: 22px;
+  }
+
+  .provider-empty-state h3 {
+    font-size: 20px;
+  }
+
+  .provider-empty-state p {
+    font-size: 16px;
+  }
+
+  .provider-empty-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .provider-floating-nav {
+    gap: 12px;
+    min-height: 58px;
+    padding: 8px 18px;
+  }
+
+  .provider-floating-nav img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .bento-large strong {
+    font-size: 32px;
+  }
+
+  .command-panel input,
+  .command-panel textarea {
+    width: 100%;
+  }
+}

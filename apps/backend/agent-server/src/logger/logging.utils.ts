@@ -42,6 +42,10 @@ export function markRequestErrorLogged(req: RequestWithLogContext): void {
   context.errorLogged = true;
 }
 
+/**
+ * Redacts known secret-shaped fields before values cross the logging boundary.
+ * This is not an authorization guard or general-purpose sanitizer; callers must still avoid logging unsafe payloads.
+ */
 export function sanitizeForLogging<T>(value: T): T {
   return sanitizeValue(value) as T;
 }

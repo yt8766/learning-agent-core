@@ -1,15 +1,25 @@
+import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
+import type { GatewayRuntimeInvocation } from '@agent/core';
 import { AgentGatewayClientsController } from '../../src/api/agent-gateway/agent-gateway-clients.controller';
 import { AgentGatewayOpenAICompatibleController } from '../../src/api/agent-gateway/agent-gateway-openai-compatible.controller';
 import { AgentGatewayClientApiKeyService } from '../../src/domains/agent-gateway/clients/agent-gateway-client-api-key.service';
 import { AgentGatewayClientQuotaService } from '../../src/domains/agent-gateway/clients/agent-gateway-client-quota.service';
 import { AgentGatewayClientService } from '../../src/domains/agent-gateway/clients/agent-gateway-client.service';
 import { MemoryAgentGatewayClientRepository } from '../../src/domains/agent-gateway/clients/memory-agent-gateway-client.repository';
-import { MockAgentGatewayProvider } from '../../src/domains/agent-gateway/providers/mock-agent-gateway-provider';
-import { MemoryAgentGatewayRepository } from '../../src/domains/agent-gateway/repositories/memory-agent-gateway.repository';
 import { AgentGatewayRuntimeAccountingService } from '../../src/domains/agent-gateway/runtime/agent-gateway-runtime-accounting.service';
 import { AgentGatewayRuntimeAuthService } from '../../src/domains/agent-gateway/runtime/agent-gateway-runtime-auth.service';
-import { AgentGatewayRelayService } from '../../src/domains/agent-gateway/runtime/agent-gateway-relay.service';
+import { RuntimeEngineFacade } from '../../src/domains/agent-gateway/runtime-engine/runtime-engine.facade';
+import type { RuntimeEngineInvokeResult } from '../../src/domains/agent-gateway/runtime-engine/types/runtime-engine.types';
+
+class RecordingRuntimeEngine extends RuntimeEngineFacade {
+  invocations: GatewayRuntimeInvocation[] = [];
+
+  async invoke(invocation: GatewayRuntimeInvocation): Promise<RuntimeEngineInvokeResult> {
+    this.invocations.push(invocation);
+    return super.invoke(invocation);
+  }
+}
 
 function createClientsController(secretFactory = sequenceSecretFactory()) {
   const repository = new MemoryAgentGatewayClientRepository(() => new Date('2026-05-10T00:00:00.000Z'));
@@ -48,15 +58,16 @@ async function createRuntimeController(options: { configureQuota?: boolean } = {
     });
   }
   const key = await apiKeyService.create(client.id, { name: 'runtime', scopes: ['models.read', 'chat.completions'] });
-  const gatewayRepository = new MemoryAgentGatewayRepository();
+  const runtimeEngine = new RecordingRuntimeEngine();
   return {
     controller: new AgentGatewayOpenAICompatibleController(
       new AgentGatewayRuntimeAuthService(clientRepository),
-      new AgentGatewayRelayService(gatewayRepository, [new MockAgentGatewayProvider()]),
+      runtimeEngine,
       new AgentGatewayRuntimeAccountingService(clientRepository, () => new Date('2026-05-10T00:00:00.000Z'))
     ),
     clientId: client.id,
     repository: clientRepository,
+    runtimeEngine,
     secret: key.secret
   };
 }
@@ -265,7 +276,7 @@ describe('AgentGatewayOpenAICompatibleController', () => {
   });
 
   it('completes chat requests, records usage, and writes request logs', async () => {
-    const { clientId, controller, repository, secret } = await createRuntimeController();
+    const { clientId, controller, repository, runtimeEngine, secret } = await createRuntimeController();
 
     const response = await controller.chatCompletions(`Bearer ${secret}`, {
       model: 'gpt-5.4',
@@ -273,9 +284,29 @@ describe('AgentGatewayOpenAICompatibleController', () => {
       stream: false
     });
 
-    expect(response.choices[0].message.content).toContain('mock relay response: ping');
+    expect(response.choices[0].message.content).toBe('deterministic executor response');
+    expect(runtimeEngine.invocations).toHaveLength(1);
+    expect(runtimeEngine.invocations[0]).toMatchObject({
+      protocol: 'openai.chat.completions',
+      model: 'gpt-5.4',
+      stream: false,
+      client: {
+        clientId,
+        scopes: ['models.read', 'chat.completions']
+      }
+    });
+    expect(runtimeEngine.invocations[0]?.client.apiKeyId).toMatch(/^key-/);
+    expect(runtimeEngine.invocations[0]?.messages[0]?.content).toEqual([{ type: 'text', text: 'ping' }]);
     expect(await repository.getUsage(clientId)).toMatchObject({ requestCount: 1 });
-    expect(await repository.listRequestLogs(clientId, 10)).toHaveLength(1);
+    expect(await repository.listRequestLogs(clientId, 10)).toMatchObject([
+      {
+        endpoint: '/v1/chat/completions',
+        model: 'gpt-5.4',
+        providerId: 'codex',
+        inputTokens: 1,
+        outputTokens: 8
+      }
+    ]);
   });
 
   it('rejects quota exceeded runtime requests', async () => {
@@ -302,12 +333,18 @@ describe('AgentGatewayOpenAICompatibleController', () => {
     ).rejects.toMatchObject({ status: 429, response: { error: { code: 'quota_exceeded' } } });
   });
 
-  it('normalizes relay failures into OpenAI-compatible errors', async () => {
-    const { controller, secret } = await createRuntimeController();
+  it('normalizes runtime engine HttpException failures into OpenAI-compatible errors', async () => {
+    const { controller, runtimeEngine, secret } = await createRuntimeController();
+    runtimeEngine.invoke = async () => {
+      throw new BadRequestException({
+        code: 'provider_not_found',
+        message: 'No provider can serve this model'
+      });
+    };
 
     await expect(
       controller.chatCompletions(`Bearer ${secret}`, {
-        model: 'unknown-model',
+        model: 'gpt-5.4',
         messages: [{ role: 'user', content: 'ping' }]
       })
     ).rejects.toMatchObject({
@@ -322,16 +359,13 @@ describe('AgentGatewayOpenAICompatibleController', () => {
     const apiKeyService = new AgentGatewayClientApiKeyService(clientRepository, sequenceSecretFactory());
     const client = await clientService.create({ name: 'Raw Error Runtime App' });
     const key = await apiKeyService.create(client.id, { name: 'runtime', scopes: ['chat.completions'] });
+    const runtimeEngine = new RecordingRuntimeEngine();
+    runtimeEngine.invoke = async () => {
+      throw new Error('vendor timeout');
+    };
     const controller = new AgentGatewayOpenAICompatibleController(
       new AgentGatewayRuntimeAuthService(clientRepository),
-      new AgentGatewayRelayService(new MemoryAgentGatewayRepository(), [
-        {
-          providerId: 'openai-primary',
-          complete: async () => {
-            throw new Error('vendor timeout');
-          }
-        }
-      ]),
+      runtimeEngine,
       new AgentGatewayRuntimeAccountingService(clientRepository, () => new Date('2026-05-10T00:00:00.000Z'))
     );
 
@@ -346,15 +380,18 @@ describe('AgentGatewayOpenAICompatibleController', () => {
     });
   });
 
-  it('rejects streaming explicitly in the first slice', async () => {
-    const { controller, secret } = await createRuntimeController();
+  it('streams chat requests as OpenAI-compatible SSE chunks', async () => {
+    const { controller, runtimeEngine, secret } = await createRuntimeController();
 
-    await expect(
-      controller.chatCompletions(`Bearer ${secret}`, {
-        model: 'gpt-5.4',
-        messages: [{ role: 'user', content: 'ping' }],
-        stream: true
-      })
-    ).rejects.toMatchObject({ status: 400, response: { error: { code: 'stream_not_supported' } } });
+    const response = await controller.chatCompletions(`Bearer ${secret}`, {
+      model: 'gpt-5.4',
+      messages: [{ role: 'user', content: 'ping' }],
+      stream: true
+    });
+
+    expect(response).toContain('data: ');
+    expect(response).toContain('deterministic executor response');
+    expect(response).toContain('data: [DONE]');
+    expect(runtimeEngine.invocations).toHaveLength(0);
   });
 });

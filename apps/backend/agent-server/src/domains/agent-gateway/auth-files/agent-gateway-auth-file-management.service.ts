@@ -7,6 +7,13 @@ import type {
   GatewayAuthFileModelListResponse,
   GatewayAuthFilePatchRequest
 } from '@agent/core';
+import {
+  GatewayAuthFileBatchUploadResponseSchema,
+  GatewayAuthFileDeleteResponseSchema,
+  GatewayAuthFileListResponseSchema,
+  GatewayAuthFileModelListResponseSchema,
+  GatewayAuthFileSchema
+} from '@agent/core';
 import type { AgentGatewayManagementClient } from '../management/agent-gateway-management-client';
 import { AGENT_GATEWAY_MANAGEMENT_CLIENT } from '../management/agent-gateway-management-client';
 
@@ -49,7 +56,13 @@ export class AgentGatewayAuthFileManagementService {
 
   async list(query: GatewayAuthFileListQuery): Promise<GatewayAuthFileListResponse> {
     const delegate = this.delegate();
-    if (delegate.listAuthFiles) return delegate.listAuthFiles(query);
+    if (delegate.listAuthFiles) {
+      const response = await delegate.listAuthFiles(query);
+      return GatewayAuthFileListResponseSchema.parse({
+        ...response,
+        items: response.items.map(cloneAuthFile)
+      });
+    }
     const needle = query.query?.trim().toLowerCase();
     const items = [...this.authFiles.values()].filter(item => {
       if (query.providerKind && item.providerKind !== query.providerKind) return false;
@@ -57,12 +70,21 @@ export class AgentGatewayAuthFileManagementService {
       return item.fileName.toLowerCase().includes(needle) || item.providerId.toLowerCase().includes(needle);
     });
     const limit = normalizeLimit(query.limit, 100);
-    return { items: items.slice(0, limit).map(cloneAuthFile), nextCursor: null };
+    return GatewayAuthFileListResponseSchema.parse({
+      items: items.slice(0, limit).map(cloneAuthFile),
+      nextCursor: null
+    });
   }
 
   async batchUpload(request: GatewayAuthFileBatchUploadRequest): Promise<GatewayAuthFileBatchUploadResponse> {
+    return this.uploadAuthFiles(request);
+  }
+
+  async uploadAuthFiles(request: GatewayAuthFileBatchUploadRequest): Promise<GatewayAuthFileBatchUploadResponse> {
     const delegate = this.delegate();
-    if (delegate.batchUploadAuthFiles) return delegate.batchUploadAuthFiles(request);
+    if (delegate.batchUploadAuthFiles) {
+      return GatewayAuthFileBatchUploadResponseSchema.parse(await delegate.batchUploadAuthFiles(request));
+    }
 
     const accepted = request.files.map(file => {
       const providerKind = file.providerKind ?? 'custom';
@@ -89,31 +111,41 @@ export class AgentGatewayAuthFileManagementService {
       };
     });
 
-    return { accepted, rejected: [] };
+    return GatewayAuthFileBatchUploadResponseSchema.parse({ accepted, rejected: [] });
   }
 
   async patchFields(request: GatewayAuthFilePatchRequest): Promise<GatewayAuthFile> {
     const delegate = this.delegate();
-    if (delegate.patchAuthFileFields) return delegate.patchAuthFileFields(request);
+    if (delegate.patchAuthFileFields)
+      return GatewayAuthFileSchema.parse(cloneAuthFile(await delegate.patchAuthFileFields(request)));
     const current = this.authFiles.get(request.authFileId) ?? createMissingAuthFile(request.authFileId);
     const next: GatewayAuthFile = {
       ...current,
       providerId: request.providerId ?? current.providerId,
       accountEmail: request.accountEmail === undefined ? current.accountEmail : request.accountEmail,
       projectId: request.projectId === undefined ? current.projectId : request.projectId,
+      authIndex: request.authIndex === undefined ? current.authIndex : request.authIndex,
+      disabled: request.disabled ?? current.disabled,
+      headers: request.headers ?? current.headers,
+      note: request.note === undefined ? current.note : request.note,
+      prefix: request.prefix === undefined ? current.prefix : request.prefix,
+      priority: request.priority ?? current.priority,
+      proxyUrl: request.proxyUrl === undefined ? current.proxyUrl : request.proxyUrl,
       status: request.status ?? current.status,
       metadata: { ...(current.metadata ?? {}), ...(request.metadata ?? {}) },
       updatedAt: fixedNow
     };
     this.authFiles.set(next.id, next);
-    return cloneAuthFile(next);
+    return GatewayAuthFileSchema.parse(cloneAuthFile(next));
   }
 
   async models(authFileId: string): Promise<GatewayAuthFileModelListResponse> {
     const delegate = this.delegate();
-    if (delegate.listAuthFileModels) return delegate.listAuthFileModels(authFileId);
+    if (delegate.listAuthFileModels) {
+      return GatewayAuthFileModelListResponseSchema.parse(await delegate.listAuthFileModels(authFileId));
+    }
     const authFile = this.authFiles.get(authFileId) ?? createMissingAuthFile(authFileId);
-    return {
+    return GatewayAuthFileModelListResponseSchema.parse({
       authFileId,
       models: [
         {
@@ -123,7 +155,7 @@ export class AgentGatewayAuthFileManagementService {
           available: true
         }
       ]
-    };
+    });
   }
 
   async download(authFileId: string): Promise<string> {
@@ -135,7 +167,8 @@ export class AgentGatewayAuthFileManagementService {
 
   async delete(request: GatewayAuthFileDeleteRequest): Promise<GatewayAuthFileDeleteResponse> {
     const delegate = this.delegate();
-    if (delegate.deleteAuthFiles) return delegate.deleteAuthFiles(request);
+    if (delegate.deleteAuthFiles)
+      return GatewayAuthFileDeleteResponseSchema.parse(await delegate.deleteAuthFiles(request));
     const names = request.all ? [...this.authFiles.keys()] : (request.names ?? []);
     const deleted: string[] = [];
     const skipped: Array<{ name: string; reason: string }> = [];
@@ -147,7 +180,7 @@ export class AgentGatewayAuthFileManagementService {
         skipped.push({ name, reason: 'not_found' });
       }
     }
-    return { deleted, skipped };
+    return GatewayAuthFileDeleteResponseSchema.parse({ deleted, skipped });
   }
 
   private delegate(): AuthFileManagementClient {
@@ -172,7 +205,27 @@ function createMissingAuthFile(authFileId: string): GatewayAuthFile {
 }
 
 function cloneAuthFile(file: GatewayAuthFile): GatewayAuthFile {
-  return { ...file, metadata: file.metadata ? { ...file.metadata } : undefined };
+  return { ...file, metadata: file.metadata ? sanitizeMetadata(file.metadata) : undefined };
+}
+
+function sanitizeMetadata(
+  metadata: NonNullable<GatewayAuthFile['metadata']>
+): NonNullable<GatewayAuthFile['metadata']> {
+  return Object.fromEntries(
+    Object.entries(metadata).flatMap(([key, value]) => {
+      if (isSensitiveProjectionKey(key)) return [];
+      if (isProjectionValue(value)) return [[key, value]];
+      return [];
+    })
+  );
+}
+
+function isProjectionValue(value: unknown): value is string | number | boolean | null {
+  return value === null || ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function isSensitiveProjectionKey(key: string): boolean {
+  return /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|authorization|cookie|secret)/i.test(key);
 }
 
 function decodeBase64(value: string): string {

@@ -3,7 +3,13 @@
 状态：current
 文档类型：reference
 适用范围：`agents/intel-engine`、`apps/backend/agent-server`、`config/intel`、`profile-storage/platform/intel`
-最后核对：2026-04-24
+最后核对：2026-05-10
+
+> 2026-05-10 更新：本文记录的是 2026-04 第一版 Frontend/AI Intel 本地巡检与 Lark 分发链路，
+> 其中 SQLite / `profile-storage/platform/intel/intel.db` 说明只代表既有实现。新的 Tech & AI Intelligence
+> MiniMax CLI 抓取与知识候选治理以
+> [Tech And AI Intelligence MiniMax CLI Design](/docs/superpowers/specs/2026-05-10-tech-ai-intelligence-minimax-cli-design.md)
+> 为准，生产持久化目标是 Postgres `intel_*` 表，并显式排除 `AI Agent / RAG / Runtime 工程` 频道。
 
 ## 1. 背景
 

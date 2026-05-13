@@ -95,7 +95,7 @@ Major gaps versus `/Users/dev/Desktop/Cli-Proxy-API-Management-Center`:
 - Create: `apps/frontend/agent-gateway/src/app/hooks/useUnsavedChangesGuard.ts`
 - Modify: `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx`
   - Add navigation targets and route-like view state.
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
   - Extend dense operational UI styles for editors, tables, modals, and status bars.
 - Test: `apps/frontend/agent-gateway/test/*.test.tsx`
 
@@ -321,7 +321,7 @@ Expected: PASS.
 - Create: `apps/frontend/agent-gateway/src/app/pages/ConnectionPage.tsx`
 - Modify: `apps/frontend/agent-gateway/src/app/gateway-view-model.ts`
 - Modify: `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx`
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-api.test.ts`
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-workspace.test.tsx`
 
@@ -2212,7 +2212,7 @@ Expected: PASS.
 - Create: `apps/frontend/agent-gateway/src/app/components/NotificationCenter.tsx`
 - Create: `apps/frontend/agent-gateway/src/app/hooks/useUnsavedChangesGuard.ts`
 - Modify: `apps/frontend/agent-gateway/src/app/GatewayWorkspace.tsx`
-- Modify: `apps/frontend/agent-gateway/src/app/App.css`
+- Modify: `apps/frontend/agent-gateway/src/app/App.scss`
 - Test: `apps/frontend/agent-gateway/test/agent-gateway-workflow-controls.test.tsx`
 
 - [ ] **Step 1: Add workflow controls test**
@@ -2320,7 +2320,7 @@ export function useUnsavedChangesGuard(hasUnsavedChanges: boolean): void {
 
 - [ ] **Step 5: Add CSS**
 
-Modify `apps/frontend/agent-gateway/src/app/App.css`:
+Modify `apps/frontend/agent-gateway/src/app/App.scss`:
 
 ```css
 .modal-surface,

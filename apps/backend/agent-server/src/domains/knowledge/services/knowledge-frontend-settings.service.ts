@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
+  AuthAccount,
   KnowledgeApiKey,
   KnowledgeApiKeyCreateRequest,
   KnowledgeApiKeyCreateResponse,
@@ -15,6 +16,10 @@ import type {
   KnowledgeWorkspaceUser,
   KnowledgeWorkspaceUsersResponse
 } from '@agent/core';
+
+import { IdentityUserService } from '../../identity/services/identity-user.service';
+import { KNOWLEDGE_REPOSITORY } from '../knowledge-domain.tokens';
+import type { KnowledgeRepository } from '../repositories/knowledge.repository';
 
 const now = '2026-05-04T08:00:00.000Z';
 
@@ -37,45 +42,6 @@ interface StoredApiKey {
 
 @Injectable()
 export class KnowledgeFrontendSettingsService {
-  private readonly users: KnowledgeWorkspaceUser[] = [
-    {
-      id: 'user_zhang',
-      name: '张经理',
-      email: 'zhang@example.com',
-      role: 'admin',
-      status: 'active',
-      department: '产品部',
-      avatarUrl: '/avatar-user-1.png',
-      kbAccessCount: 12,
-      queryCount: 3420,
-      lastActiveAt: '2026-05-04T07:45:00.000Z'
-    },
-    {
-      id: 'user_wang',
-      name: '王芳',
-      email: 'wangfang@example.com',
-      role: 'editor',
-      status: 'active',
-      department: '技术部',
-      avatarUrl: '/avatar-user-2.png',
-      kbAccessCount: 8,
-      queryCount: 2156,
-      lastActiveAt: '2026-05-04T07:30:00.000Z'
-    },
-    {
-      id: 'user_zhao',
-      name: '赵强',
-      email: 'zhaoqiang@example.com',
-      role: 'viewer',
-      status: 'pending',
-      department: '运营部',
-      avatarUrl: '/avatar-user-3.png',
-      kbAccessCount: 0,
-      queryCount: 0,
-      lastActiveAt: null
-    }
-  ];
-
   private readonly apiKeys: StoredApiKey[] = [
     {
       id: 'key_prod',
@@ -132,19 +98,26 @@ export class KnowledgeFrontendSettingsService {
     updatedAt: now
   };
 
-  listWorkspaceUsers(query: WorkspaceUsersQuery = {}): KnowledgeWorkspaceUsersResponse {
+  constructor(
+    private readonly identityUsers: IdentityUserService,
+    @Inject(KNOWLEDGE_REPOSITORY) private readonly knowledgeRepository: KnowledgeRepository
+  ) {}
+
+  async listWorkspaceUsers(query: WorkspaceUsersQuery = {}): Promise<KnowledgeWorkspaceUsersResponse> {
+    const accounts = (await this.identityUsers.listUsers()).users;
+    const users = await Promise.all(accounts.map(account => this.toWorkspaceUser(account)));
     const page = normalizePage(query.page);
     const pageSize = normalizePageSize(query.pageSize);
     const keyword = query.keyword?.trim().toLowerCase();
     const filtered = keyword
-      ? this.users.filter(user => {
+      ? users.filter(user => {
           return (
             user.name.toLowerCase().includes(keyword) ||
             user.email.toLowerCase().includes(keyword) ||
             user.department?.toLowerCase().includes(keyword)
           );
         })
-      : this.users;
+      : users;
     const start = (page - 1) * pageSize;
     return {
       items: filtered.slice(start, start + pageSize),
@@ -152,10 +125,10 @@ export class KnowledgeFrontendSettingsService {
       page,
       pageSize,
       summary: {
-        totalUsers: this.users.length,
-        activeUsers: this.users.filter(user => user.status === 'active').length,
-        adminUsers: this.users.filter(user => user.role === 'admin').length,
-        pendingUsers: this.users.filter(user => user.status === 'pending').length
+        totalUsers: users.length,
+        activeUsers: users.filter(user => user.status === 'active').length,
+        adminUsers: users.filter(user => user.role === 'admin').length,
+        pendingUsers: users.filter(user => user.status === 'pending').length
       }
     };
   }
@@ -174,12 +147,29 @@ export class KnowledgeFrontendSettingsService {
       queryCount: 0,
       lastActiveAt: null
     }));
-    this.users.push(...invitedUsers);
     return {
       invitationIds: invitedUsers.map(user => `invite_${user.id}`),
       invitedUsers,
       inviteLink: 'https://knowledge.local/invite/xyz789',
       expiresAt: '2026-05-11T08:00:00.000Z'
+    };
+  }
+
+  private async toWorkspaceUser(account: AuthAccount): Promise<KnowledgeWorkspaceUser> {
+    const [knowledgeBases, conversations] = await Promise.all([
+      this.knowledgeRepository.listBasesForUser(account.id),
+      this.knowledgeRepository.listChatConversationsForUser(account.id)
+    ]);
+
+    return {
+      id: account.id,
+      name: account.displayName,
+      email: toWorkspaceEmail(account.username),
+      role: toWorkspaceRole(account.roles),
+      status: account.status === 'enabled' ? 'active' : 'inactive',
+      kbAccessCount: knowledgeBases.length,
+      queryCount: conversations.total,
+      lastActiveAt: conversations.items[0]?.updatedAt ?? null
     };
   }
 
@@ -300,6 +290,30 @@ function normalizePageSize(value: number | string | undefined): number {
     return 20;
   }
   return Math.min(pageSize, 100);
+}
+
+function toWorkspaceRole(roles: AuthAccount['roles']): KnowledgeWorkspaceUser['role'] {
+  if (roles.includes('super_admin') || roles.includes('admin')) {
+    return 'admin';
+  }
+  if (roles.includes('developer')) {
+    return 'editor';
+  }
+  return 'viewer';
+}
+
+function toWorkspaceEmail(username: string): string {
+  const trimmed = username.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const localPart =
+    trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9._+-]+/g, '.')
+      .replace(/^\.+|\.+$/g, '') || 'user';
+  return `${localPart}@identity.local`;
 }
 
 function toApiKeyProjection(key: StoredApiKey): KnowledgeApiKey {

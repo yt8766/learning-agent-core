@@ -1,7 +1,9 @@
 import type {
   Citation,
   KnowledgeAnswerProvider,
+  KnowledgeAnswerProviderDelta,
   KnowledgeAnswerProviderInput,
+  KnowledgeAnswerProviderResult,
   KnowledgeStructuredPlannerProvider,
   KnowledgeStructuredPlannerProviderInput,
   KnowledgeStructuredPlannerProviderResult
@@ -14,7 +16,9 @@ export interface KnowledgeRagPlannerProviderOptions {
   preferredKnowledgeBaseIds?: string[];
 }
 
-interface KnowledgeDomainRagAnswerProvider extends KnowledgeAnswerProvider {
+interface KnowledgeDomainRagAnswerProvider {
+  generate(input: KnowledgeAnswerProviderInput): Promise<KnowledgeAnswerProviderResult>;
+  stream?(input: KnowledgeAnswerProviderInput): AsyncIterable<KnowledgeAnswerProviderDelta>;
   getLastError?: () => Error | undefined;
 }
 

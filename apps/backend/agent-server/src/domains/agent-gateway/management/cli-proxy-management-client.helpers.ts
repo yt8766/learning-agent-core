@@ -10,7 +10,6 @@ import type {
   GatewayProviderKind,
   GatewayProviderSpecificConfigListResponse,
   GatewayProviderSpecificConfigRecord,
-  GatewayQuotaDetailListResponse,
   GatewayRequestLogListResponse,
   GatewaySystemModelsResponse,
   GatewaySystemVersionResponse
@@ -52,6 +51,7 @@ export function createProviderConfigList(): GatewayProviderSpecificConfigListRes
       id: providerType,
       displayName: providerType,
       enabled: true,
+      baseUrl: null,
       models: [],
       excludedModels: [],
       credentials: [],
@@ -88,19 +88,100 @@ export function mapAuthFile(value: unknown): GatewayAuthFile {
   const record = asRecord(value);
   const fileName = stringField(record, 'fileName', 'name') ?? 'auth.json';
   const providerKind = normalizeProviderKind(stringField(record, 'providerKind') ?? fileName);
+  const disabled = booleanField(record, 'disabled');
+  const unavailable = booleanField(record, 'unavailable');
+  const rawStatus = stringField(record, 'status');
+  const status = normalizeAuthFileStatus(rawStatus, unavailable);
+  const headers = record.headers === undefined ? undefined : normalizeStringRecord(recordOf(record.headers));
   return {
     id: stringField(record, 'id') ?? fileName,
-    providerId: providerKind,
+    providerId: stringField(record, 'providerId', 'provider', 'type') ?? providerKind,
     providerKind,
     fileName,
     path: stringField(record, 'path') ?? fileName,
-    status: 'valid',
-    accountEmail: stringField(record, 'accountEmail'),
-    projectId: stringField(record, 'projectId'),
-    modelCount: numberField(record, 'modelCount') ?? 0,
-    updatedAt: stringField(record, 'updatedAt') ?? new Date(0).toISOString(),
-    metadata: {}
+    status,
+    accountEmail: stringField(record, 'accountEmail', 'account_email', 'email'),
+    projectId: stringField(record, 'projectId', 'project_id'),
+    authIndex: stringField(record, 'authIndex', 'auth_index'),
+    disabled: disabled ?? undefined,
+    failedCount: numberField(record, 'failedCount', 'failed', 'failure') ?? undefined,
+    headers,
+    modelCount: numberField(record, 'modelCount', 'modelsCount', 'models_count') ?? 0,
+    note: stringField(record, 'note'),
+    prefix: stringField(record, 'prefix'),
+    priority: numberField(record, 'priority') ?? undefined,
+    proxyUrl: stringField(record, 'proxyUrl', 'proxy_url', 'proxy-url'),
+    runtimeOnly: booleanField(record, 'runtimeOnly', 'runtime_only') ?? undefined,
+    sizeBytes: numberField(record, 'sizeBytes', 'size_bytes', 'size') ?? undefined,
+    statusMessage: stringField(record, 'statusMessage', 'status_message', 'message', 'error') ?? undefined,
+    successCount: numberField(record, 'successCount', 'success') ?? undefined,
+    updatedAt: stringField(record, 'updatedAt', 'modified', 'lastRefresh', 'last_refresh') ?? new Date(0).toISOString(),
+    metadata: buildAuthFileMetadata(record, {
+      disabled,
+      headers,
+      status,
+      unavailable
+    })
   };
+}
+
+function normalizeAuthFileStatus(value: string | null | undefined, unavailable?: boolean): GatewayAuthFile['status'] {
+  if (value === 'invalid' || value === 'missing' || value === 'expired' || value === 'valid') return value;
+  if (value === 'disabled') return 'valid';
+  if (unavailable) return 'invalid';
+  return 'valid';
+}
+
+function buildAuthFileMetadata(
+  record: RecordBody,
+  normalized: {
+    disabled?: boolean;
+    headers?: RecordBody;
+    status: GatewayAuthFile['status'];
+    unavailable?: boolean;
+  }
+): GatewayAuthFile['metadata'] {
+  const metadata: GatewayAuthFile['metadata'] = {};
+  const primitiveFields: Array<[string, GatewayAuthFileMetadataValue | undefined]> = [
+    ['disabled', normalized.disabled],
+    ['unavailable', normalized.unavailable],
+    ['status', normalized.status],
+    ['statusMessage', stringField(record, 'statusMessage', 'status_message', 'message', 'error')],
+    ['sizeBytes', numberField(record, 'sizeBytes', 'size_bytes', 'size')],
+    ['priority', numberField(record, 'priority')],
+    ['authIndex', stringField(record, 'authIndex', 'auth_index')],
+    ['successCount', numberField(record, 'successCount', 'success')],
+    ['failedCount', numberField(record, 'failedCount', 'failed', 'failure')],
+    ['note', stringField(record, 'note')],
+    ['prefix', stringField(record, 'prefix')],
+    ['proxyUrl', stringField(record, 'proxyUrl', 'proxy_url', 'proxy-url')],
+    ['headersCount', normalized.headers ? Object.keys(normalized.headers).length : undefined]
+  ];
+  primitiveFields.forEach(([key, current]) => {
+    if (current !== undefined) {
+      metadata[key] = current;
+    }
+  });
+  return metadata;
+}
+
+type GatewayAuthFileMetadataValue = NonNullable<GatewayAuthFile['metadata']>[string];
+
+function normalizeStringRecord(record: RecordBody): Record<string, string> {
+  const sensitiveHeaders = new Set([
+    'authorization',
+    'cookie',
+    'set-cookie',
+    'x-api-key',
+    'api-key',
+    'proxy-authorization'
+  ]);
+  return Object.fromEntries(
+    Object.entries(record).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === 'string' && !sensitiveHeaders.has(entry[0].trim().toLowerCase())
+    )
+  );
 }
 
 export function mapModel(
@@ -176,25 +257,6 @@ export function mapBatchUploadAuthFiles(
       fileName: stringField(asRecord(item), 'fileName') ?? 'unknown',
       reason: stringField(asRecord(item), 'reason') ?? 'rejected'
     }))
-  };
-}
-
-export function createQuotaDetails(providerKind: GatewayProviderKind): GatewayQuotaDetailListResponse {
-  return {
-    items: [
-      {
-        id: `${providerKind}-quota`,
-        providerId: providerKind,
-        model: providerKind,
-        scope: 'provider',
-        window: 'unknown',
-        limit: 0,
-        used: 0,
-        remaining: 0,
-        refreshedAt: now(),
-        status: 'normal'
-      }
-    ]
   };
 }
 
@@ -276,4 +338,17 @@ export function maskSecret(value: string): string {
 
 export function now(): string {
   return new Date().toISOString();
+}
+
+const sensitiveProjectionKeyPattern = /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|authorization|cookie|secret)/i;
+
+export function sanitizeGatewayProjectionValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => sanitizeGatewayProjectionValue(item));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !sensitiveProjectionKeyPattern.test(key))
+      .map(([key, nested]) => [key, sanitizeGatewayProjectionValue(nested)])
+  );
 }

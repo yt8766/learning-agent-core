@@ -935,6 +935,34 @@ describe('runKnowledgeRetrieval', () => {
       expect(spy).toHaveBeenCalledWith(expect.objectContaining({ query: 'test' }));
     });
   });
+
+  it('includes post-retrieval selection trace diagnostics', async () => {
+    const lowScore = makeHit({ chunkId: 'low-score', score: 0 });
+    const selected = makeHit({ chunkId: 'selected', score: 0.92 });
+
+    const result = await runKnowledgeRetrieval({
+      request: baseRequest,
+      searchService: makeSearchService([lowScore, selected]),
+      includeDiagnostics: true,
+      pipeline: { queryNormalizer: makeSingleVariantNormalizer() }
+    });
+
+    expect(result.diagnostics?.postRetrieval?.selectionTrace).toEqual([
+      expect.objectContaining({
+        chunkId: 'low-score',
+        selected: false,
+        stage: 'post-processor',
+        reason: 'post-processor-min-score'
+      }),
+      expect.objectContaining({
+        chunkId: 'selected',
+        selected: true,
+        stage: 'post-processor',
+        reason: 'selected',
+        order: 0
+      })
+    ]);
+  });
 });
 
 describe('runKnowledgeRetrieval with HybridKnowledgeSearchService', () => {

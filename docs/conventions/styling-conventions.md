@@ -2,8 +2,8 @@
 
 状态：current
 文档类型：convention
-适用范围：全部前端应用（`agent-chat`、`agent-admin`、`knowledge`）
-最后核对：2026-05-03
+适用范围：全部前端应用（`agent-chat`、`agent-admin`、`agent-gateway`、`knowledge`）
+最后核对：2026-05-12
 
 ## 1. 总原则：Tailwind 优先，Sass 作为最后手段
 
@@ -15,7 +15,7 @@
 | 次选   | Tailwind `@theme` / `@utility` / `@layer` 或极小范围 CSS 片段 | 设计 token 定义、无法用单条 utility 表达的少量规则                                                                                 |
 | 最后   | Sass（`.scss`）                                               | 仅当 Tailwind 确实无法表达时：重度嵌套的第三方主题覆盖文件、无法用 `@theme` 合理建模的全局范式、必须与既有 SCSS 资产衔接的过渡代码 |
 
-如果一个样式需求可以用 Tailwind utility 解决，就不要写 `.scss` 或自定义 CSS class。
+除下文应用专项约定另有说明外，如果一个样式需求可以用 Tailwind utility 解决，就不要写 `.scss` 或自定义 CSS class。
 
 ## 2. 各应用现状与演进
 
@@ -46,6 +46,16 @@
     - Tailwind v4 的 Preflight（CSS reset）会影响 antd 基础样式。接入时应通过 `@layer` 优先级或 Tailwind v4 的 `preflight: false` 配置禁用 Preflight，让 antd 自身的 reset 生效。
     - antd 的 CSS 注入顺序（`ConfigProvider` + 全局 CSS）应保持在 Tailwind `@layer base` 之后，确保 antd 组件样式不被 Tailwind base 覆盖。
   - 存量 `knowledge-pro.css` 允许渐进迁移。新增布局/组件优先 Tailwind。
+
+### 2.4 `agent-gateway`
+
+- 当前样式体系以 Sass（`.scss`）为主，Vite 通过应用内 `sass` devDependency 编译。
+- 样式入口：`src/app/App.scss`，只允许聚合 `.scss` 文件，不再新增或导入本应用内 `.css` 文件。
+- 结构约定：
+  - 基础分片放在 `src/app/styles/*.scss`。
+  - 大型页面域样式按 feature 拆入 `src/app/styles/management/*.scss` 与 `src/app/styles/usage-stats/*.scss`，由对应 `management.scss` / `usage-stats.scss` 使用 Sass `@use` 聚合。
+  - 单个样式文件仍不得超过 400 行；超过时必须继续按页面区块或 feature 拆分。
+- `agent-gateway` 当前需要保持 CLIProxyAPI 管理中心复刻样式的稳定性，迁移时优先保持选择器和视觉行为不变；新增样式默认写 `.scss`，不要恢复 `.css` 入口。
 
 ## 3. 编写规则
 

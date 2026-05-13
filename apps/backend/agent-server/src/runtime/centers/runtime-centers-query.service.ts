@@ -1,4 +1,4 @@
-import type { SkillInstallReceipt, PlatformApprovalRecord } from '@agent/core';
+import type { IntelligenceChannel, SkillInstallReceipt, PlatformApprovalRecord } from '@agent/core';
 
 import { buildRuntimeWorkspaceCenter } from '../core/runtime-centers-facade';
 import type { RuntimeWorkspaceDraftListQuery } from './runtime-centers-workspace-drafts';
@@ -17,7 +17,6 @@ import {
   resolveWorkspaceCenterStatus,
   resolveSessionTaskIds
 } from './runtime-centers-workspace-query';
-import type { TechBriefingCategory } from '../core/runtime-intel-briefing-facade';
 import { exportApprovalsCenter, exportEvalsCenter, exportRuntimeCenter } from '../helpers/runtime-platform-console';
 import { readSkillInstallReceipts } from '../skills/runtime-skill-install.service';
 
@@ -78,23 +77,6 @@ export class RuntimeCentersQueryService {
     }
   ) {
     return this.runtimeQueryService.getRuntimeCenterSummary(days, filters);
-  }
-
-  async getBriefingRuns(days = 7, category?: TechBriefingCategory) {
-    return this.observabilityQueryService.getBriefingRuns(days, category);
-  }
-
-  async forceBriefingRun(category: TechBriefingCategory) {
-    return this.observabilityQueryService.forceBriefingRun(category);
-  }
-
-  async recordBriefingFeedback(input: {
-    messageKey: string;
-    category: TechBriefingCategory;
-    feedbackType: 'helpful' | 'notHelpful';
-    reasonTag?: 'too-noisy' | 'irrelevant' | 'too-late' | 'useful-actionable';
-  }) {
-    return this.observabilityQueryService.recordBriefingFeedback(input);
   }
 
   getApprovalsCenter(filters?: { executionMode?: string; interactionKind?: string }): PlatformApprovalRecord[] {
@@ -235,6 +217,14 @@ export class RuntimeCentersQueryService {
 
   async getPlatformConsoleLogAnalysis(days = 7) {
     return this.observabilityQueryService.getPlatformConsoleLogAnalysis(days);
+  }
+
+  async getIntelligenceOverview() {
+    return this.observabilityQueryService.getIntelligenceOverview();
+  }
+
+  async forceIntelligenceRun(channel: IntelligenceChannel) {
+    return this.observabilityQueryService.forceIntelligenceRun(channel);
   }
 
   async exportRuntimeCenter(options?: {

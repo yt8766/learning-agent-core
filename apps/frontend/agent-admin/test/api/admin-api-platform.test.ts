@@ -93,18 +93,17 @@ import {
   exportApprovalsCenter,
   exportEvalsCenter,
   exportRuntimeCenter,
-  forceBriefingRun,
   getAgentToolExecutionProjection,
   getApprovalScopePolicies,
   getApprovalsCenter,
   getBrowserReplay,
-  getBriefingRuns,
   getChannelDeliveries,
   getCompanyAgentsCenter,
   getConnectorsCenter,
   getEvalsCenter,
   getEvalsCenterFiltered,
   getEvidenceCenter,
+  getIntelligenceOverview,
   getLearningCenter,
   getPlatformConsoleLogAnalysis,
   getRunObservatory,
@@ -118,7 +117,7 @@ import {
   recoverToCheckpoint,
   refreshMetricsSnapshots,
   revokeApprovalScopePolicy,
-  submitBriefingFeedback
+  forceIntelligenceRun
 } from '@/api/admin-api-platform';
 
 describe('admin-api-platform', () => {
@@ -219,16 +218,10 @@ describe('admin-api-platform', () => {
     await getAgentToolExecutionProjection();
     await getRuntimeArchitecture();
     await getWorkflowPresets();
-    await getBriefingRuns({ days: 7, category: 'general-security' });
-    await forceBriefingRun('backend-tech');
-    await submitBriefingFeedback({
-      messageKey: 'general-security:postgres',
-      category: 'general-security',
-      feedbackType: 'helpful',
-      reasonTag: 'useful-actionable'
-    });
+    await forceIntelligenceRun('llm-releases');
     await getSkillSourcesCenter();
     await getCompanyAgentsCenter();
+    await getIntelligenceOverview();
     await getEvalsCenter();
     await getEvalsCenterFiltered({ days: 10, scenarioId: 'scenario-1', outcome: 'passed' });
     await getPlatformConsoleLogAnalysis(7);
@@ -262,51 +255,42 @@ describe('admin-api-platform', () => {
       '/platform/workflow-presets',
       expect.objectContaining({ cancelKey: 'workflow-presets', cancelPrevious: true })
     );
-    expect(requestMock).toHaveBeenNthCalledWith(13, '/platform/briefings/runs?days=7&category=general-security');
-    expect(requestMock).toHaveBeenNthCalledWith(14, '/platform/briefings/backend-tech/force-run', {
+    expect(requestMock).toHaveBeenNthCalledWith(13, '/platform/intelligence/llm-releases/force-run', {
       method: 'POST'
     });
     expect(requestMock).toHaveBeenNthCalledWith(
-      15,
-      '/platform/briefings/feedback',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          messageKey: 'general-security:postgres',
-          category: 'general-security',
-          feedbackType: 'helpful',
-          reasonTag: 'useful-actionable'
-        })
-      })
-    );
-    expect(requestMock).toHaveBeenNthCalledWith(
-      18,
+      17,
       '/platform/evals-center?days=30',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      19,
+      18,
       '/platform/evals-center?days=10&scenarioId=scenario-1&outcome=passed',
       expect.objectContaining({ cancelKey: 'evals-center', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      20,
+      19,
       '/platform/console/log-analysis?days=7',
       expect.objectContaining({ cancelKey: 'platform-console-log-analysis', cancelPrevious: true })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      21,
+      20,
       '/platform/console/refresh-metrics?days=14',
       expect.objectContaining({ method: 'POST' })
     );
     expect(requestMock).toHaveBeenNthCalledWith(
-      22,
+      21,
       '/platform/evals-center/export?days=10&scenarioId=scenario-1&outcome=passed&format=json'
     );
     expect(requestMock).toHaveBeenNthCalledWith(
       10,
       '/agent-tools/projection',
       expect.objectContaining({ cancelKey: 'agent-tool-execution-projection', cancelPrevious: true })
+    );
+    expect(requestMock).toHaveBeenNthCalledWith(
+      16,
+      '/platform/intelligence/overview',
+      expect.objectContaining({ cancelKey: 'intelligence-overview', cancelPrevious: true })
     );
   });
 

@@ -1,8 +1,10 @@
+import { isValidElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import type { GatewaySnapshot } from '@agent/core';
 import { describe, expect, it } from 'vitest';
 import { GatewayWorkspace } from '../src/app/GatewayWorkspace';
+import { renderActivePage, type GatewayPageData } from '../src/app/GatewayWorkspacePages';
 import type { GatewayViewId } from '../src/app/gateway-view-model';
 
 describe('Agent Gateway workspace', () => {
@@ -21,11 +23,14 @@ describe('Agent Gateway workspace', () => {
     );
 
     expect(html).toContain('仪表盘');
+    expect(html).toContain('Runtime');
     expect(html).toContain('调用方管理');
+    expect(html).toContain('使用统计');
     expect(html).toContain('配置面板');
     expect(html).toContain('AI提供商');
     expect(html).toContain('认证文件');
     expect(html).toContain('OAuth登录');
+    expect(html).toContain('迁移导入');
     expect(html).toContain('配额管理');
     expect(html).toContain('中心信息');
     expect(html).not.toContain('API Keys');
@@ -74,6 +79,8 @@ describe('Agent Gateway workspace', () => {
   });
 
   it.each([
+    ['runtime', 'Runtime Engine'],
+    ['usageStats', '正在加载使用统计'],
     ['config', 'config.yaml'],
     ['clients', 'Acme Runtime'],
     ['aiProviders', 'Ampcode'],
@@ -114,6 +121,23 @@ describe('Agent Gateway workspace', () => {
               estimatedCostUsd: 0.01
             }
           ]
+        }}
+        runtimeHealth={{
+          status: 'ready',
+          checkedAt: '2026-05-10T00:00:00.000Z',
+          executors: [
+            {
+              providerKind: 'codex',
+              status: 'ready',
+              checkedAt: '2026-05-10T00:00:00.000Z',
+              activeRequests: 0,
+              supportsStreaming: true
+            }
+          ],
+          activeRequests: 0,
+          activeStreams: 0,
+          usageQueue: { pending: 0, failed: 0 },
+          cooldowns: []
         }}
         apiKeys={{
           items: [
@@ -206,9 +230,50 @@ describe('Agent Gateway workspace', () => {
       );
 
       expect(html).toContain(expectedText);
-      expect(html).toContain('删除');
+      expect(html).toContain('刷新全部');
     }
   );
+
+  it('does not synthesize system models from snapshot provider families', () => {
+    const html = renderToStaticMarkup(
+      <GatewayWorkspace
+        activeView="system"
+        onActiveViewChange={() => undefined}
+        onLogout={() => undefined}
+        snapshot={snapshot}
+        logs={{ items: [] }}
+        usage={{ items: [] }}
+        systemInfo={{
+          version: '1.2.3',
+          buildDate: '2026-05-01',
+          latestVersion: null,
+          updateAvailable: false,
+          links: { help: 'https://help.router-for.me/' }
+        }}
+        modelGroups={[]}
+      />
+    );
+
+    expect(html).toContain('暂无模型');
+    expect(html).not.toContain('gpt-main');
+  });
+
+  it('throws explicitly when write callbacks run without an API client', async () => {
+    const migrationPage = activePage('migration');
+    await expect(
+      migrationPage.props.onPreview?.({ apiBase: 'https://router.example.com', managementKey: 'secret' })
+    ).rejects.toThrow('AgentGatewayApiClient');
+
+    const clientsPage = activePage('clients');
+    expect(() => {
+      void clientsPage.props.onCreateClient?.({ name: 'Acme Runtime' });
+    }).toThrow('AgentGatewayApiClient');
+
+    const systemPage = activePage('system');
+    expect(() => {
+      void systemPage.props.onRefreshModels?.();
+    }).toThrow('AgentGatewayApiClient');
+  });
 
   it('renders auth file manager lifecycle actions in auth files center', () => {
     const html = renderToStaticMarkup(
@@ -359,3 +424,30 @@ const snapshot: GatewaySnapshot = {
     }
   ]
 };
+
+interface ActivePageCallbackProps {
+  onCreateClient?: (request: { name: string }) => Promise<unknown> | void;
+  onPreview?: (request: { apiBase: string; managementKey: string }) => Promise<unknown>;
+  onRefreshModels?: () => Promise<unknown> | void;
+}
+
+function activePage(activeView: GatewayViewId): ReactElement<ActivePageCallbackProps> {
+  const page = renderActivePage(activeView, snapshot, {
+    apiKeys: { items: [] },
+    authFiles: { items: [], nextCursor: null },
+    clientApiKeys: {},
+    clientLogs: {},
+    clientQuotas: {},
+    clients: [],
+    dashboard: null,
+    modelGroups: [],
+    onLogout: () => undefined,
+    providerConfigs: { items: [] },
+    quotaDetails: { items: [] },
+    rawConfig: null,
+    runtimeHealth: null,
+    systemInfo: null
+  } satisfies GatewayPageData);
+  expect(isValidElement(page)).toBe(true);
+  return page as ReactElement<ActivePageCallbackProps>;
+}

@@ -1,0 +1,323 @@
+.dashboard-bento-card,
+.management-action-card,
+.management-info-panel,
+.metric-card,
+.detail-panel,
+.command-panel,
+.editor-toolbar,
+.table-scroll,
+.empty-table,
+.loading-panel {
+  border: 1px solid color-mix(in srgb, var(--gateway-border) 66%, transparent);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.dashboard-bento-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 154px;
+  padding: 24px;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  animation: dashboard-card-enter 400ms ease-out both;
+}
+
+.dashboard-bento-card:hover {
+  border-color: var(--gateway-border-hover);
+  box-shadow: 0 22px 48px rgb(15 23 42 / 10%);
+  transform: translateY(-2px);
+}
+
+.dashboard-bento-card.bento-large {
+  grid-row: 1 / 3;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.dashboard-bento-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.dashboard-bento-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.dashboard-bento-card:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+.dashboard-bento-icon,
+.management-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  color: var(--gateway-primary);
+  background: #f8f9fa;
+}
+
+.bento-large .dashboard-bento-icon {
+  width: 56px;
+  height: 56px;
+}
+
+.dashboard-bento-card strong {
+  display: block;
+  color: var(--gateway-text);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.bento-large strong {
+  font-size: 44px;
+}
+
+.dashboard-bento-card span,
+.dashboard-bento-card small,
+.management-action-card p,
+.management-info-panel p {
+  color: var(--gateway-text-muted);
+  font-size: 13px;
+}
+
+.dashboard-bento-card small {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.75;
+}
+
+.config-pill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.config-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--gateway-border) 68%, transparent);
+  border-radius: 999px;
+  color: var(--gateway-text-muted);
+  background: #ffffff;
+  font-size: 13px;
+}
+
+.config-pill.wide {
+  flex-basis: 100%;
+  border-radius: 8px;
+}
+
+.config-pill strong {
+  color: var(--gateway-text);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.management-hero.compact {
+  min-height: 0;
+}
+
+.management-hero .hero-status-pill {
+  align-self: flex-start;
+}
+
+.management-card-grid,
+.management-info-grid,
+.management-model-list {
+  display: grid;
+  gap: 16px;
+}
+
+.management-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.management-card-grid.three,
+.management-info-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-action-card,
+.management-info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.management-action-card h3,
+.management-info-panel h3,
+.section-heading h2 {
+  margin: 0;
+  color: var(--gateway-text);
+}
+
+.management-info-panel button,
+.management-info-panel a,
+.command-actions button,
+.editor-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 14px;
+  border: 1px solid var(--gateway-border);
+  border-radius: 8px;
+  color: var(--gateway-text);
+  text-decoration: none;
+  background: var(--gateway-surface-muted);
+  font-weight: 700;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.management-info-panel button:hover,
+.management-info-panel a:hover,
+.command-actions button:hover,
+.editor-toolbar button:hover {
+  border-color: var(--gateway-border-hover);
+  background: var(--gateway-bg-soft);
+  transform: translateY(-1px);
+}
+
+.command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.command-actions button[type='submit'] {
+  border-color: var(--gateway-primary);
+  color: #fff;
+  background: var(--gateway-primary);
+}
+
+.command-actions .danger-action {
+  border-color: rgb(198 87 70 / 28%);
+  color: var(--gateway-warning);
+  background: rgb(198 87 70 / 10%);
+}
+
+.command-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+}
+
+.command-panel label {
+  display: grid;
+  gap: 6px;
+  color: var(--gateway-text-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.command-panel input,
+.command-panel textarea {
+  width: 180px;
+  padding: 10px 11px;
+  border: 1px solid var(--gateway-border-strong);
+  border-radius: 8px;
+  color: var(--gateway-text);
+  background: var(--gateway-bg-soft);
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+}
+
+.editor-toolbar span:first-child {
+  margin-right: auto;
+}
+
+.raw-config-editor {
+  min-height: 420px;
+  padding: 14px;
+  border: 1px solid var(--gateway-border-strong);
+  border-radius: 12px;
+  color: var(--gateway-text);
+  background: var(--gateway-surface-strong);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.gateway-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+}
+
+.gateway-table th,
+.gateway-table td {
+  min-width: 108px;
+  padding: 12px;
+  border-bottom: 1px solid var(--gateway-border);
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.gateway-table th {
+  color: var(--gateway-text-muted);
+  font-weight: 750;
+  background: var(--gateway-bg-soft);
+}
+
+.gateway-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.model-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid var(--gateway-border);
+  border-radius: 999px;
+  color: var(--gateway-text-muted);
+  background: var(--gateway-bg-soft);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.management-page-title {
+  margin: 0;
+  color: var(--gateway-text);
+  font-size: clamp(38px, 5vw, 56px);
+  font-weight: 800;
+  line-height: 1.08;
+}

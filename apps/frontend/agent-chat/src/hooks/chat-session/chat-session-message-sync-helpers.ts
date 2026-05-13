@@ -50,6 +50,10 @@ function hasCommittedAssistantEquivalent(
   });
 }
 
+/**
+ * Folds streaming chat events into visible messages while suppressing transient/final assistant duplicates.
+ * Keep this aligned with backend session message dedupe semantics.
+ */
 export function syncMessageFromEvent(
   current: ChatMessageRecord[],
   event: ChatEventRecord,

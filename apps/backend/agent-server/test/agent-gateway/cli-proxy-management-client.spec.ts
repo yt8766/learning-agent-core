@@ -88,6 +88,65 @@ describe('CliProxyManagementClient', () => {
     );
     await expect(upstreamFailure.discoverModels()).rejects.toBeInstanceOf(HttpException);
   });
+
+  it('rewrites agent-gateway callback placeholder URLs to provider-native OAuth URLs for codex', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({
+        state: 'codex-state',
+        url: 'http://localhost:3000/api/agent-gateway/oauth/callback?provider=codex&state=codex-state&is_webui=true'
+      })
+    );
+    const client = createClient(fetcher);
+
+    const result = await client.startProviderOAuth({ provider: 'codex', isWebui: true });
+
+    expect(result.verificationUri).toContain('https://auth.openai.com/oauth/authorize');
+    expect(result.verificationUri).toContain('client_id=app_EMoamEEZ73f0CkXaXp7hrann');
+    expect(result.verificationUri).toContain('codex_cli_simplified_flow=true');
+    expect(result.verificationUri).toContain('state=codex-state');
+    expect(result.verificationUri).not.toContain('/api/agent-gateway/oauth/callback');
+  });
+
+  it('rewrites path-only callback placeholders', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({
+        state: 'codex-state',
+        verification_uri: '/api/agent-gateway/oauth/callback?provider=codex&state=codex-state&is_webui=true'
+      })
+    );
+    const client = createClient(fetcher);
+
+    const result = await client.startProviderOAuth({ provider: 'codex', isWebui: true });
+
+    expect(result.verificationUri).toContain('https://auth.openai.com/oauth/authorize');
+    expect(result.verificationUri).toContain('state=codex-state');
+  });
+
+  it('rewrites percent-encoded callback placeholders', async () => {
+    const encodedCallback =
+      'http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fagent-gateway%2Foauth%2Fcallback%3Fprovider%3Dcodex%26state%3Dcodex-state%26is_webui%3Dtrue';
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ state: 'codex-state', url: encodedCallback }));
+    const client = createClient(fetcher);
+
+    const result = await client.startProviderOAuth({ provider: 'codex', isWebui: true });
+
+    expect(result.verificationUri).toContain('https://auth.openai.com/oauth/authorize');
+    expect(result.verificationUri).toContain('state=codex-state');
+  });
+
+  it('maps anthropic provider placeholders to claude native authorization URL', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({
+        state: 'anthropic-state',
+        url: 'http://localhost:3000/api/agent-gateway/oauth/callback?provider=anthropic&state=anthropic-state&is_webui=true'
+      })
+    );
+    const client = createClient(fetcher);
+
+    const result = await client.startProviderOAuth({ provider: 'anthropic', isWebui: true });
+
+    expect(result.verificationUri).toContain('https://claude.ai/oauth/authorize');
+  });
 });
 
 function createClient(fetcher: typeof fetch): CliProxyManagementClient {

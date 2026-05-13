@@ -190,7 +190,11 @@ export function projectMemoryLogs(
 export function createMemoryManagementApiCall(
   request: GatewayManagementApiCallRequest
 ): GatewayManagementApiCallResponse {
-  const body = { providerKind: request.providerKind, path: request.path ?? request.url ?? '', ok: true };
+  const body = sanitizeGatewayProjectionValue({
+    providerKind: request.providerKind,
+    path: request.path ?? request.url ?? '',
+    ok: true
+  });
   return {
     ok: true,
     statusCode: 200,
@@ -199,4 +203,32 @@ export function createMemoryManagementApiCall(
     body,
     durationMs: 1
   };
+}
+
+const sensitiveProjectionKeyPattern = /(?:api[-_]?key|access[-_]?token|refresh[-_]?token|authorization|cookie|secret)/i;
+
+export function sanitizeGatewayProjectionValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => sanitizeGatewayProjectionValue(item));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !sensitiveProjectionKeyPattern.test(key))
+      .map(([key, nested]) => [key, sanitizeGatewayProjectionValue(nested)])
+  );
+}
+
+export function sanitizeGatewayMetadata(value: unknown): Record<string, string | number | boolean | null> {
+  const sanitized = sanitizeGatewayProjectionValue(value);
+  if (!sanitized || typeof sanitized !== 'object' || Array.isArray(sanitized)) return {};
+
+  const entries: Array<[string, string | number | boolean | null]> = [];
+  for (const [key, nested] of Object.entries(sanitized as Record<string, unknown>)) {
+    if (nested === null) {
+      entries.push([key, null]);
+    } else if (typeof nested === 'string' || typeof nested === 'number' || typeof nested === 'boolean') {
+      entries.push([key, nested]);
+    }
+  }
+  return Object.fromEntries(entries);
 }

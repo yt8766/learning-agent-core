@@ -5,7 +5,7 @@ import type {
   KnowledgeAgentFlowRunResponse,
   KnowledgeAgentFlowSaveRequest,
   KnowledgeAgentFlowSaveResponse
-} from '@agent/knowledge';
+} from '@agent/knowledge/browser';
 
 export type AgentFlowRecord = KnowledgeAgentFlow;
 export type AgentFlowListResponse = KnowledgeAgentFlowListResponse;

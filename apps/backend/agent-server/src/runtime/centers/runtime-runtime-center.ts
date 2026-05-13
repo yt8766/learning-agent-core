@@ -10,7 +10,6 @@ import {
 import { getMinistryDisplayName, getSpecialistDisplayName } from '../helpers/runtime-architecture-helpers';
 
 import { deriveRecentAgentErrors } from '../helpers/runtime-agent-errors';
-import type { DailyTechBriefingStatusRecord } from '../core/runtime-intel-briefing-facade';
 export { buildRuntimeCenterSummaryProjection as buildRuntimeCenterSummary } from '../core/runtime-centers-facade';
 export type { RuntimeCenterTaskLike } from '../core/runtime-centers-facade';
 import type { RuntimeKnowledgeSearchStatus } from '../core/runtime-knowledge-search-factory';
@@ -83,7 +82,6 @@ export function buildRuntimeCenter(input: {
   };
   knowledgeSearchStatus?: RuntimeKnowledgeSearchStatus;
   knowledgeSearchLastDiagnostics?: RuntimeKnowledgeSearchDiagnosticsSnapshot;
-  dailyTechBriefing?: DailyTechBriefingStatusRecord;
 }) {
   return buildRuntimeCenterProjection({
     ...input,

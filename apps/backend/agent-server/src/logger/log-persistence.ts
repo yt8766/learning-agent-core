@@ -27,7 +27,7 @@ const AUDIT_EVENT_PREFIXES = [
 ] as const;
 
 const PERFORMANCE_EVENT_PREFIXES = ['runtime.platform_console.'] as const;
-const WARN_CONTEXTS = new Set(['RuntimeScheduleService', 'RuntimeTechBriefingService', 'MemoryScrubberRunnerService']);
+const WARN_CONTEXTS = new Set(['RuntimeScheduleService', 'MemoryScrubberRunnerService']);
 const LEVEL_RANK: Record<RuntimeLevel, number> = {
   error: 0,
   warn: 1,

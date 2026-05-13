@@ -148,10 +148,6 @@ describe('RuntimeCentersQueryService', () => {
             },
             runtimeBackground: {
               workerPoolSize: 2
-            },
-            dailyTechBriefing: {
-              enabled: false,
-              schedule: '0 9 * * *'
             }
           },
           runtimeHost: {

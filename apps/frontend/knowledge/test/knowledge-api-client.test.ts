@@ -239,6 +239,24 @@ describe('KnowledgeApiClient', () => {
     expect(dashboardCalls).toBe(2);
   });
 
+  it('does not call protected knowledge APIs after local refresh token expiry', async () => {
+    saveTokens({
+      accessToken: 'old',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600,
+      refreshTokenExpiresAt: '2026-04-30T00:00:00.000Z'
+    });
+    const fetcher = vi.fn<typeof fetch>();
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    await expect(apiClient.listKnowledgeBases()).rejects.toThrow('Refresh token expired');
+
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('posts chat requests as SSE and parses knowledge RAG stream events', async () => {
     saveTokens({
       accessToken: 'access',
@@ -407,6 +425,147 @@ describe('KnowledgeApiClient', () => {
     await expect(apiClient.getDashboardOverview()).rejects.toThrow();
   });
 
+  it('rejects malformed document list responses before document hooks consume them', async () => {
+    const apiClient = createAuthenticatedClient(
+      new Response(
+        JSON.stringify({
+          items: [{ id: 'doc_missing_title', knowledgeBaseId: 'kb_1' }],
+          total: 1,
+          page: 1,
+          pageSize: 20
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(apiClient.listDocuments()).rejects.toThrow();
+  });
+
+  it('rejects malformed upload responses before upload flows consume them', async () => {
+    const apiClient = createAuthenticatedClient(
+      new Response(JSON.stringify({ uploadId: 'upload_missing_object_key' }), { status: 200 })
+    );
+
+    await expect(
+      apiClient.uploadKnowledgeFile({
+        file: new File(['hello'], 'runbook.md', { type: 'text/markdown' }),
+        knowledgeBaseId: 'kb_1'
+      })
+    ).rejects.toThrow();
+  });
+
+  it('rejects malformed document operation responses before detail hooks consume them', async () => {
+    const fetcher = vi.fn<typeof fetch>(async url => {
+      if (String(url).endsWith('/bases/kb_1/documents')) {
+        return new Response(
+          JSON.stringify({
+            document: createDocumentResponse('doc_1'),
+            job: { id: 'job_missing_document_id', progress: { percent: 10 } }
+          }),
+          { status: 200 }
+        );
+      }
+      if (String(url).endsWith('/documents/doc_1/jobs/latest')) {
+        return new Response(JSON.stringify({ id: 'job_missing_document_id', progress: { percent: 10 } }), {
+          status: 200
+        });
+      }
+      if (String(url).endsWith('/documents/doc_1/chunks')) {
+        return new Response(JSON.stringify({ items: [{ id: 'chunk_missing_document_id' }], total: 1 }), {
+          status: 200
+        });
+      }
+      return new Response(JSON.stringify({ id: 'doc_missing_title', knowledgeBaseId: 'kb_1' }), { status: 200 });
+    });
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    saveAccessToken();
+
+    await expect(
+      apiClient.createDocumentFromUpload('kb_1', {
+        filename: 'runbook.md',
+        objectKey: 'knowledge/kb_1/upload_1/runbook.md',
+        uploadId: 'upload_1'
+      })
+    ).rejects.toThrow();
+    await expect(apiClient.getDocument('doc_1')).rejects.toThrow();
+    await expect(apiClient.getLatestDocumentJob('doc_1')).rejects.toThrow();
+    await expect(apiClient.listDocumentChunks('doc_1')).rejects.toThrow();
+  });
+
+  it('rejects malformed workspace users responses before governance hooks consume them', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 20
+        }),
+        { status: 200 }
+      )
+    );
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    await expect(apiClient.listWorkspaceUsers()).rejects.toThrow();
+  });
+
+  it('rejects malformed settings model provider responses before settings hooks consume them', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [{ id: 'openai', name: 'OpenAI', status: 'connected', models: [] }]
+        }),
+        { status: 200 }
+      )
+    );
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    await expect(apiClient.getSettingsModelProviders()).rejects.toThrow();
+  });
+
+  it('rejects malformed agent flow list responses before flow hooks consume them', async () => {
+    saveTokens({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiresIn: 7200,
+      refreshExpiresIn: 1209600
+    });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [{ id: 'flow_missing_required_fields' }],
+          total: 1,
+          page: 1,
+          pageSize: 20
+        }),
+        { status: 200 }
+      )
+    );
+    const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+    const apiClient = new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+
+    await expect(apiClient.listAgentFlows()).rejects.toThrow();
+  });
+
   it('rejects malformed knowledge chat SSE frames before hooks consume them', () => {
     expect(() => parseKnowledgeChatSseFrame('data: {"type":"answer.completed","runId":"rag_stream"}')).toThrow(
       'Invalid knowledge chat stream event.'
@@ -421,4 +580,42 @@ function streamFromText(text: string) {
       controller.close();
     }
   });
+}
+
+function createAuthenticatedClient(response: Response) {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);
+  const authClient = new AuthClient({ baseUrl: 'http://127.0.0.1:3000/api', fetcher });
+  saveAccessToken();
+  return new KnowledgeApiClient({ baseUrl: 'http://127.0.0.1:3000/api', authClient, fetcher });
+}
+
+function saveAccessToken() {
+  saveTokens({
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    tokenType: 'Bearer',
+    expiresIn: 7200,
+    refreshExpiresIn: 1209600
+  });
+}
+
+function createDocumentResponse(id: string) {
+  return {
+    id,
+    workspaceId: 'default',
+    knowledgeBaseId: 'kb_1',
+    uploadId: 'upload_1',
+    objectKey: 'knowledge/kb_1/upload_1/runbook.md',
+    filename: 'runbook.md',
+    title: 'runbook',
+    sourceType: 'user-upload',
+    status: 'queued',
+    version: 'v1',
+    chunkCount: 0,
+    embeddedChunkCount: 0,
+    createdBy: 'user_1',
+    metadata: {},
+    createdAt: '2026-05-02T00:00:00.000Z',
+    updatedAt: '2026-05-02T00:00:00.000Z'
+  };
 }

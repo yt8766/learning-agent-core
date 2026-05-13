@@ -20,6 +20,7 @@ import type {
 import type { AdminDashboardState } from '@/hooks/use-admin-dashboard';
 import {
   KnowledgeGovernanceDashboardCenter,
+  IntelligenceDashboardCenter,
   LazyArchiveCenterPanel,
   LazyCompanyAgentsPanel,
   LazyEvalsCenterPanel,
@@ -275,6 +276,12 @@ export function renderDashboardCenter(dashboard: AdminDashboardState) {
       return (
         <LazyCenterBoundary label="Knowledge Governance Center">
           <KnowledgeGovernanceDashboardCenter />
+        </LazyCenterBoundary>
+      );
+    case 'intelligence':
+      return (
+        <LazyCenterBoundary label="Intelligence Center">
+          <IntelligenceDashboardCenter />
         </LazyCenterBoundary>
       );
     case 'workflowLab':

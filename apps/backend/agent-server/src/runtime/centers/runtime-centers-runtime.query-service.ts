@@ -3,7 +3,6 @@ import { getRecentGovernanceAudit, listApprovalScopePolicies, syncCapabilityGove
 import { RuntimeCentersContext } from './runtime-centers.types';
 import { loadRuntimeUsageAnalytics } from './runtime-centers-query-metrics';
 import { ingestLocalKnowledge } from '../domain/knowledge/runtime-knowledge-store';
-import { readDailyTechBriefingStatus } from '../core/runtime-intel-briefing-facade';
 import { filterAndSortRecentRuntimeRuns } from '../domain/metrics/runtime-recent-runs';
 import { getMinistryDisplayName } from '../helpers/runtime-architecture-helpers';
 import { buildRuntimeCenter, buildRuntimeCenterSummary } from './runtime-runtime-center';
@@ -31,11 +30,6 @@ export class RuntimeCentersRuntimeQueryService {
     await syncCapabilityGovernanceProfiles(ctx.runtimeStateRepository, tasks);
     const approvalScopePolicies = await listApprovalScopePolicies(ctx.runtimeStateRepository);
     const knowledgeOverview = await ingestLocalKnowledge(ctx.settings);
-    const dailyTechBriefing = await readDailyTechBriefingStatus(ctx.settings.workspaceRoot, {
-      enabled: ctx.settings.dailyTechBriefing.enabled,
-      schedule: ctx.settings.dailyTechBriefing.schedule
-    });
-
     const filteredRecentRuns = filterAndSortRecentRuntimeRuns(tasks, filters);
 
     return {
@@ -61,8 +55,7 @@ export class RuntimeCentersRuntimeQueryService {
         runtimeHost: ctx.runtimeHost,
         knowledgeOverview,
         knowledgeSearchStatus: await ctx.runtimeHost.getKnowledgeSearchStatus(),
-        knowledgeSearchLastDiagnostics: ctx.runtimeHost.runtime.knowledgeSearchService.getLastDiagnostics?.(),
-        dailyTechBriefing
+        knowledgeSearchLastDiagnostics: ctx.runtimeHost.runtime.knowledgeSearchService.getLastDiagnostics?.()
       }),
       tools: buildToolsCenter({
         toolRegistry: ctx.toolRegistry,

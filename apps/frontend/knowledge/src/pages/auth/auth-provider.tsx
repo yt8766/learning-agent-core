@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { AuthClient } from '../../api/auth-client';
-import { clearTokens, readTokens } from '../../api/token-storage';
+import { clearTokens, isRefreshTokenExpired, readTokens } from '../../api/token-storage';
 
 interface AuthContextValue {
   error: Error | null;
@@ -18,7 +18,7 @@ export function AuthProvider({ authClient, children }: { authClient?: AuthClient
     () => authClient ?? new AuthClient({ baseUrl: import.meta.env.VITE_AUTH_API_BASE_URL ?? '/api' }),
     [authClient]
   );
-  const [isAuthenticated, setAuthenticated] = useState(() => Boolean(readTokens()));
+  const [isAuthenticated, setAuthenticated] = useState(hasUsableStoredAuth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   useEffect(() => {
@@ -69,4 +69,15 @@ export function useAuth() {
     throw new Error('useAuth must be used inside AuthProvider');
   }
   return value;
+}
+
+function hasUsableStoredAuth() {
+  if (!readTokens()) {
+    return false;
+  }
+  if (isRefreshTokenExpired()) {
+    clearTokens();
+    return false;
+  }
+  return true;
 }
