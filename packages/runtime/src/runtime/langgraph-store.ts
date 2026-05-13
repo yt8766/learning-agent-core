@@ -1,7 +1,7 @@
 import type { LangGraphStoreConfig } from '@agent/config';
 import { InMemoryStore } from '@langchain/langgraph';
 import type { BaseStore } from '@langchain/langgraph';
-import { PostgresStore } from '@langchain/langgraph-checkpoint-postgres/store';
+import { loadPostgresStoreModule } from './langgraph-postgres-store-loader';
 
 export interface LangGraphStoreEmbeddingProvider {
   embedQuery(text: string): Promise<number[]>;
@@ -44,6 +44,7 @@ export function createLangGraphStore(params: CreateLangGraphStoreParams): LangGr
     throw new Error('LANGGRAPH_STORE_POSTGRES_URI is required when LANGGRAPH_STORE=postgres.');
   }
 
+  const { PostgresStore } = loadPostgresStoreModule();
   const store = PostgresStore.fromConnString(connectionString, {
     schema: params.config.postgres?.schema ?? 'public',
     ...(index

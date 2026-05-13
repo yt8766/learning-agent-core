@@ -66,6 +66,10 @@ export function applyChatViewStreamEvent(
   event: ChatViewStreamEvent,
   options: ChatViewStreamReducerOptions = {}
 ): ChatViewStreamState {
+  if (typeof state.lastSeq === 'number' && event.seq <= state.lastSeq) {
+    return state;
+  }
+
   const baseState = {
     ...state,
     sessionId: event.sessionId,
@@ -112,6 +116,29 @@ export function applyChatViewStreamEvent(
           id: event.data.messageId,
           sessionId: event.sessionId,
           content: nextContent,
+          createdAt: event.at
+        })
+      };
+    }
+
+    case 'fragment_completed': {
+      const nextFragments = {
+        ...state.fragments,
+        [event.data.fragmentId]: {
+          id: event.data.fragmentId,
+          messageId: event.data.messageId,
+          content: event.data.content
+        }
+      };
+
+      return {
+        ...baseState,
+        status: state.status === 'idle' || state.status === 'connecting' ? 'open' : state.status,
+        fragments: nextFragments,
+        messages: upsertAssistantMessage(baseState.messages, {
+          id: event.data.messageId,
+          sessionId: event.sessionId,
+          content: event.data.content,
           createdAt: event.at
         })
       };

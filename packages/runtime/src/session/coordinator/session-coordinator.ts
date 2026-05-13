@@ -43,6 +43,7 @@ import {
   compressConversationIfNeeded,
   generateSessionTitleFromSummary,
   runSessionTurn,
+  shouldDeriveSessionTitle,
   shouldGenerateSessionTitle
 } from './session-coordinator-turns';
 
@@ -138,11 +139,15 @@ export class SessionCoordinator {
     await this.initialize();
     const now = new Date().toISOString();
     const initialMessage = dto.message?.trim() ?? '';
+    const requestedTitle = dto.title?.trim();
+    const canDeriveTitle = shouldDeriveSessionTitle(requestedTitle);
     const derivedTitle = await generateSessionTitleFromSummary(this.llmProvider, initialMessage);
     const session: ChatSessionRecord = {
       id: `session_${Date.now()}`,
-      title: dto.title?.trim() || derivedTitle || '\u65b0\u4f1a\u8bdd',
-      titleSource: dto.title?.trim() ? 'manual' : derivedTitle ? 'generated' : 'placeholder',
+      title: canDeriveTitle
+        ? derivedTitle || requestedTitle || '\u65b0\u4f1a\u8bdd'
+        : (requestedTitle ?? '\u65b0\u4f1a\u8bdd'),
+      titleSource: canDeriveTitle ? (derivedTitle ? 'generated' : 'placeholder') : 'manual',
       status: 'idle',
       channelIdentity: dto.channelIdentity,
       createdAt: now,

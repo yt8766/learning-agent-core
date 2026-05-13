@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type {
   GatewayApiKeyListResponse,
   GatewayAuthFile,
@@ -211,6 +211,10 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
     return request;
   }
 
+  async deleteProviderConfig(providerId: string): Promise<void> {
+    await this.requester.requestJson(providerEndpoint(toProviderConfigType(providerId)), 'DELETE');
+  }
+
   async discoverProviderModels(providerId: string): Promise<GatewaySystemModelsResponse> {
     const { body } = await this.requester.requestJson(
       providerId === 'default' ? '/models' : `/model-definitions/${providerId}`
@@ -415,4 +419,22 @@ export class CliProxyManagementClient implements AgentGatewayManagementClient {
   async discoverModels(): Promise<GatewaySystemModelsResponse> {
     return this.discoverProviderModels('default');
   }
+}
+
+function toProviderConfigType(providerId: string): GatewayProviderSpecificConfigRecord['providerType'] {
+  if (providerId === 'openai-compatible' || providerId === 'openaiCompatible') return 'openaiCompatible';
+  if (
+    providerId === 'gemini' ||
+    providerId === 'codex' ||
+    providerId === 'claude' ||
+    providerId === 'vertex' ||
+    providerId === 'ampcode'
+  ) {
+    return providerId;
+  }
+  if (normalizeProviderKind(providerId) === 'openai-compatible') return 'openaiCompatible';
+  throw new BadRequestException({
+    code: 'GATEWAY_PROVIDER_CONFIG_TYPE_REQUIRED',
+    message: `Cannot delete CLI Proxy provider config without a provider type id: ${providerId}`
+  });
 }

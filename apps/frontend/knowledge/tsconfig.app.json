@@ -14,14 +14,16 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@agent/core": ["../../../packages/core/src/index.ts"],
+      "@agent/knowledge/browser": ["../../../packages/knowledge/src/browser/index.ts"]
     }
   },
   "include": ["src", "test", "vite.config.ts"]

@@ -212,4 +212,83 @@ describe('chat view stream adapter', () => {
     });
     expect(ChatViewStreamEventSchema.parse(events[0])).toEqual(events[0]);
   });
+
+  it('projects tool stream dispatches into whitelisted tool execution started events', () => {
+    const events = projectChatViewStreamEvents(
+      [
+        {
+          ...baseEvent,
+          id: 'event-tool-dispatched',
+          type: 'tool_stream_dispatched',
+          payload: {
+            toolName: 'shell',
+            toolDisplayName: 'Shell',
+            command: 'cat secret.txt',
+            rawInput: { token: 'secret' },
+            userFacingSummary: '正在执行只读命令',
+            riskLevel: 'low'
+          }
+        } as ChatEventRecord
+      ],
+      {
+        run,
+        nextSeq: 8
+      }
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event: 'tool_execution_started',
+      seq: 8,
+      data: {
+        toolName: 'shell',
+        toolDisplayName: 'Shell',
+        status: 'running',
+        riskLevel: 'low',
+        userFacingSummary: '正在执行只读命令'
+      }
+    });
+    expect(events[0]?.data).not.toHaveProperty('rawInput');
+    expect(events[0]?.data).not.toHaveProperty('command');
+    expect(ChatViewStreamEventSchema.parse(events[0])).toEqual(events[0]);
+  });
+
+  it('projects tool stream completions into whitelisted tool execution completed events', () => {
+    const events = projectChatViewStreamEvents(
+      [
+        {
+          ...baseEvent,
+          id: 'event-tool-completed',
+          type: 'tool_stream_completed',
+          payload: {
+            toolName: 'shell',
+            status: 'completed',
+            elapsedMs: 120,
+            stdout: 'secret output',
+            providerRawResponse: { leaked: true },
+            userFacingSummary: '验证命令已完成'
+          }
+        } as ChatEventRecord
+      ],
+      {
+        run,
+        nextSeq: 9
+      }
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event: 'tool_execution_completed',
+      seq: 9,
+      data: {
+        toolName: 'shell',
+        status: 'completed',
+        elapsedMs: 120,
+        userFacingSummary: '验证命令已完成'
+      }
+    });
+    expect(events[0]?.data).not.toHaveProperty('stdout');
+    expect(events[0]?.data).not.toHaveProperty('providerRawResponse');
+    expect(ChatViewStreamEventSchema.parse(events[0])).toEqual(events[0]);
+  });
 });

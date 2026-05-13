@@ -7,6 +7,8 @@
 
 本文记录从 `/Users/dev/Desktop/Cli-Proxy-API-Management-Center` 参考项目提炼出的 Agent Gateway API 领域模型。当前仓库已落 schema-first contract、统一 Identity 登录接入、Gateway 调用方管理、client API key、client quota、OpenAI-compatible `/v1/models` 与 `/v1/chat/completions` embedded runtime engine、runtime/config/provider/auth-file/quota projection、读写命令、logs / usage / probe、token count、preprocess、accounting、legacy relay smoke、secret vault、OAuth provider adapter 生命周期第一版，以及独立 `apps/frontend/agent-gateway` 中转前端。2026-05-09 起，远程 management connection、raw config、proxy API keys、request log projection、quota detail、system version/model discovery 已有 deterministic 管理面第一版。
 
+> 前端注意：2026-05-13 起，`apps/frontend/agent-gateway` 已直接替换为 CPAMC 页面与 `/v0/management` API client。`agent-server` 现在通过 `CliProxyManagementCompatController` 暴露 unprefixed `/v0/management/*` 兼容层，供该页面调用；本文仍是 `agent-server` 内建 TypeScript Agent Gateway 与公共 contract 的规范文档。
+
 ## 实现状态
 
 - `current`：当前代码已提供的 HTTP 入口、schema projection 或前端消费能力。
@@ -67,7 +69,7 @@ Provider config projection 中的 `headers` 只允许承载 sanitized safe heade
 - Provider-specific runtime routes 必须先 normalize 为严格的 `GatewayRuntimeInvocationSchema`；provider pin 只能通过项目自有 `RuntimeEngineExecutionContext.providerKind` 传入 facade/executor，不得写回 invocation，也不得保存 raw request body。
 - OAuth credential、auth file、provider quota 和 migration import 均不得依赖 memory-only state 作为生产路径。OAuth callback/device poll 的 raw token 只能写入 secret vault / auth file content storage；查询 projection 只能返回 `secretRef`、auth file metadata、账号、项目、scope、过期时间和状态。
 
-管理面 HTTP 入口在 `agent-server` 全局 `/api` 前缀下生效；OpenAI-compatible runtime 入口显式排除全局前缀，保持 `GET /v1/models` 与 `POST /v1/chat/completions`。`agent-gateway` 前端以 `/api/*` 发起同源管理请求，Vite 开发代理只需要把 `/api/*` 转发到后端：
+管理面 schema-first HTTP 入口在 `agent-server` 全局 `/api` 前缀下生效；OpenAI-compatible runtime 入口显式排除全局前缀，保持 `GET /v1/models` 与 `POST /v1/chat/completions`。当前 CPAMC 前端直接请求 unprefixed `/v0/management/*`，该路径同样在 `main.ts` 中排除全局 `/api` prefix。
 
 | 能力                     | 后端入口                                                        | 前端同源访问                                                    | 状态      |
 | ------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------- | --------- |
@@ -126,6 +128,7 @@ Provider config projection 中的 `headers` 只允许承载 sanitized safe heade
 | System models            | `GET /api/agent-gateway/system/models`                          | `GET /api/agent-gateway/system/models`                          | `current` |
 | Provider configs         | `GET /api/agent-gateway/provider-configs`                       | `GET /api/agent-gateway/provider-configs`                       | `current` |
 | Provider config 保存     | `PUT /api/agent-gateway/provider-configs/:id`                   | `PUT /api/agent-gateway/provider-configs/:id`                   | `current` |
+| Provider config 删除     | `DELETE /api/agent-gateway/provider-configs/:id`                | `DELETE /api/agent-gateway/provider-configs/:id`                | `current` |
 | Provider models          | `GET /api/agent-gateway/provider-configs/:id/models`            | `GET /api/agent-gateway/provider-configs/:id/models`            | `current` |
 | Provider model test      | `POST /api/agent-gateway/provider-configs/:id/test-model`       | `POST /api/agent-gateway/provider-configs/:id/test-model`       | `current` |
 | Auth files               | `GET /api/agent-gateway/auth-files`                             | `GET /api/agent-gateway/auth-files`                             | `current` |
@@ -141,6 +144,21 @@ Provider config projection 中的 `headers` 只允许承载 sanitized safe heade
 | Latest version           | `GET /api/agent-gateway/system/latest-version`                  | `GET /api/agent-gateway/system/latest-version`                  | `current` |
 | Request log setting      | `PUT /api/agent-gateway/system/request-log`                     | `PUT /api/agent-gateway/system/request-log`                     | `current` |
 | Clear login storage      | `POST /api/agent-gateway/system/clear-login-storage`            | `POST /api/agent-gateway/system/clear-login-storage`            | `current` |
+
+当前 CPAMC 页面专用兼容入口：
+
+| 能力                          | 后端入口                                                                                                                                                                  | 状态                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------- | -------------------------- | --------- |
+| CLIProxy raw config           | `GET /v0/management/config` / `GET                                                                                                                                        | PUT /v0/management/config.yaml`                                                                                                                  | `current`                                                                                                                                       |
+| CLIProxy config toggles       | `PUT /v0/management/debug`、`proxy-url`、`request-retry`、`request-log`、`logging-to-file`、`logs-max-total-size-mb`、`ws-auth`、`force-model-prefix`、`routing/strategy` | `current`                                                                                                                                        |
+| CLIProxy management API keys  | `GET                                                                                                                                                                      | PUT                                                                                                                                              | PATCH                                                                                                                                           | DELETE /v0/management/api-keys`                                                                                    | `current` |
+| Provider key groups           | `GET                                                                                                                                                                      | PUT                                                                                                                                              | PATCH                                                                                                                                           | DELETE /v0/management/gemini-api-key`、`codex-api-key`、`claude-api-key`、`vertex-api-key`、`openai-compatibility` | `current` |
+| Auth Files                    | `GET                                                                                                                                                                      | POST                                                                                                                                             | DELETE /v0/management/auth-files`、`PATCH /auth-files/status`、`PATCH /auth-files/fields`、`GET /auth-files/download`、`GET /auth-files/models` | `current`                                                                                                          |
+| OAuth policies and callback   | `GET /v0/management/:provider-auth-url`、`GET /get-auth-status`、`POST /oauth-callback`、`GET                                                                             | PUT                                                                                                                                              | PATCH                                                                                                                                           | DELETE /oauth-excluded-models`、`GET                                                                               | PATCH     | DELETE /oauth-model-alias` | `current` |
+| Logs and system               | `GET                                                                                                                                                                      | DELETE /v0/management/logs`、`GET /request-error-logs`、`GET /request-error-logs/:filename`、`GET /request-log-by-id/:id`、`GET /latest-version` | `current`                                                                                                                                       |
+| Model/API call/Ampcode compat | `GET /v0/management/model-definitions/:channel`、`POST /api-call`、`GET                                                                                                   | PUT                                                                                                                                              | PATCH                                                                                                                                           | DELETE /ampcode/\*`                                                                                                | `current` |
+
+`/v0/management/*` 是 CLIProxyAPI raw/hyphen-case 兼容层，不是新的公共 schema-first contract。新增稳定能力仍应优先定义 `@agent/core` schema，并在 `/api/agent-gateway/*` 或真实宿主 service 中落地；只有 CPAMC 页面需要的 Go 原接口形态才放进该兼容层。
 
 ## 设计目标
 
@@ -1008,6 +1026,7 @@ type GatewayPipelineTraceEvent = {
 | `GET /api/agent-gateway/dashboard`                                   | none                                             | `GatewayDashboardSummaryResponseSchema`           |
 | `GET /api/agent-gateway/provider-configs`                            | none                                             | `GatewayProviderSpecificConfigListResponseSchema` |
 | `PUT /api/agent-gateway/provider-configs/:id`                        | `GatewayProviderSpecificConfigRecordSchema`      | `GatewayProviderSpecificConfigRecordSchema`       |
+| `DELETE /api/agent-gateway/provider-configs/:id`                     | none                                             | `204 / void`                                      |
 | `GET /api/agent-gateway/auth-files`                                  | query                                            | `GatewayAuthFileListResponseSchema`               |
 | `POST /api/agent-gateway/auth-files`                                 | `GatewayAuthFileBatchUploadRequestSchema`        | `GatewayAuthFileBatchUploadResponseSchema`        |
 | `PATCH /api/agent-gateway/auth-files/fields`                         | `GatewayAuthFilePatchRequestSchema`              | `GatewayAuthFileSchema`                           |
@@ -1116,6 +1135,7 @@ quotaExceeded.antigravityCredits
 | `DELETE` | `/api/agent-gateway/providers/:providerId`                   | current | no body                                                          |
 | `GET`    | `/api/agent-gateway/provider-configs`                        | current | `GatewayProviderSpecificConfigListResponseSchema`                |
 | `PUT`    | `/api/agent-gateway/provider-configs/:providerId`            | current | `GatewayProviderSpecificConfigRecordSchema`                      |
+| `DELETE` | `/api/agent-gateway/provider-configs/:providerId`            | current | `204 / void`                                                     |
 | `GET`    | `/api/agent-gateway/provider-configs/:providerId/models`     | current | `GatewaySystemModelsResponseSchema`                              |
 | `POST`   | `/api/agent-gateway/provider-configs/:providerId/test-model` | current | `GatewayProbeResponseSchema`                                     |
 | `PUT`    | `/api/agent-gateway/providers/:providerType`                 | planned | replace provider set                                             |

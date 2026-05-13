@@ -1,0 +1,79 @@
+@media (max-width: 760px) {
+  .chatbot-shell {
+    display: block;
+    background: var(--background);
+  }
+  .chatbot-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 300px);
+    height: 100dvh;
+    border-right: 1px solid oklch(0.86 0 0);
+    box-shadow: 18px 0 44px oklch(0.12 0 0 / 0.16);
+    transform: translateX(-105%);
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .chatbot-shell-sidebar-mobile-open .chatbot-sidebar {
+    transform: translateX(0);
+  }
+  .chatbot-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: block;
+    pointer-events: none;
+    border: 0;
+    background: oklch(0.12 0 0 / 0);
+    opacity: 0;
+    transition:
+      opacity 0.2s ease,
+      background 0.2s ease;
+  }
+  .chatbot-shell-sidebar-mobile-open .chatbot-sidebar-overlay {
+    pointer-events: auto;
+    background: oklch(0.12 0 0 / 0.28);
+    opacity: 1;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-sidebar {
+    width: min(84vw, 300px);
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-sidebar-header {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-collapsible-label {
+    display: block;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-logo-button,
+  .chatbot-shell-sidebar-collapsed .chatbot-new-chat,
+  .chatbot-shell-sidebar-collapsed .chatbot-delete-all,
+  .chatbot-shell-sidebar-collapsed .chatbot-sidebar-footer {
+    justify-content: flex-start;
+    width: 100%;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-history {
+    display: block;
+  }
+  .chatbot-shell-sidebar-collapsed .chatbot-delete-all {
+    display: flex;
+  }
+  .chatbot-main {
+    height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .chatbot-suggestions .ant-prompts-list {
+    display: flex;
+    overflow-x: auto;
+  }
+  .chatbot-suggestions .ant-prompts-item {
+    min-width: 220px;
+  }
+}

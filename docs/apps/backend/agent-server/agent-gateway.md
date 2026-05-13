@@ -17,6 +17,7 @@
 - `AgentGatewayService`：负责 runtime/config/provider/auth-file/quota projection、写命令、logs、usage、probe、token count、preprocess 与 usage accounting 的领域编排。
 - `AgentGatewayUsageAnalyticsService`：负责管理面 `GET /api/agent-gateway/usage/analytics` 聚合，从 client repository 的 `GatewayClientRequestLog` 生成使用统计 summary、trend、request logs、Provider 统计、模型统计和筛选项；不得读取 raw provider payload 或合成不存在的成本/cache token。
 - `AgentGatewayManagementClient`：项目自定义 management client 边界；默认实现 `MemoryAgentGatewayManagementClient`。显式配置 real mode 后使用 `CliProxyManagementClient` 访问真实 CLI Proxy `/v0/management`，并在进入 controller 前归一化为 `@agent/core` schema。
+- `CliProxyManagementCompatController`：挂载不带 `/api` 前缀的 CLIProxyAPI-compatible `/v0/management/*`，把 `AgentGatewayManagementClient` 的 TypeScript 领域投影转换成 CPAMC 页面需要的 raw/hyphen-case shape。该控制器服务当前 `apps/frontend/agent-gateway` CPAMC 页面，不替代 `/api/agent-gateway/*` 的 schema-first contract。
 - `AgentGatewayConnectionService`：保存 remote management profile 并检查连接状态，只返回 masked management key。
 - `AgentGatewayConfigFileService`：读取、diff、保存 raw `config.yaml` 和 reload projection。
 - `AgentGatewayApiKeyService`：管理 proxy API keys，查询只返回 `GatewayApiKeyListResponseSchema` 的 masked prefix 与 usage projection。
@@ -49,6 +50,29 @@
 | `POST /api/agent-gateway/oauth/:providerId/start`                                                        | `AgentGatewayManagementController`                            | `AgentGatewayOAuthPolicyService.startProviderOAuth`                                       | `GatewayProviderOAuthStartResponseSchema`                                                       |
 
 这些管理接口的 controller 必须保持 thin：只做 body/query/param 的 `@agent/core` schema parse、调用 service、返回前用 matching response/projection schema parse。provider raw payload、Auth File 内容解析、OAuth provider 差异、quota source 和 log projection 都留在 domain service 或 management adapter 内，不能在 controller 内展开。
+
+### CLIProxyAPI-Compatible Surface
+
+`2026-05-13` 起，为了让已迁入的 CPAMC 页面不再打到不存在的接口，`agent-server` 新增 `/v0/management/*` 兼容层。`main.ts` 的 global prefix exclude 必须继续包含：
+
+```ts
+{ path: 'v0/management', method: RequestMethod.ALL }
+{ path: 'v0/management/(.*)', method: RequestMethod.ALL }
+```
+
+当前兼容层 owner：
+
+| CLIProxyAPI endpoint group                                                                                                  | Controller owner                               | Source boundary                                                                                          | Shape                                        |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---- | ------ |
+| `/config`, `/config.yaml`, config toggles                                                                                   | `CliProxyManagementCompatController`           | `AgentGatewayManagementClient.readRawConfig/saveRawConfig` + in-process compat overrides                 | CLIProxy raw object / YAML text              |
+| `/api-keys`                                                                                                                 | `CliProxyManagementCompatController`           | `AgentGatewayManagementClient.list/replace/update/deleteApiKeys`                                         | `{ "api-keys": string[] }` masked projection |
+| `/gemini-api-key`, `/codex-api-key`, `/claude-api-key`, `/vertex-api-key`, `/openai-compatibility`                          | `CliProxyManagementProviderCompatController`   | `AgentGatewayManagementClient.list/save/deleteProviderConfig`                                            | CPAMC provider key arrays                    |
+| `/auth-files`, `/auth-files/status`, `/auth-files/fields`, `/auth-files/download`, `/auth-files/models`                     | `CliProxyManagementOperationsCompatController` | `AgentGatewayManagementClient.list/upload/patch/delete/downloadAuthFiles`                                | CPAMC `files` projection                     |
+| `/logs`, `/request-error-logs`, `/request-log-by-id/:id`                                                                    | `CliProxyManagementOperationsCompatController` | `AgentGatewayManagementClient.tailLogs/listRequestErrorFiles/download*`                                  | CPAMC log lines / blobs                      |
+| `/:provider-auth-url`, `/get-auth-status`, `/oauth-callback`                                                                | `CliProxyManagementOperationsCompatController` | `AgentGatewayManagementClient.startProviderOAuth/startGeminiCliOAuth/getOAuthStatus/submitOAuthCallback` | CLIProxy OAuth `{ url, state }` / `ok        | wait | error` |
+| `/oauth-excluded-models`, `/oauth-model-alias`, `/model-definitions/:channel`, `/latest-version`, `/api-call`, `/ampcode/*` | `CliProxyManagementOperationsCompatController` | management client + local compat maps for CPAMC-only switches                                            | CLIProxy-compatible raw shape                |
+
+这层是“Go 管理 API 到 TS/Nest”的兼容翻译层：外部路径和 payload 贴近 CLIProxyAPI，内部仍必须经过项目自有 management client、schema/domain 类型和 secret projection。`CliProxyManagementCompatGuard` 会读取 `Authorization: Bearer <key>` 或 `X-Management-Key`；配置 `AGENT_GATEWAY_MANAGEMENT_KEY` 后必须精确匹配，未配置的非生产环境允许本地 smoke 访问。所有 `/v0/management/*` 响应必须经过 `CliProxyManagementNoStoreInterceptor` 设置 `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate`，防止浏览器对 auth-files、OAuth policy、provider config 等管理数据接口返回 304。不要在该控制器里直接引入第三方 SDK、直接读取用户本机 CLI 配置目录，或返回明文 secret/raw OAuth token。
 
 管理 service 必须保证 secret projection：
 
@@ -186,7 +210,9 @@ AGENT_GATEWAY_DATABASE_URL=postgres://...
 ```bash
 pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/agent-gateway/agent-gateway-management.controller.spec.ts apps/backend/agent-server/test/agent-gateway/agent-gateway-http.smoke.spec.ts
 pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/agent-gateway/agent-gateway-http.smoke.spec.ts
-pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway apps/backend/agent-server/test/agent-gateway apps/frontend/agent-gateway/test
+pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway apps/backend/agent-server/test/agent-gateway
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm check:docs
 ```
+
+注意：2026-05-13 起 `apps/frontend/agent-gateway` 已替换为 CPAMC 页面与 `/v0/management` client；旧 `apps/frontend/agent-gateway/test` 仍指向已删除的 `src/app/*` 架构，不能作为后端 Agent Gateway smoke 的一部分。

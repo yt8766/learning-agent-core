@@ -1,9 +1,11 @@
 # Management Pages Specification
 
-状态：current
+状态：history
 文档类型：spec
 适用范围：`apps/frontend/agent-gateway`
-最后核对：2026-05-10
+最后核对：2026-05-13
+
+> 2026-05-13 起，旧 `src/app/pages/*` 页面已删除。当前页面直接来自 CPAMC 的 `src/pages/*`，服务层来自 `src/services/api/*`；本文仅保留历史参考。
 
 ## Overview
 

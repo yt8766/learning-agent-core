@@ -59,6 +59,7 @@ export interface AgentGatewayManagementClient {
   deleteApiKey(request: GatewayDeleteApiKeyRequest): Promise<GatewayApiKeyListResponse>;
   listProviderConfigs(): Promise<GatewayProviderSpecificConfigListResponse>;
   saveProviderConfig(request: GatewayProviderSpecificConfigRecord): Promise<GatewayProviderSpecificConfigRecord>;
+  deleteProviderConfig(providerId: string): Promise<void>;
   discoverProviderModels(providerId: string): Promise<GatewaySystemModelsResponse>;
   testProviderModel(providerId: string, model: string): Promise<GatewayProbeResponse>;
   listAuthFiles(query: GatewayAuthFileListQuery): Promise<GatewayAuthFileListResponse>;

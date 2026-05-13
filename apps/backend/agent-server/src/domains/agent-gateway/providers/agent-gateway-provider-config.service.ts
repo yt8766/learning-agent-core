@@ -17,6 +17,7 @@ import { AGENT_GATEWAY_MANAGEMENT_CLIENT } from '../management/agent-gateway-man
 interface ProviderConfigManagementClient {
   listProviderConfigs?(): Promise<GatewayProviderSpecificConfigListResponse>;
   saveProviderConfig?(request: GatewayProviderSpecificConfigRecord): Promise<GatewayProviderSpecificConfigRecord>;
+  deleteProviderConfig?(providerId: string): Promise<void>;
   discoverProviderModels?(providerId: string): Promise<GatewaySystemModelsResponse>;
   testProviderModel?(providerId: string, model: string): Promise<GatewayProbeResponse>;
 }
@@ -50,6 +51,14 @@ export class AgentGatewayProviderConfigService {
     const response = delegate.saveProviderConfig ? await delegate.saveProviderConfig(normalized) : normalized;
     this.providerConfigs.set(normalized.id, cloneProviderConfig(response));
     return GatewayProviderSpecificConfigRecordSchema.parse(cloneProviderConfig(response));
+  }
+
+  async deleteProviderConfig(providerId: string): Promise<void> {
+    const delegate = this.delegate();
+    if (delegate.deleteProviderConfig) {
+      await delegate.deleteProviderConfig(providerId);
+    }
+    this.providerConfigs.delete(providerId);
   }
 
   async discoverModels(providerId: string): Promise<GatewaySystemModelsResponse> {

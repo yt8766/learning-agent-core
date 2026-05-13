@@ -85,6 +85,147 @@ describe('chat runtime v2 contracts', () => {
     expect(delta.data.delta).toBe('这里是增量文本');
   });
 
+  it('parses resumable fragment lifecycle view stream events', () => {
+    const started = ChatViewStreamEventSchema.parse({
+      id: 'view-fragment-started',
+      seq: 2,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'fragment_started',
+      at: timestamp,
+      data: {
+        messageId: 'message-assistant-1',
+        fragmentId: 'fragment-response-1',
+        kind: 'response',
+        status: 'streaming'
+      }
+    });
+
+    const completed = ChatViewStreamEventSchema.parse({
+      id: 'view-fragment-completed',
+      seq: 4,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'fragment_completed',
+      at: timestamp,
+      data: {
+        messageId: 'message-assistant-1',
+        fragmentId: 'fragment-response-1',
+        kind: 'response',
+        status: 'completed',
+        content: '最终回答'
+      }
+    });
+
+    expect(started.data.kind).toBe('response');
+    expect(completed.data.content).toBe('最终回答');
+  });
+
+  it('rejects incomplete fragment completion view stream events', () => {
+    const result = ChatViewStreamEventSchema.safeParse({
+      id: 'view-fragment-completed',
+      seq: 4,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'fragment_completed',
+      at: timestamp,
+      data: {
+        messageId: 'message-assistant-1',
+        fragmentId: 'fragment-response-1',
+        kind: 'response',
+        status: 'completed'
+      }
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('parses tool execution view stream events without accepting raw payload fields', () => {
+    const started = ChatViewStreamEventSchema.parse({
+      id: 'view-tool-started',
+      seq: 5,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'tool_execution_started',
+      at: timestamp,
+      data: {
+        toolName: 'shell',
+        toolDisplayName: 'Shell command',
+        stage: 'execute',
+        status: 'running',
+        riskLevel: 'low',
+        userFacingSummary: '正在执行只读验证命令'
+      }
+    });
+
+    const completed = ChatViewStreamEventSchema.parse({
+      id: 'view-tool-completed',
+      seq: 6,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'tool_execution_completed',
+      at: timestamp,
+      data: {
+        toolName: 'shell',
+        status: 'completed',
+        elapsedMs: 120,
+        userFacingSummary: '验证命令已完成'
+      }
+    });
+
+    const rawPayload = ChatViewStreamEventSchema.safeParse({
+      id: 'view-tool-raw',
+      seq: 7,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'tool_execution_started',
+      at: timestamp,
+      data: {
+        toolName: 'shell',
+        status: 'running',
+        userFacingSummary: '正在执行命令',
+        rawInput: {
+          token: 'secret'
+        }
+      }
+    });
+
+    expect(started.data).not.toHaveProperty('rawInput');
+    expect(completed.data.elapsedMs).toBe(120);
+    expect(rawPayload.success).toBe(false);
+  });
+
+  it('parses run status events and rejects invalid stream sequence values', () => {
+    const runStatus = ChatViewStreamEventSchema.parse({
+      id: 'view-run-status',
+      seq: 8,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'run_status',
+      at: timestamp,
+      data: {
+        status: 'completed',
+        completedAt: timestamp,
+        reason: 'final_response_completed'
+      }
+    });
+
+    const fractionalSeq = ChatViewStreamEventSchema.safeParse({
+      id: 'view-bad-seq',
+      seq: 8.5,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      event: 'run_status',
+      at: timestamp,
+      data: {
+        status: 'completed'
+      }
+    });
+
+    expect(runStatus.data.status).toBe('completed');
+    expect(fractionalSeq.success).toBe(false);
+  });
+
   it('parses auto review completed and interaction waiting view stream events', () => {
     const review = ExecutionAutoReviewRecordSchema.parse({
       id: 'review-1',

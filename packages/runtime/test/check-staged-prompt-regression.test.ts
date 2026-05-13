@@ -53,15 +53,19 @@ describe('pr workflow prompt regression trigger', () => {
   it('keeps the PR verify pipeline parallelized behind an aggregate status check', async () => {
     const workflow = await readFile(path.join(ROOT, '.github/workflows/pr-check.yml'), 'utf8');
 
-    expect(workflow).toContain('verify-foundation:');
     expect(workflow).toContain('verify-parallel:');
     expect(workflow).toContain('terminology:');
     expect(workflow).toContain('strategy:');
     expect(workflow).toContain('matrix:');
+    expect(workflow).toContain('label: Governance');
+    expect(workflow).toContain('command: pnpm verify:governance');
+    expect(workflow).toContain('label: Spec');
+    expect(workflow).toContain('command: pnpm test:spec:affected');
     expect(workflow).toContain('name: Affected Verify');
-    expect(workflow).toContain('needs.verify-foundation.result');
     expect(workflow).toContain('needs.verify-parallel.result');
     expect(workflow).toContain('name: Terminology Check');
+    expect(workflow).not.toContain('verify-foundation:');
+    expect(workflow).not.toContain('needs.verify-foundation.result');
   });
 });
 

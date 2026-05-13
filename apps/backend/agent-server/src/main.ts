@@ -47,7 +47,9 @@ async function bootstrap(): Promise<void> {
     app.setGlobalPrefix(globalPrefix, {
       exclude: [
         { path: 'v1/models', method: RequestMethod.GET },
-        { path: 'v1/chat/completions', method: RequestMethod.POST }
+        { path: 'v1/chat/completions', method: RequestMethod.POST },
+        { path: 'v0/management', method: RequestMethod.ALL },
+        { path: 'v0/management/(.*)', method: RequestMethod.ALL }
       ]
     });
     app.enableCors(createCorsOptions());

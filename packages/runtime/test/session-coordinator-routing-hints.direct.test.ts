@@ -126,6 +126,10 @@ describe('session-coordinator-routing-hints (direct)', () => {
       expect(shouldDeriveSessionTitle('新会话')).toBe(true);
     });
 
+    it('returns true for codex-chat placeholder title', () => {
+      expect(shouldDeriveSessionTitle('新对话')).toBe(true);
+    });
+
     it('returns false for custom title', () => {
       expect(shouldDeriveSessionTitle('My Custom Title')).toBe(false);
     });
@@ -146,6 +150,10 @@ describe('session-coordinator-routing-hints (direct)', () => {
 
     it('returns true when title is default', () => {
       expect(shouldGenerateSessionTitle({ title: '新会话' } as any)).toBe(true);
+    });
+
+    it('returns true when title is codex-chat placeholder', () => {
+      expect(shouldGenerateSessionTitle({ title: '新对话', titleSource: 'placeholder' } as any)).toBe(true);
     });
 
     it('returns false when title is custom', () => {

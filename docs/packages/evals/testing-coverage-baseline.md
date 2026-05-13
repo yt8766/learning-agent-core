@@ -191,7 +191,7 @@ Top gap files:
 
 ### pnpm verify
 
-因外部阻塞失败。失败原因：`packages/platform-runtime/demo/contract.ts` 无法找到模块 `./modules/types.js`（来自 `@langchain/langgraph-checkpoint-postgres`）。这是依赖问题，与覆盖率工作无关。
+历史上 `packages/platform-runtime/demo/contract.ts` 曾因源码态执行误触发 `@langchain/langgraph-checkpoint-postgres` 的 Postgres store 入口而报 `./modules/types.js` 缺失。当前 runtime 已改为仅在 `LANGGRAPH_STORE=postgres` 分支通过 loader 加载 Postgres store，memory store 与 platform-runtime demo 不再触发该依赖入口。
 
 ### pnpm test:coverage
 

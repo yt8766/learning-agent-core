@@ -150,11 +150,11 @@
 - `packages/*` 默认应维护显式 `demo/` 与 `demo` 脚本，并让根级 `pnpm test:demo` / `pnpm test:demo:affected` 能直接覆盖；不要把包级最小闭环长期只留给人工运行才发现
 - 每次交付前，禁止绕过 [验证体系规范](/docs/packages/evals/verification-system-guidelines.md) 凭经验随意裁剪验证范围；即使只是单文件修复、局部重构、模板调整或测试补丁，也必须按该规范完成受影响范围的对应层级验证或明确记录 blocker
 - 禁止使用 `git commit --no-verify` 或任何等价方式绕过本地 hook；如果 hook 因既有红灯、环境、权限或外部依赖失败，必须先修复，或在不提交的情况下明确记录 blocker 并等待处理
-- GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：先跑 `verify:governance + test:spec:affected`，再并发跑 `lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected + test:workspace:smoke`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
+- GitHub PR 流水线对代码改动默认按 `pnpm verify:affected` 的层级执行增量校验：并行跑 `verify:governance + test:spec:affected + lint:prettier:affected + lint:eslint:affected + typecheck:affected + test:unit:affected + test:demo:affected + test:integration:affected + test:workspace:integration:affected + test:workspace:smoke`，并由聚合的 `Affected Verify` 状态对齐分支保护；纯文档改动仍至少执行 `pnpm check:docs`
 - GitHub main 流水线默认按根级 `pnpm verify` 的层级执行全量校验：先跑 `verify:governance + test:spec`，再并发跑 `lint:prettier:check + lint:eslint:check + typecheck + test:unit + test:demo + test:integration + test:workspace:integration + test:workspace:smoke`，并由聚合的 `Verify Main` 状态收口；`pnpm build` 与非阻塞 coverage 在验证成功后独立执行；prompt 敏感改动的 Eval 可拆到独立 job，但不能替代五层验证主入口
 - main 流水线允许在五层验证之后对附加 job 做条件化触发：当前 docs-only push 默认跳过 `build-main` 与 `coverage-main`，`prompt-regression` 只在 prompt-sensitive 或代码相关改动时尝试运行
 - 不要再把 CI 五层验证拆散成只跑 `test`、只跑 `build` 或只跑单层类型检查的弱约束
-- GitHub PR / main 流水线在安装依赖前默认先执行 `node ./scripts/check-lockfile-sync.js`；它的作用是更早、更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
+- GitHub PR / main 流水线默认保留 `node ./scripts/check-lockfile-sync.js` 作为独立 lockfile gate；PR 中该 gate 不阻塞受影响范围验证矩阵启动，最终仍由聚合状态收口，作用是更明确地指出 `package.json` 与 `pnpm-lock.yaml` 漂移，不替代后续的 `pnpm install --frozen-lockfile`
 - 只要新增 workspace 包，或修改任何 `package.json` 中的依赖、开发依赖、peer 依赖、optional 依赖、workspace 引用或会影响依赖图的包管理配置，就必须在同一轮改动里同步更新 `pnpm-lock.yaml`；禁止把 manifest 变更与 lockfile 修复拆到后续提交
 - 新增 workspace 包时，提交前必须显式确认 `pnpm-lock.yaml` 的 `importers` 中已经出现该包；如果 importer 缺失，即使本地代码可运行，也视为交付不完整
 - `.github/workflows/*` 中重复的 pnpm / Node / 依赖安装步骤，默认优先收敛到仓库内可复用 action；当前统一入口为 `/.github/actions/setup-pnpm-workspace/action.yml`

@@ -11,8 +11,11 @@ type ProjectChatViewStreamContext = {
 };
 
 type DraftViewEvent = Omit<ChatViewStreamEvent, 'id' | 'seq' | 'sessionId' | 'runId' | 'at'>;
+type ToolExecutionStatus = 'running' | 'completed';
+type ToolRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 const RESPONSE_FRAGMENT_KIND = 'response';
+const TOOL_RISK_LEVELS = new Set<ToolRiskLevel>(['low', 'medium', 'high', 'critical']);
 
 export function projectChatViewStreamEvents(
   sourceEvents: ChatEventRecord[],
@@ -104,6 +107,20 @@ function projectSingleChatViewStreamEvent(sourceEvent: ChatEventRecord, run: Cha
           }
         }
       ];
+    case 'tool_stream_dispatched':
+      return [
+        {
+          event: 'tool_execution_started',
+          data: buildToolExecutionData(sourceEvent, 'running')
+        }
+      ];
+    case 'tool_stream_completed':
+      return [
+        {
+          event: 'tool_execution_completed',
+          data: buildToolExecutionData(sourceEvent, 'completed')
+        }
+      ];
     case 'interrupt_pending':
       if (sourceEvent.payload.kind !== 'tool_execution') {
         return [];
@@ -150,6 +167,38 @@ function readPayloadString(sourceEvent: ChatEventRecord, keys: string[]): string
     }
   }
   return '';
+}
+
+function readPayloadNumber(sourceEvent: ChatEventRecord, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = sourceEvent.payload[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function buildToolExecutionData(sourceEvent: ChatEventRecord, status: ToolExecutionStatus) {
+  return {
+    toolName: readPayloadString(sourceEvent, ['toolName', 'name']) || 'tool',
+    toolDisplayName: readPayloadString(sourceEvent, ['toolDisplayName', 'displayName']) || undefined,
+    status,
+    stage: readPayloadString(sourceEvent, ['stage']) || undefined,
+    riskLevel: readRiskLevel(sourceEvent),
+    userFacingSummary:
+      readPayloadString(sourceEvent, ['userFacingSummary', 'summary']) ||
+      (status === 'running' ? '工具正在执行' : '工具执行完成'),
+    artifactId: readPayloadString(sourceEvent, ['artifactId']) || undefined,
+    artifactKind: readPayloadString(sourceEvent, ['artifactKind']) || undefined,
+    artifactTitle: readPayloadString(sourceEvent, ['artifactTitle']) || undefined,
+    elapsedMs: readPayloadNumber(sourceEvent, ['elapsedMs'])
+  };
+}
+
+function readRiskLevel(sourceEvent: ChatEventRecord): ToolRiskLevel | undefined {
+  const riskLevel = readPayloadString(sourceEvent, ['riskLevel', 'riskClass']);
+  return TOOL_RISK_LEVELS.has(riskLevel as ToolRiskLevel) ? (riskLevel as ToolRiskLevel) : undefined;
 }
 
 function getRequiredConfirmationPhrase(sourceEvent: ChatEventRecord): string | undefined {

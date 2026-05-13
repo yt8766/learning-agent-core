@@ -175,9 +175,10 @@ Chat Runtime v2 的接口契约以 [agent-chat-runtime-v2.md](/docs/contracts/ap
   - 构造 `/chat/view-stream?sessionId=...&runId=...&afterSeq=...`
   - 使用 `@agent/core` 的 `ChatViewStreamEventSchema` 解析 `event:` SSE payload
 - `src/hooks/chat-session/use-chat-view-stream.ts`
-  - 把 `ready / fragment_delta / interaction_waiting / error / close` 投影成前端状态
+  - 把 `ready / fragment_delta / fragment_completed / interaction_waiting / error / close` 投影成前端状态
+  - 忽略 `seq <= lastSeq` 的补发或重复事件，避免断线恢复时重复拼接正文
   - `interaction_waiting` 只保存 `pendingInteraction`，不生成审批卡
-- 后端 `view-stream` 会把 `interrupt_pending(kind=tool_execution)` 投影成 `interaction_waiting`
+- 后端 `view-stream` 会把 `tool_stream_dispatched` / `tool_stream_completed` 投影成白名单工具执行事件，并把 `interrupt_pending(kind=tool_execution)` 投影成 `interaction_waiting`
   - 高风险工具请求会带 `requiredConfirmationPhrase: "确认执行"`
   - 前端 composer 会在 pending tool approval 时把 placeholder 调整为“回复「确认执行」继续，或输入取消 / 修改要求”
   - 这只是输入引导，不恢复审批卡主路径
@@ -213,7 +214,7 @@ Chat Runtime v2 的接口契约以 [agent-chat-runtime-v2.md](/docs/contracts/ap
 
 ### 5.1 当前会话流式链路
 
-`agent-chat` 当前主界面不直接消费 `POST /api/chat` 的 direct SSE。真实链路是：
+`agent-chat` 当前主界面不直接消费 `POST /api/chat` 的 direct SSE。拿到 `runId` 的新主体验优先消费 v2 `view-stream`；没有 `runId` 的历史会话和旧 provider 继续保留 `/api/chat/stream` fallback。旧 fallback 链路是：
 
 1. `sendMessage` 通过 `useXChat` 驱动的 session provider 发起请求；provider 负责在已有会话时先 `appendMessage`，新会话时先 `ensureSession`。
 2. `GET /api/chat/stream?sessionId=...` 的 `EventSource` 订阅会话事件。

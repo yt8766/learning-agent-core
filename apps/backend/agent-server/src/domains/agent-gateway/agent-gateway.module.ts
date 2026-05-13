@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AgentGatewayAuthController } from '../../api/agent-gateway/agent-gateway-auth.controller';
 import { AgentGatewayClientsController } from '../../api/agent-gateway/agent-gateway-clients.controller';
+import { CliProxyManagementNoStoreInterceptor } from '../../api/agent-gateway/cli-proxy-management-cache.interceptor';
+import { CliProxyManagementCompatController } from '../../api/agent-gateway/cli-proxy-management-compat.controller';
+import { CliProxyManagementCompatGuard } from '../../api/agent-gateway/cli-proxy-management-compat.guard';
+import { CliProxyManagementOperationsCompatController } from '../../api/agent-gateway/cli-proxy-management-operations-compat.controller';
+import { CliProxyManagementProviderCompatController } from '../../api/agent-gateway/cli-proxy-management-provider-compat.controller';
 import { AgentGatewayController } from '../../api/agent-gateway/agent-gateway.controller';
 import { AgentGatewayManagementController } from '../../api/agent-gateway/agent-gateway-management.controller';
 import { AgentGatewayMigrationController } from '../../api/agent-gateway/agent-gateway-migration.controller';
@@ -44,6 +49,9 @@ import { AgentGatewayUsageAnalyticsService } from './usage/agent-gateway-usage-a
   controllers: [
     AgentGatewayAuthController,
     AgentGatewayClientsController,
+    CliProxyManagementCompatController,
+    CliProxyManagementOperationsCompatController,
+    CliProxyManagementProviderCompatController,
     AgentGatewayController,
     AgentGatewayManagementController,
     AgentGatewayMigrationController,
@@ -53,6 +61,8 @@ import { AgentGatewayUsageAnalyticsService } from './usage/agent-gateway-usage-a
   ],
   providers: [
     AgentGatewayAuthGuard,
+    CliProxyManagementNoStoreInterceptor,
+    CliProxyManagementCompatGuard,
     AgentGatewayAuthService,
     AgentGatewayClientService,
     AgentGatewayClientApiKeyService,

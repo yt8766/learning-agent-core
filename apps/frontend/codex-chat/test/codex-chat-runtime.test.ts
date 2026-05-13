@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { chatApi } from '../src/api/chat-api';
 import { isStreamTerminalEvent, syncEvent } from '../src/runtime/codex-chat-events';
 import { readPayloadText, toUiMessage } from '../src/runtime/codex-chat-message';
 import { fallbackTitleFromMessage, sanitizeGeneratedTitle, toConversationLabel } from '../src/runtime/codex-chat-title';
@@ -102,6 +103,64 @@ describe('codex chat runtime helpers', () => {
       }
     });
   });
+
+  it('loads chat models and posts selected model ids', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/chat/models') {
+        return jsonResponse([{ id: 'moonshotai/kimi-k2.5', displayName: 'Kimi K2.5', providerId: 'moonshotai' }]);
+      }
+
+      if (String(input) === '/api/chat/messages') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(String(init?.body))).toMatchObject({
+          sessionId: 'session-1',
+          message: '你好',
+          modelId: 'moonshotai/kimi-k2.5'
+        });
+        return jsonResponse({
+          id: 'msg-1',
+          sessionId: 'session-1',
+          role: 'user',
+          content: '你好',
+          createdAt: '2026-05-05T10:00:00.000Z'
+        });
+      }
+
+      throw new Error(`unexpected fetch ${String(input)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(chatApi.listModels()).resolves.toEqual([
+      { id: 'moonshotai/kimi-k2.5', displayName: 'Kimi K2.5', providerId: 'moonshotai' }
+    ]);
+    await chatApi.postMessage('session-1', '你好', 'moonshotai/kimi-k2.5');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('omits modelId when posting a message without an explicit model selection', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/chat/messages');
+      expect(init?.method).toBe('POST');
+      expect(JSON.parse(String(init?.body))).toEqual({
+        sessionId: 'session-1',
+        message: '继续'
+      });
+
+      return jsonResponse({
+        id: 'msg-1',
+        sessionId: 'session-1',
+        role: 'user',
+        content: '继续',
+        createdAt: '2026-05-05T10:00:00.000Z'
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await chatApi.postMessage('session-1', '继续');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 function createEvent(type: string, payload: Record<string, unknown>): ChatEventRecord {
@@ -112,4 +171,13 @@ function createEvent(type: string, payload: Record<string, unknown>): ChatEventR
     at: '2026-05-05T10:00:00.000Z',
     payload
   };
+}
+
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => body,
+    text: async () => JSON.stringify(body)
+  } as Response;
 }

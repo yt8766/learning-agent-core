@@ -9,6 +9,7 @@ import { PendingInteractionService } from './pending-interaction.service';
 import { ChatRunRepository } from './chat-run.repository';
 import { ChatRunService } from './chat-run.service';
 import { ChatViewStreamController } from './chat-view-stream.controller';
+import { ChatViewStreamEventRepository } from './chat-view-stream-event.repository';
 import { ChatViewStreamService } from './chat-view-stream.service';
 
 @Module({
@@ -19,6 +20,7 @@ import { ChatViewStreamService } from './chat-view-stream.service';
     PendingInteractionService,
     ChatRunRepository,
     ChatRunService,
+    ChatViewStreamEventRepository,
     ChatViewStreamService,
     ChatService
   ]

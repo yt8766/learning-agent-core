@@ -62,7 +62,7 @@
 1. 前端创建或续接 chat session。
 2. 前端通过 `POST /api/chat/messages` 提交用户消息。
 3. 后端启动 Runtime / Supervisor / worker 流程。
-4. 前端通过 `GET /api/chat/stream?sessionId=...` 接收 SSE。
+4. 新主体验在拿到 `runId` 后通过 `GET /api/chat/view-stream?sessionId=...&runId=...&afterSeq=...` 接收 UI 投影 SSE；旧 `GET /api/chat/stream?sessionId=...` 保留事实流兼容职责。
 5. 前端按事件更新消息区、运行态、审批卡和学习确认。
 
 可靠性约定：
