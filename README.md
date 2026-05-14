@@ -286,11 +286,11 @@
 - `Affected Verify`
 - `Prompt Regression`
 
-其中 `Affected Verify` 为聚合状态检查，内部会先串行执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，以缩短 PR 关键路径，同时保留 `pnpm verify:affected` 对应的五层验证语义，并把仓库级冒烟提前到 PR 阶段暴露。
+其中 `Affected Verify` 为聚合状态检查，PR 代码改动会把 `Governance / Spec / Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke` 作为并行矩阵执行，避免治理与结构校验先串行阻塞后续验证；聚合 job 继续保持分支保护状态名稳定，同时保留 `pnpm verify:affected` 对应的五层验证语义，并把仓库级冒烟提前到 PR 阶段暴露。
 
 PR 中的 terminology 检查现在也拆成了独立轻量 job，不再挂在 `Affected Verify` 聚合 job 末尾，因此分支保护对应的聚合状态会更早收口。
 
-`main 检查` 当前也采用同样的收口思路：先执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，随后由聚合的 `Verify Main` 收口，并在验证通过后并发执行 `Build Main` 与非阻塞的 `Coverage Main`。
+`main 检查` 当前保留全量收口节奏：先执行 `Governance + Spec`，再并发执行 `Prettier / ESLint / Typecheck / Unit / Demo / Integration / Workspace Integration / Workspace Smoke`，随后由聚合的 `Verify Main` 收口，并在验证通过后并发执行 `Build Main` 与非阻塞的 `Coverage Main`。
 
 main 侧现在也会先做一层轻量变更分类：如果是 docs-only push，`build-main` 与 `coverage-main` 会自动跳过；`prompt-regression` 也只会在 prompt-sensitive 或代码相关改动时尝试运行。
 

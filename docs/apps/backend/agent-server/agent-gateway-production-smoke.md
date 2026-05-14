@@ -3,7 +3,7 @@
 状态：current
 文档类型：reference
 适用范围：`apps/backend/agent-server/test/agent-gateway/agent-gateway-production-smoke.spec.ts`
-最后核对：2026-05-11
+最后核对：2026-05-13
 
 `agent-gateway-production-smoke.spec.ts` 是 Agent Gateway 迁移可用性的最小闭环证明。它不连接公网 provider，不读取用户本机真实 OAuth token；CI 使用 deterministic local runtime harness，但覆盖生产链路必须保持的 contract 边界。
 
@@ -27,11 +27,13 @@ pnpm exec vitest run --config vitest.config.js apps/backend/agent-server/test/ag
 完整 Agent Gateway 回归入口：
 
 ```bash
-pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway apps/backend/agent-server/test/agent-gateway apps/frontend/agent-gateway/test
+pnpm exec vitest run --config vitest.config.js packages/core/test/agent-gateway apps/backend/agent-server/test/agent-gateway
 pnpm exec tsc -p apps/backend/agent-server/tsconfig.json --noEmit
 pnpm --dir apps/frontend/agent-gateway typecheck
 pnpm check:docs
 ```
+
+2026-05-13 起，`apps/frontend/agent-gateway` 已直接替换为 CPAMC 页面与 `/v0/management` client。旧 `apps/frontend/agent-gateway/test` 仍引用已删除的 `src/app/*` 架构，暂不纳入 production smoke；前端证明入口改为 `typecheck` 与 `build`，后续需在明确清理旧测试后补 CPAMC 页面 smoke。
 
 边界说明：
 

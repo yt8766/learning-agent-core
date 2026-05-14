@@ -36,7 +36,7 @@ Chat Runtime v2 相关实现入口：
 - `src/chat/runs/*`：`ChatRunRecord` 的内存 repository/service 与 run cancel 查询入口
 - `src/chat/auto-review/*`：工具执行自动审查策略，低风险自动允许，高风险返回自然语言确认语，破坏性动作阻断
 - `src/chat/interactions/*`：pending interaction 与自然语言审批回复解析
-- `src/chat/view-stream/*`：`/api/chat/view-stream` 的显式 `event:` SSE 投影
+- `src/chat/chat-view-stream.*` 与 `src/chat/chat-view-stream-event.repository.ts`：`/api/chat/view-stream` 的显式 `event:` SSE 投影、lazy backfill 与进程内 view-event repository
 - `src/agent-tools/*`：真实工具执行审批队列；chat v2 只做自然语言 bridge，不绕过 `AgentToolsService.resumeApproval()` 的审批 ID 校验和 sandbox/auto-review 恢复逻辑
 
 涉及这些入口时，先更新 [agent-chat-runtime-v2.md](/docs/contracts/api/agent-chat-runtime-v2.md)，再改 controller/service/frontend。

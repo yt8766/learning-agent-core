@@ -69,6 +69,12 @@ export interface ChatMessageRecord {
   createdAt: string;
 }
 
+export interface ChatModelOption {
+  id: string;
+  displayName: string;
+  providerId: string;
+}
+
 export interface ChatEventRecord {
   id: string;
   sessionId: string;

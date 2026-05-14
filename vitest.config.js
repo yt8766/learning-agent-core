@@ -6,6 +6,7 @@ import { defineConfig } from 'vitest/config';
 
 const resolvePath = value => fileURLToPath(new URL(value, import.meta.url));
 const agentAdminSrcRoot = resolvePath('./apps/frontend/agent-admin/src/');
+const agentGatewaySrcRoot = resolvePath('./apps/frontend/agent-gateway/src/');
 const agentChatSrcRoot = resolvePath('./apps/frontend/agent-chat/src/');
 const knowledgeSrcRoot = resolvePath('./apps/frontend/knowledge/src/');
 
@@ -20,6 +21,10 @@ function resolveFrontendAlias(source, importer) {
 
   if (importer?.includes('/apps/frontend/agent-admin/')) {
     return resolveFrontendAliasPath(agentAdminSrcRoot, source.slice(2));
+  }
+
+  if (importer?.includes('/apps/frontend/agent-gateway/')) {
+    return resolveFrontendAliasPath(agentGatewaySrcRoot, source.slice(2));
   }
 
   if (importer?.includes('/apps/frontend/knowledge/')) {
@@ -85,6 +90,8 @@ export default defineConfig({
       { find: '@agent/agents-image', replacement: resolvePath('./agents/image/src') },
       { find: '@agent/agents-intel-engine', replacement: resolvePath('./agents/intel-engine/src') },
       { find: '@agent/agents-video', replacement: resolvePath('./agents/video/src') },
+      { find: 'motion-dom', replacement: resolvePath('./apps/frontend/agent-gateway/src/shims/motion-dom.ts') },
+      { find: 'motion/mini', replacement: resolvePath('./apps/frontend/agent-gateway/src/shims/motion-mini.ts') },
       { find: '@agent/agents-coder', replacement: resolvePath('./agents/coder/src') },
       { find: '@agent/agents-reviewer', replacement: resolvePath('./agents/reviewer/src') }
     ]

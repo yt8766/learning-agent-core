@@ -276,6 +276,38 @@ describe('@agent/runtime session inline capability integration', () => {
     );
   });
 
+  it('treats codex-chat default title as placeholder so the first reply can name the conversation', async () => {
+    const repository = new InMemoryRuntimeStateRepository();
+    const llmProvider = createLlmProviderStub('会话自动命名');
+    const coordinator = new SessionCoordinator(
+      createSessionOrchestratorStub() as never,
+      repository,
+      llmProvider as never
+    );
+
+    const session = await coordinator.createSession({ title: '新对话' });
+
+    expect(session).toMatchObject({
+      title: '新对话',
+      titleSource: 'placeholder'
+    });
+
+    await coordinator.appendInlineCapabilityResponse(
+      session.id,
+      {
+        message: '帮我分析 AI 回复后对话没有自动命名的问题'
+      },
+      {
+        content: '问题在于默认标题被误判为手动标题。'
+      }
+    );
+
+    expect(coordinator.getSession(session.id)).toMatchObject({
+      title: '会话自动命名',
+      titleSource: 'generated'
+    });
+  });
+
   it('persists session, messages, events and checkpoint for inline capability replies', async () => {
     const repository = new InMemoryRuntimeStateRepository();
     const llmProvider = createLlmProviderStub('Runtime 审批恢复状态总结');

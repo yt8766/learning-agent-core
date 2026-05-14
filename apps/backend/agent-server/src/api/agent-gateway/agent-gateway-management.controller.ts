@@ -125,6 +125,10 @@ export class AgentGatewayManagementController {
       .then(response => GatewayProviderSpecificConfigRecordSchema.parse(response));
   }
 
+  @Delete('provider-configs/:providerId') deleteProviderConfig(@Param('providerId') providerId: string): Promise<void> {
+    return this.providerConfigService.deleteProviderConfig(providerId);
+  }
+
   @Get('provider-configs/:providerId/models') providerModels(
     @Param('providerId') providerId: string
   ): Promise<GatewaySystemModelsResponse> {

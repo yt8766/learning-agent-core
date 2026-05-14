@@ -1,17 +1,27 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
-import { App } from './app/App';
+import '@/styles/global.scss';
+import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
+import App from './App.tsx';
 
-const queryClient = new QueryClient();
+document.title = 'CLI Proxy API Management Center';
+document.documentElement.setAttribute('translate', 'no');
+document.documentElement.classList.add('notranslate');
+
+const faviconEl = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+if (faviconEl) {
+  faviconEl.href = INLINE_LOGO_JPEG;
+  faviconEl.type = 'image/jpeg';
+} else {
+  const newFavicon = document.createElement('link');
+  newFavicon.rel = 'icon';
+  newFavicon.type = 'image/jpeg';
+  newFavicon.href = INLINE_LOGO_JPEG;
+  document.head.appendChild(newFavicon);
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <App />
   </StrictMode>
 );

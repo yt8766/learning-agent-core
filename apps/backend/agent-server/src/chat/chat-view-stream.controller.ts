@@ -64,5 +64,8 @@ function parseAfterSeq(afterSeq?: string): number | undefined {
     return undefined;
   }
   const value = Number(afterSeq);
-  return Number.isFinite(value) ? value : undefined;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new BadRequestException('afterSeq must be a non-negative integer');
+  }
+  return value;
 }

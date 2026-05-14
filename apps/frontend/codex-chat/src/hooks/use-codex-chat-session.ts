@@ -21,7 +21,7 @@ export interface CodexChatSessionState {
   renameConversation: () => Promise<void>;
   renameTarget: ChatSessionRecord | null;
   renameValue: string;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, modelId?: string) => Promise<void>;
   sessions: ChatSessionRecord[];
   setActiveSessionId: (sessionId: string) => void;
   setRenameTarget: (session: ChatSessionRecord | null) => void;
@@ -219,7 +219,7 @@ export function useCodexChatSession(): CodexChatSessionState {
   }, [renameTarget, renameValue]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, modelId?: string) => {
       const message = content.trim();
       if (!message || isRequesting) {
         return;
@@ -276,7 +276,7 @@ export function useCodexChatSession(): CodexChatSessionState {
           return;
         }
 
-        await chatApi.postMessage(session.id, message);
+        await chatApi.postMessage(session.id, message, modelId);
       } catch {
         setIsRequesting(false);
         setMessageMap(current => ({

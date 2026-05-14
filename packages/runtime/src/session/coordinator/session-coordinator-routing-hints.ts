@@ -77,7 +77,7 @@ export function deriveRequestedHints(input: string) {
 
 export function shouldDeriveSessionTitle(title?: string) {
   const normalized = title?.trim();
-  return !normalized || normalized === '新会话';
+  return !normalized || normalized === '新会话' || normalized === '新对话';
 }
 
 export function shouldGenerateSessionTitle(session: Pick<ChatSessionRecord, 'title' | 'titleSource'>) {

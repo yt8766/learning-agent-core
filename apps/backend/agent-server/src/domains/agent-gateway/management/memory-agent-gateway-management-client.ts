@@ -174,6 +174,10 @@ export class MemoryAgentGatewayManagementClient implements AgentGatewayManagemen
     return { ...request };
   }
 
+  async deleteProviderConfig(providerId: string): Promise<void> {
+    this.providerConfigs.delete(providerId);
+  }
+
   async discoverProviderModels(providerId: string): Promise<GatewaySystemModelsResponse> {
     const config = this.providerConfigs.get(providerId);
     const providerKind = providerTypeToKind(config?.providerType);

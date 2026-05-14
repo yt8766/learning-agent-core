@@ -1,4 +1,4 @@
-import type { ChatEventRecord, ChatMessageRecord, ChatSessionRecord } from '@/types/chat';
+import type { ChatEventRecord, ChatMessageRecord, ChatModelOption, ChatSessionRecord } from '@/types/chat';
 
 async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
@@ -59,6 +59,10 @@ export const chatApi = {
 
   listEvents(sessionId: string) {
     return requestJson<ChatEventRecord[]>(`/api/chat/events?sessionId=${encodeURIComponent(sessionId)}`);
+  },
+
+  listModels() {
+    return requestJson<ChatModelOption[]>('/api/chat/models');
   },
 
   postMessage(sessionId: string, message: string, modelId?: string) {

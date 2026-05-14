@@ -1,9 +1,11 @@
 # Management Shell Specification
 
-状态：current
+状态：history
 文档类型：spec
 适用范围：`apps/frontend/agent-gateway`
-最后核对：2026-05-10
+最后核对：2026-05-13
+
+> 2026-05-13 起，旧 `src/app/GatewayWorkspace.tsx` shell 已删除。当前 shell 来自 CPAMC 的 `src/components/layout/MainLayout.tsx` 与 `src/router/MainRoutes.tsx`；本文仅保留历史参考。
 
 ## Overview
 

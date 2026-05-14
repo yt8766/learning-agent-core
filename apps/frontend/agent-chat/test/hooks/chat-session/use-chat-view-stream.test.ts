@@ -145,6 +145,95 @@ describe('chat view-stream reducer', () => {
     expect(state.messages[0]?.content).toBe('推荐采用 v2');
   });
 
+  it('ignores duplicate or older seq events during replay', () => {
+    const currentState = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'fragment_delta',
+      id: 'view-2',
+      seq: 2,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-assistant',
+        fragmentId: 'frag-response',
+        delta: '推荐'
+      }
+    });
+
+    const duplicateState = applyChatViewStreamEvent(currentState, {
+      event: 'fragment_delta',
+      id: 'view-2-duplicate',
+      seq: 2,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-assistant',
+        fragmentId: 'frag-response',
+        delta: '推荐'
+      }
+    });
+
+    const olderState = applyChatViewStreamEvent(duplicateState, {
+      event: 'fragment_delta',
+      id: 'view-1-old',
+      seq: 1,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-assistant',
+        fragmentId: 'frag-response',
+        delta: '旧内容'
+      }
+    });
+
+    expect(duplicateState).toBe(currentState);
+    expect(olderState).toBe(currentState);
+    expect(olderState.fragments['frag-response'].content).toBe('推荐');
+    expect(olderState.lastSeq).toBe(2);
+  });
+
+  it('calibrates assistant content from fragment completion events', () => {
+    const streamedState = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'fragment_delta',
+      id: 'view-2',
+      seq: 2,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-assistant',
+        fragmentId: 'frag-response',
+        delta: '临时内容'
+      }
+    });
+
+    const completedState = applyChatViewStreamEvent(streamedState, {
+      event: 'fragment_completed',
+      id: 'view-3',
+      seq: 3,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        messageId: 'msg-assistant',
+        fragmentId: 'frag-response',
+        kind: 'response',
+        status: 'completed',
+        content: '最终内容'
+      }
+    });
+
+    expect(completedState.fragments['frag-response']).toEqual({
+      id: 'frag-response',
+      messageId: 'msg-assistant',
+      content: '最终内容'
+    });
+    expect(completedState.messages[0]?.content).toBe('最终内容');
+    expect(completedState.lastSeq).toBe(3);
+  });
+
   it('marks natural-language pending interactions without creating a new run', () => {
     const state = applyChatViewStreamEvent(
       {
@@ -354,6 +443,28 @@ describe('chat view-stream reducer', () => {
     expect(state.close?.retryable).toBe(true);
     expect(state.close?.autoResume).toBe(true);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('keeps cancelled close events non-resumable unless the stream says otherwise', () => {
+    const state = applyChatViewStreamEvent(createInitialChatViewStreamState(), {
+      event: 'close',
+      id: 'view-cancelled',
+      seq: 8,
+      sessionId: 'session-1',
+      runId: 'run-1',
+      at,
+      data: {
+        reason: 'cancelled',
+        retryable: false
+      }
+    });
+
+    expect(state.status).toBe('closed');
+    expect(state.close).toEqual({
+      reason: 'cancelled',
+      retryable: false,
+      autoResume: undefined
+    });
   });
 
   it('handles interaction_waiting event', () => {

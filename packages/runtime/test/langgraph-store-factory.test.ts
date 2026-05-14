@@ -10,10 +10,12 @@ const postgresStoreMocks = vi.hoisted(() => {
   return { setupMock, stopMock, fromConnStringMock };
 });
 
-vi.mock('@langchain/langgraph-checkpoint-postgres/store', () => ({
-  PostgresStore: {
-    fromConnString: postgresStoreMocks.fromConnStringMock
-  }
+vi.mock('../src/runtime/langgraph-postgres-store-loader', () => ({
+  loadPostgresStoreModule: () => ({
+    PostgresStore: {
+      fromConnString: postgresStoreMocks.fromConnStringMock
+    }
+  })
 }));
 
 import { createLangGraphStore } from '../src/runtime/langgraph-store';

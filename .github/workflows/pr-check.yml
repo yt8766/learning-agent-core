@@ -126,43 +126,10 @@ jobs:
       - name: Run Docs Check
         run: node ./scripts/check-docs.js
 
-  verify-foundation:
-    name: Affected Verify / Governance And Spec
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - lockfile
-    if: needs.detect-changes.outputs.any_code == 'true'
-    env:
-      VERIFY_BASE_REF: origin/${{ github.base_ref }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 2
-
-      - name: Fetch PR Base Ref
-        uses: ./.github/actions/fetch-pr-base-ref
-        with:
-          base-ref: ${{ github.base_ref }}
-
-      - name: Setup Workspace
-        uses: ./.github/actions/setup-pnpm-workspace
-
-      - name: Run Governance Verify
-        run: pnpm verify:governance
-
-      - name: Run Affected Spec Verify
-        run: pnpm test:spec:affected
-
   verify-parallel:
     name: Affected Verify / ${{ matrix.label }}
     runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - lockfile
-      - verify-foundation
+    needs: detect-changes
     if: needs.detect-changes.outputs.any_code == 'true'
     env:
       VERIFY_BASE_REF: origin/${{ github.base_ref }}
@@ -170,6 +137,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - label: Governance
+            command: pnpm verify:governance
+          - label: Spec
+            command: pnpm test:spec:affected
           - label: Prettier
             command: pnpm lint:prettier:affected
           - label: ESLint
@@ -210,7 +181,6 @@ jobs:
     needs:
       - detect-changes
       - lockfile
-      - verify-foundation
       - verify-parallel
     if: ${{ always() && needs.detect-changes.outputs.any_code == 'true' }}
 
@@ -218,14 +188,12 @@ jobs:
       - name: Verify Parallel Gate Summary
         env:
           LOCKFILE_RESULT: ${{ needs.lockfile.result }}
-          VERIFY_FOUNDATION_RESULT: ${{ needs.verify-foundation.result }}
           VERIFY_PARALLEL_RESULT: ${{ needs.verify-parallel.result }}
         run: |
           echo "lockfile=${LOCKFILE_RESULT}"
-          echo "verify-foundation=${VERIFY_FOUNDATION_RESULT}"
           echo "verify-parallel=${VERIFY_PARALLEL_RESULT}"
 
-          if [ "$LOCKFILE_RESULT" != "success" ] || [ "$VERIFY_FOUNDATION_RESULT" != "success" ] || [ "$VERIFY_PARALLEL_RESULT" != "success" ]; then
+          if [ "$LOCKFILE_RESULT" != "success" ] || [ "$VERIFY_PARALLEL_RESULT" != "success" ]; then
             echo "Affected verify prerequisites did not complete successfully."
             exit 1
           fi
@@ -233,10 +201,7 @@ jobs:
   terminology:
     name: Terminology Check
     runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - lockfile
-      - verify-foundation
+    needs: detect-changes
     if: needs.detect-changes.outputs.any_code == 'true'
 
     steps:
@@ -252,9 +217,7 @@ jobs:
   prompt-regression:
     name: Prompt Regression
     runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - lockfile
+    needs: detect-changes
     if: needs.detect-changes.outputs.packages == 'true' || needs.detect-changes.outputs.prompts == 'true' || needs.detect-changes.outputs.workflow == 'true'
     env:
       VERIFY_BASE_REF: origin/${{ github.base_ref }}
@@ -312,7 +275,6 @@ jobs:
       - detect-changes
       - lockfile
       - docs
-      - verify-foundation
       - verify-parallel
       - verify
       - terminology
@@ -345,7 +307,6 @@ jobs:
           DETECT_CHANGES_RESULT: ${{ needs.detect-changes.result }}
           LOCKFILE_RESULT: ${{ needs.lockfile.result }}
           DOCS_RESULT: ${{ needs.docs.result }}
-          VERIFY_FOUNDATION_RESULT: ${{ needs.verify-foundation.result }}
           VERIFY_PARALLEL_RESULT: ${{ needs.verify-parallel.result }}
           VERIFY_RESULT: ${{ needs.verify.result }}
           TERMINOLOGY_RESULT: ${{ needs.terminology.result }}
@@ -367,14 +328,10 @@ jobs:
             first_job="docs"
             first_result="$DOCS_RESULT"
             next_hint="Open the docs job and review markdown metadata, link, or docs structure errors."
-          elif [ "$VERIFY_FOUNDATION_RESULT" = "failure" ] || [ "$VERIFY_FOUNDATION_RESULT" = "cancelled" ]; then
-            first_job="verify-foundation"
-            first_result="$VERIFY_FOUNDATION_RESULT"
-            next_hint="Open verify-foundation and inspect governance plus affected spec logs first."
           elif [ "$VERIFY_PARALLEL_RESULT" = "failure" ] || [ "$VERIFY_PARALLEL_RESULT" = "cancelled" ]; then
             first_job="verify-parallel"
             first_result="$VERIFY_PARALLEL_RESULT"
-            next_hint="Open the failing verify-parallel matrix leg and inspect prettier, eslint, type, unit, demo, or integration output."
+            next_hint="Open the failing verify-parallel matrix leg and inspect governance, spec, prettier, eslint, type, unit, demo, or integration output."
           elif [ "$VERIFY_RESULT" = "failure" ] || [ "$VERIFY_RESULT" = "cancelled" ]; then
             first_job="verify"
             first_result="$VERIFY_RESULT"
@@ -394,7 +351,7 @@ jobs:
           echo "next_hint=$next_hint" >> "$GITHUB_OUTPUT"
 
       - name: Send Success Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && (needs.lockfile.result == 'success' || needs.lockfile.result == 'skipped') && (needs.docs.result == 'success' || needs.docs.result == 'skipped') && (needs.verify-foundation.result == 'success' || needs.verify-foundation.result == 'skipped') && (needs.verify-parallel.result == 'success' || needs.verify-parallel.result == 'skipped') && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.terminology.result == 'success' || needs.terminology.result == 'skipped') && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && needs.detect-changes.result == 'success' && (needs.lockfile.result == 'success' || needs.lockfile.result == 'skipped') && (needs.docs.result == 'success' || needs.docs.result == 'skipped') && (needs.verify-parallel.result == 'success' || needs.verify-parallel.result == 'skipped') && (needs.verify.result == 'success' || needs.verify.result == 'skipped') && (needs.terminology.result == 'success' || needs.terminology.result == 'skipped') && (needs.prompt-regression.result == 'success' || needs.prompt-regression.result == 'skipped') }}
         uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -430,21 +387,20 @@ jobs:
             - detect-changes: ${{ needs.detect-changes.result }}
             - lockfile: ${{ needs.lockfile.result }}
             - docs: ${{ needs.docs.result }}
-            - verify-foundation: ${{ needs.verify-foundation.result }}
             - verify-parallel: ${{ needs.verify-parallel.result }}
             - verify: ${{ needs.verify.result }}
             - terminology: ${{ needs.terminology.result }}
             - prompt-regression: ${{ needs.prompt-regression.result }}
 
             Notes:
-            - `Affected Verify` now closes as a pure aggregate gate, so the branch-protection check finishes earlier.
+            - Governance and spec now run inside the affected verification matrix, so the branch-protection gate no longer waits on a separate foundation job.
             - terminology stays visible as a separate lightweight job.
 
             Next step:
             - ✅ Merge or continue review from the PR page if no further action is needed.
 
       - name: Send Failure Email
-        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lockfile.result == 'failure' || needs.lockfile.result == 'cancelled' || needs.docs.result == 'failure' || needs.docs.result == 'cancelled' || needs.verify-foundation.result == 'failure' || needs.verify-foundation.result == 'cancelled' || needs.verify-parallel.result == 'failure' || needs.verify-parallel.result == 'cancelled' || needs.verify.result == 'failure' || needs.verify.result == 'cancelled' || needs.terminology.result == 'failure' || needs.terminology.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
+        if: ${{ steps.smtp.outputs.ready == 'true' && (needs.detect-changes.result == 'failure' || needs.detect-changes.result == 'cancelled' || needs.lockfile.result == 'failure' || needs.lockfile.result == 'cancelled' || needs.docs.result == 'failure' || needs.docs.result == 'cancelled' || needs.verify-parallel.result == 'failure' || needs.verify-parallel.result == 'cancelled' || needs.verify.result == 'failure' || needs.verify.result == 'cancelled' || needs.terminology.result == 'failure' || needs.terminology.result == 'cancelled' || needs.prompt-regression.result == 'failure' || needs.prompt-regression.result == 'cancelled') }}
         uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -480,7 +436,6 @@ jobs:
             - detect-changes: ${{ needs.detect-changes.result }}
             - lockfile: ${{ needs.lockfile.result }}
             - docs: ${{ needs.docs.result }}
-            - verify-foundation: ${{ needs.verify-foundation.result }}
             - verify-parallel: ${{ needs.verify-parallel.result }}
             - verify: ${{ needs.verify.result }}
             - terminology: ${{ needs.terminology.result }}
@@ -494,7 +449,6 @@ jobs:
             First places to inspect:
             - ❌ Open the run page above and review the first failed or cancelled job.
             - If lockfile failed, check package.json and pnpm-lock.yaml drift first.
-            - If verify-foundation failed, review governance and affected spec logs first.
-            - If verify-parallel failed, inspect the failing prettier, eslint, type, unit, demo, or integration matrix leg.
+            - If verify-parallel failed, inspect the failing governance, spec, prettier, eslint, type, unit, demo, or integration matrix leg.
             - If verify failed, review the aggregate gate summary.
             - If terminology failed, inspect the non-blocking terminology logs.

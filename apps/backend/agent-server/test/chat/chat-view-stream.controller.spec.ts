@@ -87,6 +87,38 @@ describe('ChatViewStreamController', () => {
     expect(service.listEvents).not.toHaveBeenCalled();
     expect(service.subscribe).not.toHaveBeenCalled();
   });
+
+  it('passes parsed afterSeq to list and subscribe when no newer history exists', () => {
+    const service = {
+      listEvents: vi.fn(() => []),
+      subscribe: vi.fn(() => vi.fn())
+    };
+    const controller = new ChatViewStreamController(service as never);
+    const response = createSseResponse();
+    const request = { on: vi.fn() };
+
+    controller.stream(request as never, response as never, 'session-1', 'run-1', '7');
+
+    expect(service.listEvents).toHaveBeenCalledWith('session-1', 'run-1', 7);
+    expect(service.subscribe).toHaveBeenCalledWith('session-1', 'run-1', expect.any(Function), 7);
+  });
+
+  it('rejects invalid afterSeq before opening the SSE response', () => {
+    const service = {
+      listEvents: vi.fn(),
+      subscribe: vi.fn()
+    };
+    const controller = new ChatViewStreamController(service as never);
+    const response = createSseResponse();
+    const request = { on: vi.fn() };
+
+    expect(() => controller.stream(request as never, response as never, 'session-1', 'run-1', '1.5')).toThrow(
+      BadRequestException
+    );
+
+    expect(response.setHeader).not.toHaveBeenCalled();
+    expect(service.listEvents).not.toHaveBeenCalled();
+  });
 });
 
 function createSseResponse() {

@@ -16,7 +16,7 @@
 - `packages/core` schema-first contract：`ChatRunRecord`、`ChatMessageFragment`、`ChatViewStreamEvent`、`ExecutionAutoReviewRecord`、`ChatPendingInteraction`、`ApprovalReplyIntent`。
 - 后端 `GET /api/chat/runs`、`GET /api/chat/runs/:runId`、`POST /api/chat/runs/:runId/cancel`。
 - 后端 `GET /api/chat/view-stream?sessionId=...&runId=...&afterSeq=...`，使用显式 `event:` SSE。
-- view-stream 已投影 `assistant_token`、`assistant_message` / `final_response_completed`、`session_failed`、`node_progress` 与 `interrupt_pending(kind=tool_execution)`。
+- view-stream 已投影 `assistant_token`、`assistant_message` / `final_response_completed`、`session_failed`、`node_progress`、`tool_stream_dispatched` / `tool_stream_completed` 与 `interrupt_pending(kind=tool_execution)`。
 - `POST /api/chat/messages` 已优先处理 `PendingInteractionService` 中的 pending interaction，并可把同 session 的 `agent-tools` `pending_approval` 自然语言回复转为 `AgentToolsService.resumeApproval()`。
 - 前端 `chat-runtime-v2-api.ts` 与 `use-chat-view-stream.ts` 已按 `@agent/core` schema 解析 v2 view-stream。
 - 前端 `agent-chat-session-provider.ts` 已短路 `handledAs = "pending_interaction_reply"`，不再把确认回复当作新任务或新 stream。
@@ -397,8 +397,12 @@ type ChatViewStreamEventType =
 
 约束：
 
-- 所有事件必须带递增 `seq`，为后续 `afterSeq` 重连做准备。
-- 当前实现支持历史补发与实时订阅的最小 `afterSeq` 过滤；后续持久化和跨进程恢复仍必须保留 `seq` 与 `afterSeq`。
+- 所有事件必须带递增 `seq`，递增范围是同一个 `sessionId + runId`。
+- `afterSeq` 是 `sessionId + runId` 范围内的展示流游标；服务端只补发 `seq > afterSeq` 的 view events。
+- 前端必须忽略 `seq <= lastSeq` 的事件，避免刷新、断线重连或历史补发导致 token 重复拼接。
+- 重连只恢复展示，不重新触发 runtime 执行，也不创建新 run。
+- 当前实现会在 `list` 与 `subscribe` 前从 `ChatEventRecord` lazy backfill 到进程内 view-event repository，并支持历史补发与实时订阅的 `afterSeq` 过滤；后续持久化和跨进程恢复仍必须保留 `seq` 与 `afterSeq`。
+- `close.reason = "cancelled"` 表示用户或系统已取消 run，前端不得继续自动恢复。
 - `error` 表示发生了什么错误；`close` 表示本条流为什么结束，二者不能混用。
 - `event:` 字段必须显式写出，不沿用旧 `/api/chat/stream` 的无 event 名数据帧。
 
@@ -421,10 +425,12 @@ data: {
 }
 ```
 
-### 6.2 `fragment_delta`
+### 6.2 `fragment_started` / `fragment_delta` / `fragment_completed`
+
+`fragment_started` 表示一段可展示内容开始，`fragment_delta` 表示增量内容，`fragment_completed` 表示该 fragment 已完成并携带最终校准内容。前端必须以 `fragment_completed.data.content` 校准最终展示文本。
 
 ```text
-event: fragment_delta
+event: fragment_started
 data: {
   "id": "view_evt_2",
   "seq": 2,
@@ -434,18 +440,111 @@ data: {
   "data": {
     "messageId": "m_assistant",
     "fragmentId": "frag_response",
+    "kind": "response",
+    "status": "streaming"
+  }
+}
+```
+
+```text
+event: fragment_delta
+data: {
+  "id": "view_evt_3",
+  "seq": 3,
+  "sessionId": "s1",
+  "runId": "r1",
+  "at": "2026-05-05T10:00:01.200Z",
+  "data": {
+    "messageId": "m_assistant",
+    "fragmentId": "frag_response",
     "delta": "推荐采用双流模型..."
   }
 }
 ```
 
-### 6.3 `auto_review_completed`
+```text
+event: fragment_completed
+data: {
+  "id": "view_evt_4",
+  "seq": 4,
+  "sessionId": "s1",
+  "runId": "r1",
+  "at": "2026-05-05T10:00:02.000Z",
+  "data": {
+    "messageId": "m_assistant",
+    "fragmentId": "frag_response",
+    "kind": "response",
+    "status": "completed",
+    "content": "推荐采用双流模型..."
+  }
+}
+```
+
+### 6.3 `run_status`
+
+```text
+event: run_status
+data: {
+  "id": "view_evt_5",
+  "seq": 5,
+  "sessionId": "s1",
+  "runId": "r1",
+  "at": "2026-05-05T10:00:02.100Z",
+  "data": {
+    "status": "completed",
+    "completedAt": "2026-05-05T10:00:02.100Z",
+    "reason": "final_response_completed"
+  }
+}
+```
+
+### 6.4 `tool_execution_started` / `tool_execution_completed`
+
+工具执行事件只允许白名单字段进入 view-stream，不得透传 raw tool input、完整 stdout/stderr、第三方 provider raw response、凭据或未脱敏路径。
+
+```text
+event: tool_execution_started
+data: {
+  "id": "view_evt_6",
+  "seq": 6,
+  "sessionId": "s1",
+  "runId": "r1",
+  "at": "2026-05-05T10:00:02.200Z",
+  "data": {
+    "toolName": "shell",
+    "toolDisplayName": "Shell command",
+    "stage": "execute",
+    "status": "running",
+    "riskLevel": "low",
+    "userFacingSummary": "正在执行只读验证命令"
+  }
+}
+```
+
+```text
+event: tool_execution_completed
+data: {
+  "id": "view_evt_7",
+  "seq": 7,
+  "sessionId": "s1",
+  "runId": "r1",
+  "at": "2026-05-05T10:00:02.800Z",
+  "data": {
+    "toolName": "shell",
+    "status": "completed",
+    "elapsedMs": 600,
+    "userFacingSummary": "验证命令已完成"
+  }
+}
+```
+
+### 6.5 `auto_review_completed`
 
 ```text
 event: auto_review_completed
 data: {
-  "id": "view_evt_3",
-  "seq": 3,
+  "id": "view_evt_8",
+  "seq": 8,
   "sessionId": "s1",
   "runId": "r1",
   "at": "2026-05-05T10:00:02.000Z",
@@ -468,13 +567,13 @@ data: {
 }
 ```
 
-### 6.4 `interaction_waiting`
+### 6.6 `interaction_waiting`
 
 ```text
 event: interaction_waiting
 data: {
-  "id": "view_evt_4",
-  "seq": 4,
+  "id": "view_evt_9",
+  "seq": 9,
   "sessionId": "s1",
   "runId": "r1",
   "at": "2026-05-05T10:00:03.000Z",
@@ -496,13 +595,13 @@ data: {
 }
 ```
 
-### 6.5 `error` 与 `close`
+### 6.7 `error` 与 `close`
 
 ```text
 event: error
 data: {
-  "id": "view_evt_5",
-  "seq": 5,
+  "id": "view_evt_10",
+  "seq": 10,
   "sessionId": "s1",
   "runId": "r1",
   "at": "2026-05-05T10:00:04.000Z",
@@ -515,8 +614,8 @@ data: {
 
 event: close
 data: {
-  "id": "view_evt_6",
-  "seq": 6,
+  "id": "view_evt_11",
+  "seq": 11,
   "sessionId": "s1",
   "runId": "r1",
   "at": "2026-05-05T10:00:04.100Z",

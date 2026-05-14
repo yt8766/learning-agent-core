@@ -202,7 +202,7 @@ pending_policy -> pending_approval / queued / denied -> running -> succeeded / f
 
 ## SSE Events
 
-Agent Tool 执行事件优先通过 `GET /api/chat/stream?sessionId=...` 暴露给 `agent-chat`，后台治理页可通过 Runtime / Run Observatory projection 补拉。数据帧仍为 `ChatEventRecord`。
+Agent Tool 执行事实仍写入 `ChatEventRecord`，旧 `GET /api/chat/stream?sessionId=...` 保留事实流兼容职责；`agent-chat` 新主体验优先通过 `GET /api/chat/view-stream?sessionId=...&runId=...&afterSeq=...` 消费白名单后的 `tool_execution_started` / `tool_execution_completed` UI 投影。后台治理页可通过 Runtime / Run Observatory projection 补拉事实记录。
 
 相关事件：
 

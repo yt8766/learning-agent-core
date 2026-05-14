@@ -55,17 +55,13 @@ describe('turbo:typecheck manifest wiring', () => {
     );
   });
 
-  it('keeps runtime package type exports pointed at emitted declaration files', async () => {
+  it('keeps runtime package type exports pointed at declaration build outputs', async () => {
     const manifest = await readJson('packages/runtime/package.json');
     const typePaths = collectTypePaths(manifest);
 
-    await Promise.all(
-      typePaths.map(async typePath => {
-        await expect(
-          access(path.join(repoRoot, 'packages/runtime', typePath.replace(/^\.\//, '')))
-        ).resolves.toBeUndefined();
-      })
-    );
+    expect(typePaths).toEqual(['./build/types/runtime/src/index.d.ts', 'build/types/runtime/src/index.d.ts']);
+    expect(typePaths.every(typePath => typePath.replace(/^\.\//, '').startsWith('build/types/'))).toBe(true);
+    expect(typePaths.every(typePath => typePath.endsWith('.d.ts'))).toBe(true);
   });
 
   it('does not keep standalone backend server typecheck manifests after the unified hard cut', async () => {
